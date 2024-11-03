@@ -7,18 +7,15 @@ from warp.fem.cache import (
     borrow_temporary_like,
     cached_arg_value,
 )
-from warp.fem.types import OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
+from warp.fem.types import OUTSIDE, Coords, ElementIndex, Sample
 
 from .element import LinearEdge, Square
 from .geometry import Geometry
 
-# from .closest_point import project_on_tet_at_origin
-
 
 @wp.struct
-class Quadmesh2DCellArg:
+class QuadmeshCellArg:
     quad_vertex_indices: wp.array2d(dtype=int)
-    positions: wp.array(dtype=wp.vec2)
 
     # for neighbor cell lookup
     vertex_quad_offsets: wp.array(dtype=int)
@@ -26,26 +23,24 @@ class Quadmesh2DCellArg:
 
 
 @wp.struct
-class Quadmesh2DSideArg:
-    cell_arg: Quadmesh2DCellArg
+class QuadmeshSideArg:
+    cell_arg: QuadmeshCellArg
     edge_vertex_indices: wp.array(dtype=wp.vec2i)
     edge_quad_indices: wp.array(dtype=wp.vec2i)
 
 
-class Quadmesh2D(Geometry):
-    """Two-dimensional quadrilateral mesh geometry"""
-
-    dimension = 2
+class Quadmesh(Geometry):
+    """Quadrilateral mesh geometry"""
 
     def __init__(
         self, quad_vertex_indices: wp.array, positions: wp.array, temporary_store: Optional[TemporaryStore] = None
     ):
         """
-        Constructs a two-dimensional quadrilateral mesh.
+        Constructs a D-dimensional quadrilateral mesh.
 
         Args:
             quad_vertex_indices: warp array of shape (num_tris, 4) containing vertex indices for each quad, in counter-clockwise order
-            positions: warp array of shape (num_vertices, 2) containing 2d position for each vertex
+            positions: warp array of shape (num_vertices, D) containing the position of each vertex
             temporary_store: shared pool from which to allocate temporary arrays
         """
 
@@ -57,6 +52,16 @@ class Quadmesh2D(Geometry):
         self._vertex_quad_offsets: wp.array = None
         self._vertex_quad_indices: wp.array = None
         self._build_topology(temporary_store)
+
+        # Flip edges so that normals point away from inner cell
+        wp.launch(
+            kernel=self._orient_edges,
+            device=positions.device,
+            dim=self.side_count(),
+            inputs=[self._edge_vertex_indices, self._edge_quad_indices, self.quad_vertex_indices, self.positions],
+        )
+
+        self._make_default_dependent_implementations()
 
     def cell_count(self):
         return self.quad_vertex_indices.shape[0]
@@ -84,71 +89,45 @@ class Quadmesh2D(Geometry):
     def edge_vertex_indices(self) -> wp.array:
         return self._edge_vertex_indices
 
-    CellArg = Quadmesh2DCellArg
-    SideArg = Quadmesh2DSideArg
-
     @wp.struct
     class SideIndexArg:
         boundary_edge_indices: wp.array(dtype=int)
 
-    # Geometry device interface
-
     @cached_arg_value
-    def cell_arg_value(self, device) -> CellArg:
-        args = self.CellArg()
+    def _cell_topo_arg_value(self, device):
+        args = QuadmeshCellArg()
 
         args.quad_vertex_indices = self.quad_vertex_indices.to(device)
-        args.positions = self.positions.to(device)
         args.vertex_quad_offsets = self._vertex_quad_offsets.to(device)
         args.vertex_quad_indices = self._vertex_quad_indices.to(device)
 
         return args
 
-    @wp.func
-    def cell_position(args: CellArg, s: Sample):
-        quad_idx = args.quad_vertex_indices[s.element_index]
+    @cached_arg_value
+    def _side_topo_arg_value(self, device):
+        args = QuadmeshSideArg()
 
-        w_p = s.element_coords
-        w_m = Coords(1.0) - s.element_coords
+        args.cell_arg = self._cell_topo_arg_value(device)
+        args.edge_vertex_indices = self._edge_vertex_indices.to(device)
+        args.edge_quad_indices = self._edge_quad_indices.to(device)
 
-        # 0 : m m
-        # 1 : p m
-        # 2 : p p
-        # 3 : m p
+        return args
 
-        return (
-            w_m[0] * w_m[1] * args.positions[quad_idx[0]]
-            + w_p[0] * w_m[1] * args.positions[quad_idx[1]]
-            + w_p[0] * w_p[1] * args.positions[quad_idx[2]]
-            + w_m[0] * w_p[1] * args.positions[quad_idx[3]]
-        )
+    def cell_arg_value(self, device):
+        args = self.CellArg()
 
-    @wp.func
-    def cell_deformation_gradient(cell_arg: CellArg, s: Sample):
-        """Deformation gradient at `coords`"""
-        quad_idx = cell_arg.quad_vertex_indices[s.element_index]
+        args.topology = self._cell_topo_arg_value(device)
+        args.positions = self.positions.to(device)
 
-        w_p = s.element_coords
-        w_m = Coords(1.0) - s.element_coords
+        return args
 
-        return (
-            wp.outer(cell_arg.positions[quad_idx[0]], wp.vec2(-w_m[1], -w_m[0]))
-            + wp.outer(cell_arg.positions[quad_idx[1]], wp.vec2(w_m[1], -w_p[0]))
-            + wp.outer(cell_arg.positions[quad_idx[2]], wp.vec2(w_p[1], w_p[0]))
-            + wp.outer(cell_arg.positions[quad_idx[3]], wp.vec2(-w_p[1], w_m[0]))
-        )
+    def side_arg_value(self, device):
+        args = self.SideArg()
 
-    @wp.func
-    def cell_inverse_deformation_gradient(cell_arg: CellArg, s: Sample):
-        return wp.inverse(Quadmesh2D.cell_deformation_gradient(cell_arg, s))
+        args.topology = self._side_topo_arg_value(device)
+        args.positions = self.positions.to(device)
 
-    @wp.func
-    def cell_measure(args: CellArg, s: Sample):
-        return wp.abs(wp.determinant(Quadmesh2D.cell_deformation_gradient(args, s)))
-
-    @wp.func
-    def cell_normal(args: CellArg, s: Sample):
-        return wp.vec2(0.0)
+        return args
 
     @cached_arg_value
     def side_index_arg_value(self, device) -> SideIndexArg:
@@ -159,84 +138,9 @@ class Quadmesh2D(Geometry):
         return args
 
     @wp.func
-    def boundary_side_index(args: SideIndexArg, boundary_side_index: int):
-        """Boundary side to side index"""
-
-        return args.boundary_edge_indices[boundary_side_index]
-
-    @cached_arg_value
-    def side_arg_value(self, device) -> CellArg:
-        args = self.SideArg()
-
-        args.cell_arg = self.cell_arg_value(device)
-        args.edge_vertex_indices = self._edge_vertex_indices.to(device)
-        args.edge_quad_indices = self._edge_quad_indices.to(device)
-
-        return args
-
-    @wp.func
-    def side_position(args: SideArg, s: Sample):
-        edge_idx = args.edge_vertex_indices[s.element_index]
-        return (1.0 - s.element_coords[0]) * args.cell_arg.positions[edge_idx[0]] + s.element_coords[
-            0
-        ] * args.cell_arg.positions[edge_idx[1]]
-
-    @wp.func
-    def side_deformation_gradient(args: SideArg, s: Sample):
-        edge_idx = args.edge_vertex_indices[s.element_index]
-        v0 = args.cell_arg.positions[edge_idx[0]]
-        v1 = args.cell_arg.positions[edge_idx[1]]
-        return v1 - v0
-
-    @wp.func
-    def side_inner_inverse_deformation_gradient(args: SideArg, s: Sample):
-        cell_index = Quadmesh2D.side_inner_cell_index(args, s.element_index)
-        cell_coords = Quadmesh2D.side_inner_cell_coords(args, s.element_index, s.element_coords)
-        return Quadmesh2D.cell_inverse_deformation_gradient(args.cell_arg, make_free_sample(cell_index, cell_coords))
-
-    @wp.func
-    def side_outer_inverse_deformation_gradient(args: SideArg, s: Sample):
-        cell_index = Quadmesh2D.side_outer_cell_index(args, s.element_index)
-        cell_coords = Quadmesh2D.side_outer_cell_coords(args, s.element_index, s.element_coords)
-        return Quadmesh2D.cell_inverse_deformation_gradient(args.cell_arg, make_free_sample(cell_index, cell_coords))
-
-    @wp.func
-    def side_measure(args: SideArg, s: Sample):
-        edge_idx = args.edge_vertex_indices[s.element_index]
-        v0 = args.cell_arg.positions[edge_idx[0]]
-        v1 = args.cell_arg.positions[edge_idx[1]]
-        return wp.length(v1 - v0)
-
-    @wp.func
-    def side_measure_ratio(args: SideArg, s: Sample):
-        inner = Quadmesh2D.side_inner_cell_index(args, s.element_index)
-        outer = Quadmesh2D.side_outer_cell_index(args, s.element_index)
-        inner_coords = Quadmesh2D.side_inner_cell_coords(args, s.element_index, s.element_coords)
-        outer_coords = Quadmesh2D.side_outer_cell_coords(args, s.element_index, s.element_coords)
-        return Quadmesh2D.side_measure(args, s) / wp.min(
-            Quadmesh2D.cell_measure(args.cell_arg, make_free_sample(inner, inner_coords)),
-            Quadmesh2D.cell_measure(args.cell_arg, make_free_sample(outer, outer_coords)),
-        )
-
-    @wp.func
-    def side_normal(args: SideArg, s: Sample):
-        edge_idx = args.edge_vertex_indices[s.element_index]
-        v0 = args.cell_arg.positions[edge_idx[0]]
-        v1 = args.cell_arg.positions[edge_idx[1]]
-        e = v1 - v0
-
-        return wp.normalize(wp.vec2(-e[1], e[0]))
-
-    @wp.func
-    def side_inner_cell_index(arg: SideArg, side_index: ElementIndex):
-        return arg.edge_quad_indices[side_index][0]
-
-    @wp.func
-    def side_outer_cell_index(arg: SideArg, side_index: ElementIndex):
-        return arg.edge_quad_indices[side_index][1]
-
-    @wp.func
-    def edge_to_quad_coords(args: SideArg, side_index: ElementIndex, quad_index: ElementIndex, side_coords: Coords):
+    def _edge_to_quad_coords(
+        args: QuadmeshSideArg, side_index: ElementIndex, quad_index: ElementIndex, side_coords: Coords
+    ):
         edge_vidx = args.edge_vertex_indices[side_index]
         quad_vidx = args.cell_arg.quad_vertex_indices[quad_index]
 
@@ -255,18 +159,8 @@ class Quadmesh2D(Geometry):
         return wp.select(ve == quad_vidx[0], Coords(s, 1.0, 0.0), Coords(0.0, 1.0 - s, 0.0))
 
     @wp.func
-    def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
-        inner_cell_index = Quadmesh2D.side_inner_cell_index(args, side_index)
-        return Quadmesh2D.edge_to_quad_coords(args, side_index, inner_cell_index, side_coords)
-
-    @wp.func
-    def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
-        outer_cell_index = Quadmesh2D.side_outer_cell_index(args, side_index)
-        return Quadmesh2D.edge_to_quad_coords(args, side_index, outer_cell_index, side_coords)
-
-    @wp.func
-    def side_from_cell_coords(
-        args: SideArg,
+    def _quad_to_edge_coords(
+        args: QuadmeshSideArg,
         side_index: ElementIndex,
         quad_index: ElementIndex,
         quad_coords: Coords,
@@ -295,8 +189,10 @@ class Quadmesh2D(Geometry):
         return wp.select(oc == 0.0, Coords(OUTSIDE), Coords(ec, 0.0, 0.0))
 
     @wp.func
-    def side_to_cell_arg(side_arg: SideArg):
-        return side_arg.cell_arg
+    def boundary_side_index(args: SideIndexArg, boundary_side_index: int):
+        """Boundary side to side index"""
+
+        return args.boundary_edge_indices[boundary_side_index]
 
     def _build_topology(self, temporary_store: TemporaryStore):
         from warp.fem.utils import compress_node_indices, host_read_at_index, masked_indices
@@ -383,14 +279,6 @@ class Quadmesh2D(Geometry):
         vertex_unique_edge_count.release()
         vertex_edge_ends.release()
         vertex_edge_quads.release()
-
-        # Flip normals if necessary
-        wp.launch(
-            kernel=Quadmesh2D._flip_edge_normals,
-            device=device,
-            dim=self.side_count(),
-            inputs=[self._edge_vertex_indices, self._edge_quad_indices, self.quad_vertex_indices, self.positions],
-        )
 
         boundary_edge_indices, _ = masked_indices(boundary_mask.array, temporary_store=temporary_store)
         self._boundary_edge_indices = boundary_edge_indices.detach()
@@ -497,8 +385,107 @@ class Quadmesh2D(Geometry):
             else:
                 boundary_mask[edge_index] = 0
 
+
+@wp.struct
+class Quadmesh2DCellArg:
+    topology: QuadmeshCellArg
+    positions: wp.array(dtype=wp.vec2)
+
+
+@wp.struct
+class Quadmesh2DSideArg:
+    topology: QuadmeshSideArg
+    positions: wp.array(dtype=wp.vec2)
+
+
+class Quadmesh2D(Quadmesh):
+    """Two-dimensional quadrilateral mesh"""
+
+    dimension = 2
+    CellArg = Quadmesh2DCellArg
+    SideArg = Quadmesh2DSideArg
+
+    @wp.func
+    def cell_position(args: CellArg, s: Sample):
+        quad_idx = args.topology.quad_vertex_indices[s.element_index]
+
+        w_p = s.element_coords
+        w_m = Coords(1.0) - s.element_coords
+
+        # 0 : m m
+        # 1 : p m
+        # 2 : p p
+        # 3 : m p
+
+        return (
+            w_m[0] * w_m[1] * args.positions[quad_idx[0]]
+            + w_p[0] * w_m[1] * args.positions[quad_idx[1]]
+            + w_p[0] * w_p[1] * args.positions[quad_idx[2]]
+            + w_m[0] * w_p[1] * args.positions[quad_idx[3]]
+        )
+
+    @wp.func
+    def cell_deformation_gradient(cell_arg: CellArg, s: Sample):
+        """Deformation gradient at `coords`"""
+        quad_idx = cell_arg.topology.quad_vertex_indices[s.element_index]
+
+        w_p = s.element_coords
+        w_m = Coords(1.0) - s.element_coords
+
+        return (
+            wp.outer(cell_arg.positions[quad_idx[0]], wp.vec2(-w_m[1], -w_m[0]))
+            + wp.outer(cell_arg.positions[quad_idx[1]], wp.vec2(w_m[1], -w_p[0]))
+            + wp.outer(cell_arg.positions[quad_idx[2]], wp.vec2(w_p[1], w_p[0]))
+            + wp.outer(cell_arg.positions[quad_idx[3]], wp.vec2(-w_p[1], w_m[0]))
+        )
+
+    @wp.func
+    def side_position(args: SideArg, s: Sample):
+        edge_idx = args.topology.edge_vertex_indices[s.element_index]
+        return (1.0 - s.element_coords[0]) * args.positions[edge_idx[0]] + s.element_coords[0] * args.positions[
+            edge_idx[1]
+        ]
+
+    @wp.func
+    def side_deformation_gradient(args: SideArg, s: Sample):
+        edge_idx = args.topology.edge_vertex_indices[s.element_index]
+        v0 = args.positions[edge_idx[0]]
+        v1 = args.positions[edge_idx[1]]
+        return v1 - v0
+
+    @wp.func
+    def side_inner_cell_index(arg: SideArg, side_index: ElementIndex):
+        return arg.topology.edge_quad_indices[side_index][0]
+
+    @wp.func
+    def side_outer_cell_index(arg: SideArg, side_index: ElementIndex):
+        return arg.topology.edge_quad_indices[side_index][1]
+
+    @wp.func
+    def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        inner_cell_index = Quadmesh2D.side_inner_cell_index(args, side_index)
+        return Quadmesh._edge_to_quad_coords(args.topology, side_index, inner_cell_index, side_coords)
+
+    @wp.func
+    def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        outer_cell_index = Quadmesh2D.side_outer_cell_index(args, side_index)
+        return Quadmesh._edge_to_quad_coords(args.topology, side_index, outer_cell_index, side_coords)
+
+    @wp.func
+    def side_from_cell_coords(
+        args: SideArg,
+        side_index: ElementIndex,
+        quad_index: ElementIndex,
+        quad_coords: Coords,
+    ):
+        return Quadmesh._quad_to_edge_coords(args.topology, side_index, quad_index, quad_coords)
+
+    @wp.func
+    def side_to_cell_arg(side_arg: SideArg):
+        return Quadmesh2DCellArg(side_arg.topology.cell_arg, side_arg.positions)
+
     @wp.kernel
-    def _flip_edge_normals(
+    def _orient_edges(
         edge_vertex_indices: wp.array(dtype=wp.vec2i),
         edge_quad_indices: wp.array(dtype=wp.vec2i),
         quad_vertex_indices: wp.array2d(dtype=int),
@@ -521,6 +508,140 @@ class Quadmesh2D(Geometry):
         edge_center = 0.5 * (v1 + v0)
         edge_vec = v1 - v0
         edge_normal = wp.vec2(-edge_vec[1], edge_vec[0])
+
+        # if edge normal points toward first triangle centroid, flip indices
+        if wp.dot(quad_centroid - edge_center, edge_normal) > 0.0:
+            edge_vertex_indices[e] = wp.vec2i(edge_vidx[1], edge_vidx[0])
+
+
+@wp.struct
+class Quadmesh3DCellArg:
+    topology: QuadmeshCellArg
+    positions: wp.array(dtype=wp.vec3)
+
+
+@wp.struct
+class Quadmesh3DSideArg:
+    topology: QuadmeshSideArg
+    positions: wp.array(dtype=wp.vec3)
+
+
+class Quadmesh3D(Quadmesh):
+    """Three-dimensional quadrilateral mesh"""
+
+    dimension = 3
+    CellArg = Quadmesh3DCellArg
+    SideArg = Quadmesh3DSideArg
+
+    @wp.func
+    def cell_position(args: CellArg, s: Sample):
+        quad_idx = args.topology.quad_vertex_indices[s.element_index]
+
+        w_p = s.element_coords
+        w_m = Coords(1.0) - s.element_coords
+
+        # 0 : m m
+        # 1 : p m
+        # 2 : p p
+        # 3 : m p
+
+        return (
+            w_m[0] * w_m[1] * args.positions[quad_idx[0]]
+            + w_p[0] * w_m[1] * args.positions[quad_idx[1]]
+            + w_p[0] * w_p[1] * args.positions[quad_idx[2]]
+            + w_m[0] * w_p[1] * args.positions[quad_idx[3]]
+        )
+
+    @wp.func
+    def cell_deformation_gradient(cell_arg: CellArg, s: Sample):
+        """Deformation gradient at `coords`"""
+        quad_idx = cell_arg.topology.quad_vertex_indices[s.element_index]
+
+        w_p = s.element_coords
+        w_m = Coords(1.0) - s.element_coords
+
+        return (
+            wp.outer(cell_arg.positions[quad_idx[0]], wp.vec2(-w_m[1], -w_m[0]))
+            + wp.outer(cell_arg.positions[quad_idx[1]], wp.vec2(w_m[1], -w_p[0]))
+            + wp.outer(cell_arg.positions[quad_idx[2]], wp.vec2(w_p[1], w_p[0]))
+            + wp.outer(cell_arg.positions[quad_idx[3]], wp.vec2(-w_p[1], w_m[0]))
+        )
+
+    @wp.func
+    def side_position(args: SideArg, s: Sample):
+        edge_idx = args.topology.edge_vertex_indices[s.element_index]
+        return (1.0 - s.element_coords[0]) * args.positions[edge_idx[0]] + s.element_coords[0] * args.positions[
+            edge_idx[1]
+        ]
+
+    @wp.func
+    def side_deformation_gradient(args: SideArg, s: Sample):
+        edge_idx = args.topology.edge_vertex_indices[s.element_index]
+        v0 = args.positions[edge_idx[0]]
+        v1 = args.positions[edge_idx[1]]
+        return v1 - v0
+
+    @wp.func
+    def side_inner_cell_index(arg: SideArg, side_index: ElementIndex):
+        return arg.topology.edge_quad_indices[side_index][0]
+
+    @wp.func
+    def side_outer_cell_index(arg: SideArg, side_index: ElementIndex):
+        return arg.topology.edge_quad_indices[side_index][1]
+
+    @wp.func
+    def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        inner_cell_index = Quadmesh3D.side_inner_cell_index(args, side_index)
+        return Quadmesh._edge_to_quad_coords(args.topology, side_index, inner_cell_index, side_coords)
+
+    @wp.func
+    def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        outer_cell_index = Quadmesh3D.side_outer_cell_index(args, side_index)
+        return Quadmesh._edge_to_quad_coords(args.topology, side_index, outer_cell_index, side_coords)
+
+    @wp.func
+    def side_from_cell_coords(
+        args: SideArg,
+        side_index: ElementIndex,
+        quad_index: ElementIndex,
+        quad_coords: Coords,
+    ):
+        return Quadmesh._quad_to_edge_coords(args.topology, side_index, quad_index, quad_coords)
+
+    @wp.func
+    def side_to_cell_arg(side_arg: SideArg):
+        return Quadmesh3DCellArg(side_arg.topology.cell_arg, side_arg.positions)
+
+    @wp.kernel
+    def _orient_edges(
+        edge_vertex_indices: wp.array(dtype=wp.vec2i),
+        edge_quad_indices: wp.array(dtype=wp.vec2i),
+        quad_vertex_indices: wp.array2d(dtype=int),
+        positions: wp.array(dtype=wp.vec3),
+    ):
+        e = wp.tid()
+
+        tri = edge_quad_indices[e][0]
+
+        quad_vidx = quad_vertex_indices[tri]
+        edge_vidx = edge_vertex_indices[e]
+
+        p0 = positions[quad_vidx[0]]
+        p1 = positions[quad_vidx[1]]
+        p2 = positions[quad_vidx[2]]
+        p3 = positions[quad_vidx[3]]
+
+        quad_centroid = (
+            positions[quad_vidx[0]] + positions[quad_vidx[1]] + positions[quad_vidx[2]] + positions[quad_vidx[3]]
+        ) / 4.0
+        quad_normal = wp.cross(p2 - p0, p3 - p1)
+
+        v0 = positions[edge_vidx[0]]
+        v1 = positions[edge_vidx[1]]
+
+        edge_center = 0.5 * (v1 + v0)
+        edge_vec = v1 - v0
+        edge_normal = wp.cross(edge_vec, quad_normal)
 
         # if edge normal points toward first triangle centroid, flip indices
         if wp.dot(quad_centroid - edge_center, edge_normal) > 0.0:

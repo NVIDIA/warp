@@ -129,6 +129,7 @@ Introductory Examples
  - ``example_stokes.py``: 2D incompressible Stokes flow using mixed :math:`P_k/P_{k-1}` or :math:`Q_k/P_{(k-1)d}` elements
  - ``example_navier_stokes.py``: 2D Navier-Stokes flow using mixed :math:`P_k/P_{k-1}` elements
  - ``example_mixed_elasticity.py``: 2D nonlinear elasticity using mixed continuous/discontinuous :math:`S_k/P_{(k-1)d}` elements
+ - ``example_distortion_energy.py``: Parameterization of a 3D surface minimizing a 2D nonlinear distortion energy
  - ``example_magnetostatics.py``: 2D magnetostatics using a curl-curl formulation
 
 Advanced Usages
@@ -276,6 +277,9 @@ This can be used to visualize discrete fields in VTK-aware viewers such as ``pyv
 
 Operators
 ---------
+
+Domain operators
+^^^^^^^^^^^^^^^^
 .. autofunction:: position(domain: Domain, s: Sample)
 .. autofunction:: normal(domain: Domain, s: Sample)
 .. autofunction:: lookup(domain: Domain, x)
@@ -283,6 +287,13 @@ Operators
 .. autofunction:: measure_ratio(domain: Domain, s: Sample)
 .. autofunction:: deformation_gradient(domain: Domain, s: Sample)
 
+.. autofunction:: cells(domain: Domain)
+.. autofunction:: to_inner_cell(domain: Domain, s:Sample)
+.. autofunction:: to_outer_cell(domain: Domain, s:Sample)
+.. autofunction:: to_cell_side(domain: Domain, s:Sample, side_index: ElementIndex)
+
+Field operators
+^^^^^^^^^^^^^^^
 .. autofunction:: degree(f: Field)
 .. autofunction:: inner(f: Field, s: Sample)
 .. autofunction:: outer(f: Field, s: Sample)
@@ -298,8 +309,6 @@ Operators
 .. autofunction:: average(f: Field, s: Sample)
 .. autofunction:: grad_jump(f: Field, s: Sample)
 .. autofunction:: grad_average(f: Field, s: Sample)
-
-.. autofunction:: warp.fem.operator.operator
 
 Integration
 -----------
@@ -328,7 +337,15 @@ Geometry
    :show-inheritance:
    :no-members:
 
+.. autoclass:: Trimesh3D
+   :show-inheritance:
+   :no-members:
+
 .. autoclass:: Quadmesh2D
+   :show-inheritance:
+   :no-members:
+
+.. autoclass:: Quadmesh3D
    :show-inheritance:
    :no-members:
 

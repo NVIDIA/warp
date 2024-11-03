@@ -16,7 +16,7 @@ from .square_shape_function import (
     SquareSerendipityShapeFunctions,
 )
 from .tet_shape_function import TetrahedronNonConformingPolynomialShapeFunctions, TetrahedronPolynomialShapeFunctions
-from .triangle_shape_function import Triangle2DNonConformingPolynomialShapeFunctions, Triangle2DPolynomialShapeFunctions
+from .triangle_shape_function import TriangleNonConformingPolynomialShapeFunctions, TrianglePolynomialShapeFunctions
 
 
 class ElementBasis(Enum):
@@ -66,11 +66,11 @@ def get_shape_function(
         return SquareBipolynomialShapeFunctions(degree=degree, family=family)
     if isinstance(element, _element.Triangle):
         if element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
-            return Triangle2DNonConformingPolynomialShapeFunctions(degree=degree)
+            return TriangleNonConformingPolynomialShapeFunctions(degree=degree)
         if element_basis == ElementBasis.SERENDIPITY and degree > 2:
             raise NotImplementedError("Serendipity variant not implemented yet for Triangle elements")
 
-        return Triangle2DPolynomialShapeFunctions(degree=degree)
+        return TrianglePolynomialShapeFunctions(degree=degree)
 
     if isinstance(element, _element.Cube):
         if element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:

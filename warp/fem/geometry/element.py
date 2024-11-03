@@ -5,6 +5,9 @@ from warp.fem.types import Coords
 
 
 class Element:
+    dimension = 0
+    """Intrinsic dimension of the element"""
+
     def measure() -> float:
         """Measure (area, volume, ...) of the reference element"""
         raise NotImplementedError
@@ -33,6 +36,8 @@ def _point_count_from_order(order: int, family: Polynomial):
 
 
 class Cube(Element):
+    dimension = 3
+
     @staticmethod
     def measure() -> float:
         return 1.0
@@ -52,6 +57,8 @@ class Cube(Element):
 
 
 class Square(Element):
+    dimension = 2
+
     @staticmethod
     def measure() -> float:
         return 1.0
@@ -71,6 +78,8 @@ class Square(Element):
 
 
 class LinearEdge(Element):
+    dimension = 1
+
     @staticmethod
     def measure() -> float:
         return 1.0
@@ -88,6 +97,8 @@ class LinearEdge(Element):
 
 
 class Triangle(Element):
+    dimension = 2
+
     @staticmethod
     def measure() -> float:
         return 0.5
@@ -430,6 +441,8 @@ class Triangle(Element):
 
 
 class Tetrahedron(Element):
+    dimension = 3
+
     @staticmethod
     def measure() -> float:
         return 1.0 / 6.0

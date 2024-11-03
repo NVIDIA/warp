@@ -33,7 +33,7 @@ class Grid3D(Geometry):
         Args:
             res: Resolution of the grid along each dimension
             bounds_lo: Position of the lower bound of the axis-aligned grid
-            bounds_up: Position of the upper bound of the axis-aligned grid
+            bounds_hi: Position of the upper bound of the axis-aligned grid
         """
 
         if bounds_lo is None:

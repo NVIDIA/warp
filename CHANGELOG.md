@@ -5,6 +5,8 @@
 ### Added
 
 - Expose a `reversed()` built-in for iterators to test ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
+- Expose a `reversed()` built-in for iterators.
+- warp.fem: Added Trimesh3D and Quadmesh3D geometry types for 3D surfaces, with new `example_distortion_energy` example
 
 ### Changed
 
@@ -32,6 +34,17 @@
 - Fix caching of kernels with static expressions.
 - Fix `ModelBuilder.add_builder(builder)` to correctly update `articulation_start` and thereby `articulation_count` when `builder` contains more than one articulation.
 - Re-introduced the `wp.rand*()`, `wp.sample*()`, and `wp.poisson()` onto the Python scope to revert a breaking change.
+- Fix printing vector and matrix adjoints in backward kernels.
+- Fix kernel compile error when printing structs.
+- warp.fem: Simplified querying neighboring cell quantities when integrating on sides using new `warp.fem.cells()`, `warp.fem.to_inner_cell()`, `warp.fem.to_outer_cell()` operators
+
+### Fixed
+
+- Fix potential out-of-bounds memory access when a `wp.sparse.BsrMatrix` object is reused for storing matrices of different shapes
+- Fix robustness to very low desired tolerance in `wp.fem.utils.symmetric_eigenvalues_qr`
+- Fix invalid code generation error messages when nesting dynamic and static for-loops
+- warp.fem: Fixed tri-cubic shape functions on quadrilateral meshes 
+- warp.fem: Fixed caching of integrand kernels when changing code-generation options
 
 ## [1.4.0] - 2024-10-01
 

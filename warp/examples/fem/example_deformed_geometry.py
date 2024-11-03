@@ -28,7 +28,7 @@ def deformation_field_expr(
     domain: fem.Domain,
 ):
     """
-    Deformation field mapping the unique square to a circular band
+    Deformation field mapping the unit square to a circular band
     """
     x = domain(s)
 

@@ -7,7 +7,7 @@ from warp.fem import cache
 from warp.fem.polynomial import Polynomial, is_closed, lagrange_scales, quadrature_1d
 from warp.fem.types import Coords
 
-from .triangle_shape_function import Triangle2DPolynomialShapeFunctions
+from .triangle_shape_function import TrianglePolynomialShapeFunctions
 
 
 class SquareBipolynomialShapeFunctions:
@@ -542,7 +542,7 @@ class SquareNonConformingPolynomialShapeFunctions:
     _TRI_OFFSET = wp.constant(wp.vec2(0.5 - 0.5 * _tri_side, 0.5 - _tri_height / 3.0))
 
     def __init__(self, degree: int):
-        self._tri_shape = Triangle2DPolynomialShapeFunctions(degree=degree)
+        self._tri_shape = TrianglePolynomialShapeFunctions(degree=degree)
         self.ORDER = self._tri_shape.ORDER
         self.NODES_PER_ELEMENT = self._tri_shape.NODES_PER_ELEMENT
 
@@ -580,7 +580,7 @@ class SquareNonConformingPolynomialShapeFunctions:
                 node_index_in_elt: int,
             ):
                 node_type, type_index = self._tri_shape.node_type_and_type_index(node_index_in_elt)
-                if node_type == Triangle2DPolynomialShapeFunctions.VERTEX:
+                if node_type == TrianglePolynomialShapeFunctions.VERTEX:
                     return 0.18518521
                 return 0.14814811
 

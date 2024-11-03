@@ -24,14 +24,17 @@ from .geometry import (
     LinearGeometryPartition,
     Nanogrid,
     Quadmesh2D,
+    Quadmesh3D,
     Tetmesh,
     Trimesh2D,
+    Trimesh3D,
 )
 from .integrate import integrate, interpolate
 from .operator import (
     D,
     at_node,
     average,
+    cells,
     curl,
     deformation_gradient,
     degree,
@@ -50,6 +53,9 @@ from .operator import (
     normal,
     outer,
     position,
+    to_cell_side,
+    to_inner_cell,
+    to_outer_cell,
 )
 from .polynomial import Polynomial
 from .quadrature import ExplicitQuadrature, NodalQuadrature, PicQuadrature, Quadrature, RegularQuadrature

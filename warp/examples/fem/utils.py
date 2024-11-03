@@ -31,7 +31,7 @@ def gen_trimesh(res, bounds_lo: Optional[wp.vec2] = None, bounds_hi: Optional[wp
     Args:
         res: Resolution of the grid along each dimension
         bounds_lo: Position of the lower bound of the axis-aligned grid
-        bounds_up: Position of the upper bound of the axis-aligned grid
+        bounds_hi: Position of the upper bound of the axis-aligned grid
 
     Returns:
         Tuple of ndarrays: (Vertex positions, Triangle vertex indices)
@@ -62,7 +62,7 @@ def gen_tetmesh(res, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp
     Args:
         res: Resolution of the grid along each dimension
         bounds_lo: Position of the lower bound of the axis-aligned grid
-        bounds_up: Position of the upper bound of the axis-aligned grid
+        bounds_hi: Position of the upper bound of the axis-aligned grid
 
     Returns:
         Tuple of ndarrays: (Vertex positions, Tetrahedron vertex indices)
@@ -95,7 +95,7 @@ def gen_quadmesh(res, bounds_lo: Optional[wp.vec2] = None, bounds_hi: Optional[w
     Args:
         res: Resolution of the grid along each dimension
         bounds_lo: Position of the lower bound of the axis-aligned grid
-        bounds_up: Position of the upper bound of the axis-aligned grid
+        bounds_hi: Position of the upper bound of the axis-aligned grid
 
     Returns:
         Tuple of ndarrays: (Vertex positions, Triangle vertex indices)
@@ -125,7 +125,7 @@ def gen_hexmesh(res, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp
     Args:
         res: Resolution of the grid along each dimension
         bounds_lo: Position of the lower bound of the axis-aligned grid
-        bounds_up: Position of the upper bound of the axis-aligned grid
+        bounds_hi: Position of the upper bound of the axis-aligned grid
 
     Returns:
         Tuple of ndarrays: (Vertex positions, Triangle vertex indices)
@@ -158,7 +158,7 @@ def gen_volume(res, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp.
     Args:
         res: Resolution of the grid along each dimension
         bounds_lo: Position of the lower bound of the axis-aligned grid
-        bounds_up: Position of the upper bound of the axis-aligned grid
+        bounds_hi: Position of the upper bound of the axis-aligned grid
         device: Cuda device on which to allocate the grid
     """
 
@@ -717,7 +717,7 @@ class Plot:
                     plotter.view_xy()
                 else:
                     plotter.add_mesh(marker)
-            elif field.space.dimension == 3:
+            elif field.space.geometry.reference_cell().dimension == 3:
                 plotter.add_mesh_clip_plane(grid, show_edges=True, clim=value_range, assign_to_axis="z")
             else:
                 plotter.add_mesh(grid, show_edges=True, clim=value_range)
@@ -809,6 +809,8 @@ class Plot:
                 if "arrows" in args or "streamlines" in args:
                     plot_opts["glyph_scale"] = args.get("arrows", {}).get("glyph_scale", 1.0)
                     plot_fn = _plot_quivers_3d
+                elif field.space.geometry.reference_cell().dimension == 2:
+                    plot_fn = _plot_surface
                 else:
                     plot_fn = _plot_3d_scatter
                 plot_3d = True
@@ -856,23 +858,43 @@ def _field_triangulation(field):
 
 
 def _plot_surface(field, axes, **kwargs):
-    Z = _value_or_magnitude(field.dof_values.numpy())
+    from matplotlib.cm import get_cmap
+    from matplotlib.colors import Normalize
 
-    if "clim" in kwargs:
-        axes.set_zlim(*kwargs["clim"])
+    C = _value_or_magnitude(field.dof_values.numpy())
+
+    positions = field.space.node_positions().numpy().T
+    if field.space.dimension == 3:
+        X, Y, Z = positions
+    else:
+        X, Y = positions
+        Z = C
+        axes.set_zlim(kwargs["clim"])
 
     if hasattr(field.space, "node_grid"):
         X, Y = field.space.node_grid()
-        Z = Z.reshape(X.shape)
-        return axes.plot_surface(X, Y, Z, linewidth=0.1, antialiased=False, **kwargs)
+        C = C.reshape(X.shape)
+        return axes.plot_surface(X, Y, C, linewidth=0.1, antialiased=False, **kwargs)
 
     if hasattr(field.space, "node_triangulation"):
         triangulation = _field_triangulation(field)
-        return axes.plot_trisurf(triangulation, Z, linewidth=0.1, antialiased=False, **kwargs)
+
+        if field.space.dimension == 3:
+            plot = axes.plot_trisurf(triangulation, Z, linewidth=0.1, antialiased=False)
+            # change colors -- recompute color map manually
+            vmin, vmax = kwargs["clim"]
+            norm = Normalize(vmin=vmin, vmax=vmax)
+            values = np.mean(C[triangulation.triangles], axis=1)
+            colors = get_cmap(kwargs["cmap"])(norm(values))
+            plot.set_norm(norm)
+            plot.set_fc(colors)
+        else:
+            plot = axes.plot_trisurf(triangulation, C, linewidth=0.1, antialiased=False, **kwargs)
+
+        return plot
 
     # scatter
-    X, Y = field.space.node_positions().numpy().T
-    return axes.scatter(X, Y, Z, c=Z, **kwargs)
+    return axes.scatter(X, Y, Z, c=C, **kwargs)
 
 
 def _plot_displaced_tri_mesh(field, axes, **kwargs):
