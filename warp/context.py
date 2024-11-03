@@ -1934,6 +1934,7 @@ class Module:
             # determine output paths
             if device.is_cpu:
                 output_name = "module_codegen.o"
+                output_arch = None
 
             elif device.is_cuda:
                 # determine whether to use PTX or CUBIN
@@ -1957,9 +1958,6 @@ class Module:
                     output_arch = device.arch
                     output_name = f"module_codegen.sm{output_arch}.cubin"
 
-                # Some of the Tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
-                self.options["output_arch"] = output_arch
-
             # final object binary path
             binary_path = os.path.join(module_dir, output_name)
 
@@ -1975,7 +1973,12 @@ class Module:
                 or not warp.config.cache_kernels
                 or warp.config.verify_autograd_array_access
             ):
-                builder = ModuleBuilder(self, self.options, hasher=self.hasher)
+                builder_options = {
+                    **self.options,
+                    # Some of the Tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
+                    "output_arch": output_arch,
+                }
+                builder = ModuleBuilder(self, builder_options, hasher=self.hasher)
 
                 # create a temporary (process unique) dir for build outputs before moving to the binary dir
                 build_dir = os.path.join(

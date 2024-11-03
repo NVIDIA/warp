@@ -214,12 +214,35 @@ def test_function_generic_overload_hashing(test, device):
     test.assertNotEqual(hash4, hash1)
 
 
+SIMPLE_MODULE = """# -*- coding: utf-8 -*-
+import warp as wp
+
+@wp.kernel
+def k():
+    pass
+"""
+
+
+def test_module_load(test, device):
+    """Ensure that loading a module does not change its hash"""
+    m = load_code_as_module(SIMPLE_MODULE, "simple_module")
+
+    hash1 = m.hash_module()
+    m.load(device)
+    hash2 = m.hash_module()
+
+    test.assertEqual(hash1, hash2)
+
+
 class TestModuleHashing(unittest.TestCase):
     pass
 
 
+devices = get_test_devices()
+
 add_function_test(TestModuleHashing, "test_function_overload_hashing", test_function_overload_hashing)
 add_function_test(TestModuleHashing, "test_function_generic_overload_hashing", test_function_generic_overload_hashing)
+add_function_test(TestModuleHashing, "test_module_load", test_module_load, devices=devices)
 
 
 if __name__ == "__main__":
