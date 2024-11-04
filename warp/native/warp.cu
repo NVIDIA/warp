@@ -14,9 +14,9 @@
 #include <cstdlib>
 #include <fstream>
 #include <nvrtc.h>
-#include <nvJitLink.h>
 #include <nvPTXCompiler.h>
 #if WP_ENABLE_MATHDX
+    #include <nvJitLink.h>
     #include <libmathdx.h>
 #endif
 
@@ -110,25 +110,6 @@ bool check_nvptx_result(nvPTXCompileResult result, const char* file, int line)
 
     fprintf(stderr, "Warp PTX compilation error %u: %s (%s:%d)\n", unsigned(result), error_string, file, line);
     return false;
-}
-
-bool check_nvjitlink_result(nvJitLinkHandle handle, nvJitLinkResult result, const char* file, int line)
-{
-    if (result != NVJITLINK_SUCCESS) {
-        fprintf(stderr, "nvJitLink error: %d on %s:%d\n", (int)result, file, line);
-        size_t lsize;
-        result = nvJitLinkGetErrorLogSize(handle, &lsize);
-        if (result == NVJITLINK_SUCCESS && lsize > 0) {
-            std::vector<char> log(lsize);
-            result = nvJitLinkGetErrorLog(handle, log.data());
-            if (result == NVJITLINK_SUCCESS) {
-                fprintf(stderr, "%s\n", log.data());
-            }
-        }
-        return false;
-    } else {
-        return true;
-    }
 }
 
 bool check_generic(int result, const char* file, int line)
@@ -2610,6 +2591,27 @@ bool write_file(const char* data, size_t size, std::string filename, const char*
     }
 }
 
+#if WP_ENABLE_MATHDX
+    bool check_nvjitlink_result(nvJitLinkHandle handle, nvJitLinkResult result, const char* file, int line)
+    {
+        if (result != NVJITLINK_SUCCESS) {
+            fprintf(stderr, "nvJitLink error: %d on %s:%d\n", (int)result, file, line);
+            size_t lsize;
+            result = nvJitLinkGetErrorLogSize(handle, &lsize);
+            if (result == NVJITLINK_SUCCESS && lsize > 0) {
+                std::vector<char> log(lsize);
+                result = nvJitLinkGetErrorLog(handle, log.data());
+                if (result == NVJITLINK_SUCCESS) {
+                    fprintf(stderr, "%s\n", log.data());
+                }
+            }
+            return false;
+        } else {
+            return true;
+        }
+    }
+#endif
+
 size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes)
 {
     // use file extension to determine whether to output PTX or CUBIN
@@ -2752,9 +2754,14 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
     nvrtcResult (*get_output_data)(nvrtcProgram, char*);
     const char* output_mode;
     if(num_ltoirs > 0) {
+#if WP_ENABLE_MATHDX
         get_output_size = nvrtcGetLTOIRSize;
         get_output_data = nvrtcGetLTOIR;
         output_mode = "wb";
+#else
+        fprintf(stderr, "Warp error: num_ltoirs > 0 but Warp was not built with MathDx support\n");
+        return size_t(-1);
+#endif
     }
     else if (use_ptx)
     {
@@ -2782,6 +2789,7 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
             // LTOIR case - need an extra step
             if (num_ltoirs > 0) 
             {
+#if WP_ENABLE_MATHDX
                 nvJitLinkHandle handle;
                 std::vector<const char *> lopts = {"-dlto", arch_opt_lto};
                 if (use_ptx) {
@@ -2842,6 +2850,10 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
                     }
                 }
                 check_nvjitlink(handle, nvJitLinkDestroy(&handle));
+#else
+                fprintf(stderr, "Warp error: num_ltoirs > 0 but Warp was not built with MathDx support\n");
+                return size_t(-1);
+#endif
             }
 
             if(!write_file(output.data(), output.size(), output_path, output_mode)) {
