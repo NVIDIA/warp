@@ -282,8 +282,11 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
                 run_cmd(cuda_cmd)
                 linkopts.append(quote(cu_out))
                 linkopts.append(
-                    f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib nvJitLink_static.lib /LIBPATH:"{cuda_home}/lib/x64"'
+                    f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib /LIBPATH:"{cuda_home}/lib/x64"'
                 )
+
+                if args.libmathdx_path:
+                    linkopts.append("nvJitLink_static.lib")
 
         with ScopedTimer("link", active=args.verbose):
             link_cmd = f'"{host_linker}" {" ".join(linkopts + libs)} /out:"{dll_path}"'
@@ -345,11 +348,11 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
 
                 ld_inputs.append(quote(cu_out))
                 ld_inputs.append(
-                    f'-L"{cuda_home}/lib64" -lcudart_static -lnvrtc_static -lnvrtc-builtins_static -lnvptxcompiler_static -lnvJitLink_static -lpthread -ldl -lrt'
+                    f'-L"{cuda_home}/lib64" -lcudart_static -lnvrtc_static -lnvrtc-builtins_static -lnvptxcompiler_static -lpthread -ldl -lrt'
                 )
 
                 if args.libmathdx_path:
-                    ld_inputs.append(f"-L{args.libmathdx_path}/lib -lmathdx_static")
+                    ld_inputs.append(f"-lnvJitLink_static -L{args.libmathdx_path}/lib -lmathdx_static")
 
         if sys.platform == "darwin":
             opt_no_undefined = "-Wl,-undefined,error"
