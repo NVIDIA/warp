@@ -43,7 +43,7 @@ def test_multi_layer_nn(test, device):
 
     NUM_FREQ = wp.constant(8)
 
-    DIM_IN = wp.constant(4 * NUM_FREQ)  # sin,cos for both x,y at each frequenecy
+    DIM_IN = wp.constant(4 * NUM_FREQ)  # sin,cos for both x,y at each frequency
     DIM_HID = 32
     DIM_OUT = 3
 
@@ -150,6 +150,8 @@ def test_multi_layer_nn(test, device):
             out[i, linear] = float(output[i])
 
     with wp.ScopedDevice(device):
+        torch_device = wp.device_to_torch(device)
+
         rng = np.random.default_rng(45)
 
         weights_0, bias_0 = create_layer(rng, DIM_IN, DIM_HID, dtype=dtype)
@@ -159,14 +161,6 @@ def test_multi_layer_nn(test, device):
 
         input = create_array(rng, IMG_WIDTH * IMG_HEIGHT, DIM_IN, dtype=dtype)
         output = create_array(rng, IMG_WIDTH * IMG_HEIGHT, DIM_OUT)
-
-        # # generate reference image
-        # from PIL import Image
-        # reference_path = os.path.join(wp.examples.get_asset_directory(), "pixel.jpg")
-        # with Image.open(reference_path) as im:
-        #     reference_image = np.asarray(im.resize((IMG_WIDTH, IMG_HEIGHT)).convert("RGB"))
-        #     reference_np = reference_image.reshape(IMG_WIDTH*IMG_HEIGHT, 3).T
-        # np.save(os.path.join(os.path.dirname(__file__), "assets/pixel.npy"), reference_np, allow_pickle=True)
 
         reference_np = np.load(os.path.join(os.path.dirname(__file__), "assets/pixel.npy"), allow_pickle=True) / 255.0
         reference = wp.array(reference_np, dtype=float)
@@ -227,30 +221,30 @@ def test_multi_layer_nn(test, device):
                         z_np = np.maximum(weights_2.numpy() @ z_np + bias_2.numpy(), 0.0)
                         z_np = np.maximum(weights_3.numpy() @ z_np + bias_3.numpy(), 0.0)
 
-                        # test numpy foward
+                        # test numpy forward
                         assert_np_equal(output.numpy()[:, indices], z_np, tol=1.0e-2)
 
                         # torch
-                        input_tc = tc.from_numpy(input.numpy()[:, indices]).requires_grad_(True)
+                        input_tc = tc.tensor(input.numpy()[:, indices], requires_grad=True, device=torch_device)
 
-                        weights_0_tc = tc.from_numpy(weights_0.numpy()).requires_grad_(True)
-                        bias_0_tc = tc.from_numpy(bias_0.numpy()).requires_grad_(True)
+                        weights_0_tc = tc.tensor(weights_0.numpy(), requires_grad=True, device=torch_device)
+                        bias_0_tc = tc.tensor(bias_0.numpy(), requires_grad=True, device=torch_device)
 
-                        weights_1_tc = tc.from_numpy(weights_1.numpy()).requires_grad_(True)
-                        bias_1_tc = tc.from_numpy(bias_1.numpy()).requires_grad_(True)
+                        weights_1_tc = tc.tensor(weights_1.numpy(), requires_grad=True, device=torch_device)
+                        bias_1_tc = tc.tensor(bias_1.numpy(), requires_grad=True, device=torch_device)
 
-                        weights_2_tc = tc.from_numpy(weights_2.numpy()).requires_grad_(True)
-                        bias_2_tc = tc.from_numpy(bias_2.numpy()).requires_grad_(True)
+                        weights_2_tc = tc.tensor(weights_2.numpy(), requires_grad=True, device=torch_device)
+                        bias_2_tc = tc.tensor(bias_2.numpy(), requires_grad=True, device=torch_device)
 
-                        weights_3_tc = tc.from_numpy(weights_3.numpy()).requires_grad_(True)
-                        bias_3_tc = tc.from_numpy(bias_3.numpy()).requires_grad_(True)
+                        weights_3_tc = tc.tensor(weights_3.numpy(), requires_grad=True, device=torch_device)
+                        bias_3_tc = tc.tensor(bias_3.numpy(), requires_grad=True, device=torch_device)
 
                         z_tc = tc.clamp(weights_0_tc @ input_tc + bias_0_tc, min=0.0)
                         z_tc = tc.clamp(weights_1_tc @ z_tc + bias_1_tc, min=0.0)
                         z_tc = tc.clamp(weights_2_tc @ z_tc + bias_2_tc, min=0.0)
                         z_tc = tc.clamp(weights_3_tc @ z_tc + bias_3_tc, min=0.0)
 
-                        ref_tc = tc.from_numpy(reference.numpy()[:, indices]).requires_grad_(True)
+                        ref_tc = tc.tensor(reference.numpy()[:, indices], requires_grad=True, device=torch_device)
 
                         l_tc = tc.mean((z_tc - ref_tc) ** 2)
                         l_tc.backward()
@@ -268,14 +262,6 @@ def test_multi_layer_nn(test, device):
 
                     optimizer.step(optimizer_grads)
                     tape.zero()
-
-                # print(f"Epoch: {epoch} Loss: {loss.numpy()}")
-
-        # predicted_image = output.numpy().T.reshape(IMG_WIDTH, IMG_HEIGHT, 3)
-        # predicted_image = (predicted_image * 255).astype(np.uint8)
-
-        # predicted_image_pil = Image.fromarray(predicted_image)
-        # predicted_image_pil.save("test_tile_mlp_wp.jpg")
 
         # initial loss is ~0.061
         test.assertLess(loss.numpy()[0], 0.002)
