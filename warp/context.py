@@ -1373,7 +1373,7 @@ class ModuleHasher:
         self.functions_in_progress = set()
 
         # all unique kernels for codegen, filtered by hash
-        self.unique_kernels = {}  # (hash: kernel)
+        self.unique_kernels = weakref.WeakValueDictionary()  # (hash: kernel)
 
         # start hashing the module
         ch = hashlib.sha256()
@@ -1555,7 +1555,7 @@ class ModuleBuilder:
             hasher = ModuleHasher(module)
 
         # build all unique kernels
-        self.kernels = hasher.get_unique_kernels()
+        self.kernels = weakref.WeakSet(hasher.get_unique_kernels())
         for kernel in self.kernels:
             self.build_kernel(kernel)
 
@@ -1680,7 +1680,7 @@ class ModuleExec:
         self.handle = handle
         self.module_hash = module_hash
         self.device = device
-        self.kernel_hooks = {}
+        self.kernel_hooks = weakref.WeakKeyDictionary()
 
     # release the loaded module
     def __del__(self):
