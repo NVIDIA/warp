@@ -5681,9 +5681,7 @@ def tile_matmul_generic_lto_dispatch_func(
             raise RuntimeError("time_matmul(A, B, C) requires all inputs to be real or complex")
         element_type = a_type
 
-        lto_symbol = (
-            f"dot_{M}_{N}_{K}_{a_arrangement}_{b_arrangement}_{c_arrangement}_{a_prec}_{b_prec}_{c_prec}_{element_type}"
-        )
+        lto_symbol = f"dot_{M}_{N}_{K}_{arch}_{num_threads}_{a_arrangement}_{b_arrangement}_{c_arrangement}_{a_prec}_{b_prec}_{c_prec}_{element_type}"
 
         # early out if LTO for this combination already exists for this module
         if lto_symbol in builder.ltoirs:
