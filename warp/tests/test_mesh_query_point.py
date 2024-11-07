@@ -769,20 +769,21 @@ def point_query_aabb_and_closest(
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_set_mesh_points(test, device):
+    rng = np.random.default_rng(123)
+
     vs, fs = load_mesh()
 
     vertices1 = wp.array(vs, dtype=wp.vec3, device=device)
-    velocities1_np = np.random.randn(vertices1.shape[0], 3)
+    velocities1_np = rng.standard_normal(size=(vertices1.shape[0], 3))
     velocities1 = wp.array(velocities1_np, dtype=wp.vec3, device=device)
 
     faces = wp.array(fs, dtype=wp.int32, device=device)
     mesh = wp.Mesh(vertices1, faces, velocities=velocities1)
     fs_2D = faces.reshape((-1, 3))
-    np.random.seed(12345)
     n = 1000
     query_radius = 0.2
 
-    pts1 = wp.array(np.random.randn(n, 3), dtype=wp.vec3, device=device)
+    pts1 = wp.array(rng.standard_normal(size=(n, 3)), dtype=wp.vec3, device=device)
 
     query_results_num_cols1 = wp.zeros(n, dtype=wp.int32, device=device)
     query_results_min_dist1 = wp.zeros(n, dtype=float, device=device)
