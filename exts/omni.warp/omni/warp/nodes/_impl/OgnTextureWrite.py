@@ -38,6 +38,8 @@ class InternalState:
             ("uri",),
         )
 
+        self.data = None
+
     def needs_initialization(self, db: OgnTextureWriteDatabase) -> bool:
         """Checks if the internal state needs to be (re)initialized."""
         if not self.is_valid:
@@ -80,7 +82,7 @@ def compute(db: OgnTextureWriteDatabase) -> None:
     if not db.inputs.data.memory or db.inputs.data.shape[0] == 0:
         return
 
-    state = db.internal_state
+    state = db.per_instance_state
 
     if state.needs_initialization(db):
         # Initialize the internal state if it hasn't been already.
@@ -94,12 +96,19 @@ def compute(db: OgnTextureWriteDatabase) -> None:
     # to the data.
     data_ptr = ctypes.cast(db.inputs.data.memory, ctypes.POINTER(ctypes.c_size_t)).contents.value
 
+    # The texture provider expects the data to live on the CUDA device 0,
+    # so copy it if it's not already there.
+    data = wp.array(ptr=data_ptr, shape=resolution, dtype=float).to("cuda:0")
+
     # Write the texture to the provider.
     state.texture_provider.set_bytes_data_from_gpu(
-        data_ptr,
+        data.ptr,
         resolution,
         format=ui.TextureFormat.RGBA32_SFLOAT,
     )
+
+    # Store the data to prevent Python's garbage collection from kicking in.
+    state.data = data
 
 
 #   Node Entry Point
@@ -119,10 +128,10 @@ class OgnTextureWrite:
             compute(db)
         except Exception:
             db.log_error(traceback.format_exc())
-            db.internal_state.is_valid = False
+            db.per_instance_state.is_valid = False
             return
 
-        db.internal_state.is_valid = True
+        db.per_instance_state.is_valid = True
 
         # Trigger the execution for the downstream nodes.
         db.outputs.execOut = og.ExecutionAttributeState.ENABLED

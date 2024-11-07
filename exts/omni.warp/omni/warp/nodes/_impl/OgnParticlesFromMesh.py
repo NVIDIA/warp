@@ -196,7 +196,7 @@ def spawn_particles(db: OgnParticlesFromMeshDatabase) -> Tuple[wp.array, int]:
         kernel=sample_mesh_kernel,
         dim=dims,
         inputs=[
-            db.internal_state.mesh.id,
+            db.per_instance_state.mesh.id,
             extent[0],
             db.inputs.maxPoints,
             db.inputs.minSdf,
@@ -224,7 +224,7 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
     if not db.inputs.mesh.valid or not db.outputs.particles.valid:
         return
 
-    state = db.internal_state
+    state = db.per_instance_state
 
     # Initialize the internal state if it hasn't been already.
     if state.needs_initialization(db):
@@ -307,10 +307,10 @@ class OgnParticlesFromMesh:
                 compute(db)
         except Exception:
             db.log_error(traceback.format_exc())
-            db.internal_state.is_valid = False
+            db.per_instance_state.is_valid = False
             return
 
-        db.internal_state.is_valid = True
+        db.per_instance_state.is_valid = True
 
         # Fire the execution for the downstream nodes.
         db.outputs.execOut = og.ExecutionAttributeState.ENABLED

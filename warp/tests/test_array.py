@@ -2361,64 +2361,75 @@ def test_array_from_cai(test, device):
     assert_np_equal(arr_warp.numpy(), np.array([[2, 1, 1], [1, 0, 0], [1, 0, 0]]))
 
 
-def test_array_inplace_ops(test, device):
-    @wp.kernel
-    def inplace_add_1d(x: wp.array(dtype=float), y: wp.array(dtype=float)):
-        i = wp.tid()
-        x[i] += y[i]
+@wp.kernel
+def inplace_add_1d(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    i = wp.tid()
+    x[i] += y[i]
 
-    @wp.kernel
-    def inplace_add_2d(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
-        i, j = wp.tid()
-        x[i, j] += y[i, j]
 
-    @wp.kernel
-    def inplace_add_3d(x: wp.array3d(dtype=float), y: wp.array3d(dtype=float)):
-        i, j, k = wp.tid()
-        x[i, j, k] += y[i, j, k]
+@wp.kernel
+def inplace_add_2d(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    x[i, j] += y[i, j]
 
-    @wp.kernel
-    def inplace_add_4d(x: wp.array4d(dtype=float), y: wp.array4d(dtype=float)):
-        i, j, k, l = wp.tid()
-        x[i, j, k, l] += y[i, j, k, l]
 
-    @wp.kernel
-    def inplace_sub_1d(x: wp.array(dtype=float), y: wp.array(dtype=float)):
-        i = wp.tid()
-        x[i] -= y[i]
+@wp.kernel
+def inplace_add_3d(x: wp.array3d(dtype=float), y: wp.array3d(dtype=float)):
+    i, j, k = wp.tid()
+    x[i, j, k] += y[i, j, k]
 
-    @wp.kernel
-    def inplace_sub_2d(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
-        i, j = wp.tid()
-        x[i, j] -= y[i, j]
 
-    @wp.kernel
-    def inplace_sub_3d(x: wp.array3d(dtype=float), y: wp.array3d(dtype=float)):
-        i, j, k = wp.tid()
-        x[i, j, k] -= y[i, j, k]
+@wp.kernel
+def inplace_add_4d(x: wp.array4d(dtype=float), y: wp.array4d(dtype=float)):
+    i, j, k, l = wp.tid()
+    x[i, j, k, l] += y[i, j, k, l]
 
-    @wp.kernel
-    def inplace_sub_4d(x: wp.array4d(dtype=float), y: wp.array4d(dtype=float)):
-        i, j, k, l = wp.tid()
-        x[i, j, k, l] -= y[i, j, k, l]
 
-    @wp.kernel
-    def inplace_add_vecs(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
-        i = wp.tid()
-        x[i] += y[i]
+@wp.kernel
+def inplace_sub_1d(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    i = wp.tid()
+    x[i] -= y[i]
 
-    @wp.kernel
-    def inplace_add_mats(x: wp.array(dtype=wp.mat33), y: wp.array(dtype=wp.mat33)):
-        i = wp.tid()
-        x[i] += y[i]
 
-    @wp.kernel
-    def inplace_add_rhs(x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float)):
-        i = wp.tid()
-        a = y[i]
-        a += x[i]
-        wp.atomic_add(z, 0, a)
+@wp.kernel
+def inplace_sub_2d(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    x[i, j] -= y[i, j]
 
+
+@wp.kernel
+def inplace_sub_3d(x: wp.array3d(dtype=float), y: wp.array3d(dtype=float)):
+    i, j, k = wp.tid()
+    x[i, j, k] -= y[i, j, k]
+
+
+@wp.kernel
+def inplace_sub_4d(x: wp.array4d(dtype=float), y: wp.array4d(dtype=float)):
+    i, j, k, l = wp.tid()
+    x[i, j, k, l] -= y[i, j, k, l]
+
+
+@wp.kernel
+def inplace_add_vecs(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+    i = wp.tid()
+    x[i] += y[i]
+
+
+@wp.kernel
+def inplace_add_mats(x: wp.array(dtype=wp.mat33), y: wp.array(dtype=wp.mat33)):
+    i = wp.tid()
+    x[i] += y[i]
+
+
+@wp.kernel
+def inplace_add_rhs(x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float)):
+    i = wp.tid()
+    a = y[i]
+    a += x[i]
+    wp.atomic_add(z, 0, a)
+
+
+def test_array_inplace_diff_ops(test, device):
     N = 3
     x1 = wp.ones(N, dtype=float, requires_grad=True, device=device)
     x2 = wp.ones((N, N), dtype=float, requires_grad=True, device=device)
@@ -2526,6 +2537,32 @@ def test_array_inplace_ops(test, device):
 
     assert_np_equal(x.grad.numpy(), np.ones(1, dtype=float))
     assert_np_equal(y.grad.numpy(), np.ones(1, dtype=float))
+
+
+@wp.kernel
+def inplace_mul_1d(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    i = wp.tid()
+    x[i] *= y[i]
+
+
+@wp.kernel
+def inplace_div_1d(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    i = wp.tid()
+    x[i] /= y[i]
+
+
+def test_array_inplace_non_diff_ops(test, device):
+    N = 3
+    x1 = wp.full(N, value=10.0, dtype=float, device=device)
+    y1 = wp.full(N, value=5.0, dtype=float, device=device)
+
+    wp.launch(inplace_mul_1d, N, inputs=[x1, y1], device=device)
+    assert_np_equal(x1.numpy(), np.full(N, fill_value=50.0, dtype=float))
+
+    x1.fill_(10.0)
+    y1.fill_(5.0)
+    wp.launch(inplace_div_1d, N, inputs=[x1, y1], device=device)
+    assert_np_equal(x1.numpy(), np.full(N, fill_value=2.0, dtype=float))
 
 
 @wp.kernel
@@ -2750,7 +2787,8 @@ add_function_test(TestArray, "test_array_from_numpy", test_array_from_numpy, dev
 add_function_test(TestArray, "test_array_aliasing_from_numpy", test_array_aliasing_from_numpy, devices=["cpu"])
 add_function_test(TestArray, "test_numpy_array_interface", test_numpy_array_interface, devices=["cpu"])
 
-add_function_test(TestArray, "test_array_inplace_ops", test_array_inplace_ops, devices=devices)
+add_function_test(TestArray, "test_array_inplace_diff_ops", test_array_inplace_diff_ops, devices=devices)
+add_function_test(TestArray, "test_array_inplace_non_diff_ops", test_array_inplace_non_diff_ops, devices=devices)
 add_function_test(TestArray, "test_direct_from_numpy", test_direct_from_numpy, devices=["cpu"])
 add_function_test(TestArray, "test_kernel_array_from_ptr", test_kernel_array_from_ptr, devices=devices)
 

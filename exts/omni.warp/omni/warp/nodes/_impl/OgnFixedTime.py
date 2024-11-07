@@ -28,7 +28,7 @@ class OgnFixedTime:
         """Compute the outputs from the current input"""
 
         timeline = omni.timeline.get_timeline_interface()
-        context = db.internal_state
+        context = db.per_instance_state
 
         if not context.initialized:
             context.time = db.inputs.start

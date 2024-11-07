@@ -276,6 +276,8 @@ class InternalState:
         self.initialized = False
 
     def initialize(self, device):
+        self.rng = np.random.default_rng(42)
+
         # requirement checks
         ext_mgr = omni.kit.app.get_app().get_extension_manager()
 
@@ -345,22 +347,22 @@ class InternalState:
 
         npboids = np.zeros(num_boids, dtype=Boid.numpy_dtype())
 
-        angles = math.pi - 2 * math.pi * np.random.rand(num_boids)
+        angles = math.pi - 2 * math.pi * self.rng.random(size=num_boids)
         vx = 20 * np.sin(angles)
         vz = 20 * np.cos(angles)
         npboids["vel"][:, 0] = vx
         npboids["vel"][:, 2] = vz
 
-        npboids["wander_angles"][:, 0] = math.pi * np.random.rand(num_boids)
-        npboids["wander_angles"][:, 1] = 2 * math.pi * np.random.rand(num_boids)
+        npboids["wander_angles"][:, 0] = math.pi * self.rng.random(size=num_boids)
+        npboids["wander_angles"][:, 1] = 2 * math.pi * self.rng.random(size=num_boids)
 
         min_mass = 1.0
         max_mass = 2.0
-        npboids["mass"][:] = min_mass + (max_mass - min_mass) * np.random.rand(num_boids)
+        npboids["mass"][:] = min_mass + (max_mass - min_mass) * self.rng.random(size=num_boids)
 
         # we can have up to 2 groups currently, but that can be easily extended
         self.num_groups = 2
-        npboids["group"] = np.random.randint(self.num_groups, size=num_boids)
+        npboids["group"] = (self.rng.random(size=num_boids) * self.num_groups).astype(np.int32)
 
         num_obstacles = 3
         npobstacles = np.zeros(num_obstacles, dtype=Obstacle.numpy_dtype())
@@ -430,7 +432,7 @@ class InternalState:
 
         self.min_group_think = 3.0
         self.max_group_think = 10.0
-        self.next_group_think = self.min_group_think + (self.max_group_think - self.min_group_think) * np.random.rand()
+        self.next_group_think = self.min_group_think + (self.max_group_think - self.min_group_think) * self.rng.random()
 
         self.frameno = 0
 
@@ -444,7 +446,7 @@ class InternalState:
 def compute(db: OgnSamplePrimFlockingDatabase) -> None:
     """Evaluates the node."""
 
-    state = db.internal_state
+    state = db.per_instance_state
 
     device = wp.get_device()
 
@@ -498,17 +500,17 @@ def compute(db: OgnSamplePrimFlockingDatabase) -> None:
     # occasionally update group biases (whether they are attracted or repelled from each other)
     if state.num_groups > 1 and state.time >= state.next_group_think:
         # pick two random groups
-        group0 = np.random.randint(state.num_groups)
-        group1 = np.random.randint(state.num_groups)
+        group0 = int(state.rng.random() * state.num_groups)
+        group1 = int(state.rng.random() * state.num_groups)
         while group0 == group1:
-            group1 = np.random.randint(state.num_groups)
+            group1 = int(state.rng.random() * state.num_groups)
 
         # bias towards intra-group separation, but also allow attraction
-        state.world.biases[group0, group1] = 1.0 - 5.0 * np.random.rand()
-        state.world.biases[group1, group0] = 1.0 - 5.0 * np.random.rand()
+        state.world.biases[group0, group1] = 1.0 - 5.0 * state.rng.random()
+        state.world.biases[group1, group0] = 1.0 - 5.0 * state.rng.random()
 
         state.next_group_think += (
-            state.min_group_think + (state.max_group_think - state.min_group_think) * np.random.rand()
+            state.min_group_think + (state.max_group_think - state.min_group_think) * state.rng.random()
         )
 
     if work_stream is not None:

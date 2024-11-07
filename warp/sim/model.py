@@ -4060,7 +4060,7 @@ class ModelBuilder:
         radius_mean: float = default_particle_radius,
         radius_std: float = 0.0,
     ):
-        rng = np.random.default_rng()
+        rng = np.random.default_rng(42)
         for z in range(dim_z):
             for y in range(dim_y):
                 for x in range(dim_x):
@@ -4070,7 +4070,7 @@ class ModelBuilder:
                     p = wp.quat_rotate(rot, v) + pos + wp.vec3(rng.random(3) * jitter)
 
                     if radius_std > 0.0:
-                        r = radius_mean + np.random.randn() * radius_std
+                        r = radius_mean + rng.standard_normal() * radius_std
                     else:
                         r = radius_mean
                     self.add_particle(p, vel, m, r)

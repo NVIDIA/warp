@@ -98,11 +98,11 @@ class Example:
 
         for _ in range(self.query_count):
             # random offset
-            p = wp.vec3(rng.random(3) * 0.5 - 0.5) * 5.0
+            p = wp.vec3(rng.random(size=3) * 0.5 - 0.5) * 5.0
 
             # random orientation
-            axis = wp.normalize(wp.vec3(rng.random(3) * 0.5 - 0.5))
-            angle = float(np.random.rand(1)[0])
+            axis = wp.normalize(wp.vec3(rng.random(size=3) * 0.5 - 0.5))
+            angle = rng.random()
 
             q = wp.quat_from_axis_angle(wp.normalize(axis), angle)
 

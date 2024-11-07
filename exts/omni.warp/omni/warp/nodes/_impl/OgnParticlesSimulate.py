@@ -352,7 +352,7 @@ def update_collider(
     db: OgnParticlesSimulateDatabase,
 ) -> None:
     """Updates the collider state."""
-    state = db.internal_state
+    state = db.per_instance_state
 
     points = omni.warp.nodes.mesh_get_points(db.inputs.collider)
     xform = omni.warp.nodes.bundle_get_world_xform(db.inputs.collider)
@@ -398,7 +398,7 @@ def update_particles(
     db: OgnParticlesSimulateDatabase,
 ) -> None:
     """Updates the particles state."""
-    state = db.internal_state
+    state = db.per_instance_state
 
     xform = omni.warp.nodes.bundle_get_world_xform(db.inputs.particles)
 
@@ -426,7 +426,7 @@ def update_particles(
 
 def step(db: OgnParticlesSimulateDatabase) -> None:
     """Steps through the simulation."""
-    state = db.internal_state
+    state = db.per_instance_state
 
     sim_dt = state.sim_dt / db.inputs.substepCount
 
@@ -448,7 +448,7 @@ def step(db: OgnParticlesSimulateDatabase) -> None:
 
 def simulate(db: OgnParticlesSimulateDatabase) -> None:
     """Simulates the particles at the current time."""
-    state = db.internal_state
+    state = db.per_instance_state
 
     state.model.particle_grid.build(
         state.state_0.particle_q,
@@ -466,7 +466,7 @@ def compute(db: OgnParticlesSimulateDatabase, device: wp.context.Device) -> None
     if not db.inputs.particles.valid or not db.outputs.particles.valid:
         return
 
-    state = db.internal_state
+    state = db.per_instance_state
 
     if not db.inputs.enabled:
         # Pass through the data.
@@ -556,10 +556,10 @@ class OgnParticlesSimulate:
                 compute(db, device)
         except Exception:
             db.log_error(traceback.format_exc())
-            db.internal_state.is_valid = False
+            db.per_instance_state.is_valid = False
             return
 
-        db.internal_state.is_valid = True
+        db.per_instance_state.is_valid = True
 
         # Fire the execution for the downstream nodes.
         db.outputs.execOut = og.ExecutionAttributeState.ENABLED

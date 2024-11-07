@@ -151,38 +151,38 @@ def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
 
     # Ensure that our internal state is correctly initialized.
     timeline = omni.timeline.get_timeline_interface()
-    if db.internal_state.needs_initialization(db, timeline.is_stopped()):
-        if not db.internal_state.initialize(db, len(kernel_shape)):
+    if db.per_instance_state.needs_initialization(db, timeline.is_stopped()):
+        if not db.per_instance_state.initialize(db, len(kernel_shape)):
             return
 
-        db.internal_state.is_valid = True
+        db.per_instance_state.is_valid = True
 
     # Exit early if there are no outputs defined.
-    if not db.internal_state.attr_infos[ATTR_PORT_TYPE_OUTPUT]:
+    if not db.per_instance_state.attr_infos[ATTR_PORT_TYPE_OUTPUT]:
         return
 
     # Retrieve the inputs and outputs argument values to pass to the kernel.
     inputs, outputs = get_kernel_args(
         db.inputs,
         db.outputs,
-        db.internal_state.attr_infos,
-        db.internal_state.kernel_module,
+        db.per_instance_state.attr_infos,
+        db.per_instance_state.kernel_module,
         kernel_shape,
     )
 
     # Ensure that all array input values are valid.
-    validate_input_arrays(db.node, db.internal_state.attr_infos, inputs)
+    validate_input_arrays(db.node, db.per_instance_state.attr_infos, inputs)
 
     # Launch the kernel.
     wp.launch(
-        db.internal_state.kernel_module.compute,
+        db.per_instance_state.kernel_module.compute,
         dim=kernel_shape,
         inputs=[inputs],
         outputs=[outputs],
     )
 
     # Write the output values to the node's attributes.
-    write_output_attrs(db.outputs, db.internal_state.attr_infos, outputs)
+    write_output_attrs(db.outputs, db.per_instance_state.attr_infos, outputs)
 
 
 #   Node Entry Point
@@ -222,7 +222,7 @@ class OgnKernel:
             with wp.ScopedDevice(device):
                 compute(db, device)
         except Exception:
-            db.internal_state.is_valid = False
+            db.per_instance_state.is_valid = False
             db.log_error(traceback.format_exc())
             wp.config.quiet = True
             return
