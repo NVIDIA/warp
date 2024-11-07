@@ -49,7 +49,7 @@ def compute(db: OgnGridCreateDatabase) -> None:
     if not db.outputs.mesh.valid:
         return
 
-    state = db.internal_state
+    state = db.per_instance_state
 
     if state.is_valid and not state.attr_tracking.have_attrs_changed(db):
         return
@@ -105,10 +105,10 @@ class OgnGridCreate:
                 compute(db)
         except Exception:
             db.log_error(traceback.format_exc())
-            db.internal_state.is_valid = False
+            db.per_instance_state.is_valid = False
             return
 
-        db.internal_state.is_valid = True
+        db.per_instance_state.is_valid = True
 
         # Fire the execution for the downstream nodes.
         db.outputs.execOut = og.ExecutionAttributeState.ENABLED

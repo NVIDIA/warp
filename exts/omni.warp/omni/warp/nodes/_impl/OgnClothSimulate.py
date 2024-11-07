@@ -351,7 +351,7 @@ def update_collider(
     db: OgnClothSimulateDatabase,
 ) -> None:
     """Updates the collider state."""
-    state = db.internal_state
+    state = db.per_instance_state
 
     points = omni.warp.nodes.mesh_get_points(db.inputs.collider)
     xform = omni.warp.nodes.bundle_get_world_xform(db.inputs.collider)
@@ -397,7 +397,7 @@ def update_cloth(
     db: OgnClothSimulateDatabase,
 ) -> None:
     """Updates the cloth state."""
-    state = db.internal_state
+    state = db.per_instance_state
 
     xform = omni.warp.nodes.bundle_get_world_xform(db.inputs.cloth)
 
@@ -425,7 +425,7 @@ def update_cloth(
 
 def step(db: OgnClothSimulateDatabase) -> None:
     """Steps through the simulation."""
-    state = db.internal_state
+    state = db.per_instance_state
 
     sim_dt = state.sim_dt / db.inputs.substepCount
 
@@ -461,7 +461,7 @@ def step(db: OgnClothSimulateDatabase) -> None:
 
 def simulate(db: OgnClothSimulateDatabase) -> None:
     """Simulates the cloth at the current time."""
-    state = db.internal_state
+    state = db.per_instance_state
 
     if USE_GRAPH:
         wp.capture_launch(state.graph)
@@ -474,7 +474,7 @@ def compute(db: OgnClothSimulateDatabase, device: wp.context.Device) -> None:
     if not db.inputs.cloth.valid or not db.outputs.cloth.valid:
         return
 
-    state = db.internal_state
+    state = db.per_instance_state
 
     if not db.inputs.enabled:
         # Pass through the data.
@@ -633,10 +633,10 @@ class OgnClothSimulate:
                 compute(db, device)
         except Exception:
             db.log_error(traceback.format_exc())
-            db.internal_state.is_valid = False
+            db.per_instance_state.is_valid = False
             return
 
-        db.internal_state.is_valid = True
+        db.per_instance_state.is_valid = True
 
         # Fire the execution for the downstream nodes.
         db.outputs.execOut = og.ExecutionAttributeState.ENABLED

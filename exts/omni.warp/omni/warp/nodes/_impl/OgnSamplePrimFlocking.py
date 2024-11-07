@@ -446,7 +446,7 @@ class InternalState:
 def compute(db: OgnSamplePrimFlockingDatabase) -> None:
     """Evaluates the node."""
 
-    state = db.internal_state
+    state = db.per_instance_state
 
     device = wp.get_device()
 
