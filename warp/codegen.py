@@ -2548,7 +2548,10 @@ class Adjoint:
                     if warp.config.verify_autograd_array_access:
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
                 else:
-                    print(f"Warning: in-place op {node.op} is not differentiable")
+                    if warp.config.verbose:
+                        print(f"Warning: in-place op {node.op} is not differentiable")
+                    make_new_assign_statement()
+                    return
 
             # TODO
             elif type_is_vector(target_type) or type_is_quaternion(target_type) or type_is_matrix(target_type):

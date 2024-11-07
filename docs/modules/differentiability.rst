@@ -891,6 +891,34 @@ Warp uses a source-code transformation approach to auto-differentiation.
 In this approach, the backwards pass must keep a record of intermediate values computed during the forward pass.
 This imposes some restrictions on what kernels can do if they are to remain differentiable.
 
+In-Place Math Operations
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+In-place addition and subtraction can be used in kernels participating in the backward pass, e.g.
+
+.. code-block:: python
+
+    @wp.kernel
+    def inplace(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+        i = wp.tid()
+
+        a[i] -= b[i]
+
+
+    a = wp.full(10, value=10.0, dtype=float, requires_grad=True)
+    b = wp.full(10, value=2.0, dtype=float, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(inplace, a.shape, inputs=[a, b])
+
+    tape.backward(grads={a: wp.ones_like(a)})
+
+    print(a.grad)  # [1. 1. 1. 1. 1. 1. 1. 1. 1. 1.]
+    print(b.grad)  # [-1. -1. -1. -1. -1. -1. -1. -1. -1. -1.]
+
+In-place multiplication and division are *not* supported and incorrect results will be obtained in the backward pass.
+A warning will be emitted during code generation if ``wp.config.verbose = True``.
+
 Dynamic Loops
 ^^^^^^^^^^^^^
 Currently, dynamic loops are not replayed or unrolled in the backward pass, meaning intermediate values that are
