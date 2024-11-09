@@ -1681,6 +1681,9 @@ class Adjoint:
         # lookup symbol, if it has already been assigned to a variable then return the existing mapping
         if node.id in adj.symbols:
             return adj.symbols[node.id]
+        # Check if the node has a warp_func attribute
+        if hasattr(node, "warp_func"):
+            return node.warp_func
 
         obj = adj.resolve_external_reference(node.id)
 
@@ -2340,6 +2343,18 @@ class Adjoint:
                 raise WarpCodegenError(
                     "Tuple constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
                 )
+            elif isinstance(lhs, ast.Name):
+                # symbol name
+                name = lhs.id
+
+                # evaluate rhs
+                rhs = adj.eval(node.value)
+
+                # Check if rhs is a function object
+                if isinstance(rhs, warp.context.Function):
+                    # Assign the function directly to the symbol table
+                    adj.symbols[name] = rhs
+                    return
 
         # handle the case where we are assigning multiple output variables
         if isinstance(lhs, ast.Tuple):
