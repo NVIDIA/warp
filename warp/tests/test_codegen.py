@@ -13,6 +13,21 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
+def test_expect():
+    a = 1.0
+    a += 2.0
+
+    wp.expect_eq(123, 123)
+    wp.expect_neq(123, 234)
+
+    wp.expect_eq(wp.vec2(1.0, 2.0), wp.vec2(1.0, 2.0))
+    wp.expect_neq(wp.vec2(1.0, 2.0), wp.vec2(2.0, 3.0))
+
+    wp.expect_eq(wp.mat22(1.0, 2.0, 3.0, 4.0), wp.mat22(1.0, 2.0, 3.0, 4.0))
+    wp.expect_neq(wp.mat22(1.0, 2.0, 3.0, 4.0), wp.mat22(2.0, 3.0, 4.0, 5.0))
+
+
+@wp.kernel
 def test_rename():
     a = 0
     b = 1
@@ -622,6 +637,7 @@ class TestCodeGen(unittest.TestCase):
 
 devices = get_test_devices()
 
+add_kernel_test(TestCodeGen, name="test_expect", kernel=test_expect, dim=1, devices=devices)
 add_kernel_test(TestCodeGen, name="test_inplace", kernel=test_inplace, dim=1, devices=devices)
 add_kernel_test(TestCodeGen, name="test_rename", kernel=test_rename, dim=1, devices=devices)
 add_kernel_test(TestCodeGen, name="test_constant", kernel=test_constant, inputs=[1.0], dim=1, devices=devices)
