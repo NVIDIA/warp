@@ -23,6 +23,7 @@
 - Fix error being raised when static and dynamic for-loops are written in sequence with the same iteration variable names ([GH-331](https://github.com/NVIDIA/warp/issues/331)).
 - Fix an issue with the `Texture Write` node, used in the Mandelbrot Omniverse sample, sometimes erroring out in multi-GPU environments.
 - Code generation of in-place multiplication and division operations (regression introduced in a69d061)([GH-342](https://github.com/NVIDIA/warp/issues/342)).
+- Fix `wp.expect_neq()` overloads missing for scalar types.
 
 ## [1.4.1] - 2024-10-15
 

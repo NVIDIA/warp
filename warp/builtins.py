@@ -4949,6 +4949,15 @@ for t in scalar_types + vector_types + (bool,):
         hidden=True,
     )
 
+    add_builtin(
+        "expect_neq",
+        input_types={"a": t, "b": t},
+        value_type=None,
+        doc="Prints an error to stdout if ``a`` and ``b`` are not equal",
+        group="Utility",
+        hidden=True,
+    )
+
 
 def expect_eq_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if not types_equal(arg_types["a"], arg_types["b"]):
