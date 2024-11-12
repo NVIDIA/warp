@@ -187,7 +187,7 @@ class Geometry:
         raise NotImplementedError
 
     # Default implementations for dependent quantities
-    # Can be overriden in derived classes if more efficient implementations exist
+    # Can be overridden in derived classes if more efficient implementations exist
 
     def _make_default_dependent_implementations(self):
         self.cell_inverse_deformation_gradient = self._make_cell_inverse_deformation_gradient()

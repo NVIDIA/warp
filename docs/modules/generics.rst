@@ -107,7 +107,7 @@ Warp allows explicitly declaring instances of generic kernels with different typ
     wp.launch(scale, dim=n, inputs=[x32, wp.float32(3)])
     wp.launch(scale, dim=n, inputs=[x64, wp.float64(3)])
 
-The ``@wp.overload`` decorator allows re-declaring generic kernels without repeating the kernel code.  The kernel body is just replaced with the ellipsis (``...``).  Warp keeps track of known overloads for each kernel, so if an overload exists it will not be instantiated again.  If all the overloads are declared prior to kernel launches, the module will only load once with all the kernel instances in place.
+The ``@wp.overload`` decorator allows redeclaring generic kernels without repeating the kernel code.  The kernel body is just replaced with the ellipsis (``...``).  Warp keeps track of known overloads for each kernel, so if an overload exists it will not be instantiated again.  If all the overloads are declared prior to kernel launches, the module will only load once with all the kernel instances in place.
 
 We can also use ``wp.overload()`` as a function for a slightly more concise syntax.  We just need to specify the generic kernel and a list of concrete argument types:
 
