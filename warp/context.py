@@ -1373,7 +1373,7 @@ class ModuleHasher:
         self.functions_in_progress = set()
 
         # all unique kernels for codegen, filtered by hash
-        self.unique_kernels = weakref.WeakValueDictionary()  # (hash: kernel)
+        self.unique_kernels = {}  # (hash: kernel)
 
         # start hashing the module
         ch = hashlib.sha256()
@@ -1555,7 +1555,7 @@ class ModuleBuilder:
             hasher = ModuleHasher(module)
 
         # build all unique kernels
-        self.kernels = weakref.WeakSet(hasher.get_unique_kernels())
+        self.kernels = hasher.get_unique_kernels()
         for kernel in self.kernels:
             self.build_kernel(kernel)
 
@@ -1680,7 +1680,7 @@ class ModuleExec:
         self.handle = handle
         self.module_hash = module_hash
         self.device = device
-        self.kernel_hooks = weakref.WeakKeyDictionary()
+        self.kernel_hooks = {}
 
     # release the loaded module
     def __del__(self):
@@ -1694,7 +1694,10 @@ class ModuleExec:
 
     # lookup and cache kernel entry points
     def get_kernel_hooks(self, kernel):
-        hooks = self.kernel_hooks.get(kernel)
+        # Use kernel.adj as a unique key for cache lookups instead of the kernel itself.
+        # This avoids holding a reference to the kernel and is faster than using
+        # a WeakKeyDictionary with kernels as keys.
+        hooks = self.kernel_hooks.get(kernel.adj)
         if hooks is not None:
             return hooks
 
@@ -1717,7 +1720,7 @@ class ModuleExec:
             )
 
         hooks = KernelHooks(forward, backward)
-        self.kernel_hooks[kernel] = hooks
+        self.kernel_hooks[kernel.adj] = hooks
 
         return hooks
 
@@ -1736,12 +1739,14 @@ class Module:
         self.functions = {}  # (key: function)
         self.structs = {}  # (key: struct)
 
-        # Set of all "live" kernels in this module.
+        # Set of all "live" kernels in this module, i.e., kernels that still have references.
+        # We keep a weak reference to every kernel ever created in this module and rely on Python GC
+        # to release kernels that no longer have any references (in user code or internal bookkeeping).
         # The difference between `live_kernels` and `kernels` is that `live_kernels` may contain
         # multiple kernels with the same key (which is essential to support closures), while `kernels`
         # only holds the latest kernel for each key.  When the module is built, we compute the hash
         # of each kernel in `live_kernels` and filter out duplicates for codegen.
-        self.live_kernels = weakref.WeakSet()
+        self._live_kernels = weakref.WeakSet()
 
         # executable modules currently loaded
         self.execs = {}  # (device.context: ModuleExec)
@@ -1790,7 +1795,7 @@ class Module:
         self.kernels[kernel.key] = kernel
 
         # track all kernel objects, even if they are duplicates
-        self.live_kernels.add(kernel)
+        self._live_kernels.add(kernel)
 
         self.find_references(kernel.adj)
 
@@ -1855,6 +1860,19 @@ class Module:
 
         # for a reload of module on next launch
         self.mark_modified()
+
+    @property
+    def live_kernels(self):
+        # Return a list of kernels that still have references.
+        # We return a regular list instead of the WeakSet to avoid undesirable issues
+        # if kernels are garbage collected before the caller is done using this list.
+        # Note that we should avoid retaining strong references to kernels unnecessarily
+        # so that Python GC can release kernels that no longer have user references.
+        # It is tempting to call gc.collect() here to force garbage collection,
+        # but this can have undesirable consequences (e.g., GC during graph capture),
+        # so we should avoid it as a general rule.  Instead, we rely on Python's
+        # reference counting GC to collect kernels that have gone out of scope.
+        return list(self._live_kernels)
 
     # find kernel corresponding to a Python function
     def find_kernel(self, func):

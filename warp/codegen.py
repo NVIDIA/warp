@@ -981,6 +981,7 @@ class Adjoint:
                 e = ex(";".join([msg] + [str(a) for a in data.args])).with_traceback(traceback)
             finally:
                 adj.skip_build = True
+                adj.builder = None
                 raise e
 
         if builder is not None:
@@ -989,6 +990,9 @@ class Adjoint:
                     builder.build_struct_recursive(a.type)
                 elif isinstance(a.type, warp.types.array) and isinstance(a.type.dtype, Struct):
                     builder.build_struct_recursive(a.type.dtype)
+
+            # release builder reference for GC
+            adj.builder = None
 
     # code generation methods
     def format_template(adj, template, input_vars, output_var):
