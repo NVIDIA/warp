@@ -805,7 +805,7 @@ def test_set_mesh_points(test, device):
         device=device,
     )
 
-    shift = np.random.randn(3)
+    shift = rng.standard_normal(size=3)
 
     vs_higher = vs + shift
     vertices2 = wp.array(vs_higher, dtype=wp.vec3, device=device)
