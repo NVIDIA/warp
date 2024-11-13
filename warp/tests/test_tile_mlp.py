@@ -317,7 +317,7 @@ def test_single_layer_nn(test, device):
         # numpy
         output_np = np.maximum(weights.numpy() @ input.numpy() + bias.numpy(), 0.0)
 
-        # test numpy foward
+        # test numpy forward
         assert_np_equal(output.numpy(), output_np, tol=1.0e-2)
 
         # torch

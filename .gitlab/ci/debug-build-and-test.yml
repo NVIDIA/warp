@@ -41,20 +41,40 @@ stages:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - apt-get update && apt-get install build-essential curl --no-install-recommends -y
+    - >
+      curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
+      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/sandbox/PostMerge/15/libmathdx_build_aarch64_rockylinux8_cuda12.0.0_release.tar.gz
+      -o libmathdx.tar.gz
+    - mkdir -p _build/target-deps
+    - tar -xzf libmathdx.tar.gz -C _build/target-deps
+    - export LIBMATHDX_HOME="$CI_PROJECT_DIR/_build/target-deps/libmathdx-0.1.0-Linux"
+    - gcc --version
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - ./tools/ci/building/build-linux-aarch64/build.sh --debug --no-docker # We are already using the builder image
+    - ./tools/ci/building/build-linux-aarch64/build.sh --debug --no-docker
   tags:
     - arch/arm
 
 linux-x86_64 build:
   stage: build
-  image: urm.nvidia.com/ct-omniverse-docker/centos7-gcc10-builder:3.2.0
+  image: ubuntu:20.04
   extends:
     - .save_warp_bin_artifact
     - .runner-large-build-linux-x86_64
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - apt-get update && apt-get install build-essential curl --no-install-recommends -y
+    - >
+      curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
+      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/sandbox/PostMerge/15/libmathdx_build_x86_64_rockylinux8_cuda12.0.0_release.tar.gz
+      -o libmathdx.tar.gz
+    - mkdir -p _build/target-deps
+    - tar -xzf libmathdx.tar.gz -C _build/target-deps
+    - export LIBMATHDX_HOME="$CI_PROJECT_DIR/_build/target-deps/libmathdx-0.1.0-Linux"
+    - gcc --version
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh --debug --no-docker # We are already using the builder image
+    - ./tools/ci/building/build-linux-x86_64/build.sh --debug --no-docker
 
 windows-x86_64 build:
   stage: build
@@ -63,6 +83,16 @@ windows-x86_64 build:
     - .runner-build-windows-x86_64
   before_script:
     - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - |
+      $headers = @{
+          "Authorization" = "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("warp-cicd:${env:LIBMATHDX_REGISTRY_TOKEN}")))"
+      }
+      $url = "${CI_API_V4_URL}/projects/141992/packages/generic/libmathdx/main/libmathdx-0.1.0-win64.zip"
+      $output = "libmathdx.zip"
+      Invoke-WebRequest -Uri $url -Headers $headers -OutFile $output -ErrorAction Stop
+    - Expand-Archive -Path libmathdx.zip -DestinationPath _build/target-deps -Force
+    - Get-ChildItem -Path "${env:CI_PROJECT_DIR}\_build\target-deps"
+    - $env:LIBMATHDX_HOME = "${env:CI_PROJECT_DIR}\_build\target-deps\libmathdx-0.1.0-win64"
   script:
     - ./tools/ci/building/build-windows-x86_64/build.bat --debug
 

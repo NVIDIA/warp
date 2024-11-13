@@ -223,6 +223,13 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
     # is the library being built with CUDA enabled?
     cuda_enabled = "WP_ENABLE_CUDA=1" if (cu_path is not None) else "WP_ENABLE_CUDA=0"
 
+    if args.libmathdx_path:
+        libmathdx_includes = f' -I"{args.libmathdx_path}/include"'
+        mathdx_enabled = "WP_ENABLE_MATHDX=1"
+    else:
+        libmathdx_includes = ""
+        mathdx_enabled = "WP_ENABLE_MATHDX=0"
+
     if os.name == "nt":
         if args.host_compiler:
             host_linker = os.path.join(os.path.dirname(args.host_compiler), "link.exe")
@@ -244,7 +251,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
             iter_dbg = "_ITERATOR_DEBUG_LEVEL=2"
             debug = "_DEBUG"
 
-        cpp_flags = f'/nologo /std:c++17 /GR- {runtime} /D "{debug}" /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "WP_ENABLE_MATHDX=0" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" {includes} '
+        cpp_flags = f'/nologo /std:c++17 /GR- {runtime} /D "{debug}" /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "{mathdx_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" {includes} '
 
         if args.mode == "debug":
             cpp_flags += "/Zi /Od /D WP_ENABLE_DEBUG=1"
@@ -273,10 +280,10 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
             cu_out = cu_path + ".o"
 
             if mode == "debug":
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 --compiler-options=/MT,/Zi,/Od -g -G -O0 -DNDEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -line-info {" ".join(nvcc_opts)} -DWP_ENABLE_CUDA=1 -D{cutlass_enabled} {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 --compiler-options=/MT,/Zi,/Od -g -G -O0 -DNDEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -line-info {" ".join(nvcc_opts)} -DWP_ENABLE_CUDA=1 -D{cutlass_enabled} {cutlass_includes} -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
 
             elif mode == "release":
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 {" ".join(nvcc_opts)} -I"{native_dir}" -DNDEBUG -DWP_ENABLE_CUDA=1 -D{cutlass_enabled} {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 {" ".join(nvcc_opts)} -I"{native_dir}" -DNDEBUG -DWP_ENABLE_CUDA=1 -D{cutlass_enabled} {cutlass_includes} -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=args.verbose):
                 run_cmd(cuda_cmd)
@@ -286,7 +293,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
                 )
 
                 if args.libmathdx_path:
-                    linkopts.append("nvJitLink_static.lib")
+                    linkopts.append(f'nvJitLink_static.lib /LIBPATH:"{args.libmathdx_path}/lib" mathdx_static.lib')
 
         with ScopedTimer("link", active=args.verbose):
             link_cmd = f'"{host_linker}" {" ".join(linkopts + libs)} /out:"{dll_path}"'
@@ -297,13 +304,6 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
         cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
         cuda_includes = f' -I"{cuda_home}/include"' if cu_path else ""
         includes = cpp_includes + cuda_includes
-
-        if args.libmathdx_path:
-            libmathdx_includes = f' -I"{args.libmathdx_path}/include"'
-            mathdx_enabled = "WP_ENABLE_MATHDX=1"
-        else:
-            libmathdx_includes = ""
-            mathdx_enabled = "WP_ENABLE_MATHDX=0"
 
         if sys.platform == "darwin":
             version = f"--target={arch}-apple-macos11"
