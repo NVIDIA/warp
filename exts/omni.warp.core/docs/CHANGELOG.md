@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## [1.4.2] - 2024-11-13
+
+### Changed
+
+- Make the output of `wp.print()` in backward kernels consistent for all supported data types.
+
+### Fixed
+
+- Fix to relax the integer types expected when indexing arrays (regression in `1.3.0`).
+- Fix printing vector and matrix adjoints in backward kernels.
+- Fix kernel compile error when printing structs.
+- Fix an incorrect user function being sometimes resolved when multiple overloads are available with array parameters with different `dtype` values.
+- Fix error being raised when static and dynamic for-loops are written in sequence with the same iteration variable names ([GH-331](https://github.com/NVIDIA/warp/issues/331)).
+- Fix an issue with the `Texture Write` node, used in the Mandelbrot Omniverse sample, sometimes erroring out in multi-GPU environments.
+- Code generation of in-place multiplication and division operations (regression introduced in a69d061)([GH-342](https://github.com/NVIDIA/warp/issues/342)).
+
 ## [1.4.1] - 2024-10-15
 
 ### Fixed
