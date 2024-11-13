@@ -1287,6 +1287,35 @@ def test_module_mark_modified(test, device):
 # =======================================================================
 
 
+def test_garbage_collection(test, device):
+    """Test that dynamically generated kernels without user references are not retained in the module."""
+
+    # use a helper module with a known kernel count
+    import warp.tests.aux_test_instancing_gc as gc_test_module
+
+    with wp.ScopedDevice(device):
+        a = wp.zeros(1, dtype=int)
+
+        for i in range(10):
+            # create a unique kernel on each iteration
+            k = gc_test_module.create_kernel_closure(i)
+
+            # import gc
+            # gc.collect()
+
+            # since we don't keep references to the previous kernels,
+            # they should be garbage-collected and not appear in the module
+            k.module.load(device=device)
+            test.assertEqual(len(k.module.live_kernels), 1)
+
+            # test the kernel
+            wp.launch(k, dim=1, inputs=[a])
+            test.assertEqual(a.numpy()[0], i)
+
+
+# =======================================================================
+
+
 class TestCodeGenInstancing(unittest.TestCase):
     pass
 
@@ -1450,6 +1479,7 @@ add_function_test(TestCodeGenInstancing, func=test_create_kernel_loop, name="tes
 add_function_test(
     TestCodeGenInstancing, func=test_module_mark_modified, name="test_module_mark_modified", devices=devices
 )
+add_function_test(TestCodeGenInstancing, func=test_garbage_collection, name="test_garbage_collection", devices=devices)
 
 
 if __name__ == "__main__":
