@@ -114,7 +114,7 @@
 Notes on shared memory synchronization
 ======================================
 
-Currently operations that wite to shared memory tiles (e.g.: tile_load())
+Currently operations that write to shared memory tiles (e.g.: tile_load())
 must synchronize before they return through WP_TILE_SYNC(), this
 ensures subsequent read operations from the tile do not cause a race condition.
 

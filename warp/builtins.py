@@ -7,6 +7,7 @@
 import builtins
 import functools
 import tempfile
+from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
 from warp.codegen import Reference, Var, strip_reference
@@ -5697,7 +5698,7 @@ def tile_matmul_generic_lto_dispatch_func(
             return lto_symbol, builder.ltoirs[lto_symbol]
 
         # otherwise compile LTO
-        lto_code = tempfile.NamedTemporaryFile()
+        lto_code = tempfile.NamedTemporaryFile(prefix="warp", delete=False)
         result = warp.context.runtime.core.cuda_compile_dot(
             lto_code.name.encode("utf-8"),
             lto_symbol.encode("utf-8"),
@@ -5717,18 +5718,24 @@ def tile_matmul_generic_lto_dispatch_func(
             c_arrangement,
             num_threads,
         )
+        lto_code_path = Path(lto_code.name)
         if not result:
+            lto_code.close()
+            if lto_code_path.exists():
+                lto_code_path.unlink()
             raise RuntimeError("Failed to compile tile_matmul")
         else:
             with open(lto_code.name, "rb") as f:
-                lto_code = f.read()
+                lto_code_data = f.read()
+            lto_code.close()
+            lto_code_path.unlink()
 
-            builder.ltoirs[lto_symbol] = lto_code
+            builder.ltoirs[lto_symbol] = lto_code_data
             builder.ltoirs_decl[lto_symbol] = (
                 f"void {lto_symbol}({c_dtype}, {a_dtype}*, {b_dtype}*, {c_dtype}, {c_dtype}*);"
             )
 
-            return lto_symbol, lto_code
+            return lto_symbol, lto_code_data
 
     def tile_flip_layout(layout):
         if layout == "rowmajor":
@@ -5896,7 +5903,7 @@ def tile_fft_generic_lto_dispatch_func(
         return lto_symbol, builder.ltoirs[lto_symbol]
 
     # otherwise compile LTO
-    lto_code = tempfile.NamedTemporaryFile()
+    lto_code = tempfile.NamedTemporaryFile(prefix="warp", delete=False)
     shared_memory_size = ctypes.c_int(0)
 
     result = warp.context.runtime.core.cuda_compile_fft(
@@ -5912,14 +5919,20 @@ def tile_fft_generic_lto_dispatch_func(
         precision,
         ctypes.byref(shared_memory_size),
     )
-
+    lto_code_path = Path(lto_code.name)
     if not result:
+        lto_code.close()
+        if lto_code_path.exists():
+            lto_code_path.unlink()
         raise RuntimeError("Failed to compile tile_matmul")
 
     with open(lto_code.name, "rb") as f:
-        lto_code = f.read()
+        lto_code_data = f.read()
 
-    builder.ltoirs[lto_symbol] = lto_code
+    lto_code.close()
+    lto_code_path.unlink()
+
+    builder.ltoirs[lto_symbol] = lto_code_data
 
     return (
         (
@@ -5931,7 +5944,7 @@ def tile_fft_generic_lto_dispatch_func(
             inout,
         ),
         [],
-        [lto_code],
+        [lto_code_data],
     )
 
 
