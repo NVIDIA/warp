@@ -42,6 +42,7 @@ extensions = [
     "sphinx.ext.extlinks",  # Markup to shorten external links
     "sphinx.ext.githubpages",
     "sphinx.ext.linkcode",  # Add GitHub source code links
+    "sphinx.ext.doctest",  # Test code snippets in docs
     # Third-party extensions:
     "sphinx_copybutton",
     # 'sphinx_tabs.tabs',
@@ -79,6 +80,14 @@ source_suffix = {
     ".rst": "restructuredtext",
     ".md": "markdown",
 }
+
+doctest_global_setup = """
+from typing import Any
+import numpy as np
+import warp as wp
+wp.config.quiet = True
+wp.init()
+"""
 
 
 def linkcode_resolve(domain, info):

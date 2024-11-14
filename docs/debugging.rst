@@ -5,11 +5,17 @@ Printing Values
 ---------------
 
 Often one of the best debugging methods is to simply print values from kernels. Warp supports printing all built-in
-types using the ``print()`` function, e.g.::
+types using the ``print()`` function, e.g.:
+
+.. testcode::
 
     v = wp.vec3(1.0, 2.0, 3.0)
 
     print(v)   
+
+.. testoutput::
+
+    [1.0, 2.0, 3.0]
 
 In addition, formatted C-style printing is available through the ``wp.printf()`` function, e.g.::
 

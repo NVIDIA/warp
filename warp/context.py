@@ -1728,7 +1728,8 @@ class ModuleExec:
 # build cache
 class Module:
     def __init__(self, name, loader):
-        self.name = name
+        self.name = name if name is not None else "None"
+
         self.loader = loader
 
         # lookup the latest versions of kernels, functions, and structs by key

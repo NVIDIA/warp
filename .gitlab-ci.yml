@@ -445,6 +445,26 @@ windows-x86_64 docs:
   after_script:
     - echo "View the website at https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
 
+# This job tests code snippets in the documentation
+doctest:
+  stage: test
+  image: python:3.11-slim
+  needs: [linux-x86_64 build]
+  extends:
+    - .omni_nvks_gpu
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KSet up docs environment"
+    - df -h
+    - apt-get update && apt-get install make --no-install-recommends -y
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - python -m pip install --upgrade pip
+    - python -m pip install -r docs/requirements.txt
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - sphinx-build -b doctest docs docs/_build/doctest
+
 # ==============================================================================
 # Child pipelines
 #
