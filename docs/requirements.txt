@@ -1,6 +1,6 @@
-furo==2024.8.6
 sphinx==8.0.2
 sphinx_copybutton==0.5.2
 numpy==2.1.1
 ruff==0.6.8
 myst-parser==4.0.0
+nvidia-sphinx-theme==0.0.5.post1
