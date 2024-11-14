@@ -6,6 +6,9 @@
 
 - Expose a `reversed()` built-in for iterators to test ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
 - warp.fem: Added Trimesh3D and Quadmesh3D geometry types for 3D surfaces, with new `example_distortion_energy` example
+- warp.fem: Added "add" option to `wp.fem.integrate()` for accumulating integration result to existing output
+- warp.fem: Added "assembly" option to `wp.fem.integrate()` for selecting between more memory-efficient or more computationally-efficient integration algorithms
+- warp.fem: Added Nédélec (first kind) and Raviart-Thomas vector-valued function spaces providing conforming discretization of `curl` and `div` operators, respectively. 
 
 ### Changed
 

@@ -6,6 +6,7 @@ from warp.fem.types import ElementIndex
 from .shape import (
     ShapeFunction,
     TetrahedronPolynomialShapeFunctions,
+    TetrahedronShapeFunction,
 )
 from .topology import SpaceTopology, forward_base_topology
 
@@ -15,6 +16,7 @@ class TetmeshTopologyArg:
     tet_edge_indices: wp.array2d(dtype=int)
     tet_face_indices: wp.array2d(dtype=int)
     face_vertex_indices: wp.array(dtype=wp.vec3i)
+    face_tet_indices: wp.array(dtype=wp.vec2i)
 
     vertex_count: int
     edge_count: int
@@ -27,13 +29,14 @@ class TetmeshSpaceTopology(SpaceTopology):
     def __init__(
         self,
         mesh: Tetmesh,
-        shape: ShapeFunction,
-        need_tet_edge_indices: bool = True,
-        need_tet_face_indices: bool = True,
+        shape: TetrahedronShapeFunction,
     ):
+        self._shape = shape
         super().__init__(mesh, shape.NODES_PER_ELEMENT)
         self._mesh = mesh
-        self._shape = shape
+
+        need_tet_edge_indices = self._shape.EDGE_NODE_COUNT > 0
+        need_tet_face_indices = self._shape.FACE_NODE_COUNT > 0
 
         if need_tet_edge_indices:
             self._tet_edge_indices = self._mesh.tet_edge_indices
@@ -47,12 +50,20 @@ class TetmeshSpaceTopology(SpaceTopology):
         else:
             self._tet_face_indices = wp.empty(shape=(0, 0), dtype=int)
 
+        self.element_node_index = self._make_element_node_index()
+        self.element_node_sign = self._make_element_node_sign()
+
+    @property
+    def name(self):
+        return f"{self.geometry.name}_{self._shape.name}"
+
     @cache.cached_arg_value
     def topo_arg_value(self, device):
         arg = TetmeshTopologyArg()
         arg.tet_face_indices = self._tet_face_indices.to(device)
         arg.tet_edge_indices = self._tet_edge_indices.to(device)
         arg.face_vertex_indices = self._mesh.face_vertex_indices.to(device)
+        arg.face_tet_indices = self._mesh.face_tet_indices.to(device)
 
         arg.vertex_count = self._mesh.vertex_count()
         arg.face_count = self._mesh.side_count()
@@ -126,31 +137,19 @@ class TetmeshSpaceTopology(SpaceTopology):
             t1_face = TetmeshSpaceTopology._find_face_index_in_tet(face_vtx, t1_vtx)
             tet_face_indices[t1, t1_face] = e
 
-
-class TetmeshPolynomialSpaceTopology(TetmeshSpaceTopology):
-    def __init__(self, mesh: Tetmesh, shape: TetrahedronPolynomialShapeFunctions):
-        super().__init__(mesh, shape, need_tet_edge_indices=shape.ORDER >= 2, need_tet_face_indices=shape.ORDER >= 3)
-
-        self.element_node_index = self._make_element_node_index()
-
     def node_count(self) -> int:
-        ORDER = self._shape.ORDER
-        INTERIOR_NODES_PER_EDGE = max(0, ORDER - 1)
-        INTERIOR_NODES_PER_FACE = max(0, ORDER - 2) * max(0, ORDER - 1) // 2
-        INTERIOR_NODES_PER_CELL = max(0, ORDER - 3) * max(0, ORDER - 2) * max(0, ORDER - 1) // 6
-
         return (
-            self._mesh.vertex_count()
-            + self._mesh.edge_count() * INTERIOR_NODES_PER_EDGE
-            + self._mesh.side_count() * INTERIOR_NODES_PER_FACE
-            + self._mesh.cell_count() * INTERIOR_NODES_PER_CELL
+            self._mesh.vertex_count() * self._shape.VERTEX_NODE_COUNT
+            + self._mesh.edge_count() * self._shape.EDGE_NODE_COUNT
+            + self._mesh.side_count() * self._shape.FACE_NODE_COUNT
+            + self._mesh.cell_count() * self._shape.INTERIOR_NODE_COUNT
         )
 
     def _make_element_node_index(self):
-        ORDER = self._shape.ORDER
-        INTERIOR_NODES_PER_EDGE = wp.constant(max(0, ORDER - 1))
-        INTERIOR_NODES_PER_FACE = wp.constant(max(0, ORDER - 2) * max(0, ORDER - 1) // 2)
-        INTERIOR_NODES_PER_CELL = wp.constant(max(0, ORDER - 3) * max(0, ORDER - 2) * max(0, ORDER - 1) // 6)
+        VERTEX_NODE_COUNT = self._shape.VERTEX_NODE_COUNT
+        INTERIOR_NODES_PER_EDGE = self._shape.EDGE_NODE_COUNT
+        INTERIOR_NODES_PER_FACE = self._shape.FACE_NODE_COUNT
+        INTERIOR_NODES_PER_CELL = self._shape.INTERIOR_NODE_COUNT
 
         @cache.dynamic_func(suffix=self.name)
         def element_node_index(
@@ -162,9 +161,11 @@ class TetmeshPolynomialSpaceTopology(TetmeshSpaceTopology):
             node_type, type_index = self._shape.node_type_and_type_index(node_index_in_elt)
 
             if node_type == TetrahedronPolynomialShapeFunctions.VERTEX:
-                return geo_arg.tet_vertex_indices[element_index][type_index]
+                vertex = type_index // VERTEX_NODE_COUNT
+                vertex_node = type_index - VERTEX_NODE_COUNT * vertex
+                return geo_arg.tet_vertex_indices[element_index][vertex] * VERTEX_NODE_COUNT + vertex_node
 
-            global_offset = topo_arg.vertex_count
+            global_offset = topo_arg.vertex_count * VERTEX_NODE_COUNT
 
             if node_type == TetrahedronPolynomialShapeFunctions.EDGE:
                 edge = type_index // INTERIOR_NODES_PER_EDGE
@@ -173,14 +174,8 @@ class TetmeshPolynomialSpaceTopology(TetmeshSpaceTopology):
                 global_edge_index = topo_arg.tet_edge_indices[element_index][edge]
 
                 # Test if we need to swap edge direction
-                if INTERIOR_NODES_PER_EDGE > 1:
-                    if edge < 3:
-                        c1 = edge
-                        c2 = (edge + 1) % 3
-                    else:
-                        c1 = edge - 3
-                        c2 = 3
-
+                if wp.static(INTERIOR_NODES_PER_EDGE > 1):
+                    c1, c2 = TetrahedronShapeFunction.edge_vidx(edge)
                     if geo_arg.tet_vertex_indices[element_index][c1] > geo_arg.tet_vertex_indices[element_index][c2]:
                         edge_node = INTERIOR_NODES_PER_EDGE - 1 - edge_node
 
@@ -194,7 +189,7 @@ class TetmeshPolynomialSpaceTopology(TetmeshSpaceTopology):
 
                 global_face_index = topo_arg.tet_face_indices[element_index][face]
 
-                if INTERIOR_NODES_PER_FACE == 3:
+                if wp.static(INTERIOR_NODES_PER_FACE == 3):
                     # Hard code for P4 case, 3 nodes per face
                     # Higher orders would require rotating triangle coordinates, this is not supported yet
 
@@ -216,9 +211,46 @@ class TetmeshPolynomialSpaceTopology(TetmeshSpaceTopology):
 
         return element_node_index
 
+    def _make_element_node_sign(self):
+        INTERIOR_NODES_PER_EDGE = self._shape.EDGE_NODE_COUNT
+        INTERIOR_NODES_PER_FACE = self._shape.FACE_NODE_COUNT
+
+        @cache.dynamic_func(suffix=self.name)
+        def element_node_sign(
+            geo_arg: self.geometry.CellArg,
+            topo_arg: TetmeshTopologyArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            node_type, type_index = self._shape.node_type_and_type_index(node_index_in_elt)
+
+            if wp.static(INTERIOR_NODES_PER_EDGE > 0):
+                if node_type == TetrahedronShapeFunction.EDGE:
+                    edge = type_index // INTERIOR_NODES_PER_EDGE
+                    c1, c2 = TetrahedronShapeFunction.edge_vidx(edge)
+
+                    return wp.select(
+                        geo_arg.tet_vertex_indices[element_index][c1] > geo_arg.tet_vertex_indices[element_index][c2],
+                        1.0,
+                        -1.0,
+                    )
+
+            if wp.static(INTERIOR_NODES_PER_FACE > 0):
+                if node_type == TetrahedronShapeFunction.FACE:
+                    face = type_index // INTERIOR_NODES_PER_FACE
+
+                    global_face_index = topo_arg.tet_face_indices[element_index][face]
+                    inner = topo_arg.face_tet_indices[global_face_index][0]
+
+                    return wp.select(inner == element_index, -1.0, 1.0)
+
+            return 1.0
+
+        return element_node_sign
+
 
 def make_tetmesh_space_topology(mesh: Tetmesh, shape: ShapeFunction):
-    if isinstance(shape, TetrahedronPolynomialShapeFunctions):
-        return forward_base_topology(TetmeshPolynomialSpaceTopology, mesh, shape)
+    if isinstance(shape, TetrahedronShapeFunction):
+        return forward_base_topology(TetmeshSpaceTopology, mesh, shape)
 
     raise ValueError(f"Unsupported shape function {shape.name}")

@@ -2,13 +2,9 @@ import warp as wp
 from warp.fem import cache
 from warp.fem.geometry import Quadmesh2D
 from warp.fem.polynomial import is_closed
-from warp.fem.types import ElementIndex
+from warp.fem.types import NULL_NODE_INDEX, ElementIndex
 
-from .shape import (
-    ShapeFunction,
-    SquareBipolynomialShapeFunctions,
-    SquareSerendipityShapeFunctions,
-)
+from .shape import SquareShapeFunction
 from .topology import SpaceTopology, forward_base_topology
 
 
@@ -19,24 +15,27 @@ class Quadmesh2DTopologyArg:
 
     vertex_count: int
     edge_count: int
+    cell_count: int
 
 
-class Quadmesh2DSpaceTopology(SpaceTopology):
+class QuadmeshSpaceTopology(SpaceTopology):
     TopologyArg = Quadmesh2DTopologyArg
 
-    def __init__(self, mesh: Quadmesh2D, shape: ShapeFunction):
-        if not is_closed(shape.family):
+    def __init__(self, mesh: Quadmesh2D, shape: SquareShapeFunction):
+        if shape.value == SquareShapeFunction.Value.Scalar and not is_closed(shape.family):
             raise ValueError("A closed polynomial family is required to define a continuous function space")
 
+        self._shape = shape
         super().__init__(mesh, shape.NODES_PER_ELEMENT)
         self._mesh = mesh
-        self._shape = shape
 
         self._compute_quad_edge_indices()
+        self.element_node_index = self._make_element_node_index()
+        self.element_node_sign = self._make_element_node_sign()
 
     @property
     def name(self):
-        return f"{super().name}_D{self.dimension}"
+        return f"{self.geometry.name}_{self._shape.name}"
 
     @cache.cached_arg_value
     def topo_arg_value(self, device):
@@ -46,6 +45,7 @@ class Quadmesh2DSpaceTopology(SpaceTopology):
 
         arg.vertex_count = self._mesh.vertex_count()
         arg.edge_count = self._mesh.side_count()
+        arg.cell_count = self._mesh.cell_count()
         return arg
 
     def _compute_quad_edge_indices(self):
@@ -54,7 +54,7 @@ class Quadmesh2DSpaceTopology(SpaceTopology):
         )
 
         wp.launch(
-            kernel=Quadmesh2DSpaceTopology._compute_quad_edge_indices_kernel,
+            kernel=QuadmeshSpaceTopology._compute_quad_edge_indices_kernel,
             dim=self._mesh.edge_quad_indices.shape,
             device=self._mesh.quad_vertex_indices.device,
             inputs=[
@@ -96,7 +96,7 @@ class Quadmesh2DSpaceTopology(SpaceTopology):
             quad_vertex_indices[q0, 2],
             quad_vertex_indices[q0, 3],
         )
-        q0_edge = Quadmesh2DSpaceTopology._find_edge_index_in_quad(edge_vtx, q0_vtx)
+        q0_edge = QuadmeshSpaceTopology._find_edge_index_in_quad(edge_vtx, q0_vtx)
         quad_edge_indices[q0, q0_edge] = e
 
         q1 = edge_quads[1]
@@ -107,161 +107,102 @@ class Quadmesh2DSpaceTopology(SpaceTopology):
                 quad_vertex_indices[q1, 2],
                 quad_vertex_indices[q1, 3],
             )
-            t1_edge = Quadmesh2DSpaceTopology._find_edge_index_in_quad(edge_vtx, t1_vtx)
+            t1_edge = QuadmeshSpaceTopology._find_edge_index_in_quad(edge_vtx, t1_vtx)
             quad_edge_indices[q1, t1_edge] = e
 
-
-class Quadmesh2DBipolynomialSpaceTopology(Quadmesh2DSpaceTopology):
-    def __init__(self, mesh: Quadmesh2D, shape: SquareBipolynomialShapeFunctions):
-        super().__init__(mesh, shape)
-
-        self.element_node_index = self._make_element_node_index()
-
     def node_count(self) -> int:
-        ORDER = self._shape.ORDER
-        INTERIOR_NODES_PER_SIDE = max(0, ORDER - 1)
-        INTERIOR_NODES_PER_CELL = INTERIOR_NODES_PER_SIDE**2
-
         return (
-            self._mesh.vertex_count()
-            + self._mesh.side_count() * INTERIOR_NODES_PER_SIDE
-            + self._mesh.cell_count() * INTERIOR_NODES_PER_CELL
+            self.geometry.vertex_count() * self._shape.VERTEX_NODE_COUNT
+            + self.geometry.side_count() * self._shape.EDGE_NODE_COUNT
+            + self.geometry.cell_count() * self._shape.INTERIOR_NODE_COUNT
         )
 
     def _make_element_node_index(self):
-        ORDER = self._shape.ORDER
-        INTERIOR_NODES_PER_SIDE = wp.constant(max(0, ORDER - 1))
-        INTERIOR_NODES_PER_CELL = wp.constant(INTERIOR_NODES_PER_SIDE**2)
-
-        @cache.dynamic_func(suffix=self.name)
-        def element_node_index(
-            geo_cell_arg: self._mesh.CellArg,
-            topo_arg: Quadmesh2DTopologyArg,
-            element_index: ElementIndex,
-            node_index_in_elt: int,
-        ):
-            node_i = node_index_in_elt // (ORDER + 1)
-            node_j = node_index_in_elt - (ORDER + 1) * node_i
-
-            geo_arg = geo_cell_arg.topology
-
-            # Vertices
-            if node_i == 0:
-                if node_j == 0:
-                    return geo_arg.quad_vertex_indices[element_index, 0]
-                elif node_j == ORDER:
-                    return geo_arg.quad_vertex_indices[element_index, 3]
-
-                # 3-0 edge
-                side_index = topo_arg.quad_edge_indices[element_index, 3]
-                local_vs = geo_arg.quad_vertex_indices[element_index, 3]
-                global_vs = topo_arg.edge_vertex_indices[side_index][0]
-                index_in_side = wp.select(local_vs == global_vs, ORDER - node_j, node_j) - 1
-
-                return topo_arg.vertex_count + (ORDER - 1) * side_index + index_in_side
-
-            elif node_i == ORDER:
-                if node_j == 0:
-                    return geo_arg.quad_vertex_indices[element_index, 1]
-                elif node_j == ORDER:
-                    return geo_arg.quad_vertex_indices[element_index, 2]
-
-                # 1-2 edge
-                side_index = topo_arg.quad_edge_indices[element_index, 1]
-                local_vs = geo_arg.quad_vertex_indices[element_index, 1]
-                global_vs = topo_arg.edge_vertex_indices[side_index][0]
-                index_in_side = wp.select(local_vs == global_vs, node_j, ORDER - node_j) - 1
-
-                return topo_arg.vertex_count + (ORDER - 1) * side_index + index_in_side
-
-            if node_j == 0:
-                # 0-1 edge
-                side_index = topo_arg.quad_edge_indices[element_index, 0]
-                local_vs = geo_arg.quad_vertex_indices[element_index, 0]
-                global_vs = topo_arg.edge_vertex_indices[side_index][0]
-                index_in_side = wp.select(local_vs == global_vs, node_i, ORDER - node_i) - 1
-
-                return topo_arg.vertex_count + (ORDER - 1) * side_index + index_in_side
-
-            elif node_j == ORDER:
-                # 2-3 edge
-                side_index = topo_arg.quad_edge_indices[element_index, 2]
-                local_vs = geo_arg.quad_vertex_indices[element_index, 2]
-                global_vs = topo_arg.edge_vertex_indices[side_index][0]
-                index_in_side = wp.select(local_vs == global_vs, ORDER - node_i, node_i) - 1
-
-                return topo_arg.vertex_count + (ORDER - 1) * side_index + index_in_side
-
-            return (
-                topo_arg.vertex_count
-                + topo_arg.edge_count * INTERIOR_NODES_PER_SIDE
-                + element_index * INTERIOR_NODES_PER_CELL
-                + (node_i - 1) * INTERIOR_NODES_PER_SIDE
-                + node_j
-                - 1
-            )
-
-        return element_node_index
-
-
-class Quadmesh2DSerendipitySpaceTopology(Quadmesh2DSpaceTopology):
-    def __init__(self, grid: Quadmesh2D, shape: SquareSerendipityShapeFunctions):
-        super().__init__(grid, shape)
-
-        self.element_node_index = self._make_element_node_index()
-
-    def node_count(self) -> int:
-        return self.geometry.vertex_count() + (self._shape.ORDER - 1) * self.geometry.side_count()
-
-    def _make_element_node_index(self):
-        ORDER = self._shape.ORDER
+        VERTEX_NODE_COUNT = self._shape.VERTEX_NODE_COUNT
+        EDGE_NODE_COUNT = self._shape.EDGE_NODE_COUNT
+        INTERIOR_NODE_COUNT = self._shape.INTERIOR_NODE_COUNT
 
         SHAPE_TO_QUAD_IDX = wp.constant(wp.vec4i([0, 3, 1, 2]))
 
         @cache.dynamic_func(suffix=self.name)
         def element_node_index(
             cell_arg: self._mesh.CellArg,
-            topo_arg: Quadmesh2DSpaceTopology.TopologyArg,
+            topo_arg: QuadmeshSpaceTopology.TopologyArg,
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            node_type, type_index = self._shape.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, type_index = self._shape.node_type_and_type_index(node_index_in_elt)
 
-            if node_type == SquareSerendipityShapeFunctions.VERTEX:
-                return cell_arg.topology.quad_vertex_indices[element_index, SHAPE_TO_QUAD_IDX[type_index]]
+            if wp.static(VERTEX_NODE_COUNT > 0):
+                if node_type == SquareShapeFunction.VERTEX:
+                    return (
+                        cell_arg.topology.quad_vertex_indices[element_index, SHAPE_TO_QUAD_IDX[type_instance]]
+                        * VERTEX_NODE_COUNT
+                        + type_index
+                    )
 
-            side_offset, index_in_side = SquareSerendipityShapeFunctions.side_offset_and_index(type_index)
+            global_offset = topo_arg.vertex_count * VERTEX_NODE_COUNT
 
-            if node_type == SquareSerendipityShapeFunctions.EDGE_X:
-                if side_offset == 0:
-                    side_start = 0
-                else:
-                    side_start = 2
-                    index_in_side = ORDER - 2 - index_in_side
-            else:
-                if side_offset == 0:
-                    side_start = 3
-                    index_in_side = ORDER - 2 - index_in_side
-                else:
-                    side_start = 1
+            if wp.static(INTERIOR_NODE_COUNT > 0):
+                if node_type == SquareShapeFunction.INTERIOR:
+                    return global_offset + element_index * INTERIOR_NODE_COUNT + type_index
 
-            side_index = topo_arg.quad_edge_indices[element_index, side_start]
-            local_vs = cell_arg.topology.quad_vertex_indices[element_index, side_start]
-            global_vs = topo_arg.edge_vertex_indices[side_index][0]
-            if local_vs != global_vs:
+                global_offset += INTERIOR_NODE_COUNT * topo_arg.cell_count
+
+            if wp.static(EDGE_NODE_COUNT > 0):
+                # EDGE_X, EDGE_Y
+                side_start = wp.select(
+                    node_type == SquareShapeFunction.EDGE_X,
+                    wp.select(type_instance == 0, 1, 3),
+                    wp.select(type_instance == 0, 2, 0),
+                )
+
+                side_index = topo_arg.quad_edge_indices[element_index, side_start]
+                local_vs = cell_arg.topology.quad_vertex_indices[element_index, side_start]
+                global_vs = topo_arg.edge_vertex_indices[side_index][0]
+
                 # Flip indexing direction
-                index_in_side = ORDER - 2 - index_in_side
+                flipped = int(side_start >= 2) ^ int(local_vs != global_vs)
+                index_in_side = wp.select(flipped, type_index, EDGE_NODE_COUNT - 1 - type_index)
 
-            return topo_arg.vertex_count + (ORDER - 1) * side_index + index_in_side
+                return global_offset + EDGE_NODE_COUNT * side_index + index_in_side
+
+            return NULL_NODE_INDEX  # should never happen
 
         return element_node_index
 
+    def _make_element_node_sign(self):
+        @cache.dynamic_func(suffix=self.name)
+        def element_node_sign(
+            cell_arg: self._mesh.CellArg,
+            topo_arg: QuadmeshSpaceTopology.TopologyArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            node_type, type_instance, type_index = self._shape.node_type_and_type_index(node_index_in_elt)
 
-def make_quadmesh_space_topology(mesh: Quadmesh2D, shape: ShapeFunction):
-    if isinstance(shape, SquareSerendipityShapeFunctions):
-        return forward_base_topology(Quadmesh2DSerendipitySpaceTopology, mesh, shape)
+            if node_type == SquareShapeFunction.EDGE_X or node_type == SquareShapeFunction.EDGE_Y:
+                side_start = wp.select(
+                    node_type == SquareShapeFunction.EDGE_X,
+                    wp.select(type_instance == 0, 1, 3),
+                    wp.select(type_instance == 0, 2, 0),
+                )
 
-    if isinstance(shape, SquareBipolynomialShapeFunctions):
-        return forward_base_topology(Quadmesh2DBipolynomialSpaceTopology, mesh, shape)
+                side_index = topo_arg.quad_edge_indices[element_index, side_start]
+                local_vs = cell_arg.topology.quad_vertex_indices[element_index, side_start]
+                global_vs = topo_arg.edge_vertex_indices[side_index][0]
+
+                # Flip indexing direction
+                flipped = int(side_start >= 2) ^ int(local_vs != global_vs)
+                return wp.select(flipped, 1.0, -1.0)
+
+            return 1.0
+
+        return element_node_sign
+
+
+def make_quadmesh_space_topology(mesh: Quadmesh2D, shape: SquareShapeFunction):
+    if isinstance(shape, SquareShapeFunction):
+        return forward_base_topology(QuadmeshSpaceTopology, mesh, shape)
 
     raise ValueError(f"Unsupported shape function {shape.name}")

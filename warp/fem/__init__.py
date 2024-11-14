@@ -71,6 +71,8 @@ from .space import (
     SpaceTopology,
     SymmetricTensorMapper,
     make_collocated_function_space,
+    make_contravariant_function_space,
+    make_covariant_function_space,
     make_polynomial_basis_space,
     make_polynomial_space,
     make_space_partition,

@@ -6,8 +6,7 @@ from warp.fem.space import FunctionSpace, SpacePartition, SpaceRestriction, make
 from .field import DiscreteField, FieldLike, GeometryField, ImplicitField, NonconformingField, SpaceField, UniformField
 from .nodal_field import NodalField
 from .restriction import FieldRestriction
-from .test import TestField
-from .trial import TrialField
+from .virtual import LocalTestField, LocalTrialField, TestField, TrialField
 
 
 def make_restriction(

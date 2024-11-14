@@ -1,3 +1,5 @@
+from enum import Enum
+
 import numpy as np
 
 import warp as wp
@@ -14,6 +16,13 @@ class ShapeFunction:
 
     NODES_PER_ELEMENT: int
     """Number of shape function nodes"""
+
+    class Value(Enum):
+        Scalar = 0
+        CovariantVector = 1
+        ContravariantVector = 2
+
+    value: Value = Value.Scalar
 
     @property
     def name(self) -> str:
@@ -41,7 +50,7 @@ class ShapeFunction:
         raise NotImplementedError()
 
 
-class ConstantShapeFunction:
+class ConstantShapeFunction(ShapeFunction):
     """Shape function that is constant over the element"""
 
     def __init__(self, element: Element, space_dimension: int):

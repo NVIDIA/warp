@@ -6,6 +6,7 @@ from copy import copy
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import warp as wp
+from warp.fem.operator import Integrand
 
 _kernel_cache = {}
 _struct_cache = {}
@@ -186,7 +187,7 @@ class ExpandStarredArgumentStruct(ast.NodeTransformer):
 
 
 def get_integrand_function(
-    integrand: "warp.fem.operator.Integrand",  # noqa: F821
+    integrand: Integrand,
     suffix: str,
     func=None,
     annotations=None,
@@ -208,7 +209,7 @@ def get_integrand_function(
 
 
 def get_integrand_kernel(
-    integrand: "warp.fem.operator.Integrand",  # noqa: F821
+    integrand: Integrand,
     suffix: str,
     kernel_fn: Optional[Callable] = None,
     kernel_options: Dict[str, Any] = None,
@@ -481,7 +482,7 @@ def borrow_temporary(
     if temporary_store is None:
         temporary_store = TemporaryStore._default_store
 
-    if temporary_store is None:
+    if temporary_store is None or (requires_grad and wp.context.runtime.tape is not None):
         return Temporary(
             array=wp.empty(shape=shape, dtype=dtype, pinned=pinned, device=device, requires_grad=requires_grad)
         )

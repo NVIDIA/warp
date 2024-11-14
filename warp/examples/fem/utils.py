@@ -575,6 +575,7 @@ class Plot:
 
     def _plot_pyvista(self, options: Dict[str, Any]):
         import pyvista
+        import pyvista.themes
 
         grids = {}
         scales = {}
@@ -702,7 +703,7 @@ class Plot:
         subplot_rows = options.get("rows", 1)
         subplot_shape = (subplot_rows, (len(grids) + subplot_rows - 1) // subplot_rows)
 
-        plotter = pyvista.Plotter(shape=subplot_shape)
+        plotter = pyvista.Plotter(shape=subplot_shape, theme=pyvista.themes.DocumentProTheme())
         plotter.link_views()
         plotter.add_camera_orientation_widget()
         for index, (name, grid) in enumerate(grids.items()):
@@ -717,7 +718,7 @@ class Plot:
                     plotter.view_xy()
                 else:
                     plotter.add_mesh(marker)
-            elif field.space.geometry.reference_cell().dimension == 3:
+            elif field.space.geometry.cell_dimension == 3:
                 plotter.add_mesh_clip_plane(grid, show_edges=True, clim=value_range, assign_to_axis="z")
             else:
                 plotter.add_mesh(grid, show_edges=True, clim=value_range)
@@ -809,7 +810,7 @@ class Plot:
                 if "arrows" in args or "streamlines" in args:
                     plot_opts["glyph_scale"] = args.get("arrows", {}).get("glyph_scale", 1.0)
                     plot_fn = _plot_quivers_3d
-                elif field.space.geometry.reference_cell().dimension == 2:
+                elif field.space.geometry.cell_dimension == 2:
                     plot_fn = _plot_surface
                 else:
                     plot_fn = _plot_3d_scatter

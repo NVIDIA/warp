@@ -23,10 +23,6 @@ class Grid3D(Geometry):
 
     dimension = 3
 
-    Permutation = wp.types.matrix(shape=(3, 3), dtype=int)
-    LOC_TO_WORLD = wp.constant(Permutation(0, 1, 2, 1, 2, 0, 2, 0, 1))
-    WORLD_TO_LOC = wp.constant(Permutation(0, 1, 2, 2, 0, 1, 1, 2, 0))
-
     def __init__(self, res: wp.vec3i, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp.vec3] = None):
         """Constructs a dense 3D grid
 
@@ -148,28 +144,32 @@ class Grid3D(Geometry):
     @wp.func
     def _world_to_local(axis: int, vec: Any):
         return type(vec)(
-            vec[Grid3D.LOC_TO_WORLD[axis, 0]],
-            vec[Grid3D.LOC_TO_WORLD[axis, 1]],
-            vec[Grid3D.LOC_TO_WORLD[axis, 2]],
+            vec[axis],
+            vec[(axis + 1) % 3],
+            vec[(axis + 2) % 3],
         )
 
     @wp.func
     def _local_to_world(axis: int, vec: Any):
         return type(vec)(
-            vec[Grid3D.WORLD_TO_LOC[axis, 0]],
-            vec[Grid3D.WORLD_TO_LOC[axis, 1]],
-            vec[Grid3D.WORLD_TO_LOC[axis, 2]],
+            vec[(2 * axis) % 3],
+            vec[(2 * axis + 1) % 3],
+            vec[(2 * axis + 2) % 3],
         )
 
     @wp.func
+    def _local_to_world_axis(axis: int, loc_index: Any):
+        return (axis + loc_index) % 3
+
+    @wp.func
     def side_index(arg: SideArg, side: Side):
-        alt_axis = Grid3D.LOC_TO_WORLD[side.axis, 0]
+        alt_axis = Grid3D._local_to_world_axis(side.axis, 0)
         if side.origin[0] == arg.cell_arg.res[alt_axis]:
             # Upper-boundary side
             longitude = side.origin[1]
             latitude = side.origin[2]
 
-            latitude_res = arg.cell_arg.res[Grid3D.LOC_TO_WORLD[side.axis, 2]]
+            latitude_res = arg.cell_arg.res[Grid3D._local_to_world_axis(side.axis, 2)]
             lat_long = latitude_res * longitude + latitude
 
             return 3 * arg.cell_count + arg.axis_offsets[side.axis] + lat_long
@@ -179,24 +179,27 @@ class Grid3D(Geometry):
 
     @wp.func
     def get_side(arg: SideArg, side_index: ElementIndex):
+        res = arg.cell_arg.res
+
         if side_index < 3 * arg.cell_count:
             axis = side_index // arg.cell_count
             cell_index = side_index - axis * arg.cell_count
-            origin = Grid3D._world_to_local(axis, Grid3D.get_cell(arg.cell_arg.res, cell_index))
-            return Grid3D.Side(axis, origin)
+            origin_loc = Grid3D._world_to_local(axis, Grid3D.get_cell(res, cell_index))
+            return Grid3D.Side(axis, origin_loc)
 
+        axis_offsets = arg.axis_offsets
         axis_side_index = side_index - 3 * arg.cell_count
-        if axis_side_index < arg.axis_offsets[1]:
+        if axis_side_index < axis_offsets[1]:
             axis = 0
-        elif axis_side_index < arg.axis_offsets[2]:
+        elif axis_side_index < axis_offsets[2]:
             axis = 1
         else:
             axis = 2
 
-        altitude = arg.cell_arg.res[Grid3D.LOC_TO_WORLD[axis, 0]]
+        altitude = res[Grid3D._local_to_world_axis(axis, 0)]
 
-        lat_long = axis_side_index - arg.axis_offsets[axis]
-        latitude_res = arg.cell_arg.res[Grid3D.LOC_TO_WORLD[axis, 2]]
+        lat_long = axis_side_index - axis_offsets[axis]
+        latitude_res = res[Grid3D._local_to_world_axis(axis, 2)]
 
         longitude = lat_long // latitude_res
         latitude = lat_long - longitude * latitude_res
@@ -299,7 +302,7 @@ class Grid3D(Geometry):
             axis = 2
 
         lat_long = axis_side_index - args.axis_offsets[axis]
-        latitude_res = args.cell_arg.res[Grid3D.LOC_TO_WORLD[axis, 2]]
+        latitude_res = args.cell_arg.res[Grid3D._local_to_world_axis(axis, 2)]
 
         longitude = lat_long // latitude_res
         latitude = lat_long - longitude * latitude_res
@@ -347,14 +350,14 @@ class Grid3D(Geometry):
     @wp.func
     def side_measure(args: SideArg, s: Sample):
         side = Grid3D.get_side(args, s.element_index)
-        long_axis = Grid3D.LOC_TO_WORLD[side.axis, 1]
-        lat_axis = Grid3D.LOC_TO_WORLD[side.axis, 2]
+        long_axis = Grid3D._local_to_world_axis(side.axis, 1)
+        lat_axis = Grid3D._local_to_world_axis(side.axis, 2)
         return args.cell_arg.cell_size[long_axis] * args.cell_arg.cell_size[lat_axis]
 
     @wp.func
     def side_measure_ratio(args: SideArg, s: Sample):
         side = Grid3D.get_side(args, s.element_index)
-        alt_axis = Grid3D.LOC_TO_WORLD[side.axis, 0]
+        alt_axis = Grid3D._local_to_world_axis(side.axis, 0)
         return 1.0 / args.cell_arg.cell_size[alt_axis]
 
     @wp.func
@@ -381,7 +384,7 @@ class Grid3D(Geometry):
     def side_outer_cell_index(arg: SideArg, side_index: ElementIndex):
         side = Grid3D.get_side(arg, side_index)
 
-        alt_axis = Grid3D.LOC_TO_WORLD[side.axis, 0]
+        alt_axis = Grid3D._local_to_world_axis(side.axis, 0)
 
         outer_alt = wp.select(
             side.origin[0] == arg.cell_arg.res[alt_axis], side.origin[0], arg.cell_arg.res[alt_axis] - 1
@@ -406,7 +409,7 @@ class Grid3D(Geometry):
     def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
         side = Grid3D.get_side(args, side_index)
 
-        alt_axis = Grid3D.LOC_TO_WORLD[side.axis, 0]
+        alt_axis = Grid3D._local_to_world_axis(side.axis, 0)
         outer_alt = wp.select(side.origin[0] == args.cell_arg.res[alt_axis], 0.0, 1.0)
 
         side_coord0 = wp.select(side.origin[0] == 0, side_coords[0], 1.0 - side_coords[0])
@@ -424,8 +427,8 @@ class Grid3D(Geometry):
         cell = Grid3D.get_cell(args.cell_arg.res, element_index)
 
         if float(side.origin[0] - cell[side.axis]) == element_coords[side.axis]:
-            long_axis = Grid3D.LOC_TO_WORLD[side.axis, 1]
-            lat_axis = Grid3D.LOC_TO_WORLD[side.axis, 2]
+            long_axis = Grid3D._local_to_world_axis(side.axis, 1)
+            lat_axis = Grid3D._local_to_world_axis(side.axis, 2)
             long_coord = element_coords[long_axis]
             long_coord = wp.select(side.origin[0] == 0, long_coord, 1.0 - long_coord)
             return Coords(long_coord, element_coords[lat_axis], 0.0)

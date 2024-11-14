@@ -37,6 +37,7 @@ class SpaceTopology:
         self.ElementArg = geometry.CellArg
 
         self._make_constant_element_node_count()
+        self._make_constant_element_node_sign()
 
     @property
     def geometry(self) -> Geometry:
@@ -176,6 +177,18 @@ class SpaceTopology:
         self.element_node_count = constant_element_node_count
         self.side_neighbor_node_counts = constant_side_neighbor_node_counts
 
+    def _make_constant_element_node_sign(self):
+        @cache.dynamic_func(suffix=self.name)
+        def constant_element_node_sign(
+            geo_arg: self.geometry.CellArg,
+            topo_arg: self.TopologyArg,
+            element_index: ElementIndex,
+            node_index_in_element: int,
+        ):
+            return 1.0
+
+        self.element_node_sign = constant_element_node_sign
+
 
 class TraceSpaceTopology(SpaceTopology):
     """Auto-generated trace topology defining the node indices associated to the geometry sides"""
@@ -267,6 +280,21 @@ class TraceSpaceTopology(SpaceTopology):
 
         return trace_element_node_index
 
+    def _make_element_node_sign(self):
+        @cache.dynamic_func(suffix=self.name)
+        def trace_element_node_sign(
+            geo_side_arg: self.geometry.SideArg,
+            topo_arg: self._topo.TopologyArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            cell_index, index_in_cell = self.neighbor_cell_index(geo_side_arg, element_index, node_index_in_elt)
+
+            geo_cell_arg = self.geometry.side_to_cell_arg(geo_side_arg)
+            return self._topo.element_node_sign(geo_cell_arg, topo_arg, cell_index, index_in_cell)
+
+        return trace_element_node_sign
+
     def full_space_topology(self) -> SpaceTopology:
         """Returns the full space topology from which this topology is derived"""
         return self._topo
@@ -351,8 +379,18 @@ class DeformedGeometrySpaceTopology(SpaceTopology):
             inner_count, outer_count = self.base.side_neighbor_node_counts(side_arg.base_arg, element_index)
             return inner_count, outer_count
 
+        @cache.dynamic_func(suffix=self.name)
+        def element_node_sign(
+            elt_arg: self.geometry.CellArg,
+            topo_arg: self.TopologyArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            return self.base.element_node_sign(elt_arg.elt_arg, topo_arg, element_index, node_index_in_elt)
+
         self.element_node_index = element_node_index
         self.element_node_count = element_node_count
+        self.element_node_sign = element_node_sign
         self.side_neighbor_node_counts = side_neighbor_node_counts
 
 

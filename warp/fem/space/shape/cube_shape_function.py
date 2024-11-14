@@ -8,21 +8,58 @@ from warp.fem.geometry import Grid3D
 from warp.fem.polynomial import Polynomial, is_closed, lagrange_scales, quadrature_1d
 from warp.fem.types import Coords
 
+from .shape_function import ShapeFunction
 from .tet_shape_function import TetrahedronPolynomialShapeFunctions
 
 
-class CubeTripolynomialShapeFunctions:
+class CubeShapeFunction(ShapeFunction):
     VERTEX = 0
     EDGE = 1
     FACE = 2
     INTERIOR = 3
 
+    @wp.func
+    def _vertex_coords(vidx_in_cell: int):
+        x = vidx_in_cell // 4
+        y = (vidx_in_cell - 4 * x) // 2
+        z = vidx_in_cell - 4 * x - 2 * y
+        return wp.vec3i(x, y, z)
+
+    @wp.func
+    def _edge_coords(type_instance: int, index_in_side: int):
+        return wp.vec3i(index_in_side + 1, (type_instance & 2) >> 1, type_instance & 1)
+
+    @wp.func
+    def _edge_axis(type_instance: int):
+        return type_instance >> 2
+
+    @wp.func
+    def _face_offset(type_instance: int):
+        return type_instance & 1
+
+    @wp.func
+    def _face_axis(type_instance: int):
+        return type_instance >> 1
+
+
+class CubeTripolynomialShapeFunctions(CubeShapeFunction):
     def __init__(self, degree: int, family: Polynomial):
         self.family = family
 
         self.ORDER = wp.constant(degree)
         self.NODES_PER_ELEMENT = wp.constant((degree + 1) ** 3)
         self.NODES_PER_EDGE = wp.constant(degree + 1)
+
+        if is_closed(self.family):
+            self.VERTEX_NODE_COUNT = wp.constant(1)
+            self.EDGE_NODE_COUNT = wp.constant(max(0, degree - 1))
+            self.FACE_NODE_COUNT = wp.constant(max(0, degree - 1) ** 2)
+            self.INTERIOR_NODE_COUNT = wp.constant(max(0, degree - 1) ** 3)
+        else:
+            self.VERTEX_NODE_COUNT = wp.constant(0)
+            self.EDGE_NODE_COUNT = wp.constant(0)
+            self.FACE_NODE_COUNT = wp.constant(0)
+            self.INTERIOR_NODE_COUNT = self.NODES_PER_ELEMENT
 
         lobatto_coords, lobatto_weight = quadrature_1d(point_count=degree + 1, family=family)
         lagrange_scale = lagrange_scales(lobatto_coords)
@@ -35,6 +72,10 @@ class CubeTripolynomialShapeFunctions:
 
         self._node_ijk = self._make_node_ijk()
         self.node_type_and_type_index = self._make_node_type_and_type_index()
+
+        if degree > 2:
+            self._face_node_ij = self._make_face_node_ij()
+            self._linear_face_node_index = self._make_linear_face_node_index()
 
     @property
     def name(self) -> str:
@@ -61,8 +102,34 @@ class CubeTripolynomialShapeFunctions:
 
         return cache.get_func(node_ijk, self.name)
 
+    def _make_face_node_ij(self):
+        ORDER_MINUS_ONE = wp.constant(self.ORDER - 1)
+
+        def face_node_ij(
+            face_node_index: int,
+        ):
+            node_i = face_node_index // ORDER_MINUS_ONE
+            node_j = face_node_index - ORDER_MINUS_ONE * node_i
+            return wp.vec2i(node_i, node_j)
+
+        return cache.get_func(face_node_ij, self.name)
+
+    def _make_linear_face_node_index(self):
+        ORDER_MINUS_ONE = wp.constant(self.ORDER - 1)
+
+        def linear_face_node_index(face_node_index: int, face_node_ij: wp.vec2i):
+            return face_node_ij[0] * ORDER_MINUS_ONE + face_node_ij[1]
+
+        return cache.get_func(linear_face_node_index, self.name)
+
     def _make_node_type_and_type_index(self):
         ORDER = self.ORDER
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_type_and_type_index_open(
+            node_index_in_elt: int,
+        ):
+            return CubeShapeFunction.INTERIOR, 0, node_index_in_elt
 
         @cache.dynamic_func(suffix=self.name)
         def node_type_and_type_index(
@@ -122,7 +189,7 @@ class CubeTripolynomialShapeFunctions:
             type_index = ((i - 1) * (ORDER - 1) + (j - 1)) * (ORDER - 1) + k - 1
             return CubeTripolynomialShapeFunctions.INTERIOR, 0, type_index
 
-        return node_type_and_type_index
+        return node_type_and_type_index if is_closed(self.family) else node_type_and_type_index_open
 
     def make_node_coords_in_element(self):
         LOBATTO_COORDS = self.LOBATTO_COORDS
@@ -404,17 +471,12 @@ class CubeTripolynomialShapeFunctions:
         return cell_indices[np.newaxis, :], np.array([cell_type], dtype=np.int8)
 
 
-class CubeSerendipityShapeFunctions:
+class CubeSerendipityShapeFunctions(CubeShapeFunction):
     """
     Serendipity element ~ tensor product space without interior nodes
     Edge shape functions are usual Lagrange shape functions times a bilinear function in the normal directions
     Corner shape functions are trilinear shape functions times a function of (x^{d-1} + y^{d-1})
     """
-
-    # Node categories
-    VERTEX = wp.constant(0)
-    EDGE_X = wp.constant(1)
-    EDGE_Y = wp.constant(2)
 
     def __init__(self, degree: int, family: Polynomial):
         if not is_closed(family):
@@ -428,6 +490,11 @@ class CubeSerendipityShapeFunctions:
         self.ORDER = wp.constant(degree)
         self.NODES_PER_ELEMENT = wp.constant(8 + 12 * (degree - 1))
         self.NODES_PER_EDGE = wp.constant(degree + 1)
+
+        self.VERTEX_NODE_COUNT = wp.constant(1)
+        self.EDGE_NODE_COUNT = wp.constant(degree - 1)
+        self.FACE_NODE_COUNT = wp.constant(0)
+        self.INTERIOR_NODE_COUNT = wp.constant(0)
 
         lobatto_coords, lobatto_weight = quadrature_1d(point_count=degree + 1, family=family)
         lagrange_scale = lagrange_scales(lobatto_coords)
@@ -451,48 +518,35 @@ class CubeSerendipityShapeFunctions:
             node_index_in_elt: int,
         ):
             if node_index_in_elt < 8:
-                return CubeSerendipityShapeFunctions.VERTEX, node_index_in_elt
+                return CubeShapeFunction.VERTEX, node_index_in_elt, 0
 
-            type_index = (node_index_in_elt - 8) // 3
-            side = node_index_in_elt - 8 - 3 * type_index
-            return CubeSerendipityShapeFunctions.EDGE_X + side, type_index
+            edge_index = (node_index_in_elt - 8) // 3
+            edge_axis = node_index_in_elt - 8 - 3 * edge_index
+
+            index_in_edge = edge_index // 4
+            edge_offset = edge_index - 4 * index_in_edge
+
+            return CubeShapeFunction.EDGE, 4 * edge_axis + edge_offset, index_in_edge
 
         return node_type_and_index
 
-    @wp.func
-    def _vertex_coords(vidx_in_cell: int):
-        x = vidx_in_cell // 4
-        y = (vidx_in_cell - 4 * x) // 2
-        z = vidx_in_cell - 4 * x - 2 * y
-        return wp.vec3i(x, y, z)
+    # @wp.func
+    # def _cube_edge_index(node_type: int, type_index: int):
+    #     index_in_side = type_index // 4
+    #     side_offset = type_index - 4 * index_in_side
 
-    @wp.func
-    def _edge_coords(type_index: int):
-        index_in_side = type_index // 4
-        side_offset = type_index - 4 * index_in_side
-        return wp.vec3i(index_in_side + 1, side_offset // 2, side_offset & 1)
-
-    @wp.func
-    def _edge_axis(node_type: int):
-        return node_type - CubeSerendipityShapeFunctions.EDGE_X
-
-    @wp.func
-    def _cube_edge_index(node_type: int, type_index: int):
-        index_in_side = type_index // 4
-        side_offset = type_index - 4 * index_in_side
-
-        return 4 * (node_type - CubeSerendipityShapeFunctions.EDGE_X) + side_offset, index_in_side
+    #     return 4 * (node_type - CubeSerendipityShapeFunctions.EDGE_X) + side_offset, index_in_side
 
     def _get_node_lobatto_indices(self):
         ORDER = self.ORDER
 
         @cache.dynamic_func(suffix=self.name)
-        def node_lobatto_indices(node_type: int, type_index: int):
+        def node_lobatto_indices(node_type: int, type_instance: int, type_index: int):
             if node_type == CubeSerendipityShapeFunctions.VERTEX:
-                return CubeSerendipityShapeFunctions._vertex_coords(type_index) * ORDER
+                return CubeSerendipityShapeFunctions._vertex_coords(type_instance) * ORDER
 
-            axis = CubeSerendipityShapeFunctions._edge_axis(node_type)
-            local_coords = CubeSerendipityShapeFunctions._edge_coords(type_index)
+            axis = CubeSerendipityShapeFunctions._edge_axis(type_instance)
+            local_coords = CubeSerendipityShapeFunctions._edge_coords(type_instance, type_index)
 
             local_indices = wp.vec3i(local_coords[0], local_coords[1] * ORDER, local_coords[2] * ORDER)
 
@@ -507,8 +561,8 @@ class CubeSerendipityShapeFunctions:
         def node_coords_in_element(
             node_index_in_elt: int,
         ):
-            node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
-            node_coords = self._node_lobatto_indices(node_type, type_index)
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_coords = self._node_lobatto_indices(node_type, type_instance, type_index)
             return Coords(
                 LOBATTO_COORDS[node_coords[0]], LOBATTO_COORDS[node_coords[1]], LOBATTO_COORDS[node_coords[2]]
             )
@@ -522,7 +576,7 @@ class CubeSerendipityShapeFunctions:
         def node_quadrature_weight(
             node_index_in_elt: int,
         ):
-            node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
             if node_type == CubeSerendipityShapeFunctions.VERTEX:
                 return 1.0 / float(8 * ORDER * ORDER * ORDER)
 
@@ -537,7 +591,7 @@ class CubeSerendipityShapeFunctions:
         def trace_node_quadrature_weight(
             node_index_in_elt: int,
         ):
-            node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
             if node_type == CubeSerendipityShapeFunctions.VERTEX:
                 return 0.25 / float(ORDER * ORDER)
 
@@ -560,10 +614,10 @@ class CubeSerendipityShapeFunctions:
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
 
             if node_type == CubeSerendipityShapeFunctions.VERTEX:
-                node_ijk = CubeSerendipityShapeFunctions._vertex_coords(type_index)
+                node_ijk = CubeSerendipityShapeFunctions._vertex_coords(type_instance)
 
                 cx = wp.select(node_ijk[0] == 0, coords[0], 1.0 - coords[0])
                 cy = wp.select(node_ijk[1] == 0, coords[1], 1.0 - coords[1])
@@ -571,10 +625,10 @@ class CubeSerendipityShapeFunctions:
 
                 w = cx * cy * cz
 
-                if ORDER == 2:
+                if wp.static(ORDER == 2):
                     w *= cx + cy + cz - 3.0 + LOBATTO_COORDS[1]
                     return w * LAGRANGE_SCALE[0]
-                if ORDER == 3:
+                if wp.static(ORDER == 3):
                     w *= (
                         (cx - 0.5) * (cx - 0.5)
                         + (cy - 0.5) * (cy - 0.5)
@@ -583,9 +637,9 @@ class CubeSerendipityShapeFunctions:
                     )
                     return w * DEGREE_3_SPHERE_SCALE
 
-            axis = CubeSerendipityShapeFunctions._edge_axis(node_type)
+            axis = CubeSerendipityShapeFunctions._edge_axis(type_instance)
 
-            node_all = CubeSerendipityShapeFunctions._edge_coords(type_index)
+            node_all = CubeSerendipityShapeFunctions._edge_coords(type_instance, type_index)
 
             local_coords = Grid3D._world_to_local(axis, coords)
 
@@ -616,10 +670,10 @@ class CubeSerendipityShapeFunctions:
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
 
             if node_type == CubeSerendipityShapeFunctions.VERTEX:
-                node_ijk = CubeSerendipityShapeFunctions._vertex_coords(type_index)
+                node_ijk = CubeSerendipityShapeFunctions._vertex_coords(type_instance)
 
                 cx = wp.select(node_ijk[0] == 0, coords[0], 1.0 - coords[0])
                 cy = wp.select(node_ijk[1] == 0, coords[1], 1.0 - coords[1])
@@ -629,7 +683,7 @@ class CubeSerendipityShapeFunctions:
                 gy = wp.select(node_ijk[1] == 0, 1.0, -1.0)
                 gz = wp.select(node_ijk[2] == 0, 1.0, -1.0)
 
-                if ORDER == 2:
+                if wp.static(ORDER == 2):
                     w = cx + cy + cz - 3.0 + LOBATTO_COORDS[1]
                     grad_x = cy * cz * gx * (w + cx)
                     grad_y = cz * cx * gy * (w + cy)
@@ -637,7 +691,7 @@ class CubeSerendipityShapeFunctions:
 
                     return wp.vec3(grad_x, grad_y, grad_z) * LAGRANGE_SCALE[0]
 
-                if ORDER == 3:
+                if wp.static(ORDER == 3):
                     w = (
                         (cx - 0.5) * (cx - 0.5)
                         + (cy - 0.5) * (cy - 0.5)
@@ -654,8 +708,8 @@ class CubeSerendipityShapeFunctions:
 
                     return wp.vec3(grad_x, grad_y, grad_z) * DEGREE_3_SPHERE_SCALE
 
-            axis = CubeSerendipityShapeFunctions._edge_axis(node_type)
-            node_all = CubeSerendipityShapeFunctions._edge_coords(type_index)
+            axis = CubeSerendipityShapeFunctions._edge_axis(type_instance)
+            node_all = CubeSerendipityShapeFunctions._edge_coords(type_instance, type_index)
 
             local_coords = Grid3D._world_to_local(axis, coords)
 
@@ -720,7 +774,7 @@ class CubeSerendipityShapeFunctions:
         return tets, np.full(tets.shape[0], cell_type, dtype=np.int8)
 
 
-class CubeNonConformingPolynomialShapeFunctions:
+class CubeNonConformingPolynomialShapeFunctions(ShapeFunction):
     # embeds the largest regular tet centered at (0.5, 0.5, 0.5) into the reference cube
 
     _tet_height = 2.0 / 3.0
@@ -812,5 +866,225 @@ class CubeNonConformingPolynomialShapeFunctions:
             tet_coords = CUBE_TO_TET * (coords - CubeNonConformingPolynomialShapeFunctions._TET_OFFSET)
             grad = tet_inner_weight_gradient(tet_coords, node_index_in_elt)
             return wp.transpose(CUBE_TO_TET) * grad
+
+        return element_inner_weight_gradient
+
+
+class CubeNedelecFirstKindShapeFunctions(CubeShapeFunction):
+    value = ShapeFunction.Value.CovariantVector
+
+    def __init__(self, degree: int):
+        if degree != 1:
+            raise NotImplementedError("Only linear Nédélec implemented right now")
+
+        self.ORDER = wp.constant(degree)
+        self.NODES_PER_ELEMENT = wp.constant(12)
+        self.NODES_PER_SIDE = wp.constant(4)
+
+        self.VERTEX_NODE_COUNT = wp.constant(0)
+        self.EDGE_NODE_COUNT = wp.constant(1)
+        self.FACE_NODE_COUNT = wp.constant(0)
+        self.INTERIOR_NODE_COUNT = wp.constant(0)
+
+        self.node_type_and_type_index = self._get_node_type_and_type_index()
+
+    @property
+    def name(self) -> str:
+        return f"CubeN1_{self.ORDER}"
+
+    def _get_node_type_and_type_index(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_type_and_index(
+            node_index_in_elt: int,
+        ):
+            return CubeShapeFunction.EDGE, node_index_in_elt, 0
+
+        return node_type_and_index
+
+    def make_node_coords_in_element(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_coords_in_element(
+            node_index_in_elt: int,
+        ):
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            axis = CubeShapeFunction._edge_axis(type_instance)
+            local_indices = CubeShapeFunction._edge_coords(type_instance, type_index)
+
+            local_coords = wp.vec3f(0.5, float(local_indices[1]), float(local_indices[2]))
+            return Grid3D._local_to_world(axis, local_coords)
+
+        return node_coords_in_element
+
+    def make_node_quadrature_weight(self):
+        NODES_PER_ELEMENT = self.NODES_PER_ELEMENT
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_quadrature_weight(node_index_in_element: int):
+            return 1.0 / float(NODES_PER_ELEMENT)
+
+        return node_quadrature_weight
+
+    def make_trace_node_quadrature_weight(self):
+        NODES_PER_SIDE = self.NODES_PER_SIDE
+
+        @cache.dynamic_func(suffix=self.name)
+        def trace_node_quadrature_weight(node_index_in_element: int):
+            return 1.0 / float(NODES_PER_SIDE)
+
+        return trace_node_quadrature_weight
+
+    def make_element_inner_weight(self):
+        @cache.dynamic_func(suffix=self.name)
+        def element_inner_weight(
+            coords: Coords,
+            node_index_in_elt: int,
+        ):
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+
+            axis = CubeShapeFunction._edge_axis(type_instance)
+
+            local_coords = Grid3D._world_to_local(axis, coords)
+            edge_coords = CubeShapeFunction._edge_coords(type_instance, type_index)
+
+            a1 = float(2 * edge_coords[1] - 1)
+            a2 = float(2 * edge_coords[2] - 1)
+            b1 = float(1 - edge_coords[1])
+            b2 = float(1 - edge_coords[2])
+
+            local_w = wp.vec3((b1 + a1 * local_coords[1]) * (b2 + a2 * local_coords[2]), 0.0, 0.0)
+            return Grid3D._local_to_world(axis, local_w)
+
+        return element_inner_weight
+
+    def make_element_inner_weight_gradient(self):
+        @cache.dynamic_func(suffix=self.name)
+        def element_inner_weight_gradient(
+            coords: Coords,
+            node_index_in_elt: int,
+        ):
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+
+            axis = CubeShapeFunction._edge_axis(type_instance)
+
+            local_coords = Grid3D._world_to_local(axis, coords)
+            edge_coords = CubeShapeFunction._edge_coords(type_instance, type_index)
+
+            a1 = float(2 * edge_coords[1] - 1)
+            a2 = float(2 * edge_coords[2] - 1)
+            b1 = float(1 - edge_coords[1])
+            b2 = float(1 - edge_coords[2])
+
+            local_gw = Grid3D._local_to_world(
+                axis, wp.vec3(0.0, a1 * (b2 + a2 * local_coords[2]), (b1 + a1 * local_coords[1]) * a2)
+            )
+
+            grad = wp.mat33(0.0)
+            grad[axis] = local_gw
+            return grad
+
+        return element_inner_weight_gradient
+
+
+class CubeRaviartThomasShapeFunctions(CubeShapeFunction):
+    value = ShapeFunction.Value.ContravariantVector
+
+    def __init__(self, degree: int):
+        if degree != 1:
+            raise NotImplementedError("Only linear Raviart Thomas implemented right now")
+
+        self.ORDER = wp.constant(degree)
+        self.NODES_PER_ELEMENT = wp.constant(6)
+        self.NODES_PER_SIDE = wp.constant(1)
+
+        self.VERTEX_NODE_COUNT = wp.constant(0)
+        self.EDGE_NODE_COUNT = wp.constant(0)
+        self.FACE_NODE_COUNT = wp.constant(1)
+        self.INTERIOR_NODE_COUNT = wp.constant(0)
+
+        self.node_type_and_type_index = self._get_node_type_and_type_index()
+
+    @property
+    def name(self) -> str:
+        return f"CubeRT_{self.ORDER}"
+
+    def _get_node_type_and_type_index(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_type_and_index(
+            node_index_in_elt: int,
+        ):
+            return CubeShapeFunction.FACE, node_index_in_elt, 0
+
+        return node_type_and_index
+
+    def make_node_coords_in_element(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_coords_in_element(
+            node_index_in_elt: int,
+        ):
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            axis = CubeShapeFunction._face_axis(type_instance)
+            offset = CubeShapeFunction._face_offset(type_instance)
+
+            coords = Coords(0.5)
+            coords[axis] = float(offset)
+            return coords
+
+        return node_coords_in_element
+
+    def make_node_quadrature_weight(self):
+        NODES_PER_ELEMENT = self.NODES_PER_ELEMENT
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_quadrature_weight(node_index_in_element: int):
+            return 1.0 / float(NODES_PER_ELEMENT)
+
+        return node_quadrature_weight
+
+    def make_trace_node_quadrature_weight(self):
+        NODES_PER_SIDE = self.NODES_PER_SIDE
+
+        @cache.dynamic_func(suffix=self.name)
+        def trace_node_quadrature_weight(node_index_in_element: int):
+            return 1.0 / float(NODES_PER_SIDE)
+
+        return trace_node_quadrature_weight
+
+    def make_element_inner_weight(self):
+        @cache.dynamic_func(suffix=self.name)
+        def element_inner_weight(
+            coords: Coords,
+            node_index_in_elt: int,
+        ):
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+
+            axis = CubeShapeFunction._face_axis(type_instance)
+            offset = CubeShapeFunction._face_offset(type_instance)
+
+            a = float(2 * offset - 1)
+            b = float(1 - offset)
+
+            w = wp.vec3(0.0)
+            w[axis] = b + a * coords[axis]
+
+            return w
+
+        return element_inner_weight
+
+    def make_element_inner_weight_gradient(self):
+        @cache.dynamic_func(suffix=self.name)
+        def element_inner_weight_gradient(
+            coords: Coords,
+            node_index_in_elt: int,
+        ):
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+
+            axis = CubeShapeFunction._face_axis(type_instance)
+            offset = CubeShapeFunction._face_offset(type_instance)
+
+            a = float(2 * offset - 1)
+            grad = wp.mat33(0.0)
+            grad[axis, axis] = a
+
+            return grad
 
         return element_inner_weight_gradient
