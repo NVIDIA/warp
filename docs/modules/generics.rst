@@ -10,7 +10,7 @@ Generic Kernels
 
 Generic kernel definition syntax is the same as regular kernels, but you can use ``typing.Any`` in place of concrete types:
 
-.. code:: python
+.. testcode::
 
     from typing import Any
 
@@ -36,19 +36,24 @@ Generic kernel definition syntax is the same as regular kernels, but you can use
     print(x32)
     print(x64)
 
+.. testoutput::
+
+    [ 3.  6.  9. 12. 15. 18. 21. 24. 27.]
+    [ 3.  6.  9. 12. 15. 18. 21. 24. 27.]
+    [ 3.  6.  9. 12. 15. 18. 21. 24. 27.]
+
 Under the hood, Warp will automatically generate new instances of the generic kernel to match the given argument types.
 
 
 Type Inference
 ~~~~~~~~~~~~~~
 
-When a generic kernel is being launched, Warp infers the concrete types from the arguments.  ``wp.launch()`` handles generic kernels without any special syntax, but we should be mindful of the data types passed as arguments to make sure that the correct types are inferred.
+When a generic kernel is being launched, Warp infers the concrete types from the arguments.
+``wp.launch()`` handles generic kernels without any special syntax, but we should be mindful of the data types passed as arguments to make sure that the correct types are inferred:
 
-    - Scalars can be passed as regular Python numeric values (e.g., ``42`` or ``0.5``).  Python integers are interpreted as ``wp.int32`` and Python floating point values are interpreted as ``wp.float32``.  To specify a different data type and to avoid ambiguity, Warp data types should be used instead (e.g., ``wp.int64(42)`` or ``wp.float16(0.5)``).
-
-    - Vectors and matrices should be passed as Warp types rather than tuples or lists (e.g., ``wp.vec3f(1.0, 2.0, 3.0)`` or ``wp.mat22h([[1.0, 0.0], [0.0, 1.0]])``).
-
-    - Warp arrays and structs can be passed normally.
+* Scalars can be passed as regular Python numeric values (e.g., ``42`` or ``0.5``).  Python integers are interpreted as ``wp.int32`` and Python floating point values are interpreted as ``wp.float32``.  To specify a different data type and to avoid ambiguity, Warp data types should be used instead (e.g., ``wp.int64(42)`` or ``wp.float16(0.5)``).
+* Vectors and matrices should be passed as Warp types rather than tuples or lists (e.g., ``wp.vec3f(1.0, 2.0, 3.0)`` or ``wp.mat22h([[1.0, 0.0], [0.0, 1.0]])``).
+* Warp arrays and structs can be passed normally.
 
 .. _implicit_instantiation:
 
@@ -75,9 +80,8 @@ During each one of these launches, a new kernel instance is being generated, whi
 
 This leads to a couple of potential problems:
 
-    - The overhead of repeatedly rebuilding the modules can impact the overall performance of the program.
-
-    - Module reloading during graph capture is not allowed on older CUDA drivers, which will cause captures to fail.
+* The overhead of repeatedly rebuilding the modules can impact the overall performance of the program.
+* Module reloading during graph capture is not allowed on older CUDA drivers, which will cause captures to fail.
 
 Explicit instantiation can be used to overcome these issues.
 
@@ -158,7 +162,7 @@ Generic Functions
 
 Like Warp kernels, we can also define generic Warp functions:
 
-.. code:: python
+.. testcode::
 
     # generic function
     @wp.func
@@ -185,10 +189,21 @@ Like Warp kernels, we can also define generic Warp functions:
 
     # launch regular kernel
     wp.launch(square_float, dim=n, inputs=[af])
+    print(af)
 
     # launch generic kernel
     wp.launch(square_any, dim=n, inputs=[af])
+    print(af)
+
     wp.launch(square_any, dim=n, inputs=[ai])
+    print(ai)
+
+.. testoutput::
+
+    [ 1.  4.  9. 16. 25. 36. 49. 64. 81.]
+    [1.000e+00 1.600e+01 8.100e+01 2.560e+02 6.250e+02 1.296e+03 2.401e+03
+     4.096e+03 6.561e+03]
+    [ 1  4  9 16 25 36 49 64 81]
 
 A generic function can be used in regular and generic kernels.  It's not necessary to explicitly overload generic functions.  All required function overloads are generated automatically when those functions are used in kernels.
 
