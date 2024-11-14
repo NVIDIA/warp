@@ -26,7 +26,7 @@ Documentation = "https://nvidia.github.io/warp"
 Changelog = "https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = ["pre-commit", "ruff", "nvtx", "furo", "sphinx-copybutton", "coverage[toml]"]
+dev = ["pre-commit", "ruff", "nvtx", "nvidia-sphinx-theme", "sphinx-copybutton", "coverage[toml]"]
 extras = ['usd-core', 'matplotlib', 'pyglet']
 
 [tool.setuptools.packages.find]

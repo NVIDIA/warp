@@ -79,12 +79,6 @@ The following optional dependencies are required to support certain features:
 * `Paddle <https://github.com/PaddlePaddle/Paddle>`_: Required for Paddle interoperability (see :ref:`paddle-interop`).
 * `NVTX for Python <https://github.com/NVIDIA/NVTX#python>`_: Required to use :class:`wp.ScopedTimer(use_nvtx=True) <warp.ScopedTimer>`.
 
-Building the Warp documentation requires:
-
-* `Sphinx <https://www.sphinx-doc.org>`_
-* `Furo <https://github.com/pradyunsg/furo>`_
-* `Sphinx-copybutton <https://sphinx-copybutton.readthedocs.io/en/latest/index.html>`_
-
 Building from Source
 --------------------
 
