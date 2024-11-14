@@ -1,10 +1,4 @@
 <project toolsVersion="5.0">
-  <dependency name="msvc" linkPath="../_build/host-deps/msvc">
-    <package name="msvc" version="2019-16.11.24" platforms="windows-x86_64" />
-  </dependency>
-  <dependency name="winsdk" linkPath="../_build/host-deps/winsdk">
-    <package name="winsdk" version="10.17763" platforms="windows-x86_64"/>
-  </dependency>
   <dependency name="linbuild" linkPath="../_build/host-deps/linbuild">
     <package name="linbuild" version="3.3.3-${platform}" platforms="linux-x86_64 linux-aarch64" />
   </dependency>

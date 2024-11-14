@@ -1,11 +1,10 @@
 <project toolsVersion="5.0">
 
   <dependency name="python" linkPath="../_build/target-deps/python" tags="slim-package">
-    <package name="python" version="3.9.18+nv1-windows-x86_64" platforms="windows-x86_64"/>
-    <!-- https://teamcity.nvidia.com/project.html?projectId=Omniverse_Externals_Python -->
-    <package name="python" version="3.9.18+nv1-linux-x86_64" platforms="linux-x86_64"/>
-    <package name="python" version="3.9.16+nv1-linux-aarch64" platforms="linux-aarch64"/>
-    <package name="python" version="3.9.16+nv1-macos-universal" platforms="macos-x86_64"/>
+    <package name="python" version="3.10.15+nv3-windows-x86_64" platforms="windows-x86_64"/>
+    <package name="python" version="3.10.15+nv3-linux-x86_64" platforms="linux-x86_64"/>
+    <package name="python" version="3.10.13+nv2-linux-aarch64" platforms="linux-aarch64"/>
+    <package name="python" version="3.10.10+nv1-macos-universal" platforms="macos-x86_64"/>
   </dependency>
 
 </project>
