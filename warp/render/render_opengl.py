@@ -1062,7 +1062,6 @@ class OpenGLRenderer:
             self._camera_axis = up_axis
         else:
             self._camera_axis = "XYZ".index(up_axis.upper())
-        self._yaw, self._pitch = -90.0, 0.0
         self._last_x, self._last_y = self.screen_width // 2, self.screen_height // 2
         self._first_mouse = True
         self._left_mouse_pressed = False
@@ -1082,6 +1081,10 @@ class OpenGLRenderer:
         self._inv_model_matrix = np.linalg.inv(self._model_matrix.reshape(4, 4)).flatten()
         self.update_view_matrix(cam_pos=camera_pos, cam_front=camera_front, cam_up=camera_up)
         self.update_projection_matrix()
+
+        self._camera_front = self._camera_front.normalize()
+        self._pitch = np.rad2deg(np.asin(self._camera_front.y))
+        self._yaw = -np.rad2deg(np.acos(self._camera_front.x / np.cos(np.deg2rad(self._pitch))))
 
         self._frame_dt = 1.0 / fps
         self.time = 0.0
@@ -1146,6 +1149,7 @@ class OpenGLRenderer:
             self.window.push_handlers(on_draw=self._draw)
             self.window.push_handlers(on_resize=self._window_resize_callback)
             self.window.push_handlers(on_key_press=self._key_press_callback)
+            self.window.push_handlers(on_close=self._close_callback)
 
             self._key_handler = pyglet.window.key.KeyStateHandler()
             self.window.push_handlers(self._key_handler)
@@ -2049,6 +2053,9 @@ Instances: {len(self._instances)}"""
                 instancer.render()
 
         gl.glBindVertexArray(0)
+
+    def _close_callback(self):
+        self.close()
 
     def _mouse_drag_callback(self, x, y, dx, dy, buttons, modifiers):
         if not self.enable_mouse_interaction:
