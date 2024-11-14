@@ -19,6 +19,8 @@
 - warp.fem: Fixed tri-cubic shape functions on quadrilateral meshes
 - warp.fem: Fixed caching of integrand kernels when changing code-generation options
 - Fix `wp.expect_neq()` overloads missing for scalar types.
+- Fix the OpenGL renderer's window not closing when clicking the X button.
+- Fix the OpenGL renderer's camera snapping to a different direction from the initial camera's orientation when first looking around.
 
 ## [1.4.2] - 2024-11-13
 
