@@ -1,7 +1,7 @@
 from typing import Any, Optional
 
 import warp as wp
-from warp.fem.utils import array_axpy, symmetric_eigenvalues_qr
+from warp.fem.linalg import array_axpy, symmetric_eigenvalues_qr
 from warp.sparse import BsrMatrix, bsr_assign, bsr_axpy, bsr_copy, bsr_mm, bsr_mv
 from warp.types import type_is_matrix, type_length
 

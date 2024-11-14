@@ -1,6 +1,9 @@
+from typing import Any
+
 import warp as wp
+from warp.fem import cache
 from warp.fem.geometry import Geometry
-from warp.fem.types import Coords, DofIndex, ElementIndex, ElementKind
+from warp.fem.types import Coords, ElementIndex, ElementKind, Sample, make_free_sample
 
 from .topology import SpaceTopology
 
@@ -8,19 +11,39 @@ from .topology import SpaceTopology
 class FunctionSpace:
     """
     Interface class for function spaces, i.e. geometry + interpolation basis
+
+    The value of a function `f` at a position `x` is generally computed as
+      ``f(x) = L(x)[sum_i f_i N_i(x)]``
+    with:
+        - ``f_i`` the value of the ith node's degrees-of-freedom (dof)
+        - ``N_i(x)`` the weight associated to the node at `x`
+        - ``L(x)`` local linear transformation from node-space to world-space
     """
 
     dtype: type
     """Value type of the interpolation functions"""
 
+    dof_dtype: type
+    """Data type of the degrees of freedom of each node"""
+
     SpaceArg: wp.codegen.Struct
     """Structure containing arguments to be passed to device function"""
 
+    LocalValueMap: type
+    """Type of the local map for transforming vector-valued functions from reference to world space"""
+
     VALUE_DOF_COUNT: int
+    """Number of degrees of freedom per value, as a Warp constant"""
+
+    NODE_DOF_COUNT: int
     """Number of degrees of freedom per node, as a Warp constant"""
+
+    ORDER: int
+    """Polynomial degree of the function space, used to determine integration order"""
 
     def __init__(self, topology: SpaceTopology):
         self._topology = topology
+        self.ElementArg = self.topology.ElementArg
 
         if self._topology.is_trace:
             self.element_inner_reference_gradient_transform = self.geometry.side_inner_inverse_deformation_gradient
@@ -31,7 +54,7 @@ class FunctionSpace:
 
     def node_count(self) -> int:
         """Number of nodes in the interpolation basis"""
-        raise NotImplementedError
+        return self.topology.node_count()
 
     def space_arg_value(self, device) -> wp.codegen.StructInstance:
         """Value of the arguments to be passed to device functions"""
@@ -60,7 +83,7 @@ class FunctionSpace:
     @property
     def degree(self) -> int:
         """Maximum polynomial degree of the underlying basis"""
-        raise NotImplementedError
+        return self.ORDER
 
     @property
     def name(self):
@@ -83,9 +106,50 @@ class FunctionSpace:
         """
         raise NotImplementedError
 
+    def gradient_valid(self) -> bool:
+        """Whether gradient operator can be computed. Only for scalar and vector fields as higher-order tensors are not support yet"""
+        return not wp.types.type_is_matrix(self.dtype)
+
+    def divergence_valid(self) -> bool:
+        """Whether divergence of this field can be computed. Only for vector and tensor fields with same dimension as embedding geometry"""
+        if wp.types.type_is_vector(self.dtype):
+            return wp.types.type_length(self.dtype) == self.geometry.dimension
+        if wp.types.type_is_matrix(self.dtype):
+            return self.dtype._shape_[0] == self.geometry.dimension
+        return False
+
     @staticmethod
-    def unit_dof_value(elt_arg: "SpaceTopology.ElementArg", space_arg: "SpaceArg", dof: DofIndex):  # noqa: F821
-        """Unit value for a given degree of freedom. Typically a rank-1 tensor"""
+    def node_basis_element(dof_coord: int):
+        """Basis element for node degrees of freedom.
+
+        Assumes 0 <= dof_coord < NODE_DOF_COUNT
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    def value_basis_element(dof_coord: int):
+        """Basis element for the function space values
+
+        Assumes 0 <= dof_coord < VALUE_DOF_COUNT
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    def local_value_map_inner(
+        elt_arg: "SpaceTopology.ElementArg",
+        element_index: ElementIndex,
+        coords: Coords,
+    ):
+        """Builds the local value map transforming from node to world space"""
+        raise NotImplementedError
+
+    @staticmethod
+    def local_value_map_outer(
+        elt_arg: "SpaceTopology.ElementArg",
+        element_index: ElementIndex,
+        coords: Coords,
+    ):
+        """Builds the local value map transforming vector-valued from node to world space"""
         raise NotImplementedError
 
     @staticmethod
@@ -151,3 +215,80 @@ class FunctionSpace:
     ):
         """Outer weight gradient w.r.t reference space for a node at given coordinates"""
         raise NotImplementedError
+
+    def space_value(
+        dof_value: "FunctionSpace.dof_dtype",
+        node_weight: Any,
+        local_value_map: "FunctionSpace.LocalValueMap",
+    ):
+        """
+        Assembles the world-space value of the function space
+        Args:
+         - dof_value: node value in the degrees-of-freedom basis
+         - node_weight: weight associated to the node, as given per `element_(inn|out)er_weight`
+         - local_value_map: local transformation from node space to world space, as given per `local_map_value_(inn|out)er`
+        """
+        raise NotADirectoryError
+
+    def space_gradient(
+        dof_value: "FunctionSpace.dof_dtype",
+        node_weight: Any,
+        local_value_map: "FunctionSpace.LocalValueMap",
+        grad_transform: Any,
+    ):
+        """
+        Assembles the world-space gradient of the function space
+        Args:
+         - dof_value: node value in the degrees-of-freedom basis
+         - node_weight_gradient: gradient of the weight associated to the node, as given per `element_(inn|out)er_weight_gradient`
+         - local_value_map: local transformation from node space to world space, as given per `local_map_value_(inn|out)er`
+         - grad_transform: transform mapping the reference space gradient to worls-space gradient (inverse deformation gradient)
+        """
+        raise NotImplementedError
+
+    def space_divergence(
+        dof_value: "FunctionSpace.dof_dtype",
+        node_weight: Any,
+        local_value_map: "FunctionSpace.LocalValueMap",
+        grad_transform: Any,
+    ):
+        """ "
+        Assembles the world-space divergence of the function space
+        Args:
+         - dof_value: node value in the degrees-of-freedom basis
+         - node_weight_gradient: gradient of the weight associated to the node, as given per `element_(inn|out)er_weight_gradient`
+         - local_value_map: local transformation from node space to world space, as given per `local_map_value_(inn|out)er`
+         - grad_transform: transform mapping the reference space gradient to worls-space gradient (inverse deformation gradient)
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    def node_dof_value(
+        elt_arg: "FunctionSpace.ElementArg",
+        space_arg: "FunctionSpace.SpaceArg",
+        element_index: ElementIndex,
+        node_index_in_elt: int,
+        space_value: "FunctionSpace.dtype",
+    ):
+        """Converts space value to node degrees of freedom"""
+        raise NotImplementedError
+
+    def _make_side_inner_inverse_deformation_gradient(self):
+        @cache.dynamic_func(suffix=self.name)
+        def side_inner_inverse_deformation_gradient(args: self.ElementArg, s: Sample):
+            cell_index = self.side_inner_cell_index(args, s.element_index)
+            cell_coords = self.side_inner_cell_coords(args, s.element_index, s.element_coords)
+            cell_arg = self.side_to_cell_arg(args)
+            return self.geometry.cell_inverse_deformation_gradient(cell_arg, make_free_sample(cell_index, cell_coords))
+
+        return side_inner_inverse_deformation_gradient
+
+    def _make_side_outer_inverse_deformation_gradient(self):
+        @cache.dynamic_func(suffix=self.name)
+        def side_outer_inverse_deformation_gradient(args: self.ElementArg, s: Sample):
+            cell_index = self.side_outer_cell_index(args, s.element_index)
+            cell_coords = self.side_outer_cell_coords(args, s.element_index, s.element_coords)
+            cell_arg = self.side_to_cell_arg(args)
+            return self.geometry.cell_inverse_deformation_gradient(cell_arg, make_free_sample(cell_index, cell_coords))
+
+        return side_outer_inverse_deformation_gradient

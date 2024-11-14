@@ -12,6 +12,8 @@
 # grid and the PicQuadrature class.
 ###########################################################################
 
+from typing import Any
+
 import numpy as np
 
 import warp as wp
@@ -123,7 +125,7 @@ def scalar_vector_multiply(
 @wp.kernel
 def scale_transposed_divergence_mat(
     tr_divergence_mat_offsets: wp.array(dtype=int),
-    tr_divergence_mat_values: wp.array(dtype=wp.mat(shape=(3, 1), dtype=float)),
+    tr_divergence_mat_values: wp.array(dtype=Any),
     inv_fraction_int: wp.array(dtype=float),
 ):
     # In-place scaling of gradient operator rows with inverse mass

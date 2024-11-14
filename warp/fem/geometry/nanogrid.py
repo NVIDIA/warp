@@ -4,6 +4,7 @@ import numpy as np
 
 import warp as wp
 from warp.fem import cache, utils
+from warp.fem.linalg import basis_element
 from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
 
 from .element import Cube, Square
@@ -300,8 +301,8 @@ class Nanogrid(Geometry):
 
     @wp.func
     def _face_tangent_vecs(cell_grid: wp.uint64, axis: int, flip: int):
-        u_axis = utils.unit_element(wp.vec3(), (axis + 1 + flip) % 3)
-        v_axis = utils.unit_element(wp.vec3(), (axis + 2 - flip) % 3)
+        u_axis = basis_element(wp.vec3(), (axis + 1 + flip) % 3)
+        v_axis = basis_element(wp.vec3(), (axis + 2 - flip) % 3)
 
         return wp.volume_index_to_world_dir(cell_grid, u_axis), wp.volume_index_to_world_dir(cell_grid, v_axis)
 

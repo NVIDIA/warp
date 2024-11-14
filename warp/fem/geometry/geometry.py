@@ -39,6 +39,11 @@ class Geometry:
         raise NotImplementedError
 
     @property
+    def cell_dimension(self) -> int:
+        """Manifold dimension of the geometry cells"""
+        return self.reference_cell().dimension
+
+    @property
     def name(self) -> str:
         return self.__class__.__name__
 
@@ -70,7 +75,7 @@ class Geometry:
         raise NotImplementedError
 
     @staticmethod
-    def cell_inverse_deformation_gradient(args: "Geometry.CellArg", cell_index: ElementIndex, coords: Coords):
+    def cell_inverse_deformation_gradient(args: "Geometry.CellArg", s: "Sample"):
         """Device function returning the matrix right-transforming a gradient w.r.t. cell space to a gradient w.r.t. world space
         (i.e. the inverse deformation gradient)
         """

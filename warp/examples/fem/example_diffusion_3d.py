@@ -147,9 +147,7 @@ class Example:
 
             # Pick boundary conditions depending on whether our geometry is a 3d surface or a volume
             boundary_projector_form = (
-                vertical_boundary_projector_form
-                if self._geo.reference_cell().dimension == 3
-                else y_boundary_projector_form
+                vertical_boundary_projector_form if self._geo.cell_dimension == 3 else y_boundary_projector_form
             )
             bd_matrix = fem.integrate(boundary_projector_form, fields={"u": bd_trial, "v": bd_test}, nodal=True)
 

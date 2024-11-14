@@ -2,6 +2,7 @@ from typing import Any
 
 import warp as wp
 from warp.fem import cache, domain
+from warp.fem.geometry import Element
 from warp.fem.space import FunctionSpace
 from warp.fem.types import Coords, ElementIndex
 
@@ -77,6 +78,38 @@ class Quadrature:
 class RegularQuadrature(Quadrature):
     """Regular quadrature formula, using a constant set of quadrature points per element"""
 
+    @wp.struct
+    class Arg:
+        # Quadrature points and weights used to be passed as Warp constants,
+        # but this tended to incur register spilling for high point counts
+        points: wp.array(dtype=Coords)
+        weights: wp.array(dtype=float)
+
+    # Cache common formulas so we do dot have to do h2d trasnfer for each call
+    class CachedFormula:
+        _cache = {}
+
+        def __init__(self, element: Element, order: int, family: Polynomial):
+            self.points, self.weights = element.instantiate_quadrature(order, family)
+            self.count = wp.constant(len(self.points))
+
+        @cache.cached_arg_value
+        def arg_value(self, device):
+            arg = RegularQuadrature.Arg()
+            arg.points = wp.array(self.points, device=device, dtype=Coords)
+            arg.weights = wp.array(self.weights, device=device, dtype=float)
+            return arg
+
+        @staticmethod
+        def get(element: Element, order: int, family: Polynomial):
+            key = (element.__class__.__name__, order, family)
+            try:
+                return RegularQuadrature.CachedFormula._cache[key]
+            except KeyError:
+                quadrature = RegularQuadrature.CachedFormula(element, order, family)
+                RegularQuadrature.CachedFormula._cache[key] = quadrature
+                return quadrature
+
     def __init__(
         self,
         domain: domain.GeometryDomain,
@@ -88,15 +121,7 @@ class RegularQuadrature(Quadrature):
         self.family = family
         self.order = order
 
-        self._element_quadrature = domain.reference_element().instantiate_quadrature(order, family)
-
-        self._N = wp.constant(len(self.points))
-
-        WeightVec = wp.vec(length=self._N, dtype=wp.float32)
-        CoordMat = wp.mat(shape=(self._N, 3), dtype=wp.float32)
-
-        self._POINTS = wp.constant(CoordMat(self.points))
-        self._WEIGHTS = wp.constant(WeightVec(self.weights))
+        self._formula = RegularQuadrature.CachedFormula.get(domain.reference_element(), order, family)
 
         self.point_count = self._make_point_count()
         self.point_index = self._make_point_index()
@@ -108,21 +133,24 @@ class RegularQuadrature(Quadrature):
         return f"{self.__class__.__name__}_{self.domain.name}_{self.family}_{self.order}"
 
     def total_point_count(self):
-        return len(self.points) * self.domain.geometry_element_count()
+        return self._formula.count * self.domain.element_count()
 
     def max_points_per_element(self):
-        return self._N
+        return self._formula.count
 
     @property
     def points(self):
-        return self._element_quadrature[0]
+        return self._formula.points
 
     @property
     def weights(self):
-        return self._element_quadrature[1]
+        return self._formula.weights
+
+    def arg_value(self, device):
+        return self._formula.arg_value(device)
 
     def _make_point_count(self):
-        N = self._N
+        N = self._formula.count
 
         @cache.dynamic_func(suffix=self.name)
         def point_count(
@@ -136,8 +164,6 @@ class RegularQuadrature(Quadrature):
         return point_count
 
     def _make_point_coords(self):
-        POINTS = self._POINTS
-
         @cache.dynamic_func(suffix=self.name)
         def point_coords(
             elt_arg: self.domain.ElementArg,
@@ -146,13 +172,11 @@ class RegularQuadrature(Quadrature):
             element_index: ElementIndex,
             qp_index: int,
         ):
-            return Coords(POINTS[qp_index, 0], POINTS[qp_index, 1], POINTS[qp_index, 2])
+            return qp_arg.points[qp_index]
 
         return point_coords
 
     def _make_point_weight(self):
-        WEIGHTS = self._WEIGHTS
-
         @cache.dynamic_func(suffix=self.name)
         def point_weight(
             elt_arg: self.domain.ElementArg,
@@ -161,12 +185,12 @@ class RegularQuadrature(Quadrature):
             element_index: ElementIndex,
             qp_index: int,
         ):
-            return WEIGHTS[qp_index]
+            return qp_arg.weights[qp_index]
 
         return point_weight
 
     def _make_point_index(self):
-        N = self._N
+        N = self._formula.count
 
         @cache.dynamic_func(suffix=self.name)
         def point_index(

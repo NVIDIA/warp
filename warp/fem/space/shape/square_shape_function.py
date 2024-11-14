@@ -7,16 +7,48 @@ from warp.fem import cache
 from warp.fem.polynomial import Polynomial, is_closed, lagrange_scales, quadrature_1d
 from warp.fem.types import Coords
 
+from .shape_function import ShapeFunction
 from .triangle_shape_function import TrianglePolynomialShapeFunctions
 
 
-class SquareBipolynomialShapeFunctions:
+class SquareShapeFunction(ShapeFunction):
+    VERTEX = 0
+    EDGE_X = 1
+    EDGE_Y = 2
+    INTERIOR = 3
+
+    VERTEX_NODE_COUNT: int
+    """Number of shape function nodes per vertex"""
+
+    EDGE_NODE_COUNT: int
+    """Number of shape function nodes per triangle edge (excluding vertex nodes)"""
+
+    INTERIOR_NODE_COUNT: int
+    """Number of shape function nodes per triangle (excluding edge and vertex nodes)"""
+
+    @wp.func
+    def _vertex_coords_f(vidx_in_cell: int):
+        x = vidx_in_cell // 2
+        y = vidx_in_cell - 2 * x
+        return wp.vec2(float(x), float(y))
+
+
+class SquareBipolynomialShapeFunctions(SquareShapeFunction):
     def __init__(self, degree: int, family: Polynomial):
         self.family = family
 
         self.ORDER = wp.constant(degree)
         self.NODES_PER_ELEMENT = wp.constant((degree + 1) * (degree + 1))
         self.NODES_PER_SIDE = wp.constant(degree + 1)
+
+        if is_closed(self.family):
+            self.VERTEX_NODE_COUNT = wp.constant(1)
+            self.EDGE_NODE_COUNT = wp.constant(max(0, degree - 1))
+            self.INTERIOR_NODE_COUNT = wp.constant(max(0, degree - 1) ** 2)
+        else:
+            self.VERTEX_NODE_COUNT = wp.constant(0)
+            self.EDGE_NODE_COUNT = wp.constant(0)
+            self.INTERIOR_NODE_COUNT = self.NODES_PER_ELEMENT
 
         lobatto_coords, lobatto_weight = quadrature_1d(point_count=degree + 1, family=family)
         lagrange_scale = lagrange_scales(lobatto_coords)
@@ -27,20 +59,72 @@ class SquareBipolynomialShapeFunctions:
         self.LAGRANGE_SCALE = wp.constant(NodeVec(lagrange_scale))
         self.ORDER_PLUS_ONE = wp.constant(self.ORDER + 1)
 
+        self._node_ij = self._make_node_ij()
+        self.node_type_and_type_index = self._make_node_type_and_type_index()
+
     @property
     def name(self) -> str:
         return f"Square_Q{self.ORDER}_{self.family}"
 
-    def make_node_coords_in_element(self):
+    def _make_node_ij(self):
+        ORDER_PLUS_ONE = self.ORDER_PLUS_ONE
+
+        def node_ij(node_index_in_elt: int):
+            node_i = node_index_in_elt // ORDER_PLUS_ONE
+            node_j = node_index_in_elt - ORDER_PLUS_ONE * node_i
+            return node_i, node_j
+
+        return cache.get_func(node_ij, self.name)
+
+    def _make_node_type_and_type_index(self):
         ORDER = self.ORDER
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_type_and_type_index_open(
+            node_index_in_elt: int,
+        ):
+            return SquareShapeFunction.INTERIOR, 0, node_index_in_elt
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_type_and_type_index(
+            node_index_in_elt: int,
+        ):
+            i, j = self._node_ij(node_index_in_elt)
+
+            zi = int(i == 0)
+            zj = int(j == 0)
+
+            mi = int(i == ORDER)
+            mj = int(j == ORDER)
+
+            if zi + mi == 1:
+                if zj + mj == 1:
+                    # vertex
+                    type_instance = mi * 2 + mj
+                    return SquareShapeFunction.VERTEX, type_instance, 0
+                # y edge
+                type_index = j - 1
+                type_instance = mi
+                return SquareShapeFunction.EDGE_Y, type_instance, type_index
+            elif zj + mj == 1:
+                # x edge
+                type_index = i - 1
+                type_instance = mj
+                return SquareShapeFunction.EDGE_X, type_instance, type_index
+
+            type_index = (i - 1) * (ORDER - 1) + (j - 1)
+            return SquareShapeFunction.INTERIOR, 0, type_index
+
+        return node_type_and_type_index if is_closed(self.family) else node_type_and_type_index_open
+
+    def make_node_coords_in_element(self):
         LOBATTO_COORDS = self.LOBATTO_COORDS
 
         @cache.dynamic_func(suffix=self.name)
         def node_coords_in_element(
             node_index_in_elt: int,
         ):
-            node_i = node_index_in_elt // (ORDER + 1)
-            node_j = node_index_in_elt - (ORDER + 1) * node_i
+            node_i, node_j = self._node_ij(node_index_in_elt)
             return Coords(LOBATTO_COORDS[node_i], LOBATTO_COORDS[node_j], 0.0)
 
         return node_coords_in_element
@@ -52,8 +136,7 @@ class SquareBipolynomialShapeFunctions:
         def node_quadrature_weight(
             node_index_in_elt: int,
         ):
-            node_i = node_index_in_elt // (ORDER + 1)
-            node_j = node_index_in_elt - (ORDER + 1) * node_i
+            node_i, node_j = self._node_ij(node_index_in_elt)
             return LOBATTO_WEIGHT[node_i] * LOBATTO_WEIGHT[node_j]
 
         def node_quadrature_weight_linear(
@@ -66,12 +149,6 @@ class SquareBipolynomialShapeFunctions:
 
         return cache.get_func(node_quadrature_weight, self.name)
 
-    @wp.func
-    def _vertex_coords_f(vidx_in_cell: int):
-        x = vidx_in_cell // 2
-        y = vidx_in_cell - 2 * x
-        return wp.vec2(float(x), float(y))
-
     def make_trace_node_quadrature_weight(self):
         ORDER = self.ORDER
         LOBATTO_WEIGHT = self.LOBATTO_WEIGHT
@@ -82,11 +159,10 @@ class SquareBipolynomialShapeFunctions:
             # We're either on a side interior or at a vertex
             # I.e., either both indices are at extrema, or only one is
             # Pick the interior one if possible, if both are at extrema pick any one
-            node_i = node_index_in_elt // (ORDER + 1)
+            node_i, node_j = self._node_ij(node_index_in_elt)
             if node_i > 0 and node_i < ORDER:
                 return LOBATTO_WEIGHT[node_i]
 
-            node_j = node_index_in_elt - (ORDER + 1) * node_i
             return LOBATTO_WEIGHT[node_j]
 
         def trace_node_quadrature_weight_linear(
@@ -116,8 +192,7 @@ class SquareBipolynomialShapeFunctions:
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_i = node_index_in_elt // ORDER_PLUS_ONE
-            node_j = node_index_in_elt - ORDER_PLUS_ONE * node_i
+            node_i, node_j = self._node_ij(node_index_in_elt)
 
             w = float(1.0)
             for k in range(ORDER_PLUS_ONE):
@@ -154,8 +229,7 @@ class SquareBipolynomialShapeFunctions:
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_i = node_index_in_elt // ORDER_PLUS_ONE
-            node_j = node_index_in_elt - ORDER_PLUS_ONE * node_i
+            node_i, node_j = self._node_ij(node_index_in_elt)
 
             prefix_x = float(1.0)
             prefix_y = float(1.0)
@@ -232,17 +306,12 @@ class SquareBipolynomialShapeFunctions:
         return np.concatenate(cells)[np.newaxis, :], np.array([cell_type], dtype=np.int8)
 
 
-class SquareSerendipityShapeFunctions:
+class SquareSerendipityShapeFunctions(SquareShapeFunction):
     """
     Serendipity element ~ tensor product space without interior nodes
     Side shape functions are usual Lagrange shape functions times a linear function in the normal direction
     Corner shape functions are bilinear shape functions times a function of (x^{d-1} + y^{d-1})
     """
-
-    # Node categories
-    VERTEX = wp.constant(0)
-    EDGE_X = wp.constant(1)
-    EDGE_Y = wp.constant(2)
 
     def __init__(self, degree: int, family: Polynomial):
         if not is_closed(family):
@@ -256,6 +325,10 @@ class SquareSerendipityShapeFunctions:
         self.ORDER = wp.constant(degree)
         self.NODES_PER_ELEMENT = wp.constant(4 * degree)
         self.NODES_PER_SIDE = wp.constant(degree + 1)
+
+        self.VERTEX_NODE_COUNT = wp.constant(1)
+        self.EDGE_NODE_COUNT = wp.constant(degree - 1)
+        self.INTERIOR_NODE_COUNT = wp.constant(0)
 
         lobatto_coords, lobatto_weight = quadrature_1d(point_count=degree + 1, family=family)
         lagrange_scale = lagrange_scales(lobatto_coords)
@@ -279,39 +352,33 @@ class SquareSerendipityShapeFunctions:
             node_index_in_elt: int,
         ):
             if node_index_in_elt < 4:
-                return SquareSerendipityShapeFunctions.VERTEX, node_index_in_elt
+                return SquareSerendipityShapeFunctions.VERTEX, node_index_in_elt, 0
 
-            type_index = (node_index_in_elt - 4) // 2
-            side = node_index_in_elt - 4 - 2 * type_index
-            return SquareSerendipityShapeFunctions.EDGE_X + side, type_index
+            edge_index = (node_index_in_elt - 4) // 2
+            edge_axis = node_index_in_elt - 4 - 2 * edge_index
+
+            index_in_side = edge_index // 2
+            side_offset = edge_index - 2 * index_in_side
+            return SquareSerendipityShapeFunctions.EDGE_X + edge_axis, side_offset, index_in_side
 
         return node_type_and_index
-
-    @wp.func
-    def side_offset_and_index(type_index: int):
-        index_in_side = type_index // 2
-        side_offset = type_index - 2 * index_in_side
-
-        return side_offset, index_in_side
 
     def _get_node_lobatto_indices(self):
         ORDER = self.ORDER
 
         @cache.dynamic_func(suffix=self.name)
-        def node_lobatto_indices(node_type: int, type_index: int):
+        def node_lobatto_indices(node_type: int, type_instance: int, type_index: int):
             if node_type == SquareSerendipityShapeFunctions.VERTEX:
-                node_i = type_index // 2
-                node_j = type_index - 2 * node_i
+                node_i = type_instance // 2
+                node_j = type_instance - 2 * node_i
                 return node_i * ORDER, node_j * ORDER
 
-            side_offset, index_in_side = SquareSerendipityShapeFunctions.side_offset_and_index(type_index)
-
             if node_type == SquareSerendipityShapeFunctions.EDGE_X:
-                node_i = 1 + index_in_side
-                node_j = side_offset * ORDER
+                node_i = 1 + type_index
+                node_j = type_instance * ORDER
             else:
-                node_j = 1 + index_in_side
-                node_i = side_offset * ORDER
+                node_j = 1 + type_index
+                node_i = type_instance * ORDER
 
             return node_i, node_j
 
@@ -324,8 +391,8 @@ class SquareSerendipityShapeFunctions:
         def node_coords_in_element(
             node_index_in_elt: int,
         ):
-            node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
-            node_i, node_j = self._node_lobatto_indices(node_type, type_index)
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_i, node_j = self._node_lobatto_indices(node_type, type_instance, type_index)
             return Coords(LOBATTO_COORDS[node_i], LOBATTO_COORDS[node_j], 0.0)
 
         return node_coords_in_element
@@ -337,7 +404,7 @@ class SquareSerendipityShapeFunctions:
         def node_quadrature_weight(
             node_index_in_elt: int,
         ):
-            node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
             if node_type == SquareSerendipityShapeFunctions.VERTEX:
                 return 0.25 / float(ORDER * ORDER)
 
@@ -352,12 +419,11 @@ class SquareSerendipityShapeFunctions:
         def trace_node_quadrature_weight(
             node_index_in_elt: int,
         ):
-            node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
             if node_type == SquareSerendipityShapeFunctions.VERTEX:
                 return LOBATTO_WEIGHT[0]
 
-            side_offset, index_in_side = SquareSerendipityShapeFunctions.side_offset_and_index(type_index)
-            return LOBATTO_WEIGHT[1 + index_in_side]
+            return LOBATTO_WEIGHT[1 + type_index]
 
         return trace_node_quadrature_weight
 
@@ -376,9 +442,8 @@ class SquareSerendipityShapeFunctions:
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
-
-            node_i, node_j = self._node_lobatto_indices(node_type, type_index)
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_i, node_j = self._node_lobatto_indices(node_type, type_instance, type_index)
 
             if node_type == SquareSerendipityShapeFunctions.VERTEX:
                 cx = wp.select(node_i == 0, coords[0], 1.0 - coords[0])
@@ -429,9 +494,8 @@ class SquareSerendipityShapeFunctions:
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
-
-            node_i, node_j = self._node_lobatto_indices(node_type, type_index)
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_i, node_j = self._node_lobatto_indices(node_type, type_instance, type_index)
 
             if node_type == SquareSerendipityShapeFunctions.VERTEX:
                 cx = wp.select(node_i == 0, coords[0], 1.0 - coords[0])
@@ -533,7 +597,7 @@ class SquareSerendipityShapeFunctions:
         return tris, np.full(tris.shape[0], cell_type, dtype=np.int8)
 
 
-class SquareNonConformingPolynomialShapeFunctions:
+class SquareNonConformingPolynomialShapeFunctions(ShapeFunction):
     # embeds the largest equilateral triangle centered at (0.5, 0.5) into the reference square
     _tri_height = 0.75
     _tri_side = 2.0 / math.sqrt(3.0) * _tri_height
@@ -639,5 +703,209 @@ class SquareNonConformingPolynomialShapeFunctions:
 
             grad = tri_inner_weight_gradient(tri_coords, node_index_in_elt)
             return wp.transpose(SQUARE_TO_TRI) * grad
+
+        return element_inner_weight_gradient
+
+
+class SquareNedelecFirstKindShapeFunctions(SquareShapeFunction):
+    value = ShapeFunction.Value.CovariantVector
+
+    def __init__(self, degree: int):
+        if degree != 1:
+            raise NotImplementedError("Only linear Nédélec implemented right now")
+
+        self.ORDER = wp.constant(degree)
+        self.NODES_PER_ELEMENT = wp.constant(4)
+        self.NODES_PER_SIDE = wp.constant(1)
+
+        self.VERTEX_NODE_COUNT = wp.constant(0)
+        self.EDGE_NODE_COUNT = wp.constant(1)
+        self.INTERIOR_NODE_COUNT = wp.constant(0)
+
+        self.node_type_and_type_index = self._get_node_type_and_type_index()
+
+    @property
+    def name(self) -> str:
+        return f"SquareN1_{self.ORDER}"
+
+    def _get_node_type_and_type_index(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_type_and_index(
+            node_index_in_elt: int,
+        ):
+            axis = node_index_in_elt // 2
+            offset = node_index_in_elt - 2 * axis
+            return SquareShapeFunction.EDGE_X + axis, offset, 0
+
+        return node_type_and_index
+
+    def make_node_coords_in_element(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_coords_in_element(
+            node_index_in_elt: int,
+        ):
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            axis = node_type - SquareShapeFunction.EDGE_X
+
+            coords = Coords()
+            coords[axis] = 0.5
+            coords[1 - axis] = float(type_instance)
+
+        return node_coords_in_element
+
+    def make_node_quadrature_weight(self):
+        NODES_PER_ELEMENT = self.NODES_PER_ELEMENT
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_quadrature_weight(node_index_in_element: int):
+            return 1.0 / float(NODES_PER_ELEMENT)
+
+        return node_quadrature_weight
+
+    def make_trace_node_quadrature_weight(self):
+        NODES_PER_SIDE = self.NODES_PER_SIDE
+
+        @cache.dynamic_func(suffix=self.name)
+        def trace_node_quadrature_weight(node_index_in_element: int):
+            return 1.0 / float(NODES_PER_SIDE)
+
+        return trace_node_quadrature_weight
+
+    def make_element_inner_weight(self):
+        @cache.dynamic_func(suffix=self.name)
+        def element_inner_weight(
+            coords: Coords,
+            node_index_in_elt: int,
+        ):
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+
+            axis = node_type - SquareShapeFunction.EDGE_X
+            a = float(2 * type_instance - 1)
+            b = float(1 - type_instance)
+
+            w = wp.vec2(0.0)
+            w[axis] = b + a * coords[1 - axis]
+
+            return w
+
+        return element_inner_weight
+
+    def make_element_inner_weight_gradient(self):
+        @cache.dynamic_func(suffix=self.name)
+        def element_inner_weight_gradient(
+            coords: Coords,
+            node_index_in_elt: int,
+        ):
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+
+            axis = node_type - SquareShapeFunction.EDGE_X
+            a = float(2 * type_instance - 1)
+
+            grad = wp.mat22(0.0)
+            grad[axis, 1 - axis] = a
+
+            return grad
+
+        return element_inner_weight_gradient
+
+
+class SquareRaviartThomasShapeFunctions(SquareShapeFunction):
+    value = ShapeFunction.Value.ContravariantVector
+
+    def __init__(self, degree: int):
+        if degree != 1:
+            raise NotImplementedError("Only linear Nédélec implemented right now")
+
+        self.ORDER = wp.constant(degree)
+        self.NODES_PER_ELEMENT = wp.constant(4)
+        self.NODES_PER_SIDE = wp.constant(1)
+
+        self.VERTEX_NODE_COUNT = wp.constant(0)
+        self.EDGE_NODE_COUNT = wp.constant(1)
+        self.INTERIOR_NODE_COUNT = wp.constant(0)
+
+        self.node_type_and_type_index = self._get_node_type_and_type_index()
+
+    @property
+    def name(self) -> str:
+        return f"SquareRT_{self.ORDER}"
+
+    def _get_node_type_and_type_index(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_type_and_index(
+            node_index_in_elt: int,
+        ):
+            axis = node_index_in_elt // 2
+            offset = node_index_in_elt - 2 * axis
+            return SquareShapeFunction.EDGE_X + axis, offset, 0
+
+        return node_type_and_index
+
+    def make_node_coords_in_element(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_coords_in_element(
+            node_index_in_elt: int,
+        ):
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            axis = node_type - SquareShapeFunction.EDGE_X
+
+            coords = Coords()
+            coords[axis] = 0.5
+            coords[1 - axis] = float(type_instance)
+
+        return node_coords_in_element
+
+    def make_node_quadrature_weight(self):
+        NODES_PER_ELEMENT = self.NODES_PER_ELEMENT
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_quadrature_weight(node_index_in_element: int):
+            return 1.0 / float(NODES_PER_ELEMENT)
+
+        return node_quadrature_weight
+
+    def make_trace_node_quadrature_weight(self):
+        NODES_PER_SIDE = self.NODES_PER_SIDE
+
+        @cache.dynamic_func(suffix=self.name)
+        def trace_node_quadrature_weight(node_index_in_element: int):
+            return 1.0 / float(NODES_PER_SIDE)
+
+        return trace_node_quadrature_weight
+
+    def make_element_inner_weight(self):
+        @cache.dynamic_func(suffix=self.name)
+        def element_inner_weight(
+            coords: Coords,
+            node_index_in_elt: int,
+        ):
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+
+            axis = node_type - SquareShapeFunction.EDGE_X
+            a = float(2 * type_instance - 1)
+            b = float(1 - type_instance)
+
+            w = wp.vec2(0.0)
+            w[1 - axis] = b + a * coords[1 - axis]
+
+            return w
+
+        return element_inner_weight
+
+    def make_element_inner_weight_gradient(self):
+        @cache.dynamic_func(suffix=self.name)
+        def element_inner_weight_gradient(
+            coords: Coords,
+            node_index_in_elt: int,
+        ):
+            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+
+            axis = node_type - SquareShapeFunction.EDGE_X
+            a = float(2 * type_instance - 1)
+
+            grad = wp.mat22(0.0)
+            grad[1 - axis, 1 - axis] = a
+
+            return grad
 
         return element_inner_weight_gradient

@@ -7,20 +7,20 @@ import numpy as np
 class Polynomial(Enum):
     """Polynomial family defining interpolation nodes over an interval"""
 
-    GAUSS_LEGENDRE = 0
+    GAUSS_LEGENDRE = "GL"
     """Gauss--Legendre 1D polynomial family (does not include endpoints)"""
 
-    LOBATTO_GAUSS_LEGENDRE = 1
+    LOBATTO_GAUSS_LEGENDRE = "LGL"
     """Lobatto--Gauss--Legendre 1D polynomial family (includes endpoints)"""
 
-    EQUISPACED_CLOSED = 2
+    EQUISPACED_CLOSED = "closed"
     """Closed 1D polynomial family with uniformly distributed nodes (includes endpoints)"""
 
-    EQUISPACED_OPEN = 3
+    EQUISPACED_OPEN = "open"
     """Open 1D polynomial family with uniformly distributed nodes (does not include endpoints)"""
 
     def __str__(self):
-        return self.name
+        return self.value
 
 
 def is_closed(family: Polynomial):

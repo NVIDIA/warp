@@ -67,7 +67,7 @@ Basic Workflow
 The typical steps for solving a linearized PDE with ``warp.fem`` are as follow:
 
  - Define a :class:`.Geometry` (grid, mesh, etc). At the moment, 2D and 3D regular grids, NanoVDB volumes, and triangle, quadrilateral, tetrahedron and hexahedron unstructured meshes are supported.
- - Define one or more :class:`.FunctionSpace`, by equipping the geometry elements with shape functions. See :func:`.make_polynomial_space`. At the moment, continuous/discontinuous Lagrange (:math:`P_{k[d]}, Q_{k[d]}`) and Serendipity (:math:`S_k`) shape functions of order :math:`k \leq 3` are supported.
+ - Define one or more :class:`.FunctionSpace`, by equipping the geometry elements with shape functions. See :func:`.make_polynomial_space`. At the moment, continuous/discontinuous Lagrange (:math:`P_{k[d]}, Q_{k[d]}`) and Serendipity (:math:`S_k`) shape functions of order :math:`k \leq 3` are supported, as well as linear Nédélec (first kind) and Raviart-Thomas vector-valued shape functions.
  - Define an integration domain, for instance the geometry's cells (:class:`.Cells`) or boundary sides (:class:`.BoundarySides`).
  - Integrate linear forms to build the system's right-hand-side. Define a test function over the function space using :func:`.make_test`,
    a :class:`.Quadrature` formula (or let the module choose one based on the function space degree), and call :func:`.integrate` with the linear form integrand.
@@ -422,6 +422,8 @@ Function Spaces
 .. autofunction:: make_polynomial_basis_space
 
 .. autofunction:: make_collocated_function_space
+.. autofunction:: make_covariant_function_space
+.. autofunction:: make_contravariant_function_space
 
 .. autofunction:: make_space_partition
 

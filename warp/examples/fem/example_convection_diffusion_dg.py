@@ -88,7 +88,7 @@ class Example:
             geo,
             discontinuous=True,
             degree=degree,
-            family=fem.Polynomial.GAUSS_LEGENDRE,
+            family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE,
         )
 
         # Assemble transport, diffusion and inertia matrices
@@ -110,23 +110,22 @@ class Example:
 
         side_test = fem.make_test(space=scalar_space, domain=sides)
         side_trial = fem.make_trial(space=scalar_space, domain=sides)
-
-        matrix_transport += fem.integrate(
+        fem.integrate(
             upwind_transport_form,
             fields={"phi": side_trial, "psi": side_test},
             values={"ang_vel": ang_vel},
+            output=matrix_transport,
+            add=True,
         )
 
         matrix_diffusion = fem.integrate(
             diffusion_form,
             fields={"u": trial, "v": self._test},
         )
-
         matrix_diffusion += fem.integrate(
             sip_diffusion_form,
             fields={"phi": side_trial, "psi": side_test},
         )
-
         self._matrix = matrix_inertia + matrix_transport + viscosity * matrix_diffusion
 
         # Initial condition

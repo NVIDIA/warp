@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any, Optional, Set, Union
 
 import warp as wp
 import warp.codegen
@@ -11,6 +11,7 @@ from warp.fem.geometry import (
     GeometryPartition,
     WholeGeometryPartition,
 )
+from warp.fem.operator import Operator
 from warp.fem.types import ElementKind
 
 GeometryOrPartition = Union[Geometry, GeometryPartition]
@@ -93,6 +94,10 @@ class GeometryDomain:
 
     element_lookup: wp.Function
     """Device function returning the sample point corresponding to a world position"""
+
+    def notify_operator_usage(self, ops: Set[Operator]):
+        """Makes the Domain aware that the operators `ops` will be applied"""
+        pass
 
 
 class Cells(GeometryDomain):

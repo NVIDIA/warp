@@ -200,4 +200,6 @@ if __name__ == "__main__":
         example.render()
 
         if not args.headless:
-            example.renderer.plot(options={"velocity": {"streamlines": {}}, "pressure": {"contours": {}}})
+            example.renderer.plot(
+                options={"velocity": {"streamlines": {}}, "pressure": {"contours": {}}}, backend="matplotlib"
+            )

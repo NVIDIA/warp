@@ -210,11 +210,11 @@ class Example:
 
         # Add boundary stress from other solid field
         other_stress_field = fem.field.field.NonconformingField(boundary, other_stress_field)
-        fem.utils.array_axpy(
-            y=u_rhs,
-            x=fem.integrate(
-                boundary_stress_form, fields={"u": u_bd_test, "tau": other_stress_field}, output_dtype=wp.vec2d
-            ),
+        fem.integrate(
+            boundary_stress_form,
+            fields={"u": u_bd_test, "tau": other_stress_field},
+            output=u_rhs,
+            add=True,
         )
 
         # Enforce boundary conditions

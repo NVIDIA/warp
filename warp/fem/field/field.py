@@ -1,10 +1,10 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Set
 
 import warp as wp
 from warp.fem import cache
 from warp.fem.domain import GeometryDomain, Sides
 from warp.fem.geometry import DeformedGeometry, Geometry
-from warp.fem.operator import integrand
+from warp.fem.operator import Operator, integrand
 from warp.fem.space import FunctionSpace, SpacePartition
 from warp.fem.types import NULL_ELEMENT_INDEX, ElementKind, Sample
 
@@ -48,32 +48,32 @@ class FieldLike:
         return False
 
     @staticmethod
-    def eval_inner(args: "ElementEvalArg", s: "Sample"):  # noqa: F821
+    def eval_inner(args: "ElementEvalArg", s: Sample):  # noqa: F821
         """Device function evaluating the inner field value at a sample point"""
         raise NotImplementedError
 
     @staticmethod
-    def eval_grad_inner(args: "ElementEvalArg", s: "Sample"):  # noqa: F821
+    def eval_grad_inner(args: "ElementEvalArg", s: Sample):  # noqa: F821
         """Device function evaluating the inner field gradient at a sample point"""
         raise NotImplementedError
 
     @staticmethod
-    def eval_div_inner(args: "ElementEvalArg", s: "Sample"):  # noqa: F821
+    def eval_div_inner(args: "ElementEvalArg", s: Sample):  # noqa: F821
         """Device function evaluating the inner field divergence at a sample point"""
         raise NotImplementedError
 
     @staticmethod
-    def eval_outer(args: "ElementEvalArg", s: "Sample"):  # noqa: F821
+    def eval_outer(args: "ElementEvalArg", s: Sample):  # noqa: F821
         """Device function evaluating the outer field value at a sample point"""
         raise NotImplementedError
 
     @staticmethod
-    def eval_grad_outer(args: "ElementEvalArg", s: "Sample"):  # noqa: F821
+    def eval_grad_outer(args: "ElementEvalArg", s: Sample):  # noqa: F821
         """Device function evaluating the outer field gradient at a sample point"""
         raise NotImplementedError
 
     @staticmethod
-    def eval_div_outer(args: "ElementEvalArg", s: "Sample"):  # noqa: F821
+    def eval_div_outer(args: "ElementEvalArg", s: Sample):  # noqa: F821
         """Device function evaluating the outer field divergence at a sample point"""
         raise NotImplementedError
 
@@ -81,6 +81,10 @@ class FieldLike:
     def eval_degree(args: "ElementEvalArg"):  # noqa: F821
         """Polynomial degree of the field is applicable, or hint for determination of interpolation order"""
         raise NotImplementedError
+
+    def notify_operator_usage(self, ops: Set[Operator]):
+        """Makes the Domain aware that the operators `ops` will be applied"""
+        pass
 
 
 class GeometryField(FieldLike):
@@ -97,12 +101,12 @@ class GeometryField(FieldLike):
         raise NotImplementedError
 
     @staticmethod
-    def eval_reference_grad_inner(args: "ElementEvalArg", s: "Sample"):  # noqa: F821
+    def eval_reference_grad_inner(args: "ElementEvalArg", s: Sample):  # noqa: F821
         """Device function evaluating the inner field gradient with respect to reference element coordinates at a sample point"""
         raise NotImplementedError
 
     @staticmethod
-    def eval_reference_grad_outer(args: "ElementEvalArg", s: "Sample"):  # noqa: F821
+    def eval_reference_grad_outer(args: "ElementEvalArg", s: Sample):  # noqa: F821
         """Device function evaluating the outer field gradient with respect to reference element coordinates at a sample point"""
         raise NotImplementedError
 
@@ -127,6 +131,9 @@ class SpaceField(GeometryField):
     def __init__(self, space: FunctionSpace, space_partition: SpacePartition):
         self._space = space
         self._space_partition = space_partition
+
+        self.gradient_valid = self.space.gradient_valid
+        self.divergence_valid = self.space.divergence_valid
 
     @property
     def geometry(self) -> Geometry:
@@ -156,17 +163,22 @@ class SpaceField(GeometryField):
     def dof_dtype(self) -> type:
         return self.space.dof_dtype
 
-    def gradient_valid(self) -> bool:
-        """Whether gradient operator can be computed. Only for scalar and vector fields as higher-order tensors are not support yet"""
-        return not wp.types.type_is_matrix(self.dtype)
-
-    def divergence_valid(self) -> bool:
-        """Whether divergence of this field can be computed. Only for vector and tensor fields with same dimension as embedding geometry"""
+    @property
+    def gradient_dtype(self):
+        """Return type of the gradient operator. Assumes self.gradient_valid()"""
         if wp.types.type_is_vector(self.dtype):
-            return wp.types.type_length(self.dtype) == self.space.geometry.dimension
-        if wp.types.type_is_matrix(self.dtype):
-            return self.dtype._shape_[0] == self.space.geometry.dimension
-        return False
+            return cache.cached_mat_type(
+                shape=(wp.types.type_length(self.dtype), self.geometry.dimension),
+                dtype=wp.types.type_scalar_type(self.dtype),
+            )
+        return cache.cached_vec_type(length=self.geometry.dimension, dtype=wp.types.type_scalar_type(self.dtype))
+
+    @property
+    def divergence_dtype(self):
+        """Return type of the divergence operator. Assumes self.gradient_valid()"""
+        if wp.types.type_is_vector(self.dtype):
+            return wp.types.type_scalar_type(self.dtype)
+        return cache.cached_vec_type(length=self.dtype._shape_[1], dtype=wp.types.type_scalar_type(self.dtype))
 
     def _make_eval_degree(self):
         ORDER = self.space.ORDER

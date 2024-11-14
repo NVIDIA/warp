@@ -1,7 +1,7 @@
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Set
 
 import warp as wp
-from warp.fem import utils
+from warp.fem.linalg import skew_part, symmetric_part
 from warp.fem.types import Coords, Domain, ElementIndex, Field, NodeIndex, Sample, make_free_sample
 
 
@@ -17,6 +17,9 @@ class Integrand:
         self.argspec = wp.codegen.get_full_arg_spec(self.func)
         self.kernel_options = {} if kernel_options is None else kernel_options
 
+        # Operators for each field argument. This woill be populated at first integrate call
+        self.operators: Dict[str, Set[Operator]] = None
+
 
 class Operator:
     """
@@ -25,6 +28,7 @@ class Operator:
 
     def __init__(self, func: Callable, resolver: Callable, field_result: Callable = None):
         self.func = func
+        self.name = func.__name__
         self.resolver = resolver
         self.field_result = field_result
 
@@ -236,13 +240,13 @@ def node_partition_index(f: Field, node_index: NodeIndex):
 @integrand
 def D(f: Field, s: Sample):
     """Symmetric part of the (inner) gradient of the field at `s`"""
-    return utils.symmetric_part(grad(f, s))
+    return symmetric_part(grad(f, s))
 
 
 @integrand
 def curl(f: Field, s: Sample):
     """Skew part of the (inner) gradient of the field at `s`, as a vector such that ``wp.cross(curl(u), v) = skew(grad(u)) v``"""
-    return utils.skew_part(grad(f, s))
+    return skew_part(grad(f, s))
 
 
 @integrand

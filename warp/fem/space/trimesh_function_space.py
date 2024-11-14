@@ -3,10 +3,7 @@ from warp.fem import cache
 from warp.fem.geometry import Trimesh
 from warp.fem.types import ElementIndex
 
-from .shape import (
-    ShapeFunction,
-    TrianglePolynomialShapeFunctions,
-)
+from .shape import TriangleShapeFunction
 from .topology import SpaceTopology, forward_base_topology
 
 
@@ -22,16 +19,18 @@ class TrimeshTopologyArg:
 class TrimeshSpaceTopology(SpaceTopology):
     TopologyArg = TrimeshTopologyArg
 
-    def __init__(self, mesh: Trimesh, shape: ShapeFunction):
+    def __init__(self, mesh: Trimesh, shape: TriangleShapeFunction):
+        self._shape = shape
         super().__init__(mesh, shape.NODES_PER_ELEMENT)
         self._mesh = mesh
-        self._shape = shape
 
         self._compute_tri_edge_indices()
+        self.element_node_index = self._make_element_node_index()
+        self.element_node_sign = self._make_element_node_sign()
 
     @property
     def name(self):
-        return f"{super().name}_D{self.dimension}"
+        return f"{self.geometry.name}_{self._shape.name}"
 
     @cache.cached_arg_value
     def topo_arg_value(self, device):
@@ -95,26 +94,17 @@ class TrimeshSpaceTopology(SpaceTopology):
             t1_edge = TrimeshSpaceTopology._find_edge_index_in_tri(edge_vtx, t1_vtx)
             tri_edge_indices[t1, t1_edge] = e
 
-
-class TrimeshPolynomialSpaceTopology(TrimeshSpaceTopology):
-    def __init__(self, mesh: Trimesh, shape: TrianglePolynomialShapeFunctions):
-        super().__init__(mesh, shape)
-
-        self.element_node_index = self._make_element_node_index()
-
     def node_count(self) -> int:
-        INTERIOR_NODES_PER_SIDE = max(0, self._shape.ORDER - 1)
-        INTERIOR_NODES_PER_CELL = max(0, self._shape.ORDER - 2) * max(0, self._shape.ORDER - 1) // 2
-
         return (
-            self._mesh.vertex_count()
-            + self._mesh.side_count() * INTERIOR_NODES_PER_SIDE
-            + self._mesh.cell_count() * INTERIOR_NODES_PER_CELL
+            self._mesh.vertex_count() * self._shape.VERTEX_NODE_COUNT
+            + self._mesh.side_count() * self._shape.EDGE_NODE_COUNT
+            + self._mesh.cell_count() * self._shape.INTERIOR_NODE_COUNT
         )
 
     def _make_element_node_index(self):
-        INTERIOR_NODES_PER_SIDE = wp.constant(max(0, self._shape.ORDER - 1))
-        INTERIOR_NODES_PER_CELL = wp.constant(max(0, self._shape.ORDER - 2) * max(0, self._shape.ORDER - 1) // 2)
+        VERTEX_NODE_COUNT = self._shape.VERTEX_NODE_COUNT
+        INTERIOR_NODES_PER_SIDE = self._shape.EDGE_NODE_COUNT
+        INTERIOR_NODES_PER_CELL = self._shape.INTERIOR_NODE_COUNT
 
         @cache.dynamic_func(suffix=self.name)
         def element_node_index(
@@ -125,33 +115,65 @@ class TrimeshPolynomialSpaceTopology(TrimeshSpaceTopology):
         ):
             node_type, type_index = self._shape.node_type_and_type_index(node_index_in_elt)
 
-            if node_type == TrianglePolynomialShapeFunctions.VERTEX:
-                return geo_arg.topology.tri_vertex_indices[element_index][type_index]
+            if wp.static(VERTEX_NODE_COUNT > 0):
+                if node_type == TriangleShapeFunction.VERTEX:
+                    vertex = type_index // VERTEX_NODE_COUNT
+                    vertex_node = type_index - VERTEX_NODE_COUNT * vertex
+                    return geo_arg.topology.tri_vertex_indices[element_index][vertex] * VERTEX_NODE_COUNT + vertex_node
 
-            global_offset = topo_arg.vertex_count
+            global_offset = topo_arg.vertex_count * VERTEX_NODE_COUNT
 
-            if node_type == TrianglePolynomialShapeFunctions.EDGE:
-                edge = type_index // INTERIOR_NODES_PER_SIDE
-                edge_node = type_index - INTERIOR_NODES_PER_SIDE * edge
+            if wp.static(INTERIOR_NODES_PER_SIDE > 0):
+                if node_type == TriangleShapeFunction.EDGE:
+                    edge = type_index // INTERIOR_NODES_PER_SIDE
+                    edge_node = type_index - INTERIOR_NODES_PER_SIDE * edge
 
-                global_edge_index = topo_arg.tri_edge_indices[element_index][edge]
+                    global_edge_index = topo_arg.tri_edge_indices[element_index][edge]
 
-                if (
-                    topo_arg.edge_vertex_indices[global_edge_index][0]
-                    != geo_arg.topology.tri_vertex_indices[element_index][edge]
-                ):
-                    edge_node = INTERIOR_NODES_PER_SIDE - 1 - edge_node
+                    if (
+                        topo_arg.edge_vertex_indices[global_edge_index][0]
+                        != geo_arg.topology.tri_vertex_indices[element_index][edge]
+                    ):
+                        edge_node = INTERIOR_NODES_PER_SIDE - 1 - edge_node
 
-                return global_offset + INTERIOR_NODES_PER_SIDE * global_edge_index + edge_node
+                    return global_offset + INTERIOR_NODES_PER_SIDE * global_edge_index + edge_node
 
-            global_offset += INTERIOR_NODES_PER_SIDE * topo_arg.edge_count
+                global_offset += INTERIOR_NODES_PER_SIDE * topo_arg.edge_count
+
             return global_offset + INTERIOR_NODES_PER_CELL * element_index + type_index
 
         return element_node_index
 
+    def _make_element_node_sign(self):
+        INTERIOR_NODES_PER_SIDE = self._shape.EDGE_NODE_COUNT
 
-def make_trimesh_space_topology(mesh: Trimesh, shape: ShapeFunction):
-    if isinstance(shape, TrianglePolynomialShapeFunctions):
-        return forward_base_topology(TrimeshPolynomialSpaceTopology, mesh, shape)
+        @cache.dynamic_func(suffix=self.name)
+        def element_node_sign(
+            geo_arg: self.geometry.CellArg,
+            topo_arg: TrimeshTopologyArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            node_type, type_index = self._shape.node_type_and_type_index(node_index_in_elt)
+
+            if node_type == TriangleShapeFunction.EDGE:
+                edge = type_index // INTERIOR_NODES_PER_SIDE
+
+                global_edge_index = topo_arg.tri_edge_indices[element_index][edge]
+                return wp.select(
+                    topo_arg.edge_vertex_indices[global_edge_index][0]
+                    == geo_arg.topology.tri_vertex_indices[element_index][edge],
+                    -1.0,
+                    1.0,
+                )
+
+            return 1.0
+
+        return element_node_sign
+
+
+def make_trimesh_space_topology(mesh: Trimesh, shape: TriangleShapeFunction):
+    if isinstance(shape, TriangleShapeFunction):
+        return forward_base_topology(TrimeshSpaceTopology, mesh, shape)
 
     raise ValueError(f"Unsupported shape function {shape.name}")

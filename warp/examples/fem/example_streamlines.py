@@ -82,7 +82,7 @@ def mass_form(
     u: fem.Field,
     v: fem.Field,
 ):
-    return u(s) * v(s)
+    return wp.dot(u(s), v(s))
 
 
 @fem.integrand
@@ -199,7 +199,7 @@ class Example:
             domain=self._inflow, order=self._degree, family=fem.Polynomial.GAUSS_LEGENDRE
         )
         n_streamlines = streamline_spawn.total_point_count()
-        spawn_points = wp.array(dtype=wp.vec3, shape=n_streamlines)
+        spawn_points = wp.empty(dtype=wp.vec3, shape=n_streamlines)
 
         jitter_amount = self._streamline_dx / self._degree
         fem.interpolate(
@@ -212,8 +212,8 @@ class Example:
         # to populate the per-point data
 
         point_count = self._streamline_point_count
-        points = wp.array(dtype=wp.vec3, shape=(n_streamlines, point_count))
-        speed = wp.array(dtype=float, shape=(n_streamlines, point_count))
+        points = wp.empty(dtype=wp.vec3, shape=(n_streamlines, point_count))
+        speed = wp.empty(dtype=float, shape=(n_streamlines, point_count))
 
         fem.interpolate(
             gen_streamlines,
@@ -235,7 +235,7 @@ class Example:
     def render(self):
         # self.renderer.add_field("solution", self.pressure_field)
         self.plot.add_field("pressure", self.pressure_field)
-        self.plot.add_field("velocity", self.velocity_field)
+        # self.plot.add_field("velocity", self.velocity_field)
 
         if self.renderer is not None:
             streamline_count = self._points.shape[0]
@@ -259,10 +259,11 @@ class Example:
             self.renderer.end_frame()
 
     def _generate_incompressible_flow(self):
-        # Function spaces for velocity, scalars and pressure (Pk / Pk / Pk-1)
-        u_space = fem.make_polynomial_space(geo=self._geo, degree=self._degree, dtype=wp.vec3)
-        s_space = fem.make_polynomial_space(geo=self._geo, degree=self._degree, dtype=float)
-        p_space = fem.make_polynomial_space(geo=self._geo, degree=self._degree - 1, dtype=float)
+        # Function spaces for velocity and pressure (RT1 / P0)
+        u_space = fem.make_polynomial_space(
+            geo=self._geo, element_basis=fem.ElementBasis.RAVIART_THOMAS, degree=1, dtype=wp.vec3
+        )
+        p_space = fem.make_polynomial_space(geo=self._geo, degree=0, dtype=float)
 
         self.pressure_field = p_space.make_field()
         self.velocity_field = u_space.make_field()
@@ -288,8 +289,8 @@ class Example:
         fem.interpolate(inflow_velocity, dest=fem.make_restriction(self.velocity_field, domain=self._inflow))
 
         # (Diagonal) mass matrix
-        rho_test = fem.make_test(s_space)
-        rho_trial = fem.make_trial(s_space)
+        rho_test = fem.make_test(u_space)
+        rho_trial = fem.make_trial(u_space)
         inv_mass_matrix = fem.integrate(
             mass_form, fields={"u": rho_trial, "v": rho_test}, nodal=True, output_dtype=float
         )
@@ -341,11 +342,3 @@ if __name__ == "__main__":
 
         example.step()
         example.render()
-
-        if not args.headless:
-            example.plot.plot(
-                {
-                    "velocity": {"streamlines": {"density": 2}},
-                    "pressure": {"contours": {}},
-                }
-            )

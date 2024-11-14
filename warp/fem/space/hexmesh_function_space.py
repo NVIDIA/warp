@@ -6,14 +6,9 @@ from warp.fem.geometry.hexmesh import (
     FACE_ORIENTATION,
     FACE_TRANSLATION,
 )
-from warp.fem.polynomial import is_closed
 from warp.fem.types import ElementIndex
 
-from .shape import (
-    CubeSerendipityShapeFunctions,
-    CubeTripolynomialShapeFunctions,
-    ShapeFunction,
-)
+from .shape import CubeShapeFunction
 from .topology import SpaceTopology, forward_base_topology
 
 _FACE_ORIENTATION_I = wp.constant(wp.mat(shape=(16, 2), dtype=int)(FACE_ORIENTATION))
@@ -42,30 +37,35 @@ class HexmeshSpaceTopology(SpaceTopology):
     def __init__(
         self,
         mesh: Hexmesh,
-        shape: ShapeFunction,
-        need_hex_edge_indices: bool = True,
-        need_hex_face_indices: bool = True,
+        shape: CubeShapeFunction,
     ):
-        if not is_closed(shape.family):
-            raise ValueError("A closed polynomial family is required to define a continuous function space")
-
+        self._shape = shape
         super().__init__(mesh, shape.NODES_PER_ELEMENT)
         self._mesh = mesh
-        self.shape = shape
 
-        if need_hex_edge_indices:
+        need_edge_indices = shape.EDGE_NODE_COUNT > 0
+        need_face_indices = shape.FACE_NODE_COUNT > 0
+
+        if need_edge_indices:
             self._hex_edge_indices = self._mesh.hex_edge_indices
             self._edge_count = self._mesh.edge_count()
         else:
             self._hex_edge_indices = wp.empty(shape=(0, 0), dtype=int)
             self._edge_count = 0
 
-        if need_hex_face_indices:
+        if need_face_indices:
             self._compute_hex_face_indices()
         else:
             self._hex_face_indices = wp.empty(shape=(0, 0), dtype=wp.vec2i)
 
         self._compute_hex_face_indices()
+
+        self.element_node_index = self._make_element_node_index()
+        self.element_node_sign = self._make_element_node_sign()
+
+    @property
+    def name(self):
+        return f"{self.geometry.name}_{self._shape.name}"
 
     @cache.cached_arg_value
     def topo_arg_value(self, device):
@@ -102,57 +102,50 @@ class HexmeshSpaceTopology(SpaceTopology):
     ):
         f = wp.tid()
 
+        # face indices from CubeShapeFunction always have positive orientation,
+        # while Hexmesh faces are oriented to point "outside"
+        # We need to flip orientation for faces at offset 0
+
         hx0 = face_hex_indices[f][0]
         local_face_0 = face_hex_face_ori[f][0]
         ori_0 = face_hex_face_ori[f][1]
 
-        hex_face_indices[hx0, local_face_0] = wp.vec2i(f, ori_0)
+        local_face_offset_0 = CubeShapeFunction._face_offset(local_face_0)
+        flip_0 = ori_0 ^ (1 - local_face_offset_0)
+
+        hex_face_indices[hx0, local_face_0] = wp.vec2i(f, flip_0)
 
         hx1 = face_hex_indices[f][1]
         local_face_1 = face_hex_face_ori[f][2]
         ori_1 = face_hex_face_ori[f][3]
 
-        hex_face_indices[hx1, local_face_1] = wp.vec2i(f, ori_1)
+        local_face_offset_1 = CubeShapeFunction._face_offset(local_face_1)
+        flip_1 = ori_1 ^ (1 - local_face_offset_1)
 
-
-class HexmeshTripolynomialSpaceTopology(HexmeshSpaceTopology):
-    def __init__(self, mesh: Hexmesh, shape: CubeTripolynomialShapeFunctions):
-        super().__init__(mesh, shape, need_hex_edge_indices=shape.ORDER >= 2, need_hex_face_indices=shape.ORDER >= 2)
-
-        self.element_node_index = self._make_element_node_index()
+        hex_face_indices[hx1, local_face_1] = wp.vec2i(f, flip_1)
 
     def node_count(self) -> int:
-        ORDER = self.shape.ORDER
-        INTERIOR_NODES_PER_EDGE = max(0, ORDER - 1)
-        INTERIOR_NODES_PER_FACE = INTERIOR_NODES_PER_EDGE**2
-        INTERIOR_NODES_PER_CELL = INTERIOR_NODES_PER_EDGE**3
-
         return (
-            self._mesh.vertex_count()
-            + self._mesh.edge_count() * INTERIOR_NODES_PER_EDGE
-            + self._mesh.side_count() * INTERIOR_NODES_PER_FACE
-            + self._mesh.cell_count() * INTERIOR_NODES_PER_CELL
+            self._mesh.vertex_count() * self._shape.VERTEX_NODE_COUNT
+            + self._mesh.edge_count() * self._shape.EDGE_NODE_COUNT
+            + self._mesh.side_count() * self._shape.FACE_NODE_COUNT
+            + self._mesh.cell_count() * self._shape.INTERIOR_NODE_COUNT
         )
 
     @wp.func
-    def _rotate_face_index(type_index: int, ori: int, size: int):
-        i = type_index // size
-        j = type_index - i * size
-        coords = wp.vec2i(i, j)
-
+    def _rotate_face_coordinates(ori: int, offset: int, coords: wp.vec2i):
         fv = ori // 2
 
-        # face indices from shape function always have positive orientation, drop `ori % 2`
-        rot_i = wp.dot(_FACE_ORIENTATION_I[4 * fv], coords) + _FACE_TRANSLATION_I[fv, 0]
-        rot_j = wp.dot(_FACE_ORIENTATION_I[4 * fv + 1], coords) + _FACE_TRANSLATION_I[fv, 1]
+        rot_i = wp.dot(_FACE_ORIENTATION_I[2 * ori], coords)
+        rot_j = wp.dot(_FACE_ORIENTATION_I[2 * ori + 1], coords)
 
-        return rot_i * size + rot_j
+        return wp.vec2i(rot_i, rot_j) + _FACE_TRANSLATION_I[fv]
 
     def _make_element_node_index(self):
-        ORDER = self.shape.ORDER
-        INTERIOR_NODES_PER_EDGE = wp.constant(max(0, ORDER - 1))
-        INTERIOR_NODES_PER_FACE = wp.constant(INTERIOR_NODES_PER_EDGE**2)
-        INTERIOR_NODES_PER_CELL = wp.constant(INTERIOR_NODES_PER_EDGE**3)
+        VERTEX_NODE_COUNT = self._shape.VERTEX_NODE_COUNT
+        EDGE_NODE_COUNT = self._shape.EDGE_NODE_COUNT
+        FACE_NODE_COUNT = self._shape.FACE_NODE_COUNT
+        INTERIOR_NODE_COUNT = self._shape.INTERIOR_NODE_COUNT
 
         @cache.dynamic_func(suffix=self.name)
         def element_node_index(
@@ -161,94 +154,89 @@ class HexmeshTripolynomialSpaceTopology(HexmeshSpaceTopology):
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.shape.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, type_index = self._shape.node_type_and_type_index(node_index_in_elt)
 
-            if node_type == CubeTripolynomialShapeFunctions.VERTEX:
-                return geo_arg.hex_vertex_indices[element_index, _CUBE_TO_HEX_VERTEX[type_instance]]
+            if wp.static(VERTEX_NODE_COUNT > 0):
+                if node_type == CubeShapeFunction.VERTEX:
+                    return (
+                        geo_arg.hex_vertex_indices[element_index, _CUBE_TO_HEX_VERTEX[type_instance]]
+                        * VERTEX_NODE_COUNT
+                        + type_index
+                    )
 
-            offset = topo_arg.vertex_count
+            offset = topo_arg.vertex_count * VERTEX_NODE_COUNT
 
-            if node_type == CubeTripolynomialShapeFunctions.EDGE:
-                hex_edge = _CUBE_TO_HEX_EDGE[type_instance]
-                edge_index = topo_arg.hex_edge_indices[element_index, hex_edge]
+            if wp.static(EDGE_NODE_COUNT > 0):
+                if node_type == CubeShapeFunction.EDGE:
+                    hex_edge = _CUBE_TO_HEX_EDGE[type_instance]
+                    edge_index = topo_arg.hex_edge_indices[element_index, hex_edge]
 
-                v0 = geo_arg.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 0]]
-                v1 = geo_arg.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 1]]
+                    v0 = geo_arg.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 0]]
+                    v1 = geo_arg.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 1]]
 
-                if v0 > v1:
-                    type_index = ORDER - 1 - type_index
+                    if v0 > v1:
+                        type_index = EDGE_NODE_COUNT - 1 - type_index
 
-                return offset + INTERIOR_NODES_PER_EDGE * edge_index + type_index
+                    return offset + EDGE_NODE_COUNT * edge_index + type_index
 
-            offset += INTERIOR_NODES_PER_EDGE * topo_arg.edge_count
+                offset += EDGE_NODE_COUNT * topo_arg.edge_count
 
-            if node_type == CubeTripolynomialShapeFunctions.FACE:
-                face_index_and_ori = topo_arg.hex_face_indices[element_index, type_instance]
-                face_index = face_index_and_ori[0]
-                face_orientation = face_index_and_ori[1]
+            if wp.static(FACE_NODE_COUNT > 0):
+                if node_type == CubeShapeFunction.FACE:
+                    face_index_and_ori = topo_arg.hex_face_indices[element_index, type_instance]
+                    face_index = face_index_and_ori[0]
+                    face_orientation = face_index_and_ori[1]
 
-                type_index = HexmeshTripolynomialSpaceTopology._rotate_face_index(
-                    type_index, face_orientation, ORDER - 1
-                )
+                    face_offset = CubeShapeFunction._face_offset(type_instance)
 
-                return offset + INTERIOR_NODES_PER_FACE * face_index + type_index
+                    if wp.static(FACE_NODE_COUNT > 1):
+                        face_coords = self._shape._face_node_ij(type_index)
+                        rot_face_coords = HexmeshSpaceTopology._rotate_face_coordinates(
+                            face_orientation, face_offset, face_coords
+                        )
+                        type_index = self._shape._linear_face_node_index(type_index, rot_face_coords)
 
-            offset += INTERIOR_NODES_PER_FACE * topo_arg.face_count
+                    return offset + FACE_NODE_COUNT * face_index + type_index
 
-            return offset + INTERIOR_NODES_PER_CELL * element_index + type_index
+                offset += FACE_NODE_COUNT * topo_arg.face_count
+
+            return offset + INTERIOR_NODE_COUNT * element_index + type_index
 
         return element_node_index
 
-
-class HexmeshSerendipitySpaceTopology(HexmeshSpaceTopology):
-    def __init__(
-        self,
-        grid: Hexmesh,
-        shape: CubeSerendipityShapeFunctions,
-    ):
-        super().__init__(grid, shape, need_hex_edge_indices=True, need_hex_face_indices=False)
-
-        self.element_node_index = self._make_element_node_index()
-
-    def node_count(self) -> int:
-        return self.geometry.vertex_count() + (self.shape.ORDER - 1) * self.geometry.edge_count()
-
-    def _make_element_node_index(self):
-        ORDER = self.shape.ORDER
+    def _make_element_node_sign(self):
+        EDGE_NODE_COUNT = self._shape.EDGE_NODE_COUNT
+        FACE_NODE_COUNT = self._shape.FACE_NODE_COUNT
 
         @cache.dynamic_func(suffix=self.name)
-        def element_node_index(
-            cell_arg: Hexmesh.CellArg,
-            topo_arg: HexmeshSpaceTopology.TopologyArg,
+        def element_node_sign(
+            geo_arg: self.geometry.CellArg,
+            topo_arg: HexmeshTopologyArg,
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            node_type, type_index = self.shape.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, type_index = self._shape.node_type_and_type_index(node_index_in_elt)
 
-            if node_type == CubeSerendipityShapeFunctions.VERTEX:
-                return cell_arg.hex_vertex_indices[element_index, _CUBE_TO_HEX_VERTEX[type_index]]
+            if wp.static(EDGE_NODE_COUNT > 0):
+                if node_type == CubeShapeFunction.EDGE:
+                    hex_edge = _CUBE_TO_HEX_EDGE[type_instance]
+                    v0 = geo_arg.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 0]]
+                    v1 = geo_arg.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 1]]
+                    return wp.select(v0 > v1, 1.0, -1.0)
 
-            type_instance, index_in_edge = CubeSerendipityShapeFunctions._cube_edge_index(node_type, type_index)
-            hex_edge = _CUBE_TO_HEX_EDGE[type_instance]
+            if wp.static(FACE_NODE_COUNT > 0):
+                if node_type == CubeShapeFunction.FACE:
+                    face_index_and_ori = topo_arg.hex_face_indices[element_index, type_instance]
+                    flip = face_index_and_ori[1] & 1
+                    return wp.select(flip == 0, -1.0, 1.0)
 
-            edge_index = topo_arg.hex_edge_indices[element_index, hex_edge]
+            return 1.0
 
-            v0 = cell_arg.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 0]]
-            v1 = cell_arg.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 1]]
-
-            if v0 > v1:
-                index_in_edge = ORDER - 1 - index_in_edge
-
-            return topo_arg.vertex_count + (ORDER - 1) * edge_index + index_in_edge
-
-        return element_node_index
+        return element_node_sign
 
 
-def make_hexmesh_space_topology(mesh: Hexmesh, shape: ShapeFunction):
-    if isinstance(shape, CubeSerendipityShapeFunctions):
-        return forward_base_topology(HexmeshSerendipitySpaceTopology, mesh, shape)
-
-    if isinstance(shape, CubeTripolynomialShapeFunctions):
-        return forward_base_topology(HexmeshTripolynomialSpaceTopology, mesh, shape)
+def make_hexmesh_space_topology(mesh: Hexmesh, shape: CubeShapeFunction):
+    if isinstance(shape, CubeShapeFunction):
+        return forward_base_topology(HexmeshSpaceTopology, mesh, shape)
 
     raise ValueError(f"Unsupported shape function {shape.name}")
