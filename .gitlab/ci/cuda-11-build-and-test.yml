@@ -242,7 +242,7 @@ publish wheels to gitlab pypi registry:
   extends:
     - .runner-utility-linux-x86_64
   rules:
-    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
+    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/ || $PARENT_COMMIT_TAG
       when: manual
       allow_failure: true
   before_script:
@@ -296,7 +296,7 @@ publish extensions to packman:
   rules:
     - if: $CI_PROJECT_PATH != "omniverse/warp" # Prevent fork pipelines from running this job
       when: never
-    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
+    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/ || $PARENT_COMMIT_TAG
       when: manual
       allow_failure: true
   environment:
