@@ -122,10 +122,10 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   test-warp-macos:
-    runs-on: macos-latest
+    runs-on: macos-13
     needs: build-warp-macos
     env:
-      OS: macos-latest
+      OS: macos-13
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
