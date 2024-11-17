@@ -1083,8 +1083,8 @@ class OpenGLRenderer:
         self.update_projection_matrix()
 
         self._camera_front = self._camera_front.normalize()
-        self._pitch = np.rad2deg(np.asin(self._camera_front.y))
-        self._yaw = -np.rad2deg(np.acos(self._camera_front.x / np.cos(np.deg2rad(self._pitch))))
+        self._pitch = np.rad2deg(np.arcsin(self._camera_front.y))
+        self._yaw = -np.rad2deg(np.arccos(self._camera_front.x / np.cos(np.deg2rad(self._pitch))))
 
         self._frame_dt = 1.0 / fps
         self.time = 0.0
