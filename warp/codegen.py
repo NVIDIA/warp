@@ -882,7 +882,7 @@ class Adjoint:
             # use source-level argument annotations
             if len(argspec.annotations) < len(argspec.args):
                 raise WarpCodegenError(f"Incomplete argument annotations on function {adj.fun_name}")
-            adj.arg_types = argspec.annotations
+            adj.arg_types = {k: v for k, v in argspec.annotations.items() if not (k == "return" and v is None)}
         else:
             # use overload argument annotations
             for arg_name in argspec.args:

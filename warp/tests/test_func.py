@@ -222,6 +222,16 @@ def test_user_func_overload_resolution(test, device):
     assert a1.numpy()[0] == 12
 
 
+@wp.func
+def user_func_return_none() -> None:
+    pass
+
+
+@wp.kernel
+def test_return_annotation_none() -> None:
+    user_func_return_none()
+
+
 devices = get_test_devices()
 
 
@@ -408,6 +418,9 @@ add_kernel_test(
 )
 add_function_test(
     TestFunc, func=test_user_func_overload_resolution, name="test_user_func_overload_resolution", devices=devices
+)
+add_kernel_test(
+    TestFunc, kernel=test_return_annotation_none, name="test_return_annotation_none", dim=1, devices=devices
 )
 
 
