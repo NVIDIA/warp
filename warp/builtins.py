@@ -4156,7 +4156,7 @@ def printf_dispatch_func(input_types: Mapping[str, type], return_type: Any, args
     # Further validate the given argument values if needed and map them
     # to the underlying C++ function's runtime and template params.
 
-    func_args = (args["fmt"], *args["args"])
+    func_args = (args["fmt"], *args.get("args", ()))
     template_args = ()
     return (func_args, template_args)
 

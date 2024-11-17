@@ -17,6 +17,7 @@ from warp.tests.unittest_utils import *
 def test_print_kernel():
     wp.print(1.0)
     wp.print("this is a string")
+    wp.printf("this is another string\n")
     wp.printf("this is a float %f\n", 457.5)
     wp.printf("this is an int %d\n", 123)
 
@@ -59,6 +60,7 @@ def test_print(test, device):
             s,
             rf"1{os.linesep}"
             rf"this is a string{os.linesep}"
+            rf"this is another string{os.linesep}"
             rf"this is a float 457\.500000{os.linesep}"
             rf"this is an int 123",
         )

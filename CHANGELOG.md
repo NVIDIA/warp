@@ -24,6 +24,7 @@
 - Fix `wp.expect_neq()` overloads missing for scalar types.
 - Fix the OpenGL renderer's window not closing when clicking the X button.
 - Fix the OpenGL renderer's camera snapping to a different direction from the initial camera's orientation when first looking around.
+- Fix `wp.printf()` erroring out when no variadic arguments are passed ([GH-333](https://github.com/NVIDIA/warp/issues/333)).
 
 ## [1.4.2] - 2024-11-13
 
