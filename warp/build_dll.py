@@ -172,6 +172,10 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
                 f"CUDA Toolkit version {min_ctk_version[0]}.{min_ctk_version[1]}+ is required (found {ctk_version[0]}.{ctk_version[1]} in {cuda_home})"
             )
 
+        if ctk_version[0] < 12 and args.libmathdx_path:
+            print("MathDx support requires at least CUDA 12, skipping")
+            args.libmathdx_path = None
+
         gencode_opts = []
 
         if args.quick:
