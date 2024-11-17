@@ -20,7 +20,7 @@ import os
 import platform
 import shutil
 
-from warp.build_dll import build_dll, find_host_compiler, set_msvc_env, verbose_cmd
+from warp.build_dll import build_dll, find_host_compiler, machine_architecture, set_msvc_env, verbose_cmd
 from warp.context import export_builtins
 
 parser = argparse.ArgumentParser(description="Warp build script")
@@ -117,6 +117,70 @@ def find_cuda_sdk():
     return None
 
 
+def find_libmathdx():
+    libmathdx_path = os.environ.get("LIBMATHDX_HOME")
+
+    if libmathdx_path:
+        print(f"Using libmathdx path '{libmathdx_path}' provided through the 'LIBMATHDX_HOME' environment variable")
+        return libmathdx_path
+    else:
+        # First check if a libmathdx folder exists in the target location
+        extract_dir_base = os.path.join(".", "_build", "target-deps")
+        extract_dir = os.path.join(extract_dir_base, "libmathdx")
+
+        if os.path.isdir(extract_dir) and os.listdir(extract_dir):
+            # Directory is not empty, so let's try to use it
+            print(f"Using existing libmathdx at path '{os.path.abspath(extract_dir)}'")
+            return os.path.abspath(extract_dir)
+
+        base_url = "https://developer.nvidia.com/downloads/compute/cublasdx/redist/cublasdx"
+        libmathdx_ver = "0.1.0"
+
+        if platform.system() == "Windows":
+            source_url = f"{base_url}/libmathdx-{libmathdx_ver}-win64.zip"
+        elif platform.system() == "Linux":
+            source_url = f"{base_url}/libmathdx-Linux-{machine_architecture()}-{libmathdx_ver}.tar.gz"
+        else:
+            return None
+
+        import urllib.request
+
+        try:
+            local_filename, _ = urllib.request.urlretrieve(source_url)
+        except Exception as e:
+            print(f"Unable to download libmathdx from {source_url}, skipping: {e}")
+            return None
+
+        if platform.system() == "Windows":
+            import zipfile
+
+            try:
+                with zipfile.ZipFile(local_filename, "r") as zip_file:
+                    zip_file.extractall(extract_dir_base)
+
+            except Exception as e:
+                print(f"Unable to extract libmathdx to {extract_dir_base}, skipping: {e}")
+                return None
+
+            try:
+                os.rename(os.path.join(extract_dir_base, f"libmathdx-{libmathdx_ver}-win64"), extract_dir)
+            except Exception:
+                # Unable to rename to preferred directory name, return the intermediate one
+                return os.path.abspath(os.path.join(extract_dir_base, f"libmathdx-{libmathdx_ver}-win64"))
+        else:
+            import tarfile
+
+            try:
+                with tarfile.open(local_filename, "r:gz") as tar_file:
+                    tar_file.extractall(extract_dir_base, filter="data")
+            except Exception as e:
+                print(f"Unable to extract libmathdx to {extract_dir_base}, skipping: {e}")
+                return None
+
+        # Success
+        return os.path.abspath(extract_dir)
+
+
 # setup CUDA Toolkit path
 if platform.system() == "Darwin":
     args.cuda_path = None
@@ -124,12 +188,9 @@ else:
     if not args.cuda_path:
         args.cuda_path = find_cuda_sdk()
 
-    if not args.libmathdx_path:
-        libmathdx_path = os.environ.get("LIBMATHDX_HOME")
-
-        if libmathdx_path:
-            print(f"Using libmathdx path '{libmathdx_path}' provided through the 'LIBMATHDX_HOME' environment variable")
-            args.libmathdx_path = libmathdx_path
+    # libmathdx needs to be used with a build of Warp that supports CUDA
+    if not args.libmathdx_path and args.cuda_path:
+        args.libmathdx_path = find_libmathdx()
 
 # setup MSVC and WinSDK paths
 if platform.system() == "Windows":

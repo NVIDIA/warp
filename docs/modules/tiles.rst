@@ -5,7 +5,13 @@ Tiles
 
 Block-based programming models such as those in OpenAI Triton have proved to be effective ways of expressing high-performance kernels that can leverage cooperative operations on modern GPUs.
 
-Warp 1.4.0 introduces tile extensions that expose a block-based programming to Warp kernels. 
+Warp 1.5.0 introduces tile extensions that expose a block-based programming to Warp kernels. 
+
+Requirements
+------------
+
+Tile-based operations are currently only supported on versions of Warp built against the CUDA 12 runtime.
+See `Building with MathDx`_ for more details when building the Warp locally with support for tile operations.
 
 Execution Model
 ---------------
@@ -187,8 +193,8 @@ Maps/Reductions
 * :func:`warp.tile_min`
 * :func:`warp.tile_max`
 
-Linear Algebra
-^^^^^^^^^^^^^^
+MathDx
+^^^^^^
 
 * :func:`warp.tile_matmul`
 * :func:`warp.tile_transpose`
@@ -231,3 +237,15 @@ Automatic Differentiation
 Warp can automatically generate the backward version of tile-based programs.
 In general, tile programs must obey the same rules for auto-diff as regular Warp programs, e.g. avoiding in-place operations, etc.
 Please see the :ref:`differentiability` section for more details.
+
+Building with MathDx
+--------------------
+
+The tile operations described in `MathDx`_ require Warp to be built with the MathDx library.
+Starting with Warp 1.5.0, PyPI distributions will come with out-of-the-box support for tile operations
+leveraging MathDx APIs.
+
+When building Warp locally using ``build_lib.py``, the script will attempt to automatically download ``libmathdx``
+from the `cuBLASDx Downloads Page <https://developer.nvidia.com/cublasdx-downloads>`__.
+A path to an existing ``libmathdx`` installation can also be specified using the ``--libmathdx_path`` option
+when running ``build_lib.py`` or by defining the path in the ``LIBMATHDX_HOME`` environment variable.
