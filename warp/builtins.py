@@ -3979,7 +3979,11 @@ add_builtin(
     doc="Return a random float between [low, high).",
 )
 add_builtin(
-    "randn", input_types={"state": uint32}, value_type=float, group="Random", doc="Sample a normal distribution."
+    "randn",
+    input_types={"state": uint32},
+    value_type=float,
+    group="Random",
+    doc="Sample a normal (Gaussian) distribution of mean 0 and variance 1. ",
 )
 
 add_builtin(
