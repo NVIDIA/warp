@@ -18,6 +18,7 @@
   `warp.fem.cells()`, `warp.fem.to_inner_cell()`, `warp.fem.to_outer_cell()` operators
 - Show an error message when the type returned by a function differs from its annotation, which would have led to the compilation stage failing.
 - Clarify that `randn()` samples a normal distribution of mean 0 and variance 1.
+- Error when passing more than 32 variadic argument to the `wp.printf` built-in.
 
 ### Fixed
 
@@ -29,6 +30,7 @@
 - Fix the OpenGL renderer's camera snapping to a different direction from the initial camera's orientation when first looking around.
 - Fix an error when a `wp.kernel` or a `wp.func` object is annotated to return a `None` value.
 - Fix error when reading multi-volume, BLOSC compressed .nvdb files.
+- Fix `wp.printf()` erroring out when no variadic arguments are passed ([GH-333](https://github.com/NVIDIA/warp/issues/333)).
 
 ## [1.4.2] - 2024-11-13
 

@@ -17,8 +17,22 @@ from warp.tests.unittest_utils import *
 def test_print_kernel():
     wp.print(1.0)
     wp.print("this is a string")
+    wp.printf("this is another string\n")
     wp.printf("this is a float %f\n", 457.5)
     wp.printf("this is an int %d\n", 123)
+    # fmt: off
+    wp.printf(
+        "0=%d, 1=%d, 2=%d, 3=%d, 4=%d, 5=%d, 6=%d, 7=%d, "
+        "8=%d, 9=%d, 10=%d, 11=%d, 12=%d, 13=%d, 14=%d, 15=%d, "
+        "16=%d, 17=%d, 18=%d, 19=%d, 20=%d, 21=%d, 22=%d, 23=%d, "
+        "24=%d, 25=%d, 26=%d, 27=%d, 28=%d, 29=%d, 30=%d, 31=%d"
+        "\n",
+         0,  1,  2,  3,  4,  5,  6,  7,
+         8,  9, 10, 11, 12, 13, 14, 15,
+        16, 17, 18, 19, 20, 21, 22, 23,
+        24, 25, 26, 27, 28, 29, 30, 31,
+    )
+    # fmt: on
 
 
 @wp.kernel
@@ -59,8 +73,13 @@ def test_print(test, device):
             s,
             rf"1{os.linesep}"
             rf"this is a string{os.linesep}"
+            rf"this is another string{os.linesep}"
             rf"this is a float 457\.500000{os.linesep}"
-            rf"this is an int 123",
+            rf"this is an int 123{os.linesep}"
+            rf"0=0, 1=1, 2=2, 3=3, 4=4, 5=5, 6=6, 7=7, "
+            rf"8=8, 9=9, 10=10, 11=11, 12=12, 13=13, 14=14, 15=15, "
+            rf"16=16, 17=17, 18=18, 19=19, 20=20, 21=21, 22=22, 23=23, "
+            rf"24=24, 25=25, 26=26, 27=27, 28=28, 29=29, 30=30, 31=31{os.linesep}",
         )
 
 
@@ -260,6 +279,35 @@ def test_print_adjoint(test, device):
         )
 
 
+def test_print_error_variadic_arg_count(test, device):
+    @wp.kernel
+    def kernel():
+        # fmt: off
+        wp.printf(
+            "0=%d, 1=%d, 2=%d, 3=%d, 4=%d, 5=%d, 6=%d, 7=%d, "
+            "8=%d, 9=%d, 10=%d, 11=%d, 12=%d, 13=%d, 14=%d, 15=%d, "
+            "16=%d, 17=%d, 18=%d, 19=%d, 20=%d, 21=%d, 22=%d, 23=%d, "
+            "24=%d, 25=%d, 26=%d, 27=%d, 28=%d, 29=%d, 30=%d, 31=%d, "
+            "32=%d\n",
+            0,  1,  2,  3,  4,  5,  6,  7,
+            8,  9, 10, 11, 12, 13, 14, 15,
+            16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31,
+            32,
+        )
+        # fmt: on
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"the maximum number of variadic arguments that can be passed to `printf` is 32$",
+    ):
+        wp.launch(
+            kernel,
+            dim=1,
+            device=device,
+        )
+
+
 class TestPrint(unittest.TestCase):
     pass
 
@@ -269,6 +317,13 @@ add_function_test(TestPrint, "test_print", test_print, devices=devices, check_ou
 add_function_test(TestPrint, "test_print_numeric", test_print_numeric, devices=devices, check_output=False)
 add_function_test(TestPrint, "test_print_boolean", test_print_boolean, devices=devices, check_output=False)
 add_function_test(TestPrint, "test_print_adjoint", test_print_adjoint, devices=devices, check_output=False)
+add_function_test(
+    TestPrint,
+    "test_print_error_variadic_arg_count",
+    test_print_error_variadic_arg_count,
+    devices=devices,
+    check_output=False,
+)
 
 
 if __name__ == "__main__":
