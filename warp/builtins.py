@@ -4151,6 +4151,14 @@ add_builtin(
 )
 
 
+def printf_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    if arg_types is not None:
+        if len(arg_types.get("args", ())) > 32:
+            raise RuntimeError("the maximum number of variadic arguments that can be passed to `printf` is 32")
+
+    return None
+
+
 def printf_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
     # We're in the codegen stage where we emit the code calling the built-in.
     # Further validate the given argument values if needed and map them
@@ -4167,6 +4175,7 @@ add_builtin(
     input_types={"fmt": str, "*args": Any},
     namespace="",
     variadic=True,
+    value_func=printf_value_func,
     dispatch_func=printf_dispatch_func,
     group="Utility",
     doc="Allows printing formatted strings using C-style format specifiers.",
