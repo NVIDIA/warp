@@ -15,6 +15,7 @@
 - Promote the `wp.Int`, `wp.Float`, and `wp.Scalar` generic annotation types to the public API.
 - warp.fem: Simplified querying neighboring cell quantities when integrating on sides using new
   `warp.fem.cells()`, `warp.fem.to_inner_cell()`, `warp.fem.to_outer_cell()` operators
+- Show an error message when the type returned by a function differs from its annotation, which would have led to the compilation stage failing.
 
 ### Fixed
 

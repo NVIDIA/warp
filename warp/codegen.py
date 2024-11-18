@@ -114,6 +114,16 @@ def get_closure_cell_contents(obj):
     return None
 
 
+def get_type_origin(tp):
+    # Compatible version of `typing.get_origin()` for Python 3.7 and older.
+    return getattr(tp, "__origin__", None)
+
+
+def get_type_args(tp):
+    # Compatible version of `typing.get_args()` for Python 3.7 and older.
+    return getattr(tp, "__args__", ())
+
+
 def eval_annotations(annotations: Mapping[str, Any], obj: Any) -> Mapping[str, Any]:
     """Un-stringize annotations caused by `from __future__ import annotations` of PEP 563."""
     # Implementation backported from `inspect.get_annotations()` for Python 3.9 and older.
@@ -3426,6 +3436,33 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
 def codegen_func(adj, c_func_name: str, device="cpu", options=None):
     if options is None:
         options = {}
+
+    if adj.return_var is not None and "return" in adj.arg_types:
+        if get_type_origin(adj.arg_types["return"]) is tuple:
+            if len(get_type_args(adj.arg_types["return"])) != len(adj.return_var):
+                raise WarpCodegenError(
+                    f"The function `{adj.fun_name}` has its return type "
+                    f"annotated as a tuple of {len(get_type_args(adj.arg_types['return']))} elements "
+                    f"but the code returns {len(adj.return_var)} values."
+                )
+            elif not types_equal(adj.arg_types["return"], tuple(x.type for x in adj.return_var)):
+                raise WarpCodegenError(
+                    f"The function `{adj.fun_name}` has its return type "
+                    f"annotated as `{warp.context.type_str(adj.arg_types['return'])}` "
+                    f"but the code returns a tuple with types `({', '.join(warp.context.type_str(x.type) for x in adj.return_var)})`."
+                )
+        elif len(adj.return_var) > 1 and get_type_origin(adj.arg_types["return"]) is not tuple:
+            raise WarpCodegenError(
+                f"The function `{adj.fun_name}` has its return type "
+                f"annotated as `{warp.context.type_str(adj.arg_types['return'])}` "
+                f"but the code returns {len(adj.return_var)} values."
+            )
+        elif not types_equal(adj.arg_types["return"], adj.return_var[0].type):
+            raise WarpCodegenError(
+                f"The function `{adj.fun_name}` has its return type "
+                f"annotated as `{warp.context.type_str(adj.arg_types['return'])}` "
+                f"but the code returns a value of type `{warp.context.type_str(adj.return_var[0].type)}`."
+            )
 
     # forward header
     if adj.return_var is not None and len(adj.return_var) == 1:
