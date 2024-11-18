@@ -41,7 +41,7 @@ linux-x86_64 test:
     - $PYTHON -m venv _venv
     - source _venv/bin/activate
     - python -m pip install --upgrade pip
-    - python -m pip install --upgrade usd-core
+    - python -m pip install --upgrade usd-core blosc
     - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
     - python -m pip install -U "jax[cuda12]"
     - python -m pip install -e .
@@ -68,7 +68,7 @@ windows-x86_64 test:
     - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
     - .\_venv\Scripts\Activate.ps1
     - python -m pip install --upgrade pip
-    - python -m pip install --upgrade usd-core numpy
+    - python -m pip install --upgrade usd-core numpy blosc
     - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
     - python -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"

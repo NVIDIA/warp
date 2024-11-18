@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import os
+import tempfile
 import unittest
 from typing import Any
 
@@ -890,6 +892,46 @@ def test_volume_aniso_transform(test, device):
     assert_np_equal(transform, np.array(volume.get_grid_info().transform_matrix).reshape(3, 3))
 
 
+def test_volume_write(test, device):
+    codecs = ["none", "zip", "blosc"]
+    try:
+        import blosc  # noqa: F401 I001
+    except ImportError:
+        codecs.pop()
+
+    for volume_name in ("float", "vec3f", "index"):
+        for codec in codecs:
+            with test.subTest(volume_name=volume_name, codec=codec):
+                volume = volumes[volume_name][device.alias]
+                fd, file_path = tempfile.mkstemp(suffix=".nvdb")
+                os.close(fd)
+                try:
+                    volume.save_to_nvdb(file_path, codec=codec)
+                    with open(file_path, "rb") as f:
+                        volume_2 = wp.Volume.load_from_nvdb(f)
+                    next_volume = volume
+                    while next_volume:
+                        np.testing.assert_array_equal(next_volume.array().numpy(), volume_2.array().numpy())
+                        next_volume = next_volume.load_next_grid()
+                        volume_2 = volume_2.load_next_grid()
+
+                finally:
+                    os.remove(file_path)
+
+    with test.subTest(volume_write="unsupported"):
+        volume = volumes["index"][device.alias]
+        volume = volume.load_next_grid()
+
+        fd, file_path = tempfile.mkstemp(suffix=".nvdb")
+        os.close(fd)
+
+        try:
+            with test.assertRaises(RuntimeError):
+                volume.save_to_nvdb(file_path, codec=codec)
+        finally:
+            os.remove(file_path)
+
+
 class TestVolume(unittest.TestCase):
     def test_volume_new_del(self):
         # test the scenario in which a volume is created but not initialized before gc
@@ -930,6 +972,7 @@ add_function_test(
 add_function_test(TestVolume, "test_volume_multiple_grids", test_volume_multiple_grids, devices=devices)
 add_function_test(TestVolume, "test_volume_feature_array", test_volume_feature_array, devices=devices)
 add_function_test(TestVolume, "test_volume_sample_index", test_volume_sample_index, devices=devices)
+add_function_test(TestVolume, "test_volume_write", test_volume_write, devices=[wp.get_device("cpu")])
 
 points = {}
 points_jittered = {}
