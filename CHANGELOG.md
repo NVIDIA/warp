@@ -29,6 +29,7 @@
 - Fix the OpenGL renderer's camera snapping to a different direction from the initial camera's orientation when first looking around.
 - Fix an error when a `wp.kernel` or a `wp.func` object is annotated to return a `None` value.
 - Fix error when reading multi-volume, BLOSC compressed .nvdb files.
+- Fix custom colors being ignored when rendering meshes in OpenGL ([GH-343](https://github.com/NVIDIA/warp/issues/343)).
 
 ## [1.4.2] - 2024-11-13
 
