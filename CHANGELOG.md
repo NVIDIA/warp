@@ -26,6 +26,7 @@
 - Fix `wp.expect_neq()` overloads missing for scalar types.
 - Fix the OpenGL renderer's window not closing when clicking the X button.
 - Fix the OpenGL renderer's camera snapping to a different direction from the initial camera's orientation when first looking around.
+- Fix an error when a `wp.kernel` or a `wp.func` object is annotated to return a `None` value.
 
 ## [1.4.2] - 2024-11-13
 
