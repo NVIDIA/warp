@@ -1898,6 +1898,28 @@ def test_qr_inverse():
         wp.expect_near(wp.ddot(Err, Err), 0.0, tol)
 
 
+def test_array_axpy(test, device):
+    N = 10
+    alpha = 0.5
+    beta = 4.0
+
+    x = wp.full(N, 2.0, device=device, dtype=float, requires_grad=True)
+    y = wp.array(np.arange(N), device=device, dtype=wp.float64, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        fem.utils.array_axpy(x=x, y=y, alpha=alpha, beta=beta)
+
+    assert_np_equal(x.numpy(), np.full(N, 2.0))
+    assert_np_equal(y.numpy(), alpha * x.numpy() + beta * np.arange(N))
+
+    y.grad.fill_(1.0)
+    tape.backward()
+
+    assert_np_equal(x.grad.numpy(), alpha * np.ones(N))
+    assert_np_equal(y.grad.numpy(), beta * np.ones(N))
+
+
 devices = get_test_devices()
 cuda_devices = get_selected_cuda_test_devices()
 
@@ -1928,8 +1950,15 @@ add_function_test(TestFem, "test_point_basis", test_point_basis)
 add_function_test(TestFem, "test_particle_quadratures", test_particle_quadratures)
 add_function_test(TestFem, "test_nodal_quadrature", test_nodal_quadrature)
 add_function_test(TestFem, "test_implicit_fields", test_implicit_fields)
-add_kernel_test(TestFem, test_qr_eigenvalues, dim=1, devices=devices)
-add_kernel_test(TestFem, test_qr_inverse, dim=100, devices=devices)
+
+
+class TestFemUtilities(unittest.TestCase):
+    pass
+
+
+add_kernel_test(TestFemUtilities, test_qr_eigenvalues, dim=1, devices=devices)
+add_kernel_test(TestFemUtilities, test_qr_inverse, dim=100, devices=devices)
+add_function_test(TestFemUtilities, "test_array_axpy", test_array_axpy)
 
 
 class TestFemShapeFunctions(unittest.TestCase):
