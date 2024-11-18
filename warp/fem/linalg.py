@@ -372,9 +372,16 @@ def array_axpy(x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 1.0):
     if x.shape != y.shape or x.device != y.device:
         raise ValueError("x and y arrays must have the same shape and device")
 
-    wp.launch(kernel=_array_axpy_kernel, dim=x.shape, device=x.device, inputs=[x, y, alpha, beta])
+    # array_axpy requires a custom adjoint; unfortunately we cannot use `wp.func_grad`
+    # as generic functions are not supported yet. Instead we use a non-differentiable kernel
+    # and record a custom adjoint function on the tape.
 
-    if (x.requires_grad or y.requires_grad) and wp.context.runtime.tape is not None:
+    # temporarilly disable tape to avoid printing warning that kernel is not differentiable
+    (tape, wp.context.runtime.tape) = (wp.context.runtime.tape, None)
+    wp.launch(kernel=_array_axpy_kernel, dim=x.shape, device=x.device, inputs=[x, y, alpha, beta])
+    wp.context.runtime.tape = tape
+
+    if tape is not None and (x.requires_grad or y.requires_grad):
 
         def backward_axpy():
             # adj_x += adj_y * alpha
@@ -383,7 +390,7 @@ def array_axpy(x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 1.0):
             if beta != 1.0:
                 array_axpy(x=y.grad, y=y.grad, alpha=0.0, beta=beta)
 
-        wp.context.runtime.tape.record_func(backward_axpy, arrays=[x, y])
+        tape.record_func(backward_axpy, arrays=[x, y])
 
 
 @wp.kernel(enable_backward=False)
