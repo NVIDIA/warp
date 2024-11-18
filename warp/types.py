@@ -12,7 +12,7 @@ import ctypes
 import inspect
 import struct
 import zlib
-from typing import Any, Callable, Generic, List, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, Callable, Generic, List, Literal, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
 
@@ -3686,9 +3686,9 @@ class Volume:
             grid_data = bytearray()
             while grid_data_offset < file_end:
                 chunk_size = struct.unpack("<Q", data[grid_data_offset : grid_data_offset + 8])[0]
-                grid_data += zlib.decompress(data[grid_data_offset + 8 :])
-                grid_data_offset += 8 + chunk_size
-
+                grid_data_offset += 8
+                grid_data += zlib.decompress(data[grid_data_offset : grid_data_offset + chunk_size])
+                grid_data_offset += chunk_size
         elif codec == 2:  # blosc compression
             try:
                 import blosc
@@ -3700,8 +3700,9 @@ class Volume:
             grid_data = bytearray()
             while grid_data_offset < file_end:
                 chunk_size = struct.unpack("<Q", data[grid_data_offset : grid_data_offset + 8])[0]
-                grid_data += blosc.decompress(data[grid_data_offset + 8 :])
-                grid_data_offset += 8 + chunk_size
+                grid_data_offset += 8
+                grid_data += blosc.decompress(data[grid_data_offset : grid_data_offset + chunk_size])
+                grid_data_offset += chunk_size
         else:
             raise RuntimeError(f"Unsupported codec code: {codec}")
 
@@ -3711,6 +3712,139 @@ class Volume:
 
         data_array = array(np.frombuffer(grid_data, dtype=np.byte), device=device)
         return cls(data_array)
+
+    def save_to_nvdb(self, path, codec: Literal["none", "zip", "blosc"] = "none"):
+        """Serialize the Volume into a NanoVDB (.nvdb) file.
+
+        Args:
+            path: File path to save.
+            codec: Compression codec used
+                "none" - no compression
+                "zip" - ZIP compression
+                "blosc" - BLOSC compression, requires the blosc module to be installed
+        """
+
+        codec_dict = {"none": 0, "zip": 1, "blosc": 2}
+
+        class FileHeader(ctypes.Structure):
+            _fields_ = [
+                ("magic", ctypes.c_uint64),
+                ("version", ctypes.c_uint32),
+                ("gridCount", ctypes.c_uint16),
+                ("codec", ctypes.c_uint16),
+            ]
+
+        class FileMetaData(ctypes.Structure):
+            _fields_ = [
+                ("gridSize", ctypes.c_uint64),
+                ("fileSize", ctypes.c_uint64),
+                ("nameKey", ctypes.c_uint64),
+                ("voxelCount", ctypes.c_uint64),
+                ("gridType", ctypes.c_uint32),
+                ("gridClass", ctypes.c_uint32),
+                ("worldBBox", ctypes.c_double * 6),
+                ("indexBBox", ctypes.c_uint32 * 6),
+                ("voxelSize", ctypes.c_double * 3),
+                ("nameSize", ctypes.c_uint32),
+                ("nodeCount", ctypes.c_uint32 * 4),
+                ("tileCount", ctypes.c_uint32 * 3),
+                ("codec", ctypes.c_uint16),
+                ("padding", ctypes.c_uint16),
+                ("version", ctypes.c_uint32),
+            ]
+
+        class GridData(ctypes.Structure):
+            _fields_ = [
+                ("magic", ctypes.c_uint64),
+                ("checksum", ctypes.c_uint64),
+                ("version", ctypes.c_uint32),
+                ("flags", ctypes.c_uint32),
+                ("gridIndex", ctypes.c_uint32),
+                ("gridCount", ctypes.c_uint32),
+                ("gridSize", ctypes.c_uint64),
+                ("gridName", ctypes.c_char * 256),
+                ("map", ctypes.c_byte * 264),
+                ("worldBBox", ctypes.c_double * 6),
+                ("voxelSize", ctypes.c_double * 3),
+                ("gridClass", ctypes.c_uint32),
+                ("gridType", ctypes.c_uint32),
+                ("blindMetadataOffset", ctypes.c_int64),
+                ("blindMetadataCount", ctypes.c_uint32),
+                ("data0", ctypes.c_uint32),
+                ("data1", ctypes.c_uint64),
+                ("data2", ctypes.c_uint64),
+            ]
+
+        NVDB_MAGIC = 0x304244566F6E614E
+        NVDB_VERSION = 32 << 21 | 3 << 10 | 3
+
+        try:
+            codec_int = codec_dict[codec]
+        except KeyError as err:
+            raise RuntimeError(f"Unsupported codec requested: {codec}") from err
+
+        if codec_int == 2:
+            try:
+                import blosc
+            except ImportError as err:
+                raise RuntimeError(
+                    f"blosc compression was requested, but Python module could not be imported: {err}"
+                ) from err
+
+        data = self.array().numpy()
+        grid_data = GridData.from_buffer(data)
+
+        if grid_data.gridIndex > 0:
+            raise RuntimeError(
+                "Saving of aliased Volumes is not supported. Use `save_to_nvdb` on the orignal volume, before any `load_next_grid` calls."
+            )
+
+        file_header = FileHeader(NVDB_MAGIC, NVDB_VERSION, grid_data.gridCount, codec_int)
+
+        grid_data_offset = 0
+        all_file_meta_data = []
+        for i in range(file_header.gridCount):
+            if i > 0:
+                grid_data = GridData.from_buffer(data[grid_data_offset : grid_data_offset + 672])
+            current_grid_data = data[grid_data_offset : grid_data_offset + grid_data.gridSize]
+            if codec_int == 1:  # zip compression
+                compressed_data = zlib.compress(current_grid_data)
+                compressed_size = len(compressed_data)
+            elif codec_int == 2:  # blosc compression
+                compressed_data = blosc.compress(current_grid_data)
+                compressed_size = len(compressed_data)
+            else:  # no compression
+                compressed_data = current_grid_data
+                compressed_size = grid_data.gridSize
+
+            file_meta_data = FileMetaData()
+            file_meta_data.gridSize = grid_data.gridSize
+            file_meta_data.fileSize = compressed_size
+            file_meta_data.gridType = grid_data.gridType
+            file_meta_data.gridClass = grid_data.gridClass
+            file_meta_data.worldBBox = grid_data.worldBBox
+            file_meta_data.voxelSize = grid_data.voxelSize
+            file_meta_data.nameSize = len(grid_data.gridName) + 1  # including the closing 0x0
+            file_meta_data.codec = codec_int
+            file_meta_data.version = NVDB_VERSION
+
+            grid_data_offset += file_meta_data.gridSize
+
+            all_file_meta_data.append((file_meta_data, grid_data.gridName, compressed_data))
+
+        with open(path, "wb") as nvdb:
+            nvdb.write(file_header)
+            for file_meta_data, grid_name, _ in all_file_meta_data:
+                nvdb.write(file_meta_data)
+                nvdb.write(grid_name + b"\x00")
+
+            for file_meta_data, _, compressed_data in all_file_meta_data:
+                if codec_int > 0:
+                    chunk_size = struct.pack("<Q", file_meta_data.fileSize)
+                    nvdb.write(chunk_size)
+                nvdb.write(compressed_data)
+
+        return path
 
     @classmethod
     def load_from_address(cls, grid_ptr: int, buffer_size: int = 0, device=None) -> Volume:

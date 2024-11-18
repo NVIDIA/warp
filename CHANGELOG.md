@@ -5,6 +5,7 @@
 ### Added
 
 - Expose a `reversed()` built-in for iterators to test ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
+- Support for saving Volumes into .nvdb files with the `save_to_nvdb` method.
 - warp.fem: Added Trimesh3D and Quadmesh3D geometry types for 3D surfaces, with new `example_distortion_energy` example
 - warp.fem: Added "add" option to `wp.fem.integrate()` for accumulating integration result to existing output
 - warp.fem: Added "assembly" option to `wp.fem.integrate()` for selecting between more memory-efficient or more computationally-efficient integration algorithms
@@ -27,6 +28,7 @@
 - Fix the OpenGL renderer's window not closing when clicking the X button.
 - Fix the OpenGL renderer's camera snapping to a different direction from the initial camera's orientation when first looking around.
 - Fix an error when a `wp.kernel` or a `wp.func` object is annotated to return a `None` value.
+- Fix error when reading multi-volume, BLOSC compressed .nvdb files.
 
 ## [1.4.2] - 2024-11-13
 
