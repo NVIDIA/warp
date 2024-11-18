@@ -31,6 +31,7 @@
 - Fix an error when a `wp.kernel` or a `wp.func` object is annotated to return a `None` value.
 - Fix error when reading multi-volume, BLOSC compressed .nvdb files.
 - Fix `wp.printf()` erroring out when no variadic arguments are passed ([GH-333](https://github.com/NVIDIA/warp/issues/333)).
+- Fix custom colors being ignored when rendering meshes in OpenGL ([GH-343](https://github.com/NVIDIA/warp/issues/343)).
 
 ## [1.4.2] - 2024-11-13
 

@@ -11,12 +11,12 @@ visualize scenes directly from ``warp.sim.ModelBuilder`` objects and update them
 Standalone Renderers
 --------------------
 
-The ``OpenGLRenderer`` provides an interactive renderer to play back animations in real time, the ``UsdRenderer``
-provides a renderer that exports the scene to a USD file that can be rendered in a renderer of your choice.
+The ``OpenGLRenderer`` provides an interactive renderer to play back animations in real time and is mostly intended for debugging,
+whereas more sophisticated rendering can be achieved with the help of the ``UsdRenderer``, which allows exporting the scene to
+a USD file that can then be rendered in an external 3D application or renderer of your choice.
 
 .. autoclass:: UsdRenderer
     :members:
-
 
 .. autoclass:: OpenGLRenderer
     :members:
