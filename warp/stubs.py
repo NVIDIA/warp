@@ -1825,7 +1825,7 @@ def randf(state: uint32, low: float32, high: float32) -> float:
 
 @over
 def randn(state: uint32) -> float:
-    """Sample a normal distribution."""
+    """Sample a normal (Gaussian) distribution of mean 0 and variance 1."""
     ...
 
 

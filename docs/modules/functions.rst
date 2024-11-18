@@ -2248,7 +2248,7 @@ Random
 
 .. py:function:: randn(state: uint32) -> float
 
-    Sample a normal distribution.
+    Sample a normal (Gaussian) distribution of mean 0 and variance 1. 
 
 
 .. py:function:: sample_cdf(state: uint32, cdf: Array[float32]) -> int

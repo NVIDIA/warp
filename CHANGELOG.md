@@ -15,6 +15,7 @@
 - Promote the `wp.Int`, `wp.Float`, and `wp.Scalar` generic annotation types to the public API.
 - warp.fem: Simplified querying neighboring cell quantities when integrating on sides using new
   `warp.fem.cells()`, `warp.fem.to_inner_cell()`, `warp.fem.to_outer_cell()` operators
+- Clarify that `randn()` samples a normal distribution of mean 0 and variance 1.
 
 ### Fixed
 
