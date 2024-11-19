@@ -177,6 +177,7 @@ Threshold values between 0 and 1 are interpreted as fractions of available memor
 
 This is a simple optimization that can improve the performance of programs without modifying the existing code in any way.
 
+.. autofunction:: warp.get_mempool_release_threshold
 .. autofunction:: warp.set_mempool_release_threshold
 
 Graph Allocations

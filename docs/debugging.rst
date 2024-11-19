@@ -29,8 +29,8 @@ In addition, formatted C-style printing is available through the ``wp.printf()``
 Printing Launches
 -----------------
 
-For complex applications it can be difficult to understand the order-of-operations that lead to a bug. To help diagnose
-these issues Warp supports a simple option to print out all launches and arguments to the console::
+For complex applications, it can be difficult to understand the order-of-operations that lead to a bug. To help diagnose
+these issues, Warp supports a simple option to print out all launches and arguments to the console::
 
     wp.config.print_launches = True
 
@@ -89,7 +89,7 @@ If a CUDA error is suspected a simple verification method is to enable::
 
     wp.config.verify_cuda = True
 
-This setting will check the CUDA context after every operation to ensure that it is still valid. If an error is
-encountered it will raise an exception that often helps to narrow down the problematic kernel.
+This setting will check the CUDA context after every :func:`wp.launch() <warp.launch>` to ensure that it is still valid.
+If an error is encountered, an exception will be raised that often helps to narrow down the problematic kernel.
 
 .. note:: Verifying CUDA state at each launch requires synchronizing CPU and GPU which has a significant overhead. Users should ensure this setting is only used during debugging.

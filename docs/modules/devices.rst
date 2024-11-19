@@ -24,8 +24,12 @@ It is possible to explicitly target a specific device with each Warp API call us
 
 .. autoclass:: warp.context.Device
     :members:
-.. autofunction:: set_device
-.. autofunction:: get_device
+
+Warp also provides functions that can be used to query the available devices on the system:
+
+.. autofunction:: get_devices
+.. autofunction:: get_cuda_devices
+.. autofunction:: get_cuda_device_count
 
 Default Device
 --------------
@@ -36,6 +40,8 @@ Calling :func:`wp.get_device() <warp.get_device>` without an argument
 will return an instance of :class:`warp.context.Device` for the default device.
 
 During Warp initialization, the default device is set to ``"cuda:0"`` if CUDA is available.  Otherwise, the default device is ``"cpu"``.
+If the default device is changed, :func:`wp.get_preferred_device() <warp.get_preferred_device>` can be used to get
+the *original* default device.
 
 :func:`wp.set_device() <warp.set_device>` can be used to change the default device::
 
@@ -53,9 +59,10 @@ During Warp initialization, the default device is set to ``"cuda:0"`` if CUDA is
 
 .. note::
 
-    For CUDA devices, ``wp.set_device()`` does two things: it sets the Warp default device and it makes the device's CUDA context current.  This helps to minimize the number of CUDA context switches in blocks of code targeting a single device.
+    For CUDA devices, :func:`wp.set_device() <warp.set_device>` does two things: It sets the Warp default device and it makes the device's CUDA context current.  This helps to minimize the number of CUDA context switches in blocks of code targeting a single device.
 
-For PyTorch users, this function is similar to ``torch.cuda.set_device()``.  It is still possible to specify a different device in individual API calls, like in this snippet::
+For PyTorch users, this function is similar to :func:`torch.cuda.set_device()`.
+It is still possible to specify a different device in individual API calls, like in this snippet::
 
     # set default device
     wp.set_device("cuda:0")
@@ -73,10 +80,15 @@ For PyTorch users, this function is similar to ``torch.cuda.set_device()``.  It 
     wp.copy(b, a)
     wp.copy(c, a)
 
+.. autofunction:: set_device
+.. autofunction:: get_device
+.. autofunction:: get_preferred_device
+
 Scoped Devices
 --------------
 
-Another way to manage the default device is using ``wp.ScopedDevice`` objects.  They can be arbitrarily nested and restore the previous default device on exit::
+Another way to manage the default device is using :class:`wp.ScopedDevice <ScopedDevice>` objects.
+They can be arbitrarily nested and restore the previous default device on exit::
 
     with wp.ScopedDevice("cpu"):
         # alloc and launch on "cpu"
@@ -95,9 +107,7 @@ Another way to manage the default device is using ``wp.ScopedDevice`` objects.  
         # launch on "cuda:0"
         wp.launch(kernel, dim=b.size, inputs=[b])
 
-.. note::
-
-    For CUDA devices, ``wp.ScopedDevice`` makes the device's CUDA context current and restores the previous CUDA context on exit.  This is handy when running Warp scripts as part of a bigger pipeline, because it avoids any side effects of changing the CUDA context in the enclosed code.
+.. autoclass:: ScopedDevice
 
 Example: Using ``wp.ScopedDevice`` with multiple GPUs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -176,11 +186,17 @@ In this snippet, we use PyTorch to manage the current CUDA device and invoke a W
 Device Synchronization
 ----------------------
 
-CUDA kernel launches and memory operations can execute asynchronously.  This allows for overlapping compute and memory operations on different devices.  Warp allows synchronizing the host with outstanding asynchronous operations on a specific device::
+CUDA kernel launches and memory operations can execute asynchronously.
+This allows for overlapping compute and memory operations on different devices.
+Warp allows synchronizing the host with outstanding asynchronous operations on a specific device::
 
     wp.synchronize_device("cuda:1")
 
-The ``wp.synchronize_device()`` function offers more fine-grained synchronization than ``wp.synchronize()``, as the latter waits for *all* devices to complete their work.
+:func:`wp.synchronize_device() <synchronize_device>` offers more fine-grained synchronization than
+:func:`wp.synchronize() <synchronize>`, as the latter waits for *all* devices to complete their work.
+
+.. autofunction:: synchronize_device
+.. autofunction:: synchronize
 
 Custom CUDA Contexts
 --------------------
@@ -193,7 +209,9 @@ Applications built on the CUDA Driver API work with CUDA contexts directly and c
 
 The special device alias ``"cuda"`` can be used to target the current CUDA context, whether this is a primary or custom context.
 
-In addition, Warp allows registering new device aliases for custom CUDA contexts, so that they can be explicitly targeted by name.  If the ``CUcontext`` pointer is available, it can be used to create a new device alias like this::
+In addition, Warp allows registering new device aliases for custom CUDA contexts using
+:func:`wp.map_cuda_device() <map_cuda_device>` so that they can be explicitly targeted by name.
+If the ``CUcontext`` pointer is available, it can be used to create a new device alias like this::
 
     wp.map_cuda_device("foo", ctypes.c_void_p(context_ptr))
 
@@ -206,6 +224,9 @@ In either case, mapping the custom CUDA context allows us to target the context 
     with wp.ScopedDevice("foo"):
         a = wp.zeros(n)
         wp.launch(kernel, dim=a.size, inputs=[a])
+
+.. autofunction:: map_cuda_device
+.. autofunction:: unmap_cuda_device
 
 .. _peer_access:
 
@@ -253,7 +274,8 @@ It's possible to temporarily enable or disable peer access using a scoped manage
 
 .. note::
 
-    Peer access does not accelerate memory transfers between arrays allocated using the :ref:`stream-ordered memory pool allocators<mempool_allocators>` introduced in Warp 0.14.0.  To accelerate memory pool transfers, :ref:`memory pool access<mempool_access>` should be enabled instead.
+    Peer access does not accelerate memory transfers between arrays allocated using the :ref:`stream-ordered memory pool allocators<mempool_allocators>` introduced in Warp 0.14.0.
+    To accelerate memory pool transfers, :ref:`memory pool access<mempool_access>` should be enabled instead.
 
 .. autofunction:: warp.is_peer_access_supported
 .. autofunction:: warp.is_peer_access_enabled

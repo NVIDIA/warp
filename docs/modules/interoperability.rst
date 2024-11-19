@@ -56,7 +56,7 @@ PyTorch supports both CPU and GPU tensors and both kinds can be passed to Warp k
 NumPy
 -----
 
-Warp arrays may be converted to a NumPy array through the ``warp.array.numpy()`` method. When the Warp array lives on
+Warp arrays may be converted to a NumPy array through the :meth:`array.numpy() <warp.array.numpy>` method. When the Warp array lives on
 the ``cpu`` device this will return a zero-copy view onto the underlying Warp allocation. If the array lives on a
 ``cuda`` device then it will first be copied back to a temporary buffer and copied to NumPy.
 
@@ -161,7 +161,7 @@ Example: Optimization using ``warp.to_torch``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Less code is needed when we declare the optimization variables directly in Warp and use :func:`warp.to_torch` to convert them to PyTorch tensors.
-Here, we revisit the same example from above where now only a single conversion to a torch tensor is needed to supply Adam with the optimization variables::
+Here, we revisit the same example from above where now only a single conversion to a PyTorch tensor is needed to supply Adam with the optimization variables::
 
     import warp as wp
     import numpy as np
@@ -198,7 +198,7 @@ Example: Optimization using ``torch.autograd.function``
 One can insert Warp kernel launches in a PyTorch graph by defining a :class:`torch.autograd.Function` class, which
 requires forward and backward functions to be defined. After mapping incoming torch arrays to Warp arrays, a Warp kernel
 may be launched in the usual way. In the backward pass, the same kernel's adjoint may be launched by 
-setting ``adjoint = True`` in :func:`wp.launch() <launch>`. Alternatively, the user may choose to rely on Warp's tape.
+setting ``adjoint = True`` in :func:`wp.launch() <warp.launch>`. Alternatively, the user may choose to rely on Warp's tape.
 In the following example, we demonstrate how Warp may be used to evaluate the Rosenbrock function in an optimization context::
 
     import warp as wp
@@ -281,14 +281,17 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
     xy_np = xy.numpy(force=True)
     print(np.mean(xy_np, axis=0))
 
-Note that if Warp code is wrapped in a torch.autograd.function that gets called in ``torch.compile()``, it will automatically
-exclude that function from compiler optimizations. If your script uses ``torch.compile()``, we recommend using Pytorch version 2.3.0+,
-which has improvements that address this scenario.
+Note that if Warp code is wrapped in a :class:`torch.autograd.Function` that gets called in :func:`torch.compile()`, it will automatically
+exclude that function from compiler optimizations. If your script uses :func:`torch.compile()`,
+we recommend using PyTorch version 2.3.0+, which has improvements that address this scenario.
 
 Performance Notes
 ^^^^^^^^^^^^^^^^^
 
-The ``wp.from_torch()`` function creates a Warp array object that shares data with a PyTorch tensor.  Although this function does not copy the data, there is always some CPU overhead during the conversion.  If these conversions happen frequently, the overall program performance may suffer.  As a general rule, it's good to avoid repeated conversions of the same tensor.  Instead of:
+The :func:`wp.from_torch() <warp.from_torch>` function creates a Warp array object that shares data with a PyTorch tensor.
+Although this function does not copy the data, there is always some CPU overhead during the conversion.
+If these conversions happen frequently, the overall program performance may suffer.
+As a general rule, repeated conversions of the same tensor should be avoided.  Instead of:
 
 .. code:: python
 
@@ -313,7 +316,11 @@ Try converting the arrays only once and reuse them:
     for i in range(10):
         wp.launch(saxpy, dim=n, inputs=[x_w, y_w, 1.0], device=device)
 
-If reusing arrays is not possible (e.g., a new PyTorch tensor is constructed on every iteration), passing ``return_ctype=True`` to ``wp.from_torch()`` should yield faster performance.  Setting this argument to True avoids constructing a ``wp.array`` object and instead returns a low-level array descriptor.  This descriptor is a simple C structure that can be passed to Warp kernels instead of a ``wp.array``, but cannot be used in other places that require a ``wp.array``.
+If reusing arrays is not possible (e.g., a new PyTorch tensor is constructed on every iteration), passing ``return_ctype=True``
+to :func:`wp.from_torch() <warp.from_torch>` should yield better performance.
+Setting this argument to ``True`` avoids constructing a ``wp.array`` object and instead returns a low-level array descriptor.
+This descriptor is a simple C structure that can be passed to Warp kernels instead of a ``wp.array``,
+but cannot be used in other places that require a ``wp.array``.
 
 .. code:: python
 
@@ -350,15 +357,21 @@ Sample output:
     2113 ms  from_torch(..., return_ctype=True)
     2950 ms  direct from torch
 
-The default ``wp.from_torch()`` conversion is the slowest.  Passing ``return_ctype=True`` is the fastest, because it skips creating temporary Warp array objects.  Passing PyTorch tensors to Warp kernels directly falls somewhere in between.  It skips creating temporary Warp arrays, but accessing the ``__cuda_array_interface__`` attributes of PyTorch tensors adds overhead because they are initialized on-demand.
+The default :func:`wp.from_torch() <warp.from_torch>` conversion is the slowest.
+Passing ``return_ctype=True`` is the fastest, because it skips creating temporary Warp array objects.
+Passing PyTorch tensors to Warp kernels directly falls somewhere in between.
+It skips creating temporary Warp arrays, but accessing the ``__cuda_array_interface__`` attributes of PyTorch tensors
+adds overhead because they are initialized on-demand.
 
 
 CuPy/Numba
 ----------
 
-Warp GPU arrays support the ``__cuda_array_interface__`` protocol for sharing data with other Python GPU frameworks.  This allows frameworks like CuPy to use Warp GPU arrays directly.
+Warp GPU arrays support the ``__cuda_array_interface__`` protocol for sharing data with other Python GPU frameworks.
+This allows frameworks like CuPy to use Warp GPU arrays directly.
 
-Likewise, Warp arrays can be created from any object that exposes the ``__cuda_array_interface__``.  Such objects can also be passed to Warp kernels directly without creating a Warp array object.
+Likewise, Warp arrays can be created from any object that exposes the ``__cuda_array_interface__``.
+Such objects can also be passed to Warp kernels directly without creating a Warp array object.
 
 .. _jax-interop:
 
@@ -371,7 +384,7 @@ Internally these use the DLPack protocol to exchange data in a zero-copy way wit
     warp_array = wp.from_jax(jax_array)
     jax_array = wp.to_jax(warp_array)
 
-It may be preferable to use the :ref:`DLPack` protocol directly for better performance and control over stream synchronization behaviour.
+It may be preferable to use the :ref:`DLPack` protocol directly for better performance and control over stream synchronization .
 
 .. autofunction:: warp.from_jax
 .. autofunction:: warp.to_jax
@@ -414,12 +427,12 @@ Warp kernels can be used as JAX primitives, which can be used to call Warp kerne
 
 Since this is an experimental feature, there are some limitations:
 
-    - All kernel arguments must be arrays.
-    - Kernel launch dimensions are inferred from the shape of the first argument.
-    - Input arguments are followed by output arguments in the Warp kernel definition.
-    - There must be at least one input argument and at least one output argument.
-    - All arrays must be contiguous.
-    - Only the CUDA backend is supported.
+* All kernel arguments must be arrays.
+* Kernel launch dimensions are inferred from the shape of the first argument.
+* Input arguments are followed by output arguments in the Warp kernel definition.
+* There must be at least one input argument and at least one output argument.
+* All arrays must be contiguous.
+* Only the CUDA backend is supported.
 
 Here is an example of an operation with three inputs and two outputs::
 
@@ -461,12 +474,15 @@ Here is an example of an operation with three inputs and two outputs::
     print(x)
     print(y)
 
-Using shardmap for distributed computation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Using ``shardmap`` for distributed computation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Warp can be used in conjunction with JAX's `shard_map <https://jax.readthedocs.io/en/latest/jep/14273-shard-map.html>`_ to perform distributed multi-GPU computations.
+Warp can be used in conjunction with JAX's `shard_map <https://jax.readthedocs.io/en/latest/jep/14273-shard-map.html>`__
+to perform distributed multi-GPU computations.
 
-To achieve this, the JAX distributed environment must be initialized (see `Distributed Arrays and Automatic Parallelization <https://jax.readthedocs.io/en/latest/notebooks/Distributed_arrays_and_automatic_parallelization.html>`_ for more details):
+To achieve this, the JAX distributed environment must be initialized
+(see `Distributed Arrays and Automatic Parallelization <https://jax.readthedocs.io/en/latest/notebooks/Distributed_arrays_and_automatic_parallelization.html>`__
+for more details):
 
 .. code-block:: python
 
@@ -475,7 +491,7 @@ To achieve this, the JAX distributed environment must be initialized (see `Distr
 
 This initialization must be called at the beginning of your program, before any other JAX operations.
 
-Here's an example of how to use `shard_map` with a Warp kernel:
+Here's an example of how to use ``shard_map`` with a Warp kernel:
 
 .. code-block:: python
 
@@ -565,11 +581,16 @@ Here's an example of how to use `shard_map` with a Warp kernel:
     # allgather collects results from all devices, resulting in a full array of shape (input_size,)
     print_on_process_0("Warp Output:", allgather(warp_result))
 
-In this example, `shard_map` is used to distribute the computation across available devices. The input array `a_in` is sharded along the 'x' axis, and each device processes its local shard. The Warp kernel `multiply_by_two_kernel` is applied to each shard, and the results are combined to form the final output.
+In this example, ``shard_map`` is used to distribute the computation across available devices.
+The input array ``a_in`` is sharded along the 'x' axis, and each device processes its local shard.
+The Warp kernel ``multiply_by_two_kernel`` is applied to each shard, and the results are combined to form the final output.
 
 This approach allows for efficient parallel processing of large arrays, as each device works on a portion of the data simultaneously.
 
-To run this program on multiple GPUs, you must have OpenMPI installed. You can consult the `OpenMPI installation guide <https://docs.open-mpi.org/en/v5.0.x/installing-open-mpi/quickstart.html>`_ for instructions on how to install it. Once OpenMPI is installed, you can use `mpirun` with the following command:
+To run this program on multiple GPUs, you must have Open MPI installed.
+You can consult the `OpenMPI installation guide <https://docs.open-mpi.org/en/main/installing-open-mpi/quickstart.html>`__
+for instructions on how to install it.
+Once Open MPI is installed, you can use ``mpirun`` with the following command:
 
 .. code-block:: bash
 
@@ -579,7 +600,9 @@ To run this program on multiple GPUs, you must have OpenMPI installed. You can c
 Specifying launch dimensions for matrix operations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In some cases, particularly for matrix operations, it's necessary to specify the launch dimensions for Warp kernels. This is because the default behavior of inferring dimensions from the first argument may not always be suitable for matrix operations. Here's an example of a distributed matrix multiplication using Warp and JAX:
+In some cases, particularly for matrix operations, it's necessary to specify the launch dimensions for Warp kernels.
+This is because the default behavior of inferring dimensions from the first argument may not always be suitable for matrix operations.
+Here's an example of a distributed matrix multiplication using Warp and JAX:
 
 .. code-block:: python
 
@@ -682,11 +705,18 @@ In some cases, particularly for matrix operations, it's necessary to specify the
     allclose = jnp.allclose(allgather(warp_result), jax_result, atol=1e-5)
     print_on_process_0(f"Allclose: {allclose}")
 
-In this example, we create a function `create_jax_warp_matmul` that calculates the launch dimensions based on the number of available GPUs. We use `jax.device_count()` to get the global number of GPUs and divide the `M` dimension (rows) of the matrix by this number. This ensures that each GPU processes an equal portion of the input matrix A. The `N` dimension (columns) remains unchanged as we're not sharding in that direction.
+In this example, we create a function ``create_jax_warp_matmul`` that calculates the launch dimensions based on the
+number of available GPUs.
+We use ``jax.device_count()`` to get the global number of GPUs and divide the ``M`` dimension (rows) of the matrix by this number.
+This ensures that each GPU processes an equal portion of the input matrix ``A``.
+The ``N`` dimension (columns) remains unchanged as we're not sharding in that direction.
 
-Note that the launch dimensions are set to match the shape of the matrix portion on each GPU. The `block_size_m` is calculated by dividing the total number of rows by the number of GPUs, while `block_size_n` is set to the full width of the output matrix.
+Note that the launch dimensions are set to match the shape of the matrix portion on each GPU.
+The ``block_size_m`` is calculated by dividing the total number of rows by the number of GPUs,
+while ``block_size_n`` is set to the full width of the output matrix.
 
-Note that this is a naive implementation of matrix multiplication for the sake of this illustration, and there are many optimizations that can be made to improve performance.
+Note that this is a naive implementation of matrix multiplication for the sake of this illustration,
+and there are many optimizations that can be made to improve performance.
 
 .. _DLPack:
 
@@ -694,15 +724,15 @@ DLPack
 ------
 
 Warp supports the DLPack protocol included in the Python Array API standard v2022.12.
-See the `Python Specification for DLPack <https://dmlc.github.io/dlpack/latest/python_spec.html>`_ for reference.
+See the `Python Specification for DLPack <https://dmlc.github.io/dlpack/latest/python_spec.html>`__ for reference.
 
-The canonical way to import an external array into Warp is using the ``warp.from_dlpack()`` function::
+The canonical way to import an external array into Warp is using the :func:`warp.from_dlpack()` function::
 
     warp_array = wp.from_dlpack(external_array)
 
 The external array can be a PyTorch tensor, Jax array, or any other array type compatible with this version of the DLPack protocol.
 For CUDA arrays, this approach requires the producer to perform stream synchronization which ensures that operations on the array
-are ordered correctly.  The ``warp.from_dlpack()`` function asks the producer to synchronize the current Warp stream on the device where
+are ordered correctly.  The :func:`warp.from_dlpack()` function asks the producer to synchronize the current Warp stream on the device where
 the array resides.  Thus it should be safe to use the array in Warp kernels on that device without any additional synchronization.
 
 The canonical way to export a Warp array to an external framework is to use the ``from_dlpack()`` function in that framework::
@@ -763,7 +793,7 @@ in Paddle autograd computations.
 .. autofunction:: warp.dtype_from_paddle
 .. autofunction:: warp.dtype_to_paddle
 
-To convert a Paddle CUDA stream to a Warp CUDA stream and vice versa, Warp provides the following functions:
+To convert a Paddle CUDA stream to a Warp CUDA stream and vice versa, Warp provides the following function:
 
 .. autofunction:: warp.stream_from_paddle
 
@@ -815,7 +845,7 @@ Example: Optimization using ``warp.to_paddle``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Less code is needed when we declare the optimization variables directly in Warp and use :func:`warp.to_paddle` to convert them to Paddle tensors.
-Here, we revisit the same example from above where now only a single conversion to a paddle tensor is needed to supply Adam with the optimization variables::
+Here, we revisit the same example from above where now only a single conversion to a Paddle tensor is needed to supply Adam with the optimization variables::
 
     import warp as wp
     import numpy as np
@@ -851,7 +881,11 @@ Here, we revisit the same example from above where now only a single conversion 
 Performance Notes
 ^^^^^^^^^^^^^^^^^
 
-The ``wp.from_paddle()`` function creates a Warp array object that shares data with a Paddle tensor.  Although this function does not copy the data, there is always some CPU overhead during the conversion.  If these conversions happen frequently, the overall program performance may suffer.  As a general rule, it's good to avoid repeated conversions of the same tensor.  Instead of:
+The :func:`wp.from_paddle() <warp.from_paddle>` function creates a Warp array object that shares data with a Paddle tensor.
+Although this function does not copy the data, there is always some CPU overhead during the conversion.
+If these conversions happen frequently, the overall program performance may suffer.
+As a general rule, it's good to avoid repeated conversions of the same tensor.
+Instead of:
 
 .. code:: python
 
@@ -876,7 +910,10 @@ Try converting the arrays only once and reuse them:
     for i in range(10):
         wp.launch(saxpy, dim=n, inputs=[x_w, y_w, 1.0], device=device)
 
-If reusing arrays is not possible (e.g., a new Paddle tensor is constructed on every iteration), passing ``return_ctype=True`` to ``wp.from_paddle()`` should yield faster performance.  Setting this argument to True avoids constructing a ``wp.array`` object and instead returns a low-level array descriptor.  This descriptor is a simple C structure that can be passed to Warp kernels instead of a ``wp.array``, but cannot be used in other places that require a ``wp.array``.
+If reusing arrays is not possible (e.g., a new Paddle tensor is constructed on every iteration), passing ``return_ctype=True`` to
+:func:`wp.from_paddle() <warp.from_paddle>` should yield faster performance.
+Setting this argument to ``True`` avoids constructing a ``wp.array`` object and instead returns a low-level array descriptor.
+This descriptor is a simple C structure that can be passed to Warp kernels instead of a ``wp.array``, but cannot be used in other places that require a ``wp.array``.
 
 .. code:: python
 
@@ -891,7 +928,10 @@ If reusing arrays is not possible (e.g., a new Paddle tensor is constructed on e
 
         wp.launch(saxpy, dim=n, inputs=[x_ctype, y_ctype, 1.0], device=device)
 
-An alternative approach is to pass the Paddle tensors to Warp kernels directly.  This avoids constructing temporary Warp arrays by leveraging standard array interfaces (like ``__cuda_array_interface__``) supported by both Paddle and Warp.  The main advantage of this approach is convenience, since there is no need to call any conversion functions.  The main limitation is that it does not handle gradients, because gradient information is not included in the standard array interfaces.  This technique is therefore most suitable for algorithms that do not involve differentiation.
+An alternative approach is to pass the Paddle tensors to Warp kernels directly.  This avoids constructing temporary Warp arrays by leveraging standard array interfaces (like ``__cuda_array_interface__``) supported by both Paddle and Warp.
+The main advantage of this approach is convenience, since there is no need to call any conversion functions.
+The main limitation is that it does not handle gradients, because gradient information is not included in the standard array interfaces.
+This technique is therefore most suitable for algorithms that do not involve differentiation.
 
 .. code:: python
 
@@ -913,4 +953,7 @@ Sample output:
      5990 ms  from_paddle(..., return_ctype=True)
     35167 ms  direct from paddle
 
-The default ``wp.from_paddle()`` conversion is the slowest.  Passing ``return_ctype=True`` is the fastest, because it skips creating temporary Warp array objects.  Passing Paddle tensors to Warp kernels directly falls somewhere in between.  It skips creating temporary Warp arrays, but accessing the ``__cuda_array_interface__`` attributes of Paddle tensors adds overhead because they are initialized on-demand.
+The default ``wp.from_paddle()`` conversion is the slowest.
+Passing ``return_ctype=True`` is the fastest, because it skips creating temporary Warp array objects.
+Passing Paddle tensors to Warp kernels directly falls somewhere in between.
+It skips creating temporary Warp arrays, but accessing the ``__cuda_array_interface__`` attributes of Paddle tensors adds overhead because they are initialized on-demand.

@@ -16,7 +16,7 @@ Has performance implications.
 """
 
 verify_cuda: bool = False
-"""If `True`, Warp will check for CUDA errors after every launch and memory operation.
+"""If `True`, Warp will check for CUDA errors after every launch operation.
 CUDA error verification cannot be used during graph capture. Has performance implications.
 """
 

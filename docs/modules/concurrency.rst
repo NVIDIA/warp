@@ -554,7 +554,7 @@ Stream synchronization can be a tricky business, even for experienced CUDA devel
     wp.launch(kernel, dim=a.size, inputs=[a], stream=s)
 
 This snippet has a stream synchronization problem that is difficult to detect at first glance.
-It's quite possible that the code will work just fine, but it introduces undefined behaviour,
+It's quite possible that the code will work just fine, but it introduces undefined behavior,
 which may lead to incorrect results that manifest only once in a while.  The issue is that the kernel is launched
 on stream ``s``, which is different than the stream used for creating array ``a``.  The array is allocated and
 initialized on the current stream of device ``cuda:0``, which means that it might not be ready when stream ``s``

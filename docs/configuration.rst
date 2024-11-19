@@ -41,8 +41,8 @@ Basic Global Settings
 |``verify_fp``                                   | Boolean | ``False``   | If ``True``, Warp will check that inputs and outputs are finite before   |
 |                                                |         |             | and/or after various operations. **Has performance implications.**       |
 +------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``verify_cuda``                                 | Boolean | ``False``   | If ``True``, Warp will check for CUDA errors after every launch and      |
-|                                                |         |             | memory operation. CUDA error verification cannot be used during graph    |
+|``verify_cuda``                                 | Boolean | ``False``   | If ``True``, Warp will check for CUDA errors after every launch          |
+|                                                |         |             | operation. CUDA error verification cannot be used during graph           |
 |                                                |         |             | capture. **Has performance implications.**                               |              
 +------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``print_launches``                              | Boolean | ``False``   | If ``True``, Warp will print details of every kernel launch to standard  |

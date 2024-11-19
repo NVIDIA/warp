@@ -54,14 +54,14 @@ Warp allows generating kernels on-the-fly with various customizations, including
 Arrays
 ------
 
-Arrays are the fundamental memory abstraction in Warp; they are created through the following global constructors: ::
+Arrays are the fundamental memory abstraction in Warp. They can be created through the following global constructor::
 
     wp.empty(shape=1024, dtype=wp.vec3, device="cpu")
     wp.zeros(shape=1024, dtype=float, device="cuda")
     wp.full(shape=1024, value=10, dtype=int, device="cuda")
 
 
-Arrays can also be constructed directly from ``numpy`` ndarrays as follows: ::
+Arrays can also be constructed directly from NumPy ``ndarrays`` as follows::
 
     r = np.random.rand(1024)
 
@@ -74,7 +74,7 @@ Arrays can also be constructed directly from ``numpy`` ndarrays as follows: ::
     # return a Warp copy of the array data on the GPU
     a = wp.array(r, dtype=float, device="cuda")
 
-Note that for multi-dimensional data the ``dtype`` parameter must be specified explicitly, e.g.: ::
+Note that for multi-dimensional data, the ``dtype`` parameter must be specified explicitly, e.g.::
 
     r = np.random.rand((1024, 3))
 
@@ -83,7 +83,7 @@ Note that for multi-dimensional data the ``dtype`` parameter must be specified e
 
 If the shapes are incompatible, an error will be raised.
 
-Warp arrays can also be constructed from objects that define the ``__cuda_array_interface__`` attribute. For example: ::
+Warp arrays can also be constructed from objects that define the ``__cuda_array_interface__`` attribute. For example::
 
     import cupy
     import warp as wp
@@ -95,14 +95,14 @@ Warp arrays can also be constructed from objects that define the ``__cuda_array_
     # return a Warp array wrapper around the cupy data (zero-copy)
     a = wp.array(r, device=device)
 
-Arrays can be moved between devices using the ``array.to()`` method: ::
+Arrays can be moved between devices using :meth:`array.to`::
 
     host_array = wp.array(a, dtype=float, device="cpu")
 
     # allocate and copy to GPU
     device_array = host_array.to("cuda")
 
-Additionally, arrays can be copied directly between memory spaces: ::
+Additionally, data can be copied between arrays in different memory spaces using :func:`wp.copy() <warp.copy()>`::
 
     src_array = wp.array(a, dtype=float, device="cpu")
     dest_array = wp.empty_like(host_array)
@@ -119,12 +119,14 @@ Additionally, arrays can be copied directly between memory spaces: ::
 Multi-dimensional Arrays
 ########################
 
-Multi-dimensional arrays can be constructed by passing a tuple of sizes for each dimension, e.g.: the following constructs a 2d array of size 1024x16::
+Multi-dimensional arrays up to four dimensions can be constructed by passing a tuple of sizes for each dimension.
+
+The following constructs a 2D array of size 1024 x 16::
 
     wp.zeros(shape=(1024, 16), dtype=float, device="cuda")
 
 When passing multi-dimensional arrays to kernels users must specify the expected array dimension inside the kernel signature,
-e.g. to pass a 2d array to a kernel the number of dims is specified using the ``ndim=2`` parameter::
+e.g. to pass a 2D array to a kernel the number of dims is specified using the ``ndim=2`` parameter::
 
     @wp.kernel
     def test(input: wp.array(dtype=float, ndim=2)):
@@ -135,17 +137,13 @@ To index a multi-dimensional array, use the following kernel syntax::
     # returns a float from the 2d array
     value = input[i,j]
 
-To create an array slice use the following syntax, where the number of indices is less than the array dimensions::
+To create an array slice, use the following syntax, where the number of indices is less than the array dimensions::
 
     # returns an 1d array slice representing a row of the 2d array
     row = input[i]
 
 Slice operators can be concatenated, e.g.: ``s = array[i][j][k]``. Slices can be passed to ``wp.func`` user functions provided
-the function also declares the expected array dimension. Currently only single-index slicing is supported.
-
-.. note::
-    Currently Warp limits arrays to 4 dimensions maximum. This is in addition to the contained datatype, which may be 1-2 dimensional for vector and matrix types such as ``vec3``, and ``mat33``.
-
+the function also declares the expected array dimension. Currently, only single-index slicing is supported.
 
 The following construction methods are provided for allocating zero-initialized and empty (non-initialized) arrays:
 
@@ -163,12 +161,12 @@ The following construction methods are provided for allocating zero-initialized 
 Matrix Multiplication
 #####################
 
-Warp 2D array multiplication is built on NVIDIA's `CUTLASS <https://github.com/NVIDIA/cutlass>`_ library,
+Matrix multiplication is built on NVIDIA's `CUTLASS <https://github.com/NVIDIA/cutlass>`_ library,
 which enables fast matrix multiplication of large arrays on the GPU.
 
-If no GPU is detected, matrix multiplication falls back to Numpy's implementation on the CPU.
+If no GPU is detected, matrix multiplication falls back to NumPy's implementation on the CPU.
 
-Matrix multiplication is fully differentiable, and can be recorded on the tape like so::
+Matrix multiplication is fully differentiable and can be recorded on the tape::
 
     tape = wp.Tape()
     with tape:
@@ -630,13 +628,19 @@ Warp is particularly strict regarding type conversions and does not perform *any
 The user is responsible for ensuring types for most arithmetic operators match, e.g.: ``x = float(0.0) + int(4)`` will result in an error.
 This can be surprising for users that are accustomed to C-style conversions but avoids a class of common bugs that result from implicit conversions.
 
-.. note::
-    Warp does not currently perform implicit type conversions between numeric types.
-    Users should explicitly cast variables to compatible types using constructors like
-    ``int()``, ``float()``, ``wp.float16()``, ``wp.uint8()``, etc.
+Users should explicitly cast variables to compatible types using constructors like
+``int()``, ``float()``, ``wp.float16()``, ``wp.uint8()``, etc.
 
 .. note::
-    For performance reasons, Warp relies on native compilers to perform numeric conversions (e.g., LLVM for CPU and NVRTC for CUDA).  This is generally not a problem, but in some cases the results may vary on different devices.  For example, the conversion ``wp.uint8(-1.0)`` results in undefined behavior, since the floating point value -1.0 is out of range for unsigned integer types.  C++ compilers are free to handle such cases as they see fit.  Numeric conversions are only guaranteed to produce correct results when the value being converted is in the range supported by the target data type.
+
+    For performance reasons, Warp relies on native compilers to perform numeric conversions (e.g., LLVM for CPU and NVRTC for CUDA).
+    This is generally not a problem, but in some cases the results may vary on different devices.
+    For example, the conversion ``wp.uint8(-1.0)`` results in undefined behavior, since the floating point value -1.0
+    is out of range for unsigned integer types.
+
+    C++ compilers are free to handle such cases as they see fit.
+    Numeric conversions are only guaranteed to produce correct results when the value being converted is in the range
+    supported by the target data type.
 
 Constants
 ---------
@@ -756,6 +760,8 @@ Arithmetic Operators
 +-----------+--------------------------+
 |  a * b    | Multiplication           |
 +-----------+--------------------------+
+|  a @ b    | Matrix multiplication    |
++-----------+--------------------------+
 |  a / b    | Floating point division  |
 +-----------+--------------------------+
 |  a // b   | Floored division         |
@@ -765,11 +771,13 @@ Arithmetic Operators
 |  a % b    | Modulus                  |
 +-----------+--------------------------+
 
-.. note::
-    Since implicit conversions are not performed arguments types to operators should match.
-    Users should use type constructors, e.g.: ``float()``, ``int()``, ``wp.int64()``, etc. to cast variables
-    to the correct type. Also note that the multiplication expression ``a * b`` is used to represent scalar
-    multiplication and matrix multiplication. The ``@`` operator is not currently supported.
+
+Since Warp does not perform implicit type conversions, operands should have compatible data types.
+Users should use type constructors such as ``float()``, ``int()``, ``wp.int64()``, etc. to cast variables
+to the correct type.
+
+The multiplication expression ``a * b`` can also be used to perform matrix multiplication
+between `matrix types <Matrices>`_.
 
 Streams
 -------
@@ -850,8 +858,9 @@ ensure that :func:`wp.capture_end <capture_end>` is called regardless of excepti
 
     wp.capture_launch(capture.graph)
 
-Note that only launch calls are recorded in the graph, any Python executed outside of the kernel code will not be recorded.
-Typically it is only beneficial to use CUDA graphs when the graph will be reused or launched multiple times.
+Note that only launch calls are recorded in the graph; any Python executed outside of the kernel code will not be recorded.
+Typically it is only beneficial to use CUDA graphs when the graph will be reused or launched multiple times, as
+there is a graph-creation overhead.
 
 .. autofunction:: capture_begin
 .. autofunction:: capture_end
@@ -863,15 +872,15 @@ Typically it is only beneficial to use CUDA graphs when the graph will be reused
 Meshes
 ------
 
-Warp provides a ``wp.Mesh`` class to manage triangle mesh data. To create a mesh users provide a points, indices and optionally a velocity array::
+Warp provides a :class:`wp.Mesh <Mesh>` class to manage triangle mesh data. To create a mesh, users provide a points, indices and optionally a velocity array::
 
     mesh = wp.Mesh(points, indices, velocities)
 
 .. note::
     Mesh objects maintain references to their input geometry buffers. All buffers should live on the same device.
 
-Meshes can be passed to kernels using their ``id`` attribute which uniquely identifies the mesh by a unique ``uint64`` value.
-Once inside a kernel you can perform geometric queries against the mesh such as ray-casts or closest point lookups::
+Meshes can be passed to kernels using their ``id`` attribute, which is ``uint64`` value that uniquely identifies the mesh.
+Once inside a kernel, you can perform geometric queries against the mesh such as ray-casts or closest-point lookups::
 
     @wp.kernel
     def raycast(mesh: wp.uint64,
@@ -900,7 +909,8 @@ Once inside a kernel you can perform geometric queries against the mesh such as 
 
 
 Users may update mesh vertex positions at runtime simply by modifying the points buffer.
-After modifying point locations users should call ``Mesh.refit()`` to rebuild the bounding volume hierarchy (BVH) structure and ensure that queries work correctly.
+After modifying point locations users should call :meth:`Mesh.refit()` to rebuild the bounding volume hierarchy (BVH)
+structure and ensure that queries work correctly.
 
 .. note::
     Updating Mesh topology (indices) at runtime is not currently supported. Users should instead recreate a new Mesh object.
