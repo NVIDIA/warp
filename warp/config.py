@@ -7,7 +7,7 @@
 
 from typing import Optional
 
-version: str = "1.4.2"
+version: str = "1.5.0"
 """Warp version string"""
 
 verify_fp: bool = False
