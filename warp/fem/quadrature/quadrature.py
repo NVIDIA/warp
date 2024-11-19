@@ -85,7 +85,7 @@ class RegularQuadrature(Quadrature):
         points: wp.array(dtype=Coords)
         weights: wp.array(dtype=float)
 
-    # Cache common formulas so we do dot have to do h2d trasnfer for each call
+    # Cache common formulas so we do dot have to do h2d transfer for each call
     class CachedFormula:
         _cache = {}
 

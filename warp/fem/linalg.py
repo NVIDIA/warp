@@ -298,7 +298,7 @@ def tridiagonal_symmetric_eigenvalues_qr(D: Any, L: Any, Q: Any, tol: Any):
                 shift = _wilkinson_shift(D[end - 1], D[end], L[end - 1], tol)
 
                 # start with eliminating lower diag of first column of shifted matrix
-                # (i.e. first step of excplit QR factorization)
+                # (i.e. first step of explicit QR factorization)
                 # Then all further steps eliminate the buldge (second diag) of the non-shifted matrix
                 x = D[start] - shift
                 y = L[start]
@@ -376,7 +376,7 @@ def array_axpy(x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 1.0):
     # as generic functions are not supported yet. Instead we use a non-differentiable kernel
     # and record a custom adjoint function on the tape.
 
-    # temporarilly disable tape to avoid printing warning that kernel is not differentiable
+    # temporarily disable tape to avoid printing warning that kernel is not differentiable
     (tape, wp.context.runtime.tape) = (wp.context.runtime.tape, None)
     wp.launch(kernel=_array_axpy_kernel, dim=x.shape, device=x.device, inputs=[x, y, alpha, beta])
     wp.context.runtime.tape = tape

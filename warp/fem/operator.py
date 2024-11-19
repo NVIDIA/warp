@@ -17,13 +17,13 @@ class Integrand:
         self.argspec = wp.codegen.get_full_arg_spec(self.func)
         self.kernel_options = {} if kernel_options is None else kernel_options
 
-        # Operators for each field argument. This woill be populated at first integrate call
+        # Operators for each field argument. This will be populated at first integrate call
         self.operators: Dict[str, Set[Operator]] = None
 
 
 class Operator:
     """
-    Operators provide syntaxic sugar over Field and Domain evaluation functions and arguments
+    Operators provide syntactic sugar over Field and Domain evaluation functions and arguments
     """
 
     def __init__(self, func: Callable, resolver: Callable, field_result: Callable = None):
@@ -108,7 +108,7 @@ def measure(domain: Domain, s: Sample) -> float:
 
 @operator(resolver=lambda dmn: dmn.element_measure_ratio)
 def measure_ratio(domain: Domain, s: Sample) -> float:
-    """Returns the maximum ratio between the measure of this element and that of higher-dimensional neighbours."""
+    """Returns the maximum ratio between the measure of this element and that of higher-dimensional neighbors."""
     pass
 
 
