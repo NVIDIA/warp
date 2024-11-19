@@ -1,0 +1,238 @@
+# Copyright (c) 2024 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+
+import numpy as np
+
+import warp as wp
+import warp.examples
+import warp.sim
+from warp.sim.graph_coloring import ColoringAlgorithm, construct_trimesh_graph_edges, validate_graph_coloring
+from warp.tests.unittest_utils import *
+
+
+def color_lattice_grid(num_x, num_y):
+    colors = []
+    for _ in range(4):
+        colors.append([])
+
+    for xi in range(num_x + 1):
+        for yi in range(num_y + 1):
+            node_dx = yi * (num_x + 1) + xi
+
+            a = 1 if xi % 2 else 0
+            b = 1 if yi % 2 else 0
+
+            c = b * 2 + a
+
+            colors[c].append(node_dx)
+
+    color_groups = [np.array(group) for group in colors]
+
+    return color_groups
+
+
+@unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
+def test_coloring_trimesh(test, device):
+    from pxr import Usd, UsdGeom
+
+    with wp.ScopedDevice(device):
+        usd_stage = Usd.Stage.Open(os.path.join(wp.examples.get_asset_directory(), "bunny.usd"))
+        usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/bunny"))
+
+        vertices = np.array(usd_geom.GetPointsAttr().Get())
+        faces = np.array(usd_geom.GetFaceVertexIndicesAttr().Get())
+
+        builder = wp.sim.ModelBuilder()
+
+        builder.add_cloth_mesh(
+            pos=wp.vec3(0.0, 0.0, 0.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
+            scale=1.0,
+            vertices=[wp.vec3(p) for p in vertices],
+            indices=faces.flatten(),
+            vel=wp.vec3(0.0, 0.0, 0.0),
+            density=0.02,
+        )
+
+        model = builder.finalize()
+
+        particle_colors = wp.empty(shape=(model.particle_count), dtype=int, device="cpu")
+
+        edge_indices_cpu = wp.array(model.edge_indices.numpy()[:, 2:], dtype=int, device="cpu")
+
+        # coloring without bending
+        num_colors_greedy = wp.context.runtime.core.graph_coloring(
+            model.particle_count,
+            edge_indices_cpu.__ctype__(),
+            ColoringAlgorithm.GRAPH_COLOR_ORDERED_GREEDY.value,
+            particle_colors.__ctype__(),
+        )
+        wp.launch(
+            kernel=validate_graph_coloring,
+            inputs=[edge_indices_cpu, particle_colors],
+            dim=edge_indices_cpu.shape[0],
+            device="cpu",
+        )
+
+        num_colors_mcs = wp.context.runtime.core.graph_coloring(
+            model.particle_count,
+            edge_indices_cpu.__ctype__(),
+            ColoringAlgorithm.GRAPH_COLOR_MCS.value,
+            particle_colors.__ctype__(),
+        )
+        wp.launch(
+            kernel=validate_graph_coloring,
+            inputs=[edge_indices_cpu, particle_colors],
+            dim=edge_indices_cpu.shape[0],
+            device="cpu",
+        )
+
+        # coloring with bending
+        edge_indices_cpu_with_bending = construct_trimesh_graph_edges(model.edge_indices, True)
+        num_colors_greedy = wp.context.runtime.core.graph_coloring(
+            model.particle_count,
+            edge_indices_cpu_with_bending.__ctype__(),
+            ColoringAlgorithm.GRAPH_COLOR_ORDERED_GREEDY.value,
+            particle_colors.__ctype__(),
+        )
+        wp.context.runtime.core.balance_coloring(
+            model.particle_count,
+            edge_indices_cpu_with_bending.__ctype__(),
+            num_colors_greedy,
+            1.1,
+            particle_colors.__ctype__(),
+        )
+        wp.launch(
+            kernel=validate_graph_coloring,
+            inputs=[edge_indices_cpu_with_bending, particle_colors],
+            dim=edge_indices_cpu_with_bending.shape[0],
+            device="cpu",
+        )
+
+        num_colors_mcs = wp.context.runtime.core.graph_coloring(
+            model.particle_count,
+            edge_indices_cpu_with_bending.__ctype__(),
+            ColoringAlgorithm.GRAPH_COLOR_MCS.value,
+            particle_colors.__ctype__(),
+        )
+        wp.context.runtime.core.balance_coloring(
+            model.particle_count,
+            edge_indices_cpu_with_bending.__ctype__(),
+            num_colors_mcs,
+            1.1,
+            particle_colors.__ctype__(),
+        )
+        wp.launch(
+            kernel=validate_graph_coloring,
+            inputs=[edge_indices_cpu_with_bending, particle_colors],
+            dim=edge_indices_cpu_with_bending.shape[0],
+            device="cpu",
+        )
+
+
+@unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
+def test_combine_coloring(test, device):
+    from pxr import Usd, UsdGeom
+
+    with wp.ScopedDevice(device):
+        builder1 = wp.sim.ModelBuilder()
+        usd_stage = Usd.Stage.Open(os.path.join(wp.examples.get_asset_directory(), "bunny.usd"))
+        usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/bunny"))
+
+        vertices = np.array(usd_geom.GetPointsAttr().Get())
+        faces = np.array(usd_geom.GetFaceVertexIndicesAttr().Get())
+
+        builder1.add_cloth_mesh(
+            pos=wp.vec3(0.0, 0.0, 0.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
+            scale=1.0,
+            vertices=[wp.vec3(p) for p in vertices],
+            indices=faces.flatten(),
+            vel=wp.vec3(0.0, 0.0, 0.0),
+            density=0.02,
+            color_particles=True,
+        )
+
+        builder1.add_cloth_grid(
+            pos=wp.vec3(0.0, 4.0, 0.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
+            vel=wp.vec3(0.0, 0.0, 0.0),
+            dim_x=50,
+            dim_y=100,
+            cell_x=0.1,
+            cell_y=0.1,
+            mass=0.1,
+            fix_left=True,
+            color_particles=True,
+        )
+
+        builder2 = wp.sim.ModelBuilder()
+        builder2.add_cloth_grid(
+            pos=wp.vec3(0.0, 4.0, 0.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
+            vel=wp.vec3(0.0, 0.0, 0.0),
+            dim_x=50,
+            dim_y=100,
+            cell_x=0.1,
+            cell_y=0.1,
+            mass=0.1,
+            # to include bending in coloring
+            edge_ke=100000,
+            fix_left=True,
+            color_particles=True,
+        )
+
+        builder2.add_cloth_grid(
+            pos=wp.vec3(0.0, 4.0, 0.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
+            vel=wp.vec3(0.0, 0.0, 0.0),
+            dim_x=50,
+            dim_y=100,
+            cell_x=0.1,
+            cell_y=0.1,
+            mass=0.1,
+            fix_left=True,
+            color_particles=True,
+            color_groups=color_lattice_grid(50, 100),
+        )
+
+        builder1.add_builder(builder2)
+
+        model = builder2.finalize()
+
+        particle_number_colored = np.full((model.particle_count), -1, dtype=int)
+        particle_colors = np.full((model.particle_count), -1, dtype=int)
+        for color, color_group in enumerate(model.particle_coloring):
+            particle_number_colored[color_group.numpy()] += 1
+            particle_colors[color_group.numpy()] = color
+
+        # all particles has been colored exactly once
+        assert_np_equal(particle_number_colored, 0)
+
+        edge_indices_cpu = wp.array(model.edge_indices.numpy()[:, 2:], dtype=int, device="cpu")
+        wp.launch(
+            kernel=validate_graph_coloring,
+            inputs=[edge_indices_cpu, wp.array(particle_colors, dtype=int, device="cpu")],
+            dim=edge_indices_cpu.shape[0],
+            device="cpu",
+        )
+
+
+devices = get_test_devices()
+
+
+class TestColoring(unittest.TestCase):
+    pass
+
+
+add_function_test(TestColoring, "test_coloring_trimesh", test_coloring_trimesh, devices=devices)
+add_function_test(TestColoring, "test_combine_coloring", test_combine_coloring, devices=devices)
+
+if __name__ == "__main__":
+    wp.clear_kernel_cache()
+    unittest.main(verbosity=2)

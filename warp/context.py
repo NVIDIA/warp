@@ -3486,6 +3486,23 @@ class Runtime:
             self.core.cuda_timing_end.argtypes = []
             self.core.cuda_timing_end.restype = None
 
+            self.core.graph_coloring.argtypes = [
+                ctypes.c_int,
+                warp.types.array_t,
+                ctypes.c_int,
+                warp.types.array_t,
+            ]
+            self.core.graph_coloring.restype = ctypes.c_int
+
+            self.core.balance_coloring.argtypes = [
+                ctypes.c_int,
+                warp.types.array_t,
+                ctypes.c_int,
+                ctypes.c_float,
+                warp.types.array_t,
+            ]
+            self.core.balance_coloring.restype = ctypes.c_float
+
             self.core.init.restype = ctypes.c_int
 
         except AttributeError as e:

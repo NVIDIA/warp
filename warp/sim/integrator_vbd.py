@@ -740,6 +740,12 @@ class VBDIntegrator(Integrator):
         self.body_particle_contact_count = wp.zeros((model.particle_count,), dtype=wp.int32, device=self.device)
         self.friction_epsilon = friction_epsilon
 
+        if len(self.model.particle_coloring) == 0:
+            raise ValueError(
+                "model.particle_coloring is empty! When using the VBDIntegrator you must create the "
+                "Model object with the color_particles option enabled."
+            )
+
         # tests
         # wp.launch(kernel=_test_compute_force_element_adjacency,
         #           inputs=[self.adjacency, model.edge_indices, model.tri_indices],

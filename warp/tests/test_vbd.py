@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import contextlib
+import io
 import unittest
 
 import warp as wp
@@ -287,14 +289,6 @@ class VBDClothSim:
             89, 99, 100
         ]
 
-        self.coloring = [
-            [9, 12, 17, 24, 31, 38, 43, 46, 50, 62, 65, 68, 80, 84, 89, 92],
-            [6, 20, 25, 32, 37, 44, 51, 56, 59, 63, 70, 75, 82, 88, 90, 94, 96],
-            [2, 8, 10, 14, 26, 29, 33, 40, 48, 52, 55, 67, 73, 79, 86, 91, 98],
-            [4, 11, 16, 23, 28, 30, 35, 42, 49, 54, 57, 71, 74, 76, 78, 93, 97],
-            [3, 15, 18, 22, 34, 36, 39, 41, 53, 58, 60, 66, 72, 85, 99, 0, 87],
-            [7, 21, 27, 45, 47, 61, 64, 69, 77, 81, 83, 95, 1, 5, 13, 19],
-        ]
         # fmt: on
 
         self.dt = 1 / 60
@@ -322,6 +316,7 @@ class VBDClothSim:
             tri_ke=stiffness,
             tri_ka=stiffness,
             tri_kd=kd,
+            color_particles=True,
         )
 
         self.model = builder.finalize(device=device)
@@ -330,11 +325,6 @@ class VBDClothSim:
 
         self.model.soft_contact_ke = 1.0e4
         self.model.soft_contact_kd = 1.0e2
-
-        coloring_wp = []
-        for color in self.coloring:
-            coloring_wp.append(wp.array(color, dtype=wp.int32, device=self.model.device))
-        self.model.coloring = coloring_wp
 
         self.dt = self.dt / self.num_substeps
         self.fixed_particles = [0, 9]
@@ -367,19 +357,21 @@ class VBDClothSim:
             model.particle_flags = wp.array(flags, device=model.device)
 
 
-def test_vbd_cloth(test, device):
-    example = VBDClothSim(device)
-    example.run(test)
-
-
 devices = get_test_devices()
 
 
 class TestVBD(unittest.TestCase):
-    pass
+    def test_vbd_cloth(self):
+        for device in devices:
+            with contextlib.redirect_stdout(io.StringIO()) as f:
+                example = VBDClothSim(device)
+            self.assertRegex(
+                f.getvalue(),
+                r"Warp UserWarning: The graph is not optimizable anymore, terminated with a max/min ratio: 2.0 without reaching the target ratio: 1.1",
+            )
 
+            example.run(self)
 
-add_function_test(TestVBD, "test_vbd_cloth", test_vbd_cloth, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
