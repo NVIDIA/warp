@@ -146,7 +146,7 @@ float find_largest_smallest_groups(const std::vector<std::vector<int>>& color_gr
     return float(color_groups[biggest_group].size()) / float(color_groups[smallest_group].size());
 }
 
-bool color_changable(const Graph& graph, int node, int target_color){
+bool color_changeable(const Graph& graph, int node, int target_color){
     // loop through node and see if it has target color
     for (size_t i = 0; i < graph.get_node_degree(node); i++)
     {
@@ -159,7 +159,7 @@ bool color_changable(const Graph& graph, int node, int target_color){
     return true;
 }
 
-int find_changable_node_in_category(
+int find_changeable_node_in_category(
     const Graph& graph, 
     const std::vector<std::vector<int>>& color_groups, 
     int source_color, 
@@ -169,7 +169,7 @@ int find_changable_node_in_category(
     auto& source_group = color_groups[source_color];
     for (size_t node_idx = 0; node_idx < source_group.size(); node_idx++)
     {
-        if (color_changable(graph, source_group[node_idx], target_color)) {
+        if (color_changeable(graph, source_group[node_idx], target_color)) {
             return node_idx;
         }
     }
@@ -210,10 +210,10 @@ float balance_color_groups(float target_max_min_ratio,
             return max_min_ratio;
         }
 
-        // find a availiable vertex from the biggest category to move to the smallest category
-        int changable_color_group_idx = biggest_group;
-        int changable_node_idx = find_changable_node_in_category(graph, color_groups, biggest_group, smallest_group);
-        if (changable_node_idx == -1)
+        // find a available vertex from the biggest category to move to the smallest category
+        int changeable_color_group_idx = biggest_group;
+        int changeable_node_idx = find_changeable_node_in_category(graph, color_groups, biggest_group, smallest_group);
+        if (changeable_node_idx == -1)
         {
             for (size_t color = 0; color < color_groups.size(); color++)
             {
@@ -222,11 +222,11 @@ float balance_color_groups(float target_max_min_ratio,
                     continue;
                 }
 
-                changable_node_idx = find_changable_node_in_category(graph, color_groups, color, smallest_group);
+                changeable_node_idx = find_changeable_node_in_category(graph, color_groups, color, smallest_group);
 
-                if (changable_node_idx != -1)
+                if (changeable_node_idx != -1)
                 {
-                    changable_color_group_idx = color;
+                    changeable_color_group_idx = color;
 
                     break;
                 }
@@ -234,13 +234,13 @@ float balance_color_groups(float target_max_min_ratio,
         }
 
 
-        if (changable_node_idx == -1)
+        if (changeable_node_idx == -1)
         {
-            // fprintf(stderr, "The graph is not opimizable anymore, terminated with a max/min ratio: %f without reaching the target ratio: %f\n", max_min_ratio, target_max_min_ratio);
+            // fprintf(stderr, "The graph is not optimizable anymore, terminated with a max/min ratio: %f without reaching the target ratio: %f\n", max_min_ratio, target_max_min_ratio);
             return max_min_ratio;
         }
-        // change the color of changable_color_idx in group changable_color_group_idx to 
-        change_color(changable_color_group_idx, changable_node_idx, smallest_group, graph.node_colors, color_groups);
+        // change the color of changeable_color_idx in group changeable_color_group_idx to 
+        change_color(changeable_color_group_idx, changeable_node_idx, smallest_group, graph.node_colors, color_groups);
 
 
     } while (max_min_ratio > target_max_min_ratio);

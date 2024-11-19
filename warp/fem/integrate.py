@@ -245,7 +245,7 @@ class IntegrandTransformer(IntegrandVisitor):
 
         # Save the pointer as an attribute than can be accessed from the calling scope
         # For usual operator call syntax, we can use the operator itself, but for the
-        # shorcut default operator syntax, we store it on the callee's concrete type
+        # shortcut default operator syntax, we store it on the callee's concrete type
         if isinstance(callee, Operator):
             setattr(callee, pointer.key, pointer)
         else:
@@ -375,7 +375,7 @@ def _check_field_compat(integrand: Integrand, arguments: IntegrandArguments, dom
 
 def _find_integrand_operators(integrand: Integrand, field_args: Dict[str, FieldLike]):
     if integrand.operators is None:
-        # Integrands operator dictionnary does not depend on concrete field type,
+        # Integrands operator dictionary does not depend on concrete field type,
         # so only needs to be built once per integrand
 
         operators = {}
@@ -1920,7 +1920,7 @@ def _generate_interpolate_kernel(
 
     # Generate interpolation kernel
     if isinstance(dest, FieldRestriction):
-        # need to split into kernel + function for diffferentiability
+        # need to split into kernel + function for differentiability
         interpolate_fn = get_interpolate_to_field_function(
             integrand_func,
             domain,

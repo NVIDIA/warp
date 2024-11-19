@@ -3793,7 +3793,7 @@ class Volume:
 
         if grid_data.gridIndex > 0:
             raise RuntimeError(
-                "Saving of aliased Volumes is not supported. Use `save_to_nvdb` on the orignal volume, before any `load_next_grid` calls."
+                "Saving of aliased Volumes is not supported. Use `save_to_nvdb` on the original volume, before any `load_next_grid` calls."
             )
 
         file_header = FileHeader(NVDB_MAGIC, NVDB_VERSION, grid_data.gridCount, codec_int)
