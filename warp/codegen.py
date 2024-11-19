@@ -933,6 +933,25 @@ class Adjoint:
         # Collect the LTOIR required at link-time
         adj.ltoirs = []
 
+    # allocate extra space for a function call that requires its
+    # own shared memory space, we treat shared memory as a stack
+    # where each function pushes and pops space off, the extra
+    # quantity is the 'roofline' amount required for the entire kernel
+    def alloc_shared_extra(adj, num_bytes):
+        adj.max_required_extra_shared_memory = max(adj.max_required_extra_shared_memory, num_bytes)
+
+    # returns the total number of bytes for a function
+    # based on it's own requirements + worst case
+    # requirements of any dependent functions
+    def get_total_required_shared(adj):
+        total_shared = 0
+
+        for var in adj.variables:
+            if is_tile(var.type) and var.type.storage == "shared":
+                total_shared += var.type.size_in_bytes()
+
+        return total_shared + adj.max_required_extra_shared_memory
+
     # generate function ssa form and adjoint
     def build(adj, builder, default_builder_options=None):
         # arg Var read/write flags are held during module rebuilds, so we reset here even when skipping a build
@@ -974,6 +993,9 @@ class Adjoint:
 
         # used to generate new label indices
         adj.label_count = 0
+
+        # tracks how much additional shared memory is required by any dependent function calls
+        adj.max_required_extra_shared_memory = 0
 
         # update symbol map for each argument
         for a in adj.args:
@@ -1397,6 +1419,11 @@ class Adjoint:
                 reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
                 adj.add_reverse(reverse_call)
 
+        # update our smem roofline requirements based on any
+        # shared memory required by the dependent function call
+        if not func.is_builtin():
+            adj.alloc_shared_extra(func.adj.get_total_required_shared())
+
         return output
 
     def add_builtin_call(adj, func_name, args, min_outputs=None):
@@ -1498,7 +1525,7 @@ class Adjoint:
         # zero adjoints
         for i in body_block.vars:
             if is_tile(i.type):
-                reverse.append(adj.indentation + f"\t{i.emit_adj()}.zero();")
+                reverse.append(adj.indentation + f"\t{i.emit_adj()}.grad_zero();")
             else:
                 reverse.append(adj.indentation + f"\t{i.emit_adj()} = {{}};")
 
@@ -3106,6 +3133,9 @@ extern "C" __global__ void {name}_cuda_kernel_forward(
          _idx < dim.size;
          _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
+        // reset shared memory allocator
+        wp::tile_alloc_shared(0, true);
+
 {forward_body}    }}
 }}
 
@@ -3116,6 +3146,9 @@ extern "C" __global__ void {name}_cuda_kernel_backward(
          _idx < dim.size;
          _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
+        // reset shared memory allocator
+        wp::tile_alloc_shared(0, true);
+
 {reverse_body}    }}
 }}
 
@@ -3354,7 +3387,7 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
 
     for var in adj.variables:
         if is_tile(var.type):
-            lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
+            lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit(requires_grad=False)};\n"]
         elif var.constant is None:
             lines += [f"{var.ctype()} {var.emit()};\n"]
         else:
@@ -3391,7 +3424,7 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
 
     for var in adj.variables:
         if is_tile(var.type):
-            lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
+            lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit(requires_grad=True)};\n"]
         elif var.constant is None:
             lines += [f"{var.ctype()} {var.emit()};\n"]
         else:
@@ -3406,7 +3439,14 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
         ctype = var.ctype(value_type=True)
 
         if is_tile(var.type):
-            lines += [f"{ctype} {name} = {var.type.cinit(adjoint=True)};\n"]
+            if var.type.storage == "register":
+                lines += [
+                    f"{var.type.ctype()} {name}(0.0);\n"
+                ]  # reverse mode tiles alias the forward vars since shared tiles store both primal/dual vars together
+            elif var.type.storage == "shared":
+                lines += [
+                    f"{var.type.ctype()}& {name} = {var.emit()};\n"
+                ]  # reverse mode tiles alias the forward vars since shared tiles store both primal/dual vars together
         else:
             lines += [f"{ctype} {name} = {{}};\n"]
 

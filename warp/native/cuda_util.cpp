@@ -100,6 +100,8 @@ static PFN_cuGraphicsUnmapResources_v3000 pfn_cuGraphicsUnmapResources;
 static PFN_cuGraphicsResourceGetMappedPointer_v3020 pfn_cuGraphicsResourceGetMappedPointer;
 static PFN_cuGraphicsGLRegisterBuffer_v3000 pfn_cuGraphicsGLRegisterBuffer;
 static PFN_cuGraphicsUnregisterResource_v3000 pfn_cuGraphicsUnregisterResource;
+static PFN_cuModuleGetGlobal_v3020 pfn_cuModuleGetGlobal;
+static PFN_cuFuncSetAttribute_v9000 pfn_cuFuncSetAttribute;
 
 static bool cuda_driver_initialized = false;
 
@@ -231,6 +233,8 @@ bool init_cuda_driver()
     get_driver_entry_point("cuGraphicsResourceGetMappedPointer", &(void*&)pfn_cuGraphicsResourceGetMappedPointer);
     get_driver_entry_point("cuGraphicsGLRegisterBuffer", &(void*&)pfn_cuGraphicsGLRegisterBuffer);
     get_driver_entry_point("cuGraphicsUnregisterResource", &(void*&)pfn_cuGraphicsUnregisterResource);
+    get_driver_entry_point("cuModuleGetGlobal", &(void*&)pfn_cuModuleGetGlobal);
+    get_driver_entry_point("cuFuncSetAttribute", &(void*&)pfn_cuFuncSetAttribute);
 
     if (pfn_cuInit)
         cuda_driver_initialized = check_cu(pfn_cuInit(0));
@@ -566,6 +570,16 @@ CUresult cuGraphicsGLRegisterBuffer_f(CUgraphicsResource *pCudaResource, unsigne
 CUresult cuGraphicsUnregisterResource_f(CUgraphicsResource resource)
 {
     return pfn_cuGraphicsUnregisterResource ? pfn_cuGraphicsUnregisterResource(resource) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuModuleGetGlobal_f(CUdeviceptr* dptr, size_t* bytes, CUmodule hmod, const char* name )
+{
+    return pfn_cuModuleGetGlobal ? pfn_cuModuleGetGlobal(dptr, bytes, hmod, name) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuFuncSetAttribute_f(CUfunction hfunc, CUfunction_attribute attrib, int value) 
+{
+    return pfn_cuFuncSetAttribute ? pfn_cuFuncSetAttribute(hfunc, attrib, value) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 #endif // WP_ENABLE_CUDA

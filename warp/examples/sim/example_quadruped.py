@@ -115,10 +115,11 @@ class Example:
 
         self.model.joint_attach_ke = 16000.0
         self.model.joint_attach_kd = 200.0
+        self.use_tile_gemm = False
 
         # self.integrator = wp.sim.XPBDIntegrator()
         # self.integrator = wp.sim.SemiImplicitIntegrator()
-        self.integrator = wp.sim.FeatherstoneIntegrator(self.model)
+        self.integrator = wp.sim.FeatherstoneIntegrator(self.model, use_tile_gemm=self.use_tile_gemm)
 
         if stage_path:
             self.renderer = wp.sim.render.SimRenderer(self.model, stage_path)

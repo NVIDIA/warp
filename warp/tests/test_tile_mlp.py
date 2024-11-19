@@ -47,8 +47,8 @@ def test_multi_layer_nn(test, device):
     DIM_HID = 32
     DIM_OUT = 3
 
-    IMG_WIDTH = NUM_THREADS * 8
-    IMG_HEIGHT = NUM_THREADS * 8
+    IMG_WIDTH = 256
+    IMG_HEIGHT = 256
 
     BATCH_SIZE = min(512, int((IMG_WIDTH * IMG_HEIGHT) / 8))
 
@@ -164,6 +164,8 @@ def test_multi_layer_nn(test, device):
 
         reference_np = np.load(os.path.join(os.path.dirname(__file__), "assets/pixel.npy"), allow_pickle=True) / 255.0
         reference = wp.array(reference_np, dtype=float)
+
+        assert reference.shape[1] == IMG_WIDTH * IMG_HEIGHT
 
         loss = wp.zeros(1, dtype=float, requires_grad=True)
 

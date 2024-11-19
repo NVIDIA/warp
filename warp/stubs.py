@@ -895,7 +895,7 @@ def spatial_mass(
 
 
 @over
-def tile_zeros(m: int32, n: int32, dtype: Scalar, storage: str) -> Tile:
+def tile_zeros(m: int32, n: int32, dtype: Any, storage: str) -> Tile:
     """Allocates a tile of zero-initialized items.
 
     :param m: Size of the first dimension of the output tile
@@ -909,7 +909,7 @@ def tile_zeros(m: int32, n: int32, dtype: Scalar, storage: str) -> Tile:
 
 
 @over
-def tile_ones(m: int32, n: int32, dtype: Scalar, storage: str) -> Tile:
+def tile_ones(m: int32, n: int32, dtype: Any, storage: str) -> Tile:
     """Allocates a tile of one-initialized items.
 
     :param m: Size of the first dimension of the output tile
@@ -923,7 +923,7 @@ def tile_ones(m: int32, n: int32, dtype: Scalar, storage: str) -> Tile:
 
 
 @over
-def tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile:
+def tile_arange(*args: Scalar, dtype: Any, storage: str) -> Tile:
     """Generates a tile of linearly spaced elements.
 
     :param args: Variable-length positional arguments, interpreted as:
@@ -1010,6 +1010,32 @@ def tile_atomic_add(a: Array[Any], x: int32, y: int32, t: Any) -> Tile:
     :param y: Offset in the destination array measured in multiples of ``n``, i.e.: ``j=y*N`` where ``N`` is the second tile dimension
     :param t: Source tile to add to the destination array
     :returns: A tile with the same dimensions and type as the source tile, holding the original value of the destination elements
+    """
+    ...
+
+
+@over
+def tile_view(t: Tile, i: int32, j: int32, m: int32, n: int32) -> Tile:
+    """Return a subrange of a given tile from coordinates (i,j) to (i+m, j+n).
+
+    :param t: Input tile to extract a subrange from
+    :param i: Offset in the source tile along the first dimension
+    :param j: Offset in the source tile along the second dimensions
+    :param m: Size of the subrange to return along the first dimension
+    :param n: Size of the subrange to return along the second dimension
+    :returns: A tile with dimensions (m,n) and the same datatype as the input tile
+    """
+    ...
+
+
+@over
+def tile_assign(dst: Tile, i: int32, j: int32, src: Tile):
+    """Assign a tile to a subrange of a destination tile at coordinates (i,j).
+
+    :param t: The destination tile to assign to
+    :param i: Offset in the source tile along the first dimension
+    :param j: Offset in the source tile along the second dimensions
+    :param src: The source tile to read values from
     """
     ...
 

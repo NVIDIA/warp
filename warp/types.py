@@ -2994,9 +2994,9 @@ def array_type_id(a):
 
 # tile expression objects
 class Tile:
-    allocation = 0
+    alignment = 16
 
-    def __init__(self, dtype, M, N, op=None, storage="register", layout="rowmajor", owner=True):
+    def __init__(self, dtype, M, N, op=None, storage="register", layout="rowmajor", strides=None, owner=True):
         self.dtype = type_to_warp(dtype)
         self.M = M
         self.N = N
@@ -3004,11 +3004,13 @@ class Tile:
         self.storage = storage
         self.layout = layout
 
-        # default to row major layout
-        if layout == "rowmajor":
-            self.strides = (N, 1)
-        elif layout == "colmajor":
-            self.strides = (1, M)
+        if strides is None:
+            if layout == "rowmajor":
+                self.strides = (N, 1)
+            elif layout == "colmajor":
+                self.strides = (1, M)
+        else:
+            self.strides = strides
 
         self.owner = owner
 
@@ -3019,37 +3021,32 @@ class Tile:
         if self.storage == "register":
             return f"wp::tile_register_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
         elif self.storage == "shared":
-            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{self.strides[0]}, {self.strides[1]}>"
+            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{self.strides[0]}, {self.strides[1]}, {'true' if self.owner else 'false'}>"
         else:
             raise RuntimeError(f"Unrecognized tile storage type {self.storage}")
 
     # generates C-initializer string
-    def cinit(self, adjoint=False):
+    def cinit(self, requires_grad=False):
         from warp.codegen import Var
 
         if self.storage == "register":
             return self.ctype() + "(0.0)"
         elif self.storage == "shared":
-            # if this is a reference to another tile
-            # then don't allocate any memory
-
-            if adjoint:
-                # backward pass requires zeroed memory
-                return f"wp::tile_alloc_zeros<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{self.strides[0]}, {self.strides[1]}, {Tile.alloc()}>()"
+            if self.owner:
+                # allocate new shared memory tile
+                return f"wp::tile_alloc_empty<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{'true' if requires_grad else 'false'}>()"
             else:
-                if not self.owner:
-                    # will be initialized by subsequent call, e.g.: t = tile_broadcast(a)
-                    return "NULL"
-                else:
-                    # forward mode can be uninitialized until first used by the kernel
-                    return f"wp::tile_alloc_empty<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{Tile.alloc()}>()"
+                # tile will be initialized by another call, e.g.: tile_transpose()
+                return "NULL"
 
-    # generate a unique allocation index for shared memory
-    @classmethod
-    def alloc(cls):
-        index = Tile.allocation
-        Tile.allocation += 1
-        return index
+    # return total tile size in bytes
+    def size_in_bytes(self):
+        num_bytes = self.align(type_size_in_bytes(self.dtype) * self.M * self.N)
+        return num_bytes
+
+    # align tile size to natural boundary, default 16-bytes
+    def align(self, bytes):
+        return ((bytes + self.alignment - 1) // self.alignment) * self.alignment
 
 
 class TileZeros(Tile):

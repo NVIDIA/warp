@@ -99,7 +99,8 @@ CUresult cuGraphicsUnmapResources_f(unsigned int count, CUgraphicsResource* reso
 CUresult cuGraphicsResourceGetMappedPointer_f(CUdeviceptr* pDevPtr, size_t* pSize, CUgraphicsResource resource);
 CUresult cuGraphicsGLRegisterBuffer_f(CUgraphicsResource *pCudaResource, unsigned int buffer, unsigned int flags);
 CUresult cuGraphicsUnregisterResource_f(CUgraphicsResource resource);
-
+CUresult cuModuleGetGlobal_f(CUdeviceptr* dptr, size_t* bytes, CUmodule hmod, const char* name );
+CUresult cuFuncSetAttribute_f(CUfunction hfunc, CUfunction_attribute attrib, int value);
 
 bool init_cuda_driver();
 bool is_cuda_driver_initialized();

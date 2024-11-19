@@ -1043,7 +1043,10 @@ WP_API size_t cuda_compile_program(const char* cuda_src, int arch, const char* i
 WP_API void* cuda_load_module(void* context, const char* ptx) { return NULL; }
 WP_API void cuda_unload_module(void* context, void* module) {}
 WP_API void* cuda_get_kernel(void* context, void* module, const char* name) { return NULL; }
-WP_API size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_blocks, int tile_size, void** args, void* stream) { return 0; }
+WP_API size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_blocks, int block_dim, int shared_memory_bytes, void** args, void* stream) { return 0; }
+
+WP_API int cuda_get_max_shared_memory(void* context) { return 0; }
+WP_API bool cuda_configure_kernel_shared_memory(void* kernel, int size) { return false; }
 
 WP_API void cuda_set_context_restore_policy(bool always_restore) {}
 WP_API int cuda_get_context_restore_policy() { return false; }
