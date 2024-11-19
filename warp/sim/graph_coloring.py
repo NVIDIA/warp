@@ -87,7 +87,7 @@ def convert_to_color_groups(num_colors, particle_colors, return_wp_array=False, 
     wp.launch(kernel=count_color_group_size, inputs=[particle_colors, group_sizes], device="cpu", dim=1)
 
     group_sizes_np = group_sizes.numpy()
-    group_offsets_np = np.concat([np.array([0]), np.cumsum(group_sizes_np)])
+    group_offsets_np = np.concatenate([np.array([0]), np.cumsum(group_sizes_np)])
     group_offsets = wp.array(group_offsets_np, dtype=int, device="cpu")
 
     group_fill_count = wp.zeros(shape=(num_colors,), dtype=int, device="cpu")
@@ -283,7 +283,7 @@ def combine_independent_particle_coloring(color_groups_1, color_groups_2):
         group_2 = color_groups_2_sorted[i] if i < len(color_groups_2) else None
 
         if group_1 is not None and group_2 is not None:
-            color_groups_combined.append(np.concat([group_1, group_2]))
+            color_groups_combined.append(np.concatenate([group_1, group_2]))
         elif group_1 is not None:
             color_groups_combined.append(group_1)
         else:
