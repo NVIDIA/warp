@@ -1,5 +1,45 @@
 # CHANGELOG
 
+## [1.5.0] - 2024-12-01
+
+### Added
+
+- Support for cooperative tile-based primitives using cuBLASDx and cuFFTDx, please see the tile
+  [documentation](https://nvidia.github.io/warp/modules/interoperability.html) for details.
+- Expose a `reversed()` built-in for iterators to test ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
+- Support for saving Volumes into `.nvdb` files with the `save_to_nvdb` method.
+- warp.fem: Added `Trimesh3D` and `Quadmesh3D` geometry types for 3D surfaces with new `example_distortion_energy` example
+- warp.fem: Added `"add"` option to `wp.fem.integrate()` for accumulating integration result to existing output.
+- warp.fem: Added `"assembly"` option to `wp.fem.integrate()` for selecting between more memory-efficient or more
+  computationally efficient integration algorithms.
+- warp.fem: Added Nédélec (first kind) and Raviart-Thomas vector-valued function spaces
+  providing conforming discretization of `curl` and `div` operators, respectively.
+- warp.sim: Added a graph coloring module that supports converting trimesh into a vertex graph and applying coloring.
+  The `wp.sim.ModelBuilder` now includes options to apply graph coloring in the `add_cloth_mesh` and `add_cloth_grid` functions.
+
+### Changed
+
+- Drop support for Python 3.7; Python 3.8 is now the minimum-supported version.
+- Promote the `wp.Int`, `wp.Float`, and `wp.Scalar` generic annotation types to the public API.
+- warp.fem: Simplified querying neighboring cell quantities when integrating on sides using new
+  `warp.fem.cells()`, `warp.fem.to_inner_cell()`, `warp.fem.to_outer_cell()` operators.
+- Show an error message when the type returned by a function differs from its annotation, which would have led to the compilation stage failing.
+- Clarify that `randn()` samples a normal distribution of mean 0 and variance 1.
+- Raise error when passing more than 32 variadic argument to the `wp.printf` built-in.
+
+### Fixed
+
+- Fix `place` setting of paddle backend.
+- warp.fem: Fixed tri-cubic shape functions on quadrilateral meshes.
+- warp.fem: Fixed caching of integrand kernels when changing code-generation options.
+- Fix `wp.expect_neq()` overloads missing for scalar types.
+- Fix the OpenGL renderer's window not closing when clicking the X button.
+- Fix the OpenGL renderer's camera snapping to a different direction from the initial camera's orientation when first looking around.
+- Fix an error when a `wp.kernel` or a `wp.func` object is annotated to return a `None` value.
+- Fix error when reading multi-volume, BLOSC-compressed `.nvdb` files.
+- Fix `wp.printf()` erroring out when no variadic arguments are passed ([GH-333](https://github.com/NVIDIA/warp/issues/333)).
+- Fix custom colors being ignored when rendering meshes in OpenGL ([GH-343](https://github.com/NVIDIA/warp/issues/343)).
+
 ## [1.4.2] - 2024-11-13
 
 ### Changed
