@@ -259,6 +259,7 @@ try:
         "native/marching.cpp",
         "native/cutlass_gemm.cpp",
         "native/mathdx.cpp",
+        "native/coloring.cpp",
     ]
     warp_cpp_paths = [os.path.join(build_path, cpp) for cpp in cpp_sources]
 

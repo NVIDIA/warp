@@ -340,4 +340,8 @@ extern "C"
     WP_API int cuda_timing_get_result_count();
     WP_API void cuda_timing_end(timing_result_t* results, int size);
 
+    // graph coloring
+    WP_API int graph_coloring(int num_nodes, wp::array_t<int> edges, int algorithm, wp::array_t<int> node_colors);
+    WP_API float balance_coloring(int num_nodes, wp::array_t<int> edges, int num_colors, float target_max_min_ratio, wp::array_t<int> node_colors);
+        
 } // extern "C"

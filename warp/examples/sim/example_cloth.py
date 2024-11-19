@@ -26,29 +26,6 @@ import warp.sim
 import warp.sim.render
 
 
-def color_lattice_grid(num_x, num_y):
-    colors = []
-    for _i in range(4):
-        colors.append([])
-
-    for xi in range(num_x + 1):
-        for yi in range(num_y + 1):
-            vId = xi * (num_y + 1) + yi
-
-            a = 1 if xi % 2 else 0
-            b = 1 if yi % 2 else 0
-
-            c = a * 2 + b
-
-            colors[c].append(vId)
-
-    colors_wp = []
-    for i_color in range(len(colors)):
-        colors_wp.append(wp.array(colors[i_color], dtype=wp.int32))
-
-    return colors_wp
-
-
 class IntegratorType(Enum):
     EULER = "euler"
     XPBD = "xpbd"
@@ -122,6 +99,8 @@ class Example:
                 tri_ke=1e4,
                 tri_ka=1e4,
                 tri_kd=1e-5,
+                edge_ke=100,
+                color_particles=True,
             )
 
         usd_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
@@ -154,8 +133,6 @@ class Example:
             self.integrator = wp.sim.XPBDIntegrator(iterations=1)
         else:
             self.integrator = wp.sim.VBDIntegrator(self.model, iterations=1)
-            # we need to give VBD coloring information
-            self.model.particle_coloring = color_lattice_grid(width, height)
 
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()

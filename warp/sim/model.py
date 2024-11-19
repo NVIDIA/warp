@@ -15,6 +15,7 @@ import numpy as np
 
 import warp as wp
 
+from .graph_coloring import ColoringAlgorithm, color_trimesh, combine_independent_particle_coloring
 from .inertia import (
     compute_box_inertia,
     compute_capsule_inertia,
@@ -1134,6 +1135,8 @@ class ModelBuilder:
         self.particle_radius = []
         self.particle_flags = []
         self.particle_max_velocity = 1e5
+        # list of np.array
+        self.particle_coloring = []
 
         # shapes (each shape has an entry in these arrays)
         # transform from shape to body
@@ -1371,6 +1374,11 @@ class ModelBuilder:
             self.tri_indices.extend((np.array(builder.tri_indices, dtype=np.int32) + start_particle_idx).tolist())
         if builder.tet_count:
             self.tet_indices.extend((np.array(builder.tet_indices, dtype=np.int32) + start_particle_idx).tolist())
+
+        builder_coloring_translated = [group + start_particle_idx for group in builder.particle_coloring]
+        self.particle_coloring = combine_independent_particle_coloring(
+            self.particle_coloring, builder_coloring_translated
+        )
 
         start_body_idx = self.body_count
         start_shape_idx = self.shape_count
@@ -3826,6 +3834,8 @@ class ModelBuilder:
         add_springs: bool = False,
         spring_ke: float = default_spring_ke,
         spring_kd: float = default_spring_kd,
+        color_particles=False,
+        color_groups=None,
     ):
         """Helper to create a regular planar cloth grid
 
@@ -3846,7 +3856,12 @@ class ModelBuilder:
             fix_right: Make the right-most edge of particles kinematic
             fix_top: Make the top-most edge of particles kinematic
             fix_bottom: Make the bottom-most edge of particles kinematic
-
+            color_particles: Whether to color particles based on their connectivity. When using `IntegratorVBD`, this
+                option must be turned on.
+            input_color_groups: A list of `np.array` objects with `dtype`=int. The length of the list is the number of colors
+                and each `np.array` contains the indices of vertices with this color. Users can provide custom coloring by setting
+                this argument. If color_particles is set to `True` and this argument is `None`, the function will apply a built-in
+                coloring algorithm to generate particle colors.
         """
 
         def grid_index(x, y, dim_x):
@@ -3939,6 +3954,29 @@ class ModelBuilder:
             for i, j in spring_indices:
                 self.add_spring(i, j, spring_ke, spring_kd, control=0.0)
 
+        if color_particles:
+            if color_groups is None:
+                # ignore bending energy if it is too small
+                include_bending = edge_ke > min(tri_ke, tri_ka) * 0.01
+                edge_indices = np.fromiter(
+                    (x for e in adj.edges.values() for x in (e.o0, e.o1, e.v0, e.v1)),
+                    int,
+                ).reshape(-1, 4)
+                num_particles = (dim_x + 1) * (dim_y + 1)
+
+                coloring_algorithm = ColoringAlgorithm.GRAPH_COLOR_MCS
+
+                edge_indices_translated = edge_indices - start_vertex
+                edge_indices_translated[np.where(edge_indices == -1)] = -1
+                color_groups = color_trimesh(
+                    num_particles, edge_indices_translated, include_bending, algorithm=coloring_algorithm
+                )
+
+            # translate the indices in input_color_groups
+            color_groups = [np.array(group) + start_vertex for group in color_groups]
+
+            self.particle_coloring = combine_independent_particle_coloring(self.particle_coloring, color_groups)
+
     def add_cloth_mesh(
         self,
         pos: Vec3,
@@ -3960,6 +3998,8 @@ class ModelBuilder:
         add_springs: bool = False,
         spring_ke: float = default_spring_ke,
         spring_kd: float = default_spring_kd,
+        color_particles=False,
+        color_groups=None,
     ):
         """Helper to create a cloth model from a regular triangle mesh
 
@@ -3975,7 +4015,12 @@ class ModelBuilder:
             density: The density per-area of the mesh
             edge_callback: A user callback when an edge is created
             face_callback: A user callback when a face is created
-
+            color_particles: Whether to color particles based on their connectivity. When using `IntegratorVBD`, this
+                option must be turned on.
+            color_groups: A list of `np.array` objects with `dtype`=int. The length of the list is the number of colors
+                and each `np.array` contains the indices of vertices with this color. Users can provide custom coloring by setting
+                this argument. If color_particles is set to `True` and this argument is `None`, the function will apply a built-in
+                coloring algorithm to generate particle colors.
         Note:
 
             The mesh should be two manifold.
@@ -4016,22 +4061,22 @@ class ModelBuilder:
 
         adj = wp.utils.MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
 
-        edgeinds = np.fromiter(
+        edge_indices = np.fromiter(
             (x for e in adj.edges.values() for x in (e.o0, e.o1, e.v0, e.v1)),
             int,
         ).reshape(-1, 4)
         self.add_edges(
-            edgeinds[:, 0],
-            edgeinds[:, 1],
-            edgeinds[:, 2],
-            edgeinds[:, 3],
-            edge_ke=[edge_ke] * len(edgeinds),
-            edge_kd=[edge_kd] * len(edgeinds),
+            edge_indices[:, 0],
+            edge_indices[:, 1],
+            edge_indices[:, 2],
+            edge_indices[:, 3],
+            edge_ke=[edge_ke] * len(edge_indices),
+            edge_kd=[edge_kd] * len(edge_indices),
         )
 
         if add_springs:
             spring_indices = set()
-            for i, j, k, l in edgeinds:
+            for i, j, k, l in edge_indices:
                 spring_indices.add((min(i, j), max(i, j)))
                 spring_indices.add((min(i, k), max(i, k)))
                 spring_indices.add((min(i, l), max(i, l)))
@@ -4043,6 +4088,25 @@ class ModelBuilder:
 
             for i, j in spring_indices:
                 self.add_spring(i, j, spring_ke, spring_kd, control=0.0)
+
+        if color_particles:
+            if color_groups is None:
+                # ignore bending energy if it is too small
+                include_bending = edge_ke > min(tri_ke, tri_ka) * 0.01
+
+                num_particles = len(vertices)
+                coloring_algorithm = ColoringAlgorithm.GRAPH_COLOR_MCS
+
+                edge_indices_translated = edge_indices - start_vertex
+                edge_indices_translated[np.where(edge_indices == -1)] = -1
+                color_groups = color_trimesh(
+                    num_particles, edge_indices_translated, include_bending, algorithm=coloring_algorithm
+                )
+
+            # translate the indices in input_color_groups
+            color_groups = [np.array(group) + start_vertex for group in color_groups]
+
+            self.particle_coloring = combine_independent_particle_coloring(self.particle_coloring, color_groups)
 
     def add_particle_grid(
         self,
@@ -4406,6 +4470,8 @@ class ModelBuilder:
             m.particle_flags = wp.array([flag_to_int(f) for f in self.particle_flags], dtype=wp.uint32)
             m.particle_max_radius = np.max(self.particle_radius) if len(self.particle_radius) > 0 else 0.0
             m.particle_max_velocity = self.particle_max_velocity
+
+            m.particle_coloring = [wp.array(group, dtype=int) for group in self.particle_coloring]
 
             # hash-grid for particle interactions
             m.particle_grid = wp.HashGrid(128, 128, 128)

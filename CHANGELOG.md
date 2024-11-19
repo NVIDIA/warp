@@ -10,6 +10,7 @@
 - warp.fem: Added "add" option to `wp.fem.integrate()` for accumulating integration result to existing output
 - warp.fem: Added "assembly" option to `wp.fem.integrate()` for selecting between more memory-efficient or more computationally-efficient integration algorithms
 - warp.fem: Added Nédélec (first kind) and Raviart-Thomas vector-valued function spaces providing conforming discretization of `curl` and `div` operators, respectively. 
+- warp.sim: Added a graph coloring module that supports converting trimesh into a vertex graph and applying coloring. The `wp.sim.ModelBuilder` now includes options to apply graph coloring in the `add_cloth_mesh` and `add_cloth_grid` functions.
 
 ### Changed
 
