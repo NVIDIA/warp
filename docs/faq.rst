@@ -12,10 +12,10 @@ and implementation differences.
 
 Compared to Numba, Warp supports a smaller subset of Python, but
 offering auto-differentiation of kernel programs, which is useful for
-machine learning. Compared to Taichi Warp uses C++/CUDA as an
+machine learning. Unlike Numba and Taichi, Warp uses C++/CUDA as an
 intermediate representation, which makes it convenient to implement and
-expose low-level routines. In addition, we are building in
-data structures to support geometry processing (meshes, sparse volumes,
+expose low-level routines and leverage existing C++ libraries in kernels.
+In addition, Warp has built in data structures to support geometry processing (meshes, sparse volumes,
 point clouds, USD data) as first-class citizens that are not exposed in
 other runtimes.
 
@@ -23,11 +23,20 @@ Warp does not offer a full tensor-based programming model like PyTorch
 and JAX, but is designed to work well with these frameworks through data
 sharing mechanisms like ``__cuda_array_interface__``. For computations
 that map well to tensors (e.g.: neural-network inference) it makes sense
-to use these existing tools. For problems with a lot of e.g.: sparsity,
+to use these existing tools. For problems with a lot of sparsity,
 conditional logic, heterogeneous workloads (like the ones we often find in
-simulation and graphics), then the kernel-based programming model like
+simulation and graphics), etc., then kernel-based programming models like
 the one in Warp are often more convenient since users have control over
 individual threads.
+
+What are some examples of projects that use Warp?
+-------------------------------------------------
+
+* `NCLaw <https://github.com/PingchuanMa/NCLaw>`__: Implements a differentiable MPM simulator using Warp.
+* `XLB <https://github.com/Autodesk/XLB>`__: A lattice Boltzmann solver with a backend option using Warp.
+* `warp-mpm <https://github.com/zeshunzong/warp-mpm>`__: An MPM simulator using Warp and used in
+  `Neural Stress Fields for Reduced-order Elastoplasticity and Fracture <https://zeshunzong.github.io/reduced-order-mpm/>`__
+  and `PhysGaussian: Physics-Integrated 3D Gaussians for Generative Dynamics <https://xpandora.github.io/PhysGaussian/>`__.
 
 Does Warp support all of the Python language?
 ---------------------------------------------
@@ -42,7 +51,7 @@ When should I call ``wp.synchronize()``?
 ----------------------------------------
 
 One of the common sources of confusion for new users is when calls to
-``wp.synchronize()`` are necessary. The answer is “almost never”!
+:func:`wp.synchronize() <warp.synchronize>` are necessary. The answer is “almost never”!
 Synchronization is quite expensive and should generally be avoided
 unless necessary. Warp naturally takes care of synchronization between
 operations (e.g.: kernel launches, device memory copies).
@@ -103,7 +112,12 @@ Does Warp support multi-GPU programming?
 Yes! Since version ``0.4.0`` we support allocating, launching, and
 copying between multiple GPUs in a single process. We follow the naming
 conventions of PyTorch and use aliases such as ``cuda:0``, ``cuda:1``,
-``cpu`` to identify individual devices.
+``cpu`` to identify individual devices. For more information, see the
+:doc:`modules/devices` documentation.
+
+Warp applications can also be parallelized over multiple GPUs using
+`mpi4py <https://github.com/mpi4py/mpi4py>`__. Warp arrays on the GPU may be
+passed directly to MPI calls if mpi4py is built against a CUDA-aware MPI installation.
 
 Should I switch to Warp over IsaacGym/PhysX?
 ----------------------------------------------

@@ -18,6 +18,7 @@ import numpy as np
 import warp as wp
 import warp.context
 import warp.types
+from warp.context import Devicelike
 
 warnings_seen = set()
 
@@ -554,7 +555,27 @@ def mem_report():  # pragma: no cover
 
 
 class ScopedDevice:
-    def __init__(self, device):
+    """A context manager to temporarily change the current default device.
+
+    For CUDA devices, this context manager makes the device's CUDA context
+    current and restores the previous CUDA context on exit. This is handy when
+    running Warp scripts as part of a bigger pipeline because it avoids any side
+    effects of changing the CUDA context in the enclosed code.
+
+    Attributes:
+        device (Device): The device that will temporarily become the default
+          device within the context.
+        saved_device (Device): The previous default device. This is restored as
+          the default device on exiting the context.
+    """
+
+    def __init__(self, device: Devicelike):
+        """Initializes the context manager with a device.
+
+        Args:
+            device: The device that will temporarily become the default device
+              within the context.
+        """
         self.device = wp.get_device(device)
 
     def __enter__(self):

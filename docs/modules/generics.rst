@@ -1,5 +1,7 @@
 Generics
-========
+========.. currentmodule:: warp
+
+.. currentmodule:: warp
 
 Warp supports writing generic kernels and functions, which act as templates that can be instantiated with different concrete types.
 This allows you to write code once and reuse it with multiple data types.
@@ -49,7 +51,7 @@ Type Inference
 ~~~~~~~~~~~~~~
 
 When a generic kernel is being launched, Warp infers the concrete types from the arguments.
-``wp.launch()`` handles generic kernels without any special syntax, but we should be mindful of the data types passed as arguments to make sure that the correct types are inferred:
+:func:`wp.launch() <launch>` handles generic kernels without any special syntax, but we should be mindful of the data types passed as arguments to make sure that the correct types are inferred:
 
 * Scalars can be passed as regular Python numeric values (e.g., ``42`` or ``0.5``).  Python integers are interpreted as ``wp.int32`` and Python floating point values are interpreted as ``wp.float32``.  To specify a different data type and to avoid ambiguity, Warp data types should be used instead (e.g., ``wp.int64(42)`` or ``wp.float16(0.5)``).
 * Vectors and matrices should be passed as Warp types rather than tuples or lists (e.g., ``wp.vec3f(1.0, 2.0, 3.0)`` or ``wp.mat22h([[1.0, 0.0], [0.0, 1.0]])``).
@@ -113,7 +115,7 @@ Warp allows explicitly declaring instances of generic kernels with different typ
 
 The ``@wp.overload`` decorator allows redeclaring generic kernels without repeating the kernel code.  The kernel body is just replaced with the ellipsis (``...``).  Warp keeps track of known overloads for each kernel, so if an overload exists it will not be instantiated again.  If all the overloads are declared prior to kernel launches, the module will only load once with all the kernel instances in place.
 
-We can also use ``wp.overload()`` as a function for a slightly more concise syntax.  We just need to specify the generic kernel and a list of concrete argument types:
+We can also use :func:`wp.overload() <overload>` as a function for a slightly more concise syntax.  We just need to specify the generic kernel and a list of concrete argument types:
 
 .. code:: python
 
@@ -138,7 +140,7 @@ We can easily create overloads in a single loop, like this:
     for T in [wp.float16, wp.float32, wp.float64]:
         wp.overload(scale, [wp.array(dtype=T), T])
 
-Finally, the ``wp.overload()`` function returns the concrete kernel instance, which can be saved in a variable:
+Finally, the :func:`wp.overload() <overload>` function returns the concrete kernel instance, which can be saved in a variable:
 
 .. code:: python
 
@@ -154,6 +156,8 @@ These instances are treated as regular kernels, not generic.  This means that la
     wp.launch(scale_f16, dim=n, inputs=[x16, 3])
     wp.launch(scale_f32, dim=n, inputs=[x32, 3])
     wp.launch(scale_f64, dim=n, inputs=[x64, 3])
+
+.. autofunction:: overload
 
 .. _Generic Functions:
 

@@ -972,8 +972,17 @@ def struct(c):
     return s
 
 
-# overload a kernel with the given argument types
-def overload(kernel, arg_types=None):
+def overload(kernel, arg_types=Union[None, Dict[str, Any], List[Any]]):
+    """Overload a generic kernel with the given argument types.
+
+    Can be called directly or used as a function decorator.
+
+    Args:
+        kernel: The generic kernel to be instantiated with concrete types.
+        arg_types: A list of concrete argument types for the kernel or a
+            dictionary specifying generic argument names as keys and concrete
+            types as variables.
+    """
     if isinstance(kernel, Kernel):
         # handle cases where user calls us directly, e.g. wp.overload(kernel, [args...])
 
@@ -3846,7 +3855,7 @@ def is_cuda_available() -> bool:
     return get_cuda_device_count() > 0
 
 
-def is_device_available(device):
+def is_device_available(device: Device) -> bool:
     return device in get_devices()
 
 
@@ -3906,7 +3915,7 @@ def get_cuda_devices() -> List[Device]:
 
 
 def get_preferred_device() -> Device:
-    """Returns the preferred compute device, CUDA if available and CPU otherwise."""
+    """Returns the preferred compute device, ``cuda:0`` if available and ``cpu`` otherwise."""
 
     init()
 
@@ -4046,7 +4055,7 @@ def set_mempool_release_threshold(device: Devicelike, threshold: Union[int, floa
 
 
 def get_mempool_release_threshold(device: Devicelike) -> int:
-    """Get the CUDA memory pool release threshold on the device."""
+    """Get the CUDA memory pool release threshold on the device in bytes."""
 
     init()
 
@@ -4065,7 +4074,7 @@ def is_peer_access_supported(target_device: Devicelike, peer_device: Devicelike)
     """Check if `peer_device` can directly access the memory of `target_device` on this system.
 
     This applies to memory allocated using default CUDA allocators.  For memory allocated using
-    CUDA pooled allocators, use `is_mempool_access_supported()`.
+    CUDA pooled allocators, use :func:`is_mempool_access_supported()`.
 
     Returns:
         A Boolean value indicating if this peer access is supported by the system.
@@ -4086,7 +4095,7 @@ def is_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike) -
     """Check if `peer_device` can currently access the memory of `target_device`.
 
     This applies to memory allocated using default CUDA allocators.  For memory allocated using
-    CUDA pooled allocators, use `is_mempool_access_enabled()`.
+    CUDA pooled allocators, use :func:`is_mempool_access_enabled()`.
 
     Returns:
         A Boolean value indicating if this peer access is currently enabled.
@@ -4110,7 +4119,7 @@ def set_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike, 
     a negative impact on memory consumption and allocation performance.
 
     This applies to memory allocated using default CUDA allocators.  For memory allocated using
-    CUDA pooled allocators, use `set_mempool_access_enabled()`.
+    CUDA pooled allocators, use :func:`set_mempool_access_enabled()`.
     """
 
     init()
@@ -4138,7 +4147,8 @@ def set_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike, 
 def is_mempool_access_supported(target_device: Devicelike, peer_device: Devicelike) -> bool:
     """Check if `peer_device` can directly access the memory pool of `target_device`.
 
-    If mempool access is possible, it can be managed using `set_mempool_access_enabled()` and `is_mempool_access_enabled()`.
+    If mempool access is possible, it can be managed using :func:`set_mempool_access_enabled()`
+    and :func:`is_mempool_access_enabled()`.
 
     Returns:
         A Boolean value indicating if this memory pool access is supported by the system.
@@ -4156,7 +4166,7 @@ def is_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike
     """Check if `peer_device` can currently access the memory pool of `target_device`.
 
     This applies to memory allocated using CUDA pooled allocators.  For memory allocated using
-    default CUDA allocators, use `is_peer_access_enabled()`.
+    default CUDA allocators, use :func:`is_peer_access_enabled()`.
 
     Returns:
         A Boolean value indicating if this peer access is currently enabled.
@@ -4177,7 +4187,7 @@ def set_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelik
     """Enable or disable access from `peer_device` to the memory pool of `target_device`.
 
     This applies to memory allocated using CUDA pooled allocators.  For memory allocated using
-    default CUDA allocators, use `set_peer_access_enabled()`.
+    default CUDA allocators, use :func:`set_peer_access_enabled()`.
     """
 
     init()

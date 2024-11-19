@@ -15,7 +15,7 @@ class Tape:
     """
     Record kernel launches within a Tape scope to enable automatic differentiation.
     Gradients can be computed after the operations have been recorded on the tape via
-    ``tape.backward()``.
+    :meth:`Tape.backward()`.
 
     Example
     -------

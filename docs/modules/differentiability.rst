@@ -8,11 +8,12 @@ Differentiability
 By default, Warp generates a forward and backward (adjoint) version of each kernel definition. The backward version of a kernel can be used 
 to compute gradients of loss functions that can be back propagated to machine learning frameworks like PyTorch.
 
-Arrays that participate in the chain of computation which require gradients should be created with ``requires_grad=True``, for example::
+Arrays that participate in the chain of computation which require gradients must be created with ``requires_grad=True``, for example::
 
     a = wp.zeros(1024, dtype=wp.vec3, device="cuda", requires_grad=True)
 
-The ``wp.Tape`` class can then be used to record kernel launches, and replay them to compute the gradient of a scalar loss function with respect to the kernel inputs::
+The :class:`wp.Tape <Tape>` class can then be used to record kernel launches and replay them to compute the gradient of
+a scalar loss function with respect to the kernel inputs::
 
     tape = wp.Tape()
 
@@ -25,14 +26,13 @@ The ``wp.Tape`` class can then be used to record kernel launches, and replay the
     # reverse pass
     tape.backward(l)
 
-After the backward pass has completed, the gradients with respect to the inputs are available from the ``array.grad`` attribute::
+After the backward pass has completed, the gradients with respect to the inputs are available from the :py:attr:`array.grad` attribute::
 
     # gradient of loss with respect to input a
     print(a.grad)
 
-Note that gradients are accumulated on the participating buffers, so if you wish to reuse the same buffers for multiple backward passes you should first zero the gradients::
-
-    tape.zero()
+Note that gradients are accumulated on the participating buffers, so if you wish to reuse the same buffers for multiple
+backward passes you should first zero the gradients using :meth:`Tape.zero()`.
 
 .. autoclass:: Tape
     :members:
@@ -40,7 +40,8 @@ Note that gradients are accumulated on the participating buffers, so if you wish
 Copying is Differentiable
 #########################
 
-``wp.copy()``, ``wp.clone()``, and ``array.assign()`` are differentiable functions and can participate in the computation graph recorded on the tape. Consider the following examples and their
+:func:`wp.copy() <copy>`, :func:`wp.clone() <clone>`, and :meth:`array.assign()` are differentiable functions and can
+participate in the computation graph recorded on the tape. Consider the following examples and their
 PyTorch equivalents (for comparison):
 
 ``wp.copy()``:

@@ -80,7 +80,7 @@ To launch a 2D grid of threads to process a 1024x1024 image, we could write::
 
     wp.launch(kernel=compute_image, dim=(1024, 1024), inputs=[img], device="cuda")
 
-We retrieve a 2D thread index inside the kernel by using multiple assignment when calling ``wp.tid()``:
+We retrieve a 2D thread index inside the kernel by using multiple assignment when calling :func:`wp.tid() <tid>`:
 
 .. code-block:: python
 
@@ -92,7 +92,7 @@ We retrieve a 2D thread index inside the kernel by using multiple assignment whe
 Arrays
 ------
 
-Memory allocations are exposed via the ``wp.array`` type. Arrays wrap an underlying memory allocation that may live in
+Memory allocations are exposed via the :class:`wp.array <array>` type. Arrays wrap an underlying memory allocation that may live in
 either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in values
 (``float``, ``int``, ``vec3``, ``matrix33``, etc).
 
@@ -199,13 +199,10 @@ Users can define their own structures using the ``@wp.struct`` decorator, for ex
         active: int
         indices: wp.array(dtype=int)
 
+As with kernel parameters, all attributes of a struct must have valid type hints at class definition time.
 
-Structs may be used as a ``dtype`` for ``wp.arrays``, and may be passed to kernels directly as arguments,
-please see :ref:`Structs Reference <Structs>` for more details.
-
-.. note:: 
-
-    As with kernel parameters, all attributes of a struct must have valid type hints at class definition time.
+Structs may be used as a ``dtype`` for ``wp.arrays`` and may be passed to kernels directly as arguments.
+See :ref:`Structs Reference <Structs>` for more details on structs.
 
 .. _Compilation Model:
 
