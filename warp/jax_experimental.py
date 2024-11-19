@@ -103,7 +103,7 @@ def _warp_custom_callback(stream, buffers, opaque, opaque_len):
 
     # Launch the kernel.
     wp.context.runtime.core.cuda_launch_kernel(
-        device.context, hooks.forward, bounds.size, 0, 256, kernel_params, stream
+        device.context, hooks.forward, bounds.size, 0, 256, hooks.forward_smem_bytes, kernel_params, stream
     )
 
 

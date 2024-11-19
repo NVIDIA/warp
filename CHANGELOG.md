@@ -4,6 +4,7 @@
 
 ### Added
 
+- Support for cooperative tile-based primitives using cuBLASDx and cuFFTDx, please see the tile [documentation](https://nvidia.github.io/warp/modules/interoperability.html) for details.
 - Expose a `reversed()` built-in for iterators to test ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
 - Support for saving Volumes into .nvdb files with the `save_to_nvdb` method.
 - warp.fem: Added Trimesh3D and Quadmesh3D geometry types for 3D surfaces, with new `example_distortion_energy` example
@@ -219,6 +220,16 @@
   - Function spaces can now export VTK-compatible cells for visualization
   - Fixed edge cases with NanoVDB function spaces
   - Fixed differentiability of `wp.fem.PicQuadrature` w.r.t. positions and measures
+
+## [1.2.2] - 2024-07-04
+
+- Fix hashing of replay functions and snippets
+- Add additional documentation and examples demonstrating `wp.copy()`, `wp.clone()`, and `array.assign()` differentiability
+- Add `__new__()` methods for all class `__del__()` methods to
+  handle when a class instance is created but not instantiated before garbage collection.
+- Add documentation for dynamic loop autograd limitations
+- Allow users to pass function arguments by keyword in a kernel using standard Python calling semantics
+- Implement the assignment operator for `wp.quat`
 
 ## [1.2.2] - 2024-07-04
 

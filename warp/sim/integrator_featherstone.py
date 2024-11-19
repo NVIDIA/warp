@@ -1155,6 +1155,38 @@ def dense_gemm(
 #         dense_gemm(p, n, m, True, False, add_to_C, A_start, B_start, C_start, A, wp.adjoint[C], wp.adjoint[B])
 
 
+def create_inertia_matrix_kernel(num_joints, num_dofs):
+    @wp.kernel
+    def eval_dense_gemm_tile(
+        J_arr: wp.array3d(dtype=float), M_arr: wp.array3d(dtype=float), H_arr: wp.array3d(dtype=float)
+    ):
+        articulation = wp.tid()
+
+        J = wp.tile_load(J_arr[articulation], 0, 0, m=wp.static(6 * num_joints), n=num_dofs)
+        P = wp.tile_zeros(m=wp.static(6 * num_joints), n=num_dofs, dtype=float)
+
+        # compute P = M*J where M is a 6x6 block diagonal mass matrix
+        for i in range(int(num_joints)):
+            # 6x6 block matrices are on the diagonal
+            M_body = wp.tile_load(M_arr[articulation], i, i, m=6, n=6)
+
+            # load a 6xN row from the Jacobian
+            J_body = wp.tile_view(J, i * 6, 0, m=6, n=num_dofs)
+
+            # compute weighted row
+            P_body = wp.tile_matmul(M_body, J_body)
+
+            # assign to the P slice
+            wp.tile_assign(P, i * 6, 0, P_body)
+
+        # compute H = J^T*P
+        H = wp.tile_matmul(wp.tile_transpose(J), P)
+
+        wp.tile_store(H_arr[articulation], 0, 0, H)
+
+    return eval_dense_gemm_tile
+
+
 @wp.kernel
 def eval_dense_gemm_batched(
     m: wp.array(dtype=int),
@@ -1426,7 +1458,7 @@ class FeatherstoneIntegrator(Integrator):
 
     """
 
-    def __init__(self, model, angular_damping=0.05, update_mass_matrix_every=1):
+    def __init__(self, model, angular_damping=0.05, update_mass_matrix_every=1, use_tile_gemm=False):
         """
         Args:
             model (Model): the model to be simulated.
@@ -1435,9 +1467,19 @@ class FeatherstoneIntegrator(Integrator):
         """
         self.angular_damping = angular_damping
         self.update_mass_matrix_every = update_mass_matrix_every
+        self.use_tile_gemm = use_tile_gemm
+        self._step = 0
+
         self.compute_articulation_indices(model)
         self.allocate_model_aux_vars(model)
-        self._step = 0
+
+        if self.use_tile_gemm:
+            # create a custom kernel to evaluate the system matrix for this type
+            self.eval_inertia_matrix_kernel = create_inertia_matrix_kernel(int(self.joint_count), int(self.dof_count))
+
+            # ensure matrix is reloaded since otherwise an unload can happen during graph capture
+            # todo: should not be necessary?
+            wp.load_module(device=wp.get_device())
 
     def compute_articulation_indices(self, model):
         # calculate total size and offsets of Jacobian and mass matrices for entire system
@@ -1485,6 +1527,12 @@ class FeatherstoneIntegrator(Integrator):
                 articulation_H_rows.append(dof_count)
                 articulation_J_rows.append(joint_count * 6)
                 articulation_J_cols.append(dof_count)
+
+                if self.use_tile_gemm:
+                    # store the joint and dof count assuming all
+                    # articulations have the same structure
+                    self.joint_count = joint_count
+                    self.dof_count = dof_count
 
                 self.J_size += 6 * joint_count * dof_count
                 self.M_size += 6 * joint_count * 6 * joint_count
@@ -1790,48 +1838,71 @@ class FeatherstoneIntegrator(Integrator):
                             device=model.device,
                         )
 
-                        # form P = M*J
-                        wp.launch(
-                            eval_dense_gemm_batched,
-                            dim=model.articulation_count,
-                            inputs=[
-                                self.articulation_M_rows,
-                                self.articulation_J_cols,
-                                self.articulation_J_rows,
-                                False,
-                                False,
-                                self.articulation_M_start,
-                                self.articulation_J_start,
-                                # P start is the same as J start since it has the same dims as J
-                                self.articulation_J_start,
-                                self.M,
-                                self.J,
-                            ],
-                            outputs=[self.P],
-                            device=model.device,
-                        )
+                        if self.use_tile_gemm:
+                            # reshape arrays
+                            M_tiled = self.M.reshape((-1, 6 * self.joint_count, 6 * self.joint_count))
+                            J_tiled = self.J.reshape((-1, 6 * self.joint_count, self.dof_count))
+                            H_tiled = self.H.reshape((-1, self.dof_count, self.dof_count))
 
-                        # form H = J^T*P
-                        wp.launch(
-                            eval_dense_gemm_batched,
-                            dim=model.articulation_count,
-                            inputs=[
-                                self.articulation_J_cols,
-                                self.articulation_J_cols,
-                                # P rows is the same as J rows
-                                self.articulation_J_rows,
-                                True,
-                                False,
-                                self.articulation_J_start,
-                                # P start is the same as J start since it has the same dims as J
-                                self.articulation_J_start,
-                                self.articulation_H_start,
-                                self.J,
-                                self.P,
-                            ],
-                            outputs=[self.H],
-                            device=model.device,
-                        )
+                            wp.launch_tiled(
+                                self.eval_inertia_matrix_kernel,
+                                dim=model.articulation_count,
+                                inputs=[J_tiled, M_tiled],
+                                outputs=[H_tiled],
+                                device=model.device,
+                                block_dim=256,
+                            )
+
+                            # J = J_tiled.numpy()[0]
+                            # M = M_tiled.numpy()[0]
+                            # H = J.T@M@J
+
+                            # import numpy as np
+                            # np.testing.assert_allclose(H, H_tiled.numpy()[0])
+
+                        else:
+                            # form P = M*J
+                            wp.launch(
+                                eval_dense_gemm_batched,
+                                dim=model.articulation_count,
+                                inputs=[
+                                    self.articulation_M_rows,
+                                    self.articulation_J_cols,
+                                    self.articulation_J_rows,
+                                    False,
+                                    False,
+                                    self.articulation_M_start,
+                                    self.articulation_J_start,
+                                    # P start is the same as J start since it has the same dims as J
+                                    self.articulation_J_start,
+                                    self.M,
+                                    self.J,
+                                ],
+                                outputs=[self.P],
+                                device=model.device,
+                            )
+
+                            # form H = J^T*P
+                            wp.launch(
+                                eval_dense_gemm_batched,
+                                dim=model.articulation_count,
+                                inputs=[
+                                    self.articulation_J_cols,
+                                    self.articulation_J_cols,
+                                    # P rows is the same as J rows
+                                    self.articulation_J_rows,
+                                    True,
+                                    False,
+                                    self.articulation_J_start,
+                                    # P start is the same as J start since it has the same dims as J
+                                    self.articulation_J_start,
+                                    self.articulation_H_start,
+                                    self.J,
+                                    self.P,
+                                ],
+                                outputs=[self.H],
+                                device=model.device,
+                            )
 
                         # compute decomposition
                         wp.launch(

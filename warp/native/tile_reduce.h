@@ -176,12 +176,9 @@ void adj_tile_sum(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 
     WP_TILE_SYNC();
 
-    // convert the destination adjoint to a register
-    auto adj_t_reg = adj_t.copy_to_register();
     // broadcast scalar across input dimensions (note zero strides)
-    auto adj_ret_reg = tile_shared_t<T, Tile::M, Tile::N, 0, 0>(&scratch).copy_to_register();
-
-    adj_t.assign(tile_add(adj_t_reg, adj_ret_reg));
+    auto adj_ret_reg = tile_shared_t<T, Tile::M, Tile::N, 0, 0>(&scratch, NULL).copy_to_register();
+    adj_t.grad_add(adj_ret_reg);
 }
 
 template <typename Tile>

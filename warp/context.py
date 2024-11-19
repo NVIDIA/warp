@@ -12,6 +12,7 @@ import hashlib
 import inspect
 import io
 import itertools
+import json
 import operator
 import os
 import platform
@@ -621,9 +622,12 @@ def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
 
 
 class KernelHooks:
-    def __init__(self, forward, backward):
+    def __init__(self, forward, backward, forward_smem_bytes=0, backward_smem_bytes=0):
         self.forward = forward
         self.backward = backward
+
+        self.forward_smem_bytes = forward_smem_bytes
+        self.backward_smem_bytes = backward_smem_bytes
 
 
 # caches source and compiled entry points for a kernel (will be populated after module loads)
@@ -1626,6 +1630,17 @@ class ModuleBuilder:
             # use dict to preserve import order
             self.functions[func] = None
 
+    def build_meta(self):
+        meta = {}
+
+        for kernel in self.kernels:
+            name = kernel.get_mangled_name()
+
+            meta[name + "_cuda_kernel_forward_smem_bytes"] = kernel.adj.get_total_required_shared()
+            meta[name + "_cuda_kernel_backward_smem_bytes"] = kernel.adj.get_total_required_shared() * 2
+
+        return meta
+
     def codegen(self, device):
         source = ""
 
@@ -1685,11 +1700,12 @@ class ModuleExec:
         instance.handle = None
         return instance
 
-    def __init__(self, handle, module_hash, device):
+    def __init__(self, handle, module_hash, device, meta):
         self.handle = handle
         self.module_hash = module_hash
         self.device = device
         self.kernel_hooks = {}
+        self.meta = meta
 
     # release the loaded module
     def __del__(self):
@@ -1713,12 +1729,40 @@ class ModuleExec:
         name = kernel.get_mangled_name()
 
         if self.device.is_cuda:
-            forward = runtime.core.cuda_get_kernel(
-                self.device.context, self.handle, (name + "_cuda_kernel_forward").encode("utf-8")
+            forward_name = name + "_cuda_kernel_forward"
+            forward_kernel = runtime.core.cuda_get_kernel(
+                self.device.context, self.handle, forward_name.encode("utf-8")
             )
-            backward = runtime.core.cuda_get_kernel(
-                self.device.context, self.handle, (name + "_cuda_kernel_backward").encode("utf-8")
+
+            backward_name = name + "_cuda_kernel_backward"
+            backward_kernel = runtime.core.cuda_get_kernel(
+                self.device.context, self.handle, backward_name.encode("utf-8")
             )
+
+            # look up the required shared memory size for each kernel from module metadata
+            forward_smem_bytes = self.meta[forward_name + "_smem_bytes"]
+            backward_smem_bytes = self.meta[backward_name + "_smem_bytes"]
+
+            # configure kernels maximum shared memory size
+            max_smem_bytes = runtime.core.cuda_get_max_shared_memory(self.device.context)
+
+            if not runtime.core.cuda_configure_kernel_shared_memory(forward_kernel, forward_smem_bytes):
+                print(
+                    f"Warning: Failed to configure kernel dynamic shared memory for this device, tried to configure {forward_name} kernel for {forward_smem_bytes} bytes, but maximum available is {max_smem_bytes}"
+                )
+
+            options = dict(kernel.module.options)
+            options.update(kernel.options)
+
+            if options["enable_backward"] and not runtime.core.cuda_configure_kernel_shared_memory(
+                backward_kernel, backward_smem_bytes
+            ):
+                print(
+                    f"Warning: Failed to configure kernel dynamic shared memory for this device, tried to configure {backward_name} kernel for {backward_smem_bytes} bytes, but maximum available is {max_smem_bytes}"
+                )
+
+            hooks = KernelHooks(forward_kernel, backward_kernel, forward_smem_bytes, backward_smem_bytes)
+
         else:
             func = ctypes.CFUNCTYPE(None)
             forward = (
@@ -1728,9 +1772,9 @@ class ModuleExec:
                 func(runtime.llvm.lookup(self.handle.encode("utf-8"), (name + "_cpu_backward").encode("utf-8"))) or None
             )
 
-        hooks = KernelHooks(forward, backward)
-        self.kernel_hooks[kernel.adj] = hooks
+            hooks = KernelHooks(forward, backward)
 
+        self.kernel_hooks[kernel.adj] = hooks
         return hooks
 
 
@@ -2077,6 +2121,15 @@ class Module:
                         module_load_timer.extra_msg = " (error)"
                         raise (e)
 
+                # ------------------------------------------------------------
+                # build meta data
+
+                meta = builder.build_meta()
+                meta_path = os.path.join(build_dir, "module_codegen.meta")
+
+                with open(meta_path, "w") as meta_file:
+                    json.dump(meta, meta_file)
+
                 # -----------------------------------------------------------
                 # update cache
 
@@ -2113,18 +2166,23 @@ class Module:
 
             # -----------------------------------------------------------
             # Load CPU or CUDA binary
+
+            meta_path = os.path.join(module_dir, "module_codegen.meta")
+            with open(meta_path, "r") as meta_file:
+                meta = json.load(meta_file)
+
             if device.is_cpu:
                 # LLVM modules are identified using strings, so we need to ensure uniqueness
                 module_handle = f"{module_name}_{self.cpu_exec_id}"
                 self.cpu_exec_id += 1
                 runtime.llvm.load_obj(binary_path.encode("utf-8"), module_handle.encode("utf-8"))
-                module_exec = ModuleExec(module_handle, module_hash, device)
+                module_exec = ModuleExec(module_handle, module_hash, device, meta)
                 self.execs[None] = module_exec
 
             elif device.is_cuda:
                 cuda_module = warp.build.load_cuda(binary_path, device)
                 if cuda_module is not None:
-                    module_exec = ModuleExec(cuda_module, module_hash, device)
+                    module_exec = ModuleExec(cuda_module, module_hash, device, meta)
                     self.execs[device.context] = module_exec
                 else:
                     module_load_timer.extra_msg = " (error)"
@@ -3452,10 +3510,17 @@ class Runtime:
             self.core.cuda_get_kernel.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p]
             self.core.cuda_get_kernel.restype = ctypes.c_void_p
 
+            self.core.cuda_get_max_shared_memory.argtypes = [ctypes.c_void_p]
+            self.core.cuda_get_max_shared_memory.restype = ctypes.c_int
+
+            self.core.cuda_configure_kernel_shared_memory.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            self.core.cuda_configure_kernel_shared_memory.restype = ctypes.c_bool
+
             self.core.cuda_launch_kernel.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_size_t,
+                ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_int,
                 ctypes.POINTER(ctypes.c_void_p),
@@ -5020,6 +5085,7 @@ class Launch:
                 self.bounds.size,
                 self.max_blocks,
                 self.block_dim,
+                self.hooks.forward_smem_bytes,
                 self.params_addr,
                 stream.cuda_stream,
             )
@@ -5178,6 +5244,7 @@ def launch(
                     bounds.size,
                     max_blocks,
                     block_dim,
+                    hooks.backward_smem_bytes,
                     kernel_params,
                     stream.cuda_stream,
                 )
@@ -5207,6 +5274,7 @@ def launch(
                         bounds.size,
                         max_blocks,
                         block_dim,
+                        hooks.forward_smem_bytes,
                         kernel_params,
                         stream.cuda_stream,
                     )
@@ -5258,13 +5326,21 @@ def launch_tiled(*args, **kwargs):
             ...
     """
 
-    if len(kwargs["dim"]) > 3:
-        raise RuntimeError("wp.launch_tiled() requires a grid with fewer than 4 dimensions")
-
     # promote dim to a list in case it was passed as a scalar or tuple
+    if "dim" not in kwargs:
+        raise RuntimeError("Launch dimensions 'dim' argument should be passed via. keyword args for wp.launch_tiled()")
+
+    if "block_dim" not in kwargs:
+        raise RuntimeError(
+            "Launch block dimension 'block_dim' argument should be passed via. keyword args for wp.launch_tiled()"
+        )
+
     dim = kwargs["dim"]
     if not isinstance(dim, list):
         dim = list(dim) if isinstance(dim, tuple) else [dim]
+
+    if len(dim) > 3:
+        raise RuntimeError("wp.launch_tiled() requires a grid with fewer than 4 dimensions")
 
     # add trailing dimension
     kwargs["dim"] = dim + [kwargs["block_dim"]]

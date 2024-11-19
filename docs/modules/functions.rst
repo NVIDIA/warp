@@ -804,7 +804,7 @@ Spatial Math
 
 Tile Primitives
 ---------------
-.. py:function:: tile_zeros(m: int32, n: int32, dtype: Scalar, storage: str) -> Tile
+.. py:function:: tile_zeros(m: int32, n: int32, dtype: Any, storage: str) -> Tile
 
     Allocates a tile of zero-initialized items.
 
@@ -813,10 +813,10 @@ Tile Primitives
     :param dtype: Datatype of output tile's elements
     :param storage: The storage location for the tile: ``"register"`` for registers
       (default) or ``"shared"`` for shared memory.
-    :returns: A zero-initialized tile with ``shape=(m,n)`` and the specified datatype
+    :returns: A zero-initialized tile with ``shape=(m,n)`` and the specified datatype [1]_
 
 
-.. py:function:: tile_ones(m: int32, n: int32, dtype: Scalar, storage: str) -> Tile
+.. py:function:: tile_ones(m: int32, n: int32, dtype: Any, storage: str) -> Tile
 
     Allocates a tile of one-initialized items.
 
@@ -825,10 +825,10 @@ Tile Primitives
     :param dtype: Datatype of output tile's elements
     :param storage: The storage location for the tile: ``"register"`` for registers
       (default) or ``"shared"`` for shared memory.
-    :returns: A one-initialized tile with ``shape=(m,n)`` and the specified dtype
+    :returns: A one-initialized tile with ``shape=(m,n)`` and the specified dtype [1]_
 
 
-.. py:function:: tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile
+.. py:function:: tile_arange(*args: Scalar, dtype: Any, storage: str) -> Tile
 
     Generates a tile of linearly spaced elements.
 
@@ -841,7 +841,7 @@ Tile Primitives
     :param dtype: Datatype of output tile's elements (optional, default: int)
     :param storage: The storage location for the tile: ``"register"`` for registers
       (default) or ``"shared"`` for shared memory.
-    :returns: A tile with ``shape=(1,n)`` with linearly spaced elements of specified dtype
+    :returns: A tile with ``shape=(1,n)`` with linearly spaced elements of specified dtype [1]_
 
 
 .. py:function:: tile_load(a: Array[Any], i: int32, n: int32, storage: str) -> Tile
@@ -910,6 +910,28 @@ Tile Primitives
     :param y: Offset in the destination array measured in multiples of ``n``, i.e.: ``j=y*N`` where ``N`` is the second tile dimension
     :param t: Source tile to add to the destination array
     :returns: A tile with the same dimensions and type as the source tile, holding the original value of the destination elements
+
+
+.. py:function:: tile_view(t: Tile, i: int32, j: int32, m: int32, n: int32) -> Tile
+
+    Return a subrange of a given tile from coordinates (i,j) to (i+m, j+n).
+
+    :param t: Input tile to extract a subrange from
+    :param i: Offset in the source tile along the first dimension
+    :param j: Offset in the source tile along the second dimensions
+    :param m: Size of the subrange to return along the first dimension
+    :param n: Size of the subrange to return along the second dimension
+    :returns: A tile with dimensions (m,n) and the same datatype as the input tile
+
+
+.. py:function:: tile_assign(dst: Tile, i: int32, j: int32, src: Tile) -> None
+
+    Assign a tile to a subrange of a destination tile at coordinates (i,j).
+
+    :param t: The destination tile to assign to
+    :param i: Offset in the source tile along the first dimension
+    :param j: Offset in the source tile along the second dimensions
+    :param src: The source tile to read values from
 
 
 .. py:function:: tile(x: Any) -> Tile
