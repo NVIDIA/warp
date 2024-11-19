@@ -46,7 +46,6 @@ variables:
       - "3.10.13+nv3"
       - "3.9.18+nv1"
       - "3.8.18+nv1"
-      - "3.7.17+nv1"
     description: "The default Python version used in the main testing jobs."
 
 stages:
@@ -500,17 +499,6 @@ trigger python 3.X test pipelines:
     GIT_STRATEGY: none
   script:
     - echo "Run this job to test additional Python versions."
-
-
-python 3.7 test:
-  stage: child pipelines
-  needs: [trigger python 3.X test pipelines]
-  trigger:
-    include: /.gitlab/ci/additional-tests.yml
-  extends:
-    - .trigger_common
-  variables:
-    DEFAULT_PYTHON: "3.7.17+nv1"
 
 python 3.8 test:
   stage: child pipelines

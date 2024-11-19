@@ -53,12 +53,7 @@ include:
     - python -m pip install -e .
   install-python+warp-macos:
     - df -h
-    # This is required because there is no macos-universal for Python 3.7 in Packman sources
-    - if [[ $DEFAULT_PYTHON == 3.7* ]]; then
-        export PYTHON_NAME="${DEFAULT_PYTHON}-macos-x86_64";
-      else
-        export PYTHON_NAME="${DEFAULT_PYTHON}-macos-universal";
-      fi
+    - export PYTHON_NAME="${DEFAULT_PYTHON}-macos-universal";
     - tools/packman/packman install -l _build/target-deps/python python ${PYTHON_NAME}
     - $PYTHON -m venv _venv
     - source _venv/bin/activate

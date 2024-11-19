@@ -9,13 +9,15 @@
 - warp.fem: Added Trimesh3D and Quadmesh3D geometry types for 3D surfaces, with new `example_distortion_energy` example
 - warp.fem: Added "add" option to `wp.fem.integrate()` for accumulating integration result to existing output
 - warp.fem: Added "assembly" option to `wp.fem.integrate()` for selecting between more memory-efficient or more computationally-efficient integration algorithms
-- warp.fem: Added Nédélec (first kind) and Raviart-Thomas vector-valued function spaces providing conforming discretization of `curl` and `div` operators, respectively. 
+- warp.fem: Added Nédélec (first kind) and Raviart-Thomas vector-valued function spaces
+  providing conforming discretization of `curl` and `div` operators, respectively.
 
 ### Changed
 
+- Drop support for Python 3.7; Python 3.8 is now the minimum-supported version.
 - Promote the `wp.Int`, `wp.Float`, and `wp.Scalar` generic annotation types to the public API.
 - warp.fem: Simplified querying neighboring cell quantities when integrating on sides using new
-  `warp.fem.cells()`, `warp.fem.to_inner_cell()`, `warp.fem.to_outer_cell()` operators
+  `warp.fem.cells()`, `warp.fem.to_inner_cell()`, `warp.fem.to_outer_cell()` operators.
 - Show an error message when the type returned by a function differs from its annotation, which would have led to the compilation stage failing.
 - Clarify that `randn()` samples a normal distribution of mean 0 and variance 1.
 - Error when passing more than 32 variadic argument to the `wp.printf` built-in.

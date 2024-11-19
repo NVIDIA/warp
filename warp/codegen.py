@@ -2240,7 +2240,7 @@ class Adjoint:
 
     # returns the object being indexed, and the list of indices
     def eval_subscript(adj, node):
-        # We want to coalesce multi-dimentional array indexing into a single operation. This needs to deal with expressions like `a[i][j][x][y]` where `a` is a 2D array of matrices,
+        # We want to coalesce multi-dimensional array indexing into a single operation. This needs to deal with expressions like `a[i][j][x][y]` where `a` is a 2D array of matrices,
         # and essentially rewrite it into `a[i, j][x][y]`. Since the AST observes the indexing right-to-left, and we don't want to evaluate the index expressions prematurely,
         # this requires a first loop to check if this `node` only performs indexing on the array, and a second loop to evaluate and collect index variables.
         root = node

@@ -2779,21 +2779,16 @@ class Graph:
 
 class Runtime:
     def __init__(self):
-        if sys.version_info < (3, 7):
-            raise RuntimeError("Warp requires Python 3.7 as a minimum")
+        if sys.version_info < (3, 8):
+            raise RuntimeError("Warp requires Python 3.8 as a minimum")
         if sys.version_info < (3, 9):
             warp.utils.warn(f"Python 3.9 or newer is recommended for running Warp, detected {sys.version_info}")
 
         bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
 
         if os.name == "nt":
-            if sys.version_info >= (3, 8):
-                # Python >= 3.8 this method to add dll search paths
-                os.add_dll_directory(bin_path)
-
-            else:
-                # Python < 3.8 we add dll directory to path
-                os.environ["PATH"] = bin_path + os.pathsep + os.environ["PATH"]
+            # Python >= 3.8 this method to add dll search paths
+            os.add_dll_directory(bin_path)
 
             warp_lib = os.path.join(bin_path, "warp.dll")
             llvm_lib = os.path.join(bin_path, "warp-clang.dll")
@@ -3711,10 +3706,7 @@ class Runtime:
 
     def load_dll(self, dll_path):
         try:
-            if sys.version_info >= (3, 8):
-                dll = ctypes.CDLL(dll_path, winmode=0)
-            else:
-                dll = ctypes.CDLL(dll_path)
+            dll = ctypes.CDLL(dll_path, winmode=0)
         except OSError as e:
             if "GLIBCXX" in str(e):
                 raise RuntimeError(
