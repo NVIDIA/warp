@@ -5,7 +5,7 @@
 ### Added
 
 - Support for cooperative tile-based primitives using cuBLASDx and cuFFTDx, please see the tile
-  [documentation](https://nvidia.github.io/warp/modules/interoperability.html) for details.
+  [documentation](https://nvidia.github.io/warp/modules/tiles.html) for details.
 - Expose a `reversed()` built-in for iterators to test ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
 - Support for saving Volumes into `.nvdb` files with the `save_to_nvdb` method.
 - warp.fem: Added `Trimesh3D` and `Quadmesh3D` geometry types for 3D surfaces with new `example_distortion_energy` example
