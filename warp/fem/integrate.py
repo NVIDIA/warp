@@ -1741,6 +1741,30 @@ def get_interpolate_to_field_kernel(
     ValueStruct: wp.codegen.Struct,
     dest: FieldRestriction,
 ):
+    @wp.func
+    def _find_node_in_element(
+        domain_arg: domain.ElementArg,
+        domain_index_arg: domain.ElementIndexArg,
+        dest_node_arg: dest.space_restriction.NodeArg,
+        dest_eval_arg: dest.field.EvalArg,
+        partition_node_index: int,
+    ):
+        element_beg, element_end = dest.space_restriction.node_element_range(dest_node_arg, partition_node_index)
+
+        for n in range(element_beg, element_end):
+            node_element_index = dest.space_restriction.node_element_index(dest_node_arg, n)
+            element_index = domain.element_index(domain_index_arg, node_element_index.domain_element_index)
+            coords = dest.space.node_coords_in_element(
+                domain_arg,
+                dest_eval_arg.space_arg,
+                element_index,
+                node_element_index.node_index_in_element,
+            )
+            if coords[0] != OUTSIDE:
+                return element_index, node_element_index.node_index_in_element
+
+        return NULL_ELEMENT_INDEX, NULL_NODE_INDEX
+
     def interpolate_to_field_kernel_fn(
         domain_arg: domain.ElementArg,
         domain_index_arg: domain.ElementIndexArg,
@@ -1759,15 +1783,14 @@ def get_interpolate_to_field_kernel(
             partition_node_index = dest.space_restriction.node_partition_index(dest_node_arg, local_node_index)
 
             # Grab first element containing node; there must be at least one since vol_sum != 0
-            element_beg, element_end = dest.space_restriction.node_element_range(dest_node_arg, partition_node_index)
-            node_element_index = dest.space_restriction.node_element_index(dest_node_arg, element_beg)
-            element_index = domain.element_index(domain_index_arg, node_element_index.domain_element_index)
-
+            element_index, node_index_in_element = _find_node_in_element(
+                domain_arg, domain_index_arg, dest_node_arg, dest_eval_arg, partition_node_index
+            )
             dest.field.set_node_value(
                 domain_arg,
                 dest_eval_arg,
                 element_index,
-                node_element_index.node_index_in_element,
+                node_index_in_element,
                 partition_node_index,
                 val_sum / vol_sum,
             )

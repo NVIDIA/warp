@@ -26,6 +26,11 @@ def generalized_inner(x: Any, y: Any):
 
 
 @wp.func
+def generalized_inner(x: float, y: float):
+    return x * y
+
+
+@wp.func
 def generalized_inner(x: wp.mat22, y: wp.vec2):
     return x[0] * y[0] + x[1] * y[1]
 
