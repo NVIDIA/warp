@@ -2429,6 +2429,16 @@ def inplace_add_rhs(x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.ar
     wp.atomic_add(z, 0, a)
 
 
+vec9 = wp.vec(length=9, dtype=float)
+
+
+@wp.kernel
+def inplace_add_custom_vec(x: wp.array(dtype=vec9), y: wp.array(dtype=vec9)):
+    i = wp.tid()
+    x[i] += y[i]
+    x[i] += y[i]
+
+
 def test_array_inplace_diff_ops(test, device):
     N = 3
     x1 = wp.ones(N, dtype=float, requires_grad=True, device=device)
@@ -2537,6 +2547,18 @@ def test_array_inplace_diff_ops(test, device):
 
     assert_np_equal(x.grad.numpy(), np.ones(1, dtype=float))
     assert_np_equal(y.grad.numpy(), np.ones(1, dtype=float))
+    tape.reset()
+
+    x = wp.zeros(1, dtype=vec9, requires_grad=True, device=device)
+    y = wp.ones(1, dtype=vec9, requires_grad=True, device=device)
+
+    with tape:
+        wp.launch(inplace_add_custom_vec, 1, inputs=[x, y], device=device)
+
+    tape.backward(grads={x: wp.ones_like(x)})
+
+    assert_np_equal(x.numpy(), np.full((1, 9), 2.0, dtype=float))
+    assert_np_equal(y.grad.numpy(), np.full((1, 9), 2.0, dtype=float))
 
 
 @wp.kernel

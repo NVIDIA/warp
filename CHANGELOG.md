@@ -7,6 +7,7 @@
 ### Changed
 
 ### Fixed
+- Fix gradient propagation for in-place addition/subtraction operations on custom vector type arrays.
 
 ## [1.5.0] - 2024-12-01
 

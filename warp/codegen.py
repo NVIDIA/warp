@@ -2596,11 +2596,6 @@ class Adjoint:
             target_type = strip_reference(target.type)
 
             if is_array(target_type):
-                # target_type is not suitable for atomic array accumulation
-                if target_type.dtype not in warp.types.atomic_types:
-                    make_new_assign_statement()
-                    return
-
                 kernel_name = adj.fun_name
                 filename = adj.filename
                 lineno = adj.lineno + adj.fun_lineno
