@@ -742,8 +742,8 @@ class VBDIntegrator(Integrator):
 
         if len(self.model.particle_coloring) == 0:
             raise ValueError(
-                "model.particle_coloring is empty! When using the VBDIntegrator you must create the "
-                "Model object with the color_particles option enabled."
+                "model.particle_coloring is empty! When using the VBDIntegrator you must call ModelBuilder.color() "
+                "or ModelBuilder.set_coloring() before calling ModelBuilder.finalize()."
             )
 
         # tests

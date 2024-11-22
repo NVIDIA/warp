@@ -14,8 +14,8 @@ import warp.utils
 
 
 class ColoringAlgorithm(Enum):
-    GRAPH_COLOR_MCS = 0
-    GRAPH_COLOR_ORDERED_GREEDY = 1
+    MCS = 0
+    GREEDY = 1
 
 
 @wp.kernel
@@ -152,7 +152,7 @@ def color_trimesh(
     include_bending_energy,
     balance_colors=True,
     target_max_min_color_ratio=1.1,
-    algorithm: ColoringAlgorithm = ColoringAlgorithm.GRAPH_COLOR_MCS,
+    algorithm: ColoringAlgorithm = ColoringAlgorithm.MCS,
 ):
     """
     A function that generates vertex coloring for a trimesh, which is represented by the number of vertices and edges of the mesh.
@@ -184,7 +184,7 @@ def color_graph(
     graph_edge_indices,
     balance_colors=True,
     target_max_min_color_ratio=1.1,
-    algorithm: ColoringAlgorithm = ColoringAlgorithm.GRAPH_COLOR_MCS,
+    algorithm: ColoringAlgorithm = ColoringAlgorithm.MCS,
 ):
     """
     A function that generates coloring for a graph, which is represented by the number of nodes and an array of edges.
