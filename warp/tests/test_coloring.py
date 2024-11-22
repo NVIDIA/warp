@@ -69,7 +69,7 @@ def test_coloring_trimesh(test, device):
         num_colors_greedy = wp.context.runtime.core.graph_coloring(
             model.particle_count,
             edge_indices_cpu.__ctype__(),
-            ColoringAlgorithm.GRAPH_COLOR_ORDERED_GREEDY.value,
+            ColoringAlgorithm.GREEDY.value,
             particle_colors.__ctype__(),
         )
         wp.launch(
@@ -82,7 +82,7 @@ def test_coloring_trimesh(test, device):
         num_colors_mcs = wp.context.runtime.core.graph_coloring(
             model.particle_count,
             edge_indices_cpu.__ctype__(),
-            ColoringAlgorithm.GRAPH_COLOR_MCS.value,
+            ColoringAlgorithm.MCS.value,
             particle_colors.__ctype__(),
         )
         wp.launch(
@@ -97,7 +97,7 @@ def test_coloring_trimesh(test, device):
         num_colors_greedy = wp.context.runtime.core.graph_coloring(
             model.particle_count,
             edge_indices_cpu_with_bending.__ctype__(),
-            ColoringAlgorithm.GRAPH_COLOR_ORDERED_GREEDY.value,
+            ColoringAlgorithm.GREEDY.value,
             particle_colors.__ctype__(),
         )
         wp.context.runtime.core.balance_coloring(
@@ -117,7 +117,7 @@ def test_coloring_trimesh(test, device):
         num_colors_mcs = wp.context.runtime.core.graph_coloring(
             model.particle_count,
             edge_indices_cpu_with_bending.__ctype__(),
-            ColoringAlgorithm.GRAPH_COLOR_MCS.value,
+            ColoringAlgorithm.MCS.value,
             particle_colors.__ctype__(),
         )
         wp.context.runtime.core.balance_coloring(
@@ -155,7 +155,6 @@ def test_combine_coloring(test, device):
             indices=faces.flatten(),
             vel=wp.vec3(0.0, 0.0, 0.0),
             density=0.02,
-            color_particles=True,
         )
 
         builder1.add_cloth_grid(
@@ -168,8 +167,8 @@ def test_combine_coloring(test, device):
             cell_y=0.1,
             mass=0.1,
             fix_left=True,
-            color_particles=True,
         )
+        builder1.color()
 
         builder2 = wp.sim.ModelBuilder()
         builder2.add_cloth_grid(
@@ -184,10 +183,11 @@ def test_combine_coloring(test, device):
             # to include bending in coloring
             edge_ke=100000,
             fix_left=True,
-            color_particles=True,
         )
+        builder2.color()
 
-        builder2.add_cloth_grid(
+        builder3 = wp.sim.ModelBuilder()
+        builder3.add_cloth_grid(
             pos=wp.vec3(0.0, 4.0, 0.0),
             rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
             vel=wp.vec3(0.0, 0.0, 0.0),
@@ -197,11 +197,14 @@ def test_combine_coloring(test, device):
             cell_y=0.1,
             mass=0.1,
             fix_left=True,
-            color_particles=True,
-            color_groups=color_lattice_grid(50, 100),
+        )
+
+        builder3.set_coloring(
+            color_lattice_grid(50, 100),
         )
 
         builder1.add_builder(builder2)
+        builder1.add_builder(builder3)
 
         model = builder2.finalize()
 
