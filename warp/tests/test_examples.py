@@ -365,8 +365,14 @@ if check_p2p():
 add_example_test(
     TestFemExamples,
     name="fem.example_apic_fluid",
-    devices=get_selected_cuda_test_devices(),
+    devices=get_selected_cuda_test_devices(mode="basic"),
     test_options={"num_frames": 5, "voxel_size": 2.0},
+)
+add_example_test(
+    TestFemExamples,
+    name="fem.example_adaptive_grid",
+    devices=get_selected_cuda_test_devices(mode="basic"),
+    test_options={"headless": True, "div_conforming": True},
 )
 
 # The following examples do not need CUDA

@@ -111,9 +111,7 @@ class AdjointField(SpaceField):
             node_weight = self.space.element_outer_weight(
                 args.elt_arg, args.eval_arg, s.element_index, s.element_coords, get_node_index_in_element(dof)
             )
-            local_value_map = self.space.local_value_map_outer(
-                args.elt_arg, args.eval_arg, s.element_index, s.element_coords
-            )
+            local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
             dof_value = self.space.node_basis_element(get_node_coord(dof))
             return self.space.space_value(dof_value, node_weight, local_value_map)
 
@@ -134,9 +132,7 @@ class AdjointField(SpaceField):
                 get_node_index_in_element(dof),
             )
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
-            local_value_map = self.space.local_value_map_outer(
-                args.elt_arg, args.eval_arg, s.element_index, s.element_coords
-            )
+            local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
             dof_value = self.space.node_basis_element(get_node_coord(dof))
             return self.space.space_gradient(dof_value, nabla_weight, local_value_map, grad_transform)
 
@@ -157,9 +153,7 @@ class AdjointField(SpaceField):
                 get_node_index_in_element(dof),
             )
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
-            local_value_map = self.space.local_value_map_outer(
-                args.elt_arg, args.eval_arg, s.element_index, s.element_coords
-            )
+            local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
             dof_value = self.space.node_basis_element(get_node_coord(dof))
             return self.space.space_divergence(dof_value, nabla_weight, local_value_map, grad_transform)
 
