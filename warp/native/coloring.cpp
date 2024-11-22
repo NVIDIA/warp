@@ -396,7 +396,7 @@ public:
 
     bool empty()
     {
-        return max_weight == 0 && weight_buckets[0].size() == 0;
+        return max_weight <= 0 && weight_buckets[0].size() == 0;
     }
 
 
