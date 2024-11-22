@@ -995,43 +995,6 @@ vector_types = (
     spatial_matrixd,
 )
 
-atomic_vector_types = (
-    vec2i,
-    vec2ui,
-    vec2l,
-    vec2ul,
-    vec2h,
-    vec2f,
-    vec2d,
-    vec3i,
-    vec3ui,
-    vec3l,
-    vec3ul,
-    vec3h,
-    vec3f,
-    vec3d,
-    vec4i,
-    vec4ui,
-    vec4l,
-    vec4ul,
-    vec4h,
-    vec4f,
-    vec4d,
-    mat22h,
-    mat22f,
-    mat22d,
-    mat33h,
-    mat33f,
-    mat33d,
-    mat44h,
-    mat44f,
-    mat44d,
-    quath,
-    quatf,
-    quatd,
-)
-atomic_types = float_types + (int32, uint32, int64, uint64) + atomic_vector_types
-
 np_dtype_to_warp_type = {
     # Numpy scalar types
     np.bool_: bool,
