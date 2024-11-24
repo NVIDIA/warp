@@ -3834,8 +3834,6 @@ class ModelBuilder:
         add_springs: bool = False,
         spring_ke: float = default_spring_ke,
         spring_kd: float = default_spring_kd,
-        color_particles=False,
-        color_groups=None,
     ):
         """Helper to create a regular planar cloth grid
 
@@ -3856,12 +3854,6 @@ class ModelBuilder:
             fix_right: Make the right-most edge of particles kinematic
             fix_top: Make the top-most edge of particles kinematic
             fix_bottom: Make the bottom-most edge of particles kinematic
-            color_particles: Whether to color particles based on their connectivity. When using `IntegratorVBD`, this
-                option must be turned on.
-            input_color_groups: A list of `np.array` objects with `dtype`=int. The length of the list is the number of colors
-                and each `np.array` contains the indices of vertices with this color. Users can provide custom coloring by setting
-                this argument. If color_particles is set to `True` and this argument is `None`, the function will apply a built-in
-                coloring algorithm to generate particle colors.
         """
 
         def grid_index(x, y, dim_x):
@@ -3990,12 +3982,6 @@ class ModelBuilder:
             density: The density per-area of the mesh
             edge_callback: A user callback when an edge is created
             face_callback: A user callback when a face is created
-            color_particles: Whether to color particles based on their connectivity. When using `IntegratorVBD`, this
-                option must be turned on.
-            color_groups: A list of `np.array` objects with `dtype`=int. The length of the list is the number of colors
-                and each `np.array` contains the indices of vertices with this color. Users can provide custom coloring by setting
-                this argument. If color_particles is set to `True` and this argument is `None`, the function will apply a built-in
-                coloring algorithm to generate particle colors.
         Note:
 
             The mesh should be two manifold.
