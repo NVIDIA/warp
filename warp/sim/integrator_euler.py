@@ -795,7 +795,7 @@ def eval_particle_contacts(
     r = bx - wp.transform_point(X_wb, X_com)
 
     n = contact_normal[tid]
-    c = wp.dot(n, px - bx) - particle_radius[tid]
+    c = wp.dot(n, px - bx) - particle_radius[particle_index]
 
     if c > particle_ka:
         return
