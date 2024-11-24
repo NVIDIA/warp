@@ -892,7 +892,7 @@ class Model:
             target.soft_contact_body_pos = wp.zeros(count, dtype=wp.vec3, requires_grad=requires_grad)
             target.soft_contact_body_vel = wp.zeros(count, dtype=wp.vec3, requires_grad=requires_grad)
             target.soft_contact_normal = wp.zeros(count, dtype=wp.vec3, requires_grad=requires_grad)
-            target.soft_contact_tids = wp.zeros(count, dtype=int)
+            target.soft_contact_tids = wp.zeros(self.particle_count * (self.shape_count - 1), dtype=int)
 
     def allocate_soft_contacts(self, count, requires_grad=False):
         self._allocate_soft_contacts(self, count, requires_grad)
@@ -3429,7 +3429,12 @@ class ModelBuilder:
 
     # particles
     def add_particle(
-        self, pos: Vec3, vel: Vec3, mass: float, radius: float = None, flags: wp.uint32 = PARTICLE_FLAG_ACTIVE
+        self,
+        pos: Vec3,
+        vel: Vec3,
+        mass: float,
+        radius: float = None,
+        flags: wp.uint32 = PARTICLE_FLAG_ACTIVE,
     ) -> int:
         """Adds a single particle to the model
 
@@ -3454,7 +3459,9 @@ class ModelBuilder:
         self.particle_radius.append(radius)
         self.particle_flags.append(flags)
 
-        return len(self.particle_q) - 1
+        particle_id = self.particle_count - 1
+
+        return particle_id
 
     def add_spring(self, i: int, j, ke: float, kd: float, control: float):
         """Adds a spring between two particles in the system
