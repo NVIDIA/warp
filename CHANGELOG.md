@@ -27,7 +27,7 @@
 - warp.fem: Added Nédélec (first kind) and Raviart-Thomas vector-valued function spaces
   providing conforming discretization of `curl` and `div` operators, respectively.
 - warp.sim: Added a graph coloring module that supports converting trimesh into a vertex graph and applying coloring.
-  The `wp.sim.ModelBuilder` now includes two new functions called `color()` and `set_coloring()`.
+  The `wp.sim.ModelBuilder` now includes methods to color particles for use with `wp.sim.VBDIntegrator()`, users should call `builder.color()` before finalizing assets.
 
 ### Changed
 
