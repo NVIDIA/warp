@@ -17,6 +17,9 @@
 - warp.sim: Add a graph coloring module that supports converting trimesh into a vertex graph and applying coloring.
   The `wp.sim.ModelBuilder` now includes two new functions called `color()` and `set_coloring()`.
 - Document `array` attributes ([GH-364](https://github.com/NVIDIA/warp/issues/364)).
+- warp.sim: Added a graph coloring module that supports converting trimesh into a vertex graph and applying coloring.
+  The `wp.sim.ModelBuilder` now includes methods to color particles for use with `wp.sim.VBDIntegrator()`,
+  users should call `builder.color()` before finalizing assets.
 
 ### Changed
 
