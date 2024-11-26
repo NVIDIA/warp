@@ -99,8 +99,11 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_closest_point_edge_edge import TestClosestPointEdgeEdgeMethods
     from warp.tests.test_codegen import TestCodeGen
     from warp.tests.test_codegen_instancing import TestCodeGenInstancing
+    from warp.tests.test_collision import TestCollision
+    from warp.tests.test_coloring import TestColoring
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_conditional import TestConditional
+    from warp.tests.test_context import TestContext
     from warp.tests.test_copy import TestCopy
     from warp.tests.test_ctypes import TestCTypes
     from warp.tests.test_dense import TestDense
@@ -127,6 +130,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_import import TestImport
     from warp.tests.test_indexedarray import TestIndexedArray
     from warp.tests.test_intersect import TestIntersect
+    from warp.tests.test_iter import TestIter
     from warp.tests.test_jax import TestJax
     from warp.tests.test_large import TestLarge
     from warp.tests.test_launch import TestLaunch
@@ -174,6 +178,10 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_streams import TestStreams
     from warp.tests.test_struct import TestStruct
     from warp.tests.test_tape import TestTape
+    from warp.tests.test_tile import TestTile
+    from warp.tests.test_tile_mathdx import TestTileMathDx
+    from warp.tests.test_tile_reduce import TestTileReduce
+    from warp.tests.test_tile_shared_memory import TestTileSharedMemory
     from warp.tests.test_torch import TestTorch
     from warp.tests.test_transient_module import TestTransientModule
     from warp.tests.test_triangle_closest_point import TestTriangleClosestPoint
@@ -200,8 +208,11 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestClosestPointEdgeEdgeMethods,
         TestCodeGen,
         TestCodeGenInstancing,
-        TestConstants,
+        TestCollision,
+        TestColoring,
         TestConditional,
+        TestConstants,
+        TestContext,
         TestCopy,
         TestCTypes,
         TestDense,
@@ -228,6 +239,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestImport,
         TestIndexedArray,
         TestIntersect,
+        TestIter,
         TestJax,
         TestLarge,
         TestLaunch,
@@ -275,6 +287,10 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestStreams,
         TestStruct,
         TestTape,
+        TestTile,
+        TestTileMathDx,
+        TestTileReduce,
+        TestTileSharedMemory,
         TestTorch,
         TestTransientModule,
         TestTriangleClosestPoint,
