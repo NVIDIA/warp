@@ -7,8 +7,11 @@
 
 import unittest
 
+import warp as wp
 import warp.examples
+import warp.sim
 from warp.sim.collide import *
+from warp.sim.integrator_euler import eval_triangles_contact
 from warp.tests.unittest_utils import *
 
 
@@ -474,12 +477,119 @@ def test_edge_edge_collision(test, device):
 devices = get_test_devices()
 
 
+def test_particle_collision(test, device):
+    with wp.ScopedDevice(device):
+        contact_radius = 1.23
+        builder1 = wp.sim.ModelBuilder()
+        builder1.add_cloth_grid(
+            pos=wp.vec3(0.0, 0.0, 0.0),
+            rot=wp.quat_identity(),
+            vel=wp.vec3(0.0, 0.0, 0.0),
+            dim_x=100,
+            dim_y=100,
+            cell_x=0.1,
+            cell_y=0.1,
+            mass=0.1,
+            particle_radius=contact_radius,
+        )
+
+    cloth_grid = builder1.finalize()
+    cloth_grid_particle_radius = cloth_grid.particle_radius.numpy()
+    assert_np_equal(cloth_grid_particle_radius, np.full(cloth_grid_particle_radius.shape, contact_radius), tol=1e-5)
+
+    vertices = [
+        [2.0, 0.0, 0.0],
+        [2.0, 2.0, 0.0],
+        [0.0, 0.0, 0.0],
+        [1.0, 0.0, 1.0],
+        [1.0, 1.0, 1.0],
+        [0.0, 0.0, 1.0],
+    ]
+    vertices = [wp.vec3(v) for v in vertices]
+    faces = [0, 1, 2, 3, 4, 5]
+
+    builder2 = wp.sim.ModelBuilder()
+    builder2.add_cloth_mesh(
+        pos=wp.vec3(0.0, 0.0, 0.0),
+        rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
+        scale=1.0,
+        vertices=vertices,
+        indices=faces,
+        tri_ke=1e4,
+        tri_ka=1e4,
+        tri_kd=1e-5,
+        edge_ke=10,
+        edge_kd=0.0,
+        vel=wp.vec3(0.0, 0.0, 0.0),
+        density=0.1,
+        particle_radius=contact_radius,
+    )
+    cloth_mesh = builder2.finalize()
+    cloth_mesh_particle_radius = cloth_mesh.particle_radius.numpy()
+    assert_np_equal(cloth_mesh_particle_radius, np.full(cloth_mesh_particle_radius.shape, contact_radius), tol=1e-5)
+
+    state = cloth_mesh.state()
+    particle_f = wp.zeros_like(state.particle_q)
+    wp.launch(
+        kernel=eval_triangles_contact,
+        dim=cloth_mesh.tri_count * cloth_mesh.particle_count,
+        inputs=[
+            cloth_mesh.particle_count,
+            state.particle_q,
+            state.particle_qd,
+            cloth_mesh.tri_indices,
+            cloth_mesh.tri_materials,
+            cloth_mesh.particle_radius,
+        ],
+        outputs=[particle_f],
+    )
+    test.assertTrue((np.linalg.norm(particle_f.numpy(), axis=1) != 0).all())
+
+    builder3 = wp.sim.ModelBuilder()
+    builder3.add_cloth_mesh(
+        pos=wp.vec3(0.0, 0.0, 0.0),
+        rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
+        scale=1.0,
+        vertices=vertices,
+        indices=faces,
+        tri_ke=1e4,
+        tri_ka=1e4,
+        tri_kd=1e-5,
+        edge_ke=10,
+        edge_kd=0.0,
+        vel=wp.vec3(0.0, 0.0, 0.0),
+        density=0.1,
+        particle_radius=0.5,
+    )
+    cloth_mesh_2 = builder3.finalize()
+    cloth_mesh_2_particle_radius = cloth_mesh_2.particle_radius.numpy()
+    assert_np_equal(cloth_mesh_2_particle_radius, np.full(cloth_mesh_2_particle_radius.shape, 0.5), tol=1e-5)
+
+    state_2 = cloth_mesh_2.state()
+    particle_f_2 = wp.zeros_like(cloth_mesh_2.particle_q)
+    wp.launch(
+        kernel=eval_triangles_contact,
+        dim=cloth_mesh_2.tri_count * cloth_mesh_2.particle_count,
+        inputs=[
+            cloth_mesh_2.particle_count,
+            state_2.particle_q,
+            state_2.particle_qd,
+            cloth_mesh_2.tri_indices,
+            cloth_mesh_2.tri_materials,
+            cloth_mesh_2.particle_radius,
+        ],
+        outputs=[particle_f_2],
+    )
+    test.assertTrue((np.linalg.norm(particle_f_2.numpy(), axis=1) == 0).all())
+
+
 class TestCollision(unittest.TestCase):
     pass
 
 
 add_function_test(TestCollision, "test_vertex_triangle_collision", test_vertex_triangle_collision, devices=devices)
 add_function_test(TestCollision, "test_edge_edge_collision", test_vertex_triangle_collision, devices=devices)
+add_function_test(TestCollision, "test_particle_collision", test_particle_collision, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
