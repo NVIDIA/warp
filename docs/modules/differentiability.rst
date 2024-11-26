@@ -629,7 +629,7 @@ Consider the following example:
 
     tape.backward(grads={outputs: wp.ones(num_threads, dtype=wp.float32)})
 
-    print(f"inputs.grad = {inputs.grad}")
+    print(f"inputs.grad = {np.round(inputs.grad.numpy(), 5)}")
 
 .. testoutput::
     :skipif: wp.get_cuda_device_count() == 0
@@ -1067,6 +1067,88 @@ The code produces the expected output:
 
 In-place multiplication and division are *not* supported and incorrect results will be obtained in the backward pass.
 A warning will be emitted during code generation if ``wp.config.verbose = True``.
+
+.. _vector_type_component_assignment:
+
+Vector, Matrix and Quaternion Component Assignment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Within a kernel, assigning a value to a locally defined vector, matrix, or quaternion component is differentiable. However,
+when possible, it is best to assign values all at once in the vector, matrix, or quaternion constructor.
+
+Consider the following two approaches:
+
+.. testcode::
+
+    @wp.kernel
+    def constructor_assignment(a: wp.array(dtype=wp.mat44)):
+        i = wp.tid()
+        m = wp.mat44(
+            1.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            0.0, 0.0, 0.0, 1.0)
+        a[i] = m
+
+    a = wp.zeros(1, dtype=wp.mat44, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(constructor_assignment, 1, inputs=[a])
+
+    tape.backward(grads={a: wp.ones_like(a)})
+
+    print(f"a = {a}")
+
+.. testoutput::
+
+    a = [[[1. 0. 0. 0.]
+      [0. 1. 0. 0.]
+      [0. 0. 1. 0.]
+      [0. 0. 0. 1.]]]
+
+.. testcode::
+
+    @wp.kernel
+    def component_assignment(a: wp.array(dtype=wp.mat44)):
+        tid = wp.tid()
+        m = wp.mat44(0.0)
+        for i in range(4):
+            for j in range(4):
+                if i == j:
+                    m[i, j] = 1.0
+                else:
+                    m[i, j] = 0.0
+        a[tid] = m
+
+    a = wp.zeros(1, dtype=wp.mat44, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(component_assignment, 1, inputs=[a])
+
+    tape.backward(grads={a: wp.ones_like(a)})
+
+    print(f"a = {a}")
+
+.. testoutput::
+
+    a = [[[1. 0. 0. 0.]
+      [0. 1. 0. 0.]
+      [0. 0. 1. 0.]
+      [0. 0. 0. 1.]]]
+
+The outputs are the same, but let's compare compilation and run times:
+the first example compiled in 298.50 ms and ran in 69.18 ms,
+while the second example compiled in 600.64 ms and ran in 72.11 ms. Similar run times,
+but the second example took significantly longer to compile. This effect will scale with the size
+of the complex type object you are assigning values to. For instance, if in the above example
+you were to assign every element in a 9x9 matrix individually, compilation time would increase to 80,000 ms.
+
+To maintain differentiability, under the hood, complex type assignment requires a copy constructor.
+So while the first example only creates a single in-register matrix-adjoint pair, the second example
+will create 17. In general this will increase compilation time, and may increase run time as well.
+
+Lastly, if your script does not require automatic differentiation, be sure to set ``wp.config.enable_backward = False``.
+This will skip adjoint kernel generation and save on compilation time.
 
 Dynamic Loops
 ^^^^^^^^^^^^^

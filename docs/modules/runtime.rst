@@ -327,6 +327,10 @@ In addition, it's possible to directly create *anonymously* typed instances of t
 
 These can be used with all the standard vector arithmetic operators, e.g.: ``+``, ``-``, scalar multiplication, and can also be transformed using matrices with compatible dimensions, potentially returning vectors with a different length.
 
+.. note::
+
+    Take extra care when assigning values to vector components. See :ref:`full discussion here <vector_type_component_assignment>`.
+
 .. _mat:
 
 Matrices
@@ -417,6 +421,10 @@ It's also possible to directly create anonymously typed instances inside kernels
 
 As with vectors, you can do standard matrix arithmetic with these variables, along with multiplying matrices with compatible shapes and potentially returning a matrix with a new shape.
 
+.. note::
+
+    Take extra care when assigning values to matrix components. See :ref:`full discussion here <vector_type_component_assignment>`.
+
 .. _quat:
 
 Quaternions
@@ -473,6 +481,10 @@ You can also create identity quaternion and anonymously typed instances inside a
         qh = wp.quaternion(
             wp.vector(wp.float16(0.0),wp.float16(0.0),wp.float16(0.0)),
             wp.float16(1.0))
+
+.. note::
+
+    Take extra care when assigning values to quaternion components. See :ref:`full discussion here <vector_type_component_assignment>`.
 
 .. _transform:
 

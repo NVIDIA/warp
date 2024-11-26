@@ -1,6 +1,21 @@
 # Changelog
 
 ## [1.5.0] - 2024-12-02
+## [Unreleased] - 2025-??
+
+### Added
+
+- Document `array` attributes ([GH-364](https://github.com/NVIDIA/warp/issues/364)).
+
+### Changed
+
+- Document time-to-compile tradeoffs when using vector component assignment statements in kernels.
+
+### Fixed
+
+- Fix gradient propagation for in-place addition/subtraction operations on custom vector type arrays.
+
+## [1.5.0] - 2024-12-01
 
 ### Added
 
