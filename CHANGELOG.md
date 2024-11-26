@@ -8,6 +8,8 @@
 
 ### Changed
 
+- Document time-to-compile tradeoffs when using vector component assignment statements in kernels.
+
 ### Fixed
 
 - Fix gradient propagation for in-place addition/subtraction operations on custom vector type arrays.
