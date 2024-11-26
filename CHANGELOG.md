@@ -1,21 +1,6 @@
 # Changelog
 
 ## [1.5.0] - 2024-12-02
-## [Unreleased] - 2025-??
-
-### Added
-
-- Document `array` attributes ([GH-364](https://github.com/NVIDIA/warp/issues/364)).
-
-### Changed
-
-- Document time-to-compile tradeoffs when using vector component assignment statements in kernels.
-
-### Fixed
-
-- Fix gradient propagation for in-place addition/subtraction operations on custom vector type arrays.
-
-## [1.5.0] - 2024-12-01
 
 ### Added
 
@@ -30,11 +15,10 @@
 - warp.fem: Add Nédélec (first kind) and Raviart-Thomas vector-valued function spaces
   providing conforming discretization of `curl` and `div` operators, respectively.
 - warp.sim: Add a graph coloring module that supports converting trimesh into a vertex graph and applying coloring.
-  The `wp.sim.ModelBuilder` now includes two new functions called `color()` and `set_coloring()`.
-- Document `array` attributes ([GH-364](https://github.com/NVIDIA/warp/issues/364)).
-- warp.sim: Added a graph coloring module that supports converting trimesh into a vertex graph and applying coloring.
   The `wp.sim.ModelBuilder` now includes methods to color particles for use with `wp.sim.VBDIntegrator()`,
   users should call `builder.color()` before finalizing assets.
+- Document `array` attributes ([GH-364](https://github.com/NVIDIA/warp/issues/364)).
+- Document time-to-compile tradeoffs when using vector component assignment statements in kernels.
 
 ### Changed
 

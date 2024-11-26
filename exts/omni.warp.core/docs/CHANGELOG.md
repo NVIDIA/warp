@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [1.5.0-rc.2] - 2024-12-01
+## [1.5.0-rc.2] - 2024-12-02
 
 ### Added
 
@@ -14,10 +14,11 @@
   computationally efficient integration algorithms.
 - warp.fem: Add Nédélec (first kind) and Raviart-Thomas vector-valued function spaces
   providing conforming discretization of `curl` and `div` operators, respectively.
-- warp.sim: Added a graph coloring module that supports converting trimesh into a vertex graph and applying coloring.
+- warp.sim: Add a graph coloring module that supports converting trimesh into a vertex graph and applying coloring.
   The `wp.sim.ModelBuilder` now includes methods to color particles for use with `wp.sim.VBDIntegrator()`,
   users should call `builder.color()` before finalizing assets.
 - Document `array` attributes ([GH-364](https://github.com/NVIDIA/warp/issues/364)).
+- Document time-to-compile tradeoffs when using vector component assignment statements in kernels.
 
 ### Changed
 
