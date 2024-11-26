@@ -57,6 +57,7 @@ select = [
     "W",  # pycodestyle warnings
     "B",  # flake8-bugbear
     "C4",  # flake8-comprehensions
+    "NPY",  # NumPy-specific rules
 ]
 ignore = [
     "E501", # Many lines are over 120 characters already

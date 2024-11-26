@@ -264,6 +264,7 @@ def eval_triangles_contact(
     v: wp.array(dtype=wp.vec3),
     indices: wp.array2d(dtype=int),
     materials: wp.array2d(dtype=float),
+    particle_radius: wp.array(dtype=float),
     f: wp.array(dtype=wp.vec3),
 ):
     tid = wp.tid()
@@ -303,7 +304,7 @@ def eval_triangles_contact(
     diff = pos - closest
     dist = wp.dot(diff, diff)
     n = wp.normalize(diff)
-    c = wp.min(dist - 0.01, 0.0)  # 0 unless within 0.01 of surface
+    c = wp.min(dist - particle_radius[particle_no], 0.0)  # 0 unless within particle's contact radius
     # c = wp.leaky_min(dot(n, x0)-0.01, 0.0, 0.0)
     fn = n * c * 1e5
 
@@ -795,7 +796,7 @@ def eval_particle_contacts(
     r = bx - wp.transform_point(X_wb, X_com)
 
     n = contact_normal[tid]
-    c = wp.dot(n, px - bx) - particle_radius[tid]
+    c = wp.dot(n, px - bx) - particle_radius[particle_index]
 
     if c > particle_ka:
         return
@@ -1697,6 +1698,7 @@ def eval_triangle_contact_forces(model: Model, state: State, particle_f: wp.arra
                 state.particle_qd,
                 model.tri_indices,
                 model.tri_materials,
+                model.particle_radius,
             ],
             outputs=[particle_f],
             device=model.device,

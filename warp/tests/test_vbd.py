@@ -316,8 +316,8 @@ class VBDClothSim:
             tri_ke=stiffness,
             tri_ka=stiffness,
             tri_kd=kd,
-            color_particles=True,
         )
+        builder.color()
 
         self.model = builder.finalize(device=device)
         self.model.ground = True

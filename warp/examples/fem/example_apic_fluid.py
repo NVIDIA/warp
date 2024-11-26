@@ -205,7 +205,6 @@ class Example:
         particle_grid_offset = wp.vec3(self.radius, self.radius, self.radius)
 
         # Initialize warp.sim model, spawn particles
-        np.random.seed(0)
         builder = wp.sim.ModelBuilder()
         builder.add_particle_grid(
             dim_x=particle_grid_res[0],

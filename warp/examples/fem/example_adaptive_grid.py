@@ -56,7 +56,7 @@ def mass_form(
     u: fem.Field,
     v: fem.Field,
 ):
-    return u(s) * v(s)
+    return fem.linalg.generalized_inner(u(s), v(s))
 
 
 @fem.integrand
@@ -86,9 +86,12 @@ def pressure_anomaly_field(s: fem.Sample, domain: fem.Domain, pressure: fem.Fiel
 
 
 class Example:
-    def __init__(self, quiet=False, degree=2, base_resolution=8, level_count=4, headless: bool = False):
+    def __init__(
+        self, quiet=False, degree=2, div_conforming=False, base_resolution=8, level_count=4, headless: bool = False
+    ):
         self._quiet = quiet
         self._degree = degree
+        self._div_conforming = div_conforming
 
         # Start from a coarse, dense grid
         res = wp.vec3i(2 * base_resolution, base_resolution // 2, base_resolution)
@@ -110,9 +113,13 @@ class Example:
             sim_vol, level_count, refinement_field=refinement, grading="face"
         )
 
-        # Function spaces for velocity, scalars and pressure (Pk / Pk / Pk-1)
-        self._u_basis = fem.make_polynomial_basis_space(geo=self._geo, degree=self._degree)
-        u_space = fem.make_collocated_function_space(self._u_basis, dtype=wp.vec3)
+        # Function spaces for velocity, pressure (RTk / Pk-1 or Pk / Pk-1)
+        u_space = fem.make_polynomial_space(
+            geo=self._geo,
+            element_basis=fem.ElementBasis.RAVIART_THOMAS if div_conforming else None,
+            degree=self._degree,
+            dtype=wp.vec3,
+        )
         p_space = fem.make_polynomial_space(geo=self._geo, degree=self._degree - 1, dtype=float)
 
         self.pressure_field = p_space.make_field()
@@ -137,7 +144,17 @@ class Example:
     def render(self):
         # self.renderer.add_field("solution", self.pressure_field)
         self.plot.add_field("pressure_anomaly", self.pressure_anomaly_field)
-        self.plot.add_field("velocity", self.velocity_field)
+
+        if self._div_conforming:
+            # If using H(div)-conforming elements, interpolate to continuous space
+            velocity_field_lagrange = fem.make_polynomial_space(
+                self.velocity_field.geometry, dtype=wp.vec3, degree=self._degree
+            ).make_field()
+            fem.interpolate(self.velocity_field, dest=velocity_field_lagrange)
+        else:
+            velocity_field_lagrange = self.velocity_field
+
+        self.plot.add_field("velocity", velocity_field_lagrange)
 
     def step(self):
         u_space = self.velocity_field.space
@@ -153,9 +170,14 @@ class Example:
         fem.normalize_dirichlet_projector(dirichlet_projector)
 
         # (Diagonal) mass matrix
-        s_space = fem.make_collocated_function_space(self._u_basis, dtype=float)
-        rho_test = fem.make_test(s_space)
-        rho_trial = fem.make_trial(s_space)
+        if self._div_conforming:
+            rho_test = fem.make_test(u_space)
+            rho_trial = fem.make_trial(u_space)
+        else:
+            rho_space = fem.make_polynomial_space(geo=u_space.geometry, degree=self._degree)
+            rho_test = fem.make_test(rho_space)
+            rho_trial = fem.make_trial(rho_space)
+
         inv_mass_matrix = fem.integrate(
             mass_form, fields={"u": rho_trial, "v": rho_test}, nodal=True, output_dtype=float
         )
@@ -177,6 +199,7 @@ class Example:
             side_divergence_form,
             fields={"u": u_side_trial, "psi": p_side_test},
             output_dtype=float,
+            assembly="generic",  # not required, for test coverage purposes
         )
 
         # Solve incompressibility
@@ -204,7 +227,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
     parser.add_argument("--resolution", type=int, default=8, help="Grid resolution.")
-    parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
+    parser.add_argument("--degree", type=int, default=1, help="Polynomial degree of shape functions.")
+    parser.add_argument(
+        "--div_conforming", action="store_true", default=False, help="Use H(div)-conforming function space"
+    )
     parser.add_argument("--level_count", type=int, default=4, help="Number of refinement levels.")
     parser.add_argument(
         "--headless",
@@ -219,6 +245,7 @@ if __name__ == "__main__":
         example = Example(
             quiet=args.quiet,
             degree=args.degree,
+            div_conforming=args.div_conforming,
             base_resolution=args.resolution,
             level_count=args.level_count,
             headless=args.headless,

@@ -15,6 +15,7 @@ import zlib
 from typing import Any, Callable, Generic, List, Literal, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
+import numpy.typing as npt
 
 import warp
 
@@ -995,43 +996,6 @@ vector_types = (
     spatial_matrixd,
 )
 
-atomic_vector_types = (
-    vec2i,
-    vec2ui,
-    vec2l,
-    vec2ul,
-    vec2h,
-    vec2f,
-    vec2d,
-    vec3i,
-    vec3ui,
-    vec3l,
-    vec3ul,
-    vec3h,
-    vec3f,
-    vec3d,
-    vec4i,
-    vec4ui,
-    vec4l,
-    vec4ul,
-    vec4h,
-    vec4f,
-    vec4d,
-    mat22h,
-    mat22f,
-    mat22d,
-    mat33h,
-    mat33f,
-    mat33d,
-    mat44h,
-    mat44f,
-    mat44d,
-    quath,
-    quatf,
-    quatd,
-)
-atomic_types = float_types + (int32, uint32, int64, uint64) + atomic_vector_types
-
 np_dtype_to_warp_type = {
     # Numpy scalar types
     np.bool_: bool,
@@ -1079,6 +1043,14 @@ warp_type_to_np_dtype = {
     float32: np.float32,
     float64: np.float64,
 }
+
+non_atomic_types = (
+    int8,
+    uint8,
+    int16,
+    uint16,
+    int64,
+)
 
 
 def dtype_from_numpy(numpy_dtype):
@@ -1610,6 +1582,23 @@ def array_ctype_from_interface(interface: dict, dtype=None, owner=None):
 
 
 class array(Array):
+    """A fixed-size multi-dimensional array containing values of the same type.
+
+    Attributes:
+        dtype (DType): The data type of the array.
+        ndim (int): The number of array dimensions.
+        size (int): The number of items in the array.
+        capacity (int): The amount of memory in bytes allocated for this array.
+        shape (Tuple[int]): Dimensions of the array.
+        strides (Tuple[int]): Number of bytes in each dimension between successive elements of the array.
+        ptr (int): Pointer to underlying memory allocation backing the array.
+        device (Device): The device where the array's memory allocation resides.
+        pinned (bool): Indicates whether the array was allocated in pinned host memory.
+        is_contiguous (bool): Indicates whether this array has a contiguous memory layout.
+        deleter (Callable[[int, int], None]): A function to be called when the array is deleted,
+            taking two arguments: pointer and size. If ``None``, then no function is called.
+    """
+
     # member attributes available during code-gen (e.g.: d = array.shape[0])
     # (initialized when needed)
     _vars = None
@@ -1621,21 +1610,21 @@ class array(Array):
 
     def __init__(
         self,
-        data=None,
-        dtype: DType = Any,
-        shape=None,
-        strides=None,
-        length=None,
-        ptr=None,
-        capacity=None,
+        data: Optional[Union[List, Tuple, npt.NDArray]] = None,
+        dtype: Union[DType, Any] = Any,
+        shape: Optional[Tuple[int, ...]] = None,
+        strides: Optional[Tuple[int, ...]] = None,
+        length: Optional[int] = None,
+        ptr: Optional[int] = None,
+        capacity: Optional[int] = None,
         device=None,
-        pinned=False,
-        copy=True,
-        owner=False,  # deprecated - pass deleter instead
-        deleter=None,
-        ndim=None,
-        grad=None,
-        requires_grad=False,
+        pinned: bool = False,
+        copy: bool = True,
+        owner: bool = False,  # deprecated - pass deleter instead
+        deleter: Optional[Callable[[int, int], None]] = None,
+        ndim: Optional[int] = None,
+        grad: Optional[array] = None,
+        requires_grad: bool = False,
     ):
         """Constructs a new Warp array object
 
@@ -1657,20 +1646,24 @@ class array(Array):
         are taken into account and no memory is allocated for the array.
 
         Args:
-            data (Union[list, tuple, ndarray]): An object to construct the array from, can be a Tuple, List, or generally any type convertible to an np.array
-            dtype (Union): One of the available `data types <#data-types>`_, such as :class:`warp.float32`, :class:`warp.mat33`, or a custom `struct <#structs>`_. If dtype is ``Any`` and data is an ndarray, then it will be inferred from the array data type
-            shape (tuple): Dimensions of the array
-            strides (tuple): Number of bytes in each dimension between successive elements of the array
-            length (int): Number of elements of the data type (deprecated, users should use `shape` argument)
-            ptr (uint64): Address of an external memory address to alias (data should be None)
-            capacity (int): Maximum size in bytes of the ptr allocation (data should be None)
+            data: An object to construct the array from, can be a Tuple, List, or generally any type convertible to an np.array
+            dtype: One of the available `data types <#data-types>`_, such as :class:`warp.float32`, :class:`warp.mat33`, or a custom `struct <#structs>`_. If dtype is ``Any`` and data is an ndarray, then it will be inferred from the array data type
+            shape: Dimensions of the array
+            strides: Number of bytes in each dimension between successive elements of the array
+            length: Number of elements of the data type (deprecated, users should use ``shape`` argument)
+            ptr: Address of an external memory address to alias (``data`` should be ``None``)
+            capacity: Maximum size in bytes of the ``ptr`` allocation (``data`` should be ``None``)
             device (Devicelike): Device the array lives on
-            copy (bool): Whether the incoming data will be copied or aliased, this is only possible when the incoming `data` already lives on the device specified and types match
-            owner (bool): Should the array object try to deallocate memory when it is deleted (deprecated, pass `deleter` if you wish to transfer ownership to Warp)
-            deleter (Callable): Function to be called when deallocating the array, taking two arguments, pointer and size
-            requires_grad (bool): Whether or not gradients will be tracked for this array, see :class:`warp.Tape` for details
-            grad (array): The gradient array to use
-            pinned (bool): Whether to allocate pinned host memory, which allows asynchronous host-device transfers (only applicable with device="cpu")
+            copy: Whether the incoming ``data`` will be copied or aliased. Aliasing requires that
+                the incoming ``data`` already lives on the ``device`` specified and the data types match.
+            owner: Whether the array will try to deallocate the underlying memory when it is deleted
+                (deprecated, pass ``deleter`` if you wish to transfer ownership to Warp)
+            deleter: Function to be called when the array is deleted, taking two arguments: pointer and size
+            requires_grad: Whether or not gradients will be tracked for this array, see :class:`warp.Tape` for details
+            grad: The array in which to accumulate gradients in the backward pass. If ``None`` and ``requires_grad`` is ``True``,
+                then a gradient array will be allocated automatically.
+            pinned: Whether to allocate pinned host memory, which allows asynchronous host–device transfers
+                (only applicable with ``device="cpu"``)
 
         """
 

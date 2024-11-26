@@ -6,6 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import unittest
+from typing import Any
 
 import numpy as np
 
@@ -2429,6 +2430,16 @@ def inplace_add_rhs(x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.ar
     wp.atomic_add(z, 0, a)
 
 
+vec9 = wp.vec(length=9, dtype=float)
+
+
+@wp.kernel
+def inplace_add_custom_vec(x: wp.array(dtype=vec9), y: wp.array(dtype=vec9)):
+    i = wp.tid()
+    x[i] += y[i]
+    x[i] += y[i]
+
+
 def test_array_inplace_diff_ops(test, device):
     N = 3
     x1 = wp.ones(N, dtype=float, requires_grad=True, device=device)
@@ -2537,6 +2548,18 @@ def test_array_inplace_diff_ops(test, device):
 
     assert_np_equal(x.grad.numpy(), np.ones(1, dtype=float))
     assert_np_equal(y.grad.numpy(), np.ones(1, dtype=float))
+    tape.reset()
+
+    x = wp.zeros(1, dtype=vec9, requires_grad=True, device=device)
+    y = wp.ones(1, dtype=vec9, requires_grad=True, device=device)
+
+    with tape:
+        wp.launch(inplace_add_custom_vec, 1, inputs=[x, y], device=device)
+
+    tape.backward(grads={x: wp.ones_like(x)})
+
+    assert_np_equal(x.numpy(), np.full((1, 9), 2.0, dtype=float))
+    assert_np_equal(y.grad.numpy(), np.full((1, 9), 2.0, dtype=float))
 
 
 @wp.kernel
@@ -2551,6 +2574,12 @@ def inplace_div_1d(x: wp.array(dtype=float), y: wp.array(dtype=float)):
     x[i] /= y[i]
 
 
+@wp.kernel
+def inplace_add_non_atomic_types(x: wp.array(dtype=Any), y: wp.array(dtype=Any)):
+    i = wp.tid()
+    x[i] += y[i]
+
+
 def test_array_inplace_non_diff_ops(test, device):
     N = 3
     x1 = wp.full(N, value=10.0, dtype=float, device=device)
@@ -2563,6 +2592,13 @@ def test_array_inplace_non_diff_ops(test, device):
     y1.fill_(5.0)
     wp.launch(inplace_div_1d, N, inputs=[x1, y1], device=device)
     assert_np_equal(x1.numpy(), np.full(N, fill_value=2.0, dtype=float))
+
+    for dtype in wp.types.non_atomic_types + (wp.vec2b, wp.vec2ub, wp.vec2s, wp.vec2us):
+        x = wp.full(N, value=0, dtype=dtype, device=device)
+        y = wp.full(N, value=1, dtype=dtype, device=device)
+
+        wp.launch(inplace_add_non_atomic_types, N, inputs=[x, y], device=device)
+        assert_np_equal(x.numpy(), y.numpy())
 
 
 @wp.kernel
