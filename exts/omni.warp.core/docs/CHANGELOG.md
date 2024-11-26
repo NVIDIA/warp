@@ -17,6 +17,11 @@
 - warp.sim: Add a graph coloring module that supports converting trimesh into a vertex graph and applying coloring.
   The `wp.sim.ModelBuilder` now includes methods to color particles for use with `wp.sim.VBDIntegrator()`,
   users should call `builder.color()` before finalizing assets.
+- warp.sim: Add support for a per-particle radius for soft-body triangle contact using the `wp.sim.Model.particle_radius`
+  array ([docs](https://nvidia.github.io/warp/modules/sim.html#warp.sim.Model.particle_radius)), replacing the previous
+  hard-coded value of 0.01 ([GH-329](https://github.com/NVIDIA/warp/issues/329)).
+- Add a `particle_radius` parameter to `wp.sim.ModelBuilder.add_cloth_mesh()` and `wp.sim.ModelBuilder.add_cloth_grid()`
+  to set a uniform radius for the added particles.
 - Document `array` attributes ([GH-364](https://github.com/NVIDIA/warp/issues/364)).
 - Document time-to-compile tradeoffs when using vector component assignment statements in kernels.
 
