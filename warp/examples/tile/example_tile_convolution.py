@@ -44,7 +44,9 @@ def conv_tiled(x: wp.array2d(dtype=wp.vec2d), y: wp.array2d(dtype=wp.vec2d)):
 if __name__ == "__main__":
     wp.set_device("cuda:0")
 
-    x_h = np.random.randn(TILE_M, TILE_N, 2).astype(dtype=np.float64)
+    rng = np.random.default_rng(42)
+
+    x_h = rng.standard_normal((TILE_M, TILE_N, 2), dtype=np.float64)
     y_h = np.zeros_like(x_h)
 
     x_wp = wp.array2d(x_h, dtype=wp.vec2d)
