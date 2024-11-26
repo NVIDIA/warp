@@ -1044,6 +1044,14 @@ warp_type_to_np_dtype = {
     float64: np.float64,
 }
 
+non_atomic_types = (
+    int8,
+    uint8,
+    int16,
+    uint16,
+    int64,
+)
+
 
 def dtype_from_numpy(numpy_dtype):
     """Return the Warp dtype corresponding to a NumPy dtype."""
