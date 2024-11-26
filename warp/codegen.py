@@ -2596,6 +2596,22 @@ class Adjoint:
             target_type = strip_reference(target.type)
 
             if is_array(target_type):
+                # target_types int8, uint8, int16, uint16 are not suitable for atomic array accumulation
+                if target_type.dtype in warp.types.non_atomic_types:
+                    make_new_assign_statement()
+                    return
+
+                # the same holds true for vecs/mats/quats that are composed of these types
+                if (
+                    type_is_vector(target_type.dtype)
+                    or type_is_quaternion(target_type.dtype)
+                    or type_is_matrix(target_type.dtype)
+                ):
+                    dtype = getattr(target_type.dtype, "_wp_scalar_type_", None)
+                    if dtype in warp.types.non_atomic_types:
+                        make_new_assign_statement()
+                        return
+
                 kernel_name = adj.fun_name
                 filename = adj.filename
                 lineno = adj.lineno + adj.fun_lineno
