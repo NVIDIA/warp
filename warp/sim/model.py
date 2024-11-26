@@ -3841,6 +3841,7 @@ class ModelBuilder:
         add_springs: bool = False,
         spring_ke: float = default_spring_ke,
         spring_kd: float = default_spring_kd,
+        particle_radius: float = default_particle_radius,
     ):
         """Helper to create a regular planar cloth grid
 
@@ -3890,7 +3891,7 @@ class ModelBuilder:
                     m = 0.0
                     particle_flag = wp.uint32(int(particle_flag) & ~int(PARTICLE_FLAG_ACTIVE))
 
-                self.add_particle(p, vel, m, flags=particle_flag)
+                self.add_particle(p, vel, m, flags=particle_flag, radius=particle_radius)
 
                 if x > 0 and y > 0:
                     if reverse_winding:
@@ -3974,6 +3975,7 @@ class ModelBuilder:
         add_springs: bool = False,
         spring_ke: float = default_spring_ke,
         spring_kd: float = default_spring_kd,
+        particle_radius: float = default_particle_radius,
     ):
         """Helper to create a cloth model from a regular triangle mesh
 
@@ -3989,6 +3991,7 @@ class ModelBuilder:
             density: The density per-area of the mesh
             edge_callback: A user callback when an edge is created
             face_callback: A user callback when a face is created
+            particle_radius: The particle_radius which controls particle based collisions.
         Note:
 
             The mesh should be two manifold.
@@ -4002,7 +4005,7 @@ class ModelBuilder:
         for v in vertices:
             p = wp.quat_rotate(rot, v * scale) + pos
 
-            self.add_particle(p, vel, 0.0)
+            self.add_particle(p, vel, 0.0, radius=particle_radius)
 
         # triangles
         inds = start_vertex + np.array(indices)
