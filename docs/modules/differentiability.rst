@@ -1068,10 +1068,8 @@ The code produces the expected output:
 In-place multiplication and division are *not* supported and incorrect results will be obtained in the backward pass.
 A warning will be emitted during code generation if ``wp.config.verbose = True``.
 
-.. _vector_type_component_assignment:
-
-Vector, Matrix and Quaternion Component Assignment
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Vector, Matrix, and Quaternion Component Assignment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Within a kernel, assigning a value to a locally defined vector, matrix, or quaternion component is differentiable. However,
 when possible, it is best to assign values all at once in the vector, matrix, or quaternion constructor.
