@@ -3,7 +3,10 @@
 import importlib
 import os
 import tempfile
-from typing import Optional
+from typing import (
+    Optional,
+    Union,
+)
 
 import numpy as np
 import omni.graph.core as og
@@ -105,8 +108,20 @@ def attr_set_array(
 
 
 def array_are_equal(
-    a: wp.array,
-    b: wp.array,
-) -> bool:
+    a: Union[np.ndarray, wp.array],
+    b: Union[np.ndarray, wp.array],
+) -> None:
     """Checks whether two arrays are equal."""
-    return a.shape == b.shape and a.dtype == a.dtype and np.array_equal(a.numpy(), b.numpy())
+    if isinstance(a, wp.array):
+        a = a.numpy()
+
+    if isinstance(b, wp.array):
+        b = b.numpy()
+
+    if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+        assert a.shape == b.shape
+        assert a.dtype == b.dtype
+    else:
+        assert len(a) == len(b)
+
+    np.testing.assert_equal(a, b)
