@@ -67,6 +67,7 @@ dependencies = [
 args = [
     "--/app/asyncRendering=false",
     "--/app/hydraEngine/waitIdle=true",
+    "--/app/omni.warp/kernel_enable_opt_in=false",
     "--/app/renderer/resolution/height=360",
     "--/app/renderer/resolution/width=640",
     "--/app/updateOrder/checkForHydraRenderComplete=1000",

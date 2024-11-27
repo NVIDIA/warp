@@ -8,6 +8,7 @@
 """Tests for the texture mandelbrot sample scene."""
 
 import omni.kit
+import omni.timeline
 import omni.usd
 import omni.warp
 from omni.warp.nodes.tests._common import (

@@ -230,6 +230,17 @@ def attr_set_array(
         attr.set(value.numpy(), on_gpu=False)
 
 
+def attr_disconnect_all(
+    attr: og.Attribute,
+) -> None:
+    if attr.get_port_type() == og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT:
+        for src_attr in attr.get_upstream_connections():
+            og.Controller.disconnect(src_attr, attr)
+    elif attr.get_port_type() == og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT:
+        for dst_attr in attr.get_upstream_connections():
+            og.Controller.disconnect(attr, dst_attr)
+
+
 def array_are_equal(
     a: Union[np.ndarray, wp.array],
     b: Union[np.ndarray, wp.array],
@@ -248,3 +259,25 @@ def array_are_equal(
         assert len(a) == len(b)
 
     np.testing.assert_equal(a, b)
+
+
+def array_are_almost_equal(
+    a: Union[np.ndarray, wp.array],
+    b: Union[np.ndarray, wp.array],
+    rtol=1e-05,
+    atol=1e-08,
+) -> None:
+    """Checks whether two arrays are almost equal."""
+    if isinstance(a, wp.array):
+        a = a.numpy()
+
+    if isinstance(b, wp.array):
+        b = b.numpy()
+
+    if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+        assert a.shape == b.shape
+        assert a.dtype == b.dtype
+    else:
+        assert len(a) == len(b)
+
+    np.testing.assert_allclose(a, b, rtol=rtol, atol=atol)
