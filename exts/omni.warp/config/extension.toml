@@ -25,6 +25,7 @@ exclude = ["Ogn*Database.py", "*/ogn*"]
 "omni.graph.core" = {}
 "omni.graph.nodes" = {}
 "omni.graph.ui" = {optional=true}
+"omni.graph.ui_nodes" = {}
 "omni.kit.actions.core" = {}
 "omni.kit.browser.sample" = {optional = true}
 "omni.kit.menu.utils" = {optional = true}
@@ -36,6 +37,7 @@ exclude = ["Ogn*Database.py", "*/ogn*"]
 "omni.ui" = {optional = true}
 "omni.usd" = {}
 "omni.warp.core" = {version = "1.5.1", exact = true}
+"usdrt.scenegraph" = {}
 
 [[python.module]]
 name = "omni.warp._extension"
