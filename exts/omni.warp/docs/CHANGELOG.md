@@ -1,44 +1,56 @@
 # CHANGELOG
 
-## [1.5.0] - 2024-12-01
+## [1.5.0] - 2024-12-02
 
 ### Added
 
 - Support for cooperative tile-based primitives using cuBLASDx and cuFFTDx, please see the tile
-  [documentation](https://nvidia.github.io/warp/modules/interoperability.html) for details.
-- Expose a `reversed()` built-in for iterators to test ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
+  [documentation](https://nvidia.github.io/warp/modules/tiles.html) for details.
+- Expose a `reversed()` built-in for iterators ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
 - Support for saving Volumes into `.nvdb` files with the `save_to_nvdb` method.
-- warp.fem: Added `Trimesh3D` and `Quadmesh3D` geometry types for 3D surfaces with new `example_distortion_energy` example
-- warp.fem: Added `"add"` option to `wp.fem.integrate()` for accumulating integration result to existing output.
-- warp.fem: Added `"assembly"` option to `wp.fem.integrate()` for selecting between more memory-efficient or more
+- warp.fem: Add `wp.fem.Trimesh3D` and `wp.fem.Quadmesh3D` geometry types for 3D surfaces with new `example_distortion_energy` example.
+- warp.fem: Add `"add"` option to `wp.fem.integrate()` for accumulating integration result to existing output.
+- warp.fem: Add `"assembly"` option to `wp.fem.integrate()` for selecting between more memory-efficient or more
   computationally efficient integration algorithms.
-- warp.fem: Added Nédélec (first kind) and Raviart-Thomas vector-valued function spaces
+- warp.fem: Add Nédélec (first kind) and Raviart-Thomas vector-valued function spaces
   providing conforming discretization of `curl` and `div` operators, respectively.
-- warp.sim: Added a graph coloring module that supports converting trimesh into a vertex graph and applying coloring.
-  The `wp.sim.ModelBuilder` now includes options to apply graph coloring in the `add_cloth_mesh` and `add_cloth_grid` functions.
+- warp.sim: Add a graph coloring module that supports converting trimesh into a vertex graph and applying coloring.
+  The `wp.sim.ModelBuilder` now includes methods to color particles for use with `wp.sim.VBDIntegrator()`,
+  users should call `builder.color()` before finalizing assets.
+- warp.sim: Add support for a per-particle radius for soft-body triangle contact using the `wp.sim.Model.particle_radius`
+  array ([docs](https://nvidia.github.io/warp/modules/sim.html#warp.sim.Model.particle_radius)), replacing the previous
+  hard-coded value of 0.01 ([GH-329](https://github.com/NVIDIA/warp/issues/329)).
+- Add a `particle_radius` parameter to `wp.sim.ModelBuilder.add_cloth_mesh()` and `wp.sim.ModelBuilder.add_cloth_grid()`
+  to set a uniform radius for the added particles.
+- Document `wp.array` attributes ([GH-364](https://github.com/NVIDIA/warp/issues/364)).
+- Document time-to-compile tradeoffs when using vector component assignment statements in kernels.
+- Add introductory Jupyter notebooks to the `notebooks` directory.
 
 ### Changed
 
 - Drop support for Python 3.7; Python 3.8 is now the minimum-supported version.
 - Promote the `wp.Int`, `wp.Float`, and `wp.Scalar` generic annotation types to the public API.
-- warp.fem: Simplified querying neighboring cell quantities when integrating on sides using new
-  `warp.fem.cells()`, `warp.fem.to_inner_cell()`, `warp.fem.to_outer_cell()` operators.
+- warp.fem: Simplify querying neighboring cell quantities when integrating on sides using new
+  `wp.fem.cells()`, `wp.fem.to_inner_cell()`, `wp.fem.to_outer_cell()` operators.
 - Show an error message when the type returned by a function differs from its annotation, which would have led to the compilation stage failing.
-- Clarify that `randn()` samples a normal distribution of mean 0 and variance 1.
-- Raise error when passing more than 32 variadic argument to the `wp.printf` built-in.
+- Clarify that `wp.randn()` samples a normal distribution of mean 0 and variance 1.
+- Raise error when passing more than 32 variadic argument to the `wp.printf()` built-in.
 
 ### Fixed
 
 - Fix `place` setting of paddle backend.
-- warp.fem: Fixed tri-cubic shape functions on quadrilateral meshes.
-- warp.fem: Fixed caching of integrand kernels when changing code-generation options.
+- warp.fem: Fix tri-cubic shape functions on quadrilateral meshes.
+- warp.fem: Fix caching of integrand kernels when changing code-generation options.
 - Fix `wp.expect_neq()` overloads missing for scalar types.
-- Fix the OpenGL renderer's window not closing when clicking the X button.
-- Fix the OpenGL renderer's camera snapping to a different direction from the initial camera's orientation when first looking around.
 - Fix an error when a `wp.kernel` or a `wp.func` object is annotated to return a `None` value.
 - Fix error when reading multi-volume, BLOSC-compressed `.nvdb` files.
 - Fix `wp.printf()` erroring out when no variadic arguments are passed ([GH-333](https://github.com/NVIDIA/warp/issues/333)).
+- Fix memory access issues in soft-rigid contact collisions ([GH-362](https://github.com/NVIDIA/warp/issues/362)).
+- Fix gradient propagation for in-place addition/subtraction operations on custom vector-type arrays.
+- Fix the OpenGL renderer's window not closing when clicking the X button.
+- Fix the OpenGL renderer's camera snapping to a different direction from the initial camera's orientation when first looking around.
 - Fix custom colors being ignored when rendering meshes in OpenGL ([GH-343](https://github.com/NVIDIA/warp/issues/343)).
+- Fix topology updates not being supported by the the OpenGL renderer.
 
 ## [1.4.2] - 2024-11-13
 
