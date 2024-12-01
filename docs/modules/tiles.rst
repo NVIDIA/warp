@@ -239,7 +239,7 @@ Please see the :ref:`differentiability` section for more details.
 Building with MathDx
 --------------------
 
-The tile operations described in `MathDx`_ require Warp to be built with the MathDx library.
+The tile operations described in `Linear Algebra`_ require Warp to be built with the MathDx library.
 Starting with Warp 1.5.0, PyPI distributions will come with out-of-the-box support for tile operations
 leveraging MathDx APIs.
 
