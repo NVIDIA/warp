@@ -35,6 +35,7 @@
   hard-coded value of 0.01 ([GH-329](https://github.com/NVIDIA/warp/issues/329)).
 - Add a `particle_radius` parameter to `wp.sim.ModelBuilder.add_cloth_mesh()` and `wp.sim.ModelBuilder.add_cloth_grid()`
   to set a uniform radius for the added particles.
+- Add introductory Jupyter notebooks.
 
 ### Changed
 
@@ -59,6 +60,7 @@
 - Fix `wp.printf()` erroring out when no variadic arguments are passed ([GH-333](https://github.com/NVIDIA/warp/issues/333)).
 - Fix custom colors being ignored when rendering meshes in OpenGL ([GH-343](https://github.com/NVIDIA/warp/issues/343)).
 - Fix memory access issues in soft-rigid contact collisions ([GH-362](https://github.com/NVIDIA/warp/issues/362)).
+- Fix topology updates not being supported by the the OpenGL renderer.
 
 ## [1.4.2] - 2024-11-13
 
