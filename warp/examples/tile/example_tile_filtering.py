@@ -85,14 +85,21 @@ if __name__ == "__main__":
 try:
     import matplotlib.pyplot as plt
 
-    plt.figure()
-    plt.plot(
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    ax.plot(
         x,
-        "r-",
+        color="#DDDDDD",
+        linewidth=2,
         label="Original",
     )
-    plt.plot(y_test[0, :].real, "b.-", label="Smoothed")
-    plt.legend()
-    plt.savefig("filter.png")
+    ax.plot(y_test[0, :].real, color="#76B900", linewidth=3, label="Smoothed")
+
+    ax.legend()
+    ax.grid(True)
+
+    plt.tight_layout()
+    plt.show()
+
 except ModuleNotFoundError:
     print("Matplotlib not available; skipping figure")
