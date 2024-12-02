@@ -316,7 +316,7 @@ add_example_test(
     name="sim.example_cloth",
     devices=test_devices,
     test_options={"usd_required": True},
-    test_options_cpu={"num_frames": 10},
+    test_options_cpu={"num_frames": 10, "test_timeout": 600},
 )
 add_example_test(
     TestSimExamples, name="sim.example_granular", devices=test_devices, test_options_cpu={"num_frames": 10}
@@ -396,12 +396,14 @@ add_example_test(
     name="fem.example_convection_diffusion",
     devices=test_devices,
     test_options={"resolution": 20, "headless": True},
+    test_options_cpu={"test_timeout": 600},
 )
 add_example_test(
     TestFemExamples,
     name="fem.example_burgers",
     devices=test_devices,
     test_options={"resolution": 20, "num_frames": 25, "degree": 1, "headless": True},
+    test_options_cpu={"test_timeout": 600},
 )
 add_example_test(
     TestFemExamples,

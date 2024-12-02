@@ -3,9 +3,7 @@ Tiles
 
 .. warning:: Tile-based operations in Warp are under preview, APIs are subject to change.
 
-Block-based programming models such as those in OpenAI Triton have proved to be effective ways of expressing high-performance kernels that can leverage cooperative operations on modern GPUs.
-
-Warp 1.5.0 introduces tile extensions that expose a block-based programming to Warp kernels. 
+Block-based programming models such as those in OpenAI Triton have proved to be effective ways of expressing high-performance kernels that can leverage cooperative operations on modern GPUs. With Warp 1.5.0 developers now have access to new tile-based programming primitives in Warp kernels. Leveraging cuBLASDx and cuFFTDx, these new tools provide developers with efficient matrix multiplication and Fourier transforms for accelerated simulation and scientific computing. 
 
 Requirements
 ------------
@@ -35,7 +33,7 @@ In the following example, we launch a grid of threads where each block is respon
 
         # load a row from global memory
         t = wp.tile_load(array[i], i, TILE_SIZE)
-        s = wp.sum(t)
+        s = wp.tile_sum(t)
         ...
 
     wp.launch_tiled(compute, dim=[a.shape[0]], inputs=[a], block_dim=TILE_THREADS)
@@ -62,7 +60,7 @@ In Warp, tile objects are 2D arrays of data where the tile elements may be scala
 
         # load a 2d tile from global memory
         t = wp.tile_load(array, i, j, m=TILE_M, n=TILE_N)
-        s = wp.sum(t)
+        s = wp.tile_sum(t)
         ...
 
     wp.launch_tiled(compute, dim=[a.shape[0]/TILE_M, a.shape[1]/TILE_N], inputs=[a], block_dim=TILE_THREADS)
@@ -193,8 +191,8 @@ Maps/Reductions
 * :func:`warp.tile_min`
 * :func:`warp.tile_max`
 
-MathDx
-^^^^^^
+Linear Algebra
+^^^^^^^^^^^^^^
 
 * :func:`warp.tile_matmul`
 * :func:`warp.tile_transpose`
@@ -241,7 +239,7 @@ Please see the :ref:`differentiability` section for more details.
 Building with MathDx
 --------------------
 
-The tile operations described in `MathDx`_ require Warp to be built with the MathDx library.
+The tile operations described in `Linear Algebra`_ require Warp to be built with the MathDx library.
 Starting with Warp 1.5.0, PyPI distributions will come with out-of-the-box support for tile operations
 leveraging MathDx APIs.
 

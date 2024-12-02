@@ -45,9 +45,9 @@ the `pip install` command, e.g.
 
 | Platform        | Install Command                                                                                                               |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.4.2/warp_lang-1.4.2+cu11-py3-none-manylinux2014_aarch64.whl` |
-| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.4.2/warp_lang-1.4.2+cu11-py3-none-manylinux2014_x86_64.whl`  |
-| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.4.2/warp_lang-1.4.2+cu11-py3-none-win_amd64.whl`             |
+| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.5.0/warp_lang-1.5.0+cu11-py3-none-manylinux2014_aarch64.whl` |
+| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.5.0/warp_lang-1.5.0+cu11-py3-none-manylinux2014_x86_64.whl`  |
+| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.5.0/warp_lang-1.5.0+cu11-py3-none-win_amd64.whl`             |
 
 The `--force-reinstall` option may need to be used to overwrite a previous installation.
 
@@ -296,6 +296,31 @@ python -m warp.tests
         </tr>
     </tbody>
 </table>
+
+## Running Notebooks
+
+A few notebooks are available in the [notebooks](./notebooks/) directory to provide an overview over the key features available in Warp.
+
+To run these notebooks, ``jupyterlab`` is required to be installed using:
+
+
+```text
+pip install jupyterlab
+```
+
+From there, opening the notebooks can be done with the following command:
+
+```text
+jupyter lab ./notebooks
+```
+
+- [Warp Core Tutorial: Basics](https://github.com/NVIDIA/warp/tree/main/warp/notebooks/core_01_basics.ipynb) <a target="_blank" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_01_basics.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+- [Warp Core Tutorial: Generics](https://github.com/NVIDIA/warp/tree/main/warp/notebooks/core_02_generics.ipynb) <a target="_blank" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/notebooks/core_02_generics.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+- [Warp Core Tutorial: Points](https://github.com/NVIDIA/warp/tree/main/warp/notebooks/core_03_points.ipynb) <a target="_blank" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/notebooks/core_03_points.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+- [Warp Core Tutorial: Meshes](https://github.com/NVIDIA/warp/tree/main/warp/notebooks/core_04_meshes.ipynb) <a target="_blank" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/notebooks/core_04_meshes.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+- [Warp Core Tutorial: Volumes](https://github.com/NVIDIA/warp/tree/main/warp/notebooks/core_05_volumes.ipynb) <a target="_blank" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/notebooks/core_05_volumes.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+
+
 
 ## Building
 
