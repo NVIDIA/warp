@@ -100,7 +100,6 @@ class Example:
                 tri_ka=1e4,
                 tri_kd=1e-5,
                 edge_ke=100,
-                color_particles=True,
             )
 
         usd_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
@@ -121,6 +120,9 @@ class Example:
             kd=1.0e2,
             kf=1.0e1,
         )
+
+        if self.integrator_type == IntegratorType.VBD:
+            builder.color()
 
         self.model = builder.finalize()
         self.model.ground = True
