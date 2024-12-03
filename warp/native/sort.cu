@@ -95,3 +95,37 @@ void radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n)
         reinterpret_cast<int *>(keys),
         reinterpret_cast<int *>(values), n);
 }
+
+void radix_sort_pairs_device(void* context, float* keys, int* values, int n)
+{
+    ContextGuard guard(context);
+
+    cub::DoubleBuffer<float> d_keys(keys, keys + n);
+	cub::DoubleBuffer<int> d_values(values, values + n);
+
+    RadixSortTemp temp;
+    radix_sort_reserve(WP_CURRENT_CONTEXT, n, &temp.mem, &temp.size);
+
+    // sort
+    check_cuda(cub::DeviceRadixSort::SortPairs(
+        temp.mem,
+        temp.size,
+        d_keys, 
+        d_values, 
+        n, 0, 32, 
+        (cudaStream_t)cuda_stream_get_current()));
+
+	if (d_keys.Current() != keys)
+		memcpy_d2d(WP_CURRENT_CONTEXT, keys, d_keys.Current(), sizeof(float)*n);
+
+	if (d_values.Current() != values)
+		memcpy_d2d(WP_CURRENT_CONTEXT, values, d_values.Current(), sizeof(int)*n);
+}
+
+void radix_sort_pairs_float_device(uint64_t keys, uint64_t values, int n)
+{
+    radix_sort_pairs_device(
+        WP_CURRENT_CONTEXT,
+        reinterpret_cast<float *>(keys),
+        reinterpret_cast<int *>(values), n);
+}

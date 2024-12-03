@@ -132,11 +132,15 @@ def radix_sort_pairs(keys, values, count: int):
     if keys.device.is_cpu:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
             runtime.core.radix_sort_pairs_int_host(keys.ptr, values.ptr, count)
+        elif keys.dtype == wp.float32 and values.dtype == wp.int32:
+            runtime.core.radix_sort_pairs_float_host(keys.ptr, values.ptr, count)
         else:
             raise RuntimeError("Unsupported data type")
     elif keys.device.is_cuda:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
             runtime.core.radix_sort_pairs_int_device(keys.ptr, values.ptr, count)
+        elif keys.dtype == wp.float32 and values.dtype == wp.int32:
+            runtime.core.radix_sort_pairs_float_device(keys.ptr, values.ptr, count)
         else:
             raise RuntimeError("Unsupported data type")
 
