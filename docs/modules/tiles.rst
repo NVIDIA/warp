@@ -1,6 +1,8 @@
 Tiles
 =====
 
+.. currentmodule:: warp
+
 .. warning:: Tile-based operations in Warp are under preview, APIs are subject to change.
 
 Block-based programming models such as those in OpenAI Triton have proved to be effective ways of expressing high-performance kernels that can leverage cooperative operations on modern GPUs. With Warp 1.5.0 developers now have access to new tile-based programming primitives in Warp kernels. Leveraging cuBLASDx and cuFFTDx, these new tools provide developers with efficient matrix multiplication and Fourier transforms for accelerated simulation and scientific computing. 
@@ -169,35 +171,37 @@ Tile Operations
 Construction
 ^^^^^^^^^^^^
 
-* :func:`warp.tile_zeros`
-* :func:`warp.tile_ones`
-* :func:`warp.tile_arange`
-* :func:`warp.tile`
-* :func:`warp.untile`
+* :func:`tile_zeros`
+* :func:`tile_ones`
+* :func:`tile_arange`
+* :func:`tile`
+* :func:`untile`
+* :func:`tile_view`
+* :func:`tile_broadcast`
 
 Load/Store
 ^^^^^^^^^^
 
-* :func:`warp.tile_load`
-* :func:`warp.tile_store`
-* :func:`warp.tile_atomic_add`
+* :func:`tile_load`
+* :func:`tile_store`
+* :func:`tile_atomic_add`
 
 Maps/Reductions
 ^^^^^^^^^^^^^^^
 
-* :func:`warp.tile_map`
-* :func:`warp.tile_reduce`
-* :func:`warp.tile_sum`
-* :func:`warp.tile_min`
-* :func:`warp.tile_max`
+* :func:`tile_map`
+* :func:`tile_reduce`
+* :func:`tile_sum`
+* :func:`tile_min`
+* :func:`tile_max`
 
 Linear Algebra
 ^^^^^^^^^^^^^^
 
-* :func:`warp.tile_matmul`
-* :func:`warp.tile_transpose`
-* :func:`warp.tile_fft`
-* :func:`warp.tile_ifft`
+* :func:`tile_matmul`
+* :func:`tile_transpose`
+* :func:`tile_fft`
+* :func:`tile_ifft`
 
 Tiles and SIMT Code
 -------------------
