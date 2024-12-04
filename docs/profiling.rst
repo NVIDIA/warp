@@ -93,9 +93,9 @@ CUDA Activity Profiling
     :widths: 25 50
     :header-rows: 0
 
-    * - ``wp.TIMING_KERNELS``
+    * - ``wp.TIMING_KERNEL``
       - Warp kernels (this includes all kernels written in Python as ``@wp.kernel``)
-    * - ``wp.TIMING_KERNELS_BUILTIN``
+    * - ``wp.TIMING_KERNEL_BUILTIN``
       - Builtin kernels (this includes kernels used by the Warp library under the hood)
     * - ``wp.TIMING_MEMCPY``
       - CUDA memory transfers (host-to-device, device-to-host, device-to-device, and peer-to-peer)
