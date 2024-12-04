@@ -4077,7 +4077,7 @@ def set_mempool_enabled(device: Devicelike, enable: bool) -> None:
     They should generally be enabled, but there is a rare caveat.  Copying data between different GPUs
     may fail during graph capture if the memory was allocated using pooled allocators and memory pool
     access is not enabled between the two GPUs.  This is an internal CUDA limitation that is not related
-    to Warp.  The preferred solution is to enable memory pool access using `warp.set_mempool_access_enabled()`.
+    to Warp.  The preferred solution is to enable memory pool access using :func:`set_mempool_access_enabled`.
     If peer access is not supported, then the default CUDA allocators must be used to pre-allocate the memory
     prior to graph capture.
     """
