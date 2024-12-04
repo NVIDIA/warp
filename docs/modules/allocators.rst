@@ -1,6 +1,8 @@
 Allocators
 ==========
 
+.. currentmodule:: warp
+
 .. _mempool_allocators:
 
 Stream-Ordered Memory Pool Allocators
@@ -22,10 +24,11 @@ Whenever you create an array, the memory needs to be allocated on the device:
     d = wp.full(n, 42.0, dtype=float, device="cuda:0")
 
 Each of the calls above allocates a block of device memory large enough to hold the array and optionally initializes the contents with
-the specified values.  ``wp.empty()`` is the only function that does not initialize the contents in any way, it just allocates the memory.
+the specified values.
+:func:`wp.empty() <empty>` is the only function that does not initialize the contents in any way, it just allocates the memory.
 
 Memory pool allocators grab a block of memory from a larger pool of reserved memory, which is generally faster than asking
-the operating system for a brand new chunk of storage.  This is an important benefit of these pooled allocators - they are faster.
+the operating system for a brand new chunk of storage.  This is an important benefit of these pooled allocators—they are faster.
 
 Stream-ordered means that each allocation is scheduled on a :ref:`CUDA stream<streams>`, which represents a sequence of instructions that execute in order on the GPU.  The main benefit is that it allows memory to be allocated in CUDA graphs, which was previously not possible:
 
@@ -37,7 +40,7 @@ Stream-ordered means that each allocation is scheduled on a :ref:`CUDA stream<st
 
     wp.capture_launch(capture.graph)
 
-From now on, we will refer to these allocators as mempool allocators, for short.
+From now on, we will refer to these allocators as *mempool allocators* for short.
 
 
 Configuration
@@ -208,7 +211,7 @@ On multi-GPU systems that support :ref:`peer access<peer_access>`, we can enable
 .. code:: python
 
     if wp.is_mempool_access_supported("cuda:0", "cuda:1"):
-        wp.set_mempool_access_enabled("cuda:0", "cuda:1", True):
+        wp.set_mempool_access_enabled("cuda:0", "cuda:1", True)
 
 This will allow the memory pool of device ``cuda:0`` to be directly accessed on device ``cuda:1``.  Memory pool access is directional, which means that enabling access to ``cuda:0`` from ``cuda:1`` does not automatically enable access to ``cuda:1`` from ``cuda:0``.
 
@@ -227,7 +230,8 @@ It's possible to temporarily enable or disable memory pool access using a scoped
         # use direct memory transfer between GPUs
         wp.copy(a1, a0)
 
-Note that memory pool access only applies to memory allocated using mempool allocators.  For memory allocated using default CUDA allocators, we can enable CUDA peer access to get similar benefits.
+Note that memory pool access only applies to memory allocated using mempool allocators.
+For memory allocated using default CUDA allocators, we can enable CUDA :ref:`peer access<peer_access>` using :func:`wp.set_peer_access_enabled() <set_peer_access_enabled>` to get similar benefits.
 
 Because enabling memory pool access can have drawbacks, Warp does not automatically enable it, even if it's supported.  Programs that don't require copying data between GPUs are therefore not affected in any way.
 
