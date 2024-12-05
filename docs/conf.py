@@ -141,4 +141,18 @@ html_theme_options = {
     "pygments_dark_style": "monokai",
     "footer_links": {},
     "github_url": "https://github.com/NVIDIA/warp",
+    "icon_links": [
+        {
+            "name": "PyPI",
+            "url": "https://pypi.org/project/warp-lang",
+            "icon": "fa-brands fa-python",
+            "type": "fontawesome",
+        },
+        {
+            "name": "Discord",
+            "url": "https://discord.com/channels/827959428476174346/1285719658325999686",
+            "icon": "fa-brands fa-discord",
+            "type": "fontawesome",
+        },
+    ],
 }
