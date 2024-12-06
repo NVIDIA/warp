@@ -11,7 +11,12 @@ import numpy as np
 import warp as wp
 import warp.examples
 import warp.sim
-from warp.sim.graph_coloring import ColoringAlgorithm, construct_trimesh_graph_edges, validate_graph_coloring
+from warp.sim.graph_coloring import (
+    ColoringAlgorithm,
+    construct_trimesh_graph_edges,
+    convert_to_color_groups,
+    validate_graph_coloring,
+)
 from warp.tests.unittest_utils import *
 
 
@@ -120,7 +125,7 @@ def test_coloring_trimesh(test, device):
             ColoringAlgorithm.MCS.value,
             particle_colors.__ctype__(),
         )
-        wp.context.runtime.core.balance_coloring(
+        max_min_ratio = wp.context.runtime.core.balance_coloring(
             model.particle_count,
             edge_indices_cpu_with_bending.__ctype__(),
             num_colors_mcs,
@@ -133,6 +138,11 @@ def test_coloring_trimesh(test, device):
             dim=edge_indices_cpu_with_bending.shape[0],
             device="cpu",
         )
+
+        color_categories_balanced = convert_to_color_groups(num_colors_mcs, particle_colors)
+
+        color_sizes = np.array([c.shape[0] for c in color_categories_balanced], dtype=np.float32)
+        test.assertTrue(np.max(color_sizes) / np.min(color_sizes) <= max_min_ratio)
 
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")

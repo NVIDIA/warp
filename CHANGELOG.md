@@ -7,6 +7,7 @@
 ### Changed
 
 ### Fixed
+- warp.sim: Fixed a bug in which the color-balancing algorithm was not updating the colorings.
 
 ## [1.5.0] - 2024-12-02
 
