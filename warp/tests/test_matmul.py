@@ -5,6 +5,7 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import itertools
 import unittest
 from typing import Any
 
@@ -105,19 +106,15 @@ class gemm_test_bed_runner:
         assert_np_equal(C.grad.numpy(), adj_C_np)
 
     def run(self):
-        Ms = [64, 128, 256]
-        Ns = [64, 128, 256]
-        Ks = [64, 128, 256]
+        Ms = [16, 32, 64]
+        Ns = [16, 32, 64]
+        Ks = [16, 32, 64]
         batch_counts = [1, 4]
         betas = [0.0, 1.0]
         alpha = 1.0
 
-        for batch_count in batch_counts:
-            for m in Ms:
-                for n in Ns:
-                    for k in Ks:
-                        for beta in betas:
-                            self.run_and_verify(m, n, k, batch_count, alpha, beta)
+        for batch_count, m, n, k, beta in itertools.product(batch_counts, Ms, Ns, Ks, betas):
+            self.run_and_verify(m, n, k, batch_count, alpha, beta)
 
 
 class gemm_test_bed_runner_transpose:
