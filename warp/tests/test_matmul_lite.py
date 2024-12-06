@@ -102,19 +102,14 @@ class gemm_test_bed_runner:
         assert_np_equal(C.grad.numpy(), adj_C_np)
 
     def run(self):
-        Ms = [8]
-        Ns = [16]
-        Ks = [32]
-        batch_counts = [1]
-        betas = [1.0]
+        m = 8
+        n = 16
+        k = 32
+        batch_count = 1
+        beta = 1.0
         alpha = 1.0
 
-        for batch_count in batch_counts:
-            for m in Ms:
-                for n in Ns:
-                    for k in Ks:
-                        for beta in betas:
-                            self.run_and_verify(m, n, k, batch_count, alpha, beta)
+        self.run_and_verify(m, n, k, batch_count, alpha, beta)
 
 
 class gemm_test_bed_runner_transpose:
