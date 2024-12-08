@@ -2278,14 +2278,9 @@ Instances: {len(self._instances)}"""
         colors1 = np.array(colors1, dtype=np.float32)
         colors2 = np.array(colors2, dtype=np.float32)
 
-        # create buffer for checkerboard colors
-        self._instance_color1_buffer = gl.GLuint()
-        gl.glGenBuffers(1, self._instance_color1_buffer)
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_color1_buffer)
         gl.glBufferData(gl.GL_ARRAY_BUFFER, colors1.nbytes, colors1.ctypes.data, gl.GL_STATIC_DRAW)
 
-        self._instance_color2_buffer = gl.GLuint()
-        gl.glGenBuffers(1, self._instance_color2_buffer)
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_color2_buffer)
         gl.glBufferData(gl.GL_ARRAY_BUFFER, colors2.nbytes, colors2.ctypes.data, gl.GL_STATIC_DRAW)
 
@@ -2321,6 +2316,12 @@ Instances: {len(self._instances)}"""
         self._instance_transform_cuda_buffer = wp.RegisteredGLBuffer(
             int(self._instance_transform_gl_buffer.value), self._device
         )
+
+        # create color buffers
+        self._instance_color1_buffer = gl.GLuint()
+        gl.glGenBuffers(1, self._instance_color1_buffer)
+        self._instance_color2_buffer = gl.GLuint()
+        gl.glGenBuffers(1, self._instance_color2_buffer)
 
         self.update_instance_colors()
 
