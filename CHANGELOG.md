@@ -14,6 +14,7 @@
 - warp.sim: Fixed a bug in which the color-balancing algorithm was not updating the colorings.
 - Fix custom colors being not being updated when rendering meshes with static topology in OpenGL ([GH-343](https://github.com/NVIDIA/warp/issues/343)).
 
+- warp.sim: Fix a bug in which the color-balancing algorithm was not updating the colorings.
 - Fix `wp.launch_tiled()` not returning a `Launch` object when passed `record_cmd=True`.
 
 ## [1.5.0] - 2024-12-02
