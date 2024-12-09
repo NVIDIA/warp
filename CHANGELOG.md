@@ -9,6 +9,8 @@
 ### Fixed
 - warp.sim: Fixed a bug in which the color-balancing algorithm was not updating the colorings.
 
+- Fix `wp.launch_tiled()` not returning a `Launch` object when passed `record_cmd=True`.
+
 ## [1.5.0] - 2024-12-02
 
 ### Added
