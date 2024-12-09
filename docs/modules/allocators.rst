@@ -208,7 +208,7 @@ On multi-GPU systems that support :ref:`peer access<peer_access>`, we can enable
 .. code:: python
 
     if wp.is_mempool_access_supported("cuda:0", "cuda:1"):
-        wp.set_mempool_access_enabled("cuda:0", "cuda:1", True):
+        wp.set_mempool_access_enabled("cuda:0", "cuda:1", True)
 
 This will allow the memory pool of device ``cuda:0`` to be directly accessed on device ``cuda:1``.  Memory pool access is directional, which means that enabling access to ``cuda:0`` from ``cuda:1`` does not automatically enable access to ``cuda:1`` from ``cuda:0``.
 
