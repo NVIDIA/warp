@@ -4,9 +4,13 @@
 
 ### Added
 
+- Support `assert` statements in kernels ([GH-366](https://github.com/NVIDIA/warp/issues/336)).
+  Assertions can only be triggered in `"debug"` mode.
+
 ### Changed
 
 ### Fixed
+
 - warp.sim: Fixed a bug in which the color-balancing algorithm was not updating the colorings.
 
 - Fix `wp.launch_tiled()` not returning a `Launch` object when passed `record_cmd=True`.

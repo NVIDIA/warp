@@ -1855,6 +1855,17 @@ class Adjoint:
         # stubbed @wp.native_func
         return
 
+    def emit_Assert(adj, node):
+        # eval condition
+        cond = adj.eval(node.test)
+        cond = adj.load(cond)
+
+        source_segment = ast.get_source_segment(adj.source, node)
+        # If a message was provided with the assert, " marks can interfere with the generated code
+        escaped_segment = source_segment.replace('"', '\\"')
+
+        adj.add_forward(f'assert(("{escaped_segment}",{cond.emit()}));')
+
     def emit_NameConstant(adj, node):
         if node.value:
             return adj.add_constant(node.value)
@@ -2684,6 +2695,7 @@ class Adjoint:
         ast.Tuple: emit_Tuple,
         ast.Pass: emit_Pass,
         ast.Ellipsis: emit_Ellipsis,
+        ast.Assert: emit_Assert,
     }
 
     def eval(adj, node):

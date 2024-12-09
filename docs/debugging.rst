@@ -34,6 +34,42 @@ these issues, Warp supports a simple option to print out all launches and argume
 
     wp.config.print_launches = True
 
+Assertions
+----------
+
+``assert`` statements can be inserted into Warp kernels and user-defined functions to interrupt the program
+execution when a provided Boolean expression evaluates to false. Assertions are only active for a module's kernels
+when the module is compiled in debug mode (see the :doc:`/configuration` documentation for how to enable debug-mode
+compilation).
+
+The following example will raise an assertion when the kernel is run since the module is compiled
+in debug mode and the ``assert`` statement expects that the array passed into the ``expect_ones`` kernel
+is an array of ones, but we passed it a single-element array of zeros:
+
+.. code-block:: python
+
+    import warp as wp
+
+    wp.config.mode = "debug"
+
+
+    @wp.kernel
+    def expect_ones(a: wp.array(dtype=int)):
+        i = wp.tid()
+
+        assert a[i] == 1, "Array element must be 1"
+
+
+    input_array = wp.zeros(1, dtype=int)
+
+    wp.launch(expect_ones, input_array.shape, inputs=[input_array])
+
+    wp.synchronize_device()
+
+The output of the program will include a line like the following statement::
+
+    default_program:49: void expect_ones_133f9859_cuda_kernel_forward(wp::launch_bounds_t, wp::array_t<int>): block: [0,0,0], thread: [0,0,0] Assertion `("assert a[i] == 1, \"Array element must be 1\"",var_3)` failed.
+
 
 Step-Through Debugging
 ----------------------
