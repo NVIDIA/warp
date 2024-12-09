@@ -238,24 +238,23 @@ class Function:
         # in a way that is compatible with Python's semantics.
         signature_params = []
         signature_default_param_kind = inspect.Parameter.POSITIONAL_OR_KEYWORD
-        for param_name in self.input_types.keys():
-            if param_name.startswith("**"):
-                param_name = param_name[2:]
+        for raw_param_name in self.input_types.keys():
+            if raw_param_name.startswith("**"):
+                param_name = raw_param_name[2:]
                 param_kind = inspect.Parameter.VAR_KEYWORD
-            elif param_name.startswith("*"):
-                param_name = param_name[1:]
+            elif raw_param_name.startswith("*"):
+                param_name = raw_param_name[1:]
                 param_kind = inspect.Parameter.VAR_POSITIONAL
 
                 # Once a variadic argument like `*args` is found, any following
                 # arguments need to be passed using keywords.
                 signature_default_param_kind = inspect.Parameter.KEYWORD_ONLY
             else:
+                param_name = raw_param_name
                 param_kind = signature_default_param_kind
 
-            param = param = inspect.Parameter(
-                param_name,
-                param_kind,
-                default=self.defaults.get(param_name, inspect.Parameter.empty),
+            param = inspect.Parameter(
+                param_name, param_kind, default=self.defaults.get(param_name, inspect.Parameter.empty)
             )
             signature_params.append(param)
         self.signature = inspect.Signature(signature_params)
@@ -509,11 +508,10 @@ def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
                 if elem_count != arg_type._length_:
                     return (False, None)
 
-                # Retrieve the element type of the sequence while ensuring
-                # that it's homogeneous.
+                # Retrieve the element type of the sequence while ensuring that it's homogeneous.
                 elem_type = type(arr[0])
-                for i in range(1, elem_count):
-                    if type(arr[i]) is not elem_type:
+                for array_index in range(1, elem_count):
+                    if type(arr[array_index]) is not elem_type:
                         raise ValueError("All array elements must share the same type.")
 
                 expected_elem_type = arg_type._wp_scalar_type_
@@ -543,10 +541,10 @@ def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
                 c_param = arg_type()
                 if warp.types.type_is_matrix(arg_type):
                     rows, cols = arg_type._shape_
-                    for i in range(rows):
-                        idx_start = i * cols
+                    for row_index in range(rows):
+                        idx_start = row_index * cols
                         idx_end = idx_start + cols
-                        c_param[i] = arr[idx_start:idx_end]
+                        c_param[row_index] = arr[idx_start:idx_end]
                 else:
                     c_param[:] = arr
 
@@ -1239,16 +1237,16 @@ def add_builtin(
                 typelists.append(l)
 
             for arg_types in itertools.product(*typelists):
-                arg_types = dict(zip(input_types.keys(), arg_types))
+                concrete_arg_types = dict(zip(input_types.keys(), arg_types))
 
                 # Some of these argument lists won't work, eg if the function is mul(), we won't be
                 # able to do a matrix vector multiplication for a mat22 and a vec3. The `constraint`
                 # function determines which combinations are valid:
                 if constraint:
-                    if constraint(arg_types) is False:
+                    if constraint(concrete_arg_types) is False:
                         continue
 
-                return_type = value_func(arg_types, None)
+                return_type = value_func(concrete_arg_types, None)
 
                 # The return_type might just be vector_t(length=3,dtype=wp.float32), so we've got to match that
                 # in the list of hard coded types so it knows it's returning one of them:
@@ -1266,7 +1264,7 @@ def add_builtin(
                 # finally we can generate a function call for these concrete types:
                 add_builtin(
                     key,
-                    input_types=arg_types,
+                    input_types=concrete_arg_types,
                     value_type=return_type,
                     value_func=value_func if return_type is Any else None,
                     export_func=export_func,

@@ -399,11 +399,11 @@ def scalar_infer_type(arg_types: Mapping[str, type]):
 
     scalar_types = set()
     for t in arg_types:
-        t = strip_reference(t)
-        if hasattr(t, "_wp_scalar_type_"):
-            scalar_types.add(t._wp_scalar_type_)
-        elif t in scalar_and_bool_types:
-            scalar_types.add(t)
+        t_val = strip_reference(t)
+        if hasattr(t_val, "_wp_scalar_type_"):
+            scalar_types.add(t_val._wp_scalar_type_)
+        elif t_val in scalar_and_bool_types:
+            scalar_types.add(t_val)
 
     if len(scalar_types) > 1:
         raise RuntimeError(

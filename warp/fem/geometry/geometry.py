@@ -59,7 +59,6 @@ class Geometry:
     SideIndexArg: wp.codegen.Struct
     """Structure containing arguments to be passed to device functions for indexing sides"""
 
-    @staticmethod
     def cell_arg_value(self, device) -> "Geometry.CellArg":
         """Value of the arguments to be passed to cell-related device functions"""
         raise NotImplementedError
@@ -107,7 +106,6 @@ class Geometry:
         For elements with the same dimension as the embedding space, this will be zero."""
         raise NotImplementedError
 
-    @staticmethod
     def side_arg_value(self, device) -> "Geometry.SideArg":
         """Value of the arguments to be passed to side-related device functions"""
         raise NotImplementedError
