@@ -398,6 +398,49 @@ def test_tile_sum(test, device):
     assert_np_equal(input_wp.grad.numpy(), np.ones_like(input) * 0.5)
 
 
+def test_tile_sum_launch(test, device):
+    batch_count = 56
+
+    M = TILE_M
+    N = TILE_N
+
+    rng = np.random.default_rng(42)
+    input = rng.random((batch_count, M, N), dtype=np.float32)
+
+    input_wp = wp.array(input, requires_grad=True, device=device)
+    output_wp = wp.zeros(batch_count, requires_grad=True, device=device)
+
+    cmd = wp.launch_tiled(
+        tile_sum_kernel,
+        dim=[batch_count],
+        inputs=[input_wp, output_wp],
+        block_dim=TILE_DIM,
+        device=device,
+        record_cmd=True,
+    )
+    cmd.launch()
+
+    sum_wp = output_wp.numpy()
+
+    for i in range(batch_count):
+        sum_np = np.sum(input[i]) * 0.5
+        test.assertAlmostEqual(sum_wp[i], sum_np, places=5)
+
+    output_wp.grad.fill_(1.0)
+
+    wp.launch_tiled(
+        tile_sum_kernel,
+        dim=[batch_count],
+        inputs=[input_wp, output_wp],
+        adj_inputs=[input_wp.grad, output_wp.grad],
+        block_dim=TILE_DIM,
+        device=device,
+        adjoint=True,
+    )
+
+    assert_np_equal(input_wp.grad.numpy(), np.ones_like(input) * 0.5)
+
+
 @wp.kernel
 def tile_extract_kernel(input: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
     # output tile index
@@ -688,6 +731,7 @@ add_function_test(TestTile, "test_tile_transpose", test_tile_transpose, devices=
 add_function_test(TestTile, "test_tile_transpose_matmul", test_tile_transpose_matmul, devices=devices)
 add_function_test(TestTile, "test_tile_operators", test_tile_operators, devices=devices)
 add_function_test(TestTile, "test_tile_sum", test_tile_sum, devices=devices)
+add_function_test(TestTile, "test_tile_sum_launch", test_tile_sum_launch, devices=devices)
 add_function_test(TestTile, "test_tile_extract", test_tile_extract, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_add", test_tile_broadcast_add, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_grad", test_tile_broadcast_grad, devices=devices)

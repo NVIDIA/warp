@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Fix `wp.launch_tiled()` not returning a `Launch` object when passed `record_cmd=True`.
+
 ## [1.5.0] - 2024-12-02
 
 ### Added
