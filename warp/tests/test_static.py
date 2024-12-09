@@ -281,20 +281,20 @@ def test_function_lookup(test, device):
 
     outputs = wp.empty(2, dtype=wp.float32)
 
-    for op in op_handlers.keys():
+    for _op, op_func in op_handlers.items():
 
         @wp.kernel
         def operate(input: wp.array(dtype=inputs.dtype, ndim=2), output: wp.array(dtype=wp.float32)):
             tid = wp.tid()
             a, b = input[tid, 0], input[tid, 1]
             # retrieve the right function to use for the captured dtype variable
-            output[tid] = wp.static(op_handlers[op])(a, b)  # noqa: B023
+            output[tid] = wp.static(op_func)(a, b)  # noqa: B023
 
         wp.launch(operate, dim=2, inputs=[inputs], outputs=[outputs])
         outputs_np = outputs.numpy()
         inputs_np = inputs.numpy()
         for i in range(len(outputs_np)):
-            test.assertEqual(outputs_np[i], op_handlers[op](float(inputs_np[i][0]), float(inputs_np[i][1])))
+            test.assertEqual(outputs_np[i], op_func(float(inputs_np[i][0]), float(inputs_np[i][1])))
 
 
 def count_ssa_occurrences(kernel: wp.Kernel, ssas: List[str]) -> Dict[str, int]:

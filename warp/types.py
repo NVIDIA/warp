@@ -343,8 +343,8 @@ def matrix(shape, dtype):
                             f"Invalid argument in matrix constructor, expected row of length {self._shape_[1]}, got {row}"
                         )
                     offset = i * self._shape_[1]
-                    for i in range(self._shape_[1]):
-                        super().__setitem__(offset + i, mat_t.scalar_import(row[i]))
+                    for j in range(self._shape_[1]):
+                        super().__setitem__(offset + j, mat_t.scalar_import(row[j]))
             else:
                 raise ValueError(
                     f"Invalid number of arguments in matrix constructor, expected {self._length_} elements, got {num_args}"

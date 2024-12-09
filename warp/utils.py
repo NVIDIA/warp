@@ -39,8 +39,7 @@ def warp_showwarning(message, category, filename, lineno, file=None, line=None):
                 # and the import machinery don't work anymore
                 line = None
                 linecache = None
-        else:
-            line = line
+
         if line:
             line = line.strip()
             s += "  %s\n" % line

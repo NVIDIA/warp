@@ -59,6 +59,9 @@ select = [
     "B",  # flake8-bugbear
     "C4",  # flake8-comprehensions
     "NPY",  # NumPy-specific rules
+    "PLC",  # pylint convention
+    "PLE",  # pylint error
+    "PLW"  # pylint warning
 ]
 ignore = [
     "E501", # Many lines are over 120 characters already
@@ -67,6 +70,7 @@ ignore = [
     "F405", # Related to use of wildcard imports
     "F811", # Warp often uses overloads
     "E721", # Warp often uses == in float and int type comparisons
+    "PLW0603" # Allow assignments to global variables
 ]
 
 [tool.ruff.lint.per-file-ignores]

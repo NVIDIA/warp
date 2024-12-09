@@ -1175,25 +1175,25 @@ class Adjoint:
         left = adj.load(left)
         s = output.emit() + " = " + ("(" * len(comps)) + left.emit() + " "
 
-        prev_comp = None
+        prev_comp_var = None
 
         for op, comp in zip(op_strings, comps):
             comp_chainable = op_str_is_chainable(op)
-            if comp_chainable and prev_comp:
-                # We  restrict chaining to operands of the same type
-                if prev_comp.type is comp.type:
-                    prev_comp = adj.load(prev_comp)
-                    comp = adj.load(comp)
-                    s += "&& (" + prev_comp.emit() + " " + op + " " + comp.emit() + ")) "
+            if comp_chainable and prev_comp_var:
+                # We restrict chaining to operands of the same type
+                if prev_comp_var.type is comp.type:
+                    prev_comp_var = adj.load(prev_comp_var)
+                    comp_var = adj.load(comp)
+                    s += "&& (" + prev_comp_var.emit() + " " + op + " " + comp_var.emit() + ")) "
                 else:
                     raise WarpCodegenTypeError(
-                        f"Cannot chain comparisons of unequal types: {prev_comp.type} {op} {comp.type}."
+                        f"Cannot chain comparisons of unequal types: {prev_comp_var.type} {op} {comp.type}."
                     )
             else:
-                comp = adj.load(comp)
-                s += op + " " + comp.emit() + ") "
+                comp_var = adj.load(comp)
+                s += op + " " + comp_var.emit() + ") "
 
-            prev_comp = comp
+            prev_comp_var = comp_var
 
         s = s.rstrip() + ";"
 
@@ -1366,13 +1366,15 @@ class Adjoint:
         fwd_args = []
         for func_arg in func_args:
             if not isinstance(func_arg, (Reference, warp.context.Function)):
-                func_arg = adj.load(func_arg)
+                func_arg_var = adj.load(func_arg)
+            else:
+                func_arg_var = func_arg
 
             # if the argument is a function (and not a builtin), then build it recursively
-            if isinstance(func_arg, warp.context.Function) and not func_arg.is_builtin():
-                adj.builder.build_function(func_arg)
+            if isinstance(func_arg_var, warp.context.Function) and not func_arg_var.is_builtin():
+                adj.builder.build_function(func_arg_var)
 
-            fwd_args.append(strip_reference(func_arg))
+            fwd_args.append(strip_reference(func_arg_var))
 
         if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
@@ -2569,8 +2571,10 @@ class Adjoint:
             adj.return_var = ()
             for ret in var:
                 if is_reference(ret.type):
-                    ret = adj.add_builtin_call("copy", [ret])
-                adj.return_var += (ret,)
+                    ret_var = adj.add_builtin_call("copy", [ret])
+                else:
+                    ret_var = ret
+                adj.return_var += (ret_var,)
 
         adj.add_return(adj.return_var)
 
