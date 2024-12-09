@@ -128,8 +128,13 @@ def get_cuda_test_devices(mode=None):
     return [d for d in devices if d.is_cuda]
 
 
-# redirects and captures all stdout output (including from C-libs)
-class StdOutCapture:
+class StreamCapture:
+    def __init__(self, stream_name):
+        self.stream_name = stream_name  # 'stdout' or 'stderr'
+        self.saved = None
+        self.target = None
+        self.tempfile = None
+
     def begin(self):
         # Flush the stream buffers managed by libc.
         # This is needed at the moment due to Carbonite not flushing the logs
@@ -137,14 +142,15 @@ class StdOutCapture:
         if LIBC is not None:
             LIBC.fflush(None)
 
-        # save original
-        self.saved = sys.stdout
+        # Get the stream object (sys.stdout or sys.stderr)
+        self.saved = getattr(sys, self.stream_name)
         self.target = os.dup(self.saved.fileno())
 
         # create temporary capture stream
         import io
         import tempfile
 
+        # Create temporary capture stream
         self.tempfile = io.TextIOWrapper(
             tempfile.TemporaryFile(buffering=0),
             encoding="utf-8",
@@ -153,31 +159,44 @@ class StdOutCapture:
             write_through=True,
         )
 
+        # Redirect the stream
         os.dup2(self.tempfile.fileno(), self.saved.fileno())
-
-        sys.stdout = self.tempfile
+        setattr(sys, self.stream_name, self.tempfile)
 
     def end(self):
         # The following sleep doesn't seem to fix the test_print failure on Windows
         # if sys.platform == "win32":
         #    # Workaround for what seems to be a Windows-specific bug where
-        #    # the output of CUDA's `printf` is not being immediately flushed
-        #    # despite the context synchronisation.
+        #    # the output of CUDA's printf is not being immediately flushed
+        #    # despite the context synchronization.
         #    time.sleep(0.01)
-
         if LIBC is not None:
             LIBC.fflush(None)
 
+        # Restore the original stream
         os.dup2(self.target, self.saved.fileno())
         os.close(self.target)
 
+        # Read the captured output
         self.tempfile.seek(0)
         res = self.tempfile.buffer.read()
         self.tempfile.close()
 
-        sys.stdout = self.saved
+        # Restore the stream object
+        setattr(sys, self.stream_name, self.saved)
 
         return str(res.decode("utf-8"))
+
+
+# Subclasses for specific streams
+class StdErrCapture(StreamCapture):
+    def __init__(self):
+        super().__init__("stderr")
+
+
+class StdOutCapture(StreamCapture):
+    def __init__(self):
+        super().__init__("stdout")
 
 
 class CheckOutput:
