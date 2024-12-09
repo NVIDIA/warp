@@ -58,7 +58,6 @@ def get_selected_cuda_test_devices(mode: Optional[str] = None):
     """
 
     if mode is None:
-        global test_mode
         mode = test_mode
 
     if mode == "basic":
@@ -98,7 +97,6 @@ def get_test_devices(mode: Optional[str] = None):
           "all": Returns all available devices.
     """
     if mode is None:
-        global test_mode
         mode = test_mode
 
     devices = []

@@ -8,7 +8,7 @@ from warp.types import Array, Cols, Rows, Scalar, Vector
 
 # typing hints
 
-_BlockType = TypeVar("BlockType")
+_BlockType = TypeVar("BlockType")  # noqa: PLC0132
 
 
 class _MatrixBlockType(Generic[Rows, Cols, Scalar]):

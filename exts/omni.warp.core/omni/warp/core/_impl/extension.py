@@ -93,7 +93,7 @@ class OmniWarpCoreExtension(omni.ext.IExt):
                     # Junctions don't support relative paths so we need
                     # to use an absolute path for the destination.
                     cmd = ("mklink", "/j", LOCAL_LIB_PATH, LIB_PATH_ABS)
-                    subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True)
+                    subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, check=True)
                 else:
                     raise RuntimeError(f"Failed to create the symlink `{LOCAL_LIB_PATH}`") from e
 

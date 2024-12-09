@@ -1442,12 +1442,14 @@ class ModelBuilder:
             self.shape_collision_filter_pairs.add((i + shape_count, j + shape_count))
         for group, shapes in builder.shape_collision_group_map.items():
             if separate_collision_group:
-                group = self.last_collision_group + 1
+                extend_group = self.last_collision_group + 1
             else:
-                group = group + self.last_collision_group if group > -1 else -1
-            if group not in self.shape_collision_group_map:
-                self.shape_collision_group_map[group] = []
-            self.shape_collision_group_map[group].extend([s + shape_count for s in shapes])
+                extend_group = group + self.last_collision_group if group > -1 else -1
+
+            if extend_group not in self.shape_collision_group_map:
+                self.shape_collision_group_map[extend_group] = []
+
+            self.shape_collision_group_map[extend_group].extend([s + shape_count for s in shapes])
 
         # update last collision group counter
         if separate_collision_group:
@@ -2616,11 +2618,12 @@ class ModelBuilder:
             joint_remap[joint["original_id"]] = i
         # update articulation_start
         for i, old_i in enumerate(self.articulation_start):
-            while old_i not in joint_remap:
-                old_i += 1
-                if old_i >= self.joint_count:
+            start_i = old_i
+            while start_i not in joint_remap:
+                start_i += 1
+                if start_i >= self.joint_count:
                     break
-            self.articulation_start[i] = joint_remap.get(old_i, old_i)
+            self.articulation_start[i] = joint_remap.get(start_i, start_i)
         # remove empty articulation starts, i.e. where the start and end are the same
         self.articulation_start = list(set(self.articulation_start))
 
@@ -4269,8 +4272,7 @@ class ModelBuilder:
         pos = wp.vec3(pos[0], pos[1], pos[2])
         # add particles
         for v in vertices:
-            v = wp.vec3(v[0], v[1], v[2])
-            p = wp.quat_rotate(rot, v * scale) + pos
+            p = wp.quat_rotate(rot, wp.vec3(v[0], v[1], v[2]) * scale) + pos
 
             self.add_particle(p, vel, 0.0)
 
