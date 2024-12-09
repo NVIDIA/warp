@@ -5275,6 +5275,8 @@ def launch(
                         params_addr=kernel_params,
                         bounds=bounds,
                         device=device,
+                        max_blocks=max_blocks,
+                        block_dim=block_dim,
                     )
                     return launch
 
@@ -5358,7 +5360,7 @@ def launch_tiled(*args, **kwargs):
     kwargs["dim"] = dim + [kwargs["block_dim"]]
 
     # forward to original launch method
-    launch(*args, **kwargs)
+    return launch(*args, **kwargs)
 
 
 def synchronize():
