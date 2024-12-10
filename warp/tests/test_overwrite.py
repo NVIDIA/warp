@@ -507,6 +507,36 @@ def test_kernel_read_func_write(test, device):
         wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
 
 
+@wp.func
+def atomic_func(a: wp.array(dtype=wp.int32), b: wp.array(dtype=wp.int32), i: int):
+    wp.atomic_add(a, i, 1)
+    wp.atomic_sub(b, i, 1)
+
+
+@wp.kernel(enable_backward=False)
+def atomic_kernel(a: wp.array(dtype=wp.int32), b: wp.array(dtype=wp.int32)):
+    i = wp.tid()
+    atomic_func(a, b, i)
+
+
+# atomic operations should mark arrays as WRITE
+def test_atomic_operations(test, device):
+    saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
+    try:
+        wp.config.verify_autograd_array_access = True
+
+        a = wp.array((1, 2, 3), dtype=wp.int32, device=device)
+        b = wp.array((1, 2, 3), dtype=wp.int32, device=device)
+
+        wp.launch(atomic_kernel, dim=a.shape, inputs=(a, b), device=device)
+
+        test.assertEqual(atomic_kernel.adj.args[0].is_write, True)
+        test.assertEqual(atomic_kernel.adj.args[1].is_write, True)
+
+    finally:
+        wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
+
+
 class TestOverwrite(unittest.TestCase):
     pass
 
@@ -535,6 +565,7 @@ add_function_test(TestOverwrite, "test_reset", test_reset, devices=devices)
 add_function_test(TestOverwrite, "test_copy", test_copy, devices=devices)
 add_function_test(TestOverwrite, "test_matmul", test_matmul, devices=devices)
 add_function_test(TestOverwrite, "test_batched_matmul", test_batched_matmul, devices=devices)
+add_function_test(TestOverwrite, "test_atomic_operations", test_atomic_operations, devices=devices)
 
 # Some warning are only issued during codegen, and codegen only runs on cuda_0 in the MGPU case.
 cuda_device = get_cuda_test_devices(mode="basic")
