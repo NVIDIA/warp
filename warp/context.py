@@ -293,22 +293,22 @@ class Function:
 
         if hasattr(self, "user_overloads") and len(self.user_overloads):
             # user-defined function with overloads
+            bound_args = self.signature.bind(*args, **kwargs)
+            if self.defaults:
+                warp.codegen.apply_defaults(bound_args, self.defaults)
 
-            if len(kwargs):
-                raise RuntimeError(
-                    f"Error calling function '{self.key}', keyword arguments are not supported for user-defined overloads."
-                )
+            arguments = tuple(bound_args.arguments.values())
 
             # try and find a matching overload
             for overload in self.user_overloads.values():
-                if len(overload.input_types) != len(args):
+                if len(overload.input_types) != len(arguments):
                     continue
                 template_types = list(overload.input_types.values())
                 arg_names = list(overload.input_types.keys())
                 try:
                     # attempt to unify argument types with function template types
-                    warp.types.infer_argument_types(args, template_types, arg_names)
-                    return overload.func(*args)
+                    warp.types.infer_argument_types(arguments, template_types, arg_names)
+                    return overload.func(*arguments)
                 except Exception:
                     continue
 
