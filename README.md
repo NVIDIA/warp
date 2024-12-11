@@ -131,6 +131,8 @@ jupyter lab ./notebooks
 * [Warp Core Tutorial: Points](./notebooks/core_03_points.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_03_points.ipynb)
 * [Warp Core Tutorial: Meshes](./notebooks/core_04_meshes.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_04_meshes.ipynb)
 * [Warp Core Tutorial: Volumes](./notebooks/core_05_volumes.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_05_volumes.ipynb)
+* [Warp PyTorch Tutorial: Basics](./notebooks/pytorch_01_basics.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/pytorch_01_basics.ipynb)
+* [Warp PyTorch Tutorial: Custom Operators](./notebooks/pytorch_02_custom_operators.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/pytorch_02_custom_operators.ipynb)
 
 ## Running Examples
 

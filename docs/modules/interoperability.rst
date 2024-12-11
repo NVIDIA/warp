@@ -91,7 +91,9 @@ or pass the NumPy array as the ``data`` argument of the :class:`warp.array` cons
 PyTorch
 -------
 
-Warp provides helper functions to convert arrays to/from PyTorch::
+Warp provides helper functions to convert arrays to/from PyTorch:
+
+.. code:: python
 
     w = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
 
@@ -121,7 +123,9 @@ Example: Optimization using ``warp.from_torch()``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 An example usage of minimizing a loss function over an array of 2D points written in Warp via PyTorch's Adam optimizer
-using :func:`warp.from_torch` is as follows::
+using :func:`warp.from_torch` is as follows:
+
+.. code:: python
 
     import warp as wp
     import torch
@@ -161,7 +165,9 @@ Example: Optimization using ``warp.to_torch``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Less code is needed when we declare the optimization variables directly in Warp and use :func:`warp.to_torch` to convert them to PyTorch tensors.
-Here, we revisit the same example from above where now only a single conversion to a PyTorch tensor is needed to supply Adam with the optimization variables::
+Here, we revisit the same example from above where now only a single conversion to a PyTorch tensor is needed to supply Adam with the optimization variables:
+
+.. code:: python
 
     import warp as wp
     import numpy as np
@@ -192,20 +198,20 @@ Here, we revisit the same example from above where now only a single conversion 
         wp.launch(loss, dim=len(xs), inputs=[xs], outputs=[l], device=xs.device)
         print(f"{i}\tloss: {l.numpy()[0]}")
 
-Example: Optimization using ``torch.autograd.function``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Example: Optimization using ``torch.autograd.function`` (PyTorch <= 2.3.1)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 One can insert Warp kernel launches in a PyTorch graph by defining a :class:`torch.autograd.Function` class, which
-requires forward and backward functions to be defined. After mapping incoming torch arrays to Warp arrays, a Warp kernel
+requires forward and backward functions to be defined. After mapping incoming PyTorch tensors to Warp arrays, a Warp kernel
 may be launched in the usual way. In the backward pass, the same kernel's adjoint may be launched by 
 setting ``adjoint = True`` in :func:`wp.launch() <warp.launch>`. Alternatively, the user may choose to rely on Warp's tape.
-In the following example, we demonstrate how Warp may be used to evaluate the Rosenbrock function in an optimization context::
+In the following example, we demonstrate how Warp may be used to evaluate the Rosenbrock function in an optimization context.
+
+.. code:: python
 
     import warp as wp
     import numpy as np
     import torch
-
-    pvec2 = wp.types.vector(length=2, dtype=wp.float32)
 
     # Define the Rosenbrock function
     @wp.func
@@ -214,7 +220,7 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
 
     @wp.kernel
     def eval_rosenbrock(
-        xs: wp.array(dtype=pvec2),
+        xs: wp.array(dtype=wp.vec2),
         # outputs
         z: wp.array(dtype=float),
     ):
@@ -226,7 +232,7 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
     class Rosenbrock(torch.autograd.Function):
         @staticmethod
         def forward(ctx, xy, num_points):
-            ctx.xy = wp.from_torch(xy, dtype=pvec2, requires_grad=True)
+            ctx.xy = wp.from_torch(xy, dtype=wp.vec2, requires_grad=True)
             ctx.num_points = num_points
 
             # allocate output
@@ -284,6 +290,117 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
 Note that if Warp code is wrapped in a :class:`torch.autograd.Function` that gets called in :func:`torch.compile()`, it will automatically
 exclude that function from compiler optimizations. If your script uses :func:`torch.compile()`,
 we recommend using PyTorch version 2.3.0+, which has improvements that address this scenario.
+
+Example: Optimization using PyTorch custom operators (PyTorch >= 2.4.0)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+PyTorch 2.4+ introduced `custom operators <https://pytorch.org/tutorials/advanced/python_custom_ops.html#python-custom-ops-tutorial>`_ to replace 
+PyTorch autograd functions. These treat arbitrary Python functions (including Warp calls) as opaque callables, which prevents
+:func:`torch.compile()` from tracing into them. This means that forward PyTorch graph evaluations that include Warp kernel launches can be safely accelerated with
+:func:`torch.compile()`. We can re-write the previous example using custom operators as follows:
+
+.. code:: python
+
+    import warp as wp
+    import numpy as np
+    import torch
+
+    # Define the Rosenbrock function
+    @wp.func
+    def rosenbrock(x: float, y: float):
+        return (1.0 - x) ** 2.0 + 100.0 * (y - x**2.0) ** 2.0
+
+
+    @wp.kernel
+    def eval_rosenbrock(
+        xy: wp.array(dtype=wp.vec2),
+        # outputs
+        z: wp.array(dtype=float),
+    ):
+        i = wp.tid()
+        v = xy[i]
+        z[i] = rosenbrock(v[0], v[1])
+
+
+    @torch.library.custom_op("wp::warp_rosenbrock", mutates_args=())
+    def warp_rosenbrock(xy: torch.Tensor, num_points: int) -> torch.Tensor:
+        wp_xy = wp.from_torch(xy, dtype=wp.vec2)
+        wp_z = wp.zeros(num_points, dtype=wp.float32)
+
+        wp.launch(kernel=eval_rosenbrock, dim=num_points, inputs=[wp_xy], outputs=[wp_z])
+
+        return wp.to_torch(wp_z)
+
+
+    @warp_rosenbrock.register_fake
+    def _(xy, num_points):
+        return torch.empty(num_points, dtype=torch.float32)
+
+
+    @torch.library.custom_op("wp::warp_rosenbrock_backward", mutates_args=())
+    def warp_rosenbrock_backward(
+        xy: torch.Tensor, num_points: int, z: torch.Tensor, adj_z: torch.Tensor
+    ) -> torch.Tensor:
+        wp_xy = wp.from_torch(xy, dtype=wp.vec2)
+        wp_z = wp.from_torch(z, requires_grad=False)
+        wp_adj_z = wp.from_torch(adj_z, requires_grad=False)
+
+        wp.launch(
+            kernel=eval_rosenbrock,
+            dim=num_points,
+            inputs=[wp_xy],
+            outputs=[wp_z],
+            adj_inputs=[wp_xy.grad],
+            adj_outputs=[wp_adj_z],
+            adjoint=True,
+        )
+
+        return wp.to_torch(wp_xy.grad)
+
+
+    @warp_rosenbrock_backward.register_fake
+    def _(xy, num_points, z, adj_z):
+        return torch.empty_like(xy)
+
+
+    def backward(ctx, adj_z):
+        ctx.xy.grad = warp_rosenbrock_backward(ctx.xy, ctx.num_points, ctx.z, adj_z)
+        return ctx.xy.grad, None
+
+
+    def setup_context(ctx, inputs, output):
+        ctx.xy, ctx.num_points = inputs
+        ctx.z = output
+
+
+    warp_rosenbrock.register_autograd(backward, setup_context=setup_context)
+
+    num_points = 1500
+    learning_rate = 5e-2
+
+    torch_device = wp.device_to_torch(wp.get_device())
+
+    rng = np.random.default_rng(42)
+    xy = torch.tensor(rng.normal(size=(num_points, 2)), dtype=torch.float32, requires_grad=True, device=torch_device)
+    opt = torch.optim.Adam([xy], lr=learning_rate)
+
+    @torch.compile(fullgraph=True)
+    def forward():
+        global xy, num_points
+
+        z = warp_rosenbrock(xy, num_points)
+        return z
+
+    for _ in range(10000):
+        # step
+        opt.zero_grad()
+        z = forward()
+        z.backward(torch.ones_like(z))
+        opt.step()
+
+    # minimum at (1, 1)
+    xy_np = xy.numpy(force=True)
+    print(np.mean(xy_np, axis=0))
 
 Performance Notes
 ^^^^^^^^^^^^^^^^^

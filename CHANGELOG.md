@@ -4,6 +4,12 @@
 
 ### Added
 
+- Support `assert` statements in kernels ([GH-366](https://github.com/NVIDIA/warp/issues/336)).
+  Assertions can only be triggered in `"debug"` mode.
+- Add PyTorch basics notebook to the `notebooks` directory
+- Add PyTorch custom operators notebook to the `notebooks` directory
+- Update PyTorch interop docs to include section on custom operators
+
 ### Changed
 
 ### Fixed
