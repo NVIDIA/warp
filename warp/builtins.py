@@ -4665,6 +4665,19 @@ def atomic_op_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str,
     return arr_type.dtype
 
 
+def atomic_op_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    # as this is a codegen callback, we can mark the fact that this func writes to an array here
+    if warp.config.verify_autograd_array_access:
+        arr = args["arr"]
+        arr.mark_write()
+
+    func_args = tuple(args.values())
+    # we don't need to specify template arguments for atomic ops
+    template_args = ()
+
+    return (func_args, template_args)
+
+
 for array_type in array_types:
     # don't list indexed array operations explicitly in docs
     hidden = array_type == indexedarray
@@ -4675,6 +4688,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="Atomically add ``value`` onto ``arr[i]`` and return the old value.",
         group="Utility",
         skip_replay=True,
@@ -4685,6 +4699,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="Atomically add ``value`` onto ``arr[i,j]`` and return the old value.",
         group="Utility",
         skip_replay=True,
@@ -4695,6 +4710,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value.",
         group="Utility",
         skip_replay=True,
@@ -4705,6 +4721,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value.",
         group="Utility",
         skip_replay=True,
@@ -4716,6 +4733,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="Atomically subtract ``value`` onto ``arr[i]`` and return the old value.",
         group="Utility",
         skip_replay=True,
@@ -4726,6 +4744,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value.",
         group="Utility",
         skip_replay=True,
@@ -4736,6 +4755,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value.",
         group="Utility",
         skip_replay=True,
@@ -4746,6 +4766,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value.",
         group="Utility",
         skip_replay=True,
@@ -4757,6 +4778,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.""",
@@ -4769,6 +4791,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.""",
@@ -4781,6 +4804,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.""",
@@ -4793,6 +4817,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.""",
@@ -4806,6 +4831,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.""",
@@ -4818,6 +4844,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.""",
@@ -4830,6 +4857,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.""",
@@ -4842,6 +4870,7 @@ for array_type in array_types:
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
         constraint=atomic_op_constraint,
         value_func=atomic_op_value_func,
+        dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.""",

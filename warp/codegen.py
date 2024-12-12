@@ -1426,11 +1426,6 @@ class Adjoint:
         if not func.is_builtin():
             adj.alloc_shared_extra(func.adj.get_total_required_shared())
 
-        # some function calls modify array access flags
-        if warp.config.verify_autograd_array_access:
-            if func_name in ("atomic_add", "atomic_sub", "atomic_max", "atomic_min"):
-                args[0].mark_write()
-
         return output
 
     def add_builtin_call(adj, func_name, args, min_outputs=None):
