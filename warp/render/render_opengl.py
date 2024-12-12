@@ -1040,7 +1040,7 @@ class OpenGLRenderer:
         self.render_depth = render_depth
         self.enable_backface_culling = enable_backface_culling
 
-        self._device = wp.get_cuda_device()
+        self._device = wp.get_preferred_device()
         self._title = title
 
         self.window = pyglet.window.Window(

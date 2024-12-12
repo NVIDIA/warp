@@ -22,6 +22,7 @@
   ([GH-386](https://github.com/NVIDIA/warp/issues/386)).
 - Array overwrite tracking: Fix issue with not marking arrays passed to `wp.atomic_add()`, `wp.atomic_sub()`,
   `wp.atomic_max()`, or `wp.atomic_min()` as being written to ([GH-378](https://github.com/NVIDIA/warp/issues/378)).
+- Fix the OpenGL renderer not being able to run without CUDA ([GH-344](https://github.com/NVIDIA/warp/issues/344)).
 
 ## [1.5.0] - 2024-12-02
 
