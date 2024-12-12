@@ -19,6 +19,7 @@
 - Fix `wp.launch_tiled()` not returning a `Launch` object when passed `record_cmd=True`.
 - Mark kernel arrays as written to when passed to `wp.atomic_add()` or `wp.atomic_sub()`
 - Fix default arguments not being resolved for `wp.func` when called from Python's runtime ([GH-386](https://github.com/NVIDIA/warp/issues/386)).
+- Mark kernel arrays as written to when passed to atomic add/sub/max/min functions.
 
 ## [1.5.0] - 2024-12-02
 

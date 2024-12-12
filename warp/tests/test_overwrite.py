@@ -508,15 +508,25 @@ def test_kernel_read_func_write(test, device):
 
 
 @wp.func
-def atomic_func(a: wp.array(dtype=wp.int32), b: wp.array(dtype=wp.int32), i: int):
+def atomic_func(
+    a: wp.array(dtype=wp.int32),
+    b: wp.array(dtype=wp.int32),
+    c: wp.array(dtype=wp.int32),
+    d: wp.array(dtype=wp.int32),
+    i: int,
+):
     wp.atomic_add(a, i, 1)
     wp.atomic_sub(b, i, 1)
+    wp.atomic_min(c, i, 1)
+    wp.atomic_max(d, i, 3)
 
 
 @wp.kernel(enable_backward=False)
-def atomic_kernel(a: wp.array(dtype=wp.int32), b: wp.array(dtype=wp.int32)):
+def atomic_kernel(
+    a: wp.array(dtype=wp.int32), b: wp.array(dtype=wp.int32), c: wp.array(dtype=wp.int32), d: wp.array(dtype=wp.int32)
+):
     i = wp.tid()
-    atomic_func(a, b, i)
+    atomic_func(a, b, c, d, i)
 
 
 # atomic operations should mark arrays as WRITE
@@ -527,11 +537,15 @@ def test_atomic_operations(test, device):
 
         a = wp.array((1, 2, 3), dtype=wp.int32, device=device)
         b = wp.array((1, 2, 3), dtype=wp.int32, device=device)
+        c = wp.array((1, 2, 3), dtype=wp.int32, device=device)
+        d = wp.array((1, 2, 3), dtype=wp.int32, device=device)
 
-        wp.launch(atomic_kernel, dim=a.shape, inputs=(a, b), device=device)
+        wp.launch(atomic_kernel, dim=a.shape, inputs=(a, b, c, d), device=device)
 
         test.assertEqual(atomic_kernel.adj.args[0].is_write, True)
         test.assertEqual(atomic_kernel.adj.args[1].is_write, True)
+        test.assertEqual(atomic_kernel.adj.args[2].is_write, True)
+        test.assertEqual(atomic_kernel.adj.args[3].is_write, True)
 
     finally:
         wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
