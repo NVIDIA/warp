@@ -578,14 +578,14 @@ class Model:
 
                This setting is not supported by :class:`FeatherstoneIntegrator`.
 
-        joint_limit_lower (array): Joint lower position limits, shape [joint_count], float
-        joint_limit_upper (array): Joint upper position limits, shape [joint_count], float
-        joint_limit_ke (array): Joint position limit stiffness (used by the Euler integrators), shape [joint_count], float
-        joint_limit_kd (array): Joint position limit damping (used by the Euler integrators), shape [joint_count], float
+        joint_limit_lower (array): Joint lower position limits, shape [joint_axis_count], float
+        joint_limit_upper (array): Joint upper position limits, shape [joint_axis_count], float
+        joint_limit_ke (array): Joint position limit stiffness (used by the Euler integrators), shape [joint_axis_count], float
+        joint_limit_kd (array): Joint position limit damping (used by the Euler integrators), shape [joint_axis_count], float
         joint_twist_lower (array): Joint lower twist limit, shape [joint_count], float
         joint_twist_upper (array): Joint upper twist limit, shape [joint_count], float
-        joint_q_start (array): Start index of the first position coordinate per joint, shape [joint_count], int
-        joint_qd_start (array): Start index of the first velocity coordinate per joint, shape [joint_count], int
+        joint_q_start (array): Start index of the first position coordinate per joint (note the last value is an additional sentinel entry to allow for querying the q dimensionality of joint i via ``joint_q_start[i+1] - joint_q_start[i]``), shape [joint_count + 1], int
+        joint_qd_start (array): Start index of the first velocity coordinate per joint (note the last value is an additional sentinel entry to allow for querying the qd dimensionality of joint i via ``joint_qd_start[i+1] - joint_qd_start[i]``), shape [joint_count + 1], int
         articulation_start (array): Articulation start index, shape [articulation_count], int
         joint_name (list): Joint names, shape [joint_count], str
         joint_attach_ke (float): Joint attachment force stiffness (used by :class:`SemiImplicitIntegrator`)
