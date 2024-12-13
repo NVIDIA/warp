@@ -1053,7 +1053,7 @@ to values in arbitrarily shaped arrays::
         f = wp.volume_sample_index(volume, q, wp.Volume.LINEAR, voxel_values, background_value)
 
 The coordinates of all indexable voxels can be recovered using :func:`get_voxels() <warp.Volume.get_voxels>`.
-NanoVDB grids may also contains embedded *blind* data arrays; those can be accessed with the 
+NanoVDB grids may also contain embedded *blind* data arrays; those can be accessed with the 
 :func:`feature_array() <warp.Volume.feature_array>` function.
 
 .. autoclass:: Volume
