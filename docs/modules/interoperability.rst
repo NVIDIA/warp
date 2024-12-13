@@ -291,6 +291,8 @@ Note that if Warp code is wrapped in a :class:`torch.autograd.Function` that get
 exclude that function from compiler optimizations. If your script uses :func:`torch.compile()`,
 we recommend using PyTorch version 2.3.0+, which has improvements that address this scenario.
 
+.. _pytorch-custom-ops-example:
+
 Example: Optimization using PyTorch custom operators (PyTorch >= 2.4.0)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
