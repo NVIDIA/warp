@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## [1.5.1] - 2025-01-02
+
+### Added
+
+- Add PyTorch basics and custom operators notebooks to the `notebooks` directory.
+- Update PyTorch interop docs to include section on custom operators
+  ([docs](https://nvidia.github.io/warp/modules/interoperability.html#pytorch-custom-ops-example)).
+
+### Fixed
+
+- warp.sim: Fix a bug in which the color-balancing algorithm was not updating the colorings.
+- Fix custom colors being not being updated when rendering meshes with static topology in OpenGL
+  ([GH-343](https://github.com/NVIDIA/warp/issues/343)).
+- Fix `wp.launch_tiled()` not returning a `Launch` object when passed `record_cmd=True`.
+- Fix default arguments not being resolved for `wp.func` when called from Python's runtime
+  ([GH-386](https://github.com/NVIDIA/warp/issues/386)).
+- Array overwrite tracking: Fix issue with not marking arrays passed to `wp.atomic_add()`, `wp.atomic_sub()`,
+  `wp.atomic_max()`, or `wp.atomic_min()` as being written to ([GH-378](https://github.com/NVIDIA/warp/issues/378)).
+
 ## [1.5.0] - 2024-12-02
 
 ### Added
