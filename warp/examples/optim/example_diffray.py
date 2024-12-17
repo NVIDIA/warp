@@ -473,9 +473,6 @@ class Example:
 
     def get_image(self):
         return self.pixels.numpy().reshape((self.height, self.width, 3))
-    
-    def get_pixels(self):
-        return self.pixels
 
     def get_animation(self):
         fig, ax = plt.subplots()
