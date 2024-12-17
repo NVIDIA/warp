@@ -968,6 +968,7 @@ class OpenGLRenderer:
         enable_backface_culling=True,
         enable_mouse_interaction=True,
         enable_keyboard_interaction=True,
+        device=None,
     ):
         """
         Args:
@@ -997,6 +998,7 @@ class OpenGLRenderer:
             enable_backface_culling (bool): Whether to enable backface culling.
             enable_mouse_interaction (bool): Whether to enable mouse interaction.
             enable_keyboard_interaction (bool): Whether to enable keyboard interaction.
+            device (Devicelike): Where to store the internal data.
 
         Note:
 
@@ -1040,7 +1042,11 @@ class OpenGLRenderer:
         self.render_depth = render_depth
         self.enable_backface_culling = enable_backface_culling
 
-        self._device = wp.get_preferred_device()
+        if device is None:
+            self._device = wp.get_preferred_device()
+        else:
+            self._device = wp.get_device(device)
+
         self._title = title
 
         self.window = pyglet.window.Window(
