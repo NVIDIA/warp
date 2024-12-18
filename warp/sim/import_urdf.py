@@ -211,14 +211,14 @@ def parse_urdf(
                 if hasattr(m, "geometry"):
                     # multiple meshes are contained in a scene
                     for geom in m.geometry.values():
-                        vertices = np.array(geom.vertices, dtype=np.float32) * scaling
-                        faces = np.array(geom.faces.flatten(), dtype=np.int32)
-                        mesh = Mesh(vertices, faces)
+                        geom_vertices = np.array(geom.vertices, dtype=np.float32) * scaling
+                        geom_faces = np.array(geom.faces.flatten(), dtype=np.int32)
+                        geom_mesh = Mesh(geom_vertices, geom_faces)
                         s = builder.add_shape_mesh(
                             body=link,
                             pos=wp.vec3(tf.p),
                             rot=wp.quat(tf.q),
-                            mesh=mesh,
+                            mesh=geom_mesh,
                             density=density,
                             is_visible=visible,
                             has_ground_collision=not just_visual,
@@ -228,14 +228,14 @@ def parse_urdf(
                         shapes.append(s)
                 else:
                     # a single mesh
-                    vertices = np.array(m.vertices, dtype=np.float32) * scaling
-                    faces = np.array(m.faces.flatten(), dtype=np.int32)
-                    mesh = Mesh(vertices, faces)
+                    m_vertices = np.array(m.vertices, dtype=np.float32) * scaling
+                    m_faces = np.array(m.faces.flatten(), dtype=np.int32)
+                    m_mesh = Mesh(m_vertices, m_faces)
                     s = builder.add_shape_mesh(
                         body=link,
                         pos=wp.vec3(tf.p),
                         rot=wp.quat(tf.q),
-                        mesh=mesh,
+                        mesh=m_mesh,
                         density=density,
                         is_visible=visible,
                         has_ground_collision=not just_visual,

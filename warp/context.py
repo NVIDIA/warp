@@ -7,6 +7,7 @@
 
 import ast
 import ctypes
+import errno
 import functools
 import hashlib
 import inspect
@@ -17,6 +18,7 @@ import operator
 import os
 import platform
 import sys
+import time
 import types
 import typing
 import weakref
@@ -238,24 +240,23 @@ class Function:
         # in a way that is compatible with Python's semantics.
         signature_params = []
         signature_default_param_kind = inspect.Parameter.POSITIONAL_OR_KEYWORD
-        for param_name in self.input_types.keys():
-            if param_name.startswith("**"):
-                param_name = param_name[2:]
+        for raw_param_name in self.input_types.keys():
+            if raw_param_name.startswith("**"):
+                param_name = raw_param_name[2:]
                 param_kind = inspect.Parameter.VAR_KEYWORD
-            elif param_name.startswith("*"):
-                param_name = param_name[1:]
+            elif raw_param_name.startswith("*"):
+                param_name = raw_param_name[1:]
                 param_kind = inspect.Parameter.VAR_POSITIONAL
 
                 # Once a variadic argument like `*args` is found, any following
                 # arguments need to be passed using keywords.
                 signature_default_param_kind = inspect.Parameter.KEYWORD_ONLY
             else:
+                param_name = raw_param_name
                 param_kind = signature_default_param_kind
 
-            param = param = inspect.Parameter(
-                param_name,
-                param_kind,
-                default=self.defaults.get(param_name, inspect.Parameter.empty),
+            param = inspect.Parameter(
+                param_name, param_kind, default=self.defaults.get(param_name, inspect.Parameter.empty)
             )
             signature_params.append(param)
         self.signature = inspect.Signature(signature_params)
@@ -294,22 +295,22 @@ class Function:
 
         if hasattr(self, "user_overloads") and len(self.user_overloads):
             # user-defined function with overloads
+            bound_args = self.signature.bind(*args, **kwargs)
+            if self.defaults:
+                warp.codegen.apply_defaults(bound_args, self.defaults)
 
-            if len(kwargs):
-                raise RuntimeError(
-                    f"Error calling function '{self.key}', keyword arguments are not supported for user-defined overloads."
-                )
+            arguments = tuple(bound_args.arguments.values())
 
             # try and find a matching overload
             for overload in self.user_overloads.values():
-                if len(overload.input_types) != len(args):
+                if len(overload.input_types) != len(arguments):
                     continue
                 template_types = list(overload.input_types.values())
                 arg_names = list(overload.input_types.keys())
                 try:
                     # attempt to unify argument types with function template types
-                    warp.types.infer_argument_types(args, template_types, arg_names)
-                    return overload.func(*args)
+                    warp.types.infer_argument_types(arguments, template_types, arg_names)
+                    return overload.func(*arguments)
                 except Exception:
                     continue
 
@@ -509,11 +510,10 @@ def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
                 if elem_count != arg_type._length_:
                     return (False, None)
 
-                # Retrieve the element type of the sequence while ensuring
-                # that it's homogeneous.
+                # Retrieve the element type of the sequence while ensuring that it's homogeneous.
                 elem_type = type(arr[0])
-                for i in range(1, elem_count):
-                    if type(arr[i]) is not elem_type:
+                for array_index in range(1, elem_count):
+                    if type(arr[array_index]) is not elem_type:
                         raise ValueError("All array elements must share the same type.")
 
                 expected_elem_type = arg_type._wp_scalar_type_
@@ -543,10 +543,10 @@ def call_builtin(func: Function, *params) -> Tuple[bool, Any]:
                 c_param = arg_type()
                 if warp.types.type_is_matrix(arg_type):
                     rows, cols = arg_type._shape_
-                    for i in range(rows):
-                        idx_start = i * cols
+                    for row_index in range(rows):
+                        idx_start = row_index * cols
                         idx_end = idx_start + cols
-                        c_param[i] = arr[idx_start:idx_end]
+                        c_param[row_index] = arr[idx_start:idx_end]
                 else:
                     c_param[:] = arr
 
@@ -1239,16 +1239,16 @@ def add_builtin(
                 typelists.append(l)
 
             for arg_types in itertools.product(*typelists):
-                arg_types = dict(zip(input_types.keys(), arg_types))
+                concrete_arg_types = dict(zip(input_types.keys(), arg_types))
 
                 # Some of these argument lists won't work, eg if the function is mul(), we won't be
                 # able to do a matrix vector multiplication for a mat22 and a vec3. The `constraint`
                 # function determines which combinations are valid:
                 if constraint:
-                    if constraint(arg_types) is False:
+                    if constraint(concrete_arg_types) is False:
                         continue
 
-                return_type = value_func(arg_types, None)
+                return_type = value_func(concrete_arg_types, None)
 
                 # The return_type might just be vector_t(length=3,dtype=wp.float32), so we've got to match that
                 # in the list of hard coded types so it knows it's returning one of them:
@@ -1266,7 +1266,7 @@ def add_builtin(
                 # finally we can generate a function call for these concrete types:
                 add_builtin(
                     key,
-                    input_types=arg_types,
+                    input_types=concrete_arg_types,
                     value_type=return_type,
                     value_func=value_func if return_type is Any else None,
                     export_func=export_func,
@@ -2133,12 +2133,34 @@ class Module:
                 # -----------------------------------------------------------
                 # update cache
 
-                try:
-                    # Copy process-specific build directory to a process-independent location
-                    os.rename(build_dir, module_dir)
-                except (OSError, FileExistsError):
-                    # another process likely updated the module dir first
-                    pass
+                def safe_rename(src, dst, attempts=5, delay=0.1):
+                    for i in range(attempts):
+                        try:
+                            os.rename(src, dst)
+                            return
+                        except FileExistsError:
+                            return
+                        except OSError as e:
+                            if e.errno == errno.ENOTEMPTY:
+                                # if directory exists we assume another process
+                                # got there first, in which case we will copy
+                                # our output to the directory manually in second step
+                                return
+                            else:
+                                # otherwise assume directory creation failed e.g.: access denied
+                                # on Windows we see occasional failures to rename directories due to
+                                # some process holding a lock on a file to be moved to workaround
+                                # this we make multiple attempts to rename with some delay
+                                if i < attempts - 1:
+                                    time.sleep(delay)
+                                else:
+                                    print(
+                                        f"Could not update Warp cache with module binaries, trying to rename {build_dir} to {module_dir}, error {e}"
+                                    )
+                                    raise e
+
+                # try to move process outputs to cache
+                safe_rename(build_dir, module_dir)
 
                 if os.path.exists(module_dir):
                     if not os.path.exists(binary_path):
@@ -4074,7 +4096,7 @@ def set_mempool_enabled(device: Devicelike, enable: bool) -> None:
     They should generally be enabled, but there is a rare caveat.  Copying data between different GPUs
     may fail during graph capture if the memory was allocated using pooled allocators and memory pool
     access is not enabled between the two GPUs.  This is an internal CUDA limitation that is not related
-    to Warp.  The preferred solution is to enable memory pool access using `warp.set_mempool_access_enabled()`.
+    to Warp.  The preferred solution is to enable memory pool access using :func:`set_mempool_access_enabled`.
     If peer access is not supported, then the default CUDA allocators must be used to pre-allocate the memory
     prior to graph capture.
     """
@@ -5272,6 +5294,8 @@ def launch(
                         params_addr=kernel_params,
                         bounds=bounds,
                         device=device,
+                        max_blocks=max_blocks,
+                        block_dim=block_dim,
                     )
                     return launch
 
@@ -5355,7 +5379,7 @@ def launch_tiled(*args, **kwargs):
     kwargs["dim"] = dim + [kwargs["block_dim"]]
 
     # forward to original launch method
-    launch(*args, **kwargs)
+    return launch(*args, **kwargs)
 
 
 def synchronize():

@@ -590,7 +590,11 @@ extern "C"
         if (num_colors > 1) {
             std::vector<std::vector<int>> color_groups;
             convert_to_color_groups(num_colors, graph.node_colors, color_groups);
-            return balance_color_groups(target_max_min_ratio, graph, color_groups);
+
+            float max_min_ratio = balance_color_groups(target_max_min_ratio, graph, color_groups);
+            memcpy(node_colors.data, graph.node_colors.data(), num_nodes * sizeof(int));
+
+            return max_min_ratio;
         }
         else
         {

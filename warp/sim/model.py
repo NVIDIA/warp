@@ -578,14 +578,14 @@ class Model:
 
                This setting is not supported by :class:`FeatherstoneIntegrator`.
 
-        joint_limit_lower (array): Joint lower position limits, shape [joint_count], float
-        joint_limit_upper (array): Joint upper position limits, shape [joint_count], float
-        joint_limit_ke (array): Joint position limit stiffness (used by the Euler integrators), shape [joint_count], float
-        joint_limit_kd (array): Joint position limit damping (used by the Euler integrators), shape [joint_count], float
+        joint_limit_lower (array): Joint lower position limits, shape [joint_axis_count], float
+        joint_limit_upper (array): Joint upper position limits, shape [joint_axis_count], float
+        joint_limit_ke (array): Joint position limit stiffness (used by the Euler integrators), shape [joint_axis_count], float
+        joint_limit_kd (array): Joint position limit damping (used by the Euler integrators), shape [joint_axis_count], float
         joint_twist_lower (array): Joint lower twist limit, shape [joint_count], float
         joint_twist_upper (array): Joint upper twist limit, shape [joint_count], float
-        joint_q_start (array): Start index of the first position coordinate per joint, shape [joint_count], int
-        joint_qd_start (array): Start index of the first velocity coordinate per joint, shape [joint_count], int
+        joint_q_start (array): Start index of the first position coordinate per joint (note the last value is an additional sentinel entry to allow for querying the q dimensionality of joint i via ``joint_q_start[i+1] - joint_q_start[i]``), shape [joint_count + 1], int
+        joint_qd_start (array): Start index of the first velocity coordinate per joint (note the last value is an additional sentinel entry to allow for querying the qd dimensionality of joint i via ``joint_qd_start[i+1] - joint_qd_start[i]``), shape [joint_count + 1], int
         articulation_start (array): Articulation start index, shape [articulation_count], int
         joint_name (list): Joint names, shape [joint_count], str
         joint_attach_ke (float): Joint attachment force stiffness (used by :class:`SemiImplicitIntegrator`)
@@ -1442,12 +1442,14 @@ class ModelBuilder:
             self.shape_collision_filter_pairs.add((i + shape_count, j + shape_count))
         for group, shapes in builder.shape_collision_group_map.items():
             if separate_collision_group:
-                group = self.last_collision_group + 1
+                extend_group = self.last_collision_group + 1
             else:
-                group = group + self.last_collision_group if group > -1 else -1
-            if group not in self.shape_collision_group_map:
-                self.shape_collision_group_map[group] = []
-            self.shape_collision_group_map[group].extend([s + shape_count for s in shapes])
+                extend_group = group + self.last_collision_group if group > -1 else -1
+
+            if extend_group not in self.shape_collision_group_map:
+                self.shape_collision_group_map[extend_group] = []
+
+            self.shape_collision_group_map[extend_group].extend([s + shape_count for s in shapes])
 
         # update last collision group counter
         if separate_collision_group:
@@ -2616,11 +2618,12 @@ class ModelBuilder:
             joint_remap[joint["original_id"]] = i
         # update articulation_start
         for i, old_i in enumerate(self.articulation_start):
-            while old_i not in joint_remap:
-                old_i += 1
-                if old_i >= self.joint_count:
+            start_i = old_i
+            while start_i not in joint_remap:
+                start_i += 1
+                if start_i >= self.joint_count:
                     break
-            self.articulation_start[i] = joint_remap.get(old_i, old_i)
+            self.articulation_start[i] = joint_remap.get(start_i, start_i)
         # remove empty articulation starts, i.e. where the start and end are the same
         self.articulation_start = list(set(self.articulation_start))
 
@@ -4269,8 +4272,7 @@ class ModelBuilder:
         pos = wp.vec3(pos[0], pos[1], pos[2])
         # add particles
         for v in vertices:
-            v = wp.vec3(v[0], v[1], v[2])
-            p = wp.quat_rotate(rot, v * scale) + pos
+            p = wp.quat_rotate(rot, wp.vec3(v[0], v[1], v[2]) * scale) + pos
 
             self.add_particle(p, vel, 0.0)
 
@@ -4402,16 +4404,18 @@ class ModelBuilder:
             balance_colors: Whether to apply the color balancing algorithm to balance the size of each color
             target_max_min_color_ratio: the color balancing algorithm will stop when the ratio between the largest color and
                 the smallest color reaches this value
-            algorithm: Value should an enum type of ColoringAlgorithm, otherwise it will raise an error. ColoringAlgorithm.mcs means using the MCS coloring algorithm,
+            algorithm: Value should be an enum type of ColoringAlgorithm, otherwise it will raise an error. ColoringAlgorithm.mcs means using the MCS coloring algorithm,
                 while ColoringAlgorithm.ordered_greedy means using the degree-ordered greedy algorithm. The MCS algorithm typically generates 30% to 50% fewer colors
                 compared to the ordered greedy algorithm, while maintaining the same linear complexity. Although MCS has a constant overhead that makes it about twice
                 as slow as the greedy algorithm, it produces significantly better coloring results. We recommend using MCS, especially if coloring is only part of the
-                preprocessing stage.e.
+                preprocessing.
 
         Note:
 
             References to the coloring algorithm:
+
             MCS: Pereira, F. M. Q., & Palsberg, J. (2005, November). Register allocation via coloring of chordal graphs. In Asian Symposium on Programming Languages and Systems (pp. 315-329). Berlin, Heidelberg: Springer Berlin Heidelberg.
+
             Ordered Greedy: Ton-That, Q. M., Kry, P. G., & Andrews, S. (2023). Parallel block Neo-Hookean XPBD using graph clustering. Computers & Graphics, 110, 1-10.
 
         """

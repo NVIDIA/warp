@@ -31,66 +31,14 @@ class TestData:
 
 TEST_DATA = {
     wp.float32: (
-        TestData(
-            a=1.0,
-            b=5.0,
-            t=0.75,
-            expected=4.0,
-            expected_adj_a=0.25,
-            expected_adj_b=0.75,
-            expected_adj_t=4.0,
-        ),
-        TestData(
-            a=-2.0,
-            b=5.0,
-            t=0.25,
-            expected=-0.25,
-            expected_adj_a=0.75,
-            expected_adj_b=0.25,
-            expected_adj_t=7.0,
-        ),
-        TestData(
-            a=1.23,
-            b=2.34,
-            t=0.5,
-            expected=1.785,
-            expected_adj_a=0.5,
-            expected_adj_b=0.5,
-            expected_adj_t=1.11,
-        ),
+        TestData(a=1.0, b=5.0, t=0.75, expected=4.0, expected_adj_a=0.25, expected_adj_b=0.75, expected_adj_t=4.0),
+        TestData(a=-2.0, b=5.0, t=0.25, expected=-0.25, expected_adj_a=0.75, expected_adj_b=0.25, expected_adj_t=7.0),
+        TestData(a=1.23, b=2.34, t=0.5, expected=1.785, expected_adj_a=0.5, expected_adj_b=0.5, expected_adj_t=1.11),
     ),
-    wp.vec2: (
-        TestData(
-            a=[1, 2],
-            b=[3, 4],
-            t=0.5,
-            expected=[2, 3],
-        ),
-    ),
-    wp.vec3: (
-        TestData(
-            a=[1, 2, 3],
-            b=[3, 4, 5],
-            t=0.5,
-            expected=[2, 3, 4],
-        ),
-    ),
-    wp.vec4: (
-        TestData(
-            a=[1, 2, 3, 4],
-            b=[3, 4, 5, 6],
-            t=0.5,
-            expected=[2, 3, 4, 5],
-        ),
-    ),
-    wp.mat22: (
-        TestData(
-            a=[[1, 2], [2, 1]],
-            b=[[3, 4], [4, 3]],
-            t=0.5,
-            expected=[[2, 3], [3, 2]],
-        ),
-    ),
+    wp.vec2: (TestData(a=[1, 2], b=[3, 4], t=0.5, expected=[2, 3]),),
+    wp.vec3: (TestData(a=[1, 2, 3], b=[3, 4, 5], t=0.5, expected=[2, 3, 4]),),
+    wp.vec4: (TestData(a=[1, 2, 3, 4], b=[3, 4, 5, 6], t=0.5, expected=[2, 3, 4, 5]),),
+    wp.mat22: (TestData(a=[[1, 2], [2, 1]], b=[[3, 4], [4, 3]], t=0.5, expected=[[2, 3], [3, 2]]),),
     wp.mat33: (
         TestData(
             a=[[1, 2, 3], [3, 1, 2], [2, 3, 1]],
@@ -107,30 +55,9 @@ TEST_DATA = {
             expected=[[2, 3, 4, 5], [5, 2, 3, 4], [4, 5, 2, 3], [3, 4, 5, 2]],
         ),
     ),
-    wp.quat: (
-        TestData(
-            a=[1, 2, 3, 4],
-            b=[3, 4, 5, 6],
-            t=0.5,
-            expected=[2, 3, 4, 5],
-        ),
-    ),
-    wp.transform: (
-        TestData(
-            a=[1, 2, 3, 4, 5, 6, 7],
-            b=[3, 4, 5, 6, 7, 8, 9],
-            t=0.5,
-            expected=[2, 3, 4, 5, 6, 7, 8],
-        ),
-    ),
-    wp.spatial_vector: (
-        TestData(
-            a=[1, 2, 3, 4, 5, 6],
-            b=[3, 4, 5, 6, 7, 8],
-            t=0.5,
-            expected=[2, 3, 4, 5, 6, 7],
-        ),
-    ),
+    wp.quat: (TestData(a=[1, 2, 3, 4], b=[3, 4, 5, 6], t=0.5, expected=[2, 3, 4, 5]),),
+    wp.transform: (TestData(a=[1, 2, 3, 4, 5, 6, 7], b=[3, 4, 5, 6, 7, 8, 9], t=0.5, expected=[2, 3, 4, 5, 6, 7, 8]),),
+    wp.spatial_vector: (TestData(a=[1, 2, 3, 4, 5, 6], b=[3, 4, 5, 6, 7, 8], t=0.5, expected=[2, 3, 4, 5, 6, 7]),),
     wp.spatial_matrix: (
         TestData(
             a=[
@@ -175,12 +102,12 @@ def test_lerp(test, device):
 
         return fn
 
-    for data_type in TEST_DATA:
+    for data_type, test_data_set in TEST_DATA.items():
         kernel_fn = make_kernel_fn(data_type)
         kernel = wp.Kernel(func=kernel_fn, key=f"test_lerp_{data_type.__name__}_kernel")
 
         with test.subTest(data_type=data_type):
-            for test_data in TEST_DATA[data_type]:
+            for test_data in test_data_set:
                 a = wp.array([test_data.a], dtype=data_type, device=device, requires_grad=True)
                 b = wp.array([test_data.b], dtype=data_type, device=device, requires_grad=True)
                 t = wp.array([test_data.t], dtype=float, device=device, requires_grad=True)
@@ -188,8 +115,7 @@ def test_lerp(test, device):
                     [0] * wp.types.type_length(data_type), dtype=data_type, device=device, requires_grad=True
                 )
 
-                tape = wp.Tape()
-                with tape:
+                with wp.Tape() as tape:
                     wp.launch(kernel, dim=1, inputs=[a, b, t, out], device=device)
 
                 assert_np_equal(out.numpy(), np.array([test_data.expected]), tol=1e-6)

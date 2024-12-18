@@ -1,5 +1,5 @@
 Generics
-========.. currentmodule:: warp
+========
 
 .. currentmodule:: warp
 
