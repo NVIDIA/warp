@@ -187,6 +187,13 @@ struct FreeInfo
     bool is_async = false;
 };
 
+// Information used when deferring module unloading.
+struct ModuleInfo
+{
+    void* context = NULL;
+    void* module = NULL;
+};
+
 static std::unordered_map<CUfunction, std::string> g_kernel_names;
 
 // cached info for all devices, indexed by ordinal
@@ -214,6 +221,9 @@ static std::unordered_map<void*, GraphAllocInfo> g_graph_allocs;
 // Call free_deferred_allocs() to release.
 static std::vector<FreeInfo> g_deferred_free_list;
 
+// Modules that cannot be unloaded immediately get queued here.
+// Call unload_deferred_modules() to release.
+static std::vector<ModuleInfo> g_deferred_module_list;
 
 void cuda_set_context_restore_policy(bool always_restore)
 {
@@ -408,6 +418,31 @@ static int free_deferred_allocs(void* context = NULL)
     }
 
     return num_freed_allocs;
+}
+
+static int unload_deferred_modules(void* context = NULL)
+{
+    if (g_deferred_module_list.empty() || !g_captures.empty())
+        return 0;
+
+    int num_unloaded_modules = 0;
+    for (auto it = g_deferred_module_list.begin(); it != g_deferred_module_list.end(); /*noop*/)
+    {
+        // free the module if it matches the given context or if the context is unspecified
+        const ModuleInfo& module_info = *it;
+        if (module_info.context == context || !context)
+        {
+            cuda_unload_module(module_info.context, module_info.module);
+            ++num_unloaded_modules;
+            it = g_deferred_module_list.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    return num_unloaded_modules;
 }
 
 static void CUDART_CB on_graph_destroy(void* user_data)
@@ -1920,6 +1955,8 @@ void cuda_context_synchronize(void* context)
         check_cu(cuCtxSynchronize_f());
     }
 
+    unload_deferred_modules(context);
+
     // check_cuda(cudaDeviceGraphMemTrim(cuda_context_get_device_ordinal(context)));
 }
 
@@ -2542,7 +2579,10 @@ bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
 
     // process deferred free list if no more captures are ongoing
     if (g_captures.empty())
+    {
         free_deferred_allocs();
+        unload_deferred_modules();
+    }
 
     if (graph_ret)
         *graph_ret = graph_exec;
@@ -3104,9 +3144,20 @@ void* cuda_load_module(void* context, const char* path)
 
 void cuda_unload_module(void* context, void* module)
 {
-    ContextGuard guard(context);
-
-    check_cu(cuModuleUnload_f((CUmodule)module));
+    // ensure there are no graph captures in progress
+    if (g_captures.empty())
+    {
+        ContextGuard guard(context);
+        check_cu(cuModuleUnload_f((CUmodule)module));
+    }
+    else
+    {
+        // defer until graph capture completes
+        ModuleInfo module_info;
+        module_info.context = context ? context : get_current_context();
+        module_info.module = module;
+        g_deferred_module_list.push_back(module_info);
+    }
 }
 
 

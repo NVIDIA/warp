@@ -241,6 +241,32 @@ def test_graph_launch_after_module_reload(test, device):
         test.assertEqual(a.numpy()[0], 42)
 
 
+def test_module_unload_during_graph_capture(test, device):
+    @wp.kernel
+    def foo(a: wp.array(dtype=int)):
+        a[0] = 42
+
+    # preload module before graph capture
+    wp.load_module(device=device)
+
+    # load another module to test unloading during graph capture
+    other_module = wp.get_module("warp.tests.aux_test_module_unload")
+    other_module.load(device)
+
+    with wp.ScopedDevice(device):
+        a = wp.zeros(1, dtype=int)
+
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            wp.launch(foo, dim=1, inputs=[a])
+
+            # unloading a module during graph capture should be fine (deferred until capture completes)
+            other_module.unload()
+
+        wp.capture_launch(capture.graph)
+
+        test.assertEqual(a.numpy()[0], 42)
+
+
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 
@@ -257,6 +283,9 @@ add_function_test(TestReload, "test_reload_class", test_reload_class, devices=de
 add_function_test(TestReload, "test_reload_references", test_reload_references, devices=get_test_devices("basic"))
 add_function_test(
     TestReload, "test_graph_launch_after_module_reload", test_graph_launch_after_module_reload, devices=cuda_devices
+)
+add_function_test(
+    TestReload, "test_module_unload_during_graph_capture", test_module_unload_during_graph_capture, devices=cuda_devices
 )
 
 
