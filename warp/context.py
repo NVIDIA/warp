@@ -7,6 +7,7 @@
 
 import ast
 import ctypes
+import errno
 import functools
 import hashlib
 import inspect
@@ -17,6 +18,7 @@ import operator
 import os
 import platform
 import sys
+import time
 import types
 import typing
 import weakref
@@ -2131,12 +2133,34 @@ class Module:
                 # -----------------------------------------------------------
                 # update cache
 
-                try:
-                    # Copy process-specific build directory to a process-independent location
-                    os.rename(build_dir, module_dir)
-                except (OSError, FileExistsError):
-                    # another process likely updated the module dir first
-                    pass
+                def safe_rename(src, dst, attempts=5, delay=0.1):
+                    for i in range(attempts):
+                        try:
+                            os.rename(src, dst)
+                            return
+                        except FileExistsError:
+                            return
+                        except OSError as e:
+                            if e.errno == errno.ENOTEMPTY:
+                                # if directory exists we assume another process
+                                # got there first, in which case we will copy
+                                # our output to the directory manually in second step
+                                return
+                            else:
+                                # otherwise assume directory creation failed e.g.: access denied
+                                # on Windows we see occasional failures to rename directories due to
+                                # some process holding a lock on a file to be moved to workaround
+                                # this we make multiple attempts to rename with some delay
+                                if i < attempts - 1:
+                                    time.sleep(delay)
+                                else:
+                                    print(
+                                        f"Could not update Warp cache with module binaries, trying to rename {build_dir} to {module_dir}, error {e}"
+                                    )
+                                    raise e
+
+                # try to move process outputs to cache
+                safe_rename(build_dir, module_dir)
 
                 if os.path.exists(module_dir):
                     if not os.path.exists(binary_path):
