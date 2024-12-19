@@ -22,25 +22,42 @@ Inside kernels, tile operations are executed cooperatively across each block of 
 
 In the following example, we launch a grid of threads where each block is responsible for loading a row of data from a 2D array and computing its sum:
 
-.. code:: python
+.. testcode::
     
     TILE_SIZE = wp.constant(256)
     TILE_THREADS = 64
 
     @wp.kernel
-    def compute(a: array2d(dtype=float))
-        
+    def compute(a: wp.array2d(dtype=float), b: wp.array2d(dtype=float)):
+
         # obtain our block index
         i = wp.tid()
 
         # load a row from global memory
-        t = wp.tile_load(array[i], i, TILE_SIZE)
-        s = wp.tile_sum(t)
-        ...
+        t = wp.tile_load(a[i], 0, TILE_SIZE)
 
-    wp.launch_tiled(compute, dim=[a.shape[0]], inputs=[a], block_dim=TILE_THREADS)
+        # cooperatively compute the sum of the tile elements; s is a 1x1 tile
+        s = wp.tile_sum(t)
+
+        # store s in global memory
+        wp.tile_store(b[0], i, s)
+
+    N = 10
+
+    a_np = np.arange(N).reshape(-1, 1) * np.ones((1, 256), dtype=float)
+    a = wp.array(a_np, dtype=float)
+    b = wp.zeros((1,N), dtype=float)
+
+    wp.launch_tiled(compute, dim=[a.shape[0]], inputs=[a, b], block_dim=TILE_THREADS)
+
+    print(f"b = {b}")
+
+.. testoutput::
+
+    b = [[   0.  256.  512.  768. 1024. 1280. 1536. 1792. 2048. 2304.]]
     
 Here, we have used the new :func:`warp.launch_tiled` function which assigns ``TILE_THREADS`` threads to each of the elements in the launch grid. Each block of ``TILE_THREADS`` threads then loads an entire row of 256 values from the global memory array and computes its sum (cooperatively).
+Note that we loaded the row by writing ``t = wp.tile_load(a[i], 0, TILE_SIZE)`` but we could have used the equivalent statement ``t = wp.tile_load(a[0], i, TILE_SIZE)`` instead.
 
 
 Tile Properties
@@ -55,7 +72,7 @@ In Warp, tile objects are 2D arrays of data where the tile elements may be scala
     TILE_THREADS = 64
 
     @wp.kernel
-    def compute(a: array2d(dtype=float))
+    def compute(a: array2d(dtype=float)):
         
         # obtain our 2d block index
         i, j = wp.tid()
@@ -213,7 +230,7 @@ Traditionally, Warp kernels are primarily written in the SIMT programming model,
     TILE_THREADS = 64
 
     @wp.kernel
-    def compute()
+    def compute():
         i = wp.tid()
 
         # perform some per-thread computation
