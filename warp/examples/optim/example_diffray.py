@@ -166,24 +166,12 @@ def draw_kernel(
         j = mesh.indices[query.face * 3 + 1]
         k = mesh.indices[query.face * 3 + 2]
 
-        a = mesh.vertices[i]
-        b = mesh.vertices[j]
-        c = mesh.vertices[k]
-
-        p = wp.mesh_eval_position(mesh.id, query.face, query.u, query.v)
-
-        # barycentric coordinates
-        tri_area = wp.length(wp.cross(b - a, c - a))
-        w = wp.length(wp.cross(b - a, p - a)) / tri_area
-        v = wp.length(wp.cross(p - a, c - a)) / tri_area
-        u = 1.0 - w - v
-
         a_n = mesh.vertex_normals[i]
         b_n = mesh.vertex_normals[j]
         c_n = mesh.vertex_normals[k]
 
         # vertex normal interpolation
-        normal = u * a_n + v * b_n + w * c_n
+        normal = query.u * a_n + query.v * b_n + (1.0 - query.u - query.v) * c_n
 
         if mode == 0 or mode == 1:
             if mode == 0:  # grayscale
@@ -194,7 +182,7 @@ def draw_kernel(
                 tex_b = mesh.tex_coords[mesh.tex_indices[query.face * 3 + 1]]
                 tex_c = mesh.tex_coords[mesh.tex_indices[query.face * 3 + 2]]
 
-                tex = u * tex_a + v * tex_b + w * tex_c
+                tex = query.u * tex_a + query.v * tex_b + (1.0 - query.u - query.v) * tex_c
 
                 color = texture_interpolation(tex, texture)
 
