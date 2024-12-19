@@ -25,6 +25,7 @@
 - Fix for occasional failure to update .meta files into Warp kernel cache on Windows
 - Mark kernel arrays as written to when passed to `wp.atomic_add()` or `wp.atomic_sub()`
 - Fix the OpenGL renderer not being able to run without CUDA ([GH-344](https://github.com/NVIDIA/warp/issues/344)).
+- Fix errors during graph capture caused by module unloading ([GH-401](https://github.com/NVIDIA/warp/issues/401)).
 
 ## [1.5.0] - 2024-12-02
 
