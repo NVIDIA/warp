@@ -120,15 +120,17 @@ static inline int get_minor(int version)
     return (version % 1000) / 10;
 }
 
-static bool get_driver_entry_point(const char* name, void** pfn)
+// Get versioned driver entry point. The version argument should match the function pointer type.
+// For example, to initialize PFN_cuCtxCreate_v3020 use version 3020.
+static bool get_driver_entry_point(const char* name, int version, void** pfn)
 {
     if (!pfn_cuGetProcAddress || !name || !pfn)
         return false;
 
 #if CUDA_VERSION < 12000
-    CUresult r = pfn_cuGetProcAddress(name, pfn, WP_CUDA_DRIVER_VERSION, CU_GET_PROC_ADDRESS_DEFAULT);
+    CUresult r = pfn_cuGetProcAddress(name, pfn, version, CU_GET_PROC_ADDRESS_DEFAULT);
 #else
-    CUresult r = pfn_cuGetProcAddress(name, pfn, WP_CUDA_DRIVER_VERSION, CU_GET_PROC_ADDRESS_DEFAULT, NULL);
+    CUresult r = pfn_cuGetProcAddress(name, pfn, version, CU_GET_PROC_ADDRESS_DEFAULT, NULL);
 #endif
 
     if (r != CUDA_SUCCESS)
@@ -170,7 +172,8 @@ bool init_cuda_driver()
 
     // check the CUDA driver version and report an error if it's too low
     int driver_version = 0;
-    if (get_driver_entry_point("cuDriverGetVersion", &(void*&)pfn_cuDriverGetVersion) && check_cu(pfn_cuDriverGetVersion(&driver_version)))
+    if (get_driver_entry_point("cuDriverGetVersion", 2020, &(void*&)pfn_cuDriverGetVersion) &&
+        check_cu(pfn_cuDriverGetVersion(&driver_version)))
     {
         if (driver_version < WP_CUDA_DRIVER_VERSION)
         {
@@ -186,55 +189,55 @@ bool init_cuda_driver()
     }
 
     // initialize driver entry points
-    get_driver_entry_point("cuGetErrorString", &(void*&)pfn_cuGetErrorString);
-    get_driver_entry_point("cuGetErrorName", &(void*&)pfn_cuGetErrorName);
-    get_driver_entry_point("cuInit", &(void*&)pfn_cuInit);
-    get_driver_entry_point("cuDeviceGet", &(void*&)pfn_cuDeviceGet);
-    get_driver_entry_point("cuDeviceGetCount", &(void*&)pfn_cuDeviceGetCount);
-    get_driver_entry_point("cuDeviceGetName", &(void*&)pfn_cuDeviceGetName);
-    get_driver_entry_point("cuDeviceGetAttribute", &(void*&)pfn_cuDeviceGetAttribute);
-    get_driver_entry_point("cuDeviceGetUuid", &(void*&)pfn_cuDeviceGetUuid);
-    get_driver_entry_point("cuDevicePrimaryCtxRetain", &(void*&)pfn_cuDevicePrimaryCtxRetain);
-    get_driver_entry_point("cuDevicePrimaryCtxRelease", &(void*&)pfn_cuDevicePrimaryCtxRelease);
-    get_driver_entry_point("cuDeviceCanAccessPeer", &(void*&)pfn_cuDeviceCanAccessPeer);
-    get_driver_entry_point("cuMemGetInfo", &(void*&)pfn_cuMemGetInfo);
-    get_driver_entry_point("cuCtxSetCurrent", &(void*&)pfn_cuCtxSetCurrent);
-    get_driver_entry_point("cuCtxGetCurrent", &(void*&)pfn_cuCtxGetCurrent);
-    get_driver_entry_point("cuCtxPushCurrent", &(void*&)pfn_cuCtxPushCurrent);
-    get_driver_entry_point("cuCtxPopCurrent", &(void*&)pfn_cuCtxPopCurrent);
-    get_driver_entry_point("cuCtxSynchronize", &(void*&)pfn_cuCtxSynchronize);
-    get_driver_entry_point("cuCtxGetDevice", &(void*&)pfn_cuCtxGetDevice);
-    get_driver_entry_point("cuCtxCreate", &(void*&)pfn_cuCtxCreate);
-    get_driver_entry_point("cuCtxDestroy", &(void*&)pfn_cuCtxDestroy);
-    get_driver_entry_point("cuCtxEnablePeerAccess", &(void*&)pfn_cuCtxEnablePeerAccess);
-    get_driver_entry_point("cuCtxDisablePeerAccess", &(void*&)pfn_cuCtxDisablePeerAccess);
-    get_driver_entry_point("cuStreamCreate", &(void*&)pfn_cuStreamCreate);
-    get_driver_entry_point("cuStreamDestroy", &(void*&)pfn_cuStreamDestroy);
-    get_driver_entry_point("cuStreamSynchronize", &(void*&)pfn_cuStreamSynchronize);
-    get_driver_entry_point("cuStreamWaitEvent", &(void*&)pfn_cuStreamWaitEvent);
-    get_driver_entry_point("cuStreamGetCtx", &(void*&)pfn_cuStreamGetCtx);
-    get_driver_entry_point("cuStreamGetCaptureInfo", &(void*&)pfn_cuStreamGetCaptureInfo);
-    get_driver_entry_point("cuStreamUpdateCaptureDependencies", &(void*&)pfn_cuStreamUpdateCaptureDependencies);
-    get_driver_entry_point("cuStreamCreateWithPriority", &(void*&)pfn_cuStreamCreateWithPriority);
-    get_driver_entry_point("cuStreamGetPriority", &(void*&)pfn_cuStreamGetPriority);
-    get_driver_entry_point("cuEventCreate", &(void*&)pfn_cuEventCreate);
-    get_driver_entry_point("cuEventDestroy", &(void*&)pfn_cuEventDestroy);
-    get_driver_entry_point("cuEventRecord", &(void*&)pfn_cuEventRecord);
-    get_driver_entry_point("cuEventRecordWithFlags", &(void*&)pfn_cuEventRecordWithFlags);
-    get_driver_entry_point("cuEventSynchronize", &(void*&)pfn_cuEventSynchronize);
-    get_driver_entry_point("cuModuleLoadDataEx", &(void*&)pfn_cuModuleLoadDataEx);
-    get_driver_entry_point("cuModuleUnload", &(void*&)pfn_cuModuleUnload);
-    get_driver_entry_point("cuModuleGetFunction", &(void*&)pfn_cuModuleGetFunction);
-    get_driver_entry_point("cuLaunchKernel", &(void*&)pfn_cuLaunchKernel);
-    get_driver_entry_point("cuMemcpyPeerAsync", &(void*&)pfn_cuMemcpyPeerAsync);
-    get_driver_entry_point("cuPointerGetAttribute", &(void*&)pfn_cuPointerGetAttribute);
-    get_driver_entry_point("cuGraphicsMapResources", &(void*&)pfn_cuGraphicsMapResources);
-    get_driver_entry_point("cuGraphicsUnmapResources", &(void*&)pfn_cuGraphicsUnmapResources);
-    get_driver_entry_point("cuGraphicsResourceGetMappedPointer", &(void*&)pfn_cuGraphicsResourceGetMappedPointer);
-    get_driver_entry_point("cuGraphicsGLRegisterBuffer", &(void*&)pfn_cuGraphicsGLRegisterBuffer);
-    get_driver_entry_point("cuGraphicsUnregisterResource", &(void*&)pfn_cuGraphicsUnregisterResource);
-    get_driver_entry_point("cuModuleGetGlobal", &(void*&)pfn_cuModuleGetGlobal);
-    get_driver_entry_point("cuFuncSetAttribute", &(void*&)pfn_cuFuncSetAttribute);
+    get_driver_entry_point("cuGetErrorString", 6000, &(void*&)pfn_cuGetErrorString);
+    get_driver_entry_point("cuGetErrorName", 6000, &(void*&)pfn_cuGetErrorName);
+    get_driver_entry_point("cuInit", 2000, &(void*&)pfn_cuInit);
+    get_driver_entry_point("cuDeviceGet", 2000, &(void*&)pfn_cuDeviceGet);
+    get_driver_entry_point("cuDeviceGetCount", 2000, &(void*&)pfn_cuDeviceGetCount);
+    get_driver_entry_point("cuDeviceGetName", 2000, &(void*&)pfn_cuDeviceGetName);
+    get_driver_entry_point("cuDeviceGetAttribute", 2000, &(void*&)pfn_cuDeviceGetAttribute);
+    get_driver_entry_point("cuDeviceGetUuid", 110400, &(void*&)pfn_cuDeviceGetUuid);
+    get_driver_entry_point("cuDevicePrimaryCtxRetain", 7000, &(void*&)pfn_cuDevicePrimaryCtxRetain);
+    get_driver_entry_point("cuDevicePrimaryCtxRelease", 11000, &(void*&)pfn_cuDevicePrimaryCtxRelease);
+    get_driver_entry_point("cuDeviceCanAccessPeer", 4000, &(void*&)pfn_cuDeviceCanAccessPeer);
+    get_driver_entry_point("cuMemGetInfo", 3020, &(void*&)pfn_cuMemGetInfo);
+    get_driver_entry_point("cuCtxSetCurrent", 4000, &(void*&)pfn_cuCtxSetCurrent);
+    get_driver_entry_point("cuCtxGetCurrent", 4000, &(void*&)pfn_cuCtxGetCurrent);
+    get_driver_entry_point("cuCtxPushCurrent", 4000, &(void*&)pfn_cuCtxPushCurrent);
+    get_driver_entry_point("cuCtxPopCurrent", 4000, &(void*&)pfn_cuCtxPopCurrent);
+    get_driver_entry_point("cuCtxSynchronize", 2000, &(void*&)pfn_cuCtxSynchronize);
+    get_driver_entry_point("cuCtxGetDevice", 2000, &(void*&)pfn_cuCtxGetDevice);
+    get_driver_entry_point("cuCtxCreate", 3020, &(void*&)pfn_cuCtxCreate);
+    get_driver_entry_point("cuCtxDestroy", 4000, &(void*&)pfn_cuCtxDestroy);
+    get_driver_entry_point("cuCtxEnablePeerAccess", 4000, &(void*&)pfn_cuCtxEnablePeerAccess);
+    get_driver_entry_point("cuCtxDisablePeerAccess", 4000, &(void*&)pfn_cuCtxDisablePeerAccess);
+    get_driver_entry_point("cuStreamCreate", 2000, &(void*&)pfn_cuStreamCreate);
+    get_driver_entry_point("cuStreamDestroy", 4000, &(void*&)pfn_cuStreamDestroy);
+    get_driver_entry_point("cuStreamSynchronize", 2000, &(void*&)pfn_cuStreamSynchronize);
+    get_driver_entry_point("cuStreamWaitEvent", 3020, &(void*&)pfn_cuStreamWaitEvent);
+    get_driver_entry_point("cuStreamGetCtx", 9020, &(void*&)pfn_cuStreamGetCtx);
+    get_driver_entry_point("cuStreamGetCaptureInfo", 11030, &(void*&)pfn_cuStreamGetCaptureInfo);
+    get_driver_entry_point("cuStreamUpdateCaptureDependencies", 11030, &(void*&)pfn_cuStreamUpdateCaptureDependencies);
+    get_driver_entry_point("cuStreamCreateWithPriority", 5050, &(void*&)pfn_cuStreamCreateWithPriority);
+    get_driver_entry_point("cuStreamGetPriority", 5050, &(void*&)pfn_cuStreamGetPriority);
+    get_driver_entry_point("cuEventCreate", 2000, &(void*&)pfn_cuEventCreate);
+    get_driver_entry_point("cuEventDestroy", 4000, &(void*&)pfn_cuEventDestroy);
+    get_driver_entry_point("cuEventRecord", 2000, &(void*&)pfn_cuEventRecord);
+    get_driver_entry_point("cuEventRecordWithFlags", 11010, &(void*&)pfn_cuEventRecordWithFlags);
+    get_driver_entry_point("cuEventSynchronize", 2000, &(void*&)pfn_cuEventSynchronize);
+    get_driver_entry_point("cuModuleLoadDataEx", 2010, &(void*&)pfn_cuModuleLoadDataEx);
+    get_driver_entry_point("cuModuleUnload", 2000, &(void*&)pfn_cuModuleUnload);
+    get_driver_entry_point("cuModuleGetFunction", 2000, &(void*&)pfn_cuModuleGetFunction);
+    get_driver_entry_point("cuLaunchKernel", 4000, &(void*&)pfn_cuLaunchKernel);
+    get_driver_entry_point("cuMemcpyPeerAsync", 4000, &(void*&)pfn_cuMemcpyPeerAsync);
+    get_driver_entry_point("cuPointerGetAttribute", 4000, &(void*&)pfn_cuPointerGetAttribute);
+    get_driver_entry_point("cuGraphicsMapResources", 3000, &(void*&)pfn_cuGraphicsMapResources);
+    get_driver_entry_point("cuGraphicsUnmapResources", 3000, &(void*&)pfn_cuGraphicsUnmapResources);
+    get_driver_entry_point("cuGraphicsResourceGetMappedPointer", 3020, &(void*&)pfn_cuGraphicsResourceGetMappedPointer);
+    get_driver_entry_point("cuGraphicsGLRegisterBuffer", 3000, &(void*&)pfn_cuGraphicsGLRegisterBuffer);
+    get_driver_entry_point("cuGraphicsUnregisterResource", 3000, &(void*&)pfn_cuGraphicsUnregisterResource);
+    get_driver_entry_point("cuModuleGetGlobal", 3020, &(void*&)pfn_cuModuleGetGlobal);
+    get_driver_entry_point("cuFuncSetAttribute", 9000, &(void*&)pfn_cuFuncSetAttribute);
 
     if (pfn_cuInit)
         cuda_driver_initialized = check_cu(pfn_cuInit(0));
