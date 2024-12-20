@@ -2733,7 +2733,13 @@ def array4d(*args, **kwargs):
 
 def from_ptr(ptr, length, dtype=None, shape=None, device=None):
     warp.utils.warn(
-        "This version of wp.from_ptr() is deprecated. OmniGraph applications should use from_omni_graph_ptr() instead. In the future, wp.from_ptr() will work only with regular pointers.",
+        """This version of wp.from_ptr() is deprecated. OmniGraph
+    applications should use from_omni_graph_ptr() instead. To create an array
+    from a C pointer, use the array constructor and pass the ptr argument as a
+    uint64 value representing the start address in memory where the existing
+    array resides. For example, if using ctypes, pass
+    ptr=ctypes.cast(pointer, ctypes.POINTER(ctypes.c_size_t)).contents.value.
+    Be sure to also specify the dtype and shape parameters.""",
         category=DeprecationWarning,
     )
 
