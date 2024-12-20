@@ -975,7 +975,7 @@ def tile_load(a: Array[Any], i: int32, j: int32, m: int32, n: int32, storage: st
 
 
 @over
-def tile_store(a: Array[Any], i: int32, t: Any):
+def tile_store(a: Array[Any], i: int32, t: Tile):
     """Stores a 1D tile to a global memory array.
 
     This method will cooperatively store a tile to global memory using all threads in the block.
@@ -988,7 +988,7 @@ def tile_store(a: Array[Any], i: int32, t: Any):
 
 
 @over
-def tile_store(a: Array[Any], i: int32, j: int32, t: Any):
+def tile_store(a: Array[Any], i: int32, j: int32, t: Tile):
     """Stores a tile to a global memory array.
 
     This method will cooperatively store a tile to global memory using all threads in the block.
@@ -1002,7 +1002,7 @@ def tile_store(a: Array[Any], i: int32, j: int32, t: Any):
 
 
 @over
-def tile_atomic_add(a: Array[Any], x: int32, y: int32, t: Any) -> Tile:
+def tile_atomic_add(a: Array[Any], x: int32, y: int32, t: Tile) -> Tile:
     """Atomically add a tile to the array `a`, each element will be updated atomically.
 
     :param a: Array in global memory, should have the same ``dtype`` as the input tile
@@ -1077,7 +1077,7 @@ def tile(x: Any) -> Tile:
 
 
 @over
-def untile(a: Any) -> Scalar:
+def untile(a: Tile) -> Scalar:
     """Convert a Tile back to per-thread values.
 
     This function converts a block-wide tile back to per-thread values.
@@ -1100,7 +1100,7 @@ def untile(a: Any) -> Scalar:
             t = wp.tile(i) * 2
 
             # convert back to per-thread values
-            s = wp.untile()
+            s = wp.untile(t)
 
             print(s)
 
@@ -1154,7 +1154,7 @@ def tile_transpose(a: Tile) -> Tile:
 def tile_broadcast(a: Tile, m: int32, n: int32) -> Tile:
     """Broadcast a tile.
 
-    This method will attempt to broadcast the input tile ``a`` to the destination shape (m, n), broadcasting follows NumPy broadcast rules.
+    This function will attempt to broadcast the input tile ``a`` to the destination shape (m, n), broadcasting follows NumPy broadcast rules.
 
     :param a: Tile to broadcast
     :returns: Tile with broadcast ``shape=(m, n)``
@@ -1178,10 +1178,10 @@ def tile_sum(a: Tile) -> Tile:
             t = wp.tile_ones(dtype=float, m=16, n=16)
             s = wp.tile_sum(t)
 
-            print(t)
+            print(s)
 
 
-        wp.launch(compute, dim=[64], inputs=[])
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
 
     Prints:
 
@@ -1207,19 +1207,19 @@ def tile_min(a: Tile) -> Tile:
 
         @wp.kernel
         def compute():
-            t = wp.tile_arange(start=--10, stop=10, dtype=float)
+            t = wp.tile_arange(64, 128)
             s = wp.tile_min(t)
 
-            print(t)
+            print(s)
 
 
-        wp.launch(compute, dim=[64], inputs=[])
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
 
     Prints:
 
     .. code-block:: text
 
-        tile(m=1, n=1, storage=register) = [[-10]]
+        tile(m=1, n=1, storage=register) = [[64 ]]
 
 
     """
@@ -1239,19 +1239,19 @@ def tile_max(a: Tile) -> Tile:
 
         @wp.kernel
         def compute():
-            t = wp.tile_arange(start=--10, stop=10, dtype=float)
-            s = wp.tile_min(t)
+            t = wp.tile_arange(64, 128)
+            s = wp.tile_max(t)
 
-            print(t)
+            print(s)
 
 
-        wp.launch(compute, dim=[64], inputs=[])
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
 
     Prints:
 
     .. code-block:: text
 
-        tile(m=1, n=1, storage=register) = [[10]]
+        tile(m=1, n=1, storage=register) = [[127 ]]
 
 
     """
@@ -1259,7 +1259,7 @@ def tile_max(a: Tile) -> Tile:
 
 
 @over
-def tile_reduce(op: Callable, a: Any) -> Tile:
+def tile_reduce(op: Callable, a: Tile) -> Tile:
     """Apply a custom reduction operator across the tile.
 
     This function cooperatively performs a reduction using the provided operator across the tile.
@@ -1280,7 +1280,7 @@ def tile_reduce(op: Callable, a: Any) -> Tile:
             print(s)
 
 
-        wp.launch(factorial, dim=[16], inputs=[], block_dim=16)
+        wp.launch_tiled(factorial, dim=[1], inputs=[], block_dim=16)
 
     Prints:
 
@@ -1293,7 +1293,7 @@ def tile_reduce(op: Callable, a: Any) -> Tile:
 
 
 @over
-def tile_map(op: Callable, a: Any) -> Tile:
+def tile_map(op: Callable, a: Tile) -> Tile:
     """Apply a unary function onto the tile.
 
     This function cooperatively applies a unary function to each element of the tile using all threads in the block.
@@ -1314,7 +1314,7 @@ def tile_map(op: Callable, a: Any) -> Tile:
             print(s)
 
 
-        wp.launch(compute, dim=[16], inputs=[])
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
 
     Prints:
 
@@ -1327,7 +1327,7 @@ def tile_map(op: Callable, a: Any) -> Tile:
 
 
 @over
-def tile_map(op: Callable, a: Any, b: Any) -> Tile:
+def tile_map(op: Callable, a: Tile, b: Tile) -> Tile:
     """Apply a binary function onto the tile.
 
     This function cooperatively applies a binary function to each element of the tiles using all threads in the block.
@@ -1352,7 +1352,7 @@ def tile_map(op: Callable, a: Any, b: Any) -> Tile:
             print(s)
 
 
-        wp.launch(compute, dim=[16], inputs=[])
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
 
     Prints:
 

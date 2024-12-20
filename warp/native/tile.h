@@ -1125,8 +1125,6 @@ inline CUDA_CALLABLE auto untile(Tile& tile)
     }
 }
 
-
-
 template <typename Tile, typename Value>
 inline CUDA_CALLABLE void adj_untile(Tile& tile, Tile& adj_tile, Value& adj_ret)
 {    
@@ -1156,7 +1154,7 @@ inline CUDA_CALLABLE auto tile_zeros()
     return T(0);
 }
 
-// zero initialized tile
+// one-initialized tile
 template <typename T, int M, int N>
 inline CUDA_CALLABLE auto tile_ones()
 {
@@ -1164,7 +1162,7 @@ inline CUDA_CALLABLE auto tile_ones()
     return T(1);
 }
 
-// zero initialized tile
+// tile with evenly spaced values
 template <typename T, int M, int N>
 inline CUDA_CALLABLE auto tile_arange(T start, T stop, T step)
 {
@@ -1220,7 +1218,6 @@ inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, Tile& src)
     src.copy_to_global(dest, x, y);
 }
 
-// entry point for store
 template <typename T, typename Tile>
 inline CUDA_CALLABLE auto tile_atomic_add(array_t<T>& dest, int x, int y, Tile& src)
 {
