@@ -876,7 +876,7 @@ Tile Primitives
     :returns: A tile with ``shape=(m,n)`` and dtype the same as the source array
 
 
-.. py:function:: tile_store(a: Array[Any], i: int32, t: Any) -> None
+.. py:function:: tile_store(a: Array[Any], i: int32, t: Tile) -> None
 
     Stores a 1D tile to a global memory array.
 
@@ -887,7 +887,7 @@ Tile Primitives
     :param t: The source tile to store data from, must have the same dtype as the destination array
 
 
-.. py:function:: tile_store(a: Array[Any], i: int32, j: int32, t: Any) -> None
+.. py:function:: tile_store(a: Array[Any], i: int32, j: int32, t: Tile) -> None
     :noindex:
     :nocontentsentry:
 
@@ -901,7 +901,7 @@ Tile Primitives
     :param t: The source tile to store data from, must have the same dtype as the destination array
 
 
-.. py:function:: tile_atomic_add(a: Array[Any], x: int32, y: int32, t: Any) -> Tile
+.. py:function:: tile_atomic_add(a: Array[Any], x: int32, y: int32, t: Tile) -> Tile
 
     Atomically add a tile to the array `a`, each element will be updated atomically.
 
@@ -967,7 +967,7 @@ Tile Primitives
     
 
 
-.. py:function:: untile(a: Any) -> Scalar
+.. py:function:: untile(a: Tile) -> Scalar
 
     Convert a Tile back to per-thread values.
 
@@ -991,7 +991,7 @@ Tile Primitives
             t = wp.tile(i)*2
 
             # convert back to per-thread values
-            s = wp.untile()
+            s = wp.untile(t)
 
             print(s)
 
@@ -1038,7 +1038,7 @@ Tile Primitives
 
     Broadcast a tile.
 
-    This method will attempt to broadcast the input tile ``a`` to the destination shape (m, n), broadcasting follows NumPy broadcast rules.
+    This function will attempt to broadcast the input tile ``a`` to the destination shape (m, n), broadcasting follows NumPy broadcast rules.
 
     :param a: Tile to broadcast
     :returns: Tile with broadcast ``shape=(m, n)``
@@ -1061,9 +1061,9 @@ Tile Primitives
             t = wp.tile_ones(dtype=float, m=16, n=16)
             s = wp.tile_sum(t)
 
-            print(t)
+            print(s)
 
-        wp.launch(compute, dim=[64], inputs=[])
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
 
     Prints:
 
@@ -1088,18 +1088,19 @@ Tile Primitives
         @wp.kernel
         def compute():
 
-            t = wp.tile_arange(start=--10, stop=10, dtype=float)
+            t = wp.tile_arange(64, 128)
             s = wp.tile_min(t)
 
-            print(t)
+            print(s)
 
-        wp.launch(compute, dim=[64], inputs=[])
+
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
 
     Prints:
 
     .. code-block:: text
 
-        tile(m=1, n=1, storage=register) = [[-10]]
+        tile(m=1, n=1, storage=register) = [[64 ]]
 
     
 
@@ -1118,23 +1119,23 @@ Tile Primitives
         @wp.kernel
         def compute():
 
-            t = wp.tile_arange(start=--10, stop=10, dtype=float)
-            s = wp.tile_min(t)
+            t = wp.tile_arange(64, 128)
+            s = wp.tile_max(t)
 
-            print(t)
+            print(s)
 
-        wp.launch(compute, dim=[64], inputs=[])
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
 
     Prints:
 
     .. code-block:: text
 
-        tile(m=1, n=1, storage=register) = [[10]]
+        tile(m=1, n=1, storage=register) = [[127 ]]
 
     
 
 
-.. py:function:: tile_reduce(op: Callable, a: Any) -> Tile
+.. py:function:: tile_reduce(op: Callable, a: Tile) -> Tile
 
     Apply a custom reduction operator across the tile.
 
@@ -1156,7 +1157,7 @@ Tile Primitives
 
             print(s)
 
-        wp.launch(factorial, dim=[16], inputs=[], block_dim=16)
+        wp.launch_tiled(factorial, dim=[1], inputs=[], block_dim=16)
 
     Prints:
 
@@ -1166,7 +1167,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_map(op: Callable, a: Any) -> Tile
+.. py:function:: tile_map(op: Callable, a: Tile) -> Tile
 
     Apply a unary function onto the tile.
 
@@ -1188,7 +1189,7 @@ Tile Primitives
 
             print(s)
 
-        wp.launch(compute, dim=[16], inputs=[])
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
 
     Prints:
 
@@ -1198,7 +1199,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_map(op: Callable, a: Any, b: Any) -> Tile
+.. py:function:: tile_map(op: Callable, a: Tile, b: Tile) -> Tile
     :noindex:
     :nocontentsentry:
 
@@ -1226,7 +1227,7 @@ Tile Primitives
 
             print(s)
 
-        wp.launch(compute, dim=[16], inputs=[])
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
 
     Prints:
 
