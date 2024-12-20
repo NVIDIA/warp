@@ -2766,6 +2766,33 @@ def test_indexing_types(test, device):
     )
 
 
+def test_alloc_strides(test, device):
+    def test_transposed(shape, dtype):
+        # allocate without specifying strides
+        a1 = wp.zeros(shape, dtype=dtype)
+
+        # allocate with contiguous strides
+        strides = wp.types.strides_from_shape(shape, dtype)
+        a2 = wp.zeros(shape, dtype=dtype, strides=strides)
+
+        # allocate with transposed (reversed) shape/strides
+        rshape = shape[::-1]
+        rstrides = strides[::-1]
+        a3 = wp.zeros(rshape, dtype=dtype, strides=rstrides)
+
+        # ensure that correct capacity was allocated
+        assert a2.capacity == a1.capacity
+        assert a3.capacity == a1.capacity
+
+    with wp.ScopedDevice(device):
+        shapes = [(5, 5), (5, 3), (3, 5), (2, 3, 4), (4, 2, 3), (3, 2, 4)]
+        for shape in shapes:
+            with test.subTest(msg=f"shape={shape}"):
+                test_transposed(shape, wp.int8)
+                test_transposed(shape, wp.float32)
+                test_transposed(shape, wp.vec3)
+
+
 devices = get_test_devices()
 
 
@@ -2834,6 +2861,8 @@ add_function_test(TestArray, "test_kernel_array_from_ptr", test_kernel_array_fro
 add_function_test(TestArray, "test_array_from_int32_domain", test_array_from_int32_domain, devices=devices)
 add_function_test(TestArray, "test_array_from_int64_domain", test_array_from_int64_domain, devices=devices)
 add_function_test(TestArray, "test_indexing_types", test_indexing_types, devices=devices)
+
+add_function_test(TestArray, "test_alloc_strides", test_alloc_strides, devices=devices)
 
 try:
     import torch
