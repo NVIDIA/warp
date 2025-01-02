@@ -671,6 +671,15 @@ class ShapeInstancer:
         [3D point, 3D normal, UV texture coordinates]
     """
 
+    gl = None  # Class-level variable to hold the imported module
+
+    @classmethod
+    def initialize_gl(cls):
+        if cls.gl is None:  # Only import if not already imported
+            from pyglet import gl
+
+            cls.gl = gl
+
     def __new__(cls, *args, **kwargs):
         instance = super(ShapeInstancer, cls).__new__(cls)
         instance.instance_transform_gl_buffer = None
@@ -690,8 +699,10 @@ class ShapeInstancer:
         self.scalings = None
         self._instance_transform_cuda_buffer = None
 
+        ShapeInstancer.initialize_gl()
+
     def __del__(self):
-        from pyglet import gl
+        gl = ShapeInstancer.gl
 
         if self.instance_transform_gl_buffer is not None:
             try:
@@ -709,7 +720,7 @@ class ShapeInstancer:
                 pass
 
     def register_shape(self, vertices, indices, color1=(1.0, 1.0, 1.0), color2=(0.0, 0.0, 0.0)):
-        from pyglet import gl
+        gl = ShapeInstancer.gl
 
         if color1 is not None and color2 is None:
             color2 = np.clip(np.array(color1) + 0.25, 0.0, 1.0)
@@ -750,7 +761,7 @@ class ShapeInstancer:
         self.face_count = len(indices)
 
     def update_colors(self, colors1, colors2):
-        from pyglet import gl
+        gl = ShapeInstancer.gl
 
         if colors1 is None:
             colors1 = np.tile(self.color1, (self.num_instances, 1))
@@ -789,7 +800,7 @@ class ShapeInstancer:
         gl.glVertexAttribDivisor(8, 1)
 
     def allocate_instances(self, positions, rotations=None, colors1=None, colors2=None, scalings=None):
-        from pyglet import gl
+        gl = ShapeInstancer.gl
 
         gl.glBindVertexArray(self.vao)
 
@@ -864,7 +875,7 @@ class ShapeInstancer:
         gl.glBindVertexArray(0)
 
     def update_instances(self, transforms: wp.array = None, scalings: wp.array = None, colors1=None, colors2=None):
-        from pyglet import gl
+        gl = ShapeInstancer.gl
 
         if transforms is not None:
             if transforms.device.is_cuda:
@@ -905,7 +916,7 @@ class ShapeInstancer:
             self.update_colors(colors1, colors2)
 
     def render(self):
-        from pyglet import gl
+        gl = ShapeInstancer.gl
 
         gl.glUseProgram(self.shape_shader.id)
 
@@ -915,7 +926,7 @@ class ShapeInstancer:
 
     # scope exposes VBO transforms to be set directly by a warp kernel
     def __enter__(self):
-        from pyglet import gl
+        gl = ShapeInstancer.gl
 
         gl.glBindVertexArray(self.vao)
         self.vbo_transforms = self._instance_transform_cuda_buffer.map(dtype=wp.mat44, shape=(self.num_instances,))
@@ -940,6 +951,15 @@ class OpenGLRenderer:
 
     # number of segments to use for rendering spheres, capsules, cones and cylinders
     default_num_segments = 32
+
+    gl = None  # Class-level variable to hold the imported module
+
+    @classmethod
+    def initialize_gl(cls):
+        if cls.gl is None:  # Only import if not already imported
+            from pyglet import gl
+
+            cls.gl = gl
 
     def __init__(
         self,
@@ -1023,9 +1043,11 @@ class OpenGLRenderer:
             # disable error checking for performance
             pyglet.options["debug_gl"] = False
 
-            from pyglet import gl
             from pyglet.graphics.shader import Shader, ShaderProgram
             from pyglet.math import Vec3 as PyVec3
+
+            OpenGLRenderer.initialize_gl()
+            gl = OpenGLRenderer.gl
         except ImportError as e:
             raise Exception("OpenGLRenderer requires pyglet (version >= 2.0) to be installed.") from e
 
@@ -1411,7 +1433,7 @@ class OpenGLRenderer:
         return self.app.event_loop.has_exit
 
     def clear(self):
-        from pyglet import gl
+        gl = OpenGLRenderer.gl
 
         if not self.headless:
             self.app.event_loop.dispatch_event("on_exit")
@@ -1605,7 +1627,7 @@ class OpenGLRenderer:
         self._tile_viewports[tile_id] = (x, y, w, h)
 
     def _setup_framebuffer(self):
-        from pyglet import gl
+        gl = OpenGLRenderer.gl
 
         if self._frame_texture is None:
             self._frame_texture = gl.GLuint()
@@ -1773,7 +1795,7 @@ class OpenGLRenderer:
         return np.array((scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, 1), dtype=np.float32)
 
     def update_model_matrix(self, model_matrix: Optional[Mat44] = None):
-        from pyglet import gl
+        gl = OpenGLRenderer.gl
 
         if model_matrix is None:
             self._model_matrix = self.compute_model_matrix(self._camera_axis, self._scaling)
@@ -1868,7 +1890,7 @@ class OpenGLRenderer:
                 self._draw()
 
     def _draw(self):
-        from pyglet import gl
+        gl = OpenGLRenderer.gl
 
         if not self.headless:
             # catch key hold events
@@ -1967,7 +1989,7 @@ Instances: {len(self._instances)}"""
             cb()
 
     def _draw_grid(self, is_tiled=False):
-        from pyglet import gl
+        gl = OpenGLRenderer.gl
 
         if not is_tiled:
             gl.glUseProgram(self._grid_shader.id)
@@ -1980,7 +2002,7 @@ Instances: {len(self._instances)}"""
         gl.glBindVertexArray(0)
 
     def _draw_sky(self, is_tiled=False):
-        from pyglet import gl
+        gl = OpenGLRenderer.gl
 
         if not is_tiled:
             gl.glUseProgram(self._sky_shader.id)
@@ -1994,7 +2016,7 @@ Instances: {len(self._instances)}"""
         gl.glBindVertexArray(0)
 
     def _render_scene(self):
-        from pyglet import gl
+        gl = OpenGLRenderer.gl
 
         start_instance_idx = 0
 
@@ -2017,7 +2039,7 @@ Instances: {len(self._instances)}"""
         gl.glBindVertexArray(0)
 
     def _render_scene_tiled(self):
-        from pyglet import gl
+        gl = OpenGLRenderer.gl
 
         for i, viewport in enumerate(self._tile_viewports):
             projection_matrix_ptr = arr_pointer(self._tile_projection_matrices[i])
@@ -2162,7 +2184,7 @@ Instances: {len(self._instances)}"""
         self._setup_framebuffer()
 
     def register_shape(self, geo_hash, vertices, indices, color1=None, color2=None):
-        from pyglet import gl
+        gl = OpenGLRenderer.gl
 
         shape = len(self._shapes)
         if color1 is None:
@@ -2211,7 +2233,7 @@ Instances: {len(self._instances)}"""
         return shape
 
     def deregister_shape(self, shape):
-        from pyglet import gl
+        gl = OpenGLRenderer.gl
 
         if shape not in self._shape_gl_buffers:
             return
@@ -2270,7 +2292,7 @@ Instances: {len(self._instances)}"""
         del self._instances[name]
 
     def update_instance_colors(self):
-        from pyglet import gl
+        gl = OpenGLRenderer.gl
 
         colors1, colors2 = [], []
         all_instances = list(self._instances.values())
@@ -2291,7 +2313,7 @@ Instances: {len(self._instances)}"""
         gl.glBufferData(gl.GL_ARRAY_BUFFER, colors2.nbytes, colors2.ctypes.data, gl.GL_STATIC_DRAW)
 
     def allocate_shape_instances(self):
-        from pyglet import gl
+        gl = OpenGLRenderer.gl
 
         self._add_shape_instances = False
         self._wp_instance_transforms = wp.array(
@@ -2393,7 +2415,7 @@ Instances: {len(self._instances)}"""
             color2: The second color of the checker pattern
             visible: Whether the shape is visible
         """
-        from pyglet import gl
+        gl = OpenGLRenderer.gl
 
         if name in self._instances:
             i, body, shape, tf, scale, old_color1, old_color2, v = self._instances[name]
@@ -2504,7 +2526,7 @@ Instances: {len(self._instances)}"""
         Returns:
             bool: Whether the pixels were successfully read.
         """
-        from pyglet import gl
+        gl = OpenGLRenderer.gl
 
         channels = 3 if mode == "rgb" else 1
 

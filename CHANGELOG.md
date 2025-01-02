@@ -28,6 +28,8 @@
 - Fix errors during graph capture caused by module unloading ([GH-401](https://github.com/NVIDIA/warp/issues/401)).
 - Fix incorrect CUDA driver function versions ([GH-402](https://github.com/NVIDIA/warp/issues/402)).
 - Fix allocating arrays with strides ([GH-404](https://github.com/NVIDIA/warp/issues/404)).
+- Fix `ImportError` exception being thrown during `OpenGLRenderer` interpreter shutdown on Windows
+  ([GH-412](https://github.com/NVIDIA/warp/issues/412)).
 
 ## [1.5.0] - 2024-12-02
 
