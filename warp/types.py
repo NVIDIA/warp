@@ -1971,7 +1971,21 @@ class array(Array):
         else:
             strides = tuple(strides)
             is_contiguous = strides == contiguous_strides
-            capacity = shape[0] * strides[0]
+
+            # To calculate the required capacity, find the dimension with largest stride.
+            # Normally it is the first one, but it could be different (e.g., transposed arrays).
+            max_stride = strides[0]
+            max_dim = 0
+            for i in range(1, ndim):
+                if strides[i] > max_stride:
+                    max_stride = strides[i]
+                    max_dim = i
+
+            if max_stride > 0:
+                capacity = shape[max_dim] * strides[max_dim]
+            else:
+                # single element storage with zero strides
+                capacity = dtype_size
 
         allocator = device.get_allocator(pinned=pinned)
         if capacity > 0:

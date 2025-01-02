@@ -27,6 +27,7 @@
 - Fix the OpenGL renderer not being able to run without CUDA ([GH-344](https://github.com/NVIDIA/warp/issues/344)).
 - Fix errors during graph capture caused by module unloading ([GH-401](https://github.com/NVIDIA/warp/issues/401)).
 - Fix incorrect CUDA driver function versions ([GH-402](https://github.com/NVIDIA/warp/issues/402)).
+- Fix allocating arrays with strides ([GH-404](https://github.com/NVIDIA/warp/issues/404)).
 
 ## [1.5.0] - 2024-12-02
 
