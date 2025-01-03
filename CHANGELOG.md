@@ -6,11 +6,23 @@
 
 - Support `assert` statements in kernels ([docs](https://nvidia.github.io/warp/debugging.html#assertions)).
   Assertions can only be triggered in `"debug"` mode ([GH-366](https://github.com/NVIDIA/warp/issues/336)).
+
+### Changed
+
+### Fixed
+
+- Fix errors during graph capture caused by module unloading ([GH-401](https://github.com/NVIDIA/warp/issues/401)).
+- Fix allocating arrays with strides ([GH-404](https://github.com/NVIDIA/warp/issues/404)).
+- Fix `ImportError` exception being thrown during `OpenGLRenderer` interpreter shutdown on Windows
+  ([GH-412](https://github.com/NVIDIA/warp/issues/412)).
+
+## [1.5.1] - 2025-01-02
+
+### Added
+
 - Add PyTorch basics and custom operators notebooks to the `notebooks` directory.
 - Update PyTorch interop docs to include section on custom operators
   ([docs](https://nvidia.github.io/warp/modules/interoperability.html#pytorch-custom-ops-example)).
-
-### Changed
 
 ### Fixed
 
@@ -22,14 +34,10 @@
   ([GH-386](https://github.com/NVIDIA/warp/issues/386)).
 - Array overwrite tracking: Fix issue with not marking arrays passed to `wp.atomic_add()`, `wp.atomic_sub()`,
   `wp.atomic_max()`, or `wp.atomic_min()` as being written to ([GH-378](https://github.com/NVIDIA/warp/issues/378)).
-- Fix for occasional failure to update .meta files into Warp kernel cache on Windows
-- Mark kernel arrays as written to when passed to `wp.atomic_add()` or `wp.atomic_sub()`
-- Fix the OpenGL renderer not being able to run without CUDA ([GH-344](https://github.com/NVIDIA/warp/issues/344)).
-- Fix errors during graph capture caused by module unloading ([GH-401](https://github.com/NVIDIA/warp/issues/401)).
+- Fix for occasional failure to update `.meta` files into Warp kernel cache on Windows.
+- Fix the OpenGL renderer not being able to run without a CUDA device available
+  ([GH-344](https://github.com/NVIDIA/warp/issues/344)).
 - Fix incorrect CUDA driver function versions ([GH-402](https://github.com/NVIDIA/warp/issues/402)).
-- Fix allocating arrays with strides ([GH-404](https://github.com/NVIDIA/warp/issues/404)).
-- Fix `ImportError` exception being thrown during `OpenGLRenderer` interpreter shutdown on Windows
-  ([GH-412](https://github.com/NVIDIA/warp/issues/412)).
 
 ## [1.5.0] - 2024-12-02
 
@@ -1251,7 +1259,8 @@
 
 - Initial publish for alpha testing
 
-[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/NVIDIA/warp/releases/tag/v1.5.1
 [1.5.0]: https://github.com/NVIDIA/warp/releases/tag/v1.5.0
 [1.4.2]: https://github.com/NVIDIA/warp/releases/tag/v1.4.2
 [1.4.1]: https://github.com/NVIDIA/warp/releases/tag/v1.4.1
