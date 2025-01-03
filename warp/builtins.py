@@ -1852,6 +1852,7 @@ def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[st
         step = args[2]
 
     if start is None or stop is None or step is None:
+        print(args)
         raise RuntimeError("wp.tile_arange() arguments must be compile time constants")
 
     if "dtype" in arg_values:
@@ -2083,7 +2084,7 @@ def tile_store_1d_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_store",
-    input_types={"a": array(dtype=Any), "i": int, "t": Any},
+    input_types={"a": array(dtype=Any), "i": int, "t": Tile(dtype=Any, M=Any, N=Any)},
     value_func=tile_store_1d_value_func,
     variadic=False,
     skip_replay=True,
@@ -2132,7 +2133,7 @@ def tile_store_2d_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_store",
-    input_types={"a": array(dtype=Any), "i": int, "j": int, "t": Any},
+    input_types={"a": array(dtype=Any), "i": int, "j": int, "t": Tile(dtype=Any, M=Any, N=Any)},
     value_func=tile_store_2d_value_func,
     variadic=False,
     skip_replay=True,
@@ -2177,7 +2178,7 @@ def tile_atomic_add_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_atomic_add",
-    input_types={"a": array(dtype=Any), "x": int, "y": int, "t": Any},
+    input_types={"a": array(dtype=Any), "x": int, "y": int, "t": Tile(dtype=Any, M=Any, N=Any)},
     value_func=tile_atomic_add_value_func,
     variadic=True,
     skip_replay=True,
@@ -2365,7 +2366,7 @@ def untile_value_func(arg_types, arg_values):
 
 add_builtin(
     "untile",
-    input_types={"a": Any},
+    input_types={"a": Tile(dtype=Any, M=Any, N=Any)},
     value_func=untile_value_func,
     variadic=True,
     doc="""Convert a Tile back to per-thread values.
@@ -2390,7 +2391,7 @@ add_builtin(
             t = wp.tile(i)*2
 
             # convert back to per-thread values
-            s = wp.untile()
+            s = wp.untile(t)
 
             print(s)
 
@@ -2562,7 +2563,7 @@ add_builtin(
     variadic=True,
     doc="""Broadcast a tile.
 
-    This method will attempt to broadcast the input tile ``a`` to the destination shape (m, n), broadcasting follows NumPy broadcast rules.
+    This function will attempt to broadcast the input tile ``a`` to the destination shape (m, n), broadcasting follows NumPy broadcast rules.
 
     :param a: Tile to broadcast
     :returns: Tile with broadcast ``shape=(m, n)``""",
@@ -2654,9 +2655,9 @@ add_builtin(
             t = wp.tile_ones(dtype=float, m=16, n=16)
             s = wp.tile_sum(t)
 
-            print(t)
+            print(s)
 
-        wp.launch(compute, dim=[64], inputs=[])
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
 
     Prints:
 
@@ -2703,18 +2704,19 @@ add_builtin(
         @wp.kernel
         def compute():
 
-            t = wp.tile_arange(start=--10, stop=10, dtype=float)
+            t = wp.tile_arange(64, 128)
             s = wp.tile_min(t)
 
-            print(t)
+            print(s)
 
-        wp.launch(compute, dim=[64], inputs=[])
+
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
 
     Prints:
 
     .. code-block:: text
 
-        tile(m=1, n=1, storage=register) = [[-10]]
+        tile(m=1, n=1, storage=register) = [[64 ]]
 
     """,
     group="Tile Primitives",
@@ -2755,18 +2757,18 @@ add_builtin(
         @wp.kernel
         def compute():
 
-            t = wp.tile_arange(start=--10, stop=10, dtype=float)
-            s = wp.tile_min(t)
+            t = wp.tile_arange(64, 128)
+            s = wp.tile_max(t)
 
-            print(t)
+            print(s)
 
-        wp.launch(compute, dim=[64], inputs=[])
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
 
     Prints:
 
     .. code-block:: text
 
-        tile(m=1, n=1, storage=register) = [[10]]
+        tile(m=1, n=1, storage=register) = [[127 ]]
 
     """,
     group="Tile Primitives",
@@ -2796,7 +2798,7 @@ def tile_reduce_dispatch_func(input_types: Mapping[str, type], return_type: Any,
 
 add_builtin(
     "tile_reduce",
-    input_types={"op": Callable, "a": Any},
+    input_types={"op": Callable, "a": Tile(dtype=Any, M=Any, N=Any)},
     value_func=tile_reduce_value_func,
     native_func="tile_reduce",
     doc="""Apply a custom reduction operator across the tile.
@@ -2819,7 +2821,7 @@ add_builtin(
 
             print(s)
 
-        wp.launch(factorial, dim=[16], inputs=[], block_dim=16)
+        wp.launch_tiled(factorial, dim=[1], inputs=[], block_dim=16)
 
     Prints:
 
@@ -2856,7 +2858,7 @@ def tile_unary_map_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_map",
-    input_types={"op": Callable, "a": Any},
+    input_types={"op": Callable, "a": Tile(dtype=Any, M=Any, N=Any)},
     value_func=tile_unary_map_value_func,
     # dispatch_func=tile_map_dispatch_func,
     # variadic=True,
@@ -2881,7 +2883,7 @@ add_builtin(
 
             print(s)
 
-        wp.launch(compute, dim=[16], inputs=[])
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
 
     Prints:
 
@@ -2923,7 +2925,7 @@ def tile_binary_map_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_map",
-    input_types={"op": Callable, "a": Any, "b": Any},
+    input_types={"op": Callable, "a": Tile(dtype=Any, M=Any, N=Any), "b": Tile(dtype=Any, M=Any, N=Any)},
     value_func=tile_binary_map_value_func,
     # dispatch_func=tile_map_dispatch_func,
     # variadic=True,
@@ -2952,7 +2954,7 @@ add_builtin(
 
             print(s)
 
-        wp.launch(compute, dim=[16], inputs=[])
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
 
     Prints:
 
