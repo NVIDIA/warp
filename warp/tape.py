@@ -43,7 +43,6 @@ class Tape:
 
     def __init__(self):
         self.gradients = {}
-        self.const_gradients = set()
         self.launches = []
         self.scopes = []
 
@@ -106,7 +105,6 @@ class Tape:
                 else:
                     # ensure we can capture this backward pass in a CUDA graph
                     a.grad.assign(g)
-                self.const_gradients.add(a)
 
         # run launches backwards
         for launch in reversed(self.launches):
@@ -267,13 +265,12 @@ class Tape:
         Zero out all gradients recorded on the tape.
         """
         for a, g in self.gradients.items():
-            if a not in self.const_gradients:
-                if isinstance(a, wp.codegen.StructInstance):
-                    for name in g._cls.vars:
-                        if isinstance(g._cls.vars[name].type, wp.array) and g._cls.vars[name].requires_grad:
-                            getattr(g, name).zero_()
-                else:
-                    g.zero_()
+            if isinstance(a, wp.codegen.StructInstance):
+                for name in g._cls.vars:
+                    if isinstance(g._cls.vars[name].type, wp.array) and g._cls.vars[name].requires_grad:
+                        getattr(g, name).zero_()
+            else:
+                g.zero_()
 
     def _reset_array_read_flags(self):
         """
