@@ -13,7 +13,9 @@ from warp.thirdparty import appdirs
 
 
 # builds cuda source to PTX or CUBIN using NVRTC (output type determined by output_path extension)
-def build_cuda(cu_path, arch, output_path, config="release", verify_fp=False, fast_math=False, ltoirs=None):
+def build_cuda(
+    cu_path, arch, output_path, config="release", verify_fp=False, fast_math=False, fuse_fp=True, ltoirs=None
+):
     with open(cu_path, "rb") as src_file:
         src = src_file.read()
         cu_path = cu_path.encode("utf-8")
@@ -40,6 +42,7 @@ def build_cuda(cu_path, arch, output_path, config="release", verify_fp=False, fa
                 warp.config.verbose,
                 verify_fp,
                 fast_math,
+                fuse_fp,
                 output_path,
                 num_ltoirs,
                 arr_lroirs,
@@ -57,14 +60,16 @@ def load_cuda(input_path, device):
     return warp.context.runtime.core.cuda_load_module(device.context, input_path.encode("utf-8"))
 
 
-def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=False):
+def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=False, fuse_fp=True):
     with open(cpp_path, "rb") as cpp:
         src = cpp.read()
         cpp_path = cpp_path.encode("utf-8")
         inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode("utf-8")
         obj_path = obj_path.encode("utf-8")
 
-        err = warp.context.runtime.llvm.compile_cpp(src, cpp_path, inc_path, obj_path, mode == "debug", verify_fp)
+        err = warp.context.runtime.llvm.compile_cpp(
+            src, cpp_path, inc_path, obj_path, mode == "debug", verify_fp, fuse_fp
+        )
         if err != 0:
             raise Exception(f"CPU kernel build failed with error code {err}")
 

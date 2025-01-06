@@ -142,6 +142,12 @@ The options for a module can also be queried using ``wp.get_module_options()``.
 |                    |         |             | compiler option, which enables some fast math operations that are faster |
 |                    |         |             | but less accurate.                                                       |
 +--------------------+---------+-------------+--------------------------------------------------------------------------+
+|``fuse_fp``         | Boolean | ``True``    | If ``True``, allow compilers to emit fused floating point operations     |
+|                    |         |             | such as fused-multiply-add. This may improve numerical accuracy and      |
+|                    |         |             | is generally recommended. Setting to ``False`` can help ensuring         |
+|                    |         |             | that functionally equivalent kernels will produce identical results      |
+|                    |         |             | unaffected by the presence or absence of fused operations.               |
++--------------------+---------+-------------+--------------------------------------------------------------------------+
 |``cuda_output``     | String  | ``None``    | The preferred CUDA output format for kernels. Valid choices are ``None``,|
 |                    |         |             | ``"ptx"``, and ``"cubin"``. If ``None``, a format will be determined     |
 |                    |         |             | automatically. The module-level setting takes precedence over the global |
