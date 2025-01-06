@@ -406,13 +406,20 @@ def update_particles(
     xform_0 = state.xform
     xform_1 = xform
 
+    try:
+        xform_0_inv = np.linalg.inv(xform_0)
+    except np.linalg.LinAlgError:
+        # On the first run, OG sometimes return an invalid matrix,
+        # so we default it to the identity one.
+        xform_0_inv = np.identity(4)
+
     # Update the internal point positions and velocities.
     wp.launch(
         kernel=update_particles_kernel,
         dim=len(state.state_0.particle_q),
         inputs=[
             state.state_0.particle_q,
-            np.matmul(np.linalg.inv(xform_0), xform_1).T,
+            np.matmul(xform_0_inv, xform_1).T,
         ],
         outputs=[
             state.state_0.particle_q,
@@ -511,6 +518,13 @@ def compute(db: OgnParticlesSimulateDatabase, device: wp.context.Device) -> None
             # Retrieve some data from the particles points.
             xform = omni.warp.nodes.bundle_get_world_xform(db.inputs.particles)
 
+            try:
+                xform_inv = np.linalg.inv(xform)
+            except np.linalg.LinAlgError:
+                # On the first run, OG sometimes return an invalid matrix,
+                # so we default it to the identity one.
+                xform_inv = np.identity(4)
+
             # Transform the particles point positions back into local space
             # and store them into the bundle.
             out_points = omni.warp.nodes.points_get_points(db.outputs.particles)
@@ -519,7 +533,7 @@ def compute(db: OgnParticlesSimulateDatabase, device: wp.context.Device) -> None
                 dim=len(out_points),
                 inputs=[
                     state.state_0.particle_q,
-                    np.linalg.inv(xform).T,
+                    xform_inv.T,
                 ],
                 outputs=[
                     out_points,

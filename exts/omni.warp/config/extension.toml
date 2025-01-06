@@ -25,6 +25,7 @@ exclude = ["Ogn*Database.py", "*/ogn*"]
 "omni.graph.core" = {}
 "omni.graph.nodes" = {}
 "omni.graph.ui" = {optional=true}
+"omni.graph.ui_nodes" = {}
 "omni.kit.actions.core" = {}
 "omni.kit.browser.sample" = {optional = true}
 "omni.kit.menu.utils" = {optional = true}
@@ -36,6 +37,11 @@ exclude = ["Ogn*Database.py", "*/ogn*"]
 "omni.ui" = {optional = true}
 "omni.usd" = {}
 "omni.warp.core" = {version = "1.5.1", exact = true}
+"usdrt.scenegraph" = {}
+
+[settings]
+exts."omni.warp".enable_backward = false
+exts."omni.warp".enable_menu = true
 
 [[python.module]]
 name = "omni.warp._extension"
@@ -43,6 +49,40 @@ name = "omni.warp._extension"
 [[python.module]]
 name = "omni.warp.nodes"
 
-[settings]
-exts."omni.warp".enable_backward = false
-exts."omni.warp".enable_menu = true
+[[test]]
+dependencies = [
+    "omni.hydra.rtx",
+    "omni.kit.test_helpers_gfx",
+    "omni.kit.viewport.utility",
+
+    # Additional dependencies that need to be enabled for the extensions above to work.
+    "omni.kit.commands", # Required by `omni.kit.material.library`, `omni.kit.viewport.utility`, and `omni.kit.viewport.window`.
+    "omni.kit.manipulator.selection", # Required by `omni.kit.viewport.window`.
+    "omni.kit.material.library", # Required by `omni.kit.viewport.window`.
+    "omni.kit.renderer.capture", # Required by `omni.kit.viewport.utility`.
+    "omni.kit.viewport.window", # Required by `omni.kit.viewport.utility`.
+    "omni.hydra.usdrt_delegate",
+]
+
+args = [
+    "--/app/asyncRendering=false",
+    "--/app/hydraEngine/waitIdle=true",
+    "--/app/omni.warp/kernel_enable_opt_in=false",
+    "--/app/renderer/resolution/height=360",
+    "--/app/renderer/resolution/width=640",
+    "--/app/updateOrder/checkForHydraRenderComplete=1000",
+    "--/renderer/enabled=rtx",
+    "--/renderer/active=rtx",
+    "--/rtx/hydra/materialSyncLoads=true",
+    "--/rtx/materialDb/syncLoads=true",
+    "--/rtx-transient/post/aa/limitedOps=false",
+    "--/rtx-transient/resourcemanager/texturestreaming/async=false",
+    "--no-window",
+
+    # Uncomment to update the golden images used for testing.
+    # "--/exts/omni.warp/update_golden_images=true",
+]
+
+stdoutFailPatterns.exclude = [
+    "*[Warning] [rtx.neuraylib.plugin] [MDLC:COMPILER]*",
+]

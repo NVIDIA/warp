@@ -219,9 +219,16 @@ def displace(
         axis_aligned=True,
     )
 
+    try:
+        xform_inv = np.linalg.inv(xform)
+    except np.linalg.LinAlgError:
+        # On the first run, OG sometimes return an invalid matrix,
+        # so we default it to the identity one.
+        xform_inv = np.identity(4)
+
     # Retrieve the collider's position in the grid's object space.
     collider_pos = np.pad(collider_xform[3][:3], (0, 1), constant_values=1)
-    collider_pos = np.dot(np.linalg.inv(xform).T, collider_pos)
+    collider_pos = np.dot(xform_inv.T, collider_pos)
 
     # Compute the collider's radius.
     collider_radius = np.amax(collider_extent[1] - collider_extent[0]) * 0.5
