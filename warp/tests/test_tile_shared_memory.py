@@ -127,22 +127,25 @@ def test_tile_shared_mem_graph(test, device):
 
 # checks that stack allocations work for user functions
 def test_tile_shared_mem_func(test, device):
-    DIM_M = 32
-    DIM_N = 32
+    DIM_M = 64
+    DIM_N = 64
+
+    SMALL_DIM_M = 64 // 4
+    SMALL_DIM_N = 64 // 4
 
     BLOCK_DIM = 256
 
     @wp.func
     def add_tile_small():
-        a = wp.tile_ones(16, 16, dtype=float, storage="shared")
-        b = wp.tile_ones(16, 16, dtype=float, storage="shared") * 2.0
+        a = wp.tile_ones(SMALL_DIM_M, SMALL_DIM_N, dtype=float, storage="shared")
+        b = wp.tile_ones(SMALL_DIM_M, SMALL_DIM_N, dtype=float, storage="shared") * 2.0
 
         return a + b
 
     @wp.func
     def add_tile_big():
-        a = wp.tile_ones(64, 64, dtype=float, storage="shared")
-        b = wp.tile_ones(64, 64, dtype=float, storage="shared") * 2.0
+        a = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared")
+        b = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared") * 2.0
 
         return a + b
 
@@ -168,6 +171,51 @@ def test_tile_shared_mem_func(test, device):
     assert hooks.backward_smem_bytes == expected_required_shared * 2
 
 
+def round_up(a, b):
+    return b * ((a + b - 1) // b)
+
+
+# checks that using non-16B aligned sizes work
+def test_tile_shared_non_aligned(test, device):
+    # Tile size = 4 (float) * 1 * 3 = 12B % 16 != 0
+    DIM_M = 1
+    DIM_N = 3
+
+    BLOCK_DIM = 256
+
+    @wp.func
+    def foo():
+        a = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared") * 2.0
+        b = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared") * 3.0
+        return a + b
+
+    @wp.kernel
+    def compute(out: wp.array2d(dtype=float)):
+        # This test the logic in the stack allocator, which should increment and
+        # decrement the stack pointer each time foo() is called
+        # Failing to do so correct will make b out of bounds and corrupt the results
+        for _ in range(4096):
+            foo()
+        b = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared")
+        wp.tile_store(out, 0, 0, b)
+
+    out = wp.empty((DIM_M, DIM_N), dtype=float, device=device)
+
+    wp.launch_tiled(compute, dim=[1], inputs=[out], block_dim=BLOCK_DIM, device=device)
+
+    assert_np_equal(out.numpy(), np.ones((DIM_M, DIM_N), dtype=float))
+
+    # check shared memory for kernel on the device
+    module_exec = compute.module.load(device, BLOCK_DIM)
+    hooks = module_exec.get_kernel_hooks(compute)
+
+    # ensure that total required dynamic shared is the larger of the two tiles
+    expected_required_shared = 3 * round_up(DIM_M * DIM_N * 4, 16)
+
+    assert hooks.forward_smem_bytes == expected_required_shared
+    assert hooks.backward_smem_bytes == expected_required_shared * 2
+
+
 devices = get_cuda_test_devices()
 
 
@@ -183,6 +231,7 @@ add_function_test(
 )
 add_function_test(TestTileSharedMemory, "test_tile_shared_mem_graph", test_tile_shared_mem_graph, devices=devices)
 add_function_test(TestTileSharedMemory, "test_tile_shared_mem_func", test_tile_shared_mem_func, devices=devices)
+add_function_test(TestTileSharedMemory, "test_tile_shared_non_aligned", test_tile_shared_non_aligned, devices=devices)
 
 
 if __name__ == "__main__":

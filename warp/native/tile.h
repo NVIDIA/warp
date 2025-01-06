@@ -474,7 +474,10 @@ inline CUDA_CALLABLE int tile_align(int num_bytes)
     // note this much match value in Python types.py
     const int alignment = 16;
 
-    return ((num_bytes + alignment - 1) / alignment) * alignment;
+    const int num_bytes_abs = num_bytes < 0 ? - num_bytes : num_bytes;
+    const int sign = num_bytes < 0 ? - 1 : 1;
+
+    return sign * ((num_bytes_abs + alignment - 1) / alignment) * alignment;
 }
 
 inline CUDA_CALLABLE void* tile_alloc_shared(int num_bytes, bool init=false)
@@ -1749,11 +1752,11 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
 }
 
 // TODO(lcambier): use a properly overaligned complex type that matches cuFFTDx's expectation
-// TODO(lcambier): use dynamic smem
+// and remove the need for __align__(16) dtypes data[...]
 #define tile_fft(function_name, dtype, shared_memory_size, batch_size, ept, Xinout) \
     do { \
         void function_name(dtype*, dtype*); \
-        WP_TILE_SHARED __align__(16) char buffer[shared_memory_size]; \
+        char* buffer = (char*)wp::tile_alloc_shared(shared_memory_size); \
         __align__(16) dtype data[ept]; \
         for(int b = 0; b < (int)batch_size; b++) { \
             dtype* inout = Xinout.data + (int)b * (int)ept; \
@@ -1762,6 +1765,7 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
             memcpy(inout, data, sizeof(dtype) * ept); \
             WP_TILE_SYNC(); \
         } \
+        wp::tile_alloc_shared(-shared_memory_size); \
     } while (0)
 
 #define tile_ifft tile_fft
