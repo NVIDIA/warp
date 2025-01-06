@@ -1822,6 +1822,7 @@ class Module:
             "max_unroll": warp.config.max_unroll,
             "enable_backward": warp.config.enable_backward,
             "fast_math": False,
+            "fuse_fp": True,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": warp.config.mode,
             "block_dim": 256,
@@ -2084,6 +2085,7 @@ class Module:
                                 mode=self.options["mode"],
                                 fast_math=self.options["fast_math"],
                                 verify_fp=warp.config.verify_fp,
+                                fuse_fp=self.options["fuse_fp"],
                             )
 
                     except Exception as e:
@@ -2112,6 +2114,7 @@ class Module:
                                 output_path,
                                 config=self.options["mode"],
                                 fast_math=self.options["fast_math"],
+                                fuse_fp=self.options["fuse_fp"],
                                 verify_fp=warp.config.verify_fp,
                                 ltoirs=builder.ltoirs.values(),
                             )
@@ -3478,6 +3481,7 @@ class Runtime:
                 ctypes.c_bool,  # verbose
                 ctypes.c_bool,  # verify_fp
                 ctypes.c_bool,  # fast_math
+                ctypes.c_bool,  # fuse_fp
                 ctypes.c_char_p,  # output_path
                 ctypes.c_size_t,  # num_ltoirs
                 ctypes.POINTER(ctypes.c_char_p),  # ltoirs

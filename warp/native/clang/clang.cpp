@@ -218,7 +218,7 @@ static std::unique_ptr<llvm::Module> cuda_to_llvm(const std::string& input_file,
 
 extern "C" {
 
-WP_API int compile_cpp(const char* cpp_src, const char *input_file, const char* include_dir, const char* output_file, bool debug, bool verify_fp)
+WP_API int compile_cpp(const char* cpp_src, const char *input_file, const char* include_dir, const char* output_file, bool debug, bool verify_fp, bool fuse_fp)
 {
     initialize_llvm();
 
@@ -236,6 +236,10 @@ WP_API int compile_cpp(const char* cpp_src, const char *input_file, const char* 
     const char* CPU = "generic";
     const char* features = "";
     llvm::TargetOptions target_options;
+    if (fuse_fp)
+        target_options.AllowFPOpFusion = llvm::FPOpFusion::Standard;
+    else
+        target_options.AllowFPOpFusion = llvm::FPOpFusion::Strict;
     llvm::Reloc::Model relocation_model = llvm::Reloc::PIC_;  // Position Independent Code
     llvm::CodeModel::Model code_model = llvm::CodeModel::Large;  // Don't make assumptions about displacement sizes
     llvm::TargetMachine* target_machine = target->createTargetMachine(target_triple, CPU, features, target_options, relocation_model, code_model);

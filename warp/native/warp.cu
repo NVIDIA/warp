@@ -2654,7 +2654,7 @@ bool write_file(const char* data, size_t size, std::string filename, const char*
     }
 #endif
 
-size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes)
+size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes)
 {
     // use file extension to determine whether to output PTX or CUBIN
     const char* output_ext = strrchr(output_path, '.');
@@ -2724,6 +2724,11 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
     
     if (fast_math)
         opts.push_back("--use_fast_math");
+
+    if (fuse_fp)
+        opts.push_back("--fmad=true");
+    else
+        opts.push_back("--fmad=false");
 
     char include_cutlass[max_path];
     sprintf(include_cutlass, "--include-path=%s/cutlass/include", include_dir);

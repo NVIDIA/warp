@@ -25,6 +25,8 @@
 - Add PyTorch basics and custom operators notebooks to the `notebooks` directory.
 - Update PyTorch interop docs to include section on custom operators
   ([docs](https://nvidia.github.io/warp/modules/interoperability.html#pytorch-custom-ops-example)).
+- Add per-module option to disable fused floating point operations, use `wp.set_module_options({"fuse_fp": False})`
+  ([GH-379](https://github.com/NVIDIA/warp/issues/379)).
 
 ### Fixed
 
