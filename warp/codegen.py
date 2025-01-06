@@ -1349,8 +1349,9 @@ class Adjoint:
         # which allows for some more advanced resolution to be performed,
         # for example by checking whether an argument corresponds to
         # a literal value or references a variable.
+        extra_shared_memory = 0
         if func.lto_dispatch_func is not None:
-            func_args, template_args, ltoirs = func.lto_dispatch_func(
+            func_args, template_args, ltoirs, extra_shared_memory = func.lto_dispatch_func(
                 func.input_types, return_type, output_list, bound_args, options=adj.builder_options, builder=adj.builder
             )
         elif func.dispatch_func is not None:
@@ -1424,7 +1425,9 @@ class Adjoint:
         # update our smem roofline requirements based on any
         # shared memory required by the dependent function call
         if not func.is_builtin():
-            adj.alloc_shared_extra(func.adj.get_total_required_shared())
+            adj.alloc_shared_extra(func.adj.get_total_required_shared() + extra_shared_memory)
+        else:
+            adj.alloc_shared_extra(extra_shared_memory)
 
         return output
 

@@ -3057,9 +3057,13 @@ class Tile:
         num_bytes = self.align(type_size_in_bytes(self.dtype) * self.M * self.N)
         return num_bytes
 
+    @staticmethod
+    def round_up(bytes):
+        return ((bytes + Tile.alignment - 1) // Tile.alignment) * Tile.alignment
+
     # align tile size to natural boundary, default 16-bytes
     def align(self, bytes):
-        return ((bytes + self.alignment - 1) // self.alignment) * self.alignment
+        return Tile.round_up(bytes)
 
 
 class TileZeros(Tile):

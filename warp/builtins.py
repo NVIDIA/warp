@@ -5924,6 +5924,7 @@ def tile_matmul_generic_lto_dispatch_func(
         ),
         template_args,
         [lto_forward, lto_backward_A, lto_backward_B],
+        0,
     )
 
 
@@ -6075,17 +6076,20 @@ def tile_fft_generic_lto_dispatch_func(
 
     builder.ltoirs[lto_symbol] = lto_code_data
 
+    shared_memory_bytes = Tile.round_up(shared_memory_size.value)
+
     return (
         (
             Var(lto_symbol, str, False, True, False),
             Var(dtype, str, False, True, False),
-            Var(str(shared_memory_size.value), str, False, True, False),
+            Var(str(shared_memory_bytes), str, False, True, False),
             Var(str(batch), str, False, True, False),
             Var(str(ept), str, False, True, False),
             inout,
         ),
         [],
         [lto_code_data],
+        shared_memory_bytes,
     )
 
 
