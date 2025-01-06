@@ -15,7 +15,6 @@
 # Note: requires a CUDA-capable device
 ###########################################################################
 
-import math
 import os
 
 import numpy as np
@@ -66,8 +65,8 @@ class Example:
             sdf=rock_sdf,
             body=-1,
             pos=wp.vec3(0.0, 0.0, 0.0),
-            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), -0.5 * math.pi),
-            scale=wp.vec3(0.01, 0.01, 0.01),
+            rot=wp.quat(0.0, 0.0, 0.0, 1.0),
+            scale=wp.vec3(1.0, 1.0, 1.0),
         )
 
         mins = np.array([-3.0, -3.0, -3.0])
@@ -149,13 +148,13 @@ class Example:
         with wp.ScopedTimer("render"):
             self.renderer.begin_frame(self.sim_time)
 
-            # Note the extra wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), math.pi) is because .usd is oriented differently from .nvdb
             self.renderer.render_ref(
                 name="collision",
                 path=os.path.join(warp.examples.get_asset_directory(), "rocks.usd"),
                 pos=wp.vec3(0.0, 0.0, 0.0),
                 rot=wp.quat(0.0, 0.0, 0.0, 1.0),
-                scale=wp.vec3(0.01, 0.01, 0.01),
+                scale=wp.vec3(1.0, 1.0, 1.0),
+                color=(0.35, 0.55, 0.9),
             )
 
             self.renderer.render_sphere(
