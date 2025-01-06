@@ -28,6 +28,7 @@
 - Fix errors during graph capture caused by module unloading ([GH-401](https://github.com/NVIDIA/warp/issues/401)).
 - Fix incorrect CUDA driver function versions ([GH-402](https://github.com/NVIDIA/warp/issues/402)).
 - Fix allocating arrays with strides ([GH-404](https://github.com/NVIDIA/warp/issues/404)).
+- Remove `const_gradients` from `wp.Tape`, allowing `wp.Tape.zero()` to zero all gradients on the Tape.
 
 ## [1.5.0] - 2024-12-02
 

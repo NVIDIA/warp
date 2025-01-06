@@ -125,6 +125,30 @@ def test_tape_dot_product(test, device):
     assert_np_equal(tape.gradients[y].numpy(), x.numpy())
 
 
+@wp.kernel
+def assign_chain_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float)):
+    tid = wp.tid()
+    y[tid] = x[tid]
+    z[tid] = y[tid]
+
+
+def test_tape_zero_multiple_outputs(test, device):
+    x = wp.array(np.arange(3), dtype=float, device=device, requires_grad=True)
+    y = wp.zeros_like(x)
+    z = wp.zeros_like(x)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(assign_chain_kernel, dim=3, inputs=[x, y, z], device=device)
+
+    tape.backward(grads={y: wp.ones_like(x)})
+    assert_np_equal(x.grad.numpy(), np.ones(3, dtype=float))
+    tape.zero()
+
+    tape.backward(grads={z: wp.ones_like(x)})
+    assert_np_equal(x.grad.numpy(), np.ones(3, dtype=float))
+
+
 def test_tape_visualize(test, device):
     dim = 8
     tape = wp.Tape()
@@ -163,6 +187,7 @@ class TestTape(unittest.TestCase):
 add_function_test(TestTape, "test_tape_mul_constant", test_tape_mul_constant, devices=devices)
 add_function_test(TestTape, "test_tape_mul_variable", test_tape_mul_variable, devices=devices)
 add_function_test(TestTape, "test_tape_dot_product", test_tape_dot_product, devices=devices)
+add_function_test(TestTape, "test_tape_zero_multiple_outputs", test_tape_zero_multiple_outputs, devices=devices)
 add_function_test(TestTape, "test_tape_visualize", test_tape_visualize, devices=devices)
 
 
