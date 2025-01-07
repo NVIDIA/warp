@@ -1701,7 +1701,21 @@ class array(Array):
                     )
         elif length is not None:
             # backward compatibility
+            warp.utils.warn(
+                "The 'length' keyword is deprecated and will be removed\n" "in a future version. Use 'shape' instead.",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
             shape = (length,)
+
+        if owner:
+            warp.utils.warn(
+                "The 'owner' keyword in the array initializer is\n"
+                "deprecated and will be removed in a future version. It currently has no effect.\n"
+                "Pass a function to the 'deleter' keyword instead.",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
 
         # determine the construction path from the given arguments
         if data is not None:

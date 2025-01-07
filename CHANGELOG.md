@@ -9,6 +9,9 @@
 
 ### Changed
 
+- Emit deprecation warnings for the use of the `owner` and `length` keywords in
+  the `wp.array` initializer.
+
 ### Fixed
 
 - Fix errors during graph capture caused by module unloading ([GH-401](https://github.com/NVIDIA/warp/issues/401)).
