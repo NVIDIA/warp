@@ -18,6 +18,7 @@
 - Fix scale and rotation issues with the rock geometry used in the granular collision SDF example
   ([GH-409](https://github.com/NVIDIA/warp/issues/409)).
 - Fix so that `wp.Tape.zero()` zeroes gradients passed via the 'grads' parameter in `wp.Tape.backward()` ([GH-407](https://github.com/NVIDIA/warp/issues/407)).
+- Fix the OpenGL renderer not working when multiple instances exist at the same time ([GH-385](https://github.com/NVIDIA/warp/issues/385)).
 
 ## [1.5.1] - 2025-01-02
 
@@ -44,7 +45,6 @@
   ([GH-344](https://github.com/NVIDIA/warp/issues/344)).
 - Fix incorrect CUDA driver function versions ([GH-402](https://github.com/NVIDIA/warp/issues/402)).
 - Fix allocating arrays with strides ([GH-404](https://github.com/NVIDIA/warp/issues/404)).
-- Fix the OpenGL renderer not working when multiple instances exist at the same time ([GH-385](https://github.com/NVIDIA/warp/issues/385)).
 
 ## [1.5.0] - 2024-12-02
 
