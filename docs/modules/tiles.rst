@@ -23,6 +23,7 @@ Inside kernels, tile operations are executed cooperatively across each block of 
 In the following example, we launch a grid of threads where each block is responsible for loading a row of data from a 2D array and computing its sum:
 
 .. testcode::
+    :skipif: wp.get_cuda_device_count() == 0
     
     TILE_SIZE = wp.constant(256)
     TILE_THREADS = 64

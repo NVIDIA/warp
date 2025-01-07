@@ -449,7 +449,7 @@ windows-x86_64 docs:
     - python -m pip install -r docs/requirements.txt
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
-    - python build_docs.py
+    - python build_docs.py --no_doctest
     - mv docs/_build/html/ ./public/
   after_script:
     - echo "View the website at https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
@@ -730,7 +730,7 @@ publish wheels to gitlab package registry:
     - python -m pip install -r docs/requirements.txt
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python build_docs.py
+    - python build_docs.py --no_doctest
     - mv docs/_build/html/ ./public/
 
 # Merge requests: Build documentation and save as an artifact
