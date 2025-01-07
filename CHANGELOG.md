@@ -44,6 +44,7 @@
   ([GH-344](https://github.com/NVIDIA/warp/issues/344)).
 - Fix incorrect CUDA driver function versions ([GH-402](https://github.com/NVIDIA/warp/issues/402)).
 - Fix allocating arrays with strides ([GH-404](https://github.com/NVIDIA/warp/issues/404)).
+- Fix the OpenGL renderer not working when multiple instances exist at the same time ([GH-385](https://github.com/NVIDIA/warp/issues/385)).
 
 ## [1.5.0] - 2024-12-02
 

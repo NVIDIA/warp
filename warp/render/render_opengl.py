@@ -1080,9 +1080,8 @@ class OpenGLRenderer:
             self.headless = headless
         self.app = pyglet.app
 
-        if not headless:
-            # making window current opengl rendering context
-            self.window.switch_to()
+        # making window current opengl rendering context
+        self.window.switch_to()
 
         self.screen_width, self.screen_height = self.window.get_framebuffer_size()
 
@@ -1407,7 +1406,6 @@ class OpenGLRenderer:
 
             Window._enable_event_queue = False
 
-            self.window.switch_to()
             self.window.dispatch_pending_events()
 
             platform_event_loop = self.app.platform_event_loop
@@ -1434,6 +1432,8 @@ class OpenGLRenderer:
 
     def clear(self):
         gl = OpenGLRenderer.gl
+
+        self.window.switch_to()
 
         if not self.headless:
             self.app.event_loop.dispatch_event("on_exit")
@@ -1629,6 +1629,8 @@ class OpenGLRenderer:
     def _setup_framebuffer(self):
         gl = OpenGLRenderer.gl
 
+        self.window.switch_to()
+
         if self._frame_texture is None:
             self._frame_texture = gl.GLuint()
             gl.glGenTextures(1, self._frame_texture)
@@ -1797,6 +1799,8 @@ class OpenGLRenderer:
     def update_model_matrix(self, model_matrix: Optional[Mat44] = None):
         gl = OpenGLRenderer.gl
 
+        self.window.switch_to()
+
         if model_matrix is None:
             self._model_matrix = self.compute_model_matrix(self._camera_axis, self._scaling)
         else:
@@ -1891,6 +1895,8 @@ class OpenGLRenderer:
 
     def _draw(self):
         gl = OpenGLRenderer.gl
+
+        self.window.switch_to()
 
         if not self.headless:
             # catch key hold events
@@ -1991,6 +1997,8 @@ Instances: {len(self._instances)}"""
     def _draw_grid(self, is_tiled=False):
         gl = OpenGLRenderer.gl
 
+        self.window.switch_to()
+
         if not is_tiled:
             gl.glUseProgram(self._grid_shader.id)
 
@@ -2003,6 +2011,8 @@ Instances: {len(self._instances)}"""
 
     def _draw_sky(self, is_tiled=False):
         gl = OpenGLRenderer.gl
+
+        self.window.switch_to()
 
         if not is_tiled:
             gl.glUseProgram(self._sky_shader.id)
@@ -2017,6 +2027,8 @@ Instances: {len(self._instances)}"""
 
     def _render_scene(self):
         gl = OpenGLRenderer.gl
+
+        self.window.switch_to()
 
         start_instance_idx = 0
 
@@ -2040,6 +2052,8 @@ Instances: {len(self._instances)}"""
 
     def _render_scene_tiled(self):
         gl = OpenGLRenderer.gl
+
+        self.window.switch_to()
 
         for i, viewport in enumerate(self._tile_viewports):
             projection_matrix_ptr = arr_pointer(self._tile_projection_matrices[i])
@@ -2186,6 +2200,8 @@ Instances: {len(self._instances)}"""
     def register_shape(self, geo_hash, vertices, indices, color1=None, color2=None):
         gl = OpenGLRenderer.gl
 
+        self.window.switch_to()
+
         shape = len(self._shapes)
         if color1 is None:
             color1 = tab10_color_map(len(self._shape_geo_hash))
@@ -2234,6 +2250,8 @@ Instances: {len(self._instances)}"""
 
     def deregister_shape(self, shape):
         gl = OpenGLRenderer.gl
+
+        self.window.switch_to()
 
         if shape not in self._shape_gl_buffers:
             return
@@ -2294,6 +2312,8 @@ Instances: {len(self._instances)}"""
     def update_instance_colors(self):
         gl = OpenGLRenderer.gl
 
+        self.window.switch_to()
+
         colors1, colors2 = [], []
         all_instances = list(self._instances.values())
         for _shape, instances in self._shape_instances.items():
@@ -2314,6 +2334,8 @@ Instances: {len(self._instances)}"""
 
     def allocate_shape_instances(self):
         gl = OpenGLRenderer.gl
+
+        self.window.switch_to()
 
         self._add_shape_instances = False
         self._wp_instance_transforms = wp.array(
@@ -2416,6 +2438,8 @@ Instances: {len(self._instances)}"""
             visible: Whether the shape is visible
         """
         gl = OpenGLRenderer.gl
+
+        self.window.switch_to()
 
         if name in self._instances:
             i, body, shape, tf, scale, old_color1, old_color2, v = self._instances[name]
@@ -2527,6 +2551,8 @@ Instances: {len(self._instances)}"""
             bool: Whether the pixels were successfully read.
         """
         gl = OpenGLRenderer.gl
+
+        self.window.switch_to()
 
         channels = 3 if mode == "rgb" else 1
 
