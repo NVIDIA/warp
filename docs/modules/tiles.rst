@@ -5,7 +5,8 @@ Tiles
 
 .. warning:: Tile-based operations in Warp are under preview, APIs are subject to change.
 
-Block-based programming models such as those in OpenAI Triton have proved to be effective ways of expressing high-performance kernels that can leverage cooperative operations on modern GPUs. With Warp 1.5.0 developers now have access to new tile-based programming primitives in Warp kernels. Leveraging cuBLASDx and cuFFTDx, these new tools provide developers with efficient matrix multiplication and Fourier transforms for accelerated simulation and scientific computing. 
+Block-based programming models such as those in OpenAI Triton have proved to be effective ways of expressing high-performance kernels that can leverage cooperative operations on modern GPUs.
+With Warp 1.5.0 [1]_, developers now have access to new tile-based programming primitives in Warp kernels. Leveraging cuBLASDx and cuFFTDx, these new tools provide developers with efficient matrix multiplication and Fourier transforms for accelerated simulation and scientific computing. 
 
 Requirements
 ------------
@@ -268,3 +269,5 @@ When building Warp locally using ``build_lib.py``, the script will attempt to au
 from the `cuBLASDx Downloads Page <https://developer.nvidia.com/cublasdx-downloads>`__.
 A path to an existing ``libmathdx`` installation can also be specified using the ``--libmathdx_path`` option
 when running ``build_lib.py`` or by defining the path in the ``LIBMATHDX_HOME`` environment variable.
+
+.. [1] `Technical Blog: Introducing Tile-Based Programming in Warp 1.5.0 <https://developer.nvidia.com/blog/introducing-tile-based-programming-in-warp-1-5-0/>`_
