@@ -1734,6 +1734,15 @@ class array(Array):
         if not hasattr(data, "__len__"):
             raise RuntimeError(f"Data must be a sequence or array, got scalar {data}")
 
+        if hasattr(dtype, "_wp_scalar_type_"):
+            dtype_shape = dtype._shape_
+            dtype_ndim = len(dtype_shape)
+            scalar_dtype = dtype._wp_scalar_type_
+        else:
+            dtype_shape = ()
+            dtype_ndim = 0
+            scalar_dtype = dtype
+
         if hasattr(data, "__cuda_array_interface__"):
             try:
                 # Performance note: try first, ask questions later
@@ -1745,12 +1754,58 @@ class array(Array):
 
             if device.is_cuda:
                 desc = data.__cuda_array_interface__
-                shape = desc.get("shape")
-                strides = desc.get("strides")
-                dtype = np_dtype_to_warp_type[np.dtype(desc.get("typestr"))]
-                ptr = desc.get("data")[0]
+                data_shape = desc.get("shape")
+                data_strides = desc.get("strides")
+                data_dtype = np.dtype(desc.get("typestr"))
+                data_ptr = desc.get("data")[0]
 
-                self._init_from_ptr(ptr, dtype, shape, strides, None, device, False, None)
+                if dtype == Any:
+                    dtype = np_dtype_to_warp_type[data_dtype]
+
+                data_ndim = len(data_shape)
+
+                # determine whether the input needs reshaping
+                target_npshape = None
+                if shape is not None:
+                    target_npshape = (*shape, *dtype_shape)
+                elif dtype_ndim > 0:
+                    # prune inner dimensions of length 1
+                    while data_ndim > 1 and data_shape[-1] == 1:
+                        data_shape = data_shape[:-1]
+                    # if the inner dims don't match exactly, check if the innermost dim is a multiple of type length
+                    if data_ndim < dtype_ndim or data_shape[-dtype_ndim:] != dtype_shape:
+                        if data_shape[-1] == dtype._length_:
+                            target_npshape = (*data_shape[:-1], *dtype_shape)
+                        elif data_shape[-1] % dtype._length_ == 0:
+                            target_npshape = (*data_shape[:-1], data_shape[-1] // dtype._length_, *dtype_shape)
+                        else:
+                            if dtype_ndim == 1:
+                                raise RuntimeError(
+                                    f"The inner dimensions of the input data are not compatible with the requested vector type {warp.context.type_str(dtype)}: expected an inner dimension that is a multiple of {dtype._length_}"
+                                )
+                            else:
+                                raise RuntimeError(
+                                    f"The inner dimensions of the input data are not compatible with the requested matrix type {warp.context.type_str(dtype)}: expected inner dimensions {dtype._shape_} or a multiple of {dtype._length_}"
+                                )
+
+                if target_npshape is None:
+                    target_npshape = data_shape if shape is None else shape
+
+                # determine final shape and strides
+                if dtype_ndim > 0:
+                    # make sure the inner dims are contiguous for vector/matrix types
+                    scalar_size = type_size_in_bytes(dtype._wp_scalar_type_)
+                    inner_contiguous = data_strides[-1] == scalar_size
+                    if inner_contiguous and dtype_ndim > 1:
+                        inner_contiguous = data_strides[-2] == scalar_size * dtype_shape[-1]
+
+                    shape = target_npshape[:-dtype_ndim] or (1,)
+                    strides = data_strides if shape == data_shape else strides_from_shape(shape, dtype)
+                else:
+                    shape = target_npshape or (1,)
+                    strides = data_strides if shape == data_shape else strides_from_shape(shape, dtype)
+
+                self._init_from_ptr(data_ptr, dtype, shape, strides, None, device, False, None)
 
                 # keep a ref to the source data to keep allocation alive
                 self._ref = data
@@ -1759,15 +1814,6 @@ class array(Array):
                 raise RuntimeError(
                     f"Trying to construct a Warp array from data argument's __cuda_array_interface__ but {device} is not CUDA-capable"
                 )
-
-        if hasattr(dtype, "_wp_scalar_type_"):
-            dtype_shape = dtype._shape_
-            dtype_ndim = len(dtype_shape)
-            scalar_dtype = dtype._wp_scalar_type_
-        else:
-            dtype_shape = ()
-            dtype_ndim = 0
-            scalar_dtype = dtype
 
         # convert input data to ndarray (handles lists, tuples, etc.) and determine dtype
         if dtype == Any:

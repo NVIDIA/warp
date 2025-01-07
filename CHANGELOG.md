@@ -15,6 +15,7 @@
 - Fix allocating arrays with strides ([GH-404](https://github.com/NVIDIA/warp/issues/404)).
 - Fix `ImportError` exception being thrown during `OpenGLRenderer` interpreter shutdown on Windows
   ([GH-412](https://github.com/NVIDIA/warp/issues/412)).
+- Fix `wp.array()` not respecting the target `dtype` when the given data is an another array with a CUDA interface ([GH-363](https://github.com/NVIDIA/warp/issues/363)).
 
 ## [1.5.1] - 2025-01-02
 

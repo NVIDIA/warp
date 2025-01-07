@@ -2793,6 +2793,15 @@ def test_alloc_strides(test, device):
                 test_transposed(shape, wp.vec3)
 
 
+def test_casting(test, device):
+    idxs = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+    idxs = wp.array(idxs, device=device).reshape((-1, 3))
+    idxs = wp.array(idxs, shape=idxs.shape[0], dtype=wp.vec3i, device=device)
+    assert idxs.dtype is wp.vec3i
+    assert idxs.shape == (4,)
+    assert idxs.strides == (12,)
+
+
 devices = get_test_devices()
 
 
@@ -2863,6 +2872,7 @@ add_function_test(TestArray, "test_array_from_int64_domain", test_array_from_int
 add_function_test(TestArray, "test_indexing_types", test_indexing_types, devices=devices)
 
 add_function_test(TestArray, "test_alloc_strides", test_alloc_strides, devices=devices)
+add_function_test(TestArray, "test_casting", test_casting, devices=devices)
 
 try:
     import torch
