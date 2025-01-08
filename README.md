@@ -275,6 +275,18 @@ python -m warp.tests
             <td align="center">trajectory</td>
             <td align="center">walker</td>
         </tr>
+        <tr>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_softbody_properties.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/example_softbody_properties.png"></a></td>
+            <td></td>
+            <td></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td align="center">soft body properties</td>
+            <td align="center"></td>
+            <td align="center"></td>
+            <td align="center"></td>
+        </tr>
     </tbody>
 </table>
 

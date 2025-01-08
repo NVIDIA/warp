@@ -304,6 +304,15 @@ add_example_test(
     },
     test_options_cpu={"train_iters": 1, "num_frames": 30},
 )
+add_example_test(
+    TestOptimExamples,
+    name="optim.example_softbody_properties",
+    devices=test_devices,
+    test_options_cuda={
+        "train_iters": 1 if warp.context.runtime.core.is_debug_enabled() else 3,
+    },
+    test_options_cpu={"train_iters": 1},
+)
 
 
 class TestSimExamples(unittest.TestCase):

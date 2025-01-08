@@ -196,6 +196,15 @@ warp/examples/optim
       - spring cage
       - trajectory
       - walker
+    * - .. image:: ./img/examples/optim_softbody_properties.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_softbody_properties.py
+      -
+      -
+      -
+    * - soft body properties
+      -
+      -
+      -
 
 warp/examples/sim
 ^^^^^^^^^^^^^^^^^
