@@ -306,7 +306,7 @@ add_example_test(
 )
 add_example_test(
     TestOptimExamples,
-    name="optim.example_fem_properties",
+    name="optim.example_softbody_properties",
     devices=test_devices,
     test_options_cuda={
         "train_iters": 1 if warp.context.runtime.core.is_debug_enabled() else 3,

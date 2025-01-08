@@ -196,8 +196,8 @@ warp/examples/optim
       - spring cage
       - trajectory
       - walker
-    * - .. image:: ./img/examples/optim_fem_properties.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_fem_properties.py
+    * - .. image:: ./img/examples/optim_softbody_properties.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_softbody_properties.py
       -
       -
       -
