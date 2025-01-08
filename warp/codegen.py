@@ -1920,6 +1920,11 @@ class Adjoint:
         # evaluate unary op arguments
         arg = adj.eval(node.operand)
 
+        # evaluate expression to a compile-time constant if arg is a constant
+        if arg.constant is not None and math.isfinite(arg.constant):
+            if isinstance(node.op, ast.USub):
+                return adj.add_constant(-arg.constant)
+
         name = builtin_operators[type(node.op)]
 
         return adj.add_builtin_call(name, [arg])

@@ -18,6 +18,7 @@
 - Fix scale and rotation issues with the rock geometry used in the granular collision SDF example
   ([GH-409](https://github.com/NVIDIA/warp/issues/409)).
 - Fix so that `wp.Tape.zero()` zeroes gradients passed via the 'grads' parameter in `wp.Tape.backward()` ([GH-407](https://github.com/NVIDIA/warp/issues/407)).
+- Negative constants evaluate to compile-time constants (fixes [GH-403](https://github.com/NVIDIA/warp/issues/403))
 
 ## [1.5.1] - 2025-01-02
 
