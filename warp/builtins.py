@@ -1836,6 +1836,9 @@ def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[st
     step = 1
     dtype = int
 
+    if "args" not in arg_values:
+        raise RuntimeError("wp.tile_arange() requires one or more positional arguments describing range")
+
     args = arg_values["args"]
 
     if len(args) == 1:
@@ -1876,11 +1879,30 @@ def tile_arange_dispatch_func(arg_types: Mapping[str, type], return_type: Any, a
     template_args.append(m)
     template_args.append(n)
 
-    # todo: it is somewhat redundant to create new vars here since some of start,stop,step
-    # already exist depending on which form the function was called by the user
-    start = warp.codegen.Var(label=None, type=return_type.dtype, constant=return_type.start)
-    stop = warp.codegen.Var(label=None, type=return_type.dtype, constant=return_type.stop)
-    step = warp.codegen.Var(label=None, type=return_type.dtype, constant=return_type.step)
+    if "args" not in arg_values:
+        raise RuntimeError("wp.tile_arange() requires one or more positional arguments describing range")
+
+    args = arg_values["args"]
+
+    if len(args) == 1:
+        start = warp.codegen.Var(label=None, type=return_type.dtype, constant=return_type.start)
+        stop = args[0]
+        step = warp.codegen.Var(label=None, type=return_type.dtype, constant=return_type.step)
+
+    elif len(args) == 2:
+        start = args[0]
+        stop = args[1]
+        step = warp.codegen.Var(label=None, type=return_type.dtype, constant=return_type.step)
+
+    elif len(args) == 3:
+        start = args[0]
+        stop = args[1]
+        step = args[2]
+
+    else:
+        raise TypeError(
+            "Too many positional arguments passed to wp.tile_arange(), which accepts a maximum of 3 scalars."
+        )
 
     function_args = []
     function_args.append(start)

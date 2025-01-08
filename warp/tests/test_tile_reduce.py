@@ -332,16 +332,20 @@ def tile_arange_kernel(out: wp.array2d(dtype=int)):
     a = wp.tile_arange(17, dtype=int)
     b = wp.tile_arange(5, 23, dtype=int)
     c = wp.tile_arange(0, 34, 2, dtype=int)
+    d = wp.tile_arange(-1, 16, dtype=int)
+    e = wp.tile_arange(17, 0, -1, dtype=int)
 
     wp.tile_store(out, 0, 0, a)
     wp.tile_store(out, 1, 0, b)
     wp.tile_store(out, 2, 0, c)
+    wp.tile_store(out, 3, 0, d)
+    wp.tile_store(out, 4, 0, e)
 
 
 def test_tile_arange(test, device):
     N = 17
 
-    output = wp.zeros(shape=(3, N), dtype=int, device=device)
+    output = wp.zeros(shape=(5, N), dtype=int, device=device)
 
     with wp.Tape() as tape:
         wp.launch_tiled(tile_arange_kernel, dim=[1], inputs=[output], block_dim=TILE_DIM, device=device)
@@ -349,6 +353,8 @@ def test_tile_arange(test, device):
     assert_np_equal(output.numpy()[0], np.arange(17))
     assert_np_equal(output.numpy()[1], np.arange(5, 22))
     assert_np_equal(output.numpy()[2], np.arange(0, 34, 2))
+    assert_np_equal(output.numpy()[3], np.arange(-1, 16))
+    assert_np_equal(output.numpy()[4], np.arange(17, 0, -1))
 
 
 devices = get_cuda_test_devices()

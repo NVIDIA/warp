@@ -19,6 +19,7 @@
   ([GH-409](https://github.com/NVIDIA/warp/issues/409)).
 - Fix so that `wp.Tape.zero()` zeroes gradients passed via the 'grads' parameter in `wp.Tape.backward()` ([GH-407](https://github.com/NVIDIA/warp/issues/407)).
 - Fix the OpenGL renderer not working when multiple instances exist at the same time ([GH-385](https://github.com/NVIDIA/warp/issues/385)).
+- Negative constants evaluate to compile-time constants (fixes [GH-403](https://github.com/NVIDIA/warp/issues/403))
 
 ## [1.5.1] - 2025-01-02
 
