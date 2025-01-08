@@ -68,7 +68,7 @@ def enforce_constraint_kernel(lower_bound: wp.float32, upper_bound: wp.float32, 
 class Example:
     def __init__(
         self,
-        stage_path="example_fem_bounce.usd",
+        stage_path="example_softbody_properties.usd",
         material_behavior="anisotropic",
         verbose=False,
     ):
@@ -352,7 +352,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--stage_path",
         type=lambda x: None if x == "None" else str(x),
-        default="example_fem_bounce.usd",
+        default="example_softbody_properties.usd",
         help="Path to the output USD file.",
     )
     parser.add_argument(
