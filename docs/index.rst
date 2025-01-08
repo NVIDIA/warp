@@ -201,7 +201,7 @@ warp/examples/optim
       -
       -
       -
-    * - fem properties
+    * - soft body properties
       -
       -
       -

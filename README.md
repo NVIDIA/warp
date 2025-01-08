@@ -282,7 +282,7 @@ python -m warp.tests
             <td></td>
         </tr>
         <tr>
-            <td align="center">fem properties</td>
+            <td align="center">soft body properties</td>
             <td align="center"></td>
             <td align="center"></td>
             <td align="center"></td>
