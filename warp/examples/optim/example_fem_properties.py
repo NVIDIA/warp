@@ -1,4 +1,4 @@
-# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2025 NVIDIA CORPORATION.  All rights reserved.
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
 # and any modifications thereto.  Any use, reproduction, disclosure or
@@ -26,7 +26,7 @@ import warp.sim.render
 
 
 @wp.kernel
-def assign_param(tet_materials: wp.array2d(dtype=wp.float32), params: wp.array(dtype=wp.float32)):
+def assign_param(params: wp.array(dtype=wp.float32), tet_materials: wp.array2d(dtype=wp.float32)):
     tid = wp.tid()
     params_idx = 2 * wp.tid() % params.shape[0]
     tet_materials[tid, 0] = params[params_idx]
@@ -57,7 +57,7 @@ def loss_kernel(
 
 
 @wp.kernel
-def enforce_constraint_kernel(x: wp.array(dtype=wp.float32), lower_bound: wp.float32, upper_bound: wp.float32):
+def enforce_constraint_kernel(lower_bound: wp.float32, upper_bound: wp.float32, x: wp.array(dtype=wp.float32)):
     tid = wp.tid()
     if x[tid] < lower_bound:
         x[tid] = lower_bound
@@ -69,7 +69,7 @@ class Example:
     def __init__(
         self,
         stage_path="example_fem_bounce.usd",
-        material_behavior="Isotropic",
+        material_behavior="anisotropic",
         verbose=False,
     ):
         self.verbose = verbose
@@ -109,7 +109,7 @@ class Example:
 
         self.target = wp.vec3(-1.0, 1.5, 0.0)
         # Initialize material parameters
-        if self.material_behavior == "Anisotropic":
+        if self.material_behavior == "anisotropic":
             # Different Lame parameters for each tet
             self.material_params = wp.array(
                 self.model.tet_materials.numpy()[:, :2].flatten(),
@@ -165,9 +165,9 @@ class Example:
         if self.verbose:
             print(f"Particle density: {particle_density}")
 
-        young_mod = 1.5 * 1e4  # 0.7Mpa to 5.8 Mpa for rubber
+        young_mod = 1.5 * 1e4
         poisson_ratio = 0.3
-        k_mu = 0.5 * young_mod / (1.0 + poisson_ratio)  # Shear modulus G.
+        k_mu = 0.5 * young_mod / (1.0 + poisson_ratio)
         k_lambda = young_mod * poisson_ratio / ((1 + poisson_ratio) * (1 - 2 * poisson_ratio))
 
         builder.add_soft_grid(
@@ -223,10 +223,8 @@ class Example:
         wp.launch(
             kernel=assign_param,
             dim=self.model.tet_count,
-            inputs=(
-                self.model.tet_materials,
-                self.material_params,
-            ),
+            inputs=(self.material_params,),
+            outputs=(self.model.tet_materials,),
         )
         # run control loop
         for i in range(self.sim_steps):
@@ -276,10 +274,10 @@ class Example:
                 kernel=enforce_constraint_kernel,
                 dim=self.material_params.shape[0],
                 inputs=(
-                    self.material_params,
                     self.hard_lower_bound,
                     self.hard_upper_bound,
                 ),
+                outputs=(self.material_params,),
             )
 
             self.losses.append(self.loss.numpy()[0])
@@ -294,7 +292,7 @@ class Example:
 
     def log_step(self):
         x = self.material_params.numpy().reshape(-1, 2)
-        x_grad = self.tape.gradients[self.material_params].numpy().reshape(-1, 2)
+        x_grad = self.material_params.grad.numpy().reshape(-1, 2)
 
         print(f"Iter: {self.iter} Loss: {self.loss.numpy()[0]}")
 
@@ -365,12 +363,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--material_behavior",
-        default="Anisotropic",
+        default="anisotropic",
+        choices=["anisotropic", "isotropic"],
         help="Set material behavior to be Anisotropic or Isotropic.",
     )
     parser.add_argument(
         "--verbose",
-        default=True,
         action="store_true",
         help="Print out additional status messages during execution.",
     )

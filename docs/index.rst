@@ -201,7 +201,7 @@ warp/examples/optim
       -
       -
       -
-    * - FEM properties
+    * - fem properties
       -
       -
       -
