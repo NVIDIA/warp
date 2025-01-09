@@ -6,6 +6,7 @@
 
 - Support `assert` statements in kernels ([docs](https://nvidia.github.io/warp/debugging.html#assertions)).
   Assertions can only be triggered in `"debug"` mode ([GH-366](https://github.com/NVIDIA/warp/issues/336)).
+- Add optimization example for soft-body properties ([GH-419](https://github.com/NVIDIA/warp/pull/419)).
 
 ### Changed
 
