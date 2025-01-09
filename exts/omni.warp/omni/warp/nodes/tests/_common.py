@@ -25,9 +25,10 @@ from omni.kit.viewport.utility import (
     get_active_viewport,
 )
 from omni.kit.viewport.utility.tests.capture import capture_viewport_and_wait
-from omni.warp.nodes._impl.attributes import from_omni_graph_ptr
 
 import warp as wp
+
+from .attributes import from_omni_graph_ptr
 
 _APP = omni.kit.app.get_app()
 _MANAGER = _APP.get_extension_manager()

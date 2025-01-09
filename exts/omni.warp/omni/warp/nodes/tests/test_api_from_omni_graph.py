@@ -10,15 +10,16 @@
 import omni.graph.core as og
 import omni.graph.core.tests as ogts
 import omni.warp
-from omni.warp.nodes.tests._common import (
+
+import warp as wp
+
+from ._common import (
     array_are_equal,
     attr_set_array,
     bundle_create_attr,
     bundle_get_attr,
     register_node,
 )
-
-import warp as wp
 
 #   Test Node Definitions
 # -----------------------------------------------------------------------------

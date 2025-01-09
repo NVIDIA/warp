@@ -12,12 +12,15 @@ from typing import Optional
 
 import numpy as np
 import omni.graph.core as og
-from omni.warp.nodes._impl.attributes import (
+
+import warp as wp
+
+from .attributes import (
     attr_get,
     attr_get_array_on_gpu,
     attr_set,
 )
-from omni.warp.nodes._impl.bundles import (
+from .bundles import (
     bundle_copy_attr_value,
     bundle_create_attr,
     bundle_create_child,
@@ -27,8 +30,6 @@ from omni.warp.nodes._impl.bundles import (
     bundle_set_prim_type,
     bundle_set_world_xform,
 )
-
-import warp as wp
 
 #   Public API
 # ------------------------------------------------------------------------------

@@ -21,9 +21,10 @@ from typing import (
 
 import numpy as np
 import omni.graph.core as og
-from omni.warp.nodes._impl.common import type_convert_og_to_warp
 
 import warp as wp
+
+from .common import type_convert_og_to_warp
 
 ATTR_BUNDLE_TYPE = og.Type(
     og.BaseDataType.RELATIONSHIP,

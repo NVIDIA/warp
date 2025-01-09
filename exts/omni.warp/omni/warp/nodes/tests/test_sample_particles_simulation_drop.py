@@ -13,7 +13,8 @@ import omni.kit
 import omni.timeline
 import omni.usd
 import omni.warp
-from omni.warp.nodes.tests._common import (
+
+from ._common import (
     array_are_almost_equal,
     attr_disconnect_all,
     open_sample,

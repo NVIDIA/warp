@@ -13,8 +13,12 @@ from typing import Tuple
 import omni.graph.core as og
 import omni.graph.tools.ogn as ogn
 import omni.timeline
-from omni.warp.nodes._impl.attributes import attr_join_name
-from omni.warp.nodes._impl.kernel import (
+from omni.warp.nodes.ogn.OgnKernelDatabase import OgnKernelDatabase
+
+import warp as wp
+
+from .attributes import attr_join_name
+from .kernel import (
     EXPLICIT_SOURCE,
     InternalStateBase,
     UserAttributesEvent,
@@ -25,9 +29,6 @@ from omni.warp.nodes._impl.kernel import (
     validate_input_arrays,
     write_output_attrs,
 )
-from omni.warp.nodes.ogn.OgnKernelDatabase import OgnKernelDatabase
-
-import warp as wp
 
 QUIET_DEFAULT = wp.config.quiet
 
