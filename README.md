@@ -276,7 +276,7 @@ python -m warp.tests
             <td align="center">walker</td>
         </tr>
         <tr>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_softbody_properties.py"><img src="https://github.com/NVIDIA/warp/raw/main/docs/img/examples/example_softbody_properties.png"></a></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_softbody_properties.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_softbody_properties.png"></a></td>
             <td></td>
             <td></td>
             <td></td>
