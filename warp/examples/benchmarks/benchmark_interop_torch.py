@@ -58,7 +58,7 @@ def test_from_torch(kernel, num_iters, array_size, device, warp_dtype=None):
         wp.launch(kernel, dim=array_size, inputs=[a, b, c, d, e])
 
     t2 = time.time_ns()
-    print(f"{(t2 - t1) / 1_000_000 :8.0f} ms  from_torch(...)")
+    print(f"{(t2 - t1) / 1_000_000:8.0f} ms  from_torch(...)")
 
     # profiler.stop()
     # profiler.print()
@@ -97,7 +97,7 @@ def test_array_ctype_from_torch(kernel, num_iters, array_size, device, warp_dtyp
         wp.launch(kernel, dim=array_size, inputs=[a, b, c, d, e])
 
     t2 = time.time_ns()
-    print(f"{(t2 - t1) / 1_000_000 :8.0f} ms  from_torch(..., return_ctype=True)")
+    print(f"{(t2 - t1) / 1_000_000:8.0f} ms  from_torch(..., return_ctype=True)")
 
     # profiler.stop()
     # profiler.print()
@@ -131,7 +131,7 @@ def test_direct_from_torch(kernel, num_iters, array_size, device, warp_dtype=Non
         wp.launch(kernel, dim=array_size, inputs=[_a, _b, _c, _d, _e])
 
     t2 = time.time_ns()
-    print(f"{(t2 - t1) / 1_000_000 :8.0f} ms  direct from torch")
+    print(f"{(t2 - t1) / 1_000_000:8.0f} ms  direct from torch")
 
     # profiler.stop()
     # profiler.print()

@@ -1553,9 +1553,9 @@ class OpenGLRenderer:
             if rescale_window:
                 self.window.set_size(self._tile_width * self._tile_ncols, self._tile_height * self._tile_nrows)
         else:
-            assert (
-                len(tile_positions) == n and len(tile_sizes) == n
-            ), "Number of tiles does not match number of instances."
+            assert len(tile_positions) == n and len(tile_sizes) == n, (
+                "Number of tiles does not match number of instances."
+            )
             self._tile_ncols = None
             self._tile_nrows = None
             self._tile_width = None
@@ -2557,24 +2557,23 @@ Instances: {len(self._instances)}"""
         channels = 3 if mode == "rgb" else 1
 
         if split_up_tiles:
-            assert (
-                self._tile_width is not None and self._tile_height is not None
-            ), "Tile width and height are not set, tiles must all have the same size"
-            assert all(
-                vp[2] == self._tile_width for vp in self._tile_viewports
-            ), "Tile widths do not all equal global tile_width, use `get_tile_pixels` instead to retrieve pixels for a single tile"
-            assert all(
-                vp[3] == self._tile_height for vp in self._tile_viewports
-            ), "Tile heights do not all equal global tile_height, use `get_tile_pixels` instead to retrieve pixels for a single tile"
-            assert (
-                target_image.shape
-                == (
-                    self.num_tiles,
-                    self._tile_height,
-                    self._tile_width,
-                    channels,
-                )
-            ), f"Shape of `target_image` array does not match {self.num_tiles} x {self._tile_height} x {self._tile_width} x {channels}"
+            assert self._tile_width is not None and self._tile_height is not None, (
+                "Tile width and height are not set, tiles must all have the same size"
+            )
+            assert all(vp[2] == self._tile_width for vp in self._tile_viewports), (
+                "Tile widths do not all equal global tile_width, use `get_tile_pixels` instead to retrieve pixels for a single tile"
+            )
+            assert all(vp[3] == self._tile_height for vp in self._tile_viewports), (
+                "Tile heights do not all equal global tile_height, use `get_tile_pixels` instead to retrieve pixels for a single tile"
+            )
+            assert target_image.shape == (
+                self.num_tiles,
+                self._tile_height,
+                self._tile_width,
+                channels,
+            ), (
+                f"Shape of `target_image` array does not match {self.num_tiles} x {self._tile_height} x {self._tile_width} x {channels}"
+            )
         else:
             assert target_image.shape == (
                 self.screen_height,

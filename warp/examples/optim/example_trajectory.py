@@ -153,7 +153,7 @@ class Example:
             tape.backward(loss=self.loss)
 
             if self.verbose and (self.iter + 1) % 10 == 0:
-                print(f"Iter {self.iter+1} Loss: {self.loss.numpy()[0]:.3f}")
+                print(f"Iter {self.iter + 1} Loss: {self.loss.numpy()[0]:.3f}")
 
             assert not np.isnan(self.actions.grad.numpy()).any(), "NaN in gradient"
 

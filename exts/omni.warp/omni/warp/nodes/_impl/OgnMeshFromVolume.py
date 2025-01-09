@@ -113,7 +113,7 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
 
     if db.inputs.data.shape[0] != size:
         raise RuntimeError(
-            "The length of the input array data doesn't match with " "the given size: `{} != {}`.".format(
+            "The length of the input array data doesn't match with the given size: `{} != {}`.".format(
                 db.inputs.data.shape[0], size
             )
         )

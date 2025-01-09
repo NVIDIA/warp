@@ -255,7 +255,7 @@ def from_omni_graph(
         if shape is None:
             if arr_size % element_size != 0:
                 raise RuntimeError(
-                    "Cannot infer a size matching the Warp data type '{}' with " "an array size of '{}' bytes.".format(
+                    "Cannot infer a size matching the Warp data type '{}' with an array size of '{}' bytes.".format(
                         dtype.__name__, arr_size
                     )
                 )
@@ -316,8 +316,9 @@ def from_omni_graph(
             if shape is None:
                 if arr_size % element_size != 0:
                     raise RuntimeError(
-                        "Cannot infer a size matching the Warp data type '{}' with "
-                        "an array size of '{}' bytes.".format(dtype.__name__, arr_size)
+                        "Cannot infer a size matching the Warp data type '{}' with an array size of '{}' bytes.".format(
+                            dtype.__name__, arr_size
+                        )
                     )
                 shape = (arr_size // element_size,)
 
