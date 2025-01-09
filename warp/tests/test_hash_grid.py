@@ -85,7 +85,7 @@ def test_hashgrid_query(test, device):
 
     for i in range(num_runs):
         if print_enabled:
-            print(f"Run: {i+1}")
+            print(f"Run: {i + 1}")
             print("---------")
 
         points = particle_grid(16, 32, 16, (0.0, 0.3, 0.0), cell_radius * 0.25, 0.1)

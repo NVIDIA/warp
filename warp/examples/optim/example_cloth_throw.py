@@ -184,7 +184,7 @@ class Example:
                     vertices=traj_verts,
                     color=wp.render.bourke_color_map(0.0, 269.0, self.loss.numpy()[0]),
                     radius=0.02,
-                    name=f"traj_{self.iter-1}",
+                    name=f"traj_{self.iter - 1}",
                 )
                 self.renderer.end_frame()
 

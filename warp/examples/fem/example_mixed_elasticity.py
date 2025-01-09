@@ -236,7 +236,7 @@ class Example:
         final_area = fem.integrate(
             area_form, quadrature=fem.RegularQuadrature(domain, order=4), fields={"u_cur": self._u_field}
         )
-        print(f"Area gain: {final_area}  (using Poisson ratio={self._lame[0] / (self._lame[0] + 2.0*self._lame[1])})")
+        print(f"Area gain: {final_area}  (using Poisson ratio={self._lame[0] / (self._lame[0] + 2.0 * self._lame[1])})")
 
     def render(self):
         self.renderer.add_field("solution", self._u_field)

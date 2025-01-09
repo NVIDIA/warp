@@ -2523,7 +2523,7 @@ class ModelBuilder:
                 last_dynamic_body_name = self.body_name[last_dynamic_body] if last_dynamic_body > -1 else "world"
                 if verbose:
                     print(
-                        f'Remove fixed joint {joint["name"]} between {parent_name} and {child_name}, '
+                        f"Remove fixed joint {joint['name']} between {parent_name} and {child_name}, "
                         f"merging {child_name} into {last_dynamic_body_name}"
                     )
                 child_id = body_data[child_body]["original_id"]

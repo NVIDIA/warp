@@ -514,7 +514,7 @@ class GraphvizTapeVisitor(TapeVisitor):
         node_attrs = f"label=<{label}>"
         if "caller" in launch_data:
             caller = launch_data["caller"]
-            node_attrs += f",tooltip=\"{self.sanitize(caller['file'])}:{caller['lineno']} ({caller['func']})\""
+            node_attrs += f',tooltip="{self.sanitize(caller["file"])}:{caller["lineno"]} ({caller["func"]})"'
 
         self.graphviz_lines.append(f"{chart_indent}{kernel_launch_id} [{node_attrs}];")
 

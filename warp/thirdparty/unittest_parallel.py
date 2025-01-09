@@ -306,9 +306,9 @@ def main(argv=None):
 
         # Test report
         print(unittest.TextTestResult.separator2, file=sys.stderr)
-        print(f'Ran {tests_run} {"tests" if tests_run > 1 else "test"} in {test_duration:.3f}s', file=sys.stderr)
+        print(f"Ran {tests_run} {'tests' if tests_run > 1 else 'test'} in {test_duration:.3f}s", file=sys.stderr)
         print(file=sys.stderr)
-        print(f'{"OK" if is_success else "FAILED"}{" (" + ", ".join(infos) + ")" if infos else ""}', file=sys.stderr)
+        print(f"{'OK' if is_success else 'FAILED'}{' (' + ', '.join(infos) + ')' if infos else ''}", file=sys.stderr)
 
         if test_records and args.junit_report_xml:
             # NVIDIA modification to report results in Junit XML format

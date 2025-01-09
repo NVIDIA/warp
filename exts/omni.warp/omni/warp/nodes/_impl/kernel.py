@@ -529,8 +529,9 @@ def initialize_kernel_module(
     invalid_attrs = tuple(x.name for x in attr_infos[_ATTR_PORT_TYPE_OUTPUT] if not x.is_array and not x.is_bundle)
     if invalid_attrs:
         raise RuntimeError(
-            "Output attributes are required to be arrays or bundles but "
-            "the following attributes are not: {}.".format(", ".join(invalid_attrs))
+            "Output attributes are required to be arrays or bundles but the following attributes are not: {}.".format(
+                ", ".join(invalid_attrs)
+            )
         )
 
     # Retrieve the kernel code to evaluate.

@@ -702,7 +702,7 @@ class Example:
     def step(self):
         if self.frame % int((self.num_frames / len(self.targets))) == 0:
             if self.verbose:
-                print(f"Choosing new flight target: {self.target_idx+1}")
+                print(f"Choosing new flight target: {self.target_idx + 1}")
 
             self.target_idx += 1
             self.target_idx %= len(self.targets)

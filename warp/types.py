@@ -171,8 +171,7 @@ def vector(length, dtype):
                     iter(value)
                 except TypeError:
                     raise TypeError(
-                        f"Expected to assign a slice from a sequence of values "
-                        f"but got `{type(value).__name__}` instead"
+                        f"Expected to assign a slice from a sequence of values but got `{type(value).__name__}` instead"
                     ) from None
 
                 if self._wp_scalar_type_ == float16:
@@ -419,7 +418,7 @@ def matrix(shape, dtype):
                 iter(v)
             except TypeError:
                 raise TypeError(
-                    f"Expected to assign a slice from a sequence of values " f"but got `{type(v).__name__}` instead"
+                    f"Expected to assign a slice from a sequence of values but got `{type(v).__name__}` instead"
                 ) from None
 
             row_start = r * self._shape_[1]

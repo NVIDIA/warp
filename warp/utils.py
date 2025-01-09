@@ -782,9 +782,9 @@ class ScopedTimer:
                     print()
 
                 if self.extra_msg:
-                    print(f"{indent}{self.name} took {self.elapsed :.2f} ms {self.extra_msg}")
+                    print(f"{indent}{self.name} took {self.elapsed:.2f} ms {self.extra_msg}")
                 else:
-                    print(f"{indent}{self.name} took {self.elapsed :.2f} ms")
+                    print(f"{indent}{self.name} took {self.elapsed:.2f} ms")
 
                 ScopedTimer.indent -= 1
 
@@ -1045,7 +1045,7 @@ def timing_print(results, indent=""):
             activity_agg.count += 1
             activity_agg.elapsed += r.elapsed
 
-        print(f"{indent}{r.elapsed :12.6f} ms | {r.device.alias :7s} | {r.name}")
+        print(f"{indent}{r.elapsed:12.6f} ms | {r.device.alias:7s} | {r.name}")
 
     print()
     print(f"{indent}CUDA activity summary:")
@@ -1053,7 +1053,7 @@ def timing_print(results, indent=""):
     print(f"{indent}Total time      | Count   | Activity")
     print(f"{indent}----------------+---------+{activity_dashes}")
     for name, agg in activity_totals.items():
-        print(f"{indent}{agg.elapsed :12.6f} ms | {agg.count :7d} | {name}")
+        print(f"{indent}{agg.elapsed:12.6f} ms | {agg.count:7d} | {name}")
 
     print()
     print(f"{indent}CUDA device summary:")
@@ -1061,4 +1061,4 @@ def timing_print(results, indent=""):
     print(f"{indent}Total time      | Count   | Device")
     print(f"{indent}----------------+---------+{activity_dashes}")
     for device, agg in device_totals.items():
-        print(f"{indent}{agg.elapsed :12.6f} ms | {agg.count :7d} | {device}")
+        print(f"{indent}{agg.elapsed:12.6f} ms | {agg.count:7d} | {device}")

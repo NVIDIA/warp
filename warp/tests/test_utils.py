@@ -280,7 +280,7 @@ class TestUtils(unittest.TestCase):
             wp.utils.warn("hello, world!")
             wp.utils.warn("hello, world!")
 
-        expected = "Warp UserWarning: hello, world!\n" "Warp UserWarning: hello, world!\n"
+        expected = "Warp UserWarning: hello, world!\nWarp UserWarning: hello, world!\n"
 
         self.assertEqual(f.getvalue(), expected)
 
@@ -320,7 +320,7 @@ class TestUtils(unittest.TestCase):
             wp.utils.warn("foo", category=DeprecationWarning)
             wp.utils.warn("bar", category=DeprecationWarning)
 
-        expected = "Warp DeprecationWarning: foo\n" "Warp DeprecationWarning: bar\n"
+        expected = "Warp DeprecationWarning: foo\nWarp DeprecationWarning: bar\n"
 
         self.assertEqual(f.getvalue(), expected)
 
