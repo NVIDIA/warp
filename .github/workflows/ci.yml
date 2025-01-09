@@ -24,7 +24,7 @@ env:
 
 jobs:
   build-warp-ubuntu:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       artifact-url: ${{ steps.exports-header.outputs.artifact-url }}
     steps:
