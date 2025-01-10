@@ -7,6 +7,8 @@
 - Support `assert` statements in kernels ([docs](https://nvidia.github.io/warp/debugging.html#assertions)).
   Assertions can only be triggered in `"debug"` mode ([GH-366](https://github.com/NVIDIA/warp/issues/336)).
 - Add optimization example for soft-body properties ([GH-419](https://github.com/NVIDIA/warp/pull/419)).
+- Add per-module option to disable fused floating point operations, use `wp.set_module_options({"fuse_fp": False})`
+  ([GH-379](https://github.com/NVIDIA/warp/issues/379)).
 
 ### Changed
 
@@ -29,8 +31,6 @@
 - Add PyTorch basics and custom operators notebooks to the `notebooks` directory.
 - Update PyTorch interop docs to include section on custom operators
   ([docs](https://nvidia.github.io/warp/modules/interoperability.html#pytorch-custom-ops-example)).
-- Add per-module option to disable fused floating point operations, use `wp.set_module_options({"fuse_fp": False})`
-  ([GH-379](https://github.com/NVIDIA/warp/issues/379)).
 
 ### Fixed
 
@@ -46,7 +46,6 @@
 - Fix the OpenGL renderer not being able to run without a CUDA device available
   ([GH-344](https://github.com/NVIDIA/warp/issues/344)).
 - Fix incorrect CUDA driver function versions ([GH-402](https://github.com/NVIDIA/warp/issues/402)).
-- Fix allocating arrays with strides ([GH-404](https://github.com/NVIDIA/warp/issues/404)).
 
 ## [1.5.0] - 2024-12-02
 
