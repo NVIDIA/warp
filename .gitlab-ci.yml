@@ -691,7 +691,7 @@ publish wheels to pypi registry:
   extends:
     - .runner-utility-linux-x86_64
   rules:
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/ || $CI_COMMIT_TAG
+    - if: $CI_COMMIT_TAG
       when: manual
       allow_failure: true
   environment:
@@ -751,7 +751,6 @@ publish dev wheels to artifactory:
     - .runner-utility-linux-x86_64
   rules: # Should be consistent with create dev wheels
     - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - when: never
   allow_failure: true
   before_script:
     - export VERSION=$(head -n 1 dist/VERSION.md)
@@ -761,7 +760,7 @@ publish dev wheels to artifactory:
       jf rt u --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
       --target-props 'component_name=warp-lang;release_approver=ershi;release_status=ready'
       '*.whl' sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/
-    # Set additional properties on the artifacts
+    # Set build-specific properties on individual artifacts
     - >
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
       sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*-win_amd64.whl
@@ -774,6 +773,51 @@ publish dev wheels to artifactory:
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
       sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*-manylinux2014_x86_64.whl
       'arch=x86_64;os=linux'
+    # Set additional common properties on all artifacts
+    - >
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*.whl
+      version=$VERSION
+    - >
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*.whl
+      branch=$CI_COMMIT_REF_NAME
+
+publish tag wheels to artifactory:
+  stage: deploy
+  image: releases-docker.jfrog.io/jfrog/jfrog-cli-v2-jf
+  needs: ["create pypi wheels"]
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $CI_COMMIT_TAG
+  allow_failure: true
+  before_script:
+    - export VERSION=$(head -n 1 VERSION.md)
+  script:
+    - cd dist
+    - >
+      jf rt u --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
+      --target-props 'component_name=warp-lang;release_approver=ershi;release_status=ready'
+      '*.whl' sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/
+    # Set build-specific properties on individual artifacts
+    - >
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*-win_amd64.whl
+      'arch=x86_64;os=windows'
+    - >
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*-manylinux2014_aarch64.whl
+      'arch=aarch64;os=linux'
+    - >
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*-manylinux2014_x86_64.whl
+      'arch=x86_64;os=linux'
+    - >
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*-macosx_*_universal2.whl
+      'arch=universal;os=macosx'
+    # Set additional common properties on all artifacts
     - >
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
       sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*.whl
