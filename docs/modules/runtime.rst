@@ -182,6 +182,8 @@ Using the ``@`` operator (``D = A @ B``) will default to the same CUTLASS algori
 
 .. autofunction:: batched_matmul
 
+.. _Data_Types:
+
 Data Types
 ----------
 
