@@ -2989,7 +2989,7 @@ Instances: {len(self._instances)}"""
         indices = np.array(indices, dtype=np.int32).reshape((-1, 3))
         idx_count = len(indices)
 
-        geo_hash = hash((indices.tobytes(),))
+        geo_hash = hash((points.tobytes(), indices.tobytes()))
 
         if name in self._instances:
             # We've already registered this mesh instance and its associated shape.
@@ -3011,6 +3011,12 @@ Instances: {len(self._instances)}"""
             if shape is not None:
                 # Update the shape's point positions.
                 self.update_shape_vertices(shape, points, scale)
+
+                if not is_template and name not in self._instances:
+                    # Create a new instance.
+                    body = self._resolve_body_id(parent_body)
+                    self.add_shape_instance(name, shape, body, pos, rot, color1=colors)
+
                 return shape
 
         # No existing shape for the given mesh was found, or its topology may have changed,
