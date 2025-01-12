@@ -24,6 +24,9 @@
 - Fix the OpenGL renderer not working when multiple instances exist at the same time ([GH-385](https://github.com/NVIDIA/warp/issues/385)).
 - Negative constants evaluate to compile-time constants (fixes [GH-403](https://github.com/NVIDIA/warp/issues/403))
 - Fix `AttributeError` crash in the OpenGL renderer when moving the camera ([GH-426](https://github.com/NVIDIA/warp/issues/426)).
+- Fix the OpenGL renderer now correctly displaying duplicate cylinder shapes ([GH-388](https://github.com/NVIDIA/warp/issues/388)).
+- Fix the OpenGL renderer now correctly displaying duplicate capsule, cone, and cylinder shapes ([GH-388](https://github.com/NVIDIA/warp/issues/388)).
+- Fix the OpenGL renderer now correctly displaying duplicate cylinder and mesh shapes ([GH-388](https://github.com/NVIDIA/warp/issues/388)).
 
 ## [1.5.1] - 2025-01-02
 

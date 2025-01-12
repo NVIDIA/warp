@@ -2840,7 +2840,7 @@ Instances: {len(self._instances)}"""
             up_axis: The axis of the capsule that points up (0: x, 1: y, 2: z)
             color: The color of the capsule
         """
-        geo_hash = hash(("capsule", radius, half_height))
+        geo_hash = hash(("capsule", radius, half_height, up_axis))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
             if self.update_shape_instance(name, pos, rot):
@@ -2875,7 +2875,7 @@ Instances: {len(self._instances)}"""
             up_axis: The axis of the cylinder that points up (0: x, 1: y, 2: z)
             color: The color of the capsule
         """
-        geo_hash = hash(("cylinder", radius, half_height))
+        geo_hash = hash(("cylinder", radius, half_height, up_axis))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
             if self.update_shape_instance(name, pos, rot):
@@ -2910,7 +2910,7 @@ Instances: {len(self._instances)}"""
             up_axis: The axis of the cone that points up (0: x, 1: y, 2: z)
             color: The color of the cone
         """
-        geo_hash = hash(("cone", radius, half_height))
+        geo_hash = hash(("cone", radius, half_height, up_axis))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
             if self.update_shape_instance(name, pos, rot):
