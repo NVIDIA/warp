@@ -1046,6 +1046,8 @@ class Model:
     @property
     def soft_contact_max(self):
         """Maximum number of soft contacts that can be registered"""
+        if self.soft_contact_particle is None:
+            return 0
         return len(self.soft_contact_particle)
 
 
