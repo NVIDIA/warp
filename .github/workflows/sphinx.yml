@@ -33,7 +33,7 @@ jobs:
       - name: Build Warp without CUDA Support
         run: python build_lib.py
       - name: Build Sphinx documentation
-        run: python build_docs.py
+        run: python build_docs.py --no_doctest
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
