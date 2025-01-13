@@ -2108,6 +2108,7 @@ Instances: {len(self._instances)}"""
             return
 
         import pyglet
+        from pyglet.math import Vec3 as PyVec3
 
         if buttons & pyglet.window.mouse.LEFT:
             sensitivity = 0.1
@@ -2119,10 +2120,12 @@ Instances: {len(self._instances)}"""
 
             self._pitch = max(min(self._pitch, 89.0), -89.0)
 
-            self._camera_front.x = np.cos(np.deg2rad(self._yaw)) * np.cos(np.deg2rad(self._pitch))
-            self._camera_front.y = np.sin(np.deg2rad(self._pitch))
-            self._camera_front.z = np.sin(np.deg2rad(self._yaw)) * np.cos(np.deg2rad(self._pitch))
-            self._camera_front = self._camera_front.normalize()
+            self._camera_front = PyVec3(
+                np.cos(np.deg2rad(self._yaw)) * np.cos(np.deg2rad(self._pitch)),
+                np.sin(np.deg2rad(self._pitch)),
+                np.sin(np.deg2rad(self._yaw)) * np.cos(np.deg2rad(self._pitch)),
+            ).normalize()
+
             self.update_view_matrix()
 
     def _scroll_callback(self, x, y, scroll_x, scroll_y):
