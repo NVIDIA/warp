@@ -18,12 +18,13 @@ def build_cuda(
 ):
     with open(cu_path, "rb") as src_file:
         src = src_file.read()
-        cu_path = cu_path.encode("utf-8")
+        cu_path_bytes = cu_path.encode("utf-8")
+        program_name_bytes = os.path.basename(cu_path).encode("utf-8")
         inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode("utf-8")
         output_path = output_path.encode("utf-8")
 
         if warp.config.llvm_cuda:
-            warp.context.runtime.llvm.compile_cuda(src, cu_path, inc_path, output_path, False)
+            warp.context.runtime.llvm.compile_cuda(src, cu_path_bytes, inc_path, output_path, False)
 
         else:
             if ltoirs is None:
@@ -34,6 +35,7 @@ def build_cuda(
             arr_lroir_sizes = (ctypes.c_size_t * num_ltoirs)(*[len(l) for l in ltoirs])
             err = warp.context.runtime.core.cuda_compile_program(
                 src,
+                program_name_bytes,
                 arch,
                 inc_path,
                 0,

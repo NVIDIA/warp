@@ -3473,6 +3473,7 @@ class Runtime:
 
             self.core.cuda_compile_program.argtypes = [
                 ctypes.c_char_p,  # cuda_src
+                ctypes.c_char_p,  # program name
                 ctypes.c_int,  # arch
                 ctypes.c_char_p,  # include_dir
                 ctypes.c_int,  # num_cuda_include_dirs
