@@ -6497,3 +6497,58 @@ def static(expr):
         which includes constant variables and variables captured in the current closure in which the function or kernel is implemented.
     """
     return expr
+
+
+add_builtin(
+    "len",
+    input_types={"a": vector(length=Any, dtype=Scalar)},
+    value_type=int,
+    doc="Retrieves the number of elements in a vector.",
+    group="Utility",
+    export=False,
+)
+
+add_builtin(
+    "len",
+    input_types={"a": quaternion(dtype=Scalar)},
+    value_type=int,
+    doc="Retrieves the number of elements in a quaternion.",
+    group="Utility",
+    export=False,
+)
+
+add_builtin(
+    "len",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
+    value_type=int,
+    doc="Retrieves the number of rows in a matrix.",
+    group="Utility",
+    export=False,
+)
+
+add_builtin(
+    "len",
+    input_types={"a": transformation(dtype=Float)},
+    value_type=int,
+    doc="Retrieves the number of elements in a transformation.",
+    group="Utility",
+    export=False,
+)
+
+add_builtin(
+    "len",
+    input_types={"a": array(dtype=Any)},
+    value_type=int,
+    doc="Retrieves the size of the first dimension in an array.",
+    group="Utility",
+    export=False,
+)
+
+add_builtin(
+    "len",
+    input_types={"a": Tile(dtype=Any, M=Any, N=Any)},
+    value_type=int,
+    doc="Retrieves the number of rows in a tile.",
+    group="Utility",
+    export=False,
+)

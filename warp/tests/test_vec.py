@@ -6,6 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import unittest
+from typing import Any
 
 import numpy as np
 
@@ -1240,6 +1241,54 @@ def test_constructors_constant_length():
         v[i] = float(i)
 
 
+Vec123 = wp.vec(123, dtype=wp.float16)
+
+
+@wp.kernel
+def vector_len_kernel(
+    v1: wp.vec2,
+    v2: wp.vec(3, float),
+    v3: wp.vec(Any, float),
+    v4: Vec123,
+    out: wp.array(dtype=int),
+):
+    length = wp.static(len(v1))
+    wp.expect_eq(len(v1), 2)
+    out[0] = len(v1)
+
+    length = len(v2)
+    wp.expect_eq(wp.static(len(v2)), 3)
+    out[1] = len(v2)
+
+    length = len(v3)
+    wp.expect_eq(len(v3), 4)
+    out[2] = wp.static(len(v3))
+
+    length = wp.static(len(v4))
+    wp.expect_eq(wp.static(len(v4)), 123)
+    out[3] = wp.static(len(v4))
+
+    foo = wp.vec2()
+    length = len(foo)
+    wp.expect_eq(len(foo), 2)
+    out[4] = len(foo)
+
+
+def test_vector_len(test, device):
+    v1 = wp.vec2()
+    v2 = wp.vec3()
+    v3 = wp.vec4()
+    v4 = Vec123()
+    out = wp.empty(5, dtype=int, device=device)
+    wp.launch(vector_len_kernel, dim=(1,), inputs=(v1, v2, v3, v4), outputs=(out,), device=device)
+
+    test.assertEqual(out.numpy()[0], 2)
+    test.assertEqual(out.numpy()[1], 3)
+    test.assertEqual(out.numpy()[2], 4)
+    test.assertEqual(out.numpy()[3], 123)
+    test.assertEqual(out.numpy()[4], 2)
+
+
 devices = get_test_devices()
 
 
@@ -1348,6 +1397,12 @@ add_function_test(
     TestVec,
     "test_tpl_constructor_error_numeric_args_mismatch",
     test_tpl_constructor_error_numeric_args_mismatch,
+    devices=devices,
+)
+add_function_test(
+    TestVec,
+    "test_vector_len",
+    test_vector_len,
     devices=devices,
 )
 

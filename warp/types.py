@@ -1360,6 +1360,11 @@ def type_is_matrix(t):
     return getattr(t, "_wp_generic_type_hint_", None) is Matrix
 
 
+# returns True if the passed *type* is a transformation
+def type_is_transformation(t):
+    return getattr(t, "_wp_generic_type_hint_", None) is Transformation
+
+
 value_types = (int, float, builtins.bool) + scalar_types
 
 

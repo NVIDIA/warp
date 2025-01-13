@@ -2882,10 +2882,61 @@ class Adjoint:
         if static_code is None:
             raise WarpCodegenError("Error extracting source code from wp.static() expression")
 
+        # Since this is an expression, we can enforce it to be defined on a single line.
+        static_code = static_code.replace("\n", "")
+
         vars_dict = adj.get_static_evaluation_context()
         # add constant variables to the static call context
         constant_vars = {k: v.constant for k, v in adj.symbols.items() if isinstance(v, Var) and v.constant is not None}
         vars_dict.update(constant_vars)
+
+        # Replace all constant `len()` expressions with their value.
+        if "len" in static_code:
+
+            def eval_len(obj):
+                if type_is_vector(obj):
+                    return obj._length_
+                elif type_is_quaternion(obj):
+                    return obj._length_
+                elif type_is_matrix(obj):
+                    return obj._shape_[0]
+                elif type_is_transformation(obj):
+                    return obj._length_
+                elif is_tile(obj):
+                    return obj.M
+
+                return len(obj)
+
+            len_expr_ctx = vars_dict.copy()
+            constant_types = {k: v.type for k, v in adj.symbols.items() if isinstance(v, Var) and v.type is not None}
+            len_expr_ctx.update(constant_types)
+            len_expr_ctx.update({"len": eval_len})
+
+            # We want to replace the expression code in-place,
+            # so reparse it to get the correct column info.
+            len_value_locs = []
+            expr_tree = ast.parse(static_code)
+            assert len(expr_tree.body) == 1 and isinstance(expr_tree.body[0], ast.Expr)
+            expr_root = expr_tree.body[0].value
+            for expr_node in ast.walk(expr_root):
+                if isinstance(expr_node, ast.Call) and expr_node.func.id == "len" and len(expr_node.args) == 1:
+                    len_expr = static_code[expr_node.col_offset : expr_node.end_col_offset]
+                    try:
+                        len_value = eval(len_expr, len_expr_ctx)
+                    except Exception:
+                        pass
+                    else:
+                        len_value_locs.append((len_value, expr_node.col_offset, expr_node.end_col_offset))
+
+            if len_value_locs:
+                new_static_code = ""
+                loc = 0
+                for value, start, end in len_value_locs:
+                    new_static_code += f"{static_code[loc:start]}{value}"
+                    loc = end
+
+                new_static_code += static_code[len_value_locs[-1][2] :]
+                static_code = new_static_code
 
         try:
             value = eval(static_code, vars_dict)

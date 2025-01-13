@@ -1311,5 +1311,15 @@ inline CUDA_CALLABLE void adj_vec4(float s, float& adj_s, const vec4& adj_ret)
     adj_vec_t(s, adj_s, adj_ret);
 }
 
+template<unsigned Length, typename Type>
+CUDA_CALLABLE inline int len(const vec_t<Length, Type>& x)
+{
+    return Length;
+}
+
+template<unsigned Length, typename Type>
+CUDA_CALLABLE inline void adj_len(const vec_t<Length, Type>& x, vec_t<Length, Type>& adj_x, const int& adj_ret)
+{
+}
 
 } // namespace wp

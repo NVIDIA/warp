@@ -1229,6 +1229,15 @@ inline CUDA_CALLABLE quat_t<Type> quat_identity()
     return quat_t<Type>(Type(0), Type(0), Type(0), Type(1));
 }
 
+template<typename Type>
+CUDA_CALLABLE inline int len(const quat_t<Type>& x)
+{
+    return 4;
+}
 
+template<typename Type>
+CUDA_CALLABLE inline void adj_len(const quat_t<Type>& x, quat_t<Type>& adj_x, const int& adj_ret)
+{
+}
 
 } // namespace wp

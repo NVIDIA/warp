@@ -3033,3 +3033,39 @@ def static(expr: Any) -> Any:
     (excluding Warp arrays since they cannot be created in a Warp kernel at the moment).
     """
     ...
+
+
+@over
+def len(a: Vector[Any, Scalar]) -> int:
+    """Retrieves the number of elements in a vector."""
+    ...
+
+
+@over
+def len(a: Quaternion[Scalar]) -> int:
+    """Retrieves the number of elements in a quaternion."""
+    ...
+
+
+@over
+def len(a: Matrix[Any, Any, Scalar]) -> int:
+    """Retrieves the number of rows in a matrix."""
+    ...
+
+
+@over
+def len(a: Transformation[Float]) -> int:
+    """Retrieves the number of elements in a transformation."""
+    ...
+
+
+@over
+def len(a: Array[Any]) -> int:
+    """Retrieves the size of the first dimension in an array."""
+    ...
+
+
+@over
+def len(a: Tile) -> int:
+    """Retrieves the number of rows in a tile."""
+    ...

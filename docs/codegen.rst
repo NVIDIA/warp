@@ -446,6 +446,24 @@ The above program uses a static expression to select the right function given th
     [2. 0.]
 
 
+Example: Static Length Query
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Python's built-in function ``len()`` can also be evaluated statically for types with fixed length, such as vectors, quaternions, and matrices, and can be wrapped into ``wp.static()`` calls to initialize other constructs:
+
+.. code:: python
+
+    import warp as wp
+
+    @wp.kernel
+    def my_kernel(v: wp.vec2):
+        m = wp.identity(n=wp.static(len(v) + 1), dtype=v.dtype)
+        wp.expect_eq(wp.ddot(m, m), 3.0)
+
+    v = wp.vec2(1, 2)
+    wp.launch(my_kernel, 1, inputs=(v,))
+
+
 Advanced Example: Branching Elimination with Static Loop Unrolling
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In computational simulations, it's common to apply different operations or boundary conditions based on runtime variables. However, conditional branching using runtime variables often leads to performance issues due to register pressure, as the GPU may allocate resources for all branches even if some of them are never taken. To tackle this, we can utilize static loop unrolling via ``wp.static(...)``, which helps eliminate unnecessary branching at compile-time and improve parallel execution.
