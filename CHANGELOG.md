@@ -9,8 +9,12 @@
 - Add optimization example for soft-body properties ([GH-419](https://github.com/NVIDIA/warp/pull/419)).
 - Add per-module option to disable fused floating point operations, use `wp.set_module_options({"fuse_fp": False})`
   ([GH-379](https://github.com/NVIDIA/warp/issues/379)).
+- Add per-module option to add CUDA-C line information for profiling, use `wp.set_module_options({"lineinfo": True})`.
 
 ### Changed
+
+- Files in the kernel cache will be named according to their directory. Previously, all files began with
+  `module_codegen` ([GH-431](https://github.com/NVIDIA/warp/issues/431)).
 
 ### Fixed
 

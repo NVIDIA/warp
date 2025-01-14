@@ -1823,6 +1823,7 @@ class Module:
             "enable_backward": warp.config.enable_backward,
             "fast_math": False,
             "fuse_fp": True,
+            "lineinfo": False,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": warp.config.mode,
             "block_dim": 256,
@@ -1998,7 +1999,8 @@ class Module:
         module_hash = self.hasher.module_hash
 
         # use a unique module path using the module short hash
-        module_dir = os.path.join(warp.config.kernel_cache_dir, f"{module_name}_{module_hash.hex()[:7]}")
+        module_name_short = f"{module_name}_{module_hash.hex()[:7]}"
+        module_dir = os.path.join(warp.config.kernel_cache_dir, module_name_short)
 
         with warp.ScopedTimer(
             f"Module {self.name} {module_hash.hex()[:7]} load on device '{device}'", active=not warp.config.quiet
@@ -2006,7 +2008,7 @@ class Module:
             # -----------------------------------------------------------
             # determine output paths
             if device.is_cpu:
-                output_name = "module_codegen.o"
+                output_name = f"{module_name_short}.o"
                 output_arch = None
 
             elif device.is_cuda:
@@ -2026,10 +2028,10 @@ class Module:
 
                 if use_ptx:
                     output_arch = min(device.arch, warp.config.ptx_target_arch)
-                    output_name = f"module_codegen.sm{output_arch}.ptx"
+                    output_name = f"{module_name_short}.sm{output_arch}.ptx"
                 else:
                     output_arch = device.arch
-                    output_name = f"module_codegen.sm{output_arch}.cubin"
+                    output_name = f"{module_name_short}.sm{output_arch}.cubin"
 
             # final object binary path
             binary_path = os.path.join(module_dir, output_name)
@@ -2067,7 +2069,7 @@ class Module:
                 if device.is_cpu:
                     # build
                     try:
-                        source_code_path = os.path.join(build_dir, "module_codegen.cpp")
+                        source_code_path = os.path.join(build_dir, f"{module_name_short}.cpp")
 
                         # write cpp sources
                         cpp_source = builder.codegen("cpu")
@@ -2096,7 +2098,7 @@ class Module:
                 elif device.is_cuda:
                     # build
                     try:
-                        source_code_path = os.path.join(build_dir, "module_codegen.cu")
+                        source_code_path = os.path.join(build_dir, f"{module_name_short}.cu")
 
                         # write cuda sources
                         cu_source = builder.codegen("cuda")
@@ -2113,9 +2115,10 @@ class Module:
                                 output_arch,
                                 output_path,
                                 config=self.options["mode"],
+                                verify_fp=warp.config.verify_fp,
                                 fast_math=self.options["fast_math"],
                                 fuse_fp=self.options["fuse_fp"],
-                                verify_fp=warp.config.verify_fp,
+                                lineinfo=self.options["lineinfo"],
                                 ltoirs=builder.ltoirs.values(),
                             )
 
@@ -2128,7 +2131,7 @@ class Module:
                 # build meta data
 
                 meta = builder.build_meta()
-                meta_path = os.path.join(build_dir, "module_codegen.meta")
+                meta_path = os.path.join(build_dir, f"{module_name_short}.meta")
 
                 with open(meta_path, "w") as meta_file:
                     json.dump(meta, meta_file)
@@ -2192,7 +2195,7 @@ class Module:
             # -----------------------------------------------------------
             # Load CPU or CUDA binary
 
-            meta_path = os.path.join(module_dir, "module_codegen.meta")
+            meta_path = os.path.join(module_dir, f"{module_name_short}.meta")
             with open(meta_path, "r") as meta_file:
                 meta = json.load(meta_file)
 
@@ -3483,6 +3486,7 @@ class Runtime:
                 ctypes.c_bool,  # verify_fp
                 ctypes.c_bool,  # fast_math
                 ctypes.c_bool,  # fuse_fp
+                ctypes.c_bool,  # lineinfo
                 ctypes.c_char_p,  # output_path
                 ctypes.c_size_t,  # num_ltoirs
                 ctypes.POINTER(ctypes.c_char_p),  # ltoirs
