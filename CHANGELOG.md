@@ -15,6 +15,8 @@
 
 - Files in the kernel cache will be named according to their directory. Previously, all files began with
   `module_codegen` ([GH-431](https://github.com/NVIDIA/warp/issues/431)).
+- Emit deprecation warnings for the use of the `owner` and `length` keywords in
+  the `wp.array` initializer.
 
 ### Fixed
 
