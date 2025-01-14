@@ -148,6 +148,13 @@ The options for a module can also be queried using ``wp.get_module_options()``.
 |                    |         |             | that functionally equivalent kernels will produce identical results      |
 |                    |         |             | unaffected by the presence or absence of fused operations.               |
 +--------------------+---------+-------------+--------------------------------------------------------------------------+
+|``lineinfo``        | Boolean | ``False``   | If ``True``, CUDA kernels will be compiled with the                      |
+|                    |         |             | ``--generate-line-info`` compiler option, which generates line-number    |
+|                    |         |             | information for device code, e.g. to allow NVIDIA Nsight Compute to      |
+|                    |         |             | correlate CUDA-C source and SASS. Line-number information is always      |
+|                    |         |             | included when compiling kernels in ``"debug"`` mode regardless of this   |
+|                    |         |             | setting.                                                                 |
++--------------------+---------+-------------+--------------------------------------------------------------------------+
 |``cuda_output``     | String  | ``None``    | The preferred CUDA output format for kernels. Valid choices are ``None``,|
 |                    |         |             | ``"ptx"``, and ``"cubin"``. If ``None``, a format will be determined     |
 |                    |         |             | automatically. The module-level setting takes precedence over the global |

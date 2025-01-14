@@ -2654,7 +2654,7 @@ bool write_file(const char* data, size_t size, std::string filename, const char*
     }
 #endif
 
-size_t cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes)
+size_t cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes)
 {
     // use file extension to determine whether to output PTX or CUBIN
     const char* output_ext = strrchr(output_path, '.');
@@ -2715,7 +2715,12 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
         //opts.push_back("--device-debug");
     }
     else
+    {
         opts.push_back("--define-macro=NDEBUG");
+
+        if (lineinfo)
+            opts.push_back("--generate-line-info");
+    }
 
     if (verify_fp)
         opts.push_back("--define-macro=WP_VERIFY_FP");
