@@ -39,6 +39,8 @@ Kernels
 
 In Warp, compute kernels are defined as Python functions and annotated with the ``@wp.kernel`` decorator::
 
+    import warp as wp
+
     @wp.kernel
     def simple_kernel(a: wp.array(dtype=wp.vec3),
                       b: wp.array(dtype=wp.vec3),
@@ -57,12 +59,15 @@ In Warp, compute kernels are defined as Python functions and annotated with the 
         # write result back to memory
         c[tid] = r
 
+Conceptually, Warp kernels are similar to CUDA kernels. When a kernel is *launched* on a GPU,
+the body of the kernel is executed a certain number of times in parallel.
+
 Because Warp kernels are compiled to native C++/CUDA code, all the function input arguments must be statically typed. This allows 
 Warp to generate fast code that executes at essentially native speeds. Because kernels may be run on either the CPU
-or GPU, they cannot access arbitrary global state from the Python environment. Instead they must read and write data
-through their input parameters such as arrays.
+or GPU, they cannot access arbitrary global state from the Python environment. Instead, they must read and write data
+through their input parameters such as *arrays*.
 
-Warp kernels functions have a one-to-one correspondence with CUDA kernels. 
+Warp kernels have a one-to-one correspondence with CUDA kernels. 
 To launch a kernel with 1024 threads, we use :func:`wp.launch() <warp.launch>`::
 
     wp.launch(kernel=simple_kernel, # kernel to launch
@@ -70,10 +75,13 @@ To launch a kernel with 1024 threads, we use :func:`wp.launch() <warp.launch>`::
               inputs=[a, b, c],     # parameters
               device="cuda")        # execution device
 
-Inside the kernel, we retrieve the *thread index* of the each thread using the :func:`wp.tid() <tid>` built-in function::
+Inside the kernel, we retrieve the *thread index* of each thread using the :func:`wp.tid() <tid>` built-in function::
 
     # get thread index
     i = wp.tid()
+
+The full list of built-in functions that may be called in Warp kernels is
+documented in the :doc:`/modules/functions`.
 
 Kernels can be launched with 1D, 2D, 3D, or 4D grids of threads.
 To launch a 2D grid of threads to process a 1024x1024 image, we could write::
@@ -92,11 +100,14 @@ We retrieve a 2D thread index inside the kernel by using multiple assignment whe
 Arrays
 ------
 
-Memory allocations are exposed via the :class:`wp.array <array>` type. Arrays wrap an underlying memory allocation that may live in
-either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in values
-(``float``, ``int``, ``vec3``, ``matrix33``, etc).
+Memory allocations are exposed via the :class:`wp.array <array>` type.
+Arrays are multidimensional containers of fixed size that can store homogeneous
+elements of any Warp data type either in host (CPU) or device (GPU) memory.
+All arrays have an associated data type, which can be a scalar data type
+(e.g. ``wp.float``, ``wp.int``) or a composite data type (e.g. ``wp.vec3``, ``wp.matrix33``).
+:ref:`Data_Types` lists all of Warp's built-in data types.
 
-Arrays can be allocated similar to PyTorch::
+Arrays can be allocated similar to NumPy and PyTorch::
 
     # allocate an uninitialized array of vec3s
     v = wp.empty(shape=n, dtype=wp.vec3, device="cuda")
@@ -109,7 +120,25 @@ Arrays can be allocated similar to PyTorch::
     a = np.ones((10, 3), dtype=np.float32)
     v = wp.from_numpy(a, dtype=wp.vec3, device="cuda")
 
-By default, Warp arrays that are initialized from external data (e.g.: NumPy, Lists, Tuples) will create a copy the data to new memory for the
+Arrays cannot be created inside of Warp kernels.
+
+Arrays up to four dimensions are supported. The aliases
+``wp.array2d``, ``wp.array3d``, ``wp.array4d`` are useful when typing kernel
+arguments:
+
+.. code-block:: python
+
+    @wp.kernel
+    def make_field(field: wp.array3d(dtype=float), center: wp.vec3, radius: float):
+        i, j, k = wp.tid()
+
+        p = wp.vec3(float(i), float(j), float(k))
+
+        d = wp.length(p - center) - radius
+
+        field[i, j, k] = d
+
+By default, Warp arrays that are initialized from external data (e.g.: NumPy, Lists, Tuples) will create a copy the data in new memory for the
 device specified. However, it is possible for arrays to alias external memory using the ``copy=False`` parameter to the
 array constructor provided the input is contiguous and on the same device. See the :doc:`/modules/interoperability`
 section for more details on sharing memory with external frameworks.
@@ -203,6 +232,22 @@ As with kernel parameters, all attributes of a struct must have valid type hints
 
 Structs may be used as a ``dtype`` for ``wp.arrays`` and may be passed to kernels directly as arguments.
 See :ref:`Structs Reference <Structs>` for more details on structs.
+
+
+Python Scope vs. Kernel Scope API
+---------------------------------
+
+Some of the Warp API can only be called from the Python scope (i.e. outside of Warp user functions and kernels),
+while others can only be called from the kernel scope.
+
+The Python-scope API is documented in the :doc:`/modules/runtime`,
+while the kernel-scope API is documented in the :doc:`/modules/functions`.
+Generally, the kernel-scope API can also be used in the Python scope.
+
+Not all of the Python language is supported inside the kernel scope. Some features haven't been implemented yet, while
+other features do not map well to the GPU from a performance perspective.
+
+See the :doc:`Limitations <limitations>` documentation for more details.
 
 .. _Compilation Model:
 
@@ -298,6 +343,17 @@ All kernel parameters must be annotated with the appropriate type, for example::
     def simple_kernel(a: wp.array(dtype=vec3),
                       b: wp.array(dtype=vec3),
                       c: float):
+
+For convenience, ``typing.Any`` may be used in place of concrete types
+appearing in function signatures. See the :doc:`/modules/generics` documentation
+for more information. A generic version of the above kernel could look like::
+
+    from typing import Any
+
+    @wp.kernel
+    def generic_kernel(a: wp.array(dtype=Any),
+                      b: wp.array(dtype=Any),
+                      c: Any):
 
 Tuple initialization is not supported, instead variables should be explicitly typed::
 
