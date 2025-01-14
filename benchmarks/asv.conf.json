@@ -1,0 +1,25 @@
+{
+    "version": 1,
+    "project": "warp-lang",
+    "project_url": "https://github.com/NVIDIA/warp",
+    "repo": "..",
+    "build_command": [
+         "python -mpip install numpy",
+         "python build_lib.py --quick",
+         "python -m build --wheel -o {build_cache_dir}"
+    ],
+    "branches": ["main"],
+    "dvcs": "git",
+    "environment_type": "virtualenv",
+    "show_commit_url": "https://github.com/NVIDIA/warp/commit/",
+    "matrix": {
+        "req": {
+            "usd-core": [""]
+        }
+    },
+    "benchmark_dir": "benchmarks",
+    "env_dir": "env",
+    "results_dir": "results",
+    "html_dir": "html",
+    "build_cache_size": 20
+}

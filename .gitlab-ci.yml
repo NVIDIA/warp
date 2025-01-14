@@ -474,6 +474,48 @@ doctest:
   script:
     - sphinx-build -b doctest docs docs/_build/doctest
 
+# Benchmark this commit with the current main branch using Airspeed Velocity
+# Only runs on merge requests
+linux-x86_64 asv:
+  stage: test
+  needs: []
+  image: ubuntu:22.04
+  extends:
+    - .omni_nvks_gpu
+  variables:
+    GIT_DEPTH: "50"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      changes:
+        - .gitlab.yml
+        - benchmarks/**/*
+        - warp/**/*
+        - pyproject.toml
+        - deps/*
+        - build_lib.py
+        - build_llvm.py
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
+    - apt-get update && apt-get install python3 python3.10-venv git-lfs build-essential curl ca-certificates --no-install-recommends -y
+    - tools/packman/packman pull --platform linux-x86_64 deps/cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-11"
+    - export PATH="$CUDA_BIN:$PATH"
+    - python3 -m venv _venv
+    - source _venv/bin/activate
+    - python -m pip install --upgrade pip
+    - python -m pip install asv
+    - export GIT_LFS_SKIP_SMUDGE=1
+    - git config --global --add safe.directory '*' 
+    - git fetch origin main
+    - git checkout main
+    - git checkout $CI_COMMIT_SHA
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - cd benchmarks
+    - asv machine --yes
+    - asv continuous --interleave-rounds --append-samples --no-only-changed -f 1.15 main $CI_COMMIT_SHA
+  allow_failure: True # Can make success required after we have tested this job more
+
 # ==============================================================================
 # Child pipelines
 #

@@ -33,6 +33,10 @@ exts/omni.warp/config/extension.gen.toml
 .coverage
 .cache
 warp/tests/outputs
+benchmarks/env
+benchmarks/results
+benchmarks/html
+benchmarks/warp-lang
 
 # CUTLASS repo directories we don't want to track
 warp/native/cutlass/.github
