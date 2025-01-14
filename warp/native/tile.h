@@ -278,7 +278,7 @@ struct tile_register_t
     // some of the trailing registers may lie outside the valid range
     inline CUDA_CALLABLE int valid() const
     {
-        return (Size - threadIdx.x)/WP_TILE_BLOCK_DIM;
+        return (int)floor(float(Size - threadIdx.x - 1)/WP_TILE_BLOCK_DIM) + 1;
     }    
 
     inline CUDA_CALLABLE void assign(const tile_register_t<T, M, N>& tile) 
@@ -299,8 +299,8 @@ struct tile_register_t
         // map from logical coords (i, j) -> (thread, reg)
         const int linear = i*N + j;
 
-        const int thread = linear/NumRegs;
-        const int reg = linear%NumRegs;
+        const int thread = linear%WP_TILE_BLOCK_DIM;
+        const int reg = linear/WP_TILE_BLOCK_DIM;
 
         WP_TILE_SHARED Type scratch;
 
@@ -325,8 +325,8 @@ struct tile_register_t
         // map from logical coords (i, j) -> (thread, reg)
         const int linear = i*N + j;
 
-        const int thread = linear/NumRegs;
-        const int reg = linear%NumRegs;
+        const int thread = linear%WP_TILE_BLOCK_DIM;
+        const int reg = linear/WP_TILE_BLOCK_DIM;
 
         if (threadIdx.x == thread)
         {
@@ -1554,7 +1554,6 @@ inline CUDA_CALLABLE void adj_tile_mul(const typename Tile::Type& s, Tile& a,
         adj_s += adj_s_tile.data[i];
     }
 }
-
 
 
 template<typename Tile>

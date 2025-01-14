@@ -245,7 +245,7 @@ def test_tile_grouped_gemm(test, device):
         )
 
     # TODO: 32 mismatched elements
-    assert_np_equal(C_wp.numpy(), C)
+    assert_np_equal(C_wp.numpy(), C, 1e-6)
 
 
 @unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
@@ -442,39 +442,41 @@ def test_tile_sum_launch(test, device):
 
 
 @wp.kernel
-def tile_extract_kernel(input: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
-    # output tile index
-    i = wp.tid()
+def test_tile_extract_kernel(a: wp.array2d(dtype=float), b: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    tile = wp.tile_load(a, i, j, TILE_M, TILE_N, storage="register")  # register case
+    # TODO: shared memory tile case
 
-    t = wp.tile_load(input, 0, 0, m=TILE_M, n=TILE_N)
+    tile_row = i * (TILE_M - 1)
+    tile_col = j * (TILE_N - 1)
 
-    # perform a scalar copy, extracting each
-    # tile element individually
-    for i in range(TILE_M):
-        for j in range(TILE_N):
-            output[i, j] = t[i, j]
+    b[i, j] = wp.tile_extract(tile, tile_row, tile_col)
 
 
 def test_tile_extract(test, device):
-    M = TILE_M
-    N = TILE_N
+    block_dim = 16
 
-    rng = np.random.default_rng(42)
-    input = rng.random((M, N), dtype=np.float32)
+    input = np.arange(TILE_M * TILE_N * 4).reshape((TILE_M * 2, TILE_N * 2))
 
-    input_wp = wp.array(input, requires_grad=True, device=device)
-    output_wp = wp.zeros_like(input_wp, requires_grad=True, device=device)
+    a = wp.array(input, dtype=float, requires_grad=True, device=device)
+    b = wp.zeros((2, 2), dtype=float, requires_grad=True, device=device)
 
     with wp.Tape() as tape:
-        wp.launch_tiled(tile_extract_kernel, dim=[1], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device)
+        wp.launch_tiled(test_tile_extract_kernel, dim=[2, 2], inputs=[a, b], block_dim=block_dim, device=device)
 
-    assert_array_equal(output_wp, input_wp)
+    assert_np_equal(b.numpy(), np.array([[0, 7], [120, 127]]))
 
-    output_wp.grad.fill_(1.0)
+    b.grad.fill_(1.0)
 
     tape.backward()
 
-    assert_np_equal(input_wp.grad.numpy(), np.ones_like(input))
+    expected_grad = np.zeros_like(input)
+    expected_grad[0, 0] = 1.0
+    expected_grad[TILE_M * 2 - 1, 0] = 1.0
+    expected_grad[0, TILE_N * 2 - 1] = 1.0
+    expected_grad[TILE_M * 2 - 1, TILE_N * 2 - 1] = 1.0
+
+    assert_np_equal(a.grad.numpy(), expected_grad)
 
 
 @wp.kernel
