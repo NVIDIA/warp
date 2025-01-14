@@ -28,6 +28,7 @@
 - Fix the OpenGL renderer not working when multiple instances exist at the same time ([GH-385](https://github.com/NVIDIA/warp/issues/385)).
 - Negative constants evaluate to compile-time constants (fixes [GH-403](https://github.com/NVIDIA/warp/issues/403))
 - Fix `AttributeError` crash in the OpenGL renderer when moving the camera ([GH-426](https://github.com/NVIDIA/warp/issues/426)).
+- Fix `tile_register_t` `extract()` and `valid()` methods.
 
 ## [1.5.1] - 2025-01-02
 
@@ -47,6 +48,9 @@
   ([GH-386](https://github.com/NVIDIA/warp/issues/386)).
 - Array overwrite tracking: Fix issue with not marking arrays passed to `wp.atomic_add()`, `wp.atomic_sub()`,
   `wp.atomic_max()`, or `wp.atomic_min()` as being written to ([GH-378](https://github.com/NVIDIA/warp/issues/378)).
+- Fix for occasional failure to update .meta files into Warp kernel cache on Windows
+- Mark kernel arrays as written to when passed to `wp.atomic_add()` or `wp.atomic_sub()`
+- Fix the OpenGL renderer not being able to run without CUDA ([GH-344](https://github.com/NVIDIA/warp/issues/344)).
 - Fix for occasional failure to update `.meta` files into Warp kernel cache on Windows.
 - Fix the OpenGL renderer not being able to run without a CUDA device available
   ([GH-344](https://github.com/NVIDIA/warp/issues/344)).
