@@ -27,8 +27,6 @@ import warp.sim.render
 
 class Example:
     def __init__(self, stage_path="example_cartpole.usd", num_envs=8):
-        builder = wp.sim.ModelBuilder()
-
         self.num_envs = num_envs
 
         articulation_builder = wp.sim.ModelBuilder()
