@@ -487,7 +487,7 @@ linux-x86_64 asv:
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       changes:
-        - .gitlab.yml
+        - .gitlab-ci.yml
         - benchmarks/**/*
         - warp/**/*
         - pyproject.toml
@@ -507,8 +507,9 @@ linux-x86_64 asv:
     - export GIT_LFS_SKIP_SMUDGE=1
     - git config --global --add safe.directory '*' 
     - git fetch origin main
-    - git checkout main
-    - git checkout $CI_COMMIT_SHA
+    # Make sure the main branch can be checked out by asv
+    - git checkout -f main
+    - git checkout -f $CI_COMMIT_SHA
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - cd benchmarks
