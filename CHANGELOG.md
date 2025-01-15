@@ -18,6 +18,7 @@
   `module_codegen` ([GH-431](https://github.com/NVIDIA/warp/issues/431)).
 - Emit deprecation warnings for the use of the `owner` and `length` keywords in
   the `wp.array` initializer.
+- Avoid recompilation of modules when changing `block_dim`.
 
 ### Fixed
 
