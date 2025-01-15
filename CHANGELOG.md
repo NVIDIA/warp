@@ -38,6 +38,9 @@
 - Negative constants evaluate to compile-time constants (fixes [GH-403](https://github.com/NVIDIA/warp/issues/403))
 - Fix `AttributeError` crash in the OpenGL renderer when moving the camera ([GH-426](https://github.com/NVIDIA/warp/issues/426)).
 - Fix `tile_register_t` `extract()` and `valid()` methods.
+- Fix the OpenGL renderer now correctly displaying duplicate cylinder shapes ([GH-388](https://github.com/NVIDIA/warp/issues/388)).
+- Fix the OpenGL renderer now correctly displaying duplicate capsule, cone, and cylinder shapes ([GH-388](https://github.com/NVIDIA/warp/issues/388)).
+- Fix the OpenGL renderer now correctly displaying duplicate cylinder and mesh shapes ([GH-388](https://github.com/NVIDIA/warp/issues/388)).
 
 ## [1.5.1] - 2025-01-02
 
