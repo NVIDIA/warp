@@ -6288,7 +6288,7 @@ def tile_cholesky_generic_lto_dispatch_func(
         return lto_symbol, builder.ltoirs[lto_symbol]
 
     # otherwise compile LTO
-    lto_code = tempfile.NamedTemporaryFile()
+    lto_code = tempfile.NamedTemporaryFile(prefix="warp", delete=False)
 
     # cuSOLVERDx only support col-major input/outputs,
     # so we use upper to mimic a row-major input
@@ -6307,13 +6307,20 @@ def tile_cholesky_generic_lto_dispatch_func(
         num_threads,
     )
 
+    lto_code_path = Path(lto_code.name)
     if not result:
+        lto_code.close()
+        if lto_code_path.exists():
+            lto_code_path.unlink()
         raise RuntimeError("Failed to compile tile_cholesky")
 
-    with open(lto_code.name, "rb") as f:
-        lto_code = f.read()
+    else:
+        with open(lto_code.name, "rb") as f:
+            lto_code_data = f.read()
+        lto_code.close()
+        lto_code_path.unlink()
 
-    builder.ltoirs[lto_symbol] = lto_code
+    builder.ltoirs[lto_symbol] = lto_code_data
 
     return (
         (
@@ -6324,7 +6331,7 @@ def tile_cholesky_generic_lto_dispatch_func(
             inout,
         ),
         [],
-        [lto_code],
+        [lto_code_data],
         0,
     )
 
@@ -6369,7 +6376,7 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
         return lto_symbol, builder.ltoirs[lto_symbol]
 
     # otherwise compile LTO
-    lto_code = tempfile.NamedTemporaryFile()
+    lto_code = tempfile.NamedTemporaryFile(prefix="warp", delete=False)
 
     # cuSOLVERDx only support col-major input/outputs,
     # so we use upper to mimic a row-major input
@@ -6388,13 +6395,20 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
         num_threads,
     )
 
+    lto_code_path = Path(lto_code.name)
     if not result:
+        lto_code.close()
+        if lto_code_path.exists():
+            lto_code_path.unlink()
         raise RuntimeError("Failed to compile tile_cholesky_solve")
 
-    with open(lto_code.name, "rb") as f:
-        lto_code = f.read()
+    else:
+        with open(lto_code.name, "rb") as f:
+            lto_code_data = f.read()
+        lto_code.close()
+        lto_code_path.unlink()
 
-    builder.ltoirs[lto_symbol] = lto_code
+    builder.ltoirs[lto_symbol] = lto_code_data
 
     return (
         (
@@ -6406,7 +6420,7 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
             inout,
         ),
         [],
-        [lto_code],
+        [lto_code_data],
         0,
     )
 
