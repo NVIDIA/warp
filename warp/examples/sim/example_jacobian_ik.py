@@ -43,8 +43,6 @@ class Example:
     def __init__(self, stage_path="example_jacobian_ik.usd", num_envs=10):
         rng = np.random.default_rng(42)
 
-        builder = wp.sim.ModelBuilder()
-
         self.num_envs = num_envs
 
         fps = 60

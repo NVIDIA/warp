@@ -60,8 +60,6 @@ class Example:
 
         self.iter = 0
 
-        builder = wp.sim.ModelBuilder()
-
         # add planar joints
         builder = wp.sim.ModelBuilder(gravity=0.0)
         builder.add_articulation()
