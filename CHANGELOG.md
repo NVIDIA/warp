@@ -4,6 +4,8 @@
 
 ### Added
 
+- `warp.autograd.gradcheck`, `function_jacobian`, `function_jacobian_fd` now also accept arbitrary Python functions that have Warp arrays as inputs and outputs.
+- `warp.autograd.gradcheck_tape` now has additional optional arguments `reverse_launches` and `skip_to_launch_index`.
 - Added preview of Tile Cholesky factorization and solve APIs through `tile_cholesky` and `tile_cholesky_solve`, as well as helpers `tile_tril` and `tile_add_diag`. Those are preview APIs and subject to change.
 - Support `assert` statements in kernels ([docs](https://nvidia.github.io/warp/debugging.html#assertions)).
   Assertions can only be triggered in `"debug"` mode ([GH-366](https://github.com/NVIDIA/warp/issues/336)).
@@ -23,6 +25,8 @@
 
 ### Fixed
 
+- Fix autodiff Jacobian computation in `warp.autograd.jacobian_ad` where in some cases gradients were not zero-ed out properly.
+- Fix plotting issues in `warp.autograd.jacobian_plot`.
 - Fix errors during graph capture caused by module unloading ([GH-401](https://github.com/NVIDIA/warp/issues/401)).
 - Fix allocating arrays with strides ([GH-404](https://github.com/NVIDIA/warp/issues/404)).
 - Fix `ImportError` exception being thrown during `OpenGLRenderer` interpreter shutdown on Windows

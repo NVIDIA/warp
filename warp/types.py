@@ -675,6 +675,10 @@ def transformation(dtype=Any):
 
         def __init__(self, *args, **kwargs):
             if len(args) == 1 and len(kwargs) == 0:
+                if is_float(args[0]):
+                    # Initialize from a single scalar.
+                    super().__init__(args[0])
+                    return
                 if args[0]._wp_generic_type_str_ == self._wp_generic_type_str_:
                     # Copy constructor.
                     super().__init__(*args[0])
@@ -1701,7 +1705,7 @@ class array(Array):
         elif length is not None:
             # backward compatibility
             warp.utils.warn(
-                "The 'length' keyword is deprecated and will be removed\nin a future version. Use 'shape' instead.",
+                "The 'length' keyword is deprecated and will be removed in a future version. Use 'shape' instead.",
                 category=DeprecationWarning,
                 stacklevel=2,
             )

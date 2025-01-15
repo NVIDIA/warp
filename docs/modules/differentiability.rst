@@ -683,33 +683,42 @@ A native snippet may also include a return statement. If this is the case, you m
 Debugging Gradients
 ###################
 
-.. note::
-    We are continuously expanding the debugging section to provide tools to help users debug gradient computations in upcoming Warp releases.
-
-Measuring Gradient Accuracy
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 .. currentmodule:: warp.autograd
     
 Warp provides utility functions to evaluate the partial Jacobian matrices for input/output argument pairs given to kernel launches.
-:func:`jacobian` computes the Jacobian matrix of a kernel using Warp's automatic differentiation engine.
-:func:`jacobian_fd` computes the Jacobian matrix of a kernel using finite differences.
+:func:`jacobian` computes the Jacobian matrix of a Warp kernel, or any Python function calling Warp kernels and having Warp arrays as inputs and outputs, using Warp's automatic differentiation engine.
+:func:`jacobian_fd` computes the Jacobian matrix of a kernel or a function using finite differences.
 :func:`gradcheck` compares the Jacobian matrices computed by the autodiff engine and finite differences to measure the accuracy of the gradients.
 :func:`jacobian_plot` visualizes the Jacobian matrices returned by the :func:`jacobian` and :func:`jacobian_fd` functions.
 
+``warp.autograd.gradcheck``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 .. autofunction:: gradcheck
+
+``warp.autograd.gradcheck_tape``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autofunction:: gradcheck_tape
 
+``warp.autograd.jacobian``
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 .. autofunction:: jacobian
 
+``warp.autograd.jacobian_fd``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 .. autofunction:: jacobian_fd
+
+``warp.autograd.jacobian_plot``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autofunction:: jacobian_plot
 
 
 Example usage
-"""""""""""""
+^^^^^^^^^^^^^
 
 .. code-block:: python
 
