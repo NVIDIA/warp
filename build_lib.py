@@ -124,20 +124,20 @@ def find_libmathdx():
         print(f"Using libmathdx path '{libmathdx_path}' provided through the 'LIBMATHDX_HOME' environment variable")
         return libmathdx_path
     else:
-        # First check if a libmathdx folder exists in the target location
-        extract_dir_base = os.path.join(".", "_build", "target-deps")
-        extract_dir = os.path.join(extract_dir_base, "libmathdx")
-
-        if os.path.isdir(extract_dir) and os.listdir(extract_dir):
-            # Directory is not empty, so let's try to use it
-            print(f"Using existing libmathdx at path '{os.path.abspath(extract_dir)}'")
-            return os.path.abspath(extract_dir)
-
         base_url = "https://developer.nvidia.com/downloads/compute/cublasdx/redist/cublasdx"
         libmathdx_ver = "0.1.1"
 
+        # First check if a libmathdx folder exists in the target location
+        extract_dir_base = os.path.join(".", "_build", "target-deps", "libmathdx")
+        version_dir = os.path.join(extract_dir_base, libmathdx_ver)
+
+        if os.path.isdir(version_dir) and os.listdir(version_dir):
+            # Directory is not empty, so let's try to use it
+            print(f"Using existing libmathdx at path '{os.path.abspath(version_dir)}'")
+            return os.path.abspath(version_dir)
+
         if platform.system() == "Windows":
-            source_url = f"{base_url}/libmathdx-{libmathdx_ver}-win64.zip"
+            source_url = f"{base_url}/libmathdx-win64-{machine_architecture()}-{libmathdx_ver}.zip"
         elif platform.system() == "Linux":
             source_url = f"{base_url}/libmathdx-Linux-{machine_architecture()}-{libmathdx_ver}.tar.gz"
         else:
@@ -151,34 +151,30 @@ def find_libmathdx():
             print(f"Unable to download libmathdx from {source_url}, skipping: {e}")
             return None
 
-        if platform.system() == "Windows":
-            import zipfile
+        try:
+            if platform.system() == "Windows":
+                import zipfile
 
-            try:
                 with zipfile.ZipFile(local_filename, "r") as zip_file:
                     zip_file.extractall(extract_dir_base)
+            else:
+                import tarfile
 
-            except Exception as e:
-                print(f"Unable to extract libmathdx to {extract_dir_base}, skipping: {e}")
-                return None
-
-            try:
-                os.rename(os.path.join(extract_dir_base, f"libmathdx-{libmathdx_ver}-win64"), extract_dir)
-            except Exception:
-                # Unable to rename to preferred directory name, return the intermediate one
-                return os.path.abspath(os.path.join(extract_dir_base, f"libmathdx-{libmathdx_ver}-win64"))
-        else:
-            import tarfile
-
-            try:
                 with tarfile.open(local_filename, "r:gz") as tar_file:
                     tar_file.extractall(extract_dir_base, filter="data")
-            except Exception as e:
-                print(f"Unable to extract libmathdx to {extract_dir_base}, skipping: {e}")
-                return None
+        except Exception as e:
+            print(f"Unable to extract libmathdx to {extract_dir_base}, skipping: {e}")
+            return None
+
+        try:
+            # Move extracted contents to a directory named with the version number
+            os.rename(os.path.join(extract_dir_base, "libmathdx"), version_dir)
+        except Exception:
+            # Unable to rename to preferred directory name, return the intermediate one
+            return os.path.abspath(os.path.join(extract_dir_base, "libmathdx"))
 
         # Success
-        return os.path.abspath(extract_dir)
+        return os.path.abspath(version_dir)
 
 
 # setup CUDA Toolkit path
