@@ -221,6 +221,10 @@ Linear Algebra
 * :func:`tile_transpose`
 * :func:`tile_fft`
 * :func:`tile_ifft`
+* :func:`tile_cholesky`
+* :func:`tile_cholesky_solve`
+* :func:`tile_diag_add`
+* :func:`tile_tril`
 
 Tiles and SIMT Code
 -------------------

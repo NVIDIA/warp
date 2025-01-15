@@ -36,6 +36,7 @@
 #define check_nvjitlink(handle, code) (check_nvjitlink_result(handle, code, __FILE__, __LINE__))
 #define check_cufftdx(code) (check_cufftdx_result(code, __FILE__, __LINE__))
 #define check_cublasdx(code) (check_cublasdx_result(code, __FILE__, __LINE__))
+#define check_cusolver(code) (check_cusolver_result(code, __FILE__, __LINE__))
 #define CHECK_ANY(code) \
 { \
     do { \
@@ -58,6 +59,15 @@
 { \
     do { \
         bool out = (check_cufftdx(code)); \
+        if(!out) { \
+            return out; \
+        } \
+    } while(0); \
+}
+#define CHECK_CUSOLVER(code) \
+{ \
+    do { \
+        bool out = (check_cusolver(code)); \
         if(!out) { \
             return out; \
         } \
@@ -2941,6 +2951,16 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
         }
     }
 
+    bool check_cusolver_result(commonDxStatusType result, const char* file, int line) 
+    {
+        if (result != commonDxStatusType::COMMONDX_SUCCESS) {
+            fprintf(stderr, "libmathdx cuSOLVER error: %d on %s:%d\n", (int)result, file, line);
+            return false;
+        } else {
+            return true;
+        }
+    }
+
     bool cuda_compile_fft(const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int size, int elements_per_thread, int direction, int precision, int* shared_memory_size)
     {
 
@@ -3031,6 +3051,49 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
 
         return res;
     }
+
+    bool cuda_compile_solver(const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int M, int N, int function, int precision, int fill_mode, int num_threads)
+    {
+
+        CHECK_ANY(ltoir_output_path != nullptr);
+        CHECK_ANY(symbol_name != nullptr);
+        CHECK_ANY(mathdx_include_dir == nullptr);
+        CHECK_ANY(num_include_dirs == 0);
+        CHECK_ANY(include_dirs == nullptr);
+
+        bool res = true;
+
+        cusolverHandle h { 0 };
+        CHECK_CUSOLVER(cusolverCreate(&h));
+        long long int size[2] = {M, N};
+        long long int block_dim[3] = {num_threads, 1, 1};
+        CHECK_CUSOLVER(cusolverSetOperatorInt64Array(h, cusolverOperatorType::CUSOLVER_OPERATOR_SIZE, 2, size));
+        CHECK_CUSOLVER(cusolverSetOperatorInt64Array(h, cusolverOperatorType::CUSOLVER_OPERATOR_BLOCK_DIM, 3, block_dim));
+        CHECK_CUSOLVER(cusolverSetOperatorInt64(h, cusolverOperatorType::CUSOLVER_OPERATOR_TYPE, cusolverType::CUSOLVER_TYPE_REAL));
+        CHECK_CUSOLVER(cusolverSetOperatorInt64(h, cusolverOperatorType::CUSOLVER_OPERATOR_API, cusolverApi::CUSOLVER_API_BLOCK_SMEM));
+        CHECK_CUSOLVER(cusolverSetOperatorInt64(h, cusolverOperatorType::CUSOLVER_OPERATOR_FUNCTION, (cusolverFunction)function));
+        CHECK_CUSOLVER(cusolverSetOperatorInt64(h, cusolverOperatorType::CUSOLVER_OPERATOR_EXECUTION, commonDxExecution::COMMONDX_EXECUTION_BLOCK));
+        CHECK_CUSOLVER(cusolverSetOperatorInt64(h, cusolverOperatorType::CUSOLVER_OPERATOR_PRECISION, (commonDxPrecision)precision));
+        CHECK_CUSOLVER(cusolverSetOperatorInt64(h, cusolverOperatorType::CUSOLVER_OPERATOR_FILL_MODE, (cusolverFillMode)fill_mode));
+        CHECK_CUSOLVER(cusolverSetOperatorInt64(h, cusolverOperatorType::CUSOLVER_OPERATOR_SM, (long long)(arch * 10)));
+        
+        CHECK_CUSOLVER(cusolverSetOptionStr(h, commonDxOption::COMMONDX_OPTION_SYMBOL_NAME, symbol_name));
+
+        size_t lto_size = 0;
+        CHECK_CUSOLVER(cusolverGetLTOIRSize(h, &lto_size));
+
+        std::vector<char> lto(lto_size);
+        CHECK_CUSOLVER(cusolverGetLTOIR(h, lto.size(), lto.data()));    
+
+        if(!write_file(lto.data(), lto.size(), ltoir_output_path, "wb")) {
+            res = false;
+        }
+
+        CHECK_CUSOLVER(cusolverDestroy(h));
+
+        return res;
+    }
+
 #endif
 
 void* cuda_load_module(void* context, const char* path)

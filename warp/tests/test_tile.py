@@ -595,7 +595,6 @@ def test_tile_view(test, device):
         wp.launch_tiled(test_tile_view_kernel, dim=[1], inputs=[a, b], block_dim=32, device=device)
 
     assert_np_equal(b.numpy(), a.numpy())
-
     b.grad = wp.ones_like(b, device=device)
     tape.backward()
 
@@ -630,7 +629,6 @@ def test_tile_assign(test, device):
         wp.launch_tiled(test_tile_assign_kernel, dim=[1], inputs=[a, b], block_dim=32, device=device)
 
     assert_np_equal(b.numpy(), a.numpy())
-
     b.grad = wp.ones_like(b, device=device)
     tape.backward()
 

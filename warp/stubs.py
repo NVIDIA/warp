@@ -2909,6 +2909,18 @@ def unot(a: Array[Any]) -> bool:
 
 
 @over
+def tile_diag_add(a: Tile, b: Tile) -> Tile:
+    """Add a square matrix and a diagonal matrix"""
+    ...
+
+
+@over
+def tile_tril(a: Tile) -> Tile:
+    """Zeroes the upper-triangular part of a square matrix and keep the lower triangular part + diagonal"""
+    ...
+
+
+@over
 def tile_matmul(a: Tile, b: Tile, out: Tile) -> Tile:
     """Computes the matrix product and accumulates ``out += a*b``.
 
@@ -2952,6 +2964,8 @@ def tile_fft(inout: Tile) -> Tile:
 
     This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
 
+    Note that computing the adjoint is not yet supported.
+
     Supported datatypes are:
         * vec2f, vec2d
 
@@ -2966,10 +2980,44 @@ def tile_ifft(inout: Tile) -> Tile:
 
     This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
 
+    Note that computing the adjoint is not yet supported.
+
     Supported datatypes are:
         * vec2f, vec2d
 
     :param inout: The input/output tile
+    """
+    ...
+
+
+@over
+def tile_cholesky(A: Tile):
+    """Compute the Cholesky factorization L of a matrix A.
+    L is lower triangular and satisfies LL^T = A.
+
+    Note that computing the adjoint is not yet supported.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param A: As input, the matrix A. As output, L.
+    """
+    ...
+
+
+@over
+def tile_cholesky_solve(L: Tile, x: Tile):
+    """With L such that LL^T = A, solve for x in Ax = y
+
+    Note that computing the adjoint is not yet supported.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param L: The triangular matrix output of tile_cholesky,
+    :param x: As input, the right hand side y. As output, the solution x.
     """
     ...
 

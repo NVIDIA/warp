@@ -3530,6 +3530,21 @@ class Runtime:
             ]
             self.core.cuda_compile_dot.restype = ctypes.c_bool
 
+            self.core.cuda_compile_solver.argtypes = [
+                ctypes.c_char_p,  # lto
+                ctypes.c_char_p,  # function name
+                ctypes.c_int,  # num include dirs
+                ctypes.POINTER(ctypes.c_char_p),  # include dirs
+                ctypes.c_char_p,  # mathdx include dir
+                ctypes.c_int,  # arch
+                ctypes.c_int,  # M
+                ctypes.c_int,  # N
+                ctypes.c_int,  # precision
+                ctypes.c_int,  # fill_mode
+                ctypes.c_int,  # num threads
+            ]
+            self.core.cuda_compile_fft.restype = ctypes.c_bool
+
             self.core.cuda_load_module.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
             self.core.cuda_load_module.restype = ctypes.c_void_p
 
