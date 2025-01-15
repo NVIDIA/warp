@@ -8,7 +8,12 @@
 import unittest
 
 import warp as wp
-from warp.autograd import gradcheck, gradcheck_tape, jacobian, jacobian_fd
+from warp.autograd import (
+    gradcheck,
+    gradcheck_tape,
+    jacobian,
+    jacobian_fd,
+)
 from warp.tests.unittest_utils import *
 
 
@@ -43,7 +48,7 @@ def vec_length_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
     tid = wp.tid()
     v = a[tid]
     # instead of wp.length(v), we use a trivial implementation that
-    # fails when a division by zero is occurs in the backward pass of sqrt
+    # fails when a division by zero occurs in the backward pass of sqrt
     out[tid] = wp.sqrt(v[0] ** 2.0 + v[1] ** 2.0 + v[2] ** 2.0)
 
 
@@ -61,6 +66,16 @@ def adj_wrong_grad_func(x: float, adj: float):
 def wrong_grad_kernel(a: wp.array(dtype=float), out: wp.array(dtype=float)):
     tid = wp.tid()
     out[tid] = wrong_grad_func(a[tid])
+
+
+@wp.kernel
+def transform_point_kernel(
+    transforms: wp.array(dtype=wp.transform),
+    points: wp.array(dtype=wp.vec3),
+    out: wp.array(dtype=wp.vec3),
+):
+    tid = wp.tid()
+    out[tid] = wp.transform_point(transforms[tid], points[tid])
 
 
 def test_gradcheck_3d(test, device):
@@ -222,6 +237,76 @@ def test_gradcheck_tape(test, device):
 
     passed = gradcheck_tape(
         tape,
+        raise_exception=False,
+        show_summary=False,
+    )
+
+    assert passed
+
+
+def test_gradcheck_function(test, device):
+    def compute_transformed_point_norms(transforms, points):
+        tf_points = wp.empty_like(points)
+        norms = wp.empty(len(points), dtype=float, requires_grad=points.requires_grad, device=points.device)
+
+        wp.launch(
+            transform_point_kernel,
+            dim=len(points),
+            inputs=[transforms, points],
+            outputs=[tf_points],
+            device=device,
+        )
+        wp.launch(
+            vec_length_kernel,
+            dim=len(points),
+            inputs=[tf_points],
+            outputs=[norms],
+            device=device,
+        )
+        return tf_points, norms
+
+    transforms = wp.array(
+        [
+            wp.transform(wp.vec3(1.0, 0.6, -2.0), wp.quat_rpy(-0.5, 0.1, 0.8)),
+            wp.transform(wp.vec3(0.2, 1.4, -0.4), wp.quat_rpy(0.5, 0.65, -0.3)),
+            wp.transform(wp.vec3(0.5, 0.2, 0.0), wp.quat_rpy(-0.5, -0.3, 0.4)),
+        ],
+        dtype=wp.transform,
+        requires_grad=True,
+        device=device,
+    )
+    points = wp.array(
+        [
+            (1.0, -0.5, 2.0),
+            (-0.95, -0.1, 0.0),
+            (9.1, 9.7, 3.8),
+        ],
+        dtype=wp.vec3,
+        requires_grad=True,
+        device=device,
+    )
+
+    jacs_ad = jacobian(
+        kernel_mixed,
+        dim=len(points),
+        inputs=[transforms, points],
+    )
+    jacs_fd = jacobian_fd(
+        kernel_mixed,
+        dim=len(points),
+        inputs=[transforms, points],
+        eps=1e-4,
+    )
+
+    # manual gradcheck
+    for i in range(2):
+        for j in range(2):
+            assert np.allclose(jacs_ad[(i, j)].numpy(), jacs_fd[(i, j)].numpy(), atol=1e-2, rtol=1e-2)
+
+    passed = gradcheck(
+        kernel_mixed,
+        dim=len(points),
+        inputs=[transforms, points],
         raise_exception=False,
         show_summary=False,
     )
