@@ -9,6 +9,7 @@
 - Add optimization example for soft-body properties ([GH-419](https://github.com/NVIDIA/warp/pull/419)).
 - Add per-module option to disable fused floating point operations, use `wp.set_module_options({"fuse_fp": False})`
   ([GH-379](https://github.com/NVIDIA/warp/issues/379)).
+- Add `example_tile_walker.py`, which reworks the existing `walker.py` to use Warp's tile API for matrix multiplication.
 
 ### Changed
 

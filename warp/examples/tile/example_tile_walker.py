@@ -1,4 +1,4 @@
-# Copyright (c) 2024 NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2025 NVIDIA CORPORATION.  All rights reserved.
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
 # and any modifications thereto.  Any use, reproduction, disclosure or
@@ -6,7 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 ###########################################################################
-# Example Walker
+# Example Tile Walker
 #
 # Trains a tetrahedral mesh quadruped to run. Feeds 8 time-varying input
 # phases as inputs into a single layer fully connected network with a tanh
@@ -15,10 +15,10 @@
 # simulated forward in time and then evaluated based on the center of mass
 # momentum of the mesh.
 #
-# This example uses the deprecated wp.matmul() for matrix multiplication,
-# which will be removed in a future version. See the updated version of
-# this example, example_tile_walker.py, in examples/tile for the new
-# approach to GEMMs using Warp's tile API.
+# This example uses the Warp tile API, which as of Warp 1.6 is the
+# recommended way to handle matrix multiplication. example_walker.py in
+# examples/optim demonstrates the old way of doing matrix multiplication,
+# wp.matmul(), which will be deprecated in a future version.
 #
 ###########################################################################
 
@@ -33,6 +33,14 @@ import warp.examples
 import warp.optim
 import warp.sim
 import warp.sim.render
+
+PHASE_COUNT = 8
+PHASE_STEP = wp.constant((2.0 * math.pi) / PHASE_COUNT)
+PHASE_FREQ = wp.constant(5.0)
+ACTIVATION_STRENGTH = wp.constant(0.3)
+
+TILE_TETS = wp.constant(8)
+TILE_THREADS = 64
 
 
 @wp.kernel
@@ -57,24 +65,33 @@ def com_kernel(velocities: wp.array(dtype=wp.vec3), n: int, com: wp.array(dtype=
 @wp.kernel
 def compute_phases(phases: wp.array(dtype=float), sim_time: float):
     tid = wp.tid()
-    phases[tid] = wp.sin(phase_freq * sim_time + wp.float32(tid) * phase_step)
+    phases[tid] = wp.sin(PHASE_FREQ * sim_time + wp.float32(tid) * PHASE_STEP)
+
+
+@wp.func
+def tanh(x: float):
+    return wp.tanh(x) * ACTIVATION_STRENGTH
 
 
 @wp.kernel
-def activation_function(tet_activations: wp.array(dtype=float), activation_inputs: wp.array(dtype=float)):
-    tid = wp.tid()
-    activation = wp.tanh(activation_inputs[tid])
-    tet_activations[tid] = activation_strength * activation
+def network(
+    phases: wp.array2d(dtype=float), weights: wp.array2d(dtype=float), tet_activations: wp.array2d(dtype=float)
+):
+    # output tile index
+    i = wp.tid()
 
+    # GEMM
+    p = wp.tile_load(phases, 0, 0, m=PHASE_COUNT, n=1)
+    w = wp.tile_load(weights, i, 0, m=TILE_TETS, n=PHASE_COUNT)
+    out = wp.tile_matmul(w, p)
 
-phase_count = 8
-phase_step = wp.constant((2.0 * math.pi) / phase_count)
-phase_freq = wp.constant(5.0)
-activation_strength = wp.constant(0.3)
+    # activation
+    activations = wp.tile_map(tanh, out)
+    wp.tile_store(tet_activations, i, 0, activations)
 
 
 class Example:
-    def __init__(self, stage_path="example_walker.usd", verbose=False, num_frames=300):
+    def __init__(self, stage_path="example_tile_walker.usd", verbose=False, num_frames=300):
         self.verbose = verbose
 
         fps = 60
@@ -88,7 +105,7 @@ class Example:
         self.iter = 0
         self.train_rate = 0.025
 
-        self.phase_count = phase_count
+        self.phase_count = PHASE_COUNT
 
         self.render_time = 0.0
 
@@ -152,18 +169,15 @@ class Example:
         for _i in range(self.num_frames):
             self.phases.append(wp.zeros(self.phase_count, dtype=float, requires_grad=True))
 
-        # single layer linear network
+        # weights matrix for linear network
         rng = np.random.default_rng(42)
         k = 1.0 / self.phase_count
         weights = rng.uniform(-np.sqrt(k), np.sqrt(k), (self.model.tet_count, self.phase_count))
         self.weights = wp.array(weights, dtype=float, requires_grad=True)
-        self.bias = wp.zeros(self.model.tet_count, dtype=float, requires_grad=True)
 
-        # tanh activation layer
-        self.activation_inputs = []
+        # tanh activation layer array
         self.tet_activations = []
         for _i in range(self.num_frames):
-            self.activation_inputs.append(wp.zeros(self.model.tet_count, dtype=float, requires_grad=True))
             self.tet_activations.append(wp.zeros(self.model.tet_count, dtype=float, requires_grad=True))
 
         # optimization
@@ -194,18 +208,14 @@ class Example:
         with wp.ScopedTimer("network", active=self.verbose):
             # build sinusoidal input phases
             wp.launch(kernel=compute_phases, dim=self.phase_count, inputs=[self.phases[frame], self.sim_time])
-            # fully connected, linear transformation layer
-            wp.matmul(
-                self.weights,
-                self.phases[frame].reshape((self.phase_count, 1)),
-                self.bias.reshape((self.model.tet_count, 1)),
-                self.activation_inputs[frame].reshape((self.model.tet_count, 1)),
-            )
-            # tanh activation function
-            wp.launch(
-                kernel=activation_function,
-                dim=self.model.tet_count,
-                inputs=[self.tet_activations[frame], self.activation_inputs[frame]],
+
+            # apply linear network with tanh activation
+            wp.launch_tiled(
+                kernel=network,
+                dim=math.ceil(self.model.tet_count / TILE_TETS),
+                inputs=[self.phases[frame].reshape((self.phase_count, 1)), self.weights],
+                outputs=[self.tet_activations[frame].reshape((self.model.tet_count, 1))],
+                block_dim=TILE_THREADS,
             )
             self.control.tet_activations = self.tet_activations[frame]
 
@@ -289,7 +299,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--stage_path",
         type=lambda x: None if x == "None" else str(x),
-        default="example_walker.usd",
+        default="example_tile_walker.usd",
         help="Path to the output USD file.",
     )
     parser.add_argument("--num_frames", type=int, default=300, help="Total number of frames per training iteration.")
