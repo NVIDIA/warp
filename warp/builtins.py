@@ -5745,6 +5745,68 @@ add_builtin(
 )
 
 
+def tile_diag_add_map_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return Tile(dtype=Any, M=Any, N=Any)
+
+    a = arg_types["a"]
+    b = arg_types["b"]
+
+    # check all args are tiles
+    if not is_tile(a):
+        raise TypeError(f"tile_diag_add() arguments must be tiles, got type {a}")
+
+    if not is_tile(b):
+        raise TypeError(f"tile_diag_add() arguments must be tiles, got type {b}")
+
+    # use first argument to define output type
+    if not types_equal(a.dtype, b.dtype):
+        raise TypeError(f"tile_diag_add() arguments must all have the same type {a.dtype} != {b.dtype}")
+
+    if a.M != a.N or a.M != b.M or b.N != 1:
+        raise ValueError("tile_diag_add() arguments must be square (first) and 1D (second)")
+
+    return None
+
+
+add_builtin(
+    "tile_diag_add",
+    input_types={"a": Tile(dtype=Any, M=Any, N=Any), "b": Tile(dtype=Any, M=Any, N=Any)},
+    value_func=tile_diag_add_map_value_func,
+    # dispatch_func=tile_map_dispatch_func,
+    # variadic=True,
+    native_func="tile_diag_add",
+    doc="Add a square matrix and a diagonal matrix",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_tril_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return Tile(dtype=Any, M=Any, N=Any)
+
+    a = arg_types["a"]
+
+    if not is_tile(a):
+        raise TypeError(f"tile_tril() arguments must be tiles, got type {a}")
+
+    if a.M != a.N:
+        raise ValueError("tile_tril() arguments must be square")
+
+    return None
+
+
+add_builtin(
+    "tile_tril",
+    input_types={"a": Tile(dtype=Any, M=Any, N=Any)},
+    value_func=tile_tril_value_func,
+    native_func="tile_tril",
+    doc="Zeroes the upper-triangular part of a square matrix and keep the lower triangular part + diagonal",
+    group="Tile Primitives",
+    export=False,
+)
+
 ##
 ## MathDx, LTOIR-based, Tile functions
 ##
@@ -6125,6 +6187,8 @@ add_builtin(
 
     This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
 
+    Note that computing the adjoint is not yet supported.
+
     Supported datatypes are:
         * vec2f, vec2d
 
@@ -6144,10 +6208,246 @@ add_builtin(
 
     This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
 
+    Note that computing the adjoint is not yet supported.
+
     Supported datatypes are:
         * vec2f, vec2d
 
     :param inout: The input/output tile""",
+    group="Tile Primitives",
+    export=False,
+    namespace="",
+)
+
+
+##
+## Cholesky
+##
+def tile_cholesky_generic_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
+    if len(arg_types) != 1:
+        raise TypeError("tile_cholesky() requires 1 positional args")
+
+    if not is_tile(arg_types["A"]):
+        raise TypeError("tile_cholesky() argument 0 must be a tile")
+
+    return None
+
+
+def tile_cholesky_solve_generic_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
+    if len(arg_types) != 2:
+        raise TypeError("tile_cholesky_solve() requires 2 positional args")
+
+    if not is_tile(arg_types["L"]) or not is_tile(arg_types["x"]):
+        raise TypeError("tile_cholesky() argument 0 and 1 must be tiles")
+
+    return None
+
+
+cusolver_function_map = {"getrf": 0, "getrf_no_pivot": 1, "potrf": 2, "potrs": 3}
+
+cusolver_type_map = {float32: ("wp::float32", 5), float64: ("wp::float64", 6)}
+
+cusolver_fill_mode_map = {"upper": 0, "lower": 1}
+
+
+def tile_cholesky_generic_lto_dispatch_func(
+    arg_types: Mapping[str, type],
+    return_type: Any,
+    return_values: List[Var],
+    arg_values: Mapping[str, Var],
+    options: Mapping[str, Any],
+    builder: warp.context.ModuleBuilder,
+):
+    inout = arg_values["A"]
+    inout.type.storage = "shared"
+
+    if not is_tile(inout.type):
+        raise TypeError("tile_cholesky() arguments must be a single tile with shared storage")
+
+    if inout.type.dtype not in cusolver_type_map.keys():
+        raise TypeError("tile_cholesky() argument must be a tile of float64 entries")
+
+    dtype, precision_enum = cusolver_type_map[inout.type.dtype]
+
+    M, N = inout.type.M, inout.type.N
+    if M != N:
+        raise ValueError("Tile must be square")
+
+    num_threads = options["block_dim"]
+    arch = options["output_arch"]
+    lto_symbol = f"potrf_{M}_{N}_{arch}_{precision_enum}"
+
+    # early out if LTO for this combination already exists for this module
+    if lto_symbol in builder.ltoirs:
+        return lto_symbol, builder.ltoirs[lto_symbol]
+
+    # otherwise compile LTO
+    lto_code = tempfile.NamedTemporaryFile()
+
+    # cuSOLVERDx only support col-major input/outputs,
+    # so we use upper to mimic a row-major input
+    result = warp.context.runtime.core.cuda_compile_solver(
+        lto_code.name.encode("utf-8"),
+        lto_symbol.encode("utf-8"),
+        0,
+        None,
+        None,
+        arch,
+        M,
+        N,
+        cusolver_function_map["potrf"],
+        precision_enum,
+        cusolver_fill_mode_map["upper"],
+        num_threads,
+    )
+
+    if not result:
+        raise RuntimeError("Failed to compile tile_cholesky")
+
+    with open(lto_code.name, "rb") as f:
+        lto_code = f.read()
+
+    builder.ltoirs[lto_symbol] = lto_code
+
+    return (
+        (
+            Var(lto_symbol, str, False, True, False),
+            Var(dtype, str, False, True, False),
+            Var(str(M), str, False, True, False),
+            Var(str(N), str, False, True, False),
+            inout,
+        ),
+        [],
+        [lto_code],
+        0,
+    )
+
+
+def tile_cholesky_solve_generic_lto_dispatch_func(
+    arg_types: Mapping[str, type],
+    return_type: Any,
+    return_values: List[Var],
+    arg_values: Mapping[str, Var],
+    options: Mapping[str, Any],
+    builder: warp.context.ModuleBuilder,
+):
+    L = arg_values["L"]
+    inout = arg_values["x"]
+    L.type.storage = "shared"
+    inout.type.storage = "shared"
+
+    if not is_tile(inout.type) or not is_tile(L.type):
+        raise TypeError("tile_cholesky_solve() arguments must be two tile with shared storage")
+
+    if inout.type.dtype != L.type.dtype or any(
+        T not in cusolver_type_map.keys() for T in [inout.type.dtype, L.type.dtype]
+    ):
+        raise TypeError("tile_cholesky_solve() arguments be tiles of float64 or float32 tiles")
+
+    dtype, precision_enum = cusolver_type_map[inout.type.dtype]
+
+    M, N = L.type.M, L.type.N
+
+    if M != N:
+        raise ValueError("L Tile must be square")
+
+    if inout.type.M != M or inout.type.N != 1:
+        raise ValueError(f"Right-hand side Tile must be {M}x1")
+
+    num_threads = options["block_dim"]
+    arch = options["output_arch"]
+    lto_symbol = f"potrs_{M}_{N}_{arch}_{precision_enum}"
+
+    # early out if LTO for this combination already exists for this module
+    if lto_symbol in builder.ltoirs:
+        return lto_symbol, builder.ltoirs[lto_symbol]
+
+    # otherwise compile LTO
+    lto_code = tempfile.NamedTemporaryFile()
+
+    # cuSOLVERDx only support col-major input/outputs,
+    # so we use upper to mimic a row-major input
+    result = warp.context.runtime.core.cuda_compile_solver(
+        lto_code.name.encode("utf-8"),
+        lto_symbol.encode("utf-8"),
+        0,
+        None,
+        None,
+        arch,
+        M,
+        N,
+        cusolver_function_map["potrs"],
+        precision_enum,
+        cusolver_fill_mode_map["upper"],
+        num_threads,
+    )
+
+    if not result:
+        raise RuntimeError("Failed to compile tile_cholesky_solve")
+
+    with open(lto_code.name, "rb") as f:
+        lto_code = f.read()
+
+    builder.ltoirs[lto_symbol] = lto_code
+
+    return (
+        (
+            Var(lto_symbol, str, False, True, False),
+            Var(dtype, str, False, True, False),
+            Var(str(M), str, False, True, False),
+            Var(str(N), str, False, True, False),
+            L,
+            inout,
+        ),
+        [],
+        [lto_code],
+        0,
+    )
+
+
+add_builtin(
+    "tile_cholesky",
+    input_types={"A": Tile},
+    value_func=tile_cholesky_generic_value_func,
+    lto_dispatch_func=tile_cholesky_generic_lto_dispatch_func,
+    variadic=True,
+    doc="""Compute the Cholesky factorization L of a matrix A.
+    L is lower triangular and satisfies LL^T = A.
+
+    Note that computing the adjoint is not yet supported.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param A: As input, the matrix A. As output, L.""",
+    group="Tile Primitives",
+    export=False,
+    namespace="",
+)
+
+add_builtin(
+    "tile_cholesky_solve",
+    input_types={"L": Tile, "x": Tile},
+    value_func=tile_cholesky_solve_generic_value_func,
+    lto_dispatch_func=tile_cholesky_solve_generic_lto_dispatch_func,
+    variadic=True,
+    doc="""With L such that LL^T = A, solve for x in Ax = y
+
+    Note that computing the adjoint is not yet supported.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param L: The triangular matrix output of tile_cholesky,
+    :param x: As input, the right hand side y. As output, the solution x.""",
     group="Tile Primitives",
     export=False,
     namespace="",

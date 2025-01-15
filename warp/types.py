@@ -1701,7 +1701,7 @@ class array(Array):
         elif length is not None:
             # backward compatibility
             warp.utils.warn(
-                "The 'length' keyword is deprecated and will be removed\n" "in a future version. Use 'shape' instead.",
+                "The 'length' keyword is deprecated and will be removed\nin a future version. Use 'shape' instead.",
                 category=DeprecationWarning,
                 stacklevel=2,
             )

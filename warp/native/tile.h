@@ -1782,6 +1782,33 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
         tile_fft(function_name, dtype, shared_memory_size, batch_size, ept, adj_Xinout); \
     } while (0)
 
+#define tile_cholesky(function_name, dtype, M, N, Xinout) \
+    do { \
+        void function_name(dtype*, unsigned); \
+        WP_TILE_SYNC(); \
+        function_name(Xinout.data.ptr, M); \
+        WP_TILE_SYNC(); \
+    } while (0)
+
+#define adj_tile_cholesky(function_name, dtype, M, N, Xinout, \
+                       adj_function_name, adj_dtype, adj_M, adj_N, adj_Xinout) \
+    do { \
+        assert(false); \
+    } while (0)
+
+#define tile_cholesky_solve(function_name, dtype, M, N, L, Xinout) \
+    do { \
+        void function_name(dtype*, dtype*); \
+        WP_TILE_SYNC(); \
+        function_name(L.data.ptr, Xinout.data.ptr); \
+        WP_TILE_SYNC(); \
+    } while (0)
+
+#define adj_tile_cholesky_solve(function_name, dtype, M, N, L, Xinout, \
+                       adj_function_name, adj_dtype, adj_M,  adj_N,  adj_L, adj_Xinout) \
+    do { \
+        assert(false); \
+    } while (0)
 
 template <typename Tile>
 inline CUDA_CALLABLE auto tile_transpose(Tile& t)
@@ -1837,6 +1864,50 @@ inline CUDA_CALLABLE void tile_assign(TileA& dest, int i, int j, TileB& src)
     }
 
     WP_TILE_SYNC();
+}
+
+template <typename TileA, typename TileB>
+inline CUDA_CALLABLE void tile_diag_add(TileA& inout, TileB& diag)
+{   
+    static_assert(TileA::M == TileA::N);
+    static_assert(TileB::M == TileA::M);
+    static_assert(TileB::N == 1);
+    
+    for (int t=threadIdx.x; t < TileA::M; t += WP_TILE_BLOCK_DIM)
+    {
+        inout.data(t, t) += diag.data(t, 1);
+    }
+
+    WP_TILE_SYNC();
+}
+
+template <typename Tile>
+inline CUDA_CALLABLE void tile_tril(Tile& inout)
+{   
+    static_assert(Tile::M == Tile::N);
+    
+    for (int t=threadIdx.x; t < inout.Size; t += WP_TILE_BLOCK_DIM)
+    {
+        coord_t c = inout.coord(t);
+        if(c.i < c.j) 
+        {
+            inout.data(c.i, c.j) = 0.0;
+        }
+    }
+
+    WP_TILE_SYNC();
+}
+
+template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB>
+inline CUDA_CALLABLE void adj_tile_diag_add(TileA& inout, TileB& diag, AdjTileA& adj_inout, AdjTileB& adj_diag)
+{   
+    assert(false);
+}
+
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_tril(Tile& inout, AdjTile& adj_inout)
+{   
+    assert(false);
 }
 
 template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB>

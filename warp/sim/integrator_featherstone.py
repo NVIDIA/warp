@@ -1187,6 +1187,68 @@ def create_inertia_matrix_kernel(num_joints, num_dofs):
     return eval_dense_gemm_tile
 
 
+def create_batched_cholesky_kernel(num_dofs):
+    assert num_dofs == 18
+
+    @wp.kernel
+    def eval_tiled_dense_cholesky_batched(
+        A: wp.array3d(dtype=float), R: wp.array3d(dtype=float), L: wp.array3d(dtype=float)
+    ):
+        articulation = wp.tid()
+
+        a = wp.tile_load(A[articulation], 0, 0, m=num_dofs, n=num_dofs, storage="shared")
+        r = wp.tile_load(R[articulation], 0, 0, m=num_dofs, n=1, storage="shared")
+        wp.tile_diag_add(a, r)
+        wp.tile_cholesky(a)
+        wp.tile_store(L[articulation], 0, 0, wp.tile_transpose(a))
+
+    return eval_tiled_dense_cholesky_batched
+
+
+def create_inertia_matrix_cholesky_kernel(num_joints, num_dofs):
+    @wp.kernel
+    def eval_dense_gemm_and_cholesky_tile(
+        J_arr: wp.array3d(dtype=float),
+        M_arr: wp.array3d(dtype=float),
+        R_arr: wp.array3d(dtype=float),
+        H_arr: wp.array3d(dtype=float),
+        L_arr: wp.array3d(dtype=float),
+    ):
+        articulation = wp.tid()
+
+        J = wp.tile_load(J_arr[articulation], 0, 0, m=wp.static(6 * num_joints), n=num_dofs)
+        P = wp.tile_zeros(m=wp.static(6 * num_joints), n=num_dofs, dtype=float)
+
+        # compute P = M*J where M is a 6x6 block diagonal mass matrix
+        for i in range(int(num_joints)):
+            # 6x6 block matrices are on the diagonal
+            M_body = wp.tile_load(M_arr[articulation], i, i, m=6, n=6)
+
+            # load a 6xN row from the Jacobian
+            J_body = wp.tile_view(J, i * 6, 0, m=6, n=num_dofs)
+
+            # compute weighted row
+            P_body = wp.tile_matmul(M_body, J_body)
+
+            # assign to the P slice
+            wp.tile_assign(P, i * 6, 0, P_body)
+
+        # compute H = J^T*P
+        H = wp.tile_matmul(wp.tile_transpose(J), P)
+        wp.tile_store(H_arr[articulation], 0, 0, H)
+
+        # cholesky L L^T = (H + diag(R))
+        R = wp.tile_load(R_arr[articulation], 0, 0, m=num_dofs, n=1, storage="shared")
+        wp.tile_diag_add(H, R)
+        wp.tile_cholesky(H)
+        # We should somehow encode the tril nature of the matrix in the type
+        # and just store the lower part, instead of having to do this
+        wp.tile_tril(H)
+        wp.tile_store(L_arr[articulation], 0, 0, H)
+
+    return eval_dense_gemm_and_cholesky_tile
+
+
 @wp.kernel
 def eval_dense_gemm_batched(
     m: wp.array(dtype=int),
@@ -1458,7 +1520,9 @@ class FeatherstoneIntegrator(Integrator):
 
     """
 
-    def __init__(self, model, angular_damping=0.05, update_mass_matrix_every=1, use_tile_gemm=False):
+    def __init__(
+        self, model, angular_damping=0.05, update_mass_matrix_every=1, use_tile_gemm=False, fuse_cholesky=True
+    ):
         """
         Args:
             model (Model): the model to be simulated.
@@ -1468,6 +1532,7 @@ class FeatherstoneIntegrator(Integrator):
         self.angular_damping = angular_damping
         self.update_mass_matrix_every = update_mass_matrix_every
         self.use_tile_gemm = use_tile_gemm
+        self.fuse_cholesky = fuse_cholesky
         self._step = 0
 
         self.compute_articulation_indices(model)
@@ -1475,7 +1540,14 @@ class FeatherstoneIntegrator(Integrator):
 
         if self.use_tile_gemm:
             # create a custom kernel to evaluate the system matrix for this type
-            self.eval_inertia_matrix_kernel = create_inertia_matrix_kernel(int(self.joint_count), int(self.dof_count))
+            if self.fuse_cholesky:
+                self.eval_inertia_matrix_cholesky_kernel = create_inertia_matrix_cholesky_kernel(
+                    int(self.joint_count), int(self.dof_count)
+                )
+            else:
+                self.eval_inertia_matrix_kernel = create_inertia_matrix_kernel(
+                    int(self.joint_count), int(self.dof_count)
+                )
 
             # ensure matrix is reloaded since otherwise an unload can happen during graph capture
             # todo: should not be necessary?
@@ -1842,23 +1914,56 @@ class FeatherstoneIntegrator(Integrator):
                             # reshape arrays
                             M_tiled = self.M.reshape((-1, 6 * self.joint_count, 6 * self.joint_count))
                             J_tiled = self.J.reshape((-1, 6 * self.joint_count, self.dof_count))
+                            R_tiled = model.joint_armature.reshape((-1, self.dof_count, 1))
                             H_tiled = self.H.reshape((-1, self.dof_count, self.dof_count))
+                            L_tiled = self.L.reshape((-1, self.dof_count, self.dof_count))
+                            assert H_tiled.shape == (model.articulation_count, 18, 18)
+                            assert L_tiled.shape == (model.articulation_count, 18, 18)
+                            assert R_tiled.shape == (model.articulation_count, 18, 1)
 
-                            wp.launch_tiled(
-                                self.eval_inertia_matrix_kernel,
-                                dim=model.articulation_count,
-                                inputs=[J_tiled, M_tiled],
-                                outputs=[H_tiled],
-                                device=model.device,
-                                block_dim=256,
-                            )
+                            if self.fuse_cholesky:
+                                wp.launch_tiled(
+                                    self.eval_inertia_matrix_cholesky_kernel,
+                                    dim=model.articulation_count,
+                                    inputs=[J_tiled, M_tiled, R_tiled],
+                                    outputs=[H_tiled, L_tiled],
+                                    device=model.device,
+                                    block_dim=64,
+                                )
 
-                            # J = J_tiled.numpy()[0]
-                            # M = M_tiled.numpy()[0]
-                            # H = J.T@M@J
+                            else:
+                                wp.launch_tiled(
+                                    self.eval_inertia_matrix_kernel,
+                                    dim=model.articulation_count,
+                                    inputs=[J_tiled, M_tiled],
+                                    outputs=[H_tiled],
+                                    device=model.device,
+                                    block_dim=256,
+                                )
+
+                                wp.launch(
+                                    eval_dense_cholesky_batched,
+                                    dim=model.articulation_count,
+                                    inputs=[
+                                        self.articulation_H_start,
+                                        self.articulation_H_rows,
+                                        self.H,
+                                        model.joint_armature,
+                                    ],
+                                    outputs=[self.L],
+                                    device=model.device,
+                                )
 
                             # import numpy as np
-                            # np.testing.assert_allclose(H, H_tiled.numpy()[0])
+                            # J = J_tiled.numpy()
+                            # M = M_tiled.numpy()
+                            # R = R_tiled.numpy()
+                            # for i in range(model.articulation_count):
+                            #     r = R[i,:,0]
+                            #     H = J[i].T @ M[i] @ J[i]
+                            #     L = np.linalg.cholesky(H + np.diag(r))
+                            #     np.testing.assert_allclose(H, H_tiled.numpy()[i], rtol=1e-2, atol=1e-2)
+                            #     np.testing.assert_allclose(L, L_tiled.numpy()[i], rtol=1e-1, atol=1e-1)
 
                         else:
                             # form P = M*J
@@ -1904,19 +2009,19 @@ class FeatherstoneIntegrator(Integrator):
                                 device=model.device,
                             )
 
-                        # compute decomposition
-                        wp.launch(
-                            eval_dense_cholesky_batched,
-                            dim=model.articulation_count,
-                            inputs=[
-                                self.articulation_H_start,
-                                self.articulation_H_rows,
-                                self.H,
-                                model.joint_armature,
-                            ],
-                            outputs=[self.L],
-                            device=model.device,
-                        )
+                            # compute decomposition
+                            wp.launch(
+                                eval_dense_cholesky_batched,
+                                dim=model.articulation_count,
+                                inputs=[
+                                    self.articulation_H_start,
+                                    self.articulation_H_rows,
+                                    self.H,
+                                    model.joint_armature,
+                                ],
+                                outputs=[self.L],
+                                device=model.device,
+                            )
 
                         # print("joint_act:")
                         # print(control.joint_act.numpy())

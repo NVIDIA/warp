@@ -54,6 +54,24 @@ WP_API bool cuda_compile_dot(
     return false;
 }
 
+WP_API bool cuda_compile_solver(
+                                const char* ltoir_output_path,
+                                const char* symbol_name,
+                                int num_include_dirs,
+                                const char** include_dirs,
+                                const char* mathdx_include_dir,
+                                int arch,
+                                int M,
+                                int N,
+                                int function,
+                                int precision,
+                                int fill_mode,
+                                int num_threads)
+{
+    printf("CUDA is disabled and/or Warp was not compiled with MathDx support.\n");
+    return false;
+}
+
 } // extern "C"
 
 #endif // !WP_ENABLE_CUDA || !WP_ENABLE_MATHDX

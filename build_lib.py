@@ -134,7 +134,7 @@ def find_libmathdx():
             return os.path.abspath(extract_dir)
 
         base_url = "https://developer.nvidia.com/downloads/compute/cublasdx/redist/cublasdx"
-        libmathdx_ver = "0.1.0"
+        libmathdx_ver = "0.1.1"
 
         if platform.system() == "Windows":
             source_url = f"{base_url}/libmathdx-{libmathdx_ver}-win64.zip"
