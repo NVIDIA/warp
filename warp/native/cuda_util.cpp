@@ -102,6 +102,11 @@ static PFN_cuGraphicsGLRegisterBuffer_v3000 pfn_cuGraphicsGLRegisterBuffer;
 static PFN_cuGraphicsUnregisterResource_v3000 pfn_cuGraphicsUnregisterResource;
 static PFN_cuModuleGetGlobal_v3020 pfn_cuModuleGetGlobal;
 static PFN_cuFuncSetAttribute_v9000 pfn_cuFuncSetAttribute;
+static PFN_cuIpcGetEventHandle_v4010 pfn_cuIpcGetEventHandle;
+static PFN_cuIpcOpenEventHandle_v4010 pfn_cuIpcOpenEventHandle;
+static PFN_cuIpcGetMemHandle_v4010 pfn_cuIpcGetMemHandle;
+static PFN_cuIpcOpenMemHandle_v11000 pfn_cuIpcOpenMemHandle;
+static PFN_cuIpcCloseMemHandle_v4010 pfn_cuIpcCloseMemHandle;
 
 static bool cuda_driver_initialized = false;
 
@@ -238,6 +243,11 @@ bool init_cuda_driver()
     get_driver_entry_point("cuGraphicsUnregisterResource", 3000, &(void*&)pfn_cuGraphicsUnregisterResource);
     get_driver_entry_point("cuModuleGetGlobal", 3020, &(void*&)pfn_cuModuleGetGlobal);
     get_driver_entry_point("cuFuncSetAttribute", 9000, &(void*&)pfn_cuFuncSetAttribute);
+    get_driver_entry_point("cuIpcGetEventHandle", 4010, &(void*&)pfn_cuIpcGetEventHandle);
+    get_driver_entry_point("cuIpcOpenEventHandle", 4010, &(void*&)pfn_cuIpcOpenEventHandle);
+    get_driver_entry_point("cuIpcGetMemHandle", 4010, &(void*&)pfn_cuIpcGetMemHandle);
+    get_driver_entry_point("cuIpcOpenMemHandle", 11000, &(void*&)pfn_cuIpcOpenMemHandle);
+    get_driver_entry_point("cuIpcCloseMemHandle", 4010, &(void*&)pfn_cuIpcCloseMemHandle);
 
     if (pfn_cuInit)
         cuda_driver_initialized = check_cu(pfn_cuInit(0));
@@ -583,6 +593,31 @@ CUresult cuModuleGetGlobal_f(CUdeviceptr* dptr, size_t* bytes, CUmodule hmod, co
 CUresult cuFuncSetAttribute_f(CUfunction hfunc, CUfunction_attribute attrib, int value) 
 {
     return pfn_cuFuncSetAttribute ? pfn_cuFuncSetAttribute(hfunc, attrib, value) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuIpcGetEventHandle_f(CUipcEventHandle *pHandle, CUevent event)
+{
+    return pfn_cuIpcGetEventHandle ? pfn_cuIpcGetEventHandle(pHandle, event) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuIpcOpenEventHandle_f(CUevent *phEvent, CUipcEventHandle handle)
+{
+    return pfn_cuIpcOpenEventHandle ? pfn_cuIpcOpenEventHandle(phEvent, handle) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuIpcGetMemHandle_f(CUipcMemHandle *pHandle, CUdeviceptr dptr)
+{
+    return pfn_cuIpcGetMemHandle ? pfn_cuIpcGetMemHandle(pHandle, dptr) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuIpcOpenMemHandle_f(CUdeviceptr *pdptr, CUipcMemHandle handle, unsigned int flags)
+{
+    return pfn_cuIpcOpenMemHandle ? pfn_cuIpcOpenMemHandle(pdptr, handle, flags) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuIpcCloseMemHandle_f(CUdeviceptr dptr)
+{
+    return pfn_cuIpcCloseMemHandle ? pfn_cuIpcCloseMemHandle(dptr) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 #endif // WP_ENABLE_CUDA

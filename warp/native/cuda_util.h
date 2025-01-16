@@ -101,6 +101,11 @@ CUresult cuGraphicsGLRegisterBuffer_f(CUgraphicsResource *pCudaResource, unsigne
 CUresult cuGraphicsUnregisterResource_f(CUgraphicsResource resource);
 CUresult cuModuleGetGlobal_f(CUdeviceptr* dptr, size_t* bytes, CUmodule hmod, const char* name );
 CUresult cuFuncSetAttribute_f(CUfunction hfunc, CUfunction_attribute attrib, int value);
+CUresult cuIpcGetEventHandle_f(CUipcEventHandle *pHandle, CUevent event);
+CUresult cuIpcOpenEventHandle_f(CUevent *phEvent, CUipcEventHandle handle);
+CUresult cuIpcGetMemHandle_f(CUipcMemHandle *pHandle, CUdeviceptr dptr);
+CUresult cuIpcOpenMemHandle_f(CUdeviceptr *pdptr, CUipcMemHandle handle, unsigned int flags);
+CUresult cuIpcCloseMemHandle_f(CUdeviceptr dptr);
 
 bool init_cuda_driver();
 bool is_cuda_driver_initialized();

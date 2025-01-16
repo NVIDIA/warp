@@ -11,6 +11,9 @@
 - Support `assert` statements in kernels ([docs](https://nvidia.github.io/warp/debugging.html#assertions)).
   Assertions can only be triggered in `"debug"` mode ([GH-366](https://github.com/NVIDIA/warp/issues/336)).
 - Add optimization example for soft-body properties ([GH-419](https://github.com/NVIDIA/warp/pull/419)).
+- CUDA IPC support on Linux. Call the `ipc_handle()` method get an IPC handle for a `wp.Event` or a `wp.array`,
+  and call `wp.from_ipc_handle()` or `wp.event_from_ipc_handle()` in another process to open the handle
+  ([docs](https://nvidia.github.io/warp/modules/runtime.html#interprocess-communication-ipc)).
 - Add per-module option to disable fused floating point operations, use `wp.set_module_options({"fuse_fp": False})`
   ([GH-379](https://github.com/NVIDIA/warp/issues/379)).
 - Add per-module option to add CUDA-C line information for profiling, use `wp.set_module_options({"lineinfo": True})`.

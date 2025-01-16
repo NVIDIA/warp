@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+from __future__ import annotations
+
 import ast
 import ctypes
 import errno
@@ -2358,6 +2360,7 @@ class Event:
         DEFAULT = 0x0
         BLOCKING_SYNC = 0x1
         DISABLE_TIMING = 0x2
+        INTERPROCESS = 0x4
 
     def __new__(cls, *args, **kwargs):
         """Creates a new event instance."""
@@ -2365,7 +2368,9 @@ class Event:
         instance.owner = False
         return instance
 
-    def __init__(self, device: "Devicelike" = None, cuda_event=None, enable_timing: bool = False):
+    def __init__(
+        self, device: "Devicelike" = None, cuda_event=None, enable_timing: bool = False, interprocess: bool = False
+    ):
         """Initializes the event on a CUDA device.
 
         Args:
@@ -2377,6 +2382,12 @@ class Event:
               :func:`~warp.get_event_elapsed_time` can be used to measure the
               time between two events created with ``enable_timing=True`` and
               recorded onto streams.
+            interprocess: If ``True`` this event may be used as an interprocess event.
+
+        Raises:
+            RuntimeError: The event could not be created.
+            ValueError: The combination of ``enable_timing=True`` and
+                ``interprocess=True`` is not allowed.
         """
 
         device = get_device(device)
@@ -2391,10 +2402,47 @@ class Event:
             flags = Event.Flags.DEFAULT
             if not enable_timing:
                 flags |= Event.Flags.DISABLE_TIMING
+            if interprocess:
+                if enable_timing:
+                    raise ValueError("The combination of 'enable_timing=True' and 'interprocess=True' is not allowed.")
+                flags |= Event.Flags.INTERPROCESS
+
             self.cuda_event = runtime.core.cuda_event_create(device.context, flags)
             if not self.cuda_event:
                 raise RuntimeError(f"Failed to create event on device {device}")
             self.owner = True
+
+    def ipc_handle(self) -> bytes:
+        """Return a CUDA IPC handle of the event as a 64-byte ``bytes`` object.
+
+        The event must have been created with ``interprocess=True`` in order to
+        obtain a valid interprocess handle.
+
+        IPC is currently only supported on Linux.
+
+        Example:
+            Create an event and get its IPC handle::
+
+                e1 = wp.Event(interprocess=True)
+                event_handle = e1.ipc_handle()
+
+        Raises:
+            RuntimeError: Device does not support IPC.
+        """
+
+        if self.device.is_ipc_supported:
+            # Allocate a buffer for the data (64-element char array)
+            ipc_handle_buffer = (ctypes.c_char * 64)()
+
+            warp.context.runtime.core.cuda_ipc_get_event_handle(self.device.context, self.cuda_event, ipc_handle_buffer)
+
+            if ipc_handle_buffer.raw == bytes(64):
+                warp.utils.warn("IPC event handle appears to be invalid. Was interprocess=True used?")
+
+            return ipc_handle_buffer.raw
+
+        else:
+            raise RuntimeError(f"Device {self.device} does not support IPC.")
 
     def __del__(self):
         if not self.owner:
@@ -2543,23 +2591,22 @@ class Device:
     """A device to allocate Warp arrays and to launch kernels on.
 
     Attributes:
-        ordinal: A Warp-specific integer label for the device. ``-1`` for CPU devices.
-        name: A string label for the device. By default, CPU devices will be named according to the processor name,
+        ordinal (int): A Warp-specific label for the device. ``-1`` for CPU devices.
+        name (str): A label for the device. By default, CPU devices will be named according to the processor name,
             or ``"CPU"`` if the processor name cannot be determined.
-        arch: An integer representing the compute capability version number calculated as
-            ``10 * major + minor``. ``0`` for CPU devices.
-        is_uva: A boolean indicating whether the device supports unified addressing.
+        arch (int): The compute capability version number calculated as ``10 * major + minor``.
+            ``0`` for CPU devices.
+        is_uva (bool): Indicates whether the device supports unified addressing.
             ``False`` for CPU devices.
-        is_cubin_supported: A boolean indicating whether Warp's version of NVRTC can directly
+        is_cubin_supported (bool): Indicates whether Warp's version of NVRTC can directly
             generate CUDA binary files (cubin) for this device's architecture. ``False`` for CPU devices.
-        is_mempool_supported: A boolean indicating whether the device supports using the
-            ``cuMemAllocAsync`` and ``cuMemPool`` family of APIs for stream-ordered memory allocations. ``False`` for
-            CPU devices.
-        is_primary: A boolean indicating whether this device's CUDA context is also the
-            device's primary context.
-        uuid: A string representing the UUID of the CUDA device. The UUID is in the same format used by
-            ``nvidia-smi -L``. ``None`` for CPU devices.
-        pci_bus_id: A string identifier for the CUDA device in the format ``[domain]:[bus]:[device]``, in which
+        is_mempool_supported (bool): Indicates whether the device supports using the ``cuMemAllocAsync`` and
+            ``cuMemPool`` family of APIs for stream-ordered memory allocations. ``False`` for CPU devices.
+        is_ipc_supported (bool): Indicates whether the device supports IPC.
+        is_primary (bool): Indicates whether this device's CUDA context is also the device's primary context.
+        uuid (str): The UUID of the CUDA device. The UUID is in the same format used by ``nvidia-smi -L``.
+            ``None`` for CPU devices.
+        pci_bus_id (str): An identifier for the CUDA device in the format ``[domain]:[bus]:[device]``, in which
             ``domain``, ``bus``, and ``device`` are all hexadecimal values. ``None`` for CPU devices.
     """
 
@@ -2592,6 +2639,7 @@ class Device:
             self.is_uva = False
             self.is_mempool_supported = False
             self.is_mempool_enabled = False
+            self.is_ipc_supported = False  # TODO: Support IPC for CPU arrays
             self.is_cubin_supported = False
             self.uuid = None
             self.pci_bus_id = None
@@ -2607,8 +2655,11 @@ class Device:
             # CUDA device
             self.name = runtime.core.cuda_device_get_name(ordinal).decode()
             self.arch = runtime.core.cuda_device_get_arch(ordinal)
-            self.is_uva = runtime.core.cuda_device_is_uva(ordinal)
-            self.is_mempool_supported = runtime.core.cuda_device_is_mempool_supported(ordinal)
+            self.is_uva = runtime.core.cuda_device_is_uva(ordinal) > 0
+            self.is_mempool_supported = runtime.core.cuda_device_is_mempool_supported(ordinal) > 0
+            self.is_ipc_supported = (
+                runtime.core.cuda_device_is_ipc_supported(ordinal) > 0 and platform.system() == "Linux"
+            )
             if warp.config.enable_mempools_at_init:
                 # enable if supported
                 self.is_mempool_enabled = self.is_mempool_supported
@@ -3375,6 +3426,8 @@ class Runtime:
             self.core.cuda_device_is_uva.restype = ctypes.c_int
             self.core.cuda_device_is_mempool_supported.argtypes = [ctypes.c_int]
             self.core.cuda_device_is_mempool_supported.restype = ctypes.c_int
+            self.core.cuda_device_is_ipc_supported.argtypes = [ctypes.c_int]
+            self.core.cuda_device_is_ipc_supported.restype = ctypes.c_int
             self.core.cuda_device_set_mempool_release_threshold.argtypes = [ctypes.c_int, ctypes.c_uint64]
             self.core.cuda_device_set_mempool_release_threshold.restype = ctypes.c_int
             self.core.cuda_device_get_mempool_release_threshold.argtypes = [ctypes.c_int]
@@ -3427,6 +3480,22 @@ class Runtime:
             self.core.cuda_is_mempool_access_enabled.restype = ctypes.c_int
             self.core.cuda_set_mempool_access_enabled.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
             self.core.cuda_set_mempool_access_enabled.restype = ctypes.c_int
+
+            # inter-process communication
+            self.core.cuda_ipc_get_mem_handle.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char)]
+            self.core.cuda_ipc_get_mem_handle.restype = None
+            self.core.cuda_ipc_open_mem_handle.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char)]
+            self.core.cuda_ipc_open_mem_handle.restype = ctypes.c_void_p
+            self.core.cuda_ipc_close_mem_handle.argtypes = [ctypes.c_void_p]
+            self.core.cuda_ipc_close_mem_handle.restype = None
+            self.core.cuda_ipc_get_event_handle.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_char),
+            ]
+            self.core.cuda_ipc_get_event_handle.restype = None
+            self.core.cuda_ipc_open_event_handle.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char)]
+            self.core.cuda_ipc_open_event_handle.restype = ctypes.c_void_p
 
             self.core.cuda_stream_create.argtypes = [ctypes.c_void_p, ctypes.c_int]
             self.core.cuda_stream_create.restype = ctypes.c_void_p
@@ -4892,6 +4961,40 @@ def from_numpy(
         device=device,
         requires_grad=requires_grad,
     )
+
+
+def event_from_ipc_handle(handle, device: "Devicelike" = None) -> Event:
+    """Create an event from an IPC handle.
+
+    Args:
+        handle: The interprocess event handle for an existing CUDA event.
+        device (Devicelike): Device to associate with the array.
+
+    Returns:
+        An event created from the interprocess event handle ``handle``.
+
+    Raises:
+        RuntimeError: IPC is not supported on ``device``.
+    """
+
+    try:
+        # Performance note: try first, ask questions later
+        device = warp.context.runtime.get_device(device)
+    except Exception:
+        # Fallback to using the public API for retrieving the device,
+        # which takes take of initializing Warp if needed.
+        device = warp.context.get_device(device)
+
+    if not device.is_ipc_supported:
+        raise RuntimeError(f"IPC is not supported on device {device}.")
+
+    event = Event(
+        device=device, cuda_event=warp.context.runtime.core.cuda_ipc_open_event_handle(device.context, handle)
+    )
+    # Events created from IPC handles must be freed with cuEventDestroy
+    event.owner = True
+
+    return event
 
 
 # given a kernel destination argument type and a value convert

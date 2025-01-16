@@ -115,7 +115,6 @@ Additionally, data can be copied between arrays in different memory spaces using
     :undoc-members:
     :exclude-members: vars
 
-
 Multi-dimensional Arrays
 ########################
 
@@ -1200,3 +1199,42 @@ See :doc:`../profiling` documentation for more information.
 
 .. autoclass:: warp.ScopedTimer
     :noindex:
+
+Interprocess Communication (IPC)
+--------------------------------
+
+Interprocess communication can be used to share Warp arrays and events across
+processes without creating copies of the underlying data.
+
+Some basic requirements for using IPC include:
+
+* Linux operating system
+* The array must be allocated on a GPU device using the default memory allocator (see :doc:`allocators`)
+
+  The ``wp.ScopedMempool`` context manager is useful for temporarily disabling
+  memory pools for the purpose of allocating arrays that can be shared using IPC.
+
+Support for IPC on a device is indicated by the :attr:`is_ipc_supported <warp.context.Device.is_ipc_supported>`
+attribute of the :class:`Device <warp.context.Device>`.
+
+To share a Warp array between processes, use :meth:`array.ipc_handle` in the
+originating process to obtain an IPC handle for the array's memory allocation.
+The handle is a ``bytes`` object with a length of 64.
+The IPC handle along with information about the array (data type, shape, and
+optionally strides) should be shared with another process, e.g. via shared
+memory or files.
+Another process can use this information to import the original array by
+calling :func:`from_ipc_handle`.
+
+Events can be shared in a similar manner, but they must be constructed with
+``interprocess=True``. Additionally, events cannot be created with both
+``interprocess=True`` and ``enable_timing=True``. Use :meth:`Event.ipc_handle`
+in the originating process to obtain an IPC handle for the event. Another
+process can use this information to import the original event by calling
+:func:`event_from_ipc_handle`.
+
+
+
+.. autofunction:: from_ipc_handle
+
+.. autofunction:: event_from_ipc_handle

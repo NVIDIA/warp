@@ -1517,7 +1517,7 @@ def strides_from_shape(shape: Tuple, dtype):
 
 
 def check_array_shape(shape: Tuple):
-    """Checks that the size in each dimension is positive and less than 2^32."""
+    """Checks that the size in each dimension is positive and less than 2^31."""
 
     for dim_index, dim_size in enumerate(shape):
         if dim_size < 0:
@@ -2021,6 +2021,7 @@ class array(Array):
         self.pinned = pinned if device.is_cpu else False
         self.is_contiguous = is_contiguous
         self.deleter = allocator.deleter
+        self._allocator = allocator
 
     def _init_annotation(self, dtype, ndim):
         self.dtype = dtype
@@ -2737,6 +2738,52 @@ class array(Array):
         a._ref = self
         return a
 
+    def ipc_handle(self) -> bytes:
+        """Return an IPC handle of the array as a 64-byte ``bytes`` object
+
+        :func:`from_ipc_handle` can be used with this handle in another process
+        to obtain a :class:`array` that shares the same underlying memory
+        allocation.
+
+        IPC is currently only supported on Linux.
+        Additionally, IPC is only supported for arrays allocated using
+        the default memory allocator.
+
+        :class:`Event` objects created with the ``interprocess=True`` argument
+        may similarly be shared between processes to synchronize GPU work.
+
+        Example:
+            Temporarily using the default memory allocator to allocate an array
+            and get its IPC handle::
+
+                with wp.ScopedMempool("cuda:0", False):
+                    test_array = wp.full(1024, value=42.0, dtype=wp.float32, device="cuda:0")
+                    ipc_handle = test_array.ipc_handle()
+
+        Raises:
+            RuntimeError: The array is not associated with a CUDA device.
+            RuntimeError: The CUDA device does not appear to support IPC.
+            RuntimeError: The array was allocated using the :ref:`mempool memory allocator <mempool_allocators>`.
+        """
+
+        if self.device is None or not self.device.is_cuda:
+            raise RuntimeError("IPC requires a CUDA device")
+        elif not self.device.is_ipc_supported:
+            raise RuntimeError("IPC does not appear to be supported on this CUDA device")
+        elif isinstance(self._allocator, warp.context.CudaMempoolAllocator):
+            raise RuntimeError(
+                "Currently, IPC is only supported for arrays using the default memory allocator.\n"
+                "See https://nvidia.github.io/warp/modules/allocators.html for instructions on how to disable\n"
+                f"the mempool allocator on device {self.device}."
+            )
+
+        # Allocate a buffer for the data (64-element char array)
+        ipc_handle_buffer = (ctypes.c_char * 64)()
+
+        warp.context.runtime.core.cuda_ipc_get_mem_handle(self.ptr, ipc_handle_buffer)
+
+        return ipc_handle_buffer.raw
+
 
 # aliases for arrays with small dimensions
 def array1d(*args, **kwargs):
@@ -2783,6 +2830,51 @@ def from_ptr(ptr, length, dtype=None, shape=None, device=None):
         device=device,
         requires_grad=False,
     )
+
+
+def _close_cuda_ipc_handle(ptr, size):
+    warp.context.runtime.core.cuda_ipc_close_mem_handle(ptr)
+
+
+def from_ipc_handle(
+    handle: bytes, dtype, shape: Tuple[int, ...], strides: Optional[Tuple[int, ...]] = None, device=None
+) -> array:
+    """Create an array from an IPC handle.
+
+    The ``dtype``, ``shape``, and optional ``strides`` arguments should
+    match the values from the :class:`array` from which ``handle`` was created.
+
+    Args:
+        handle: The interprocess memory handle for an existing device memory allocation.
+        dtype: One of the available `data types <#data-types>`_, such as :class:`warp.float32`, :class:`warp.mat33`, or a custom `struct <#structs>`_.
+        shape: Dimensions of the array.
+        strides: Number of bytes in each dimension between successive elements of the array.
+        device (Devicelike): Device to associate with the array.
+
+    Returns:
+        An array created from the existing memory allocation described by the interprocess memory handle ``handle``.
+
+        A copy of the underlying data is not made. Modifications to the array's data will be reflected in the
+        original process from which ``handle`` was exported.
+
+    Raises:
+        RuntimeError: IPC is not supported on ``device``.
+    """
+
+    try:
+        # Performance note: try first, ask questions later
+        device = warp.context.runtime.get_device(device)
+    except Exception:
+        # Fallback to using the public API for retrieving the device,
+        # which takes take of initializing Warp if needed.
+        device = warp.context.get_device(device)
+
+    if not device.is_ipc_supported:
+        raise RuntimeError(f"IPC is not supported on device {device}.")
+
+    ptr = warp.context.runtime.core.cuda_ipc_open_mem_handle(device.context, handle)
+
+    return array(ptr=ptr, dtype=dtype, shape=shape, strides=strides, device=device, deleter=_close_cuda_ipc_handle)
 
 
 # A base class for non-contiguous arrays, providing the implementation of common methods like
