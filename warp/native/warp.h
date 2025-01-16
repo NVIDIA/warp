@@ -269,6 +269,7 @@ extern "C"
     WP_API int cuda_device_get_pci_device_id(int ordinal);
     WP_API int cuda_device_is_uva(int ordinal);
     WP_API int cuda_device_is_mempool_supported(int ordinal);
+    WP_API int cuda_device_is_ipc_supported(int ordinal);
     WP_API int cuda_device_set_mempool_release_threshold(int ordinal, uint64_t threshold);
     WP_API uint64_t cuda_device_get_mempool_release_threshold(int ordinal);
     WP_API void cuda_device_get_memory_info(int ordinal, size_t* free_mem, size_t* total_mem);
@@ -296,6 +297,13 @@ extern "C"
     WP_API int cuda_set_peer_access_enabled(void* target_context, void* peer_context, int enable);
     WP_API int cuda_is_mempool_access_enabled(int target_ordinal, int peer_ordinal);
     WP_API int cuda_set_mempool_access_enabled(int target_ordinal, int peer_ordinal, int enable);
+
+    // inter-process communication
+    WP_API void cuda_ipc_get_mem_handle(void* ptr, char* out_buffer);
+    WP_API void* cuda_ipc_open_mem_handle(void* context, char* handle);
+    WP_API void cuda_ipc_close_mem_handle(void* ptr);
+    WP_API void cuda_ipc_get_event_handle(void* context, void* event, char* out_buffer);
+    WP_API void* cuda_ipc_open_event_handle(void* context, char* handle);
 
     WP_API void* cuda_stream_create(void* context, int priority);
     WP_API void cuda_stream_destroy(void* context, void* stream);

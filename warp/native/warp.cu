@@ -146,6 +146,7 @@ struct DeviceInfo
     int arch = 0;
     int is_uva = 0;
     int is_mempool_supported = 0;
+    int is_ipc_supported = 0;
     int max_smem_bytes = 0;
     CUcontext primary_context = NULL;
 };
@@ -270,6 +271,7 @@ int cuda_init()
                 check_cu(cuDeviceGetAttribute_f(&g_devices[i].pci_device_id, CU_DEVICE_ATTRIBUTE_PCI_DEVICE_ID, device));
                 check_cu(cuDeviceGetAttribute_f(&g_devices[i].is_uva, CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING, device));
                 check_cu(cuDeviceGetAttribute_f(&g_devices[i].is_mempool_supported, CU_DEVICE_ATTRIBUTE_MEMORY_POOLS_SUPPORTED, device));
+                check_cu(cuDeviceGetAttribute_f(&g_devices[i].is_ipc_supported, CU_DEVICE_ATTRIBUTE_IPC_EVENT_SUPPORTED, device));
                 check_cu(cuDeviceGetAttribute_f(&g_devices[i].max_smem_bytes, CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK_OPTIN, device));
                 int major = 0;
                 int minor = 0;
@@ -1801,6 +1803,13 @@ int cuda_device_is_mempool_supported(int ordinal)
     return 0;
 }
 
+int cuda_device_is_ipc_supported(int ordinal)
+{
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+        return g_devices[ordinal].is_ipc_supported;
+    return 0;
+}
+
 int cuda_device_set_mempool_release_threshold(int ordinal, uint64_t threshold)
 {
     if (ordinal < 0 || ordinal > int(g_devices.size()))
@@ -2268,6 +2277,52 @@ int cuda_set_mempool_access_enabled(int target_ordinal, int peer_ordinal, int en
     return 1;  // success
 }
 
+void cuda_ipc_get_mem_handle(void* ptr, char* out_buffer) {
+    CUipcMemHandle memHandle;
+    check_cu(cuIpcGetMemHandle_f(&memHandle, (CUdeviceptr)ptr));
+    memcpy(out_buffer, memHandle.reserved, CU_IPC_HANDLE_SIZE);
+}
+
+void* cuda_ipc_open_mem_handle(void* context, char* handle) {
+    ContextGuard guard(context);
+
+    CUipcMemHandle memHandle;
+    memcpy(memHandle.reserved, handle, CU_IPC_HANDLE_SIZE);
+
+    CUdeviceptr device_ptr;
+
+    // Strangely, the CU_IPC_MEM_LAZY_ENABLE_PEER_ACCESS flag is required
+    if check_cu(cuIpcOpenMemHandle_f(&device_ptr, memHandle, CU_IPC_MEM_LAZY_ENABLE_PEER_ACCESS))
+        return (void*) device_ptr;
+    else
+        return NULL;
+}
+
+void cuda_ipc_close_mem_handle(void* ptr) {
+    check_cu(cuIpcCloseMemHandle_f((CUdeviceptr) ptr));
+}
+
+void cuda_ipc_get_event_handle(void* context, void* event, char* out_buffer) {
+    ContextGuard guard(context);
+
+    CUipcEventHandle eventHandle;
+    check_cu(cuIpcGetEventHandle_f(&eventHandle, static_cast<CUevent>(event)));
+    memcpy(out_buffer, eventHandle.reserved, CU_IPC_HANDLE_SIZE);
+}
+
+void* cuda_ipc_open_event_handle(void* context, char* handle) {
+    ContextGuard guard(context);
+
+    CUipcEventHandle eventHandle;
+    memcpy(eventHandle.reserved, handle, CU_IPC_HANDLE_SIZE);
+
+    CUevent event;
+
+    if (check_cu(cuIpcOpenEventHandle_f(&event, eventHandle)))
+        return event;
+    else
+        return NULL;
+}
 
 void* cuda_stream_create(void* context, int priority)
 {

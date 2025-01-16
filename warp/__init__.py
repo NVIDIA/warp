@@ -43,6 +43,8 @@ from warp.types import matrix as mat
 # numpy interop
 from warp.types import dtype_from_numpy, dtype_to_numpy
 
+from warp.types import from_ipc_handle
+
 from warp.context import init, func, func_grad, func_replay, func_native, kernel, struct, overload
 from warp.context import is_cpu_available, is_cuda_available, is_device_available
 from warp.context import get_devices, get_preferred_device
@@ -65,6 +67,7 @@ from warp.context import (
     synchronize,
     force_load,
     load_module,
+    event_from_ipc_handle,
 )
 from warp.context import set_module_options, get_module_options, get_module
 from warp.context import capture_begin, capture_end, capture_launch
