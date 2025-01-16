@@ -1974,7 +1974,9 @@ for dtype in np_float_types:
         TestMat, f"test_inverse_{dtype.__name__}", test_inverse, devices=devices, dtype=dtype
     )
     add_function_test_register_kernel(TestMat, f"test_svd_{dtype.__name__}", test_svd, devices=devices, dtype=dtype)
-    add_function_test_register_kernel(TestMat, f"test_svd_2D{dtype.__name__}", test_svd_2D, devices=devices, dtype=dtype)
+    add_function_test_register_kernel(
+        TestMat, f"test_svd_2D{dtype.__name__}", test_svd_2D, devices=devices, dtype=dtype
+    )
     add_function_test_register_kernel(TestMat, f"test_qr_{dtype.__name__}", test_qr, devices=devices, dtype=dtype)
     add_function_test_register_kernel(TestMat, f"test_eig_{dtype.__name__}", test_eig, devices=devices, dtype=dtype)
     add_function_test_register_kernel(
