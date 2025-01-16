@@ -67,11 +67,28 @@ void bvh_refit_with_solid_angle_recursive_host(BVH& bvh, int index, Mesh& mesh)
     if (lower.b)
     {
         // Leaf, compute properties
-        const int leaf_index = lower.i;
+         const int start = lower.i;
+         const int end = upper.i;
+         // loops through primitives in the leaf
+         for (int primitive_counter = start; primitive_counter < end; primitive_counter++)
+         {
+             int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
+             if (primitive_counter == start)
+             {
+                 precompute_triangle_solid_angle_props(mesh.points[mesh.indices[primitive_index * 3 + 0]], mesh.points[mesh.indices[primitive_index * 3 + 1]],
+                     mesh.points[mesh.indices[primitive_index * 3 + 2]], mesh.solid_angle_props[index]);
+             }
+             else
+             {
+                 SolidAngleProps triangle_solid_angle_props;
+                 precompute_triangle_solid_angle_props(mesh.points[mesh.indices[primitive_index * 3 + 0]], mesh.points[mesh.indices[primitive_index * 3 + 1]],
+                     mesh.points[mesh.indices[primitive_index * 3 + 2]], triangle_solid_angle_props);
+                 mesh.solid_angle_props[index] = combine_precomputed_solid_angle_props(&mesh.solid_angle_props[index], &triangle_solid_angle_props);
+             }
+         }
 
-        precompute_triangle_solid_angle_props(mesh.points[mesh.indices[leaf_index*3+0]], mesh.points[mesh.indices[leaf_index*3+1]], mesh.points[mesh.indices[leaf_index*3+2]], mesh.solid_angle_props[index]);        
-        (vec3&)lower = mesh.solid_angle_props[index].box.lower;
-        (vec3&)upper = mesh.solid_angle_props[index].box.upper;        
+         (vec3&)lower = mesh.solid_angle_props[index].box.lower;
+         (vec3&)upper = mesh.solid_angle_props[index].box.upper;
     }
     else
     {
@@ -109,7 +126,7 @@ void bvh_refit_with_solid_angle_host(BVH& bvh, Mesh& mesh)
     bvh_refit_with_solid_angle_recursive_host(bvh, 0, mesh);
 }
 
-uint64_t mesh_create_host(array_t<wp::vec3> points, array_t<wp::vec3> velocities, array_t<int> indices, int num_points, int num_tris, int support_winding_number)
+uint64_t mesh_create_host(array_t<wp::vec3> points, array_t<wp::vec3> velocities, array_t<int> indices, int num_points, int num_tris, int support_winding_number, int constructor_type)
 {
     Mesh* m = new Mesh(points, velocities, indices, num_points, num_tris);
 
@@ -137,7 +154,7 @@ uint64_t mesh_create_host(array_t<wp::vec3> points, array_t<wp::vec3> velocities
     }
     m->average_edge_length = sum / (num_tris*3);
 
-    wp::bvh_create_host(m->lowers, m->uppers, num_tris, m->bvh);
+    wp::bvh_create_host(m->lowers, m->uppers, num_tris, constructor_type, m->bvh);
     
     if (support_winding_number) 
     {
@@ -230,7 +247,7 @@ void mesh_set_velocities_host(uint64_t id, wp::array_t<wp::vec3> velocities)
 #if !WP_ENABLE_CUDA
 
 
-WP_API uint64_t mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> tris, int num_points, int num_tris, int support_winding_number) { return 0; }
+WP_API uint64_t mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> tris, int num_points, int num_tris, int support_winding_number, int constructor_type) { return 0; }
 WP_API void mesh_destroy_device(uint64_t id) {}
 WP_API void mesh_refit_device(uint64_t id) {}
 WP_API void mesh_set_points_device(uint64_t id, wp::array_t<wp::vec3> points) {};

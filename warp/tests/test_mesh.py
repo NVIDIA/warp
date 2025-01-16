@@ -88,21 +88,27 @@ def read_indices_kernel(
 
 
 def test_mesh_read_properties(test, device):
-    points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
-    indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
-    mesh = wp.Mesh(points=points, indices=indices)
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
 
-    assert mesh.points.size == POINT_COUNT
-    assert mesh.indices.size == VERTEX_COUNT
-    assert int(mesh.indices.size / 3) == FACE_COUNT
+    for constructor in constructors:
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
+        mesh = wp.Mesh(points=points, indices=indices, bvh_constructor=constructor)
 
-    out_points = wp.empty(POINT_COUNT, dtype=wp.vec3, device=device)
-    wp.launch(read_points_kernel, dim=POINT_COUNT, inputs=[mesh.id], outputs=[out_points], device=device)
-    assert_np_equal(out_points.numpy(), np.array(POINT_POSITIONS))
+        assert mesh.points.size == POINT_COUNT
+        assert mesh.indices.size == VERTEX_COUNT
+        assert int(mesh.indices.size / 3) == FACE_COUNT
 
-    out_indices = wp.empty(VERTEX_COUNT, dtype=int, device=device)
-    wp.launch(read_indices_kernel, dim=FACE_COUNT, inputs=[mesh.id], outputs=[out_indices], device=device)
-    assert_np_equal(out_indices.numpy(), np.array(RIGHT_HANDED_FACE_VERTEX_INDICES))
+        out_points = wp.empty(POINT_COUNT, dtype=wp.vec3, device=device)
+        wp.launch(read_points_kernel, dim=POINT_COUNT, inputs=[mesh.id], outputs=[out_points], device=device)
+        assert_np_equal(out_points.numpy(), np.array(POINT_POSITIONS))
+
+        out_indices = wp.empty(VERTEX_COUNT, dtype=int, device=device)
+        wp.launch(read_indices_kernel, dim=FACE_COUNT, inputs=[mesh.id], outputs=[out_indices], device=device)
+        assert_np_equal(out_indices.numpy(), np.array(RIGHT_HANDED_FACE_VERTEX_INDICES))
 
 
 @wp.kernel(enable_backward=False)
@@ -127,17 +133,23 @@ def query_point_kernel(
 
 
 def test_mesh_query_point(test, device):
-    points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
 
-    indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
-    mesh = wp.Mesh(points=points, indices=indices)
-    expected_sign = -1.0
-    wp.launch(query_point_kernel, dim=1, inputs=[mesh.id, expected_sign], device=device)
+    for constructor in constructors:
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
 
-    indices = wp.array(LEFT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
-    mesh = wp.Mesh(points=points, indices=indices)
-    expected_sign = 1.0
-    wp.launch(query_point_kernel, dim=1, inputs=[mesh.id, expected_sign], device=device)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
+        mesh = wp.Mesh(points=points, indices=indices, bvh_constructor=constructor)
+        expected_sign = -1.0
+        wp.launch(query_point_kernel, dim=1, inputs=[mesh.id, expected_sign], device=device)
+
+        indices = wp.array(LEFT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
+        mesh = wp.Mesh(points=points, indices=indices)
+        expected_sign = 1.0
+        wp.launch(query_point_kernel, dim=1, inputs=[mesh.id, expected_sign], device=device)
 
 
 @wp.kernel(enable_backward=False)
@@ -179,53 +191,65 @@ def query_ray_kernel(
 
 
 def test_mesh_query_ray(test, device):
-    points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
 
-    indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
-    mesh = wp.Mesh(points=points, indices=indices)
-    expected_sign = -1.0
-    wp.launch(
-        query_ray_kernel,
-        dim=1,
-        inputs=[
-            mesh.id,
-            expected_sign,
-        ],
-        device=device,
-    )
+    for constructor in constructors:
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
 
-    indices = wp.array(LEFT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
-    mesh = wp.Mesh(points=points, indices=indices)
-    expected_sign = 1.0
-    wp.launch(
-        query_ray_kernel,
-        dim=1,
-        inputs=[
-            mesh.id,
-            expected_sign,
-        ],
-        device=device,
-    )
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
+        mesh = wp.Mesh(points=points, indices=indices, bvh_constructor=constructor)
+        expected_sign = -1.0
+        wp.launch(
+            query_ray_kernel,
+            dim=1,
+            inputs=[
+                mesh.id,
+                expected_sign,
+            ],
+            device=device,
+        )
+
+        indices = wp.array(LEFT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
+        mesh = wp.Mesh(points=points, indices=indices)
+        expected_sign = 1.0
+        wp.launch(
+            query_ray_kernel,
+            dim=1,
+            inputs=[
+                mesh.id,
+                expected_sign,
+            ],
+            device=device,
+        )
 
 
 def test_mesh_refit_graph(test, device):
-    points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
 
-    indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
-    mesh = wp.Mesh(points=points, indices=indices)
+    for constructor in constructors:
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
 
-    wp.capture_begin(device, force_module_load=False)
-    try:
-        mesh.refit()
-    finally:
-        graph = wp.capture_end(device)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
+        mesh = wp.Mesh(points=points, indices=indices, bvh_constructor=constructor)
 
-    # replay
-    num_iters = 10
-    for _ in range(num_iters):
-        wp.capture_launch(graph)
+        wp.capture_begin(device, force_module_load=False)
+        try:
+            mesh.refit()
+        finally:
+            graph = wp.capture_end(device)
 
-    wp.synchronize_device(device)
+        # replay
+        num_iters = 10
+        for _ in range(num_iters):
+            wp.capture_launch(graph)
+
+        wp.synchronize_device(device)
 
 
 def test_mesh_exceptions(test, device):
