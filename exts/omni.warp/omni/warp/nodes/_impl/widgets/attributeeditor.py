@@ -12,7 +12,8 @@ from functools import partial
 import omni.graph.core as og
 import omni.ui as ui
 from omni.kit.widget.searchfield import SearchField
-from omni.warp.nodes._impl.kernel import (
+
+from ..kernel import (
     ArrayAttributeFormat,
     OutputArrayShapeSource,
     UserAttributeDesc,

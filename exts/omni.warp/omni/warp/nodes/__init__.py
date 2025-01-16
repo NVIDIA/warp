@@ -61,12 +61,12 @@ __all__ = [
     "type_convert_sdf_name_to_og",
 ]
 
-from omni.warp.nodes._impl.attributes import (
+from ._impl.attributes import (
     AttrTracking,
     from_omni_graph,
     from_omni_graph_ptr,
 )
-from omni.warp.nodes._impl.basis_curves import (
+from ._impl.basis_curves import (
     basis_curves_copy_bundle,
     basis_curves_create_bundle,
     basis_curves_get_curve_count,
@@ -78,7 +78,7 @@ from omni.warp.nodes._impl.basis_curves import (
     basis_curves_get_widths,
     basis_curves_get_world_extent,
 )
-from omni.warp.nodes._impl.bundles import (
+from ._impl.bundles import (
     bundle_get_attr,
     bundle_get_child_count,
     bundle_get_prim_type,
@@ -86,14 +86,14 @@ from omni.warp.nodes._impl.bundles import (
     bundle_has_changed,
     bundle_have_attrs_changed,
 )
-from omni.warp.nodes._impl.common import (
+from ._impl.common import (
     NodeTimer,
     device_get_cuda_compute,
     type_convert_og_to_warp,
     type_convert_sdf_name_to_og,
     type_convert_sdf_name_to_warp,
 )
-from omni.warp.nodes._impl.mesh import (
+from ._impl.mesh import (
     mesh_copy_bundle,
     mesh_create_bundle,
     mesh_get_display_color,
@@ -110,7 +110,7 @@ from omni.warp.nodes._impl.mesh import (
     mesh_get_world_extent,
     mesh_triangulate,
 )
-from omni.warp.nodes._impl.points import (
+from ._impl.points import (
     points_copy_bundle,
     points_create_bundle,
     points_get_display_color,

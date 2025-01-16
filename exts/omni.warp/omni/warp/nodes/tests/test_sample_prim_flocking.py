@@ -13,12 +13,13 @@ import omni.timeline
 import omni.usd
 import omni.warp
 import usdrt
-from omni.warp.nodes.tests._common import (
+
+import warp as wp
+
+from ._common import (
     array_are_almost_equal,
     open_sample,
 )
-
-import warp as wp
 
 TEST_ID = "prim_flocking"
 FRAME_COUNT = 30

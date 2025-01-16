@@ -153,6 +153,16 @@ windows-x86_64 test:
   script:
     - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
+check extensions public API:
+  stage: test
+  needs: ["linux-x86_64 build"]
+  extends:
+    - .runner-utility-linux-x86_64
+  before_script:
+    - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
+  script:
+    - tools/repo.sh checkapi
+
 # ==============================================================================
 # Packaging Jobs
 #
@@ -289,7 +299,7 @@ publish wheels to gitlab package registry:
 # Uploads the extensions to packman.
 publish extensions to packman:
   stage: deploy
-  needs: ["create linux-x86_64 kit artifacts", "create windows-x86_64 kit artifacts"]
+  needs: ["check extensions public API", "create linux-x86_64 kit artifacts", "create windows-x86_64 kit artifacts"]
   extends:
     - .runner-utility-linux-x86_64
     - .osec:vault:v3:prod_token_job

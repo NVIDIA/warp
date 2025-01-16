@@ -29,20 +29,21 @@ from typing import (
 )
 
 import omni.graph.core as og
-from omni.warp.nodes._impl.attributes import (
+
+import warp as wp
+
+from .attributes import (
     ATTR_BUNDLE_TYPE,
     attr_cast_array_to_warp,
     attr_get_base_name,
     attr_get_name,
     attr_join_name,
 )
-from omni.warp.nodes._impl.common import (
+from .common import (
     IntEnum,
     get_warp_type_from_data_type_name,
     type_convert_og_to_warp,
 )
-
-import warp as wp
 
 _ATTR_PORT_TYPE_INPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT
 _ATTR_PORT_TYPE_OUTPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT

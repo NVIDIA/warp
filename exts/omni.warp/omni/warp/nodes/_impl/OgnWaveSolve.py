@@ -14,10 +14,11 @@ import numpy as np
 import omni.graph.core as og
 import omni.timeline
 import omni.warp.nodes
-from omni.warp.nodes._impl.kernels.grid_create import grid_create_launch_kernel
 from omni.warp.nodes.ogn.OgnWaveSolveDatabase import OgnWaveSolveDatabase
 
 import warp as wp
+
+from .kernels.grid_create import grid_create_launch_kernel
 
 PROFILING = False
 
