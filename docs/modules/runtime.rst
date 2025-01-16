@@ -622,6 +622,47 @@ Example: Using a struct in gradient computation
     [[1. 2. 3.]
      [4. 5. 6.]]
 
+Example: Defining Operator Overloads
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code:: python
+
+    @wp.struct
+    class Complex:
+        real: float
+        imag: float
+
+    @wp.func
+    def add(
+        a: Complex,
+        b: Complex,
+    ) -> Complex:
+        return Complex(a.real + b.real, a.imag + b.imag)
+
+    @wp.func
+    def mul(
+        a: Complex,
+        b: Complex,
+    ) -> Complex:
+        return Complex(
+            a.real * b.real - a.imag * b.imag,
+            a.real * b.imag + a.imag * b.real,
+        )
+
+    @wp.kernel
+    def kernel():
+        a = Complex(1.0, 2.0)
+        b = Complex(3.0, 4.0)
+
+        c = a + b
+        wp.printf("%.0f %+.0fi\n", c.real, c.imag)
+
+        d = a * b
+        wp.printf("%.0f %+.0fi\n", d.real, d.imag)
+
+    wp.launch(kernel, dim=(1,))
+    wp.synchronize()
+
 Type Conversions
 ################
 

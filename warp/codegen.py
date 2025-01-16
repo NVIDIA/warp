@@ -1914,6 +1914,14 @@ class Adjoint:
 
         name = builtin_operators[type(node.op)]
 
+        try:
+            # Check if there is any user-defined overload for this operator
+            user_func = adj.resolve_external_reference(name)
+            if isinstance(user_func, warp.context.Function):
+                return adj.add_call(user_func, (left, right), {}, {})
+        except WarpCodegenError:
+            pass
+
         return adj.add_builtin_call(name, [left, right])
 
     def emit_UnaryOp(adj, node):
