@@ -224,7 +224,6 @@ Linear Algebra
 * :func:`tile_cholesky`
 * :func:`tile_cholesky_solve`
 * :func:`tile_diag_add`
-* :func:`tile_tril`
 
 Tiles and SIMT Code
 -------------------

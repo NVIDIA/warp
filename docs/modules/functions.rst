@@ -1241,11 +1241,6 @@ Tile Primitives
     Add a square matrix and a diagonal matrix
 
 
-.. py:function:: tile_tril(a: Tile) -> Tile
-
-    Zeroes the upper-triangular part of a square matrix and keep the lower triangular part + diagonal
-
-
 .. py:function:: tile_matmul(a: Tile, b: Tile, out: Tile) -> Tile
 
     Computes the matrix product and accumulates ``out += a*b``.
@@ -1310,7 +1305,7 @@ Tile Primitives
     :param inout: The input/output tile
 
 
-.. py:function:: tile_cholesky(A: Tile) -> None
+.. py:function:: tile_cholesky(A: Tile) -> Tile
 
     Compute the Cholesky factorization L of a matrix A.
     L is lower triangular and satisfies LL^T = A.
@@ -1321,7 +1316,8 @@ Tile Primitives
         * float32
         * float64
 
-    :param A: As input, the matrix A. As output, L.
+    :param A: A square, symmetric positive-definite, matrix.
+    :returns L: A square, lower triangular, matrix, such that LL^T = A
 
 
 .. py:function:: tile_cholesky_solve(L: Tile, x: Tile) -> None
@@ -1334,8 +1330,9 @@ Tile Primitives
         * float32
         * float64
 
-    :param L: The triangular matrix output of tile_cholesky,
-    :param x: As input, the right hand side y. As output, the solution x.
+    :param L: A square, lower triangular, matrix, such that LL^T = A
+    :param x: An Mx1 tile
+    :returns y: An Mx1 tile such that LL^T y = x
 
 
 
