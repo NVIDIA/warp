@@ -5,6 +5,7 @@
 ### Added
 
 - Added support for vec4f grid construction in `wp.Volume.allocate_by_tiles()`
+- Add 2D SVD `svd2` to support 2d simulations ([GH-436](https://github.com/NVIDIA/warp/issues/436)).
 
 ### Changed
 
