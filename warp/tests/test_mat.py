@@ -1112,6 +1112,124 @@ def test_svd(test, device, dtype, register_kernels=False):
                 assert_np_equal((plusval - minusval) / (2 * dx), m3grads[ii, jj], tol=fdtol)
 
 
+def test_svd_2D(test, device, dtype, register_kernels=False):
+    rng = np.random.default_rng(123)
+
+    tol = {
+        np.float16: 1.0e-3,
+        np.float32: 1.0e-6,
+        np.float64: 1.0e-6,
+    }.get(dtype, 0)
+
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
+
+    def check_mat_svd2(
+        m2: wp.array(dtype=mat22),
+        Uout: wp.array(dtype=mat22),
+        sigmaout: wp.array(dtype=vec2),
+        Vout: wp.array(dtype=mat22),
+        outcomponents: wp.array(dtype=wptype),
+    ):
+        U = mat22()
+        sigma = vec2()
+        V = mat22()
+
+        wp.svd2(m2[0], U, sigma, V)  # Assuming there's a 2D SVD kernel
+
+        Uout[0] = U
+        sigmaout[0] = sigma
+        Vout[0] = V
+
+        # multiply outputs by 2 so we've got something to backpropagate:
+        idx = 0
+        for i in range(2):
+            for j in range(2):
+                outcomponents[idx] = wptype(2) * U[i, j]
+                idx = idx + 1
+
+        for i in range(2):
+            outcomponents[idx] = wptype(2) * sigma[i]
+            idx = idx + 1
+
+        for i in range(2):
+            for j in range(2):
+                outcomponents[idx] = wptype(2) * V[i, j]
+                idx = idx + 1
+
+    kernel = getkernel(check_mat_svd2, suffix=dtype.__name__)
+
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+
+    m2 = wp.array(randvals(rng, [1, 2, 2], dtype) + np.eye(2), dtype=mat22, requires_grad=True, device=device)
+
+    outcomponents = wp.zeros(2 * 2 * 2 + 2, dtype=wptype, requires_grad=True, device=device)
+    Uout = wp.zeros(1, dtype=mat22, requires_grad=True, device=device)
+    sigmaout = wp.zeros(1, dtype=vec2, requires_grad=True, device=device)
+    Vout = wp.zeros(1, dtype=mat22, requires_grad=True, device=device)
+
+    wp.launch(kernel, dim=1, inputs=[m2], outputs=[Uout, sigmaout, Vout, outcomponents], device=device)
+
+    Uout_np = Uout.numpy()[0].astype(np.float64)
+    sigmaout_np = np.diag(sigmaout.numpy()[0].astype(np.float64))
+    Vout_np = Vout.numpy()[0].astype(np.float64)
+
+    assert_np_equal(
+        np.matmul(Uout_np, np.matmul(sigmaout_np, Vout_np.T)), m2.numpy()[0].astype(np.float64), tol=30 * tol
+    )
+
+    if dtype == np.float16:
+        # Skip gradient check for float16 due to rounding errors
+        return
+
+    # Check gradients:
+    out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    idx = 0
+    for idx in range(2 * 2 + 2 + 2 * 2):
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, dim=1, inputs=[m2], outputs=[Uout, sigmaout, Vout, outcomponents], device=device)
+            wp.launch(output_select_kernel, dim=1, inputs=[outcomponents, idx], outputs=[out], device=device)
+        tape.backward(out)
+        m2grads = 1.0 * tape.gradients[m2].numpy()[0]
+
+        tape.zero()
+
+        dx = 0.0001
+        fdtol = 5.0e-4 if dtype == np.float64 else 2.0e-2
+        for ii in range(2):
+            for jj in range(2):
+                m2test = 1.0 * m2.numpy()
+                m2test[0, ii, jj] += dx
+                wp.launch(
+                    kernel,
+                    dim=1,
+                    inputs=[wp.array(m2test, dtype=mat22, device=device)],
+                    outputs=[Uout, sigmaout, Vout, outcomponents],
+                    device=device,
+                )
+                wp.launch(output_select_kernel, dim=1, inputs=[outcomponents, idx], outputs=[out], device=device)
+                plusval = out.numpy()[0]
+
+                m2test = 1.0 * m2.numpy()
+                m2test[0, ii, jj] -= dx
+                wp.launch(
+                    kernel,
+                    dim=1,
+                    inputs=[wp.array(m2test, dtype=mat22, device=device)],
+                    outputs=[Uout, sigmaout, Vout, outcomponents],
+                    device=device,
+                )
+                wp.launch(output_select_kernel, dim=1, inputs=[outcomponents, idx], outputs=[out], device=device)
+                minusval = out.numpy()[0]
+
+                assert_np_equal((plusval - minusval) / (2 * dx), m2grads[ii, jj], tol=fdtol)
+
+
 def test_qr(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
 
@@ -1856,6 +1974,7 @@ for dtype in np_float_types:
         TestMat, f"test_inverse_{dtype.__name__}", test_inverse, devices=devices, dtype=dtype
     )
     add_function_test_register_kernel(TestMat, f"test_svd_{dtype.__name__}", test_svd, devices=devices, dtype=dtype)
+    add_function_test_register_kernel(TestMat, f"test_svd_2D{dtype.__name__}", test_svd_2D, devices=devices, dtype=dtype)
     add_function_test_register_kernel(TestMat, f"test_qr_{dtype.__name__}", test_qr, devices=devices, dtype=dtype)
     add_function_test_register_kernel(TestMat, f"test_eig_{dtype.__name__}", test_eig, devices=devices, dtype=dtype)
     add_function_test_register_kernel(

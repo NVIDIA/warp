@@ -578,6 +578,13 @@ Vector Math
     while the left and right basis vectors are returned in ``U`` and ``V``.
 
 
+
+.. py:function:: svd2(A: Matrix[2,2,Float], U: Matrix[2,2,Float], sigma: Vector[2,Float], V: Matrix[2,2,Scalar]) -> None
+
+    Compute the SVD of a 2x2 matrix ``A``. The singular values are returned in ``sigma``,
+    while the left and right basis vectors are returned in ``U`` and ``V``.
+
+
 .. py:function:: qr3(A: Matrix[3,3,Float], Q: Matrix[3,3,Float], R: Matrix[3,3,Float]) -> None
 
     Compute the QR decomposition of a 3x3 matrix ``A``. The orthogonal matrix is returned in ``Q``,
