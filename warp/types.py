@@ -3228,14 +3228,18 @@ def is_tile(t):
     return isinstance(t, Tile)
 
 
+bvh_constructor_values = {"sah": 0, "median": 1, "lbvh": 2}
+
+
 class Bvh:
     def __new__(cls, *args, **kwargs):
         instance = super(Bvh, cls).__new__(cls)
         instance.id = None
         return instance
 
-    def __init__(self, lowers, uppers):
-        """Class representing a bounding volume hierarchy.
+    def __init__(self, lowers, uppers, constructor=None):
+        """Class representing a bounding volume hierarchy. Depends on which device the input bounds live, it can be either
+            a CPU tree or a GPU tree.
 
         Attributes:
             id: Unique identifier for this bvh object, can be passed to kernels.
@@ -3243,7 +3247,37 @@ class Bvh:
 
         Args:
             lowers (:class:`warp.array`): Array of lower bounds :class:`warp.vec3`
-            uppers (:class:`warp.array`): Array of upper bounds :class:`warp.vec3`
+            uppers (:class:`warp.array`): Array of upper bounds :class:`warp.vec3`. `lowers` and `uppers` must live on the
+                same device.
+            constructor (string): Must be one of the following values: ["sah", "median", "lbvh", `None`]. This specifies
+                the construction algorithm used to build the tree. When `None` is selected, the default constructor will
+                be used (see the note).
+
+
+        Note:
+            Explanation of BVH constructors:
+
+            - "sah": A CPU-based top-down constructor where the AABBs are split based on Surface Area
+              Heuristics (SAH). Construction takes slightly longer than others but has the best query
+              performance.
+
+            - "median": A CPU-based top-down constructor where the AABBs are split based on the median
+              of centroids of primitives in an AABB. This constructor is faster than SAH but offers
+              inferior query performance.
+
+            - "lbvh": A GPU-based bottom-up constructor which maximizes parallelism. Construction is very
+              fast, especially for large models. Query performance is slightly slower than "sah".
+
+            - `None`: The constructor will be automatically chosen based on the device where the tree
+              lives. For a GPU tree, the `LBVH` constructor will be selected; for a CPU tree, the "sah"
+              constructor will be selected.
+
+            All three constructors are supported for GPU trees. When a CPU-based constructor is selected
+            for a GPU tree, bounds will be copied back to the CPU to run the CPU-based constructor. After
+            construction, the CPU tree will be copied to the GPU.
+
+            Only "sah" and "median" are supported for CPU trees. If "lbvh" is selected for a CPU tree, a
+            warning message will be issued, and the constructor will automatically fall back to "sah".
         """
 
         if len(lowers) != len(uppers):
@@ -3270,11 +3304,34 @@ class Bvh:
 
         self.runtime = warp.context.runtime
 
+        if constructor is None:
+            if self.device.is_cpu:
+                constructor = "sah"
+            else:
+                constructor = "lbvh"
+
+        if constructor not in bvh_constructor_values:
+            if isinstance(constructor, str):
+                print("Unrecognized BVH constructor type:", constructor)
+            else:
+                print("Unrecognized BVH constructor type!")
+            return
+
         if self.device.is_cpu:
-            self.id = self.runtime.core.bvh_create_host(get_data(lowers), get_data(uppers), int(len(lowers)))
+            if constructor == "lbvh":
+                print("LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.")
+                constructor = "sah"
+
+            self.id = self.runtime.core.bvh_create_host(
+                get_data(lowers), get_data(uppers), int(len(lowers)), bvh_constructor_values[constructor]
+            )
         else:
             self.id = self.runtime.core.bvh_create_device(
-                self.device.context, get_data(lowers), get_data(uppers), int(len(lowers))
+                self.device.context,
+                get_data(lowers),
+                get_data(uppers),
+                int(len(lowers)),
+                bvh_constructor_values[constructor],
             )
 
     def __del__(self):
@@ -3312,12 +3369,21 @@ class Mesh:
         instance.id = None
         return instance
 
-    def __init__(self, points=None, indices=None, velocities=None, support_winding_number=False):
+    def __init__(
+        self,
+        points=None,
+        indices=None,
+        velocities=None,
+        support_winding_number=False,
+        bvh_constructor=None,
+    ):
         """Class representing a triangle mesh.
 
         Attributes:
             id: Unique identifier for this mesh object, can be passed to kernels.
             device: Device this object lives on, all buffers must live on the same device.
+            bvh_constructor (string): Must be one of the following values: ["sah", "median", "lbvh", `None`].
+                The construction algorithm for the underlying BVH (see documentation of `Bvh` for explanation).
 
         Args:
             points (:class:`warp.array`): Array of vertex positions of type :class:`warp.vec3`
@@ -3348,7 +3414,24 @@ class Mesh:
 
         self.runtime = warp.context.runtime
 
+        if bvh_constructor is None:
+            if self.device.is_cpu:
+                bvh_constructor = "sah"
+            else:
+                bvh_constructor = "lbvh"
+
+        if bvh_constructor not in bvh_constructor_values:
+            if isinstance(bvh_constructor, str):
+                print("Unrecognized BVH constructor type:", bvh_constructor)
+            else:
+                print("Unrecognized BVH constructor type!")
+            return
+
         if self.device.is_cpu:
+            if bvh_constructor == "lbvh":
+                print("LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.")
+                bvh_constructor = "sah"
+
             self.id = self.runtime.core.mesh_create_host(
                 points.__ctype__(),
                 velocities.__ctype__() if velocities else array().__ctype__(),
@@ -3356,6 +3439,7 @@ class Mesh:
                 int(len(points)),
                 int(indices.size / 3),
                 int(support_winding_number),
+                bvh_constructor_values[bvh_constructor],
             )
         else:
             self.id = self.runtime.core.mesh_create_device(
@@ -3366,6 +3450,7 @@ class Mesh:
                 int(len(points)),
                 int(indices.size / 3),
                 int(support_winding_number),
+                bvh_constructor_values[bvh_constructor],
             )
 
     def __del__(self):

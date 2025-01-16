@@ -80,58 +80,31 @@ CUDA_CALLABLE inline Mesh& operator += (Mesh& a, const Mesh& b) {
 
 CUDA_CALLABLE inline float distance_to_aabb_sq(const vec3& p, const vec3& lower, const vec3& upper)
 {
-    vec3 cp = closest_point_to_aabb(p, lower, upper);
-
-    return length_sq(p-cp);
+    const float dx = min(upper[0], max(lower[0], p[0])) - p[0];
+    const float dy = min(upper[1], max(lower[1], p[1])) - p[1];
+    const float dz = min(upper[2], max(lower[2], p[2])) - p[2];
+    return dx * dx + dy * dy + dz * dz;
 }
 
 CUDA_CALLABLE inline float furthest_distance_to_aabb_sq(const vec3& p, const vec3& lower, const vec3& upper)
 {
-    vec3 c0 = vec3(lower[0], lower[1], lower[2]);
-    vec3 c1 = vec3(lower[0], lower[1], upper[2]);
-    vec3 c2 = vec3(lower[0], upper[1], lower[2]);
-    vec3 c3 = vec3(lower[0], upper[1], upper[2]);
-    vec3 c4 = vec3(upper[0], lower[1], lower[2]);
-    vec3 c5 = vec3(upper[0], lower[1], upper[2]);
-    vec3 c6 = vec3(upper[0], upper[1], lower[2]);
-    vec3 c7 = vec3(upper[0], upper[1], upper[2]);
-    
-    float max_dist_sq = 0.0;
-    float d;
+    // X-axis
+    float dist_lower_x = fabs(p[0] - lower[0]);
+    float dist_upper_x = fabs(p[0] - upper[0]);
+    float corner_diff_x = (dist_lower_x > dist_upper_x) ? dist_lower_x : dist_upper_x;
 
-    d = length_sq(p-c0);
-    if (d > max_dist_sq)
-        max_dist_sq = d;
+    // Y-axis
+    float dist_lower_y = fabs(p[1] - lower[1]);
+    float dist_upper_y = fabs(p[1] - upper[1]);
+    float corner_diff_y = (dist_lower_y > dist_upper_y) ? dist_lower_y : dist_upper_y;
 
-    d = length_sq(p-c1);
-    if (d > max_dist_sq)
-        max_dist_sq = d;
+    // Z-axis
+    float dist_lower_z = fabs(p[2] - lower[2]);
+    float dist_upper_z = fabs(p[2] - upper[2]);
+    float corner_diff_z = (dist_lower_z > dist_upper_z) ? dist_lower_z : dist_upper_z;
 
-    d = length_sq(p-c2);
-    if (d > max_dist_sq)
-        max_dist_sq = d;
-
-    d = length_sq(p-c3);
-    if (d > max_dist_sq)
-        max_dist_sq = d;
-
-    d = length_sq(p-c4);
-    if (d > max_dist_sq)
-        max_dist_sq = d;
-
-    d = length_sq(p-c5);
-    if (d > max_dist_sq)
-        max_dist_sq = d;
-
-    d = length_sq(p-c6);
-    if (d > max_dist_sq)
-        max_dist_sq = d;
-
-    d = length_sq(p-c7);
-    if (d > max_dist_sq)
-        max_dist_sq = d;
-
-    return max_dist_sq;
+    // Calculate and return the distance
+    return corner_diff_x* corner_diff_x + corner_diff_y * corner_diff_y + corner_diff_z * corner_diff_z;
 }
 
 CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p);
@@ -164,8 +137,8 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
     {
         const int nodeIndex = stack[--count];
 
-        BVHPackedNodeHalf lower = mesh.bvh.node_lowers[nodeIndex];
-        BVHPackedNodeHalf upper = mesh.bvh.node_uppers[nodeIndex];
+        BVHPackedNodeHalf lower = bvh_load_node(mesh.bvh.node_lowers, nodeIndex);
+        BVHPackedNodeHalf upper = bvh_load_node(mesh.bvh.node_uppers, nodeIndex);
     
         // re-test distance
         float node_dist_sq = distance_to_aabb_sq(point, vec3(lower.x, lower.y, lower.z), vec3(upper.x, upper.y, upper.z));
@@ -182,38 +155,44 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
 
         if (lower.b)
         {	
-            // compute closest point on tri
-            int i = mesh.indices[left_index*3+0];
-            int j = mesh.indices[left_index*3+1];
-            int k = mesh.indices[left_index*3+2];
-
-            vec3 p = mesh.points[i];
-            vec3 q = mesh.points[j];
-            vec3 r = mesh.points[k];
-            
-            vec3 e0 = q-p;
-            vec3 e1 = r-p;
-            vec3 e2 = r-q;
-            vec3 normal = cross(e0, e1);
-            
-            // sliver detection
-            if (length(normal)/(dot(e0,e0) + dot(e1,e1) + dot(e2,e2)) < 1.e-6f)
-                continue;
-
-            vec2 barycentric = closest_point_to_triangle(p, q, r, point);
-            float u = barycentric[0];
-            float v = barycentric[1];
-            float w = 1.f - u - v;
-            vec3 c = u*p + v*q + w*r;
-
-            float dist_sq = length_sq(c-point);
-
-            if (dist_sq < min_dist_sq)
+            const int start = left_index;
+            const int end = right_index;
+            // loops through primitives in the leaf
+            for (int primitive_counter = start; primitive_counter < end; primitive_counter++)
             {
-                min_dist_sq = dist_sq;
-                min_v = v;
-                min_w = w;
-                min_face = left_index;
+                int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
+                int i = mesh.indices[primitive_index * 3 + 0];
+                int j = mesh.indices[primitive_index * 3 + 1];
+                int k = mesh.indices[primitive_index * 3 + 2];
+
+                vec3 p = mesh.points[i];
+                vec3 q = mesh.points[j];
+                vec3 r = mesh.points[k];
+
+                vec3 e0 = q - p;
+                vec3 e1 = r - p;
+                vec3 e2 = r - q;
+                vec3 normal = cross(e0, e1);
+
+                // sliver detection
+                if (length(normal) / (dot(e0, e0) + dot(e1, e1) + dot(e2, e2)) < 1.e-6f)
+                    continue;
+
+                vec2 barycentric = closest_point_to_triangle(p, q, r, point);
+                float u = barycentric[0];
+                float v = barycentric[1];
+                float w = 1.f - u - v;
+                vec3 c = u * p + v * q + w * r;
+
+                float dist_sq = length_sq(c - point);
+
+                if (dist_sq < min_dist_sq)
+                {
+                    min_dist_sq = dist_sq;
+                    min_v = v;
+                    min_w = w;
+                    min_face = primitive_index;
+                }
             }
 
 #if BVH_DEBUG
@@ -237,11 +216,11 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
         }
         else
         {
-            BVHPackedNodeHalf left_lower = mesh.bvh.node_lowers[left_index];
-            BVHPackedNodeHalf left_upper = mesh.bvh.node_uppers[left_index];
+            BVHPackedNodeHalf left_lower = bvh_load_node(mesh.bvh.node_lowers, left_index);
+            BVHPackedNodeHalf left_upper = bvh_load_node(mesh.bvh.node_uppers, left_index);
 
-            BVHPackedNodeHalf right_lower = mesh.bvh.node_lowers[right_index];
-            BVHPackedNodeHalf right_upper = mesh.bvh.node_uppers[right_index];
+            BVHPackedNodeHalf right_lower = bvh_load_node(mesh.bvh.node_lowers, right_index);
+            BVHPackedNodeHalf right_upper = bvh_load_node(mesh.bvh.node_uppers, right_index);
 
             float left_dist_sq = distance_to_aabb_sq(point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z));
             float right_dist_sq = distance_to_aabb_sq(point, vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z));
@@ -249,24 +228,24 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
             float left_score = left_dist_sq;
             float right_score = right_dist_sq;
 
-            if (left_score < right_score)
+            wp::vec2i child_indices;
+            wp::vec2 child_dist;
+            if (left_dist_sq < right_score)
             {
-                // put left on top of the stack
-                if (right_dist_sq < min_dist_sq)
-                    stack[count++] = right_index;
-
-                if (left_dist_sq < min_dist_sq)
-                    stack[count++] = left_index;
+                child_indices = wp::vec2i(right_index, left_index);
+                child_dist = wp::vec2(right_dist_sq, left_dist_sq);
             }
             else
             {
-                // put right on top of the stack
-                if (left_dist_sq < min_dist_sq)
-                    stack[count++] = left_index;
-
-                if (right_dist_sq < min_dist_sq)
-                    stack[count++] = right_index;
+                child_indices = wp::vec2i(left_index, right_index);
+                child_dist = wp::vec2(left_dist_sq, right_dist_sq);
             }
+
+            if (child_dist[0] < min_dist_sq)
+                stack[count++] = child_indices[0];
+
+            if (child_dist[1] < min_dist_sq)
+                stack[count++] = child_indices[1];
         }
     }
 
@@ -349,9 +328,9 @@ CUDA_CALLABLE inline bool mesh_query_point_no_sign(uint64_t id, const vec3& poin
     {
         const int nodeIndex = stack[--count];
 
-        BVHPackedNodeHalf lower = mesh.bvh.node_lowers[nodeIndex];
-        BVHPackedNodeHalf upper = mesh.bvh.node_uppers[nodeIndex];
-    
+        BVHPackedNodeHalf lower = bvh_load_node(mesh.bvh.node_lowers, nodeIndex);
+        BVHPackedNodeHalf upper = bvh_load_node(mesh.bvh.node_uppers, nodeIndex);
+
         // re-test distance
         float node_dist_sq = distance_to_aabb_sq(point, vec3(lower.x, lower.y, lower.z), vec3(upper.x, upper.y, upper.z));
         if (node_dist_sq > min_dist_sq)
@@ -366,39 +345,44 @@ CUDA_CALLABLE inline bool mesh_query_point_no_sign(uint64_t id, const vec3& poin
         const int right_index = upper.i;
 
         if (lower.b)
-        {	
-            // compute closest point on tri
-            int i = mesh.indices[left_index*3+0];
-            int j = mesh.indices[left_index*3+1];
-            int k = mesh.indices[left_index*3+2];
-
-            vec3 p = mesh.points[i];
-            vec3 q = mesh.points[j];
-            vec3 r = mesh.points[k];
-            
-            vec3 e0 = q-p;
-            vec3 e1 = r-p;
-            vec3 e2 = r-q;
-            vec3 normal = cross(e0, e1);
-            
-            // sliver detection
-            if (length(normal)/(dot(e0,e0) + dot(e1,e1) + dot(e2,e2)) < 1.e-6f)
-                continue;
-
-            vec2 barycentric = closest_point_to_triangle(p, q, r, point);
-            float u = barycentric[0];
-            float v = barycentric[1];
-            float w = 1.f - u - v;
-            vec3 c = u*p + v*q + w*r;
-
-            float dist_sq = length_sq(c-point);
-
-            if (dist_sq < min_dist_sq)
+        {
+            const int start = left_index;
+            const int end = right_index;
+            // loops through primitives in the leaf
+            for (int primitive_counter = start; primitive_counter < end; primitive_counter++)
             {
-                min_dist_sq = dist_sq;
-                min_v = v;
-                min_w = w;
-                min_face = left_index;
+                int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
+                int i = mesh.indices[primitive_index * 3 + 0];
+                int j = mesh.indices[primitive_index * 3 + 1];
+                int k = mesh.indices[primitive_index * 3 + 2];
+
+                vec3 p = mesh.points[i];
+                vec3 q = mesh.points[j];
+                vec3 r = mesh.points[k];
+                vec3 e0 = q - p;
+                vec3 e1 = r - p;
+                vec3 e2 = r - q;
+                vec3 normal = cross(e0, e1);
+
+                // sliver detection
+                if (length(normal) / (dot(e0, e0) + dot(e1, e1) + dot(e2, e2)) < 1.e-6f)
+                    continue;
+
+                vec2 barycentric = closest_point_to_triangle(p, q, r, point);
+                float u = barycentric[0];
+                float v = barycentric[1];
+                float w = 1.f - u - v;
+                vec3 c = u * p + v * q + w * r;
+
+                float dist_sq = length_sq(c - point);
+
+                if (dist_sq < min_dist_sq)
+                {
+                    min_dist_sq = dist_sq;
+                    min_v = v;
+                    min_w = w;
+                    min_face = primitive_index;
+                }
             }
 
 #if BVH_DEBUG
@@ -422,11 +406,11 @@ CUDA_CALLABLE inline bool mesh_query_point_no_sign(uint64_t id, const vec3& poin
         }
         else
         {
-            BVHPackedNodeHalf left_lower = mesh.bvh.node_lowers[left_index];
-            BVHPackedNodeHalf left_upper = mesh.bvh.node_uppers[left_index];
+            BVHPackedNodeHalf left_lower = bvh_load_node(mesh.bvh.node_lowers, left_index);
+            BVHPackedNodeHalf left_upper = bvh_load_node(mesh.bvh.node_uppers, left_index);
 
-            BVHPackedNodeHalf right_lower = mesh.bvh.node_lowers[right_index];
-            BVHPackedNodeHalf right_upper = mesh.bvh.node_uppers[right_index];
+            BVHPackedNodeHalf right_lower = bvh_load_node(mesh.bvh.node_lowers, right_index);
+            BVHPackedNodeHalf right_upper = bvh_load_node(mesh.bvh.node_uppers, right_index);
 
             float left_dist_sq = distance_to_aabb_sq(point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z));
             float right_dist_sq = distance_to_aabb_sq(point, vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z));
@@ -434,24 +418,24 @@ CUDA_CALLABLE inline bool mesh_query_point_no_sign(uint64_t id, const vec3& poin
             float left_score = left_dist_sq;
             float right_score = right_dist_sq;
 
-            if (left_score < right_score)
+            wp::vec2i child_indices;
+            wp::vec2 child_dist;
+            if (left_dist_sq < right_score)
             {
-                // put left on top of the stack
-                if (right_dist_sq < min_dist_sq)
-                    stack[count++] = right_index;
-
-                if (left_dist_sq < min_dist_sq)
-                    stack[count++] = left_index;
+                child_indices = wp::vec2i(right_index, left_index);
+                child_dist = wp::vec2(right_dist_sq, left_dist_sq);
             }
             else
             {
-                // put right on top of the stack
-                if (left_dist_sq < min_dist_sq)
-                    stack[count++] = left_index;
-
-                if (right_dist_sq < min_dist_sq)
-                    stack[count++] = right_index;
+                child_indices = wp::vec2i(left_index, right_index);
+                child_dist = wp::vec2(left_dist_sq, right_dist_sq);
             }
+
+            if (child_dist[0] < min_dist_sq)
+                stack[count++] = child_indices[0];
+
+            if (child_dist[1] < min_dist_sq)
+                stack[count++] = child_indices[1];
         }
     }
 
@@ -513,10 +497,10 @@ CUDA_CALLABLE inline bool mesh_query_furthest_point_no_sign(uint64_t id, const v
 
     int count = 1;
 
-    float max_dist_sq = min_dist*min_dist;
-    int min_face;
-    float min_v;
-    float min_w;
+    float min_dist_sq = min_dist*min_dist;
+    int max_face;
+    float max_v;
+    float max_w;
 
 #if BVH_DEBUG
     int tests = 0;
@@ -531,14 +515,14 @@ CUDA_CALLABLE inline bool mesh_query_furthest_point_no_sign(uint64_t id, const v
     {
         const int nodeIndex = stack[--count];
 
-        BVHPackedNodeHalf lower = mesh.bvh.node_lowers[nodeIndex];
-        BVHPackedNodeHalf upper = mesh.bvh.node_uppers[nodeIndex];
+        BVHPackedNodeHalf lower = bvh_load_node(mesh.bvh.node_lowers, nodeIndex);
+        BVHPackedNodeHalf upper = bvh_load_node(mesh.bvh.node_uppers, nodeIndex);
     
         // re-test distance
         float node_dist_sq = furthest_distance_to_aabb_sq(point, vec3(lower.x, lower.y, lower.z), vec3(upper.x, upper.y, upper.z));
         
         // if maximum distance to this node is less than our existing furthest max then skip
-        if (node_dist_sq < max_dist_sq)
+        if (node_dist_sq < min_dist_sq)
         {
 #if BVH_DEBUG			
             secondary_culls++;
@@ -551,38 +535,44 @@ CUDA_CALLABLE inline bool mesh_query_furthest_point_no_sign(uint64_t id, const v
 
         if (lower.b)
         {	
-            // compute closest point on tri
-            int i = mesh.indices[left_index*3+0];
-            int j = mesh.indices[left_index*3+1];
-            int k = mesh.indices[left_index*3+2];
-
-            vec3 p = mesh.points[i];
-            vec3 q = mesh.points[j];
-            vec3 r = mesh.points[k];
-            
-            vec3 e0 = q-p;
-            vec3 e1 = r-p;
-            vec3 e2 = r-q;
-            vec3 normal = cross(e0, e1);
-            
-            // sliver detection
-            if (length(normal)/(dot(e0,e0) + dot(e1,e1) + dot(e2,e2)) < 1.e-6f)
-                continue;
-
-            vec2 barycentric = furthest_point_to_triangle(p, q, r, point);
-            float u = barycentric[0];
-            float v = barycentric[1];
-            float w = 1.f - u - v;
-            vec3 c = u*p + v*q + w*r;
-
-            float dist_sq = length_sq(c-point);
-
-            if (dist_sq > max_dist_sq)
+            const int start = left_index;
+            const int end = right_index;
+            // loops through primitives in the leaf
+            for (int primitive_counter = start; primitive_counter < end; primitive_counter++)
             {
-                max_dist_sq = dist_sq;
-                min_v = v;
-                min_w = w;
-                min_face = left_index;
+                int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
+                int i = mesh.indices[primitive_index * 3 + 0];
+                int j = mesh.indices[primitive_index * 3 + 1];
+                int k = mesh.indices[primitive_index * 3 + 2];
+
+                vec3 p = mesh.points[i];
+                vec3 q = mesh.points[j];
+                vec3 r = mesh.points[k];
+            
+                vec3 e0 = q-p;
+                vec3 e1 = r-p;
+                vec3 e2 = r-q;
+                vec3 normal = cross(e0, e1);
+            
+                // sliver detection
+                if (length(normal)/(dot(e0,e0) + dot(e1,e1) + dot(e2,e2)) < 1.e-6f)
+                    continue;
+
+                vec2 barycentric = furthest_point_to_triangle(p, q, r, point);
+                float u = barycentric[0];
+                float v = barycentric[1];
+                float w = 1.f - u - v;
+                vec3 c = u*p + v*q + w*r;
+
+                float dist_sq = length_sq(c-point);
+
+                if (dist_sq > min_dist_sq)
+                {
+                    min_dist_sq = dist_sq;
+                    max_v = v;
+                    max_w = w;
+                    max_face = primitive_index;
+                }
             }
 
 #if BVH_DEBUG
@@ -606,11 +596,11 @@ CUDA_CALLABLE inline bool mesh_query_furthest_point_no_sign(uint64_t id, const v
         }
         else
         {
-            BVHPackedNodeHalf left_lower = mesh.bvh.node_lowers[left_index];
-            BVHPackedNodeHalf left_upper = mesh.bvh.node_uppers[left_index];
+            BVHPackedNodeHalf left_lower = bvh_load_node(mesh.bvh.node_lowers, left_index);
+            BVHPackedNodeHalf left_upper = bvh_load_node(mesh.bvh.node_uppers, left_index);
 
-            BVHPackedNodeHalf right_lower = mesh.bvh.node_lowers[right_index];
-            BVHPackedNodeHalf right_upper = mesh.bvh.node_uppers[right_index];
+            BVHPackedNodeHalf right_lower = bvh_load_node(mesh.bvh.node_lowers, right_index);
+            BVHPackedNodeHalf right_upper = bvh_load_node(mesh.bvh.node_uppers, right_index);
 
             float left_dist_sq = furthest_distance_to_aabb_sq(point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z));
             float right_dist_sq = furthest_distance_to_aabb_sq(point, vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z));
@@ -618,24 +608,24 @@ CUDA_CALLABLE inline bool mesh_query_furthest_point_no_sign(uint64_t id, const v
             float left_score = left_dist_sq;
             float right_score = right_dist_sq;
 
-            if (left_score > right_score)
+            wp::vec2i child_indices;
+            wp::vec2 child_dist;
+            if (left_dist_sq > right_score)
             {
-                // put left on top of the stack
-                if (right_dist_sq > max_dist_sq)
-                    stack[count++] = right_index;
-
-                if (left_dist_sq > max_dist_sq)
-                    stack[count++] = left_index;
+                child_indices = wp::vec2i(right_index, left_index);
+                child_dist = wp::vec2(right_dist_sq, left_dist_sq);
             }
             else
             {
-                // put right on top of the stack
-                if (left_dist_sq > max_dist_sq)
-                    stack[count++] = left_index;
-
-                if (right_dist_sq > max_dist_sq)
-                    stack[count++] = right_index;
+                child_indices = wp::vec2i(left_index, right_index);
+                child_dist = wp::vec2(left_dist_sq, right_dist_sq);
             }
+
+            if (child_dist[0] > min_dist_sq)
+                stack[count++] = child_indices[0];
+
+            if (child_dist[1] > min_dist_sq)
+                stack[count++] = child_indices[1];
         }
     }
 
@@ -655,7 +645,7 @@ CUDA_CALLABLE inline bool mesh_query_furthest_point_no_sign(uint64_t id, const v
     {
         max_tests = tests;
         max_point = point;
-        max_point_dist = sqrtf(max_dist_sq);
+        max_point_dist = sqrtf(min_dist_sq);
 
         printf("max_tests: %d max_point: %f %f %f max_point_dist: %f max_second_culls: %d\n", max_tests, max_point[0], max_point[1], max_point[2], max_point_dist, max_secondary_culls);
 
@@ -673,11 +663,11 @@ CUDA_CALLABLE inline bool mesh_query_furthest_point_no_sign(uint64_t id, const v
 #endif
 
     // check if we found a point, and write outputs
-    if (max_dist_sq > min_dist*min_dist)
+    if (min_dist_sq > min_dist*min_dist)
     {
-        u = 1.0f - min_v - min_w;
-        v = min_v;
-        face = min_face;
+        u = 1.0f - max_v - max_w;
+        v = max_v;
+        face = max_face;
         
         return true;
     }
@@ -700,6 +690,7 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_normal(uint64_t id, const vec3& 
     float min_v;
     float min_w;
     vec3 accumulated_angle_weighted_normal;
+
 #if BVH_DEBUG
     int tests = 0;
     int secondary_culls = 0;
@@ -709,11 +700,13 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_normal(uint64_t id, const vec3& 
 #endif
     float epsilon_min_dist = mesh.average_edge_length * epsilon;
     float epsilon_min_dist_sq = epsilon_min_dist*epsilon_min_dist;
+
     while (count)
     {
         const int nodeIndex = stack[--count];
-        BVHPackedNodeHalf lower = mesh.bvh.node_lowers[nodeIndex];
-        BVHPackedNodeHalf upper = mesh.bvh.node_uppers[nodeIndex];
+        BVHPackedNodeHalf lower = bvh_load_node(mesh.bvh.node_lowers, nodeIndex);
+        BVHPackedNodeHalf upper = bvh_load_node(mesh.bvh.node_uppers, nodeIndex);
+
         // re-test distance
         float node_dist_sq = distance_to_aabb_sq(point, vec3(lower.x, lower.y, lower.z), vec3(upper.x, upper.y, upper.z));
         if (node_dist_sq > (min_dist + epsilon_min_dist)*(min_dist + epsilon_min_dist))
@@ -723,92 +716,109 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_normal(uint64_t id, const vec3& 
 #endif
             continue;
         }
+
         const int left_index = lower.i;
         const int right_index = upper.i;
+
         if (lower.b)
         {
-            // compute closest point on tri
-            int i = mesh.indices[left_index*3+0];
-            int j = mesh.indices[left_index*3+1];
-            int k = mesh.indices[left_index*3+2];
-            vec3 p = mesh.points[i];
-            vec3 q = mesh.points[j];
-            vec3 r = mesh.points[k];
-            vec3 e0 = q-p;
-            vec3 e1 = r-p;
-            vec3 e2 = r-q;
-            vec3 normal = cross(e0, e1);
-            // sliver detection
-            float e0_norm_sq = dot(e0,e0);
-            float e1_norm_sq = dot(e1,e1);
-            float e2_norm_sq = dot(e2,e2);
-            if (length(normal)/(e0_norm_sq + e1_norm_sq + e2_norm_sq) < 1.e-6f)
-                continue;
-            vec2 barycentric = closest_point_to_triangle(p, q, r, point);
-            float u = barycentric[0];
-            float v = barycentric[1];
-            float w = 1.f - u - v;
-            vec3 c = u*p + v*q + w*r;
-            float dist = sqrtf(length_sq(c-point));
-            if (dist < min_dist + epsilon_min_dist)
+            const int start = left_index;
+            const int end = right_index;
+            // loops through primitives in the leaf
+            for (int primitive_counter = start; primitive_counter < end; primitive_counter++)
             {
-                float weight = 0.0f;
-                vec3 cp = c-p;
-                vec3 cq = c-q;
-                vec3 cr = c-r;
-                float len_cp_sq = length_sq(cp);
-                float len_cq_sq = length_sq(cq);
-                float len_cr_sq = length_sq(cr);
-                
-                // Check if near vertex
-                if (len_cp_sq < epsilon_min_dist_sq)
-                {
-                    // Vertex 0 is the closest feature
-                    weight = acosf(dot(normalize(e0), normalize(e1)));
-                } else
-                if (len_cq_sq < epsilon_min_dist_sq)
-                {
-                    // Vertex 1 is the closest feature
-                    weight = acosf(dot(normalize(e2), normalize(-e0)));
-                } else
-                if (len_cr_sq < epsilon_min_dist_sq)
-                {
-                    // Vertex 2 is the closest feature
-                    weight = acosf(dot(normalize(-e1), normalize(-e2)));
-                } else
-                {
-                    float e0cp = dot(e0, cp);
-                    float e2cq = dot(e2, cq);
-                    float e1cp = dot(e1, cp);
+                int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
+                int i = mesh.indices[primitive_index * 3 + 0];
+                int j = mesh.indices[primitive_index * 3 + 1];
+                int k = mesh.indices[primitive_index * 3 + 2];
 
-                    if ((len_cp_sq*e0_norm_sq-e0cp*e0cp < epsilon_min_dist_sq*e0_norm_sq) ||
-                        (len_cq_sq*e2_norm_sq-e2cq*e2cq < epsilon_min_dist_sq*e2_norm_sq) ||
-                        (len_cp_sq*e1_norm_sq-e1cp*e1cp < epsilon_min_dist_sq*e1_norm_sq)) {
-                        // One of the edge
-                        weight = 3.14159265359f;  // PI
-                    } else {
-                        weight = 2.0f*3.14159265359f; // 2*PI
-                    }
-                }
+                vec3 p = mesh.points[i];
+                vec3 q = mesh.points[j];
+                vec3 r = mesh.points[k];
 
-                if (dist > min_dist - epsilon_min_dist) 
+                vec3 e0 = q-p;
+                vec3 e1 = r-p;
+                vec3 e2 = r-q;
+                vec3 normal = cross(e0, e1);
+
+                // sliver detection
+                float e0_norm_sq = dot(e0,e0);
+                float e1_norm_sq = dot(e1,e1);
+                float e2_norm_sq = dot(e2,e2);
+                if (length(normal)/(e0_norm_sq + e1_norm_sq + e2_norm_sq) < 1.e-6f)
+                    continue;
+
+                vec2 barycentric = closest_point_to_triangle(p, q, r, point);
+                float u = barycentric[0];
+                float v = barycentric[1];
+                float w = 1.f - u - v;
+                vec3 c = u*p + v*q + w*r;
+                float dist = sqrtf(length_sq(c-point));
+                if (dist < min_dist + epsilon_min_dist)
                 {
-                    // Treat as equal
-                    accumulated_angle_weighted_normal += weight*normalize(normal);
-                    if (dist < min_dist) 
+                    float weight = 0.0f;
+                    vec3 cp = c - p;
+                    vec3 cq = c - q;
+                    vec3 cr = c - r;
+                    float len_cp_sq = length_sq(cp);
+                    float len_cq_sq = length_sq(cq);
+                    float len_cr_sq = length_sq(cr);
+
+                    // Check if near vertex
+                    if (len_cp_sq < epsilon_min_dist_sq)
                     {
+                        // Vertex 0 is the closest feature
+                        weight = acosf(dot(normalize(e0), normalize(e1)));
+                    }
+                    else
+                        if (len_cq_sq < epsilon_min_dist_sq)
+                        {
+                            // Vertex 1 is the closest feature
+                            weight = acosf(dot(normalize(e2), normalize(-e0)));
+                        }
+                        else
+                            if (len_cr_sq < epsilon_min_dist_sq)
+                            {
+                                // Vertex 2 is the closest feature
+                                weight = acosf(dot(normalize(-e1), normalize(-e2)));
+                            }
+                            else
+                            {
+                                float e0cp = dot(e0, cp);
+                                float e2cq = dot(e2, cq);
+                                float e1cp = dot(e1, cp);
+
+                                if ((len_cp_sq * e0_norm_sq - e0cp * e0cp < epsilon_min_dist_sq * e0_norm_sq) ||
+                                    (len_cq_sq * e2_norm_sq - e2cq * e2cq < epsilon_min_dist_sq * e2_norm_sq) ||
+                                    (len_cp_sq * e1_norm_sq - e1cp * e1cp < epsilon_min_dist_sq * e1_norm_sq)) {
+                                    // One of the edge
+                                    weight = 3.14159265359f;  // PI
+                                }
+                                else {
+                                    weight = 2.0f * 3.14159265359f; // 2*PI
+                                }
+                            }
+
+                    if (dist > min_dist - epsilon_min_dist)
+                    {
+                        // Treat as equal
+                        accumulated_angle_weighted_normal += weight * normalize(normal);
+                        if (dist < min_dist)
+                        {
+                            min_dist = dist;
+                            min_v = v;
+                            min_w = w;
+                            min_face = primitive_index;
+                        }
+                    }
+                    else {
+                        // Less
                         min_dist = dist;
                         min_v = v;
                         min_w = w;
-                        min_face = left_index;
+                        min_face = primitive_index;
+                        accumulated_angle_weighted_normal = weight * normalize(normal);
                     }
-                } else {
-                    // Less
-                    min_dist = dist;
-                    min_v = v;
-                    min_w = w;
-                    min_face = left_index;
-                    accumulated_angle_weighted_normal = weight*normalize(normal);
                 }
             }
 #if BVH_DEBUG
@@ -828,10 +838,11 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_normal(uint64_t id, const vec3& 
         }
         else
         {
-            BVHPackedNodeHalf left_lower = mesh.bvh.node_lowers[left_index];
-            BVHPackedNodeHalf left_upper = mesh.bvh.node_uppers[left_index];
-            BVHPackedNodeHalf right_lower = mesh.bvh.node_lowers[right_index];
-            BVHPackedNodeHalf right_upper = mesh.bvh.node_uppers[right_index];
+            BVHPackedNodeHalf left_lower = bvh_load_node(mesh.bvh.node_lowers, left_index);
+            BVHPackedNodeHalf left_upper = bvh_load_node(mesh.bvh.node_uppers, left_index);
+
+            BVHPackedNodeHalf right_lower = bvh_load_node(mesh.bvh.node_lowers, right_index);
+            BVHPackedNodeHalf right_upper = bvh_load_node(mesh.bvh.node_uppers, right_index);
 
             float left_dist_sq = distance_to_aabb_sq(point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z));
             float right_dist_sq = distance_to_aabb_sq(point, vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z));
@@ -839,22 +850,24 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_normal(uint64_t id, const vec3& 
             float left_score = left_dist_sq;
             float right_score = right_dist_sq;
 
-            if (left_score < right_score)
+            wp::vec2i child_indices;
+            wp::vec2 child_dist;
+            if (left_dist_sq < right_score)
             {
-                // put left on top of the stack
-                if (right_dist_sq < (min_dist + epsilon_min_dist) * (min_dist + epsilon_min_dist))
-                    stack[count++] = right_index;
-                if (left_dist_sq < (min_dist + epsilon_min_dist) * (min_dist + epsilon_min_dist))
-                    stack[count++] = left_index;
+                child_indices = wp::vec2i(right_index, left_index);
+                child_dist = wp::vec2(right_dist_sq, left_dist_sq);
             }
             else
             {
-                // put right on top of the stack
-                if (left_dist_sq < (min_dist + epsilon_min_dist) * (min_dist + epsilon_min_dist))
-                    stack[count++] = left_index;
-                if (right_dist_sq < (min_dist + epsilon_min_dist) * (min_dist + epsilon_min_dist))
-                    stack[count++] = right_index;
+                child_indices = wp::vec2i(left_index, right_index);
+                child_dist = wp::vec2(left_dist_sq, right_dist_sq);
             }
+
+            if (child_dist[0] < (min_dist + epsilon_min_dist) * (min_dist + epsilon_min_dist))
+                stack[count++] = child_indices[0];
+
+            if (child_dist[1] < (min_dist + epsilon_min_dist) * (min_dist + epsilon_min_dist))
+                stack[count++] = child_indices[1];
         }
     }
 #if BVH_DEBUG
@@ -928,17 +941,29 @@ CUDA_CALLABLE inline float solid_angle_iterative(uint64_t id, const vec3& p, con
     while (count)
     {
         const int nodeIndex = stack[count - 1];
-        BVHPackedNodeHalf lower = mesh.bvh.node_lowers[nodeIndex];
-        BVHPackedNodeHalf upper = mesh.bvh.node_uppers[nodeIndex];
-    
+        BVHPackedNodeHalf lower = bvh_load_node(mesh.bvh.node_lowers, nodeIndex);
+        BVHPackedNodeHalf upper = bvh_load_node(mesh.bvh.node_uppers, nodeIndex);
+
         const int left_index = lower.i;
         const int right_index = upper.i;
         if (lower.b)
         {
             // compute closest point on tri
-            const int leaf_index = left_index;
-            angle[count - 1] = robust_solid_angle(mesh.points[mesh.indices[leaf_index*3+0]], mesh.points[mesh.indices[leaf_index*3+1]], mesh.points[mesh.indices[leaf_index*3+2]], p);
-            //printf("Leaf %d, got %f\n", leaf_index, my_data[count - 1]);
+            const int start = left_index;
+            const int end = right_index;
+            angle[count - 1] = 0.f;
+            for (int primitive_counter = start; primitive_counter < end; primitive_counter++)
+            {
+                int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
+                int i = mesh.indices[primitive_index * 3 + 0];
+                int j = mesh.indices[primitive_index * 3 + 1];
+                int k = mesh.indices[primitive_index * 3 + 2];
+                angle[count - 1] += robust_solid_angle(
+                    mesh.points[i], 
+                    mesh.points[j], 
+                    mesh.points[k], p);
+                //printf("Leaf %d, got %f\n", leaf_index, my_data[count - 1]);
+            }
             count--;
         }
         else
@@ -1018,8 +1043,8 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_winding_number(uint64_t id, cons
     {
         const int nodeIndex = stack[--count];
 
-        BVHPackedNodeHalf lower = mesh.bvh.node_lowers[nodeIndex];
-        BVHPackedNodeHalf upper = mesh.bvh.node_uppers[nodeIndex];
+        BVHPackedNodeHalf lower = bvh_load_node(mesh.bvh.node_lowers, nodeIndex);
+        BVHPackedNodeHalf upper = bvh_load_node(mesh.bvh.node_uppers, nodeIndex);
     
         // re-test distance
         float node_dist_sq = distance_to_aabb_sq(point, vec3(lower.x, lower.y, lower.z), vec3(upper.x, upper.y, upper.z));
@@ -1036,40 +1061,45 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_winding_number(uint64_t id, cons
 
         if (lower.b)
         {	
-            // compute closest point on tri
-            int i = mesh.indices[left_index*3+0];
-            int j = mesh.indices[left_index*3+1];
-            int k = mesh.indices[left_index*3+2];
-
-            vec3 p = mesh.points[i];
-            vec3 q = mesh.points[j];
-            vec3 r = mesh.points[k];
-            
-            vec3 e0 = q-p;
-            vec3 e1 = r-p;
-            vec3 e2 = r-q;
-            vec3 normal = cross(e0, e1);
-            
-            // sliver detection
-            if (length(normal)/(dot(e0,e0) + dot(e1,e1) + dot(e2,e2)) < 1.e-6f)
-                continue;
-
-            vec2 barycentric = closest_point_to_triangle(p, q, r, point);
-            float u = barycentric[0];
-            float v = barycentric[1];
-            float w = 1.f - u - v;
-            vec3 c = u*p + v*q + w*r;
-
-            float dist_sq = length_sq(c-point);
-
-            if (dist_sq < min_dist_sq)
+            const int start = left_index;
+            const int end = right_index;
+            // loops through primitives in the leaf
+            for (int primitive_counter = start; primitive_counter < end; primitive_counter++)
             {
-                min_dist_sq = dist_sq;
-                min_v = v;
-                min_w = w;
-                min_face = left_index;
-            }
+                int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
+                int i = mesh.indices[primitive_index * 3 + 0];
+                int j = mesh.indices[primitive_index * 3 + 1];
+                int k = mesh.indices[primitive_index * 3 + 2];
 
+                vec3 p = mesh.points[i];
+                vec3 q = mesh.points[j];
+                vec3 r = mesh.points[k];
+
+                vec3 e0 = q - p;
+                vec3 e1 = r - p;
+                vec3 e2 = r - q;
+                vec3 normal = cross(e0, e1);
+
+                // sliver detection
+                if (length(normal) / (dot(e0, e0) + dot(e1, e1) + dot(e2, e2)) < 1.e-6f)
+                    continue;
+
+                vec2 barycentric = closest_point_to_triangle(p, q, r, point);
+                float u = barycentric[0];
+                float v = barycentric[1];
+                float w = 1.f - u - v;
+                vec3 c = u * p + v * q + w * r;
+
+                float dist_sq = length_sq(c - point);
+
+                if (dist_sq < min_dist_sq)
+                {
+                    min_dist_sq = dist_sq;
+                    min_v = v;
+                    min_w = w;
+                    min_face = primitive_index;
+                }
+            }
 #if BVH_DEBUG
 
             tests++;
@@ -1091,11 +1121,11 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_winding_number(uint64_t id, cons
         }
         else
         {
-            BVHPackedNodeHalf left_lower = mesh.bvh.node_lowers[left_index];
-            BVHPackedNodeHalf left_upper = mesh.bvh.node_uppers[left_index];
+            BVHPackedNodeHalf left_lower = bvh_load_node(mesh.bvh.node_lowers, left_index);
+            BVHPackedNodeHalf left_upper = bvh_load_node(mesh.bvh.node_uppers, left_index);
 
-            BVHPackedNodeHalf right_lower = mesh.bvh.node_lowers[right_index];
-            BVHPackedNodeHalf right_upper = mesh.bvh.node_uppers[right_index];
+            BVHPackedNodeHalf right_lower = bvh_load_node(mesh.bvh.node_lowers, right_index);
+            BVHPackedNodeHalf right_upper = bvh_load_node(mesh.bvh.node_uppers, right_index);
 
             float left_dist_sq = distance_to_aabb_sq(point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z));
             float right_dist_sq = distance_to_aabb_sq(point, vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z));
@@ -1103,24 +1133,24 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_winding_number(uint64_t id, cons
             float left_score = left_dist_sq;
             float right_score = right_dist_sq;
 
-            if (left_score < right_score)
+            wp::vec2i child_indices;
+            wp::vec2 child_dist;
+            if (left_dist_sq < right_score)
             {
-                // put left on top of the stack
-                if (right_dist_sq < min_dist_sq)
-                    stack[count++] = right_index;
-
-                if (left_dist_sq < min_dist_sq)
-                    stack[count++] = left_index;
+                child_indices = wp::vec2i(right_index, left_index);
+                child_dist = wp::vec2(right_dist_sq, left_dist_sq);
             }
             else
             {
-                // put right on top of the stack
-                if (left_dist_sq < min_dist_sq)
-                    stack[count++] = left_index;
-
-                if (right_dist_sq < min_dist_sq)
-                    stack[count++] = right_index;
+                child_indices = wp::vec2i(left_index, right_index);
+                child_dist = wp::vec2(left_dist_sq, right_dist_sq);
             }
+
+            if (child_dist[0] < min_dist_sq)
+                stack[count++] = child_indices[0];
+
+            if (child_dist[1] < min_dist_sq)
+                stack[count++] = child_indices[1];
         }
     }
 
@@ -1364,8 +1394,8 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
     {
         const int nodeIndex = stack[--count];
 
-        BVHPackedNodeHalf lower = mesh.bvh.node_lowers[nodeIndex];
-        BVHPackedNodeHalf upper = mesh.bvh.node_uppers[nodeIndex];
+        BVHPackedNodeHalf lower = bvh_load_node(mesh.bvh.node_lowers, nodeIndex);
+        BVHPackedNodeHalf upper = bvh_load_node(mesh.bvh.node_uppers, nodeIndex);
 
         // todo: switch to robust ray-aabb, or expand bounds in build stage
         float eps = 1.e-3f;
@@ -1379,28 +1409,34 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
 
             if (lower.b)
             {	
-                // compute closest point on tri
-                int i = mesh.indices[left_index*3+0];
-                int j = mesh.indices[left_index*3+1];
-                int k = mesh.indices[left_index*3+2];
-
-                vec3 p = mesh.points[i];
-                vec3 q = mesh.points[j];
-                vec3 r = mesh.points[k];
-
-                float t, u, v, sign;
-                vec3 n;
-                
-                if (intersect_ray_tri_woop(start, dir, p, q, r, t, u, v, sign, &n))
+                const int start_index = left_index;
+                const int end_index = right_index;
+                // loops through primitives in the leaf
+                for (int primitive_counter = start_index; primitive_counter < end_index ; primitive_counter++)
                 {
-                    if (t < min_t && t >= 0.0f)
+                    int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
+                    int i = mesh.indices[primitive_index * 3 + 0];
+                    int j = mesh.indices[primitive_index * 3 + 1];
+                    int k = mesh.indices[primitive_index * 3 + 2];
+
+                    vec3 p = mesh.points[i];
+                    vec3 q = mesh.points[j];
+                    vec3 r = mesh.points[k];
+
+                    float t, u, v, sign;
+                    vec3 n;
+
+                    if (intersect_ray_tri_woop(start, dir, p, q, r, t, u, v, sign, &n))
                     {
-                        min_t = t;
-                        min_face = left_index;
-                        min_u = u;
-                        min_v = v;
-                        min_sign = sign;
-                        min_normal = n;
+                        if (t < min_t && t >= 0.0f)
+                        {
+                            min_t = t;
+                            min_face = primitive_index;
+                            min_u = u;
+                            min_v = v;
+                            min_sign = sign;
+                            min_normal = n;
+                        }
                     }
                 }
             }
@@ -1482,13 +1518,13 @@ struct mesh_query_ray_t
         return *this;
     }
 
-    bool result;
     float sign;
     int face;
     float t;
     float u;
     float v;
     vec3 normal;
+    bool result;
 };
 
 CUDA_CALLABLE inline mesh_query_ray_t mesh_query_ray(uint64_t id, const vec3& start, const vec3& dir, float max_t)
@@ -1528,7 +1564,7 @@ CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
         }
     }
 
-    if (vote == 3)
+    if (vote >= 2)
         return -1.0f;
     else
         return 1.0f;
@@ -1544,7 +1580,8 @@ struct mesh_query_aabb_t
           count(0),
           input_lower(),
           input_upper(),
-          face(0)
+          face(0),
+          primitive_counter(-1)
     {}
 
     // Required for adjoint computations.
@@ -1562,6 +1599,9 @@ struct mesh_query_aabb_t
     // inputs
     wp::vec3 input_lower;
     wp::vec3 input_upper;
+
+    // >= 0 if currently in a packed leaf node
+    int primitive_counter;
 
     // Face
     int face;
@@ -1593,13 +1633,10 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
     while (query.count)
     {
         const int nodeIndex = query.stack[--query.count];
-        BVHPackedNodeHalf node_lower = mesh.bvh.node_lowers[nodeIndex];
-        BVHPackedNodeHalf node_upper = mesh.bvh.node_uppers[nodeIndex];
+        BVHPackedNodeHalf node_lower = bvh_load_node(mesh.bvh.node_lowers, nodeIndex);
+        BVHPackedNodeHalf node_upper = bvh_load_node(mesh.bvh.node_uppers, nodeIndex);
 
-        wp::vec3 lower_pos(node_lower.x, node_lower.y, node_lower.z);
-        wp::vec3 upper_pos(node_upper.x, node_upper.y, node_upper.z);
-        wp::bounds3 current_bounds(lower_pos, upper_pos);
-        if (!input_bounds.overlaps(current_bounds))
+        if (!input_bounds.overlaps((vec3&)node_lower, (vec3&)node_upper))
         {
             // Skip this box, it doesn't overlap with our target box.
             continue;
@@ -1611,8 +1648,9 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
         // Make bounds from this AABB
         if (node_lower.b)
         {
-            // found very first triangle index.
+            // Reached a leaf node, point to its first primitive
             // Back up one level and return 
+            query.primitive_counter = left_index;
             query.stack[query.count++] = nodeIndex;
             return query;
         }
@@ -1636,19 +1674,54 @@ CUDA_CALLABLE inline void adj_mesh_query_aabb(uint64_t id, const vec3& lower, co
 CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& index)
 {
     Mesh mesh = query.mesh;
-    
+
     wp::bounds3 input_bounds(query.input_lower, query.input_upper);
+
+    if (query.primitive_counter != -1)
+        // currently in a leaf node which is the last node in the stack
+    {
+        const int node_index = query.stack[query.count - 1];
+        BVHPackedNodeHalf node_lower = bvh_load_node(mesh.bvh.node_lowers, node_index);
+        BVHPackedNodeHalf node_upper = bvh_load_node(mesh.bvh.node_uppers, node_index);
+
+        const int end = node_upper.i;
+        for (int primitive_counter = query.primitive_counter; primitive_counter < end; primitive_counter++)
+        {
+            int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
+            if (input_bounds.overlaps(mesh.lowers[primitive_index], mesh.uppers[primitive_index]))
+            {
+                if (primitive_counter < end - 1)
+                    // still need to come back to this leaf node for the leftover primitives
+                {
+                    query.primitive_counter = primitive_counter + 1;
+                }
+                else
+                    // no need to come back to this leaf node
+                {
+                    query.count--;
+                    query.primitive_counter = -1;
+                }
+                index = primitive_index;
+                query.face = primitive_index;
+
+                return true;
+            }
+        }
+        // if we reach here it means we have finished the current leaf node without finding intersections
+        query.primitive_counter = -1;
+        // remove the leaf node from the back of the stack because it is finished
+        // and continue the bvh traversal
+        query.count--;
+    }
+    
     // Navigate through the bvh, find the first overlapping leaf node.
     while (query.count)
     {
-        const int nodeIndex = query.stack[--query.count];
-        BVHPackedNodeHalf node_lower = mesh.bvh.node_lowers[nodeIndex];
-        BVHPackedNodeHalf node_upper = mesh.bvh.node_uppers[nodeIndex];
+        const int node_index = query.stack[--query.count];
+        BVHPackedNodeHalf node_lower = bvh_load_node(mesh.bvh.node_lowers, node_index);
+        BVHPackedNodeHalf node_upper = bvh_load_node(mesh.bvh.node_uppers, node_index);
 
-        wp::vec3 lower_pos(node_lower.x, node_lower.y, node_lower.z);
-        wp::vec3 upper_pos(node_upper.x, node_upper.y, node_upper.z);
-        wp::bounds3 current_bounds(lower_pos, upper_pos);
-        if (!input_bounds.overlaps(current_bounds))
+        if (!input_bounds.overlaps((vec3&)node_lower, (vec3&)node_upper))
         {
             // Skip this box, it doesn't overlap with our target box.
             continue;
@@ -1660,14 +1733,35 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& in
         // Make bounds from this AABB
         if (node_lower.b)
         {
-            // found very first triangle index
-            query.face = left_index;
-            index = left_index;
-            return true;
+            // found leaf, loop through its content primitives
+            const int start = left_index;
+            const int end = right_index;
+
+            for (int primitive_counter = start; primitive_counter < end; primitive_counter++)
+            {
+                int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
+                if (input_bounds.overlaps(mesh.lowers[primitive_index], mesh.uppers[primitive_index]))
+                {
+                    if (primitive_counter < end - 1)
+                        // still need to come back to this leaf node for the leftover primitives
+                    {
+                        query.primitive_counter = primitive_counter + 1;
+                        query.stack[query.count++] = node_index;
+                    }
+                    else
+                        // no need to come back to this leaf node
+                    {
+                        query.primitive_counter = -1;
+                    }
+                    index = primitive_index;
+                    query.face = primitive_index;
+
+                    return true;
+                }
+            }
         }
         else
         {
-
             query.stack[query.count++] = left_index;
             query.stack[query.count++] = right_index;
         }

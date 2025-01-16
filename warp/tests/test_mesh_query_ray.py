@@ -91,114 +91,120 @@ def test_mesh_query_ray_grad(test, device):
     mesh_points = wp.array(np.array(mesh_geom.GetPointsAttr().Get()), dtype=wp.vec3, device=device)
     mesh_indices = wp.array(np.array(tri_indices), dtype=int, device=device)
 
-    p = wp.vec3(50.0, 50.0, 0.0)
-    D = wp.vec3(0.0, -1.0, 0.0)
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
 
-    # create mesh
-    mesh = wp.Mesh(points=mesh_points, velocities=None, indices=mesh_indices)
+    for constructor in constructors:
+        p = wp.vec3(50.0, 50.0, 0.0)
+        D = wp.vec3(0.0, -1.0, 0.0)
 
-    tape = wp.Tape()
+        # create mesh
+        mesh = wp.Mesh(points=mesh_points, velocities=None, indices=mesh_indices, bvh_constructor=constructor)
 
-    # analytic gradients
-    with tape:
-        query_points = wp.array(p, dtype=wp.vec3, device=device, requires_grad=True)
-        query_dirs = wp.array(D, dtype=wp.vec3, device=device, requires_grad=True)
-        intersection_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
-        loss = wp.zeros(n=1, dtype=float, device=device, requires_grad=True)
+        tape = wp.Tape()
 
-        wp.launch(
-            kernel=mesh_query_ray_loss,
-            dim=1,
-            inputs=[mesh.id, query_points, query_dirs, intersection_points, loss],
-            device=device,
-        )
+        # analytic gradients
+        with tape:
+            query_points = wp.array(p, dtype=wp.vec3, device=device, requires_grad=True)
+            query_dirs = wp.array(D, dtype=wp.vec3, device=device, requires_grad=True)
+            intersection_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
+            loss = wp.zeros(n=1, dtype=float, device=device, requires_grad=True)
 
-    tape.backward(loss=loss)
-    q = intersection_points.numpy().flatten()
-    analytic_p = tape.gradients[query_points].numpy().flatten()
-    analytic_D = tape.gradients[query_dirs].numpy().flatten()
+            wp.launch(
+                kernel=mesh_query_ray_loss,
+                dim=1,
+                inputs=[mesh.id, query_points, query_dirs, intersection_points, loss],
+                device=device,
+            )
 
-    # numeric gradients
+        tape.backward(loss=loss)
+        q = intersection_points.numpy().flatten()
+        analytic_p = tape.gradients[query_points].numpy().flatten()
+        analytic_D = tape.gradients[query_dirs].numpy().flatten()
 
-    # ray origin
-    eps = 1.0e-3
-    loss_values_p = []
-    numeric_p = np.zeros(3)
+        # numeric gradients
 
-    offset_query_points = [
-        wp.vec3(p[0] - eps, p[1], p[2]),
-        wp.vec3(p[0] + eps, p[1], p[2]),
-        wp.vec3(p[0], p[1] - eps, p[2]),
-        wp.vec3(p[0], p[1] + eps, p[2]),
-        wp.vec3(p[0], p[1], p[2] - eps),
-        wp.vec3(p[0], p[1], p[2] + eps),
-    ]
+        # ray origin
+        eps = 1.0e-3
+        loss_values_p = []
+        numeric_p = np.zeros(3)
 
-    for i in range(6):
-        q = offset_query_points[i]
+        offset_query_points = [
+            wp.vec3(p[0] - eps, p[1], p[2]),
+            wp.vec3(p[0] + eps, p[1], p[2]),
+            wp.vec3(p[0], p[1] - eps, p[2]),
+            wp.vec3(p[0], p[1] + eps, p[2]),
+            wp.vec3(p[0], p[1], p[2] - eps),
+            wp.vec3(p[0], p[1], p[2] + eps),
+        ]
 
-        query_points = wp.array(q, dtype=wp.vec3, device=device)
-        query_dirs = wp.array(D, dtype=wp.vec3, device=device)
-        intersection_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
-        loss = wp.zeros(n=1, dtype=float, device=device)
+        for i in range(6):
+            q = offset_query_points[i]
 
-        wp.launch(
-            kernel=mesh_query_ray_loss,
-            dim=1,
-            inputs=[mesh.id, query_points, query_dirs, intersection_points, loss],
-            device=device,
-        )
+            query_points = wp.array(q, dtype=wp.vec3, device=device)
+            query_dirs = wp.array(D, dtype=wp.vec3, device=device)
+            intersection_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
+            loss = wp.zeros(n=1, dtype=float, device=device)
 
-        loss_values_p.append(loss.numpy()[0])
+            wp.launch(
+                kernel=mesh_query_ray_loss,
+                dim=1,
+                inputs=[mesh.id, query_points, query_dirs, intersection_points, loss],
+                device=device,
+            )
 
-    for i in range(3):
-        l_0 = loss_values_p[i * 2]
-        l_1 = loss_values_p[i * 2 + 1]
-        gradient = (l_1 - l_0) / (2.0 * eps)
-        numeric_p[i] = gradient
+            loss_values_p.append(loss.numpy()[0])
 
-    # ray dir
-    loss_values_D = []
-    numeric_D = np.zeros(3)
+        for i in range(3):
+            l_0 = loss_values_p[i * 2]
+            l_1 = loss_values_p[i * 2 + 1]
+            gradient = (l_1 - l_0) / (2.0 * eps)
+            numeric_p[i] = gradient
 
-    offset_query_dirs = [
-        wp.vec3(D[0] - eps, D[1], D[2]),
-        wp.vec3(D[0] + eps, D[1], D[2]),
-        wp.vec3(D[0], D[1] - eps, D[2]),
-        wp.vec3(D[0], D[1] + eps, D[2]),
-        wp.vec3(D[0], D[1], D[2] - eps),
-        wp.vec3(D[0], D[1], D[2] + eps),
-    ]
+        # ray dir
+        loss_values_D = []
+        numeric_D = np.zeros(3)
 
-    for i in range(6):
-        q = offset_query_dirs[i]
+        offset_query_dirs = [
+            wp.vec3(D[0] - eps, D[1], D[2]),
+            wp.vec3(D[0] + eps, D[1], D[2]),
+            wp.vec3(D[0], D[1] - eps, D[2]),
+            wp.vec3(D[0], D[1] + eps, D[2]),
+            wp.vec3(D[0], D[1], D[2] - eps),
+            wp.vec3(D[0], D[1], D[2] + eps),
+        ]
 
-        query_points = wp.array(p, dtype=wp.vec3, device=device)
-        query_dirs = wp.array(q, dtype=wp.vec3, device=device)
-        intersection_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
-        loss = wp.zeros(n=1, dtype=float, device=device)
+        for i in range(6):
+            q = offset_query_dirs[i]
 
-        wp.launch(
-            kernel=mesh_query_ray_loss,
-            dim=1,
-            inputs=[mesh.id, query_points, query_dirs, intersection_points, loss],
-            device=device,
-        )
+            query_points = wp.array(p, dtype=wp.vec3, device=device)
+            query_dirs = wp.array(q, dtype=wp.vec3, device=device)
+            intersection_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
+            loss = wp.zeros(n=1, dtype=float, device=device)
 
-        loss_values_D.append(loss.numpy()[0])
+            wp.launch(
+                kernel=mesh_query_ray_loss,
+                dim=1,
+                inputs=[mesh.id, query_points, query_dirs, intersection_points, loss],
+                device=device,
+            )
 
-    for i in range(3):
-        l_0 = loss_values_D[i * 2]
-        l_1 = loss_values_D[i * 2 + 1]
-        gradient = (l_1 - l_0) / (2.0 * eps)
-        numeric_D[i] = gradient
+            loss_values_D.append(loss.numpy()[0])
 
-    error_p = ((analytic_p - numeric_p) * (analytic_p - numeric_p)).sum(axis=0)
-    error_D = ((analytic_D - numeric_D) * (analytic_D - numeric_D)).sum(axis=0)
+        for i in range(3):
+            l_0 = loss_values_D[i * 2]
+            l_1 = loss_values_D[i * 2 + 1]
+            gradient = (l_1 - l_0) / (2.0 * eps)
+            numeric_D[i] = gradient
 
-    tolerance = 1.0e-3
-    test.assertTrue(error_p < tolerance, f"error is {error_p} which is >= {tolerance}")
-    test.assertTrue(error_D < tolerance, f"error is {error_D} which is >= {tolerance}")
+        error_p = ((analytic_p - numeric_p) * (analytic_p - numeric_p)).sum(axis=0)
+        error_D = ((analytic_D - numeric_D) * (analytic_D - numeric_D)).sum(axis=0)
+
+        tolerance = 1.0e-3
+        test.assertTrue(error_p < tolerance, f"error is {error_p} which is >= {tolerance}")
+        test.assertTrue(error_D < tolerance, f"error is {error_D} which is >= {tolerance}")
 
 
 @wp.kernel
@@ -229,6 +235,11 @@ def raycast_kernel(
 
 
 def test_mesh_query_ray_edge(test, device):
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
+
     # Create raycast starts and directions
     xx, yy = np.meshgrid(np.arange(0.1, 0.4, 0.01), np.arange(0.1, 0.4, 0.01))
     xx = xx.flatten().reshape(-1, 1)
@@ -239,27 +250,29 @@ def test_mesh_query_ray_edge(test, device):
     ray_dirs = np.zeros_like(ray_starts)
     ray_dirs[:, 2] = -1.0
 
-    # Create simple square mesh
-    vertices = np.array([[0.0, 0.0, 0.0], [0.0, 0.5, 0.0], [0.5, 0.0, 0.0], [0.5, 0.5, 0.0]], dtype=np.float32)
-
-    triangles = np.array([[1, 0, 2], [1, 2, 3]], dtype=np.int32)
-
-    mesh = wp.Mesh(
-        points=wp.array(vertices, dtype=wp.vec3, device=device),
-        indices=wp.array(triangles.flatten(), dtype=int, device=device),
-    )
-
-    counts = wp.zeros(1, dtype=int, device=device)
-
     n = len(ray_starts)
 
     ray_starts = wp.array(ray_starts, shape=(n,), dtype=wp.vec3, device=device)
     ray_dirs = wp.array(ray_dirs, shape=(n,), dtype=wp.vec3, device=device)
 
-    wp.launch(kernel=raycast_kernel, dim=n, inputs=[mesh.id, ray_starts, ray_dirs, counts], device=device)
-    wp.synchronize()
+    # Create simple square mesh
+    vertices = np.array([[0.0, 0.0, 0.0], [0.0, 0.5, 0.0], [0.5, 0.0, 0.0], [0.5, 0.5, 0.0]], dtype=np.float32)
 
-    test.assertEqual(counts.numpy()[0], n)
+    triangles = np.array([[1, 0, 2], [1, 2, 3]], dtype=np.int32)
+
+    for constructor in constructors:
+        mesh = wp.Mesh(
+            points=wp.array(vertices, dtype=wp.vec3, device=device),
+            indices=wp.array(triangles.flatten(), dtype=int, device=device),
+            bvh_constructor=constructor,
+        )
+
+        counts = wp.zeros(1, dtype=int, device=device)
+
+        wp.launch(kernel=raycast_kernel, dim=n, inputs=[mesh.id, ray_starts, ray_dirs, counts], device=device)
+        wp.synchronize()
+
+        test.assertEqual(counts.numpy()[0], n)
 
 
 devices = get_test_devices()

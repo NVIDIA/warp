@@ -340,7 +340,8 @@ class Example:
         # construct RenderMesh
         self.render_mesh = RenderMesh()
         self.mesh = wp.Mesh(
-            points=wp.array(points, dtype=wp.vec3, requires_grad=True), indices=wp.array(indices, dtype=int)
+            points=wp.array(points, dtype=wp.vec3, requires_grad=True),
+            indices=wp.array(indices, dtype=int),
         )
         self.render_mesh.id = self.mesh.id
         self.render_mesh.vertices = self.mesh.points

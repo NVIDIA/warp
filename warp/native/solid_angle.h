@@ -357,6 +357,13 @@ CUDA_CALLABLE inline void combine_precomputed_solid_angle_props(SolidAngleProps 
 	my_data.max_p_dist_sq = length_sq(max(my_data.average_p - my_data.box.lower, my_data.box.upper - my_data.average_p));
 }
 
+CUDA_CALLABLE inline SolidAngleProps combine_precomputed_solid_angle_props(const SolidAngleProps* left_child_data, const SolidAngleProps* right_child_data)
+{
+	SolidAngleProps my_data;
+	combine_precomputed_solid_angle_props(my_data, left_child_data, right_child_data);
+	return my_data;
+}
+
 // Return whether need to
 CUDA_CALLABLE inline bool evaluate_node_solid_angle(const vec3 &query_point, SolidAngleProps *current_data, float &solid_angle, const float accuracy_scale_sq)
 {

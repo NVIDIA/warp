@@ -301,178 +301,190 @@ def test_mesh_query_point(test, device):
     mesh_points = wp.array(np.array(mesh_geom.GetPointsAttr().Get()), dtype=wp.vec3, device=device)
     mesh_indices = wp.array(np.array(tri_indices), dtype=int, device=device)
 
-    # create mesh
-    mesh = wp.Mesh(points=mesh_points, velocities=None, indices=mesh_indices, support_winding_number=True)
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
 
-    p = particle_grid(32, 32, 32, np.array([-1.1, -1.1, -1.1]), 0.05, 0.0)
+    for constructor in constructors:
+        # create mesh
+        mesh = wp.Mesh(
+            points=mesh_points,
+            velocities=None,
+            indices=mesh_indices,
+            support_winding_number=True,
+            bvh_constructor=constructor,
+        )
 
-    query_count = len(p)
-    query_points = wp.array(p, dtype=wp.vec3, device=device)
+        p = particle_grid(32, 32, 32, np.array([-1.1, -1.1, -1.1]), 0.05, 0.0)
 
-    signs_query = wp.zeros(query_count, dtype=float, device=device)
-    faces_query = wp.zeros(query_count, dtype=int, device=device)
-    dist_query = wp.zeros(query_count, dtype=float, device=device)
+        query_count = len(p)
+        query_points = wp.array(p, dtype=wp.vec3, device=device)
 
-    faces_query_no_sign = wp.zeros(query_count, dtype=int, device=device)
-    dist_query_no_sign = wp.zeros(query_count, dtype=float, device=device)
+        signs_query = wp.zeros(query_count, dtype=float, device=device)
+        faces_query = wp.zeros(query_count, dtype=int, device=device)
+        dist_query = wp.zeros(query_count, dtype=float, device=device)
 
-    signs_query_normal = wp.zeros(query_count, dtype=float, device=device)
-    faces_query_normal = wp.zeros(query_count, dtype=int, device=device)
-    dist_query_normal = wp.zeros(query_count, dtype=float, device=device)
+        faces_query_no_sign = wp.zeros(query_count, dtype=int, device=device)
+        dist_query_no_sign = wp.zeros(query_count, dtype=float, device=device)
 
-    signs_query_winding_number = wp.zeros(query_count, dtype=float, device=device)
-    faces_query_winding_number = wp.zeros(query_count, dtype=int, device=device)
-    dist_query_winding_number = wp.zeros(query_count, dtype=float, device=device)
+        signs_query_normal = wp.zeros(query_count, dtype=float, device=device)
+        faces_query_normal = wp.zeros(query_count, dtype=int, device=device)
+        dist_query_normal = wp.zeros(query_count, dtype=float, device=device)
 
-    signs_brute = wp.zeros(query_count, dtype=float, device=device)
-    faces_brute = wp.zeros(query_count, dtype=int, device=device)
-    dist_brute = wp.zeros(query_count, dtype=float, device=device)
+        signs_query_winding_number = wp.zeros(query_count, dtype=float, device=device)
+        faces_query_winding_number = wp.zeros(query_count, dtype=int, device=device)
+        dist_query_winding_number = wp.zeros(query_count, dtype=float, device=device)
 
-    wp.launch(
-        kernel=sample_mesh_query,
-        dim=query_count,
-        inputs=[mesh.id, query_points, faces_query, signs_query, dist_query],
-        device=device,
-    )
+        signs_brute = wp.zeros(query_count, dtype=float, device=device)
+        faces_brute = wp.zeros(query_count, dtype=int, device=device)
+        dist_brute = wp.zeros(query_count, dtype=float, device=device)
 
-    wp.launch(
-        kernel=sample_mesh_query_no_sign,
-        dim=query_count,
-        inputs=[mesh.id, query_points, faces_query_no_sign, dist_query_no_sign],
-        device=device,
-    )
+        wp.launch(
+            kernel=sample_mesh_query,
+            dim=query_count,
+            inputs=[mesh.id, query_points, faces_query, signs_query, dist_query],
+            device=device,
+        )
 
-    wp.launch(
-        kernel=sample_mesh_query_sign_normal,
-        dim=query_count,
-        inputs=[mesh.id, query_points, faces_query_normal, signs_query_normal, dist_query_normal],
-        device=device,
-    )
+        wp.launch(
+            kernel=sample_mesh_query_no_sign,
+            dim=query_count,
+            inputs=[mesh.id, query_points, faces_query_no_sign, dist_query_no_sign],
+            device=device,
+        )
 
-    wp.launch(
-        kernel=sample_mesh_query_sign_winding_number,
-        dim=query_count,
-        inputs=[
-            mesh.id,
-            query_points,
-            faces_query_winding_number,
-            signs_query_winding_number,
-            dist_query_winding_number,
-        ],
-        device=device,
-    )
+        wp.launch(
+            kernel=sample_mesh_query_sign_normal,
+            dim=query_count,
+            inputs=[mesh.id, query_points, faces_query_normal, signs_query_normal, dist_query_normal],
+            device=device,
+        )
 
-    wp.launch(
-        kernel=sample_mesh_brute,
-        dim=query_count,
-        inputs=[
-            mesh_points,
-            mesh_indices,
-            int(len(mesh_indices) / 3),
-            query_points,
-            faces_brute,
-            signs_brute,
-            dist_brute,
-        ],
-        device=device,
-    )
+        wp.launch(
+            kernel=sample_mesh_query_sign_winding_number,
+            dim=query_count,
+            inputs=[
+                mesh.id,
+                query_points,
+                faces_query_winding_number,
+                signs_query_winding_number,
+                dist_query_winding_number,
+            ],
+            device=device,
+        )
 
-    signs_query = signs_query.numpy()
-    faces_query = faces_query.numpy()
-    dist_query = dist_query.numpy()
+        wp.launch(
+            kernel=sample_mesh_brute,
+            dim=query_count,
+            inputs=[
+                mesh_points,
+                mesh_indices,
+                int(len(mesh_indices) / 3),
+                query_points,
+                faces_brute,
+                signs_brute,
+                dist_brute,
+            ],
+            device=device,
+        )
 
-    faces_query_no_sign = faces_query_no_sign.numpy()
-    dist_query_no_sign = dist_query_no_sign.numpy()
+        signs_query = signs_query.numpy()
+        faces_query = faces_query.numpy()
+        dist_query = dist_query.numpy()
 
-    signs_query_normal = signs_query_normal.numpy()
-    faces_query_normal = faces_query_normal.numpy()
-    dist_query_normal = dist_query_normal.numpy()
+        faces_query_no_sign = faces_query_no_sign.numpy()
+        dist_query_no_sign = dist_query_no_sign.numpy()
 
-    signs_query_winding_number = signs_query_winding_number.numpy()
-    faces_query_winding_number = faces_query_winding_number.numpy()
-    dist_query_winding_number = dist_query_winding_number.numpy()
+        signs_query_normal = signs_query_normal.numpy()
+        faces_query_normal = faces_query_normal.numpy()
+        dist_query_normal = dist_query_normal.numpy()
 
-    signs_brute = signs_brute.numpy()
-    faces_brute = faces_brute.numpy()
-    dist_brute = dist_brute.numpy()
+        signs_query_winding_number = signs_query_winding_number.numpy()
+        faces_query_winding_number = faces_query_winding_number.numpy()
+        dist_query_winding_number = dist_query_winding_number.numpy()
 
-    query_points = query_points.numpy()
+        signs_brute = signs_brute.numpy()
+        faces_brute = faces_brute.numpy()
+        dist_brute = dist_brute.numpy()
 
-    inside_query = [[0.0, 0.0, 0.0]]
-    inside_query_normal = [[0.0, 0.0, 0.0]]
-    inside_query_winding_number = [[0.0, 0.0, 0.0]]
-    inside_brute = [[0.0, 0.0, 0.0]]
+        query_points = query_points.numpy()
 
-    for i in range(query_count):
-        if signs_query[i] < 0.0:
-            inside_query.append(query_points[i].tolist())
+        inside_query = [[0.0, 0.0, 0.0]]
+        inside_query_normal = [[0.0, 0.0, 0.0]]
+        inside_query_winding_number = [[0.0, 0.0, 0.0]]
+        inside_brute = [[0.0, 0.0, 0.0]]
 
-        if signs_query_normal[i] < 0.0:
-            inside_query_normal.append(query_points[i].tolist())
+        for i in range(query_count):
+            if signs_query[i] < 0.0:
+                inside_query.append(query_points[i].tolist())
 
-        if signs_query_winding_number[i] < 0.0:
-            inside_query_winding_number.append(query_points[i].tolist())
+            if signs_query_normal[i] < 0.0:
+                inside_query_normal.append(query_points[i].tolist())
 
-        if signs_brute[i] > math.pi * 2.0:
-            inside_brute.append(query_points[i].tolist())
+            if signs_query_winding_number[i] < 0.0:
+                inside_query_winding_number.append(query_points[i].tolist())
 
-    inside_query = np.array(inside_query)
-    inside_query_normal = np.array(inside_query_normal)
-    inside_query_winding_number = np.array(inside_query_winding_number)
-    inside_brute = np.array(inside_brute)
+            if signs_brute[i] > math.pi * 2.0:
+                inside_brute.append(query_points[i].tolist())
 
-    # import warp.render
+        inside_query = np.array(inside_query)
+        inside_query_normal = np.array(inside_query_normal)
+        inside_query_winding_number = np.array(inside_query_winding_number)
+        inside_brute = np.array(inside_brute)
 
-    # stage = warp.render.UsdRenderer("tests/outputs/test_mesh_query_point.usd")
+        # import warp.render
 
-    # radius = 0.1
-    # stage.begin_frame(0.0)
-    # stage.render_mesh(points=mesh_points.numpy(), indices=mesh_indices.numpy(), name="mesh")
-    # stage.render_points(points=inside_query, radius=radius, name="query")
-    # stage.render_points(points=inside_brute, radius=radius, name="brute")
-    # stage.render_points(points=query_points, radius=radius, name="all")
-    # stage.end_frame()
+        # stage = warp.render.UsdRenderer("tests/outputs/test_mesh_query_point.usd")
 
-    # stage.save()
+        # radius = 0.1
+        # stage.begin_frame(0.0)
+        # stage.render_mesh(points=mesh_points.numpy(), indices=mesh_indices.numpy(), name="mesh")
+        # stage.render_points(points=inside_query, radius=radius, name="query")
+        # stage.render_points(points=inside_brute, radius=radius, name="brute")
+        # stage.render_points(points=query_points, radius=radius, name="all")
+        # stage.end_frame()
 
-    test.assertTrue(len(inside_query) == len(inside_brute))
-    test.assertTrue(len(inside_query_normal) == len(inside_brute))
-    test.assertTrue(len(inside_query_winding_number) == len(inside_brute))
+        # stage.save()
 
-    tolerance = 1.5e-4
-    dist_error = np.max(np.abs(dist_query - dist_brute))
-    sign_error = np.max(np.abs(inside_query - inside_brute))
+        test.assertTrue(len(inside_query) == len(inside_brute))
+        test.assertTrue(len(inside_query_normal) == len(inside_brute))
+        test.assertTrue(len(inside_query_winding_number) == len(inside_brute))
 
-    test.assertTrue(dist_error < tolerance, f"mesh_query_point dist_error is {dist_error} which is >= {tolerance}")
-    test.assertTrue(sign_error < tolerance, f"mesh_query_point sign_error is {sign_error} which is >= {tolerance}")
+        tolerance = 1.5e-4
+        dist_error = np.max(np.abs(dist_query - dist_brute))
+        sign_error = np.max(np.abs(inside_query - inside_brute))
 
-    dist_error = np.max(np.abs(dist_query_no_sign - dist_brute))
+        test.assertTrue(dist_error < tolerance, f"mesh_query_point dist_error is {dist_error} which is >= {tolerance}")
+        test.assertTrue(sign_error < tolerance, f"mesh_query_point sign_error is {sign_error} which is >= {tolerance}")
 
-    test.assertTrue(
-        dist_error < tolerance, f"mesh_query_point_no_sign dist_error is {dist_error} which is >= {tolerance}"
-    )
+        dist_error = np.max(np.abs(dist_query_no_sign - dist_brute))
 
-    dist_error = np.max(np.abs(dist_query_normal - dist_brute))
-    sign_error = np.max(np.abs(inside_query_normal - inside_brute))
+        test.assertTrue(
+            dist_error < tolerance, f"mesh_query_point_no_sign dist_error is {dist_error} which is >= {tolerance}"
+        )
 
-    test.assertTrue(
-        dist_error < tolerance, f"mesh_query_point_sign_normal dist_error is {dist_error} which is >= {tolerance}"
-    )
-    test.assertTrue(
-        sign_error < tolerance, f"mesh_query_point_sign_normal sign_error is {sign_error} which is >= {tolerance}"
-    )
+        dist_error = np.max(np.abs(dist_query_normal - dist_brute))
+        sign_error = np.max(np.abs(inside_query_normal - inside_brute))
 
-    dist_error = np.max(np.abs(dist_query_winding_number - dist_brute))
-    sign_error = np.max(np.abs(inside_query_winding_number - inside_brute))
+        test.assertTrue(
+            dist_error < tolerance, f"mesh_query_point_sign_normal dist_error is {dist_error} which is >= {tolerance}"
+        )
+        test.assertTrue(
+            sign_error < tolerance, f"mesh_query_point_sign_normal sign_error is {sign_error} which is >= {tolerance}"
+        )
 
-    test.assertTrue(
-        dist_error < tolerance,
-        f"mesh_query_point_sign_winding_number dist_error is {dist_error} which is >= {tolerance}",
-    )
-    test.assertTrue(
-        sign_error < tolerance,
-        f"mesh_query_point_sign_winding_number sign_error is {sign_error} which is >= {tolerance}",
-    )
+        dist_error = np.max(np.abs(dist_query_winding_number - dist_brute))
+        sign_error = np.max(np.abs(inside_query_winding_number - inside_brute))
+
+        test.assertTrue(
+            dist_error < tolerance,
+            f"mesh_query_point_sign_winding_number dist_error is {dist_error} which is >= {tolerance}",
+        )
+        test.assertTrue(
+            sign_error < tolerance,
+            f"mesh_query_point_sign_winding_number sign_error is {sign_error} which is >= {tolerance}",
+        )
 
 
 @wp.kernel
@@ -517,69 +529,87 @@ def test_adj_mesh_query_point(test, device):
     mesh_points = wp.array(np.array(mesh_geom.GetPointsAttr().Get()), dtype=wp.vec3, device=device)
     mesh_indices = wp.array(np.array(tri_indices), dtype=int, device=device)
 
-    # test tri
-    # print("Testing Single Triangle")
-    # mesh_points = wp.array(np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 0.0]]), dtype=wp.vec3, device=device)
-    # mesh_indices = wp.array(np.array([0,1,2]), dtype=int, device=device)
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
 
-    # create mesh
-    mesh = wp.Mesh(points=mesh_points, velocities=None, indices=mesh_indices, support_winding_number=True)
+    for constructor in constructors:
+        # test tri
+        # print("Testing Single Triangle")
+        # mesh_points = wp.array(np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 0.0]]), dtype=wp.vec3, device=device)
+        # mesh_indices = wp.array(np.array([0,1,2]), dtype=int, device=device)
 
-    # p = particle_grid(32, 32, 32, np.array([-5.0, -5.0, -5.0]), 0.1, 0.1)*100.0
-    p = wp.vec3(50.0, 50.0, 50.0)
-
-    tape = wp.Tape()
-
-    # analytic gradients
-    with tape:
-        query_points = wp.array(p, dtype=wp.vec3, device=device, requires_grad=True)
-        projected_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
-        loss = wp.zeros(n=1, dtype=float, device=device, requires_grad=True)
-
-        wp.launch(
-            kernel=mesh_query_point_loss, dim=1, inputs=[mesh.id, query_points, projected_points, loss], device=device
+        # create mesh
+        mesh = wp.Mesh(
+            points=mesh_points,
+            velocities=None,
+            indices=mesh_indices,
+            support_winding_number=True,
+            bvh_constructor=constructor,
         )
 
-    tape.backward(loss=loss)
-    analytic = tape.gradients[query_points].numpy().flatten()
+        # p = particle_grid(32, 32, 32, np.array([-5.0, -5.0, -5.0]), 0.1, 0.1)*100.0
+        p = wp.vec3(50.0, 50.0, 50.0)
 
-    # numeric gradients
-    eps = 1.0e-3
-    loss_values = []
-    numeric = np.zeros(3)
+        tape = wp.Tape()
 
-    offset_query_points = [
-        wp.vec3(p[0] - eps, p[1], p[2]),
-        wp.vec3(p[0] + eps, p[1], p[2]),
-        wp.vec3(p[0], p[1] - eps, p[2]),
-        wp.vec3(p[0], p[1] + eps, p[2]),
-        wp.vec3(p[0], p[1], p[2] - eps),
-        wp.vec3(p[0], p[1], p[2] + eps),
-    ]
+        # analytic gradients
+        with tape:
+            query_points = wp.array(p, dtype=wp.vec3, device=device, requires_grad=True)
+            projected_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
+            loss = wp.zeros(n=1, dtype=float, device=device, requires_grad=True)
 
-    for i in range(6):
-        q = offset_query_points[i]
+            wp.launch(
+                kernel=mesh_query_point_loss,
+                dim=1,
+                inputs=[mesh.id, query_points, projected_points, loss],
+                device=device,
+            )
 
-        query_points = wp.array(q, dtype=wp.vec3, device=device)
-        projected_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
-        loss = wp.zeros(n=1, dtype=float, device=device)
+        tape.backward(loss=loss)
+        analytic = tape.gradients[query_points].numpy().flatten()
 
-        wp.launch(
-            kernel=mesh_query_point_loss, dim=1, inputs=[mesh.id, query_points, projected_points, loss], device=device
-        )
+        # numeric gradients
+        eps = 1.0e-3
+        loss_values = []
+        numeric = np.zeros(3)
 
-        loss_values.append(loss.numpy()[0])
+        offset_query_points = [
+            wp.vec3(p[0] - eps, p[1], p[2]),
+            wp.vec3(p[0] + eps, p[1], p[2]),
+            wp.vec3(p[0], p[1] - eps, p[2]),
+            wp.vec3(p[0], p[1] + eps, p[2]),
+            wp.vec3(p[0], p[1], p[2] - eps),
+            wp.vec3(p[0], p[1], p[2] + eps),
+        ]
 
-    for i in range(3):
-        l_0 = loss_values[i * 2]
-        l_1 = loss_values[i * 2 + 1]
-        gradient = (l_1 - l_0) / (2.0 * eps)
-        numeric[i] = gradient
+        for i in range(6):
+            q = offset_query_points[i]
 
-    error = ((analytic - numeric) * (analytic - numeric)).sum(axis=0)
+            query_points = wp.array(q, dtype=wp.vec3, device=device)
+            projected_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
+            loss = wp.zeros(n=1, dtype=float, device=device)
 
-    tolerance = 1.0e-3
-    test.assertTrue(error < tolerance, f"error is {error} which is >= {tolerance}")
+            wp.launch(
+                kernel=mesh_query_point_loss,
+                dim=1,
+                inputs=[mesh.id, query_points, projected_points, loss],
+                device=device,
+            )
+
+            loss_values.append(loss.numpy()[0])
+
+        for i in range(3):
+            l_0 = loss_values[i * 2]
+            l_1 = loss_values[i * 2 + 1]
+            gradient = (l_1 - l_0) / (2.0 * eps)
+            numeric[i] = gradient
+
+        error = ((analytic - numeric) * (analytic - numeric)).sum(axis=0)
+
+        tolerance = 1.0e-3
+        test.assertTrue(error < tolerance, f"error is {error} which is >= {tolerance}")
 
 
 @wp.kernel
@@ -636,23 +666,29 @@ def test_mesh_query_furthest_point(test, device):
     mesh_points = wp.array(np.array(mesh_geom.GetPointsAttr().Get()), dtype=wp.vec3, device=device)
     mesh_indices = wp.array(np.array(tri_indices), dtype=int, device=device)
 
-    # create mesh
-    mesh = wp.Mesh(points=mesh_points, indices=mesh_indices)
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
 
-    p = particle_grid(32, 32, 32, np.array([-1.1, -1.1, -1.1]), 0.05, 0.0)
+    for constructor in constructors:
+        # create mesh
+        mesh = wp.Mesh(points=mesh_points, indices=mesh_indices, bvh_constructor=constructor)
 
-    query_count = len(p)
-    query_points = wp.array(p, dtype=wp.vec3, device=device)
+        p = particle_grid(32, 32, 32, np.array([-1.1, -1.1, -1.1]), 0.05, 0.0)
 
-    dist_query = wp.zeros(query_count, dtype=float, device=device)
-    dist_brute = wp.zeros(query_count, dtype=float, device=device)
+        query_count = len(p)
+        query_points = wp.array(p, dtype=wp.vec3, device=device)
 
-    wp.launch(sample_furthest_points, dim=query_count, inputs=[mesh.id, query_points, dist_query], device=device)
-    wp.launch(
-        sample_furthest_points_brute, dim=query_count, inputs=[mesh_points, query_points, dist_brute], device=device
-    )
+        dist_query = wp.zeros(query_count, dtype=float, device=device)
+        dist_brute = wp.zeros(query_count, dtype=float, device=device)
 
-    assert_np_equal(dist_query.numpy(), dist_brute.numpy(), tol=1.0e-3)
+        wp.launch(sample_furthest_points, dim=query_count, inputs=[mesh.id, query_points, dist_query], device=device)
+        wp.launch(
+            sample_furthest_points_brute, dim=query_count, inputs=[mesh_points, query_points, dist_brute], device=device
+        )
+
+        assert_np_equal(dist_query.numpy(), dist_brute.numpy(), tol=1.0e-3)
 
 
 @wp.func
@@ -769,77 +805,83 @@ def point_query_aabb_and_closest(
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_set_mesh_points(test, device):
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
+
     rng = np.random.default_rng(123)
 
     vs, fs = load_mesh()
-
     vertices1 = wp.array(vs, dtype=wp.vec3, device=device)
     velocities1_np = rng.standard_normal(size=(vertices1.shape[0], 3))
     velocities1 = wp.array(velocities1_np, dtype=wp.vec3, device=device)
 
     faces = wp.array(fs, dtype=wp.int32, device=device)
-    mesh = wp.Mesh(vertices1, faces, velocities=velocities1)
-    fs_2D = faces.reshape((-1, 3))
+
     n = 1000
     query_radius = 0.2
-
     pts1 = wp.array(rng.standard_normal(size=(n, 3)), dtype=wp.vec3, device=device)
 
     query_results_num_cols1 = wp.zeros(n, dtype=wp.int32, device=device)
     query_results_min_dist1 = wp.zeros(n, dtype=float, device=device)
     query_results_closest_point_velocity1 = wp.zeros(n, dtype=wp.vec3, device=device)
 
-    wp.launch(
-        kernel=point_query_aabb_and_closest,
-        inputs=[
-            query_radius,
-            mesh.id,
-            pts1,
-            vertices1,
-            fs_2D,
-            query_results_num_cols1,
-            query_results_min_dist1,
-            query_results_closest_point_velocity1,
-        ],
-        dim=n,
-        device=device,
-    )
+    for constructor in constructors:
+        mesh = wp.Mesh(vertices1, faces, velocities=velocities1, bvh_constructor=constructor)
+        fs_2D = faces.reshape((-1, 3))
 
-    shift = rng.standard_normal(size=3)
+        wp.launch(
+            kernel=point_query_aabb_and_closest,
+            inputs=[
+                query_radius,
+                mesh.id,
+                pts1,
+                vertices1,
+                fs_2D,
+                query_results_num_cols1,
+                query_results_min_dist1,
+                query_results_closest_point_velocity1,
+            ],
+            dim=n,
+            device=device,
+        )
 
-    vs_higher = vs + shift
-    vertices2 = wp.array(vs_higher, dtype=wp.vec3, device=device)
+        shift = rng.standard_normal(size=3)
 
-    velocities2_np = velocities1_np + shift[None, ...]
-    velocities2 = wp.array(velocities2_np, dtype=wp.vec3, device=device)
+        vs_higher = vs + shift
+        vertices2 = wp.array(vs_higher, dtype=wp.vec3, device=device)
 
-    pts2 = wp.array(pts1.numpy() + shift, dtype=wp.vec3, device=device)
+        velocities2_np = velocities1_np + shift[None, ...]
+        velocities2 = wp.array(velocities2_np, dtype=wp.vec3, device=device)
 
-    mesh.points = vertices2
-    mesh.velocities = velocities2
+        pts2 = wp.array(pts1.numpy() + shift, dtype=wp.vec3, device=device)
 
-    query_results_num_cols2 = wp.zeros(n, dtype=wp.int32, device=device)
-    query_results_min_dist2 = wp.zeros(n, dtype=float, device=device)
-    query_results_closest_point_velocity2 = wp.array([shift for i in range(n)], dtype=wp.vec3, device=device)
+        mesh.points = vertices2
+        mesh.velocities = velocities2
 
-    wp.launch(
-        kernel=point_query_aabb_and_closest,
-        inputs=[
-            query_radius,
-            mesh.id,
-            pts2,
-            vertices2,
-            fs_2D,
-            query_results_num_cols2,
-            query_results_min_dist2,
-            query_results_closest_point_velocity2,
-        ],
-        dim=n,
-        device=device,
-    )
+        query_results_num_cols2 = wp.zeros(n, dtype=wp.int32, device=device)
+        query_results_min_dist2 = wp.zeros(n, dtype=float, device=device)
+        query_results_closest_point_velocity2 = wp.array([shift for i in range(n)], dtype=wp.vec3, device=device)
 
-    test.assertTrue((query_results_num_cols1.numpy() == query_results_num_cols2.numpy()).all())
-    test.assertTrue(((query_results_min_dist1.numpy() - query_results_min_dist2.numpy()) < 1e-5).all())
+        wp.launch(
+            kernel=point_query_aabb_and_closest,
+            inputs=[
+                query_radius,
+                mesh.id,
+                pts2,
+                vertices2,
+                fs_2D,
+                query_results_num_cols2,
+                query_results_min_dist2,
+                query_results_closest_point_velocity2,
+            ],
+            dim=n,
+            device=device,
+        )
+
+        test.assertTrue((query_results_num_cols1.numpy() == query_results_num_cols2.numpy()).all())
+        test.assertTrue(((query_results_min_dist1.numpy() - query_results_min_dist2.numpy()) < 1e-5).all())
 
 
 devices = get_test_devices()

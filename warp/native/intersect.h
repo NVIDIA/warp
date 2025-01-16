@@ -156,6 +156,23 @@ CUDA_CALLABLE inline bool intersect_ray_aabb(const vec3& pos, const vec3& rcp_di
     return hit;
 }
 
+CUDA_CALLABLE inline bool intersect_aabb_aabb(const vec3& a_lower, const vec3& a_upper, const vec3& b_lower, const vec3& b_upper)
+{
+    if (a_lower[0] > b_upper[0] ||
+        a_lower[1] > b_upper[1] ||
+        a_lower[2] > b_upper[2] ||
+        a_upper[0] < b_lower[0] ||
+        a_upper[1] < b_lower[1] ||
+        a_upper[2] < b_lower[2])
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+}
+
 
 // Moller and Trumbore's method
 CUDA_CALLABLE inline bool intersect_ray_tri_moller(const vec3& p, const vec3& dir, const vec3& a, const vec3& b, const vec3& c, float& t, float& u, float& v, float& w, float& sign, vec3* normal)
