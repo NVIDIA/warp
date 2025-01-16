@@ -1782,30 +1782,63 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
         tile_fft(function_name, dtype, shared_memory_size, batch_size, ept, adj_Xinout); \
     } while (0)
 
-#define tile_cholesky(function_name, dtype, M, N, Xinout) \
-    do { \
-        void function_name(dtype*, unsigned); \
-        WP_TILE_SYNC(); \
-        function_name(Xinout.data.ptr, M); \
-        WP_TILE_SYNC(); \
-    } while (0)
+template <typename Fwd, typename TileA, typename TileL>
+TileL& tile_cholesky(Fwd fun_forward, TileA& A, TileL& L)
+{       
+    // Copy to L
 
-#define adj_tile_cholesky(function_name, dtype, M, N, Xinout, \
-                       adj_function_name, adj_dtype, adj_M, adj_N, adj_Xinout) \
+    L = A;
+
+    // Call cholesky on L
+
+    WP_TILE_SYNC();
+    
+    fun_forward(L.data.ptr, L.M);
+    
+    WP_TILE_SYNC();
+
+    // Zero-out the upper triangular part of L
+
+    WP_PRAGMA_UNROLL
+    for (int i=threadIdx.x; i < L.Size ; i += WP_TILE_BLOCK_DIM)
+    {
+        coord_t c = L.coord(i);
+        if(c.i < c.j) {
+            L.data(i) = 0.0;
+        }
+    }
+
+    WP_TILE_SYNC();
+    
+    return L;
+}
+
+#define adj_tile_cholesky(function_name, A, L, \
+                          adj_function_name, adj_A, adj_L, adj_ret) \
     do { \
         assert(false); \
     } while (0)
 
-#define tile_cholesky_solve(function_name, dtype, M, N, L, Xinout) \
-    do { \
-        void function_name(dtype*, dtype*); \
-        WP_TILE_SYNC(); \
-        function_name(L.data.ptr, Xinout.data.ptr); \
-        WP_TILE_SYNC(); \
-    } while (0)
+template <typename Fwd, typename TileL, typename TileX, typename TileY>
+TileY& tile_cholesky_solve(Fwd fun_forward, TileL& L, TileX& X, TileY& Y)
+{       
+    // Copy x to y
 
-#define adj_tile_cholesky_solve(function_name, dtype, M, N, L, Xinout, \
-                       adj_function_name, adj_dtype, adj_M,  adj_N,  adj_L, adj_Xinout) \
+    Y = X;
+
+    // Call cholesky solve on L & y
+
+    WP_TILE_SYNC();
+    
+    fun_forward(L.data.ptr, Y.data.ptr); \
+
+    WP_TILE_SYNC();
+    
+    return Y;
+}
+
+#define adj_tile_cholesky_solve(function_name, L, X, Y, \
+                                adj_function_name, adj_L, adj_X, adj_Y, adj_ret) \
     do { \
         assert(false); \
     } while (0)
@@ -1866,46 +1899,29 @@ inline CUDA_CALLABLE void tile_assign(TileA& dest, int i, int j, TileB& src)
     WP_TILE_SYNC();
 }
 
-template <typename TileA, typename TileB>
-inline CUDA_CALLABLE void tile_diag_add(TileA& inout, TileB& diag)
+template <typename TileA, typename TileB, typename TileC>
+inline CUDA_CALLABLE TileC& tile_diag_add(TileA& a, TileB& b, TileC& c)
 {   
     static_assert(TileA::M == TileA::N);
     static_assert(TileB::M == TileA::M);
     static_assert(TileB::N == 1);
+    static_assert(TileC::M == TileA::M);
+    static_assert(TileC::M == TileC::N);
+
+    c = a;
     
     for (int t=threadIdx.x; t < TileA::M; t += WP_TILE_BLOCK_DIM)
     {
-        inout.data(t, t) += diag.data(t, 1);
+        c.data(t, t) += b.data(t, 0);
     }
 
     WP_TILE_SYNC();
+
+    return c;
 }
 
-template <typename Tile>
-inline CUDA_CALLABLE void tile_tril(Tile& inout)
-{   
-    static_assert(Tile::M == Tile::N);
-    
-    for (int t=threadIdx.x; t < inout.Size; t += WP_TILE_BLOCK_DIM)
-    {
-        coord_t c = inout.coord(t);
-        if(c.i < c.j) 
-        {
-            inout.data(c.i, c.j) = 0.0;
-        }
-    }
-
-    WP_TILE_SYNC();
-}
-
-template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB>
-inline CUDA_CALLABLE void adj_tile_diag_add(TileA& inout, TileB& diag, AdjTileA& adj_inout, AdjTileB& adj_diag)
-{   
-    assert(false);
-}
-
-template <typename Tile, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_tril(Tile& inout, AdjTile& adj_inout)
+template <typename TileA, typename TileB, typename TileC, typename AdjTileA, typename AdjTileB, typename AdjTileC>
+inline CUDA_CALLABLE void adj_tile_diag_add(TileA& a, TileB& b, TileC& c, AdjTileA& adj_a, AdjTileB& adj_b, AdjTileC& adj_c, AdjTileC& adj_ret)
 {   
     assert(false);
 }

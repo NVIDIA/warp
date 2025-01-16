@@ -5745,7 +5745,7 @@ add_builtin(
 )
 
 
-def tile_diag_add_map_value_func(arg_types, arg_values):
+def tile_diag_add_value_func(arg_types, arg_values):
     if arg_types is None:
         return Tile(dtype=Any, M=Any, N=Any)
 
@@ -5753,59 +5753,46 @@ def tile_diag_add_map_value_func(arg_types, arg_values):
     b = arg_types["b"]
 
     # check all args are tiles
-    if not is_tile(a):
-        raise TypeError(f"tile_diag_add() arguments must be tiles, got type {a}")
-
-    if not is_tile(b):
-        raise TypeError(f"tile_diag_add() arguments must be tiles, got type {b}")
+    if not is_tile(a) or not is_tile(b):
+        raise TypeError("tile_diag_add() arguments must be tiles")
 
     # use first argument to define output type
     if not types_equal(a.dtype, b.dtype):
         raise TypeError(f"tile_diag_add() arguments must all have the same type {a.dtype} != {b.dtype}")
 
     if a.M != a.N or a.M != b.M or b.N != 1:
-        raise ValueError("tile_diag_add() arguments must be square (first) and 1D (second)")
+        raise ValueError("tile_diag_add() first argument must be square and the second must be 1D")
 
-    return None
+    return Tile(dtype=a.dtype, M=a.M, N=a.N, storage="shared")
+
+
+def tile_diag_add_dispatch_func(
+    arg_types: Mapping[str, type],
+    return_type: Any,
+    return_values: List[Var],
+    arg_values: Mapping[str, Var],
+    options: Mapping[str, Any],
+    builder: warp.context.ModuleBuilder,
+):
+    a = arg_values["a"]
+    b = arg_values["b"]
+    a.type.storage = "shared"
+    b.type.storage = "shared"
+    out = return_values[0]
+    return ((a, b, out), [], [], 0)
 
 
 add_builtin(
     "tile_diag_add",
     input_types={"a": Tile(dtype=Any, M=Any, N=Any), "b": Tile(dtype=Any, M=Any, N=Any)},
-    value_func=tile_diag_add_map_value_func,
-    # dispatch_func=tile_map_dispatch_func,
-    # variadic=True,
+    value_func=tile_diag_add_value_func,
+    lto_dispatch_func=tile_diag_add_dispatch_func,
     native_func="tile_diag_add",
     doc="Add a square matrix and a diagonal matrix",
     group="Tile Primitives",
     export=False,
 )
 
-
-def tile_tril_value_func(arg_types, arg_values):
-    if arg_types is None:
-        return Tile(dtype=Any, M=Any, N=Any)
-
-    a = arg_types["a"]
-
-    if not is_tile(a):
-        raise TypeError(f"tile_tril() arguments must be tiles, got type {a}")
-
-    if a.M != a.N:
-        raise ValueError("tile_tril() arguments must be square")
-
-    return None
-
-
-add_builtin(
-    "tile_tril",
-    input_types={"a": Tile(dtype=Any, M=Any, N=Any)},
-    value_func=tile_tril_value_func,
-    native_func="tile_tril",
-    doc="Zeroes the upper-triangular part of a square matrix and keep the lower triangular part + diagonal",
-    group="Tile Primitives",
-    export=False,
-)
 
 ##
 ## MathDx, LTOIR-based, Tile functions
@@ -6225,15 +6212,17 @@ add_builtin(
 ##
 def tile_cholesky_generic_value_func(arg_types, arg_values):
     if arg_types is None:
-        return None
+        return Tile(dtype=Any, M=Any, N=Any)
 
     if len(arg_types) != 1:
         raise TypeError("tile_cholesky() requires 1 positional args")
 
-    if not is_tile(arg_types["A"]):
-        raise TypeError("tile_cholesky() argument 0 must be a tile")
+    a = arg_types["A"]
 
-    return None
+    if not is_tile(a) or a.M != a.N:
+        raise TypeError("tile_cholesky() argument 0 must be a square tile")
+
+    return Tile(dtype=a.dtype, M=a.M, N=a.N, storage="shared")
 
 
 def tile_cholesky_solve_generic_value_func(arg_types, arg_values):
@@ -6243,10 +6232,12 @@ def tile_cholesky_solve_generic_value_func(arg_types, arg_values):
     if len(arg_types) != 2:
         raise TypeError("tile_cholesky_solve() requires 2 positional args")
 
+    l = arg_types["L"]
+
     if not is_tile(arg_types["L"]) or not is_tile(arg_types["x"]):
         raise TypeError("tile_cholesky() argument 0 and 1 must be tiles")
 
-    return None
+    return Tile(dtype=l.dtype, M=l.M, N=1, storage="shared")
 
 
 cusolver_function_map = {"getrf": 0, "getrf_no_pivot": 1, "potrf": 2, "potrs": 3}
@@ -6264,20 +6255,24 @@ def tile_cholesky_generic_lto_dispatch_func(
     options: Mapping[str, Any],
     builder: warp.context.ModuleBuilder,
 ):
-    inout = arg_values["A"]
-    inout.type.storage = "shared"
+    a = arg_values["A"]
+    a.type.storage = "shared"
 
-    if not is_tile(inout.type):
+    if not is_tile(a.type):
         raise TypeError("tile_cholesky() arguments must be a single tile with shared storage")
 
-    if inout.type.dtype not in cusolver_type_map.keys():
-        raise TypeError("tile_cholesky() argument must be a tile of float64 entries")
+    if a.type.dtype not in cusolver_type_map.keys():
+        raise TypeError("tile_cholesky() argument must be a tile of float32 or float64 entries")
 
-    dtype, precision_enum = cusolver_type_map[inout.type.dtype]
+    if len(return_values) != 1:
+        raise TypeError("tile_cholesky() returns one output")
+    out = return_values[0]
 
-    M, N = inout.type.M, inout.type.N
-    if M != N:
-        raise ValueError("Tile must be square")
+    dtype, precision_enum = cusolver_type_map[a.type.dtype]
+
+    M, N = a.type.M, a.type.N
+    if M != N or out.type.M != M or out.type.N != M:
+        raise ValueError("Input and output Tile must be square")
 
     num_threads = options["block_dim"]
     arch = options["output_arch"]
@@ -6321,14 +6316,13 @@ def tile_cholesky_generic_lto_dispatch_func(
         lto_code_path.unlink()
 
     builder.ltoirs[lto_symbol] = lto_code_data
+    builder.ltoirs_decl[lto_symbol] = f"void {lto_symbol}({dtype}*, unsigned);"
 
     return (
         (
             Var(lto_symbol, str, False, True, False),
-            Var(dtype, str, False, True, False),
-            Var(str(M), str, False, True, False),
-            Var(str(N), str, False, True, False),
-            inout,
+            a,
+            out,
         ),
         [],
         [lto_code_data],
@@ -6345,27 +6339,31 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
     builder: warp.context.ModuleBuilder,
 ):
     L = arg_values["L"]
-    inout = arg_values["x"]
+    x = arg_values["x"]
     L.type.storage = "shared"
-    inout.type.storage = "shared"
+    x.type.storage = "shared"
 
-    if not is_tile(inout.type) or not is_tile(L.type):
+    if len(return_values) != 1:
+        raise TypeError("tile_cholesky_solve() returns one output")
+    y = return_values[0]
+
+    if not is_tile(x.type) or not is_tile(L.type):
         raise TypeError("tile_cholesky_solve() arguments must be two tile with shared storage")
 
-    if inout.type.dtype != L.type.dtype or any(
-        T not in cusolver_type_map.keys() for T in [inout.type.dtype, L.type.dtype]
-    ):
+    if x.type.dtype != L.type.dtype or any(T not in cusolver_type_map.keys() for T in [x.type.dtype, L.type.dtype]):
         raise TypeError("tile_cholesky_solve() arguments be tiles of float64 or float32 tiles")
 
-    dtype, precision_enum = cusolver_type_map[inout.type.dtype]
-
+    dtype, precision_enum = cusolver_type_map[L.type.dtype]
     M, N = L.type.M, L.type.N
 
     if M != N:
-        raise ValueError("L Tile must be square")
+        raise ValueError("L tile must be square")
 
-    if inout.type.M != M or inout.type.N != 1:
-        raise ValueError(f"Right-hand side Tile must be {M}x1")
+    if x.type.M != M or x.type.N != 1:
+        raise ValueError(f"Input vector of tile_cholesky_solve must be {M}x1")
+
+    if y.type.M != M or y.type.N != 1:
+        raise ValueError(f"Output vectir of tile_cholesky_solve be {M}x1")
 
     num_threads = options["block_dim"]
     arch = options["output_arch"]
@@ -6409,15 +6407,14 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
         lto_code_path.unlink()
 
     builder.ltoirs[lto_symbol] = lto_code_data
+    builder.ltoirs_decl[lto_symbol] = f"void {lto_symbol}({dtype}*, {dtype}*);"
 
     return (
         (
             Var(lto_symbol, str, False, True, False),
-            Var(dtype, str, False, True, False),
-            Var(str(M), str, False, True, False),
-            Var(str(N), str, False, True, False),
             L,
-            inout,
+            x,
+            y,
         ),
         [],
         [lto_code_data],
@@ -6440,7 +6437,8 @@ add_builtin(
         * float32
         * float64
 
-    :param A: As input, the matrix A. As output, L.""",
+    :param A: A square, symmetric positive-definite, matrix.
+    :returns L: A square, lower triangular, matrix, such that LL^T = A""",
     group="Tile Primitives",
     export=False,
     namespace="",
@@ -6460,8 +6458,9 @@ add_builtin(
         * float32
         * float64
 
-    :param L: The triangular matrix output of tile_cholesky,
-    :param x: As input, the right hand side y. As output, the solution x.""",
+    :param L: A square, lower triangular, matrix, such that LL^T = A
+    :param x: An Mx1 tile
+    :returns y: An Mx1 tile such that LL^T y = x""",
     group="Tile Primitives",
     export=False,
     namespace="",

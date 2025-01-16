@@ -38,13 +38,12 @@ def cholesky(
     i, j, _ = wp.tid()
 
     a = wp.tile_load(A, i, j, m=TILE, n=TILE)
-    wp.tile_cholesky(a)
-    wp.tile_tril(a)
-    wp.tile_store(L, i, j, a)
+    l = wp.tile_cholesky(a)
+    wp.tile_store(L, i, j, l)
 
     x = wp.tile_load(X, i, j, m=TILE, n=1)
-    wp.tile_cholesky_solve(a, x)
-    wp.tile_store(Y, i, j, x)
+    y = wp.tile_cholesky_solve(l, x)
+    wp.tile_store(Y, i, j, y)
 
 
 if __name__ == "__main__":
@@ -62,7 +61,7 @@ if __name__ == "__main__":
     X_wp = wp.array2d(X_h, dtype=wp_type)
     Y_wp = wp.array2d(Y_h, dtype=wp_type)
 
-    wp.launch(cholesky, dim=[1, 1, BLOCK_DIM], inputs=[A_wp, L_wp, X_wp, Y_wp], block_dim=BLOCK_DIM)
+    wp.launch_tiled(cholesky, dim=[1, 1], inputs=[A_wp, L_wp, X_wp, Y_wp], block_dim=BLOCK_DIM)
 
     L_np = np.linalg.cholesky(A_h)
     Y_np = np.linalg.solve(A_h, X_h)

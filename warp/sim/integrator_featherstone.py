@@ -1239,12 +1239,9 @@ def create_inertia_matrix_cholesky_kernel(num_joints, num_dofs):
 
         # cholesky L L^T = (H + diag(R))
         R = wp.tile_load(R_arr[articulation], 0, 0, m=num_dofs, n=1, storage="shared")
-        wp.tile_diag_add(H, R)
-        wp.tile_cholesky(H)
-        # We should somehow encode the tril nature of the matrix in the type
-        # and just store the lower part, instead of having to do this
-        wp.tile_tril(H)
-        wp.tile_store(L_arr[articulation], 0, 0, H)
+        H_R = wp.tile_diag_add(H, R)
+        L = wp.tile_cholesky(H_R)
+        wp.tile_store(L_arr[articulation], 0, 0, L)
 
     return eval_dense_gemm_and_cholesky_tile
 
