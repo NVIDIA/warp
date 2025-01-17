@@ -5094,6 +5094,9 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
 
     # try to convert to a value type (vec3, mat33, etc)
     elif issubclass(arg_type, ctypes.Array):
+        # simple value types don't have gradient arrays, but native built-in signatures still expect a non-null adjoint value of the correct type
+        if value is None and adjoint:
+            return arg_type(0)
         if warp.types.types_equal(type(value), arg_type):
             return value
         else:
@@ -5102,9 +5105,6 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
                 return arg_type(value)
             except Exception as e:
                 raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}") from e
-
-    elif isinstance(value, bool):
-        return ctypes.c_bool(value)
 
     elif isinstance(value, arg_type):
         try:
@@ -5120,6 +5120,9 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             ) from e
 
     else:
+        # scalar args don't have gradient arrays, but native built-in signatures still expect a non-null scalar adjoint
+        if value is None and adjoint:
+            return arg_type._type_(0)
         try:
             # try to pack as a scalar type
             if arg_type is warp.types.float16:

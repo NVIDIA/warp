@@ -220,9 +220,9 @@ class Tape:
     # returns the adjoint of a kernel parameter
     def get_adjoint(self, a):
         if not wp.types.is_array(a) and not isinstance(a, wp.codegen.StructInstance):
-            # if input is a simple type (e.g.: float, vec3, etc) then
-            # no gradient needed (we only return gradients through arrays and structs)
-            return a
+            # if input is a simple type (e.g.: float, vec3, etc) or a non-Warp array,
+            # then no gradient needed (we only return gradients through Warp arrays and structs)
+            return None
 
         elif wp.types.is_array(a) and a.grad:
             # keep track of all gradients used by the tape (for zeroing)
