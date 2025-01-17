@@ -2492,15 +2492,18 @@ class Adjoint:
                         print(
                             f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
                         )
-
                 else:
-                    out = adj.add_builtin_call("assign", [target, *indices, rhs])
+                    if adj.builder_options.get("enable_backward", True):
+                        out = adj.add_builtin_call("assign", [target, *indices, rhs])
 
-                    # re-point target symbol to out var
-                    for id in adj.symbols:
-                        if adj.symbols[id] == target:
-                            adj.symbols[id] = out
-                            break
+                        # re-point target symbol to out var
+                        for id in adj.symbols:
+                            if adj.symbols[id] == target:
+                                adj.symbols[id] = out
+                                break
+                    else:
+                        attr = adj.add_builtin_call("index", [target, *indices])
+                        adj.add_builtin_call("store", [attr, rhs])
 
             else:
                 raise WarpCodegenError(
@@ -2537,22 +2540,23 @@ class Adjoint:
 
             # assigning to a vector or quaternion component
             if type_is_vector(aggregate_type) or type_is_quaternion(aggregate_type):
-                # TODO: handle wp.adjoint case
-
                 index = adj.vector_component_index(lhs.attr, aggregate_type)
 
-                # TODO: array vec component case
                 if is_reference(aggregate.type):
                     attr = adj.add_builtin_call("indexref", [aggregate, index])
                     adj.add_builtin_call("store", [attr, rhs])
                 else:
-                    out = adj.add_builtin_call("assign", [aggregate, index, rhs])
+                    if adj.builder_options.get("enable_backward", True):
+                        out = adj.add_builtin_call("assign", [aggregate, index, rhs])
 
-                    # re-point target symbol to out var
-                    for id in adj.symbols:
-                        if adj.symbols[id] == aggregate:
-                            adj.symbols[id] = out
-                            break
+                        # re-point target symbol to out var
+                        for id in adj.symbols:
+                            if adj.symbols[id] == aggregate:
+                                adj.symbols[id] = out
+                                break
+                    else:
+                        attr = adj.add_builtin_call("index", [aggregate, index])
+                        adj.add_builtin_call("store", [attr, rhs])
 
             else:
                 attr = adj.emit_Attribute(lhs)
