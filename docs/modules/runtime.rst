@@ -1208,14 +1208,17 @@ processes without creating copies of the underlying data.
 
 Some basic requirements for using IPC include:
 
-* Linux operating system
+* Linux operating system (note however that integrated devices like NVIDIA
+  Jetson do not support CUDA IPC)
 * The array must be allocated on a GPU device using the default memory allocator (see :doc:`allocators`)
 
   The ``wp.ScopedMempool`` context manager is useful for temporarily disabling
   memory pools for the purpose of allocating arrays that can be shared using IPC.
 
 Support for IPC on a device is indicated by the :attr:`is_ipc_supported <warp.context.Device.is_ipc_supported>`
-attribute of the :class:`Device <warp.context.Device>`.
+attribute of the :class:`Device <warp.context.Device>`. If the Warp library has
+been compiled with CUDA 11, this device attribute will be ``None`` to indicate
+that IPC support could not be determined using the CUDA API.
 
 To share a Warp array between processes, use :meth:`array.ipc_handle` in the
 originating process to obtain an IPC handle for the array's memory allocation.

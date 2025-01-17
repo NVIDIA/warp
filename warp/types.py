@@ -2768,7 +2768,7 @@ class array(Array):
 
         if self.device is None or not self.device.is_cuda:
             raise RuntimeError("IPC requires a CUDA device")
-        elif not self.device.is_ipc_supported:
+        elif self.device.is_ipc_supported is False:
             raise RuntimeError("IPC does not appear to be supported on this CUDA device")
         elif isinstance(self._allocator, warp.context.CudaMempoolAllocator):
             raise RuntimeError(
@@ -2869,7 +2869,7 @@ def from_ipc_handle(
         # which takes take of initializing Warp if needed.
         device = warp.context.get_device(device)
 
-    if not device.is_ipc_supported:
+    if device.is_ipc_supported is False:
         raise RuntimeError(f"IPC is not supported on device {device}.")
 
     ptr = warp.context.runtime.core.cuda_ipc_open_mem_handle(device.context, handle)

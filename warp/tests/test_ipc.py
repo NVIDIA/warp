@@ -13,7 +13,7 @@ from warp.tests.unittest_utils import *
 
 
 def test_ipc_get_memory_handle(test, device):
-    if not device.is_ipc_supported:
+    if device.is_ipc_supported is False:
         test.skipTest(f"IPC is not supported on {device}")
 
     with wp.ScopedMempool(device, False):
@@ -24,7 +24,7 @@ def test_ipc_get_memory_handle(test, device):
 
 
 def test_ipc_get_event_handle(test, device):
-    if not device.is_ipc_supported:
+    if device.is_ipc_supported is False:
         test.skipTest(f"IPC is not supported on {device}")
 
     e1 = wp.Event(device, interprocess=True)
@@ -35,7 +35,7 @@ def test_ipc_get_event_handle(test, device):
 
 
 def test_ipc_event_missing_interprocess_flag(test, device):
-    if not device.is_ipc_supported:
+    if device.is_ipc_supported is False:
         test.skipTest(f"IPC is not supported on {device}")
 
     e1 = wp.Event(device, interprocess=False)
@@ -70,7 +70,7 @@ def child_task(array_handle, dtype, shape, device, event_handle):
 
 
 def test_ipc_multiprocess_write(test, device):
-    if not device.is_ipc_supported:
+    if device.is_ipc_supported is False:
         test.skipTest(f"IPC is not supported on {device}")
 
     stream = wp.get_stream(device)
