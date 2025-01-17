@@ -18,6 +18,7 @@
   ([GH-379](https://github.com/NVIDIA/warp/issues/379)).
 - Add per-module option to add CUDA-C line information for profiling, use `wp.set_module_options({"lineinfo": True})`.
 - Add `example_tile_walker.py`, which reworks the existing `walker.py` to use Warp's tile API for matrix multiplication.
+- Add `example_tile_nbody.py`, an N-Body gravitational simulation example using Warp tile primitives.
 
 ### Changed
 
