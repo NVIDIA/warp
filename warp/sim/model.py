@@ -591,6 +591,7 @@ class Model:
         joint_attach_ke (float): Joint attachment force stiffness (used by :class:`SemiImplicitIntegrator`)
         joint_attach_kd (float): Joint attachment force damping (used by :class:`SemiImplicitIntegrator`)
 
+        soft_contact_radius (float): Contact radius used for self-collisions in the VBD integrator.
         soft_contact_margin (float): Contact margin for generation of soft contacts
         soft_contact_ke (float): Stiffness of soft contacts (used by the Euler integrators)
         soft_contact_kd (float): Damping of soft contacts (used by the Euler integrators)
@@ -761,6 +762,7 @@ class Model:
         self.joint_attach_ke = 1.0e3
         self.joint_attach_kd = 1.0e2
 
+        self.soft_contact_radius = 0.2
         self.soft_contact_margin = 0.2
         self.soft_contact_ke = 1.0e3
         self.soft_contact_kd = 10.0
