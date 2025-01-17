@@ -3237,60 +3237,57 @@ class Bvh:
         instance.id = None
         return instance
 
-    def __init__(self, lowers, uppers, constructor=None):
-        """Class representing a bounding volume hierarchy. Depends on which device the input bounds live, it can be either
-            a CPU tree or a GPU tree.
+    def __init__(self, lowers: array, uppers: array, constructor: Optional[str] = None):
+        """Class representing a bounding volume hierarchy.
+
+        Depending on which device the input bounds live, it can be either a CPU tree or a GPU tree.
 
         Attributes:
-            id: Unique identifier for this bvh object, can be passed to kernels.
+            id: Unique identifier for this BVH object, can be passed to kernels.
             device: Device this object lives on, all buffers must live on the same device.
 
         Args:
-            lowers (:class:`warp.array`): Array of lower bounds :class:`warp.vec3`
-            uppers (:class:`warp.array`): Array of upper bounds :class:`warp.vec3`. `lowers` and `uppers` must live on the
-                same device.
-            constructor (string): Must be one of the following values: ["sah", "median", "lbvh", `None`]. This specifies
-                the construction algorithm used to build the tree. When `None` is selected, the default constructor will
-                be used (see the note).
-
+            lowers: Array of lower bounds of data type :class:`warp.vec3`.
+            uppers: Array of upper bounds of data type :class:`warp.vec3`.
+              ``lowers`` and ``uppers`` must live on the same device.
+            constructor: The construction algorithm used to build the tree.
+              Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, or ``None``.
+              When ``None``, the default constructor will be used (see the note).
 
         Note:
             Explanation of BVH constructors:
 
-            - "sah": A CPU-based top-down constructor where the AABBs are split based on Surface Area
+            - ``"sah"``: A CPU-based top-down constructor where the AABBs are split based on Surface Area
               Heuristics (SAH). Construction takes slightly longer than others but has the best query
               performance.
-
-            - "median": A CPU-based top-down constructor where the AABBs are split based on the median
+            - ``"median"``: A CPU-based top-down constructor where the AABBs are split based on the median
               of centroids of primitives in an AABB. This constructor is faster than SAH but offers
               inferior query performance.
-
-            - "lbvh": A GPU-based bottom-up constructor which maximizes parallelism. Construction is very
-              fast, especially for large models. Query performance is slightly slower than "sah".
-
-            - `None`: The constructor will be automatically chosen based on the device where the tree
-              lives. For a GPU tree, the `LBVH` constructor will be selected; for a CPU tree, the "sah"
+            - ``"lbvh"``: A GPU-based bottom-up constructor which maximizes parallelism. Construction is very
+              fast, especially for large models. Query performance is slightly slower than ``"sah"``.
+            - ``None``: The constructor will be automatically chosen based on the device where the tree
+              lives. For a GPU tree, the ``"lbvh"`` constructor will be selected; for a CPU tree, the ``"sah"``
               constructor will be selected.
 
             All three constructors are supported for GPU trees. When a CPU-based constructor is selected
             for a GPU tree, bounds will be copied back to the CPU to run the CPU-based constructor. After
             construction, the CPU tree will be copied to the GPU.
 
-            Only "sah" and "median" are supported for CPU trees. If "lbvh" is selected for a CPU tree, a
-            warning message will be issued, and the constructor will automatically fall back to "sah".
+            Only ``"sah"`` and ``"median"`` are supported for CPU trees. If ``"lbvh"`` is selected for a CPU tree, a
+            warning message will be issued, and the constructor will automatically fall back to ``"sah"``.
         """
 
         if len(lowers) != len(uppers):
-            raise RuntimeError("Bvh the same number of lower and upper bounds must be provided")
+            raise RuntimeError("The same number of lower and upper bounds must be provided")
 
         if lowers.device != uppers.device:
-            raise RuntimeError("Bvh lower and upper bounds must live on the same device")
+            raise RuntimeError("Lower and upper bounds must live on the same device")
 
         if lowers.dtype != vec3 or not lowers.is_contiguous:
-            raise RuntimeError("Bvh lowers should be a contiguous array of type wp.vec3")
+            raise RuntimeError("lowers should be a contiguous array of type wp.vec3")
 
         if uppers.dtype != vec3 or not uppers.is_contiguous:
-            raise RuntimeError("Bvh uppers should be a contiguous array of type wp.vec3")
+            raise RuntimeError("uppers should be a contiguous array of type wp.vec3")
 
         self.device = lowers.device
         self.lowers = lowers
@@ -3311,15 +3308,13 @@ class Bvh:
                 constructor = "lbvh"
 
         if constructor not in bvh_constructor_values:
-            if isinstance(constructor, str):
-                print("Unrecognized BVH constructor type:", constructor)
-            else:
-                print("Unrecognized BVH constructor type!")
-            return
+            raise ValueError(f"Unrecognized BVH constructor type: {constructor}")
 
         if self.device.is_cpu:
             if constructor == "lbvh":
-                print("LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.")
+                warp.utils.warn(
+                    "LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.", stacklevel=2
+                )
                 constructor = "sah"
 
             self.id = self.runtime.core.bvh_create_host(
@@ -3346,7 +3341,10 @@ class Bvh:
                 self.runtime.core.bvh_destroy_device(self.id)
 
     def refit(self):
-        """Refit the BVH. This should be called after users modify the `lowers` and `uppers` arrays."""
+        """Refit the BVH.
+
+        This should be called after users modify the ``lowers`` or ``uppers`` arrays.
+        """
 
         if self.device.is_cpu:
             self.runtime.core.bvh_refit_host(self.id)
@@ -3371,25 +3369,28 @@ class Mesh:
 
     def __init__(
         self,
-        points=None,
-        indices=None,
-        velocities=None,
-        support_winding_number=False,
-        bvh_constructor=None,
+        points: array,
+        indices: array,
+        velocities: Optional[array] = None,
+        support_winding_number: bool = False,
+        bvh_constructor: Optional[str] = None,
     ):
         """Class representing a triangle mesh.
 
         Attributes:
             id: Unique identifier for this mesh object, can be passed to kernels.
             device: Device this object lives on, all buffers must live on the same device.
-            bvh_constructor (string): Must be one of the following values: ["sah", "median", "lbvh", `None`].
-                The construction algorithm for the underlying BVH (see documentation of `Bvh` for explanation).
 
         Args:
-            points (:class:`warp.array`): Array of vertex positions of type :class:`warp.vec3`
-            indices (:class:`warp.array`): Array of triangle indices of type :class:`warp.int32`, should be a 1d array with shape (num_tris * 3)
-            velocities (:class:`warp.array`): Array of vertex velocities of type :class:`warp.vec3` (optional)
-            support_winding_number (bool): If true the mesh will build additional datastructures to support `wp.mesh_query_point_sign_winding_number()` queries
+            points: Array of vertex positions of data type :class:`warp.vec3`.
+            indices: Array of triangle indices of data type :class:`warp.int32`.
+              Should be a 1D array with shape ``(num_tris * 3)``.
+            velocities: Optional array of vertex velocities of data type :class:`warp.vec3`.
+            support_winding_number: If ``True``, the mesh will build additional
+              data structures to support ``wp.mesh_query_point_sign_winding_number()`` queries.
+            bvh_constructor: The construction algorithm for the underlying BVH
+              (see the docstring of :class:`Bvh` for explanation).
+              Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, or ``None``.
         """
 
         if points.device != indices.device:
@@ -3421,15 +3422,13 @@ class Mesh:
                 bvh_constructor = "lbvh"
 
         if bvh_constructor not in bvh_constructor_values:
-            if isinstance(bvh_constructor, str):
-                print("Unrecognized BVH constructor type:", bvh_constructor)
-            else:
-                print("Unrecognized BVH constructor type!")
-            return
+            raise ValueError(f"Unrecognized BVH constructor type: {bvh_constructor}")
 
         if self.device.is_cpu:
             if bvh_constructor == "lbvh":
-                print("LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.")
+                warp.utils.warn(
+                    "LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.", stacklevel=2
+                )
                 bvh_constructor = "sah"
 
             self.id = self.runtime.core.mesh_create_host(
@@ -3465,7 +3464,10 @@ class Mesh:
                 self.runtime.core.mesh_destroy_device(self.id)
 
     def refit(self):
-        """Refit the BVH to points. This should be called after users modify the `points` data."""
+        """Refit the BVH to points.
+
+        This should be called after users modify the ``points`` data.
+        """
 
         if self.device.is_cpu:
             self.runtime.core.mesh_refit_host(self.id)
@@ -3478,9 +3480,9 @@ class Mesh:
         """The array of mesh's vertex positions of type :class:`warp.vec3`.
 
         The `Mesh.points` property has a custom setter method. Users can modify the vertex positions in-place,
-        but the `refit()` method must be called manually after such modifications. Alternatively, assigning a new array
+        but :meth:`refit` must be called manually after such modifications. Alternatively, assigning a new array
         to this property is also supported. The new array must have the same shape as the original, and once assigned,
-        the `Mesh` class will automatically perform a refit operation based on the new vertex positions.
+        The :class:`Mesh` will automatically perform a refit operation based on the new vertex positions.
         """
         return self._points
 
@@ -3488,16 +3490,14 @@ class Mesh:
     def points(self, points_new):
         if points_new.device != self._points.device:
             raise RuntimeError(
-                "The new points and the original points must live on the same device, currently "
-                "the new points lives on {} while the old points lives on {}.".format(
-                    points_new.device, self._points.device
-                )
+                "The new points and the original points must live on the same device, the "
+                f"new points are on {points_new.device} while the old points are on {self._points.device}."
             )
 
         if points_new.ndim != 1 or points_new.shape[0] != self._points.shape[0]:
             raise RuntimeError(
-                "the new points and the original points must have the same shape, currently new points shape is: {},"
-                " while the old points' shape is: {}".format(points_new.shape, self._points.shape)
+                "The new points and the original points must have the same shape, the "
+                f"new points' shape is {points_new.shape}, while the old points' shape is {self._points.shape}."
             )
 
         self._points = points_new
@@ -3512,7 +3512,7 @@ class Mesh:
         """The array of mesh's velocities of type :class:`warp.vec3`.
 
         This is a property with a custom setter method. Users can modify the velocities in-place,
-        or assigning a new array to this property. No refitting is needed for changing velocities.
+        or assign a new array to this property. No refitting is needed for changing velocities.
         """
         return self._velocities
 
@@ -3520,16 +3520,14 @@ class Mesh:
     def velocities(self, velocities_new):
         if velocities_new.device != self._velocities.device:
             raise RuntimeError(
-                "The new points and the original points must live on the same device, currently "
-                "the new points lives on {} while the old points lives on {}.".format(
-                    velocities_new.device, self._velocities.device
-                )
+                "The new points and the original points must live on the same device, the "
+                f"new points are on {velocities_new.device} while the old points are on {self._velocities.device}."
             )
 
         if velocities_new.ndim != 1 or velocities_new.shape[0] != self._velocities.shape[0]:
             raise RuntimeError(
-                "the new points and the original points must have the same shape, currently new points shape is: {},"
-                " while the old points' shape is: {}".format(velocities_new.shape, self._velocities.shape)
+                "The new points and the original points must have the same shape, the "
+                f"new points' shape is {velocities_new.shape}, while the old points' shape is {self._velocities.shape}."
             )
 
         self._velocities = velocities_new
@@ -3555,8 +3553,8 @@ class Volume:
         """Class representing a sparse grid.
 
         Args:
-            data (:class:`warp.array`): Array of bytes representing the volume in NanoVDB format
-            copy (bool): Whether the incoming data will be copied or aliased
+            data: Array of bytes representing the volume in NanoVDB format.
+            copy: Whether the incoming data will be copied or aliased.
         """
 
         # keep a runtime reference for orderly destruction
@@ -3591,14 +3589,15 @@ class Volume:
                 self.runtime.core.volume_destroy_device(self.id)
 
     def array(self) -> array:
-        """Returns the raw memory buffer of the Volume as an array"""
+        """Return the raw memory buffer of the :class:`Volume` as an array."""
+
         buf = ctypes.c_void_p(0)
         size = ctypes.c_uint64(0)
         self.runtime.core.volume_get_buffer_info(self.id, ctypes.byref(buf), ctypes.byref(size))
         return array(ptr=buf.value, dtype=uint8, shape=size.value, device=self.device, owner=False)
 
     def get_tile_count(self) -> int:
-        """Returns the number of tiles (NanoVDB leaf nodes) of the volume"""
+        """Return the number of tiles (NanoVDB leaf nodes) of the volume."""
 
         voxel_count, tile_count = (
             ctypes.c_uint64(0),
@@ -3608,11 +3607,12 @@ class Volume:
         return tile_count.value
 
     def get_tiles(self, out: Optional[array] = None) -> array:
-        """Returns the integer coordinates of all allocated tiles for this volume.
+        """Return the integer coordinates of all allocated tiles for this volume.
 
         Args:
-            out (:class:`warp.array`, optional): If provided, use the `out` array to store the tile coordinates, otherwise
-                a new array will be allocated. `out` must be a contiguous array of ``tile_count`` ``vec3i`` or ``tile_count x 3`` ``int32``
+            out: If provided, use the `out` array to store the tile coordinates, otherwise
+                a new array will be allocated. ``out`` must be a contiguous array
+                of ``tile_count`` ``vec3i`` or ``tile_count x 3`` ``int32``
                 on the same device as this volume.
         """
 
@@ -3637,7 +3637,7 @@ class Volume:
         return out
 
     def get_voxel_count(self) -> int:
-        """Returns the total number of allocated voxels for this volume"""
+        """Return the total number of allocated voxels for this volume"""
 
         voxel_count, tile_count = (
             ctypes.c_uint64(0),
@@ -3647,10 +3647,10 @@ class Volume:
         return voxel_count.value
 
     def get_voxels(self, out: Optional[array] = None) -> array:
-        """Returns the integer coordinates of all allocated voxels for this volume.
+        """Return the integer coordinates of all allocated voxels for this volume.
 
         Args:
-            out (:class:`warp.array`, optional): If provided, use the `out` array to store the voxel coordinates, otherwise
+            out: If provided, use the `out` array to store the voxel coordinates, otherwise
                 a new array will be allocated. `out` must be a contiguous array of ``voxel_count`` ``vec3i`` or ``voxel_count x 3`` ``int32``
                 on the same device as this volume.
         """
@@ -3676,7 +3676,7 @@ class Volume:
         return out
 
     def get_voxel_size(self) -> Tuple[float, float, float]:
-        """Voxel size, i.e, world coordinates of voxel's diagonal vector"""
+        """Return the voxel size, i.e, world coordinates of voxel's diagonal vector"""
 
         if self.id == 0:
             raise RuntimeError("Invalid Volume")
@@ -3776,7 +3776,7 @@ class Volume:
         return self.get_grid_info().type_str in Volume._nvdb_index_types
 
     def get_feature_array_count(self) -> int:
-        """Returns the number of supplemental data arrays stored alongside the grid"""
+        """Return the number of supplemental data arrays stored alongside the grid"""
 
         return self.runtime.core.volume_get_blind_data_count(self.id)
 
@@ -3796,7 +3796,7 @@ class Volume:
         """String describing the type of the array values"""
 
     def get_feature_array_info(self, feature_index: int) -> Volume.FeatureArrayInfo:
-        """Returns the metadata associated to the feature array at `feature_index`"""
+        """Return the metadata associated to the feature array at ``feature_index``."""
 
         buf = ctypes.c_void_p(0)
         value_count = ctypes.c_uint64(0)
@@ -3824,11 +3824,12 @@ class Volume:
         )
 
     def feature_array(self, feature_index: int, dtype=None) -> array:
-        """Returns one the grid's feature data arrays as a Warp array
+        """Return one the grid's feature data arrays as a Warp array.
 
         Args:
             feature_index: Index of the supplemental data array in the grid
-            dtype: Type for the returned Warp array. If not provided, will be deduced from the array metadata.
+            dtype: Data type for the returned Warp array.
+              If not provided, will be deduced from the array metadata.
         """
 
         info = self.get_feature_array_info(feature_index)
@@ -3859,7 +3860,7 @@ class Volume:
 
     @classmethod
     def load_from_nvdb(cls, file_or_buffer, device=None) -> Volume:
-        """Creates a Volume object from a serialized NanoVDB file or in-memory buffer.
+        """Create a :class:`Volume` object from a serialized NanoVDB file or in-memory buffer.
 
         Returns:
 
