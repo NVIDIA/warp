@@ -41,6 +41,7 @@
   ([GH-412](https://github.com/NVIDIA/warp/issues/412)).
 - Fix scale and rotation issues with the rock geometry used in the granular collision SDF example
   ([GH-409](https://github.com/NVIDIA/warp/issues/409)).
+- Fix unintended modification of non-Warp arrays during the backward pass ([GH-394](https://github.com/NVIDIA/warp/issues/394)).
 - Fix so that `wp.Tape.zero()` zeroes gradients passed via the 'grads' parameter in `wp.Tape.backward()` ([GH-407](https://github.com/NVIDIA/warp/issues/407)).
 - Fix the OpenGL renderer not working when multiple instances exist at the same time ([GH-385](https://github.com/NVIDIA/warp/issues/385)).
 - Negative constants evaluate to compile-time constants (fixes [GH-403](https://github.com/NVIDIA/warp/issues/403))

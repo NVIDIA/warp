@@ -403,6 +403,38 @@ def test_cuda_array_interface(test, device):
         assert a1.strides == a2.strides
 
 
+@wp.kernel
+def vec_sum_kernel(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3), z: wp.array(dtype=wp.vec3)):
+    tid = wp.tid()
+    z[tid] = x[tid] + y[tid]
+
+
+# ensure torch arrays passed to Warp kernels are unchanged by Tape.backward()
+def test_tensor_in_warp_kernel(test, device):
+    torch_device = wp.device_to_torch(device)
+
+    x = torch.ones((10, 3), dtype=torch.float32, device=torch_device)
+    y = torch.ones((10, 3), dtype=torch.float32, device=torch_device)
+    wp_y = wp.from_torch(y, dtype=wp.vec3, requires_grad=True)
+    z = torch.zeros((10, 3), dtype=torch.float32, device=torch_device)
+    wp_z = wp.from_torch(z, dtype=wp.vec3, requires_grad=True)
+
+    tape = wp.Tape()
+
+    with tape:
+        wp.launch(vec_sum_kernel, dim=10, inputs=[x, wp_y], outputs=[wp_z], device=device)
+
+    assert_np_equal(x.cpu().numpy(), np.ones((10, 3), dtype=float))
+
+    tape.backward(grads={wp_z: wp.ones_like(wp_z)})
+
+    # x is unchanged by Tape.backward()
+    assert_np_equal(x.cpu().numpy(), np.ones((10, 3), dtype=float))
+
+    # we can still compute the gradient of y because Warp created an array for it
+    assert_np_equal(y.grad.cpu().numpy(), np.ones((10, 3), dtype=float))
+
+
 def test_to_torch(test, device):
     import torch
 
@@ -913,6 +945,9 @@ try:
         add_function_test(TestTorch, "test_torch_zerocopy", test_torch_zerocopy, devices=torch_compatible_devices)
         add_function_test(TestTorch, "test_torch_autograd", test_torch_autograd, devices=torch_compatible_devices)
         add_function_test(TestTorch, "test_direct", test_direct, devices=torch_compatible_devices)
+        add_function_test(
+            TestTorch, "test_tensor_in_warp_kernel", test_tensor_in_warp_kernel, devices=torch_compatible_devices
+        )
 
     if torch_compatible_cuda_devices:
         add_function_test(
