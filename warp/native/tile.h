@@ -569,13 +569,22 @@ struct tile_shared_t
     Storage data;
     Storage grad;
 
+    // we need to track whether or not this tile's data has been initialized.
+    // once true, any re-initialization of data that follows needs a WP_TILE_SYNC()
+    // call to precede it, to allow threads that are still reading from this tile
+    // to complete their work. e.g, in a dynamic loop:
+    // for i in range(x):
+    //     tile = wp.tile_load(arr, i, TILE_SIZE, storage="shared")
+    //     # read from tile...
+    bool initialized;
+
     // default initialization (non-initialized)
-    inline CUDA_CALLABLE tile_shared_t() : data(NULL), grad(NULL) 
+    inline CUDA_CALLABLE tile_shared_t() : data(NULL), grad(NULL), initialized(false)
     {
     }
 
     // initialize from an existing tile's memory
-    inline CUDA_CALLABLE tile_shared_t(T* data, T* grad=NULL) : data(data), grad(grad)
+    inline CUDA_CALLABLE tile_shared_t(T* data, T* grad=NULL, bool initialized=true) : data(data), grad(grad), initialized(initialized)
     {
     }
 
@@ -613,6 +622,7 @@ struct tile_shared_t
         // alias tile directly
         data = rhs.data;
         grad = rhs.grad;
+        initialized = rhs.initialized;
 
         return *this;
     }    
@@ -633,9 +643,16 @@ struct tile_shared_t
     // assign from a constant value
     inline CUDA_CALLABLE auto& operator=(const T& x)
     {
+        // sync if we are re-initializing data so that any threads that are still
+        // reading from this tile can complete their work, e.g.: if re-assigning
+        // to a tile during a dynamic loop
+        if (initialized)
+            WP_TILE_SYNC();
+
         for (int i=threadIdx.x; i < M*N; i+= WP_TILE_BLOCK_DIM)
             data(i) = x;
 
+        initialized = true;
         WP_TILE_SYNC();
         return *this;
     }
@@ -674,7 +691,13 @@ struct tile_shared_t
 
     // copy register tile to shared
     inline CUDA_CALLABLE void assign(const tile_register_t<T, M, N>& tile)
-    { 
+    {
+        // sync if we are re-initializing data so that any threads that are still
+        // reading from this tile can complete their work, e.g.: if re-assigning
+        // to a tile during a dynamic loop
+        if (initialized)
+            WP_TILE_SYNC();
+
         WP_PRAGMA_UNROLL
         for (int i=0; i < tile.NumRegs; ++i)
         {
@@ -688,6 +711,7 @@ struct tile_shared_t
             data(linear) = tile.data[i];
         }
 
+        initialized = true;
         WP_TILE_SYNC();
     }
 
@@ -855,6 +879,12 @@ struct tile_shared_t
 
     inline CUDA_CALLABLE void copy_from_global(const array_t<T>& src, int x)
     {
+        // sync if we are re-initializing data so that any threads that are still
+        // reading from this tile can complete their work, e.g.: if re-assigning
+        // to a tile during a dynamic loop
+        if (initialized)
+            WP_TILE_SYNC();
+
         // todo: use async pipelines or TMA here
         const int tile_i = x*N;
 
@@ -864,11 +894,18 @@ struct tile_shared_t
             data(i) = wp::index(src, tile_i + i);
         }
 
+        initialized = true;
         WP_TILE_SYNC();
     }
 
     inline CUDA_CALLABLE void copy_from_global(const array_t<T>& src, int x, int y)
     {
+        // sync if we are re-initializing data so that any threads that are still
+        // reading from this tile can complete their work, e.g.: if re-assigning
+        // to a tile during a dynamic loop
+        if (initialized)
+            WP_TILE_SYNC();
+
         // todo: use async pipelines or TMA here
         const int tile_i = x*M;
         const int tile_j = y*N;
@@ -930,6 +967,7 @@ struct tile_shared_t
             }
         }
 
+    initialized = true;
 #if !WP_USE_ASYNC_PIPELINE
     WP_TILE_SYNC();
 #endif
@@ -997,8 +1035,8 @@ inline CUDA_CALLABLE void adj_print(const tile_shared_t<T, M, N, StrideM, Stride
 // helpers to allocate shared tiles
 template <typename T, int M, int N, bool RequiresGrad>
 inline CUDA_CALLABLE auto tile_alloc_empty()
-
-{   constexpr int Len = M*N;
+{
+    constexpr int Len = M*N;
     T* data = (T*)tile_alloc_shared(Len*sizeof(T));
     T* grad = NULL;
 
@@ -1022,7 +1060,7 @@ inline CUDA_CALLABLE auto tile_alloc_empty()
         WP_TILE_SYNC();
     }
        
-    return tile_shared_t<T, M, N>(data, grad);
+    return tile_shared_t<T, M, N>(data, grad, false);
 }
 
 template <typename T, int M, int N, bool RequiresGrad>
