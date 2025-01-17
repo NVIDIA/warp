@@ -53,6 +53,7 @@
 - Fix the OpenGL renderer now correctly displaying duplicate cylinder and mesh shapes ([GH-388](https://github.com/NVIDIA/warp/issues/388)).
 - Fix the overriding of `wp.sim.Model` default parameters ([GH-429](https://github.com/NVIDIA/warp/pull/429)).
 - Fix `wp.array()` not respecting the target `dtype` when the given data is an another array with a CUDA interface ([GH-363](https://github.com/NVIDIA/warp/issues/363)).
+- Add an implicit tile sychronization whenever a shared memory tile's data is reinitialized (e.g. in dynamic loops). This could result in lower performance.
 
 ## [1.5.1] - 2025-01-02
 
