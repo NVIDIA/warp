@@ -430,8 +430,8 @@ class Example:
     def set_points_fixed(self, model, fixed_particles):
         if len(fixed_particles):
             flags = model.particle_flags.numpy()
-            for fixed_v_id in fixed_particles:
-                flags[fixed_v_id] = wp.uint32(int(flags[fixed_v_id]) & ~int(PARTICLE_FLAG_ACTIVE))
+            for fixed_vertex_id in fixed_particles:
+                flags[fixed_vertex_id] = wp.uint32(int(flags[fixed_vertex_id]) & ~int(PARTICLE_FLAG_ACTIVE))
 
             model.particle_flags = wp.array(flags, device=model.device)
 
