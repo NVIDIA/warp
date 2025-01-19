@@ -27,8 +27,8 @@
   `module_codegen` ([GH-431](https://github.com/NVIDIA/warp/issues/431)).
 - Emit deprecation warnings for the use of the `owner` and `length` keywords in
   the `wp.array` initializer.
-- Improved the query efficiency of `wp.Bvh` and `wp.Mesh`. 
-- `wp.Bvh` constructor now supports multiple construction methods, including `SAH` ( Surface Area Heuristics), `Median` and `LBVH`. 
+- Improved the query efficiency of `wp.Bvh` and `wp.Mesh`.
+- `wp.Bvh` constructor now supports multiple construction methods, including `SAH` ( Surface Area Heuristics), `Median` and `LBVH`.
 - Avoid recompilation of modules when changing `block_dim`.
 - Improve memory consumption, compilation and runtime performance when using in-place vector/matrix assignments in kernels that have `enable_backward` set to False ([GH-332](https://github.com/NVIDIA/warp/issues/332)).
 
@@ -48,11 +48,9 @@
 - Negative constants evaluate to compile-time constants (fixes [GH-403](https://github.com/NVIDIA/warp/issues/403))
 - Fix `AttributeError` crash in the OpenGL renderer when moving the camera ([GH-426](https://github.com/NVIDIA/warp/issues/426)).
 - Fix `tile_register_t` `extract()` and `valid()` methods.
-- Fix the OpenGL renderer now correctly displaying duplicate cylinder shapes ([GH-388](https://github.com/NVIDIA/warp/issues/388)).
 - Fix the OpenGL renderer now correctly displaying duplicate capsule, cone, and cylinder shapes ([GH-388](https://github.com/NVIDIA/warp/issues/388)).
-- Fix the OpenGL renderer now correctly displaying duplicate cylinder and mesh shapes ([GH-388](https://github.com/NVIDIA/warp/issues/388)).
 - Fix the overriding of `wp.sim.Model` default parameters ([GH-429](https://github.com/NVIDIA/warp/pull/429)).
-- Fix `wp.array()` not respecting the target `dtype` when the given data is an another array with a CUDA interface ([GH-363](https://github.com/NVIDIA/warp/issues/363)).
+- Fix `wp.array()` not respecting the desired `dtype` and `shape` when the given data is an another array with a CUDA interface ([GH-363](https://github.com/NVIDIA/warp/issues/363)).
 - Add an implicit tile sychronization whenever a shared memory tile's data is reinitialized (e.g. in dynamic loops). This could result in lower performance.
 
 ## [1.5.1] - 2025-01-02
