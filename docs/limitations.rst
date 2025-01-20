@@ -140,3 +140,38 @@ functions is the same type as the input:
     # Python-scope behavior:
     a = round(0.5) # a is 0
     c = round(1.5) # c is 2
+
+Variable Scope
+--------------
+
+When writing Warp kernels, variable scope might behave differently than in standard Python. This can sometimes lead to unexpected results.
+
+In standard Python, variables are only accessible within the block where they are defined. Consider this example:
+
+.. code-block:: python
+
+    @wp.func
+    def foo(cond: bool):
+        if cond:
+            out = 123
+        else:
+            out = 234
+
+        print(out)
+
+This code works as expected in standard Python. Regardless of the value of `cond`, `out` is defined before being printed.
+
+However, consider a slightly modified example:
+
+.. code-block:: python
+
+    @wp.func
+    def foo(cond: bool):
+        if cond:
+            out = 123
+
+        print(out) # No error even when `cond` is `False`.
+
+In standard Python, if `cond` is `False`, the call to `print(out)` would raise an `UnboundLocalError` because `out` is only defined inside the `if` block.
+
+In Warp, the behavior is different. The call to `print(out)` *will not* raise an error, even if `cond` is `False`. Warp effectively makes `out` accessible outside the `if` block. However, if `cond` is `False`, `out` will be uninitialized, leading to undefined behavior.
