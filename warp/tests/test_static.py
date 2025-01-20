@@ -536,6 +536,21 @@ def test_static_function_hash(test, _):
     test.assertEqual(hash1, hash3)
 
 
+@wp.kernel
+def static_len_query_kernel(v1: wp.vec2):
+    v2 = wp.vec3()
+    m = wp.identity(n=wp.static(len(v1) + len(v2) + 1), dtype=float)
+    wp.expect_eq(wp.ddot(m, m), 6.0)
+
+    t = wp.transform_identity(float)
+    wp.expect_eq(wp.static(len(t)), 7)
+
+
+def test_static_len_query(test, _):
+    v1 = wp.vec2()
+    wp.launch(static_len_query_kernel, 1, inputs=(v1,))
+
+
 devices = get_test_devices()
 
 
@@ -561,6 +576,7 @@ add_function_test(TestStatic, "test_static_if_else_elif", test_static_if_else_el
 
 add_function_test(TestStatic, "test_static_constant_hash", test_static_constant_hash, devices=None)
 add_function_test(TestStatic, "test_static_function_hash", test_static_function_hash, devices=None)
+add_function_test(TestStatic, "test_static_len_query", test_static_len_query, devices=None)
 
 
 if __name__ == "__main__":

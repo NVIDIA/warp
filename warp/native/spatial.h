@@ -401,6 +401,17 @@ CUDA_CALLABLE inline void adj_lerp(const transform_t<Type>& a, const transform_t
 }
 
 template<typename Type>
+CUDA_CALLABLE inline int len(const transform_t<Type>& t)
+{
+    return 7;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline void adj_len(const transform_t<Type>& t, transform_t<Type>& adj_t, const int& adj_ret)
+{
+}
+
+template<typename Type>
 using spatial_matrix_t = mat_t<6,6,Type>;
 
 template<typename Type>

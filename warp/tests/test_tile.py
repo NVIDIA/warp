@@ -635,6 +635,33 @@ def test_tile_assign(test, device):
     assert_np_equal(a.grad.numpy(), np.ones_like(a.numpy()))
 
 
+@wp.kernel
+def tile_len_kernel(
+    a: wp.array(dtype=float, ndim=2),
+    out: wp.array(dtype=int),
+):
+    x = wp.tile_load(a, 0, 0, m=TILE_M, n=TILE_N)
+
+    length = wp.static(len(x))
+    wp.expect_eq(wp.static(len(x)), TILE_M)
+    out[0] = wp.static(len(x))
+
+
+def test_tile_len(test, device):
+    a = wp.zeros((TILE_M, TILE_N), dtype=float, device=device)
+    out = wp.empty(1, dtype=int, device=device)
+    wp.launch_tiled(
+        tile_len_kernel,
+        dim=(1,),
+        inputs=(a,),
+        outputs=(out,),
+        block_dim=32,
+        device=device,
+    )
+
+    test.assertEqual(out.numpy()[0], TILE_M)
+
+
 # #-----------------------------------------
 # # center of mass computation
 
@@ -737,6 +764,7 @@ add_function_test(TestTile, "test_tile_broadcast_add", test_tile_broadcast_add, 
 add_function_test(TestTile, "test_tile_broadcast_grad", test_tile_broadcast_grad, devices=devices)
 add_function_test(TestTile, "test_tile_view", test_tile_view, devices=devices)
 add_function_test(TestTile, "test_tile_assign", test_tile_assign, devices=devices)
+add_function_test(TestTile, "test_tile_len", test_tile_len, devices=devices)
 
 
 if __name__ == "__main__":

@@ -1913,6 +1913,46 @@ Utility
     Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
 
 
+.. py:function:: len(a: Vector[Any,Scalar]) -> int
+
+    Retrieves the number of elements in a vector.
+
+
+.. py:function:: len(a: Quaternion[Scalar]) -> int
+    :noindex:
+    :nocontentsentry:
+
+    Retrieves the number of elements in a quaternion.
+
+
+.. py:function:: len(a: Matrix[Any,Any,Scalar]) -> int
+    :noindex:
+    :nocontentsentry:
+
+    Retrieves the number of rows in a matrix.
+
+
+.. py:function:: len(a: Transformation[Float]) -> int
+    :noindex:
+    :nocontentsentry:
+
+    Retrieves the number of elements in a transformation.
+
+
+.. py:function:: len(a: Array[Any]) -> int
+    :noindex:
+    :nocontentsentry:
+
+    Retrieves the size of the first dimension in an array.
+
+
+.. py:function:: len(a: Tile) -> int
+    :noindex:
+    :nocontentsentry:
+
+    Retrieves the number of rows in a tile.
+
+
 
 
 Geometry

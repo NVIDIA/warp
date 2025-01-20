@@ -2095,6 +2095,30 @@ def test_py_arithmetic_ops(test, device, dtype):
     test.assertSequenceEqual(wptype(24) / v, make_quat(12, 6, 4, 3))
 
 
+@wp.kernel
+def quat_len_kernel(
+    q: wp.quat,
+    out: wp.array(dtype=int),
+):
+    length = wp.static(len(q))
+    wp.expect_eq(wp.static(len(q)), 4)
+    out[0] = wp.static(len(q))
+
+    foo = wp.quat()
+    length = len(foo)
+    wp.expect_eq(len(foo), 4)
+    out[1] = len(foo)
+
+
+def test_quat_len(test, device):
+    q = wp.quat()
+    out = wp.empty(2, dtype=int, device=device)
+    wp.launch(quat_len_kernel, dim=(1,), inputs=(q,), outputs=(out,), device=device)
+
+    test.assertEqual(out.numpy()[0], 4)
+    test.assertEqual(out.numpy()[1], 4)
+
+
 devices = get_test_devices()
 
 
@@ -2202,6 +2226,8 @@ for dtype in np_float_types:
     add_function_test(
         TestQuat, f"test_py_arithmetic_ops_{dtype.__name__}", test_py_arithmetic_ops, devices=None, dtype=dtype
     )
+
+add_function_test(TestQuat, "test_quat_len", test_quat_len, devices=devices)
 
 
 if __name__ == "__main__":

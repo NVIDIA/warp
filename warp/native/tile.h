@@ -1009,6 +1009,28 @@ void tile_register_t<T, M, N>::print() const
 }
 
 template <typename T, int M, int N>
+inline CUDA_CALLABLE int len(const tile_register_t<T, M, N>& t)
+{
+    return M;
+}
+
+template <typename T, int M, int N>
+inline CUDA_CALLABLE void adj_len(const tile_register_t<T, M, N>& t, const tile_register_t<T, M, N>& a, int& adj_ret)
+{
+}
+
+template <typename T, int M, int N, int StrideM, int StrideN, bool Owner>
+inline CUDA_CALLABLE int len(const tile_shared_t<T, M, N, StrideM, StrideN, Owner>& t)
+{
+    return M;
+}
+
+template <typename T, int M, int N, int StrideM, int StrideN, bool Owner>
+inline CUDA_CALLABLE void adj_len(const tile_shared_t<T, M, N, StrideM, StrideN, Owner>& t, const tile_shared_t<T, M, N, StrideM, StrideN, Owner>& a, int& adj_ret)
+{
+}
+
+template <typename T, int M, int N>
 inline CUDA_CALLABLE void print(const tile_register_t<T, M, N>& t)
 {
     t.print();
