@@ -349,9 +349,6 @@ def matrix(shape, dtype):
                     f"Invalid number of arguments in matrix constructor, expected {self._length_} elements, got {num_args}"
                 )
 
-        def __len__(self):
-            return self._shape_[0]
-
         def __add__(self, y):
             return warp.add(self, y)
 

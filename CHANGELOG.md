@@ -52,7 +52,6 @@
 - Fix the overriding of `wp.sim.Model` default parameters ([GH-429](https://github.com/NVIDIA/warp/pull/429)).
 - Fix `wp.array()` not respecting the desired `dtype` and `shape` when the given data is an another array with a CUDA interface ([GH-363](https://github.com/NVIDIA/warp/issues/363)).
 - Add an implicit tile sychronization whenever a shared memory tile's data is reinitialized (e.g. in dynamic loops). This could result in lower performance.
-- Fix the `len()` operator returning the total size of a matrix instead of its first dimension.
 
 ## [1.5.1] - 2025-01-02
 
