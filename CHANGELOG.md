@@ -17,6 +17,8 @@
 - Add per-module option to disable fused floating point operations, use `wp.set_module_options({"fuse_fp": False})`
   ([GH-379](https://github.com/NVIDIA/warp/issues/379)).
 - Add per-module option to add CUDA-C line information for profiling, use `wp.set_module_options({"lineinfo": True})`.
+- Add support for wp.tile_load() where the source array shape is not a multiple of the tile dimension, out of bounds reads will be zero-filled
+  
 - Add `example_tile_walker.py`, which reworks the existing `walker.py` to use Warp's tile API for matrix multiplication.
 - Add operator overloads for `wp.struct` objects by defining `wp.func` functions ([GH-392](https://github.com/NVIDIA/warp/issues/392)).
 - Add `example_tile_nbody.py`, an N-Body gravitational simulation example using Warp tile primitives.

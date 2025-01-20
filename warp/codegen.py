@@ -947,7 +947,7 @@ class Adjoint:
         total_shared = 0
 
         for var in adj.variables:
-            if is_tile(var.type) and var.type.storage == "shared":
+            if is_tile(var.type) and var.type.storage == "shared" and var.type.owner:
                 total_shared += var.type.size_in_bytes()
 
         return total_shared + adj.max_required_extra_shared_memory
@@ -2377,12 +2377,16 @@ class Adjoint:
                     out.is_write = target.is_write
 
         elif is_tile(target_type):
-            if len(indices) == 2:
+            if len(indices) == len(target_type.shape):
                 # handles extracting a single element from a tile
                 out = adj.add_builtin_call("tile_extract", [target, *indices])
-            else:
+            elif len(indices) < len(target_type.shape):
                 # handles tile views
                 out = adj.add_builtin_call("tile_view", [target, *indices])
+            else:
+                raise RuntimeError(
+                    f"Incorrect number of indices specified for a tile view/extract, got {len(indices)} indices for a {len(target_type.shape)} dimensional tile."
+                )
 
         else:
             # handles non-array type indexing, e.g: vec3, mat33, etc
@@ -2473,6 +2477,9 @@ class Adjoint:
                     lineno = adj.lineno + adj.fun_lineno
 
                     target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+
+            elif is_tile(target_type):
+                adj.add_builtin_call("assign", [target, *indices, rhs])
 
             elif type_is_vector(target_type) or type_is_quaternion(target_type) or type_is_matrix(target_type):
                 # recursively unwind AST, stopping at penultimate node
@@ -2903,7 +2910,7 @@ class Adjoint:
                 elif type_is_transformation(obj):
                     return obj._length_
                 elif is_tile(obj):
-                    return obj.M
+                    return obj.shape[0]
 
                 return len(obj)
 
