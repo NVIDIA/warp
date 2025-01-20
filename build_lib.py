@@ -161,7 +161,14 @@ def find_libmathdx():
                 import tarfile
 
                 with tarfile.open(local_filename, "r:gz") as tar_file:
-                    tar_file.extractall(extract_dir_base, filter="data")
+                    if hasattr(tarfile, "data_filter"):
+                        tar_file.extractall(extract_dir_base, filter="data")
+                    else:
+                        # The parameter `filter` of `TarFile.extractall()` was
+                        # introduced in Python 3.12 (and then backported to
+                        # 3.11.4, 3.10.12, 3.9.17, and 3.8.17), so we need
+                        # a fallback for older versions.
+                        tar_file.extractall(extract_dir_base)
         except Exception as e:
             print(f"Unable to extract libmathdx to {extract_dir_base}, skipping: {e}")
             return None
