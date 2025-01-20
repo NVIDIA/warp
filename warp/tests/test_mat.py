@@ -1737,6 +1737,12 @@ def test_constructors_constant_shape():
             m[i, j] = float(i * j)
 
 
+def test_mat_len(test, devices):
+    test.assertEqual(len(wp.mat22()), 2)
+    test.assertEqual(len(wp.mat33()), 3)
+    test.assertEqual(len(wp.mat44()), 4)
+
+
 devices = get_test_devices()
 
 
@@ -1875,6 +1881,8 @@ for dtype in np_float_types:
         devices=devices,
         dtype=dtype,
     )
+
+add_function_test(TestMat, "test_mat_len", test_mat_len)
 
 
 if __name__ == "__main__":
