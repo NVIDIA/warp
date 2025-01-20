@@ -224,6 +224,48 @@ def test_operators_mat44():
     expect_eq(r0[3], wp.vec4(39.0, 42.0, 45.0, 48.0))
 
 
+@wp.struct
+class Complex:
+    real: float
+    imag: float
+
+
+@wp.func
+def add(
+    a: Complex,
+    b: Complex,
+) -> Complex:
+    return Complex(
+        a.real + b.real,
+        a.imag + b.imag,
+    )
+
+
+@wp.func
+def mul(
+    a: Complex,
+    b: Complex,
+) -> Complex:
+    return Complex(
+        a.real * b.real - a.imag * b.imag,
+        a.real * b.imag + a.imag * b.real,
+    )
+
+
+@wp.kernel
+def test_operators_overload():
+    a = Complex(1.0, 2.0)
+    b = Complex(3.0, 4.0)
+
+    c = a + b
+    expect_eq(c.real, 4.0)
+    expect_eq(c.imag, 6.0)
+
+    d = a * b
+    expect_eq(d.real, -5.0)
+    expect_eq(d.imag, 10.0)
+
+
 devices = get_test_devices()
 
 
@@ -241,6 +283,7 @@ add_kernel_test(TestOperators, test_operators_vec4, dim=1, devices=devices)
 add_kernel_test(TestOperators, test_operators_mat22, dim=1, devices=devices)
 add_kernel_test(TestOperators, test_operators_mat33, dim=1, devices=devices)
 add_kernel_test(TestOperators, test_operators_mat44, dim=1, devices=devices)
+add_kernel_test(TestOperators, test_operators_overload, dim=1, devices=devices)
 
 
 if __name__ == "__main__":

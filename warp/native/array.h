@@ -1106,6 +1106,18 @@ inline CUDA_CALLABLE void adj_atomic_max(const A1<T>& buf, int i, int j, int k, 
     FP_VERIFY_ADJ_4(value, adj_value)
 }
 
+template<template<typename> class A, typename T>
+CUDA_CALLABLE inline int len(const A<T>& a)
+{
+    return a.shape[0];
+}
+
+template<template<typename> class A, typename T>
+CUDA_CALLABLE inline void adj_len(const A<T>& a, A<T>& adj_a, int& adj_ret)
+{
+}
+
+
 } // namespace wp
 
 #include "fabric.h"

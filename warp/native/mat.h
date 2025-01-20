@@ -1650,4 +1650,15 @@ inline CUDA_CALLABLE void adj_mat44(float m00, float m01, float m02, float m03,
     a33 += adj_ret.data[3][3];
 }
 
+template<unsigned Rows, unsigned Cols, typename Type>
+CUDA_CALLABLE inline int len(const mat_t<Rows,Cols,Type>& x)
+{
+    return Rows;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+CUDA_CALLABLE inline void adj_len(const mat_t<Rows,Cols,Type>& x, mat_t<Rows,Cols,Type>& adj_x, const int& adj_ret)
+{
+}
+
 } // namespace wp

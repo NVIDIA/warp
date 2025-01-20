@@ -6,6 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import unittest
+from typing import Any
 
 import numpy as np
 
@@ -1855,6 +1856,54 @@ def test_constructors_constant_shape():
             m[i, j] = float(i * j)
 
 
+Mat23 = wp.mat((2, 3), dtype=wp.float16)
+
+
+@wp.kernel
+def matrix_len_kernel(
+    m1: wp.mat22,
+    m2: wp.mat((3, 3), float),
+    m3: wp.mat((Any, Any), float),
+    m4: Mat23,
+    out: wp.array(dtype=int),
+):
+    length = wp.static(len(m1))
+    wp.expect_eq(len(m1), 2)
+    out[0] = len(m1)
+
+    length = len(m2)
+    wp.expect_eq(wp.static(len(m2)), 3)
+    out[1] = len(m2)
+
+    length = len(m3)
+    wp.expect_eq(len(m3), 4)
+    out[2] = wp.static(len(m3))
+
+    length = wp.static(len(m4))
+    wp.expect_eq(wp.static(len(m4)), 2)
+    out[3] = wp.static(len(m4))
+
+    foo = wp.mat22()
+    length = len(foo)
+    wp.expect_eq(len(foo), 2)
+    out[4] = len(foo)
+
+
+def test_matrix_len(test, device):
+    m1 = wp.mat22()
+    m2 = wp.mat33()
+    m3 = wp.mat44()
+    m4 = Mat23()
+    out = wp.empty(5, dtype=int, device=device)
+    wp.launch(matrix_len_kernel, dim=(1,), inputs=(m1, m2, m3, m4), outputs=(out,), device=device)
+
+    test.assertEqual(out.numpy()[0], 2)
+    test.assertEqual(out.numpy()[1], 3)
+    test.assertEqual(out.numpy()[2], 4)
+    test.assertEqual(out.numpy()[3], 2)
+    test.assertEqual(out.numpy()[4], 2)
+
+
 devices = get_test_devices()
 
 
@@ -1996,6 +2045,13 @@ for dtype in np_float_types:
         devices=devices,
         dtype=dtype,
     )
+
+add_function_test(
+    TestMat,
+    "test_matrix_len",
+    test_matrix_len,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":

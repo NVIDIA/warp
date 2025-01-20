@@ -117,16 +117,16 @@ def test_tile_math_fft(test, device, wp_dtype):
 @wp.kernel()
 def tile_math_cholesky(
     gA: wp.array2d(dtype=wp.float64),
-    gD: wp.array2d(dtype=wp.float64),
+    gD: wp.array1d(dtype=wp.float64),
     gL: wp.array2d(dtype=wp.float64),
-    gx: wp.array2d(dtype=wp.float64),
-    gy: wp.array2d(dtype=wp.float64),
+    gx: wp.array1d(dtype=wp.float64),
+    gy: wp.array1d(dtype=wp.float64),
 ):
     i, j = wp.tid()
     # Load A, D & x
     a = wp.tile_load(gA, i, j, m=TILE_M, n=TILE_M, storage="shared")
-    d = wp.tile_load(gD, i, j, m=TILE_M, n=1, storage="shared")
-    x = wp.tile_load(gx, i, j, m=TILE_M, n=1, storage="shared")
+    d = wp.tile_load(gD, i, m=TILE_M, storage="shared")
+    x = wp.tile_load(gx, i, m=TILE_M, storage="shared")
     # Compute L st LL^T = A + diag(D)
     b = wp.tile_diag_add(a, d)
     l = wp.tile_cholesky(b)
@@ -134,17 +134,17 @@ def tile_math_cholesky(
     y = wp.tile_cholesky_solve(l, x)
     # Store L & y
     wp.tile_store(gL, i, j, l)
-    wp.tile_store(gy, i, j, y)
+    wp.tile_store(gy, i, y)
 
 
 def test_tile_math_cholesky(test, device):
     A_h = np.ones((TILE_M, TILE_M), dtype=np.float64)
-    D_h = 8.0 * np.ones((TILE_M, 1), dtype=np.float64)
+    D_h = 8.0 * np.ones(TILE_M, dtype=np.float64)
     L_h = np.zeros_like(A_h)
-    X_h = np.arange(TILE_M, dtype=np.float64).reshape((TILE_M, 1))
+    X_h = np.arange(TILE_M, dtype=np.float64)
     Y_h = np.zeros_like(X_h)
 
-    A_np = A_h + np.diag(D_h.reshape((-1,)), 0)
+    A_np = A_h + np.diag(D_h)
     L_np = np.linalg.cholesky(A_np)
     Y_np = np.linalg.solve(A_np, X_h)
 

@@ -947,7 +947,7 @@ class Adjoint:
         total_shared = 0
 
         for var in adj.variables:
-            if is_tile(var.type) and var.type.storage == "shared":
+            if is_tile(var.type) and var.type.storage == "shared" and var.type.owner:
                 total_shared += var.type.size_in_bytes()
 
         return total_shared + adj.max_required_extra_shared_memory
@@ -1914,6 +1914,14 @@ class Adjoint:
 
         name = builtin_operators[type(node.op)]
 
+        try:
+            # Check if there is any user-defined overload for this operator
+            user_func = adj.resolve_external_reference(name)
+            if isinstance(user_func, warp.context.Function):
+                return adj.add_call(user_func, (left, right), {}, {})
+        except WarpCodegenError:
+            pass
+
         return adj.add_builtin_call(name, [left, right])
 
     def emit_UnaryOp(adj, node):
@@ -2369,12 +2377,16 @@ class Adjoint:
                     out.is_write = target.is_write
 
         elif is_tile(target_type):
-            if len(indices) == 2:
+            if len(indices) == len(target_type.shape):
                 # handles extracting a single element from a tile
                 out = adj.add_builtin_call("tile_extract", [target, *indices])
-            else:
+            elif len(indices) < len(target_type.shape):
                 # handles tile views
                 out = adj.add_builtin_call("tile_view", [target, *indices])
+            else:
+                raise RuntimeError(
+                    f"Incorrect number of indices specified for a tile view/extract, got {len(indices)} indices for a {len(target_type.shape)} dimensional tile."
+                )
 
         else:
             # handles non-array type indexing, e.g: vec3, mat33, etc
@@ -2466,6 +2478,9 @@ class Adjoint:
 
                     target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
+            elif is_tile(target_type):
+                adj.add_builtin_call("assign", [target, *indices, rhs])
+
             elif type_is_vector(target_type) or type_is_quaternion(target_type) or type_is_matrix(target_type):
                 # recursively unwind AST, stopping at penultimate node
                 node = lhs
@@ -2492,15 +2507,18 @@ class Adjoint:
                         print(
                             f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
                         )
-
                 else:
-                    out = adj.add_builtin_call("assign", [target, *indices, rhs])
+                    if adj.builder_options.get("enable_backward", True):
+                        out = adj.add_builtin_call("assign", [target, *indices, rhs])
 
-                    # re-point target symbol to out var
-                    for id in adj.symbols:
-                        if adj.symbols[id] == target:
-                            adj.symbols[id] = out
-                            break
+                        # re-point target symbol to out var
+                        for id in adj.symbols:
+                            if adj.symbols[id] == target:
+                                adj.symbols[id] = out
+                                break
+                    else:
+                        attr = adj.add_builtin_call("index", [target, *indices])
+                        adj.add_builtin_call("store", [attr, rhs])
 
             else:
                 raise WarpCodegenError(
@@ -2537,22 +2555,23 @@ class Adjoint:
 
             # assigning to a vector or quaternion component
             if type_is_vector(aggregate_type) or type_is_quaternion(aggregate_type):
-                # TODO: handle wp.adjoint case
-
                 index = adj.vector_component_index(lhs.attr, aggregate_type)
 
-                # TODO: array vec component case
                 if is_reference(aggregate.type):
                     attr = adj.add_builtin_call("indexref", [aggregate, index])
                     adj.add_builtin_call("store", [attr, rhs])
                 else:
-                    out = adj.add_builtin_call("assign", [aggregate, index, rhs])
+                    if adj.builder_options.get("enable_backward", True):
+                        out = adj.add_builtin_call("assign", [aggregate, index, rhs])
 
-                    # re-point target symbol to out var
-                    for id in adj.symbols:
-                        if adj.symbols[id] == aggregate:
-                            adj.symbols[id] = out
-                            break
+                        # re-point target symbol to out var
+                        for id in adj.symbols:
+                            if adj.symbols[id] == aggregate:
+                                adj.symbols[id] = out
+                                break
+                    else:
+                        attr = adj.add_builtin_call("index", [aggregate, index])
+                        adj.add_builtin_call("store", [attr, rhs])
 
             else:
                 attr = adj.emit_Attribute(lhs)
@@ -2870,10 +2889,61 @@ class Adjoint:
         if static_code is None:
             raise WarpCodegenError("Error extracting source code from wp.static() expression")
 
+        # Since this is an expression, we can enforce it to be defined on a single line.
+        static_code = static_code.replace("\n", "")
+
         vars_dict = adj.get_static_evaluation_context()
         # add constant variables to the static call context
         constant_vars = {k: v.constant for k, v in adj.symbols.items() if isinstance(v, Var) and v.constant is not None}
         vars_dict.update(constant_vars)
+
+        # Replace all constant `len()` expressions with their value.
+        if "len" in static_code:
+
+            def eval_len(obj):
+                if type_is_vector(obj):
+                    return obj._length_
+                elif type_is_quaternion(obj):
+                    return obj._length_
+                elif type_is_matrix(obj):
+                    return obj._shape_[0]
+                elif type_is_transformation(obj):
+                    return obj._length_
+                elif is_tile(obj):
+                    return obj.shape[0]
+
+                return len(obj)
+
+            len_expr_ctx = vars_dict.copy()
+            constant_types = {k: v.type for k, v in adj.symbols.items() if isinstance(v, Var) and v.type is not None}
+            len_expr_ctx.update(constant_types)
+            len_expr_ctx.update({"len": eval_len})
+
+            # We want to replace the expression code in-place,
+            # so reparse it to get the correct column info.
+            len_value_locs = []
+            expr_tree = ast.parse(static_code)
+            assert len(expr_tree.body) == 1 and isinstance(expr_tree.body[0], ast.Expr)
+            expr_root = expr_tree.body[0].value
+            for expr_node in ast.walk(expr_root):
+                if isinstance(expr_node, ast.Call) and expr_node.func.id == "len" and len(expr_node.args) == 1:
+                    len_expr = static_code[expr_node.col_offset : expr_node.end_col_offset]
+                    try:
+                        len_value = eval(len_expr, len_expr_ctx)
+                    except Exception:
+                        pass
+                    else:
+                        len_value_locs.append((len_value, expr_node.col_offset, expr_node.end_col_offset))
+
+            if len_value_locs:
+                new_static_code = ""
+                loc = 0
+                for value, start, end in len_value_locs:
+                    new_static_code += f"{static_code[loc:start]}{value}"
+                    loc = end
+
+                new_static_code += static_code[len_value_locs[-1][2] :]
+                static_code = new_static_code
 
         try:
             value = eval(static_code, vars_dict)

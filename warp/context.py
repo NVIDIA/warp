@@ -2430,7 +2430,7 @@ class Event:
             RuntimeError: Device does not support IPC.
         """
 
-        if self.device.is_ipc_supported:
+        if self.device.is_ipc_supported is not False:
             # Allocate a buffer for the data (64-element char array)
             ipc_handle_buffer = (ctypes.c_char * 64)()
 
@@ -2602,7 +2602,12 @@ class Device:
             generate CUDA binary files (cubin) for this device's architecture. ``False`` for CPU devices.
         is_mempool_supported (bool): Indicates whether the device supports using the ``cuMemAllocAsync`` and
             ``cuMemPool`` family of APIs for stream-ordered memory allocations. ``False`` for CPU devices.
-        is_ipc_supported (bool): Indicates whether the device supports IPC.
+        is_ipc_supported (Optional[bool]): Indicates whether the device supports IPC.
+
+            - ``True`` if supported.
+            - ``False`` if not supported.
+            - ``None`` if IPC support could not be determined (e.g. CUDA 11).
+
         is_primary (bool): Indicates whether this device's CUDA context is also the device's primary context.
         uuid (str): The UUID of the CUDA device. The UUID is in the same format used by ``nvidia-smi -L``.
             ``None`` for CPU devices.
@@ -2657,9 +2662,12 @@ class Device:
             self.arch = runtime.core.cuda_device_get_arch(ordinal)
             self.is_uva = runtime.core.cuda_device_is_uva(ordinal) > 0
             self.is_mempool_supported = runtime.core.cuda_device_is_mempool_supported(ordinal) > 0
-            self.is_ipc_supported = (
-                runtime.core.cuda_device_is_ipc_supported(ordinal) > 0 and platform.system() == "Linux"
-            )
+            if platform.system() == "Linux":
+                # Use None when IPC support cannot be determined
+                ipc_support_api_query = runtime.core.cuda_device_is_ipc_supported(ordinal)
+                self.is_ipc_supported = bool(ipc_support_api_query) if ipc_support_api_query >= 0 else None
+            else:
+                self.is_ipc_supported = False
             if warp.config.enable_mempools_at_init:
                 # enable if supported
                 self.is_mempool_enabled = self.is_mempool_supported
@@ -4993,7 +5001,7 @@ def event_from_ipc_handle(handle, device: "Devicelike" = None) -> Event:
         # which takes take of initializing Warp if needed.
         device = warp.context.get_device(device)
 
-    if not device.is_ipc_supported:
+    if device.is_ipc_supported is False:
         raise RuntimeError(f"IPC is not supported on device {device}.")
 
     event = Event(
@@ -5086,6 +5094,9 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
 
     # try to convert to a value type (vec3, mat33, etc)
     elif issubclass(arg_type, ctypes.Array):
+        # simple value types don't have gradient arrays, but native built-in signatures still expect a non-null adjoint value of the correct type
+        if value is None and adjoint:
+            return arg_type(0)
         if warp.types.types_equal(type(value), arg_type):
             return value
         else:
@@ -5094,9 +5105,6 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
                 return arg_type(value)
             except Exception as e:
                 raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}") from e
-
-    elif isinstance(value, bool):
-        return ctypes.c_bool(value)
 
     elif isinstance(value, arg_type):
         try:
@@ -5112,6 +5120,9 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             ) from e
 
     else:
+        # scalar args don't have gradient arrays, but native built-in signatures still expect a non-null scalar adjoint
+        if value is None and adjoint:
+            return arg_type._type_(0)
         try:
             # try to pack as a scalar type
             if arg_type is warp.types.float16:

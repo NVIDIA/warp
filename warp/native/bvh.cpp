@@ -262,7 +262,7 @@ float TopDownBVHBuilder::partition_sah(BVH& bvh, const vec3* lowers, const vec3*
 
 int TopDownBVHBuilder::build_recursive(BVH& bvh, const vec3* lowers, const vec3* uppers, int start, int end, int depth, int parent)
 {
-    assert(end - start >= 2);
+    assert(start < end);
 
     // printf("start %d end %d\n", start, end);
 
