@@ -1785,6 +1785,11 @@ def test_matrix_len(test, device):
     test.assertEqual(out.numpy()[3], 2)
     test.assertEqual(out.numpy()[4], 2)
 
+    test.assertEqual(len(m1), 2)
+    test.assertEqual(len(m2), 3)
+    test.assertEqual(len(m3), 4)
+    test.assertEqual(len(m4), 2)
+
 
 devices = get_test_devices()
 

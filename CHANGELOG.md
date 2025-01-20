@@ -34,6 +34,7 @@
 - `wp.Bvh` constructor now supports multiple construction methods, including `SAH` ( Surface Area Heuristics), `Median` and `LBVH`.
 - Avoid recompilation of modules when changing `block_dim`.
 - Improve memory consumption, compilation and runtime performance when using in-place vector/matrix assignments in kernels that have `enable_backward` set to False ([GH-332](https://github.com/NVIDIA/warp/issues/332)).
+- Fix the `len()` operator returning the total size of a matrix instead of its first dimension.
 
 ### Fixed
 
