@@ -1317,7 +1317,7 @@ def type_repr(t):
     if is_array(t):
         return str(f"array(ndim={t.ndim}, dtype={t.dtype})")
     if is_tile(t):
-        return str(f"tile(dtype={t.dtype}, m={t.M}, n={t.N})")
+        return str(f"tile(dtype={t.dtype}, shape={t.shape}")
     if type_is_vector(t):
         return str(f"vector(length={t._shape_[0]}, dtype={t._wp_scalar_type_})")
     if type_is_matrix(t):
@@ -3165,25 +3165,38 @@ def array_type_id(a):
         raise ValueError("Invalid array type")
 
 
-# tile expression objects
+# tile object
 class Tile:
     alignment = 16
 
-    def __init__(self, dtype, M, N, op=None, storage="register", layout="rowmajor", strides=None, owner=True):
+    def __init__(self, dtype, shape, op=None, storage="register", layout="rowmajor", strides=None, owner=True):
         self.dtype = type_to_warp(dtype)
-        self.M = M
-        self.N = N
+        self.shape = shape
         self.op = op
         self.storage = storage
         self.layout = layout
+        self.strides = strides
 
-        if strides is None:
-            if layout == "rowmajor":
-                self.strides = (N, 1)
-            elif layout == "colmajor":
-                self.strides = (1, M)
-        else:
-            self.strides = strides
+        # handle case where shape is concrete (rather than just Any)
+        if isinstance(self.shape, (list, tuple)):
+            if len(shape) == 0:
+                raise RuntimeError("Empty shape specified, must have at least 1 dimension")
+
+            # compute total size
+            self.size = 1
+            for s in self.shape:
+                self.size *= s
+
+            # if strides are not provided compute default strides
+            if self.strides is None:
+                self.strides = [1] * len(self.shape)
+
+                if layout == "rowmajor":
+                    for i in range(len(self.shape) - 2, -1, -1):
+                        self.strides[i] = self.strides[i + 1] * self.shape[i + 1]
+                else:
+                    for i in range(1, len(shape)):
+                        self.strides[i] = self.strides[i - 1] * self.shape[i - 1]
 
         self.owner = owner
 
@@ -3192,9 +3205,9 @@ class Tile:
         from warp.codegen import Var
 
         if self.storage == "register":
-            return f"wp::tile_register_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N}>"
+            return f"wp::tile_register_t<{Var.type_to_ctype(self.dtype)},wp::tile_layout_register_t<wp::tile_shape_t<{','.join(map(str, self.shape))}>>>"
         elif self.storage == "shared":
-            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{self.strides[0]}, {self.strides[1]}, {'true' if self.owner else 'false'}>"
+            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},wp::tile_layout_strided_t<wp::tile_shape_t<{','.join(map(str, self.shape))}>, wp::tile_stride_t<{','.join(map(str, self.strides))}>>, {'true' if self.owner else 'false'}>"
         else:
             raise RuntimeError(f"Unrecognized tile storage type {self.storage}")
 
@@ -3207,14 +3220,14 @@ class Tile:
         elif self.storage == "shared":
             if self.owner:
                 # allocate new shared memory tile
-                return f"wp::tile_alloc_empty<{Var.type_to_ctype(self.dtype)},{self.M},{self.N},{'true' if requires_grad else 'false'}>()"
+                return f"wp::tile_alloc_empty<{Var.type_to_ctype(self.dtype)},wp::tile_shape_t<{','.join(map(str, self.shape))}>,{'true' if requires_grad else 'false'}>()"
             else:
                 # tile will be initialized by another call, e.g.: tile_transpose()
                 return "NULL"
 
     # return total tile size in bytes
     def size_in_bytes(self):
-        num_bytes = self.align(type_size_in_bytes(self.dtype) * self.M * self.N)
+        num_bytes = self.align(type_size_in_bytes(self.dtype) * self.size)
         return num_bytes
 
     @staticmethod
@@ -3227,8 +3240,13 @@ class Tile:
 
 
 class TileZeros(Tile):
-    def __init__(self, dtype, M, N, storage="register"):
-        Tile.__init__(self, dtype, M, N, op="zeros", storage=storage)
+    def __init__(self, dtype, shape, storage="register"):
+        Tile.__init__(self, dtype, shape, op="zeros", storage=storage)
+
+
+class TileOnes(Tile):
+    def __init__(self, dtype, shape, storage="register"):
+        Tile.__init__(self, dtype, shape, op="ones", storage=storage)
 
 
 class TileRange(Tile):
@@ -3237,32 +3255,39 @@ class TileRange(Tile):
         self.stop = stop
         self.step = step
 
-        M = 1
-        N = int((stop - start) / step)
+        n = int((stop - start) / step)
 
-        Tile.__init__(self, dtype, M, N, op="arange", storage=storage)
+        Tile.__init__(self, dtype, shape=(n,), op="arange", storage=storage)
 
 
 class TileConstant(Tile):
-    def __init__(self, dtype, M, N):
-        Tile.__init__(self, dtype, M, N, op="constant", storage="register")
+    def __init__(self, dtype, shape):
+        Tile.__init__(self, dtype, shape, op="constant", storage="register")
 
 
 class TileLoad(Tile):
-    def __init__(self, array, M, N, storage="register"):
-        Tile.__init__(self, array.dtype, M, N, op="load", storage=storage)
+    def __init__(self, array, shape, storage="register"):
+        Tile.__init__(self, array.dtype, shape, op="load", storage=storage)
 
 
 class TileUnaryMap(Tile):
-    def __init__(self, t, storage="register"):
-        Tile.__init__(self, t.dtype, t.M, t.N, op="unary_map", storage=storage)
+    def __init__(self, t, dtype=None, storage="register"):
+        Tile.__init__(self, dtype, t.shape, op="unary_map", storage=storage)
+
+        # if no output dtype specified then assume it's the same as the first arg
+        if self.dtype is None:
+            self.dtype = t.dtype
 
         self.t = t
 
 
 class TileBinaryMap(Tile):
-    def __init__(self, a, b, storage="register"):
-        Tile.__init__(self, a.dtype, a.M, a.N, op="binary_map", storage=storage)
+    def __init__(self, a, b, dtype=None, storage="register"):
+        Tile.__init__(self, dtype, a.shape, op="binary_map", storage=storage)
+
+        # if no output dtype specified then assume it's the same as the first arg
+        if self.dtype is None:
+            self.dtype = a.dtype
 
         self.a = a
         self.b = b
@@ -3270,7 +3295,7 @@ class TileBinaryMap(Tile):
 
 class TileShared(Tile):
     def __init__(self, t):
-        Tile.__init__(self, t.dtype, t.M, t.N, "shared", storage="shared")
+        Tile.__init__(self, t.dtype, t.shape, "shared", storage="shared")
 
         self.t = t
 

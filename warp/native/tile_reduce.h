@@ -86,7 +86,7 @@ auto tile_reduce_impl(Op f, Tile& t)
     using T = typename Tile::Type;
 
     auto input = t.copy_to_register();
-    auto output = tile_register_t<T, 1, 1>();
+    auto output = tile_register_t<T, tile_layout_register_t<tile_shape_t<1>>>();
 
     const int warp_count = (WP_TILE_BLOCK_DIM + WP_TILE_WARP_SIZE - 1)/WP_TILE_WARP_SIZE;
     const int warp_index = threadIdx.x/WP_TILE_WARP_SIZE;
@@ -94,19 +94,21 @@ auto tile_reduce_impl(Op f, Tile& t)
 
     T thread_sum = input.data[0];
 
+    using Layout = typename decltype(input)::Layout;
+
     // thread reduction
     WP_PRAGMA_UNROLL
-    for (int i=1; i < input.NumRegs; ++i)
+    for (int i=1; i < Layout::NumRegs; ++i)
     {
-        int linear = t.index(i);
-        if (!Tile::Aligned && linear >= Tile::Size)
+        int linear = Layout::linear_from_register(i);
+        if (!Layout::valid(linear))
             break;
 
         thread_sum = f(thread_sum, input.data[i]);
     }
 
     // ensure that only threads with at least one valid item participate in the reduction
-    unsigned int mask = __ballot_sync(__activemask(), t.index(0) < Tile::Size);
+    unsigned int mask = __ballot_sync(__activemask(), Layout::valid(Layout::linear_from_register(0)));
 
     // warp reduction
     T warp_sum = warp_reduce(thread_sum, f, mask);
@@ -177,7 +179,7 @@ void adj_tile_sum(Tile& t, Tile& adj_t, AdjTile& adj_ret)
     WP_TILE_SYNC();
 
     // broadcast scalar across input dimensions (note zero strides)
-    auto adj_ret_reg = tile_shared_t<T, Tile::M, Tile::N, 0, 0>(&scratch, NULL).copy_to_register();
+    auto adj_ret_reg = tile_shared_t<T, tile_layout_strided_t<typename Tile::Layout::Shape, tile_stride_t<0, 0>>>(&scratch, NULL).copy_to_register();
     adj_t.grad_add(adj_ret_reg);
 }
 

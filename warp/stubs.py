@@ -898,6 +898,19 @@ def spatial_mass(
 
 
 @over
+def tile_zeros(m: int32, dtype: Any, storage: str) -> Tile:
+    """Allocates a tile of zero-initialized items.
+
+    :param m: Size of the first dimension of the output tile
+    :param dtype: Datatype of output tile's elements
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A zero-initialized tile with ``shape=(m,)`` and the specified datatype
+    """
+    ...
+
+
+@over
 def tile_zeros(m: int32, n: int32, dtype: Any, storage: str) -> Tile:
     """Allocates a tile of zero-initialized items.
 
@@ -912,6 +925,50 @@ def tile_zeros(m: int32, n: int32, dtype: Any, storage: str) -> Tile:
 
 
 @over
+def tile_zeros(m: int32, n: int32, o: int32, dtype: Any, storage: str) -> Tile:
+    """Allocates a tile of zero-initialized items.
+
+    :param m: Size of the first dimension of the output tile
+    :param n: Size of the second dimension of the output tile
+    :param o: Size of the third dimension of the output tile
+    :param dtype: Datatype of output tile's elements
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A zero-initialized tile with ``shape=(m,n,o)`` and the specified datatype
+    """
+    ...
+
+
+@over
+def tile_zeros(m: int32, n: int32, o: int32, p: int32, dtype: Any, storage: str) -> Tile:
+    """Allocates a tile of zero-initialized items.
+
+    :param m: Size of the first dimension of the output tile
+    :param n: Size of the second dimension of the output tile
+    :param o: Size of the third dimension of the output tile
+    :param p: Size of the fourth dimension of the output tile
+    :param dtype: Datatype of output tile's elements
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A zero-initialized tile with ``shape=(m,n,o,p)`` and the specified datatype
+    """
+    ...
+
+
+@over
+def tile_ones(m: int32, dtype: Any, storage: str) -> Tile:
+    """Allocates a tile of one-initialized items.
+
+    :param m: Size of the first dimension of the output tile
+    :param dtype: Datatype of output tile's elements
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A one-initialized tile with ``shape=(m)`` and the specified dtype
+    """
+    ...
+
+
+@over
 def tile_ones(m: int32, n: int32, dtype: Any, storage: str) -> Tile:
     """Allocates a tile of one-initialized items.
 
@@ -921,6 +978,37 @@ def tile_ones(m: int32, n: int32, dtype: Any, storage: str) -> Tile:
     :param storage: The storage location for the tile: ``"register"`` for registers
       (default) or ``"shared"`` for shared memory.
     :returns: A one-initialized tile with ``shape=(m,n)`` and the specified dtype
+    """
+    ...
+
+
+@over
+def tile_ones(m: int32, n: int32, o: int32, dtype: Any, storage: str) -> Tile:
+    """Allocates a tile of one-initialized items.
+
+    :param m: Size of the first dimension of the output tile
+    :param n: Size of the second dimension of the output tile
+    :param o: Size of the third dimension of the output tile
+    :param dtype: Datatype of output tile's elements
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A one-initialized tile with ``shape=(m,n,o)`` and the specified dtype
+    """
+    ...
+
+
+@over
+def tile_ones(m: int32, n: int32, o: int32, p: int32, dtype: Any, storage: str) -> Tile:
+    """Allocates a tile of one-initialized items.
+
+    :param m: Size of the first dimension of the output tile
+    :param n: Size of the second dimension of the output tile
+    :param o: Size of the third dimension of the output tile
+    :param p: Size of the third dimension of the output tile
+    :param dtype: Datatype of output tile's elements
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A one-initialized tile with ``shape=(m,n,o,p)`` and the specified dtype
     """
     ...
 
@@ -944,7 +1032,7 @@ def tile_arange(*args: Scalar, dtype: Any, storage: str) -> Tile:
 
 
 @over
-def tile_load(a: Array[Any], i: int32, n: int32, storage: str) -> Tile:
+def tile_load(a: Array[Any], i: int32, m: int32, storage: str) -> Tile:
     """Loads a 1D tile from a global memory array.
 
     This method will cooperatively load a tile from global memory using all threads in the block.
@@ -954,7 +1042,7 @@ def tile_load(a: Array[Any], i: int32, n: int32, storage: str) -> Tile:
     :param n: The number of elements in the tile
     :param storage: The storage location for the tile: ``"register"`` for registers
       (default) or ``"shared"`` for shared memory.
-    :returns: A tile with ``shape=(1,n)`` and dtype the same as the source array
+    :returns: A tile with ``shape=(m)`` and dtype the same as the source array
     """
     ...
 
@@ -978,13 +1066,57 @@ def tile_load(a: Array[Any], i: int32, j: int32, m: int32, n: int32, storage: st
 
 
 @over
+def tile_load(a: Array[Any], i: int32, j: int32, k: int32, m: int32, n: int32, o: int32, storage: str) -> Tile:
+    """Loads a 3D tile from a global memory array.
+
+    This method will cooperatively load a tile from global memory using all threads in the block.
+
+    :param a: The source array in global memory
+    :param i: Offset in the source array measured in multiples of ``m``, i.e.: ``x=i*m``
+    :param j: Offset in the source array measured in multiples of ``n``, i.e.; ``y=j*n``
+    :param k: Offset in the source array measured in multiples of ``o``, i.e.; ``z=k*o``
+    :param m: The size of the tile's first dimension
+    :param n: The size of the tile's second dimension
+    :param o: The size of the tile's third dimension
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile with ``shape=(m,n,o)`` and dtype the same as the source array
+    """
+    ...
+
+
+@over
+def tile_load(
+    a: Array[Any], i: int32, j: int32, k: int32, l: int32, m: int32, n: int32, o: int32, p: int32, storage: str
+) -> Tile:
+    """Loads a 4D tile from a global memory array.
+
+    This method will cooperatively load a tile from global memory using all threads in the block.
+
+    :param a: The source array in global memory
+    :param i: Offset in the source array measured in multiples of ``m``, i.e.: ``x=i*m``
+    :param j: Offset in the source array measured in multiples of ``n``, i.e.; ``y=j*n``
+    :param k: Offset in the source array measured in multiples of ``o``, i.e.; ``z=k*o``
+    :param l: Offset in the source array measured in multiples of ``p``, i.e.; ``w=l*p``
+    :param m: The size of the tile's first dimension
+    :param n: The size of the tile's second dimension
+    :param o: The size of the tile's third dimension
+    :param p: The size of the tile's fourth dimension
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile with ``shape=(m,n,o,p)`` and dtype the same as the source array
+    """
+    ...
+
+
+@over
 def tile_store(a: Array[Any], i: int32, t: Tile):
     """Stores a 1D tile to a global memory array.
 
     This method will cooperatively store a tile to global memory using all threads in the block.
 
     :param a: The destination array in global memory
-    :param i: Offset in the destination array measured in multiples of ``n``, i.e.: ``offset=i*n``
+    :param i: Offset in the destination array measured in multiples of ``n``, i.e.: ``x=i*n``
     :param t: The source tile to store data from, must have the same dtype as the destination array
     """
     ...
@@ -997,20 +1129,63 @@ def tile_store(a: Array[Any], i: int32, j: int32, t: Tile):
     This method will cooperatively store a tile to global memory using all threads in the block.
 
     :param a: The destination array in global memory
-    :param i: Offset in the destination array measured in multiples of ``m``, i.e.: ``row=i*m``
-    :param j: Offset in the destination array measured in multiples of ``n``, i.e.; ``col=j*n``
+    :param i: Offset in the destination array measured in multiples of ``m``, i.e.: ``x=i*m``
+    :param j: Offset in the destination array measured in multiples of ``n``, i.e.; ``y=j*n``
     :param t: The source tile to store data from, must have the same dtype as the destination array
     """
     ...
 
 
 @over
-def tile_atomic_add(a: Array[Any], x: int32, y: int32, t: Tile) -> Tile:
+def tile_store(a: Array[Any], i: int32, j: int32, k: int32, t: Tile):
+    """Stores a tile to a global memory array.
+
+    This method will cooperatively store a tile to global memory using all threads in the block.
+
+    :param a: The destination array in global memory
+    :param i: Offset in the destination array measured in multiples of ``m``, i.e.: ``x=i*m``
+    :param j: Offset in the destination array measured in multiples of ``n``, i.e.; ``y=j*n``
+    :param k: Offset in the destination array measured in multiples of ``o``, i.e.; ``z=k*o``
+    :param t: The source tile to store data from, must have the same dtype as the destination array
+    """
+    ...
+
+
+@over
+def tile_store(a: Array[Any], i: int32, j: int32, k: int32, l: int32, t: Tile):
+    """Stores a tile to a global memory array.
+
+    This method will cooperatively store a tile to global memory using all threads in the block.
+
+    :param a: The destination array in global memory
+    :param i: Offset in the destination array measured in multiples of ``m``, i.e.: ``x=i*m``
+    :param j: Offset in the destination array measured in multiples of ``n``, i.e.; ``y=j*n``
+    :param k: Offset in the destination array measured in multiples of ``o``, i.e.; ``z=k*o``
+    :param l: Offset in the destination array measured in multiples of ``p``, i.e.; ``w=l*p``
+    :param t: The source tile to store data from, must have the same dtype as the destination array
+    """
+    ...
+
+
+@over
+def tile_atomic_add(a: Array[Any], i: int32, t: Tile) -> Tile:
     """Atomically add a tile to the array `a`, each element will be updated atomically.
 
     :param a: Array in global memory, should have the same ``dtype`` as the input tile
-    :param x: Offset in the destination array measured in multiples of ``m``, i.e.: ``i=x*M`` where ``M`` is the first tile dimension
-    :param y: Offset in the destination array measured in multiples of ``n``, i.e.: ``j=y*N`` where ``N`` is the second tile dimension
+    :param i: Offset in the destination array in multiples of the tile shape, i.e.: ``x=i*t.shape[0]``
+    :param t: Source tile to add to the destination array
+    :returns: A tile with the same dimensions and type as the source tile, holding the original value of the destination elements
+    """
+    ...
+
+
+@over
+def tile_atomic_add(a: Array[Any], i: int32, j: int32, t: Tile) -> Tile:
+    """Atomically add a tile to the array `a`, each element will be updated atomically.
+
+    :param a: Array in global memory, should have the same ``dtype`` as the input tile
+    :param i: Offset in the destination array in multiples of the tile shape, i.e.: ``x=i*t.shape[0]``
+    :param j: Offset in the destination array in multiples of the tile shape, i.e.: ``y=j*t.shape[1]``
     :param t: Source tile to add to the destination array
     :returns: A tile with the same dimensions and type as the source tile, holding the original value of the destination elements
     """
@@ -1126,6 +1301,21 @@ def untile(a: Tile) -> Scalar:
 
 
 @over
+def tile_extract(a: Tile, i: int32) -> Scalar:
+    """Extracts a single element from the tile and returns it as a scalar type.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :returns: The value of the element at the specified tile location, with the same type as the input tile's per-element dtype
+    """
+    ...
+
+
+@over
 def tile_extract(a: Tile, i: int32, j: int32) -> Scalar:
     """Extracts a single element from the tile and returns it as a scalar type.
 
@@ -1136,6 +1326,41 @@ def tile_extract(a: Tile, i: int32, j: int32) -> Scalar:
     :param a: Tile to extract the element from
     :param i: Coordinate of element on first dimension
     :param j: Coordinate of element on the second dimension
+    :returns: The value of the element at the specified tile location, with the same type as the input tile's per-element dtype
+    """
+    ...
+
+
+@over
+def tile_extract(a: Tile, i: int32, j: int32, k: int32) -> Scalar:
+    """Extracts a single element from the tile and returns it as a scalar type.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension
+    :param k: Coordinate of element on the third dimension
+    :returns: The value of the element at the specified tile location, with the same type as the input tile's per-element dtype
+    """
+    ...
+
+
+@over
+def tile_extract(a: Tile, i: int32, j: int32, k: int32, l: int32) -> Scalar:
+    """Extracts a single element from the tile and returns it as a scalar type.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension
+    :param k: Coordinate of element on the third dimension
+    :param l: Coordinate of element on the fourth dimension
     :returns: The value of the element at the specified tile location, with the same type as the input tile's per-element dtype
     """
     ...
@@ -2606,6 +2831,12 @@ def sub(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[
 
 
 @over
+def sub(a: Tile, b: Tile) -> Tile:
+    """Subtract each element b from a"""
+    ...
+
+
+@over
 def bit_and(a: Int, b: Int) -> Int:
     """ """
     ...
@@ -2912,8 +3143,8 @@ def unot(a: Array[Any]) -> bool:
 
 
 @over
-def tile_diag_add(a: Tile, b: Tile) -> Tile:
-    """Add a square matrix and a diagonal matrix"""
+def tile_diag_add(a: Tile, d: Tile) -> Tile:
+    """Add a square matrix and a diagonal matrix 'd' represented as a 1D tile"""
     ...
 
 
@@ -3015,8 +3246,8 @@ def tile_cholesky_solve(L: Tile, x: Tile):
         * float64
 
     :param L: A square, lower triangular, matrix, such that LL^T = A
-    :param x: An Mx1 tile
-    :returns y: An Mx1 tile such that LL^T y = x
+    :param x: An 1D tile of length M
+    :returns y: An 1D tile of length M such that LL^T y = x
     """
     ...
 

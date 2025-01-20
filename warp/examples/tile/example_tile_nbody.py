@@ -64,7 +64,7 @@ def integrate_bodies_tiled(
     for k in range(num_bodies / TILE_SIZE):
         k_tile = wp.tile_load(old_position, k, TILE_SIZE, storage="shared")
         for idx in range(TILE_SIZE):
-            pi = k_tile[0, idx]
+            pi = k_tile[idx]
             accel += body_body_interaction(p0, pi)
 
     # Advance the velocity one timestep (in-place)
