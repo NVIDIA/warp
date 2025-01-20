@@ -578,7 +578,6 @@ Vector Math
     while the left and right basis vectors are returned in ``U`` and ``V``.
 
 
-
 .. py:function:: svd2(A: Matrix[2,2,Float], U: Matrix[2,2,Float], sigma: Vector[2,Float], V: Matrix[2,2,Scalar]) -> None
 
     Compute the SVD of a 2x2 matrix ``A``. The singular values are returned in ``sigma``,

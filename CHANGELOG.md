@@ -23,6 +23,7 @@
 - Add operator overloads for `wp.struct` objects by defining `wp.func` functions ([GH-392](https://github.com/NVIDIA/warp/issues/392)).
 - Add `example_tile_nbody.py`, an N-Body gravitational simulation example using Warp tile primitives.
 - Add a `len()` built-in to retrieve the number of elements for vec/quat/mat/arrays ([GH-389](https://github.com/NVIDIA/warp/issues/389)).
+- Add 2D SVD `svd2` to support 2d simulations ([GH-436](https://github.com/NVIDIA/warp/issues/436)).
 
 ### Changed
 

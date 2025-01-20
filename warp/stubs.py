@@ -644,6 +644,7 @@ def svd3(A: Matrix[3, 3, Float], U: Matrix[3, 3, Float], sigma: Vector[3, Float]
     """
     ...
 
+
 @over
 def svd2(A: Matrix[2, 2, Float], U: Matrix[2, 2, Float], sigma: Vector[2, Float], V: Matrix[2, 2, Scalar]):
     """Compute the SVD of a 2x2 matrix ``A``. The singular values are returned in ``sigma``,
