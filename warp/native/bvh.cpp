@@ -123,9 +123,9 @@ int TopDownBVHBuilder::partition_median(const vec3* lowers, const vec3* uppers, 
     return k;
 }	
     
-struct PartitionPredictateMidPoint
+struct PartitionPredicateMidPoint
 {
-    PartitionPredictateMidPoint(const vec3* lowers, const vec3* uppers, int a, float m) : lowers(lowers), uppers(uppers), axis(a), mid(m) {}
+    PartitionPredicateMidPoint(const vec3* lowers, const vec3* uppers, int a, float m) : lowers(lowers), uppers(uppers), axis(a), mid(m) {}
 
     bool operator()(int index) const 
     {
@@ -152,7 +152,7 @@ int TopDownBVHBuilder::partition_midpoint(const vec3* lowers, const vec3* uppers
     int axis = longest_axis(edges);
     float mid = center[axis];
 
-    int* upper = std::partition(indices+start, indices+end, PartitionPredictateMidPoint(lowers, uppers, axis, mid));
+    int* upper = std::partition(indices+start, indices+end, PartitionPredicateMidPoint(lowers, uppers, axis, mid));
 
     int k = upper-indices;
 

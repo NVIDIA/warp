@@ -225,12 +225,9 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
             float left_dist_sq = distance_to_aabb_sq(point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z));
             float right_dist_sq = distance_to_aabb_sq(point, vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z));
 
-            float left_score = left_dist_sq;
-            float right_score = right_dist_sq;
-
             wp::vec2i child_indices;
             wp::vec2 child_dist;
-            if (left_dist_sq < right_score)
+            if (left_dist_sq < right_dist_sq)
             {
                 child_indices = wp::vec2i(right_index, left_index);
                 child_dist = wp::vec2(right_dist_sq, left_dist_sq);
@@ -415,12 +412,9 @@ CUDA_CALLABLE inline bool mesh_query_point_no_sign(uint64_t id, const vec3& poin
             float left_dist_sq = distance_to_aabb_sq(point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z));
             float right_dist_sq = distance_to_aabb_sq(point, vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z));
 
-            float left_score = left_dist_sq;
-            float right_score = right_dist_sq;
-
             wp::vec2i child_indices;
             wp::vec2 child_dist;
-            if (left_dist_sq < right_score)
+            if (left_dist_sq < right_dist_sq)
             {
                 child_indices = wp::vec2i(right_index, left_index);
                 child_dist = wp::vec2(right_dist_sq, left_dist_sq);
@@ -605,12 +599,9 @@ CUDA_CALLABLE inline bool mesh_query_furthest_point_no_sign(uint64_t id, const v
             float left_dist_sq = furthest_distance_to_aabb_sq(point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z));
             float right_dist_sq = furthest_distance_to_aabb_sq(point, vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z));
 
-            float left_score = left_dist_sq;
-            float right_score = right_dist_sq;
-
             wp::vec2i child_indices;
             wp::vec2 child_dist;
-            if (left_dist_sq > right_score)
+            if (left_dist_sq > right_dist_sq)
             {
                 child_indices = wp::vec2i(right_index, left_index);
                 child_dist = wp::vec2(right_dist_sq, left_dist_sq);
@@ -847,12 +838,9 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_normal(uint64_t id, const vec3& 
             float left_dist_sq = distance_to_aabb_sq(point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z));
             float right_dist_sq = distance_to_aabb_sq(point, vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z));
 
-            float left_score = left_dist_sq;
-            float right_score = right_dist_sq;
-
             wp::vec2i child_indices;
             wp::vec2 child_dist;
-            if (left_dist_sq < right_score)
+            if (left_dist_sq < right_dist_sq)
             {
                 child_indices = wp::vec2i(right_index, left_index);
                 child_dist = wp::vec2(right_dist_sq, left_dist_sq);
@@ -1130,12 +1118,9 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_winding_number(uint64_t id, cons
             float left_dist_sq = distance_to_aabb_sq(point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z));
             float right_dist_sq = distance_to_aabb_sq(point, vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z));
 
-            float left_score = left_dist_sq;
-            float right_score = right_dist_sq;
-
             wp::vec2i child_indices;
             wp::vec2 child_dist;
-            if (left_dist_sq < right_score)
+            if (left_dist_sq < right_dist_sq)
             {
                 child_indices = wp::vec2i(right_index, left_index);
                 child_dist = wp::vec2(right_dist_sq, left_dist_sq);
