@@ -727,6 +727,12 @@ def quat_from_matrix(mat: Matrix[3, 3, Float]) -> Quaternion[Float]:
 
 
 @over
+def quat_from_matrix(mat: Matrix[4, 4, Float]) -> Quaternion[Float]:
+    """Construct a quaternion from a 4x4 matrix."""
+    ...
+
+
+@over
 def quat_rpy(roll: Float, pitch: Float, yaw: Float) -> Quaternion[Float]:
     """Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians."""
     ...

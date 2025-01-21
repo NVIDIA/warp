@@ -1341,6 +1341,13 @@ add_builtin(
     doc="Construct a quaternion from a 3x3 matrix.",
 )
 add_builtin(
+    "quat_from_matrix",
+    input_types={"mat": matrix(shape=(4, 4), dtype=Float)},
+    value_func=lambda arg_types, arg_values: quaternion(dtype=float_infer_type(arg_types)),
+    group="Quaternion Math",
+    doc="Construct a quaternion from a 4x4 matrix.",
+)
+add_builtin(
     "quat_rpy",
     input_types={"roll": Float, "pitch": Float, "yaw": Float},
     value_func=lambda arg_types, arg_values: quaternion(dtype=float_infer_type(arg_types)),
