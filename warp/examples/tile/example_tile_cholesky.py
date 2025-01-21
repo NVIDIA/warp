@@ -32,18 +32,18 @@ np_type, wp_type = np.float64, wp.float64
 def cholesky(
     A: wp.array2d(dtype=wp_type),
     L: wp.array2d(dtype=wp_type),
-    X: wp.array2d(dtype=wp_type),
-    Y: wp.array2d(dtype=wp_type),
+    X: wp.array1d(dtype=wp_type),
+    Y: wp.array1d(dtype=wp_type),
 ):
     i, j, _ = wp.tid()
 
-    a = wp.tile_load(A, i, j, m=TILE, n=TILE)
+    a = wp.tile_load(A, 0, 0, m=TILE, n=TILE)
     l = wp.tile_cholesky(a)
-    wp.tile_store(L, i, j, l)
+    wp.tile_store(L, 0, 0, l)
 
-    x = wp.tile_load(X, i, j, m=TILE, n=1)
+    x = wp.tile_load(X, 0, m=TILE)
     y = wp.tile_cholesky_solve(l, x)
-    wp.tile_store(Y, i, j, y)
+    wp.tile_store(Y, 0, y)
 
 
 if __name__ == "__main__":
@@ -55,11 +55,11 @@ if __name__ == "__main__":
     A_wp = wp.array2d(A_h, dtype=wp_type)
     L_wp = wp.array2d(L_h, dtype=wp_type)
 
-    X_h = np.arange(TILE, dtype=np_type).reshape((TILE, 1))
+    X_h = np.arange(TILE, dtype=np_type)
     Y_h = np.zeros_like(X_h)
 
-    X_wp = wp.array2d(X_h, dtype=wp_type)
-    Y_wp = wp.array2d(Y_h, dtype=wp_type)
+    X_wp = wp.array1d(X_h, dtype=wp_type)
+    Y_wp = wp.array1d(Y_h, dtype=wp_type)
 
     wp.launch_tiled(cholesky, dim=[1, 1], inputs=[A_wp, L_wp, X_wp, Y_wp], block_dim=BLOCK_DIM)
 

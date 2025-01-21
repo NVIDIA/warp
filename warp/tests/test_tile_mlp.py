@@ -292,14 +292,14 @@ def test_single_layer_nn(test, device):
     ):
         i = wp.tid()
 
-        f = wp.tile_load(input, 0, i, m=DIM_IN, n=NUM_THREADS)
+        f = wp.tile_load(input, 0, i * NUM_THREADS, m=DIM_IN, n=NUM_THREADS)
 
         w = wp.tile_load(weights, 0, 0, DIM_OUT, DIM_IN)
         b = wp.tile_load(bias, 0, 0, m=DIM_OUT, n=1)
 
         o = wp.tile_map(relu, wp.tile_matmul(w, f) + wp.tile_broadcast(b, m=DIM_OUT, n=NUM_THREADS))
 
-        wp.tile_store(out, 0, i, o)
+        wp.tile_store(out, 0, i * NUM_THREADS, o)
 
     with wp.ScopedDevice(device):
         rng = np.random.default_rng(45)

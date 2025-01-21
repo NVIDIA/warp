@@ -26,10 +26,10 @@ TILE_N = 32
 @wp.kernel
 def fft_tiled(x: wp.array2d(dtype=wp.vec2d), y: wp.array2d(dtype=wp.vec2d)):
     i, j, _ = wp.tid()
-    a = wp.tile_load(x, i, j, m=TILE_M, n=TILE_N)
+    a = wp.tile_load(x, 0, 0, m=TILE_M, n=TILE_N)
     wp.tile_fft(a)
     wp.tile_ifft(a)
-    wp.tile_store(y, i, j, a)
+    wp.tile_store(y, 0, 0, a)
 
 
 if __name__ == "__main__":

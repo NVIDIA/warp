@@ -286,8 +286,8 @@ struct tile_global_t
         WP_PRAGMA_UNROLL
         for (int i=0; i < Shape::N; ++i)
         {
-            // global = offset*shape + coord
-            int c = offset[i]*Shape::dim(i) + coord[i];
+            // global = offset + coord
+            int c = offset[i] + coord[i];
 
             // handle out of bounds case
             if (c >= data.shape[i])
@@ -1175,7 +1175,7 @@ void tile_register_t<T, L>::print() const
 
     if (threadIdx.x == 0)
     {
-        scratch.print_values();
+        scratch.print_values(scratch.data, 0);
 
         printf(" = tile(shape=(");
         for (int i=0; i < L::Shape::N; ++i)

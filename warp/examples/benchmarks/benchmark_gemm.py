@@ -23,11 +23,11 @@ def create_mlp_kernel(m, n, k):
         i_m, i_n = wp.tid()
         sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
         for count in range(n_k):
-            feat = wp.tile_load(x, i_m, count, TILE_M, TILE_K)
-            weight = wp.tile_load(weights_wp, count, i_n, TILE_K, TILE_N)
+            feat = wp.tile_load(x, i_m * TILE_M, count * TILE_K, TILE_M, TILE_K)
+            weight = wp.tile_load(weights_wp, count * TILE_K, i_n * TILE_N, TILE_K, TILE_N)
             wp.tile_matmul(feat, weight, sum)
 
-        wp.tile_store(output, i_m, i_n, sum)
+        wp.tile_store(output, i_m * TILE_M, i_n * TILE_M, sum)
 
     return mlp
 

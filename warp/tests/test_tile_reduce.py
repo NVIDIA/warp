@@ -31,7 +31,7 @@ def tile_sum_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=float
     s = wp.tile_zeros(m=1, dtype=float)
 
     for j in range(count):
-        a = wp.tile_load(input, i, j, m=1, n=TILE_DIM)
+        a = wp.tile_load(input, i, j * TILE_DIM, m=1, n=TILE_DIM)
         s += wp.tile_sum(a) * 0.5
 
     wp.tile_store(output, i, s)

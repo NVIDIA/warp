@@ -39,13 +39,13 @@ def tile_gemm(A: wp.array2d(dtype=wp.float32), B: wp.array2d(dtype=wp.float16), 
     count = int(K / TILE_K)
 
     for k in range(0, count):
-        a = wp.tile_load(A, i, k, m=TILE_M, n=TILE_K)
-        b = wp.tile_load(B, k, j, m=TILE_K, n=TILE_N)
+        a = wp.tile_load(A, i * TILE_M, k * TILE_K, m=TILE_M, n=TILE_K)
+        b = wp.tile_load(B, k * TILE_K, j * TILE_N, m=TILE_K, n=TILE_N)
 
         # sum += a*b
         wp.tile_matmul(a, b, sum)
 
-    wp.tile_store(C, i, j, sum)
+    wp.tile_store(C, i * TILE_M, j * TILE_N, sum)
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@
   ([GH-379](https://github.com/NVIDIA/warp/issues/379)).
 - Add per-module option to add CUDA-C line information for profiling, use `wp.set_module_options({"lineinfo": True})`.
 - Add support for wp.tile_load() where the source array shape is not a multiple of the tile dimension, out of bounds reads will be zero-filled
-  
+- Add support for higher dimensional (up to 4d) tile shapes and memory operations
 - Add `example_tile_walker.py`, which reworks the existing `walker.py` to use Warp's tile API for matrix multiplication.
 - Add operator overloads for `wp.struct` objects by defining `wp.func` functions ([GH-392](https://github.com/NVIDIA/warp/issues/392)).
 - Add `example_tile_nbody.py`, an N-Body gravitational simulation example using Warp tile primitives.
@@ -56,6 +56,10 @@
 - Fix the overriding of `wp.sim.Model` default parameters ([GH-429](https://github.com/NVIDIA/warp/pull/429)).
 - Fix `wp.array()` not respecting the desired `dtype` and `shape` when the given data is an another array with a CUDA interface ([GH-363](https://github.com/NVIDIA/warp/issues/363)).
 - Add an implicit tile sychronization whenever a shared memory tile's data is reinitialized (e.g. in dynamic loops). This could result in lower performance.
+
+### Breaking
+
+- Change indexing behavior in `wp.tile_load()`, `wp.tile_store()`, so that indices are now specified in terms of array elements instead of tile multiples.
 
 ## [1.5.1] - 2025-01-02
 

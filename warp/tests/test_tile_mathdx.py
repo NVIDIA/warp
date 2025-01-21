@@ -30,11 +30,11 @@ def tile_math_matmul_kernel(
     ga: wp.array2d(dtype=wp.float16), gb: wp.array2d(dtype=wp.float32), gc: wp.array2d(dtype=wp.float64)
 ):
     i, j = wp.tid()
-    a = wp.tile_load(ga, i, j, m=TILE_M, n=TILE_K)
-    b = wp.tile_load(gb, i, j, m=TILE_K, n=TILE_N)
+    a = wp.tile_load(ga, i * TILE_M, j * TILE_K, m=TILE_M, n=TILE_K)
+    b = wp.tile_load(gb, i * TILE_K, j * TILE_N, m=TILE_K, n=TILE_N)
     c = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float64)
     wp.tile_matmul(a, b, c)
-    wp.tile_store(gc, i, j, c)
+    wp.tile_store(gc, i * TILE_M, j * TILE_N, c)
 
 
 def test_tile_math_matmul(test, device):
@@ -71,17 +71,17 @@ def test_tile_math_matmul(test, device):
 @wp.kernel()
 def tile_math_fft_kernel_vec2f(gx: wp.array2d(dtype=wp.vec2f), gy: wp.array2d(dtype=wp.vec2f)):
     i, j = wp.tid()
-    xy = wp.tile_load(gx, i, j, m=FFT_SIZE_FP32, n=FFT_SIZE_FP32)
+    xy = wp.tile_load(gx, 0, 0, m=FFT_SIZE_FP32, n=FFT_SIZE_FP32)
     wp.tile_fft(xy)
-    wp.tile_store(gy, i, j, xy)
+    wp.tile_store(gy, 0, 0, xy)
 
 
 @wp.kernel()
 def tile_math_fft_kernel_vec2d(gx: wp.array2d(dtype=wp.vec2d), gy: wp.array2d(dtype=wp.vec2d)):
     i, j = wp.tid()
-    xy = wp.tile_load(gx, i, j, m=FFT_SIZE_FP64, n=FFT_SIZE_FP64)
+    xy = wp.tile_load(gx, 0, 0, m=FFT_SIZE_FP64, n=FFT_SIZE_FP64)
     wp.tile_fft(xy)
-    wp.tile_store(gy, i, j, xy)
+    wp.tile_store(gy, 0, 0, xy)
 
 
 def test_tile_math_fft(test, device, wp_dtype):
@@ -124,17 +124,17 @@ def tile_math_cholesky(
 ):
     i, j = wp.tid()
     # Load A, D & x
-    a = wp.tile_load(gA, i, j, m=TILE_M, n=TILE_M, storage="shared")
-    d = wp.tile_load(gD, i, m=TILE_M, storage="shared")
-    x = wp.tile_load(gx, i, m=TILE_M, storage="shared")
+    a = wp.tile_load(gA, 0, 0, m=TILE_M, n=TILE_M, storage="shared")
+    d = wp.tile_load(gD, 0, m=TILE_M, storage="shared")
+    x = wp.tile_load(gx, 0, m=TILE_M, storage="shared")
     # Compute L st LL^T = A + diag(D)
     b = wp.tile_diag_add(a, d)
     l = wp.tile_cholesky(b)
     # Solve for y in LL^T y = x
     y = wp.tile_cholesky_solve(l, x)
     # Store L & y
-    wp.tile_store(gL, i, j, l)
-    wp.tile_store(gy, i, y)
+    wp.tile_store(gL, 0, 0, l)
+    wp.tile_store(gy, 0, y)
 
 
 def test_tile_math_cholesky(test, device):
