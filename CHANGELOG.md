@@ -14,6 +14,7 @@
   ([GH-449](https://github.com/NVIDIA/warp/issues/449)).
 - Add [documentation](https://nvidia.github.io/warp/modules/runtime.html#launch-objects) for `Launch` objects
   ([GH-428](https://github.com/NVIDIA/warp/issues/428)).
+- Add a `wp.transform_from_matrix()` built-in ([GH-211](https://github.com/NVIDIA/warp/issues/211)).
 
 ### Changed
 

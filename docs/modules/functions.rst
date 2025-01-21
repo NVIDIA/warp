@@ -759,6 +759,8 @@ Transformations
     Compute the inverse of the transformation ``xform``.
 
 
+.. autofunction:: warp.math.transform_from_matrix
+.. autofunction:: warp.math.transform_to_matrix
 
 
 Spatial Math
