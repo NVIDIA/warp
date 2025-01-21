@@ -161,7 +161,7 @@ struct BVH
 	// used for fast refits
 	int* node_parents;
 	int* node_counts;
-	// reordered pritimive indices corresponds to the ordering of leaf nodes
+	// reordered primitive indices corresponds to the ordering of leaf nodes
 	int* primitive_indices;
 	
 	int max_depth;
@@ -542,4 +542,3 @@ void bvh_refit_device(uint64_t id);
 #endif
 
 } // namespace wp
-

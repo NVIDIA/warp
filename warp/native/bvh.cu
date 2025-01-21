@@ -18,7 +18,7 @@
 #include <cuda_runtime_api.h>
 
 #define THRUST_IGNORE_CUB_VERSION_CHECK
-#define REODER_HOST_TREE
+#define REORDER_HOST_TREE
 
 #include <cub/cub.cuh>
 
@@ -28,7 +28,7 @@ namespace wp
     void bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type, BVH& bvh);
     void bvh_destroy_host(BVH& bvh);
 
-// for LBVH: this will start with some muted leaf nodes, but that is okay, we can still trace up becuase there parents information is still valid
+// for LBVH: this will start with some muted leaf nodes, but that is okay, we can still trace up because there parents information is still valid
 // the only thing worth mentioning is that when the parent leaf node is also a leaf node, we need to recompute its bounds, since their child information are lost
 // for a compact tree such as those from SAH or Median constructor, there is no muted leaf nodes
 __global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __restrict__ child_count, int* __restrict__ primitive_indices, BVHPackedNodeHalf* __restrict__ node_lowers, BVHPackedNodeHalf* __restrict__ node_uppers, const vec3* item_lowers, const vec3* item_uppers)
@@ -456,7 +456,7 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
     // allocate temporary memory used during  building
     indices = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items*2); 	// *2 for radix sort
     keys = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items*2);	    // *2 for radix sort
-    deltas = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items);    	// highest differenting bit between keys for item i and i+1
+    deltas = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items);    	// highest differentiating bit between keys for item i and i+1
     range_lefts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
     range_rights = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
     num_children = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
@@ -533,11 +533,11 @@ T* make_device_buffer_of(void* context, T* host_buffer, size_t buffer_size)
 
 void copy_host_tree_to_device(void* context, BVH& bvh_host, BVH& bvh_device_on_host)
 {
-#ifdef REODER_HOST_TREE
+#ifdef REORDER_HOST_TREE
 
 
     // reorder bvh_host such that its nodes are in the front
-    // this is enssential for the device refit 
+    // this is essential for the device refit 
     BVHPackedNodeHalf* node_lowers_reordered = new BVHPackedNodeHalf[bvh_host.max_nodes];
     BVHPackedNodeHalf* node_uppers_reordered = new BVHPackedNodeHalf[bvh_host.max_nodes];
 
@@ -617,7 +617,7 @@ void copy_host_tree_to_device(void* context, BVH& bvh_host, BVH& bvh_device_on_h
     bvh_host.node_lowers = node_lowers_reordered;
     bvh_host.node_uppers = node_uppers_reordered;
     bvh_host.node_parents = node_parents_reordered;
-#endif // REODER_HOST_TREE
+#endif // REORDER_HOST_TREE
 
     bvh_device_on_host.num_nodes = bvh_host.num_nodes;
     bvh_device_on_host.num_leaf_nodes = bvh_host.num_leaf_nodes;
