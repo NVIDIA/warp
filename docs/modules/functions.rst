@@ -1872,7 +1872,21 @@ Utility
     Prints an error to stdout if ``a`` and ``b`` are not closer than tolerance in magnitude
 
 
-.. py:function:: expect_near(a: vec3f, b: vec3f, tolerance: float32) -> None
+.. py:function:: expect_near(a: Vector[Any,Float], b: Vector[Any,Float], tolerance: Float) -> None
+    :noindex:
+    :nocontentsentry:
+
+    Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
+
+
+.. py:function:: expect_near(a: Quaternion[Float], b: Quaternion[Float], tolerance: Float) -> None
+    :noindex:
+    :nocontentsentry:
+
+    Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
+
+
+.. py:function:: expect_near(a: Matrix[Any,Any,Float], b: Matrix[Any,Any,Float], tolerance: Float) -> None
     :noindex:
     :nocontentsentry:
 

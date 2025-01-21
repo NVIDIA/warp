@@ -5480,7 +5480,27 @@ add_builtin(
 )
 add_builtin(
     "expect_near",
-    input_types={"a": vec3, "b": vec3, "tolerance": float},
+    input_types={"a": vector(length=Any, dtype=Float), "b": vector(length=Any, dtype=Float), "tolerance": Float},
+    defaults={"tolerance": 1.0e-6},
+    value_type=None,
+    doc="Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude",
+    group="Utility",
+)
+add_builtin(
+    "expect_near",
+    input_types={"a": quaternion(dtype=Float), "b": quaternion(dtype=Float), "tolerance": Float},
+    defaults={"tolerance": 1.0e-6},
+    value_type=None,
+    doc="Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude",
+    group="Utility",
+)
+add_builtin(
+    "expect_near",
+    input_types={
+        "a": matrix(shape=(Any, Any), dtype=Float),
+        "b": matrix(shape=(Any, Any), dtype=Float),
+        "tolerance": Float,
+    },
     defaults={"tolerance": 1.0e-6},
     value_type=None,
     doc="Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude",

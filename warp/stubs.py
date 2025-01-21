@@ -2490,7 +2490,19 @@ def expect_near(a: Float, b: Float, tolerance: Float):
 
 
 @over
-def expect_near(a: vec3f, b: vec3f, tolerance: float32):
+def expect_near(a: Vector[Any, Float], b: Vector[Any, Float], tolerance: Float):
+    """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude"""
+    ...
+
+
+@over
+def expect_near(a: Quaternion[Float], b: Quaternion[Float], tolerance: Float):
+    """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude"""
+    ...
+
+
+@over
+def expect_near(a: Matrix[Any, Any, Float], b: Matrix[Any, Any, Float], tolerance: Float):
     """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude"""
     ...
 

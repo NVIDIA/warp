@@ -1333,4 +1333,26 @@ CUDA_CALLABLE inline void adj_len(const quat_t<Type>& x, quat_t<Type>& adj_x, co
 {
 }
 
+template<typename Type>
+inline CUDA_CALLABLE void expect_near(const quat_t<Type>& actual, const quat_t<Type>& expected, const Type& tolerance)
+{
+    Type diff(0);
+    for(size_t i = 0; i < 4; ++i)
+    {
+        diff = max(diff, abs(actual[i] - expected[i]));
+    }
+    if (diff > tolerance)
+    {
+        printf("Error, expect_near() failed with tolerance "); print(tolerance);
+        printf("\t Expected: "); print(expected);
+        printf("\t Actual: "); print(actual);
+    }
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_expect_near(const quat_t<Type>& actual, const quat_t<Type>& expected, Type tolerance, quat_t<Type>& adj_actual, quat_t<Type>& adj_expected, Type adj_tolerance)
+{
+    // nop
+}
+
 } // namespace wp
