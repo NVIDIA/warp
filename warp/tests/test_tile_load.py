@@ -376,8 +376,8 @@ def tile_load_fortran_kernel(A: wp.array2d(dtype=float), B: wp.array2d(dtype=flo
     # tile index
     i, j = wp.tid()
 
-    a = wp.tile_load(A, i, j, m=TILE_M, n=TILE_N)
-    wp.tile_store(B, i, j, a)
+    a = wp.tile_load(A, i * TILE_M, j * TILE_N, m=TILE_M, n=TILE_N)
+    wp.tile_store(B, i * TILE_M, j * TILE_N, a)
 
 
 def test_tile_load_fortran(test, device):

@@ -62,7 +62,7 @@ def integrate_bodies_tiled(
     accel = wp.vec3(0.0, 0.0, 0.0)
 
     for k in range(num_bodies / TILE_SIZE):
-        k_tile = wp.tile_load(old_position, k, TILE_SIZE, storage="shared")
+        k_tile = wp.tile_load(old_position, k * TILE_SIZE, TILE_SIZE, storage="shared")
         for idx in range(TILE_SIZE):
             pi = k_tile[idx]
             accel += body_body_interaction(p0, pi)

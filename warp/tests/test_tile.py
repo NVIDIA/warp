@@ -27,8 +27,8 @@ def tile_copy_1d_kernel(A: wp.array(dtype=float), B: wp.array(dtype=float)):
     # tile index
     i = wp.tid()
 
-    a = wp.tile_load(A, i, m=TILE_N)
-    wp.tile_store(B, i, a)
+    a = wp.tile_load(A, i * TILE_N, m=TILE_N)
+    wp.tile_store(B, i * TILE_N, a)
 
 
 def test_tile_copy_1d(test, device):
@@ -66,8 +66,8 @@ def tile_copy_2d_kernel(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float)):
     # tile index
     i, j = wp.tid()
 
-    a = wp.tile_load(A, i, j, m=TILE_M, n=TILE_N)
-    wp.tile_store(B, i, j, a)
+    a = wp.tile_load(A, i * TILE_M, j * TILE_N, m=TILE_M, n=TILE_N)
+    wp.tile_store(B, i * TILE_M, j * TILE_N, a)
 
 
 def test_tile_copy_2d(test, device):
@@ -111,11 +111,11 @@ def tile_unary_map(input: wp.array2d(dtype=float), output: wp.array2d(dtype=floa
     # tile index
     i, j = wp.tid()
 
-    a = wp.tile_load(input, i, j, m=TILE_M, n=TILE_N)
+    a = wp.tile_load(input, i * TILE_M, j * TILE_N, m=TILE_M, n=TILE_N)
 
     sa = wp.tile_map(wp.sin, a)
 
-    wp.tile_store(output, i, j, sa)
+    wp.tile_store(output, i * TILE_M, j * TILE_N, sa)
 
 
 def test_tile_unary_map(test, device):
@@ -163,12 +163,12 @@ def tile_binary_map(
     # tile index
     i, j = wp.tid()
 
-    a = wp.tile_load(input_a, i, j, m=TILE_M, n=TILE_N)
-    b = wp.tile_load(input_b, i, j, m=TILE_M, n=TILE_N)
+    a = wp.tile_load(input_a, i * TILE_M, j * TILE_N, m=TILE_M, n=TILE_N)
+    b = wp.tile_load(input_b, i * TILE_M, j * TILE_N, m=TILE_M, n=TILE_N)
 
     sa = wp.tile_map(binary_func, a, b)
 
-    wp.tile_store(output, i, j, sa)
+    wp.tile_store(output, i * TILE_M, j * TILE_N, sa)
 
 
 def test_tile_binary_map(test, device):
@@ -264,13 +264,13 @@ def test_tile_gemm(test, device):
         count = int(K / TILE_K)
 
         for k in range(0, count):
-            a = wp.tile_load(A, i, k, m=TILE_M, n=TILE_K)
-            b = wp.tile_load(B, k, j, m=TILE_K, n=TILE_N)
+            a = wp.tile_load(A, i * TILE_M, k * TILE_K, m=TILE_M, n=TILE_K)
+            b = wp.tile_load(B, k * TILE_K, j * TILE_N, m=TILE_K, n=TILE_N)
 
             # sum += a*b
             wp.tile_matmul(a, b, sum)
 
-        wp.tile_store(C, i, j, sum)
+        wp.tile_store(C, i * TILE_M, j * TILE_N, sum)
 
     M = TILE_M * 7
     K = TILE_K * 6
@@ -445,7 +445,7 @@ def test_tile_sum_launch(test, device):
 def test_tile_extract_kernel(a: wp.array2d(dtype=float), b: wp.array2d(dtype=float)):
     i, j, x, y = wp.tid()
 
-    tile = wp.tile_load(a, i, j, TILE_M, TILE_N)
+    tile = wp.tile_load(a, i * TILE_M, j * TILE_N, TILE_M, TILE_N)
 
     # compute sum of array sub tile
     wp.atomic_add(b, i, j, wp.tile_extract(tile, x, y))
@@ -481,7 +481,7 @@ def test_tile_extract(test, device):
 def test_tile_extract_repeated_kernel(a: wp.array2d(dtype=float), b: wp.array2d(dtype=float)):
     i, j, x, y = wp.tid()
 
-    tile = wp.tile_load(a, i, j, TILE_M, TILE_N)
+    tile = wp.tile_load(a, i * TILE_M, j * TILE_N, TILE_M, TILE_N)
 
     # each thread extracts the first element of the sub-tile
     # and accumulates the value onto the output
@@ -707,6 +707,22 @@ def test_tile_len(test, device):
     test.assertEqual(out.numpy()[0], TILE_M)
 
 
+@wp.kernel
+def test_tile_print_kernel():
+    # shared tile
+    a = wp.tile_ones(m=4, n=3, dtype=float)
+    # register tile
+    b = wp.tile_ones(m=4, n=3, dtype=float)
+
+    print(a)
+    print(b)
+
+
+def test_tile_print(test, device):
+    wp.launch_tiled(test_tile_print_kernel, dim=1, inputs=[], block_dim=64, device=device)
+    wp.synchronize()
+
+
 devices = get_cuda_test_devices()
 
 
@@ -732,7 +748,7 @@ add_function_test(TestTile, "test_tile_broadcast_grad", test_tile_broadcast_grad
 add_function_test(TestTile, "test_tile_view", test_tile_view, devices=devices)
 add_function_test(TestTile, "test_tile_assign", test_tile_assign, devices=devices)
 add_function_test(TestTile, "test_tile_len", test_tile_len, devices=devices)
-
+add_function_test(TestTile, "test_tile_print", test_tile_print, devices=devices, check_output=False)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

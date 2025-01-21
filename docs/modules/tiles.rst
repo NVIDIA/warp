@@ -59,7 +59,6 @@ In the following example, we launch a grid of threads where each block is respon
     b = [[   0.  256.  512.  768. 1024. 1280. 1536. 1792. 2048. 2304.]]
     
 Here, we have used the new :func:`warp.launch_tiled` function which assigns ``TILE_THREADS`` threads to each of the elements in the launch grid. Each block of ``TILE_THREADS`` threads then loads an entire row of 256 values from the global memory array and computes its sum (cooperatively).
-Note that we loaded the row by writing ``t = wp.tile_load(a[i], 0, TILE_SIZE)`` but we could have used the equivalent statement ``t = wp.tile_load(a[0], i, TILE_SIZE)`` instead.
 
 
 Tile Properties
@@ -80,7 +79,7 @@ In Warp, tile objects are 2D arrays of data where the tile elements may be scala
         i, j = wp.tid()
 
         # load a 2d tile from global memory
-        t = wp.tile_load(array, i, j, m=TILE_M, n=TILE_N)
+        t = wp.tile_load(array, i*TILE_M, j*TILE_N, m=TILE_M, n=TILE_N)
         s = wp.tile_sum(t)
         ...
 
@@ -145,13 +144,13 @@ Example: General Matrix Multiply (GEMM)
         count = int(K / TILE_K)
 
         for k in range(0, count):
-            a = wp.tile_load(A, i, k, m=TILE_M, n=TILE_K)
-            b = wp.tile_load(B, k, j, m=TILE_K, n=TILE_N)
+            a = wp.tile_load(A, i*TILE_M, k*TILE_K, m=TILE_M, n=TILE_K)
+            b = wp.tile_load(B, k*TILE_K, j*TILE_N, m=TILE_K, n=TILE_N)
 
             # sum += a*b
             wp.tile_matmul(a, b, sum)
 
-        wp.tile_store(C, i, j, sum)
+        wp.tile_store(C, i*TILE_M, j*TILE_N, sum)
 
 
 

@@ -82,7 +82,7 @@ def network(
 
     # GEMM
     p = wp.tile_load(phases, 0, 0, m=PHASE_COUNT, n=1)
-    w = wp.tile_load(weights, i, 0, m=TILE_TETS, n=PHASE_COUNT)
+    w = wp.tile_load(weights, i * TILE_TETS, 0, m=TILE_TETS, n=PHASE_COUNT)
     out = wp.tile_matmul(w, p)
 
     # activation

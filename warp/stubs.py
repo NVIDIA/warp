@@ -1038,8 +1038,8 @@ def tile_load(a: Array[Any], i: int32, m: int32, storage: str) -> Tile:
     This method will cooperatively load a tile from global memory using all threads in the block.
 
     :param a: The source array in global memory
-    :param i: Offset in the source array measured in multiples of ``n``, i.e.: ``offset=i*n``
-    :param n: The number of elements in the tile
+    :param i: Offset in the source array
+    :param m: The number of elements in the tile
     :param storage: The storage location for the tile: ``"register"`` for registers
       (default) or ``"shared"`` for shared memory.
     :returns: A tile with ``shape=(m)`` and dtype the same as the source array
@@ -1054,8 +1054,8 @@ def tile_load(a: Array[Any], i: int32, j: int32, m: int32, n: int32, storage: st
     This method will cooperatively load a tile from global memory using all threads in the block.
 
     :param a: The source array in global memory
-    :param i: Offset in the source array measured in multiples of ``m``, i.e.: ``row=i*m``
-    :param j: Offset in the source array measured in multiples of ``n``, i.e.; ``col=j*n``
+    :param i: Offset in the source array's first dimension
+    :param j: Offset in the source array's second dimension
     :param m: The size of the tile's first dimension
     :param n: The size of the tile's second dimension
     :param storage: The storage location for the tile: ``"register"`` for registers
@@ -1072,9 +1072,9 @@ def tile_load(a: Array[Any], i: int32, j: int32, k: int32, m: int32, n: int32, o
     This method will cooperatively load a tile from global memory using all threads in the block.
 
     :param a: The source array in global memory
-    :param i: Offset in the source array measured in multiples of ``m``, i.e.: ``x=i*m``
-    :param j: Offset in the source array measured in multiples of ``n``, i.e.; ``y=j*n``
-    :param k: Offset in the source array measured in multiples of ``o``, i.e.; ``z=k*o``
+    :param i: Offset in the source array's first dimension
+    :param j: Offset in the source array's second dimension
+    :param k: Offset in the source array's third dimension
     :param m: The size of the tile's first dimension
     :param n: The size of the tile's second dimension
     :param o: The size of the tile's third dimension
@@ -1094,10 +1094,10 @@ def tile_load(
     This method will cooperatively load a tile from global memory using all threads in the block.
 
     :param a: The source array in global memory
-    :param i: Offset in the source array measured in multiples of ``m``, i.e.: ``x=i*m``
-    :param j: Offset in the source array measured in multiples of ``n``, i.e.; ``y=j*n``
-    :param k: Offset in the source array measured in multiples of ``o``, i.e.; ``z=k*o``
-    :param l: Offset in the source array measured in multiples of ``p``, i.e.; ``w=l*p``
+    :param i: Offset in the source array's first dimension
+    :param j: Offset in the source array's second dimension
+    :param k: Offset in the source array's third dimension
+    :param l: Offset in the source array's fourth dimension
     :param m: The size of the tile's first dimension
     :param n: The size of the tile's second dimension
     :param o: The size of the tile's third dimension
@@ -1116,7 +1116,7 @@ def tile_store(a: Array[Any], i: int32, t: Tile):
     This method will cooperatively store a tile to global memory using all threads in the block.
 
     :param a: The destination array in global memory
-    :param i: Offset in the destination array measured in multiples of ``n``, i.e.: ``x=i*n``
+    :param i: Offset in the destination array
     :param t: The source tile to store data from, must have the same dtype as the destination array
     """
     ...
@@ -1124,13 +1124,13 @@ def tile_store(a: Array[Any], i: int32, t: Tile):
 
 @over
 def tile_store(a: Array[Any], i: int32, j: int32, t: Tile):
-    """Stores a tile to a global memory array.
+    """Stores a 2D tile to a global memory array.
 
     This method will cooperatively store a tile to global memory using all threads in the block.
 
     :param a: The destination array in global memory
-    :param i: Offset in the destination array measured in multiples of ``m``, i.e.: ``x=i*m``
-    :param j: Offset in the destination array measured in multiples of ``n``, i.e.; ``y=j*n``
+    :param i: Offset in the destination array's first dimension
+    :param j: Offset in the destination array's second dimension
     :param t: The source tile to store data from, must have the same dtype as the destination array
     """
     ...
@@ -1138,14 +1138,14 @@ def tile_store(a: Array[Any], i: int32, j: int32, t: Tile):
 
 @over
 def tile_store(a: Array[Any], i: int32, j: int32, k: int32, t: Tile):
-    """Stores a tile to a global memory array.
+    """Stores a 3D tile to a global memory array.
 
     This method will cooperatively store a tile to global memory using all threads in the block.
 
     :param a: The destination array in global memory
-    :param i: Offset in the destination array measured in multiples of ``m``, i.e.: ``x=i*m``
-    :param j: Offset in the destination array measured in multiples of ``n``, i.e.; ``y=j*n``
-    :param k: Offset in the destination array measured in multiples of ``o``, i.e.; ``z=k*o``
+    :param i: Offset in the destination array's first dimension
+    :param j: Offset in the destination array's second dimension
+    :param k: Offset in the destination array's third dimension
     :param t: The source tile to store data from, must have the same dtype as the destination array
     """
     ...
@@ -1153,15 +1153,15 @@ def tile_store(a: Array[Any], i: int32, j: int32, k: int32, t: Tile):
 
 @over
 def tile_store(a: Array[Any], i: int32, j: int32, k: int32, l: int32, t: Tile):
-    """Stores a tile to a global memory array.
+    """Stores a 4D tile to a global memory array.
 
     This method will cooperatively store a tile to global memory using all threads in the block.
 
     :param a: The destination array in global memory
-    :param i: Offset in the destination array measured in multiples of ``m``, i.e.: ``x=i*m``
-    :param j: Offset in the destination array measured in multiples of ``n``, i.e.; ``y=j*n``
-    :param k: Offset in the destination array measured in multiples of ``o``, i.e.; ``z=k*o``
-    :param l: Offset in the destination array measured in multiples of ``p``, i.e.; ``w=l*p``
+    :param i: Offset in the destination array's first dimension
+    :param j: Offset in the destination array's second dimension
+    :param k: Offset in the destination array's third dimension
+    :param l: Offset in the destination array's fourth dimension
     :param t: The source tile to store data from, must have the same dtype as the destination array
     """
     ...
@@ -1169,10 +1169,10 @@ def tile_store(a: Array[Any], i: int32, j: int32, k: int32, l: int32, t: Tile):
 
 @over
 def tile_atomic_add(a: Array[Any], i: int32, t: Tile) -> Tile:
-    """Atomically add a tile to the array `a`, each element will be updated atomically.
+    """Atomically add a 1D tile to the array `a`, each element will be updated atomically.
 
     :param a: Array in global memory, should have the same ``dtype`` as the input tile
-    :param i: Offset in the destination array in multiples of the tile shape, i.e.: ``x=i*t.shape[0]``
+    :param i: Offset in the destination array
     :param t: Source tile to add to the destination array
     :returns: A tile with the same dimensions and type as the source tile, holding the original value of the destination elements
     """
@@ -1181,11 +1181,40 @@ def tile_atomic_add(a: Array[Any], i: int32, t: Tile) -> Tile:
 
 @over
 def tile_atomic_add(a: Array[Any], i: int32, j: int32, t: Tile) -> Tile:
-    """Atomically add a tile to the array `a`, each element will be updated atomically.
+    """Atomically add a 2D tile to the array `a`, each element will be updated atomically.
 
     :param a: Array in global memory, should have the same ``dtype`` as the input tile
-    :param i: Offset in the destination array in multiples of the tile shape, i.e.: ``x=i*t.shape[0]``
-    :param j: Offset in the destination array in multiples of the tile shape, i.e.: ``y=j*t.shape[1]``
+    :param i: Offset in the destination array's first dimension
+    :param j: Offset in the destination array's second dimension
+    :param t: Source tile to add to the destination array
+    :returns: A tile with the same dimensions and type as the source tile, holding the original value of the destination elements
+    """
+    ...
+
+
+@over
+def tile_atomic_add(a: Array[Any], i: int32, j: int32, k: int32, t: Tile) -> Tile:
+    """Atomically add a 3D tile to the array `a`, each element will be updated atomically.
+
+    :param a: Array in global memory, should have the same ``dtype`` as the input tile
+    :param i: Offset in the destination array's first dimension
+    :param j: Offset in the destination array's second dimension
+    :param k: Offset in the destination array's third dimension
+    :param t: Source tile to add to the destination array
+    :returns: A tile with the same dimensions and type as the source tile, holding the original value of the destination elements
+    """
+    ...
+
+
+@over
+def tile_atomic_add(a: Array[Any], i: int32, j: int32, k: int32, l: int32, t: Tile) -> Tile:
+    """Atomically add a 4D tile to the array `a`, each element will be updated atomically.
+
+    :param a: Array in global memory, should have the same ``dtype`` as the input tile
+    :param i: Offset in the destination array's first dimension
+    :param j: Offset in the destination array's second dimension
+    :param k: Offset in the destination array's third dimension
+    :param l: Offset in the destination array's fourth dimension
     :param t: Source tile to add to the destination array
     :returns: A tile with the same dimensions and type as the source tile, holding the original value of the destination elements
     """

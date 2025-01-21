@@ -1168,7 +1168,7 @@ def create_inertia_matrix_kernel(num_joints, num_dofs):
         # compute P = M*J where M is a 6x6 block diagonal mass matrix
         for i in range(int(num_joints)):
             # 6x6 block matrices are on the diagonal
-            M_body = wp.tile_load(M_arr[articulation], i, i, m=6, n=6)
+            M_body = wp.tile_load(M_arr[articulation], i * 6, i * 6, m=6, n=6)
 
             # load a 6xN row from the Jacobian
             J_body = wp.tile_view(J, i * 6, 0, m=6, n=num_dofs)
@@ -1222,7 +1222,7 @@ def create_inertia_matrix_cholesky_kernel(num_joints, num_dofs):
         # compute P = M*J where M is a 6x6 block diagonal mass matrix
         for i in range(int(num_joints)):
             # 6x6 block matrices are on the diagonal
-            M_body = wp.tile_load(M_arr[articulation], i, i, m=6, n=6)
+            M_body = wp.tile_load(M_arr[articulation], i * 6, i * 6, m=6, n=6)
 
             # load a 6xN row from the Jacobian
             J_body = wp.tile_view(J, i * 6, 0, m=6, n=num_dofs)
