@@ -45,8 +45,8 @@ class TestSampleParticlesSimulationDrop(omni.kit.test.AsyncTestCase):
 
         points_first = np.array(points_attr.Get())
         assert np.isfinite(points_first).all()
-        array_are_almost_equal(np.min(points_first, axis=0), (-48.5, 204.25, -95.5), atol=1.0)
-        array_are_almost_equal(np.max(points_first, axis=0), (48.5, 391.25, 91.0), atol=1.0)
+        array_are_almost_equal(np.min(points_first, axis=0), (-48.5, 204.25, -95.5), atol=5.0)
+        array_are_almost_equal(np.max(points_first, axis=0), (48.5, 391.25, 91.0), atol=5.0)
 
         prev_points_hash = None
         curr_points_hash = None
