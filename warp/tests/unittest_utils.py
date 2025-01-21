@@ -7,7 +7,7 @@
 
 import ctypes
 import ctypes.util
-import importlib
+import importlib.util
 import os
 import sys
 import time
