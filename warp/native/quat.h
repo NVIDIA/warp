@@ -487,6 +487,37 @@ inline CUDA_CALLABLE void adj_indexref(quat_t<Type>* q, int idx,
     // nop
 }
 
+
+template<typename Type>
+inline CUDA_CALLABLE void augassign_add(quat_t<Type>& q, int idx, Type value)
+{
+    q[idx] += value;
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_augassign_add(quat_t<Type>& q, int idx, Type value,
+                                        quat_t<Type>& adj_q, int adj_idx, Type& adj_value)
+{
+    adj_value += adj_q[idx];
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void augassign_sub(quat_t<Type>& q, int idx, Type value)
+{
+    q[idx] -= value;
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_augassign_sub(quat_t<Type>& q, int idx, Type value,
+                                        quat_t<Type>& adj_q, int adj_idx, Type& adj_value)
+{
+    adj_value -= adj_q[idx];
+}
+
+
 template<typename Type>
 inline CUDA_CALLABLE quat_t<Type> assign(quat_t<Type>& q, int idx, Type value)
 {

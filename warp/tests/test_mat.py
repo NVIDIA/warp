@@ -1662,6 +1662,57 @@ def test_matrix_len(test, device):
     test.assertEqual(len(m4), 2)
 
 
+@wp.kernel
+def matrix_augassign_kernel(
+    a: wp.array(dtype=wp.mat22), b: wp.array(dtype=wp.mat22), c: wp.array(dtype=wp.mat22), d: wp.array(dtype=wp.mat22)
+):
+    i = wp.tid()
+
+    m1 = wp.mat22()
+    m2 = b[i]
+
+    m1[0, 0] += m2[0, 0]
+    m1[0, 1] += m2[0, 1]
+    m1[1, 0] += m2[1, 0]
+    m1[1, 1] += m2[1, 1]
+
+    a[i] = m1
+
+    m3 = wp.mat22()
+    m4 = d[i]
+
+    m3[0, 0] -= m4[0, 0]
+    m3[0, 1] -= m4[0, 1]
+    m3[1, 0] -= m4[1, 0]
+    m3[1, 1] -= m4[1, 1]
+
+    c[i] = m3
+
+
+def test_matrix_augassign(test, device):
+    N = 3
+
+    a = wp.zeros(N, dtype=wp.mat22, requires_grad=True)
+    b = wp.ones(N, dtype=wp.mat22, requires_grad=True)
+
+    c = wp.zeros(N, dtype=wp.mat22, requires_grad=True)
+    d = wp.ones(N, dtype=wp.mat22, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(matrix_augassign_kernel, N, inputs=[a, b, c, d])
+
+    tape.backward(grads={a: wp.ones_like(a), c: wp.ones_like(c)})
+
+    assert_np_equal(a.numpy(), wp.ones_like(a).numpy())
+    assert_np_equal(a.grad.numpy(), wp.ones_like(a).numpy())
+    assert_np_equal(b.grad.numpy(), wp.ones_like(a).numpy())
+
+    assert_np_equal(c.numpy(), -wp.ones_like(c).numpy())
+    assert_np_equal(c.grad.numpy(), wp.ones_like(c).numpy())
+    assert_np_equal(d.grad.numpy(), -wp.ones_like(d).numpy())
+
+
 devices = get_test_devices()
 
 
@@ -1795,6 +1846,7 @@ for dtype in np_float_types:
         dtype=dtype,
     )
 add_function_test(TestMat, "test_matrix_len", test_matrix_len, devices=devices)
+add_function_test(TestMat, "test_matrix_augassign", test_matrix_augassign, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

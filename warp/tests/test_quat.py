@@ -2119,6 +2119,57 @@ def test_quat_len(test, device):
     test.assertEqual(out.numpy()[1], 4)
 
 
+@wp.kernel
+def vector_augassign_kernel(
+    a: wp.array(dtype=wp.quat), b: wp.array(dtype=wp.quat), c: wp.array(dtype=wp.quat), d: wp.array(dtype=wp.quat)
+):
+    i = wp.tid()
+
+    q1 = wp.quat()
+    q2 = b[i]
+
+    q1[0] += q2[0]
+    q1[1] += q2[1]
+    q1[2] += q2[2]
+    q1[3] += q2[3]
+
+    a[i] = q1
+
+    q3 = wp.quat()
+    q4 = d[i]
+
+    q3[0] += q4[0]
+    q3[1] += q4[1]
+    q3[2] += q4[2]
+    q3[3] += q4[3]
+
+    c[i] = q1
+
+
+def test_vector_augassign(test, device):
+    N = 3
+
+    a = wp.zeros(N, dtype=wp.quat, requires_grad=True)
+    b = wp.ones(N, dtype=wp.quat, requires_grad=True)
+
+    c = wp.zeros(N, dtype=wp.quat, requires_grad=True)
+    d = wp.ones(N, dtype=wp.quat, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(vector_augassign_kernel, N, inputs=[a, b, c, d])
+
+    tape.backward(grads={a: wp.ones_like(a), c: wp.ones_like(c)})
+
+    assert_np_equal(a.numpy(), wp.ones_like(a).numpy())
+    assert_np_equal(a.grad.numpy(), wp.ones_like(a).numpy())
+    assert_np_equal(b.grad.numpy(), wp.ones_like(a).numpy())
+
+    assert_np_equal(c.numpy(), -wp.ones_like(c).numpy())
+    assert_np_equal(c.grad.numpy(), wp.ones_like(c).numpy())
+    assert_np_equal(d.grad.numpy(), -wp.ones_like(d).numpy())
+
+
 devices = get_test_devices()
 
 

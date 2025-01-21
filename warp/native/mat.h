@@ -395,6 +395,36 @@ inline CUDA_CALLABLE void adj_index(const mat_t<Rows,Cols,Type>& m, int row, int
 
 
 template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void augassign_add(mat_t<Rows,Cols,Type>& m, int row, int col, Type value)
+{
+    m.data[row][col] += value;
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_augassign_add(mat_t<Rows,Cols,Type>& m, int row, int col, Type value,
+                                        mat_t<Rows,Cols,Type>& adj_m, int adj_row, int adj_col, Type& adj_value)
+{
+    adj_value += adj_m.data[row][col];
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void augassign_sub(mat_t<Rows,Cols,Type>& m, int row, int col, Type value)
+{
+    m.data[row][col] -= value;
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_augassign_sub(mat_t<Rows,Cols,Type>& m, int row, int col, Type value,
+                                        mat_t<Rows,Cols,Type>& adj_m, int adj_row, int adj_col, Type& adj_value)
+{
+    adj_value -= adj_m.data[row][col];
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign(mat_t<Rows,Cols,Type>& m, int row, int col, Type value)
 {
 #ifndef NDEBUG

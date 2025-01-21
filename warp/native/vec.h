@@ -495,6 +495,37 @@ inline CUDA_CALLABLE void adj_indexref(vec_t<Length, Type>* v, int idx,
     // nop
 }
 
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void augassign_add(vec_t<Length, Type>& v, int idx, Type value)
+{
+    v[idx] += value;
+}
+
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_augassign_add(vec_t<Length, Type>& v, int idx, Type value,
+                                        vec_t<Length, Type>& adj_v, int adj_idx, Type& adj_value)
+{
+    adj_value += adj_v[idx];
+}
+
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void augassign_sub(vec_t<Length, Type>& v, int idx, Type value)
+{
+    v[idx] -= value;
+}
+
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_augassign_sub(vec_t<Length, Type>& v, int idx, Type value,
+                                        vec_t<Length, Type>& adj_v, int adj_idx, Type& adj_value)
+{
+    adj_value -= adj_v[idx];
+}
+
+
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE vec_t<Length, Type> assign(vec_t<Length, Type>& v, int idx, Type value)
 {
