@@ -2675,10 +2675,14 @@ class Adjoint:
                     make_new_assign_statement()
                     return
 
-            # TODO
             elif type_is_vector(target_type) or type_is_quaternion(target_type) or type_is_matrix(target_type):
-                make_new_assign_statement()
-                return
+                if isinstance(node.op, ast.Add):
+                    adj.add_builtin_call("augassign_add", [target, *indices, rhs])
+                elif isinstance(node.op, ast.Sub):
+                    adj.add_builtin_call("augassign_sub", [target, *indices, rhs])
+                else:
+                    make_new_assign_statement()
+                    return
 
             else:
                 raise WarpCodegenError("Can only subscript in-place assign array, vector, quaternion, and matrix types")

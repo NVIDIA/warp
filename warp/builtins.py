@@ -5344,6 +5344,43 @@ add_builtin(
 )
 
 
+# implements vector[idx] += scalar
+add_builtin(
+    "augassign_add",
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
+    value_type=None,
+    hidden=True,
+    group="Utility",
+)
+
+# implements quaternion[idx] += scalar
+add_builtin(
+    "augassign_add",
+    input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
+    value_type=None,
+    hidden=True,
+    group="Utility",
+)
+
+# implements vector[idx] -= scalar
+add_builtin(
+    "augassign_sub",
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
+    value_type=None,
+    hidden=True,
+    group="Utility",
+)
+
+# implements quaternion[idx] -= scalar
+add_builtin(
+    "augassign_sub",
+    input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
+    value_type=None,
+    hidden=True,
+    group="Utility",
+)
+
+
 def matrix_index_row_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     mat_type = arg_types["a"]
     row_type = mat_type._wp_row_type_
@@ -5409,6 +5446,26 @@ add_builtin(
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
     constraint=matrix_vector_sametype,
     value_func=matrix_assign_value_func,
+    hidden=True,
+    group="Utility",
+)
+
+
+# implements matrix[i,j] += scalar
+add_builtin(
+    "augassign_add",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
+    value_type=None,
+    hidden=True,
+    group="Utility",
+)
+
+
+# implements matrix[i,j] -= scalar
+add_builtin(
+    "augassign_sub",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
+    value_type=None,
     hidden=True,
     group="Utility",
 )
