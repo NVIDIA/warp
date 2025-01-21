@@ -63,6 +63,44 @@ def test_mempool_release_threshold(test, device):
     test.assertEqual(wp.get_mempool_release_threshold(device), saved_threshold)
 
 
+def test_mempool_usage_queries(test, device):
+    """Check API to query mempool memory usage."""
+
+    device = wp.get_device(device)
+    pre_alloc_mempool_usage_curr = wp.get_mempool_used_mem_current(device)
+    pre_alloc_mempool_usage_high = wp.get_mempool_used_mem_high(device)
+
+    # Allocate a 1 MiB array
+    test_data = wp.empty(262144, dtype=wp.float32, device=device)
+    wp.synchronize_device(device)
+
+    # Query memory usage again
+    post_alloc_mempool_usage_curr = wp.get_mempool_used_mem_current(device)
+    post_alloc_mempool_usage_high = wp.get_mempool_used_mem_high(device)
+
+    test.assertEqual(
+        post_alloc_mempool_usage_curr, pre_alloc_mempool_usage_curr + 1048576, "Memory usage did not increase by 1 MiB"
+    )
+    test.assertGreaterEqual(post_alloc_mempool_usage_high, 1048576, "High-water mark is not at least 1 MiB")
+
+    # Free the allocation
+    del test_data
+    wp.synchronize_device(device)
+
+    # Query memory usage
+    post_free_mempool_usage_curr = wp.get_mempool_used_mem_current(device)
+    post_free_mempool_usage_high = wp.get_mempool_used_mem_high(device)
+
+    test.assertEqual(
+        post_free_mempool_usage_curr,
+        pre_alloc_mempool_usage_curr,
+        "Test didn't end with the same amount of used memory as the test started with.",
+    )
+    test.assertEqual(
+        post_free_mempool_usage_high, post_alloc_mempool_usage_high, "High-water mark should not change after free"
+    )
+
+
 def test_mempool_exceptions(test, device):
     device = wp.get_device(device)
 
@@ -168,6 +206,7 @@ devices_without_mempools = [d for d in get_test_devices() if not d.is_mempool_su
 add_function_test(
     TestMempool, "test_mempool_release_threshold", test_mempool_release_threshold, devices=devices_with_mempools
 )
+add_function_test(TestMempool, "test_mempool_usage_queries", test_mempool_usage_queries, devices=devices_with_mempools)
 add_function_test(TestMempool, "test_mempool_access_self", test_mempool_access_self, devices=devices_with_mempools)
 
 # test devices without mempool support

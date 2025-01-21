@@ -5,6 +5,9 @@
 ### Added
 
 - Added support for vec4f grid construction in `wp.Volume.allocate_by_tiles()`
+- Add `wp.get_mempool_used_mem_current()` and `wp.get_mempool_used_mem_high()` to
+  query the respective current and high-water mark memory pool allocator usage.
+  ([GH-446](https://github.com/NVIDIA/warp/issues/446)).
 
 ### Changed
 

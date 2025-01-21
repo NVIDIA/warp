@@ -114,6 +114,17 @@ during graph capture, which will raise an exception if memory pools are not enab
 .. autofunction:: warp.is_mempool_enabled
 .. autofunction:: warp.set_mempool_enabled
 
+Querying Memory Usage
+~~~~~~~~~~~~~~~~~~~~~
+
+The amount of memory the application is currently using from a specific memory
+pool can be queried using :func:`wp.get_mempool_used_mem_current() <warp.get_mempool_used_mem_current>`.
+This can be different from the amount of memory reserved for the pool itself.
+Similarly, the high-water mark of used memory can be quered using
+:func:`wp.get_mempool_used_mem_high() <warp.get_mempool_used_mem_high>`.
+
+.. autofunction:: warp.get_mempool_used_mem_current
+.. autofunction:: warp.get_mempool_used_mem_high
 
 Allocation Performance
 ~~~~~~~~~~~~~~~~~~~~~~
