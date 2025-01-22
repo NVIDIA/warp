@@ -224,7 +224,7 @@ jobs:
           pip install --no-cache-dir --upgrade numpy coverage[toml] usd-core
           pip install --no-cache-dir .
       - name: Run Tests
-        run: python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        run: python -m warp.tests --maxjobs 4  --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
       - name: Test Summary
         uses: test-summary/action@v2.3
         with:
