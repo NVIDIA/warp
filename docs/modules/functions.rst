@@ -590,6 +590,11 @@ Vector Math
     while the corresponding eigenvalues are returned in ``d``.
 
 
+.. autofunction:: warp.math.norm_l1
+.. autofunction:: warp.math.norm_l2
+.. autofunction:: warp.math.norm_huber
+.. autofunction:: warp.math.norm_pseudo_huber
+.. autofunction:: warp.math.smooth_normalize
 
 
 Quaternion Math

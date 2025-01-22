@@ -6,7 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import unittest
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import numpy as np
 
@@ -48,6 +48,51 @@ def test_scalar_math(test, device):
         tape.backward(out)
 
         assert_np_equal(tape.gradients[x].numpy(), np.array([adj_float_results_expected[i]]), tol=1e-6)
+
+
+@wp.kernel
+def test_vec_norm_kernel(vs: wp.array(dtype=Any), out: wp.array(dtype=float, ndim=2)):
+    tid = wp.tid()
+    out[tid, 0] = wp.norm_l1(vs[tid])
+    out[tid, 1] = wp.norm_l2(vs[tid])
+    out[tid, 2] = wp.norm_huber(vs[tid])
+    out[tid, 3] = wp.norm_pseudo_huber(vs[tid])
+
+
+def test_vec_norm(test, device):
+    # ground-truth implementations from SciPy
+    def huber(delta, x):
+        if x <= delta:
+            return 0.5 * x**2
+        else:
+            return delta * (x - 0.5 * delta)
+
+    def pseudo_huber(delta, x):
+        return delta**2 * (np.sqrt(1 + (x / delta) ** 2) - 1)
+
+    v0 = wp.vec3(-2.0, -1.0, -3.0)
+    v1 = wp.vec3(2.0, 1.0, 3.0)
+    v2 = wp.vec3(0.0, 0.0, 0.0)
+
+    xs = wp.array([v0, v1, v2], dtype=wp.vec3, requires_grad=True, device=device)
+    out = wp.empty((len(xs), 4), dtype=wp.float32, requires_grad=True, device=device)
+
+    wp.launch(test_vec_norm_kernel, dim=len(xs), inputs=[xs], outputs=[out], device=device)
+
+    for i, x in enumerate([v0, v1, v2]):
+        assert_np_equal(
+            out.numpy()[i],
+            np.array(
+                [
+                    np.linalg.norm(x, ord=1),
+                    np.linalg.norm(x, ord=2),
+                    huber(1.0, wp.length(x)),
+                    # note SciPy defines the Pseudo-Huber loss slightly differently
+                    pseudo_huber(1.0, wp.length(x)) + 1.0,
+                ]
+            ),
+            tol=1e-6,
+        )
 
 
 devices = get_test_devices()
@@ -117,6 +162,7 @@ class TestMath(unittest.TestCase):
 
 
 add_function_test(TestMath, "test_scalar_math", test_scalar_math, devices=devices)
+add_function_test(TestMath, "test_vec_norm", test_vec_norm, devices=devices)
 
 
 if __name__ == "__main__":

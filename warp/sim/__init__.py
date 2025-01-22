@@ -50,4 +50,9 @@ from .model import (
     ModelShapeMaterials,
     State,
 )
-from .utils import load_mesh, quat_from_euler, quat_to_euler, velocity_at_point
+from .utils import (
+    load_mesh,
+    quat_from_euler,
+    quat_to_euler,
+    velocity_at_point,
+)

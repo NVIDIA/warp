@@ -1518,18 +1518,27 @@ class FeatherstoneIntegrator(Integrator):
     """
 
     def __init__(
-        self, model, angular_damping=0.05, update_mass_matrix_every=1, use_tile_gemm=False, fuse_cholesky=True
+        self,
+        model,
+        angular_damping=0.05,
+        update_mass_matrix_every=1,
+        friction_smoothing=1.0,
+        use_tile_gemm=False,
+        fuse_cholesky=True,
     ):
         """
         Args:
             model (Model): the model to be simulated.
             angular_damping (float, optional): Angular damping factor. Defaults to 0.05.
             update_mass_matrix_every (int, optional): How often to update the mass matrix (every n-th time the :meth:`simulate` function gets called). Defaults to 1.
+            friction_smoothing (float, optional): The delta value for the Huber norm (see :func:`warp.math.norm_huber`) used for the friction velocity normalization. Defaults to 1.0.
         """
         self.angular_damping = angular_damping
         self.update_mass_matrix_every = update_mass_matrix_every
+        self.friction_smoothing = friction_smoothing
         self.use_tile_gemm = use_tile_gemm
         self.fuse_cholesky = fuse_cholesky
+
         self._step = 0
 
         self.compute_articulation_indices(model)
@@ -1827,6 +1836,7 @@ class FeatherstoneIntegrator(Integrator):
                             model.rigid_contact_shape0,
                             model.rigid_contact_shape1,
                             True,
+                            self.friction_smoothing,
                         ],
                         outputs=[body_f],
                         device=model.device,

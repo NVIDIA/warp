@@ -118,6 +118,8 @@ from warp.constants import *
 from . import builtins
 from warp.builtins import static
 
+from warp.math import *
+
 import warp.config as config
 
 __version__ = config.version

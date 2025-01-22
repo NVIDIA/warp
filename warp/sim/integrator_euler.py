@@ -871,6 +871,7 @@ def eval_rigid_contacts(
     contact_shape0: wp.array(dtype=int),
     contact_shape1: wp.array(dtype=int),
     force_in_world_frame: bool,
+    friction_smoothing: float,
     # outputs
     body_f: wp.array(dtype=wp.spatial_vector),
 ):
@@ -924,6 +925,8 @@ def eval_rigid_contacts(
     n = contact_normal[tid]
     bx_a = contact_point0[tid]
     bx_b = contact_point1[tid]
+    r_a = wp.vec3(0.0)
+    r_b = wp.vec3(0.0)
     if body_a >= 0:
         X_wb_a = body_q[body_a]
         X_com_a = body_com[body_a]
@@ -990,12 +993,16 @@ def eval_rigid_contacts(
     # ft = wp.vec3(vx, 0.0, vz)
 
     # Coulomb friction (smooth, but gradients are numerically unstable around |vt| = 0)
-    # ft = wp.normalize(vt)*wp.min(kf*wp.length(vt), abs(mu*d*ke))
     ft = wp.vec3(0.0)
     if d < 0.0:
-        ft = wp.normalize(vt) * wp.min(kf * wp.length(vt), -mu * (fn + fd))
+        # use a smooth vector norm to avoid gradient instability at/around zero velocity
+        vs = wp.norm_huber(vt, delta=friction_smoothing)
+        if vs > 0.0:
+            fr = vt / vs
+            ft = fr * wp.min(kf * vs, -mu * (fn + fd))
 
     f_total = n * (fn + fd) + ft
+    # f_total = n * (fn + fd)
     # f_total = n * fn
 
     if body_a >= 0:
@@ -1761,7 +1768,7 @@ def eval_tetrahedral_forces(model: Model, state: State, control: Control, partic
         )
 
 
-def eval_body_contact_forces(model: Model, state: State, particle_f: wp.array):
+def eval_body_contact_forces(model: Model, state: State, particle_f: wp.array, friction_smoothing: float = 1.0):
     if model.rigid_contact_max and (
         model.ground and model.shape_ground_contact_pair_count or model.shape_contact_pair_count
     ):
@@ -1782,6 +1789,7 @@ def eval_body_contact_forces(model: Model, state: State, particle_f: wp.array):
                 model.rigid_contact_shape0,
                 model.rigid_contact_shape1,
                 False,
+                friction_smoothing,
             ],
             outputs=[state.body_f],
             device=model.device,
@@ -1880,7 +1888,15 @@ def eval_muscle_forces(model: Model, state: State, control: Control, body_f: wp.
         )
 
 
-def compute_forces(model: Model, state: State, control: Control, particle_f: wp.array, body_f: wp.array, dt: float):
+def compute_forces(
+    model: Model,
+    state: State,
+    control: Control,
+    particle_f: wp.array,
+    body_f: wp.array,
+    dt: float,
+    friction_smoothing: float = 1.0,
+):
     # damped springs
     eval_spring_forces(model, state, particle_f)
 
@@ -1906,7 +1922,7 @@ def compute_forces(model: Model, state: State, control: Control, particle_f: wp.
     eval_particle_ground_contact_forces(model, state, particle_f)
 
     # body contacts
-    eval_body_contact_forces(model, state, particle_f)
+    eval_body_contact_forces(model, state, particle_f, friction_smoothing=friction_smoothing)
 
     # particle shape contact
     eval_particle_body_contact_forces(model, state, particle_f, body_f, body_f_in_world_frame=False)
@@ -1941,12 +1957,14 @@ class SemiImplicitIntegrator(Integrator):
 
     """
 
-    def __init__(self, angular_damping: float = 0.05):
+    def __init__(self, angular_damping: float = 0.05, friction_smoothing: float = 1.0):
         """
         Args:
             angular_damping (float, optional): Angular damping factor. Defaults to 0.05.
+            friction_smoothing (float, optional): The delta value for the Huber norm (see :func:`warp.math.norm_huber`) used for the friction velocity normalization. Defaults to 1.0.
         """
         self.angular_damping = angular_damping
+        self.friction_smoothing = friction_smoothing
 
     def simulate(self, model: Model, state_in: State, state_out: State, dt: float, control: Control = None):
         with wp.ScopedTimer("simulate", False):
@@ -1962,7 +1980,7 @@ class SemiImplicitIntegrator(Integrator):
             if control is None:
                 control = model.control(clone_variables=False)
 
-            compute_forces(model, state_in, control, particle_f, body_f, dt)
+            compute_forces(model, state_in, control, particle_f, body_f, dt, friction_smoothing=self.friction_smoothing)
 
             self.integrate_bodies(model, state_in, state_out, dt, self.angular_damping)
 

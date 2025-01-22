@@ -20,6 +20,8 @@
 - Add support for wp.tile_load() where the source array shape is not a multiple of the tile dimension, out of bounds reads will be zero-filled
 - Add support for higher dimensional (up to 4d) tile shapes and memory operations
 - Add `example_tile_walker.py`, which reworks the existing `walker.py` to use Warp's tile API for matrix multiplication.
+- Add functions `norm_l1`, `norm_l2`, `norm_huber`, `norm_pseudo_huber`, `smooth_normalize` for vector types to a new `math.py` module.
+- `SemiImplicitIntegrator` and `FeatherstoneIntegrator` now have an optional `friction_smoothing` constructor argument (defaults to 1.0) that controls softness of the friction norm computation.
 - Add operator overloads for `wp.struct` objects by defining `wp.func` functions ([GH-392](https://github.com/NVIDIA/warp/issues/392)).
 - Add `example_tile_nbody.py`, an N-Body gravitational simulation example using Warp tile primitives.
 - Add a `len()` built-in to retrieve the number of elements for vec/quat/mat/arrays ([GH-389](https://github.com/NVIDIA/warp/issues/389)).
@@ -34,11 +36,14 @@
 - `wp.Bvh` constructor now supports multiple construction methods, including `SAH` ( Surface Area Heuristics), `Median` and `LBVH`.
 - Avoid recompilation of modules when changing `block_dim`.
 - Improve memory consumption, compilation and runtime performance when using in-place vector/matrix assignments in kernels that have `enable_backward` set to False ([GH-332](https://github.com/NVIDIA/warp/issues/332)).
+- `update_vbo_transforms` kernel launches in OpenGLRenderer are no longer recorded on the tape.
 - Fix the `len()` operator returning the total size of a matrix instead of its first dimension.
 - Change exception types and error messages thrown by tile functions for improved consistency.
 
 ### Fixed
 
+- Fix gradient instability in rigid-body contact handling for `SemiImplicitIntegrator`, `FeatherstoneIntegrator` ([GH-349](https://github.com/NVIDIA/warp/issues/349)).
+- Fix overload resolution of generic Warp functions with default arguments.
 - Fix autodiff Jacobian computation in `warp.autograd.jacobian_ad` where in some cases gradients were not zero-ed out properly.
 - Fix plotting issues in `warp.autograd.jacobian_plot`.
 - Fix errors during graph capture caused by module unloading ([GH-401](https://github.com/NVIDIA/warp/issues/401)).

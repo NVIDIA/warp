@@ -10,6 +10,7 @@ import os
 import shutil
 import subprocess
 
+import warp  # ensure all API functions are loaded  # noqa: F401
 from warp.context import export_functions_rst, export_stubs
 
 parser = argparse.ArgumentParser(description="Warp Sphinx Documentation Builder")

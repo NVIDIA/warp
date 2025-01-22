@@ -123,6 +123,8 @@ from warp.constants import *
 from . import builtins
 from warp.builtins import static
 
+from warp.math import *
+
 import warp.config as config
 
 __version__ = config.version
@@ -3331,4 +3333,93 @@ def len(a: Array[Any]) -> int:
 @over
 def len(a: Tile) -> int:
     """Return the number of rows in a tile."""
+    ...
+
+
+@over
+def norm_l1(v: Any):
+    """Computes the L1 norm of a vector v.
+
+    .. math:: \|v\|_1 = \sum_i |v_i|
+
+    Args:
+        v (Vector[Any,Float]): The vector to compute the L1 norm of.
+
+    Returns:
+        float: The L1 norm of the vector.
+    """
+    ...
+
+
+@over
+def norm_l2(v: Any):
+    """Computes the L2 norm of a vector v.
+
+    .. math:: \|v\|_2 = \sqrt{\sum_i v_i^2}
+
+    Args:
+        v (Vector[Any,Float]): The vector to compute the L2 norm of.
+
+    Returns:
+        float: The L2 norm of the vector.
+    """
+    ...
+
+
+@over
+def norm_huber(v: Any, delta: float):
+    """Computes the Huber norm of a vector v with a given delta.
+
+    .. math::
+        H(v) = \begin{cases} \frac{1}{2} \|v\|^2 & \text{if } \|v\| \leq \delta \\ \delta(\|v\| - \frac{1}{2}\delta) & \text{otherwise} \end{cases}
+
+    .. image:: /img/norm_huber.svg
+        :align: center
+
+    Args:
+        v (Vector[Any,Float]): The vector to compute the Huber norm of.
+        delta (float): The threshold value, defaults to 1.0.
+
+    Returns:
+        float: The Huber norm of the vector.
+    """
+    ...
+
+
+@over
+def norm_pseudo_huber(v: Any, delta: float):
+    """Computes the "pseudo" Huber norm of a vector v with a given delta.
+
+    .. math::
+        H^\prime(v) = \delta \sqrt{1 + \frac{\|v\|^2}{\delta^2}}
+
+    .. image:: /img/norm_pseudo_huber.svg
+        :align: center
+
+    Args:
+        v (Vector[Any,Float]): The vector to compute the Huber norm of.
+        delta (float): The threshold value, defaults to 1.0.
+
+    Returns:
+        float: The Huber norm of the vector.
+    """
+    ...
+
+
+@over
+def smooth_normalize(v: Any, delta: float):
+    """Normalizes a vector using the pseudo-Huber norm.
+
+    See :func:`norm_pseudo_huber`.
+
+    .. math::
+        \frac{v}{H^\prime(v)}
+
+    Args:
+        v (Vector[Any,Float]): The vector to normalize.
+        delta (float): The threshold value, defaults to 1.0.
+
+    Returns:
+        Vector[Any,Float]: The normalized vector.
+    """
     ...

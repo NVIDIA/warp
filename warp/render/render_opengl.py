@@ -847,6 +847,7 @@ class ShapeInstancer:
                 vbo_transforms,
             ],
             device=self.device,
+            record_tape=False,
         )
 
         vbo_transforms = vbo_transforms.numpy()
@@ -908,6 +909,7 @@ class ShapeInstancer:
                     vbo_transforms,
                 ],
                 device=self.device,
+                record_tape=False,
             )
 
             self._instance_transform_cuda_buffer.unmap()
@@ -2507,6 +2509,7 @@ Instances: {len(self._instances)}"""
                 vbo_transforms,
             ],
             device=self._device,
+            record_tape=False,
         )
 
         self._instance_transform_cuda_buffer.unmap()

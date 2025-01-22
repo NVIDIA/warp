@@ -2785,7 +2785,7 @@ class ModelBuilder:
                 c = np.cross(normal, (0.0, 1.0, 0.0))
                 angle = np.arcsin(np.linalg.norm(c))
                 axis = np.abs(c) / np.linalg.norm(c)
-                rot = wp.quat_from_axis_angle(axis, angle)
+                rot = wp.quat_from_axis_angle(wp.vec3(*axis), wp.float32(angle))
         scale = wp.vec3(width, length, 0.0)
 
         return self._add_shape(
