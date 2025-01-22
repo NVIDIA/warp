@@ -34,11 +34,11 @@ def filter(x: wp.vec2d):
 @wp.kernel
 def conv_tiled(x: wp.array2d(dtype=wp.vec2d), y: wp.array2d(dtype=wp.vec2d)):
     i, j, _ = wp.tid()
-    a = wp.tile_load(x, 0, 0, m=TILE_M, n=TILE_N)
+    a = wp.tile_load(x, shape=(TILE_M, TILE_N))
     wp.tile_fft(a)
     b = wp.tile_map(filter, a)
     wp.tile_ifft(b)
-    wp.tile_store(y, 0, 0, b)
+    wp.tile_store(y, b)
 
 
 if __name__ == "__main__":

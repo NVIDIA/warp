@@ -1162,13 +1162,13 @@ def create_inertia_matrix_kernel(num_joints, num_dofs):
     ):
         articulation = wp.tid()
 
-        J = wp.tile_load(J_arr[articulation], 0, 0, m=wp.static(6 * num_joints), n=num_dofs)
-        P = wp.tile_zeros(m=wp.static(6 * num_joints), n=num_dofs, dtype=float)
+        J = wp.tile_load(J_arr[articulation], shape=(wp.static(6 * num_joints), num_dofs))
+        P = wp.tile_zeros(shape=(wp.static(6 * num_joints), num_dofs), dtype=float)
 
         # compute P = M*J where M is a 6x6 block diagonal mass matrix
         for i in range(int(num_joints)):
             # 6x6 block matrices are on the diagonal
-            M_body = wp.tile_load(M_arr[articulation], i * 6, i * 6, m=6, n=6)
+            M_body = wp.tile_load(M_arr[articulation], shape=(6, 6), offset=(i * 6, i * 6))
 
             # load a 6xN row from the Jacobian
             J_body = wp.tile_view(J, i * 6, 0, m=6, n=num_dofs)
@@ -1177,12 +1177,19 @@ def create_inertia_matrix_kernel(num_joints, num_dofs):
             P_body = wp.tile_matmul(M_body, J_body)
 
             # assign to the P slice
-            wp.tile_assign(P, i * 6, 0, P_body)
+            wp.tile_assign(
+                P,
+                P_body,
+                offset=(
+                    i * 6,
+                    0,
+                ),
+            )
 
         # compute H = J^T*P
         H = wp.tile_matmul(wp.tile_transpose(J), P)
 
-        wp.tile_store(H_arr[articulation], 0, 0, H)
+        wp.tile_store(H_arr[articulation], H)
 
     return eval_dense_gemm_tile
 
@@ -1192,15 +1199,15 @@ def create_batched_cholesky_kernel(num_dofs):
 
     @wp.kernel
     def eval_tiled_dense_cholesky_batched(
-        A: wp.array3d(dtype=float), R: wp.array3d(dtype=float), L: wp.array3d(dtype=float)
+        A: wp.array3d(dtype=float), R: wp.array2d(dtype=float), L: wp.array3d(dtype=float)
     ):
         articulation = wp.tid()
 
-        a = wp.tile_load(A[articulation], 0, 0, m=num_dofs, n=num_dofs, storage="shared")
-        r = wp.tile_load(R[articulation], 0, 0, m=num_dofs, n=1, storage="shared")
+        a = wp.tile_load(A[articulation], shape=(num_dofs, num_dofs), storage="shared")
+        r = wp.tile_load(R[articulation], shape=num_dofs, storage="shared")
         wp.tile_diag_add(a, r)
         wp.tile_cholesky(a)
-        wp.tile_store(L[articulation], 0, 0, wp.tile_transpose(a))
+        wp.tile_store(L[articulation], wp.tile_transpose(a))
 
     return eval_tiled_dense_cholesky_batched
 
@@ -1210,19 +1217,19 @@ def create_inertia_matrix_cholesky_kernel(num_joints, num_dofs):
     def eval_dense_gemm_and_cholesky_tile(
         J_arr: wp.array3d(dtype=float),
         M_arr: wp.array3d(dtype=float),
-        R_arr: wp.array3d(dtype=float),
+        R_arr: wp.array2d(dtype=float),
         H_arr: wp.array3d(dtype=float),
         L_arr: wp.array3d(dtype=float),
     ):
         articulation = wp.tid()
 
-        J = wp.tile_load(J_arr[articulation], 0, 0, m=wp.static(6 * num_joints), n=num_dofs)
-        P = wp.tile_zeros(m=wp.static(6 * num_joints), n=num_dofs, dtype=float)
+        J = wp.tile_load(J_arr[articulation], shape=(wp.static(6 * num_joints), num_dofs))
+        P = wp.tile_zeros(shape=(wp.static(6 * num_joints), num_dofs), dtype=float)
 
         # compute P = M*J where M is a 6x6 block diagonal mass matrix
         for i in range(int(num_joints)):
             # 6x6 block matrices are on the diagonal
-            M_body = wp.tile_load(M_arr[articulation], i * 6, i * 6, m=6, n=6)
+            M_body = wp.tile_load(M_arr[articulation], shape=(6, 6), offset=(i * 6, i * 6))
 
             # load a 6xN row from the Jacobian
             J_body = wp.tile_view(J, i * 6, 0, m=6, n=num_dofs)
@@ -1231,17 +1238,17 @@ def create_inertia_matrix_cholesky_kernel(num_joints, num_dofs):
             P_body = wp.tile_matmul(M_body, J_body)
 
             # assign to the P slice
-            wp.tile_assign(P, i * 6, 0, P_body)
+            wp.tile_assign(P, P_body, offset=(i * 6, 0))
 
         # compute H = J^T*P
         H = wp.tile_matmul(wp.tile_transpose(J), P)
-        wp.tile_store(H_arr[articulation], 0, 0, H)
+        wp.tile_store(H_arr[articulation], H)
 
         # cholesky L L^T = (H + diag(R))
-        R = wp.tile_load(R_arr[articulation], 0, 0, m=num_dofs, n=1, storage="shared")
+        R = wp.tile_load(R_arr[articulation], shape=num_dofs, storage="shared")
         H_R = wp.tile_diag_add(H, R)
         L = wp.tile_cholesky(H_R)
-        wp.tile_store(L_arr[articulation], 0, 0, L)
+        wp.tile_store(L_arr[articulation], L)
 
     return eval_dense_gemm_and_cholesky_tile
 
@@ -1911,12 +1918,12 @@ class FeatherstoneIntegrator(Integrator):
                             # reshape arrays
                             M_tiled = self.M.reshape((-1, 6 * self.joint_count, 6 * self.joint_count))
                             J_tiled = self.J.reshape((-1, 6 * self.joint_count, self.dof_count))
-                            R_tiled = model.joint_armature.reshape((-1, self.dof_count, 1))
+                            R_tiled = model.joint_armature.reshape((-1, self.dof_count))
                             H_tiled = self.H.reshape((-1, self.dof_count, self.dof_count))
                             L_tiled = self.L.reshape((-1, self.dof_count, self.dof_count))
                             assert H_tiled.shape == (model.articulation_count, 18, 18)
                             assert L_tiled.shape == (model.articulation_count, 18, 18)
-                            assert R_tiled.shape == (model.articulation_count, 18, 1)
+                            assert R_tiled.shape == (model.articulation_count, 18)
 
                             if self.fuse_cholesky:
                                 wp.launch_tiled(

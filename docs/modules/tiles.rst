@@ -36,27 +36,27 @@ In the following example, we launch a grid of threads where each block is respon
         i = wp.tid()
 
         # load a row from global memory
-        t = wp.tile_load(a[i], 0, TILE_SIZE)
+        t = wp.tile_load(a[i], TILE_SIZE)
 
-        # cooperatively compute the sum of the tile elements; s is a 1x1 tile
+        # cooperatively compute the sum of the tile elements; s is a single element tile
         s = wp.tile_sum(t)
 
         # store s in global memory
-        wp.tile_store(b[0], i, s)
+        wp.tile_store(b[i], s)
 
     N = 10
 
     a_np = np.arange(N).reshape(-1, 1) * np.ones((1, 256), dtype=float)
     a = wp.array(a_np, dtype=float)
-    b = wp.zeros((1,N), dtype=float)
+    b = wp.zeros((N,1), dtype=float)
 
     wp.launch_tiled(compute, dim=[a.shape[0]], inputs=[a, b], block_dim=TILE_THREADS)
 
-    print(f"b = {b}")
+    print(f"b = {b[:,0]}")
 
 .. testoutput::
 
-    b = [[   0.  256.  512.  768. 1024. 1280. 1536. 1792. 2048. 2304.]]
+    b = [   0.  256.  512.  768. 1024. 1280. 1536. 1792. 2048. 2304.]
     
 Here, we have used the new :func:`warp.launch_tiled` function which assigns ``TILE_THREADS`` threads to each of the elements in the launch grid. Each block of ``TILE_THREADS`` threads then loads an entire row of 256 values from the global memory array and computes its sum (cooperatively).
 
@@ -79,7 +79,7 @@ In Warp, tile objects are 2D arrays of data where the tile elements may be scala
         i, j = wp.tid()
 
         # load a 2d tile from global memory
-        t = wp.tile_load(array, i*TILE_M, j*TILE_N, m=TILE_M, n=TILE_N)
+        t = wp.tile_load(array, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N))
         s = wp.tile_sum(t)
         ...
 
@@ -135,7 +135,7 @@ Example: General Matrix Multiply (GEMM)
         # output tile index
         i, j = wp.tid()
 
-        sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
+        sum = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=wp.float32)
 
         M = A.shape[0]
         N = B.shape[1]
@@ -144,13 +144,13 @@ Example: General Matrix Multiply (GEMM)
         count = int(K / TILE_K)
 
         for k in range(0, count):
-            a = wp.tile_load(A, i*TILE_M, k*TILE_K, m=TILE_M, n=TILE_K)
-            b = wp.tile_load(B, k*TILE_K, j*TILE_N, m=TILE_K, n=TILE_N)
+            a = wp.tile_load(A, shape=(TILE_M, TILE_K), offset=(i*TILE_M, k*TILE_K))
+            b = wp.tile_load(B, shape=(TILE_K, TILE_N), offset=(k*TILE_K, j*TILE_N))
 
             # sum += a*b
             wp.tile_matmul(a, b, sum)
 
-        wp.tile_store(C, i*TILE_M, j*TILE_N, sum)
+        wp.tile_store(C, sum, offset=(i*TILE_M, j*TILE_N))
 
 
 

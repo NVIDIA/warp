@@ -37,13 +37,13 @@ def cholesky(
 ):
     i, j, _ = wp.tid()
 
-    a = wp.tile_load(A, 0, 0, m=TILE, n=TILE)
+    a = wp.tile_load(A, shape=(TILE, TILE))
     l = wp.tile_cholesky(a)
-    wp.tile_store(L, 0, 0, l)
+    wp.tile_store(L, l)
 
-    x = wp.tile_load(X, 0, m=TILE)
+    x = wp.tile_load(X, shape=TILE)
     y = wp.tile_cholesky_solve(l, x)
-    wp.tile_store(Y, 0, y)
+    wp.tile_store(Y, y)
 
 
 if __name__ == "__main__":

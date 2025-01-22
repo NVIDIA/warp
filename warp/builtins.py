@@ -1707,29 +1707,28 @@ add_builtin(
 
 # ------------------
 # Tile-based primitives
-shared_memory_id = 0
 
 
-# helper to unpack coord from keyword values
-def tile_unpack_coord(arg_values):
-    coord = []
-
-    for d in "ijkl":
-        if d in arg_values:
-            coord.append(arg_values[d])
-
-    return coord
-
-
-# helper to unpack shape from keyword values
 def tile_unpack_shape(arg_values):
-    shape = []
+    shape = arg_values["shape"]
+    if isinstance(shape, tuple):
+        return shape
+    else:
+        # promote to tuple
+        return (shape,)
 
-    for d in "mnop":
-        if d in arg_values:
-            shape.append(arg_values[d])
 
-    return shape
+def tile_unpack_offset(arg_values, ndim=0):
+    if "offset" in arg_values:
+        offset = arg_values["offset"]
+    else:
+        offset = (0,) * ndim
+
+    if isinstance(offset, tuple):
+        return offset
+    else:
+        # promote to tuple
+        return (offset,)
 
 
 def tile_zeros_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
@@ -1767,82 +1766,33 @@ def tile_zeros_dispatch_func(arg_types: Mapping[str, type], return_type: Any, ar
 
 add_builtin(
     "tile_zeros",
-    input_types={"m": int, "dtype": Any, "storage": str},
-    defaults={"storage": "register"},
+    input_types={"shape": Tuple[int, ...], "dtype": Any, "storage": str},
+    defaults={"storage": "register", "dtype": float},
     value_func=tile_zeros_value_func,
     dispatch_func=tile_zeros_dispatch_func,
     variadic=False,
     missing_grad=True,
     doc="""Allocate a tile of zero-initialized items.
 
-    :param m: Size of the first dimension of the output tile
-    :param dtype: Data type of output tile's elements
+    :param shape: Shape of the output tile
+    :param dtype: Data type of output tile's elements (default float)
     :param storage: The storage location for the tile: ``"register"`` for registers
       (default) or ``"shared"`` for shared memory.
-    :returns: A zero-initialized tile with ``shape=(m,)`` and the specified data type""",
+    :returns: A zero-initialized tile with shape and data type as specified""",
     group="Tile Primitives",
     export=False,
 )
 
+# overload for scalar shape
 add_builtin(
     "tile_zeros",
-    input_types={"m": int, "n": int, "dtype": Any, "storage": str},
-    defaults={"storage": "register"},
+    input_types={"shape": int, "dtype": Any, "storage": str},
+    defaults={"storage": "register", "dtype": float},
     value_func=tile_zeros_value_func,
     dispatch_func=tile_zeros_dispatch_func,
     variadic=False,
     missing_grad=True,
-    doc="""Allocate a tile of zero-initialized items.
-
-    :param m: Size of the first dimension of the output tile
-    :param n: Size of the second dimension of the output tile
-    :param dtype: Data type of output tile's elements
-    :param storage: The storage location for the tile: ``"register"`` for registers
-      (default) or ``"shared"`` for shared memory.
-    :returns: A zero-initialized tile with ``shape=(m,n)`` and the specified data type""",
-    group="Tile Primitives",
-    export=False,
-)
-
-add_builtin(
-    "tile_zeros",
-    input_types={"m": int, "n": int, "o": int, "dtype": Any, "storage": str},
-    defaults={"storage": "register"},
-    value_func=tile_zeros_value_func,
-    dispatch_func=tile_zeros_dispatch_func,
-    variadic=False,
-    missing_grad=True,
-    doc="""Allocate a tile of zero-initialized items.
-
-    :param m: Size of the first dimension of the output tile
-    :param n: Size of the second dimension of the output tile
-    :param o: Size of the third dimension of the output tile
-    :param dtype: Data type of output tile's elements
-    :param storage: The storage location for the tile: ``"register"`` for registers
-      (default) or ``"shared"`` for shared memory.
-    :returns: A zero-initialized tile with ``shape=(m,n,o)`` and the specified data type""",
-    group="Tile Primitives",
-    export=False,
-)
-
-add_builtin(
-    "tile_zeros",
-    input_types={"m": int, "n": int, "o": int, "p": int, "dtype": Any, "storage": str},
-    defaults={"storage": "register"},
-    value_func=tile_zeros_value_func,
-    dispatch_func=tile_zeros_dispatch_func,
-    variadic=False,
-    missing_grad=True,
-    doc="""Allocate a tile of zero-initialized items.
-
-    :param m: Size of the first dimension of the output tile
-    :param n: Size of the second dimension of the output tile
-    :param o: Size of the third dimension of the output tile
-    :param p: Size of the fourth dimension of the output tile
-    :param dtype: Data type of output tile's elements
-    :param storage: The storage location for the tile: ``"register"`` for registers
-      (default) or ``"shared"`` for shared memory.
-    :returns: A zero-initialized tile with ``shape=(m,n,o,p)`` and the specified data type""",
+    hidden=True,
     group="Tile Primitives",
     export=False,
 )
@@ -1883,79 +1833,31 @@ def tile_ones_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg
 
 add_builtin(
     "tile_ones",
-    input_types={"m": int, "dtype": Any, "storage": str},
+    input_types={"shape": Tuple[int, ...], "dtype": Any, "storage": str},
     defaults={"storage": "register"},
     value_func=tile_ones_value_func,
     dispatch_func=tile_ones_dispatch_func,
     missing_grad=True,
     doc="""Allocate a tile of one-initialized items.
 
-    :param m: Size of the first dimension of the output tile
+    :param shape: Shape of the output tile
     :param dtype: Data type of output tile's elements
     :param storage: The storage location for the tile: ``"register"`` for registers
       (default) or ``"shared"`` for shared memory.
-    :returns: A one-initialized tile with ``shape=(m)`` and the specified data type""",
+    :returns: A one-initialized tile with shape and data type as specified""",
     group="Tile Primitives",
     export=False,
 )
 
-
+# overload for scalar shape
 add_builtin(
     "tile_ones",
-    input_types={"m": int, "n": int, "dtype": Any, "storage": str},
+    input_types={"shape": int, "dtype": Any, "storage": str},
     defaults={"storage": "register"},
     value_func=tile_ones_value_func,
     dispatch_func=tile_ones_dispatch_func,
     missing_grad=True,
-    doc="""Allocate a tile of one-initialized items.
-
-    :param m: Size of the first dimension of the output tile
-    :param n: Size of the second dimension of the output tile
-    :param dtype: Data type of output tile's elements
-    :param storage: The storage location for the tile: ``"register"`` for registers
-      (default) or ``"shared"`` for shared memory.
-    :returns: A one-initialized tile with ``shape=(m,n)`` and the specified data type""",
-    group="Tile Primitives",
-    export=False,
-)
-
-add_builtin(
-    "tile_ones",
-    input_types={"m": int, "n": int, "o": int, "dtype": Any, "storage": str},
-    defaults={"storage": "register"},
-    value_func=tile_ones_value_func,
-    dispatch_func=tile_ones_dispatch_func,
-    missing_grad=True,
-    doc="""Allocate a tile of one-initialized items.
-
-    :param m: Size of the first dimension of the output tile
-    :param n: Size of the second dimension of the output tile
-    :param o: Size of the third dimension of the output tile
-    :param dtype: Data type of output tile's elements
-    :param storage: The storage location for the tile: ``"register"`` for registers
-      (default) or ``"shared"`` for shared memory.
-    :returns: A one-initialized tile with ``shape=(m,n,o)`` and the specified data type""",
-    group="Tile Primitives",
-    export=False,
-)
-
-add_builtin(
-    "tile_ones",
-    input_types={"m": int, "n": int, "o": int, "p": int, "dtype": Any, "storage": str},
-    defaults={"storage": "register"},
-    value_func=tile_ones_value_func,
-    dispatch_func=tile_ones_dispatch_func,
-    missing_grad=True,
-    doc="""Allocate a tile of one-initialized items.
-
-    :param m: Size of the first dimension of the output tile
-    :param n: Size of the second dimension of the output tile
-    :param o: Size of the third dimension of the output tile
-    :param p: Size of the third dimension of the output tile
-    :param dtype: Data type of output tile's elements
-    :param storage: The storage location for the tile: ``"register"`` for registers
-      (default) or ``"shared"`` for shared memory.
-    :returns: A one-initialized tile with ``shape=(m,n,o,p)`` and the specified data type""",
+    hidden=True,
     group="Tile Primitives",
     export=False,
 )
@@ -2056,151 +1958,78 @@ add_builtin(
     :param dtype: Data type of output tile's elements (optional, default: ``float``)
     :param storage: The storage location for the tile: ``"register"`` for registers
       (default) or ``"shared"`` for shared memory.
-    :returns: A tile with ``shape=(1,n)`` with linearly spaced elements of specified data type""",
+    :returns: A tile with ``shape=(n)`` with linearly spaced elements of specified data type""",
     group="Tile Primitives",
     export=False,
 )
 
 
-def tile_load_value_func(arg_types, arg_values):
-    # return generic type (for doc builds)
+def tile_load_tuple_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is None:
-        return Tile(dtype=Any, shape=Any)
+        return array(dtype=Scalar)
 
     a = arg_types["a"]
+
     shape = tile_unpack_shape(arg_values)
+    offset = tile_unpack_offset(arg_values, a.ndim)
 
     if a.ndim != len(shape):
         raise ValueError(
-            f"tile_store() 'a' argument must have {len(shape)} dimensions, "
-            f"calculated based on the provided offset arguments, but got {a.ndim} dimensions."
+            f"tile_load() array argument must have same number of dimensions as the tile shape, trying to perform an {len(shape)} dimensional load from an array with {a.ndim} dimensions."
+        )
+
+    if a.ndim != len(offset):
+        raise ValueError(
+            f"tile_load() offset argument must have the same number of dimensions as the array to load from, got {len(offset)} indices for an array with {a.ndim} dimensions"
         )
 
     if arg_values["storage"] not in {"shared", "register"}:
         raise ValueError(f"Invalid value for 'storage': {arg_values['storage']!r}. Expected 'shared' or 'register'.")
 
-    return TileLoad(a, shape, arg_values["storage"])
+    return Tile(dtype=a.dtype, shape=shape, storage=arg_values["storage"])
 
 
-def tile_load_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
-    array = arg_values["a"]
-    dtype = arg_values["a"].type.dtype
+def tile_load_tuple_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    a = args["a"]
+    shape = tile_unpack_shape(args)
+    offset = tile_unpack_offset(args, a.type.ndim)
 
-    coord = tile_unpack_coord(arg_values)
-    shape = tile_unpack_shape(arg_values)
+    func_args = (a, *offset)
+    template_args = (d.constant for d in shape)
 
-    template_args = []
-    template_args.append(dtype)
-    template_args.extend(dim.constant for dim in shape)
-
-    return ((array, *coord), template_args)
+    return (func_args, template_args)
 
 
 add_builtin(
     "tile_load",
-    input_types={"a": array(dtype=Any), "i": int, "m": int, "storage": str},
-    defaults={"storage": "register"},
-    value_func=tile_load_value_func,
-    dispatch_func=tile_load_dispatch_func,
+    input_types={"a": array(dtype=Any), "shape": Tuple[int, ...], "offset": Tuple[int, ...], "storage": str},
+    value_func=tile_load_tuple_value_func,
+    dispatch_func=tile_load_tuple_dispatch_func,
+    defaults={"offset": None, "storage": "register"},
     variadic=False,
-    doc="""Load a 1D tile from a global memory array.
+    doc="""Loads a tile from a global memory array.
 
     This method will cooperatively load a tile from global memory using all threads in the block.
 
     :param a: The source array in global memory
-    :param i: Offset in the source array
-    :param m: The number of elements in the tile
+    :param shape: Shape of the tile to load, must have the same number of dimensions as ``a``
+    :param offset: Offset in the source array to begin reading from (optional)
     :param storage: The storage location for the tile: ``"register"`` for registers
       (default) or ``"shared"`` for shared memory.
-    :returns: A tile with ``shape=(m)`` and the same data type as the source array""",
+    :returns: A tile with shape as specified and data type the same as the source array""",
     group="Tile Primitives",
     export=False,
 )
 
+# overload for scalar shape
 add_builtin(
     "tile_load",
-    input_types={"a": array(dtype=Any), "i": int, "j": int, "m": int, "n": int, "storage": str},
-    defaults={"storage": "register"},
-    value_func=tile_load_value_func,
-    dispatch_func=tile_load_dispatch_func,
-    variadic=False,
-    doc="""Load a 2D tile from a global memory array.
-
-    This method will cooperatively load a tile from global memory using all threads in the block.
-
-    :param a: The source array in global memory
-    :param i: Offset in the source array's first dimension
-    :param j: Offset in the source array's second dimension
-    :param m: The size of the tile's first dimension
-    :param n: The size of the tile's second dimension
-    :param storage: The storage location for the tile: ``"register"`` for registers
-      (default) or ``"shared"`` for shared memory.
-    :returns: A tile with ``shape=(m,n)`` and the same data type as the source array""",
+    input_types={"a": array(dtype=Any), "shape": int, "offset": int, "storage": str},
+    value_func=tile_load_tuple_value_func,
+    dispatch_func=tile_load_tuple_dispatch_func,
+    defaults={"offset": None, "storage": "register"},
     group="Tile Primitives",
-    export=False,
-)
-
-add_builtin(
-    "tile_load",
-    input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "m": int, "n": int, "o": int, "storage": str},
-    defaults={"storage": "register"},
-    value_func=tile_load_value_func,
-    dispatch_func=tile_load_dispatch_func,
-    variadic=False,
-    doc="""Load a 3D tile from a global memory array.
-
-    This method will cooperatively load a tile from global memory using all threads in the block.
-
-    :param a: The source array in global memory
-    :param i: Offset in the source array's first dimension
-    :param j: Offset in the source array's second dimension
-    :param k: Offset in the source array's third dimension
-    :param m: The size of the tile's first dimension
-    :param n: The size of the tile's second dimension
-    :param o: The size of the tile's third dimension
-    :param storage: The storage location for the tile: ``"register"`` for registers
-      (default) or ``"shared"`` for shared memory.
-    :returns: A tile with ``shape=(m,n,o)`` and the same data type as the source array""",
-    group="Tile Primitives",
-    export=False,
-)
-
-
-add_builtin(
-    "tile_load",
-    input_types={
-        "a": array(dtype=Any),
-        "i": int,
-        "j": int,
-        "k": int,
-        "l": int,
-        "m": int,
-        "n": int,
-        "o": int,
-        "p": int,
-        "storage": str,
-    },
-    defaults={"storage": "register"},
-    value_func=tile_load_value_func,
-    dispatch_func=tile_load_dispatch_func,
-    variadic=False,
-    doc="""Load a 4D tile from a global memory array.
-
-    This method will cooperatively load a tile from global memory using all threads in the block.
-
-    :param a: The source array in global memory
-    :param i: Offset in the source array's first dimension
-    :param j: Offset in the source array's second dimension
-    :param k: Offset in the source array's third dimension
-    :param l: Offset in the source array's fourth dimension
-    :param m: The size of the tile's first dimension
-    :param n: The size of the tile's second dimension
-    :param o: The size of the tile's third dimension
-    :param p: The size of the tile's fourth dimension
-    :param storage: The storage location for the tile: ``"register"`` for registers
-      (default) or ``"shared"`` for shared memory.
-    :returns: A tile with ``shape=(m,n,o,p)`` and the same data type as the source array""",
-    group="Tile Primitives",
+    hidden=True,
     export=False,
 )
 
@@ -2213,14 +2042,15 @@ def tile_store_value_func(arg_types, arg_values):
     a = arg_types["a"]
     t = arg_types["t"]
 
-    c = tile_unpack_coord(arg_types)
+    c = tile_unpack_offset(arg_types, a.ndim)
+
     if len(c) != a.ndim:
         raise ValueError(
             f"tile_store() 'a' argument must have {len(c)} dimensions, "
             f"calculated based on the provided offset arguments, but got {a.ndim} dimensions."
         )
 
-    if a.ndim != len(t.shape):
+    if len(t.shape) != a.ndim:
         raise ValueError(
             f"tile_store() 'a' argument must have the same number of dimensions as the 't' argument, "
             f"but got {a.ndim} dimensions for 'a' and {len(t.shape)} dimensions for 't'"
@@ -2234,78 +2064,48 @@ def tile_store_value_func(arg_types, arg_values):
     return None
 
 
+def tile_store_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    a = args["a"]
+    t = args["t"]
+
+    offset = tile_unpack_offset(args, a.type.ndim)
+
+    func_args = (a, *offset, t)
+    template_args = []
+
+    return (func_args, template_args)
+
+
 add_builtin(
     "tile_store",
-    input_types={"a": array(dtype=Any), "i": int, "t": Tile(dtype=Any, shape=Any)},
+    input_types={"a": array(dtype=Any), "t": Tile(dtype=Any, shape=Any), "offset": Tuple[int, ...]},
     value_func=tile_store_value_func,
+    dispatch_func=tile_store_dispatch_func,
+    defaults={"offset": None},
     variadic=False,
     skip_replay=True,
-    doc="""Store a 1D tile to a global memory array.
+    doc="""Store a tile to a global memory array.
 
     This method will cooperatively store a tile to global memory using all threads in the block.
 
     :param a: The destination array in global memory
-    :param i: Offset in the destination array
-    :param t: The source tile to store data from, must have the same data type as the destination array""",
+    :param t: The source tile to store data from, must have the same data type and number of dimensions as the destination array
+    :param offset: Offset in the destination array (optional)""",
     group="Tile Primitives",
     export=False,
 )
 
+# overload for scalar offset
 add_builtin(
     "tile_store",
-    input_types={"a": array(dtype=Any), "i": int, "j": int, "t": Tile(dtype=Any, shape=Any)},
+    input_types={"a": array(dtype=Any), "t": Tile(dtype=Any, shape=Any), "offset": int},
     value_func=tile_store_value_func,
+    dispatch_func=tile_store_dispatch_func,
+    defaults={"offset": None},
     variadic=False,
     skip_replay=True,
-    doc="""Store a 2D tile to a global memory array.
-
-    This method will cooperatively store a tile to global memory using all threads in the block.
-
-    :param a: The destination array in global memory
-    :param i: Offset in the destination array's first dimension
-    :param j: Offset in the destination array's second dimension
-    :param t: The source tile to store data from, must have the same data type as the destination array""",
     group="Tile Primitives",
-    export=False,
-)
-
-
-add_builtin(
-    "tile_store",
-    input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "t": Tile(dtype=Any, shape=Any)},
-    value_func=tile_store_value_func,
-    variadic=False,
-    skip_replay=True,
-    doc="""Store a 3D tile to a global memory array.
-
-    This method will cooperatively store a tile to global memory using all threads in the block.
-
-    :param a: The destination array in global memory
-    :param i: Offset in the destination array's first dimension
-    :param j: Offset in the destination array's second dimension
-    :param k: Offset in the destination array's third dimension
-    :param t: The source tile to store data from, must have the same data type as the destination array""",
-    group="Tile Primitives",
-    export=False,
-)
-
-add_builtin(
-    "tile_store",
-    input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "l": int, "t": Tile(dtype=Any, shape=Any)},
-    value_func=tile_store_value_func,
-    variadic=False,
-    skip_replay=True,
-    doc="""Stores a 4D tile to a global memory array.
-
-    This method will cooperatively store a tile to global memory using all threads in the block.
-
-    :param a: The destination array in global memory
-    :param i: Offset in the destination array's first dimension
-    :param j: Offset in the destination array's second dimension
-    :param k: Offset in the destination array's third dimension
-    :param l: Offset in the destination array's fourth dimension
-    :param t: The source tile to store data from, must have the same data type as the destination array""",
-    group="Tile Primitives",
+    hidden=True,
     export=False,
 )
 
@@ -2318,7 +2118,7 @@ def tile_atomic_add_value_func(arg_types, arg_values):
     a = arg_types["a"]
     t = arg_types["t"]
 
-    c = tile_unpack_coord(arg_types)
+    c = tile_unpack_offset(arg_types, a.ndim)
     if len(c) != a.ndim:
         raise ValueError(
             f"tile_atomic_add() 'a' argument must have {len(c)} dimensions, "
@@ -2339,81 +2139,115 @@ def tile_atomic_add_value_func(arg_types, arg_values):
     return Tile(dtype=arg_types["t"].dtype, shape=arg_types["t"].shape)
 
 
+def tile_atomic_add_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    a = args["a"]
+    t = args["t"]
+
+    offset = tile_unpack_offset(args, a.type.ndim)
+
+    func_args = (a, *offset, t)
+    template_args = []
+
+    return (func_args, template_args)
+
+
 add_builtin(
     "tile_atomic_add",
-    input_types={"a": array(dtype=Any), "i": int, "t": Tile(dtype=Any, shape=Any)},
+    input_types={"a": array(dtype=Any), "t": Tile(dtype=Any, shape=Any), "offset": Tuple[int, ...]},
     value_func=tile_atomic_add_value_func,
+    dispatch_func=tile_atomic_add_dispatch_func,
+    defaults={"offset": None},
     variadic=False,
     skip_replay=True,
     doc="""Atomically add a 1D tile to the array `a`, each element will be updated atomically.
 
     :param a: Array in global memory, should have the same ``dtype`` as the input tile
-    :param i: Offset in the destination array
     :param t: Source tile to add to the destination array
+    :param offset: Offset in the destination array (optional)
     :returns: A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements""",
     group="Tile Primitives",
     export=False,
 )
 
+# overload for scalar offset
 add_builtin(
     "tile_atomic_add",
-    input_types={"a": array(dtype=Any), "i": int, "j": int, "t": Tile(dtype=Any, shape=Any)},
+    input_types={"a": array(dtype=Any), "t": Tile(dtype=Any, shape=Any), "offset": int},
     value_func=tile_atomic_add_value_func,
+    dispatch_func=tile_atomic_add_dispatch_func,
+    defaults={"offset": None},
     variadic=False,
     skip_replay=True,
-    doc="""Atomically add a 2D tile to the array `a`, each element will be updated atomically.
-
-    :param a: Array in global memory, should have the same ``dtype`` as the input tile
-    :param i: Offset in the destination array's first dimension
-    :param j: Offset in the destination array's second dimension
-    :param t: Source tile to add to the destination array
-    :returns: A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements""",
     group="Tile Primitives",
+    hidden=True,
     export=False,
 )
 
-add_builtin(
-    "tile_atomic_add",
-    input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "t": Tile(dtype=Any, shape=Any)},
-    value_func=tile_atomic_add_value_func,
-    variadic=False,
-    skip_replay=True,
-    doc="""Atomically add a 3D tile to the array `a`, each element will be updated atomically.
 
-    :param a: Array in global memory, should have the same ``dtype`` as the input tile
-    :param i: Offset in the destination array's first dimension
-    :param j: Offset in the destination array's second dimension
-    :param k: Offset in the destination array's third dimension
-    :param t: Source tile to add to the destination array
-    :returns: A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements""",
-    group="Tile Primitives",
-    export=False,
-)
+# def tile_view_value_func(arg_types, arg_values):
+#     # return generic type (for doc builds)
+#     if arg_types is None:
+#         return Tile(dtype=Any, shape=Any)
 
-add_builtin(
-    "tile_atomic_add",
-    input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "l": int, "t": Tile(dtype=Any, shape=Any)},
-    value_func=tile_atomic_add_value_func,
-    variadic=False,
-    skip_replay=True,
-    doc="""Atomically add a 4D tile to the array `a`, each element will be updated atomically.
+#     tile = arg_types["t"]
 
-    :param a: Array in global memory, should have the same ``dtype`` as the input tile
-    :param i: Offset in the destination array's first dimension
-    :param j: Offset in the destination array's second dimension
-    :param k: Offset in the destination array's third dimension
-    :param l: Offset in the destination array's fourth dimension
-    :param t: Source tile to add to the destination array
-    :returns: A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements""",
-    group="Tile Primitives",
-    export=False,
-)
+#     coord = tile_unpack_offset(arg_values)
 
-# given a tile and a list of view arguments will
-# return a coord + shape that represents the offset
-# and dimensions of the associated view, this function
-# essentially takes a slice definition and converts it
-# to a set of concrete coords + shape
+#     if "shape" not in arg_types:
+#         # treat coord dimensions as locked
+#         # and return the remaining dimensions
+#         shape = tile.shape[len(coord):]
+#     else:
+#         shape = tile_unpack_shape(arg_values)
+
+
+#     # force source tile to shared memory
+#     tile.storage = "shared"
+
+#     output = Tile(
+#         dtype=tile.dtype, shape=shape, strides=tile.strides, layout=tile.layout, storage="shared", owner=False
+#     )
+#     return output
+
+
+# def tile_view_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+#     tile = arg_values["t"]
+
+#     coord = tile_unpack_offset(arg_values)
+
+#     if "shape" not in arg_values:
+#         # treat coord dimensions as locked
+#         # and return the remaining dimensions
+#         shape = tile.type.shape[len(coord):]
+#     else:
+#         shape = tile_unpack_shape(arg_values)
+
+#         if len(shape) != len(coord):
+#             raise RuntimeError("tile_view() must have one extent for each specified offset coordinate")
+
+#     # zero pad the coord for all dimensions in the src tile
+#     coord = (0,)*len(tile.type.shape)
+
+
+#     return ((tile, *coord), shape)
+
+
+# add_builtin(
+#     "tile_view",
+#     input_types={"t": Tile(dtype=Any, shape=Any), "offset": Tuple[int], "shape": Tuple[int,...]},
+#     value_func=tile_view_value_func,
+#     dispatch_func=tile_view_dispatch_func,
+#     defaults={"shape": None},
+#     variadic=True,
+#     doc="""Return a subrange of a given tile in range (offset, offset+shape).
+
+#     :param t: Input tile to extract a subrange from
+#     :param offset: Offset in the source tile
+#     :param shape: Size of the subrange to return, if not specified then shape is taken from the non-specified tile dimensions
+#     :returns: A tile with shape as specified and the same data type as the input tile""",
+#     group="Tile Primitives",
+#     export=False,
+# )
 
 
 def tile_unpack_view_coord(tile, arg_values):
@@ -2477,6 +2311,10 @@ def tile_view_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg
     coord = tile_unpack_view_coord(tile.type, arg_values)
     shape = tile_unpack_view_shape(tile.type, arg_values, arg_values)
 
+    for d in range(len(shape)):
+        if isinstance(shape[d], warp.codegen.Var):
+            shape[d] = shape[d].constant
+
     return ((tile, *coord), shape)
 
 
@@ -2509,6 +2347,35 @@ def tile_assign_value_func(arg_types, arg_values):
     return None
 
 
+def tile_assign_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    dst = args["dst"]
+    src = args["src"]
+
+    offset = tile_unpack_offset(args, len(dst.type.shape))
+
+    func_args = (dst, *offset, src)
+    template_args = []
+
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_assign",
+    input_types={"dst": Tile(dtype=Any, shape=Any), "src": Tile(dtype=Any, shape=Any), "offset": Tuple[int, ...]},
+    value_func=tile_assign_value_func,
+    dispatch_func=tile_assign_dispatch_func,
+    defaults={"offset": None},
+    doc="""Assign a tile to a subrange of a destination tile at coordinates (i,j).
+
+    :param t: The destination tile to assign to
+    :param i: Offset in the source tile along the first dimension
+    :param j: Offset in the source tile along the second dimension
+    :param src: The source tile to read values from""",
+    group="Tile Primitives",
+    export=False,
+)
+
+# handles expressions like tile[i,j] = 1.0
 add_builtin(
     "assign",
     input_types={"dst": Tile(dtype=Any, shape=Any), "i": int, "src": Scalar},
@@ -2550,22 +2417,6 @@ add_builtin(
 )
 
 
-add_builtin(
-    "tile_assign",
-    input_types={"dst": Tile(dtype=Any, shape=Any), "i": int, "j": int, "src": Tile(dtype=Any, shape=Any)},
-    value_func=tile_assign_value_func,
-    #    dispatch_func=tile_assign_dispatch_func,
-    doc="""Assign a tile to a subrange of a destination tile at coordinates (i,j).
-
-    :param t: The destination tile to assign to
-    :param i: Offset in the source tile along the first dimension
-    :param j: Offset in the source tile along the second dimensions
-    :param src: The source tile to read values from""",
-    group="Tile Primitives",
-    export=False,
-)
-
-
 def tile_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
@@ -2580,11 +2431,10 @@ def tile_value_func(arg_types, arg_values):
     if type_is_vector(arg_types["x"]):
         dtype = arg_types["x"]._wp_scalar_type_
         length = arg_types["x"]._shape_[0]
+        shape = (length, warp.codegen.options["block_dim"])
     else:
         dtype = arg_types["x"]
-        length = 1
-
-    shape = (length, warp.codegen.options["block_dim"])
+        shape = (warp.codegen.options["block_dim"],)
 
     return Tile(dtype=dtype, shape=shape, op="tile")
 
@@ -2620,7 +2470,7 @@ add_builtin(
 
     .. code-block:: text
 
-        tile(m=1, n=16, storage=register) = [[0 2 4 6 8 ...]]
+        [0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30] = tile(shape=(16), storage=register)
 
     """,
     group="Tile Primitives",
@@ -2641,14 +2491,14 @@ def untile_value_func(arg_types, arg_values):
     if not is_tile(t):
         raise TypeError(f"untile() argument must be a tile, got {t!r}")
 
-    if t.shape[1] != warp.codegen.options["block_dim"]:
+    if t.shape[-1] != warp.codegen.options["block_dim"]:
         raise ValueError(
-            f"untile() argument length {t.shape[1]} does not match the expected block width {warp.codegen.options['block_dim']}"
+            f"untile() argument last dimension {t.shape[-1]} does not match the expected block width {warp.codegen.options['block_dim']}"
         )
 
-    if t.shape[0] == 1:
+    if len(t.shape) == 1:
         return t.dtype
-    elif t.shape[0] > 1:
+    elif len(t.shape) == 2:
         return warp.types.vector(t.shape[0], t.dtype)
     else:
         raise ValueError(f"untile() argument must have a positive size in dimension 0, but got {t.shape[0]}")
@@ -2729,6 +2579,7 @@ add_builtin(
     :param i: Coordinate of element on first dimension
     :returns: The value of the element at the specified tile location with the same data type as the input tile""",
     group="Tile Primitives",
+    hidden=True,
     export=False,
 )
 
@@ -2749,6 +2600,7 @@ add_builtin(
     :param j: Coordinate of element on the second dimension
     :returns: The value of the element at the specified tile location with the same data type as the input tile""",
     group="Tile Primitives",
+    hidden=True,
     export=False,
 )
 
@@ -2769,6 +2621,7 @@ add_builtin(
     :param k: Coordinate of element on the third dimension
     :returns: The value of the element at the specified tile location with the same data type as the input tile""",
     group="Tile Primitives",
+    hidden=True,
     export=False,
 )
 
@@ -2790,6 +2643,7 @@ add_builtin(
     :param l: Coordinate of element on the fourth dimension
     :returns: The value of the element at the specified tile location, with the same data type as the input tile""",
     group="Tile Primitives",
+    hidden=True,
     export=False,
 )
 
@@ -2851,13 +2705,7 @@ def tile_broadcast_value_func(arg_types, arg_values):
     if arg_types is None:
         return Tile
 
-    if len(arg_types) != 3:
-        raise TypeError(f"tile_broadcast() takes exactly 3 positional arguments but {len(arg_types)} were given")
-
     t = arg_types["a"]
-
-    if not is_tile(t):
-        raise TypeError(f"tile_broadcast() 'a' argument must be a tile, got {t!r}")
 
     # target shape and strides
     target_shape = tile_unpack_shape(arg_values)
@@ -2905,10 +2753,10 @@ def tile_broadcast_dispatch_func(arg_types: Mapping[str, type], return_type: Any
 
 add_builtin(
     "tile_broadcast",
-    input_types={"a": Tile(dtype=Any, shape=Any), "m": int, "n": int},
+    input_types={"a": Tile(dtype=Any, shape=Any), "shape": Tuple[int, ...]},
     value_func=tile_broadcast_value_func,
     dispatch_func=tile_broadcast_dispatch_func,
-    variadic=True,
+    variadic=False,
     doc="""Broadcast a tile.
 
     This function will attempt to broadcast the input tile ``a`` to the destination shape (m, n).
@@ -2916,6 +2764,7 @@ add_builtin(
     Broadcasting follows NumPy broadcast rules.
 
     :param a: Tile to broadcast
+    :param shape: The shape to broadcast to
     :returns: Tile with broadcast ``shape=(m, n)``""",
     group="Tile Primitives",
     export=False,
@@ -2984,7 +2833,7 @@ add_builtin(
     doc="""Cooperatively compute the sum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the sum of
-    :returns: A single-element tile with dimensions of (1,1) holding the sum
+    :returns: A single-element tile holding the sum
 
     Example:
 
@@ -2993,7 +2842,7 @@ add_builtin(
         @wp.kernel
         def compute():
 
-            t = wp.tile_ones(dtype=float, m=16, n=16)
+            t = wp.tile_ones(dtype=float, shape=(16, 16))
             s = wp.tile_sum(t)
 
             print(s)
@@ -3004,7 +2853,7 @@ add_builtin(
 
     .. code-block:: text
 
-        tile(m=1, n=1, storage=register) = [[256]]
+        [256] = tile(shape=(1), storage=register)
 
     """,
     group="Tile Primitives",
@@ -3036,7 +2885,7 @@ add_builtin(
     doc="""Cooperatively compute the minimum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the minimum of
-    :returns: A single-element tile with dimensions of (1,1) holding the minimum value
+    :returns: A single-element tile holding the minimum value
 
     Example:
 
@@ -3057,7 +2906,7 @@ add_builtin(
 
     .. code-block:: text
 
-        tile(m=1, n=1, storage=register) = [[64 ]]
+        [64] = tile(shape=(1), storage=register)
 
     """,
     group="Tile Primitives",
@@ -3089,7 +2938,7 @@ add_builtin(
     doc="""Cooperatively compute the maximum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the maximum from
-    :returns: A single-element tile with dimensions of (1,1) holding the maximum value
+    :returns: A single-element tile holding the maximum value
 
     Example:
 
@@ -3109,7 +2958,7 @@ add_builtin(
 
     .. code-block:: text
 
-        tile(m=1, n=1, storage=register) = [[127 ]]
+        [127] = tile(shape=(1), storage=register)
 
     """,
     group="Tile Primitives",
@@ -3147,7 +2996,7 @@ add_builtin(
 
     :param op: A callable function that accepts two arguments and returns one argument, may be a user function or builtin
     :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's data type
-    :returns: A single-element tile with ``shape=(1,1)`` with the same data type as the input tile.
+    :returns: A single-element tile with the same data type as the input tile.
 
     Example:
 
@@ -3167,7 +3016,7 @@ add_builtin(
 
     .. code-block:: text
 
-        tile(m=1, n=1, storage=register) = [[362880]]
+        [362880] = tile(shape=(1), storage=register)
     """,
     group="Tile Primitives",
     export=False,
@@ -3222,7 +3071,7 @@ add_builtin(
 
     .. code-block:: text
 
-        tile(m=1, n=10, storage=register) = [[0 0.0998334 0.198669 0.29552 ...]]
+        [0 0.0998334 0.198669 0.29552 0.389418 0.479426 0.564642 0.644218 0.717356 0.783327] = tile(shape=(10), storage=register)
     """,
     group="Tile Primitives",
     export=False,
@@ -3284,7 +3133,7 @@ add_builtin(
         def compute():
 
             a = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
-            b = wp.tile_ones(m=1, n=10, dtype=float)
+            b = wp.tile_ones(shape=10, dtype=float)
 
             s = wp.tile_map(wp.add, a, b)
 
@@ -3296,7 +3145,7 @@ add_builtin(
 
     .. code-block:: text
 
-        tile(m=1, n=10, storage=register) = [[1 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9]]""",
+        [1 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9] = tile(shape=(10), storage=register)""",
     group="Tile Primitives",
     export=False,
 )

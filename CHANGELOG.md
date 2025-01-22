@@ -61,6 +61,7 @@
 ### Breaking
 
 - Change indexing behavior in `wp.tile_load()`, `wp.tile_store()`, so that indices are now specified in terms of array elements instead of tile multiples.
+- Tile operations now take `shape` and `offset` parameters as tuples, e.g.: `wp.tile_load(array, shape=(m,n), offset=(i,j))`
 
 ## [1.5.1] - 2025-01-02
 

@@ -21,13 +21,13 @@ def create_mlp_kernel(m, n, k):
     @wp.kernel
     def mlp(x: wp.array2d(dtype=float), weights_wp: wp.array2d(dtype=float), n_k: int, output: wp.array2d(dtype=float)):
         i_m, i_n = wp.tid()
-        sum = wp.tile_zeros(m=TILE_M, n=TILE_N, dtype=wp.float32)
+        sum = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=wp.float32)
         for count in range(n_k):
-            feat = wp.tile_load(x, i_m * TILE_M, count * TILE_K, TILE_M, TILE_K)
-            weight = wp.tile_load(weights_wp, count * TILE_K, i_n * TILE_N, TILE_K, TILE_N)
+            feat = wp.tile_load(x, shape=(TILE_M, TILE_K), offset=(i_m * TILE_M, count * TILE_K))
+            weight = wp.tile_load(weights_wp, shape=(TILE_K, TILE_N), offset=(count * TILE_K, i_n * TILE_N))
             wp.tile_matmul(feat, weight, sum)
 
-        wp.tile_store(output, i_m * TILE_M, i_n * TILE_M, sum)
+        wp.tile_store(output, sum, offset=(i_m * TILE_M, i_n * TILE_M))
 
     return mlp
 
