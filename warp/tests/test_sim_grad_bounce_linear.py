@@ -1,3 +1,10 @@
+# Copyright (c) 2025 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
 import numpy as np
 
 import warp as wp
@@ -164,31 +171,32 @@ class BallBounceLinearTest:
 
 
 def test_sim_grad_bounce_linear(test, device):
-    model = BallBounceLinearTest()
-    model.generate_target_trajectory()
+    with wp.ScopedDevice(device):
+        model = BallBounceLinearTest()
+        model.generate_target_trajectory()
 
-    num_samples = 20
-    losses, grads = model.evaluate(num_samples=num_samples)
-    # gradients must approximate linear behavior with zero crossing in the middle
-    test.assertTrue(np.abs(grads[1:] - grads[:-1]).max() < 1.1)
-    test.assertTrue(np.all(grads[: num_samples // 2] <= 0.0))
-    test.assertTrue(np.all(grads[num_samples // 2 :] >= 0.0))
-    # losses must follow a parabolic behavior
-    test.assertTrue(np.allclose(losses[: num_samples // 2], losses[num_samples // 2 :][::-1], atol=1.0))
-    diffs = losses[1:] - losses[:-1]
-    test.assertTrue(np.all(diffs[: num_samples // 2 - 1] <= 0.0))
-    test.assertTrue(np.all(diffs[num_samples // 2 - 1 :] >= 0.0))
-    # second derivative must be constant positive
-    diffs2 = diffs[1:] - diffs[:-1]
-    test.assertTrue(np.allclose(diffs2, diffs2[0], atol=1e-2))
-    test.assertTrue(np.all(diffs2 >= 0.0))
+        num_samples = 20
+        losses, grads = model.evaluate(num_samples=num_samples)
+        # gradients must approximate linear behavior with zero crossing in the middle
+        test.assertTrue(np.abs(grads[1:] - grads[:-1]).max() < 1.1)
+        test.assertTrue(np.all(grads[: num_samples // 2] <= 0.0))
+        test.assertTrue(np.all(grads[num_samples // 2 :] >= 0.0))
+        # losses must follow a parabolic behavior
+        test.assertTrue(np.allclose(losses[: num_samples // 2], losses[num_samples // 2 :][::-1], atol=1.0))
+        diffs = losses[1:] - losses[:-1]
+        test.assertTrue(np.all(diffs[: num_samples // 2 - 1] <= 0.0))
+        test.assertTrue(np.all(diffs[num_samples // 2 - 1 :] >= 0.0))
+        # second derivative must be constant positive
+        diffs2 = diffs[1:] - diffs[:-1]
+        test.assertTrue(np.allclose(diffs2, diffs2[0], atol=1e-2))
+        test.assertTrue(np.all(diffs2 >= 0.0))
 
 
 class TestSimGradBounceLinear(unittest.TestCase):
     pass
 
 
-devices = get_test_devices()
+devices = get_test_devices("basic")
 add_function_test(TestSimGradBounceLinear, "test_sim_grad_bounce_linear", test_sim_grad_bounce_linear, devices=devices)
 
 if __name__ == "__main__":
