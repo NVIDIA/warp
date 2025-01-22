@@ -1598,6 +1598,7 @@ class ModuleBuilder:
         self.options = options
         self.module = module
         self.deferred_functions = []
+        self.fatbins = {}  # map from <some identifier> to fatbins, to add at link time
         self.ltoirs = {}  # map from lto symbol to lto binary
         self.ltoirs_decl = {}  # map from lto symbol to lto forward declaration
 
@@ -2156,6 +2157,7 @@ class Module:
                                 fuse_fp=self.options["fuse_fp"],
                                 lineinfo=self.options["lineinfo"],
                                 ltoirs=builder.ltoirs.values(),
+                                fatbins=builder.fatbins.values(),
                             )
 
                     except Exception as e:
@@ -3610,6 +3612,7 @@ class Runtime:
                 ctypes.c_size_t,  # num_ltoirs
                 ctypes.POINTER(ctypes.c_char_p),  # ltoirs
                 ctypes.POINTER(ctypes.c_size_t),  # ltoir_sizes
+                ctypes.POINTER(ctypes.c_int),  # ltoir_input_types, each of type nvJitLinkInputType
             ]
             self.core.cuda_compile_program.restype = ctypes.c_size_t
 
@@ -3650,6 +3653,7 @@ class Runtime:
             self.core.cuda_compile_dot.restype = ctypes.c_bool
 
             self.core.cuda_compile_solver.argtypes = [
+                ctypes.c_char_p,  # universal fatbin
                 ctypes.c_char_p,  # lto
                 ctypes.c_char_p,  # function name
                 ctypes.c_int,  # num include dirs
