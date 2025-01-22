@@ -1,8 +1,8 @@
 ---
 name: Documentation request
 about: Suggest improvements for the documentation.
-title: "[DOCS] <title>"
-labels: documentation
+title: "[DOCS] "
+labels: docs
 assignees: ''
 
 ---
@@ -14,7 +14,7 @@ Please check all applicable options from the list below (use [x] in Markdown)
 
 - [ ] Report an error in the documentation.
 - [ ] Request for something to be documented.
-- [ ] Request for a new [example](https://github.com/NVIDIA/warp/tree/main/warp/examples) to illustrate how to do something.
+- [ ] Suggestion to improve the documentation.
 - [ ] Other (please explain)
 
 ## Description
