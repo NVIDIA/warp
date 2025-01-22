@@ -22,11 +22,11 @@ def test_tile_shared_mem_size(test, device):
 
     @wp.kernel
     def compute(out: wp.array2d(dtype=float)):
-        a = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared")
-        b = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared") * 2.0
+        a = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared")
+        b = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared") * 2.0
 
         c = a + b
-        wp.tile_store(out, 0, 0, c)
+        wp.tile_store(out, c)
 
     out = wp.empty((DIM_M, DIM_N), dtype=float, device=device)
 
@@ -58,11 +58,11 @@ def test_tile_shared_mem_large(test, device):
     # we disable backward kernel gen since 128k is not supported on most architectures
     @wp.kernel(enable_backward=False)
     def compute(out: wp.array2d(dtype=float)):
-        a = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared")
-        b = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared") * 2.0
+        a = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared")
+        b = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared") * 2.0
 
         c = a + b
-        wp.tile_store(out, 0, 0, c)
+        wp.tile_store(out, c)
 
     out = wp.empty((DIM_M, DIM_N), dtype=float, device=device)
 
@@ -94,11 +94,11 @@ def test_tile_shared_mem_graph(test, device):
 
     @wp.kernel
     def compute(out: wp.array2d(dtype=float)):
-        a = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared")
-        b = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared") * 2.0
+        a = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared")
+        b = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared") * 2.0
 
         c = a + b
-        wp.tile_store(out, 0, 0, c)
+        wp.tile_store(out, c)
 
     out = wp.empty((DIM_M, DIM_N), dtype=float, device=device)
 
@@ -137,15 +137,15 @@ def test_tile_shared_mem_func(test, device):
 
     @wp.func
     def add_tile_small():
-        a = wp.tile_ones(SMALL_DIM_M, SMALL_DIM_N, dtype=float, storage="shared")
-        b = wp.tile_ones(SMALL_DIM_M, SMALL_DIM_N, dtype=float, storage="shared") * 2.0
+        a = wp.tile_ones(shape=(SMALL_DIM_M, SMALL_DIM_N), dtype=float, storage="shared")
+        b = wp.tile_ones(shape=(SMALL_DIM_M, SMALL_DIM_N), dtype=float, storage="shared") * 2.0
 
         return a + b
 
     @wp.func
     def add_tile_big():
-        a = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared")
-        b = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared") * 2.0
+        a = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared")
+        b = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared") * 2.0
 
         return a + b
 
@@ -154,7 +154,7 @@ def test_tile_shared_mem_func(test, device):
         s = add_tile_small()
         b = add_tile_big()
 
-        wp.tile_store(out, 0, 0, b)
+        wp.tile_store(out, b)
 
     out = wp.empty((DIM_M, DIM_N), dtype=float, device=device)
 
@@ -185,8 +185,8 @@ def test_tile_shared_non_aligned(test, device):
 
     @wp.func
     def foo():
-        a = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared") * 2.0
-        b = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared") * 3.0
+        a = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared") * 2.0
+        b = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared") * 3.0
         return a + b
 
     @wp.kernel
@@ -196,8 +196,8 @@ def test_tile_shared_non_aligned(test, device):
         # Failing to do so correct will make b out of bounds and corrupt the results
         for _ in range(4096):
             foo()
-        b = wp.tile_ones(DIM_M, DIM_N, dtype=float, storage="shared")
-        wp.tile_store(out, 0, 0, b)
+        b = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared")
+        wp.tile_store(out, b)
 
     out = wp.empty((DIM_M, DIM_N), dtype=float, device=device)
 

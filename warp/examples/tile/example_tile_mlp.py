@@ -117,23 +117,23 @@ def compute(
     f = wp.tile(local)
 
     # input layer
-    w0 = wp.tile_load(weights_0, 0, 0, m=DIM_HID, n=DIM_IN)
-    b0 = wp.tile_load(bias_0, 0, 0, m=DIM_HID, n=1)
-    z = wp.tile_map(relu, wp.tile_matmul(w0, f) + wp.tile_broadcast(b0, m=DIM_HID, n=NUM_THREADS))
+    w0 = wp.tile_load(weights_0, shape=(DIM_HID, DIM_IN))
+    b0 = wp.tile_load(bias_0, shape=(DIM_HID, 1))
+    z = wp.tile_map(relu, wp.tile_matmul(w0, f) + wp.tile_broadcast(b0, shape=(DIM_HID, NUM_THREADS)))
 
     # hidden layer
-    w1 = wp.tile_load(weights_1, 0, 0, m=DIM_HID, n=DIM_HID)
-    b1 = wp.tile_load(bias_1, 0, 0, m=DIM_HID, n=1)
-    z = wp.tile_map(relu, wp.tile_matmul(w1, z) + wp.tile_broadcast(b1, m=DIM_HID, n=NUM_THREADS))
+    w1 = wp.tile_load(weights_1, shape=(DIM_HID, DIM_HID))
+    b1 = wp.tile_load(bias_1, shape=(DIM_HID, 1))
+    z = wp.tile_map(relu, wp.tile_matmul(w1, z) + wp.tile_broadcast(b1, shape=(DIM_HID, NUM_THREADS)))
 
-    w2 = wp.tile_load(weights_2, 0, 0, m=DIM_HID, n=DIM_HID)
-    b2 = wp.tile_load(bias_2, 0, 0, m=DIM_HID, n=1)
-    z = wp.tile_map(relu, wp.tile_matmul(w2, z) + wp.tile_broadcast(b2, m=DIM_HID, n=NUM_THREADS))
+    w2 = wp.tile_load(weights_2, shape=(DIM_HID, DIM_HID))
+    b2 = wp.tile_load(bias_2, shape=(DIM_HID, 1))
+    z = wp.tile_map(relu, wp.tile_matmul(w2, z) + wp.tile_broadcast(b2, shape=(DIM_HID, NUM_THREADS)))
 
     # output layer
-    w3 = wp.tile_load(weights_3, 0, 0, m=DIM_OUT, n=DIM_HID)
-    b3 = wp.tile_load(bias_3, 0, 0, m=DIM_OUT, n=1)
-    o = wp.tile_map(relu, wp.tile_matmul(w3, z) + wp.tile_broadcast(b3, m=DIM_OUT, n=NUM_THREADS))
+    w3 = wp.tile_load(weights_3, shape=(DIM_OUT, DIM_HID))
+    b3 = wp.tile_load(bias_3, shape=(DIM_OUT, 1))
+    o = wp.tile_map(relu, wp.tile_matmul(w3, z) + wp.tile_broadcast(b3, shape=(DIM_OUT, NUM_THREADS)))
 
     # untile back to SIMT
     output = wp.untile(o)

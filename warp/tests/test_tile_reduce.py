@@ -28,13 +28,13 @@ def tile_sum_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=float
     n = input.shape[1]
     count = int(n / TILE_DIM)
 
-    s = wp.tile_zeros(m=1, dtype=float)
+    s = wp.tile_zeros(shape=1, dtype=float)
 
     for j in range(count):
-        a = wp.tile_load(input, i, j * TILE_DIM, m=1, n=TILE_DIM)
+        a = wp.tile_load(input[i], shape=TILE_DIM, offset=j * TILE_DIM)
         s += wp.tile_sum(a) * 0.5
 
-    wp.tile_store(output, i, s)
+    wp.tile_store(output, s, offset=i)
 
 
 def test_tile_reduce_sum(test, device):
@@ -70,10 +70,10 @@ def tile_min_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=float
     # output tile index
     i = wp.tid()
 
-    a = wp.tile_load(input, i, 0, m=1, n=TILE_DIM)
+    a = wp.tile_load(input[i], shape=TILE_DIM)
     m = wp.tile_min(a)
 
-    wp.tile_store(output, i, m)
+    wp.tile_store(output, m, offset=i)
 
 
 def test_tile_reduce_min(test, device):
@@ -103,10 +103,10 @@ def tile_max_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=float
     # output tile index
     i = wp.tid()
 
-    a = wp.tile_load(input, i, 0, m=1, n=TILE_DIM)
+    a = wp.tile_load(input[i], shape=TILE_DIM)
     m = wp.tile_max(a)
 
-    wp.tile_store(output, i, m)
+    wp.tile_store(output, m, offset=i)
 
 
 def test_tile_reduce_max(test, device):
@@ -136,10 +136,10 @@ def tile_reduce_custom_kernel(input: wp.array2d(dtype=float), output: wp.array(d
     # output tile index
     i = wp.tid()
 
-    a = wp.tile_load(input, i, 0, m=1, n=TILE_DIM)
+    a = wp.tile_load(input[i], shape=TILE_DIM)
     m = wp.tile_reduce(wp.mul, a)
 
-    wp.tile_store(output, i, m)
+    wp.tile_store(output, m, offset=i)
 
 
 def test_tile_reduce_custom(test, device):
@@ -173,10 +173,10 @@ def tile_grouped_sum_kernel(input: wp.array3d(dtype=float), output: wp.array(dty
     # output tile index
     i = wp.tid()
 
-    a = wp.tile_load(input[i], 0, 0, m=TILE_M, n=TILE_N)
+    a = wp.tile_load(input[i], shape=(TILE_M, TILE_N))
     s = wp.tile_sum(a) * 0.5
 
-    wp.tile_store(output, i, s)
+    wp.tile_store(output, s, offset=i)
 
 
 def test_tile_reduce_grouped_sum(test, device):
@@ -217,7 +217,7 @@ def tile_reduce_simt_kernel(output: wp.array(dtype=int)):
     s = wp.tile_sum(t)  # sum over block
 
     # update global sum
-    wp.tile_atomic_add(output, 0, s)
+    wp.tile_atomic_add(output, s)
 
 
 def test_tile_reduce_simt(test, device):
@@ -310,10 +310,10 @@ def test_tile_untile_vector(test, device):
 def tile_ones_kernel(out: wp.array(dtype=float)):
     i = wp.tid()
 
-    t = wp.tile_ones(dtype=float, m=16, n=16)
+    t = wp.tile_ones(dtype=float, shape=(16, 16))
     s = wp.tile_sum(t)
 
-    wp.tile_store(out, 0, s)
+    wp.tile_store(out, s)
 
 
 def test_tile_ones(test, device):
@@ -335,11 +335,11 @@ def tile_arange_kernel(out: wp.array2d(dtype=int)):
     d = wp.tile_arange(-1, 16, dtype=int)
     e = wp.tile_arange(17, 0, -1, dtype=int)
 
-    wp.tile_store(out[0], 0, a)
-    wp.tile_store(out[1], 0, b)
-    wp.tile_store(out[2], 0, c)
-    wp.tile_store(out[3], 0, d)
-    wp.tile_store(out[4], 0, e)
+    wp.tile_store(out[0], a)
+    wp.tile_store(out[1], b)
+    wp.tile_store(out[2], c)
+    wp.tile_store(out[3], d)
+    wp.tile_store(out[4], e)
 
 
 def test_tile_arange(test, device):

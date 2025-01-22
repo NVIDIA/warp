@@ -180,6 +180,27 @@ struct tile_coord_t
     CUDA_CALLABLE inline int& operator[](int i) { assert(0 <= 1 && i < N); return indices[i]; }
 };
 
+// This function deduces N = sizeof...(Ints)
+template <typename... Ints>
+constexpr tile_coord_t<sizeof...(Ints)> tile_coord(Ints... idxs)
+{
+    constexpr int N = sizeof...(Ints);
+    
+    // Create the result
+    tile_coord_t<N> result{};
+    
+    // Capture all arguments in a local array
+    int arr[] = { static_cast<int>(idxs)... };
+
+    // C++14 or later: 'for' is allowed in a constexpr context
+    for (int i = 0; i < N; ++i)
+    {
+        result.indices[i] = arr[i];
+    }
+
+    return result;
+}
+
 // helpers to construct a coord from a set of indices
 auto tile_coord(int i) 
 {
@@ -1062,6 +1083,19 @@ struct tile_shared_t
         grad_to_register().atomic_add_grad(dest);
     }
 
+    // overload for integral types
+    inline CUDA_CALLABLE void print_value(int x) const
+    {
+        printf("%d", x);
+    }
+
+    // overload for floating point types
+    template <typename T>
+    inline CUDA_CALLABLE void print_value(T x) const
+    {
+        printf("%g", x);
+    }
+
     template <int Level = 0>
     inline CUDA_CALLABLE void print_values(const Storage& storage, int index=0) const
     {
@@ -1075,7 +1109,7 @@ struct tile_shared_t
                 printf("[");
                 for (int i = 0; i < Shape::dim(Level); ++i)
                 {
-                    printf("%g", storage(index + i));
+                    print_value(storage(index + i));
 
                     if (i < Shape::dim(Level) - 1)
                     {
@@ -1093,7 +1127,7 @@ struct tile_shared_t
                     printf("[");
                     for (int j=0; j < Shape::dim(Level+1); ++j)
                     {
-                        printf("%g", storage(index));                        
+                        print_value(storage(index));                        
 
                         if (j < Shape::dim(Level+1) - 1)
                         {
@@ -1290,7 +1324,7 @@ inline CUDA_CALLABLE auto tile_alloc_zeros()
 template <typename T>
 inline CUDA_CALLABLE auto tile(const T& x)
 {
-    tile_register_t<T, tile_layout_register_t<tile_shape_t<1, WP_TILE_BLOCK_DIM>>> result;
+    tile_register_t<T, tile_layout_register_t<tile_shape_t<WP_TILE_BLOCK_DIM>>> result;
     
     using Layout = typename decltype(result)::Layout;
     static_assert(Layout::NumRegs == 1);
@@ -1318,8 +1352,8 @@ inline CUDA_CALLABLE auto tile(const wp::vec_t<Length, T>& x)
 template <typename T, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile(const T& x, T& adj_x, AdjTile& adj_ret)
 {
-    static_assert(AdjTile::Layout::Shape::dim(0) == 1);
-    static_assert(AdjTile::Layout::Shape::dim(1) == WP_TILE_BLOCK_DIM);
+    static_assert(AdjTile::Layout::Shape::N == 1);
+    static_assert(AdjTile::Layout::Shape::dim(0) == WP_TILE_BLOCK_DIM);
     
     auto adj_reg = adj_ret.copy_to_register();
 
@@ -1329,6 +1363,7 @@ inline CUDA_CALLABLE void adj_tile(const T& x, T& adj_x, AdjTile& adj_ret)
 template <typename T, unsigned Length, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile(const wp::vec_t<Length, T>& x, wp::vec_t<Length, T>& adj_x, AdjTile& adj_ret)
 {
+    static_assert(AdjTile::Layout::Shape::N == 2);
     static_assert(AdjTile::Layout::Shape::dim(0) == Length);
     static_assert(AdjTile::Layout::Shape::dim(1) == WP_TILE_BLOCK_DIM);
 
@@ -1346,20 +1381,20 @@ inline CUDA_CALLABLE auto untile(Tile& tile)
     // there is exactly one value per-thread
     auto reg = tile.copy_to_register();
 
-    constexpr int M = Tile::Layout::Shape::dim(0);
-    constexpr int N = Tile::Layout::Shape::dim(1);
+    constexpr int N = Tile::Layout::Shape::N;
 
     // scalar case
-    if constexpr(M == 1)
+    if constexpr(N == 1)
     {
         return reg.data[0];
     }
         
     // vector case
-    if constexpr(M > 1)
+    if constexpr(N == 2)
     {
-        wp::vec_t<M, typename Tile::Type> v;
-        for (int i=0; i < M; ++i)
+        constexpr int Length = Tile::Layout::Shape::dim(0);
+        wp::vec_t<Length, typename Tile::Type> v;
+        for (int i=0; i < Length; ++i)
             v[i] = reg.data[i];
 
         return v;
@@ -1371,20 +1406,20 @@ inline CUDA_CALLABLE void adj_untile(Tile& tile, Tile& adj_tile, Value& adj_ret)
 {    
     auto adj = adj_tile.copy_to_register();   
     
-    constexpr int M = Tile::Layout::Shape::dim(0);
-    constexpr int N = Tile::Layout::Shape::dim(1);
+    constexpr int N = Tile::Layout::Shape::N;
 
     // scalar case
-    if constexpr(M == 1)
+    if constexpr(N == 1)
     {
         adj.data[0] += adj_ret;
     }
 
     // vector case
-    if constexpr(M > 1)
+    if constexpr(N == 2)
     {
-        for (int i=0; i < M; ++i)
-            adj.data[i] = adj_ret[i];
+        constexpr int Length = Tile::Layout::Shape::dim(0);
+        for (int i=0; i < Length; ++i)
+            adj.data[i] += adj_ret[i];
     }
 
     adj_tile.assign(adj);
@@ -1435,14 +1470,18 @@ inline CUDA_CALLABLE void adj_tile_arange(T start, T stop, T step,
                                           T& adj_start, T& adj_stop, T& adj_step, AdjTile& adj_ret) {}
 
 // entry point for load operations, these just return a reference to a global memory array + coordinate
-template <typename T, unsigned M>
-inline CUDA_CALLABLE auto tile_load(array_t<T>& src, int x) { return tile_global_t<T, tile_shape_t<M>>(src, tile_coord(x)); }
-template <typename T, unsigned M, unsigned N>
-inline CUDA_CALLABLE auto tile_load(array_t<T>& src, int x, int y) { return tile_global_t<T, tile_shape_t<M,N>>(src, tile_coord(x, y)); }
-template <typename T, unsigned M, unsigned N, unsigned O>
-inline CUDA_CALLABLE auto tile_load(array_t<T>& src, int x, int y, int z) { return tile_global_t<T, tile_shape_t<M,N,O>>(src, tile_coord(x, y, z)); }
-template <typename T, unsigned M, unsigned N, unsigned O, unsigned P>
-inline CUDA_CALLABLE auto tile_load(array_t<T>& src, int x, int y, int z, int w) { return tile_global_t<T, tile_shape_t<M,N,O,P>>(src, tile_coord(x, y, z, w)); }
+template <unsigned... Shape, typename... Indices, typename T>
+inline CUDA_CALLABLE auto tile_load(array_t<T>& src, Indices... offset) 
+{
+    return tile_global_t<T, tile_shape_t<Shape...>>(src, tile_coord(offset...)); 
+}
+
+// // entry point for tile store operations
+// template <typename... Indices, typename T, typename Tile>
+// inline CUDA_CALLABLE void tile_store(array_t<T>& dest, Tile& src, Indices... x)
+// {
+//     src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape>(dest, tile_coord(x))); 
+// }
 
 // entry point for tile store operations
 template <typename T, typename Tile>
@@ -1453,6 +1492,7 @@ template <typename T, typename Tile>
 inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, int z, Tile& src) { src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape>(dest, tile_coord(x, y, z))); }
 template <typename T, typename Tile>
 inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, int z, int w, Tile& src) { src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape>(dest, tile_coord(x, y, z, w))); }
+
 
 
 template <typename T, typename Tile>

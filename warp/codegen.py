@@ -1139,6 +1139,9 @@ class Adjoint:
         if isinstance(var, (Reference, warp.context.Function)):
             return var
 
+        if isinstance(var, int):
+            return adj.add_constant(var)
+
         if var.label is None:
             return adj.add_var(var.type, var.constant)
 

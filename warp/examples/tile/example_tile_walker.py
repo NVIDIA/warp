@@ -81,13 +81,13 @@ def network(
     i = wp.tid()
 
     # GEMM
-    p = wp.tile_load(phases, 0, 0, m=PHASE_COUNT, n=1)
-    w = wp.tile_load(weights, i * TILE_TETS, 0, m=TILE_TETS, n=PHASE_COUNT)
+    p = wp.tile_load(phases, shape=(PHASE_COUNT, 1))
+    w = wp.tile_load(weights, shape=(TILE_TETS, PHASE_COUNT), offset=(i * TILE_TETS, 0))
     out = wp.tile_matmul(w, p)
 
     # activation
     activations = wp.tile_map(tanh, out)
-    wp.tile_store(tet_activations, i, 0, activations)
+    wp.tile_store(tet_activations, activations, offset=(i * TILE_TETS, 0))
 
 
 class Example:
