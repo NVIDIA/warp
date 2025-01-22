@@ -1,7 +1,7 @@
 ---
 name: Question
 about: Ask a question about Warp.
-title: "[QUESTION] <title>"
+title: "[QUESTION] "
 labels: question
 assignees: ''
 
