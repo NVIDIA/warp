@@ -395,7 +395,8 @@ class Function:
             if not warp.codegen.func_match_args(f, arg_types, kwarg_types):
                 continue
 
-            if len(f.input_types) != len(arg_types):
+            acceptable_arg_num = len(f.input_types) - len(f.defaults) <= len(arg_types) <= len(f.input_types)
+            if not acceptable_arg_num:
                 continue
 
             # try to match the given types to the function template types
@@ -412,6 +413,10 @@ class Function:
 
                 arg_names = f.input_types.keys()
                 overload_annotations = dict(zip(arg_names, arg_types))
+                # add defaults
+                for k, d in f.defaults.items():
+                    if k not in overload_annotations:
+                        overload_annotations[k] = warp.codegen.strip_reference(warp.codegen.get_arg_type(d))
 
                 ovl = shallowcopy(f)
                 ovl.adj = warp.codegen.Adjoint(f.func, overload_annotations)
@@ -755,8 +760,15 @@ def func(f):
     scope_locals = inspect.currentframe().f_back.f_locals
 
     m = get_module(f.__module__)
+    doc = getattr(f, "__doc__", "") or ""
     Function(
-        func=f, key=name, namespace="", module=m, value_func=None, scope_locals=scope_locals
+        func=f,
+        key=name,
+        namespace="",
+        module=m,
+        value_func=None,
+        scope_locals=scope_locals,
+        doc=doc.strip(),
     )  # value_type not known yet, will be inferred during Adjoint.build()
 
     # use the top of the list of overloads for this key
@@ -1061,7 +1073,8 @@ def overload(kernel, arg_types=Union[None, Dict[str, Any], List[Any]]):
         raise RuntimeError("wp.overload() called with invalid argument!")
 
 
-builtin_functions = {}
+# native functions that are part of the Warp API
+builtin_functions: Dict[str, Function] = {}
 
 
 def get_generic_vtypes():
@@ -1328,6 +1341,28 @@ def add_builtin(
                     )
 
             setattr(warp, key, func)
+
+
+def register_api_function(
+    function: Function,
+    group: str = "Other",
+    hidden=False,
+):
+    """Main entry point to register a Warp Python function to be part of the Warp API and appear in the documentation.
+
+    Args:
+        function (Function): Warp function to be registered.
+        group (str): Classification used for the documentation.
+        input_types (Mapping[str, Any]): Signature of the user-facing function.
+            Variadic arguments are supported by prefixing the parameter names
+            with asterisks as in `*args` and `**kwargs`. Generic arguments are
+            supported with types such as `Any`, `Float`, `Scalar`, etc.
+        value_type (Any): Type returned by the function.
+        hidden (bool): Whether to add that function into the documentation.
+    """
+    function.group = group
+    function.hidden = hidden
+    builtin_functions[function.key] = function
 
 
 # global dictionary of modules
@@ -6182,14 +6217,19 @@ def export_functions_rst(file):  # pragma: no cover
     # build dictionary of all functions by group
     groups = {}
 
-    for _k, f in builtin_functions.items():
+    functions = list(builtin_functions.values())
+
+    for f in functions:
         # build dict of groups
         if f.group not in groups:
             groups[f.group] = []
 
-        # append all overloads to the group
-        for o in f.overloads:
-            groups[f.group].append(o)
+        if hasattr(f, "overloads"):
+            # append all overloads to the group
+            for o in f.overloads:
+                groups[f.group].append(o)
+        else:
+            groups[f.group].append(f)
 
     # Keep track of what function and query types have been written
     written_functions = set()
@@ -6209,6 +6249,10 @@ def export_functions_rst(file):  # pragma: no cover
         print("---------------", file=file)
 
         for f in g:
+            if f.func:
+                # f is a Warp function written in Python, we can use autofunction
+                print(f".. autofunction:: {f.func.__module__}.{f.key}", file=file)
+                continue
             for f_prefix, query_type in query_types:
                 if f.key.startswith(f_prefix) and query_type not in written_query_types:
                     print(f".. autoclass:: {query_type}", file=file)
@@ -6266,24 +6310,32 @@ def export_stubs(file):  # pragma: no cover
     print(header, file=file)
     print(file=file)
 
-    for k, g in builtin_functions.items():
-        for f in g.overloads:
-            args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
+    def add_stub(f):
+        args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
 
-            return_str = ""
+        return_str = ""
 
-            if f.hidden:  # or f.generic:
-                continue
+        if f.hidden:  # or f.generic:
+            return
 
+        return_type = f.value_type
+        if f.value_func:
             return_type = f.value_func(None, None)
-            if return_type:
-                return_str = " -> " + type_str(return_type)
+        if return_type:
+            return_str = " -> " + type_str(return_type)
 
-            print("@over", file=file)
-            print(f"def {f.key}({args}){return_str}:", file=file)
-            print(f'    """{f.doc}', file=file)
-            print('    """', file=file)
-            print("    ...\n\n", file=file)
+        print("@over", file=file)
+        print(f"def {f.key}({args}){return_str}:", file=file)
+        print(f'    """{f.doc}', file=file)
+        print('    """', file=file)
+        print("    ...\n\n", file=file)
+
+    for g in builtin_functions.values():
+        if hasattr(g, "overloads"):
+            for f in g.overloads:
+                add_stub(f)
+        else:
+            add_stub(g)
 
 
 def export_builtins(file: io.TextIOBase):  # pragma: no cover
@@ -6309,6 +6361,8 @@ def export_builtins(file: io.TextIOBase):  # pragma: no cover
     file.write('extern "C" {\n\n')
 
     for k, g in builtin_functions.items():
+        if not hasattr(g, "overloads"):
+            continue
         for f in g.overloads:
             if not f.export or f.generic:
                 continue
