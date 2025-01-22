@@ -187,7 +187,7 @@ mac-x86_64 test:
     - python -m pip install --upgrade usd-core
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - python -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
 
 # ==============================================================================
 # Packaging Jobs
