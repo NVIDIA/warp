@@ -330,6 +330,18 @@ python -m warp.tests
             <td align="center">rigid soft contact</td>
             <td align="center">soft body</td>
         </tr>
+        <tr>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_cloth_self_contact.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/sim_example_cloth_self_contact.png"></a></td>
+            <td></td>
+            <td></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td align="center">cloth self contact</td>
+            <td align="center"></td>
+            <td align="center"></td>
+            <td align="center"></td>
+        </tr>
     </tbody>
 </table>
 
