@@ -248,6 +248,15 @@ warp/examples/sim
       - rigid gyroscopic
       - rigid soft contact
       - soft body
+    * - .. image:: ./img/examples/sim_example_cloth_self_contact.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_cloth_self_contact.py
+      -
+      -
+      -
+    * - cloth self contact
+      -
+      -
+      -
 
 Omniverse
 ---------
