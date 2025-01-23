@@ -1712,7 +1712,7 @@ class ModuleBuilder:
 
         for kernel in self.kernels:
             source += warp.codegen.codegen_kernel(kernel, device=device, options=self.options)
-            source += warp.codegen.codegen_module(kernel, device=device)
+            source += warp.codegen.codegen_module(kernel, device=device, options=self.options)
 
         # add headers
         if device == "cpu":
@@ -1765,20 +1765,26 @@ class ModuleExec:
 
         name = kernel.get_mangled_name()
 
+        options = dict(kernel.module.options)
+        options.update(kernel.options)
+
         if self.device.is_cuda:
             forward_name = name + "_cuda_kernel_forward"
             forward_kernel = runtime.core.cuda_get_kernel(
                 self.device.context, self.handle, forward_name.encode("utf-8")
             )
 
-            backward_name = name + "_cuda_kernel_backward"
-            backward_kernel = runtime.core.cuda_get_kernel(
-                self.device.context, self.handle, backward_name.encode("utf-8")
-            )
+            if options["enable_backward"]:
+                backward_name = name + "_cuda_kernel_backward"
+                backward_kernel = runtime.core.cuda_get_kernel(
+                    self.device.context, self.handle, backward_name.encode("utf-8")
+                )
+            else:
+                backward_kernel = None
 
             # look up the required shared memory size for each kernel from module metadata
             forward_smem_bytes = self.meta[forward_name + "_smem_bytes"]
-            backward_smem_bytes = self.meta[backward_name + "_smem_bytes"]
+            backward_smem_bytes = self.meta[backward_name + "_smem_bytes"] if options["enable_backward"] else 0
 
             # configure kernels maximum shared memory size
             max_smem_bytes = runtime.core.cuda_get_max_shared_memory(self.device.context)
@@ -1787,9 +1793,6 @@ class ModuleExec:
                 print(
                     f"Warning: Failed to configure kernel dynamic shared memory for this device, tried to configure {forward_name} kernel for {forward_smem_bytes} bytes, but maximum available is {max_smem_bytes}"
                 )
-
-            options = dict(kernel.module.options)
-            options.update(kernel.options)
 
             if options["enable_backward"] and not runtime.core.cuda_configure_kernel_shared_memory(
                 backward_kernel, backward_smem_bytes
@@ -1805,9 +1808,14 @@ class ModuleExec:
             forward = (
                 func(runtime.llvm.lookup(self.handle.encode("utf-8"), (name + "_cpu_forward").encode("utf-8"))) or None
             )
-            backward = (
-                func(runtime.llvm.lookup(self.handle.encode("utf-8"), (name + "_cpu_backward").encode("utf-8"))) or None
-            )
+
+            if options["enable_backward"]:
+                backward = (
+                    func(runtime.llvm.lookup(self.handle.encode("utf-8"), (name + "_cpu_backward").encode("utf-8")))
+                    or None
+                )
+            else:
+                backward = None
 
             hooks = KernelHooks(forward, backward)
 

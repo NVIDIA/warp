@@ -73,7 +73,7 @@ def test_tile_shared_mem_large(test, device):
 
     # check required shared memory
     expected_forward_bytes = DIM_M * DIM_N * 4 * 2
-    expected_backward_bytes = expected_forward_bytes * 2
+    expected_backward_bytes = 0
 
     assert expected_forward_bytes == 2**16
 
