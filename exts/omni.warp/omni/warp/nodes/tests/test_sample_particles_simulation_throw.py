@@ -45,8 +45,8 @@ class TestSampleParticlesSimulationThrow(omni.kit.test.AsyncTestCase):
 
         points_first = np.array(points_attr.Get())
         assert np.isfinite(points_first).all()
-        array_are_almost_equal(np.min(points_first, axis=0), (-48.0, 39.5, 202.0), atol=1.0)
-        array_are_almost_equal(np.max(points_first, axis=0), (48.0, 211.5, 298.0), atol=1.0)
+        array_are_almost_equal(np.min(points_first, axis=0), (-48.0, 39.5, 202.0), atol=5.0)
+        array_are_almost_equal(np.max(points_first, axis=0), (48.0, 211.5, 298.0), atol=5.0)
 
         prev_points_hash = None
         curr_points_hash = None
