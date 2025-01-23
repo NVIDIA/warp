@@ -113,13 +113,13 @@ class Tape:
 
             else:
                 # kernel option takes precedence over module option
-                kernel_enable_backward = launch[0].options.get("enable_backward")
-                if kernel_enable_backward is False:
+                enable_backward = launch[0].options.get("enable_backward")
+                if enable_backward is False:
                     msg = f"Running the tape backwards may produce incorrect gradients because recorded kernel {launch[0].key} is configured with the option 'enable_backward=False'."
                     wp.utils.warn(msg)
-                elif kernel_enable_backward is None:
-                    module_enable_backward = launch[0].module.options.get("enable_backward")
-                    if module_enable_backward is False:
+                elif enable_backward is None:
+                    enable_backward = launch[0].module.options.get("enable_backward")
+                    if enable_backward is False:
                         msg = f"Running the tape backwards may produce incorrect gradients because recorded kernel {launch[0].key} is defined in a module with the option 'enable_backward=False' set."
                         wp.utils.warn(msg)
 
@@ -142,18 +142,19 @@ class Tape:
                 for a in outputs:
                     adj_outputs.append(self.get_adjoint(a))
 
-                wp.launch(
-                    kernel=kernel,
-                    dim=dim,
-                    inputs=inputs,
-                    outputs=outputs,
-                    adj_inputs=adj_inputs,
-                    adj_outputs=adj_outputs,
-                    device=device,
-                    adjoint=True,
-                    max_blocks=max_blocks,
-                    block_dim=block_dim,
-                )
+                if enable_backward:
+                    wp.launch(
+                        kernel=kernel,
+                        dim=dim,
+                        inputs=inputs,
+                        outputs=outputs,
+                        adj_inputs=adj_inputs,
+                        adj_outputs=adj_outputs,
+                        device=device,
+                        adjoint=True,
+                        max_blocks=max_blocks,
+                        block_dim=block_dim,
+                    )
 
     # record a kernel launch on the tape
     def record_launch(self, kernel, dim, max_blocks, inputs, outputs, device, block_dim=0, metadata=None):
