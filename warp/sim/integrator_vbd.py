@@ -23,6 +23,8 @@ from .collide import (
 from .integrator import Integrator
 from .model import PARTICLE_FLAG_ACTIVE, Control, Model, ModelShapeMaterials, State
 
+wp.set_module_options({"enable_backward": False})
+
 VBD_DEBUG_PRINTING_OPTIONS = {
     # "elasticity_force_hessian",
     # "contact_force_hessian",
