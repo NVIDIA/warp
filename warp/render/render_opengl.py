@@ -3097,16 +3097,16 @@ Instances: {len(self._instances)}"""
             name: A name for the USD prim on the stage
             up_axis: The axis of the arrow that points up (0: x, 1: y, 2: z)
         """
-        geo_hash = hash(("arrow", base_radius, base_height, cap_radius, cap_height))
+        geo_hash = hash(("arrow", base_radius, base_height, cap_radius, cap_height, up_axis))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
-            if self.update_shape_instance(name, pos, rot):
+            if self.update_shape_instance(name, pos, rot, color1=color, color2=color):
                 return shape
         else:
             vertices, indices = self._create_arrow_mesh(
                 base_radius, base_height, cap_radius, cap_height, up_axis=up_axis
             )
-            shape = self.register_shape(geo_hash, vertices, indices)
+            shape = self.register_shape(geo_hash, vertices, indices, color1=color, color2=color)
         if not is_template:
             body = self._resolve_body_id(parent_body)
             self.add_shape_instance(name, shape, body, pos, rot, color1=color, color2=color)
