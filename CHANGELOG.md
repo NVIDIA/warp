@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Fix rendering of arrows with different `up_axis`, `color` in `OpenGLRenderer` ([GH-448](https://github.com/NVIDIA/warp/issues/448)).
+
 ## [1.6.0] - 2025-02-03
 
 ### Added
