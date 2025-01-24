@@ -21,7 +21,10 @@ def component_assignment(a: wp.array(dtype=wp.mat44)):
     a[tid] = m
 
 
-class ComponentAssignment:
+class CompileModule:
+    repeat = 10  # Number of samples to run
+    number = 1  # Number of measurements to make between a single setup and teardown
+
     def setup(self):
         wp.init()
         wp.build.clear_kernel_cache()
