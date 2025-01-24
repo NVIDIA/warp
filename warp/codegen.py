@@ -3236,7 +3236,7 @@ static CUDA_CALLABLE void adj_{name}(
 
 """
 
-cuda_kernel_template = """
+cuda_kernel_template_forward = """
 
 extern "C" __global__ void {name}_cuda_kernel_forward(
     {forward_args})
@@ -3250,6 +3250,10 @@ extern "C" __global__ void {name}_cuda_kernel_forward(
 
 {forward_body}    }}
 }}
+
+"""
+
+cuda_kernel_template_backward = """
 
 extern "C" __global__ void {name}_cuda_kernel_backward(
     {reverse_args})
@@ -3266,12 +3270,16 @@ extern "C" __global__ void {name}_cuda_kernel_backward(
 
 """
 
-cpu_kernel_template = """
+cpu_kernel_template_forward = """
 
 void {name}_cpu_kernel_forward(
     {forward_args})
 {{
 {forward_body}}}
+
+"""
+
+cpu_kernel_template_backward = """
 
 void {name}_cpu_kernel_backward(
     {reverse_args})
@@ -3280,7 +3288,7 @@ void {name}_cpu_kernel_backward(
 
 """
 
-cpu_module_template = """
+cpu_module_template_forward = """
 
 extern "C" {{
 
@@ -3295,6 +3303,14 @@ WP_API void {name}_cpu_forward(
     }}
 }}
 
+}} // extern C
+
+"""
+
+cpu_module_template_backward = """
+
+extern "C" {{
+
 WP_API void {name}_cpu_backward(
     {reverse_args})
 {{
@@ -3307,36 +3323,6 @@ WP_API void {name}_cpu_backward(
 
 }} // extern C
 
-"""
-
-cuda_module_header_template = """
-
-extern "C" {{
-
-// Python CUDA entry points
-WP_API void {name}_cuda_forward(
-    void* stream,
-    {forward_args});
-
-WP_API void {name}_cuda_backward(
-    void* stream,
-    {reverse_args});
-
-}} // extern C
-"""
-
-cpu_module_header_template = """
-
-extern "C" {{
-
-// Python CPU entry points
-WP_API void {name}_cpu_forward(
-    {forward_args});
-
-WP_API void {name}_cpu_backward(
-    {reverse_args});
-
-}} // extern C
 """
 
 
@@ -3776,58 +3762,81 @@ def codegen_kernel(kernel, device, options):
 
     adj = kernel.adj
 
-    forward_args = ["wp::launch_bounds_t dim"]
-    reverse_args = ["wp::launch_bounds_t dim"]
-
     if device == "cpu":
-        forward_args.append("size_t task_index")
-        reverse_args.append("size_t task_index")
-
-    # forward args
-    for arg in adj.args:
-        forward_args.append(arg.ctype() + " var_" + arg.label)
-        reverse_args.append(arg.ctype() + " var_" + arg.label)
-
-    # reverse args
-    for arg in adj.args:
-        # indexed array gradients are regular arrays
-        if isinstance(arg.type, indexedarray):
-            _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
-            reverse_args.append(_arg.ctype() + " adj_" + arg.label)
-        else:
-            reverse_args.append(arg.ctype() + " adj_" + arg.label)
-
-    # codegen body
-    forward_body = codegen_func_forward(adj, func_type="kernel", device=device)
-
-    if options["enable_backward"]:
-        reverse_body = codegen_func_reverse(adj, func_type="kernel", device=device)
-    else:
-        reverse_body = ""
-
-    if device == "cpu":
-        template = cpu_kernel_template
+        template_forward = cpu_kernel_template_forward
+        template_backward = cpu_kernel_template_backward
     elif device == "cuda":
-        template = cuda_kernel_template
+        template_forward = cuda_kernel_template_forward
+        template_backward = cuda_kernel_template_backward
     else:
         raise ValueError(f"Device {device} is not supported")
 
-    s = template.format(
-        name=kernel.get_mangled_name(),
-        forward_args=indent(forward_args),
-        reverse_args=indent(reverse_args),
-        forward_body=forward_body,
-        reverse_body=reverse_body,
-    )
+    template = ""
+    template_fmt_args = {
+        "name": kernel.get_mangled_name(),
+    }
 
+    # build forward signature
+    forward_args = ["wp::launch_bounds_t dim"]
+    if device == "cpu":
+        forward_args.append("size_t task_index")
+
+    for arg in adj.args:
+        forward_args.append(arg.ctype() + " var_" + arg.label)
+
+    forward_body = codegen_func_forward(adj, func_type="kernel", device=device)
+    template_fmt_args.update(
+        {
+            "forward_args": indent(forward_args),
+            "forward_body": forward_body,
+        }
+    )
+    template += template_forward
+
+    if options["enable_backward"]:
+        # build reverse signature
+        reverse_args = ["wp::launch_bounds_t dim"]
+        if device == "cpu":
+            reverse_args.append("size_t task_index")
+
+        for arg in adj.args:
+            reverse_args.append(arg.ctype() + " var_" + arg.label)
+
+        for arg in adj.args:
+            # indexed array gradients are regular arrays
+            if isinstance(arg.type, indexedarray):
+                _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
+                reverse_args.append(_arg.ctype() + " adj_" + arg.label)
+            else:
+                reverse_args.append(arg.ctype() + " adj_" + arg.label)
+
+        reverse_body = codegen_func_reverse(adj, func_type="kernel", device=device)
+        template_fmt_args.update(
+            {
+                "reverse_args": indent(reverse_args),
+                "reverse_body": reverse_body,
+            }
+        )
+        template += template_backward
+
+    s = template.format(**template_fmt_args)
     return s
 
 
-def codegen_module(kernel, device="cpu"):
+def codegen_module(kernel, device, options):
     if device != "cpu":
         return ""
 
+    # Update the module's options with the ones defined on the kernel, if any.
+    options = dict(options)
+    options.update(kernel.options)
+
     adj = kernel.adj
+
+    template = ""
+    template_fmt_args = {
+        "name": kernel.get_mangled_name(),
+    }
 
     # build forward signature
     forward_args = ["wp::launch_bounds_t dim"]
@@ -3842,29 +3851,40 @@ def codegen_module(kernel, device="cpu"):
             forward_args.append(f"{arg.ctype()} var_{arg.label}")
             forward_params.append("var_" + arg.label)
 
-    # build reverse signature
-    reverse_args = [*forward_args]
-    reverse_params = [*forward_params]
-
-    for arg in adj.args:
-        if isinstance(arg.type, indexedarray):
-            # indexed array gradients are regular arrays
-            _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
-            reverse_args.append(f"const {_arg.ctype()} adj_{arg.label}")
-            reverse_params.append(f"adj_{_arg.label}")
-        elif hasattr(arg.type, "_wp_generic_type_str_"):
-            # vectors and matrices are passed from Python by pointer
-            reverse_args.append(f"const {arg.ctype()}* adj_{arg.label}")
-            reverse_params.append(f"*adj_{arg.label}")
-        else:
-            reverse_args.append(f"{arg.ctype()} adj_{arg.label}")
-            reverse_params.append(f"adj_{arg.label}")
-
-    s = cpu_module_template.format(
-        name=kernel.get_mangled_name(),
-        forward_args=indent(forward_args),
-        reverse_args=indent(reverse_args),
-        forward_params=indent(forward_params, 3),
-        reverse_params=indent(reverse_params, 3),
+    template_fmt_args.update(
+        {
+            "forward_args": indent(forward_args),
+            "forward_params": indent(forward_params, 3),
+        }
     )
+    template += cpu_module_template_forward
+
+    if options["enable_backward"]:
+        # build reverse signature
+        reverse_args = [*forward_args]
+        reverse_params = [*forward_params]
+
+        for arg in adj.args:
+            if isinstance(arg.type, indexedarray):
+                # indexed array gradients are regular arrays
+                _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
+                reverse_args.append(f"const {_arg.ctype()} adj_{arg.label}")
+                reverse_params.append(f"adj_{_arg.label}")
+            elif hasattr(arg.type, "_wp_generic_type_str_"):
+                # vectors and matrices are passed from Python by pointer
+                reverse_args.append(f"const {arg.ctype()}* adj_{arg.label}")
+                reverse_params.append(f"*adj_{arg.label}")
+            else:
+                reverse_args.append(f"{arg.ctype()} adj_{arg.label}")
+                reverse_params.append(f"adj_{arg.label}")
+
+        template_fmt_args.update(
+            {
+                "reverse_args": indent(reverse_args),
+                "reverse_params": indent(reverse_params, 3),
+            }
+        )
+        template += cpu_module_template_backward
+
+    s = template.format(**template_fmt_args)
     return s
