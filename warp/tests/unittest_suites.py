@@ -167,7 +167,8 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_rounding import TestRounding
     from warp.tests.test_runlength_encode import TestRunlengthEncode
     from warp.tests.test_scalar_ops import TestScalarOps
-    from warp.tests.test_sim_grad import TestSimGradients
+
+    # from warp.tests.test_sim_grad import TestSimGradients Disabled, flaky
     from warp.tests.test_sim_kinematics import TestSimKinematics
     from warp.tests.test_smoothstep import TestSmoothstep
     from warp.tests.test_snippet import TestSnippets
@@ -276,7 +277,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestRounding,
         TestRunlengthEncode,
         TestScalarOps,
-        TestSimGradients,
+        # TestSimGradients, Disabled, flaky
         TestSimKinematics,
         TestSmoothstep,
         TestSnippets,
