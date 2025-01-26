@@ -7,6 +7,7 @@
 
 """Tests for the mesh deformation sample scene."""
 
+import unittest
 from typing import Tuple
 
 import numpy as np
@@ -95,8 +96,10 @@ class TestSampleMeshDeformation(omni.kit.test.AsyncTestCase):
         fsd_str = "fsd_on" if enable_fsd else "fsd_off"
         await validate_render(f"{TEST_ID}_{fsd_str}")
 
+    @unittest.skipIf(omni.kit.test.utils.is_etm_run(), "Regression in Kit")
     async def test_capture_fsd_off(self) -> None:
         await self._test_capture(enable_fsd=False)
 
+    @unittest.skipIf(omni.kit.test.utils.is_etm_run(), "Regression in Kit")
     async def test_capture_fsd_on(self) -> None:
         await self._test_capture(enable_fsd=True)
