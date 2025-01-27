@@ -882,26 +882,23 @@ Tile Primitives
     :returns: A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements
 
 
-.. py:function:: tile_view(t: Tile, i: int32, j: int32, m: int32, n: int32) -> Tile
+.. py:function:: tile_view(t: Tile, offset: Tuple[int, ...], shape: Tuple[int, ...]) -> Tile
 
-    Return a subrange of a given tile from coordinates (i,j) to (i+m, j+n).
+    Return a slice of a given tile [offset, offset+shape], if shape is not specified it will be inferred from the unspecified offset dimensions.
 
     :param t: Input tile to extract a subrange from
-    :param i: Offset in the source tile along the first dimension
-    :param j: Offset in the source tile along the second dimensions
-    :param m: Size of the subrange to return along the first dimension
-    :param n: Size of the subrange to return along the second dimension
-    :returns: A tile with dimensions (m,n) and the same data type as the input tile
+    :param offset: Offset in the source tile 
+    :param shape: Shape of the returned slice
+    :returns: A tile with dimensions given by the specified shape or the remaining source tile dimensions [1]_
 
 
 .. py:function:: tile_assign(dst: Tile, src: Tile, offset: Tuple[int, ...]) -> None
 
-    Assign a tile to a subrange of a destination tile at coordinates (i,j).
+    Assign a tile to a subrange of a destination tile.
 
-    :param t: The destination tile to assign to
-    :param i: Offset in the source tile along the first dimension
-    :param j: Offset in the source tile along the second dimension
+    :param dst: The destination tile to assign to
     :param src: The source tile to read values from
+    :param offset: Offset in the destination tile to write to
 
 
 .. py:function:: tile(x: Any) -> Tile
