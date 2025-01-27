@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install CTK
-        uses: Jimver/cuda-toolkit@v0.2.19
+        uses: Jimver/cuda-toolkit@v0.2.21
         id: cuda-toolkit
         with:
           sub-packages: '["cudart", "nvcc", "nvrtc_dev", "nvjitlink"]'
@@ -67,7 +67,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install CTK
-        uses: Jimver/cuda-toolkit@v0.2.19
+        uses: Jimver/cuda-toolkit@v0.2.21
         id: cuda-toolkit
         with:
           sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
