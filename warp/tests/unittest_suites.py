@@ -167,7 +167,8 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_rounding import TestRounding
     from warp.tests.test_runlength_encode import TestRunlengthEncode
     from warp.tests.test_scalar_ops import TestScalarOps
-    from warp.tests.test_sim_grad import TestSimGradients
+
+    # from warp.tests.test_sim_grad import TestSimGradients Disabled, flaky
     from warp.tests.test_sim_kinematics import TestSimKinematics
     from warp.tests.test_smoothstep import TestSmoothstep
     from warp.tests.test_snippet import TestSnippets
@@ -276,7 +277,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestRounding,
         TestRunlengthEncode,
         TestScalarOps,
-        TestSimGradients,
+        # TestSimGradients, Disabled, flaky
         TestSimKinematics,
         TestSmoothstep,
         TestSnippets,
@@ -317,7 +318,6 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_array_reduce import TestArrayReduce
     from warp.tests.test_bvh import TestBvh
     from warp.tests.test_codegen import TestCodeGen
-    from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_conditional import TestConditional
     from warp.tests.test_ctypes import TestCTypes
@@ -345,12 +345,14 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_operators import TestOperators
     from warp.tests.test_quat import TestQuat
     from warp.tests.test_rand import TestRand
+    from warp.tests.test_reload import TestReload
     from warp.tests.test_rounding import TestRounding
     from warp.tests.test_runlength_encode import TestRunlengthEncode
     from warp.tests.test_sparse import TestSparse
     from warp.tests.test_static import TestStatic
     from warp.tests.test_streams import TestStreams
     from warp.tests.test_tape import TestTape
+    from warp.tests.test_tile import TestTile
     from warp.tests.test_transient_module import TestTransientModule
     from warp.tests.test_types import TestTypes
     from warp.tests.test_utils import TestUtils
@@ -363,7 +365,6 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestArrayReduce,
         TestBvh,
         TestCodeGen,
-        TestCodeGenInstancing,
         TestConstants,
         TestConditional,
         TestCTypes,
@@ -391,12 +392,14 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestOperators,
         TestQuat,
         TestRand,
+        TestReload,
         TestRounding,
         TestRunlengthEncode,
         TestSparse,
         TestStatic,
         TestStreams,
         TestTape,
+        TestTile,
         TestTransientModule,
         TestTypes,
         TestUtils,

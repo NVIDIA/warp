@@ -63,6 +63,7 @@ linux-aarch64 build:
   stage: build
   image: ubuntu:20.04
   extends:
+    - .runner-build-linux-aarch64
     - .save_warp_bin_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -81,8 +82,6 @@ linux-aarch64 build:
     - mkdir -p warp/bin/linux-aarch64
     - mv warp/bin/warp.so warp/bin/linux-aarch64
     - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
-  tags:
-    - arch/arm
 
 linux-x86_64 build:
   stage: build
@@ -221,6 +220,7 @@ linux-aarch64 test:
   needs: [linux-aarch64 build]
   extends:
     - .test_common_main
+  allow_failure: true # Unsure of stability and availability of devplat ARM GPU runners
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
@@ -228,8 +228,12 @@ linux-aarch64 test:
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
-  tags:
+  tags:  # TODO: Use .omni_devplat_arm_docker_gpu
     - arch/arm
+    - os/linux
+    - group/devplat
+    - platform/horde
+    - gpu/any
 
 linux-aarch64 test jetson:
   image: ubuntu:22.04
