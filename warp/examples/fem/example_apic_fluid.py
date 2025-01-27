@@ -220,6 +220,7 @@ class Example:
             jitter=self.radius * 1.0,
         )
         self.model: Model = builder.finalize()
+        self.model.ground = False
 
         # Storage for temporary variables
         self.temporary_store = fem.TemporaryStore()
