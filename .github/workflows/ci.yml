@@ -262,7 +262,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install --no-cache-dir -r docs/requirements.txt
       - name: Build Sphinx documentation
-        run: python build_docs.py --no_doctest
+        run: python build_docs.py --quick
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         id: build-docs-output
