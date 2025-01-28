@@ -117,7 +117,8 @@ Control
 Forward / Inverse Kinematics
 ----------------------------
 
-Articulated rigid-body mechanisms are kinematically described by the joints that connect the bodies as well as the relative relative transform from the parent and child body to the respective anchor frames of the joint in the parent and child body:
+Articulated rigid-body mechanisms are kinematically described by the joints that connect the bodies as well as the
+relative transform from the parent and child body to the respective anchor frames of the joint in the parent and child body:
 
 .. image:: /img/joint_transforms.png
    :width: 400
