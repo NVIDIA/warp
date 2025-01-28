@@ -23,8 +23,6 @@ import torch
 
 import warp as wp
 
-pvec2 = wp.types.vector(length=2, dtype=wp.float32)
-
 
 # Define the Rosenbrock function
 @wp.func
@@ -33,11 +31,7 @@ def rosenbrock(x: float, y: float):
 
 
 @wp.kernel
-def eval_rosenbrock(
-    xs: wp.array(dtype=pvec2),
-    # outputs
-    z: wp.array(dtype=float),
-):
+def eval_rosenbrock(xs: wp.array(dtype=wp.vec2), z: wp.array(dtype=float)):
     i = wp.tid()
     x = xs[i]
     z[i] = rosenbrock(x[0], x[1])
@@ -46,7 +40,7 @@ def eval_rosenbrock(
 class Rosenbrock(torch.autograd.Function):
     @staticmethod
     def forward(ctx, xy, num_particles):
-        ctx.xy = wp.from_torch(xy, dtype=pvec2, requires_grad=True)
+        ctx.xy = wp.from_torch(xy, dtype=wp.vec2, requires_grad=True)
         ctx.num_particles = num_particles
 
         # allocate output
@@ -76,10 +70,10 @@ class Rosenbrock(torch.autograd.Function):
 
 
 class Example:
-    def __init__(self, headless=False, train_iters=10):
-        self.num_particles = 1500
+    def __init__(self, headless=False, train_iters=10, num_particles=1500):
+        self.num_particles = num_particles
         self.train_iters = train_iters
-        self.frame = 0
+        self.train_iter = 0
 
         self.learning_rate = 5e-2
 
@@ -113,7 +107,7 @@ class Example:
         xy = np.column_stack((X.flatten(), Y.flatten()))
         N = len(xy)
 
-        xy = wp.array(xy, dtype=pvec2)
+        xy = wp.array(xy, dtype=wp.vec2)
         Z = wp.empty(N, dtype=wp.float32)
 
         wp.launch(eval_rosenbrock, dim=N, inputs=[xy], outputs=[Z])
@@ -122,23 +116,8 @@ class Example:
         # Plot the function as a heatmap
         self.fig = plt.figure(figsize=(6, 6))
         ax = plt.gca()
-        plt.imshow(
-            Z,
-            extent=[min_x, max_x, min_y, max_y],
-            origin="lower",
-            interpolation="bicubic",
-            cmap="coolwarm",
-        )
-        plt.contour(
-            X,
-            Y,
-            Z,
-            extent=[min_x, max_x, min_y, max_y],
-            levels=150,
-            colors="k",
-            alpha=0.5,
-            linewidths=0.5,
-        )
+        plt.imshow(Z, extent=[min_x, max_x, min_y, max_y], origin="lower", interpolation="bicubic", cmap="coolwarm")
+        plt.contour(X, Y, Z, extent=[min_x, max_x, min_y, max_y], levels=150, colors="k", alpha=0.5, linewidths=0.5)
 
         # Plot optimum
         plt.plot(1, 1, "*", color="r", markersize=10)
@@ -167,16 +146,16 @@ class Example:
 
         # Compute mean
         self.mean_pos = np.mean(self.xy_np, axis=0)
-        print(f"\rFrame {self.frame:5d} particle mean: {self.mean_pos[0]:.8f}, {self.mean_pos[1]:.8f}    ", end="")
+        print(f"\rIter {self.train_iter:5d} particle mean: {self.mean_pos[0]:.8f}, {self.mean_pos[1]:.8f}    ", end="")
 
-        self.frame += 1
+        self.train_iter += 1
 
     def render(self):
         if self.scatter_plot is None:
             return
 
         self.scatter_plot.set_offsets(np.c_[self.xy_np[:, 0], self.xy_np[:, 1]])
-        self.mean_marker.set_data(self.mean_pos[0], self.mean_pos[1])
+        self.mean_marker.set_data([self.mean_pos[0]], [self.mean_pos[1]])
 
     # Function to update the scatter plot
     def step_and_render(self, frame):
@@ -194,6 +173,9 @@ if __name__ == "__main__":
     parser.add_argument("--num_frames", type=int, default=10000, help="Total number of frames.")
     parser.add_argument("--train_iters", type=int, default=10, help="Total number of training iterations per frame.")
     parser.add_argument(
+        "--num_particles", type=int, default=1500, help="Total number of particles to use in optimization."
+    )
+    parser.add_argument(
         "--headless",
         action="store_true",
         help="Run in headless mode, suppressing the opening of any graphical windows.",
@@ -202,14 +184,16 @@ if __name__ == "__main__":
     args = parser.parse_known_args()[0]
 
     with wp.ScopedDevice(args.device):
-        example = Example(headless=args.headless, train_iters=args.train_iters)
+        example = Example(headless=args.headless, train_iters=args.train_iters, num_particles=args.num_particles)
 
         if not args.headless:
             import matplotlib.pyplot as plt
             from matplotlib.animation import FuncAnimation
 
             # Create the animation
-            ani = FuncAnimation(example.fig, example.step_and_render, frames=args.num_frames, interval=100)
+            ani = FuncAnimation(
+                example.fig, example.step_and_render, frames=args.num_frames, interval=100, repeat=False
+            )
 
             # Display the animation
             plt.show()
