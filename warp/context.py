@@ -3324,36 +3324,18 @@ class Runtime:
             ]
             self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
 
-            self.core.volume_f_from_tiles_device.argtypes = [
+            self.core.volume_from_tiles_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
                 ctypes.c_float * 9,
                 ctypes.c_float * 3,
                 ctypes.c_bool,
-                ctypes.c_float,
+                ctypes.c_void_p,
+                ctypes.c_uint32,
+                ctypes.c_char_p,
             ]
-            self.core.volume_f_from_tiles_device.restype = ctypes.c_uint64
-            self.core.volume_v_from_tiles_device.argtypes = [
-                ctypes.c_void_p,
-                ctypes.c_void_p,
-                ctypes.c_int,
-                ctypes.c_float * 9,
-                ctypes.c_float * 3,
-                ctypes.c_bool,
-                ctypes.c_float * 3,
-            ]
-            self.core.volume_v_from_tiles_device.restype = ctypes.c_uint64
-            self.core.volume_i_from_tiles_device.argtypes = [
-                ctypes.c_void_p,
-                ctypes.c_void_p,
-                ctypes.c_int,
-                ctypes.c_float * 9,
-                ctypes.c_float * 3,
-                ctypes.c_bool,
-                ctypes.c_int,
-            ]
-            self.core.volume_i_from_tiles_device.restype = ctypes.c_uint64
+            self.core.volume_from_tiles_device.restype = ctypes.c_uint64
             self.core.volume_index_from_tiles_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,

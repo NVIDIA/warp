@@ -3864,6 +3864,18 @@ _volume_supported_value_types = {
 }
 
 
+def _is_volume_type_supported(dtype):
+    for typ in _volume_supported_value_types:
+        if types_equal(typ, dtype):
+            return True
+    return False
+
+
+def _check_volume_type_is_supported(dtype):
+    if not _is_volume_type_supported(dtype):
+        raise RuntimeError(f"unsupported volume type `{type_repr(dtype)}`")
+
+
 def check_volume_value_grad_compatibility(dtype, grad_dtype):
     if type_is_vector(dtype):
         expected = matrix(shape=(type_length(dtype), 3), dtype=type_scalar_type(dtype))
@@ -3879,9 +3891,7 @@ def volume_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
         return Any
 
     dtype = arg_values["dtype"]
-
-    if dtype not in _volume_supported_value_types:
-        raise RuntimeError(f"unsupported volume type `{dtype.__name__}`")
+    _check_volume_type_is_supported(dtype)
 
     return dtype
 
@@ -3917,9 +3927,7 @@ def volume_sample_grad_value_func(arg_types: Mapping[str, type], arg_values: Map
         return Any
 
     dtype = arg_values["dtype"]
-
-    if dtype not in _volume_supported_value_types:
-        raise RuntimeError(f"unsupported volume type `{dtype.__name__}`")
+    _check_volume_type_is_supported(dtype)
 
     check_volume_value_grad_compatibility(dtype, arg_types["grad"])
 
@@ -3957,9 +3965,7 @@ def volume_lookup_value_func(arg_types: Mapping[str, type], arg_values: Mapping[
         return Any
 
     dtype = arg_values["dtype"]
-
-    if dtype not in _volume_supported_value_types:
-        raise RuntimeError(f"unsupported volume type `{dtype.__name__}`")
+    _check_volume_type_is_supported(dtype)
 
     return dtype
 
@@ -3996,9 +4002,7 @@ def volume_store_value_func(arg_types: Mapping[str, type], arg_values: Mapping[s
         return None
 
     dtype = arg_types["value"]
-
-    if dtype not in _volume_supported_value_types:
-        raise RuntimeError(f"unsupported volume type `{dtype.__name__}`")
+    _check_volume_type_is_supported(dtype)
 
     return None
 

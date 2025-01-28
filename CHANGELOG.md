@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added support for vec4f grid construction in `wp.Volume.allocate_by_tiles()`
+
 ### Changed
 
 ### Fixed

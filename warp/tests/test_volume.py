@@ -362,6 +362,22 @@ def test_volume_store_i(volume: wp.uint64, points: wp.array(dtype=wp.vec3), valu
     values[tid] = wp.volume_lookup_i(volume, i, j, k)
 
 
+@wp.kernel
+def test_volume_store_v4(volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.vec4)):
+    tid = wp.tid()
+
+    p = points[tid]
+    i = int(p[0])
+    j = int(p[1])
+    k = int(p[2])
+
+    v = wp.vec4(p[0], p[1], p[2], float(i + 100 * j + 10000 * k))
+
+    wp.volume_store(volume, i, j, k, v)
+
+    values[tid] = wp.volume_lookup(volume, i, j, k, dtype=wp.vec4)
+
+
 devices = get_test_devices()
 rng = np.random.default_rng(101215)
 
@@ -622,6 +638,22 @@ def test_volume_allocation_i(test, device):
     points = wp.array(points_np, dtype=wp.vec3, device=device)
     values = wp.empty(len(points_np), dtype=wp.int32, device=device)
     wp.launch(test_volume_store_i, dim=len(points_np), inputs=[volume.id, points, values], device=device)
+
+    values_res = values.numpy()
+    np.testing.assert_equal(values_res, values_ref)
+
+
+def test_volume_allocation_v4(test, device):
+    bg_value = (-1, 2.0, -3, 5)
+    points_np = np.append(point_grid, [[8096, 8096, 8096]], axis=0)
+
+    w_ref = np.array([x + 100 * y + 10000 * z for x, y, z in point_grid])[:, np.newaxis]
+    values_ref = np.append(np.hstack((point_grid, w_ref)), [bg_value], axis=0)
+
+    volume = wp.Volume.allocate(min=[-11, -11, -11], max=[11, 11, 11], voxel_size=0.1, bg_value=bg_value, device=device)
+    points = wp.array(points_np, dtype=wp.vec3, device=device)
+    values = wp.empty(len(points_np), dtype=wp.vec4, device=device)
+    wp.launch(test_volume_store_v4, dim=len(points_np), inputs=[volume.id, points, values], device=device)
 
     values_res = values.numpy()
     np.testing.assert_equal(values_res, values_ref)
@@ -958,6 +990,9 @@ add_function_test(
 )
 add_function_test(
     TestVolume, "test_volume_allocation_i", test_volume_allocation_i, devices=get_selected_cuda_test_devices()
+)
+add_function_test(
+    TestVolume, "test_volume_allocation_v4", test_volume_allocation_v4, devices=get_selected_cuda_test_devices()
 )
 add_function_test(TestVolume, "test_volume_introspection", test_volume_introspection, devices=devices)
 add_function_test(

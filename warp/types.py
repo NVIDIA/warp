@@ -4355,6 +4355,15 @@ class Volume:
         translation_buf = (ctypes.c_float * 3)(translation[0], translation[1], translation[2])
         return transform_buf, translation_buf
 
+    # nanovdb types for which we instantiate the grid builder
+    # Should be in sync with WP_VOLUME_BUILDER_INSTANTIATE_TYPES in volume_builder.h
+    _supported_allocation_types = [
+        "int32",
+        "float",
+        "Vec3f",
+        "Vec4f",
+    ]
+
     @classmethod
     def allocate_by_tiles(
         cls,
@@ -4382,7 +4391,8 @@ class Volume:
                 or a floating point scalar type (2D N-by-3 array of :class:`warp.float32` or 1D array of `warp.vec3f` values), indicating world space positions.
                 Repeated points per tile are allowed and will be efficiently deduplicated.
             voxel_size (float or array-like): Voxel size(s) of the new volume. Ignored if `transform` is given.
-            bg_value (array-like, float, int or None): Value of unallocated voxels of the volume, also defines the volume's type. A :class:`warp.vec3` volume is created if this is `array-like`, an index volume will be created if `bg_value` is ``None``.
+            bg_value (array-like, scalar or None): Value of unallocated voxels of the volume, also defines the volume's type. An index volume will be created if `bg_value` is ``None``.
+              Other supported grid types are `int`, `float`, `vec3f`, and `vec4f`.
             translation (array-like): Translation between the index and world spaces.
             transform (array-like): Linear transform between the index and world spaces. If ``None``, deduced from `voxel_size`.
             device (Devicelike): The CUDA device to create the volume on, e.g.: "cuda" or "cuda:0".
@@ -4414,35 +4424,47 @@ class Volume:
                 translation_buf,
                 in_world_space,
             )
-        elif hasattr(bg_value, "__len__"):
-            volume.id = volume.runtime.core.volume_v_from_tiles_device(
-                volume.device.context,
-                ctypes.c_void_p(tile_points.ptr),
-                tile_points.shape[0],
-                transform_buf,
-                translation_buf,
-                in_world_space,
-                (ctypes.c_float * 3)(bg_value[0], bg_value[1], bg_value[2]),
-            )
-        elif isinstance(bg_value, int):
-            volume.id = volume.runtime.core.volume_i_from_tiles_device(
-                volume.device.context,
-                ctypes.c_void_p(tile_points.ptr),
-                tile_points.shape[0],
-                transform_buf,
-                translation_buf,
-                in_world_space,
-                bg_value,
-            )
         else:
-            volume.id = volume.runtime.core.volume_f_from_tiles_device(
+            # normalize background value type
+            grid_type = type_to_warp(type(bg_value))
+            if not (is_value(bg_value) or type_is_vector(grid_type)) and (
+                hasattr(bg_value, "__len__") and is_value(bg_value[0])
+            ):
+                # non-warp vectors are considered float, for backward compatibility
+                grid_type = vector(len(bg_value), dtype=float)
+
+            # look for corresponding nvdb type
+            try:
+                nvdb_type = next(
+                    typ
+                    for typ in Volume._supported_allocation_types
+                    if types_equal(grid_type, Volume._nvdb_type_to_dtype[typ])
+                )
+            except StopIteration as err:
+                raise TypeError(
+                    f"Unsupported bg_value type for volume allocation {type_repr(grid_type)}. Supported volume types are {', '.join(Volume._supported_allocation_types)}."
+                ) from err
+
+            # cast to ctype
+            # wrap scalar values in length-1 vectors to handle specific ctype conversion
+            if not type_is_vector(grid_type):
+                grid_type = vector(length=1, dtype=grid_type)
+
+            cvalue = grid_type(bg_value)
+            cvalue_ptr = ctypes.pointer(cvalue)
+            cvalue_size = ctypes.sizeof(cvalue)
+            cvalue_type = nvdb_type.encode("ascii")
+
+            volume.id = volume.runtime.core.volume_from_tiles_device(
                 volume.device.context,
                 ctypes.c_void_p(tile_points.ptr),
                 tile_points.shape[0],
                 transform_buf,
                 translation_buf,
                 in_world_space,
-                float(bg_value),
+                cvalue_ptr,
+                cvalue_size,
+                cvalue_type,
             )
 
         if volume.id == 0:

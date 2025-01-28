@@ -10,6 +10,12 @@
 
 #include <nanovdb/NanoVDB.h>
 
+#define WP_VOLUME_BUILDER_INSTANTIATE_TYPES                                                                            \
+    EXPAND_BUILDER_TYPE(int32_t)                                                                                       \
+    EXPAND_BUILDER_TYPE(float)                                                                                         \
+    EXPAND_BUILDER_TYPE(nanovdb::Vec3f)                                                                                \
+    EXPAND_BUILDER_TYPE(nanovdb::Vec4f)                                                                                \
+
 template <typename BuildT> struct BuildGridParams
 {
     nanovdb::Map map;

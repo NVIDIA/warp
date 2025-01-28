@@ -21,7 +21,7 @@ namespace
 struct VolumeDesc
 {
     // NanoVDB buffer either in device or host memory
-    void *buffer;
+    void* buffer;
     uint64_t size_in_bytes;
     bool owner; // whether the buffer should be deallocated when the volume is destroyed
 
@@ -29,23 +29,23 @@ struct VolumeDesc
     pnanovdb_tree_t tree_data;
 
     // Host-accessible version of the blind metadata (copy if GPU, alias if CPU)
-    pnanovdb_gridblindmetadata_t *blind_metadata;
+    pnanovdb_gridblindmetadata_t* blind_metadata;
 
     // CUDA context for this volume (NULL if CPU)
-    void *context;
+    void* context;
 
-    pnanovdb_buf_t as_pnano() const { return pnanovdb_make_buf(static_cast<uint32_t *>(buffer), size_in_bytes); }
+    pnanovdb_buf_t as_pnano() const { return pnanovdb_make_buf(static_cast<uint32_t*>(buffer), size_in_bytes); }
 };
 
 // Host-side volume descriptors. Maps each CPU/GPU volume buffer address (id) to a CPU desc
 std::map<uint64_t, VolumeDesc> g_volume_descriptors;
 
-bool volume_get_descriptor(uint64_t id, const VolumeDesc *&volumeDesc)
+bool volume_get_descriptor(uint64_t id, const VolumeDesc*& volumeDesc)
 {
     if (id == 0)
         return false;
 
-    const auto &iter = g_volume_descriptors.find(id);
+    const auto& iter = g_volume_descriptors.find(id);
     if (iter == g_volume_descriptors.end())
         return false;
     else
@@ -53,21 +53,21 @@ bool volume_get_descriptor(uint64_t id, const VolumeDesc *&volumeDesc)
     return true;
 }
 
-bool volume_exists(const void *id)
+bool volume_exists(const void* id)
 {
-    const VolumeDesc *volume;
+    const VolumeDesc* volume;
     return volume_get_descriptor((uint64_t)id, volume);
 }
 
-void volume_add_descriptor(uint64_t id, VolumeDesc &&volumeDesc) { g_volume_descriptors[id] = std::move(volumeDesc); }
+void volume_add_descriptor(uint64_t id, VolumeDesc&& volumeDesc) { g_volume_descriptors[id] = std::move(volumeDesc); }
 
 void volume_rem_descriptor(uint64_t id) { g_volume_descriptors.erase(id); }
 
-void volume_set_map(nanovdb::Map &map, const float transform[9], const float translation[3])
+void volume_set_map(nanovdb::Map& map, const float transform[9], const float translation[3])
 {
     // Need to transpose as Map::set is transposing again
-    const mat_t<3, 3, double> transpose(transform[0], transform[3], transform[6], transform[1], transform[4], transform[7],
-                                  transform[2], transform[5], transform[8]);
+    const mat_t<3, 3, double> transpose(transform[0], transform[3], transform[6], transform[1], transform[4],
+                                        transform[7], transform[2], transform[5], transform[8]);
     const mat_t<3, 3, double> inv = inverse(transpose);
 
     map.set(transpose.data, inv.data, translation);
@@ -76,7 +76,7 @@ void volume_set_map(nanovdb::Map &map, const float transform[9], const float tra
 } // anonymous namespace
 
 // NB: buf must be a host pointer
-uint64_t volume_create_host(void *buf, uint64_t size, bool copy, bool owner)
+uint64_t volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
 {
     if (size > 0 && size < sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t))
         return 0; // This cannot be a valid NanoVDB grid with data
@@ -91,7 +91,7 @@ uint64_t volume_create_host(void *buf, uint64_t size, bool copy, bool owner)
     volume.context = NULL;
 
     memcpy_h2h(&volume.grid_data, buf, sizeof(pnanovdb_grid_t));
-    memcpy_h2h(&volume.tree_data, (pnanovdb_grid_t *)buf + 1, sizeof(pnanovdb_tree_t));
+    memcpy_h2h(&volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
 
     if (volume.grid_data.magic != PNANOVDB_MAGIC_NUMBER && volume.grid_data.magic != PNANOVDB_MAGIC_GRID)
         return 0;
@@ -116,8 +116,8 @@ uint64_t volume_create_host(void *buf, uint64_t size, bool copy, bool owner)
     }
 
     // Alias blind metadata
-    volume.blind_metadata = reinterpret_cast<pnanovdb_gridblindmetadata_t *>(static_cast<uint8_t *>(volume.buffer) +
-                                                                             volume.grid_data.blind_metadata_offset);
+    volume.blind_metadata = reinterpret_cast<pnanovdb_gridblindmetadata_t*>(static_cast<uint8_t*>(volume.buffer) +
+                                                                            volume.grid_data.blind_metadata_offset);
 
     uint64_t id = (uint64_t)volume.buffer;
 
@@ -127,7 +127,7 @@ uint64_t volume_create_host(void *buf, uint64_t size, bool copy, bool owner)
 }
 
 // NB: buf must be a pointer on the same device
-uint64_t volume_create_device(void *context, void *buf, uint64_t size, bool copy, bool owner)
+uint64_t volume_create_device(void* context, void* buf, uint64_t size, bool copy, bool owner)
 {
     if (size > 0 && size < sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t))
         return 0; // This cannot be a valid NanoVDB grid with data
@@ -144,7 +144,7 @@ uint64_t volume_create_device(void *context, void *buf, uint64_t size, bool copy
     volume.context = context ? context : cuda_context_get_current();
 
     memcpy_d2h(WP_CURRENT_CONTEXT, &volume.grid_data, buf, sizeof(pnanovdb_grid_t));
-    memcpy_d2h(WP_CURRENT_CONTEXT, &volume.tree_data, (pnanovdb_grid_t *)buf + 1, sizeof(pnanovdb_tree_t));
+    memcpy_d2h(WP_CURRENT_CONTEXT, &volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
     // no sync needed since the above copies are to pageable memory
 
     if (volume.grid_data.magic != PNANOVDB_MAGIC_NUMBER && volume.grid_data.magic != PNANOVDB_MAGIC_GRID)
@@ -171,9 +171,9 @@ uint64_t volume_create_device(void *context, void *buf, uint64_t size, bool copy
 
     // Make blind metadata accessible on host
     const uint64_t blindmetadata_size = volume.grid_data.blind_metadata_count * sizeof(pnanovdb_gridblindmetadata_t);
-    volume.blind_metadata = static_cast<pnanovdb_gridblindmetadata_t *>(alloc_pinned(blindmetadata_size));
+    volume.blind_metadata = static_cast<pnanovdb_gridblindmetadata_t*>(alloc_pinned(blindmetadata_size));
     memcpy_d2h(WP_CURRENT_CONTEXT, volume.blind_metadata,
-               static_cast<uint8_t *>(volume.buffer) + volume.grid_data.blind_metadata_offset, blindmetadata_size);
+               static_cast<uint8_t*>(volume.buffer) + volume.grid_data.blind_metadata_offset, blindmetadata_size);
 
     uint64_t id = (uint64_t)volume.buffer;
     volume_add_descriptor(id, std::move(volume));
@@ -181,12 +181,12 @@ uint64_t volume_create_device(void *context, void *buf, uint64_t size, bool copy
     return id;
 }
 
-void volume_get_buffer_info(uint64_t id, void **buf, uint64_t *size)
+void volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size)
 {
     *buf = 0;
     *size = 0;
 
-    const VolumeDesc *volume;
+    const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
     {
         *buf = volume->buffer;
@@ -194,11 +194,11 @@ void volume_get_buffer_info(uint64_t id, void **buf, uint64_t *size)
     }
 }
 
-void volume_get_voxel_size(uint64_t id, float *dx, float *dy, float *dz)
+void volume_get_voxel_size(uint64_t id, float* dx, float* dy, float* dz)
 {
     *dx = *dx = *dz = 0.0f;
 
-    const VolumeDesc *volume;
+    const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
     {
         *dx = (float)volume->grid_data.voxel_size[0];
@@ -207,12 +207,12 @@ void volume_get_voxel_size(uint64_t id, float *dx, float *dy, float *dz)
     }
 }
 
-void volume_get_tile_and_voxel_count(uint64_t id, uint32_t &tile_count, uint64_t &voxel_count)
+void volume_get_tile_and_voxel_count(uint64_t id, uint32_t& tile_count, uint64_t& voxel_count)
 {
     tile_count = 0;
     voxel_count = 0;
 
-    const VolumeDesc *volume;
+    const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
     {
         tile_count = volume->tree_data.node_count_leaf;
@@ -233,13 +233,13 @@ void volume_get_tile_and_voxel_count(uint64_t id, uint32_t &tile_count, uint64_t
     }
 }
 
-const char *volume_get_grid_info(uint64_t id, uint64_t *grid_size, uint32_t *grid_index, uint32_t *grid_count,
+const char* volume_get_grid_info(uint64_t id, uint64_t* grid_size, uint32_t* grid_index, uint32_t* grid_count,
                                  float translation[3], float transform[9], char type_str[16])
 {
-    const VolumeDesc *volume;
+    const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
     {
-        const pnanovdb_grid_t &grid_data = volume->grid_data;
+        const pnanovdb_grid_t& grid_data = volume->grid_data;
         *grid_count = grid_data.grid_count;
         *grid_index = grid_data.grid_index;
         *grid_size = grid_data.grid_size;
@@ -248,7 +248,7 @@ const char *volume_get_grid_info(uint64_t id, uint64_t *grid_size, uint32_t *gri
         memcpy(transform, grid_data.map.matf, sizeof(grid_data.map.matf));
 
         nanovdb::toStr(type_str, static_cast<nanovdb::GridType>(grid_data.grid_type));
-        return (const char *)grid_data.grid_name;
+        return (const char*)grid_data.grid_name;
     }
 
     *grid_size = 0;
@@ -261,7 +261,7 @@ const char *volume_get_grid_info(uint64_t id, uint64_t *grid_size, uint32_t *gri
 
 uint32_t volume_get_blind_data_count(uint64_t id)
 {
-    const VolumeDesc *volume;
+    const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
     {
         return volume->grid_data.blind_metadata_count;
@@ -269,20 +269,20 @@ uint32_t volume_get_blind_data_count(uint64_t id)
     return 0;
 }
 
-const char *volume_get_blind_data_info(uint64_t id, uint32_t data_index, void **buf, uint64_t *value_count,
-                                       uint32_t *value_size, char type_str[16])
+const char* volume_get_blind_data_info(uint64_t id, uint32_t data_index, void** buf, uint64_t* value_count,
+                                       uint32_t* value_size, char type_str[16])
 {
-    const VolumeDesc *volume;
+    const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume) && data_index < volume->grid_data.blind_metadata_count)
     {
-        const pnanovdb_gridblindmetadata_t &metadata = volume->blind_metadata[data_index];
+        const pnanovdb_gridblindmetadata_t& metadata = volume->blind_metadata[data_index];
         *value_count = metadata.value_count;
         *value_size = metadata.value_size;
 
         nanovdb::toStr(type_str, static_cast<nanovdb::GridType>(metadata.data_type));
-        *buf = static_cast<uint8_t *>(volume->buffer) + volume->grid_data.blind_metadata_offset +
+        *buf = static_cast<uint8_t*>(volume->buffer) + volume->grid_data.blind_metadata_offset +
                data_index * sizeof(pnanovdb_gridblindmetadata_t) + metadata.data_offset;
-        return (const char *)metadata.name;
+        return (const char*)metadata.name;
     }
     *buf = nullptr;
     *value_count = 0;
@@ -291,16 +291,16 @@ const char *volume_get_blind_data_info(uint64_t id, uint32_t data_index, void **
     return nullptr;
 }
 
-void volume_get_tiles_host(uint64_t id, void *buf)
+void volume_get_tiles_host(uint64_t id, void* buf)
 {
     static constexpr uint32_t MASK = (1u << 3u) - 1u; // mask for bit operations
 
-    const VolumeDesc *volume;
+    const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
     {
         const uint32_t leaf_count = volume->tree_data.node_count_leaf;
 
-        pnanovdb_coord_t *leaf_coords = static_cast<pnanovdb_coord_t *>(buf);
+        pnanovdb_coord_t* leaf_coords = static_cast<pnanovdb_coord_t*>(buf);
 
         const uint64_t first_leaf =
             (uint64_t)volume->buffer + sizeof(pnanovdb_grid_t) + volume->tree_data.node_offset_leaf;
@@ -316,16 +316,16 @@ void volume_get_tiles_host(uint64_t id, void *buf)
     }
 }
 
-void volume_get_voxels_host(uint64_t id, void *buf)
+void volume_get_voxels_host(uint64_t id, void* buf)
 {
-    const VolumeDesc *volume;
+    const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
     {
         uint32_t leaf_count;
         uint64_t voxel_count;
         volume_get_tile_and_voxel_count(id, leaf_count, voxel_count);
 
-        pnanovdb_coord_t *voxel_coords = static_cast<pnanovdb_coord_t *>(buf);
+        pnanovdb_coord_t* voxel_coords = static_cast<pnanovdb_coord_t*>(buf);
 
         const pnanovdb_buf_t pnano_buf = volume->as_pnano();
         for (uint32_t i = 0; i < leaf_count; ++i)
@@ -354,7 +354,7 @@ void volume_get_voxels_host(uint64_t id, void *buf)
 
 void volume_destroy_host(uint64_t id)
 {
-    const VolumeDesc *volume;
+    const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
     {
         if (volume->owner)
@@ -367,7 +367,7 @@ void volume_destroy_host(uint64_t id)
 
 void volume_destroy_device(uint64_t id)
 {
-    const VolumeDesc *volume;
+    const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
     {
         ContextGuard guard(volume->context);
@@ -382,52 +382,35 @@ void volume_destroy_device(uint64_t id)
 
 #if WP_ENABLE_CUDA
 
-uint64_t volume_f_from_tiles_device(void *context, void *points, int num_points, float transform[9],
-                                    float translation[3], bool points_in_world_space, float bg_value)
+uint64_t volume_from_tiles_device(void* context, void* points, int num_points, float transform[9], float translation[3],
+                                  bool points_in_world_space, const void* value_ptr, uint32_t value_size,
+                                  const char* value_type)
 {
-    nanovdb::FloatGrid *grid;
-    size_t gridSize;
-    BuildGridParams<float> params;
-    params.background_value = bg_value;
-    volume_set_map(params.map, transform, translation);
+    char gridTypeStr[12];
 
-    build_grid_from_points(grid, gridSize, points, num_points, points_in_world_space, params);
+#define EXPAND_BUILDER_TYPE(type)                                                                                      \
+    nanovdb::toStr(gridTypeStr, nanovdb::toGridType<type>());                                                          \
+    if (strncmp(gridTypeStr, value_type, sizeof(gridTypeStr)) == 0)                                                    \
+    {                                                                                                                  \
+        BuildGridParams<type> params;                                                                                  \
+        memcpy(&params.background_value, value_ptr, value_size);                                                       \
+        volume_set_map(params.map, transform, translation);                                                            \
+        size_t gridSize;                                                                                               \
+        nanovdb::Grid<nanovdb::NanoTree<type>>* grid;                                                                  \
+        build_grid_from_points(grid, gridSize, points, num_points, points_in_world_space, params);                     \
+        return volume_create_device(context, grid, gridSize, false, true);                                             \
+    }
 
-    return volume_create_device(context, grid, gridSize, false, true);
+    WP_VOLUME_BUILDER_INSTANTIATE_TYPES
+#undef EXPAND_BUILDER_TYPE
+
+    return 0;
 }
 
-uint64_t volume_v_from_tiles_device(void *context, void *points, int num_points, float transform[9],
-                                    float translation[3], bool points_in_world_space, float bg_value[3])
-{
-    nanovdb::Vec3fGrid *grid;
-    size_t gridSize;
-    BuildGridParams<nanovdb::Vec3f> params;
-    params.background_value = nanovdb::Vec3f{bg_value[0], bg_value[1], bg_value[2]};
-    volume_set_map(params.map, transform, translation);
-
-    build_grid_from_points(grid, gridSize, points, num_points, points_in_world_space, params);
-
-    return volume_create_device(context, grid, gridSize, false, true);
-}
-
-uint64_t volume_i_from_tiles_device(void *context, void *points, int num_points, float transform[9],
-                                    float translation[3], bool points_in_world_space, int bg_value)
-{
-    nanovdb::Int32Grid *grid;
-    size_t gridSize;
-    BuildGridParams<int32_t> params;
-    params.background_value = (int32_t)(bg_value);
-    volume_set_map(params.map, transform, translation);
-
-    build_grid_from_points(grid, gridSize, points, num_points, points_in_world_space, params);
-
-    return volume_create_device(context, grid, gridSize, false, true);
-}
-
-uint64_t volume_index_from_tiles_device(void *context, void *points, int num_points, float transform[9],
+uint64_t volume_index_from_tiles_device(void* context, void* points, int num_points, float transform[9],
                                         float translation[3], bool points_in_world_space)
 {
-    nanovdb::IndexGrid *grid;
+    nanovdb::IndexGrid* grid;
     size_t gridSize;
     BuildGridParams<nanovdb::ValueIndex> params;
     volume_set_map(params.map, transform, translation);
@@ -437,10 +420,10 @@ uint64_t volume_index_from_tiles_device(void *context, void *points, int num_poi
     return volume_create_device(context, grid, gridSize, false, true);
 }
 
-uint64_t volume_from_active_voxels_device(void *context, void *points, int num_points, float transform[9],
+uint64_t volume_from_active_voxels_device(void* context, void* points, int num_points, float transform[9],
                                           float translation[3], bool points_in_world_space)
 {
-    nanovdb::OnIndexGrid *grid;
+    nanovdb::OnIndexGrid* grid;
     size_t gridSize;
     BuildGridParams<nanovdb::ValueOnIndex> params;
     volume_set_map(params.map, transform, translation);
@@ -450,71 +433,60 @@ uint64_t volume_from_active_voxels_device(void *context, void *points, int num_p
     return volume_create_device(context, grid, gridSize, false, true);
 }
 
-void launch_get_leaf_coords(void *context, const uint32_t leaf_count, pnanovdb_coord_t *leaf_coords,
+void launch_get_leaf_coords(void* context, const uint32_t leaf_count, pnanovdb_coord_t* leaf_coords,
                             pnanovdb_buf_t buf);
-void launch_get_voxel_coords(void *context, const uint32_t leaf_count, const uint32_t voxel_count,
-                             pnanovdb_coord_t *voxel_coords, pnanovdb_buf_t buf);
+void launch_get_voxel_coords(void* context, const uint32_t leaf_count, const uint32_t voxel_count,
+                             pnanovdb_coord_t* voxel_coords, pnanovdb_buf_t buf);
 
-void volume_get_tiles_device(uint64_t id, void *buf)
+void volume_get_tiles_device(uint64_t id, void* buf)
 {
-    const VolumeDesc *volume;
+    const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
     {
         const uint32_t leaf_count = volume->tree_data.node_count_leaf;
 
-        pnanovdb_coord_t *leaf_coords = static_cast<pnanovdb_coord_t *>(buf);
+        pnanovdb_coord_t* leaf_coords = static_cast<pnanovdb_coord_t*>(buf);
         launch_get_leaf_coords(volume->context, leaf_count, leaf_coords, volume->as_pnano());
     }
 }
 
-void volume_get_voxels_device(uint64_t id, void *buf)
+void volume_get_voxels_device(uint64_t id, void* buf)
 {
-    const VolumeDesc *volume;
+    const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
     {
         uint32_t leaf_count;
         uint64_t voxel_count;
         volume_get_tile_and_voxel_count(id, leaf_count, voxel_count);
 
-        pnanovdb_coord_t *voxel_coords = static_cast<pnanovdb_coord_t *>(buf);
+        pnanovdb_coord_t* voxel_coords = static_cast<pnanovdb_coord_t*>(buf);
         launch_get_voxel_coords(volume->context, leaf_count, voxel_count, voxel_coords, volume->as_pnano());
     }
 }
 
 #else
 // stubs for non-CUDA platforms
-uint64_t volume_f_from_tiles_device(void *context, void *points, int num_points, float transform[9],
-                                    float translation[3], bool points_in_world_space, float bg_value)
+uint64_t volume_from_tiles_device(void* context, void* points, int num_points, float transform[9],
+                                  float translation[3], bool points_in_world_space, const void* value_ptr, uint32_t value_size,
+                                  const char* value_type)
 {
     return 0;
 }
 
-uint64_t volume_v_from_tiles_device(void *context, void *points, int num_points, float transform[9],
-                                    float translation[3], bool points_in_world_space, float bg_value[3])
-{
-    return 0;
-}
-
-uint64_t volume_i_from_tiles_device(void *context, void *points, int num_points, float transform[9],
-                                    float translation[3], bool points_in_world_space, int bg_value)
-{
-    return 0;
-}
-
-uint64_t volume_index_from_tiles_device(void *context, void *points, int num_points, float transform[9],
+uint64_t volume_index_from_tiles_device(void* context, void* points, int num_points, float transform[9],
                                         float translation[3], bool points_in_world_space)
 {
     return 0;
 }
 
-uint64_t volume_from_active_voxels_device(void *context, void *points, int num_points, float transform[9],
+uint64_t volume_from_active_voxels_device(void* context, void* points, int num_points, float transform[9],
                                           float translation[3], bool points_in_world_space)
 {
     return 0;
 }
 
-void volume_get_tiles_device(uint64_t id, void *buf) {}
+void volume_get_tiles_device(uint64_t id, void* buf) {}
 
-void volume_get_voxels_device(uint64_t id, void *buf) {}
+void volume_get_voxels_device(uint64_t id, void* buf) {}
 
 #endif

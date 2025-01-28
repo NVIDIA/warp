@@ -441,12 +441,14 @@ void build_grid_from_points(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
     grid_handle.buffer().detachDeviceData();
 }
 
-template void build_grid_from_points(nanovdb::Grid<nanovdb::NanoTree<float>> *&, size_t &, const void *, size_t, bool,
-                                     const BuildGridParams<float> &);
-template void build_grid_from_points(nanovdb::Grid<nanovdb::NanoTree<nanovdb::Vec3f>> *&, size_t &, const void *,
-                                     size_t, bool, const BuildGridParams<nanovdb::Vec3f> &);
-template void build_grid_from_points(nanovdb::Grid<nanovdb::NanoTree<int32_t>> *&, size_t &, const void *, size_t, bool,
-                                     const BuildGridParams<int32_t> &);
+
+#define EXPAND_BUILDER_TYPE(type) \
+template void build_grid_from_points(nanovdb::Grid<nanovdb::NanoTree<type>> *&, size_t &, const void *, size_t, bool, \
+                                     const BuildGridParams<type> &);
+
+WP_VOLUME_BUILDER_INSTANTIATE_TYPES
+#undef EXPAND_BUILDER_TYPE
+
 template void build_grid_from_points(nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueIndex>> *&, size_t &, const void *,
                                      size_t, bool, const BuildGridParams<nanovdb::ValueIndex> &);
 template void build_grid_from_points(nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueOnIndex>> *&, size_t &, const void *,
