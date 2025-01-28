@@ -202,18 +202,25 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
                     "-gencode=arch=compute_87,code=sm_87",  # Orin
                 ]
 
-            # support for Ada and Hopper is available with CUDA Toolkit 11.8+
-            if ctk_version >= (11, 8):
+            if ctk_version >= (12, 8):
+                # Support for Blackwell is available with CUDA Toolkit 12.8+
                 gencode_opts += [
                     "-gencode=arch=compute_89,code=sm_89",  # Ada
                     "-gencode=arch=compute_90,code=sm_90",  # Hopper
-                    # PTX for future hardware
-                    "-gencode=arch=compute_90,code=compute_90",
+                    "-gencode=arch=compute_100,code=sm_100",  # Blackwell
+                    "-gencode=arch=compute_120,code=sm_120",  # Blackwell
+                    "-gencode=arch=compute_120,code=compute_120",  # PTX for future hardware
+                ]
+            elif ctk_version >= (11, 8):
+                # Support for Ada and Hopper is available with CUDA Toolkit 11.8+
+                gencode_opts += [
+                    "-gencode=arch=compute_89,code=sm_89",  # Ada
+                    "-gencode=arch=compute_90,code=sm_90",  # Hopper
+                    "-gencode=arch=compute_90,code=compute_90",  # PTX for future hardware
                 ]
             else:
                 gencode_opts += [
-                    # PTX for future hardware
-                    "-gencode=arch=compute_86,code=compute_86",
+                    "-gencode=arch=compute_86,code=compute_86",  # PTX for future hardware
                 ]
 
         nvcc_opts = gencode_opts + [
