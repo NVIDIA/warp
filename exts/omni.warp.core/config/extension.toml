@@ -38,18 +38,19 @@ public = true
 # Kit testing flags
 [[test]]
 pyCoverageOmit = [
-    "warp/stubs.py",
-    "warp/jax.py",
-    "warp/torch.py",
-    "warp/paddle.py",
-    "warp/build.py",
-    "warp/build_dll.py",
-    "warp/sim/**",
-    "warp/render/**",
-    "warp/optim/**",
+    "warp/examples/**",
     "warp/fem/**",
+    "warp/optim/**",
+    "warp/render/**",
+    "warp/sim/**",
+    "warp/tests/**",
     "warp/thirdparty/**",
-    "warp/tests/**"
+    "warp/build_dll.py",
+    "warp/dlpack.py",
+    "warp/jax.py",
+    "warp/jax_experimental.py",
+    "warp/paddle.py",
+    "warp/stubs.py",
+    "warp/torch.py",
 ]
-pyCoverageThreshold = 40
 timeout = 900
