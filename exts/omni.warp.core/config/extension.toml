@@ -19,6 +19,9 @@ icon = "data/icon.png"
 [fswatcher.patterns]
 include = ["*.py"]
 
+[dependencies]
+"omni.kit.pip_archive" = {}
+
 # Extension module
 # It must be defined before the module `warp` in order to give
 # the `omni.warp.core` extension a chance to create a symlink towards Warp's
