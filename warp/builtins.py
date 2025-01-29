@@ -1711,11 +1711,17 @@ add_builtin(
 
 def tile_unpack_shape(arg_values):
     shape = arg_values["shape"]
-    if isinstance(shape, tuple):
-        return shape
-    else:
+
+    if not isinstance(shape, tuple):
         # promote to tuple
-        return (shape,)
+        shape = (shape,)
+
+    # check that components are constants
+    for d in shape:
+        if d is None:
+            raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    return shape
 
 
 def tile_unpack_offset(arg_values, ndim=0):
