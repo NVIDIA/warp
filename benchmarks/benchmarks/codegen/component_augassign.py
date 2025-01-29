@@ -60,27 +60,28 @@ class RunForwardKernel:
     def setup(self):
         wp.init()
         wp.build.clear_kernel_cache()
+        wp.load_module(device="cuda:0")
+
         N = (1024, 1024)
         self.a = wp.zeros(N, dtype=wp.mat22, device="cuda:0")
         self.b = wp.ones(N, dtype=wp.mat22, device="cuda:0")
         self.c = wp.zeros(N, dtype=wp.mat22, device="cuda:0")
         self.d = wp.ones(N, dtype=wp.mat22, device="cuda:0")
 
-        self.cmd = wp.launch(
-            matrix_augassign_kernel, N, inputs=[self.a, self.b, self.c, self.d], record_cmd=True, device="cuda:0"
-        )
         wp.synchronize_device("cuda:0")
 
-    def time_cuda(self):
-        self.cmd.launch()
-        wp.synchronize_device("cuda:0")
+    def track_cuda(self):
+        with wp.ScopedTimer("benchmark", cuda_filter=wp.TIMING_KERNEL, synchronize=True) as timer:
+            for _ in range(1000):
+                wp.launch(
+                    matrix_augassign_kernel, self.a.shape, inputs=[self.a, self.b, self.c, self.d], device="cuda:0"
+                )
 
-    def teardown(self):
-        self.a.zero_()
-        self.b.fill_(1.0)
-        self.c.zero_()
-        self.d.fill_(1.0)
-        wp.synchronize_device("cuda:0")
+        average = sum(result.elapsed for result in timer.timing_results) / len(timer.timing_results)
+
+        return average * 1e-3
+
+    track_cuda.unit = "seconds"
 
 
 class RunBackwardKernel:
@@ -95,48 +96,23 @@ class RunBackwardKernel:
         self.c = wp.zeros(N, dtype=wp.mat22, device="cuda:0", requires_grad=True)
         self.d = wp.ones(N, dtype=wp.mat22, device="cuda:0", requires_grad=True)
 
-        with wp.ScopedCapture("cuda:0") as capture:
-            wp.launch(
-                matrix_augassign_kernel,
-                N,
-                inputs=[self.a, self.b, self.c, self.d],
-                adj_inputs=[self.a.grad, self.b.grad, self.c.grad, self.d.grad],
-                adj_outputs=[],
-                adjoint=True,
-                device="cuda:0",
-            )
-        self.graph = capture.graph
-        # Warmup
-        for _ in range(5):
-            wp.capture_launch(self.graph)
         wp.synchronize_device("cuda:0")
 
-    def time_cuda(self):
-        wp.capture_launch(self.graph)
-        wp.synchronize_device("cuda:0")
+    def track_cuda(self):
+        with wp.ScopedTimer("benchmark", cuda_filter=wp.TIMING_KERNEL, synchronize=True) as timer:
+            for _ in range(1000):
+                wp.launch(
+                    matrix_augassign_kernel,
+                    self.a.shape,
+                    inputs=[self.a, self.b, self.c, self.d],
+                    adj_inputs=[self.a.grad, self.b.grad, self.c.grad, self.d.grad],
+                    adj_outputs=[],
+                    adjoint=True,
+                    device="cuda:0",
+                )
 
-    def track_cuda_filter(self):
-        with wp.ScopedTimer("benchmark", cuda_filter=wp.TIMING_KERNEL) as timer:
-            wp.launch(
-                matrix_augassign_kernel,
-                self.a.shape,
-                inputs=[self.a, self.b, self.c, self.d],
-                adj_inputs=[self.a.grad, self.b.grad, self.c.grad, self.d.grad],
-                adj_outputs=[],
-                adjoint=True,
-                device="cuda:0",
-            )
-        return timer.timing_results[0].elapsed * 1e3
+        average = sum(result.elapsed for result in timer.timing_results) / len(timer.timing_results)
 
-    track_cuda_filter.unit = "microseconds"
+        return average * 1e-3
 
-    def teardown(self):
-        self.a.zero_()
-        self.b.fill_(1.0)
-        self.c.zero_()
-        self.d.fill_(1.0)
-        self.a.grad.zero_()
-        self.b.grad.zero_()
-        self.c.grad.zero_()
-        self.d.grad.zero_()
-        wp.synchronize_device("cuda:0")
+    track_cuda.unit = "seconds"
