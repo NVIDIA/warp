@@ -56,7 +56,7 @@ stages:
 
 linux-x86_64 build:
   stage: build
-  image: ubuntu:20.04
+  image: ubuntu:22.04
   extends:
     - .save_warp_bin_artifact
     - .runner-large-build-linux-x86_64
