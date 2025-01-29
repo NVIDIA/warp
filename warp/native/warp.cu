@@ -3377,7 +3377,7 @@ size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_block
     if (block_dim <= 0)
     {
 #if defined(_DEBUG)
-        fprintf(stderr, "Warp warning: Launch got block_dim %d. Setting to 256.\n", dim, block_dim);
+        fprintf(stderr, "Warp warning: Launch got block_dim %d. Setting to 256.\n", block_dim);
 #endif
         block_dim = 256;
     }
