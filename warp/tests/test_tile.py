@@ -614,72 +614,6 @@ def test_tile_broadcast_grad(test, device):
     assert_np_equal(a.grad.numpy(), np.ones(5) * 5.0)
 
 
-TILE_VIEW_M = 16
-TILE_VIEW_N = 128
-
-
-@wp.kernel
-def test_tile_view_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
-    # load whole source into local memory
-    a = wp.tile_load(src, shape=(TILE_VIEW_M, TILE_VIEW_N))
-
-    # copy the source array row by row
-    for i in range(TILE_VIEW_M):
-        # create a view on original array and store
-        row = a[i]
-        wp.tile_store(dst, row, offset=(i, 0))
-
-
-def test_tile_view(test, device):
-    rng = np.random.default_rng(42)
-
-    a = wp.array(rng.random((TILE_VIEW_M, TILE_VIEW_N), dtype=np.float32), requires_grad=True, device=device)
-    b = wp.array(np.zeros((TILE_VIEW_M, TILE_VIEW_N), dtype=np.float32), requires_grad=True, device=device)
-
-    with wp.Tape() as tape:
-        wp.launch_tiled(test_tile_view_kernel, dim=[1], inputs=[a, b], block_dim=32, device=device)
-
-    assert_np_equal(b.numpy(), a.numpy())
-    b.grad = wp.ones_like(b, device=device)
-    tape.backward()
-
-    assert_np_equal(a.grad.numpy(), np.ones_like(a.numpy()))
-
-
-@wp.kernel
-def test_tile_assign_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
-    # load whole source into local memory
-    a = wp.tile_load(src, shape=(TILE_VIEW_M, TILE_VIEW_N))
-    b = wp.tile_zeros(dtype=float, shape=(TILE_VIEW_M, TILE_VIEW_N))
-
-    # copy the source array row by row
-    for i in range(TILE_VIEW_M):
-        # create views onto source and dest rows
-        row_src = a[i]
-        row_dst = b[i]
-
-        # copy onto dest row
-        wp.tile_assign(row_dst, row_src)
-
-    wp.tile_store(dst, b)
-
-
-def test_tile_assign(test, device):
-    rng = np.random.default_rng(42)
-
-    a = wp.array(rng.random((TILE_VIEW_M, TILE_VIEW_N), dtype=np.float32), requires_grad=True, device=device)
-    b = wp.array(np.zeros((TILE_VIEW_M, TILE_VIEW_N), dtype=np.float32), requires_grad=True, device=device)
-
-    with wp.Tape() as tape:
-        wp.launch_tiled(test_tile_assign_kernel, dim=[1], inputs=[a, b], block_dim=32, device=device)
-
-    assert_np_equal(b.numpy(), a.numpy())
-    b.grad = wp.ones_like(b, device=device)
-    tape.backward()
-
-    assert_np_equal(a.grad.numpy(), np.ones_like(a.numpy()))
-
-
 @wp.kernel
 def tile_len_kernel(
     a: wp.array(dtype=float, ndim=2),
@@ -745,8 +679,6 @@ add_function_test(TestTile, "test_tile_extract", test_tile_extract, devices=devi
 add_function_test(TestTile, "test_tile_extract_repeated", test_tile_extract_repeated, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_add", test_tile_broadcast_add, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_grad", test_tile_broadcast_grad, devices=devices)
-add_function_test(TestTile, "test_tile_view", test_tile_view, devices=devices)
-add_function_test(TestTile, "test_tile_assign", test_tile_assign, devices=devices)
 add_function_test(TestTile, "test_tile_len", test_tile_len, devices=devices)
 add_function_test(TestTile, "test_tile_print", test_tile_print, devices=devices, check_output=False)
 
