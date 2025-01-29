@@ -887,7 +887,7 @@ Tile Primitives
     Return a slice of a given tile [offset, offset+shape], if shape is not specified it will be inferred from the unspecified offset dimensions.
 
     :param t: Input tile to extract a subrange from
-    :param offset: Offset in the source tile 
+    :param offset: Offset in the source tile
     :param shape: Shape of the returned slice
     :returns: A tile with dimensions given by the specified shape or the remaining source tile dimensions [1]_
 
