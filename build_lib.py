@@ -125,7 +125,7 @@ def find_libmathdx():
         return libmathdx_path
     else:
         base_url = "https://developer.nvidia.com/downloads/compute/cublasdx/redist/cublasdx"
-        libmathdx_ver = "0.1.1"
+        libmathdx_ver = "0.1.2"
 
         # First check if a libmathdx folder exists in the target location
         extract_dir_base = os.path.join(".", "_build", "target-deps", "libmathdx")

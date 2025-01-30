@@ -32,6 +32,7 @@ bool cuda_compile_fft(
 }
 
 WP_API bool cuda_compile_dot(
+                             const char* fatbin_output_path,
                              const char* ltoir_output_path,
                              const char* symbol_name,
                              int num_include_dirs,

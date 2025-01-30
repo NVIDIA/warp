@@ -6525,10 +6525,12 @@ def tile_cholesky_generic_lto_dispatch_func(
 
     # otherwise compile LTO
     lto_code = tempfile.NamedTemporaryFile(prefix="warp", delete=False)
+    universal_fatbin_code = tempfile.NamedTemporaryFile(prefix="warp", delete=False)
 
     # cuSOLVERDx only support col-major input/outputs,
     # so we use upper to mimic a row-major input
     result = warp.context.runtime.core.cuda_compile_solver(
+        universal_fatbin_code.name.encode("utf-8"),
         lto_code.name.encode("utf-8"),
         lto_symbol.encode("utf-8"),
         0,
@@ -6543,21 +6545,25 @@ def tile_cholesky_generic_lto_dispatch_func(
         num_threads,
     )
 
-    lto_code_path = Path(lto_code.name)
     if not result:
-        lto_code.close()
-        if lto_code_path.exists():
-            lto_code_path.unlink()
+        for f in [lto_code, universal_fatbin_code]:
+            f.close()
+            if Path(f.name).exists():
+                Path(f.name).unlink()
         raise RuntimeError("Failed to compile tile_cholesky")
 
     else:
         with open(lto_code.name, "rb") as f:
             lto_code_data = f.read()
-        lto_code.close()
-        lto_code_path.unlink()
+        with open(universal_fatbin_code.name, "rb") as f:
+            universal_fatbin_code_data = f.read()
+        for f in [lto_code, universal_fatbin_code]:
+            f.close()
+            Path(f.name).unlink()
 
     builder.ltoirs[lto_symbol] = lto_code_data
     builder.ltoirs_decl[lto_symbol] = f"void {lto_symbol}({dtype}*, unsigned);"
+    builder.fatbins["cholesky"] = universal_fatbin_code_data
 
     return ((Var(lto_symbol, str, False, True, False), a, out), [], [lto_code_data], 0)
 
@@ -6663,10 +6669,12 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
 
     # otherwise compile LTO
     lto_code = tempfile.NamedTemporaryFile(prefix="warp", delete=False)
+    universal_fatbin_code = tempfile.NamedTemporaryFile(prefix="warp", delete=False)
 
     # cuSOLVERDx only support col-major input/outputs,
     # so we use upper to mimic a row-major input
     result = warp.context.runtime.core.cuda_compile_solver(
+        universal_fatbin_code.name.encode("utf-8"),
         lto_code.name.encode("utf-8"),
         lto_symbol.encode("utf-8"),
         0,
@@ -6681,21 +6689,25 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
         num_threads,
     )
 
-    lto_code_path = Path(lto_code.name)
     if not result:
-        lto_code.close()
-        if lto_code_path.exists():
-            lto_code_path.unlink()
+        for f in [lto_code, universal_fatbin_code]:
+            f.close()
+            if Path(f.name).exists():
+                Path(f.name).unlink()
         raise RuntimeError("Failed to compile tile_cholesky_solve")
 
     else:
         with open(lto_code.name, "rb") as f:
             lto_code_data = f.read()
-        lto_code.close()
-        lto_code_path.unlink()
+        with open(universal_fatbin_code.name, "rb") as f:
+            universal_fatbin_code_data = f.read()
+        for f in [lto_code, universal_fatbin_code]:
+            f.close()
+            Path(f.name).unlink()
 
     builder.ltoirs[lto_symbol] = lto_code_data
     builder.ltoirs_decl[lto_symbol] = f"void {lto_symbol}({dtype}*, {dtype}*);"
+    builder.fatbins["cholesky"] = universal_fatbin_code_data
 
     return ((Var(lto_symbol, str, False, True, False), L, x, y), [], [lto_code_data], 0)
 
