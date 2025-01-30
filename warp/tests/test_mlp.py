@@ -265,8 +265,8 @@ class TestMLP(unittest.TestCase):
     pass
 
 
-add_function_test(TestMLP, "test_mlp", test_mlp, devices=devices)
-add_function_test(TestMLP, "test_mlp_grad", test_mlp_grad, devices=devices)
+add_function_test(TestMLP, "test_mlp", test_mlp, devices=devices, check_output=False)
+add_function_test(TestMLP, "test_mlp_grad", test_mlp_grad, devices=devices, check_output=False)
 
 
 if __name__ == "__main__":

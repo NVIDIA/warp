@@ -66,6 +66,8 @@
   arbitrary Python functions that have Warp arrays as inputs and outputs.
 - `update_vbo_transforms` kernel launches in the OpenGL renderer are no longer recorded onto the tape.
 - Skip emitting backward functions/kernels in the generated C++/CUDA code when `enable_backward` is set to `False`.
+- Emit deprecation warnings for the use of `wp.mlp()`, `wp.matmul()`, and `wp.batched_matmul()`.
+  Use tile primitives instead.
 
 ### Fixed
 
