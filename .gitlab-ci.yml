@@ -70,7 +70,7 @@ linux-aarch64 build:
     - apt-get update && apt-get install build-essential curl --no-install-recommends -y
     - >
       curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
-      $ARTIFACTORY_BASE_URL/$ARTIFACTORY_LIBMATHDX_PATH/libmathdx-Linux-aarch64-0.1.1.tar.gz
+      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/release-0.1.2/L1_Nightly/5/libmathdx-Linux-aarch64-0.1.2.tar.gz
       -o libmathdx.tar.gz
     - mkdir -p _build/target-deps
     - tar -xzf libmathdx.tar.gz -C _build/target-deps
@@ -94,7 +94,7 @@ linux-x86_64 build:
     - apt-get update && apt-get install build-essential curl --no-install-recommends -y
     - >
       curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
-      $ARTIFACTORY_BASE_URL/$ARTIFACTORY_LIBMATHDX_PATH/libmathdx-Linux-x86_64-0.1.1.tar.gz
+      $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/release-0.1.2/L1_Nightly/5/libmathdx-Linux-x86_64-0.1.2.tar.gz
       -o libmathdx.tar.gz
     - mkdir -p _build/target-deps
     - tar -xzf libmathdx.tar.gz -C _build/target-deps
@@ -118,7 +118,7 @@ windows-x86_64 build:
       $headers = @{
           "Authorization" = "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("warp-cicd:${env:LIBMATHDX_REGISTRY_TOKEN}")))"
       }
-      $url = "${CI_API_V4_URL}/projects/141992/packages/generic/libmathdx/0-1-1-0/libmathdx-win64-x86_64-0.1.1.zip"
+      $url = "${CI_API_V4_URL}/projects/141992/packages/generic/libmathdx/0-1-2-2/libmathdx-win64-x86_64-0.1.2.zip"
       $output = "libmathdx.zip"
       Invoke-WebRequest -Uri $url -Headers $headers -OutFile $output -ErrorAction Stop
     - Expand-Archive -Path libmathdx.zip -DestinationPath _build/target-deps -Force

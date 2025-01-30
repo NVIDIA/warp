@@ -11,6 +11,9 @@ import os
 import warp.config
 from warp.thirdparty import appdirs
 
+# From nvJitLink.h
+nvJitLink_input_type = {"cubin": 1, "ptx": 2, "ltoir": 3, "fatbin": 4, "object": 5, "library": 6}
+
 
 # builds cuda source to PTX or CUBIN using NVRTC (output type determined by output_path extension)
 def build_cuda(
@@ -23,6 +26,7 @@ def build_cuda(
     fuse_fp=True,
     lineinfo=False,
     ltoirs=None,
+    fatbins=None,
 ) -> None:
     with open(cu_path, "rb") as src_file:
         src = src_file.read()
@@ -37,10 +41,17 @@ def build_cuda(
         else:
             if ltoirs is None:
                 ltoirs = []
+            if fatbins is None:
+                fatbins = []
 
-            num_ltoirs = len(ltoirs)
-            arr_lroirs = (ctypes.c_char_p * num_ltoirs)(*ltoirs)
-            arr_lroir_sizes = (ctypes.c_size_t * num_ltoirs)(*[len(l) for l in ltoirs])
+            link_data = list(ltoirs) + list(fatbins)
+            num_link = len(link_data)
+            arr_link = (ctypes.c_char_p * num_link)(*link_data)
+            arr_link_sizes = (ctypes.c_size_t * num_link)(*[len(l) for l in link_data])
+            link_input_types = [nvJitLink_input_type["ltoir"]] * len(ltoirs) + [nvJitLink_input_type["fatbin"]] * len(
+                fatbins
+            )
+            arr_link_input_types = (ctypes.c_int * num_link)(*link_input_types)
             err = warp.context.runtime.core.cuda_compile_program(
                 src,
                 program_name_bytes,
@@ -55,9 +66,10 @@ def build_cuda(
                 fuse_fp,
                 lineinfo,
                 output_path,
-                num_ltoirs,
-                arr_lroirs,
-                arr_lroir_sizes,
+                num_link,
+                arr_link,
+                arr_link_sizes,
+                arr_link_input_types,
             )
             if err != 0:
                 raise Exception(f"CUDA kernel build failed with error code {err}")
