@@ -392,10 +392,10 @@ class TestMatmulLite(unittest.TestCase):
     pass
 
 
-add_function_test(TestMatmulLite, "test_f32", test_f32, devices=devices)
-add_function_test(TestMatmulLite, "test_tape", test_tape, devices=devices)
-add_function_test(TestMatmulLite, "test_operator", test_operator, devices=devices)
-add_function_test(TestMatmulLite, "test_large_batch_count", test_large_batch_count, devices=devices)
+add_function_test(TestMatmulLite, "test_f32", test_f32, devices=devices, check_output=False)
+add_function_test(TestMatmulLite, "test_tape", test_tape, devices=devices, check_output=False)
+add_function_test(TestMatmulLite, "test_operator", test_operator, devices=devices, check_output=False)
+add_function_test(TestMatmulLite, "test_large_batch_count", test_large_batch_count, devices=devices, check_output=False)
 
 
 if __name__ == "__main__":

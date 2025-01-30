@@ -3178,6 +3178,18 @@ add_builtin(
 )
 
 
+def mlp_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    warp.utils.warn(
+        "wp.mlp() is deprecated and will be removed in a future\nversion. Use tile primitives instead.",
+        category=DeprecationWarning,
+    )
+
+    func_args = tuple(args.values())
+    template_args = ()
+
+    return (func_args, template_args)
+
+
 add_builtin(
     "mlp",
     input_types={
@@ -3189,8 +3201,12 @@ add_builtin(
         "out": array(dtype=float, ndim=2),
     },
     value_type=None,
+    dispatch_func=mlp_dispatch_func,
     skip_replay=True,
     doc="""Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``.
+
+    .. deprecated:: 1.6
+        Use :doc:`tile primitives </modules/tiles>` instead.
 
     :param weights: A layer's network weights with dimensions ``(m, n)``.
     :param bias: An array with dimensions ``(n)``.

@@ -577,8 +577,8 @@ add_function_test(TestOverwrite, "test_views", test_views, devices=devices)
 add_function_test(TestOverwrite, "test_reset", test_reset, devices=devices)
 
 add_function_test(TestOverwrite, "test_copy", test_copy, devices=devices)
-add_function_test(TestOverwrite, "test_matmul", test_matmul, devices=devices)
-add_function_test(TestOverwrite, "test_batched_matmul", test_batched_matmul, devices=devices)
+add_function_test(TestOverwrite, "test_matmul", test_matmul, devices=devices, check_output=False)
+add_function_test(TestOverwrite, "test_batched_matmul", test_batched_matmul, devices=devices, check_output=False)
 add_function_test(TestOverwrite, "test_atomic_operations", test_atomic_operations, devices=devices)
 
 # Some warning are only issued during codegen, and codegen only runs on cuda_0 in the MGPU case.
