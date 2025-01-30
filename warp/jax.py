@@ -50,6 +50,19 @@ def device_from_jax(jax_device) -> warp.context.Device:
         raise RuntimeError(f"Unsupported Jax device platform '{jax_device.platform}'")
 
 
+def get_jax_device():
+    """Get the current Jax device."""
+    import jax
+
+    # TODO: is there a simpler way of getting the Jax "current" device?
+    # check if jax.default_device() context manager is active
+    device = jax.config.jax_default_device
+    # if default device is not set, use first device
+    if device is None:
+        device = jax.local_devices()[0]
+    return device
+
+
 def dtype_to_jax(warp_dtype):
     """Return the Jax dtype corresponding to a Warp dtype.
 

@@ -7,10 +7,9 @@
 
 import ctypes
 
-import jax
-
 import warp as wp
 from warp.context import type_str
+from warp.jax import get_jax_device
 from warp.types import array_t, launch_bounds_t, strides_from_shape
 
 _jax_warp_p = None
@@ -94,7 +93,7 @@ def _warp_custom_callback(stream, buffers, opaque, opaque_len):
         kernel_params[i + 1] = arg_ptr
 
     # Get current device.
-    device = wp.device_from_jax(_get_jax_device())
+    device = wp.device_from_jax(get_jax_device())
 
     # Get kernel hooks.
     # Note: module was loaded during jit lowering.
@@ -105,16 +104,6 @@ def _warp_custom_callback(stream, buffers, opaque, opaque_len):
     wp.context.runtime.core.cuda_launch_kernel(
         device.context, hooks.forward, bounds.size, 0, 256, hooks.forward_smem_bytes, kernel_params, stream
     )
-
-
-# TODO: is there a simpler way of getting the Jax "current" device?
-def _get_jax_device():
-    # check if jax.default_device() context manager is active
-    device = jax.config.jax_default_device
-    # if default device is not set, use first device
-    if device is None:
-        device = jax.local_devices()[0]
-    return device
 
 
 def _create_jax_warp_primitive():
@@ -280,7 +269,7 @@ def _create_jax_warp_primitive():
         # TODO This may not be necessary, but it is perhaps better not to be
         # mucking with kernel loading while already running the workload.
         module = wp_kernel.module
-        device = wp.device_from_jax(_get_jax_device())
+        device = wp.device_from_jax(get_jax_device())
         if not module.load(device):
             raise Exception("Could not load kernel on device")
 
