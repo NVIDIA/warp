@@ -1329,6 +1329,9 @@ def mlp(
 ):
     """Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``.
 
+    .. deprecated:: 1.6
+        Use :doc:`tile primitives </modules/tiles>` instead.
+
     :param weights: A layer's network weights with dimensions ``(m, n)``.
     :param bias: An array with dimensions ``(n)``.
     :param activation: A ``wp.func`` function that takes a single scalar float as input and returns a scalar float as output
