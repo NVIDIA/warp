@@ -27,7 +27,7 @@ def create_mlp_kernel(m, n, k):
             weight = wp.tile_load(weights_wp, shape=(TILE_K, TILE_N), offset=(count * TILE_K, i_n * TILE_N))
             wp.tile_matmul(feat, weight, sum)
 
-        wp.tile_store(output, sum, offset=(i_m * TILE_M, i_n * TILE_M))
+        wp.tile_store(output, sum, offset=(i_m * TILE_M, i_n * TILE_N))
 
     return mlp
 

@@ -178,6 +178,16 @@ struct tile_coord_t
 
     CUDA_CALLABLE inline int operator[](int i) const { assert(0 <= 1 && i < N); return indices[i]; }
     CUDA_CALLABLE inline int& operator[](int i) { assert(0 <= 1 && i < N); return indices[i]; }
+
+    CUDA_CALLABLE inline tile_coord_t<N> operator + (const tile_coord_t<N>& c) const
+    {
+        tile_coord_t<N> out;
+        for (int i=0; i < N; ++i)
+        {
+            out.indices[i] = indices[i] + c.indices[i];
+        }
+        return out;
+    }    
 };
 
 // This function deduces N = sizeof...(Ints)
@@ -700,6 +710,8 @@ struct tile_layout_strided_t
 
     static inline CUDA_CALLABLE auto coord_from_linear(int linear)
     {
+        assert(linear < Size);
+
         Coord c;
         
         WP_PRAGMA_UNROLL
@@ -719,6 +731,8 @@ struct tile_layout_strided_t
         WP_PRAGMA_UNROLL
         for (int d=0; d < Shape::N; ++d)
         {
+            assert(c[d] < Shape::dim(d));
+
             index += c[d]*Stride::dim(d);
         }
 
@@ -1090,8 +1104,8 @@ struct tile_shared_t
     }
 
     // overload for floating point types
-    template <typename T>
-    inline CUDA_CALLABLE void print_value(T x) const
+    template <typename ValueType>
+    inline CUDA_CALLABLE void print_value(ValueType x) const
     {
         printf("%g", x);
     }
@@ -1778,134 +1792,138 @@ void adj_tile_extract(Tile& t, int i, int j, int k, AdjTile& adj_t, int adj_i, i
 template<typename Tile, typename AdjTile>
 void adj_tile_extract(Tile& t, int i, int j, int k, int l, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, int adj_l, typename Tile::Type adj_ret) { adj_t.adj_extract(tile_coord(i, j, k, l), adj_ret); }
 
+#if WP_USE_REGISTER_GEMM
 
-// namespace partitioned_gemm
-// {
+namespace partitioned_gemm
+{
 
-// template <typename T>
-// inline CUDA_CALLABLE const T& index(const T* __restrict__ p, int i, int j, int stride)
-// {
-//     return p[i*stride + j];
-// }
+template <typename T>
+inline CUDA_CALLABLE const T& index(const T* __restrict__ p, int i, int j, int stride)
+{
+    return p[i*stride + j];
+}
 
-// template <typename T>
-// inline CUDA_CALLABLE T& index(T* __restrict__ p, int i, int j, int stride)
-// {
-//     return p[i*stride + j];
-// }
+template <typename T>
+inline CUDA_CALLABLE T& index(T* __restrict__ p, int i, int j, int stride)
+{
+    return p[i*stride + j];
+}
 
-// template <int PartitionM, int PartitionN, typename Tile>
-// struct partition_t
-// {
-//     static constexpr int M = PartitionM;
-//     static constexpr int N = PartitionN;
-//     static constexpr int Stride = Tile::N;
+template <int PartitionM, int PartitionN, typename Tile>
+struct partition_t
+{
+    static constexpr int M = PartitionM;
+    static constexpr int N = PartitionN;
+    static constexpr int Stride = Tile::Layout::Shape::dim(1);
     
-//     using T = typename Tile::Type;    
+    using T = typename Tile::Type;    
 
-//     inline partition_t(Tile& A) 
-//     {
-//         data = A.data.ptr;
+    inline partition_t(Tile& A) 
+    {
+        data = A.data.ptr;
         
-//         // todo: do ceil div for non-multiples of M,N
-//         shape[0] = Tile::M/PartitionM;
-//         shape[1] = Tile::N/PartitionN;
-//     }
+        // todo: do ceil div for non-multiples of M,N
+        shape[0] = Tile::Layout::Shape::dim(0)/PartitionM;
+        shape[1] = Tile::Layout::Shape::dim(1)/PartitionN;
+    }
 
-//     // underlying data
-//     T* data;
+    // underlying data
+    T* data;
     
-//     // partition dimensions
-//     int shape[2];
-// };
+    // partition dimensions
+    int shape[2];
+};
 
-// template <typename Partition>
-// inline int partition_size(const Partition& part)
-// {
-//     return part.shape[0]*part.shape[1];
-// }
+template <typename Partition>
+inline int partition_size(const Partition& part)
+{
+    return part.shape[0]*part.shape[1];
+}
 
-// // returns the x, y coordinates of a tile given a linear index
-// template <typename Partition>
-// inline void partition_coord(const Partition& part, const int t, int& i, int& j)
-// {
-//     i = t/part.shape[1];
-//     j = t%part.shape[1];
-// }
+// returns the x, y coordinates of a tile given a linear index
+template <typename Partition>
+inline void partition_coord(const Partition& part, const int t, int& i, int& j)
+{
+    i = t/part.shape[1];
+    j = t%part.shape[1];
+}
 
-// template <typename Partition>
-// inline auto partition_load(const Partition& tile, int i, int j)
-// {
-//     mat_t<Partition::M, Partition::N, typename Partition::T> out;
+template <typename Partition>
+inline auto partition_load(const Partition& tile, int i, int j)
+{
+    mat_t<Partition::M, Partition::N, typename Partition::T> out;
     
-//     const int tile_i = i*Partition::M;
-//     const int tile_j = j*Partition::N;
+    const int tile_i = i*Partition::M;
+    const int tile_j = j*Partition::N;
 
-//     WP_PRAGMA_UNROLL
-//     for (int i=0; i < Partition::M; ++i)
-//     {
-//         WP_PRAGMA_UNROLL
-//         for (int j=0; j < Partition::N; ++j)
-//         {
-//             out.data[i][j] = index(tile.data, tile_i + i, tile_j + j, Partition::Stride);
-//         }
-//     }
+    WP_PRAGMA_UNROLL
+    for (int i=0; i < Partition::M; ++i)
+    {
+        WP_PRAGMA_UNROLL
+        for (int j=0; j < Partition::N; ++j)
+        {
+            out.data[i][j] = partitioned_gemm::index(tile.data, tile_i + i, tile_j + j, Partition::Stride);
+        }
+    }
 
-//     return out;
-// }
+    return out;
+}
 
-// template <typename Partition, typename Value>
-// inline void partition_store(const Partition& tile, int i, int j, const Value& value)
-// {
-//     const int tile_i = Partition::M*i;
-//     const int tile_j = Partition::N*j;
+template <typename Partition, typename Value>
+inline void partition_store(const Partition& tile, int i, int j, const Value& value)
+{
+    const int tile_i = Partition::M*i;
+    const int tile_j = Partition::N*j;
 
-//     WP_PRAGMA_UNROLL
-//     for (int i=0; i < Partition::M; ++i)
-//     {	
-//         WP_PRAGMA_UNROLL
-//         for (int j=0; j < Partition::N; ++j)
-//         {
-//             index(tile.data, tile_i + i, tile_j + j, Partition::Stride) = value.data[i][j];
-//         }
-//     }
-// }
+    WP_PRAGMA_UNROLL
+    for (int i=0; i < Partition::M; ++i)
+    {	
+        WP_PRAGMA_UNROLL
+        for (int j=0; j < Partition::N; ++j)
+        {
+            index(tile.data, tile_i + i, tile_j + j, Partition::Stride) = value.data[i][j];
+        }
+    }
+}
 
-// template <typename TileA, typename TileB, typename TileC>
-// inline CUDA_CALLABLE void matmul(TileA& A, TileB& B, TileC& out)
-// {   
-//     const int TILE_M = 4;
-//     const int TILE_N = 4;
-//     const int TILE_K = 4;
 
-//     auto A_tile = partition_t<TILE_M, TILE_K, TileA>(A);
-//     auto B_tile = partition_t<TILE_K, TILE_N, TileB>(B);
-//     auto C_tile = partition_t<TILE_M, TILE_N, TileC>(out);
+template <typename TileA, typename TileB, typename TileC>
+inline CUDA_CALLABLE void matmul(TileA& A, TileB& B, TileC& out)
+{   
+    const int TILE_M = 4;
+    const int TILE_N = 4;
+    const int TILE_K = 4;
 
-//     const int length = partition_size(C_tile);
+    auto A_tile = partition_t<TILE_M, TILE_K, TileA>(A);
+    auto B_tile = partition_t<TILE_K, TILE_N, TileB>(B);
+    auto C_tile = partition_t<TILE_M, TILE_N, TileC>(out);
 
-//     for (int t=threadIdx.x; t < length; t += blockDim.x)
-//     {  
-//         int i, j;
-//         partition_coord(C_tile, t, i, j);
+    const int length = partition_size(C_tile);
 
-//         // accumulator
-//         auto sum = partition_load(C_tile, i, j);
+    for (int t=threadIdx.x; t < length; t += blockDim.x)
+    {  
+        int i, j;
+        partition_coord(C_tile, t, i, j);
 
-//         WP_PRAGMA_UNROLL
-//         for (int k=0; k < A_tile.shape[1]; k++)
-//         {
-//             const auto a = partition_load(A_tile, i, k);
-//             const auto b = partition_load(B_tile, k, j);
+        // accumulator
+        auto sum = partition_load(C_tile, i, j);
 
-//             sum += mul(a, b);
-//         }
+        WP_PRAGMA_UNROLL
+        for (int k=0; k < A_tile.shape[1]; k++)
+        {
+            const auto a = partition_load(A_tile, i, k);
+            const auto b = partition_load(B_tile, k, j);
+
+            sum += mul(a, b);
+        }
         
-//         partition_store(C_tile, i, j, sum);
-//     }
-// }
+        partition_store(C_tile, i, j, sum);
+    }
+}
     
-// } // namespace partition_gemm
+} // namespace partition_gemm
+
+#endif // WP_USE_REGISTER_GEMM
 
 
 template <int Add, typename Fwd, typename AdjA, typename AdjB, typename TileA, typename TileB, typename TileC>
@@ -2097,9 +2115,11 @@ inline CUDA_CALLABLE void adj_tile_broadcast(Tile& t, Tile& adj_t, AdjTile& adj_
     // nop, since memory is aliased grads already accumulated
 }
 
-template <typename Shape, typename Tile, typename Coord>
-inline CUDA_CALLABLE auto tile_view(Tile& t, Coord c)
+template <typename ReturnType, typename Tile, typename... Indices>
+inline CUDA_CALLABLE auto tile_view(Tile& t, Indices... indices)
 {   
+    auto c = tile_coord(indices...);
+
     // return new tile with same strides
     typename Tile::Type* data_ptr = &t.data(c);
     typename Tile::Type* grad_ptr = NULL;
@@ -2107,28 +2127,8 @@ inline CUDA_CALLABLE auto tile_view(Tile& t, Coord c)
     if (t.grad.ptr)
         grad_ptr = &t.grad(c);
 
-    return tile_shared_t<typename Tile::Type, tile_layout_strided_t<Shape, typename Tile::Layout::Stride>, false>(data_ptr, grad_ptr);
+    return ReturnType(data_ptr, grad_ptr);
 }
-
-template <unsigned M, typename Tile>
-inline CUDA_CALLABLE auto tile_view(Tile& t, int i) { return tile_view<tile_shape_t<M>>(t, tile_coord(i)); }
-template <unsigned M, unsigned N, typename Tile>
-inline CUDA_CALLABLE auto tile_view(Tile& t, int i, int j=0) { return tile_view<tile_shape_t<M,N>>(t, tile_coord(i,j)); }
-template <unsigned M, unsigned N, unsigned O, typename Tile>
-inline CUDA_CALLABLE auto tile_view(Tile& t, int i, int j=0, int k=0) { return tile_view<tile_shape_t<M,N,O>>(t, tile_coord(i,j,k)); }
-template <unsigned M, unsigned N, unsigned O, unsigned P, typename Tile>
-inline CUDA_CALLABLE auto tile_view(Tile& t, int i, int j=0, int k=0, int l=0) { return tile_view<tile_shape_t<M,N,O,P>>(t, tile_coord(i,j,k,l)); }
-
-
-// nop since tile_view returns a sliced reference into shared memory
-template <typename Tile, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_view(Tile& t, int i, Tile& adj_t, int adj_i, AdjTile& adj_ret) { }
-template <typename Tile, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_view(Tile& t, int i, int j, Tile& adj_t, int adj_i, int adj_j, AdjTile& adj_ret) { }
-template <typename Tile, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_view(Tile& t, int i, int j, int k, Tile& adj_t, int adj_i, int adj_j, int adj_k, AdjTile& adj_ret) { }
-template <typename Tile, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_view(Tile& t, int i, int j, int k, int l, Tile& adj_t, int adj_i, int adj_j, int adj_k, int adj_l, AdjTile& adj_ret) { }
 
 
 template <typename TileA, typename Scalar>
@@ -2162,19 +2162,57 @@ inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, int k, int l, const 
 
 
 
-template <typename TileA, typename TileB>
-inline CUDA_CALLABLE void tile_assign(TileA& dest, int i, int j, TileB& src)
+template <typename TileA, typename TileB, typename Coord>
+inline CUDA_CALLABLE void tile_assign(TileA& dest, TileB& src, const Coord& offset)
 {   
     using Layout = typename TileB::Layout;
 
     for (int t=threadIdx.x; t < Layout::Size; t += WP_TILE_BLOCK_DIM)
     {
         auto c = Layout::coord_from_linear(t);
-        dest.data(tile_coord(i + c[0], j + c[1])) = src.data(c);
+        dest.data(c + offset) = src.data(c);
     }
 
     WP_TILE_SYNC();
 }
+
+template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, typename Coord, typename AdjCoord>
+inline CUDA_CALLABLE void adj_tile_assign(TileA& dest, TileB& src, Coord offset,
+                                          AdjTileA& adj_dest, AdjTileB& adj_src, AdjCoord adj_offset)
+{
+    using Layout = typename TileB::Layout;
+
+    for (int t=threadIdx.x; t < Layout::Size; t += WP_TILE_BLOCK_DIM)
+    {
+        auto c = Layout::coord_from_linear(t);        
+        src.grad(c) += dest.grad(c + offset);
+    } 
+
+    WP_TILE_SYNC();
+}
+
+
+// codegen entry points, which emit calls like `tile_assign(dest, src, i, j, k)`
+// a better approach here would be for codegen to just directly generate `tile_assign(dest, src, tile_coord(i, j, k))` 
+// i.e.: call the above implementation methods directly, then we could remove these overloads
+template <typename TileA, typename TileB>
+inline CUDA_CALLABLE void tile_assign(TileA& dest, TileB& src, int i) { tile_assign(dest, src, tile_coord(i)); }
+template <typename TileA, typename TileB>
+inline CUDA_CALLABLE void tile_assign(TileA& dest, TileB& src, int i, int j) { tile_assign(dest, src, tile_coord(i, j)); }
+template <typename TileA, typename TileB>
+inline CUDA_CALLABLE void tile_assign(TileA& dest, TileB& src, int i, int j, int k) { tile_assign(dest, src, tile_coord(i, j, k)); }
+template <typename TileA, typename TileB>
+inline CUDA_CALLABLE void tile_assign(TileA& dest, TileB& src, int i, int j, int k, int l) { tile_assign(dest, src, tile_coord(i, j, k, l)); }
+
+template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB>
+inline CUDA_CALLABLE void adj_tile_assign(TileA& dest, TileB& src, int i, AdjTileA& adj_dest, AdjTileB& adj_src, int) { adj_tile_assign(dest, src, tile_coord(i), adj_dest, adj_src, tile_coord(0)); }
+template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB>
+inline CUDA_CALLABLE void adj_tile_assign(TileA& dest, TileB& src, int i, int j, AdjTileA& adj_dest, AdjTileB& adj_src, int, int) { adj_tile_assign(dest, src, tile_coord(i,j), adj_dest, adj_src, tile_coord(0)); }
+template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB>
+inline CUDA_CALLABLE void adj_tile_assign(TileA& dest, TileB& src, int i, int j, int k, AdjTileA& adj_dest, AdjTileB& adj_src, int, int, int) { adj_tile_assign(dest, src, tile_coord(i,j,k), adj_dest, adj_src, tile_coord(0)); }
+template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB>
+inline CUDA_CALLABLE void adj_tile_assign(TileA& dest, TileB& src, int i, int j, int k, int l, AdjTileA& adj_dest, AdjTileB& adj_src, int, int, int, int) { adj_tile_assign(dest, src, tile_coord(i,j,k,l), adj_dest, adj_src, tile_coord(0)); }
+
 
 template <typename TileA, typename TileB, typename TileC>
 inline CUDA_CALLABLE TileC& tile_diag_add(TileA& a, TileB& b, TileC& c)
@@ -2206,20 +2244,6 @@ inline CUDA_CALLABLE void adj_tile_diag_add(TileA& a, TileB& b, TileC& c, AdjTil
     assert(false);
 }
 
-template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB>
-inline CUDA_CALLABLE void adj_tile_assign(TileA& dest, int i, int j, TileB& src,
-                                          AdjTileA& adj_dest, int adj_i, int adj_j, AdjTileB& adj_src)
-{
-    using Layout = typename TileB::Layout;
-
-    for (int t=threadIdx.x; t < Layout::Size; t += WP_TILE_BLOCK_DIM)
-    {
-        auto c = Layout::coord_from_linear(t);
-        src.grad(c) += dest.grad(tile_coord(i + c[0], j + c[1]));
-    } 
-
-    WP_TILE_SYNC();
-}
 
 } // namespace wp
 

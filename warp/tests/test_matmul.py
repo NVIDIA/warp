@@ -485,13 +485,17 @@ class TestMatmul(unittest.TestCase):
 
 
 # add_function_test(TestMatmul, "test_f16", test_f16, devices=devices)
-add_function_test(TestMatmul, "test_f32", test_f32, devices=devices)
-add_function_test(TestMatmul, "test_f64", test_f64, devices=devices)
-add_function_test(TestMatmul, "test_tape", test_tape, devices=devices)
-add_function_test(TestMatmul, "test_operator", test_operator, devices=devices)
-add_function_test(TestMatmul, "test_large_batch_count", test_large_batch_count, devices=devices)
-add_function_test(TestMatmul, "test_adjoint_accumulation", test_adjoint_accumulation, devices=devices)
-add_function_test(TestMatmul, "test_cuda_graph_capture", test_cuda_graph_capture, devices=cuda_devices)
+add_function_test(TestMatmul, "test_f32", test_f32, devices=devices, check_output=False)
+add_function_test(TestMatmul, "test_f64", test_f64, devices=devices, check_output=False)
+add_function_test(TestMatmul, "test_tape", test_tape, devices=devices, check_output=False)
+add_function_test(TestMatmul, "test_operator", test_operator, devices=devices, check_output=False)
+add_function_test(TestMatmul, "test_large_batch_count", test_large_batch_count, devices=devices, check_output=False)
+add_function_test(
+    TestMatmul, "test_adjoint_accumulation", test_adjoint_accumulation, devices=devices, check_output=False
+)
+add_function_test(
+    TestMatmul, "test_cuda_graph_capture", test_cuda_graph_capture, devices=cuda_devices, check_output=False
+)
 
 
 if __name__ == "__main__":

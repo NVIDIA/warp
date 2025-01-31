@@ -4600,6 +4600,9 @@ def matmul(
 ):
     """Computes a generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
 
+    .. deprecated:: 1.6
+        Use :doc:`tile primitives </modules/tiles>` instead.
+
     Args:
         a (array2d): two-dimensional array containing matrix A
         b (array2d): two-dimensional array containing matrix B
@@ -4611,6 +4614,12 @@ def matmul(
                                    while using Tensor Cores
     """
     from warp.context import runtime
+
+    warp.utils.warn(
+        "wp.matmul() is deprecated and will be removed in a\nfuture version. Use tile primitives instead.",
+        category=DeprecationWarning,
+        stacklevel=2,
+    )
 
     device = a.device
 
@@ -4886,6 +4895,9 @@ def batched_matmul(
     allow_tf32x3_arith: builtins.bool = False,
 ):
     """Computes a batched generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
+
+    .. deprecated:: 1.6
+        Use :doc:`tile primitives </modules/tiles>` instead.
 
     Args:
         a (array3d): three-dimensional array containing A matrices. Overall array dimension is {batch_count, M, K}

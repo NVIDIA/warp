@@ -37,6 +37,7 @@ stages:
   stage: build
   image: ubuntu:20.04
   extends:
+    - .runner-build-linux-aarch64
     - .save_warp_bin_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -52,12 +53,10 @@ stages:
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - ./tools/ci/building/build-linux-aarch64/build.sh --debug --no-docker
-  tags:
-    - arch/arm
 
 linux-x86_64 build:
   stage: build
-  image: ubuntu:20.04
+  image: ubuntu:22.04
   extends:
     - .save_warp_bin_artifact
     - .runner-large-build-linux-x86_64
@@ -118,6 +117,7 @@ mac-x86_64 build:
   image: ubuntu:22.04
   needs: [linux-aarch64 build]
   extends:
+    - .runner-test-linux-aarch64  # TODO: Change to GPU runners
     - .save_test_report_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -125,8 +125,6 @@ mac-x86_64 build:
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
-  tags:
-    - arch/arm
 
 linux-x86_64 test:
   stage: test

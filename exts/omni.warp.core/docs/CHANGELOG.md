@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [1.6.0-rc.3] - 2025-02-03
+## [1.6.0] - 2025-02-03
 
 ### Added
 
@@ -49,7 +49,6 @@
   kernels that have `enable_backward` set to `False` ([GH-332](https://github.com/NVIDIA/warp/issues/332)).
 - Vector/matrix/quaternion component `+=` and `-=` operations compile and run faster in the backward pass
   ([GH-332](https://github.com/NVIDIA/warp/issues/332)).
-- Emit deprecation warnings for the use of the `owner` and `length` keywords in the `wp.array` initializer.
 - Name files in the kernel cache according to their directory. Previously, all files began with
   `module_codegen` ([GH-431](https://github.com/NVIDIA/warp/issues/431)).
 - Avoid recompilation of modules when changing `block_dim`.
@@ -57,6 +56,10 @@
 - `wp.autograd.gradcheck()`, `wp.autograd.jacobian()`, and `wp.autograd.jacobian_fd()` now also accept
   arbitrary Python functions that have Warp arrays as inputs and outputs.
 - `update_vbo_transforms` kernel launches in the OpenGL renderer are no longer recorded onto the tape.
+- Skip emitting backward functions/kernels in the generated C++/CUDA code when `enable_backward` is set to `False`.
+- Emit deprecation warnings for the use of the `owner` and `length` keywords in the `wp.array` initializer.
+- Emit deprecation warnings for the use of `wp.mlp()`, `wp.matmul()`, and `wp.batched_matmul()`.
+  Use tile primitives instead.
 
 ### Fixed
 
@@ -84,6 +87,7 @@
 - Fix gradient instability in rigid-body contact handling for `wp.sim.SemiImplicitIntegrator` and
   `wp.sim.FeatherstoneIntegrator` ([GH-349](https://github.com/NVIDIA/warp/issues/349)).
 - Fix overload resolution of generic Warp functions with default arguments.
+- Fix rendering of arrows with different `up_axis`, `color` in `OpenGLRenderer` ([GH-448](https://github.com/NVIDIA/warp/issues/448)).
 
 ## [1.5.1] - 2025-01-02
 

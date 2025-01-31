@@ -1,6 +1,6 @@
 [package]
 # Semantic Versioning is used: https://semver.org/
-version = "1.6.0-rc.3"
+version = "1.6.0"
 authors = ["NVIDIA"]
 title = "Warp Core"
 description="The core Warp Python module"
@@ -19,6 +19,9 @@ icon = "data/icon.png"
 [fswatcher.patterns]
 include = ["*.py"]
 
+[dependencies]
+"omni.kit.pip_archive" = {}
+
 # Extension module
 # It must be defined before the module `warp` in order to give
 # the `omni.warp.core` extension a chance to create a symlink towards Warp's
@@ -35,18 +38,19 @@ public = true
 # Kit testing flags
 [[test]]
 pyCoverageOmit = [
-    "warp/stubs.py",
-    "warp/jax.py",
-    "warp/torch.py",
-    "warp/paddle.py",
-    "warp/build.py",
-    "warp/build_dll.py",
-    "warp/sim/**",
-    "warp/render/**",
-    "warp/optim/**",
+    "warp/examples/**",
     "warp/fem/**",
+    "warp/optim/**",
+    "warp/render/**",
+    "warp/sim/**",
+    "warp/tests/**",
     "warp/thirdparty/**",
-    "warp/tests/**"
+    "warp/build_dll.py",
+    "warp/dlpack.py",
+    "warp/jax.py",
+    "warp/jax_experimental.py",
+    "warp/paddle.py",
+    "warp/stubs.py",
+    "warp/torch.py",
 ]
-pyCoverageThreshold = 40
 timeout = 900

@@ -1711,11 +1711,17 @@ add_builtin(
 
 def tile_unpack_shape(arg_values):
     shape = arg_values["shape"]
-    if isinstance(shape, tuple):
-        return shape
-    else:
+
+    if not isinstance(shape, tuple):
         # promote to tuple
-        return (shape,)
+        shape = (shape,)
+
+    # check that components are constants
+    for d in shape:
+        if d is None:
+            raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    return shape
 
 
 def tile_unpack_offset(arg_values, ndim=0):
@@ -2184,156 +2190,69 @@ add_builtin(
 )
 
 
-# def tile_view_value_func(arg_types, arg_values):
-#     # return generic type (for doc builds)
-#     if arg_types is None:
-#         return Tile(dtype=Any, shape=Any)
-
-#     tile = arg_types["t"]
-
-#     coord = tile_unpack_offset(arg_values)
-
-#     if "shape" not in arg_types:
-#         # treat coord dimensions as locked
-#         # and return the remaining dimensions
-#         shape = tile.shape[len(coord):]
-#     else:
-#         shape = tile_unpack_shape(arg_values)
-
-
-#     # force source tile to shared memory
-#     tile.storage = "shared"
-
-#     output = Tile(
-#         dtype=tile.dtype, shape=shape, strides=tile.strides, layout=tile.layout, storage="shared", owner=False
-#     )
-#     return output
-
-
-# def tile_view_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
-#     tile = arg_values["t"]
-
-#     coord = tile_unpack_offset(arg_values)
-
-#     if "shape" not in arg_values:
-#         # treat coord dimensions as locked
-#         # and return the remaining dimensions
-#         shape = tile.type.shape[len(coord):]
-#     else:
-#         shape = tile_unpack_shape(arg_values)
-
-#         if len(shape) != len(coord):
-#             raise RuntimeError("tile_view() must have one extent for each specified offset coordinate")
-
-#     # zero pad the coord for all dimensions in the src tile
-#     coord = (0,)*len(tile.type.shape)
-
-
-#     return ((tile, *coord), shape)
-
-
-# add_builtin(
-#     "tile_view",
-#     input_types={"t": Tile(dtype=Any, shape=Any), "offset": Tuple[int], "shape": Tuple[int,...]},
-#     value_func=tile_view_value_func,
-#     dispatch_func=tile_view_dispatch_func,
-#     defaults={"shape": None},
-#     variadic=True,
-#     doc="""Return a subrange of a given tile in range (offset, offset+shape).
-
-#     :param t: Input tile to extract a subrange from
-#     :param offset: Offset in the source tile
-#     :param shape: Size of the subrange to return, if not specified then shape is taken from the non-specified tile dimensions
-#     :returns: A tile with shape as specified and the same data type as the input tile""",
-#     group="Tile Primitives",
-#     export=False,
-# )
-
-
-def tile_unpack_view_coord(tile, arg_values):
-    indices = ["i", "j", "k", "l"]
-    coord = []
-
-    for d in indices:
-        if d in arg_values:
-            coord.append(arg_values[d])
-
-    return coord
-
-
-def tile_unpack_view_shape(tile, coord, arg_values):
-    indices = ["i", "j", "k", "l"]
-    sizes = ["m", "n", "o", "p"]
-    shape = []
-
-    ndim = len(tile.shape)
-
-    for i in range(ndim):
-        size = sizes[i]
-
-        if size in arg_values:
-            shape.append(arg_values[size])
-        else:
-            if indices[i] not in coord:
-                shape.append(tile.shape[i])
-            else:
-                shape.append(1)
-
-    return shape
-
-
 def tile_view_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
         return Tile(dtype=Any, shape=Any)
 
     tile = arg_types["t"]
-    shape = tile_unpack_view_shape(tile, arg_types, arg_values)
+    offset = arg_types["offset"]
 
-    for i in range(len(shape)):
-        if shape[i] > tile.shape[i]:
+    if len(offset) > len(tile.shape):
+        raise ValueError(f"tile_view() specified too many offset coordinates {len(offset)} > {len(tile.shape)}")
+
+    if "shape" in arg_values:
+        # if shape is specified take it directly, e.g.:
+        # tile_view(t, offset=(i,j), shape=(m,n))
+        shape = arg_values["shape"]
+        strides = tile.strides
+
+        if len(shape) != len(tile.shape):
             raise ValueError(
-                f"tile_view() subrange dimensions {shape} are larger than the source tile dimensions {tile.shape}"
+                f"tile_view() if shape is specified it must have same number of dimensions as source tile, expected {len(tile.shape)}, got {len(shape)}"
             )
+    else:
+        # if not specified, then take output shape from unspecified src dimensions
+        # e.g.: tile[i] will return a whole row of a 2D tile
+        shape = tile.shape[len(offset) :]
+        strides = tile.strides[len(offset) :]
+
+    assert len(shape) == len(strides)
 
     # force source tile to shared memory
     tile.storage = "shared"
 
-    output = Tile(
-        dtype=tile.dtype, shape=shape, strides=tile.strides, layout=tile.layout, storage="shared", owner=False
-    )
+    output = Tile(dtype=tile.dtype, shape=shape, strides=strides, layout=tile.layout, storage="shared", owner=False)
     return output
 
 
 def tile_view_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
     tile = arg_values["t"]
+    coord = arg_values["offset"]
 
-    coord = tile_unpack_view_coord(tile.type, arg_values)
-    shape = tile_unpack_view_shape(tile.type, arg_values, arg_values)
+    # zero-pad coord to match source array
+    view_coord = [0] * len(tile.type.shape)
+    for i in range(len(coord)):
+        view_coord[i] = coord[i]
 
-    for d in range(len(shape)):
-        if isinstance(shape[d], warp.codegen.Var):
-            shape[d] = shape[d].constant
-
-    return ((tile, *coord), shape)
+    return ((tile, *view_coord), (return_type,))
 
 
 add_builtin(
     "tile_view",
-    input_types={"t": Tile(dtype=Any, shape=Any), "i": int, "j": int, "m": int, "n": int},
+    input_types={"t": Tile(dtype=Any, shape=Any), "offset": Tuple[int, ...], "shape": Tuple[int, ...]},
     value_func=tile_view_value_func,
     dispatch_func=tile_view_dispatch_func,
-    defaults={"j": None, "m": None, "n": None},
-    variadic=True,
-    doc="""Return a subrange of a given tile from coordinates (i,j) to (i+m, j+n).
+    defaults={"shape": None},
+    variadic=False,
+    doc="""Return a slice of a given tile [offset, offset+shape], if shape is not specified it will be inferred from the unspecified offset dimensions.
 
     :param t: Input tile to extract a subrange from
-    :param i: Offset in the source tile along the first dimension
-    :param j: Offset in the source tile along the second dimensions
-    :param m: Size of the subrange to return along the first dimension
-    :param n: Size of the subrange to return along the second dimension
-    :returns: A tile with dimensions (m,n) and the same data type as the input tile""",
+    :param offset: Offset in the source tile
+    :param shape: Shape of the returned slice
+    :returns: A tile with dimensions given by the specified shape or the remaining source tile dimensions""",
     group="Tile Primitives",
+    missing_grad=True,
     export=False,
 )
 
@@ -2342,7 +2261,7 @@ def tile_assign_value_func(arg_types, arg_values):
     if arg_types is None:
         return None
 
-    # force the input tile to shared memory
+    # force the destination tile to shared memory
     arg_types["dst"].storage = "shared"
     return None
 
@@ -2353,7 +2272,7 @@ def tile_assign_dispatch_func(input_types: Mapping[str, type], return_type: Any,
 
     offset = tile_unpack_offset(args, len(dst.type.shape))
 
-    func_args = (dst, *offset, src)
+    func_args = (dst, src, *offset)
     template_args = []
 
     return (func_args, template_args)
@@ -2365,12 +2284,11 @@ add_builtin(
     value_func=tile_assign_value_func,
     dispatch_func=tile_assign_dispatch_func,
     defaults={"offset": None},
-    doc="""Assign a tile to a subrange of a destination tile at coordinates (i,j).
+    doc="""Assign a tile to a subrange of a destination tile.
 
-    :param t: The destination tile to assign to
-    :param i: Offset in the source tile along the first dimension
-    :param j: Offset in the source tile along the second dimension
-    :param src: The source tile to read values from""",
+    :param dst: The destination tile to assign to
+    :param src: The source tile to read values from
+    :param offset: Offset in the destination tile to write to""",
     group="Tile Primitives",
     export=False,
 )
@@ -3260,6 +3178,18 @@ add_builtin(
 )
 
 
+def mlp_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    warp.utils.warn(
+        "wp.mlp() is deprecated and will be removed in a future\nversion. Use tile primitives instead.",
+        category=DeprecationWarning,
+    )
+
+    func_args = tuple(args.values())
+    template_args = ()
+
+    return (func_args, template_args)
+
+
 add_builtin(
     "mlp",
     input_types={
@@ -3271,8 +3201,12 @@ add_builtin(
         "out": array(dtype=float, ndim=2),
     },
     value_type=None,
+    dispatch_func=mlp_dispatch_func,
     skip_replay=True,
     doc="""Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``.
+
+    .. deprecated:: 1.6
+        Use :doc:`tile primitives </modules/tiles>` instead.
 
     :param weights: A layer's network weights with dimensions ``(m, n)``.
     :param bias: An array with dimensions ``(n)``.

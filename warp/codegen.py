@@ -606,6 +606,9 @@ def compute_type_str(base_name, template_params):
                 return "bool"
             else:
                 return f"wp::{p.__name__}"
+        elif is_tile(p):
+            return p.ctype()
+
         return p.__name__
 
     return f"{base_name}<{','.join(map(param2str, template_params))}>"
@@ -1533,7 +1536,8 @@ class Adjoint:
         # zero adjoints
         for i in body_block.vars:
             if is_tile(i.type):
-                reverse.append(adj.indentation + f"\t{i.emit_adj()}.grad_zero();")
+                if i.type.owner:
+                    reverse.append(adj.indentation + f"\t{i.emit_adj()}.grad_zero();")
             else:
                 reverse.append(adj.indentation + f"\t{i.emit_adj()} = {{}};")
 
@@ -2385,7 +2389,7 @@ class Adjoint:
                 out = adj.add_builtin_call("tile_extract", [target, *indices])
             elif len(indices) < len(target_type.shape):
                 # handles tile views
-                out = adj.add_builtin_call("tile_view", [target, *indices])
+                out = adj.add_builtin_call("tile_view", [target, indices])
             else:
                 raise RuntimeError(
                     f"Incorrect number of indices specified for a tile view/extract, got {len(indices)} indices for a {len(target_type.shape)} dimensional tile."

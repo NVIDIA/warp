@@ -14,10 +14,7 @@ import warp  # ensure all API functions are loaded  # noqa: F401
 from warp.context import export_functions_rst, export_stubs
 
 parser = argparse.ArgumentParser(description="Warp Sphinx Documentation Builder")
-# Note argparse.BooleanOptionalAction can be used here when Python 3.9+ becomes the minimum supported version
-parser.add_argument("--doctest", action="store_true", help="Also run doctest on code snippets, default enabled")
-parser.add_argument("--no_doctest", dest="doctest", action="store_false")
-parser.set_defaults(doctest=True)
+parser.add_argument("--quick", action="store_true", help="Only build docs, skipping doctest tests of code blocks.")
 
 args = parser.parse_args()
 
@@ -44,7 +41,7 @@ command = ["sphinx-build", "-W", "-b", "html", source_dir, output_dir]
 
 subprocess.run(command, check=True)
 
-if args.doctest:
+if not args.quick:
     print("Running doctest... (skip with --no_doctest)")
 
     output_dir = os.path.join(base_path, "docs", "_build", "doctest")

@@ -1,13 +1,5 @@
 # Changelog
 
-## [Unreleased] - 2025-??
-
-### Added
-
-### Changed
-
-### Fixed
-
 ## [1.6.0] - 2025-02-03
 
 ### Added
@@ -57,7 +49,6 @@
   kernels that have `enable_backward` set to `False` ([GH-332](https://github.com/NVIDIA/warp/issues/332)).
 - Vector/matrix/quaternion component `+=` and `-=` operations compile and run faster in the backward pass
   ([GH-332](https://github.com/NVIDIA/warp/issues/332)).
-- Emit deprecation warnings for the use of the `owner` and `length` keywords in the `wp.array` initializer.
 - Name files in the kernel cache according to their directory. Previously, all files began with
   `module_codegen` ([GH-431](https://github.com/NVIDIA/warp/issues/431)).
 - Avoid recompilation of modules when changing `block_dim`.
@@ -66,6 +57,9 @@
   arbitrary Python functions that have Warp arrays as inputs and outputs.
 - `update_vbo_transforms` kernel launches in the OpenGL renderer are no longer recorded onto the tape.
 - Skip emitting backward functions/kernels in the generated C++/CUDA code when `enable_backward` is set to `False`.
+- Emit deprecation warnings for the use of the `owner` and `length` keywords in the `wp.array` initializer.
+- Emit deprecation warnings for the use of `wp.mlp()`, `wp.matmul()`, and `wp.batched_matmul()`.
+  Use tile primitives instead.
 
 ### Fixed
 

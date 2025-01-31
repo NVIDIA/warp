@@ -84,10 +84,7 @@ def aslinearoperator(A: _Matrix) -> LinearOperator:
         sparse.bsr_mv(A, x, z, alpha, beta)
 
     def dense_mv(x, y, z, alpha, beta):
-        x = x.reshape((x.shape[0], 1))
-        y = y.reshape((y.shape[0], 1))
-        z = z.reshape((y.shape[0], 1))
-        wp.matmul(A, x, y, z, alpha, beta)
+        wp.launch(_dense_mv_kernel, dim=A.shape[1], device=A.device, inputs=[A, x, y, z, alpha, beta])
 
     def diag_mv(x, y, z, alpha, beta):
         scalar_type = wp.types.type_scalar_type(A.dtype)
@@ -801,6 +798,27 @@ def _run_solver_loop(
         callback(cur_iter, err, atol)
 
     return cur_iter, err, atol
+
+
+@wp.func
+def _calc_mv_product(i: wp.int32, A: wp.array2d(dtype=Any), x: wp.array1d(dtype=Any)):
+    sum = A.dtype(0)
+    for j in range(A.shape[1]):
+        sum += A[i, j] * x[j]
+    return sum
+
+
+@wp.kernel
+def _dense_mv_kernel(
+    A: wp.array2d(dtype=Any),
+    x: wp.array1d(dtype=Any),
+    y: wp.array1d(dtype=Any),
+    z: wp.array1d(dtype=Any),
+    alpha: Any,
+    beta: Any,
+):
+    i = wp.tid()
+    z[i] = z.dtype(beta) * y[i] + z.dtype(alpha) * _calc_mv_product(i, A, x)
 
 
 @wp.kernel
