@@ -188,7 +188,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_triangle_closest_point import TestTriangleClosestPoint
     from warp.tests.test_types import TestTypes
     from warp.tests.test_utils import TestUtils
-    from warp.tests.test_vbd import TestVBD
+    from warp.tests.test_vbd import TestVbd
     from warp.tests.test_vec import TestVec
     from warp.tests.test_vec_lite import TestVecLite
     from warp.tests.test_vec_scalar_ops import TestVecScalarOps
@@ -297,7 +297,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTriangleClosestPoint,
         TestTypes,
         TestUtils,
-        TestVBD,
+        TestVbd,
         TestVec,
         TestVecLite,
         TestVecScalarOps,
