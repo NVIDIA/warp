@@ -5,7 +5,7 @@
     "repo": "..",
     "build_command": [
          "python -mpip install numpy",
-         "python build_lib.py --quick",
+         "python build_lib.py",
          "python -m build --wheel -o {build_cache_dir}"
     ],
     "branches": ["main"],
