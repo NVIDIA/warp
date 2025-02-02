@@ -53,7 +53,7 @@ class RunForwardKernel:
         wp.synchronize_device("cuda:0")
 
     def track_cuda(self):
-        with wp.ScopedTimer("benchmark", cuda_filter=wp.TIMING_KERNEL, synchronize=True) as timer:
+        with wp.ScopedTimer("benchmark", print=False, cuda_filter=wp.TIMING_KERNEL, synchronize=True) as timer:
             for _ in range(1000):
                 wp.launch(component_assignment, self.a.shape, inputs=[self.a, self.b], device="cuda:0")
 
@@ -77,7 +77,7 @@ class RunBackwardKernel:
         wp.synchronize_device("cuda:0")
 
     def track_cuda(self):
-        with wp.ScopedTimer("benchmark", cuda_filter=wp.TIMING_KERNEL, synchronize=True) as timer:
+        with wp.ScopedTimer("benchmark", print=False, cuda_filter=wp.TIMING_KERNEL, synchronize=True) as timer:
             for _ in range(1000):
                 wp.launch(
                     component_assignment,

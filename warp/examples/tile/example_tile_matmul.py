@@ -68,7 +68,7 @@ if __name__ == "__main__":
     with wp.Tape() as tape:
         wp.launch_tiled(
             tile_gemm,
-            dim=(int(M / TILE_M), int(N / TILE_N)),
+            dim=(M // TILE_M, N // TILE_N),
             inputs=[A_wp, B_wp],
             outputs=[C_wp],
             block_dim=TILE_THREADS,

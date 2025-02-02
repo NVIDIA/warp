@@ -497,7 +497,7 @@ linux-x86_64 asv:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
     - apt-get update && apt-get install python3 python3.10-venv git-lfs build-essential curl ca-certificates --no-install-recommends -y
-    - tools/packman/packman pull --platform linux-x86_64 deps/cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-11"
+    - tools/packman/packman pull --platform linux-x86_64 deps/cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
     - export PATH="$CUDA_BIN:$PATH"
     - python3 -m venv _venv
     - source _venv/bin/activate
