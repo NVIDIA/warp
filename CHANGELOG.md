@@ -13,8 +13,6 @@
 
 ### Fixed
 
-- Fix rendering of arrows with different `up_axis`, `color` in `OpenGLRenderer` ([GH-448](https://github.com/NVIDIA/warp/issues/448)).
-
 ## [1.6.0] - 2025-02-03
 
 ### Added
@@ -23,7 +21,7 @@
   and `tile_diag_add()` (preview APIs are subject to change).
 - Support for loading tiles from arrays whose shapes are not multiples of the tile dimensions.
   Out-of-bounds reads will be zero-filled and out-of-bounds writes will be skipped.
-- Support for higher-dimensional (up to 4D) tile shapes and memory operations
+- Support for higher-dimensional (up to 4D) tile shapes and memory operations.
 - Add intersection-free self-contact support in `wp.sim.VDBIntegrator` by passing `handle_self_contact=True`.
   See `warp/examples/sim/example_cloth_self_contact.py` for a usage example.
 - Add functions `wp.norm_l1()`, `wp.norm_l2()`, `wp.norm_huber()`, `wp.norm_pseudo_huber()`, and `wp.smooth_normalize()`
@@ -53,7 +51,7 @@
 - **Breaking:** Change `wp.tile_load()` and `wp.tile_store()` indexing behavior so that indices are now specified in
   terms of *array elements* instead of *tile multiples*.
 - **Breaking:** Tile operations now take `shape` and `offset` parameters as tuples,
-  e.g.: `wp.tile_load(array, shape=(m,n), offset=(i,j))`
+  e.g.: `wp.tile_load(array, shape=(m,n), offset=(i,j))`.
 - **Breaking:** Change exception types and error messages thrown by tile functions for improved consistency.
 - Add an implicit tile synchronization whenever a shared memory tile's data is reinitialized (e.g. in dynamic loops).
   This could result in lower performance.
@@ -64,7 +62,6 @@
   kernels that have `enable_backward` set to `False` ([GH-332](https://github.com/NVIDIA/warp/issues/332)).
 - Vector/matrix/quaternion component `+=` and `-=` operations compile and run faster in the backward pass
   ([GH-332](https://github.com/NVIDIA/warp/issues/332)).
-- Emit deprecation warnings for the use of the `owner` and `length` keywords in the `wp.array` initializer.
 - Name files in the kernel cache according to their directory. Previously, all files began with
   `module_codegen` ([GH-431](https://github.com/NVIDIA/warp/issues/431)).
 - Avoid recompilation of modules when changing `block_dim`.
@@ -73,6 +70,7 @@
   arbitrary Python functions that have Warp arrays as inputs and outputs.
 - `update_vbo_transforms` kernel launches in the OpenGL renderer are no longer recorded onto the tape.
 - Skip emitting backward functions/kernels in the generated C++/CUDA code when `enable_backward` is set to `False`.
+- Emit deprecation warnings for the use of the `owner` and `length` keywords in the `wp.array` initializer.
 - Emit deprecation warnings for the use of `wp.mlp()`, `wp.matmul()`, and `wp.batched_matmul()`.
   Use tile primitives instead.
 
@@ -102,6 +100,7 @@
 - Fix gradient instability in rigid-body contact handling for `wp.sim.SemiImplicitIntegrator` and
   `wp.sim.FeatherstoneIntegrator` ([GH-349](https://github.com/NVIDIA/warp/issues/349)).
 - Fix overload resolution of generic Warp functions with default arguments.
+- Fix rendering of arrows with different `up_axis`, `color` in `OpenGLRenderer` ([GH-448](https://github.com/NVIDIA/warp/issues/448)).
 
 ## [1.5.1] - 2025-01-02
 
