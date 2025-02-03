@@ -1083,7 +1083,7 @@ class OpenGLRenderer:
         self.app = pyglet.app
 
         # making window current opengl rendering context
-        self.window.switch_to()
+        self._switch_context()
 
         self.screen_width, self.screen_height = self.window.get_framebuffer_size()
 
@@ -1435,7 +1435,7 @@ class OpenGLRenderer:
     def clear(self):
         gl = OpenGLRenderer.gl
 
-        self.window.switch_to()
+        self._switch_context()
 
         if not self.headless:
             self.app.event_loop.dispatch_event("on_exit")
@@ -1631,7 +1631,7 @@ class OpenGLRenderer:
     def _setup_framebuffer(self):
         gl = OpenGLRenderer.gl
 
-        self.window.switch_to()
+        self._switch_context()
 
         if self._frame_texture is None:
             self._frame_texture = gl.GLuint()
@@ -1801,7 +1801,7 @@ class OpenGLRenderer:
     def update_model_matrix(self, model_matrix: Optional[Mat44] = None):
         gl = OpenGLRenderer.gl
 
-        self.window.switch_to()
+        self._switch_context()
 
         if model_matrix is None:
             self._model_matrix = self.compute_model_matrix(self._camera_axis, self._scaling)
@@ -1898,7 +1898,7 @@ class OpenGLRenderer:
     def _draw(self):
         gl = OpenGLRenderer.gl
 
-        self.window.switch_to()
+        self._switch_context()
 
         if not self.headless:
             # catch key hold events
@@ -1999,7 +1999,7 @@ Instances: {len(self._instances)}"""
     def _draw_grid(self, is_tiled=False):
         gl = OpenGLRenderer.gl
 
-        self.window.switch_to()
+        self._switch_context()
 
         if not is_tiled:
             gl.glUseProgram(self._grid_shader.id)
@@ -2014,7 +2014,7 @@ Instances: {len(self._instances)}"""
     def _draw_sky(self, is_tiled=False):
         gl = OpenGLRenderer.gl
 
-        self.window.switch_to()
+        self._switch_context()
 
         if not is_tiled:
             gl.glUseProgram(self._sky_shader.id)
@@ -2030,7 +2030,7 @@ Instances: {len(self._instances)}"""
     def _render_scene(self):
         gl = OpenGLRenderer.gl
 
-        self.window.switch_to()
+        self._switch_context()
 
         start_instance_idx = 0
 
@@ -2055,7 +2055,7 @@ Instances: {len(self._instances)}"""
     def _render_scene_tiled(self):
         gl = OpenGLRenderer.gl
 
-        self.window.switch_to()
+        self._switch_context()
 
         for i, viewport in enumerate(self._tile_viewports):
             projection_matrix_ptr = arr_pointer(self._tile_projection_matrices[i])
@@ -2205,7 +2205,7 @@ Instances: {len(self._instances)}"""
     def register_shape(self, geo_hash, vertices, indices, color1=None, color2=None):
         gl = OpenGLRenderer.gl
 
-        self.window.switch_to()
+        self._switch_context()
 
         shape = len(self._shapes)
         if color1 is None:
@@ -2256,7 +2256,7 @@ Instances: {len(self._instances)}"""
     def deregister_shape(self, shape):
         gl = OpenGLRenderer.gl
 
-        self.window.switch_to()
+        self._switch_context()
 
         if shape not in self._shape_gl_buffers:
             return
@@ -2317,7 +2317,7 @@ Instances: {len(self._instances)}"""
     def update_instance_colors(self):
         gl = OpenGLRenderer.gl
 
-        self.window.switch_to()
+        self._switch_context()
 
         colors1, colors2 = [], []
         all_instances = list(self._instances.values())
@@ -2340,7 +2340,7 @@ Instances: {len(self._instances)}"""
     def allocate_shape_instances(self):
         gl = OpenGLRenderer.gl
 
-        self.window.switch_to()
+        self._switch_context()
 
         self._add_shape_instances = False
         self._wp_instance_transforms = wp.array(
@@ -2444,7 +2444,7 @@ Instances: {len(self._instances)}"""
         """
         gl = OpenGLRenderer.gl
 
-        self.window.switch_to()
+        self._switch_context()
 
         if name in self._instances:
             i, body, shape, tf, scale, old_color1, old_color2, v = self._instances[name]
@@ -2558,7 +2558,7 @@ Instances: {len(self._instances)}"""
         """
         gl = OpenGLRenderer.gl
 
-        self.window.switch_to()
+        self._switch_context()
 
         channels = 3 if mode == "rgb" else 1
 
@@ -3496,6 +3496,14 @@ Instances: {len(self._instances)}"""
         ]
         # fmt: on
         return np.array(vertices, dtype=np.float32), np.array(indices, dtype=np.uint32)
+
+    def _switch_context(self):
+        try:
+            self.window.switch_to()
+        except AttributeError:
+            # The window could be in the process of being closed, in which case
+            # its corresponding context might have been destroyed and set to `None`.
+            pass
 
 
 if __name__ == "__main__":
