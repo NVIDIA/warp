@@ -20,23 +20,28 @@ import torch
 import warp as wp
 
 
-def create_mlp_kernel(m, n, k):
+# returns a kernel to compute a GEMM given m,n,k tile sizes
+def create_gemm_kernel(m, n, k):
     TILE_M = m
     TILE_N = n
     TILE_K = k
 
     @wp.kernel
-    def mlp(x: wp.array2d(dtype=float), weights_wp: wp.array2d(dtype=float), n_k: int, output: wp.array2d(dtype=float)):
-        i_m, i_n = wp.tid()
+    def gemm(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
+        i, j = wp.tid()
         sum = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=wp.float32)
-        for count in range(n_k):
-            feat = wp.tile_load(x, shape=(TILE_M, TILE_K), offset=(i_m * TILE_M, count * TILE_K))
-            weight = wp.tile_load(weights_wp, shape=(TILE_K, TILE_N), offset=(count * TILE_K, i_n * TILE_N))
-            wp.tile_matmul(feat, weight, sum)
 
-        wp.tile_store(output, sum, offset=(i_m * TILE_M, i_n * TILE_N))
+        count = A.shape[1] // TILE_K
 
-    return mlp
+        for k in range(count):
+            a = wp.tile_load(A, shape=(TILE_M, TILE_K), offset=(i * TILE_M, k * TILE_K))
+            b = wp.tile_load(B, shape=(TILE_K, TILE_N), offset=(k * TILE_K, j * TILE_N))
+
+            wp.tile_matmul(a, b, sum)
+
+        wp.tile_store(output, sum, offset=(i * TILE_M, j * TILE_N))
+
+    return gemm
 
 
 def benchmark_torch(A: torch.Tensor, B: torch.Tensor, warm_up: int, iterations: int):
@@ -68,19 +73,25 @@ def benchmark_warp(A: wp.array, B: wp.array, config: List[int], warm_up: int, it
     TILE_K = config[2]
     BLOCK_DIM = config[3]
 
-    mlp = create_mlp_kernel(TILE_M, TILE_N, TILE_K)
+    mlp = create_gemm_kernel(TILE_M, TILE_N, TILE_K)
 
     M = A.shape[0]
     N = B.shape[1]
-    K = A.shape[1]
 
     output = wp.zeros((M, N), dtype=float)
 
+    # create launch command
+    cmd = wp.launch_tiled(
+        kernel=mlp,
+        dim=[M // TILE_M, N // TILE_N],
+        inputs=[A, B, output],
+        block_dim=BLOCK_DIM,
+        record_cmd=True,
+    )
+
     # warm-up
     for _ in range(warm_up):
-        wp.launch_tiled(
-            kernel=mlp, dim=[M // TILE_M, N // TILE_N], inputs=[A, B, K // TILE_K, output], block_dim=BLOCK_DIM
-        )
+        cmd.launch()
 
     # check output
     if warm_up > 0:
@@ -89,9 +100,7 @@ def benchmark_warp(A: wp.array, B: wp.array, config: List[int], warm_up: int, it
     # benchmark
     with wp.ScopedTimer("warp", print=False, synchronize=True, cuda_filter=wp.TIMING_KERNEL) as timer:
         for _ in range(iterations):
-            wp.launch_tiled(
-                kernel=mlp, dim=[M // TILE_M, N // TILE_N], inputs=[A, B, K // TILE_K, output], block_dim=BLOCK_DIM
-            )
+            cmd.launch()
 
     timing_results = [result.elapsed for result in timer.timing_results]
 
