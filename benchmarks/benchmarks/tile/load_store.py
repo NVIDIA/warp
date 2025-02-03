@@ -69,6 +69,6 @@ class LoadStore:
 
         average = sum(result.elapsed for result in timer.timing_results) / len(timer.timing_results)
 
-        return 2.0 * (self.a.capacity / (1024 * 1024 * 1024)) / (1e-3 * average)
+        return average * 1e-3
 
-    track_cuda.unit = "GiB/s"
+    track_cuda.unit = "seconds"
