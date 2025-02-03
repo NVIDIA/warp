@@ -35,10 +35,6 @@
 #endif
 
 #define WP_USE_ASYNC_PIPELINE 0
-#if WP_USE_ASYNC_PIPELINE
-#include "cuda_pipeline_primitives.h"
-#endif // WP_USE_ASYNC_PIPELINE
-
 #define WP_USE_REGISTER_GEMM 0
 
 /* Tile Expressions
@@ -308,6 +304,22 @@ struct tile_global_t
     tile_global_t(array_t<T>& a, const Coord& c) : data(a), offset(c)
     {
     }
+
+    inline CUDA_CALLABLE int index_from_coord(const Coord& coord) const
+    {
+        // element index
+        int index = 0;
+        
+        WP_PRAGMA_UNROLL
+        for (int i=0; i < Shape::N; ++i)
+        {
+            // global = offset + coord
+            int c = offset[i] + coord[i];
+            index += data.strides[i]*c;
+        }   
+
+        return index/sizeof(T);
+    }    
     
     inline CUDA_CALLABLE bool index(const Coord& coord, int& out) const
     {
@@ -1059,7 +1071,45 @@ struct tile_shared_t
 
     template <typename Global>
     inline CUDA_CALLABLE void copy_to_global(const Global& dest)
-    {
+    {       
+        // vectorized loads for specific input/output shapes
+        if constexpr (Layout::Shape::N == 2)
+        {
+            constexpr int lastdim = Layout::Shape::N-1;
+            constexpr bool contiguous_src = Layout::Stride::dim(lastdim) == 1;
+            const bool contiguous_dest = dest.data.strides[lastdim] == sizeof(T);
+            const int elements = (dest.data.shape[lastdim] - dest.offset[lastdim]);
+            const bool aligned = (elements*sizeof(T))%sizeof(float4) == 0;
+           
+            if (contiguous_dest && contiguous_src && aligned)
+            {                    
+                constexpr int M = Layout::Shape::dim(0);
+                constexpr int N = (Layout::Shape::dim(1)*sizeof(T))/sizeof(float4);            
+
+                // alias of shared tile with 128bit type
+                using SrcLayout = tile_layout_strided_t<tile_shape_t<M, N>>;
+                tile_shared_t<float4, SrcLayout> src128((float4*)data.ptr);
+                float4* dest128 = (float4*)&dest.data.data[dest.index_from_coord(tile_coord(0,0))];
+
+                assert(((uint64_t)(data.ptr))%sizeof(float4) == 0);
+                assert(((uint64_t)(ptr))%sizeof(float4) == 0);
+
+                const int stride_i = dest.data.strides[0]/sizeof(float4);
+                const int stride_j = 1;
+
+                WP_PRAGMA_UNROLL
+                for (int i=threadIdx.x; i < SrcLayout::Size; i += WP_TILE_BLOCK_DIM)
+                {  
+                    auto c = SrcLayout::coord_from_linear(i);
+                    
+                    dest128[stride_i*c[0] + stride_j*c[1]] = src128.data(i);
+                }
+
+                return;
+            }
+        }
+
+        // scalar bounds checked path
         WP_PRAGMA_UNROLL
         for (int i=threadIdx.x; i < Layout::Size; i += WP_TILE_BLOCK_DIM)
         {
@@ -1068,12 +1118,93 @@ struct tile_shared_t
         }
     }
 
+    __device__ __forceinline__
+    void cp_async_global_to_shared_128(float4* shared_dest, const float4* global_src)
+    {
+    #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800)
+
+        unsigned long long saddr = 0ULL;
+        unsigned long long gaddr = 0ULL;
+
+        asm volatile("cvta.to.shared.u64 %0, %1;" : "=l"(saddr) : "l"(shared_dest));
+        asm volatile("cvta.to.global.u64 %0, %1;" : "=l"(gaddr) : "l"(global_src));
+
+        // Use cp.async on newer architectures
+        asm volatile(
+            "cp.async.ca.shared.global [%0], [%1], 16;\n"
+            :
+            : "l"(saddr), "l"(gaddr)
+        );
+    #else
+        // use regular load/store through register on older arches
+        *shared_dest = *global_src;
+    #endif
+    }    
+
+    __device__ __forceinline__
+    void cp_async_commit_and_wait_all_128()
+    {
+    #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800)
+        asm volatile(
+            "cp.async.commit_group;\n"
+            "cp.async.wait_group 0;\n" ::);
+    #endif
+    }
+
     template <typename Global>
     inline CUDA_CALLABLE void copy_from_global(const Global& src)
-    {
+    {   
         if (initialized)
             WP_TILE_SYNC();
+        
+        // vectorized loads for specific input/output shapes
+        if constexpr (Layout::Shape::N == 2)
+        {
+            constexpr int lastdim = Layout::Shape::N-1;
+            constexpr bool contiguous_dest = Layout::Stride::dim(lastdim) == 1;
+            const bool contiguous_src = src.data.strides[lastdim] == sizeof(T);
+            const int elements = (src.data.shape[lastdim] - src.offset[lastdim]);
+            const bool aligned = (elements*sizeof(T))%sizeof(float4) == 0;
 
+            if (contiguous_dest && contiguous_src && aligned)
+            {            
+                constexpr int M = Layout::Shape::dim(0);
+                constexpr int N = (Layout::Shape::dim(1)*sizeof(T))/sizeof(float4);
+
+                // alias of shared tile with 128bit type
+                using DestLayout = tile_layout_strided_t<tile_shape_t<M, N>>;
+                tile_shared_t<float4, DestLayout> dest128((float4*)data.ptr);
+                float4* src128 = (float4*)&src.data.data[src.index_from_coord(tile_coord(0,0))];
+
+                assert(((uint64_t)(dest128.data.ptr))%sizeof(float4) == 0);
+                assert(((uint64_t)(src128))%sizeof(float4) == 0);
+
+                const int stride_i = src.data.strides[0]/sizeof(float4);
+                const int stride_j = 1;
+
+                WP_PRAGMA_UNROLL
+                for (int i=threadIdx.x; i < DestLayout::Size; i += WP_TILE_BLOCK_DIM)
+                {  
+                    auto c = DestLayout::coord_from_linear(i);
+                    
+#if WP_USE_ASYNC_PIPELINE
+                    cp_async_global_to_shared_128(&dest128.data(i), &src128[stride_i*c[0] + stride_j*c[1]]);
+#else
+                    dest128.data(i) = src128[stride_i*c[0] + stride_j*c[1]];
+#endif // WP_USE_ASYNC_PIPELINE
+                }
+
+#if WP_USE_ASYNC_PIPELINE
+                cp_async_commit_and_wait_all_128();
+#endif // WP_USE_ASYNC_PIPELINE
+
+                initialized = true;
+                WP_TILE_SYNC();
+                return;
+            }
+        }
+
+        // scalar bounds checked path
         WP_PRAGMA_UNROLL
         for (int i=threadIdx.x; i < Layout::Size; i += WP_TILE_BLOCK_DIM)
         {  
@@ -1943,11 +2074,6 @@ TileC& tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, Ti
     
 
     using T = typename TileA::Type;
-
-#if WP_USE_ASYNC_PIPELINE
-    __pipeline_wait_prior(0);
-    WP_TILE_SYNC();
-#endif
 
 #if WP_USE_REGISTER_GEMM
     partitioned_gemm::matmul(A, B, C);
