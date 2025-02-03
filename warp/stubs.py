@@ -81,7 +81,12 @@ from warp.context import Stream, get_stream, set_stream, wait_stream, synchroniz
 from warp.context import Event, record_event, wait_event, synchronize_event, get_event_elapsed_time
 from warp.context import RegisteredGLBuffer
 from warp.context import is_mempool_supported, is_mempool_enabled, set_mempool_enabled
-from warp.context import set_mempool_release_threshold, get_mempool_release_threshold
+from warp.context import (
+    set_mempool_release_threshold,
+    get_mempool_release_threshold,
+    get_mempool_used_mem_current,
+    get_mempool_used_mem_high,
+)
 from warp.context import is_mempool_access_supported, is_mempool_access_enabled, set_mempool_access_enabled
 from warp.context import is_peer_access_supported, is_peer_access_enabled, set_peer_access_enabled
 

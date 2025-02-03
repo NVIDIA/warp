@@ -2519,7 +2519,7 @@ class Stream:
         Raises:
             RuntimeError: If function is called before Warp has completed
               initialization with a ``device`` that is not an instance of
-              :class:`Device``.
+              :class:`Device <warp.context.Device>`.
             RuntimeError: ``device`` is not a CUDA Device.
             RuntimeError: The stream could not be created on the device.
             TypeError: The requested stream priority is not an integer.
@@ -3475,6 +3475,10 @@ class Runtime:
             self.core.cuda_device_set_mempool_release_threshold.restype = ctypes.c_int
             self.core.cuda_device_get_mempool_release_threshold.argtypes = [ctypes.c_int]
             self.core.cuda_device_get_mempool_release_threshold.restype = ctypes.c_uint64
+            self.core.cuda_device_get_mempool_used_mem_current.argtypes = [ctypes.c_int]
+            self.core.cuda_device_get_mempool_used_mem_current.restype = ctypes.c_uint64
+            self.core.cuda_device_get_mempool_used_mem_high.argtypes = [ctypes.c_int]
+            self.core.cuda_device_get_mempool_used_mem_high.restype = ctypes.c_uint64
             self.core.cuda_device_get_memory_info.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
             self.core.cuda_device_get_memory_info.restype = None
             self.core.cuda_device_get_uuid.argtypes = [ctypes.c_int, ctypes.c_char * 16]
@@ -4209,7 +4213,13 @@ def unmap_cuda_device(alias: str) -> None:
 
 
 def is_mempool_supported(device: Devicelike) -> bool:
-    """Check if CUDA memory pool allocators are available on the device."""
+    """Check if CUDA memory pool allocators are available on the device.
+
+    Parameters:
+        device: The :class:`Device <warp.context.Device>` or device identifier
+          for which the query is to be performed.
+          If ``None``, the default device will be used.
+    """
 
     init()
 
@@ -4219,7 +4229,13 @@ def is_mempool_supported(device: Devicelike) -> bool:
 
 
 def is_mempool_enabled(device: Devicelike) -> bool:
-    """Check if CUDA memory pool allocators are enabled on the device."""
+    """Check if CUDA memory pool allocators are enabled on the device.
+
+    Parameters:
+        device: The :class:`Device <warp.context.Device>` or device identifier
+          for which the query is to be performed.
+          If ``None``, the default device will be used.
+    """
 
     init()
 
@@ -4239,6 +4255,11 @@ def set_mempool_enabled(device: Devicelike, enable: bool) -> None:
     to Warp.  The preferred solution is to enable memory pool access using :func:`set_mempool_access_enabled`.
     If peer access is not supported, then the default CUDA allocators must be used to pre-allocate the memory
     prior to graph capture.
+
+    Parameters:
+        device: The :class:`Device <warp.context.Device>` or device identifier
+          for which the operation is to be performed.
+          If ``None``, the default device will be used.
     """
 
     init()
@@ -4269,6 +4290,18 @@ def set_mempool_release_threshold(device: Devicelike, threshold: Union[int, floa
     Values between 0 and 1 are interpreted as fractions of available memory.  For example, 0.5 means
     half of the device's physical memory.  Greater values are interpreted as an absolute number of bytes.
     For example, 1024**3 means one GiB of memory.
+
+    Parameters:
+        device: The :class:`Device <warp.context.Device>` or device identifier
+          for which the operation is to be performed.
+          If ``None``, the default device will be used.
+        threshold: An integer representing a number of bytes, or a ``float`` between 0 and 1,
+          specifying the desired release threshold.
+
+    Raises:
+        ValueError: If ``device`` is not a CUDA device.
+        RuntimeError: If ``device`` is a CUDA device, but does not support memory pools.
+        RuntimeError: Failed to set the memory pool release threshold.
     """
 
     init()
@@ -4290,8 +4323,21 @@ def set_mempool_release_threshold(device: Devicelike, threshold: Union[int, floa
         raise RuntimeError(f"Failed to set memory pool release threshold for device {device}")
 
 
-def get_mempool_release_threshold(device: Devicelike) -> int:
-    """Get the CUDA memory pool release threshold on the device in bytes."""
+def get_mempool_release_threshold(device: Devicelike = None) -> int:
+    """Get the CUDA memory pool release threshold on the device.
+
+    Parameters:
+        device: The :class:`Device <warp.context.Device>` or device identifier
+          for which the query is to be performed.
+          If ``None``, the default device will be used.
+
+    Returns:
+        The memory pool release threshold in bytes.
+
+    Raises:
+        ValueError: If ``device`` is not a CUDA device.
+        RuntimeError: If ``device`` is a CUDA device, but does not support memory pools.
+    """
 
     init()
 
@@ -4304,6 +4350,64 @@ def get_mempool_release_threshold(device: Devicelike) -> int:
         raise RuntimeError(f"Device {device} does not support memory pools")
 
     return runtime.core.cuda_device_get_mempool_release_threshold(device.ordinal)
+
+
+def get_mempool_used_mem_current(device: Devicelike = None) -> int:
+    """Get the amount of memory from the device's memory pool that is currently in use by the application.
+
+    Parameters:
+        device: The :class:`Device <warp.context.Device>` or device identifier
+          for which the query is to be performed.
+          If ``None``, the default device will be used.
+
+    Returns:
+        The amount of memory used in bytes.
+
+    Raises:
+        ValueError: If ``device`` is not a CUDA device.
+        RuntimeError: If ``device`` is a CUDA device, but does not support memory pools.
+    """
+
+    init()
+
+    device = runtime.get_device(device)
+
+    if not device.is_cuda:
+        raise ValueError("Memory pools are only supported on CUDA devices")
+
+    if not device.is_mempool_supported:
+        raise RuntimeError(f"Device {device} does not support memory pools")
+
+    return runtime.core.cuda_device_get_mempool_used_mem_current(device.ordinal)
+
+
+def get_mempool_used_mem_high(device: Devicelike = None) -> int:
+    """Get the application's memory usage high-water mark from the device's CUDA memory pool.
+
+    Parameters:
+        device: The :class:`Device <warp.context.Device>` or device identifier
+          for which the query is to be performed.
+          If ``None``, the default device will be used.
+
+    Returns:
+        The high-water mark of memory used from the memory pool in bytes.
+
+    Raises:
+        ValueError: If ``device`` is not a CUDA device.
+        RuntimeError: If ``device`` is a CUDA device, but does not support memory pools.
+    """
+
+    init()
+
+    device = runtime.get_device(device)
+
+    if not device.is_cuda:
+        raise ValueError("Memory pools are only supported on CUDA devices")
+
+    if not device.is_mempool_supported:
+        raise RuntimeError(f"Device {device} does not support memory pools")
+
+    return runtime.core.cuda_device_get_mempool_used_mem_high(device.ordinal)
 
 
 def is_peer_access_supported(target_device: Devicelike, peer_device: Devicelike) -> bool:

@@ -1879,6 +1879,62 @@ uint64_t cuda_device_get_mempool_release_threshold(int ordinal)
     return threshold;
 }
 
+uint64_t cuda_device_get_mempool_used_mem_current(int ordinal)
+{
+    if (ordinal < 0 || ordinal > int(g_devices.size()))
+    {
+        fprintf(stderr, "Invalid device ordinal %d\n", ordinal);
+        return 0;
+    }
+
+    if (!g_devices[ordinal].is_mempool_supported)
+        return 0;
+
+    cudaMemPool_t pool;
+    if (!check_cuda(cudaDeviceGetDefaultMemPool(&pool, ordinal)))
+    {
+        fprintf(stderr, "Warp error: Failed to get memory pool on device %d\n", ordinal);
+        return 0;
+    }
+
+    uint64_t mem_used = 0;
+    if (!check_cuda(cudaMemPoolGetAttribute(pool, cudaMemPoolAttrUsedMemCurrent, &mem_used)))
+    {
+        fprintf(stderr, "Warp error: Failed to get amount of currently used memory from the memory pool on device %d\n", ordinal);
+        return 0;
+    }
+
+    return mem_used;
+}
+
+uint64_t cuda_device_get_mempool_used_mem_high(int ordinal)
+{
+    if (ordinal < 0 || ordinal > int(g_devices.size()))
+    {
+        fprintf(stderr, "Invalid device ordinal %d\n", ordinal);
+        return 0;
+    }
+
+    if (!g_devices[ordinal].is_mempool_supported)
+        return 0;
+
+    cudaMemPool_t pool;
+    if (!check_cuda(cudaDeviceGetDefaultMemPool(&pool, ordinal)))
+    {
+        fprintf(stderr, "Warp error: Failed to get memory pool on device %d\n", ordinal);
+        return 0;
+    }
+
+    uint64_t mem_high_water_mark = 0;
+    if (!check_cuda(cudaMemPoolGetAttribute(pool, cudaMemPoolAttrUsedMemHigh, &mem_high_water_mark)))
+    {
+        fprintf(stderr, "Warp error: Failed to get memory usage high water mark from the memory pool on device %d\n", ordinal);
+        return 0;
+    }
+
+    return mem_high_water_mark;
+}
+
 void cuda_device_get_memory_info(int ordinal, size_t* free_mem, size_t* total_mem)
 {
     // use temporary storage if user didn't specify pointers

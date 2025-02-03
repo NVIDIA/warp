@@ -995,6 +995,8 @@ WP_API int cuda_device_is_mempool_supported(int ordinal) { return 0; }
 WP_API int cuda_device_is_ipc_supported(int ordinal) { return 0; }
 WP_API int cuda_device_set_mempool_release_threshold(int ordinal, uint64_t threshold) { return 0; }
 WP_API uint64_t cuda_device_get_mempool_release_threshold(int ordinal) { return 0; }
+WP_API uint64_t cuda_device_get_mempool_used_mem_current(int ordinal) { return 0; }
+WP_API uint64_t cuda_device_get_mempool_used_mem_high(int ordinal) { return 0; }
 WP_API void cuda_device_get_memory_info(int ordinal, size_t* free_mem, size_t* total_mem) {}
 
 WP_API void* cuda_context_get_current() { return NULL; }
