@@ -8,7 +8,7 @@
   and `tile_diag_add()` (preview APIs are subject to change).
 - Support for loading tiles from arrays whose shapes are not multiples of the tile dimensions.
   Out-of-bounds reads will be zero-filled and out-of-bounds writes will be skipped.
-- Support for higher-dimensional (up to 4D) tile shapes and memory operations
+- Support for higher-dimensional (up to 4D) tile shapes and memory operations.
 - Add intersection-free self-contact support in `wp.sim.VDBIntegrator` by passing `handle_self_contact=True`.
   See `warp/examples/sim/example_cloth_self_contact.py` for a usage example.
 - Add functions `wp.norm_l1()`, `wp.norm_l2()`, `wp.norm_huber()`, `wp.norm_pseudo_huber()`, and `wp.smooth_normalize()`
@@ -38,7 +38,7 @@
 - **Breaking:** Change `wp.tile_load()` and `wp.tile_store()` indexing behavior so that indices are now specified in
   terms of *array elements* instead of *tile multiples*.
 - **Breaking:** Tile operations now take `shape` and `offset` parameters as tuples,
-  e.g.: `wp.tile_load(array, shape=(m,n), offset=(i,j))`
+  e.g.: `wp.tile_load(array, shape=(m,n), offset=(i,j))`.
 - **Breaking:** Change exception types and error messages thrown by tile functions for improved consistency.
 - Add an implicit tile synchronization whenever a shared memory tile's data is reinitialized (e.g. in dynamic loops).
   This could result in lower performance.
