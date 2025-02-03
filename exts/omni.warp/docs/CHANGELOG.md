@@ -1,5 +1,94 @@
 # CHANGELOG
 
+## [1.6.0] - 2025-02-03
+
+### Added
+
+- Add preview of Tile Cholesky factorization and solve APIs through `wp.tile_cholesky()`, `tile_cholesky_solve()`
+  and `tile_diag_add()` (preview APIs are subject to change).
+- Support for loading tiles from arrays whose shapes are not multiples of the tile dimensions.
+  Out-of-bounds reads will be zero-filled and out-of-bounds writes will be skipped.
+- Support for higher-dimensional (up to 4D) tile shapes and memory operations.
+- Add intersection-free self-contact support in `wp.sim.VDBIntegrator` by passing `handle_self_contact=True`.
+  See `warp/examples/sim/example_cloth_self_contact.py` for a usage example.
+- Add functions `wp.norm_l1()`, `wp.norm_l2()`, `wp.norm_huber()`, `wp.norm_pseudo_huber()`, and `wp.smooth_normalize()`
+  for vector types to a new `wp.math` module.
+- `wp.sim.SemiImplicitIntegrator` and `wp.sim.FeatherstoneIntegrator` now have an optional `friction_smoothing`
+  constructor argument (defaults to 1.0) that controls softness of the friction norm computation.
+- Support `assert` statements in kernels ([docs](https://nvidia.github.io/warp/debugging.html#assertions)).
+  Assertions can only be triggered in `"debug"` mode ([GH-366](https://github.com/NVIDIA/warp/issues/336)).
+- Support CUDA IPC on Linux. Call the `ipc_handle()` method to get an IPC handle for a `wp.Event` or a `wp.array`,
+  and call `wp.from_ipc_handle()` or `wp.event_from_ipc_handle()` in another process to open the handle
+  ([docs](https://nvidia.github.io/warp/modules/runtime.html#interprocess-communication-ipc)).
+- Add per-module option to disable fused floating point operations, use `wp.set_module_options({"fuse_fp": False})`
+  ([GH-379](https://github.com/NVIDIA/warp/issues/379)).
+- Add per-module option to add CUDA-C line information for profiling, use `wp.set_module_options({"lineinfo": True})`.
+- Support operator overloading for `wp.struct` objects by defining `wp.func` functions
+  ([GH-392](https://github.com/NVIDIA/warp/issues/392)).
+- Add built-in function `wp.len()` to retrieve the number of elements for vectors, quaternions, matrices, and arrays
+  ([GH-389](https://github.com/NVIDIA/warp/issues/389)).
+- Add `warp/examples/optim/example_softbody_properties.py` as an optimization example for soft-body properties
+  ([GH-419](https://github.com/NVIDIA/warp/pull/419)).
+- Add `warp/examples/tile/example_tile_walker.py`, which reworks the existing `example_walker.py`
+  to use Warp's tile API for matrix multiplication.
+- Add `warp/examples/tile/example_tile_nbody.py` as an example of an N-body simulation using Warp tile primitives.
+
+### Changed
+
+- **Breaking:** Change `wp.tile_load()` and `wp.tile_store()` indexing behavior so that indices are now specified in
+  terms of *array elements* instead of *tile multiples*.
+- **Breaking:** Tile operations now take `shape` and `offset` parameters as tuples,
+  e.g.: `wp.tile_load(array, shape=(m,n), offset=(i,j))`.
+- **Breaking:** Change exception types and error messages thrown by tile functions for improved consistency.
+- Add an implicit tile synchronization whenever a shared memory tile's data is reinitialized (e.g. in dynamic loops).
+  This could result in lower performance.
+- `wp.Bvh` constructor now supports various construction algorithms via the `constructor` argument, including
+  `"sah"` (Surface Area Heuristics), `"median"`, and `"lbvh"` ([docs](https://nvidia.github.io/warp/modules/runtime.html#warp.Bvh.__init__))
+- Improve the query efficiency of `wp.Bvh` and `wp.Mesh`.
+- Improve memory consumption, compilation and runtime performance when using in-place vector/matrix assignments in
+  kernels that have `enable_backward` set to `False` ([GH-332](https://github.com/NVIDIA/warp/issues/332)).
+- Vector/matrix/quaternion component `+=` and `-=` operations compile and run faster in the backward pass
+  ([GH-332](https://github.com/NVIDIA/warp/issues/332)).
+- Name files in the kernel cache according to their directory. Previously, all files began with
+  `module_codegen` ([GH-431](https://github.com/NVIDIA/warp/issues/431)).
+- Avoid recompilation of modules when changing `block_dim`.
+- `wp.autograd.gradcheck_tape()` now has additional optional arguments `reverse_launches` and `skip_to_launch_index`.
+- `wp.autograd.gradcheck()`, `wp.autograd.jacobian()`, and `wp.autograd.jacobian_fd()` now also accept
+  arbitrary Python functions that have Warp arrays as inputs and outputs.
+- `update_vbo_transforms` kernel launches in the OpenGL renderer are no longer recorded onto the tape.
+- Skip emitting backward functions/kernels in the generated C++/CUDA code when `enable_backward` is set to `False`.
+- Emit deprecation warnings for the use of the `owner` and `length` keywords in the `wp.array` initializer.
+- Emit deprecation warnings for the use of `wp.mlp()`, `wp.matmul()`, and `wp.batched_matmul()`.
+  Use tile primitives instead.
+
+### Fixed
+
+- Fix unintended modification of non-Warp arrays during the backward pass ([GH-394](https://github.com/NVIDIA/warp/issues/394)).
+- Fix so that `wp.Tape.zero()` zeroes gradients passed via the `grads` parameter in `wp.Tape.backward()`
+  ([GH-407](https://github.com/NVIDIA/warp/issues/407)).
+- Fix errors during graph capture caused by module unloading ([GH-401](https://github.com/NVIDIA/warp/issues/401)).
+- Fix potential memory corruption errors when allocating arrays with strides ([GH-404](https://github.com/NVIDIA/warp/issues/404)).
+- Fix `wp.array()` not respecting the target `dtype` and `shape` when the given data is an another array with a CUDA interface
+  ([GH-363](https://github.com/NVIDIA/warp/issues/363)).
+- Negative constants evaluate to compile-time constants ([GH-403](https://github.com/NVIDIA/warp/issues/403))
+- Fix `ImportError` exception being thrown during interpreter shutdown on Windows when using the OpenGL renderer
+  ([GH-412](https://github.com/NVIDIA/warp/issues/412)).
+- Fix the OpenGL renderer not working when multiple instances exist at the same time ([GH-385](https://github.com/NVIDIA/warp/issues/385)).
+- Fix `AttributeError` crash in the OpenGL renderer when moving the camera ([GH-426](https://github.com/NVIDIA/warp/issues/426)).
+- Fix the OpenGL renderer not correctly displaying duplicate capsule, cone, and cylinder shapes
+  ([GH-388](https://github.com/NVIDIA/warp/issues/388)).
+- Fix the overriding of `wp.sim.ModelBuilder` default parameters ([GH-429](https://github.com/NVIDIA/warp/pull/429)).
+- Fix indexing of `wp.tile_extract()` when the block dimension is smaller than the tile size.
+- Fix scale and rotation issues with the rock geometry used in the granular collision SDF example
+  ([GH-409](https://github.com/NVIDIA/warp/issues/409)).
+- Fix autodiff Jacobian computation in `wp.autograd.jacobian()` where in some cases gradients were not zeroed-out properly.
+- Fix plotting issues in `wp.autograd.jacobian_plot()`.
+- Fix the `len()` operator returning the total size of a matrix instead of its first dimension.
+- Fix gradient instability in rigid-body contact handling for `wp.sim.SemiImplicitIntegrator` and
+  `wp.sim.FeatherstoneIntegrator` ([GH-349](https://github.com/NVIDIA/warp/issues/349)).
+- Fix overload resolution of generic Warp functions with default arguments.
+- Fix rendering of arrows with different `up_axis`, `color` in `OpenGLRenderer` ([GH-448](https://github.com/NVIDIA/warp/issues/448)).
+
 ## [1.5.1] - 2025-01-02
 
 ### Added
