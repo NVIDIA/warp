@@ -1,5 +1,23 @@
 # Changelog
 
+## [Unreleased] - 2025-??
+
+### Added
+
+- Added support for vec4f grid construction in `wp.Volume.allocate_by_tiles()`
+- Add `wp.get_mempool_used_mem_current()` and `wp.get_mempool_used_mem_high()` to
+  query the respective current and high-water mark memory pool allocator usage.
+  ([GH-446](https://github.com/NVIDIA/warp/issues/446)).
+
+### Changed
+
+- `warp.fem.integrate()` and `warp.fem.integrate()` may now perform parallel evaluation of quadrature points within elements
+- `warp.fem.interpolate()` can now build Jacobian sparse matrices of interpolated functions with respect to a trial field
+
+### Fixed
+
+- Fix an error on Windows when closing an `OpenGLRenderer` app ([GH-488](https://github.com/NVIDIA/warp/issues/488)).
+
 ## [1.6.0] - 2025-02-03
 
 ### Added
