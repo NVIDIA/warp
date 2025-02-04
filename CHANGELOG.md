@@ -11,6 +11,9 @@
 
 ### Changed
 
+- `warp.fem.integrate()` and `warp.fem.integrate()` may now perform parallel evaluation of quadrature points within elements
+- `warp.fem.interpolate()` can now build Jacobian sparse matrices of interpolated functions with respect to a trial field
+
 ### Fixed
 
 ## [1.6.0] - 2025-02-03

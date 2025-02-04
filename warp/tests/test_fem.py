@@ -25,6 +25,7 @@ from warp.fem.utils import (
     grid_to_tets,
     grid_to_tris,
 )
+from warp.sparse import bsr_zeros
 from warp.tests.unittest_utils import *
 
 vec6f = wp.vec(length=6, dtype=float)
@@ -139,11 +140,12 @@ def test_interpolate_gradient(test, device):
         scalar_space = fem.make_polynomial_space(geo, degree=2)
 
         # Point-based vector space
-        # So we can test gradient with respect to inteprolation point position
+        # So we can test gradient with respect to interpolation point position
         point_coords = wp.array([[[0.5, 0.5, 0.0]]], dtype=fem.Coords, requires_grad=True)
-        interpolation_nodes = fem.PointBasisSpace(
-            fem.ExplicitQuadrature(domain=fem.Cells(geo), points=point_coords, weights=wp.array([[1.0]], dtype=float))
+        point_quadrature = fem.ExplicitQuadrature(
+            domain=fem.Cells(geo), points=point_coords, weights=wp.array([[1.0]], dtype=float)
         )
+        interpolation_nodes = fem.PointBasisSpace(point_quadrature)
         vector_space = fem.make_collocated_function_space(interpolation_nodes, dtype=wp.vec2)
 
         # Initialize scalar field with known function
@@ -204,6 +206,23 @@ def test_interpolate_gradient(test, device):
             ),
         )
         assert_np_equal(point_coords.grad.numpy(), np.array([[[2.0, 0.0, 0.0]]]))
+
+        # Compare against jacobian
+        scalar_trial = fem.make_trial(scalar_space)
+        jacobian = bsr_zeros(
+            rows_of_blocks=point_quadrature.total_point_count(),
+            cols_of_blocks=scalar_space.node_count(),
+            block_type=wp.mat(shape=(2, 1), dtype=float),
+        )
+        fem.interpolate(
+            grad_field,
+            dest=jacobian,
+            quadrature=point_quadrature,
+            fields={"p": scalar_trial},
+            kernel_options={"enable_backward": False},
+        )
+        assert jacobian.nnz_sync() == 4  # one non-zero per edge center
+        assert_np_equal((jacobian @ scalar_field.dof_values.grad).numpy(), [[0.0, 0.5]])
 
 
 @integrand

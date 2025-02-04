@@ -44,6 +44,11 @@ class Geometry:
         return self.reference_cell().dimension
 
     @property
+    def base(self) -> "Geometry":
+        """Returns the base geometry from which this geometry derives its topology. Usually `self`"""
+        return self
+
+    @property
     def name(self) -> str:
         return self.__class__.__name__
 

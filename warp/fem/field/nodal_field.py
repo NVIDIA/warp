@@ -68,22 +68,15 @@ class NodalFieldBase(DiscreteField):
         @cache.dynamic_func(suffix=self.name)
         def eval_inner(args: self.ElementEvalArg, s: Sample):
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
-            res = self.space.space_value(
-                self._read_node_value(args, s.element_index, 0),
-                self.space.element_inner_weight(
-                    args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, 0
-                ),
-                local_value_map,
-            )
-
             node_count = self.space.topology.element_node_count(
                 args.elt_arg, args.eval_arg.topology_arg, s.element_index
             )
-            for k in range(1, node_count):
+            res = self.space.dtype(0.0)
+            for k in range(node_count):
                 res += self.space.space_value(
                     self._read_node_value(args, s.element_index, k),
                     self.space.element_inner_weight(
-                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k
+                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k, s.qp_index
                     ),
                     local_value_map,
                 )
@@ -98,24 +91,16 @@ class NodalFieldBase(DiscreteField):
         @cache.dynamic_func(suffix=self.name)
         def eval_grad_inner(args: self.ElementEvalArg, s: Sample, grad_transform: Any):
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
-
-            res = self.space.space_gradient(
-                self._read_node_value(args, s.element_index, 0),
-                self.space.element_inner_weight_gradient(
-                    args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, 0
-                ),
-                local_value_map,
-                grad_transform,
-            )
-
             node_count = self.space.topology.element_node_count(
                 args.elt_arg, args.eval_arg.topology_arg, s.element_index
             )
-            for k in range(1, node_count):
+
+            res = self.gradient_dtype(0.0)
+            for k in range(node_count):
                 res += self.space.space_gradient(
                     self._read_node_value(args, s.element_index, k),
                     self.space.element_inner_weight_gradient(
-                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k
+                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k, s.qp_index
                     ),
                     local_value_map,
                     grad_transform,
@@ -142,24 +127,16 @@ class NodalFieldBase(DiscreteField):
         def eval_div_inner(args: self.ElementEvalArg, s: Sample):
             grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
-
-            res = self.space.space_divergence(
-                self._read_node_value(args, s.element_index, 0),
-                self.space.element_inner_weight_gradient(
-                    args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, 0
-                ),
-                local_value_map,
-                grad_transform,
-            )
-
             node_count = self.space.topology.element_node_count(
                 args.elt_arg, args.eval_arg.topology_arg, s.element_index
             )
-            for k in range(1, node_count):
+
+            res = self.divergence_dtype(0.0)
+            for k in range(node_count):
                 res += self.space.space_divergence(
                     self._read_node_value(args, s.element_index, k),
                     self.space.element_inner_weight_gradient(
-                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k
+                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k, s.qp_index
                     ),
                     local_value_map,
                     grad_transform,
@@ -172,23 +149,16 @@ class NodalFieldBase(DiscreteField):
         @cache.dynamic_func(suffix=self.name)
         def eval_outer(args: self.ElementEvalArg, s: Sample):
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
-            res = self.space.space_value(
-                self._read_node_value(args, s.element_index, 0),
-                self.space.element_outer_weight(
-                    args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, 0
-                ),
-                local_value_map,
-            )
-
             node_count = self.space.topology.element_node_count(
                 args.elt_arg, args.eval_arg.topology_arg, s.element_index
             )
 
-            for k in range(1, node_count):
+            res = self.dtype(0.0)
+            for k in range(node_count):
                 res += self.space.space_value(
                     self._read_node_value(args, s.element_index, k),
                     self.space.element_outer_weight(
-                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k
+                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k, s.qp_index
                     ),
                     local_value_map,
                 )
@@ -203,24 +173,16 @@ class NodalFieldBase(DiscreteField):
         @cache.dynamic_func(suffix=self.name)
         def eval_grad_outer(args: self.ElementEvalArg, s: Sample, grad_transform: Any):
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
-
-            res = self.space.space_gradient(
-                self._read_node_value(args, s.element_index, 0),
-                self.space.element_outer_weight_gradient(
-                    args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, 0
-                ),
-                local_value_map,
-                grad_transform,
-            )
-
             node_count = self.space.topology.element_node_count(
                 args.elt_arg, args.eval_arg.topology_arg, s.element_index
             )
-            for k in range(1, node_count):
+
+            res = self.gradient_dtype(0.0)
+            for k in range(node_count):
                 res += self.space.space_gradient(
                     self._read_node_value(args, s.element_index, k),
                     self.space.element_outer_weight_gradient(
-                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k
+                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k, s.qp_index
                     ),
                     local_value_map,
                     grad_transform,
@@ -247,24 +209,16 @@ class NodalFieldBase(DiscreteField):
         def eval_div_outer(args: self.ElementEvalArg, s: Sample):
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
-
-            res = self.space.space_divergence(
-                self._read_node_value(args, s.element_index, 0),
-                self.space.element_outer_weight_gradient(
-                    args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, 0
-                ),
-                local_value_map,
-                grad_transform,
-            )
-
             node_count = self.space.topology.element_node_count(
                 args.elt_arg, args.eval_arg.topology_arg, s.element_index
             )
-            for k in range(1, node_count):
+
+            res = self.divergence_dtype(0.0)
+            for k in range(node_count):
                 res += self.space.space_divergence(
                     self._read_node_value(args, s.element_index, k),
                     self.space.element_outer_weight_gradient(
-                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k
+                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k, s.qp_index
                     ),
                     local_value_map,
                     grad_transform,

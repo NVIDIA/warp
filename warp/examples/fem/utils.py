@@ -19,6 +19,9 @@ __all__ = [
     "Plot",
 ]
 
+# matrix inversion routines contain nested loops,
+# default unrolling leads to code explosion
+wp.set_module_options({"max_unroll": 6})
 
 #
 # Mesh utilities
@@ -210,6 +213,7 @@ def bsr_cg(
     mv_routine=None,
     quiet=False,
     method: str = "cg",
+    M: BsrMatrix = None,
 ) -> Tuple[float, int]:
     """Solves the linear system A x = b using an iterative solver, optionally with diagonal preconditioning
 
@@ -230,7 +234,9 @@ def bsr_cg(
 
     """
 
-    if mv_routine is None:
+    if M is not None:
+        M = aslinearoperator(M)
+    elif mv_routine is None:
         M = preconditioner(A, "diag") if use_diag_precond else None
     else:
         A = LinearOperator(A.shape, A.dtype, A.device, matvec=mv_routine)
@@ -443,7 +449,7 @@ def bsr_solve_saddle(
     return err, end_iter
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def _compute_schur_inverse_diagonal(
     B_offsets: wp.array(dtype=int),
     B_indices: wp.array(dtype=int),
@@ -485,7 +491,7 @@ def invert_diagonal_bsr_matrix(A: BsrMatrix):
     )
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def _block_diagonal_invert(values: wp.array(dtype=Any)):
     i = wp.tid()
     values[i] = fem.utils.inverse_qr(values[i])

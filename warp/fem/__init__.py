@@ -78,4 +78,14 @@ from .space import (
     make_space_partition,
     make_space_restriction,
 )
-from .types import NULL_ELEMENT_INDEX, Coords, Domain, ElementIndex, Field, Sample, make_free_sample
+from .types import (
+    NULL_ELEMENT_INDEX,
+    NULL_QP_INDEX,
+    Coords,
+    Domain,
+    ElementIndex,
+    Field,
+    QuadraturePointIndex,
+    Sample,
+    make_free_sample,
+)

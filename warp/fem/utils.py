@@ -41,13 +41,11 @@ def compress_node_indices(
         sorted_node_indices = sorted_node_indices_temp.array
         sorted_array_indices = sorted_array_indices_temp.array
 
-        wp.copy(dest=sorted_node_indices, src=node_indices, count=index_count)
-
         indices_per_element = 1 if node_indices.ndim == 1 else node_indices.shape[-1]
         wp.launch(
-            kernel=_iota_kernel,
+            kernel=_prepare_node_sort_kernel,
             dim=index_count,
-            inputs=[sorted_array_indices, indices_per_element],
+            inputs=[node_indices.flatten(), sorted_node_indices, sorted_array_indices, indices_per_element],
         )
 
         # Sort indices
@@ -154,8 +152,16 @@ def masked_indices(
 
 
 @wp.kernel
-def _iota_kernel(indices: wp.array(dtype=int), divisor: int):
-    indices[wp.tid()] = wp.tid() // divisor
+def _prepare_node_sort_kernel(
+    node_indices: wp.array(dtype=int),
+    sort_keys: wp.array(dtype=int),
+    sort_values: wp.array(dtype=int),
+    divisor: int,
+):
+    i = wp.tid()
+    node = node_indices[i]
+    sort_keys[i] = wp.select(node < 0, node, NULL_NODE_INDEX)
+    sort_values[i] = i // divisor
 
 
 @wp.kernel

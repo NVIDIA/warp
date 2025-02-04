@@ -3,7 +3,7 @@ from typing import Any, Optional, Tuple, Union
 import warp as wp
 from warp.fem.cache import TemporaryStore, borrow_temporary, cached_arg_value, dynamic_kernel
 from warp.fem.domain import GeometryDomain
-from warp.fem.types import Coords, ElementIndex, make_free_sample
+from warp.fem.types import NULL_ELEMENT_INDEX, Coords, ElementIndex, make_free_sample
 from warp.fem.utils import compress_node_indices
 
 from .quadrature import Quadrature
@@ -53,10 +53,10 @@ class PicQuadrature(Quadrature):
     def domain(self, domain: GeometryDomain):
         # Allow changing the quadrature domain as long as underlying geometry and element kind are the same
         if self.domain is not None and (
-            domain.geometry != self.domain.geometry or domain.element_kind != self.domain.element_kind
+            domain.element_kind != self.domain.element_kind or domain.geometry.base != self.domain.geometry.base
         ):
             raise RuntimeError(
-                "Cannot change the domain to that of a different Geometry and/or using different element kinds."
+                "The new domain must use the same base geometry and kind of elements as the current one."
             )
 
         self._domain = domain
@@ -74,11 +74,11 @@ class PicQuadrature(Quadrature):
         arg.cell_particle_offsets = self._cell_particle_offsets.array.to(device)
         arg.cell_particle_indices = self._cell_particle_indices.array.to(device)
         arg.particle_fraction = self._particle_fraction.to(device)
-        arg.particle_coords = self._particle_coords.to(device)
+        arg.particle_coords = self.particle_coords.to(device)
         return arg
 
     def total_point_count(self):
-        return self._particle_coords.shape[0]
+        return self.particle_coords.shape[0]
 
     def active_cell_count(self):
         """Number of cells containing at least one particle"""
@@ -121,6 +121,12 @@ class PicQuadrature(Quadrature):
         particle_index = qp_arg.cell_particle_indices[qp_arg.cell_particle_offsets[element_index] + index]
         return particle_index
 
+    @wp.func
+    def point_evaluation_index(
+        elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex, index: int
+    ):
+        return qp_arg.cell_particle_offsets[element_index] + index
+
     def fill_element_mask(self, mask: "wp.array(dtype=int)"):
         """Fills a mask array such that all non-empty elements are set to 1, all empty elements to zero.
 
@@ -152,9 +158,11 @@ class PicQuadrature(Quadrature):
         p = wp.tid()
 
         cell = cell_index[p]
-        cell_particle_count = cell_particle_offsets[cell + 1] - cell_particle_offsets[cell]
-
-        cell_fraction[p] = 1.0 / float(cell_particle_count)
+        if cell == NULL_ELEMENT_INDEX:
+            cell_fraction[p] = 0.0
+        else:
+            cell_particle_count = cell_particle_offsets[cell + 1] - cell_particle_offsets[cell]
+            cell_fraction[p] = 1.0 / float(cell_particle_count)
 
     def _bin_particles(self, positions, measures, temporary_store: TemporaryStore):
         if wp.types.is_array(positions):
@@ -174,13 +182,13 @@ class PicQuadrature(Quadrature):
 
             device = positions.device
 
-            cell_index_temp = borrow_temporary(temporary_store, shape=positions.shape, dtype=int, device=device)
-            cell_index = cell_index_temp.array
+            self._cell_index_temp = borrow_temporary(temporary_store, shape=positions.shape, dtype=int, device=device)
+            self.cell_indices = self._cell_index_temp.array
 
             self._particle_coords_temp = borrow_temporary(
                 temporary_store, shape=positions.shape, dtype=Coords, device=device, requires_grad=self._requires_grad
             )
-            self._particle_coords = self._particle_coords_temp.array
+            self.particle_coords = self._particle_coords_temp.array
 
             wp.launch(
                 dim=positions.shape[0],
@@ -188,25 +196,28 @@ class PicQuadrature(Quadrature):
                 inputs=[
                     self.domain.element_arg_value(device),
                     positions,
-                    cell_index,
-                    self._particle_coords,
+                    self.cell_indices,
+                    self.particle_coords,
                 ],
                 device=device,
             )
 
         else:
-            cell_index, self._particle_coords = positions
-            if cell_index.shape != self._particle_coords.shape:
+            self.cell_indices, self.particle_coords = positions
+            if self.cell_indices.shape != self.particle_coords.shape:
                 raise ValueError("Cell index and coordinates arrays must have the same shape")
 
-            cell_index_temp = None
+            self._cell_index_temp = None
             self._particle_coords_temp = None
 
         self._cell_particle_offsets, self._cell_particle_indices, self._cell_count, _ = compress_node_indices(
-            self.domain.geometry_element_count(), cell_index, return_unique_nodes=True, temporary_store=temporary_store
+            self.domain.geometry_element_count(),
+            self.cell_indices,
+            return_unique_nodes=True,
+            temporary_store=temporary_store,
         )
 
-        self._compute_fraction(cell_index, measures, temporary_store)
+        self._compute_fraction(self.cell_indices, measures, temporary_store)
 
     def _compute_fraction(self, cell_index, measures, temporary_store: TemporaryStore):
         device = cell_index.device
@@ -245,9 +256,13 @@ class PicQuadrature(Quadrature):
                 cell_fraction: wp.array(dtype=float),
             ):
                 p = wp.tid()
-                sample = make_free_sample(cell_index[p], cell_coords[p])
 
-                cell_fraction[p] = measures[p] / self.domain.element_measure(cell_arg_value, sample)
+                cell = cell_index[p]
+                if cell == NULL_ELEMENT_INDEX:
+                    cell_fraction[p] = 0.0
+                else:
+                    sample = make_free_sample(cell_index[p], cell_coords[p])
+                    cell_fraction[p] = measures[p] / self.domain.element_measure(cell_arg_value, sample)
 
             wp.launch(
                 dim=measures.shape[0],
@@ -256,7 +271,7 @@ class PicQuadrature(Quadrature):
                     self.domain.element_arg_value(device),
                     measures,
                     cell_index,
-                    self._particle_coords,
+                    self.particle_coords,
                     self._particle_fraction,
                 ],
                 device=device,
