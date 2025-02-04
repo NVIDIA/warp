@@ -48,7 +48,7 @@ class CubeTripolynomialShapeFunctions(CubeShapeFunction):
 
         self.ORDER = wp.constant(degree)
         self.NODES_PER_ELEMENT = wp.constant((degree + 1) ** 3)
-        self.NODES_PER_EDGE = wp.constant(degree + 1)
+        self.NODES_PER_SIDE = wp.constant((degree + 1) ** 2)
 
         if is_closed(self.family):
             self.VERTEX_NODE_COUNT = wp.constant(1)
@@ -489,7 +489,7 @@ class CubeSerendipityShapeFunctions(CubeShapeFunction):
 
         self.ORDER = wp.constant(degree)
         self.NODES_PER_ELEMENT = wp.constant(8 + 12 * (degree - 1))
-        self.NODES_PER_EDGE = wp.constant(degree + 1)
+        self.NODES_PER_SIDE = wp.constant(4 * degree)
 
         self.VERTEX_NODE_COUNT = wp.constant(1)
         self.EDGE_NODE_COUNT = wp.constant(degree - 1)

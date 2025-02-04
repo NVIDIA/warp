@@ -6,7 +6,14 @@ import warp as wp
 from warp.fem import cache
 from warp.fem.geometry import Geometry
 from warp.fem.quadrature import Quadrature
-from warp.fem.types import NULL_ELEMENT_INDEX, Coords, ElementIndex, make_free_sample
+from warp.fem.types import (
+    NULL_ELEMENT_INDEX,
+    NULL_QP_INDEX,
+    Coords,
+    ElementIndex,
+    QuadraturePointIndex,
+    make_free_sample,
+)
 
 from .shape import ShapeFunction
 from .topology import RegularDiscontinuousSpaceTopology, SpaceTopology
@@ -220,6 +227,7 @@ class ShapeBasisSpace(BasisSpace):
             element_index: ElementIndex,
             coords: Coords,
             node_index_in_elt: int,
+            qp_index: QuadraturePointIndex,
         ):
             if wp.static(self.value == ShapeFunction.Value.Scalar):
                 return shape_element_inner_weight(coords, node_index_in_elt)
@@ -239,6 +247,7 @@ class ShapeBasisSpace(BasisSpace):
             element_index: ElementIndex,
             coords: Coords,
             node_index_in_elt: int,
+            qp_index: QuadraturePointIndex,
         ):
             if wp.static(self.value == ShapeFunction.Value.Scalar):
                 return shape_element_inner_weight_gradient(coords, node_index_in_elt)
@@ -358,6 +367,7 @@ class TraceBasisSpace(BasisSpace):
             element_index: ElementIndex,
             coords: Coords,
             node_index_in_elt: int,
+            qp_index: QuadraturePointIndex,
         ):
             cell_index, index_in_cell = self.topology.inner_cell_index(geo_side_arg, element_index, node_index_in_elt)
             if cell_index == NULL_ELEMENT_INDEX:
@@ -366,13 +376,7 @@ class TraceBasisSpace(BasisSpace):
             cell_coords = self.geometry.side_inner_cell_coords(geo_side_arg, element_index, coords)
 
             geo_cell_arg = self.geometry.side_to_cell_arg(geo_side_arg)
-            return cell_inner_weight(
-                geo_cell_arg,
-                basis_arg,
-                cell_index,
-                cell_coords,
-                index_in_cell,
-            )
+            return cell_inner_weight(geo_cell_arg, basis_arg, cell_index, cell_coords, index_in_cell, NULL_QP_INDEX)
 
         return trace_element_inner_weight
 
@@ -386,6 +390,7 @@ class TraceBasisSpace(BasisSpace):
             element_index: ElementIndex,
             coords: Coords,
             node_index_in_elt: int,
+            qp_index: QuadraturePointIndex,
         ):
             cell_index, index_in_cell = self.topology.outer_cell_index(geo_side_arg, element_index, node_index_in_elt)
             if cell_index == NULL_ELEMENT_INDEX:
@@ -394,13 +399,7 @@ class TraceBasisSpace(BasisSpace):
             cell_coords = self.geometry.side_outer_cell_coords(geo_side_arg, element_index, coords)
 
             geo_cell_arg = self.geometry.side_to_cell_arg(geo_side_arg)
-            return cell_outer_weight(
-                geo_cell_arg,
-                basis_arg,
-                cell_index,
-                cell_coords,
-                index_in_cell,
-            )
+            return cell_outer_weight(geo_cell_arg, basis_arg, cell_index, cell_coords, index_in_cell, NULL_QP_INDEX)
 
         return trace_element_outer_weight
 
@@ -414,6 +413,7 @@ class TraceBasisSpace(BasisSpace):
             element_index: ElementIndex,
             coords: Coords,
             node_index_in_elt: int,
+            qp_index: QuadraturePointIndex,
         ):
             cell_index, index_in_cell = self.topology.inner_cell_index(geo_side_arg, element_index, node_index_in_elt)
             if cell_index == NULL_ELEMENT_INDEX:
@@ -421,7 +421,9 @@ class TraceBasisSpace(BasisSpace):
 
             cell_coords = self.geometry.side_inner_cell_coords(geo_side_arg, element_index, coords)
             geo_cell_arg = self.geometry.side_to_cell_arg(geo_side_arg)
-            return cell_inner_weight_gradient(geo_cell_arg, basis_arg, cell_index, cell_coords, index_in_cell)
+            return cell_inner_weight_gradient(
+                geo_cell_arg, basis_arg, cell_index, cell_coords, index_in_cell, NULL_QP_INDEX
+            )
 
         return trace_element_inner_weight_gradient
 
@@ -435,6 +437,7 @@ class TraceBasisSpace(BasisSpace):
             element_index: ElementIndex,
             coords: Coords,
             node_index_in_elt: int,
+            qp_index: QuadraturePointIndex,
         ):
             cell_index, index_in_cell = self.topology.outer_cell_index(geo_side_arg, element_index, node_index_in_elt)
             if cell_index == NULL_ELEMENT_INDEX:
@@ -442,7 +445,9 @@ class TraceBasisSpace(BasisSpace):
 
             cell_coords = self.geometry.side_outer_cell_coords(geo_side_arg, element_index, coords)
             geo_cell_arg = self.geometry.side_to_cell_arg(geo_side_arg)
-            return cell_outer_weight_gradient(geo_cell_arg, basis_arg, cell_index, cell_coords, index_in_cell)
+            return cell_outer_weight_gradient(
+                geo_cell_arg, basis_arg, cell_index, cell_coords, index_in_cell, NULL_QP_INDEX
+            )
 
         return trace_element_outer_weight_gradient
 
@@ -609,6 +614,7 @@ class PointBasisSpace(BasisSpace):
             element_index: ElementIndex,
             coords: Coords,
             node_index_in_elt: int,
+            qp_index: QuadraturePointIndex,
         ):
             qp_coord = self._quadrature.point_coords(
                 elt_arg, basis_arg, element_index, element_index, node_index_in_elt
@@ -627,6 +633,7 @@ class PointBasisSpace(BasisSpace):
             element_index: ElementIndex,
             coords: Coords,
             node_index_in_elt: int,
+            qp_index: QuadraturePointIndex,
         ):
             return gradient_vec(0.0)
 

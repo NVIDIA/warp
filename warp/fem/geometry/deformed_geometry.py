@@ -31,7 +31,6 @@ class DeformedGeometry(Geometry):
         self._relative = relative
 
         self.field: GeometryField = field
-        self.base = self.field.geometry
         self.dimension = self.base.dimension
 
         self.CellArg = self.field.ElementEvalArg
@@ -66,8 +65,12 @@ class DeformedGeometry(Geometry):
         self._make_default_dependent_implementations()
 
     @property
-    def name(self):
+    def name(self) -> str:
         return f"DefGeo_{self.field.name}_{'rel' if self._relative else 'abs'}"
+
+    @property
+    def base(self) -> Geometry:
+        return self.field.geometry.base
 
     # Geometry device interface
 

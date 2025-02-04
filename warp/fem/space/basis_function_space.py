@@ -4,7 +4,7 @@ import warp as wp
 from warp.fem import cache
 from warp.fem.geometry import Geometry
 from warp.fem.linalg import basis_element, generalized_inner, generalized_outer
-from warp.fem.types import Coords, ElementIndex, make_free_sample
+from warp.fem.types import NULL_QP_INDEX, Coords, ElementIndex, make_free_sample
 
 from .basis_space import BasisSpace
 from .dof_mapper import DofMapper, IdentityMapper
@@ -290,7 +290,9 @@ class VectorValuedFunctionSpace(FunctionSpace):
             space_value: self.dtype,
         ):
             coords = self.node_coords_in_element(elt_arg, space_arg, element_index, node_index_in_elt)
-            weight = self.element_inner_weight(elt_arg, space_arg, element_index, coords, node_index_in_elt)
+            weight = self.element_inner_weight(
+                elt_arg, space_arg, element_index, coords, node_index_in_elt, NULL_QP_INDEX
+            )
             local_value_map = self.local_value_map_inner(elt_arg, element_index, coords)
 
             unit_value = local_value_map * weight

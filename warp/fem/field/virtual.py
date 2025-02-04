@@ -54,7 +54,12 @@ class AdjointField(SpaceField):
         def eval_test_inner(args: self.ElementEvalArg, s: Sample):
             dof = self._get_dof(s)
             node_weight = self.space.element_inner_weight(
-                args.elt_arg, args.eval_arg, s.element_index, s.element_coords, get_node_index_in_element(dof)
+                args.elt_arg,
+                args.eval_arg,
+                s.element_index,
+                s.element_coords,
+                get_node_index_in_element(dof),
+                s.qp_index,
             )
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
             dof_value = self.space.node_basis_element(get_node_coord(dof))
@@ -75,6 +80,7 @@ class AdjointField(SpaceField):
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
+                s.qp_index,
             )
             grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
@@ -96,6 +102,7 @@ class AdjointField(SpaceField):
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
+                s.qp_index,
             )
             grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
@@ -109,7 +116,12 @@ class AdjointField(SpaceField):
         def eval_test_outer(args: self.ElementEvalArg, s: Sample):
             dof = self._get_dof(s)
             node_weight = self.space.element_outer_weight(
-                args.elt_arg, args.eval_arg, s.element_index, s.element_coords, get_node_index_in_element(dof)
+                args.elt_arg,
+                args.eval_arg,
+                s.element_index,
+                s.element_coords,
+                get_node_index_in_element(dof),
+                s.qp_index,
             )
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
             dof_value = self.space.node_basis_element(get_node_coord(dof))
@@ -130,6 +142,7 @@ class AdjointField(SpaceField):
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
+                s.qp_index,
             )
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
@@ -151,6 +164,7 @@ class AdjointField(SpaceField):
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
+                s.qp_index,
             )
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
@@ -355,9 +369,8 @@ class LocalAdjointField(SpaceField):
 
         @cache.dynamic_func(suffix=str(TAYLOR_DOF_COUNT))
         def split_dof(dof_index: DofIndex, dof_begin: int):
-            dof = get_node_coord(dof_index)
-            value_dof = dof // TAYLOR_DOF_COUNT
-            taylor_dof = dof - value_dof * TAYLOR_DOF_COUNT - dof_begin
+            taylor_dof = get_node_index_in_element(dof_index) - dof_begin
+            value_dof = get_node_coord(dof_index)
             return value_dof, taylor_dof
 
         return split_dof
@@ -536,17 +549,25 @@ def make_linear_dispatch_kernel(test: LocalTestField, quadrature: Quadrature, ac
                 qp_index = quadrature.point_index(
                     domain_arg, qp_arg, test_element_index.domain_element_index, element_index, k
                 )
+                qp_eval_index = quadrature.point_evaluation_index(
+                    domain_arg, qp_arg, test_element_index.domain_element_index, element_index, k
+                )
                 coords = quadrature.point_coords(
                     domain_arg, qp_arg, test_element_index.domain_element_index, element_index, k
                 )
 
-                qp_result = local_result[qp_index]
+                qp_result = local_result[qp_eval_index]
 
                 qp_sum = float(0.0)
 
                 if wp.static(0 != TEST_INNER_COUNT):
                     w = test.space.element_inner_weight(
-                        domain_arg, test_space_arg, element_index, coords, test_element_index.node_index_in_element
+                        domain_arg,
+                        test_space_arg,
+                        element_index,
+                        coords,
+                        test_element_index.node_index_in_element,
+                        qp_index,
                     )
                     for val_dof in range(TEST_NODE_DOF_DIM):
                         test_dof = test_node_dof * TEST_NODE_DOF_DIM + val_dof
@@ -554,7 +575,12 @@ def make_linear_dispatch_kernel(test: LocalTestField, quadrature: Quadrature, ac
 
                 if wp.static(0 != TEST_OUTER_COUNT):
                     w = test.space.element_outer_weight(
-                        domain_arg, test_space_arg, element_index, coords, test_element_index.node_index_in_element
+                        domain_arg,
+                        test_space_arg,
+                        element_index,
+                        coords,
+                        test_element_index.node_index_in_element,
+                        qp_index,
                     )
                     for val_dof in range(TEST_NODE_DOF_DIM):
                         test_dof = test_node_dof * TEST_NODE_DOF_DIM + val_dof
@@ -562,7 +588,12 @@ def make_linear_dispatch_kernel(test: LocalTestField, quadrature: Quadrature, ac
 
                 if wp.static(0 != TEST_INNER_GRAD_COUNT):
                     w_grad = test.space.element_inner_weight_gradient(
-                        domain_arg, test_space_arg, element_index, coords, test_element_index.node_index_in_element
+                        domain_arg,
+                        test_space_arg,
+                        element_index,
+                        coords,
+                        test_element_index.node_index_in_element,
+                        qp_index,
                     )
                     for val_dof in range(TEST_NODE_DOF_DIM):
                         test_dof = test_node_dof * TEST_NODE_DOF_DIM + val_dof
@@ -574,7 +605,12 @@ def make_linear_dispatch_kernel(test: LocalTestField, quadrature: Quadrature, ac
 
                 if wp.static(0 != TEST_OUTER_GRAD_COUNT):
                     w_grad = test.space.element_outer_weight_gradient(
-                        domain_arg, test_space_arg, element_index, coords, test_element_index.node_index_in_element
+                        domain_arg,
+                        test_space_arg,
+                        element_index,
+                        coords,
+                        test_element_index.node_index_in_element,
+                        qp_index,
                     )
                     for val_dof in range(TEST_NODE_DOF_DIM):
                         test_dof = test_node_dof * TEST_NODE_DOF_DIM + val_dof
@@ -666,51 +702,54 @@ def make_bilinear_dispatch_kernel(
                 qp_index = quadrature.point_index(
                     domain_arg, qp_arg, test_element_index.domain_element_index, element_index, k
                 )
+                qp_eval_index = quadrature.point_evaluation_index(
+                    domain_arg, qp_arg, test_element_index.domain_element_index, element_index, k
+                )
                 coords = quadrature.point_coords(
                     domain_arg, qp_arg, test_element_index.domain_element_index, element_index, k
                 )
 
-                qp_result = local_result[qp_index]
+                qp_result = local_result[qp_eval_index]
                 trial_result = float(0.0)
 
                 if wp.static(0 != TEST_INNER_COUNT):
                     w_test_inner = test.space.element_inner_weight(
-                        domain_arg, test_space_arg, element_index, coords, test_node
+                        domain_arg, test_space_arg, element_index, coords, test_node, qp_index
                     )
 
                 if wp.static(0 != TEST_OUTER_COUNT):
                     w_test_outer = test.space.element_outer_weight(
-                        domain_arg, test_space_arg, element_index, coords, test_node
+                        domain_arg, test_space_arg, element_index, coords, test_node, qp_index
                     )
 
                 if wp.static(0 != TEST_INNER_GRAD_COUNT):
                     w_test_grad_inner = test.space.element_inner_weight_gradient(
-                        domain_arg, test_space_arg, element_index, coords, test_node
+                        domain_arg, test_space_arg, element_index, coords, test_node, qp_index
                     )
 
                 if wp.static(0 != TEST_OUTER_GRAD_COUNT):
                     w_test_grad_outer = test.space.element_outer_weight_gradient(
-                        domain_arg, test_space_arg, element_index, coords, test_node
+                        domain_arg, test_space_arg, element_index, coords, test_node, qp_index
                     )
 
                 if wp.static(0 != TRIAL_INNER_COUNT):
                     w_trial_inner = trial.space.element_inner_weight(
-                        domain_arg, trial_space_arg, element_index, coords, trial_node
+                        domain_arg, trial_space_arg, element_index, coords, trial_node, qp_index
                     )
 
                 if wp.static(0 != TRIAL_OUTER_COUNT):
                     w_trial_outer = trial.space.element_outer_weight(
-                        domain_arg, trial_space_arg, element_index, coords, trial_node
+                        domain_arg, trial_space_arg, element_index, coords, trial_node, qp_index
                     )
 
                 if wp.static(0 != TRIAL_INNER_GRAD_COUNT):
                     w_trial_grad_inner = trial.space.element_inner_weight_gradient(
-                        domain_arg, trial_space_arg, element_index, coords, trial_node
+                        domain_arg, trial_space_arg, element_index, coords, trial_node, qp_index
                     )
 
                 if wp.static(0 != TRIAL_OUTER_GRAD_COUNT):
                     w_trial_grad_outer = trial.space.element_outer_weight_gradient(
-                        domain_arg, trial_space_arg, element_index, coords, trial_node
+                        domain_arg, trial_space_arg, element_index, coords, trial_node, qp_index
                     )
 
                 for trial_val_dof in range(TRIAL_NODE_DOF_DIM):

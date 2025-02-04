@@ -8,6 +8,9 @@
 
 ### Changed
 
+- `warp.fem.integrate()` and `warp.fem.integrate()` may now perform parallel evaluation of quadrature points within elements
+- `warp.fem.interpolate()` can now build Jacobian sparse matrices of interpolated functions with respect to a trial field
+
 ### Fixed
 
 - Fix rendering of arrows with different `up_axis`, `color` in `OpenGLRenderer` ([GH-448](https://github.com/NVIDIA/warp/issues/448)).

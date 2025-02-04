@@ -19,7 +19,7 @@ from warp.fem.field import (
     make_restriction,
 )
 from warp.fem.field.virtual import make_bilinear_dispatch_kernel, make_linear_dispatch_kernel
-from warp.fem.linalg import array_axpy
+from warp.fem.linalg import array_axpy, basis_coefficient
 from warp.fem.operator import Integrand, Operator, at_node, integrand
 from warp.fem.quadrature import Quadrature, RegularQuadrature
 from warp.fem.types import (
@@ -478,7 +478,7 @@ class PassFieldArgsToIntegrand(ast.NodeTransformer):
         callee = getattr(call.func, "id", None)
 
         if callee == self._func_name:
-            # Replace function arguments with ours generated structs
+            # Replace function arguments with our generated structs
             call.args.clear()
             for arg in self._arg_names:
                 if arg == self._domain_name:
@@ -561,33 +561,33 @@ def get_integrate_constant_kernel(
 ):
     def integrate_kernel_fn(
         qp_arg: quadrature.Arg,
+        qp_element_index_arg: quadrature.ElementIndexArg,
         domain_arg: domain.ElementArg,
         domain_index_arg: domain.ElementIndexArg,
         fields: FieldStruct,
         values: ValueStruct,
         result: wp.array(dtype=accumulate_dtype),
     ):
-        domain_element_index = wp.tid()
+        qp_eval_index = wp.tid()
+        domain_element_index, qp = quadrature.evaluation_point_element_index(qp_element_index_arg, qp_eval_index)
+        if domain_element_index == NULL_ELEMENT_INDEX:
+            return
+
         element_index = domain.element_index(domain_index_arg, domain_element_index)
-        elem_sum = accumulate_dtype(0.0)
+
+        qp_coords = quadrature.point_coords(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, qp)
 
         test_dof_index = NULL_DOF_INDEX
         trial_dof_index = NULL_DOF_INDEX
 
-        qp_point_count = quadrature.point_count(domain_arg, qp_arg, domain_element_index, element_index)
-        for k in range(qp_point_count):
-            qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, k)
-            coords = quadrature.point_coords(domain_arg, qp_arg, domain_element_index, element_index, k)
-            qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, k)
+        sample = Sample(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+        vol = domain.element_measure(domain_arg, sample)
 
-            sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
-            vol = domain.element_measure(domain_arg, sample)
+        val = integrand_func(sample, fields, values)
 
-            val = integrand_func(sample, fields, values)
-
-            elem_sum += accumulate_dtype(qp_weight * vol * val)
-
-        wp.atomic_add(result, 0, elem_sum)
+        wp.atomic_add(result, 0, accumulate_dtype(qp_weight * vol * val))
 
     return integrate_kernel_fn
 
@@ -730,35 +730,35 @@ def get_integrate_linear_local_kernel(
     ValueStruct: wp.codegen.Struct,
     test: LocalTestField,
 ):
-    TAYLOR_DOF_COUNT = test.TAYLOR_DOF_COUNT
-
     def integrate_kernel_fn(
         qp_arg: quadrature.Arg,
+        qp_element_index_arg: quadrature.ElementIndexArg,
         domain_arg: domain.ElementArg,
         domain_index_arg: domain.ElementIndexArg,
         fields: FieldStruct,
         values: ValueStruct,
         result: wp.array3d(dtype=float),
     ):
-        domain_element_index, taylor_dof, test_dof = wp.tid()
+        qp_eval_index, taylor_dof, test_dof = wp.tid()
+        domain_element_index, qp = quadrature.evaluation_point_element_index(qp_element_index_arg, qp_eval_index)
+
+        if domain_element_index == NULL_ELEMENT_INDEX:
+            return
+
         element_index = domain.element_index(domain_index_arg, domain_element_index)
 
+        qp_coords = quadrature.point_coords(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, qp)
+
+        vol = domain.element_measure(domain_arg, make_free_sample(element_index, qp_coords))
+
         trial_dof_index = NULL_DOF_INDEX
-        test_dof_offset = test_dof * TAYLOR_DOF_COUNT
+        test_dof_index = DofIndex(taylor_dof, test_dof)
 
-        qp_point_count = quadrature.point_count(domain_arg, qp_arg, domain_element_index, element_index)
-        for qp in range(qp_point_count):
-            qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, qp)
-            qp_coords = quadrature.point_coords(domain_arg, qp_arg, domain_element_index, element_index, qp)
-            qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, qp)
-
-            vol = domain.element_measure(domain_arg, make_free_sample(element_index, qp_coords))
-
-            test_dof_index = DofIndex(qp_index, test_dof_offset + taylor_dof)
-
-            sample = Sample(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
-            val = integrand_func(sample, fields, values)
-            result[qp_index, taylor_dof, test_dof] = qp_weight * vol * val
+        sample = Sample(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+        val = integrand_func(sample, fields, values)
+        result[qp_eval_index, taylor_dof, test_dof] = qp_weight * vol * val
 
     return integrate_kernel_fn
 
@@ -948,36 +948,38 @@ def get_integrate_bilinear_local_kernel(
 
     def integrate_kernel_fn(
         qp_arg: quadrature.Arg,
+        qp_element_index_arg: quadrature.ElementIndexArg,
         domain_arg: domain.ElementArg,
         domain_index_arg: domain.ElementIndexArg,
         fields: FieldStruct,
         values: ValueStruct,
         result: wp.array4d(dtype=float),
     ):
-        domain_element_index, test_dof, trial_dof, trial_taylor_dof = wp.tid()
+        qp_eval_index, test_dof, trial_dof, trial_taylor_dof = wp.tid()
+
+        domain_element_index, qp = quadrature.evaluation_point_element_index(qp_element_index_arg, qp_eval_index)
+        if domain_element_index == NULL_ELEMENT_INDEX:
+            return
+
         element_index = domain.element_index(domain_index_arg, domain_element_index)
 
-        test_dof_offset = TEST_TAYLOR_DOF_COUNT * test_dof
-        trial_dof_offset = TRIAL_TAYLOR_DOF_COUNT * trial_dof
+        qp_coords = quadrature.point_coords(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, qp)
 
-        qp_point_count = quadrature.point_count(domain_arg, qp_arg, domain_element_index, element_index)
-        for k in range(qp_point_count):
-            qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, k)
-            qp_coords = quadrature.point_coords(domain_arg, qp_arg, domain_element_index, element_index, k)
-            qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, k)
+        vol = domain.element_measure(domain_arg, make_free_sample(element_index, qp_coords))
+        qp_vol = vol * qp_weight
 
-            vol = domain.element_measure(domain_arg, make_free_sample(element_index, qp_coords))
-            qp_vol = vol * qp_weight
+        trial_dof_index = DofIndex(trial_taylor_dof, trial_dof)
 
-            for test_taylor_dof in range(TEST_TAYLOR_DOF_COUNT):
-                taylor_dof = test_taylor_dof * TRIAL_TAYLOR_DOF_COUNT + trial_taylor_dof
+        for test_taylor_dof in range(TEST_TAYLOR_DOF_COUNT):
+            taylor_dof = test_taylor_dof * TRIAL_TAYLOR_DOF_COUNT + trial_taylor_dof
 
-                test_dof_index = DofIndex(qp_index, test_dof_offset + test_taylor_dof)
-                trial_dof_index = DofIndex(qp_index, trial_dof_offset + trial_taylor_dof)
+            test_dof_index = DofIndex(test_taylor_dof, test_dof)
 
-                sample = Sample(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
-                val = integrand_func(sample, fields, values)
-                result[qp_index, test_dof, trial_dof, taylor_dof] = qp_vol * val
+            sample = Sample(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+            val = integrand_func(sample, fields, values)
+            result[qp_eval_index, test_dof, trial_dof, taylor_dof] = qp_vol * val
 
     return integrate_kernel_fn
 
@@ -1123,6 +1125,7 @@ def _launch_integrate_kernel(
     output_dtype: type,
     output: Optional[Union[wp.array, BsrMatrix]],
     add_to_output: bool,
+    bsr_options: Optional[Dict[str, Any]],
     device,
 ):
     # Set-up launch arguments
@@ -1160,9 +1163,10 @@ def _launch_integrate_kernel(
 
         wp.launch(
             kernel=kernel,
-            dim=domain.element_count(),
+            dim=quadrature.evaluation_point_count(),
             inputs=[
                 qp_arg,
+                quadrature.element_index_arg_value(device),
                 domain_elt_arg,
                 domain_elt_index_arg,
                 field_arg_values,
@@ -1264,15 +1268,16 @@ def _launch_integrate_kernel(
                 temporary_store=temporary_store,
                 device=device,
                 requires_grad=output.requires_grad,
-                shape=(quadrature.total_point_count(), test.TAYLOR_DOF_COUNT, test.value_dof_count),
+                shape=(quadrature.evaluation_point_count(), test.TAYLOR_DOF_COUNT, test.value_dof_count),
                 dtype=float,
             )
 
             wp.launch(
                 kernel=kernel,
-                dim=(domain.element_count(), test.TAYLOR_DOF_COUNT, test.value_dof_count),
+                dim=local_result.array.shape,
                 inputs=[
                     qp_arg,
+                    quadrature.element_index_arg_value(device),
                     domain_elt_arg,
                     domain_elt_index_arg,
                     field_arg_values,
@@ -1374,7 +1379,7 @@ def _launch_integrate_kernel(
             device=device,
             requires_grad=False,
             shape=(
-                quadrature.total_point_count(),
+                quadrature.evaluation_point_count(),
                 test.value_dof_count,
                 trial.value_dof_count,
                 test.TAYLOR_DOF_COUNT * trial.TAYLOR_DOF_COUNT,
@@ -1384,9 +1389,15 @@ def _launch_integrate_kernel(
 
         wp.launch(
             kernel=kernel,
-            dim=(domain.element_count(), test.value_dof_count, trial.value_dof_count, trial.TAYLOR_DOF_COUNT),
+            dim=(
+                quadrature.evaluation_point_count(),
+                test.value_dof_count,
+                trial.value_dof_count,
+                trial.TAYLOR_DOF_COUNT,
+            ),
             inputs=[
                 qp_arg,
+                quadrature.element_index_arg_value(device),
                 domain_elt_arg,
                 domain_elt_index_arg,
                 field_arg_values,
@@ -1481,7 +1492,7 @@ def _launch_integrate_kernel(
     else:
         bsr_result = output
 
-    bsr_set_from_triplets(bsr_result, triplet_rows, triplet_cols, triplet_values)
+    bsr_set_from_triplets(bsr_result, triplet_rows, triplet_cols, triplet_values, **(bsr_options or {}))
 
     # Do not wait for garbage collection
     triplet_values_temp.release()
@@ -1526,8 +1537,9 @@ def integrate(
     device=None,
     temporary_store: Optional[cache.TemporaryStore] = None,
     kernel_options: Optional[Dict[str, Any]] = None,
-    assembly: str = None,
+    assembly: Optional[str] = None,
     add: bool = False,
+    bsr_options: Optional[Dict[str, Any]] = None,
 ):
     """
     Integrates a constant, linear or bilinear form, and returns a scalar, array, or sparse matrix, respectively.
@@ -1551,6 +1563,7 @@ def integrate(
             - "dispatch": For linear or bilinear forms, first evaluate the form at quadrature points then dispatch to nodes in a second pass. More efficient for integrands that are expensive to evaluate. Incompatible with `at_node` operator on test or trial functions.
             - `None` (default): Automatically picks a suitable assembly strategy (either "generic" or "dispatch")
         add: If True and `output` is provided, add the integration result to `output` instead of replacing its content
+        bsr_options: Additional options to be passed to the sparse matrix construction algorithm. See :func:`warp.sparse.bsr_set_from_triplets()`
     """
     if fields is None:
         fields = {}
@@ -1663,6 +1676,7 @@ def integrate(
         output_dtype=output_dtype,
         output=output,
         add_to_output=add,
+        bsr_options=bsr_options,
         device=device,
     )
 
@@ -1808,51 +1822,126 @@ def get_interpolate_at_quadrature_kernel(
 ):
     def interpolate_at_quadrature_nonvalued_kernel_fn(
         qp_arg: quadrature.Arg,
+        qp_element_index_arg: quadrature.ElementIndexArg,
         domain_arg: quadrature.domain.ElementArg,
         domain_index_arg: quadrature.domain.ElementIndexArg,
         fields: FieldStruct,
         values: ValueStruct,
         result: wp.array(dtype=float),
     ):
-        domain_element_index = wp.tid()
+        qp_eval_index = wp.tid()
+        domain_element_index, qp = quadrature.evaluation_point_element_index(qp_element_index_arg, qp_eval_index)
+        if domain_element_index == NULL_ELEMENT_INDEX:
+            return
+
         element_index = domain.element_index(domain_index_arg, domain_element_index)
 
         test_dof_index = NULL_DOF_INDEX
         trial_dof_index = NULL_DOF_INDEX
 
-        qp_point_count = quadrature.point_count(domain_arg, qp_arg, domain_element_index, element_index)
-        for k in range(qp_point_count):
-            qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, k)
-            coords = quadrature.point_coords(domain_arg, qp_arg, domain_element_index, element_index, k)
-            qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, k)
+        coords = quadrature.point_coords(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, qp)
 
-            sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
-            integrand_func(sample, fields, values)
+        sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+        integrand_func(sample, fields, values)
 
     def interpolate_at_quadrature_kernel_fn(
         qp_arg: quadrature.Arg,
+        qp_element_index_arg: quadrature.ElementIndexArg,
         domain_arg: quadrature.domain.ElementArg,
         domain_index_arg: quadrature.domain.ElementIndexArg,
         fields: FieldStruct,
         values: ValueStruct,
         result: wp.array(dtype=value_type),
     ):
-        domain_element_index = wp.tid()
+        qp_eval_index = wp.tid()
+        domain_element_index, qp = quadrature.evaluation_point_element_index(qp_element_index_arg, qp_eval_index)
+        if domain_element_index == NULL_ELEMENT_INDEX:
+            return
+
         element_index = domain.element_index(domain_index_arg, domain_element_index)
 
         test_dof_index = NULL_DOF_INDEX
         trial_dof_index = NULL_DOF_INDEX
 
-        qp_point_count = quadrature.point_count(domain_arg, qp_arg, domain_element_index, element_index)
-        for k in range(qp_point_count):
-            qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, k)
-            coords = quadrature.point_coords(domain_arg, qp_arg, domain_element_index, element_index, k)
-            qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, k)
+        coords = quadrature.point_coords(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, qp)
 
-            sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
-            result[qp_index] = integrand_func(sample, fields, values)
+        sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+        result[qp_index] = integrand_func(sample, fields, values)
 
     return interpolate_at_quadrature_nonvalued_kernel_fn if value_type is None else interpolate_at_quadrature_kernel_fn
+
+
+def get_interpolate_jacobian_at_quadrature_kernel(
+    integrand_func: wp.Function,
+    domain: GeometryDomain,
+    quadrature: Quadrature,
+    FieldStruct: wp.codegen.Struct,
+    ValueStruct: wp.codegen.Struct,
+    trial: TrialField,
+    value_size: int,
+    value_type: type,
+):
+    MAX_NODES_PER_ELEMENT = trial.space.topology.MAX_NODES_PER_ELEMENT
+    VALUE_SIZE = wp.constant(value_size)
+
+    def interpolate_jacobian_kernel_fn(
+        qp_arg: quadrature.Arg,
+        qp_element_index_arg: quadrature.ElementIndexArg,
+        domain_arg: domain.ElementArg,
+        domain_index_arg: domain.ElementIndexArg,
+        trial_partition_arg: trial.space_partition.PartitionArg,
+        trial_topology_arg: trial.space_partition.space_topology.TopologyArg,
+        fields: FieldStruct,
+        values: ValueStruct,
+        triplet_rows: wp.array(dtype=int),
+        triplet_cols: wp.array(dtype=int),
+        triplet_values: wp.array3d(dtype=value_type),
+    ):
+        qp_eval_index, trial_node, trial_dof = wp.tid()
+        domain_element_index, qp = quadrature.evaluation_point_element_index(qp_element_index_arg, qp_eval_index)
+
+        if domain_element_index == NULL_ELEMENT_INDEX:
+            return
+
+        element_index = domain.element_index(domain_index_arg, domain_element_index)
+        if qp >= quadrature.point_count(domain_arg, qp_arg, domain_element_index, element_index):
+            return
+
+        element_trial_node_count = trial.space.topology.element_node_count(
+            domain_arg, trial_topology_arg, element_index
+        )
+
+        qp_coords = quadrature.point_coords(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, qp)
+
+        block_offset = qp_index * MAX_NODES_PER_ELEMENT + trial_node
+
+        test_dof_index = NULL_DOF_INDEX
+        trial_dof_index = DofIndex(trial_node, trial_dof)
+
+        sample = Sample(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+        val = integrand_func(sample, fields, values)
+
+        for k in range(VALUE_SIZE):
+            triplet_values[block_offset, k, trial_dof] = basis_coefficient(val, k)
+
+        if trial_dof == 0:
+            if trial_node < element_trial_node_count:
+                trial_node_index = trial.space_partition.partition_node_index(
+                    trial_partition_arg,
+                    trial.space.topology.element_node_index(domain_arg, trial_topology_arg, element_index, trial_node),
+                )
+            else:
+                trial_node_index = NULL_NODE_INDEX  # will get ignored when converting to bsr
+            triplet_rows[block_offset] = qp_index
+            triplet_cols[block_offset] = trial_node_index
+
+    return interpolate_jacobian_kernel_fn
 
 
 def get_interpolate_free_kernel(
@@ -1924,9 +2013,9 @@ def _generate_interpolate_kernel(
         dest_dtype = dest.dtype if dest else None
         type_str = wp.types.get_type_code(dest_dtype) if dest_dtype else ""
         if quadrature is None:
-            kernel_suffix = f"_itp_{field_names}_{type_str}"
+            kernel_suffix = f"_itp_{field_names}_{domain.name}_{type_str}"
         else:
-            kernel_suffix = f"_itp_{field_names}_{quadrature.name}_{type_str}"
+            kernel_suffix = f"_itp_{field_names}_{domain.name}_{quadrature.name}_{type_str}"
 
     kernel = cache.get_integrand_kernel(
         integrand=integrand,
@@ -1971,14 +2060,27 @@ def _generate_interpolate_kernel(
             ValueStruct=ValueStruct,
         )
     elif quadrature is not None:
-        interpolate_kernel_fn = get_interpolate_at_quadrature_kernel(
-            integrand_func,
-            domain=domain,
-            quadrature=quadrature,
-            value_type=dest_dtype,
-            FieldStruct=FieldStruct,
-            ValueStruct=ValueStruct,
-        )
+        if arguments.trial_name:
+            trial = arguments.field_args[arguments.trial_name]
+            interpolate_kernel_fn = get_interpolate_jacobian_at_quadrature_kernel(
+                integrand_func,
+                domain=domain,
+                quadrature=quadrature,
+                FieldStruct=FieldStruct,
+                ValueStruct=ValueStruct,
+                trial=trial,
+                value_size=dest.block_shape[0],
+                value_type=dest.scalar_type,
+            )
+        else:
+            interpolate_kernel_fn = get_interpolate_at_quadrature_kernel(
+                integrand_func,
+                domain=domain,
+                quadrature=quadrature,
+                value_type=dest_dtype,
+                FieldStruct=FieldStruct,
+                ValueStruct=ValueStruct,
+            )
     else:
         interpolate_kernel_fn = get_interpolate_free_kernel(
             integrand_func,
@@ -2012,8 +2114,11 @@ def _launch_interpolate_kernel(
     dest: Optional[Union[FieldRestriction, wp.array]],
     quadrature: Optional[Quadrature],
     dim: int,
+    trial: Optional[TrialField],
     fields: Dict[str, FieldLike],
     values: Dict[str, Any],
+    temporary_store: Optional[cache.TemporaryStore],
+    bsr_options: Optional[Dict[str, Any]],
     device,
 ) -> wp.Kernel:
     # Set-up launch arguments
@@ -2044,21 +2149,74 @@ def _launch_interpolate_kernel(
             ],
             device=device,
         )
-    elif quadrature is not None:
-        qp_arg = quadrature.arg_value(device)
-        wp.launch(
-            kernel=kernel,
-            dim=domain.element_count(),
-            inputs=[qp_arg, elt_arg, elt_index_arg, field_arg_values, value_struct_values, dest],
-            device=device,
-        )
-    else:
+        return
+
+    if quadrature is None:
         wp.launch(
             kernel=kernel,
             dim=dim,
             inputs=[dim, elt_arg, field_arg_values, value_struct_values, dest],
             device=device,
         )
+        return
+
+    qp_arg = quadrature.arg_value(device)
+    qp_element_index_arg = quadrature.element_index_arg_value(device)
+    if trial is None:
+        wp.launch(
+            kernel=kernel,
+            dim=quadrature.evaluation_point_count(),
+            inputs=[qp_arg, qp_element_index_arg, elt_arg, elt_index_arg, field_arg_values, value_struct_values, dest],
+            device=device,
+        )
+        return
+
+    nnz = quadrature.total_point_count() * trial.space.topology.MAX_NODES_PER_ELEMENT
+
+    if dest.nrow != quadrature.total_point_count() or dest.ncol != trial.space_partition.node_count():
+        raise RuntimeError(
+            f"'dest' matrix must have {quadrature.total_point_count()} rows and {trial.space_partition.node_count()} columns of blocks"
+        )
+    if dest.block_shape[1] != trial.node_dof_count:
+        raise f"'dest' matrix blocks must have {trial.node_dof_count} columns"
+
+    triplet_rows_temp = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
+    triplet_cols_temp = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
+    triplet_values_temp = cache.borrow_temporary(
+        temporary_store,
+        dtype=dest.scalar_type,
+        shape=(nnz, *dest.block_shape),
+        device=device,
+    )
+    triplet_cols = triplet_cols_temp.array
+    triplet_rows = triplet_rows_temp.array
+    triplet_values = triplet_values_temp.array
+    triplet_rows.fill_(-1)
+    triplet_values.zero_()
+
+    trial_partition_arg = trial.space_partition.partition_arg_value(device)
+    trial_topology_arg = trial.space_partition.space_topology.topo_arg_value(device)
+
+    wp.launch(
+        kernel=kernel,
+        dim=(quadrature.evaluation_point_count(), trial.space.topology.MAX_NODES_PER_ELEMENT, trial.node_dof_count),
+        inputs=[
+            qp_arg,
+            qp_element_index_arg,
+            elt_arg,
+            elt_index_arg,
+            trial_partition_arg,
+            trial_topology_arg,
+            field_arg_values,
+            value_struct_values,
+            triplet_rows,
+            triplet_cols,
+            triplet_values,
+        ],
+        device=device,
+    )
+
+    bsr_set_from_triplets(dest, triplet_rows, triplet_cols, triplet_values, **(bsr_options or {}))
 
 
 @integrand
@@ -2076,6 +2234,8 @@ def interpolate(
     values: Optional[Dict[str, Any]] = None,
     device=None,
     kernel_options: Optional[Dict[str, Any]] = None,
+    temporary_store: Optional[cache.TemporaryStore] = None,
+    bsr_options: Optional[Dict[str, Any]] = None,
 ):
     """
     Interpolates a function at a finite set of sample points and optionally assigns the result to a discrete field or a raw warp array.
@@ -2094,6 +2254,8 @@ def interpolate(
         values: Additional variable values to be passed to the integrand, can be of any type accepted by warp kernel launches. Keys in the dictionary must match integrand parameter names.
         device: Device on which to perform the interpolation
         kernel_options: Overloaded options to be passed to the kernel builder (e.g, ``{"enable_backward": True}``)
+        temporary_store: shared pool from which to allocate temporary arrays
+        bsr_options: Additional options to be passed to the sparse matrix construction algorithm. See :func:`warp.sparse.bsr_set_from_triplets()`
     """
 
     if isinstance(integrand, FieldLike):
@@ -2111,8 +2273,12 @@ def interpolate(
         raise ValueError("integrand must be tagged with @integrand decorator")
 
     arguments = _parse_integrand_arguments(integrand, fields)
-    if arguments.test_name or arguments.trial_name:
-        raise ValueError("Test or Trial fields should not be used for interpolation")
+    if arguments.test_name:
+        raise ValueError(f"Test field '{arguments.test_name}' maybe not be used for interpolation")
+    if arguments.trial_name and (quadrature is None or not isinstance(dest, BsrMatrix)):
+        raise ValueError(
+            f"Interpolation using trial field '{arguments.trial_name}' requires 'quadrature' to be provided and 'dest' to be a `warp.sparse.BsrMatrix`"
+        )
 
     if isinstance(dest, DiscreteField):
         dest = make_restriction(dest, domain=domain)
@@ -2145,7 +2311,10 @@ def interpolate(
         dest=dest,
         quadrature=quadrature,
         dim=dim,
+        trial=fields.get(arguments.trial_name),
         fields=arguments.field_args,
         values=values,
+        temporary_store=temporary_store,
+        bsr_options=bsr_options,
         device=device,
     )

@@ -4,7 +4,7 @@ import warp as wp
 import warp.fem.cache as cache
 from warp.fem.geometry import GeometryPartition, WholeGeometryPartition
 from warp.fem.types import NULL_NODE_INDEX
-from warp.fem.utils import _iota_kernel, compress_node_indices
+from warp.fem.utils import compress_node_indices
 
 from .function_space import FunctionSpace
 from .topology import SpaceTopology
@@ -72,7 +72,7 @@ class WholeSpacePartition(SpacePartition):
         """Return the global function space indices for nodes in this partition"""
         if self._node_indices is None:
             self._node_indices = cache.borrow_temporary(temporary_store=None, shape=(self.node_count(),), dtype=int)
-            wp.launch(kernel=_iota_kernel, dim=self.node_count(), inputs=[self._node_indices.array, 1])
+            wp.launch(kernel=self._iota_kernel, dim=self.node_count(), inputs=[self._node_indices.array])
         return self._node_indices.array
 
     def partition_arg_value(self, device):
@@ -88,6 +88,10 @@ class WholeSpacePartition(SpacePartition):
     @property
     def name(self) -> str:
         return "Whole"
+
+    @wp.kernel
+    def _iota_kernel(indices: wp.array(dtype=int)):
+        indices[wp.tid()] = wp.tid()
 
 
 class NodeCategory:

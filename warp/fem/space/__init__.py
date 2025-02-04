@@ -97,7 +97,7 @@ def make_polynomial_basis_space(
         the constructed basis space
     """
 
-    base_geo = geo.base if isinstance(geo, _geometry.DeformedGeometry) else geo
+    base_geo = geo.base
 
     if element_basis is None:
         element_basis = ElementBasis.LAGRANGE
