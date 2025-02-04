@@ -13,6 +13,8 @@
 
 - `warp.fem.integrate()` and `warp.fem.integrate()` may now perform parallel evaluation of quadrature points within elements
 - `warp.fem.interpolate()` can now build Jacobian sparse matrices of interpolated functions with respect to a trial field
+- `warp.sim.Control` no longer has a `model` attribute ([GH-487](https://github.com/NVIDIA/warp/issues/487))..
+- `warp.sim.Control.reset()` now zeros-out the controls and is deprecated. Use `warp.sim.Control.clear()` instead.
 
 ### Fixed
 
