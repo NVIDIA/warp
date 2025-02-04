@@ -1177,14 +1177,7 @@ def create_inertia_matrix_kernel(num_joints, num_dofs):
             P_body = wp.tile_matmul(M_body, J_body)
 
             # assign to the P slice
-            wp.tile_assign(
-                P,
-                P_body,
-                offset=(
-                    i * 6,
-                    0,
-                ),
-            )
+            wp.tile_assign(P, P_body, offset=(i * 6, 0))
 
         # compute H = J^T*P
         H = wp.tile_matmul(wp.tile_transpose(J), P)
@@ -1205,9 +1198,9 @@ def create_batched_cholesky_kernel(num_dofs):
 
         a = wp.tile_load(A[articulation], shape=(num_dofs, num_dofs), storage="shared")
         r = wp.tile_load(R[articulation], shape=num_dofs, storage="shared")
-        wp.tile_diag_add(a, r)
-        wp.tile_cholesky(a)
-        wp.tile_store(L[articulation], wp.tile_transpose(a))
+        a_r = wp.tile_diag_add(a, r)
+        l = wp.tile_cholesky(a_r)
+        wp.tile_store(L[articulation], wp.tile_transpose(l))
 
     return eval_tiled_dense_cholesky_batched
 
