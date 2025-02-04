@@ -993,7 +993,7 @@ def test_svd_2D(test, device, dtype, register_kernels=False):
     tol = {
         np.float16: 1.0e-3,
         np.float32: 1.0e-6,
-        np.float64: 1.0e-6,
+        np.float64: 1.0e-12,
     }.get(dtype, 0)
 
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
