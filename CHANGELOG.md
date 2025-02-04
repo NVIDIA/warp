@@ -16,6 +16,8 @@
 
 ### Fixed
 
+- Fix an error on Windows when closing an `OpenGLRenderer` app ([GH-488](https://github.com/NVIDIA/warp/issues/488)).
+
 ## [1.6.0] - 2025-02-03
 
 ### Added
