@@ -213,7 +213,7 @@ def CreateSimRenderer(renderer):
                                 pos=p,
                                 rot=q,
                                 scale=geo_scale,
-                                colors=[color],
+                                colors=color,
                                 parent_body=body,
                                 is_template=True,
                             )
@@ -328,7 +328,7 @@ def CreateSimRenderer(renderer):
                         "surface",
                         particle_q,
                         self.model.tri_indices.numpy().flatten(),
-                        colors=(((0.75, 0.25, 0.0),) * len(particle_q)),
+                        colors=(0.75, 0.25, 0.0),
                     )
 
                 # render springs

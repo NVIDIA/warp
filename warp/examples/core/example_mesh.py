@@ -138,7 +138,7 @@ class Example:
                 name="mesh",
                 points=self.mesh.points.numpy(),
                 indices=self.mesh.indices.numpy(),
-                colors=((0.35, 0.55, 0.9),) * len(self.mesh.points),
+                colors=(0.35, 0.55, 0.9),
             )
             self.renderer.render_points(
                 name="points", points=self.positions.numpy(), radius=self.sim_margin, colors=(0.8, 0.3, 0.2)
