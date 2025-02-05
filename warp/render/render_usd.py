@@ -582,7 +582,12 @@ class UsdRenderer:
         mesh = UsdGeom.Mesh.Get(self.stage, mesh_path)
         if not mesh:
             mesh = UsdGeom.Mesh.Define(self.stage, mesh_path)
-            UsdGeom.Primvar(mesh.GetDisplayColorAttr()).SetInterpolation("vertex")
+            if colors is not None and len(colors) == 3:
+                color_interp = "constant"
+            else:
+                color_interp = "vertex"
+
+            UsdGeom.Primvar(mesh.GetDisplayColorAttr()).SetInterpolation(color_interp)
             _usd_add_xform(mesh)
 
             # force topology update on first frame
@@ -595,7 +600,10 @@ class UsdRenderer:
             mesh.GetFaceVertexIndicesAttr().Set(idxs, self.time)
             mesh.GetFaceVertexCountsAttr().Set([3] * len(idxs), self.time)
 
-        if colors:
+        if colors is not None:
+            if len(colors) == 3:
+                colors = (colors,)
+
             mesh.GetDisplayColorAttr().Set(colors, self.time)
 
         self._shape_constructors[name] = UsdGeom.Mesh

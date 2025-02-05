@@ -153,7 +153,7 @@ class Example:
                 "surface",
                 self.mc.verts.numpy(),
                 self.mc.indices.numpy(),
-                colors=((0.35, 0.55, 0.9),) * len(self.mc.verts),
+                colors=(0.35, 0.55, 0.9),
                 update_topology=True,
             )
             self.renderer.end_frame()
