@@ -32,8 +32,6 @@ extern "C"
     WP_API int is_cuda_enabled();
     // whether Warp was compiled with enhanced CUDA compatibility
     WP_API int is_cuda_compatibility_enabled();
-    // whether Warp was compiled with CUTLASS support
-    WP_API int is_cutlass_enabled();
     // whether Warp was compiled with MathDx support
     WP_API int is_mathdx_enabled();
     // whether Warp was compiled with debug support
@@ -102,10 +100,6 @@ extern "C"
     WP_API void hash_grid_reserve_device(uint64_t id, int num_points);
     WP_API void hash_grid_destroy_device(uint64_t id);
     WP_API void hash_grid_update_device(uint64_t id, float cell_width, const wp::array_t<wp::vec3>* points);
-
-    WP_API bool cutlass_gemm(void* context, int compute_capability, int m, int n, int k, const char* datatype,
-                             const void* a, const void* b, const void* c, void* d, float alpha, float beta,
-                             bool row_major_a, bool row_major_b, bool allow_tf32x3_arith, int batch_count);
 
     WP_API uint64_t volume_create_host(void* buf, uint64_t size, bool copy, bool owner);
     WP_API void volume_get_tiles_host(uint64_t id, void* buf);

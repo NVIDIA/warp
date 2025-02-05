@@ -142,11 +142,6 @@ int is_cuda_compatibility_enabled()
     return int(WP_ENABLE_CUDA_COMPATIBILITY);
 }
 
-int is_cutlass_enabled()
-{
-    return int(WP_ENABLE_CUTLASS);
-}
-
 int is_mathdx_enabled()
 {
     return int(WP_ENABLE_MATHDX);

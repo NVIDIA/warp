@@ -45,7 +45,6 @@ TEST_DESCS = (
     ("test_marching_cubes", "TestMarchingCubes"),
     ("test_mat_lite", "TestMatLite"),
     ("test_math", "TestMath"),
-    ("test_matmul_lite", "TestMatmulLite"),
     ("test_mempool", "TestMempool"),
     ("test_mesh", "TestMesh"),
     ("test_mesh_query_aabb", "TestMeshQueryAABBMethods"),

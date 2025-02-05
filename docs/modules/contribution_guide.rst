@@ -302,7 +302,6 @@ Besides the situation in which a test requires CUDA, some examples for skipping 
 
 * ``usd-core`` is not installed in the current environment.
 * The installed JAX version is too old.
-* Warp was not built with CUTLASS support (e.g. `python build_lib.py --quick`).
 * The system does not have at least two CUDA devices available (e.g. required for a multi-GPU test).
 
 Tests Without a Device

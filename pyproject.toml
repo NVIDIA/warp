@@ -43,7 +43,6 @@ line-length = 120
 indent-width = 4
 extend-exclude = [
     "notebooks",
-    "warp/native/cutlass/",
     "warp/thirdparty/appdirs.py",
     "warp/thirdparty/dlpack.py",
     "tools",

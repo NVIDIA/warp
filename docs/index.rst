@@ -191,7 +191,7 @@ warp/examples/optim
       - .. image:: ./img/examples/optim_trajectory.png
            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_trajectory.py
       - .. image:: ./img/examples/optim_walker.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_walker.py
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_walker.py
     * - inverse kinematics
       - spring cage
       - trajectory

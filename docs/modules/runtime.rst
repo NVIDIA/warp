@@ -157,30 +157,6 @@ The following construction methods are provided for allocating zero-initialized 
 .. autofunction:: copy
 .. autofunction:: clone
 
-Matrix Multiplication
-#####################
-
-Matrix multiplication is built on NVIDIA's `CUTLASS <https://github.com/NVIDIA/cutlass>`_ library,
-which enables fast matrix multiplication of large arrays on the GPU.
-
-If no GPU is detected, matrix multiplication falls back to NumPy's implementation on the CPU.
-
-Matrix multiplication is fully differentiable and can be recorded on the tape::
-
-    tape = wp.Tape()
-    with tape:
-        wp.matmul(A, B, C, D)
-        wp.launch(loss_kernel, dim=(m, n), inputs=[D, loss])
-
-    tape.backward(loss=loss)
-    A_grad = A.grad.numpy()
-
-Using the ``@`` operator (``D = A @ B``) will default to the same CUTLASS algorithm used in ``wp.matmul``.
-
-.. autofunction:: matmul
-
-.. autofunction:: batched_matmul
-
 .. _Data_Types:
 
 Data Types
