@@ -172,6 +172,7 @@ ruff format:
     - ruff format --diff
 
 osec:sonarqube:
+  allow_failure: true  # Uptime not guaranteed
   variables:
     # Disable C/C++ analyzer until project specific work is done to enable it.
     # See: https://confluence.nvidia.com/display/OMNIVERSE/SonarQube+Gitlab+CI+Integration#C+Project+Enablement+Additions
