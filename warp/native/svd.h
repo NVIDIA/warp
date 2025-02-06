@@ -423,6 +423,62 @@ void _svd(// input A
     );
 }
 
+
+template<typename Type>
+inline CUDA_CALLABLE
+void _svd_2(// input A
+        Type a11, Type a12,
+        Type a21, Type a22,
+        // output U
+        Type &u11, Type &u12,
+        Type &u21, Type &u22,
+        // output S
+        Type &s11, Type &s12,
+        Type &s21, Type &s22,
+        // output V
+        Type &v11, Type &v12,
+        Type &v21, Type &v22)
+{
+    // Step 1: Compute ATA
+    Type ATA11 = a11 * a11 + a21 * a21;
+    Type ATA12 = a11 * a12 + a21 * a22;
+    Type ATA22 = a12 * a12 + a22 * a22;
+
+    // Step 2: Eigenanalysis
+    Type trace = ATA11 + ATA22;
+    Type det = ATA11 * ATA22 - ATA12 * ATA12;
+    Type sqrt_term = sqrt(trace * trace - Type(4.0) * det);
+    Type lambda1 = (trace + sqrt_term) * Type(0.5);
+    Type lambda2 = (trace - sqrt_term) * Type(0.5);
+
+    // Step 3: Singular values
+    Type sigma1 = sqrt(lambda1);
+    Type sigma2 = sqrt(lambda2);
+
+    // Step 4: Eigenvectors (find V)
+    Type v1x = ATA12, v1y = lambda1 - ATA11; // For first eigenvector
+    Type v2x = ATA12, v2y = lambda2 - ATA11; // For second eigenvector
+    Type norm1 = sqrt(v1x * v1x + v1y * v1y);
+    Type norm2 = sqrt(v2x * v2x + v2y * v2y);
+
+    v11 = v1x / norm1; v12 = v2x / norm2;
+    v21 = v1y / norm1; v22 = v2y / norm2;
+
+    // Step 5: Compute U
+    Type inv_sigma1 = (sigma1 > Type(1e-6)) ? Type(1.0) / sigma1 : Type(0.0);
+    Type inv_sigma2 = (sigma2 > Type(1e-6)) ? Type(1.0) / sigma2 : Type(0.0);
+
+    u11 = (a11 * v11 + a12 * v21) * inv_sigma1;
+    u12 = (a11 * v12 + a12 * v22) * inv_sigma2;
+    u21 = (a21 * v11 + a22 * v21) * inv_sigma1;
+    u22 = (a21 * v12 + a22 * v22) * inv_sigma2;
+
+    // Step 6: Set S
+    s11 = sigma1; s12 = Type(0.0);
+    s21 = Type(0.0); s22 = sigma2;
+}
+
+
 template<typename Type>
 inline CUDA_CALLABLE void svd3(const mat_t<3,3,Type>& A, mat_t<3,3,Type>& U, vec_t<3,Type>& sigma, mat_t<3,3,Type>& V) {
   Type s12, s13, s21, s23, s31, s32;
@@ -481,6 +537,66 @@ inline CUDA_CALLABLE void adj_svd3(const mat_t<3,3,Type>& A,
   mat_t<3,3,Type> v_term = mul(U, mul(s_mat, mul(cw_mul(F, (mul(VT, adj_V) - mul(transpose(adj_V), V))), VT)));
 
   adj_A = adj_A + (u_term + v_term + sigma_term);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void svd2(const mat_t<2,2,Type>& A, mat_t<2,2,Type>& U, vec_t<2,Type>& sigma, mat_t<2,2,Type>& V) {
+  Type s12, s21;
+  _svd_2(A.data[0][0], A.data[0][1],
+       A.data[1][0], A.data[1][1],
+
+       U.data[0][0], U.data[0][1],
+       U.data[1][0], U.data[1][1],
+
+       sigma[0], s12,
+       s21, sigma[1],
+
+       V.data[0][0], V.data[0][1],
+       V.data[1][0], V.data[1][1]);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_svd2(const mat_t<2,2,Type>& A,
+                                   const mat_t<2,2,Type>& U,
+                                   const vec_t<2,Type>& sigma,
+                                   const mat_t<2,2,Type>& V,
+                                   mat_t<2,2,Type>& adj_A,
+                                   const mat_t<2,2,Type>& adj_U,
+                                   const vec_t<2,Type>& adj_sigma,
+                                   const mat_t<2,2,Type>& adj_V) {
+    Type s1_squared = sigma[0] * sigma[0];
+    Type s2_squared = sigma[1] * sigma[1];
+
+    // Compute inverse of (s1^2 - s2^2) if possible, use small epsilon to prevent division by zero
+    Type F01 = Type(1) / min(s2_squared - s1_squared, Type(-1e-6f));
+
+    // Construct the matrix F for the adjoint
+    mat_t<2,2,Type> F = mat_t<2,2,Type>(0.0, F01,
+                                        -F01, 0.0);
+
+    // Create a matrix to handle the adjoint of the singular values (diagonal matrix)
+    mat_t<2,2,Type> adj_sigma_mat = mat_t<2,2,Type>(adj_sigma[0], 0.0,
+                                                   0.0, adj_sigma[1]);
+
+    // Matrix for handling singular values (diagonal matrix with sigma values)
+    mat_t<2,2,Type> s_mat = mat_t<2,2,Type>(sigma[0], 0.0,
+                                            0.0, sigma[1]);
+
+    // Compute the transpose of U and V
+    mat_t<2,2,Type> UT = transpose(U);
+    mat_t<2,2,Type> VT = transpose(V);
+
+    // Compute the term for sigma (diagonal matrix of adjoint singular values)
+    mat_t<2,2,Type> sigma_term = mul(U, mul(adj_sigma_mat, VT));
+
+    // Compute the adjoint contributions for U (left singular vectors)
+    mat_t<2,2,Type> u_term = mul(mul(U, mul(cw_mul(F, (mul(UT, adj_U) - mul(transpose(adj_U), U))), s_mat)), VT);
+
+    // Compute the adjoint contributions for V (right singular vectors)
+    mat_t<2,2,Type> v_term = mul(U, mul(s_mat, mul(cw_mul(F, (mul(VT, adj_V) - mul(transpose(adj_V), V))), VT)));
+
+    // Combine the terms to compute the adjoint of A
+    adj_A = adj_A + (u_term + v_term + sigma_term);
 }
 
 

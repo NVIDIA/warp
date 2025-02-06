@@ -1133,6 +1133,21 @@ add_builtin(
 )
 
 add_builtin(
+    "svd2",
+    input_types={
+        "A": matrix(shape=(2, 2), dtype=Float),
+        "U": matrix(shape=(2, 2), dtype=Float),
+        "sigma": vector(length=2, dtype=Float),
+        "V": matrix(shape=(2, 2), dtype=Scalar),
+    },
+    value_type=None,
+    group="Vector Math",
+    export=False,
+    doc="""Compute the SVD of a 2x2 matrix ``A``. The singular values are returned in ``sigma``,
+    while the left and right basis vectors are returned in ``U`` and ``V``.""",
+)
+
+add_builtin(
     "qr3",
     input_types={
         "A": matrix(shape=(3, 3), dtype=Float),
