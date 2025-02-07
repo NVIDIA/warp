@@ -11,7 +11,7 @@ wp.set_module_options({"enable_backward": False})
 
 
 NUM_COMPONENTS = 19
-N = 256
+N = 128
 
 
 @wp.kernel
@@ -38,13 +38,17 @@ class ArrayOfStructures:
     def setup(self):
         wp.init()
         wp.build.clear_kernel_cache()
-        wp.load_module("cuda:0")
-        self.test_array = wp.ones((N, N, N, NUM_COMPONENTS), dtype=float, device="cuda:0")
-        self.cmd = wp.launch(kernel_aos, (N, N, N), inputs=[self.test_array], record_cmd=True, device="cuda:0")
+        self.device = wp.get_device("cuda:0")
+        wp.load_module(device=self.device)
+        self.test_array = wp.ones((N, N, N, NUM_COMPONENTS), dtype=float, device=self.device)
+        self.cmd = wp.launch(kernel_aos, (N, N, N), inputs=[self.test_array], record_cmd=True, device=self.device)
+        # Warmup
+        self.cmd.launch()
+        wp.synchronize_device(self.device)
 
     def time_kernels(self):
         self.cmd.launch()
-        wp.synchronize_device("cuda:0")
+        wp.synchronize_device(self.device)
 
 
 class StructureOfArrays:
@@ -55,10 +59,14 @@ class StructureOfArrays:
     def setup(self):
         wp.init()
         wp.build.clear_kernel_cache()
-        wp.load_module("cuda:0")
-        self.test_array = wp.ones((NUM_COMPONENTS, N, N, N), dtype=float, device="cuda:0")
-        self.cmd = wp.launch(kernel_soa, (N, N, N), inputs=[self.test_array], record_cmd=True, device="cuda:0")
+        self.device = wp.get_device("cuda:0")
+        wp.load_module(device=self.device)
+        self.test_array = wp.ones((NUM_COMPONENTS, N, N, N), dtype=float, device=self.device)
+        self.cmd = wp.launch(kernel_soa, (N, N, N), inputs=[self.test_array], record_cmd=True, device=self.device)
+        # Warmup
+        self.cmd.launch()
+        wp.synchronize_device(self.device)
 
     def time_kernels(self):
         self.cmd.launch()
-        wp.synchronize_device("cuda:0")
+        wp.synchronize_device(self.device)

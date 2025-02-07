@@ -4,17 +4,13 @@
 # and any modifications thereto.  Any use, reproduction, disclosure or
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
+from statistics import median
 
 import warp as wp
 
 
 @wp.kernel
-def matrix_augassign_kernel(
-    a: wp.array2d(dtype=wp.mat22),
-    b: wp.array2d(dtype=wp.mat22),
-    c: wp.array2d(dtype=wp.mat22),
-    d: wp.array2d(dtype=wp.mat22),
-):
+def matrix_augassign_kernel(a: wp.array2d(dtype=wp.mat22), b: wp.array2d(dtype=wp.mat22)):
     i, j = wp.tid()
 
     m1 = wp.mat22()
@@ -27,19 +23,9 @@ def matrix_augassign_kernel(
 
     a[i, j] = m1
 
-    m3 = wp.mat22()
-    m4 = d[i, j]
-
-    m3[0, 0] -= m4[0, 0]
-    m3[0, 1] -= m4[0, 1]
-    m3[1, 0] -= m4[1, 0]
-    m3[1, 1] -= m4[1, 1]
-
-    c[i, j] = m3
-
 
 class CompileModule:
-    repeat = 10  # Number of samples to run
+    repeat = 20  # Number of samples to run
     number = 1  # Number of measurements to make between a single setup and teardown
 
     def setup(self):
@@ -48,12 +34,10 @@ class CompileModule:
 
     def teardown(self):
         matrix_augassign_kernel.module.unload()
+        wp.build.clear_kernel_cache()
 
     def time_cuda_codegen(self):
         wp.load_module(device="cuda:0")
-
-    def time_cpu_codegen(self):
-        wp.load_module(device="cpu")
 
 
 class RunForwardKernel:
@@ -65,21 +49,15 @@ class RunForwardKernel:
         N = (1024, 1024)
         self.a = wp.zeros(N, dtype=wp.mat22, device="cuda:0")
         self.b = wp.ones(N, dtype=wp.mat22, device="cuda:0")
-        self.c = wp.zeros(N, dtype=wp.mat22, device="cuda:0")
-        self.d = wp.ones(N, dtype=wp.mat22, device="cuda:0")
 
         wp.synchronize_device("cuda:0")
 
     def track_cuda(self):
         with wp.ScopedTimer("benchmark", print=False, cuda_filter=wp.TIMING_KERNEL, synchronize=True) as timer:
             for _ in range(1000):
-                wp.launch(
-                    matrix_augassign_kernel, self.a.shape, inputs=[self.a, self.b, self.c, self.d], device="cuda:0"
-                )
+                wp.launch(matrix_augassign_kernel, self.a.shape, inputs=[self.a, self.b], device="cuda:0")
 
-        average = sum(result.elapsed for result in timer.timing_results) / len(timer.timing_results)
-
-        return average * 1e-3
+        return median(result.elapsed for result in timer.timing_results) * 1e-3
 
     track_cuda.unit = "seconds"
 
@@ -93,8 +71,6 @@ class RunBackwardKernel:
         N = (1024, 1024)
         self.a = wp.zeros(N, dtype=wp.mat22, device="cuda:0", requires_grad=True)
         self.b = wp.ones(N, dtype=wp.mat22, device="cuda:0", requires_grad=True)
-        self.c = wp.zeros(N, dtype=wp.mat22, device="cuda:0", requires_grad=True)
-        self.d = wp.ones(N, dtype=wp.mat22, device="cuda:0", requires_grad=True)
 
         wp.synchronize_device("cuda:0")
 
@@ -104,15 +80,13 @@ class RunBackwardKernel:
                 wp.launch(
                     matrix_augassign_kernel,
                     self.a.shape,
-                    inputs=[self.a, self.b, self.c, self.d],
-                    adj_inputs=[self.a.grad, self.b.grad, self.c.grad, self.d.grad],
+                    inputs=[self.a, self.b],
+                    adj_inputs=[self.a.grad, self.b.grad],
                     adj_outputs=[],
                     adjoint=True,
                     device="cuda:0",
                 )
 
-        average = sum(result.elapsed for result in timer.timing_results) / len(timer.timing_results)
-
-        return average * 1e-3
+        return median(result.elapsed for result in timer.timing_results) * 1e-3
 
     track_cuda.unit = "seconds"

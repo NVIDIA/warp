@@ -88,11 +88,12 @@ def init_xforms(kernel_seed: int, xforms: wp.array(dtype=wp.transform)):
 
 
 class MeshIntersect:
-    number = 500
+    number = 250
 
     def setup(self):
         wp.init()
-        wp.load_module("cuda:0")
+        self.device = wp.get_device("cuda:0")
+        wp.load_module(device=self.device)
         wp.build.clear_kernel_cache()
 
         self.query_count = 1024
@@ -107,26 +108,21 @@ class MeshIntersect:
         self.query_num_faces = int(len(self.mesh_0.indices) / 3)
         self.query_num_points = len(self.mesh_0.points)
 
-        self.array_result = wp.zeros(self.query_count, dtype=int, device="cuda:0")
-        self.array_xforms = wp.empty(self.query_count, dtype=wp.transform, device="cuda:0")
+        self.array_result = wp.zeros(self.query_count, dtype=int, device=self.device)
+        self.array_xforms = wp.empty(self.query_count, dtype=wp.transform, device=self.device)
 
         # generate random relative transforms
-        wp.launch(init_xforms, (self.query_count,), inputs=[42, self.array_xforms], device="cuda:0")
+        wp.launch(init_xforms, (self.query_count,), inputs=[42, self.array_xforms], device=self.device)
 
-        with wp.ScopedCapture() as capture:
-            wp.launch(
-                kernel=intersect,
-                dim=self.query_num_faces * self.query_count,
-                inputs=[self.mesh_0.id, self.mesh_1.id, self.query_num_faces, self.array_xforms, self.array_result],
-                device="cuda:0",
-            )
+        self.cmd = wp.launch(
+            kernel=intersect,
+            dim=self.query_num_faces * self.query_count,
+            inputs=[self.mesh_0.id, self.mesh_1.id, self.query_num_faces, self.array_xforms, self.array_result],
+            device=self.device,
+            record_cmd=True,
+        )
 
-        self.graph = capture.graph
-
-        for _warmup in range(5):
-            wp.capture_launch(self.graph)
-
-        wp.synchronize_device("cuda:0")
+        wp.synchronize_device(self.device)
 
     # create collision meshes
     def load_mesh(self, path, prim):
@@ -136,12 +132,12 @@ class MeshIntersect:
         usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath(prim))
 
         mesh = wp.Mesh(
-            points=wp.array(usd_geom.GetPointsAttr().Get(), dtype=wp.vec3, device="cuda:0"),
-            indices=wp.array(usd_geom.GetFaceVertexIndicesAttr().Get(), dtype=int, device="cuda:0"),
+            points=wp.array(usd_geom.GetPointsAttr().Get(), dtype=wp.vec3, device=self.device),
+            indices=wp.array(usd_geom.GetFaceVertexIndicesAttr().Get(), dtype=int, device=self.device),
         )
 
         return mesh
 
     def time_intersect(self):
-        wp.capture_launch(self.graph)
-        wp.synchronize_device("cuda:0")
+        self.cmd.launch()
+        wp.synchronize_device(self.device)

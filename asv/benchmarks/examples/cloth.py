@@ -87,17 +87,19 @@ def integrate_particles(
 
 
 class Cloth:
-    params = [32, 64, 128]
-    number = 100
+    number = 400
+    params = [32, 128]
+    param_names = ["res"]
 
-    def setup(self, n):
+    def setup(self, res):
         wp.init()
         wp.build.clear_kernel_cache()
-        wp.load_module("cuda:0")
+        self.device = wp.get_device("cuda:0")
+        wp.load_module(device=self.device)
 
         lower = (0.0, 0.0, 0.0)
-        dx = n
-        dy = n
+        dx = res
+        dy = res
         radius = 0.1
         stretch_stiffness = 1000.0
         bend_stiffness = 1000.0
@@ -186,56 +188,51 @@ class Cloth:
         self.num_particles = len(self.positions)
         self.num_springs = len(self.spring_lengths)
 
-        self.positions_wp = wp.from_numpy(self.positions, dtype=wp.vec3, device="cuda:0")
-        self.velocities_wp = wp.zeros(self.num_particles, dtype=wp.vec3, device="cuda:0")
-        self.invmass_wp = wp.from_numpy(self.inv_masses, dtype=float, device="cuda:0")
-        self.spring_indices_wp = wp.from_numpy(self.spring_indices, dtype=int, device="cuda:0")
-        self.spring_lengths_wp = wp.from_numpy(self.spring_lengths, dtype=float, device="cuda:0")
-        self.spring_stiffness_wp = wp.from_numpy(self.spring_stiffness, dtype=float, device="cuda:0")
-        self.spring_damping_wp = wp.from_numpy(self.spring_damping, dtype=float, device="cuda:0")
-        self.forces_wp = wp.zeros(self.num_particles, dtype=wp.vec3, device="cuda:0")
+        self.positions_wp = wp.from_numpy(self.positions, dtype=wp.vec3, device=self.device)
+        self.velocities_wp = wp.zeros(self.num_particles, dtype=wp.vec3, device=self.device)
+        self.invmass_wp = wp.from_numpy(self.inv_masses, dtype=float, device=self.device)
+        self.spring_indices_wp = wp.from_numpy(self.spring_indices, dtype=int, device=self.device)
+        self.spring_lengths_wp = wp.from_numpy(self.spring_lengths, dtype=float, device=self.device)
+        self.spring_stiffness_wp = wp.from_numpy(self.spring_stiffness, dtype=float, device=self.device)
+        self.spring_damping_wp = wp.from_numpy(self.spring_damping, dtype=float, device=self.device)
+        self.forces_wp = wp.zeros(self.num_particles, dtype=wp.vec3, device=self.device)
 
         sim_fps = 60.0
         sim_substeps = 16
-        sim_duration = 0.5
-        sim_frames = int(sim_duration * sim_fps)
         sim_dt = (1.0 / sim_fps) / sim_substeps
 
         with wp.ScopedCapture() as capture:
-            for _i in range(sim_frames):
-                for _s in range(sim_substeps):
-                    wp.launch(
-                        kernel=eval_springs,
-                        dim=self.num_springs,
-                        inputs=[
-                            self.positions_wp,
-                            self.velocities_wp,
-                            self.spring_indices_wp,
-                            self.spring_lengths_wp,
-                            self.spring_stiffness_wp,
-                            self.spring_damping_wp,
-                            self.forces_wp,
-                        ],
-                        device="cuda:0",
-                    )
+            for _s in range(sim_substeps):
+                wp.launch(
+                    kernel=eval_springs,
+                    dim=self.num_springs,
+                    inputs=[
+                        self.positions_wp,
+                        self.velocities_wp,
+                        self.spring_indices_wp,
+                        self.spring_lengths_wp,
+                        self.spring_stiffness_wp,
+                        self.spring_damping_wp,
+                        self.forces_wp,
+                    ],
+                    device=self.device,
+                )
 
-                    # integrate
-                    wp.launch(
-                        kernel=integrate_particles,
-                        dim=self.num_particles,
-                        inputs=[self.positions_wp, self.velocities_wp, self.forces_wp, self.invmass_wp, sim_dt],
-                        device="cuda:0",
-                    )
+                # integrate
+                wp.launch(
+                    kernel=integrate_particles,
+                    dim=self.num_particles,
+                    inputs=[self.positions_wp, self.velocities_wp, self.forces_wp, self.invmass_wp, sim_dt],
+                    device=self.device,
+                )
 
         self.graph = capture.graph
 
         for _warmup in range(5):
             wp.capture_launch(self.graph)
 
-        wp.synchronize_device("cuda:0")
+        wp.synchronize_device(self.device)
 
-    def time_simulate(self, n):
+    def time_simulate(self, res):
         wp.capture_launch(self.graph)
-        wp.synchronize_device("cuda:0")
-
-    time_simulate.param_names = ["res"]
+        wp.synchronize_device(self.device)
