@@ -39,18 +39,18 @@ def sample_mesh_query_no_sign(
 
 
 class MeshQuery:
-    params = ["bunny", "bear", "cube", "rocks", "sphere"]
-    rounds = 3
-    number = 10
-    timeout = 120
-    warmup_time = 1.0
+    params = ["bunny", "bear", "rocks"]
+    param_names = ["asset"]
+    number = 20
+    timeout = 60
 
     def setup(self, asset):
         from pxr import Usd, UsdGeom
 
         wp.init()
         wp.build.clear_kernel_cache()
-        wp.load_module("cuda:0")
+        self.device = wp.get_device("cuda:0")
+        wp.load_module(device=self.device)
 
         asset_stage = Usd.Stage.Open(os.path.join(get_asset_directory(), f"{asset}.usd"))
         mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath(f"/root/{asset}"))
@@ -66,33 +66,28 @@ class MeshQuery:
         query_points_np = rng.uniform(bounding_box[0, :], bounding_box[1, :], size=(NUM_QUERY_POINTS, 3)).astype(
             np.float32
         )
-        self.query_points = wp.array(query_points_np, dtype=wp.vec3, device="cuda:0")
+        self.query_points = wp.array(query_points_np, dtype=wp.vec3, device=self.device)
 
         # create wp mesh
         self.mesh = wp.Mesh(
-            points=wp.array(points, dtype=wp.vec3, device="cuda:0"),
+            points=wp.array(points, dtype=wp.vec3, device=self.device),
             velocities=None,
-            indices=wp.array(indices, dtype=int, device="cuda:0"),
+            indices=wp.array(indices, dtype=int, device=self.device),
         )
 
-        self.query_closest_points = wp.empty_like(self.query_points, device="cuda:0")
+        self.query_closest_points = wp.empty_like(self.query_points, device=self.device)
 
-        with wp.ScopedCapture() as capture:
-            wp.launch(
-                sample_mesh_query_no_sign,
-                dim=(NUM_QUERY_POINTS,),
-                inputs=[self.mesh.id, self.query_points, 1.0e7, self.query_closest_points],
-                device="cuda:0",
-            )
-        self.graph = capture.graph
-
-        for _warmup in range(5):
-            wp.capture_launch(self.graph)
-
-        wp.synchronize_device("cuda:0")
+        self.cmd = wp.launch(
+            sample_mesh_query_no_sign,
+            dim=(NUM_QUERY_POINTS,),
+            inputs=[self.mesh.id, self.query_points, 1.0e7, self.query_closest_points],
+            device=self.device,
+            record_cmd=True,
+        )
+        # Warmup
+        self.cmd.launch()
+        wp.synchronize_device(self.device)
 
     def time_mesh_query(self, asset):
-        wp.capture_launch(self.graph)
-        wp.synchronize_device("cuda:0")
-
-    time_mesh_query.param_names = ["asset"]
+        self.cmd.launch()
+        wp.synchronize_device(self.device)

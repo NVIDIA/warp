@@ -488,7 +488,7 @@ linux-x86_64 asv:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       changes:
         - .gitlab-ci.yml
-        - benchmarks/**/*
+        - asv/**/*
         - warp/**/*
         - pyproject.toml
         - deps/*
@@ -512,9 +512,9 @@ linux-x86_64 asv:
     - git checkout -f $CI_COMMIT_SHA
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - cd benchmarks
+    - cd asv
     - asv machine --yes
-    - asv continuous --interleave-rounds --append-samples --no-only-changed -f 1.15 main $CI_COMMIT_SHA
+    - asv continuous --interleave-rounds --append-samples --no-only-changed -f 1.15 --bench '^(?!api)' main $CI_COMMIT_SHA
   allow_failure: True # Can make success required after we have tested this job more
 
 # ==============================================================================

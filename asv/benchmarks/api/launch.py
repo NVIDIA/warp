@@ -19,8 +19,7 @@ def inc_kernel(a: wp.array(dtype=float)):
 
 
 class KernelLaunch:
-    number = 10000
-    rounds = 8
+    number = 1000  # Number of measurements to make between a single setup and teardown
 
     def setup(self):
         wp.init()
@@ -108,8 +107,7 @@ def k0():
 
 
 class KernelLaunchParameters:
-    number = 5000
-    rounds = 8
+    number = 1000
 
     def setup(self):
         wp.init()
@@ -162,8 +160,8 @@ class KernelLaunchParameters:
 
 
 class GraphLaunch:
-    number = 5000
-    rounds = 8
+    repeat = 10
+    number = 1000
 
     def setup(self):
         wp.init()

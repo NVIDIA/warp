@@ -87,7 +87,8 @@ class TileNBody:
         wp.init()
         wp.build.clear_kernel_cache()
         wp.set_module_options({"fast_math": True, "enable_backward": False})
-        wp.load_module(device="cuda:0")
+        self.device = wp.get_device("cuda:0")
+        wp.load_module(device=self.device)
 
         self.num_bodies = 65536
 
@@ -112,6 +113,7 @@ class TileNBody:
             dim=self.num_bodies,
             inputs=[self.pos_array_0, self.vel_array, self.pos_array_1, self.num_bodies],
             block_dim=TILE_SIZE,
+            device=self.device,
             record_cmd=True,
         )
 
@@ -119,13 +121,14 @@ class TileNBody:
             integrate_bodies_simt,
             dim=self.num_bodies,
             inputs=[self.pos_array_0, self.vel_array, self.pos_array_1, self.num_bodies],
+            device=self.device,
             record_cmd=True,
         )
 
     def time_tile(self):
         self.tile_cmd.launch()
-        wp.synchronize()
+        wp.synchronize_device(self.device)
 
     def time_simt(self):
         self.simt_cmd.launch()
-        wp.synchronize()
+        wp.synchronize_device(self.device)
