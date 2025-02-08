@@ -9,6 +9,7 @@
   query the respective current and high-water mark memory pool allocator usage.
   ([GH-446](https://github.com/NVIDIA/warp/issues/446)).
 - Add 2D SVD `svd2` to support 2d simulations ([GH-436](https://github.com/NVIDIA/warp/issues/436)).
+- Add JAX FFI support ([GH-511](https://github.com/NVIDIA/warp/issues/511)).
 
 ### Changed
 
