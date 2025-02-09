@@ -413,7 +413,7 @@ WP_API int load_obj(const char* object_file, const char* module_name)
             SYMBOL(sinhf), SYMBOL_T(sinh, double(*)(double)),
             SYMBOL(coshf), SYMBOL_T(cosh, double(*)(double)),
             SYMBOL(tanhf), SYMBOL_T(tanh, double(*)(double)),
-            SYMBOL(fmaf),
+            SYMBOL(fmaf), SYMBOL_T(fma, double(*)(double, double, double)),
             SYMBOL(memcpy), SYMBOL(memset), SYMBOL(memmove),
             SYMBOL(_wp_assert),
             SYMBOL(_wp_isfinite),
