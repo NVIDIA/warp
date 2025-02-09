@@ -54,7 +54,7 @@ parser.add_argument("--fast_math", action="store_true", help="Enable fast math o
 parser.add_argument("--no_fast_math", dest="fast_math", action="store_false")
 parser.set_defaults(fast_math=False)
 
-parser.add_argument("--quick", action="store_true", help="Only generate PTX code, disable CUTLASS ops")
+parser.add_argument("--quick", action="store_true", help="Only generate PTX code")
 parser.set_defaults(quick=False)
 
 parser.add_argument("--build_llvm", action="store_true", help="Build Clang/LLVM compiler from source, default disabled")
@@ -230,7 +230,6 @@ try:
         "native/sparse.cpp",
         "native/volume.cpp",
         "native/marching.cpp",
-        "native/cutlass_gemm.cpp",
         "native/mathdx.cpp",
         "native/coloring.cpp",
     ]

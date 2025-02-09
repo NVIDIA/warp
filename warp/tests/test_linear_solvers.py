@@ -6,8 +6,6 @@ import warp as wp
 from warp.optim.linear import bicgstab, cg, cr, gmres, preconditioner
 from warp.tests.unittest_utils import *
 
-wp.init()  # For runtime.core.is_cutlass_enabled()
-
 
 def _check_linear_solve(test, A, b, func, *args, **kwargs):
     # test from zero
@@ -169,15 +167,6 @@ class TestLinearSolvers(unittest.TestCase):
 
 
 devices = get_test_devices()
-
-if not wp.context.runtime.core.is_cutlass_enabled():
-    devices = [d for d in devices if not d.is_cuda]
-    print("Skipping CUDA linear solver tests because CUTLASS is not supported in this build")
-
-if wp.context.runtime.core.is_debug_enabled():
-    # cutlass-based matmul is *very* slow in debug mode -- skip
-    devices = [d for d in devices if not d.is_cuda]
-    print("Skipping CUDA linear solver tests in debug mode")
 
 add_function_test(TestLinearSolvers, "test_cg", test_cg, devices=devices)
 add_function_test(TestLinearSolvers, "test_cr", test_cr, devices=devices)

@@ -2870,10 +2870,6 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
     else
         opts.push_back("--fmad=false");
 
-    char include_cutlass[max_path];
-    sprintf(include_cutlass, "--include-path=%s/cutlass/include", include_dir);
-    opts.push_back(include_cutlass);
-
     std::vector<std::string> cuda_include_opt;
     for(int i = 0; i < num_cuda_include_dirs; i++)
     {
@@ -3586,9 +3582,6 @@ void cuda_timing_end(timing_result_t* results, int size)
 #include "sparse.cu"
 #include "volume.cu"
 #include "volume_builder.cu"
-#if WP_ENABLE_CUTLASS
-    #include "cutlass_gemm.cu"
-#endif
 
 //#include "spline.inl"
 //#include "volume.inl"

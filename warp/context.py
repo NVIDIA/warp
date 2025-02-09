@@ -3276,26 +3276,6 @@ class Runtime:
             self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p]
             self.core.hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
-            self.core.cutlass_gemm.argtypes = [
-                ctypes.c_void_p,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_char_p,
-                ctypes.c_void_p,
-                ctypes.c_void_p,
-                ctypes.c_void_p,
-                ctypes.c_void_p,
-                ctypes.c_float,
-                ctypes.c_float,
-                ctypes.c_bool,
-                ctypes.c_bool,
-                ctypes.c_bool,
-                ctypes.c_int,
-            ]
-            self.core.cutlass_gemm.restype = ctypes.c_bool
-
             self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_bool, ctypes.c_bool]
             self.core.volume_create_host.restype = ctypes.c_uint64
             self.core.volume_get_tiles_host.argtypes = [
@@ -3440,8 +3420,6 @@ class Runtime:
             self.core.is_cuda_enabled.restype = ctypes.c_int
             self.core.is_cuda_compatibility_enabled.argtypes = None
             self.core.is_cuda_compatibility_enabled.restype = ctypes.c_int
-            self.core.is_cutlass_enabled.argtypes = None
-            self.core.is_cutlass_enabled.restype = ctypes.c_int
             self.core.is_mathdx_enabled.argtypes = None
             self.core.is_mathdx_enabled.restype = ctypes.c_int
 

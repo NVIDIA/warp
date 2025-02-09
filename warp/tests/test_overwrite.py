@@ -7,8 +7,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()  # For wp.context.runtime.core.is_cutlass_enabled()
-
 # kernels are defined in the global scope, to ensure wp.Kernel objects are not GC'ed in the MGPU case
 # kernel args are assigned array modes during codegen, so wp.Kernel objects generated during codegen
 # must be preserved for overwrite tracking to function
@@ -362,62 +360,6 @@ def test_copy(test, device):
         wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
 
 
-# wp.matmul uses wp.record_func. Ensure array modes are propagated correctly.
-def test_matmul(test, device):
-    if device.is_cuda and not wp.context.runtime.core.is_cutlass_enabled():
-        test.skipTest("Warp was not built with CUTLASS support")
-
-    saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
-    try:
-        wp.config.verify_autograd_array_access = True
-
-        a = wp.ones((3, 3), dtype=float, requires_grad=True, device=device)
-        b = wp.ones_like(a)
-        c = wp.ones_like(a)
-        d = wp.zeros_like(a)
-
-        tape = wp.Tape()
-
-        with tape:
-            wp.matmul(a, b, c, d)
-
-        test.assertEqual(a._is_read, True)
-        test.assertEqual(b._is_read, True)
-        test.assertEqual(c._is_read, True)
-        test.assertEqual(d._is_read, False)
-
-    finally:
-        wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
-
-
-# wp.batched_matmul uses wp.record_func. Ensure array modes are propagated correctly.
-def test_batched_matmul(test, device):
-    if device.is_cuda and not wp.context.runtime.core.is_cutlass_enabled():
-        test.skipTest("Warp was not built with CUTLASS support")
-
-    saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
-    try:
-        wp.config.verify_autograd_array_access = True
-
-        a = wp.ones((1, 3, 3), dtype=float, requires_grad=True, device=device)
-        b = wp.ones_like(a)
-        c = wp.ones_like(a)
-        d = wp.zeros_like(a)
-
-        tape = wp.Tape()
-
-        with tape:
-            wp.batched_matmul(a, b, c, d)
-
-        test.assertEqual(a._is_read, True)
-        test.assertEqual(b._is_read, True)
-        test.assertEqual(c._is_read, True)
-        test.assertEqual(d._is_read, False)
-
-    finally:
-        wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
-
-
 # write after read warning with in-place operators within a kernel
 def test_in_place_operators_warning(test, device):
     saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
@@ -577,8 +519,6 @@ add_function_test(TestOverwrite, "test_views", test_views, devices=devices)
 add_function_test(TestOverwrite, "test_reset", test_reset, devices=devices)
 
 add_function_test(TestOverwrite, "test_copy", test_copy, devices=devices)
-add_function_test(TestOverwrite, "test_matmul", test_matmul, devices=devices, check_output=False)
-add_function_test(TestOverwrite, "test_batched_matmul", test_batched_matmul, devices=devices, check_output=False)
 add_function_test(TestOverwrite, "test_atomic_operations", test_atomic_operations, devices=devices)
 
 # Some warning are only issued during codegen, and codegen only runs on cuda_0 in the MGPU case.

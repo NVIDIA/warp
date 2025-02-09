@@ -2058,13 +2058,6 @@ class FeatherstoneIntegrator(Integrator):
                         ],
                         device=model.device,
                     )
-                    # if wp.context.runtime.tape:
-                    #     wp.context.runtime.tape.record_func(
-                    #         backward=lambda: adj_matmul(
-                    #             a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith, device
-                    #         ),
-                    #         arrays=[a, b, c, d],
-                    #     )
                     # print("joint_qdd:")
                     # print(state_aug.joint_qdd.numpy())
                     # print("\n\n")

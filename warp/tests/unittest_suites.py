@@ -142,8 +142,6 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_mat_lite import TestMatLite
     from warp.tests.test_mat_scalar_ops import TestMatScalarOps
     from warp.tests.test_math import TestMath
-    from warp.tests.test_matmul import TestMatmul
-    from warp.tests.test_matmul_lite import TestMatmulLite
     from warp.tests.test_mempool import TestMempool
     from warp.tests.test_mesh import TestMesh
     from warp.tests.test_mesh_query_aabb import TestMeshQueryAABBMethods
@@ -252,8 +250,6 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestMatLite,
         TestMatScalarOps,
         TestMath,
-        TestMatmul,
-        TestMatmulLite,
         TestMempool,
         TestMesh,
         TestMeshQueryAABBMethods,
@@ -339,7 +335,6 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_marching_cubes import TestMarchingCubes
     from warp.tests.test_mat_lite import TestMatLite
     from warp.tests.test_math import TestMath
-    from warp.tests.test_matmul_lite import TestMatmulLite
     from warp.tests.test_mempool import TestMempool
     from warp.tests.test_mesh import TestMesh
     from warp.tests.test_mesh_query_aabb import TestMeshQueryAABBMethods
@@ -397,7 +392,6 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestMarchingCubes,
         TestMatLite,
         TestMath,
-        TestMatmulLite,
         TestMempool,
         TestMesh,
         TestMeshQueryAABBMethods,

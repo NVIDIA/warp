@@ -62,7 +62,6 @@ include:
     - python -m pip install -e .
   prepare-kit-artifacts:
     - python3 tools/ci/publishing/build_nodes_info.py
-    - rm -rf warp/native/cutlass
     - mv warp exts/omni.warp.core/
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +

@@ -13,6 +13,7 @@
 
 ### Changed
 
+- **Breaking:** Remove CUTLASS dependency and `wp.matmul()` functionality (including batched version).
 - `warp.fem.integrate()` and `warp.fem.integrate()` may now perform parallel evaluation of quadrature points within elements
 - `warp.fem.interpolate()` can now build Jacobian sparse matrices of interpolated functions with respect to a trial field
 - Vector/matrix/quaternion component assignment operations compile and run faster in the backward pass. Assignment should only happen once per component.
