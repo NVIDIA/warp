@@ -8,6 +8,9 @@
 
 ### Changed
 
+- Multiple warp.sparse routines (`bsr_set_from_triplets`, `bsr_assign`, `bsr_axpy`, `bsr_mm`) now accept a `masked` flag to discard any non-zero not already present in the destination matrix
+- `warp.sparse.bsr_assign()` now longer requires source and destination block shapes to evenly divide each other
+
 ### Fixed
 
 - Fix rendering of arrows with different `up_axis`, `color` in `OpenGLRenderer` ([GH-448](https://github.com/NVIDIA/warp/issues/448)).

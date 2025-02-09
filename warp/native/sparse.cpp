@@ -72,7 +72,8 @@ template <typename T> void bsr_dyn_block_transpose(const T* src, T* dest, int ro
 template <typename T>
 int bsr_matrix_from_triplets_host(const int rows_per_block, const int cols_per_block, const int row_count,
                                   const int nnz, const int* tpl_rows, const int* tpl_columns, const T* tpl_values,
-                                  const bool prune_numerical_zeros, int* bsr_offsets, int* bsr_columns, T* bsr_values)
+                                  const bool prune_numerical_zeros, const bool masked, int* bsr_offsets,
+                                  int* bsr_columns, T* bsr_values)
 {
 
     // get specialized accumulator for common block sizes (1,1), (1,2), (1,3),
@@ -115,14 +116,33 @@ int bsr_matrix_from_triplets_host(const int rows_per_block, const int cols_per_b
     std::iota(block_indices.begin(), block_indices.end(), 0);
 
     // remove zero blocks  and invalid row indices
-    block_indices.erase(std::remove_if(block_indices.begin(), block_indices.end(),
-                                       [&](int i)
-                                       {
-                                           return tpl_rows[i] < 0 || tpl_rows[i] >= row_count ||
-                                                  (prune_numerical_zeros && tpl_values &&
-                                                   block_is_zero_func(tpl_values + i * block_size, block_size));
-                                       }),
-                        block_indices.end());
+
+    auto discard_block = [&](int i)
+    {
+        const int row = tpl_rows[i];
+        if (row < 0 || row >= row_count)
+        {
+            return true;
+        }
+
+        if (prune_numerical_zeros && tpl_values && block_is_zero_func(tpl_values + i * block_size, block_size))
+        {
+            return true;
+        }
+
+        if (!masked)
+        {
+            return false;
+        }
+
+        const int* beg = bsr_columns + bsr_offsets[row];
+        const int* end = bsr_columns + bsr_offsets[row + 1];
+        const int col = tpl_columns[i];
+        const int* block = std::lower_bound(beg, end, col);
+        return block == end || *block != col;
+    };
+
+    block_indices.erase(std::remove_if(block_indices.begin(), block_indices.end(), discard_block), block_indices.end());
 
     // sort block indices according to lexico order
     std::sort(block_indices.begin(), block_indices.end(), [tpl_rows, tpl_columns](int i, int j) -> bool
@@ -272,12 +292,12 @@ void bsr_transpose_host(int rows_per_block, int cols_per_block, int row_count, i
 
 WP_API void bsr_matrix_from_triplets_float_host(int rows_per_block, int cols_per_block, int row_count, int nnz,
                                                 int* tpl_rows, int* tpl_columns, void* tpl_values,
-                                                bool prune_numerical_zeros, int* bsr_offsets, int* bsr_columns,
-                                                void* bsr_values, int* bsr_nnz, void* bsr_nnz_event)
+                                                bool prune_numerical_zeros, bool masked, int* bsr_offsets,
+                                                int* bsr_columns, void* bsr_values, int* bsr_nnz, void* bsr_nnz_event)
 {
     bsr_matrix_from_triplets_host<float>(rows_per_block, cols_per_block, row_count, nnz, tpl_rows, tpl_columns,
-                                         static_cast<const float*>(tpl_values), prune_numerical_zeros, bsr_offsets,
-                                         bsr_columns, static_cast<float*>(bsr_values));
+                                         static_cast<const float*>(tpl_values), prune_numerical_zeros, masked,
+                                         bsr_offsets, bsr_columns, static_cast<float*>(bsr_values));
     if (bsr_nnz)
     {
         *bsr_nnz = bsr_offsets[row_count];
@@ -286,12 +306,12 @@ WP_API void bsr_matrix_from_triplets_float_host(int rows_per_block, int cols_per
 
 WP_API void bsr_matrix_from_triplets_double_host(int rows_per_block, int cols_per_block, int row_count, int nnz,
                                                  int* tpl_rows, int* tpl_columns, void* tpl_values,
-                                                 bool prune_numerical_zeros, int* bsr_offsets, int* bsr_columns,
-                                                 void* bsr_values, int* bsr_nnz, void* bsr_nnz_event)
+                                                 bool prune_numerical_zeros, bool masked, int* bsr_offsets,
+                                                 int* bsr_columns, void* bsr_values, int* bsr_nnz, void* bsr_nnz_event)
 {
     bsr_matrix_from_triplets_host<double>(rows_per_block, cols_per_block, row_count, nnz, tpl_rows, tpl_columns,
-                                          static_cast<const double*>(tpl_values), prune_numerical_zeros, bsr_offsets,
-                                          bsr_columns, static_cast<double*>(bsr_values));
+                                          static_cast<const double*>(tpl_values), prune_numerical_zeros, masked,
+                                          bsr_offsets, bsr_columns, static_cast<double*>(bsr_values));
     if (bsr_nnz)
     {
         *bsr_nnz = bsr_offsets[row_count];
@@ -318,16 +338,17 @@ WP_API void bsr_transpose_double_host(int rows_per_block, int cols_per_block, in
 
 #if !WP_ENABLE_CUDA
 WP_API void bsr_matrix_from_triplets_float_device(int rows_per_block, int cols_per_block, int row_count, int nnz,
-                                                   int* tpl_rows, int* tpl_columns, void* tpl_values,
-                                                   bool prune_numerical_zeros, int* bsr_offsets, int* bsr_columns,
-                                                   void* bsr_values, int* bsr_nnz, void* bsr_nnz_event)
+                                                  int* tpl_rows, int* tpl_columns, void* tpl_values,
+                                                  bool prune_numerical_zeros, bool masked, int* bsr_offsets,
+                                                  int* bsr_columns, void* bsr_values, int* bsr_nnz, void* bsr_nnz_event)
 {
 }
 
 WP_API void bsr_matrix_from_triplets_double_device(int rows_per_block, int cols_per_block, int row_count, int nnz,
                                                    int* tpl_rows, int* tpl_columns, void* tpl_values,
-                                                   bool prune_numerical_zeros, int* bsr_offsets, int* bsr_columns,
-                                                   void* bsr_values, int* bsr_nnz, void* bsr_nnz_event)
+                                                   bool prune_numerical_zeros, bool masked, int* bsr_offsets,
+                                                   int* bsr_columns, void* bsr_values, int* bsr_nnz,
+                                                   void* bsr_nnz_event)
 {
 }
 

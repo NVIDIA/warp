@@ -11,10 +11,12 @@ import numpy as np
 
 import warp as wp
 from warp.sparse import (
+    bsr_assign,
     bsr_axpy,
     bsr_axpy_work_arrays,
     bsr_copy,
     bsr_diag,
+    bsr_from_triplets,
     bsr_get_diag,
     bsr_identity,
     bsr_mm,
@@ -224,16 +226,41 @@ def test_bsr_split_merge(test, device):
     with test.assertRaisesRegex(ValueError, "Incompatible dest and src block shapes"):
         bsr_copy(bsr, block_shape=(3, 3))
 
-    with test.assertRaisesRegex(
-        ValueError, r"Dest block shape \(5, 5\) is not an exact multiple of src block shape \(4, 2\)"
-    ):
+    with test.assertRaisesRegex(ValueError, "Incompatible dest and src block shapes"):
         bsr_copy(bsr, block_shape=(5, 5))
 
     with test.assertRaisesRegex(
         ValueError,
-        "The total rows and columns of the src matrix cannot be evenly divided using the requested block shape",
+        "The requested block shape does not evenly divide the source matrix",
     ):
         bsr_copy(bsr, block_shape=(32, 32))
+
+
+def test_bsr_assign_masked(test, device):
+    rng = np.random.default_rng(123)
+
+    block_shape = (1, 2)
+    nrow = 16
+    ncol = 8
+    shape = (block_shape[0] * nrow, block_shape[1] * ncol)
+    n = 20
+
+    rows = wp.array(rng.integers(0, high=nrow, size=n, dtype=int), dtype=int, device=device)
+    cols = wp.array(rng.integers(0, high=ncol, size=n, dtype=int), dtype=int, device=device)
+    vals = wp.array(rng.random(size=(n, block_shape[0], block_shape[1])), dtype=float, device=device)
+
+    A = bsr_from_triplets(nrow, ncol, rows, cols, vals)
+
+    # Extract coarse diagonal with copy + diag funcs, for reference
+    A_coarse = bsr_copy(A, block_shape=(4, 4))
+    ref = _bsr_to_dense(bsr_diag(bsr_get_diag(A_coarse)))
+
+    # Extract coarse diagonal with masked assign (more memory efficient)
+    diag_masked = bsr_diag(rows_of_blocks=shape[0] // 4, block_type=A_coarse.dtype, device=device)
+    bsr_assign(src=A, dest=diag_masked, masked=True)
+    res = _bsr_to_dense(diag_masked)
+
+    assert_np_equal(res, ref, 0.0001)
 
 
 def make_test_bsr_transpose(block_shape, scalar_type):
@@ -308,6 +335,12 @@ def make_test_bsr_axpy(block_shape, scalar_type):
         res = _bsr_to_dense(y)
         assert_np_equal(res, ref, 0.0001)
 
+        # test masked
+        y_mask = bsr_from_triplets(nrow, ncol, y.uncompress_rows()[:1], y.columns[:1], y.values[:1])
+        bsr_axpy(y, y_mask, masked=True)
+        assert y_mask.nnz_sync() == 1
+        assert_np_equal(y_mask.values.numpy(), 2.0 * y.values[:1].numpy(), 0.0001)
+
         # test incompatible shapes
         y.ncol = y.ncol + 1
         with test.assertRaisesRegex(ValueError, "Matrices must have the same number of rows and columns"):
@@ -373,6 +406,13 @@ def make_test_bsr_mm(block_shape, scalar_type):
         # test reusing topology from work arrays
         # (assumes betas[-1] = 0)
         bsr_mm(x, y, z, alpha, beta, work_arrays=work_arrays, reuse_topology=True)
+        assert_np_equal(res, ref, 0.0001)
+
+        # test masked mm
+        z = bsr_diag(rows_of_blocks=z.nrow, block_type=z.dtype, device=z.device)
+        bsr_mm(x, y, z, masked=True)
+        res = _bsr_to_dense(z)
+        ref = _bsr_to_dense(bsr_diag(bsr_get_diag(x @ y)))
         assert_np_equal(res, ref, 0.0001)
 
         # using overloaded operators
@@ -471,12 +511,12 @@ def make_test_bsr_mv(block_shape, scalar_type):
         assert_np_equal(res, ref, 0.0001)
 
         A.ncol = A.ncol + 1
-        with test.assertRaisesRegex(ValueError, "Number of columns"):
+        with test.assertRaisesRegex(ValueError, "Incompatible 'x'"):
             bsr_mv(A, x, y)
 
         A.ncol = A.ncol - 1
         A.nrow = A.nrow - 1
-        with test.assertRaisesRegex(ValueError, "Number of rows"):
+        with test.assertRaisesRegex(ValueError, "Incompatible 'y'"):
             bsr_mv(A, x, y)
 
     return test_bsr_mv
@@ -510,6 +550,7 @@ add_function_test(TestSparse, "test_csr_from_triplets", test_csr_from_triplets, 
 add_function_test(TestSparse, "test_bsr_from_triplets", test_bsr_from_triplets, devices=devices)
 add_function_test(TestSparse, "test_bsr_get_diag", test_bsr_get_set_diag, devices=devices)
 add_function_test(TestSparse, "test_bsr_split_merge", test_bsr_split_merge, devices=devices)
+add_function_test(TestSparse, "test_bsr_assign_masked", test_bsr_assign_masked, devices=devices)
 
 add_function_test(TestSparse, "test_csr_transpose", make_test_bsr_transpose((1, 1), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_transpose_1_3", make_test_bsr_transpose((1, 3), wp.float32), devices=devices)
