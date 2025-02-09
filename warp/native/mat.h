@@ -885,6 +885,20 @@ inline CUDA_CALLABLE vec_t<Cols,Type> mul(const vec_t<Rows,Type>& b, const mat_t
     return r;
 }
 
+template<typename T>
+inline CUDA_CALLABLE T muladd(T a, T b, T c) {
+    return c + a*b;
+}
+template<>
+inline CUDA_CALLABLE float muladd(float a, float b, float c) {
+    return fmaf(a, b, c);
+}
+template<>
+inline CUDA_CALLABLE double muladd(double a, double b, double c) {
+    return fma(a, b, c);
+}
+
+
 template<unsigned Rows, unsigned Cols, unsigned ColsOut, typename Type>
 inline CUDA_CALLABLE mat_t<Rows,ColsOut,Type> mul(const mat_t<Rows,Cols,Type>& a, const mat_t<Cols,ColsOut,Type>& b)
 {
@@ -897,8 +911,7 @@ inline CUDA_CALLABLE mat_t<Rows,ColsOut,Type> mul(const mat_t<Rows,Cols,Type>& a
 
             for (unsigned k=0; k < Cols; ++k)
             {
-                //t.data[i][j] += a.data[i][k]*b.data[k][j];
-                sum = fmaf(a.data[i][k], b.data[k][j], sum);
+                sum = muladd<Type>(a.data[i][k], b.data[k][j], sum);
             }
 
             t.data[i][j] = sum;
@@ -917,7 +930,7 @@ inline CUDA_CALLABLE Type ddot(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,
     {
         for (unsigned j=0; j < Cols; ++j)
         {
-            r += a.data[i][j] * b.data[i][j];
+            r = muladd<Type>(a.data[i][j], b.data[i][j], r);
         }
     }
     return r;

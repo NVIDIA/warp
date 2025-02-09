@@ -384,6 +384,77 @@ def test_negation(test, device, dtype, register_kernels=False):
                     idx = idx + 1
 
 
+def test_matmul(test, device, dtype, register_kernels=False):
+    rng = np.random.default_rng(123)
+
+    tol = {
+        np.float16: 5.0e-3,
+        np.float32: 1.0e-6,
+        np.float64: 1.0e-12,
+    }.get(dtype, 0)
+
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
+    mat33 = wp.types.matrix(shape=(3, 3), dtype=wptype)
+    mat23 = wp.types.matrix(shape=(2, 3), dtype=wptype)
+    mat32 = wp.types.matrix(shape=(3, 2), dtype=wptype)
+    mat44 = wp.types.matrix(shape=(4, 4), dtype=wptype)
+
+    output_select_kernel = get_select_kernel(wptype)
+
+    def check_mat_mul(
+        i23: wp.array(dtype=mat23),
+        i32: wp.array(dtype=mat32),
+        i44: wp.array(dtype=mat44),
+        o22: wp.array(dtype=mat22),
+        o33: wp.array(dtype=mat33),
+        o44: wp.array(dtype=mat44),
+    ):
+        i = wp.tid()
+        o22[i] = i23[i] @ i32[i]
+        o33[i] = i32[i] @ i23[i]
+        o44[i] = i44[i] @ i44[i]
+
+    kernel = getkernel(check_mat_mul, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    test_adj = dtype in np_float_types
+
+    i23 = wp.array(randvals(rng, [1, 2, 3], dtype), dtype=mat23, requires_grad=test_adj, device=device)
+    i32 = wp.array(randvals(rng, [1, 3, 2], dtype), dtype=mat32, requires_grad=test_adj, device=device)
+    i44 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=test_adj, device=device)
+    o22 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=test_adj, device=device)
+    o33 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=test_adj, device=device)
+    o44 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=test_adj, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel,
+            dim=1,
+            inputs=[i23, i32, i44],
+            outputs=[o22, o33, o44],
+            device=device,
+        )
+
+    assert_np_equal(o22.numpy(), i23.numpy() @ i32.numpy(), tol=tol)
+    assert_np_equal(o33.numpy(), i32.numpy() @ i23.numpy(), tol=tol)
+    assert_np_equal(o44.numpy(), i44.numpy() @ i44.numpy(), tol=tol)
+
+    if test_adj:
+        o22.grad.assign([np.eye(2)])
+        o33.grad.assign([np.eye(3)])
+        o44.grad.assign([np.eye(4)])
+
+        tape.backward()
+
+        assert_np_equal(i23.grad.numpy(), 2.0 * i32.numpy().T, tol=tol)
+        assert_np_equal(i32.grad.numpy(), 2.0 * i23.numpy().T, tol=tol)
+        assert_np_equal(i44.grad.numpy(), 2.0 * i44.numpy().T, tol=tol)
+
+
 def test_subtraction(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
 
@@ -874,7 +945,7 @@ def test_svd(test, device, dtype, register_kernels=False):
     tol = {
         np.float16: 1.0e-3,
         np.float32: 1.0e-6,
-        np.float64: 1.0e-6,
+        np.float64: 1.0e-12,
     }.get(dtype, 0)
 
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
@@ -1898,6 +1969,9 @@ for dtype in np_signed_int_types + np_float_types:
     )
     add_function_test_register_kernel(
         TestMat, f"test_subtraction_{dtype.__name__}", test_subtraction, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestMat, f"test_matmul_{dtype.__name__}", test_matmul, devices=devices, dtype=dtype
     )
 
 add_function_test(
