@@ -303,6 +303,7 @@ double cosh(double);
 float tanhf(float);
 double tanh(double);
 float fmaf(float, float, float);
+double fma(double, double, double);
 
 // stddef.h
 #if defined(_WIN32)
