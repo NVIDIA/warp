@@ -497,37 +497,98 @@ inline CUDA_CALLABLE void adj_indexref(vec_t<Length, Type>* v, int idx,
 
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void augassign_add(vec_t<Length, Type>& v, int idx, Type value)
+inline CUDA_CALLABLE void add_inplace(vec_t<Length, Type>& v, int idx, Type value)
 {
+#ifndef NDEBUG
+    if (idx < 0 || idx >= Length)
+    {
+        printf("vec index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
     v[idx] += value;
 }
 
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_augassign_add(vec_t<Length, Type>& v, int idx, Type value,
+inline CUDA_CALLABLE void adj_add_inplace(vec_t<Length, Type>& v, int idx, Type value,
                                         vec_t<Length, Type>& adj_v, int adj_idx, Type& adj_value)
 {
+#ifndef NDEBUG
+    if (idx < 0 || idx >= Length)
+    {
+        printf("vec index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
     adj_value += adj_v[idx];
 }
 
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void augassign_sub(vec_t<Length, Type>& v, int idx, Type value)
+inline CUDA_CALLABLE void sub_inplace(vec_t<Length, Type>& v, int idx, Type value)
 {
+#ifndef NDEBUG
+    if (idx < 0 || idx >= Length)
+    {
+        printf("vec index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
     v[idx] -= value;
 }
 
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_augassign_sub(vec_t<Length, Type>& v, int idx, Type value,
+inline CUDA_CALLABLE void adj_sub_inplace(vec_t<Length, Type>& v, int idx, Type value,
                                         vec_t<Length, Type>& adj_v, int adj_idx, Type& adj_value)
 {
+#ifndef NDEBUG
+    if (idx < 0 || idx >= Length)
+    {
+        printf("vec index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
     adj_value -= adj_v[idx];
 }
 
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> assign(vec_t<Length, Type>& v, int idx, Type value)
+inline CUDA_CALLABLE void assign_inplace(vec_t<Length, Type>& v, int idx, Type value)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= Length)
+    {
+        printf("vec index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    v[idx] = value;
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_assign_inplace(vec_t<Length, Type>& v, int idx, Type value, vec_t<Length, Type>& adj_v, int& adj_idx, Type& adj_value)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= Length)
+    {
+        printf("vec index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    adj_value += adj_v[idx];
+}
+
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> assign_copy(vec_t<Length, Type>& v, int idx, Type value)
 {
 #ifndef NDEBUG
     if (idx < 0 || idx >= Length)
@@ -543,7 +604,7 @@ inline CUDA_CALLABLE vec_t<Length, Type> assign(vec_t<Length, Type>& v, int idx,
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_assign(vec_t<Length, Type>& v, int idx, Type value, vec_t<Length, Type>& adj_v, int& adj_idx, Type& adj_value, const vec_t<Length, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_assign_copy(vec_t<Length, Type>& v, int idx, Type value, vec_t<Length, Type>& adj_v, int& adj_idx, Type& adj_value, const vec_t<Length, Type>& adj_ret)
 {
 #ifndef NDEBUG
     if (idx < 0 || idx >= Length)

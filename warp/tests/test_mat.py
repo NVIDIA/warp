@@ -1552,13 +1552,12 @@ def test_transform_vector(test, device, dtype, register_kernels=False):
             tape.zero()
 
 
-def test_mat_array_type_indexing(test, device, dtype, register_kernels=False):
+def test_matrix_assign_inplace(test, device, dtype, register_kernels=False):
     np_type = np.dtype(dtype)
     wp_type = wp.types.np_dtype_to_warp_type[np_type]
 
     vec2 = wp.types.vector(length=2, dtype=wp_type)
     mat22 = wp.types.matrix(shape=(2, 2), dtype=wp_type)
-    mat33 = wp.types.matrix(shape=(3, 3), dtype=wp_type)
 
     def mattest_read_write_store(x: wp.array(dtype=wp_type), a: wp.array(dtype=mat22)):
         tid = wp.tid()
@@ -1575,17 +1574,8 @@ def test_mat_array_type_indexing(test, device, dtype, register_kernels=False):
         a[1, 1] = wp_type(3.0)
         x[i, j] = a
 
-    def mattest_in_register_overwrite(x: wp.array2d(dtype=mat22), y: wp.array(dtype=vec2)):
-        i, j = wp.tid()
-
-        a = mat22(wp_type(0.0))
-        a[0] = y[i]
-        a[0, 1] = wp_type(3.0)
-        x[i, j] = a
-
     kernel_read_write_store = getkernel(mattest_read_write_store, suffix=dtype.__name__)
     kernel_in_register = getkernel(mattest_in_register, suffix=dtype.__name__)
-    kernel_in_register_overwrite = getkernel(mattest_in_register_overwrite, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -1614,19 +1604,6 @@ def test_mat_array_type_indexing(test, device, dtype, register_kernels=False):
 
     assert_np_equal(x.numpy(), np.array([[[[1.0, 1.0], [0.0, 3.0]]]], dtype=np_type))
     assert_np_equal(y.grad.numpy(), np.array([[1.0, 1.0]], dtype=np_type))
-
-    tape.reset()
-
-    x = wp.zeros((1, 1), dtype=mat22, device=device, requires_grad=True)
-    y = wp.ones(1, dtype=vec2, device=device, requires_grad=True)
-
-    with tape:
-        wp.launch(kernel_in_register_overwrite, dim=(1, 1), inputs=[x, y], device=device)
-
-    tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
-
-    assert_np_equal(x.numpy(), np.array([[[[1.0, 3.0], [0.0, 0.0]]]], dtype=np_type))
-    assert_np_equal(y.grad.numpy(), np.array([[1.0, 0.0]], dtype=np_type))
 
 
 # Test matrix constructors using explicit type (float16)
@@ -1782,15 +1759,20 @@ def test_matrix_len(test, device):
 
 @wp.kernel
 def matrix_augassign_kernel(
-    a: wp.array(dtype=wp.mat22), b: wp.array(dtype=wp.mat22), c: wp.array(dtype=wp.mat22), d: wp.array(dtype=wp.mat22)
+    a: wp.array(dtype=wp.mat22),
+    b: wp.array(dtype=wp.mat22),
+    x: wp.array(dtype=wp.vec2),
+    c: wp.array(dtype=wp.mat22),
+    d: wp.array(dtype=wp.mat22),
+    y: wp.array(dtype=wp.vec2),
 ):
     i = wp.tid()
 
     m1 = wp.mat22()
     m2 = b[i]
+    v2 = x[i]
 
-    m1[0, 0] += m2[0, 0]
-    m1[0, 1] += m2[0, 1]
+    m1[0] += v2
     m1[1, 0] += m2[1, 0]
     m1[1, 1] += m2[1, 1]
 
@@ -1798,9 +1780,9 @@ def matrix_augassign_kernel(
 
     m3 = wp.mat22()
     m4 = d[i]
+    v4 = y[i]
 
-    m3[0, 0] -= m4[0, 0]
-    m3[0, 1] -= m4[0, 1]
+    m3[0] -= v4
     m3[1, 0] -= m4[1, 0]
     m3[1, 1] -= m4[1, 1]
 
@@ -1808,27 +1790,61 @@ def matrix_augassign_kernel(
 
 
 def test_matrix_augassign(test, device):
-    N = 3
+    N = 1
 
-    a = wp.zeros(N, dtype=wp.mat22, requires_grad=True)
-    b = wp.ones(N, dtype=wp.mat22, requires_grad=True)
+    a = wp.zeros(N, dtype=wp.mat22, requires_grad=True, device=device)
+    b = wp.ones(N, dtype=wp.mat22, requires_grad=True, device=device)
+    x = wp.ones(N, dtype=wp.vec2, requires_grad=True, device=device)
 
-    c = wp.zeros(N, dtype=wp.mat22, requires_grad=True)
-    d = wp.ones(N, dtype=wp.mat22, requires_grad=True)
+    c = wp.zeros(N, dtype=wp.mat22, requires_grad=True, device=device)
+    d = wp.ones(N, dtype=wp.mat22, requires_grad=True, device=device)
+    y = wp.ones(N, dtype=wp.vec2, requires_grad=True, device=device)
 
     tape = wp.Tape()
     with tape:
-        wp.launch(matrix_augassign_kernel, N, inputs=[a, b, c, d])
+        wp.launch(matrix_augassign_kernel, N, inputs=[a, b, x, c, d, y], device=device)
 
     tape.backward(grads={a: wp.ones_like(a), c: wp.ones_like(c)})
 
     assert_np_equal(a.numpy(), wp.ones_like(a).numpy())
     assert_np_equal(a.grad.numpy(), wp.ones_like(a).numpy())
-    assert_np_equal(b.grad.numpy(), wp.ones_like(a).numpy())
+    assert_np_equal(b.grad.numpy(), np.array([[[0, 0], [1, 1]]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[1, 1]], dtype=float))
 
     assert_np_equal(c.numpy(), -wp.ones_like(c).numpy())
     assert_np_equal(c.grad.numpy(), wp.ones_like(c).numpy())
-    assert_np_equal(d.grad.numpy(), -wp.ones_like(d).numpy())
+    assert_np_equal(d.grad.numpy(), np.array([[[0, 0], [-1, -1]]], dtype=float))
+    assert_np_equal(y.grad.numpy(), np.array([[-1, -1]], dtype=float))
+
+
+def test_matrix_assign_copy(test, device):
+    saved_enable_vector_component_overwrites_setting = wp.config.enable_vector_component_overwrites
+    try:
+        wp.config.enable_vector_component_overwrites = True
+
+        @wp.kernel
+        def mat_in_register_overwrite(x: wp.array2d(dtype=wp.mat22), y: wp.array(dtype=wp.vec2)):
+            i, j = wp.tid()
+
+            a = wp.mat22()
+            a[0] = y[i]
+            a[0, 1] = 3.0
+            x[i, j] = a
+
+        x = wp.zeros((1, 1), dtype=wp.mat22, device=device, requires_grad=True)
+        y = wp.ones(1, dtype=wp.vec2, device=device, requires_grad=True)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(mat_in_register_overwrite, dim=(1, 1), inputs=[x, y], device=device)
+
+        tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
+
+        assert_np_equal(x.numpy(), np.array([[[[1.0, 3.0], [0.0, 0.0]]]], dtype=float))
+        assert_np_equal(y.grad.numpy(), np.array([[1.0, 0.0]], dtype=float))
+
+    finally:
+        wp.config.enable_vector_component_overwrites = saved_enable_vector_component_overwrites_setting
 
 
 devices = get_test_devices()
@@ -1961,13 +1977,14 @@ for dtype in np_float_types:
     add_function_test_register_kernel(TestMat, f"test_skew_{dtype.__name__}", test_skew, devices=devices, dtype=dtype)
     add_function_test_register_kernel(
         TestMat,
-        f"test_mat_array_type_indexing_{dtype.__name__}",
-        test_mat_array_type_indexing,
+        f"test_matrix_assign_inplace_{dtype.__name__}",
+        test_matrix_assign_inplace,
         devices=devices,
         dtype=dtype,
     )
 add_function_test(TestMat, "test_matrix_len", test_matrix_len, devices=devices)
 add_function_test(TestMat, "test_matrix_augassign", test_matrix_augassign, devices=devices)
+add_function_test(TestMat, "test_matrix_assign_copy", test_matrix_assign_copy, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

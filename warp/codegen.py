@@ -2515,8 +2515,8 @@ class Adjoint:
                             f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
                         )
                 else:
-                    if adj.builder_options.get("enable_backward", True):
-                        out = adj.add_builtin_call("assign", [target, *indices, rhs])
+                    if warp.config.enable_vector_component_overwrites:
+                        out = adj.add_builtin_call("assign_copy", [target, *indices, rhs])
 
                         # re-point target symbol to out var
                         for id in adj.symbols:
@@ -2524,8 +2524,7 @@ class Adjoint:
                                 adj.symbols[id] = out
                                 break
                     else:
-                        attr = adj.add_builtin_call("index", [target, *indices])
-                        adj.add_builtin_call("store", [attr, rhs])
+                        adj.add_builtin_call("assign_inplace", [target, *indices, rhs])
 
             else:
                 raise WarpCodegenError(
@@ -2568,8 +2567,8 @@ class Adjoint:
                     attr = adj.add_builtin_call("indexref", [aggregate, index])
                     adj.add_builtin_call("store", [attr, rhs])
                 else:
-                    if adj.builder_options.get("enable_backward", True):
-                        out = adj.add_builtin_call("assign", [aggregate, index, rhs])
+                    if warp.config.enable_vector_component_overwrites:
+                        out = adj.add_builtin_call("assign_copy", [aggregate, index, rhs])
 
                         # re-point target symbol to out var
                         for id in adj.symbols:
@@ -2577,8 +2576,7 @@ class Adjoint:
                                 adj.symbols[id] = out
                                 break
                     else:
-                        attr = adj.add_builtin_call("index", [aggregate, index])
-                        adj.add_builtin_call("store", [attr, rhs])
+                        adj.add_builtin_call("assign_inplace", [aggregate, index, rhs])
 
             else:
                 attr = adj.emit_Attribute(lhs)
@@ -2684,10 +2682,12 @@ class Adjoint:
 
             elif type_is_vector(target_type) or type_is_quaternion(target_type) or type_is_matrix(target_type):
                 if isinstance(node.op, ast.Add):
-                    adj.add_builtin_call("augassign_add", [target, *indices, rhs])
+                    adj.add_builtin_call("add_inplace", [target, *indices, rhs])
                 elif isinstance(node.op, ast.Sub):
-                    adj.add_builtin_call("augassign_sub", [target, *indices, rhs])
+                    adj.add_builtin_call("sub_inplace", [target, *indices, rhs])
                 else:
+                    if warp.config.verbose:
+                        print(f"Warning: in-place op {node.op} is not differentiable")
                     make_new_assign_statement()
                     return
 

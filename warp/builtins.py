@@ -5122,33 +5122,51 @@ add_builtin(
 )
 
 
-def vector_assign_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
-    vec_type = arg_types["a"]
-    return vec_type
-
-
 # implements vector[index] = value
 add_builtin(
-    "assign",
+    "assign_inplace",
     input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
-    value_func=vector_assign_value_func,
+    value_type=None,
     hidden=True,
     group="Utility",
 )
 
 # implements quaternion[index] = value
 add_builtin(
-    "assign",
+    "assign_inplace",
+    input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
+    value_type=None,
+    hidden=True,
+    group="Utility",
+)
+
+
+def vector_assign_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    vec_type = arg_types["a"]
+    return vec_type
+
+
+# implements vector[index] = value, performs a copy internally if wp.config.enable_vector_component_overwrites is True
+add_builtin(
+    "assign_copy",
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
+    value_func=vector_assign_value_func,
+    hidden=True,
+    group="Utility",
+)
+
+# implements quaternion[index] = value, performs a copy internally if wp.config.enable_vector_component_overwrites is True
+add_builtin(
+    "assign_copy",
     input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
     value_func=vector_assign_value_func,
     hidden=True,
     group="Utility",
 )
 
-
 # implements vector[idx] += scalar
 add_builtin(
-    "augassign_add",
+    "add_inplace",
     input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
     value_type=None,
     hidden=True,
@@ -5157,7 +5175,7 @@ add_builtin(
 
 # implements quaternion[idx] += scalar
 add_builtin(
-    "augassign_add",
+    "add_inplace",
     input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
     value_type=None,
     hidden=True,
@@ -5166,7 +5184,7 @@ add_builtin(
 
 # implements vector[idx] -= scalar
 add_builtin(
-    "augassign_sub",
+    "sub_inplace",
     input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
     value_type=None,
     hidden=True,
@@ -5175,7 +5193,7 @@ add_builtin(
 
 # implements quaternion[idx] -= scalar
 add_builtin(
-    "augassign_sub",
+    "sub_inplace",
     input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
     value_type=None,
     hidden=True,
@@ -5219,11 +5237,6 @@ add_builtin(
 )
 
 
-def matrix_assign_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
-    mat_type = arg_types["a"]
-    return mat_type
-
-
 def matrix_vector_sametype(arg_types: Mapping[str, Any]):
     mat_size = arg_types["a"]._shape_[0]
     vec_size = arg_types["value"]._length_
@@ -5234,7 +5247,33 @@ def matrix_vector_sametype(arg_types: Mapping[str, Any]):
 
 # implements matrix[i,j] = scalar
 add_builtin(
-    "assign",
+    "assign_inplace",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
+    value_type=None,
+    hidden=True,
+    group="Utility",
+)
+
+
+# implements matrix[i] = vector
+add_builtin(
+    "assign_inplace",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
+    constraint=matrix_vector_sametype,
+    value_type=None,
+    hidden=True,
+    group="Utility",
+)
+
+
+def matrix_assign_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    mat_type = arg_types["a"]
+    return mat_type
+
+
+# implements matrix[i,j] = scalar
+add_builtin(
+    "assign_copy",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
     value_func=matrix_assign_value_func,
     hidden=True,
@@ -5244,7 +5283,7 @@ add_builtin(
 
 # implements matrix[i] = vector
 add_builtin(
-    "assign",
+    "assign_copy",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
     constraint=matrix_vector_sametype,
     value_func=matrix_assign_value_func,
@@ -5255,8 +5294,19 @@ add_builtin(
 
 # implements matrix[i,j] += scalar
 add_builtin(
-    "augassign_add",
+    "add_inplace",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
+    value_type=None,
+    hidden=True,
+    group="Utility",
+)
+
+
+# implements matrix[i] += vector
+add_builtin(
+    "add_inplace",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
+    constraint=matrix_vector_sametype,
     value_type=None,
     hidden=True,
     group="Utility",
@@ -5265,8 +5315,18 @@ add_builtin(
 
 # implements matrix[i,j] -= scalar
 add_builtin(
-    "augassign_sub",
+    "sub_inplace",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
+    value_type=None,
+    hidden=True,
+    group="Utility",
+)
+
+
+# implements matrix[i] -= vector
+add_builtin(
+    "sub_inplace",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
     value_type=None,
     hidden=True,
     group="Utility",
