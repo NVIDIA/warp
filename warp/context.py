@@ -3386,6 +3386,7 @@ class Runtime:
                 ctypes.POINTER(ctypes.c_int),  # tpl_cols
                 ctypes.c_void_p,  # tpl_values
                 ctypes.c_bool,  # prune_numerical_zeros
+                ctypes.c_bool,  # masked
                 ctypes.POINTER(ctypes.c_int),  # bsr_offsets
                 ctypes.POINTER(ctypes.c_int),  # bsr_columns
                 ctypes.c_void_p,  # bsr_values

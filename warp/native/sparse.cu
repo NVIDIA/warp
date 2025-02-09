@@ -52,10 +52,41 @@ template <typename T> struct BsrBlockIsNotZero
     }
 };
 
+struct BsrBlockInMask
+{
+    const int* bsr_offsets;
+    const int* bsr_columns;
+
+    CUDA_CALLABLE_DEVICE bool operator()(int row, int col) const
+    {
+        if (bsr_offsets == nullptr)
+            return true;
+
+        int lower = bsr_offsets[row];
+        int upper = bsr_offsets[row + 1] - 1;
+
+        while (lower < upper)
+        {
+            const int mid = lower + (upper - lower) / 2;
+
+            if (bsr_columns[mid] < col)
+            {
+                lower = mid + 1;
+            }
+            else
+            {
+                upper = mid;
+            }
+        }
+
+        return lower == upper && (bsr_columns[lower] == col);
+    }
+};
+
 template <typename T>
 __global__ void bsr_fill_triplet_key_values(const int nnz, const int nrow, const int* tpl_rows, const int* tpl_columns,
-                                            const BsrBlockIsNotZero<T> nonZero, uint32_t* block_indices,
-                                            BsrRowCol* tpl_row_col)
+                                            const BsrBlockIsNotZero<T> nonZero, const BsrBlockInMask mask,
+                                            uint32_t* block_indices, BsrRowCol* tpl_row_col)
 {
     int block = blockIdx.x * blockDim.x + threadIdx.x;
     if (block >= nnz)
@@ -65,7 +96,8 @@ __global__ void bsr_fill_triplet_key_values(const int nnz, const int nrow, const
     const int col = tpl_columns[block];
     const bool is_valid = row >= 0 && row < nrow;
 
-    const BsrRowCol row_col = is_valid && nonZero(block) ? bsr_combine_row_col(row, col) : PRUNED_ROWCOL;
+    const BsrRowCol row_col =
+        is_valid && nonZero(block) && mask(row, col) ? bsr_combine_row_col(row, col) : PRUNED_ROWCOL;
     tpl_row_col[block] = row_col;
     block_indices[block] = block;
 }
@@ -113,7 +145,7 @@ __global__ void bsr_find_row_offsets(uint32_t row_count, const T* d_nnz, const B
 }
 
 template <typename T>
-__global__ void bsr_merge_blocks(const uint32_t* d_nnz, int block_size, const uint32_t* block_offsets,
+__global__ void bsr_merge_blocks(const int* d_nnz, int block_size, const uint32_t* block_offsets,
                                  const uint32_t* sorted_block_indices, const BsrRowCol* unique_row_cols,
                                  const T* tpl_values, int* bsr_cols, T* bsr_values)
 
@@ -154,8 +186,8 @@ __global__ void bsr_merge_blocks(const uint32_t* d_nnz, int block_size, const ui
 template <typename T>
 void bsr_matrix_from_triplets_device(const int rows_per_block, const int cols_per_block, const int row_count,
                                      const int nnz, const int* tpl_rows, const int* tpl_columns, const T* tpl_values,
-                                     const bool prune_numerical_zeros, int* bsr_offsets, int* bsr_columns,
-                                     T* bsr_values, int* bsr_nnz, void* bsr_nnz_event)
+                                     const bool prune_numerical_zeros, const bool masked, int* bsr_offsets,
+                                     int* bsr_columns, T* bsr_values, int* bsr_nnz, void* bsr_nnz_event)
 {
     const int block_size = rows_per_block * cols_per_block;
 
@@ -177,8 +209,9 @@ void bsr_matrix_from_triplets_device(const int rows_per_block, const int cols_pe
 
     // Combine rows and columns so we can sort on them both
     BsrBlockIsNotZero<T> isNotZero{block_size, prune_numerical_zeros ? tpl_values : nullptr};
+    BsrBlockInMask mask{masked ? bsr_offsets : nullptr, bsr_columns};
     wp_launch_device(WP_CURRENT_CONTEXT, bsr_fill_triplet_key_values, nnz,
-                     (nnz, row_count, tpl_rows, tpl_columns, isNotZero, d_keys.Current(), d_values.Current()));
+                     (nnz, row_count, tpl_rows, tpl_columns, isNotZero, mask, d_keys.Current(), d_values.Current()));
 
     // Sort
     {
@@ -205,7 +238,7 @@ void bsr_matrix_from_triplets_device(const int rows_per_block, const int cols_pe
 
     if (bsr_nnz)
     {
-        // Copy nnz to host, and record an event for the competed transfer if desired
+        // Copy nnz to host, and record an event for the completed transfer if desired
 
         memcpy_d2h(WP_CURRENT_CONTEXT, bsr_nnz, bsr_offsets + row_count, sizeof(int), stream);
 
@@ -227,7 +260,7 @@ void bsr_matrix_from_triplets_device(const int rows_per_block, const int cols_pe
 
     // Accumulate repeated blocks and set column indices
     wp_launch_device(WP_CURRENT_CONTEXT, bsr_merge_blocks, nnz,
-                     (unique_triplet_count, block_size, d_keys.Alternate(), d_keys.Current(), d_values.Alternate(),
+                     (bsr_offsets + row_count, block_size, d_keys.Alternate(), d_keys.Current(), d_values.Alternate(),
                       tpl_values, bsr_columns, bsr_values));
 }
 
@@ -443,22 +476,24 @@ void bsr_transpose_device(int rows_per_block, int cols_per_block, int row_count,
 
 void bsr_matrix_from_triplets_float_device(int rows_per_block, int cols_per_block, int row_count, int nnz,
                                            int* tpl_rows, int* tpl_columns, void* tpl_values,
-                                           bool prune_numerical_zeros, int* bsr_offsets, int* bsr_columns,
+                                           bool prune_numerical_zeros, bool masked, int* bsr_offsets, int* bsr_columns,
                                            void* bsr_values, int* bsr_nnz, void* bsr_nnz_event)
 {
-    return bsr_matrix_from_triplets_device<float>(
-        rows_per_block, cols_per_block, row_count, nnz, tpl_rows, tpl_columns, static_cast<const float*>(tpl_values),
-        prune_numerical_zeros, bsr_offsets, bsr_columns, static_cast<float*>(bsr_values), bsr_nnz, bsr_nnz_event);
+    return bsr_matrix_from_triplets_device<float>(rows_per_block, cols_per_block, row_count, nnz, tpl_rows, tpl_columns,
+                                                  static_cast<const float*>(tpl_values), prune_numerical_zeros, masked,
+                                                  bsr_offsets, bsr_columns, static_cast<float*>(bsr_values), bsr_nnz,
+                                                  bsr_nnz_event);
 }
 
 void bsr_matrix_from_triplets_double_device(int rows_per_block, int cols_per_block, int row_count, int nnz,
                                             int* tpl_rows, int* tpl_columns, void* tpl_values,
-                                            bool prune_numerical_zeros, int* bsr_offsets, int* bsr_columns,
+                                            bool prune_numerical_zeros, bool masked, int* bsr_offsets, int* bsr_columns,
                                             void* bsr_values, int* bsr_nnz, void* bsr_nnz_event)
 {
-    return bsr_matrix_from_triplets_device<double>(
-        rows_per_block, cols_per_block, row_count, nnz, tpl_rows, tpl_columns, static_cast<const double*>(tpl_values),
-        prune_numerical_zeros, bsr_offsets, bsr_columns, static_cast<double*>(bsr_values), bsr_nnz, bsr_nnz_event);
+    return bsr_matrix_from_triplets_device<double>(rows_per_block, cols_per_block, row_count, nnz, tpl_rows,
+                                                   tpl_columns, static_cast<const double*>(tpl_values),
+                                                   prune_numerical_zeros, masked, bsr_offsets, bsr_columns,
+                                                   static_cast<double*>(bsr_values), bsr_nnz, bsr_nnz_event);
 }
 
 void bsr_transpose_float_device(int rows_per_block, int cols_per_block, int row_count, int col_count, int nnz,
