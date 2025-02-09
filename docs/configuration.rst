@@ -124,42 +124,46 @@ For example, compilation of backward passes for the kernel in an entire module c
 
 The options for a module can also be queried using ``wp.get_module_options()``.
 
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-| Field              | Type    |Default Value| Description                                                              |
-+====================+=========+=============+==========================================================================+
-|``mode``            | String  | Global      | Controls whether to compile the module's kernels in debug or release     |
-|                    |         | setting     | mode by default. Valid choices are ``"release"`` or ``"debug"``.         |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``max_unroll``      | Integer | Global      | The maximum fixed-size loop to unroll. Note that ``max_unroll`` does not |
-|                    |         | setting     | consider the total number of iterations in nested loops. This can result |
-|                    |         |             | in a large amount of automatically generated code if each nested loop is |
-|                    |         |             | below the ``max_unroll`` threshold.                                      |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``enable_backward`` | Boolean | Global      | If ``True``, backward passes of kernels will be compiled by default.     |
-|                    |         | setting     | Valid choices are ``"release"`` or ``"debug"``.                          |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``fast_math``       | Boolean | ``False``   | If ``True``, CUDA kernels will be compiled with the ``--use_fast_math``  |
-|                    |         |             | compiler option, which enables some fast math operations that are faster |
-|                    |         |             | but less accurate.                                                       |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``fuse_fp``         | Boolean | ``True``    | If ``True``, allow compilers to emit fused floating point operations     |
-|                    |         |             | such as fused-multiply-add. This may improve numerical accuracy and      |
-|                    |         |             | is generally recommended. Setting to ``False`` can help ensuring         |
-|                    |         |             | that functionally equivalent kernels will produce identical results      |
-|                    |         |             | unaffected by the presence or absence of fused operations.               |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``lineinfo``        | Boolean | ``False``   | If ``True``, CUDA kernels will be compiled with the                      |
-|                    |         |             | ``--generate-line-info`` compiler option, which generates line-number    |
-|                    |         |             | information for device code, e.g. to allow NVIDIA Nsight Compute to      |
-|                    |         |             | correlate CUDA-C source and SASS. Line-number information is always      |
-|                    |         |             | included when compiling kernels in ``"debug"`` mode regardless of this   |
-|                    |         |             | setting.                                                                 |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``cuda_output``     | String  | ``None``    | The preferred CUDA output format for kernels. Valid choices are ``None``,|
-|                    |         |             | ``"ptx"``, and ``"cubin"``. If ``None``, a format will be determined     |
-|                    |         |             | automatically. The module-level setting takes precedence over the global |
-|                    |         |             | setting.                                                                 |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+| Field                                | Type    |Default Value| Description                                                              |
++======================================+=========+=============+==========================================================================+
+|``mode``                              | String  | Global      | Controls whether to compile the module's kernels in debug or release     |
+|                                      |         | setting     | mode by default. Valid choices are ``"release"`` or ``"debug"``.         |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``max_unroll``                        | Integer | Global      | The maximum fixed-size loop to unroll. Note that ``max_unroll`` does not |
+|                                      |         | setting     | consider the total number of iterations in nested loops. This can result |
+|                                      |         |             | in a large amount of automatically generated code if each nested loop is |
+|                                      |         |             | below the ``max_unroll`` threshold.                                      |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``enable_backward``                   | Boolean | Global      | If ``True``, backward passes of kernels will be compiled by default.     |
+|                                      |         | setting     | Valid choices are ``"release"`` or ``"debug"``.                          |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``fast_math``                         | Boolean | ``False``   | If ``True``, CUDA kernels will be compiled with the ``--use_fast_math``  |
+|                                      |         |             | compiler option, which enables some fast math operations that are faster |
+|                                      |         |             | but less accurate.                                                       |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``fuse_fp``                           | Boolean | ``True``    | If ``True``, allow compilers to emit fused floating point operations     |
+|                                      |         |             | such as fused-multiply-add. This may improve numerical accuracy and      |
+|                                      |         |             | is generally recommended. Setting to ``False`` can help ensuring         |
+|                                      |         |             | that functionally equivalent kernels will produce identical results      |
+|                                      |         |             | unaffected by the presence or absence of fused operations.               |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``lineinfo``                          | Boolean | ``False``   | If ``True``, CUDA kernels will be compiled with the                      |
+|                                      |         |             | ``--generate-line-info`` compiler option, which generates line-number    |
+|                                      |         |             | information for device code, e.g. to allow NVIDIA Nsight Compute to      |
+|                                      |         |             | correlate CUDA-C source and SASS. Line-number information is always      |
+|                                      |         |             | included when compiling kernels in ``"debug"`` mode regardless of this   |
+|                                      |         |             | setting.                                                                 |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``cuda_output``                       | String  | ``None``    | The preferred CUDA output format for kernels. Valid choices are ``None``,|
+|                                      |         |             | ``"ptx"``, and ``"cubin"``. If ``None``, a format will be determined     |
+|                                      |         |             | automatically. The module-level setting takes precedence over the global |
+|                                      |         |             | setting.                                                                 |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|`enable_vector_component_overwrites```| Boolean | ``False``   | If ``True``, vector components can be overwritten in kernels and         |
+|                                      |         |             | gradients will still be computed correctly, but compilation time may     |
+|                                      |         |             | significantly increase.                                                  |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 
 Kernel Settings
 ---------------

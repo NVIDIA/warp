@@ -42,6 +42,10 @@ quiet: bool = False
 verify_autograd_array_access: bool = False
 """print warnings related to array overwrites that may result in incorrect gradients"""
 
+enable_vector_component_overwrites: bool = False
+"""Normally local vector/matrix/quaternion components may only be written to once for gradients to be computed
+correctly. This setting permits component overwrites, but may significantly increase kernel compilation time."""
+
 cache_kernels: bool = True
 """If `True`, kernels that have already been compiled from previous application launches will not be recompiled."""
 
@@ -55,7 +59,7 @@ ptx_target_arch: int = 75
 """Target architecture for PTX generation, defaults to the lowest architecture that supports all of Warp's features."""
 
 enable_backward: bool = True
-"""Whether to compiler the backward passes of the kernels."""
+"""Whether to compile the backward passes of kernels."""
 
 llvm_cuda: bool = False
 """Use Clang/LLVM instead of NVRTC to compile CUDA."""
