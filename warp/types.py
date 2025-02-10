@@ -12,7 +12,21 @@ import ctypes
 import inspect
 import struct
 import zlib
-from typing import Any, Callable, Generic, List, Literal, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+)
 
 import numpy as np
 import numpy.typing as npt
@@ -1457,21 +1471,21 @@ def types_equal(a, b, match_generic=False):
             if a_length is None or b_length is None or a_length == b_length:
                 return True
 
-    a_origin = warp.codegen.get_type_origin(a)
-    b_origin = warp.codegen.get_type_origin(b)
+    a_origin = get_origin(a)
+    b_origin = get_origin(b)
     if a_origin is tuple and b_origin is tuple:
-        a_args = warp.codegen.get_type_args(a)
-        b_args = warp.codegen.get_type_args(b)
+        a_args = get_args(a)
+        b_args = get_args(b)
         if len(a_args) == len(b_args) and all(
             scalars_equal(x, y, match_generic=match_generic) for x, y in zip(a_args, b_args)
         ):
             return True
     elif a_origin is tuple and isinstance(b, Sequence):
-        a_args = warp.codegen.get_type_args(a)
+        a_args = get_args(a)
         if len(a_args) == len(b) and all(scalars_equal(x, y, match_generic=match_generic) for x, y in zip(a_args, b)):
             return True
     elif b_origin is tuple and isinstance(a, Sequence):
-        b_args = warp.codegen.get_type_args(b)
+        b_args = get_args(b)
         if len(b_args) == len(a) and all(scalars_equal(x, y, match_generic=match_generic) for x, y in zip(b_args, a)):
             return True
 

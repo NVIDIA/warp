@@ -26,7 +26,7 @@ import typing
 import weakref
 from copy import copy as shallowcopy
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, get_args, get_origin
 
 import numpy as np
 
@@ -6194,8 +6194,8 @@ def type_str(t):
             return f"Transformation[{type_str(t._wp_scalar_type_)}]"
 
         raise TypeError("Invalid vector or matrix dimensions")
-    elif warp.codegen.get_type_origin(t) in (list, tuple):
-        args_repr = ", ".join(type_str(x) for x in warp.codegen.get_type_args(t))
+    elif get_origin(t) in (list, tuple):
+        args_repr = ", ".join(type_str(x) for x in get_args(t))
         return f"{t._name}[{args_repr}]"
     elif t is Ellipsis:
         return "..."
