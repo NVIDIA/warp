@@ -26,6 +26,7 @@
 - Fix per-vertex colors not being correctly written out to USD meshes when a constant color is being passed.
 - Fix rendering of arrows with different `up_axis`, `color` in `OpenGLRenderer` ([GH-448](https://github.com/NVIDIA/warp/issues/448)).
 - Fix fp64 accuracy of thread-level matrix-matrix multiplications ([GH-489](https://github.com/NVIDIA/warp/issues/489))
+- Fix an error causing `verify_autograd_array_access` config setting to fail to detect overwrites in generic Warp functions.
 
 ## [1.6.0] - 2025-02-03
 

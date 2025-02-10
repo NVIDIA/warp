@@ -1,6 +1,7 @@
 import contextlib
 import io
 import unittest
+from typing import Any
 
 import numpy as np
 
@@ -162,18 +163,18 @@ def test_kernel_writeread_kernel_write(test, device):
 
 
 @wp.func
-def read_func(a: wp.array(dtype=float), idx: int):
+def read_func(a: wp.array(dtype=Any), idx: int):
     x = a[idx]
     return x
 
 
 @wp.func
-def read_return_func(b: wp.array(dtype=float), idx: int):
+def read_return_func(b: wp.array(dtype=Any), idx: int):
     return 1.0, b[idx]
 
 
 @wp.func
-def write_func(c: wp.array(dtype=float), idx: int):
+def write_func(c: wp.array(dtype=Any), idx: int):
     c[idx] = 1.0
 
 
