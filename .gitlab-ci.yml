@@ -221,11 +221,10 @@ linux-aarch64 test:
   extends:
     - .omni_devplat_arm_docker_gpu
     - .test_common_main
-  allow_failure: true # Unsure of stability and availability of devplat ARM GPU runners
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
-    - python -m pip install coverage[toml]
+    - python -m pip install coverage[toml]==7.6.10  # 7.6.11 seems to have a bug
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
@@ -234,21 +233,19 @@ linux-aarch64 test jetson:
   image: ubuntu:22.04
   needs: [linux-aarch64 build]
   extends:
-    - .test_common_main
+    - .save_test_report_artifact
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH 
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - when: manual # If not auto-triggered, allow any pipeline to run this job manually
-  allow_failure: true # Unsure of stability of Jetson runner for now
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
-    - python -m pip install coverage[toml]
     - python -m pip install -U "jax[cuda12]"
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - gpu/orin
 
