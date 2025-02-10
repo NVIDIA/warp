@@ -240,6 +240,7 @@ linux-aarch64 test jetson:
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - when: manual # If not auto-triggered, allow any pipeline to run this job manually
+      allow_failure: true
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
