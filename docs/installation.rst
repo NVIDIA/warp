@@ -11,6 +11,19 @@ The easiest way to install Warp is from `PyPI <https://pypi.org/project/warp-lan
 
 .. _GitHub Installation:
 
+Nightly Builds
+--------------
+
+Nightly builds of Warp from the ``main`` branch are available on the `NVIDIA Package Index <https://pypi.nvidia.com/warp-lang/>`_.
+
+To install the latest nightly build, use the following command:
+
+.. code-block:: sh
+
+    $ pip install -U --pre warp-lang --extra-index-url=https://pypi.nvidia.com/
+
+Note that the nightly builds are built with the CUDA 12 runtime and are not published for macOS.
+
 Installing from GitHub Releases
 -------------------------------
 
