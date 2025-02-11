@@ -62,7 +62,9 @@ class Transformation(Generic[Float]):
 
 
 class Array(Generic[DType]):
-    pass
+    device: Optional[warp.context.Device]
+    dtype: type
+    size: int
 
 
 int_tuple_type_hints = {
@@ -1145,7 +1147,7 @@ ARRAY_TYPE_FABRIC_INDEXED = 3
 class launch_bounds_t(ctypes.Structure):
     _fields_ = [("shape", ctypes.c_int32 * LAUNCH_MAX_DIMS), ("ndim", ctypes.c_int32), ("size", ctypes.c_size_t)]
 
-    def __init__(self, shape):
+    def __init__(self, shape: Sequence[int]):
         if isinstance(shape, int):
             # 1d launch
             self.ndim = 1
@@ -1266,7 +1268,7 @@ _type_size_cache = {
 }
 
 
-def type_size_in_bytes(dtype):
+def type_size_in_bytes(dtype: type) -> int:
     size = _type_size_cache.get(dtype)
 
     if size is None:
@@ -1285,7 +1287,7 @@ def type_size_in_bytes(dtype):
     return size
 
 
-def type_to_warp(dtype):
+def type_to_warp(dtype: type) -> type:
     if dtype == float:
         return float32
     elif dtype == int:
@@ -1296,7 +1298,7 @@ def type_to_warp(dtype):
         return dtype
 
 
-def type_typestr(dtype):
+def type_typestr(dtype: type) -> str:
     if dtype == bool:
         return "|b1"
     elif dtype == float16:
@@ -1386,25 +1388,25 @@ value_types = (int, float, builtins.bool) + scalar_types
 
 
 # returns true for all value types (int, float, bool, scalars, vectors, matrices)
-def type_is_value(x):
+def type_is_value(x: Any) -> builtins.bool:
     return x in value_types or hasattr(x, "_wp_scalar_type_")
 
 
 # equivalent of the above but for values
-def is_int(x):
+def is_int(x: Any) -> builtins.bool:
     return type_is_int(type(x))
 
 
-def is_float(x):
+def is_float(x: Any) -> builtins.bool:
     return type_is_float(type(x))
 
 
-def is_value(x):
+def is_value(x: Any) -> builtins.bool:
     return type_is_value(type(x))
 
 
-# returns true if the passed *instance* is one of the array types
-def is_array(a):
+def is_array(a) -> builtins.bool:
+    """Return true if the passed *instance* is one of the array types."""
     return isinstance(a, array_types)
 
 
@@ -1606,7 +1608,7 @@ def array_ctype_from_interface(interface: dict, dtype=None, owner=None):
     return array_ctype
 
 
-class array(Array):
+class array(Array[DType]):
     """A fixed-size multi-dimensional array containing values of the same type.
 
     Attributes:
@@ -1635,21 +1637,21 @@ class array(Array):
 
     def __init__(
         self,
-        data: Optional[Union[List, Tuple, npt.NDArray]] = None,
-        dtype: Union[DType, Any] = Any,
-        shape: Optional[Tuple[int, ...]] = None,
+        data: Union[List, Tuple, npt.NDArray, None] = None,
+        dtype: Any = Any,
+        shape: Union[int, Tuple[int, ...], List[int], None] = None,
         strides: Optional[Tuple[int, ...]] = None,
         length: Optional[int] = None,
         ptr: Optional[int] = None,
         capacity: Optional[int] = None,
         device=None,
-        pinned: bool = False,
-        copy: bool = True,
-        owner: bool = False,  # deprecated - pass deleter instead
+        pinned: builtins.bool = False,
+        copy: builtins.bool = True,
+        owner: builtins.bool = False,  # deprecated - pass deleter instead
         deleter: Optional[Callable[[int, int], None]] = None,
         ndim: Optional[int] = None,
         grad: Optional[array] = None,
-        requires_grad: bool = False,
+        requires_grad: builtins.bool = False,
     ):
         """Constructs a new Warp array object
 
@@ -2947,7 +2949,7 @@ def from_ipc_handle(
 
 # A base class for non-contiguous arrays, providing the implementation of common methods like
 # contiguous(), to(), numpy(), list(), assign(), zero_(), and fill_().
-class noncontiguous_array_base(Generic[T]):
+class noncontiguous_array_base(Array[T]):
     def __init__(self, array_type_id):
         self.type_id = array_type_id
         self.is_contiguous = False
@@ -3044,12 +3046,18 @@ def check_index_array(indices, expected_device):
         raise ValueError(f"Index array device ({indices.device} does not match data array device ({expected_device}))")
 
 
-class indexedarray(noncontiguous_array_base[T]):
+class indexedarray(noncontiguous_array_base):
     # member attributes available during code-gen (e.g.: d = arr.shape[0])
     # (initialized when needed)
     _vars = None
 
-    def __init__(self, data: array = None, indices: Union[array, List[array]] = None, dtype=None, ndim=None):
+    def __init__(
+        self,
+        data: Optional[array] = None,
+        indices: Union[array, List[array], None] = None,
+        dtype=None,
+        ndim: Optional[int] = None,
+    ):
         super().__init__(ARRAY_TYPE_INDEXED)
 
         # canonicalize types
@@ -3642,7 +3650,7 @@ class Volume:
         instance.id = None
         return instance
 
-    def __init__(self, data: array, copy: bool = True):
+    def __init__(self, data: array, copy: builtins.bool = True):
         """Class representing a sparse grid.
 
         Args:
@@ -5129,7 +5137,7 @@ simple_type_codes = {
 }
 
 
-def get_type_code(arg_type):
+def get_type_code(arg_type: type) -> str:
     if arg_type == Any:
         # special case for generics
         # note: since Python 3.11 Any is a type, so we check for it first
@@ -5193,8 +5201,8 @@ def get_type_code(arg_type):
         raise TypeError(f"Unrecognized type '{arg_type}'")
 
 
-def get_signature(arg_types, func_name=None, arg_names=None):
-    type_codes = []
+def get_signature(arg_types: List[type], func_name: Optional[str] = None, arg_names: Optional[List[str]] = None) -> str:
+    type_codes: List[str] = []
     for i, arg_type in enumerate(arg_types):
         try:
             type_codes.append(get_type_code(arg_type))
