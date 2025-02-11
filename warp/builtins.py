@@ -32,7 +32,7 @@ def sametypes(arg_types: Mapping[str, Any]):
     return all(types_equal(arg_type_0, t) for t in arg_types_iter)
 
 
-def sametypes_create_value_func(default):
+def sametypes_create_value_func(default: TypeVar):
     def fn(arg_types, arg_values):
         if arg_types is None:
             return default
@@ -390,7 +390,7 @@ add_builtin(
 )
 
 
-def scalar_infer_type(arg_types: Mapping[str, type]):
+def scalar_infer_type(arg_types: Union[Mapping[str, type], Tuple[type, ...], None]):
     if arg_types is None:
         return Scalar
 
