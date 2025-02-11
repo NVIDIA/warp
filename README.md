@@ -51,6 +51,18 @@ the `pip install` command, e.g.
 
 The `--force-reinstall` option may need to be used to overwrite a previous installation.
 
+### Nightly Builds
+
+Nightly builds of Warp from the `main` branch are available on the [NVIDIA Package Index](https://pypi.nvidia.com/warp-lang/).
+
+To install the latest nightly build, use the following command:
+
+```text
+pip install -U --pre warp-lang --extra-index-url=https://pypi.nvidia.com/
+```
+
+Note that the nightly builds are built with the CUDA 12 runtime and are not published for macOS.
+
 ### CUDA Requirements
 
 * Warp packages built with CUDA Toolkit 11.x require NVIDIA driver 470 or newer.
