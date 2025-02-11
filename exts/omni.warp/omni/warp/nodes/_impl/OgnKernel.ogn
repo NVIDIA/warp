@@ -6,7 +6,7 @@
         "categories": ["warp"],
         "language": "Python",
         "uiName": "Warp Kernel",
-        "exclude": ["usd"],
+        "exclude": ["tests", "usd"],
         "inputs": {
             "execIn": {
                 "type": "execution",
