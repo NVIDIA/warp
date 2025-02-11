@@ -219,7 +219,7 @@ linux-aarch64 test:
   image: ubuntu:22.04
   needs: [linux-aarch64 build]
   extends:
-    - .omni_devplat_arm_docker_gpu
+    - .runner-test-linux-aarch64  # TODO: Change to .omni_devplat_arm_docker_gpu
     - .test_common_main
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"

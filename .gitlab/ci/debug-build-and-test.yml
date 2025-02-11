@@ -117,7 +117,7 @@ mac-x86_64 build:
   image: ubuntu:22.04
   needs: [linux-aarch64 build]
   extends:
-    - .runner-test-linux-aarch64  # TODO: Change to GPU runners
+    - .runner-test-linux-aarch64  # TODO: Change to .omni_devplat_arm_docker_gpu
     - .save_test_report_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
