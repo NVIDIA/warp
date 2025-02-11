@@ -199,6 +199,26 @@ create pypi wheels:
     when: always
 
 # Creates an artifact suitable for publishing the Kit extensions
+create linux-aarch64 kit artifacts:
+  stage: package
+  needs:
+    - linux-aarch64 build
+  extends:
+    - .runner-utility-linux-x86_64
+  before_script:
+    - apt-get update && apt-get install zip --no-install-recommends -y
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-aarch64/*.so warp/bin/
+    - rm -r warp/bin/linux-aarch64/
+  script:
+    - !reference [.snippets, prepare-kit-artifacts]
+    - zip -r kit-extensions-linux-aarch64.zip exts/
+  artifacts:
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    expose_as: "Kit Extensions linux-aarch64"
+    paths:
+      - kit-extensions-linux-aarch64.zip
+
 create linux-x86_64 kit artifacts:
   stage: package
   needs:
@@ -297,7 +317,11 @@ publish wheels to gitlab package registry:
 # Uploads the extensions to packman.
 publish extensions to packman:
   stage: deploy
-  needs: ["check extensions public API", "create linux-x86_64 kit artifacts", "create windows-x86_64 kit artifacts"]
+  needs:
+    - check extensions public API
+    - create linux-aarch64 kit artifacts
+    - create linux-x86_64 kit artifacts
+    - create windows-x86_64 kit artifacts
   extends:
     - .runner-utility-linux-x86_64
     - .osec:vault:v3:prod_token_job
@@ -312,6 +336,8 @@ publish extensions to packman:
     url: http://omniexts.nvidia.com/omni.warp
     deployment_tier: production
   before_script:
+    - mkdir -p _build/linux-aarch64/release
+    - unzip kit-extensions-linux-aarch64.zip -d _build/linux-aarch64/release
     - mkdir -p _build/linux-x86_64/release
     - unzip kit-extensions-linux-x86_64.zip -d _build/linux-x86_64/release
     - mkdir -p _build/windows-x86_64/release
