@@ -290,7 +290,7 @@ def triangulate(face_counts, face_indices):
 def test_mesh_query_point(test, device):
     from pxr import Usd, UsdGeom
 
-    mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/spiky.usd")))
+    mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "spiky.usd")))
     mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/Cube/Cube"))
 
     mesh_counts = mesh_geom.GetFaceVertexCountsAttr().Get()
@@ -518,7 +518,7 @@ def mesh_query_point_loss(
 def test_adj_mesh_query_point(test, device):
     from pxr import Usd, UsdGeom
 
-    mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.usda")))
+    mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "torus.usda")))
     mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/World/Torus"))
 
     mesh_counts = mesh_geom.GetFaceVertexCountsAttr().Get()
@@ -655,7 +655,7 @@ def sample_furthest_points_brute(
 def test_mesh_query_furthest_point(test, device):
     from pxr import Usd, UsdGeom
 
-    mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/spiky.usd")))
+    mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "spiky.usd")))
     mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/Cube/Cube"))
 
     mesh_counts = mesh_geom.GetFaceVertexCountsAttr().Get()

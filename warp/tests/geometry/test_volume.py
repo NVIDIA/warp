@@ -401,12 +401,12 @@ rng = np.random.default_rng(101215)
 #   (-90 degrees rotation along X)
 #   voxel size: 0.1
 volume_paths = {
-    "float": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb")),
-    "int32": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_int32_grid.nvdb")),
-    "vec3f": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_vec_grid.nvdb")),
-    "index": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_index_grid.nvdb")),
-    "torus": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.nvdb")),
-    "float_write": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb")),
+    "float": os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "test_grid.nvdb")),
+    "int32": os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "test_int32_grid.nvdb")),
+    "vec3f": os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "test_vec_grid.nvdb")),
+    "index": os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "test_index_grid.nvdb")),
+    "torus": os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "torus.nvdb")),
+    "float_write": os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "test_grid.nvdb")),
 }
 
 test_volume_tiles = (
