@@ -80,7 +80,7 @@ def test_mesh_query_ray_grad(test, device):
     # mesh_points = wp.array(np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 0.0]]), dtype=wp.vec3, device=device)
     # mesh_indices = wp.array(np.array([0,1,2]), dtype=int, device=device)
 
-    mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.usda")))
+    mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "torus.usda")))
     mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/World/Torus"))
 
     mesh_counts = mesh_geom.GetFaceVertexCountsAttr().Get()

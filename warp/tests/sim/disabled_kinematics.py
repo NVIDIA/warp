@@ -9,6 +9,7 @@ import math
 import unittest
 
 import warp as wp
+import warp.examples
 import warp.sim
 from warp.tests.unittest_utils import *
 
@@ -16,11 +17,7 @@ from warp.tests.unittest_utils import *
 def build_ant(num_envs):
     builder = wp.sim.ModelBuilder()
     for i in range(num_envs):
-        wp.sim.parse_mjcf(
-            os.path.join(os.path.dirname(__file__), "../../examples/assets/nv_ant.xml"),
-            builder,
-            up_axis="y",
-        )
+        wp.sim.parse_mjcf(os.path.join(warp.examples.get_asset_directory(), "nv_ant.xml"), builder, up_axis="y")
 
         coord_count = 15
         dof_count = 14

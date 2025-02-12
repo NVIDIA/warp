@@ -162,7 +162,9 @@ def test_multi_layer_nn(test, device):
         input = create_array(rng, IMG_WIDTH * IMG_HEIGHT, DIM_IN, dtype=dtype)
         output = create_array(rng, IMG_WIDTH * IMG_HEIGHT, DIM_OUT)
 
-        reference_np = np.load(os.path.join(os.path.dirname(__file__), "assets/pixel.npy"), allow_pickle=True) / 255.0
+        reference_np = (
+            np.load(os.path.join(os.path.dirname(__file__), "..", "assets", "pixel.npy"), allow_pickle=True) / 255.0
+        )
         reference = wp.array(reference_np, dtype=float)
 
         assert reference.shape[1] == IMG_WIDTH * IMG_HEIGHT
