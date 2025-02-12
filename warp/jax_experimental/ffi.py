@@ -6,6 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import ctypes
+import traceback
 
 import jax
 
@@ -322,9 +323,9 @@ class FfiArg:
 
 
 class FfiCall:
-    def __init__(self, callable, inputs):
+    def __init__(self, callable, static_inputs):
         self.callable = callable
-        self.inputs = inputs
+        self.static_inputs = static_inputs
 
 
 class FfiCallable:
@@ -371,17 +372,46 @@ class FfiCallable:
     def __call__(self, *args, output_dims=None, vmap_method=None):
         num_inputs = len(args)
         if num_inputs != self.num_inputs:
-            raise ValueError(f"Expected {self.num_inputs} outputs, but got {num_inputs}")
+            raise ValueError(f"Expected {self.num_inputs} inputs, but got {num_inputs}")
 
         if output_dims is None:
             raise ValueError("Missing output_dims")
 
         num_outputs = len(output_dims)
         if num_outputs != self.num_outputs:
-            raise ValueError(f"Expected {self.num_outputs} outputs, but got {num_outputs}")
+            raise ValueError(f"Expected {self.num_outputs} outputs, but got {num_outputs} output_dims")
 
+        # process inputs
+        static_inputs = {}
+        for i in range(num_inputs):
+            input_arg = self.input_args[i]
+            input_value = args[i]
+            if input_arg.is_array:
+                # check dtype
+                if input_value.dtype != input_arg.jax_scalar_type:
+                    raise TypeError(
+                        f"Invalid data type for array argument '{input_arg.name}', expected {input_arg.jax_scalar_type}, got {input_value.dtype}"
+                    )
+                # check ndim
+                if input_value.ndim != input_arg.jax_ndim:
+                    raise TypeError(
+                        f"Invalid dimensionality for array argument '{input_arg.name}', expected {input_arg.jax_ndim} dimensions, got {input_value.ndim}"
+                    )
+                # check inner dims
+                for d in range(input_arg.dtype_ndim):
+                    if input_value.shape[input_arg.type.ndim + d] != input_arg.dtype_shape[d]:
+                        raise TypeError(
+                            f"Invalid inner dimensions for array argument '{input_arg.name}', expected {input_arg.dtype_shape}, got {input_value.shape[-input_arg.dtype_ndim :]}"
+                        )
+            else:
+                # make sure scalar is not a traced variable, should be static
+                if isinstance(input_value, jax.core.Tracer):
+                    raise ValueError(f"Argument '{input_arg.name}' must be a static compile-time constant")
+                # stash the value to be retrieved by callback
+                static_inputs[input_arg.name] = input_arg.type(input_value)
+
+        # process outputs
         out_types = []
-
         if output_dims is not None:
             for output_arg in self.output_args:
                 dims = output_dims.get(output_arg.name)
@@ -404,12 +434,18 @@ class FfiCallable:
             self.name,
             out_types,
             vmap_method=self.vmap_method,
-            # has_side_effect=True,  # force this function to execute even without outputs
+            # has_side_effect=True,  # force this function to execute even if outputs aren't used
         )
+
+        # load the module
+        # NOTE: if the target function uses kernels from different modules, they will not be loaded here
+        device = wp.device_from_jax(get_jax_device())
+        module = wp.get_module(self.func.__module__)
+        module.load(device)
 
         # save call data to be retrieved by callback
         call_id = FfiCallable.call_id
-        FfiCallable.call_descriptors[call_id] = FfiCall(self, args)
+        FfiCallable.call_descriptors[call_id] = FfiCall(self, static_inputs)
         FfiCallable.call_id += 1
 
         return call(*args, call_id=call_id)
@@ -439,7 +475,6 @@ class FfiCallable:
             # retrieve call info
             call_id = int(attrs["call_id"])
             call_desc = FfiCallable.call_descriptors[call_id]
-            del FfiCallable.call_descriptors[call_id]
 
             num_inputs = call_frame.contents.args.size
             inputs = ctypes.cast(call_frame.contents.args.args, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
@@ -450,6 +485,10 @@ class FfiCallable:
             assert num_inputs == call_desc.callable.num_inputs
             assert num_outputs == call_desc.callable.num_outputs
 
+            device = wp.device_from_jax(get_jax_device())
+            cuda_stream = get_stream_from_callframe(call_frame.contents)
+            stream = wp.Stream(device, cuda_stream=cuda_stream)
+
             # reconstruct the argument list
             arg_list = []
 
@@ -458,61 +497,30 @@ class FfiCallable:
                 arg = call_desc.callable.input_args[i]
                 if arg.is_array:
                     buffer = inputs[i].contents
-                    buffer_dtype = jax_dtype_from_ffi(buffer.dtype)
-                    buffer_shape = buffer.dims[: buffer.rank]
-
-                    # check scalar type
-                    if buffer_dtype != arg.jax_scalar_type:
-                        raise TypeError(
-                            f"Invalid data type for array argument '{arg.name}', expected {arg.jax_scalar_type}, got {buffer_dtype}"
-                        )
-                    # check ndim
-                    if buffer.rank != arg.jax_ndim:
-                        raise TypeError(
-                            f"Invalid dimensionality for array argument '{arg.name}', expected {arg.jax_ndim} dimensions, got {buffer.rank}"
-                        )
-                    # check inner dims
-                    for d in range(arg.dtype_ndim):
-                        if buffer_shape[arg.dtype_ndim + d] != arg.dtype_shape[d]:
-                            raise TypeError(
-                                f"Invalid inner dimensions for array argument '{arg.name}', expected {arg.dtype_shape}, got {tuple(buffer_shape[-arg.dtype_ndim :])}"
-                            )
-
-                    warp_shape = buffer_shape[: buffer.rank - arg.dtype_ndim]
-
-                    arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=warp_shape)
+                    shape = buffer.dims[: buffer.rank - arg.dtype_ndim]
+                    arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=shape, device=device)
                     arg_list.append(arr)
                 else:
                     # scalar argument, get stashed value
-                    value = call_desc.inputs[i]
-
-                    # make sure it's not a traced variable, should be static
-                    if isinstance(value, jax.core.Tracer):
-                        raise ValueError(f"Scalar argument '{arg.name}' must be a static compile-time constant")
-
-                    scalar = arg.type(value)
-                    arg_list.append(scalar)
+                    value = call_desc.static_inputs[arg.name]
+                    arg_list.append(value)
 
             # outputs
             for i in range(num_outputs):
                 arg = call_desc.callable.output_args[i]
                 buffer = outputs[i].contents
                 shape = buffer.dims[: buffer.rank - arg.dtype_ndim]
-                arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=shape)
+                arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=shape, device=device)
                 arg_list.append(arr)
 
-            ctx = ExecutionContext(call_frame.contents)
-
-            device = wp.device_from_jax(get_jax_device())
-            stream = wp.Stream(device, cuda_stream=ctx.stream)
-
             # call the Python function with reconstructed arguments
-            with wp.ScopedStream(stream):
+            with wp.ScopedStream(stream, sync_enter=False):
                 call_desc.callable.func(*arg_list)
 
         except Exception as e:
+            print(traceback.format_exc())
             return create_ffi_error(
-                call_frame.contents.api, XLA_FFI_Error_Code.UNKNOWN, f"FFI callback error: {str(e)}"
+                call_frame.contents.api, XLA_FFI_Error_Code.UNKNOWN, f"FFI callback error: {type(e).__name__}: {e}"
             )
 
         return None
