@@ -148,6 +148,12 @@ def find_libmathdx():
             )
         except subprocess.CalledProcessError as e:
             print(e.output)
+
+            # Check if the libmathdx target directory exists and is not a symbolic link
+            libmathdx_target_dir = os.path.join(base_path, "_build", "target-deps", "libmathdx")
+            if os.path.exists(libmathdx_target_dir) and not os.path.islink(libmathdx_target_dir):
+                print(f"\nError: {libmathdx_target_dir} exists and is not a symbolic link.")
+                print("Please try deleting this folder and running the script again.")
             raise e
 
         # Success
