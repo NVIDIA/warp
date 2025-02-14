@@ -6,18 +6,24 @@ Tiles
 .. warning:: Tile-based operations in Warp are under preview, APIs are subject to change.
 
 Block-based programming models such as those in OpenAI Triton have proved to be effective ways of expressing high-performance kernels that can leverage cooperative operations on modern GPUs.
-With Warp 1.5.0 [1]_, developers now have access to new tile-based programming primitives in Warp kernels. Leveraging cuBLASDx and cuFFTDx, these new tools provide developers with efficient matrix multiplication and Fourier transforms for accelerated simulation and scientific computing. 
+With Warp 1.5.0 [1]_, developers now have access to new tile-based programming primitives in Warp kernels.
+Leveraging cuBLASDx and cuFFTDx, these new tools provide developers with efficient matrix multiplication and Fourier transforms for accelerated simulation and scientific computing. 
 
 Requirements
 ------------
 
-Tile-based operations are currently only supported on versions of Warp built against the CUDA 12 runtime.
-See `Building with MathDx`_ for more details when building the Warp locally with support for tile operations.
+Tile-based operations are fully supported on versions of Warp built against the CUDA 12 runtime.
+Most linear-algebra tile operations like :func:`tile_cholesky`, :func:`tile_fft`, and :func:`tile_matmul`
+require Warp to be built with the MathDx library, which is not supported on CUDA 11.
+See `Building with MathDx`_ for more details when building the Warp locally with support for
+linear-algebra tile operations.
 
 Execution Model
 ---------------
 
-Warp's execution model allows users to specify a grid of logical threads with up to 4 dimensions for kernel execution at launch time. With the introduction of tile primitives, users can now specify the *block size* for kernel launches, which partitions the thread grid into smaller sets of threads that are executed on a single compute unit.
+Warp's execution model allows users to specify a grid of logical threads with up to 4 dimensions for kernel execution at launch time.
+With the introduction of tile primitives, users can now specify the *block size* for kernel launches,
+which partitions the thread grid into smaller sets of threads that are executed on a single compute unit.
 
 Inside kernels, tile operations are executed cooperatively across each block of threads, allowing them to take advantage of efficient memory access, local memory, and dedicated hardware units like `Tensor Cores <https://www.nvidia.com/en-us/data-center/tensor-cores/>`__.
 
@@ -227,7 +233,10 @@ Linear Algebra
 Tiles and SIMT Code
 -------------------
 
-Traditionally, Warp kernels are primarily written in the SIMT programming model, where each thread's execution happens independently. Tiles, on the other hand, allow threads to work **cooperatively** to perform operations. Warp exposes the :func:`warp.tile`, and :func:`warp.untile` methods to convert data between per-thread value types and the equivalent tile representation. For example:
+Traditionally, Warp kernels are primarily written in the SIMT programming model, where each thread's execution happens independently. 
+Tiles, on the other hand, allow threads to work **cooperatively** to perform operations.
+Warp exposes the :func:`warp.tile`, and :func:`warp.untile` methods to convert data between per-thread value types and
+the equivalent tile representation. For example:
 
 .. code:: python
     
@@ -248,11 +257,88 @@ Traditionally, Warp kernels are primarily written in the SIMT programming model,
     # launch as regular SIMT kernel
     wp.launch(compute, dim=[N], inputs=[], block_dim=TILE_THREADS)
 
-In this example, we have launched a regular SIMT grid with ``N`` logical threads using ``wp.launch()``. The kernel performs some per-thread computations and then converts the scalar ``x`` value into a tile object using :func:`warp.tile`. This function takes a single value as input and returns a tile with the same dimensions as the number of threads in the block. From here, the tile can be used in other regular cooperative operations such as reductions, GEMMs, etc.
+In this example, we have launched a regular SIMT grid with ``N`` logical threads using ``wp.launch()``.
+The kernel performs some per-thread computations and then converts the scalar ``x`` value into a tile object using :func:`warp.tile`.
+This function takes a single value as input and returns a tile with the same dimensions as the number of threads in the block.
+From here, the tile can be used in other regular cooperative operations such as reductions, GEMMs, etc.
 
 Similarly, we can `untile` tile objects back to their per-thread scalar equivalent values.
 
 .. Note:: All threads in a block must execute tile operations, but code surrounding tile operations may contain arbitrary conditional logic.
+
+Example: Using tiles to accelerate array-wide reductions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Prior to the addition of tile support in Warp, array-wide reductions were commonly performed in a single kernel
+using a built-in atomic function like :func:`wp.atomic_add() <warp.atomic_add>`.
+This could be very inefficient when compared to optimized mechanisms like
+`cub::BlockReduce <https://nvidia.github.io/cccl/cub/api/classcub_1_1BlockReduce.html>`__.
+Consider the following sum-of-squares reduction on an array:
+
+.. code-block:: python
+
+    import  numpy as np
+
+    import warp as wp
+
+    @wp.kernel
+    def reduce_array_simt(
+        a: wp.array2d(dtype=wp.float64),
+        result: wp.array(dtype=wp.float64),
+    ):
+        i, j = wp.tid()
+
+        local_val = a[i, j]*a[i, j]
+
+        wp.atomic_add(result, 0, local_val)
+
+    rng = np.random.default_rng(42)
+
+    data = wp.array(rng.random((4096, 4096), dtype=np.float64), dtype=wp.float64)
+    result = wp.zeros((1,), dtype=wp.float64)
+
+    wp.launch(reduce_array_simt, (4096, 4096), inputs=[data], outputs=[result])
+
+The above kernel in Warp 1.6.1 runs in about 27.5 ms on an RTX 3090 GPU.
+We can use tiles to accelerate this reduction by first creating a tile from the scalar ``local_val``
+and then using :func:`wp.tile_sum() <warp.tile_sum>` to cooperatively compute
+the tile sum using shared memory. We can then accumulate the result of the reduced
+tile into global memory using :func:`wp.tile_atomic_add() <warp.tile_atomic_add>`:
+
+.. code-block:: python
+
+    import  numpy as np
+
+    import warp as wp
+
+    @wp.kernel
+    def reduce_array_tile(
+        a: wp.array2d(dtype=wp.float64),
+        result: wp.array(dtype=wp.float64),
+    ):
+        i, j = wp.tid()
+
+        local_val = a[i, j]*a[i, j]
+
+        t = wp.tile(local_val)
+        s = wp.tile_sum(t)
+
+        wp.tile_atomic_add(result, s)
+
+    rng = np.random.default_rng(42)
+
+    data = wp.array(rng.random((4096, 4096), dtype=np.float64), dtype=wp.float64)
+    result = wp.zeros((1,), dtype=wp.float64)
+
+    wp.launch(reduce_array_tile, (4096, 4096), inputs=[data], outputs=[result])
+
+The reduction kernel using tiles runs in about 0.528 ms, a 52x improvement over the original kernel.
+
+Further speed improvements could be obtained by experimenting with different block sizes.
+If we reduce the block size from the default of 256 threads to 128 threads
+in this example by adding ``block_dim=128`` to the :func:`wp.launch() <warp.launch>`,
+the kernel only takes about 0.436 ms to complete, while the pure SIMT kernel is
+relatively unaffected.
 
 Automatic Differentiation
 -------------------------
@@ -264,7 +350,7 @@ Please see the :ref:`differentiability` section for more details.
 Building with MathDx
 --------------------
 
-The tile operations described in `Linear Algebra`_ require Warp to be built with the MathDx library.
+Most tile operations described in `Linear Algebra`_ require Warp to be built with the MathDx library.
 Starting with Warp 1.5.0, PyPI distributions will come with out-of-the-box support for tile operations
 leveraging MathDx APIs.
 
