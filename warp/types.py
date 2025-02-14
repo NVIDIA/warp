@@ -1147,7 +1147,7 @@ ARRAY_TYPE_FABRIC_INDEXED = 3
 class launch_bounds_t(ctypes.Structure):
     _fields_ = [("shape", ctypes.c_int32 * LAUNCH_MAX_DIMS), ("ndim", ctypes.c_int32), ("size", ctypes.c_size_t)]
 
-    def __init__(self, shape: Sequence[int]):
+    def __init__(self, shape: Union[int, Sequence[int]]):
         if isinstance(shape, int):
             # 1d launch
             self.ndim = 1
