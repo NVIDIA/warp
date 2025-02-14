@@ -32,6 +32,7 @@
 - Fix fp64 accuracy of thread-level matrix-matrix multiplications ([GH-489](https://github.com/NVIDIA/warp/issues/489))
 - Fix an error causing `verify_autograd_array_access` config setting to fail to detect overwrites in generic Warp functions.
 - Fix `wp.randi()` documentation to show correct output range of `[-2^31, 2^31)`.
+- Fix `wp.array()` not initializing from arrays defining a CUDA array interface when the target device is CPU.
 
 ## [1.6.0] - 2025-02-03
 
