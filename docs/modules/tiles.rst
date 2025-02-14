@@ -135,7 +135,7 @@ Example: General Matrix Multiply (GEMM)
         # output tile index
         i, j = wp.tid()
 
-        sum = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=wp.float32)
+        tile_sum = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=wp.float32)
 
         M = A.shape[0]
         N = B.shape[1]
@@ -148,9 +148,9 @@ Example: General Matrix Multiply (GEMM)
             b = wp.tile_load(B, shape=(TILE_K, TILE_N), offset=(k*TILE_K, j*TILE_N))
 
             # sum += a*b
-            wp.tile_matmul(a, b, sum)
+            wp.tile_matmul(a, b, tile_sum)
 
-        wp.tile_store(C, sum, offset=(i*TILE_M, j*TILE_N))
+        wp.tile_store(C, tile_sum, offset=(i*TILE_M, j*TILE_N))
 
 
 
