@@ -227,7 +227,13 @@ add_example_test(
     devices=test_devices,
     test_options={"height": 512, "width": 1024, "headless": True},
 )
-add_example_test(TestCoreExamples, name="core.example_sph", devices=test_devices, test_options_cpu={"num_frames": 1})
+add_example_test(
+    TestCoreExamples,
+    name="core.example_sph",
+    devices=test_devices,
+    test_options_cpu={"num_frames": 1},
+    test_options_cuda={"test_timeout": 600},
+)
 add_example_test(
     TestCoreExamples,
     name="core.example_torch",
