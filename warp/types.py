@@ -1384,7 +1384,7 @@ def type_is_transformation(t):
     return getattr(t, "_wp_generic_type_hint_", None) is Transformation
 
 
-value_types = (int, float, builtins.bool) + scalar_types
+value_types = (int, float, builtins.bool) + scalar_and_bool_types
 
 
 # returns true for all value types (int, float, bool, scalars, vectors, matrices)
