@@ -46,6 +46,12 @@ def kernel4d(a: wp.array(dtype=int, ndim=4)):
     wp.expect_eq(a[i, j, k, l], i * dim_y * dim_z * dim_w + j * dim_z * dim_w + k * dim_w + l)
 
 
+@wp.kernel
+def square_kernel(input: wp.array(dtype=float), output: wp.array(dtype=float)):
+    i = wp.tid()
+    output[i] = input[i] * input[i]
+
+
 def test1d(test, device):
     a = np.arange(0, dim_x).reshape(dim_x)
 
@@ -98,8 +104,19 @@ def kernel_cmd(params: Params, i: int, f: float, v: wp.vec3, m: wp.mat33, out: w
 
 
 def test_launch_cmd(test, device):
-    n = 1
+    """Tests recording and executing a kernel launch command.
 
+    Verifies that:
+    - A kernel can be recorded as a command without immediate execution
+    - The recorded command can be launched later
+    - Parameters are correctly passed to the kernel
+    - Output matches expected results for both immediate and delayed launches
+
+    Args:
+        test: Test context
+        device: Device to run the test on
+    """
+    n = 1
     ref = np.arange(0, n)
     out = wp.zeros(n, dtype=int, device=device)
 
@@ -274,12 +291,62 @@ def test_launch_cmd_empty(test, device):
     assert_np_equal(out.numpy(), ref)
 
 
+def test_launch_cmd_adjoint(test, device):
+    """Test recording an adjoint launch with record_cmd=True."""
+    input_arr = wp.array([1.0, 2.0, 3.0], dtype=float, requires_grad=True, device=device)
+    output_arr = wp.empty_like(input_arr)
+
+    output_arr.grad.fill_(1.0)
+
+    cmd = wp.launch(
+        square_kernel,
+        dim=input_arr.size,
+        inputs=[input_arr, output_arr],
+        adj_inputs=[None, None],
+        adjoint=True,
+        device=device,
+        record_cmd=True,
+    )
+
+    cmd.launch()
+
+    assert_np_equal(input_arr.grad.numpy(), np.array([2.0, 4.0, 6.0]))
+
+
+def test_launch_cmd_adjoint_empty(test, device):
+    """Test constructing a Launch object for an adjoint kernel."""
+    input_arr = wp.array([1.0, 2.0, 3.0], dtype=float, requires_grad=True, device=device)
+    output_arr = wp.empty_like(input_arr)
+    output_arr.grad.fill_(1.0)
+
+    cmd = wp.Launch(square_kernel, device, adjoint=True)
+    cmd.set_param_by_name("input", input_arr)
+    cmd.set_param_by_name("output", output_arr)
+    cmd.set_dim(input_arr.size)
+    cmd.launch()
+
+    assert_np_equal(input_arr.grad.numpy(), np.array([2.0, 4.0, 6.0]))
+
+    # Now update the launch object's parameters with arrays of different sizes and values
+    # and check that the adjoints are correctly computed
+    input_arr_updated = wp.array([4.0, 5.0, 6.0, 7.0], dtype=float, device=device)
+    input_arr_updated_grad = wp.zeros_like(input_arr_updated)
+
+    output_arr_updated = wp.empty_like(input_arr_updated)
+    output_arr_updated_grad = wp.full_like(output_arr_updated, 1.0)
+
+    cmd.set_param_by_name("input", input_arr_updated)
+    cmd.set_param_by_name("output", output_arr_updated)
+    cmd.set_param_by_name("input", input_arr_updated_grad, adjoint=True)
+    cmd.set_param_by_name("output", output_arr_updated_grad, adjoint=True)
+    cmd.set_dim(input_arr_updated.size)
+    cmd.launch()
+
+    assert_np_equal(input_arr_updated_grad.numpy(), np.array([8.0, 10.0, 12.0, 14.0]))
+
+
 @wp.kernel
-def kernel_mul(
-    values: wp.array(dtype=int),
-    coeff: int,
-    out: wp.array(dtype=int),
-):
+def kernel_mul(values: wp.array(dtype=int), coeff: int, out: wp.array(dtype=int)):
     tid = wp.tid()
     out[tid] = values[tid] * coeff
 
@@ -301,28 +368,10 @@ def test_launch_tuple_args(test, device):
     )
     assert_np_equal(out.numpy(), np.array((0, 3, 6, 9)))
 
-    wp.launch(
-        kernel_mul,
-        dim=len(values),
-        inputs=(
-            values,
-            coeff,
-            out,
-        ),
-        device=device,
-    )
+    wp.launch(kernel_mul, dim=len(values), inputs=(values, coeff, out), device=device)
     assert_np_equal(out.numpy(), np.array((0, 3, 6, 9)))
 
-    wp.launch(
-        kernel_mul,
-        dim=len(values),
-        outputs=(
-            values,
-            coeff,
-            out,
-        ),
-        device=device,
-    )
+    wp.launch(kernel_mul, dim=len(values), outputs=(values, coeff, out), device=device)
     assert_np_equal(out.numpy(), np.array((0, 3, 6, 9)))
 
 
@@ -343,6 +392,8 @@ add_function_test(TestLaunch, "test_launch_cmd_set_param", test_launch_cmd_set_p
 add_function_test(TestLaunch, "test_launch_cmd_set_ctype", test_launch_cmd_set_ctype, devices=devices)
 add_function_test(TestLaunch, "test_launch_cmd_set_dim", test_launch_cmd_set_dim, devices=devices)
 add_function_test(TestLaunch, "test_launch_cmd_empty", test_launch_cmd_empty, devices=devices)
+add_function_test(TestLaunch, "test_launch_cmd_adjoint", test_launch_cmd_adjoint, devices=devices)
+add_function_test(TestLaunch, "test_launch_cmd_adjoint_empty", test_launch_cmd_adjoint_empty, devices=devices)
 
 add_function_test(TestLaunch, "test_launch_tuple_args", test_launch_tuple_args, devices=devices)
 

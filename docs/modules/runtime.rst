@@ -47,7 +47,33 @@ generated compilation artifacts as Warp does not automatically try to keep the c
 Runtime Kernel Creation
 #######################
 
-Warp allows generating kernels on-the-fly with various customizations, including closure support.  Refer to the :ref:`Code Generation<code_generation>` section for the latest features.
+Warp allows generating kernels on-the-fly with various customizations, including closure support.
+Refer to the :ref:`Code Generation<code_generation>` section for the latest features.
+
+Launch Objects
+##############
+
+:class:`Launch` objects are one way to reduce the overhead of launching a kernel multiple times.
+:class:`Launch` objects are returned from calling :func:`wp.launch() <launch>` with ``record_cmd=True``.
+This stores the results of various overhead operations that are needed to launch a kernel
+but defers the actual kernel launch until the :func:`Launch.launch() <Launch.launch>` method is called.
+
+In contrast to :ref:`graphs`, :class:`Launch` objects only record the launch of a single kernel
+and do not reduce the driver overhead of preparing the kernel for execution on a GPU.
+On the other hand, :class:`Launch` objects do not have the storage and initialization
+overheads of CUDA graphs and also allow for the modification of launch
+dimensions with :func:`Launch.set_dim() <Launch.set_dim>` and
+kernel parameters with functions such as :func:`Launch.set_params() <Launch.set_params>` and
+:func:`Launch.set_param_by_name() <Launch.set_param_by_name>`.
+Additionally, :class:`Launch` objects can also be used to reduce the overhead of launching kernels running on the CPU.
+
+.. note::
+    Kernels launched via :class:`Launch` objects currently do not get recorded onto the :class:`Tape`.
+
+.. autoclass:: Launch
+    :members:
+    :undoc-members:
+    :exclude-members: __init__
 
 .. _Arrays:
 
@@ -832,6 +858,8 @@ information on how to use events for measuring GPU performance.
 .. autofunction:: wait_event
 .. autofunction:: synchronize_event
 .. autofunction:: get_event_elapsed_time
+
+.. _graphs:
 
 Graphs
 -----------
