@@ -8,6 +8,12 @@
 - Add `wp.get_mempool_used_mem_current()` and `wp.get_mempool_used_mem_high()` to
   query the respective current and high-water mark memory pool allocator usage.
   ([GH-446](https://github.com/NVIDIA/warp/issues/446)).
+- Add 2D SVD `svd2` to support 2d simulations ([GH-436](https://github.com/NVIDIA/warp/issues/436)).
+- Add JAX FFI support ([GH-511](https://github.com/NVIDIA/warp/issues/511)).
+- Add `Launch` object support for to storing and replaying adjoint kernel launches
+  ([GH-449](https://github.com/NVIDIA/warp/issues/449)).
+- Add [documentation](https://nvidia.github.io/warp/modules/runtime.html#launch-objects) for `Launch` objects
+  ([GH-428](https://github.com/NVIDIA/warp/issues/428)).
 
 ### Changed
 
