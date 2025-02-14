@@ -1798,7 +1798,7 @@ def rand_init(seed: int32, offset: int32) -> uint32:
 
 @over
 def randi(state: uint32) -> int:
-    """Return a random integer in the range [0, 2^32)."""
+    """Return a random integer in the range [-2^31, 2^31)."""
     ...
 
 

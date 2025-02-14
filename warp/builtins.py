@@ -4192,7 +4192,7 @@ add_builtin(
     input_types={"state": uint32},
     value_type=int,
     group="Random",
-    doc="Return a random integer in the range [0, 2^32).",
+    doc="Return a random integer in the range [-2^31, 2^31).",
 )
 add_builtin(
     "randi",
