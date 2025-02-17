@@ -298,6 +298,9 @@ class InternalState:
             mu=db.inputs.contactFrictionCoeff,
         )
 
+        # Create the coloring required by the VBD integrator.
+        builder.color()
+
         # Build the simulation model.
         model = builder.finalize()
 
@@ -305,7 +308,7 @@ class InternalState:
         model.allocate_soft_contacts(model.particle_count)
 
         # Initialize the integrator.
-        integrator = wp.sim.SemiImplicitIntegrator()
+        integrator = wp.sim.VBDIntegrator(model, iterations=1)
 
         # Set the model properties.
         model.ground = db.inputs.groundEnabled

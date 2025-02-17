@@ -36,6 +36,7 @@
 - `wp.sim.Control.reset()` now zeros-out the controls and is deprecated. Use `wp.sim.Control.clear()` instead.
 - Extend `wp.expect_near()` to support all vectors and quaternions.
 - Extend `wp.quat_from_matrix()` to support 4x4 matrices.
+- Updated the `OgnClothSimulate` node to use the VBD integrator ([GH-512](https://github.com/NVIDIA/warp/issues/512)).
 
 ### Fixed
 
