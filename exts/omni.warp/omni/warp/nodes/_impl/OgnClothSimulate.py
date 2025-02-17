@@ -123,7 +123,6 @@ class InternalState:
             (
                 "substepCount",
                 "gravity",
-                "globalScale",
                 "contactElasticStiffness",
                 "contactFrictionStiffness",
                 "contactFrictionCoeff",
@@ -201,13 +200,13 @@ class InternalState:
             vertices=world_points.numpy(),
             indices=face_vertex_indices.numpy(),
             density=db.inputs.clothDensity,
-            tri_ke=db.inputs.clothTriElasticStiffness * db.inputs.globalScale,
-            tri_ka=db.inputs.clothTriAreaStiffness * db.inputs.globalScale,
-            tri_kd=db.inputs.clothTriDampingStiffness * db.inputs.globalScale,
-            tri_drag=db.inputs.clothTriDrag * db.inputs.globalScale,
-            tri_lift=db.inputs.clothTriLift * db.inputs.globalScale,
-            edge_ke=db.inputs.clothEdgeBendingStiffness * db.inputs.globalScale,
-            edge_kd=db.inputs.clothEdgeDampingStiffness * db.inputs.globalScale,
+            tri_ke=db.inputs.clothTriElasticStiffness,
+            tri_ka=db.inputs.clothTriAreaStiffness,
+            tri_kd=db.inputs.clothTriDampingStiffness,
+            tri_drag=db.inputs.clothTriDrag,
+            tri_lift=db.inputs.clothTriLift,
+            edge_ke=db.inputs.clothEdgeBendingStiffness,
+            edge_kd=db.inputs.clothEdgeDampingStiffness,
         )
 
         # Set a uniform mass to avoid large discrepancies.
@@ -292,9 +291,9 @@ class InternalState:
         # Register the ground.
         builder.set_ground_plane(
             offset=-db.inputs.groundAltitude + db.inputs.colliderContactDistance,
-            ke=db.inputs.contactElasticStiffness * db.inputs.globalScale,
-            kd=db.inputs.contactDampingStiffness * db.inputs.globalScale,
-            kf=db.inputs.contactFrictionStiffness * db.inputs.globalScale,
+            ke=db.inputs.contactElasticStiffness,
+            kd=db.inputs.contactDampingStiffness,
+            kf=db.inputs.contactFrictionStiffness,
             mu=db.inputs.contactFrictionCoeff,
         )
 
@@ -313,10 +312,10 @@ class InternalState:
         # Set the model properties.
         model.ground = db.inputs.groundEnabled
         model.gravity = db.inputs.gravity
-        model.soft_contact_ke = db.inputs.contactElasticStiffness * db.inputs.globalScale
-        model.soft_contact_kf = db.inputs.contactFrictionStiffness * db.inputs.globalScale
+        model.soft_contact_ke = db.inputs.contactElasticStiffness
+        model.soft_contact_kf = db.inputs.contactFrictionStiffness
         model.soft_contact_mu = db.inputs.contactFrictionCoeff
-        model.soft_contact_kd = db.inputs.contactDampingStiffness * db.inputs.globalScale
+        model.soft_contact_kd = db.inputs.contactDampingStiffness
         model.soft_contact_margin = db.inputs.colliderContactDistance * db.inputs.colliderContactQueryRange
         model.particle_radius.fill_(db.inputs.colliderContactDistance)
 

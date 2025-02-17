@@ -31,15 +31,6 @@
                 "uiName": "Gravity",
                 "default": [0.0, -980, 0.0]
             },
-            "globalScale": {
-                "type": "float",
-                "description": "Global scale value for the simulation attributes.",
-                "uiName": "Global Scale",
-                "default": 100.0,
-                "metadata": {
-                    "min": 0.0
-                }
-            },
             "contactElasticStiffness": {
                 "type": "float",
                 "description": "Contact elastic stiffness. Multiple of the global scale value.",
