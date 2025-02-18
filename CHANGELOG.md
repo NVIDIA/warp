@@ -1,37 +1,27 @@
 # Changelog
 
-## [Unreleased] - 2025-??
+## [1.6.1] - 2025-03-03
 
 ### Added
 
-- Added support for vec4f grid construction in `wp.Volume.allocate_by_tiles()`
-- Add `wp.get_mempool_used_mem_current()` and `wp.get_mempool_used_mem_high()` to
-  query the respective current and high-water mark memory pool allocator usage.
-  ([GH-446](https://github.com/NVIDIA/warp/issues/446)).
-- Add 2D SVD `svd2` to support 2d simulations ([GH-436](https://github.com/NVIDIA/warp/issues/436)).
-- Add JAX FFI support ([GH-511](https://github.com/NVIDIA/warp/issues/511)).
-- Add `Launch` object support for to storing and replaying adjoint kernel launches
-  ([GH-449](https://github.com/NVIDIA/warp/issues/449)).
 - Add [documentation](https://nvidia.github.io/warp/modules/runtime.html#launch-objects) for `Launch` objects
   ([GH-428](https://github.com/NVIDIA/warp/issues/428)).
-
-### Changed
-
-- `warp.fem.integrate()` and `warp.fem.integrate()` may now perform parallel evaluation of quadrature points within elements
-- `warp.fem.interpolate()` can now build Jacobian sparse matrices of interpolated functions with respect to a trial field
 
 ### Fixed
 
 - Fix an error on Windows when closing an `OpenGLRenderer` app ([GH-488](https://github.com/NVIDIA/warp/issues/488)).
-- Fix per-vertex colors not being correctly written out to USD meshes when a constant color is being passed.
-- Fix rendering of arrows with different `up_axis`, `color` in `OpenGLRenderer` ([GH-448](https://github.com/NVIDIA/warp/issues/448)).
-- Fix fp64 accuracy of thread-level matrix-matrix multiplications ([GH-489](https://github.com/NVIDIA/warp/issues/489))
-- Fix an error causing `verify_autograd_array_access` config setting to fail to detect overwrites in generic Warp functions.
-- Fix `wp.array()` not initializing from arrays defining a CUDA array interface when the target device is CPU.
+- Fix per-vertex colors not being correctly written out to USD meshes when a constant color is being passed
+  ([GH-480](https://github.com/NVIDIA/warp/issues/480)).
+- Fix FP64 accuracy of thread-level matrix-matrix multiplications ([GH-489](https://github.com/NVIDIA/warp/issues/489)).
+- Fix an error causing `wp.config.verify_autograd_array_access` to fail to detect overwrites in generic Warp functions
+  ([GH-493](https://github.com/NVIDIA/warp/issues/493)).
+- Fix `wp.array()` not initializing from arrays defining a CUDA array interface when the target device is CPU
+  ([GH-523](https://github.com/NVIDIA/warp/issues/523)).
 - Fix `wp.randi()` documentation to show correct output range of `[-2^31, 2^31)`.
+- Fix for unaligned loads with offset 2D tiles in `wp.tile_load()`.
+- Fix `Launch` objects not storing and replaying adjoint kernel launches
+  ([GH-449](https://github.com/NVIDIA/warp/issues/449)).
 
-- Fix for unaligned loads with offset 2D tiles in `wp.tile_load()`
-- 
 ## [1.6.0] - 2025-02-03
 
 ### Added

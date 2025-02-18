@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## [1.6.1-rc.1] - 2025-03-03
+
+### Added
+
+- Add [documentation](https://nvidia.github.io/warp/modules/runtime.html#launch-objects) for `Launch` objects
+  ([GH-428](https://github.com/NVIDIA/warp/issues/428)).
+
+### Fixed
+
+- Fix an error on Windows when closing an `OpenGLRenderer` app ([GH-488](https://github.com/NVIDIA/warp/issues/488)).
+- Fix per-vertex colors not being correctly written out to USD meshes when a constant color is being passed
+  ([GH-480](https://github.com/NVIDIA/warp/issues/480)).
+- Fix FP64 accuracy of thread-level matrix-matrix multiplications ([GH-489](https://github.com/NVIDIA/warp/issues/489)).
+- Fix an error causing `wp.config.verify_autograd_array_access` to fail to detect overwrites in generic Warp functions
+  ([GH-493](https://github.com/NVIDIA/warp/issues/493)).
+- Fix `wp.array()` not initializing from arrays defining a CUDA array interface when the target device is CPU
+  ([GH-523](https://github.com/NVIDIA/warp/issues/523)).
+- Fix `wp.randi()` documentation to show correct output range of `[-2^31, 2^31)`.
+- Fix for unaligned loads with offset 2D tiles in `wp.tile_load()`.
+- Fix `Launch` objects not storing and replaying adjoint kernel launches
+  ([GH-449](https://github.com/NVIDIA/warp/issues/449)).
+
 ## [1.6.0] - 2025-02-03
 
 ### Added
