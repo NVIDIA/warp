@@ -70,3 +70,77 @@ class StructureOfArrays:
     def time_kernels(self):
         self.cmd.launch()
         wp.synchronize_device(self.device)
+
+
+@wp.kernel
+def load_store_ij(test_array_in: wp.array2d(dtype=float), test_array_out: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+
+    test_array_out[i, j] = test_array_in[i, j]
+
+
+@wp.kernel
+def load_store_ji(test_array_in: wp.array2d(dtype=float), test_array_out: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+
+    test_array_out[j, i] = test_array_in[j, i]
+
+
+class LoadStoreIJ:
+    """Benchmark for measuring the performance of loading and storing 2-D array data as [i,j]."""
+
+    number = 100
+
+    def setup(self):
+        wp.init()
+        wp.build.clear_kernel_cache()
+        self.device = wp.get_device("cuda:0")
+        wp.load_module(device=self.device)
+        self.input_array = wp.ones((8192, 4096), dtype=float, device=self.device)
+        self.output_array = wp.empty_like(self.input_array)
+
+        self.cmd = wp.launch(
+            load_store_ij,
+            (8192, 4096),
+            inputs=[self.input_array],
+            outputs=[self.output_array],
+            device=self.device,
+            record_cmd=True,
+        )
+        # Warmup
+        self.cmd.launch()
+        wp.synchronize_device(self.device)
+
+    def time_cuda(self):
+        self.cmd.launch()
+        wp.synchronize_device(self.device)
+
+
+class LoadStoreJI:
+    """Benchmark for measuring the performance of loading and storing 2-D array data as [j,i]."""
+
+    number = 100
+
+    def setup(self):
+        wp.init()
+        wp.build.clear_kernel_cache()
+        self.device = wp.get_device("cuda:0")
+        wp.load_module(device=self.device)
+        self.input_array = wp.ones((8192, 4096), dtype=float, device=self.device)
+        self.output_array = wp.empty_like(self.input_array)
+
+        self.cmd = wp.launch(
+            load_store_ji,
+            (4096, 8192),
+            inputs=[self.input_array],
+            outputs=[self.output_array],
+            device=self.device,
+            record_cmd=True,
+        )
+        # Warmup
+        self.cmd.launch()
+        wp.synchronize_device(self.device)
+
+    def time_cuda(self):
+        self.cmd.launch()
+        wp.synchronize_device(self.device)
