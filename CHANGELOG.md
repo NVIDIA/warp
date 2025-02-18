@@ -34,7 +34,9 @@
 - Fix `wp.randi()` documentation to show correct output range of `[-2^31, 2^31)`.
 - Fix `wp.array()` not initializing from arrays defining a CUDA array interface when the target device is CPU.
 - Fix for unaligned loads with offset 2D tiles in `wp.tile_load()`
-- 
+- Fix URDF-imported planar joints not being set with the intended `target_ke`, `target_kd`, and `mode` parameters
+  ([GH-454](https://github.com/NVIDIA/warp/issues/454)).
+
 ## [1.6.0] - 2025-02-03
 
 ### Added
