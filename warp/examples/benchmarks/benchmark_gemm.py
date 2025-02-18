@@ -95,7 +95,11 @@ def benchmark_warp(A: wp.array, B: wp.array, config: List[int], warm_up: int, it
 
     # check output
     if warm_up > 0:
-        assert np.allclose(output.numpy(), A.numpy() @ B.numpy(), atol=1e-3, rtol=1e-3)
+        try:
+            np.testing.assert_allclose(output.numpy(), A.numpy() @ B.numpy(), atol=1e-3, rtol=1e-3)
+        except AssertionError as e:
+            print(f"Failed with {TILE_M=}, {TILE_N=}, {TILE_K=}, {BLOCK_DIM=}")
+            raise e
 
     # benchmark
     with wp.ScopedTimer("warp", print=False, synchronize=True, cuda_filter=wp.TIMING_KERNEL) as timer:
