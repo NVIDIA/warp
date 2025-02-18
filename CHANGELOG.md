@@ -30,6 +30,8 @@
 - Fix `wp.array()` not initializing from arrays defining a CUDA array interface when the target device is CPU.
 - Fix `wp.randi()` documentation to show correct output range of `[-2^31, 2^31)`.
 
+- Fix for unaligned loads with offset 2D tiles in `wp.tile_load()`
+- 
 ## [1.6.0] - 2025-02-03
 
 ### Added
