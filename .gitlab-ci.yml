@@ -503,17 +503,19 @@ linux-x86_64 asv:
     - source _venv/bin/activate
     - python -m pip install --upgrade pip
     - python -m pip install asv
-    - export GIT_LFS_SKIP_SMUDGE=1
+    - GIT_LFS_SKIP_SMUDGE=1
+    # Make sure the comparison ref can be checked out by asv
+    - COMPARE_REF="${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}}"
+    - 'echo "COMPARE_REF value: ${COMPARE_REF}"' 
     - git config --global --add safe.directory '*' 
-    - git fetch origin main
-    # Make sure the main branch can be checked out by asv
-    - git checkout -f main
+    - git fetch origin $COMPARE_REF
+    - git checkout -f $COMPARE_REF
     - git checkout -f $CI_COMMIT_SHA
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - cd asv
     - asv machine --yes
-    - asv continuous --interleave-rounds --append-samples --no-only-changed -f 1.15 --bench '^(?!api)' main $CI_COMMIT_SHA
+    - asv continuous --interleave-rounds --append-samples --no-only-changed -f 1.15 --bench '^(?!api)' $COMPARE_REF $CI_COMMIT_SHA
   allow_failure: True # Can make success required after we have tested this job more
 
 # ==============================================================================
