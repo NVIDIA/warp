@@ -24,6 +24,8 @@
 - Fix an error in capturing the `wp.sim.VBDIntegrator` with CUDA graphs when `handle_self_contact` is enabled
   ([GH-441](https://github.com/NVIDIA/warp/issues/441)).
 - Fix an error of AABB computation in `wp.collide.TriMeshCollisionDetector`.
+- Fix URDF-imported planar joints not being set with the intended `target_ke`, `target_kd`, and `mode` parameters
+  ([GH-454](https://github.com/NVIDIA/warp/issues/454)).
 
 ## [1.6.0] - 2025-02-03
 
