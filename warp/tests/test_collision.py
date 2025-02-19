@@ -18,7 +18,7 @@ from warp.tests.unittest_utils import *
 @wp.kernel
 def vertex_triangle_collision_detection_brute_force(
     query_radius: float,
-    mesh_id: wp.uint64,
+    bvh_id: wp.uint64,
     pos: wp.array(dtype=wp.vec3),
     tri_indices: wp.array(dtype=wp.int32, ndim=2),
     vertex_colliding_triangles: wp.array(dtype=wp.int32),
@@ -67,7 +67,7 @@ def vertex_triangle_collision_detection_brute_force(
 @wp.kernel
 def validate_vertex_collisions(
     query_radius: float,
-    mesh_id: wp.uint64,
+    bvh_id: wp.uint64,
     pos: wp.array(dtype=wp.vec3),
     tri_indices: wp.array(dtype=wp.int32, ndim=2),
     vertex_colliding_triangles: wp.array(dtype=wp.int32),
@@ -107,7 +107,7 @@ def validate_vertex_collisions(
 @wp.kernel
 def validate_triangle_collisions(
     query_radius: float,
-    mesh_id: wp.uint64,
+    bvh_id: wp.uint64,
     pos: wp.array(dtype=wp.vec3),
     tri_indices: wp.array(dtype=wp.int32, ndim=2),
     triangle_colliding_vertices: wp.array(dtype=wp.int32),
@@ -303,7 +303,7 @@ class Example:
                 kernel=vertex_triangle_collision_detection_brute_force,
                 inputs=[
                     query_radius,
-                    self.collision_detector.mesh_tris.id,
+                    self.collision_detector.bvh_tris.id,
                     self.collision_detector.model.particle_q,
                     self.collision_detector.model.tri_indices,
                     self.collision_detector.vertex_colliding_triangles,
@@ -337,7 +337,7 @@ class Example:
                 kernel=validate_vertex_collisions,
                 inputs=[
                     query_radius,
-                    self.collision_detector.mesh_tris.id,
+                    self.collision_detector.bvh_tris.id,
                     self.collision_detector.model.particle_q,
                     self.collision_detector.model.tri_indices,
                     self.collision_detector.vertex_colliding_triangles,
@@ -355,7 +355,7 @@ class Example:
                 kernel=validate_triangle_collisions,
                 inputs=[
                     query_radius,
-                    self.collision_detector.mesh_tris.id,
+                    self.collision_detector.bvh_tris.id,
                     self.collision_detector.model.particle_q,
                     self.collision_detector.model.tri_indices,
                     self.collision_detector.triangle_colliding_vertices,
