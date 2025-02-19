@@ -180,13 +180,6 @@ jobs:
           paths: "rspec.xml"
           show: "fail"
         if: always()
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.4.0
-        with:
-          env_vars: OS,PYTHON_VERSION
-          files: ./coverage.xml
-          flags: unittests
-          token: ${{ secrets.CODECOV_TOKEN }}
 
   test-warp-ubuntu-x86_64:
     runs-on: ubuntu-latest
@@ -221,13 +214,6 @@ jobs:
           paths: "rspec.xml"
           show: "fail"
         if: always()
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.4.0
-        with:
-          env_vars: OS,PYTHON_VERSION
-          files: ./coverage.xml
-          flags: unittests
-          token: ${{ secrets.CODECOV_TOKEN }}
 
   test-warp-ubuntu-aarch64:
     runs-on: ubuntu-22.04-arm
@@ -262,13 +248,6 @@ jobs:
           paths: "rspec.xml"
           show: "fail"
         if: always()
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.4.0
-        with:
-          env_vars: OS,PYTHON_VERSION
-          files: ./coverage.xml
-          flags: unittests
-          token: ${{ secrets.CODECOV_TOKEN }}
 
   test-warp-macos:
     runs-on: macos-13
@@ -303,13 +282,6 @@ jobs:
           paths: "rspec.xml"
           show: "fail"
         if: always()
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.4.0
-        with:
-          env_vars: OS,PYTHON_VERSION
-          files: ./coverage.xml
-          flags: unittests
-          token: ${{ secrets.CODECOV_TOKEN }}
 
   pull-request-docs:
     runs-on: ubuntu-latest
