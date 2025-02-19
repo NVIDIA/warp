@@ -12,6 +12,7 @@ from typing import Union
 import numpy as np
 
 import warp as wp
+import warp.sim
 from warp.sim.model import Mesh
 
 
@@ -20,7 +21,7 @@ def parse_urdf(
     builder,
     xform=None,
     floating=False,
-    base_joint: Union[dict, str] = None,
+    base_joint: Union[dict, str, None] = None,
     density=1000.0,
     stiffness=100.0,
     damping=10.0,
@@ -511,11 +512,25 @@ def parse_urdf(
 
             builder.add_joint_d6(
                 linear_axes=[
-                    wp.sim.JointAxis(
-                        u, limit_lower=lower * scale, limit_upper=upper * scale, limit_ke=limit_ke, limit_kd=limit_kd
+                    warp.sim.JointAxis(
+                        u,
+                        limit_lower=lower * scale,
+                        limit_upper=upper * scale,
+                        limit_ke=limit_ke,
+                        limit_kd=limit_kd,
+                        target_ke=stiffness,
+                        target_kd=joint_damping,
+                        mode=joint_mode,
                     ),
-                    wp.sim.JointAxis(
-                        v, limit_lower=lower * scale, limit_upper=upper * scale, limit_ke=limit_ke, limit_kd=limit_kd
+                    warp.sim.JointAxis(
+                        v,
+                        limit_lower=lower * scale,
+                        limit_upper=upper * scale,
+                        limit_ke=limit_ke,
+                        limit_kd=limit_kd,
+                        target_ke=stiffness,
+                        target_kd=joint_damping,
+                        mode=joint_mode,
                     ),
                 ],
                 **joint_params,

@@ -37,6 +37,8 @@
 - Fix for unaligned loads with offset 2D tiles in `wp.tile_load()`
 - 
 - Fix an error of AABB computation in `wp.collide.TriMeshCollisionDetector`.
+- Fix URDF-imported planar joints not being set with the intended `target_ke`, `target_kd`, and `mode` parameters
+  ([GH-454](https://github.com/NVIDIA/warp/issues/454)).
 
 ## [1.6.0] - 2025-02-03
 
