@@ -276,6 +276,9 @@ linux-x86_64 test:
     - export WARP_DISABLE_P2P_TESTS=1
   script:
     - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    # Upload report to Codecov
+    - python -m pip install codecov-cli
+    - codecovcli --verbose upload-process --git-service gitlab_enterprise --disable-search -t $CODECOV_TOKEN -F unittests -f rspec.xml
 
 # Note that for throughput reasons this runs on a single-GPU runner
 windows-x86_64 test:
