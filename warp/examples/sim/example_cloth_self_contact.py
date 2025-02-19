@@ -29,17 +29,20 @@ from warp.sim.model import PARTICLE_FLAG_ACTIVE
 
 @wp.kernel
 def initialize_rotation(
-    particle_indices_to_rot: wp.array(dtype=wp.int32),
+    # input
+    vertex_indices_to_rot: wp.array(dtype=wp.int32),
     pos: wp.array(dtype=wp.vec3),
     rot_centers: wp.array(dtype=wp.vec3),
     rot_axes: wp.array(dtype=wp.vec3),
+    t: wp.array(dtype=float),
+    # output
     roots: wp.array(dtype=wp.vec3),
     roots_to_ps: wp.array(dtype=wp.vec3),
 ):
     tid = wp.tid()
-    particle_index = particle_indices_to_rot[wp.tid()]
+    v_index = vertex_indices_to_rot[wp.tid()]
 
-    p = pos[particle_index]
+    p = pos[v_index]
     rot_center = rot_centers[tid]
     rot_axis = rot_axes[tid]
     op = p - rot_center
@@ -51,21 +54,31 @@ def initialize_rotation(
     roots[tid] = root
     roots_to_ps[tid] = root_to_p
 
+    if tid == 0:
+        t[0] = 0.0
+
 
 @wp.kernel
 def apply_rotation(
-    time: float,
-    angular_velocity: float,
-    particle_indices_to_rot: wp.array(dtype=wp.int32),
-    rot_centers: wp.array(dtype=wp.vec3),
+    # input
+    vertex_indices_to_rot: wp.array(dtype=wp.int32),
     rot_axes: wp.array(dtype=wp.vec3),
     roots: wp.array(dtype=wp.vec3),
     roots_to_ps: wp.array(dtype=wp.vec3),
+    t: wp.array(dtype=float),
+    angular_velocity: float,
+    dt: float,
+    end_time: float,
+    # output
     pos_0: wp.array(dtype=wp.vec3),
     pos_1: wp.array(dtype=wp.vec3),
 ):
+    cur_t = t[0]
+    if cur_t > end_time:
+        return
+
     tid = wp.tid()
-    particle_index = particle_indices_to_rot[wp.tid()]
+    v_index = vertex_indices_to_rot[wp.tid()]
 
     rot_axis = rot_axes[tid]
 
@@ -73,7 +86,7 @@ def apply_rotation(
     uy = rot_axis[1]
     uz = rot_axis[2]
 
-    theta = time * angular_velocity
+    theta = cur_t * angular_velocity
 
     R = wp.mat33(
         wp.cos(theta) + ux * ux * (1.0 - wp.cos(theta)),
@@ -92,24 +105,29 @@ def apply_rotation(
     root_to_p_rot = R * root_to_p
     p_rot = root + root_to_p_rot
 
-    pos_0[particle_index] = p_rot
-    pos_1[particle_index] = p_rot
+    pos_0[v_index] = p_rot
+    pos_1[v_index] = p_rot
+
+    if tid == 0:
+        t[0] = cur_t + dt
 
 
 class Example:
-    def __init__(self, stage_path="example_cloth_self_contact.usd", num_frames=1500):
+    def __init__(self, stage_path="example_cloth_self_contact.usd", num_frames=600):
         fps = 60
         self.frame_dt = 1.0 / fps
+        # must be an even number when using CUDA Graph
         self.num_substeps = 10
-        self.iterations = 10
+        self.iterations = 4
         self.dt = self.frame_dt / self.num_substeps
 
         self.num_frames = num_frames
         self.sim_time = 0.0
         self.profiler = {}
 
-        self.rot_angular_velocity = math.pi / 6
-        self.rot_end_time = 21
+        self.rot_angular_velocity = math.pi / 3
+        self.rot_end_time = 10
+        self.use_cuda_graph = wp.get_device().is_cuda
 
         usd_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "square_cloth.usd"))
         usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/cloth/cloth"))
@@ -134,7 +152,8 @@ class Example:
             density=0.02,
             tri_ke=1.0e5,
             tri_ka=1.0e5,
-            tri_kd=3.0e-5,
+            tri_kd=2.0e-6,
+            edge_ke=10,
         )
         builder.color()
         self.model = builder.finalize()
@@ -170,6 +189,7 @@ class Example:
         rot_axes = [[1, 0, 0]] * len(right_side) + [[-1, 0, 0]] * len(left_side)
 
         self.rot_point_indices = wp.array(rot_point_indices, dtype=int)
+        self.t = wp.zeros((1,), dtype=float)
         self.rot_centers = wp.zeros(len(rot_point_indices), dtype=wp.vec3)
         self.rot_axes = wp.array(rot_axes, dtype=wp.vec3)
 
@@ -184,41 +204,75 @@ class Example:
                 self.state0.particle_q,
                 self.rot_centers,
                 self.rot_axes,
+                self.t,
+            ],
+            outputs=[
                 self.roots,
                 self.roots_to_ps,
             ],
         )
 
         if stage_path:
-            self.renderer = wp.sim.render.SimRenderer(self.model, stage_path, scaling=40.0)
+            self.renderer = wp.sim.render.SimRenderer(self.model, stage_path, scaling=1)
         else:
             self.renderer = None
-
-    def step(self):
-        with wp.ScopedTimer("step", print=False, dict=self.profiler):
-            for _ in range(self.num_substeps):
-                if self.sim_time < self.rot_end_time:
+        self.cuda_graph = None
+        if self.use_cuda_graph:
+            with wp.ScopedCapture() as capture:
+                for _ in range(self.num_substeps):
                     wp.launch(
                         kernel=apply_rotation,
                         dim=self.rot_point_indices.shape[0],
                         inputs=[
-                            self.sim_time,
-                            self.rot_angular_velocity,
                             self.rot_point_indices,
-                            self.rot_centers,
                             self.rot_axes,
                             self.roots,
                             self.roots_to_ps,
+                            self.t,
+                            self.rot_angular_velocity,
+                            self.dt,
+                            self.rot_end_time,
+                        ],
+                        outputs=[
                             self.state0.particle_q,
                             self.state1.particle_q,
                         ],
                     )
 
-                self.integrator.simulate(self.model, self.state0, self.state1, self.dt)
+                    self.integrator.simulate(self.model, self.state0, self.state1, self.dt, None)
+                    (self.state0, self.state1) = (self.state1, self.state0)
 
-                (self.state0, self.state1) = (self.state1, self.state0)
+            self.cuda_graph = capture.graph
 
-                self.sim_time += self.dt
+    def step(self):
+        with wp.ScopedTimer("step", print=False, dict=self.profiler):
+            if self.use_cuda_graph:
+                wp.capture_launch(self.cuda_graph)
+            else:
+                for _ in range(self.num_substeps):
+                    wp.launch(
+                        kernel=apply_rotation,
+                        dim=self.rot_point_indices.shape[0],
+                        inputs=[
+                            self.rot_point_indices,
+                            self.rot_axes,
+                            self.roots,
+                            self.roots_to_ps,
+                            self.t,
+                            self.rot_angular_velocity,
+                            self.dt,
+                            self.rot_end_time,
+                        ],
+                        outputs=[
+                            self.state0.particle_q,
+                            self.state1.particle_q,
+                        ],
+                    )
+                    self.integrator.simulate(self.model, self.state0, self.state1, self.dt)
+
+                    (self.state0, self.state1) = (self.state1, self.state0)
+
+            self.sim_time += self.dt
 
     def render(self):
         if self.renderer is None:
@@ -241,7 +295,7 @@ if __name__ == "__main__":
         default="example_cloth_self_contact.usd",
         help="Path to the output USD file.",
     )
-    parser.add_argument("--num_frames", type=int, default=1500, help="Total number of frames.")
+    parser.add_argument("--num_frames", type=int, default=300, help="Total number of frames.")
 
     args = parser.parse_known_args()[0]
 
