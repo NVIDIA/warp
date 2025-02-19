@@ -50,6 +50,13 @@ name = "omni.warp._extension"
 name = "omni.warp.nodes"
 
 [[test]]
+name = "startup"
+stdoutFailPatterns.exclude = [
+    "*Failed to acquire IWindowing interface*",
+    "*IAppWindow::startup failed*",
+]
+
+[[test]]
 dependencies = [
     "omni.hydra.rtx",
     "omni.kit.test_helpers_gfx",
@@ -70,6 +77,7 @@ args = [
     "--/app/omni.warp/kernel_enable_opt_in=false",
     "--/app/renderer/resolution/height=360",
     "--/app/renderer/resolution/width=640",
+    "--/app/isTestRun=1",
     "--/app/updateOrder/checkForHydraRenderComplete=1000",
     "--/renderer/enabled=rtx",
     "--/renderer/active=rtx",
@@ -86,3 +94,5 @@ args = [
 stdoutFailPatterns.exclude = [
     "*[Warning] [rtx.neuraylib.plugin] [MDLC:COMPILER]*",
 ]
+
+timeout = 600

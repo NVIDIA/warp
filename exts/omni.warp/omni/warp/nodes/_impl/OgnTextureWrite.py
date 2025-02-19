@@ -98,7 +98,7 @@ def compute(db: OgnTextureWriteDatabase) -> None:
 
     # The texture provider expects the data to live on the CUDA device 0,
     # so copy it if it's not already there.
-    data = wp.array(ptr=data_ptr, shape=resolution, dtype=float).to("cuda:0")
+    data = wp.array(ptr=data_ptr, shape=resolution, dtype=wp.vec4).to("cuda:0")
 
     # Write the texture to the provider.
     state.texture_provider.set_bytes_data_from_gpu(

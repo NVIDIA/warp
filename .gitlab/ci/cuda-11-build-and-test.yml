@@ -161,6 +161,80 @@ check extensions public API:
   script:
     - tools/repo.sh checkapi
 
+linux-x86_64 extension omni.warp.core test:
+  stage: test
+  needs: ["linux-x86_64 build"]
+  extends:
+    - .runner-test-linux-x86_64-gpu
+  before_script:
+    - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
+    - export TEST_KIT_EXT="omni.warp.core"
+    - mv warp/bin/linux-x86_64/*.so warp/bin
+  script:
+    - !reference [.snippets, test-kit-ext-linux-x86_64]
+  artifacts:
+    name: $CI_JOB_NAME_SLUG
+    paths:
+      - "./_testoutput"
+    expire_in: 1 week
+    when: always
+  allow_failure: true
+
+windows-x86_64 extension omni.warp.core test:
+  stage: test
+  needs: ["windows-x86_64 build"]
+  extends:
+    - .runner-test-windows-x86_64-gpu
+  before_script:
+    - tools\packman\packman.cmd pull -p windows-x86_64 deps/kit-deps.packman.xml
+    - $env:TEST_KIT_EXT = "omni.warp.core"
+  script:
+    - !reference [.snippets, test-kit-ext-windows-x86_64]
+  artifacts:
+    name: $CI_JOB_NAME_SLUG
+    paths:
+      - "./_testoutput"
+    expire_in: 1 week
+    when: always
+  allow_failure: true
+
+linux-x86_64 extension omni.warp test:
+  stage: test
+  needs: ["linux-x86_64 build"]
+  extends:
+    - .runner-test-linux-x86_64-gpu
+  before_script:
+    - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
+    - export TEST_KIT_EXT="omni.warp"
+    - mv warp/bin/linux-x86_64/*.so warp/bin
+  script:
+    - !reference [.snippets, test-kit-ext-linux-x86_64]
+  artifacts:
+    name: $CI_JOB_NAME_SLUG
+    paths:
+      - "./_testoutput"
+    expire_in: 1 week
+    when: always
+  allow_failure: true
+
+windows-x86_64 extension omni.warp test:
+  stage: test
+  needs: ["windows-x86_64 build"]
+  extends:
+    - .runner-test-windows-x86_64-gpu
+  before_script:
+    - tools\packman\packman.cmd pull -p windows-x86_64 deps/kit-deps.packman.xml
+    - $env:TEST_KIT_EXT = "omni.warp"
+  script:
+    - !reference [.snippets, test-kit-ext-windows-x86_64]
+  artifacts:
+    name: $CI_JOB_NAME_SLUG
+    paths:
+      - "./_testoutput"
+    expire_in: 1 week
+    when: always
+  allow_failure: true
+
 # ==============================================================================
 # Packaging Jobs
 #

@@ -3,6 +3,7 @@
         "version": 1,
         "description": "Retrieves a time with a fixed time step.",
         "language": "Python",
+        "exclude": ["tests"],
         "inputs": {
             "fps": {
                 "type": "double",
