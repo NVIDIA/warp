@@ -37,6 +37,105 @@ backward passes you should first zero the gradients using :meth:`Tape.zero()`.
 .. autoclass:: Tape
     :members:
 
+Array Overwrites
+################
+
+To correctly compute gradients, automatic differentiation frameworks must store the intermediate results of 
+computations for backpropagation. Overwriting previously computed results can lead to incorrect gradient calculations.
+For this reason, frameworks like PyTorch and JAX implicitly allocate new memory for every operation output.
+In Warp, the user explicitly manages memory, and so should take care to avoid overwriting previous results 
+when using features like ``tape.backward()``.
+
+Consider the following gradient calculation in PyTorch:
+
+.. code-block:: python
+
+    import torch
+
+    x = torch.tensor([1.0, 2.0, 3.0], requires_grad=True)
+    y = x ** 2 + 3 * x + 1
+    y.backward(torch.ones_like(x))
+
+    print(x.grad)
+
+Or, equivalently, in JAX:
+
+.. code-block:: python
+
+    import jax
+    import jax.numpy as jnp
+
+    def func(x):
+        return x ** 2 + 3 * x + 1
+
+    x = jnp.array([1.0, 2.0, 3.0])
+    grad_func = jax.vmap(jax.grad(func))
+    x_grad = grad_func(x)
+
+    print(x_grad)
+
+Both frameworks only require the user to explicitly allocate the tensor ``x``: ``y`` and 
+``x_grad`` are implicitly allocated by assignment. In Warp, we would write:
+
+.. testcode::
+
+    import warp as wp
+
+    @wp.kernel
+    def kernel_func(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+        tid = wp.tid()
+        y[tid] = x[tid] ** 2.0 + 3.0 * x[tid] + 1.0
+
+    x = wp.array([1.0, 2.0, 3.0], dtype=float, requires_grad=True)
+    y = wp.zeros_like(x)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel_func, x.shape, inputs=[x], outputs=[y])
+    tape.backward(grads={y: wp.ones_like(x)})
+
+    print(x.grad)
+
+.. testoutput::
+
+    [5. 7. 9.]
+
+``x`` and ``y`` are explicitly allocated up front. Note that we could have written
+``wp.launch(kernel_func, x.shape, inputs=[x,y])``, but sometimes it is useful to keep track of which 
+arrays are being read from/written to by using the ``inputs`` and ``outputs`` arguments in ``wp.launch()`` 
+(in fact it is essential to do so when :ref:`visualizing computation graphs<visualizing_computation_graphs>`).
+If gradients and prior values of ``x`` aren't needed, we can instead write:
+
+.. testcode::
+
+    import warp as wp
+    wp.config.enable_backward = False
+
+    @wp.kernel
+    def kernel_func(x: wp.array(dtype=float)):
+        tid = wp.tid()
+        x[tid] = x[tid] ** 2.0 + 3.0 * x[tid] + 1.0
+
+    x = wp.array([1.0, 2.0, 3.0], dtype=float)
+
+    wp.launch(kernel_func, x.shape, inputs=[x])
+
+    print(x)
+
+.. testoutput::
+
+    [ 5. 11. 19.]
+
+which only requires a quarter of the memory allocation, but this nullifies gradient tracking.
+
+It can be difficult to discern if an array is being overwritten, especially for larger computation graphs.
+In such cases, it can be helpful to set ``wp.config.verify_autograd_array_access=True``, which will automatically
+detect array overwrites. :ref:`Read more here<array_overwrite_tracking>`.
+
+.. note::
+    Though in-place operations such as ``x[tid] += 1.0`` and ``wp.atomic_add()`` are technically overwrite operations,
+    the Warp graph specifically accommodates adjoint accumulation in these cases. :ref:`Read more here<in_place_math>`.
+
 Copying is Differentiable
 #########################
 
@@ -837,6 +936,7 @@ Furthermore, it is possible to check the gradients of multiple kernels recorded 
 
     assert passed
 
+.. _visualizing_computation_graphs:
 
 Visualizing Computation Graphs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -904,6 +1004,8 @@ In the example above we can see that the array ``c`` does not have its ``require
 
 .. note::
     Arrays can be labeled with custom names using the ``array_labels`` argument to the ``tape.visualize()`` method.
+
+.. _array_overwrite_tracking:
 
 Array Overwrite Tracking
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1026,9 +1128,6 @@ it is marked as having been read from. Later, if the same array is passed to a k
     Setting ``wp.config.verify_autograd_array_access = True`` will disable kernel caching and force the current module to rebuild.
 
 .. note::
-    Though in-place operations such as ``x[tid] += 1.0`` and ``wp.atomic_add()`` are technically ``read -> write``, the Warp graph specifically accommodates adjoint accumulation in these cases, so we mark them as write operations.
-
-.. note::
     This feature does not yet support arrays packed in Warp structs.
 
 If you make use of :py:meth:`Tape.record_func` in your graph (and so provide your own adjoint callback), be sure to also call :py:meth:`array.mark_write()` and :py:meth:`array.mark_read()`, which will manually mark your arrays as having been written to or read from.
@@ -1041,6 +1140,8 @@ Limitations and Workarounds
 Warp uses a source-code transformation approach to auto-differentiation.
 In this approach, the backwards pass must keep a record of intermediate values computed during the forward pass.
 This imposes some restrictions on what kernels can do if they are to remain differentiable.
+
+.. _in_place_math:
 
 In-Place Math Operations
 ^^^^^^^^^^^^^^^^^^^^^^^^
