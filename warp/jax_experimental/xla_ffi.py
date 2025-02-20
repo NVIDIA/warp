@@ -12,8 +12,6 @@ import jax.numpy as jnp
 import numpy as np
 
 import warp as wp
-from warp.codegen import Var
-from warp.types import array_t, strides_from_shape
 
 #######################################################################
 # ctypes structures and enums for XLA's FFI API:
@@ -563,42 +561,6 @@ def dtype_from_ffi(ffi_dtype):
 
 def jax_dtype_from_ffi(ffi_dtype):
     return _xla_data_type_to_constructor.get(ffi_dtype)
-
-
-def kernel_arg_from_ffi_buffer(ffi_buffer: XLA_FFI_Buffer, kernel_param: Var):
-    param_dtype = kernel_param.type.dtype
-
-    is_vecmat = hasattr(param_dtype, "_wp_scalar_type_")
-
-    if is_vecmat:
-        scalar_dtype = param_dtype._wp_scalar_type_
-    else:
-        scalar_dtype = param_dtype
-
-    # check data type
-    input_dtype = dtype_from_ffi(ffi_buffer.dtype)
-    if input_dtype != scalar_dtype:
-        raise TypeError(
-            f"Invalid data type for kernel argument '{kernel_param.label}': Expected {param_dtype}, got {input_dtype}"
-        )
-
-    # check dimensionality
-    ndim = ffi_buffer.rank
-
-    if is_vecmat:
-        # strip trailing dimensions
-        # TODO: ensure correct trailing dims?
-        ndim -= len(param_dtype._shape_)
-
-    if ndim != kernel_param.type.ndim:
-        raise TypeError(
-            f"Invalid dimensionality for kernel argument '{kernel_param.label}': Expected {kernel_param.type.ndim}, got {ndim}"
-        )
-
-    shape = ffi_buffer.dims[:ndim]
-    strides = strides_from_shape(shape, param_dtype)
-
-    return array_t(ffi_buffer.data, 0, ndim, shape, strides)
 
 
 # Execution context (stream, stage)

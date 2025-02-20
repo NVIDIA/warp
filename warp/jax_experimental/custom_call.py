@@ -20,35 +20,33 @@ _registered_kernels = [None]
 _registered_kernel_to_id = {}
 
 
-def jax_kernel(wp_kernel, launch_dims=None):
+def jax_kernel(kernel, launch_dims=None):
     """Create a Jax primitive from a Warp kernel.
 
     NOTE: This is an experimental feature under development.
 
     Args:
-        wp_kernel: The Warp kernel to be wrapped.
+        kernel: The Warp kernel to be wrapped.
         launch_dims: Optional. Specify the kernel launch dimensions. If None,
                      dimensions are inferred from the shape of the first argument.
                      This option when set will specify the output dimensions.
 
-    Current limitations:
-    - All kernel arguments must be arrays.
-    - If launch_dims is not provided, kernel launch dimensions are inferred from the shape of the first argument.
-    - Input arguments are followed by output arguments in the Warp kernel definition.
-    - There must be at least one input argument and at least one output argument.
-    - All arrays must be contiguous.
-    - Only the CUDA backend is supported.
+    Limitations:
+        - All kernel arguments must be contiguous arrays.
+        - Input arguments are followed by output arguments in the Warp kernel definition.
+        - There must be at least one input argument and at least one output argument.
+        - Only the CUDA backend is supported.
     """
 
     if _jax_warp_p is None:
         # Create and register the primitive
         _create_jax_warp_primitive()
-    if wp_kernel not in _registered_kernel_to_id:
+    if kernel not in _registered_kernel_to_id:
         id = len(_registered_kernels)
-        _registered_kernels.append(wp_kernel)
-        _registered_kernel_to_id[wp_kernel] = id
+        _registered_kernels.append(kernel)
+        _registered_kernel_to_id[kernel] = id
     else:
-        id = _registered_kernel_to_id[wp_kernel]
+        id = _registered_kernel_to_id[kernel]
 
     def bind(*args):
         return _jax_warp_p.bind(*args, kernel=id, launch_dims=launch_dims)
