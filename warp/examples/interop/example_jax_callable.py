@@ -54,7 +54,7 @@ def example1():
     def f():
         # inputs
         a = jnp.arange(10, dtype=jnp.float32)
-        b = jnp.ones((5, 2), dtype=jnp.float32)  # wp.vec2
+        b = jnp.arange(10, dtype=jnp.float32).reshape((5, 2))  # wp.vec2
         s = 2.0
 
         # output shapes
@@ -84,8 +84,8 @@ def example2():
 
     # inputs
     a = jnp.arange(10, dtype=jnp.float32)
-    b = jnp.ones((5, 2), dtype=jnp.float32)  # wp.vec2
-    s = 2.0
+    b = jnp.arange(10, dtype=jnp.float32).reshape((5, 2))  # wp.vec2
+    s = 3.0
 
     r1, r2 = f(a, b, s)
     print(r1)

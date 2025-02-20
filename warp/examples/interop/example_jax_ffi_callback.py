@@ -8,7 +8,8 @@
 ###########################################################################
 # Example register_ffi_callback()
 #
-# Examples of calling arbitrary Python functions from JAX.
+# Examples of calling Python functions from JAX.
+# Target functions must have the form func(inputs, outputs, attrs, ctx).
 ###########################################################################
 
 import jax
@@ -90,13 +91,13 @@ def example2():
 
     # inputs
     a = jnp.arange(n, dtype=jnp.float32)
-    b = jnp.ones((n // 2, 2), dtype=jnp.float32)  # wp.vec2
+    b = jnp.arange(n, dtype=jnp.float32).reshape((n // 2, 2))  # array of wp.vec2
     s = 2.0
 
     # set up call
     out_types = [
         jax.ShapeDtypeStruct(a.shape, jnp.float32),
-        jax.ShapeDtypeStruct(b.shape, jnp.float32),  # wp.vec2
+        jax.ShapeDtypeStruct(b.shape, jnp.float32),  # array of wp.vec2
     ]
     call = jax.ffi.ffi_call("warp_func", out_types)
 
