@@ -278,7 +278,7 @@ linux-x86_64 test:
     - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
     # Upload report to Codecov
     - python -m pip install codecov-cli
-    - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -F unittests -f rspec.xml
+    - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -F unittests -f rspec.xml -f coverage.xml
 
 # Note that for throughput reasons this runs on a single-GPU runner
 windows-x86_64 test:
