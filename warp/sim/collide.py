@@ -837,6 +837,7 @@ def count_contact_points(
                 num_actual_contacts = 8 + 4
         else:
             num_contacts = 8
+            num_actual_contacts = 8
     elif actual_type_a == wp.sim.GEO_MESH:
         mesh_a = wp.mesh_get(geo.source[actual_shape_a])
         num_contacts_a = mesh_a.points.shape[0]

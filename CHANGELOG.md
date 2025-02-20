@@ -23,7 +23,7 @@
 - `warp.fem.interpolate()` can now build Jacobian sparse matrices of interpolated functions with respect to a trial field
 - Vector/matrix/quaternion component assignment operations compile and run faster in the backward pass. Assignment should only happen once per component.
 - Multiple warp.sparse routines (`bsr_set_from_triplets`, `bsr_assign`, `bsr_axpy`, `bsr_mm`) now accept a `masked` flag to discard any non-zero not already present in the destination matrix
-- `warp.sparse.bsr_assign()` now longer requires source and destination block shapes to evenly divide each other
+- `warp.sparse.bsr_assign()` no longer requires source and destination block shapes to evenly divide each other
 
 ### Fixed
 
@@ -40,6 +40,8 @@
 - Fix an error of AABB computation in `wp.collide.TriMeshCollisionDetector`.
 - Fix URDF-imported planar joints not being set with the intended `target_ke`, `target_kd`, and `mode` parameters
   ([GH-454](https://github.com/NVIDIA/warp/issues/454)).
+- Fix `ModelBuilder.add_builder()` to use correct offsets for `ModelBuilder.joint_parent` and `ModelBuilder.joint_child` ([GH-432](https://github.com/NVIDIA/warp/issues/432))
+- Fix incorrect contact point allocation resulting from `count_contact_points()` for box-sphere and box-capsule collisions.
 
 ## [1.6.0] - 2025-02-03
 

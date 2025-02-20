@@ -1399,6 +1399,8 @@ class ModelBuilder:
                 # apply offset transform to root bodies
                 if xform is not None:
                     self.shape_transform.append(xform * builder.shape_transform[s])
+                else:
+                    self.shape_transform.append(builder.shape_transform[s])
 
         for b, shapes in builder.body_shapes.items():
             self.body_shapes[b + start_body_idx] = [s + start_shape_idx for s in shapes]
@@ -1421,18 +1423,16 @@ class ModelBuilder:
 
             # offset the indices
             self.articulation_start.extend([a + self.joint_count for a in builder.articulation_start])
-            self.joint_parent.extend([p + self.joint_count if p != -1 else -1 for p in builder.joint_parent])
-            self.joint_child.extend([c + self.joint_count for c in builder.joint_child])
+            self.joint_parent.extend([p + self.body_count if p != -1 else -1 for p in builder.joint_parent])
+            self.joint_child.extend([c + self.body_count for c in builder.joint_child])
 
             self.joint_q_start.extend([c + self.joint_coord_count for c in builder.joint_q_start])
             self.joint_qd_start.extend([c + self.joint_dof_count for c in builder.joint_qd_start])
 
             self.joint_axis_start.extend([a + self.joint_axis_total_count for a in builder.joint_axis_start])
 
-        joint_children = set(builder.joint_child)
         for i in range(builder.body_count):
-            if xform is not None and i not in joint_children:
-                # rigid body is not attached to a joint, so apply input transform directly
+            if xform is not None:
                 self.body_q.append(xform * builder.body_q[i])
             else:
                 self.body_q.append(builder.body_q[i])
