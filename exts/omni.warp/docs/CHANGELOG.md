@@ -6,6 +6,8 @@
 
 - Add [documentation](https://nvidia.github.io/warp/modules/runtime.html#launch-objects) for `Launch` objects
   ([GH-428](https://github.com/NVIDIA/warp/issues/428)).
+- Add [documentation](https://nvidia.github.io/warp/modules/differentiability.html#array-overwrites) on how overwriting
+  previously computed results can lead to incorrect gradients ([GH-525](https://github.com/NVIDIA/warp/issues/525)).
 
 ### Fixed
 
@@ -26,6 +28,9 @@
 - Fix an error of AABB computation in `wp.collide.TriMeshCollisionDetector`.
 - Fix URDF-imported planar joints not being set with the intended `target_ke`, `target_kd`, and `mode` parameters
   ([GH-454](https://github.com/NVIDIA/warp/issues/454)).
+- Fix `ModelBuilder.add_builder()` to use correct offsets for `ModelBuilder.joint_parent` and `ModelBuilder.joint_child`
+  ([GH-432](https://github.com/NVIDIA/warp/issues/432))
+- Fix underallocation of contact points for box–sphere and box–capsule collisions.
 
 ## [1.6.0] - 2025-02-03
 
