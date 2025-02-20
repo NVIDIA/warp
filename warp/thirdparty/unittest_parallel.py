@@ -554,6 +554,9 @@ def initialize_test_process(lock, shared_index, args, temp_dir):
             wp.config.kernel_cache_dir = cache_root_dir
 
             wp.build.clear_kernel_cache()
+        elif "WARP_CACHE_ROOT" in os.environ:
+            # Using a shared cache for all test processes
+            wp.config.kernel_cache_dir = os.path.join(os.getenv("WARP_CACHE_ROOT"), wp.config.version)
 
 
 if __name__ == "__main__":  # pragma: no cover
