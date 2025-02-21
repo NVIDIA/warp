@@ -42,6 +42,9 @@ def parse_mjcf(
     enable_self_collisions=False,
     up_axis="Z",
     ignore_classes=None,
+    ignore_inertial_definitions=True,
+    ensure_nonstatic_links=True,
+    static_link_mass=1e-2,
     collapse_fixed_joints=False,
 ):
     """
@@ -72,11 +75,12 @@ def parse_mjcf(
         enable_self_collisions (bool): If True, self-collisions are enabled.
         up_axis (str): The up axis of the mechanism. Can be either `"X"`, `"Y"` or `"Z"`. The default is `"Z"`.
         ignore_classes (List[str]): A list of regular expressions. Bodies and joints with a class matching one of the regular expressions will be ignored.
+        ignore_inertial_definitions (bool): If True, the inertial parameters defined in the MJCF are ignored and the inertia is calculated from the shape geometry.
+        ensure_nonstatic_links (bool): If True, links with zero mass are given a small mass (see `static_link_mass`) to ensure they are dynamic.
+        static_link_mass (float): The mass to assign to links with zero mass (if `ensure_nonstatic_links` is set to True).
         collapse_fixed_joints (bool): If True, fixed joints are removed and the respective bodies are merged.
 
     Note:
-        The inertia and masses of the bodies are calculated from the shape geometry and the given density. The values defined in the MJCF are not respected at the moment.
-
         The handling of advanced features, such as MJCF classes, is still experimental.
     """
     if xform is None:
@@ -475,6 +479,57 @@ def parse_mjcf(
 
         geoms = body.findall("geom")
         parse_shapes(defaults, body_name, link, geoms, density)
+        m = builder.body_mass[link]
+        if not ignore_inertial_definitions and body.find("inertial") is not None:
+            inertial = body.find("inertial")
+            if "inertial" in defaults:
+                inertial_attrib = merge_attrib(defaults["inertial"], inertial.attrib)
+            else:
+                inertial_attrib = inertial.attrib
+            # overwrite inertial parameters if defined
+            inertial_pos = parse_vec(inertial_attrib, "pos", (0.0, 0.0, 0.0)) * scale
+            inertial_rot = parse_orientation(inertial_attrib)
+
+            inertial_frame = wp.transform(inertial_pos, inertial_rot)
+            com = inertial_frame.p
+            if inertial_attrib.get("diaginertia") is not None:
+                diaginertia = parse_vec(inertial_attrib, "diaginertia", None)
+                I_m = np.zeros((3, 3))
+                I_m[0, 0] = diaginertia[0] * scale**2
+                I_m[1, 1] = diaginertia[1] * scale**2
+                I_m[2, 2] = diaginertia[2] * scale**2
+            else:
+                fullinertia = inertial_attrib.get("fullinertia")
+                assert fullinertia is not None
+                fullinertia = np.fromstring(fullinertia, sep=" ", dtype=np.float32)
+                I_m = np.zeros((3, 3))
+                I_m[0, 0] = fullinertia[0] * scale**2
+                I_m[1, 1] = fullinertia[1] * scale**2
+                I_m[2, 2] = fullinertia[2] * scale**2
+                I_m[0, 1] = fullinertia[3] * scale**2
+                I_m[0, 2] = fullinertia[4] * scale**2
+                I_m[1, 2] = fullinertia[5] * scale**2
+                I_m[1, 0] = I_m[0, 1]
+                I_m[2, 0] = I_m[0, 2]
+                I_m[2, 1] = I_m[1, 2]
+            rot = wp.quat_to_matrix(inertial_frame.q)
+            I_m = rot @ wp.mat33(I_m)
+            m = float(inertial_attrib.get("mass", "0"))
+            builder.body_mass[link] = m
+            builder.body_inv_mass[link] = 1.0 / m
+            builder.body_com[link] = com
+            builder.body_inertia[link] = I_m
+            builder.body_inv_inertia[link] = wp.inverse(I_m)
+        if m == 0.0 and ensure_nonstatic_links:
+            # set the mass to something nonzero to ensure the body is dynamic
+            m = static_link_mass
+            # cube with side length 0.5
+            I_m = wp.mat33(np.eye(3)) * m / 12.0 * (0.5 * scale) ** 2 * 2.0
+            I_m += wp.mat33(armature * np.eye(3))
+            builder.body_mass[link] = m
+            builder.body_inv_mass[link] = 1.0 / m
+            builder.body_inertia[link] = I_m
+            builder.body_inv_inertia[link] = wp.inverse(I_m)
 
         # -----------------
         # recurse
