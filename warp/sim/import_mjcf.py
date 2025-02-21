@@ -15,6 +15,7 @@ import numpy as np
 
 import warp as wp
 import warp.sim
+from warp.sim.model import Mesh
 
 
 def parse_mjcf(
@@ -122,11 +123,10 @@ def parse_mjcf(
                 # handle stl relative paths
                 if not os.path.isabs(fname):
                     fname = os.path.abspath(os.path.join(mjcf_dirname, fname))
-                if "name" in mesh.attrib:
-                    mesh_assets[mesh.attrib["name"]] = fname
-                else:
-                    name = ".".join(os.path.basename(fname).split(".")[:-1])
-                    mesh_assets[name] = fname
+                name = mesh.attrib.get("name", ".".join(os.path.basename(fname).split(".")[:-1]))
+                s = mesh.attrib.get("scale", "1.0 1.0 1.0")
+                s = np.fromstring(s, sep=" ", dtype=np.float32)
+                mesh_assets[name] = {"file": fname, "scale": s}
 
     class_parent = {}
     class_children = {}
@@ -224,23 +224,6 @@ def parse_mjcf(
             return wp.quat_from_matrix(rot_matrix)
         return wp.quat_identity()
 
-    def parse_mesh(geom):
-        import trimesh
-
-        faces = []
-        vertices = []
-        stl_file = mesh_assets[geom["mesh"]]
-        m = trimesh.load(stl_file)
-
-        for v in m.vertices:
-            vertices.append(np.array(v) * scale)
-
-        for f in m.faces:
-            faces.append(int(f[0]))
-            faces.append(int(f[1]))
-            faces.append(int(f[2]))
-        return wp.sim.Mesh(vertices, faces), m.scale
-
     def parse_shapes(defaults, body_name, link, geoms, density):
         for geo_count, geom in enumerate(geoms):
             geom_defaults = defaults
@@ -293,22 +276,47 @@ def parse_mjcf(
                 )
 
             elif geom_type == "mesh" and parse_meshes:
-                mesh, _ = parse_mesh(geom_attrib)
-                if "mesh" in defaults:
-                    mesh_scale = parse_vec(defaults["mesh"], "scale", [1.0, 1.0, 1.0])
+                import trimesh
+
+                # use force='mesh' to load the mesh as a trimesh object
+                # with baked in transforms, e.g. from COLLADA files
+                stl_file = mesh_assets[geom_attrib["mesh"]]["file"]
+                m = trimesh.load(stl_file, force="mesh")
+                if "mesh" in geom_defaults:
+                    mesh_scale = parse_vec(geom_defaults["mesh"], "scale", mesh_assets[geom_attrib["mesh"]]["scale"])
                 else:
-                    mesh_scale = [1.0, 1.0, 1.0]
+                    mesh_scale = mesh_assets[geom_attrib["mesh"]]["scale"]
+                scaling = np.array(mesh_scale) * scale
                 # as per the Mujoco XML reference, ignore geom size attribute
                 assert len(geom_size) == 3, "need to specify size for mesh geom"
-                s = builder.add_shape_mesh(
-                    body=link,
-                    pos=geom_pos,
-                    rot=geom_rot,
-                    mesh=mesh,
-                    scale=mesh_scale,
-                    density=density,
-                    **contact_vars,
-                )
+
+                if hasattr(m, "geometry"):
+                    # multiple meshes are contained in a scene
+                    for m_geom in m.geometry.values():
+                        vertices = np.array(m_geom.vertices, dtype=np.float32) * scaling
+                        faces = np.array(m_geom.faces.flatten(), dtype=np.int32)
+                        mesh = Mesh(vertices, faces)
+                        s = builder.add_shape_mesh(
+                            body=link,
+                            pos=geom_pos,
+                            rot=geom_rot,
+                            mesh=mesh,
+                            density=density,
+                            **contact_vars,
+                        )
+                else:
+                    # a single mesh
+                    vertices = np.array(m.vertices, dtype=np.float32) * scaling
+                    faces = np.array(m.faces.flatten(), dtype=np.int32)
+                    mesh = Mesh(vertices, faces)
+                    s = builder.add_shape_mesh(
+                        body=link,
+                        pos=geom_pos,
+                        rot=geom_rot,
+                        mesh=mesh,
+                        density=density,
+                        **contact_vars,
+                    )
 
             elif geom_type in {"capsule", "cylinder"}:
                 if "fromto" in geom_attrib:
