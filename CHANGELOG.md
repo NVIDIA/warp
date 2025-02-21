@@ -25,6 +25,8 @@
 - Vector/matrix/quaternion component assignment operations compile and run faster in the backward pass. Assignment should only happen once per component.
 - Multiple warp.sparse routines (`bsr_set_from_triplets`, `bsr_assign`, `bsr_axpy`, `bsr_mm`) now accept a `masked` flag to discard any non-zero not already present in the destination matrix
 - `warp.sparse.bsr_assign()` no longer requires source and destination block shapes to evenly divide each other
+- `warp.sim.Control` no longer has a `model` attribute ([GH-487](https://github.com/NVIDIA/warp/issues/487))..
+- `warp.sim.Control.reset()` now zeros-out the controls and is deprecated. Use `warp.sim.Control.clear()` instead.
 
 ### Fixed
 
