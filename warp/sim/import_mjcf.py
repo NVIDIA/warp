@@ -197,7 +197,7 @@ def parse_mjcf(
             if use_degrees:
                 angle *= np.pi / 180
             axis = wp.normalize(wp.vec3(*axisangle[:3]))
-            return wp.quat_from_axis_angle(axis, angle)
+            return wp.quat_from_axis_angle(axis, float(angle))
         if "xyaxes" in attrib:
             xyaxes = np.fromstring(attrib["xyaxes"], sep=" ")
             xaxis = wp.normalize(wp.vec3(*xyaxes[:3]))
