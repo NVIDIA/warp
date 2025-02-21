@@ -42,9 +42,15 @@ def parse_mjcf(
     joint_limit_lower=-1e6,
     joint_limit_upper=1e6,
     scale=1.0,
+    hide_visuals=False,
+    parse_visuals_as_colliders=False,
     parse_meshes=True,
     up_axis="Z",
     ignore_classes=None,
+    visual_classes=("visual",),
+    collider_classes=("collision",),
+    no_class_as_colliders=True,
+    force_show_colliders=False,
     enable_self_collisions=False,
     ignore_inertial_definitions=True,
     ensure_nonstatic_links=True,
@@ -77,9 +83,15 @@ def parse_mjcf(
         joint_limit_lower (float): The default lower joint limit if not specified in the MJCF.
         joint_limit_upper (float): The default upper joint limit if not specified in the MJCF.
         scale (float): The scaling factor to apply to the imported mechanism.
+        hide_visuals (bool): If True, hide visual shapes.
+        parse_visuals_as_colliders (bool): If True, the geometry defined under the `visual_classes` tags is used for collision handling instead of the `collider_classes` geometries.
         parse_meshes (bool): Whether geometries of type `"mesh"` should be parsed. If False, geometries of type `"mesh"` are ignored.
         up_axis (str): The up axis of the mechanism. Can be either `"X"`, `"Y"` or `"Z"`. The default is `"Z"`.
         ignore_classes (List[str]): A list of regular expressions. Bodies and joints with a class matching one of the regular expressions will be ignored.
+        visual_classes (List[str]): A list of regular expressions. Visual geometries with a class matching one of the regular expressions will be parsed.
+        collider_classes (List[str]): A list of regular expressions. Collision geometries with a class matching one of the regular expressions will be parsed.
+        no_class_as_colliders: If True, geometries without a class are parsed as collision geometries. If False, geometries without a class are parsed as visual geometries.
+        force_show_colliders (bool): If True, the collision shapes are always shown, even if there are visual shapes.
         enable_self_collisions (bool): If True, self-collisions are enabled.
         ignore_inertial_definitions (bool): If True, the inertial parameters defined in the MJCF are ignored and the inertia is calculated from the shape geometry.
         ensure_nonstatic_links (bool): If True, links with zero mass are given a small mass (see `static_link_mass`) to ensure they are dynamic.
@@ -226,7 +238,7 @@ def parse_mjcf(
             return wp.quat_from_matrix(rot_matrix)
         return wp.quat_identity()
 
-    def parse_shapes(defaults, body_name, link, geoms, density):
+    def parse_shapes(defaults, body_name, link, geoms, density, visible=True, just_visual=False):
         shapes = []
         for geo_count, geom in enumerate(geoms):
             geom_defaults = defaults
@@ -246,7 +258,7 @@ def parse_mjcf(
             else:
                 geom_attrib = geom.attrib
 
-            geom_name = geom_attrib.get("name", f"{body_name}_geom_{geo_count}")
+            geom_name = geom_attrib.get("name", f"{body_name}_geom_{geo_count}{'_visual' if just_visual else ''}")
             geom_type = geom_attrib.get("type", "sphere")
             if "mesh" in geom_attrib:
                 geom_type = "mesh"
@@ -263,6 +275,9 @@ def parse_mjcf(
                     rot=geom_rot,
                     radius=geom_size[0],
                     density=geom_density,
+                    is_visible=visible,
+                    has_ground_collision=not just_visual,
+                    has_shape_collision=not just_visual,
                     **contact_vars,
                 )
                 shapes.append(s)
@@ -276,6 +291,9 @@ def parse_mjcf(
                     hy=geom_size[1],
                     hz=geom_size[2],
                     density=geom_density,
+                    is_visible=visible,
+                    has_ground_collision=not just_visual,
+                    has_shape_collision=not just_visual,
                     **contact_vars,
                 )
                 shapes.append(s)
@@ -307,6 +325,9 @@ def parse_mjcf(
                             rot=geom_rot,
                             mesh=mesh,
                             density=density,
+                            is_visible=visible,
+                            has_ground_collision=not just_visual,
+                            has_shape_collision=not just_visual,
                             **contact_vars,
                         )
                         shapes.append(s)
@@ -321,6 +342,9 @@ def parse_mjcf(
                         rot=geom_rot,
                         mesh=mesh,
                         density=density,
+                        is_visible=visible,
+                        has_ground_collision=not just_visual,
+                        has_shape_collision=not just_visual,
                         **contact_vars,
                     )
                     shapes.append(s)
@@ -358,6 +382,9 @@ def parse_mjcf(
                         half_height=geom_height,
                         density=density,
                         up_axis=geom_up_axis,
+                        is_visible=visible,
+                        has_ground_collision=not just_visual,
+                        has_shape_collision=not just_visual,
                         **contact_vars,
                     )
                     shapes.append(s)
@@ -370,6 +397,9 @@ def parse_mjcf(
                         half_height=geom_height,
                         density=density,
                         up_axis=geom_up_axis,
+                        is_visible=visible,
+                        has_ground_collision=not just_visual,
+                        has_shape_collision=not just_visual,
                         **contact_vars,
                     )
                     shapes.append(s)
@@ -562,7 +592,60 @@ def parse_mjcf(
         # add shapes
 
         geoms = body.findall("geom")
-        parse_shapes(defaults, body_name, link, geoms, density)
+        visuals = []
+        colliders = []
+        for geo_count, geom in enumerate(geoms):
+            geom_defaults = defaults
+            if "class" in geom.attrib:
+                geom_class = geom.attrib["class"]
+                ignore_geom = False
+                for pattern in ignore_classes:
+                    if re.match(pattern, geom_class):
+                        ignore_geom = True
+                        break
+                if ignore_geom:
+                    continue
+                if geom_class in class_defaults:
+                    geom_defaults = merge_attrib(defaults, class_defaults[geom_class])
+            if "geom" in geom_defaults:
+                geom_attrib = merge_attrib(geom_defaults["geom"], geom.attrib)
+            else:
+                geom_attrib = geom.attrib
+
+            geom_name = geom_attrib.get("name", f"{body_name}_geom_{geo_count}")
+
+            if "class" in geom.attrib:
+                for pattern in visual_classes:
+                    if re.match(pattern, geom_class):
+                        visuals.append(geom)
+                        break
+                for pattern in collider_classes:
+                    if re.match(pattern, geom_class):
+                        colliders.append(geom)
+                        break
+            else:
+                no_class_class = "collision" if no_class_as_colliders else "visual"
+                print(f"MJCF parsing shape {geom_name} issue: no class defined for geom, assuming {no_class_class}")
+                if no_class_as_colliders:
+                    colliders.append(geom)
+                else:
+                    visuals.append(geom)
+
+        if parse_visuals_as_colliders:
+            colliders = visuals
+        else:
+            s = parse_shapes(defaults, body_name, link, visuals, density=0.0, just_visual=True, visible=not hide_visuals)
+            visual_shapes.extend(s)
+
+        show_colliders = force_show_colliders
+        if parse_visuals_as_colliders:
+            show_colliders = True
+        elif len(visuals) == 0:
+            # we need to show the collision shapes since there are no visual shapes
+            show_colliders = True
+
+        parse_shapes(defaults, body_name, link, colliders, density, visible=show_colliders)
+
         m = builder.body_mass[link]
         if not ignore_inertial_definitions and body.find("inertial") is not None:
             inertial = body.find("inertial")
@@ -630,16 +713,25 @@ def parse_mjcf(
     # -----------------
     # start articulation
 
+    visual_shapes = []
     start_shape_count = len(builder.shape_geo_type)
     builder.add_articulation()
 
     world = root.find("worldbody")
     world_class = get_class(world)
     world_defaults = merge_attrib(class_defaults["__all__"], class_defaults.get(world_class, {}))
+
+    # -----------------
+    # add bodies
+
     for body in world.findall("body"):
         parse_body(body, -1, world_defaults)
 
     end_shape_count = len(builder.shape_geo_type)
+
+    for i in range(start_shape_count, end_shape_count):
+        for j in visual_shapes:
+            builder.shape_collision_filter_pairs.add((i, j))
 
     if not enable_self_collisions:
         for i in range(start_shape_count, end_shape_count):
