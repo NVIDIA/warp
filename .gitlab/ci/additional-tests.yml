@@ -82,7 +82,7 @@ linux-aarch64 test:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-aarch64 build
   extends:
-    - .runner-test-linux-aarch64  # TODO: Change to GPU runners
+    - .omni_devplat_arm_docker_gpu
     - .save_test_report_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
