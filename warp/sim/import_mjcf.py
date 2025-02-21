@@ -10,6 +10,7 @@ import math
 import os
 import re
 import xml.etree.ElementTree as ET
+from typing import Union
 
 import numpy as np
 
@@ -22,6 +23,8 @@ def parse_mjcf(
     mjcf_filename,
     builder,
     xform=None,
+    floating=False,
+    base_joint: Union[dict, str, None] = None,
     density=1000.0,
     stiffness=0.0,
     damping=0.0,
@@ -55,6 +58,8 @@ def parse_mjcf(
         mjcf_filename (str): The filename of the MuJoCo file to parse.
         builder (ModelBuilder): The :class:`ModelBuilder` to add the bodies and joints to.
         xform (:ref:`transform <transform>`): The transform to apply to the imported mechanism.
+        floating (bool): If True, the root body is a free joint. If False, the root body is connected via a fixed joint to the world, unless a `base_joint` is defined.
+        base_joint (Union[str, dict]): The joint by which the root body is connected to the world. This can be either a string defining the joint axes of a D6 joint with comma-separated positional and angular axis names (e.g. "px,py,rz" for a D6 joint with linear axes in x, y and an angular axis in z) or a dict with joint parameters (see :meth:`ModelBuilder.add_joint`).
         density (float): The density of the shapes in kg/m^3 which will be used to calculate the body mass and inertia.
         stiffness (float): The stiffness of the joints.
         damping (float): The damping of the joints.
@@ -477,20 +482,78 @@ def parse_mjcf(
             else:
                 joint_type = wp.sim.JOINT_D6
 
-        joint_pos = joint_pos[0] if len(joint_pos) > 0 else (0.0, 0.0, 0.0)
-        if len(joint_name) == 0:
-            joint_name = [f"{body_name}_joint"]
-        builder.add_joint(
-            joint_type,
-            parent,
-            link,
-            linear_axes,
-            angular_axes,
-            name="_".join(joint_name),
-            parent_xform=wp.transform(body_pos + joint_pos, body_ori),
-            child_xform=wp.transform(joint_pos, wp.quat_identity()),
-            armature=joint_armature[0] if len(joint_armature) > 0 else armature,
-        )
+        if len(freejoint_tags) > 0 and parent == -1 and (base_joint is not None or floating is not None):
+
+            joint_pos = joint_pos[0] if len(joint_pos) > 0 else (0.0, 0.0, 0.0)
+            _xform = wp.transform(body_pos + joint_pos, body_ori)
+
+            if base_joint is not None:
+                # in case of a given base joint, the position is applied first, the rotation only
+                # after the base joint itself to not rotate its axis
+                base_parent_xform = wp.transform(_xform.p, wp.quat_identity())
+                base_child_xform = wp.transform((0.0, 0.0, 0.0), wp.quat_inverse(_xform.q))
+                if isinstance(base_joint, str):
+                    axes = base_joint.lower().split(",")
+                    axes = [ax.strip() for ax in axes]
+                    linear_axes = [ax[-1] for ax in axes if ax[0] in {"l", "p"}]
+                    angular_axes = [ax[-1] for ax in axes if ax[0] in {"a", "r"}]
+                    axes = {
+                        "x": [1.0, 0.0, 0.0],
+                        "y": [0.0, 1.0, 0.0],
+                        "z": [0.0, 0.0, 1.0],
+                    }
+                    builder.add_joint_d6(
+                        linear_axes=[wp.sim.JointAxis(axes[a]) for a in linear_axes],
+                        angular_axes=[wp.sim.JointAxis(axes[a]) for a in angular_axes],
+                        parent_xform=base_parent_xform,
+                        child_xform=base_child_xform,
+                        parent=-1,
+                        child=link,
+                        name="base_joint",
+                    )
+                elif isinstance(base_joint, dict):
+                    base_joint["parent"] = -1
+                    base_joint["child"] = root
+                    base_joint["parent_xform"] = base_parent_xform
+                    base_joint["child_xform"] = base_child_xform
+                    base_joint["name"] = "base_joint"
+                    builder.add_joint(**base_joint)
+                else:
+                    raise ValueError(
+                        "base_joint must be a comma-separated string of joint axes or a dict with joint parameters"
+                    )
+            elif floating:
+                builder.add_joint_free(link, name="floating_base")
+
+                # set dofs to transform
+                start = builder.joint_q_start[link]
+
+                builder.joint_q[start + 0] = _xform.p[0]
+                builder.joint_q[start + 1] = _xform.p[1]
+                builder.joint_q[start + 2] = _xform.p[2]
+
+                builder.joint_q[start + 3] = _xform.q[0]
+                builder.joint_q[start + 4] = _xform.q[1]
+                builder.joint_q[start + 5] = _xform.q[2]
+                builder.joint_q[start + 6] = _xform.q[3]
+            else:
+                builder.add_joint_fixed(-1, link, parent_xform=_xform, name="fixed_base")
+
+        else:
+            joint_pos = joint_pos[0] if len(joint_pos) > 0 else (0.0, 0.0, 0.0)
+            if len(joint_name) == 0:
+                joint_name = [f"{body_name}_joint"]
+            builder.add_joint(
+                joint_type,
+                parent,
+                link,
+                linear_axes,
+                angular_axes,
+                name="_".join(joint_name),
+                parent_xform=wp.transform(body_pos + joint_pos, body_ori),
+                child_xform=wp.transform(joint_pos, wp.quat_identity()),
+                armature=joint_armature[0] if len(joint_armature) > 0 else armature,
+            )
 
         # -----------------
         # add shapes
