@@ -366,6 +366,7 @@ def parse_mjcf(
         else:
             body_attrib = body.attrib
         body_name = body_attrib["name"]
+        body_name = body_name.replace("-", "_")  # ensure valid USD path
         body_pos = parse_vec(body_attrib, "pos", (0.0, 0.0, 0.0))
         body_ori = parse_orientation(body_attrib)
         if parent == -1:
