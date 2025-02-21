@@ -85,9 +85,6 @@ def parse_mjcf(
         ensure_nonstatic_links (bool): If True, links with zero mass are given a small mass (see `static_link_mass`) to ensure they are dynamic.
         static_link_mass (float): The mass to assign to links with zero mass (if `ensure_nonstatic_links` is set to True).
         collapse_fixed_joints (bool): If True, fixed joints are removed and the respective bodies are merged.
-
-    Note:
-        The handling of advanced features, such as MJCF classes, is still experimental.
     """
     if xform is None:
         xform = wp.transform()
@@ -382,9 +379,10 @@ def parse_mjcf(
 
         return shapes
 
-    def parse_body(body, parent, incoming_defaults: dict):
-        body_class = body.get("childclass")
+    def parse_body(body, parent, incoming_defaults: dict, childclass: str = None):
+        body_class = body.get("class")
         if body_class is None:
+            body_class = childclass
             defaults = incoming_defaults
         else:
             for pattern in ignore_classes:
@@ -420,8 +418,13 @@ def parse_mjcf(
         else:
             joints = body.findall("joint")
             for _i, joint in enumerate(joints):
-                if "joint" in defaults:
-                    joint_attrib = merge_attrib(defaults["joint"], joint.attrib)
+                joint_defaults = defaults
+                if "class" in joint.attrib:
+                    joint_class = joint.attrib["class"]
+                    if joint_class in class_defaults:
+                        joint_defaults = merge_attrib(joint_defaults, class_defaults[joint_class])
+                if "joint" in joint_defaults:
+                    joint_attrib = merge_attrib(joint_defaults["joint"], joint.attrib)
                 else:
                     joint_attrib = joint.attrib
 
@@ -616,7 +619,13 @@ def parse_mjcf(
         # recurse
 
         for child in body.findall("body"):
-            parse_body(child, link, defaults)
+            _childclass = body.get("childclass")
+            if _childclass is None:
+                _childclass = childclass
+                _incoming_defaults = defaults
+            else:
+                _incoming_defaults = merge_attrib(defaults, class_defaults[_childclass])
+            parse_body(child, link, _incoming_defaults, childclass=_childclass)
 
     # -----------------
     # start articulation
