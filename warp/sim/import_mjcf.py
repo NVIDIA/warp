@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 
 import warp as wp
+import warp.sim
 
 
 def parse_mjcf(
@@ -95,12 +96,12 @@ def parse_mjcf(
     }
 
     use_degrees = True  # angles are in degrees by default
-    euler_seq = [1, 2, 3]  # XYZ by default
+    euler_seq = [0, 1, 2]  # XYZ by default
 
     compiler = root.find("compiler")
     if compiler is not None:
         use_degrees = compiler.attrib.get("angle", "degree").lower() == "degree"
-        euler_seq = ["xyz".index(c) + 1 for c in compiler.attrib.get("eulerseq", "xyz").lower()]
+        euler_seq = ["xyz".index(c) for c in compiler.attrib.get("eulerseq", "xyz").lower()]
         mesh_dir = compiler.attrib.get("meshdir", ".")
 
     mesh_assets = {}
@@ -189,7 +190,7 @@ def parse_mjcf(
             euler = np.fromstring(attrib["euler"], sep=" ")
             if use_degrees:
                 euler *= np.pi / 180
-            return wp.quat_from_euler(euler, *euler_seq)
+            return wp.sim.quat_from_euler(wp.vec3(euler), *euler_seq)
         if "axisangle" in attrib:
             axisangle = np.fromstring(attrib["axisangle"], sep=" ")
             angle = axisangle[3]
