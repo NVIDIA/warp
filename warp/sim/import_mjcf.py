@@ -103,6 +103,8 @@ def parse_mjcf(
         use_degrees = compiler.attrib.get("angle", "degree").lower() == "degree"
         euler_seq = ["xyz".index(c) for c in compiler.attrib.get("eulerseq", "xyz").lower()]
         mesh_dir = compiler.attrib.get("meshdir", ".")
+    else:
+        mesh_dir = "."
 
     mesh_assets = {}
     for asset in root.findall("asset"):
