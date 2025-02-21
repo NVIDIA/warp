@@ -15,7 +15,6 @@ from typing import Union
 import numpy as np
 
 import warp as wp
-import warp.sim
 from warp.sim.model import Mesh
 
 
@@ -492,7 +491,7 @@ def parse_mjcf(
                 axis_vec = parse_vec(joint_attrib, "axis", (0.0, 0.0, 0.0))
                 limit_lower = np.deg2rad(joint_range[0]) if is_angular and use_degrees else joint_range[0]
                 limit_upper = np.deg2rad(joint_range[1]) if is_angular and use_degrees else joint_range[1]
-                ax = wp.sim.model.JointAxis(
+                ax = wp.sim.JointAxis(
                     axis=axis_vec,
                     limit_lower=limit_lower,
                     limit_upper=limit_upper,
