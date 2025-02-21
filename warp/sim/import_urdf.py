@@ -213,15 +213,15 @@ def parse_urdf(
                 scaling = np.array([float(x) * scale for x in scaling.split()])
                 if hasattr(m, "geometry"):
                     # multiple meshes are contained in a scene
-                    for geom in m.geometry.values():
-                        geom_vertices = np.array(geom.vertices, dtype=np.float32) * scaling
-                        geom_faces = np.array(geom.faces.flatten(), dtype=np.int32)
-                        geom_mesh = Mesh(geom_vertices, geom_faces)
+                    for m_geom in m.geometry.values():
+                        m_vertices = np.array(m_geom.vertices, dtype=np.float32) * scaling
+                        m_faces = np.array(m_geom.faces.flatten(), dtype=np.int32)
+                        m_mesh = Mesh(m_vertices, m_faces)
                         s = builder.add_shape_mesh(
                             body=link,
                             pos=wp.vec3(tf.p),
                             rot=wp.quat(tf.q),
-                            mesh=geom_mesh,
+                            mesh=m_mesh,
                             density=density,
                             is_visible=visible,
                             has_ground_collision=not just_visual,
