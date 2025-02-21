@@ -4202,6 +4202,20 @@ add_builtin(
     doc="Return a random integer between [low, high).",
 )
 add_builtin(
+    "randu",
+    input_types={"state": uint32},
+    value_type=uint32,
+    group="Random",
+    doc="Return a random unsigned integer in the range [0, 2^32).",
+)
+add_builtin(
+    "randu",
+    input_types={"state": uint32, "low": uint32, "high": uint32},
+    value_type=uint32,
+    group="Random",
+    doc="Return a random unsigned integer between [low, high).",
+)
+add_builtin(
     "randf",
     input_types={"state": uint32},
     value_type=float,

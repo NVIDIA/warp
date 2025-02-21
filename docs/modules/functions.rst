@@ -2302,6 +2302,18 @@ Random
     Return a random integer between [low, high).
 
 
+.. py:function:: randu(state: uint32) -> uint32
+
+    Return a random unsigned integer in the range [0, 2^32).
+
+
+.. py:function:: randu(state: uint32, low: uint32, high: uint32) -> uint32
+    :noindex:
+    :nocontentsentry:
+
+    Return a random unsigned integer between [low, high).
+
+
 .. py:function:: randf(state: uint32) -> float
 
     Return a random float between [0.0, 1.0).

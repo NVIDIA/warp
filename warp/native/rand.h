@@ -44,6 +44,9 @@ inline CUDA_CALLABLE uint32 rand_init(int seed, int offset) { return rand_pcg(ui
 inline CUDA_CALLABLE int randi(uint32& state) { state = rand_pcg(state); return int(state); }
 inline CUDA_CALLABLE int randi(uint32& state, int min, int max) { state = rand_pcg(state); return state % (max - min) + min; }
 
+inline CUDA_CALLABLE uint32 randu(uint32& state) { state = rand_pcg(state); return state; }
+inline CUDA_CALLABLE uint32 randu(uint32& state, uint32 min, uint32 max) { state = rand_pcg(state); return state % (max - min) + min; }
+
 /*
  * We want to ensure randf adheres to a uniform distribution over [0,1). The set of all possible float32 (IEEE 754 standard) values is not uniformly distributed however.
  * On the other hand, for a given sign and exponent, the mantissa of the float32 representation is uniformly distributed.
@@ -64,6 +67,9 @@ inline CUDA_CALLABLE void adj_rand_init(int seed, int offset, int& adj_seed, int
 
 inline CUDA_CALLABLE void adj_randi(uint32& state, uint32& adj_state, float adj_ret) {}
 inline CUDA_CALLABLE void adj_randi(uint32& state, int min, int max, uint32& adj_state, int& adj_min, int& adj_max, float adj_ret) {}
+
+inline CUDA_CALLABLE void adj_randu(uint32& state, uint32& adj_state, float adj_ret) {}
+inline CUDA_CALLABLE void adj_randu(uint32& state, uint32 min, uint32 max, uint32& adj_state, uint32& adj_min, uint32& adj_max, float adj_ret) {}
 
 inline CUDA_CALLABLE void adj_randf(uint32& state, uint32& adj_state, float adj_ret) {}
 inline CUDA_CALLABLE void adj_randf(uint32& state, float min, float max, uint32& adj_state, float& adj_min, float& adj_max, float adj_ret) {}

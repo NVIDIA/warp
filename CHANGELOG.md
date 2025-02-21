@@ -15,6 +15,7 @@
 - Add [documentation](https://nvidia.github.io/warp/modules/runtime.html#launch-objects) for `Launch` objects
   ([GH-428](https://github.com/NVIDIA/warp/issues/428)).
 - Add Array Overwrites section to Differentiability documentation ([docs](https://nvidia.github.io/warp/modules/differentiability.html#array-overwrites)).
+- Add `wp.randu()` for random uint32 generation.
 
 ### Changed
 

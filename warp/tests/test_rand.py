@@ -18,6 +18,8 @@ def test_kernel(
     kernel_seed: int,
     int_a: wp.array(dtype=int),
     int_ab: wp.array(dtype=int),
+    uint_a: wp.array(dtype=wp.uint32),
+    uint_ab: wp.array(dtype=wp.uint32),
     float_01: wp.array(dtype=float),
     float_ab: wp.array(dtype=float),
 ):
@@ -27,6 +29,8 @@ def test_kernel(
 
     int_a[tid] = wp.randi(state)
     int_ab[tid] = wp.randi(state, 0, 100)
+    uint_a[tid] = wp.randu(state)
+    uint_ab[tid] = wp.randu(state, wp.uint32(0), wp.uint32(100))
     float_01[tid] = wp.randf(state)
     float_ab[tid] = wp.randf(state, 0.0, 100.0)
 
@@ -34,36 +38,24 @@ def test_kernel(
 def test_rand(test, device):
     N = 10
 
-    int_a_device = wp.zeros(N, dtype=int, device=device)
-    int_a_host = wp.zeros(N, dtype=int, device="cpu")
-    int_ab_device = wp.zeros(N, dtype=int, device=device)
-    int_ab_host = wp.zeros(N, dtype=int, device="cpu")
+    int_a = wp.zeros(N, dtype=int, device=device)
+    int_ab = wp.zeros(N, dtype=int, device=device)
 
-    float_01_device = wp.zeros(N, dtype=float, device=device)
-    float_01_host = wp.zeros(N, dtype=float, device="cpu")
-    float_ab_device = wp.zeros(N, dtype=float, device=device)
-    float_ab_host = wp.zeros(N, dtype=float, device="cpu")
+    uint_a = wp.zeros(N, dtype=wp.uint32, device=device)
+    uint_ab = wp.zeros(N, dtype=wp.uint32, device=device)
+
+    float_01 = wp.zeros(N, dtype=float, device=device)
+    float_ab = wp.zeros(N, dtype=float, device=device)
 
     seed = 42
 
     wp.launch(
         kernel=test_kernel,
         dim=N,
-        inputs=[seed, int_a_device, int_ab_device, float_01_device, float_ab_device],
+        inputs=[seed, int_a, int_ab, uint_a, uint_ab, float_01, float_ab],
         outputs=[],
         device=device,
     )
-
-    wp.copy(int_a_host, int_a_device)
-    wp.copy(int_ab_host, int_ab_device)
-    wp.copy(float_01_host, float_01_device)
-    wp.copy(float_ab_host, float_ab_device)
-    wp.synchronize_device(device)
-
-    int_a = int_a_host.numpy()
-    int_ab = int_ab_host.numpy()
-    float_01 = float_01_host.numpy()
-    float_ab = float_ab_host.numpy()
 
     int_a_true = np.array(
         [
@@ -80,32 +72,47 @@ def test_rand(test, device):
         ]
     )
     int_ab_true = np.array([46, 58, 46, 83, 85, 39, 72, 99, 18, 41])
+    uint_a_true = np.array(
+        [
+            3133687854,
+            3702303309,
+            1235698096,
+            3516599792,
+            800302729,
+            2620462179,
+            2423739693,
+            3024873594,
+            2783682377,
+            1188846332,
+        ]
+    )
+    uint_ab_true = np.array([6, 55, 2, 92, 55, 93, 65, 23, 48, 0])
     float_01_true = np.array(
         [
-            0.72961855,
-            0.86200964,
-            0.28770837,
-            0.8187722,
-            0.186335,
-            0.6101239,
-            0.56432086,
-            0.70428324,
-            0.64812654,
-            0.27679986,
+            0.8265858,
+            0.5874614,
+            0.1508659,
+            0.9498008,
+            0.02531803,
+            0.8520948,
+            0.0001185536,
+            0.4855958,
+            0.06277305,
+            0.2214079,
         ]
     )
     float_ab_true = np.array(
-        [96.04259, 73.33809, 63.601555, 38.647305, 71.813896, 64.65809, 77.79791, 46.579605, 94.614456, 91.921814]
+        [79.84678, 76.362206, 32.135242, 99.70866, 70.45863, 20.6523, 45.164482, 55.583008, 76.60291, 35.36277]
     )
 
-    test.assertTrue((int_a == int_a_true).all())
-    test.assertTrue((int_ab == int_ab_true).all())
+    assert_np_equal(int_a.numpy(), int_a_true)
+    assert_np_equal(int_ab.numpy(), int_ab_true)
 
-    err = np.max(np.abs(float_01 - float_01_true))
-    test.assertTrue(err < 1e-04)
+    assert_np_equal(uint_a.numpy(), uint_a_true)
+    assert_np_equal(uint_ab.numpy(), uint_ab_true)
 
-    err = np.max(np.abs(float_ab - float_ab_true))
-    test.assertTrue(err < 1e-04)
+    assert_np_equal(float_01.numpy(), float_01_true, 1e-04)
+    assert_np_equal(float_ab.numpy(), float_ab_true, 1e-04)
 
 
 @wp.kernel
