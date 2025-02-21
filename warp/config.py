@@ -11,64 +11,104 @@ version: str = "1.6.0"
 """Warp version string"""
 
 verify_fp: bool = False
-"""If `True`, Warp will check that inputs and outputs are finite before and/or after various operations.
-Has performance implications.
+"""Enable floating-point verification for inputs and outputs.
+
+When enabled, checks if all values are finite before and after operations.
+
+Note: Enabling this flag impacts performance.
 """
 
 verify_cuda: bool = False
-"""If `True`, Warp will check for CUDA errors after every launch operation.
-CUDA error verification cannot be used during graph capture. Has performance implications.
+"""Enable CUDA error checking after kernel launches.
+
+This setting cannot be used during graph capture
+
+Note: Enabling this flag impacts performance
 """
 
 print_launches: bool = False
-"""If `True`, Warp will print details of every kernel launch to standard out
-(e.g. launch dimensions, inputs, outputs, device, etc.). Has performance implications
+"""Enable detailed kernel launch logging.
+
+Prints information about each kernel launch including:
+
+- Launch dimensions
+- Input/output parameters
+- Target device
+
+Note: Enabling this flag impacts performance.
 """
 
 mode: str = "release"
-"""Controls whether to compile Warp kernels in debug or release mode.
-Valid choices are `"release"` or `"debug"`. Has performance implications.
+"""Compilation mode for Warp kernels.
+
+Args:
+    mode: Either ``"release"`` or ``"debug"``.
+
+Note: Debug mode may impact performance.
 """
 
 verbose: bool = False
-"""If `True`, additional information will be printed to standard out during code generation, compilation, etc."""
+"""Enable detailed logging during code generation and compilation."""
 
 verbose_warnings: bool = False
-"""If `True`, Warp warnings will include extra information such as the source file and line number."""
+"""Enable extended warning messages with source location information."""
 
 quiet: bool = False
-"""Suppress all output except errors and warnings."""
+"""Disable Warp module initialization messages.
+
+Error messages and warnings remain unaffected.
+"""
 
 verify_autograd_array_access: bool = False
-"""print warnings related to array overwrites that may result in incorrect gradients"""
+"""Enable warnings for array overwrites that may affect gradient computation."""
 
 enable_vector_component_overwrites: bool = False
-"""Normally local vector/matrix/quaternion components may only be written to once for gradients to be computed
-correctly. This setting permits component overwrites, but may significantly increase kernel compilation time."""
+"""Allow multiple writes to vector/matrix/quaternion components.
+
+Note: Enabling this may significantly increase kernel compilation time.
+"""
 
 cache_kernels: bool = True
-"""If `True`, kernels that have already been compiled from previous application launches will not be recompiled."""
+"""Enable kernel caching between application launches."""
 
 kernel_cache_dir: Optional[str] = None
-"""Path to kernel cache directory, if `None`, a default path will be used."""
+"""Directory path for storing compiled kernel cache.
+
+If ``None``, the path is determined in the following order:
+
+1. ``WARP_CACHE_PATH`` environment variable.
+2. System's user cache directory (via ``appdirs.user_cache_directory``).
+
+Note: Subdirectories prefixed with ``wp_`` will be created in this location.
+"""
 
 cuda_output: Optional[str] = None
-"""Preferred CUDA output format for kernels (`"ptx"` or `"cubin"`), determined automatically if unspecified"""
+"""Preferred CUDA output format for kernel compilation.
+
+Args:
+    cuda_output: One of {``None``, ``"ptx"``, ``"cubin"``}. If ``None``, format is auto-determined.
+"""
 
 ptx_target_arch: int = 75
-"""Target architecture for PTX generation, defaults to the lowest architecture that supports all of Warp's features."""
+"""Target architecture version for PTX generation.
+
+Defaults to minimum architecture version supporting all Warp features.
+"""
 
 enable_backward: bool = True
-"""Whether to compile the backward passes of kernels."""
+"""Enable compilation of kernel backward passes."""
 
 llvm_cuda: bool = False
-"""Use Clang/LLVM instead of NVRTC to compile CUDA."""
+"""Use Clang/LLVM compiler instead of NVRTC for CUDA compilation."""
 
 enable_graph_capture_module_load_by_default: bool = True
-"""Default value of `force_module_load` for `capture_begin()` if CUDA driver does not support at least CUDA 12.3."""
+"""Enable automatic module loading before graph capture.
+
+Only affects systems with CUDA driver versions below 12.3.
+"""
 
 enable_mempools_at_init: bool = True
-"""Whether CUDA devices will be initialized with mempools enabled (if supported)."""
+"""Enable CUDA memory pools during device initialization when supported."""
 
 max_unroll: int = 16
 """Maximum unroll factor for loops."""
