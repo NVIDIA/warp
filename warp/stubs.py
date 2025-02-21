@@ -1809,6 +1809,18 @@ def randi(state: uint32, low: int32, high: int32) -> int:
 
 
 @over
+def randu(state: uint32) -> uint32:
+    """Return a random unsigned integer in the range [0, 2^32)."""
+    ...
+
+
+@over
+def randu(state: uint32, low: uint32, high: uint32) -> uint32:
+    """Return a random unsigned integer between [low, high)."""
+    ...
+
+
+@over
 def randf(state: uint32) -> float:
     """Return a random float between [0.0, 1.0)."""
     ...
