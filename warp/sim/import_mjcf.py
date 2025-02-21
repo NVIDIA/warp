@@ -225,6 +225,7 @@ def parse_mjcf(
         return wp.quat_identity()
 
     def parse_shapes(defaults, body_name, link, geoms, density):
+        shapes = []
         for geo_count, geom in enumerate(geoms):
             geom_defaults = defaults
             if "class" in geom.attrib:
@@ -262,6 +263,7 @@ def parse_mjcf(
                     density=geom_density,
                     **contact_vars,
                 )
+                shapes.append(s)
 
             elif geom_type == "box":
                 s = builder.add_shape_box(
@@ -274,6 +276,7 @@ def parse_mjcf(
                     density=geom_density,
                     **contact_vars,
                 )
+                shapes.append(s)
 
             elif geom_type == "mesh" and parse_meshes:
                 import trimesh
@@ -304,6 +307,7 @@ def parse_mjcf(
                             density=density,
                             **contact_vars,
                         )
+                        shapes.append(s)
                 else:
                     # a single mesh
                     vertices = np.array(m.vertices, dtype=np.float32) * scaling
@@ -317,6 +321,7 @@ def parse_mjcf(
                         density=density,
                         **contact_vars,
                     )
+                    shapes.append(s)
 
             elif geom_type in {"capsule", "cylinder"}:
                 if "fromto" in geom_attrib:
@@ -353,6 +358,7 @@ def parse_mjcf(
                         up_axis=geom_up_axis,
                         **contact_vars,
                     )
+                    shapes.append(s)
                 else:
                     s = builder.add_shape_capsule(
                         link,
@@ -364,9 +370,12 @@ def parse_mjcf(
                         up_axis=geom_up_axis,
                         **contact_vars,
                     )
+                    shapes.append(s)
 
             else:
                 print(f"MJCF parsing shape {geom_name} issue: geom type {geom_type} is unsupported")
+
+        return shapes
 
     def parse_body(body, parent, incoming_defaults: dict):
         body_class = body.get("childclass")
