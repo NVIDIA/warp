@@ -33,6 +33,8 @@ def parse_mjcf(
     contact_thickness=0.0,
     limit_ke=100.0,
     limit_kd=10.0,
+    joint_limit_lower=-1e6,
+    joint_limit_upper=1e6,
     scale=1.0,
     armature=0.0,
     armature_scale=1.0,
@@ -61,6 +63,8 @@ def parse_mjcf(
         contact_thickness (float): The thickness to add to the shape geometry.
         limit_ke (float): The stiffness of the joint limits.
         limit_kd (float): The damping of the joint limits.
+        joint_limit_lower (float): The default lower joint limit if not specified in the MJCF.
+        joint_limit_upper (float): The default upper joint limit if not specified in the MJCF.
         scale (float): The scaling factor to apply to the imported mechanism.
         armature (float): Default joint armature to use if `armature` has not been defined for a joint in the MJCF.
         armature_scale (float): Scaling factor to apply to the MJCF-defined joint armature values.
@@ -399,7 +403,7 @@ def parse_mjcf(
 
                 joint_name.append(joint_attrib["name"])
                 joint_pos.append(parse_vec(joint_attrib, "pos", (0.0, 0.0, 0.0)) * scale)
-                joint_range = parse_vec(joint_attrib, "range", (-3.0, 3.0))
+                joint_range = parse_vec(joint_attrib, "range", (joint_limit_lower, joint_limit_upper))
                 joint_armature.append(parse_float(joint_attrib, "armature", armature) * armature_scale)
 
                 if joint_type_str == "free":
@@ -413,10 +417,12 @@ def parse_mjcf(
                 if stiffness > 0.0 or "stiffness" in joint_attrib:
                     mode = wp.sim.JOINT_MODE_TARGET_POSITION
                 axis_vec = parse_vec(joint_attrib, "axis", (0.0, 0.0, 0.0))
+                limit_lower = np.deg2rad(joint_range[0]) if is_angular and use_degrees else joint_range[0]
+                limit_upper = np.deg2rad(joint_range[1]) if is_angular and use_degrees else joint_range[1]
                 ax = wp.sim.model.JointAxis(
                     axis=axis_vec,
-                    limit_lower=(np.deg2rad(joint_range[0]) if is_angular and use_degrees else joint_range[0]),
-                    limit_upper=(np.deg2rad(joint_range[1]) if is_angular and use_degrees else joint_range[1]),
+                    limit_lower=limit_lower,
+                    limit_upper=limit_upper,
                     target_ke=parse_float(joint_attrib, "stiffness", stiffness),
                     target_kd=parse_float(joint_attrib, "damping", damping),
                     limit_ke=limit_ke,
