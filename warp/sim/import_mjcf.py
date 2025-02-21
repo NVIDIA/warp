@@ -57,6 +57,7 @@ def parse_mjcf(
     ensure_nonstatic_links=True,
     static_link_mass=1e-2,
     collapse_fixed_joints=False,
+    verbose=False,
 ):
     """
     Parses MuJoCo XML (MJCF) file and adds the bodies and joints to the given ModelBuilder.
@@ -99,6 +100,7 @@ def parse_mjcf(
         ensure_nonstatic_links (bool): If True, links with zero mass are given a small mass (see `static_link_mass`) to ensure they are dynamic.
         static_link_mass (float): The mass to assign to links with zero mass (if `ensure_nonstatic_links` is set to True).
         collapse_fixed_joints (bool): If True, fixed joints are removed and the respective bodies are merged.
+        verbose (bool): If True, print additional information about parsing the MJCF.
     """
     if xform is None:
         xform = wp.transform()
@@ -415,7 +417,8 @@ def parse_mjcf(
                     shapes.append(s)
 
             else:
-                print(f"MJCF parsing shape {geom_name} issue: geom type {geom_type} is unsupported")
+                if verbose:
+                    print(f"MJCF parsing shape {geom_name} issue: geom type {geom_type} is unsupported")
 
         return shapes
 
@@ -634,7 +637,8 @@ def parse_mjcf(
                         break
             else:
                 no_class_class = "collision" if no_class_as_colliders else "visual"
-                print(f"MJCF parsing shape {geom_name} issue: no class defined for geom, assuming {no_class_class}")
+                if verbose:
+                    print(f"MJCF parsing shape {geom_name} issue: no class defined for geom, assuming {no_class_class}")
                 if no_class_as_colliders:
                     colliders.append(geom)
                 else:
