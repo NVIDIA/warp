@@ -526,7 +526,6 @@ def parse_mjcf(
                 joint_type = wp.sim.JOINT_D6
 
         if len(freejoint_tags) > 0 and parent == -1 and (base_joint is not None or floating is not None):
-
             joint_pos = joint_pos[0] if len(joint_pos) > 0 else (0.0, 0.0, 0.0)
             _xform = wp.transform(body_pos + joint_pos, body_ori)
 
@@ -644,7 +643,9 @@ def parse_mjcf(
         if parse_visuals_as_colliders:
             colliders = visuals
         else:
-            s = parse_shapes(defaults, body_name, link, visuals, density=0.0, just_visual=True, visible=not hide_visuals)
+            s = parse_shapes(
+                defaults, body_name, link, visuals, density=0.0, just_visual=True, visible=not hide_visuals
+            )
             visual_shapes.extend(s)
 
         show_colliders = force_show_colliders
