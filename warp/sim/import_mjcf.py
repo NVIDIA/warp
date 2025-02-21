@@ -25,6 +25,8 @@ def parse_mjcf(
     density=1000.0,
     stiffness=0.0,
     damping=0.0,
+    armature=0.0,
+    armature_scale=1.0,
     contact_ke=1000.0,
     contact_kd=100.0,
     contact_kf=100.0,
@@ -37,12 +39,10 @@ def parse_mjcf(
     joint_limit_lower=-1e6,
     joint_limit_upper=1e6,
     scale=1.0,
-    armature=0.0,
-    armature_scale=1.0,
     parse_meshes=True,
-    enable_self_collisions=False,
     up_axis="Z",
     ignore_classes=None,
+    enable_self_collisions=False,
     ignore_inertial_definitions=True,
     ensure_nonstatic_links=True,
     static_link_mass=1e-2,
@@ -58,6 +58,8 @@ def parse_mjcf(
         density (float): The density of the shapes in kg/m^3 which will be used to calculate the body mass and inertia.
         stiffness (float): The stiffness of the joints.
         damping (float): The damping of the joints.
+        armature (float): Default joint armature to use if `armature` has not been defined for a joint in the MJCF.
+        armature_scale (float): Scaling factor to apply to the MJCF-defined joint armature values.
         contact_ke (float): The stiffness of the shape contacts.
         contact_kd (float): The damping of the shape contacts.
         contact_kf (float): The friction stiffness of the shape contacts.
@@ -70,12 +72,10 @@ def parse_mjcf(
         joint_limit_lower (float): The default lower joint limit if not specified in the MJCF.
         joint_limit_upper (float): The default upper joint limit if not specified in the MJCF.
         scale (float): The scaling factor to apply to the imported mechanism.
-        armature (float): Default joint armature to use if `armature` has not been defined for a joint in the MJCF.
-        armature_scale (float): Scaling factor to apply to the MJCF-defined joint armature values.
         parse_meshes (bool): Whether geometries of type `"mesh"` should be parsed. If False, geometries of type `"mesh"` are ignored.
-        enable_self_collisions (bool): If True, self-collisions are enabled.
         up_axis (str): The up axis of the mechanism. Can be either `"X"`, `"Y"` or `"Z"`. The default is `"Z"`.
         ignore_classes (List[str]): A list of regular expressions. Bodies and joints with a class matching one of the regular expressions will be ignored.
+        enable_self_collisions (bool): If True, self-collisions are enabled.
         ignore_inertial_definitions (bool): If True, the inertial parameters defined in the MJCF are ignored and the inertia is calculated from the shape geometry.
         ensure_nonstatic_links (bool): If True, links with zero mass are given a small mass (see `static_link_mass`) to ensure they are dynamic.
         static_link_mass (float): The mass to assign to links with zero mass (if `ensure_nonstatic_links` is set to True).
@@ -402,6 +402,7 @@ def parse_mjcf(
         if len(freejoint_tags) > 0:
             joint_type = wp.sim.JOINT_FREE
             joint_name.append(freejoint_tags[0].attrib.get("name", f"{body_name}_freejoint"))
+            joint_armature.append(0.0)
         else:
             joints = body.findall("joint")
             for _i, joint in enumerate(joints):
