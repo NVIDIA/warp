@@ -58,6 +58,8 @@ autodoc_default_options = {
     "exclude-members": "__weakref__",
 }
 
+autodoc_mock_imports = ["jax"]
+
 # autodoc_typehints_format
 # add_module_names = False
 
