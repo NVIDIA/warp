@@ -231,6 +231,125 @@ def parse_mjcf(
             faces.append(int(f[2]))
         return wp.sim.Mesh(vertices, faces), m.scale
 
+    def parse_shapes(defaults, body_name, link, geoms, density):
+        for geo_count, geom in enumerate(geoms):
+            geom_defaults = defaults
+            if "class" in geom.attrib:
+                geom_class = geom.attrib["class"]
+                ignore_geom = False
+                for pattern in ignore_classes:
+                    if re.match(pattern, geom_class):
+                        ignore_geom = True
+                        break
+                if ignore_geom:
+                    continue
+                if geom_class in class_defaults:
+                    geom_defaults = merge_attrib(defaults, class_defaults[geom_class])
+            if "geom" in geom_defaults:
+                geom_attrib = merge_attrib(geom_defaults["geom"], geom.attrib)
+            else:
+                geom_attrib = geom.attrib
+
+            geom_name = geom_attrib.get("name", f"{body_name}_geom_{geo_count}")
+            geom_type = geom_attrib.get("type", "sphere")
+            if "mesh" in geom_attrib:
+                geom_type = "mesh"
+
+            geom_size = parse_vec(geom_attrib, "size", [1.0, 1.0, 1.0]) * scale
+            geom_pos = parse_vec(geom_attrib, "pos", (0.0, 0.0, 0.0)) * scale
+            geom_rot = parse_orientation(geom_attrib)
+            geom_density = parse_float(geom_attrib, "density", density)
+
+            if geom_type == "sphere":
+                s = builder.add_shape_sphere(
+                    link,
+                    pos=geom_pos,
+                    rot=geom_rot,
+                    radius=geom_size[0],
+                    density=geom_density,
+                    **contact_vars,
+                )
+
+            elif geom_type == "box":
+                s = builder.add_shape_box(
+                    link,
+                    pos=geom_pos,
+                    rot=geom_rot,
+                    hx=geom_size[0],
+                    hy=geom_size[1],
+                    hz=geom_size[2],
+                    density=geom_density,
+                    **contact_vars,
+                )
+
+            elif geom_type == "mesh" and parse_meshes:
+                mesh, _ = parse_mesh(geom_attrib)
+                if "mesh" in defaults:
+                    mesh_scale = parse_vec(defaults["mesh"], "scale", [1.0, 1.0, 1.0])
+                else:
+                    mesh_scale = [1.0, 1.0, 1.0]
+                # as per the Mujoco XML reference, ignore geom size attribute
+                assert len(geom_size) == 3, "need to specify size for mesh geom"
+                s = builder.add_shape_mesh(
+                    body=link,
+                    pos=geom_pos,
+                    rot=geom_rot,
+                    mesh=mesh,
+                    scale=mesh_scale,
+                    density=density,
+                    **contact_vars,
+                )
+
+            elif geom_type in {"capsule", "cylinder"}:
+                if "fromto" in geom_attrib:
+                    geom_fromto = parse_vec(geom_attrib, "fromto", (0.0, 0.0, 0.0, 1.0, 0.0, 0.0))
+
+                    start = wp.vec3(geom_fromto[0:3]) * scale
+                    end = wp.vec3(geom_fromto[3:6]) * scale
+
+                    # compute rotation to align the Warp capsule (along x-axis), with mjcf fromto direction
+                    axis = wp.normalize(end - start)
+                    angle = math.acos(wp.dot(axis, wp.vec3(0.0, 1.0, 0.0)))
+                    axis = wp.normalize(wp.cross(axis, wp.vec3(0.0, 1.0, 0.0)))
+
+                    geom_pos = (start + end) * 0.5
+                    geom_rot = wp.quat_from_axis_angle(axis, -angle)
+
+                    geom_radius = geom_size[0]
+                    geom_height = wp.length(end - start) * 0.5
+                    geom_up_axis = 1
+
+                else:
+                    geom_radius = geom_size[0]
+                    geom_height = geom_size[1]
+                    geom_up_axis = up_axis
+
+                if geom_type == "cylinder":
+                    s = builder.add_shape_cylinder(
+                        link,
+                        pos=geom_pos,
+                        rot=geom_rot,
+                        radius=geom_radius,
+                        half_height=geom_height,
+                        density=density,
+                        up_axis=geom_up_axis,
+                        **contact_vars,
+                    )
+                else:
+                    s = builder.add_shape_capsule(
+                        link,
+                        pos=geom_pos,
+                        rot=geom_rot,
+                        radius=geom_radius,
+                        half_height=geom_height,
+                        density=density,
+                        up_axis=geom_up_axis,
+                        **contact_vars,
+                    )
+
+            else:
+                print(f"MJCF parsing shape {geom_name} issue: geom type {geom_type} is unsupported")
+
     def parse_body(body, parent, incoming_defaults: dict):
         body_class = body.get("childclass")
         if body_class is None:
@@ -343,123 +462,8 @@ def parse_mjcf(
         # -----------------
         # add shapes
 
-        for geo_count, geom in enumerate(body.findall("geom")):
-            geom_defaults = defaults
-            if "class" in geom.attrib:
-                geom_class = geom.attrib["class"]
-                ignore_geom = False
-                for pattern in ignore_classes:
-                    if re.match(pattern, geom_class):
-                        ignore_geom = True
-                        break
-                if ignore_geom:
-                    continue
-                if geom_class in class_defaults:
-                    geom_defaults = merge_attrib(defaults, class_defaults[geom_class])
-            if "geom" in geom_defaults:
-                geom_attrib = merge_attrib(geom_defaults["geom"], geom.attrib)
-            else:
-                geom_attrib = geom.attrib
-
-            geom_name = geom_attrib.get("name", f"{body_name}_geom_{geo_count}")
-            geom_type = geom_attrib.get("type", "sphere")
-            if "mesh" in geom_attrib:
-                geom_type = "mesh"
-
-            geom_size = parse_vec(geom_attrib, "size", [1.0, 1.0, 1.0]) * scale
-            geom_pos = parse_vec(geom_attrib, "pos", (0.0, 0.0, 0.0)) * scale
-            geom_rot = parse_orientation(geom_attrib)
-            geom_density = parse_float(geom_attrib, "density", density)
-
-            if geom_type == "sphere":
-                builder.add_shape_sphere(
-                    link,
-                    pos=geom_pos,
-                    rot=geom_rot,
-                    radius=geom_size[0],
-                    density=geom_density,
-                    **contact_vars,
-                )
-
-            elif geom_type == "box":
-                builder.add_shape_box(
-                    link,
-                    pos=geom_pos,
-                    rot=geom_rot,
-                    hx=geom_size[0],
-                    hy=geom_size[1],
-                    hz=geom_size[2],
-                    density=geom_density,
-                    **contact_vars,
-                )
-
-            elif geom_type == "mesh" and parse_meshes:
-                mesh, _ = parse_mesh(geom_attrib)
-                if "mesh" in defaults:
-                    mesh_scale = parse_vec(defaults["mesh"], "scale", [1.0, 1.0, 1.0])
-                else:
-                    mesh_scale = [1.0, 1.0, 1.0]
-                # as per the Mujoco XML reference, ignore geom size attribute
-                assert len(geom_size) == 3, "need to specify size for mesh geom"
-                builder.add_shape_mesh(
-                    body=link,
-                    pos=geom_pos,
-                    rot=geom_rot,
-                    mesh=mesh,
-                    scale=mesh_scale,
-                    density=density,
-                    **contact_vars,
-                )
-
-            elif geom_type in {"capsule", "cylinder"}:
-                if "fromto" in geom_attrib:
-                    geom_fromto = parse_vec(geom_attrib, "fromto", (0.0, 0.0, 0.0, 1.0, 0.0, 0.0))
-
-                    start = wp.vec3(geom_fromto[0:3]) * scale
-                    end = wp.vec3(geom_fromto[3:6]) * scale
-
-                    # compute rotation to align the Warp capsule (along x-axis), with mjcf fromto direction
-                    axis = wp.normalize(end - start)
-                    angle = math.acos(wp.dot(axis, wp.vec3(0.0, 1.0, 0.0)))
-                    axis = wp.normalize(wp.cross(axis, wp.vec3(0.0, 1.0, 0.0)))
-
-                    geom_pos = (start + end) * 0.5
-                    geom_rot = wp.quat_from_axis_angle(axis, -angle)
-
-                    geom_radius = geom_size[0]
-                    geom_height = wp.length(end - start) * 0.5
-                    geom_up_axis = 1
-
-                else:
-                    geom_radius = geom_size[0]
-                    geom_height = geom_size[1]
-                    geom_up_axis = up_axis
-
-                if geom_type == "cylinder":
-                    builder.add_shape_cylinder(
-                        link,
-                        pos=geom_pos,
-                        rot=geom_rot,
-                        radius=geom_radius,
-                        half_height=geom_height,
-                        density=density,
-                        up_axis=geom_up_axis,
-                        **contact_vars,
-                    )
-                else:
-                    builder.add_shape_capsule(
-                        link,
-                        pos=geom_pos,
-                        rot=geom_rot,
-                        radius=geom_radius,
-                        half_height=geom_height,
-                        density=density,
-                        up_axis=geom_up_axis,
-                        **contact_vars,
-                    )
-
-            else:
-                print(f"MJCF parsing shape {geom_name} issue: geom type {geom_type} is unsupported")
+        geoms = body.findall("geom")
+        parse_shapes(defaults, body_name, link, geoms, density)
 
         # -----------------
         # recurse
