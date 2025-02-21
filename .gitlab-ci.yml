@@ -277,8 +277,10 @@ linux-x86_64 test:
   script:
     - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
     # Upload report to Codecov
+    - git config --global --add safe.directory $CI_PROJECT_DIR
     - python -m pip install codecov-cli
     - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --plugin pycoverage -F unittests -f coverage.xml
+    - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
 
 # Note that for throughput reasons this runs on a single-GPU runner
 windows-x86_64 test:
@@ -302,9 +304,11 @@ windows-x86_64 test:
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
-   # Upload report to Codecov
+    # Upload report to Codecov
+    - git config --global --add safe.directory $env:CI_PROJECT_DIR
     - python -m pip install codecov-cli
     - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --plugin pycoverage -F unittests -f coverage.xml
+    - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
 
 
 mac-x86_64 test:
@@ -514,7 +518,7 @@ linux-x86_64 asv:
     # Make sure the comparison ref can be checked out by asv
     - COMPARE_REF="${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}}"
     - 'echo "COMPARE_REF value: ${COMPARE_REF}"' 
-    - git config --global --add safe.directory '*' 
+    - git config --global --add safe.directory $CI_PROJECT_DIR
     - git fetch origin $COMPARE_REF
     - git checkout -f $COMPARE_REF
     - git checkout -f $CI_COMMIT_SHA
