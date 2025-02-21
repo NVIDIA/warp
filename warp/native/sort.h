@@ -15,3 +15,8 @@ void radix_sort_pairs_host(int* keys, int* values, int n);
 void radix_sort_pairs_host(float* keys, int* values, int n);
 void radix_sort_pairs_device(void* context, int* keys, int* values, int n);
 void radix_sort_pairs_device(void* context, float* keys, int* values, int n);
+
+void segmented_sort_pairs_host(float* keys, int* values, int n, int* segment_indices, int num_segments);
+void segmented_sort_pairs_device(void* context, float* keys, int* values, int n, int* segment_indices, int num_segments);
+void segmented_sort_pairs_host(void* context, int* keys, int* values, int n, int* segment_indices, int num_segments);
+void segmented_sort_pairs_device(void* context, int* keys, int* values, int n, int* segment_indices, int num_segments);

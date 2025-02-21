@@ -156,6 +156,12 @@ extern "C"
     WP_API void radix_sort_pairs_float_host(uint64_t keys, uint64_t values, int n);
     WP_API void radix_sort_pairs_float_device(uint64_t keys, uint64_t values, int n);
 
+    WP_API void segmented_sort_pairs_float_host(uint64_t keys, uint64_t values, int n, uint64_t segment_indices, int num_segments);
+    WP_API void segmented_sort_pairs_float_device(uint64_t keys, uint64_t values, int n, uint64_t segment_indices, int num_segments);
+
+    WP_API void segmented_sort_pairs_int_host(uint64_t keys, uint64_t values, int n, uint64_t segment_indices, int num_segments);
+    WP_API void segmented_sort_pairs_int_device(uint64_t keys, uint64_t values, int n, uint64_t segment_indices, int num_segments);
+
     WP_API void runlength_encode_int_host(uint64_t values, uint64_t run_values, uint64_t run_lengths, uint64_t run_count, int n);
     WP_API void runlength_encode_int_device(uint64_t values, uint64_t run_values, uint64_t run_lengths, uint64_t run_count, int n);
 

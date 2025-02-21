@@ -129,3 +129,130 @@ void radix_sort_pairs_float_device(uint64_t keys, uint64_t values, int n)
         reinterpret_cast<float *>(keys),
         reinterpret_cast<int *>(values), n);
 }
+
+
+
+void segmented_sort_reserve(void* context, int n, int num_segments, void** mem_out, size_t* size_out)
+{
+    ContextGuard guard(context);
+
+    cub::DoubleBuffer<int> d_keys;
+	cub::DoubleBuffer<int> d_values;
+
+    int* start_indices = NULL;
+    int* end_indices = NULL;
+
+    // compute temporary memory required
+	size_t sort_temp_size;
+    check_cuda(cub::DeviceSegmentedSort::SortPairs(
+        NULL,
+        sort_temp_size,
+        d_keys,
+        d_values,
+        n, 
+        num_segments,
+        start_indices,
+        end_indices,
+        (cudaStream_t)cuda_stream_get_current()));
+
+    if (!context)
+        context = cuda_context_get_current();
+
+    RadixSortTemp& temp = g_radix_sort_temp_map[context];
+
+    if (sort_temp_size > temp.size)
+    {
+	    free_device(WP_CURRENT_CONTEXT, temp.mem);
+        temp.mem = alloc_device(WP_CURRENT_CONTEXT, sort_temp_size);
+        temp.size = sort_temp_size;
+    }
+    
+    if (mem_out)
+        *mem_out = temp.mem;
+    if (size_out)
+        *size_out = temp.size;
+}
+
+// segment_indices is an array of length num_segments + 1, where segment_indices[i] is the index of the first element in the i-th segment
+// The end of a segment is given by segment_indices[i+1]
+// https://nvidia.github.io/cccl/cub/api/structcub_1_1DeviceSegmentedSort.html#a-simple-example
+void segmented_sort_pairs_device(void* context, float* keys, int* values, int n, int* segment_indices, int num_segments)
+{
+    ContextGuard guard(context);
+
+    cub::DoubleBuffer<float> d_keys(keys, keys + n);
+	cub::DoubleBuffer<int> d_values(values, values + n);
+
+    RadixSortTemp temp;
+    segmented_sort_reserve(WP_CURRENT_CONTEXT, n, num_segments, &temp.mem, &temp.size);
+
+    // sort
+    check_cuda(cub::DeviceSegmentedSort::SortPairs(
+        temp.mem,
+        temp.size,
+        d_keys, 
+        d_values, 
+        n,
+        num_segments,
+        segment_indices,
+        segment_indices + 1,
+        (cudaStream_t)cuda_stream_get_current()));
+
+	if (d_keys.Current() != keys)
+		memcpy_d2d(WP_CURRENT_CONTEXT, keys, d_keys.Current(), sizeof(float)*n);
+
+	if (d_values.Current() != values)
+		memcpy_d2d(WP_CURRENT_CONTEXT, values, d_values.Current(), sizeof(int)*n);
+}
+
+void segmented_sort_pairs_float_device(uint64_t keys, uint64_t values, int n, uint64_t segment_indices, int num_segments)
+{
+    segmented_sort_pairs_device(
+        WP_CURRENT_CONTEXT,
+        reinterpret_cast<float *>(keys),
+        reinterpret_cast<int *>(values), n,
+        reinterpret_cast<int *>(segment_indices), 
+        num_segments);
+}
+
+// segment_indices is an array of length num_segments + 1, where segment_indices[i] is the index of the first element in the i-th segment
+// The end of a segment is given by segment_indices[i+1]
+// https://nvidia.github.io/cccl/cub/api/structcub_1_1DeviceSegmentedSort.html#a-simple-example
+void segmented_sort_pairs_device(void* context, int* keys, int* values, int n, int* segment_indices, int num_segments)
+{
+    ContextGuard guard(context);
+
+    cub::DoubleBuffer<int> d_keys(keys, keys + n);
+	cub::DoubleBuffer<int> d_values(values, values + n);
+
+    RadixSortTemp temp;
+    segmented_sort_reserve(WP_CURRENT_CONTEXT, n, num_segments, &temp.mem, &temp.size);
+
+    // sort
+    check_cuda(cub::DeviceSegmentedSort::SortPairs(
+        temp.mem,
+        temp.size,
+        d_keys, 
+        d_values, 
+        n,
+        num_segments,
+        segment_indices,
+        segment_indices + 1,
+        (cudaStream_t)cuda_stream_get_current()));
+
+	if (d_keys.Current() != keys)
+		memcpy_d2d(WP_CURRENT_CONTEXT, keys, d_keys.Current(), sizeof(float)*n);
+
+	if (d_values.Current() != values)
+		memcpy_d2d(WP_CURRENT_CONTEXT, values, d_values.Current(), sizeof(int)*n);
+}
+
+void segmented_sort_pairs_int_device(uint64_t keys, uint64_t values, int n, uint64_t segment_indices, int num_segments)
+{
+    segmented_sort_pairs_device(
+        WP_CURRENT_CONTEXT,
+        reinterpret_cast<int *>(keys),
+        reinterpret_cast<int *>(values), n,
+        reinterpret_cast<int *>(segment_indices), 
+        num_segments);
+}
