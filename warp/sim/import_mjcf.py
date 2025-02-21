@@ -46,6 +46,7 @@ def parse_mjcf(
     parse_visuals_as_colliders=False,
     parse_meshes=True,
     up_axis="Z",
+    ignore_names=(),
     ignore_classes=None,
     visual_classes=("visual",),
     collider_classes=("collision",),
@@ -87,6 +88,7 @@ def parse_mjcf(
         parse_visuals_as_colliders (bool): If True, the geometry defined under the `visual_classes` tags is used for collision handling instead of the `collider_classes` geometries.
         parse_meshes (bool): Whether geometries of type `"mesh"` should be parsed. If False, geometries of type `"mesh"` are ignored.
         up_axis (str): The up axis of the mechanism. Can be either `"X"`, `"Y"` or `"Z"`. The default is `"Z"`.
+        ignore_names (List[str]): A list of regular expressions. Bodies and joints with a name matching one of the regular expressions will be ignored.
         ignore_classes (List[str]): A list of regular expressions. Bodies and joints with a class matching one of the regular expressions will be ignored.
         visual_classes (List[str]): A list of regular expressions. Visual geometries with a class matching one of the regular expressions will be parsed.
         collider_classes (List[str]): A list of regular expressions. Collision geometries with a class matching one of the regular expressions will be parsed.
@@ -262,6 +264,14 @@ def parse_mjcf(
             geom_type = geom_attrib.get("type", "sphere")
             if "mesh" in geom_attrib:
                 geom_type = "mesh"
+
+            ignore_geom = False
+            for pattern in ignore_names:
+                if re.match(pattern, geom_name):
+                    ignore_geom = True
+                    break
+            if ignore_geom:
+                continue
 
             geom_size = parse_vec(geom_attrib, "size", [1.0, 1.0, 1.0]) * scale
             geom_pos = parse_vec(geom_attrib, "pos", (0.0, 0.0, 0.0)) * scale
