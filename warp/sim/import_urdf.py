@@ -167,6 +167,22 @@ def parse_urdf(
                 )
                 shapes.append(s)
 
+            for capsule in geo.findall("capsule"):
+                s = builder.add_shape_capsule(
+                    body=link,
+                    pos=wp.vec3(tf.p),
+                    rot=wp.quat(tf.q),
+                    radius=float(capsule.get("radius") or "1") * scale,
+                    half_height=float(capsule.get("height") or "1") * 0.5 * scale,
+                    density=density,
+                    up_axis=2,  # capsules in URDF are aligned with z-axis
+                    is_visible=visible,
+                    has_ground_collision=not just_visual,
+                    has_shape_collision=not just_visual,
+                    **contact_vars,
+                )
+                shapes.append(s)
+
             for mesh in geo.findall("mesh"):
                 filename = mesh.get("filename")
                 if filename is None:
