@@ -450,6 +450,8 @@ def parse_mjcf(
                 joint_type = wp.sim.JOINT_D6
 
         joint_pos = joint_pos[0] if len(joint_pos) > 0 else (0.0, 0.0, 0.0)
+        if len(joint_name) == 0:
+            joint_name = [f"{body_name}_joint"]
         builder.add_joint(
             joint_type,
             parent,
