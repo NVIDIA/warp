@@ -517,15 +517,17 @@ Using Warp kernels as JAX primitives
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. note::
-    This is an experimental feature under development.
+    This version of ``jax_kernel()`` is based on JAX features that are now deprecated.
 
-Warp kernels can be used as JAX primitives, which can be used to call Warp kernels inside of jitted JAX functions::
+    For JAX version 0.4.31 or newer, users are encouraged to switch to the new version of ``jax_kernel()``
+    based on the new :ref:`Foreign Function Interface (FFI)<jax-ffi>`.
+
+Warp kernels can be used as JAX primitives, which allows calling them inside of jitted JAX functions::
 
     import warp as wp
     import jax
     import jax.numpy as jp
 
-    # import experimental feature
     from warp.jax_experimental import jax_kernel
 
     @wp.kernel
@@ -544,22 +546,18 @@ Warp kernels can be used as JAX primitives, which can be used to call Warp kerne
 
     print(f())
 
-Since this is an experimental feature, there are some limitations:
+.. autofunction:: warp.jax_experimental.jax_kernel
 
-* All kernel arguments must be arrays.
-* Kernel launch dimensions are inferred from the shape of the first argument.
-* Input arguments are followed by output arguments in the Warp kernel definition.
-* There must be at least one input argument and at least one output argument.
-* All arrays must be contiguous.
-* Only the CUDA backend is supported.
 
-Here is an example of an operation with three inputs and two outputs::
+Input and Output Semantics
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+All kernel arguments must be contiguous arrays. Input arguments must come before output arguments in the kernel definition. At least one input array and one output array are required. Here is a kernel with three inputs and two outputs::
 
     import warp as wp
     import jax
     import jax.numpy as jp
 
-    # import experimental feature
     from warp.jax_experimental import jax_kernel
 
     # kernel with multiple inputs and outputs
@@ -593,8 +591,467 @@ Here is an example of an operation with three inputs and two outputs::
     print(x)
     print(y)
 
-Using ``shardmap`` for distributed computation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Kernel Launch and Output Dimensions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, the launch dimensions are inferred from the shape of the first input array. When that's not appropriate, the ``launch_dims`` argument can be used to override this behavior. The launch dimensions also determine the shape of the output arrays. Here is a simple matrix multiplication kernel that multiplies an NxK matrix by a KxM matrix. The launch dimensions and output shape must be (N, M), which is different than the shape of the input arrays::
+
+    import warp as wp
+    import jax
+    import jax.numpy as jp
+
+    from warp.jax_experimental import jax_kernel
+
+    @wp.kernel
+    def matmul_kernel(
+        a: wp.array2d(dtype=float),  # NxK input
+        b: wp.array2d(dtype=float),  # KxM input
+        c: wp.array2d(dtype=float),  # NxM output
+    ):
+        # launch dims should be (N, M)
+        i, j = wp.tid()
+        N = a.shape[0]
+        K = a.shape[1]
+        M = b.shape[1]
+        if i < N and j < M:
+            s = wp.float32(0)
+            for k in range(K):
+                s += a[i, k] * b[k, j]
+            c[i, j] = s
+
+    N, M, K = 3, 4, 2
+
+    # specify custom launch dimensions
+    jax_matmul = jax_kernel(matmul_kernel, launch_dims=(N, M))
+
+    @jax.jit
+    def f():
+        a = jnp.full((N, K), 2, dtype=jnp.float32)
+        b = jnp.full((K, M), 3, dtype=jnp.float32)
+
+        # use default launch dims
+        return jax_matmul(a, b)
+
+    print(f())
+
+
+.. _jax-ffi:
+
+JAX Foreign Function Interface (FFI)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 1.7
+
+JAX v0.4.31 introduced a new `foreign function interface <https://docs.jax.dev/en/latest/ffi.html>`_ that supersedes the older custom call mechanism. One important benefit is that it allows the foreign function to be captured in a CUDA graph together with other JAX operations. This can lead to significant performance improvements.
+
+Users of newer JAX versions are encouraged to switch to the new implementation of ``jax_kernel()`` based on FFI. The old implementation is still available to avoid breaking existing code, but future development will likely focus on the FFI version.
+
+.. code-block:: python
+
+    from warp.jax_experimental.ffi import jax_kernel  # new FFI-based jax_kernel()
+
+The new implementation is likely to be faster and it is also more flexible.
+
+
+Input and Output Semantics
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Input arguments must come before output arguments in the kernel definition. At least one output array is required, but it's ok to have kernels with no inputs. The new ``jax_kernel()`` allows specifying the number of outputs using the ``num_outputs`` argument.  It defaults to one, so this argument is only needed for kernels with multiple outputs.
+
+Here's a kernel with two inputs and one output::
+
+    @wp.kernel
+    def add_kernel(a: wp.array(dtype=int),
+                   b: wp.array(dtype=int),
+                   output: wp.array(dtype=int)):
+        tid = wp.tid()
+        output[tid] = a[tid] + b[tid]
+
+    jax_add = jax_kernel(add_kernel)
+
+    @jax.jit
+    def f():
+        n = 10
+        a = jnp.arange(n, dtype=jnp.int32)
+        b = jnp.ones(n, dtype=jnp.int32)
+        return jax_add(a, b)
+
+    print(f())
+
+One input and two outputs::
+
+    @wp.kernel
+    def sincos_kernel(angle: wp.array(dtype=float),
+                      # outputs
+                      sin_out: wp.array(dtype=float),
+                      cos_out: wp.array(dtype=float)):
+        tid = wp.tid()
+        sin_out[tid] = wp.sin(angle[tid])
+        cos_out[tid] = wp.cos(angle[tid])
+
+    jax_sincos = jax_kernel(sincos_kernel, num_outputs=2)  # specify multiple outputs
+
+    @jax.jit
+    def f():
+        a = jnp.linspace(0, 2 * math.pi, 32)
+        return jax_sincos(a)
+
+    s, c = f()
+    print(s)
+    print(c)
+
+Here is a kernel with no inputs that initializes an array of 3x3 matrices with the diagonal values (1, 2, 3). With no inputs, specifying the launch dimensions is required to determine the shape of the output array::
+
+    @wp.kernel
+    def diagonal_kernel(output: wp.array(dtype=wp.mat33)):
+        tid = wp.tid()
+        output[tid] = wp.mat33(1.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 3.0)
+
+    jax_diagonal = jax_kernel(diagonal_kernel)
+
+    @jax.jit
+    def f():
+        # launch dimensions determine the output shape
+        return jax_diagonal(launch_dims=4)
+
+    print(f())
+
+Scalar Inputs
+.............
+
+Scalar input arguments are supported, although there are some limitations. Currently, scalars passed to Warp kernels must be constant or static values in JAX::
+
+    @wp.kernel
+    def scale_kernel(a: wp.array(dtype=float),
+                     s: float,  # scalar input
+                     output: wp.array(dtype=float)):
+        tid = wp.tid()
+        output[tid] = a[tid] * s
+
+
+    jax_scale = jax_kernel(scale_kernel)
+
+    @jax.jit
+    def f():
+        a = jnp.arange(10, dtype=jnp.float32)
+        return jax_scale(a, 2.0)  # ok: constant scalar argument
+
+    print(f())
+
+Trying to use a traced scalar value will result in an exception::
+
+    @jax.jit
+    def f(a, s):
+        return jax_scale(a, s)  # ERROR: traced scalar argument
+
+    a = jnp.arange(10, dtype=jnp.float32)
+
+    print(f(a, 2.0))
+
+JAX static arguments to the rescue::
+
+    # make scalar arguments static
+    @partial(jax.jit, static_argnames=["s"])
+    def f(a, s):
+        return jax_scale(a, s)  # ok: static scalar argument
+
+    a = jnp.arange(10, dtype=jnp.float32)
+
+    print(f(a, 2.0))
+
+
+Kernel Launch and Output Dimensions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, the launch dimensions are inferred from the shape of the first input array. When that's not appropriate, the ``launch_dims`` argument can be used to override this behavior. The launch dimensions also determine the shape of the output arrays.
+
+Here is a simple matrix multiplication kernel that multiplies an NxK matrix by a KxM matrix. The launch dimensions and output shape must be (N, M), which is different than the shape of the input arrays.
+
+Note that the new ``jax_kernel()`` allows specifying custom launch dimensions with each call, which is more flexible than the old implementation, although the old approach is still supported::
+
+    @wp.kernel
+    def matmul_kernel(
+        a: wp.array2d(dtype=float),  # NxK input
+        b: wp.array2d(dtype=float),  # KxM input
+        c: wp.array2d(dtype=float),  # NxM output
+    ):
+        # launch dimensions should be (N, M)
+        i, j = wp.tid()
+        N = a.shape[0]
+        K = a.shape[1]
+        M = b.shape[1]
+        if i < N and j < M:
+            s = wp.float32(0)
+            for k in range(K):
+                s += a[i, k] * b[k, j]
+            c[i, j] = s
+
+    # no need to specify launch dims here
+    jax_matmul = jax_kernel(matmul_kernel)
+
+    @jax.jit
+    def f():
+        N1, M1, K1 = 3, 4, 2
+        a1 = jnp.full((N1, K1), 2, dtype=jnp.float32)
+        b1 = jnp.full((K1, M1), 3, dtype=jnp.float32)
+
+        # use custom launch dims
+        result1 = jax_matmul(a1, b1, launch_dims=(N1, M1))
+
+        N2, M2, K2 = 4, 3, 2
+        a2 = jnp.full((N2, K2), 2, dtype=jnp.float32)
+        b2 = jnp.full((K2, M2), 3, dtype=jnp.float32)
+
+        # use custom launch dims
+        result2 = jax_matmul(a2, b2, launch_dims=(N2, M2))
+
+        return result1, result2
+
+    r1, r2 = f()
+    print(r1)
+    print(r2)
+
+
+By default, output array shapes are determined from the launch dimensions, but it's possible to specify custom output dimensions using the ``output_dims`` argument. Consider a kernel like this::
+
+    @wp.kernel
+    def funky_kernel(a: wp.array(dtype=float),
+                     # outputs
+                     b: wp.array(dtype=float),
+                     c: wp.array(dtype=float)):
+        ...
+
+    jax_funky = jax_kernel(funky_kernel, num_outputs=2)
+
+
+Specify a custom output shape used for all outputs::
+
+    b, c = jax_funky(a, output_dims=n)
+
+Specify different output dimensions for each output using a dictionary::
+
+    b, c = jax_funky(a, output_dims={"b": n, "c": m})
+
+Specify custom launch and output dimensions together::
+
+    b, c = jax_funky(a, launch_dims=k, output_dims={"b": n, "c": m})
+
+One-dimensional shapes can be specified using an integer. Multi-dimensional shapes can be specified using tuples or lists of integers.
+
+
+Vector and Matrix Arrays
+........................
+
+Arrays of Warp vector and matrix types are supported. Since JAX does not have corresponding data types, the components are packed into extra inner dimensions of JAX arrays. For example, a Warp array of ``wp.vec3`` will have a JAX array shape of (..., 3) and a Warp array of ``wp.mat22`` will have a JAX array shape of (..., 2, 2)::
+
+    @wp.kernel
+    def vecmat_kernel(a: wp.array(dtype=float),
+                      b: wp.array(dtype=wp.vec3),
+                      c: wp.array(dtype=wp.mat22),
+                      # outputs
+                      d: wp.array(dtype=float),
+                      e: wp.array(dtype=wp.vec3),
+                      f: wp.array(dtype=wp.mat22)):
+        ...
+
+    jax_vecmat = jax_kernel(vecmat_kernel, num_outputs=3)
+
+    @jax.jit
+    def f():
+        n = 10
+        a = jnp.zeros(n, dtype=jnp.float32)          # scalar array
+        b = jnp.zeros((n, 3), dtype=jnp.float32)     # vec3 array
+        c = jnp.zeros((n, 2, 2), dtype=jnp.float32)  # mat22 array
+
+        d, e, f = vecmat_kernel(a, b, c)
+
+It's important to recognize that the Warp and JAX array shapes are different for vector and matrix types. In the above snippet, Warp sees ``a``, ``b``, and ``c`` as one-dimensional arrays of ``wp.float32``, ``wp.vec3``, and ``wp.mat22``, respectively. In JAX, ``a`` is a one-dimensional array with length n, ``b`` is a two-dimensional array with shape (n, 3), and ``c`` is a three-dimensional array with shape (n, 2, 2).
+
+When specifying custom output dimensions, it's possible to use either convention. The following calls are equivalent::
+
+    d, e, f = vecmat_kernel(a, b, c, output_dims=n)
+    d, e, f = vecmat_kernel(a, b, c, output_dims={"d": n, "e": n, "f": n})
+    d, e, f = vecmat_kernel(a, b, c, output_dims={"d": n, "e": (n, 3), "f": (n, 2, 2)})
+
+This is a convenience feature meant to simplify writing code. For example, when Warp expects the arrays to be of the same shape, we only need to specify the shape once without worrying about the extra vector and matrix dimensions required by JAX::
+
+    d, e, f = vecmat_kernel(a, b, c, output_dims=n)
+
+On the other hand, JAX dimensions are also accepted to allow passing shapes directly from JAX::
+
+    d, e, f = vecmat_kernel(a, b, c, output_dims={"d": a.shape, "e": b.shape, "f": c.shape})
+
+See `example_jax_kernel.py <https://github.com/NVIDIA/warp/tree/main/warp/examples/interop/example_jax_kernel.py>`_ for examples.
+
+
+JAX VMAP Support
+~~~~~~~~~~~~~~~~
+
+The ``vmap_method`` argument can be used to specify how the callback transforms under :func:`jax.vmap`. The default is ``"broadcast_all"``. This argument can be passed to ``jax_kernel()`` and it can also be passed to each call::
+
+    # set default vmap behavior
+    jax_callback = jax_kernel(my_kernel, vmap_method="sequential")
+
+    @jax.jit
+    def f():
+        ...
+        b = jax_callback(a)  # uses "sequential"
+        ...
+        d = jax_callback(c, vmap_method="expand_dims")  # uses "expand_dims"
+        ...
+
+
+Calling Annotated Python Functions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``jax_kernel()`` mechanism can be used to launch a single Warp kernel from JAX, but it's also possible to call a Python function that launches multiple kernels.  The target Python function should have argument type annotations as if it were a Warp kernel. To call this function from JAX, use ``jax_callable()``::
+
+    from warp.jax_experimental.ffi import jax_callable
+
+    @wp.kernel
+    def scale_kernel(a: wp.array(dtype=float), s: float, output: wp.array(dtype=float)):
+        tid = wp.tid()
+        output[tid] = a[tid] * s
+
+    @wp.kernel
+    def scale_vec_kernel(a: wp.array(dtype=wp.vec2), s: float, output: wp.array(dtype=wp.vec2)):
+        tid = wp.tid()
+        output[tid] = a[tid] * s
+
+
+    # The Python function to call.
+    # Note the argument type annotations, just like Warp kernels.
+    def example_func(
+        # inputs
+        a: wp.array(dtype=float),
+        b: wp.array(dtype=wp.vec2),
+        s: float,
+        # outputs
+        c: wp.array(dtype=float),
+        d: wp.array(dtype=wp.vec2),
+    ):
+        # launch multiple kernels
+        wp.launch(scale_kernel, dim=a.shape, inputs=[a, s], outputs=[c])
+        wp.launch(scale_vec_kernel, dim=b.shape, inputs=[b, s], outputs=[d])
+
+
+    jax_func = jax_callable(example_func, num_outputs=2)
+
+    @jax.jit
+    def f():
+        # inputs
+        a = jnp.arange(10, dtype=jnp.float32)
+        b = jnp.arange(10, dtype=jnp.float32).reshape((5, 2))  # wp.vec2
+        s = 2.0
+
+        # output shapes
+        output_dims = {"c": a.shape, "d": b.shape}
+
+        c, d = jax_func(a, b, s, output_dims=output_dims)
+
+        return c, d
+
+    r1, r2 = f()
+    print(r1)
+    print(r2)
+
+
+The input and output semantics of ``jax_callable()`` are similar to ``jax_kernel()``, so we won't recap everything here, just focus on the differences:
+
+    - ``jax_callable()`` does not take a ``launch_dims`` argument, since the target function is responsible for launching kernels using appropriate dimensions.
+    - ``jax_callable()`` takes an optional Boolean ``graph_compatible`` argument, which defaults to True. This argument determines whether JAX can capture the function in a CUDA graph. It is generally desirable, since CUDA graphs can greatly improve the application performance. However, if the target function performs operations that are not allowed during graph capture, it may lead to errors. This includes any operations that require synchronization with the host. In such cases, pass ``graph_compatible=False``.
+
+See `example_jax_callable.py <https://github.com/NVIDIA/warp/tree/main/warp/examples/interop/example_jax_callable.py>`_ for examples.
+
+
+Generic JAX FFI Callbacks
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Another way to call Python functions is to use ``register_ffi_callback()``::
+
+    from warp.jax_experimental.ffi import register_ffi_callback
+
+This allows calling functions that don't have Warp-style type annotations, but must have the form::
+
+    func(inputs, outputs, attrs, ctx)
+
+where:
+
+    - ``inputs`` is a list of input buffers.
+    - ``outputs`` is a list of output buffers.
+    - ``attrs`` is a dictionary of attributes.
+    - ``ctx`` is the execution context, including the CUDA stream.
+
+The input and output buffers are neither JAX nor Warp arrays. They are objects that expose the ``__cuda_array_interface__``, which can be passed to Warp kernels directly. Here is an example::
+
+    from warp.jax_experimental.ffi import register_ffi_callback
+
+    @wp.kernel
+    def scale_kernel(a: wp.array(dtype=float), s: float, output: wp.array(dtype=float)):
+        tid = wp.tid()
+        output[tid] = a[tid] * s
+
+    @wp.kernel
+    def scale_vec_kernel(a: wp.array(dtype=wp.vec2), s: float, output: wp.array(dtype=wp.vec2)):
+        tid = wp.tid()
+        output[tid] = a[tid] * s
+
+    # the Python function to call
+    def warp_func(inputs, outputs, attrs, ctx):
+        # input arrays
+        a = inputs[0]
+        b = inputs[1]
+
+        # scalar attributes
+        s = attrs["scale"]
+
+        # output arrays
+        c = outputs[0]
+        d = outputs[1]
+
+        device = wp.device_from_jax(get_jax_device())
+        stream = wp.Stream(device, cuda_stream=ctx.stream)
+
+        with wp.ScopedStream(stream):
+            # launch with arrays of scalars
+            wp.launch(scale_kernel, dim=a.shape, inputs=[a, s], outputs=[c])
+
+            # launch with arrays of vec2
+            # NOTE: the input shapes are from JAX arrays, so we need to strip the inner dimension for vec2 arrays
+            wp.launch(scale_vec_kernel, dim=b.shape[0], inputs=[b, s], outputs=[d])
+
+    # register callback
+    register_ffi_callback("warp_func", warp_func)
+
+    n = 10
+
+    # inputs
+    a = jnp.arange(n, dtype=jnp.float32)
+    b = jnp.arange(n, dtype=jnp.float32).reshape((n // 2, 2))  # array of wp.vec2
+    s = 2.0
+
+    # set up the call
+    out_types = [
+        jax.ShapeDtypeStruct(a.shape, jnp.float32),
+        jax.ShapeDtypeStruct(b.shape, jnp.float32),  # array of wp.vec2
+    ]
+    call = jax.ffi.ffi_call("warp_func", out_types)
+
+    # call it
+    c, d = call(a, b, scale=s)
+
+    print(c)
+    print(d)
+
+
+This is a more low-level approach to JAX FFI callbacks. A proposal was made to incorporate such a mechanism in JAX, but for now we have a prototype here. This approach leaves a lot of work up to the user, such as verifying argument types and shapes. But it can be used when other utilities like ``jax_kernel()`` and ``jax_callable()`` are not sufficient.
+
+See `example_jax_ffi_callback.py <https://github.com/NVIDIA/warp/tree/main/warp/examples/interop/example_jax_ffi_callback.py>`_ for examples.
+
+
+Distributed Computation
+^^^^^^^^^^^^^^^^^^^^^^^
 
 Warp can be used in conjunction with JAX's `shard_map <https://jax.readthedocs.io/en/latest/jep/14273-shard-map.html>`__
 to perform distributed multi-GPU computations.
@@ -715,127 +1172,6 @@ Once Open MPI is installed, you can use ``mpirun`` with the following command:
 
     mpirun -np <NUM_OF_GPUS> python <filename>.py
 
-
-Specifying launch dimensions for matrix operations
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-In some cases, particularly for matrix operations, it's necessary to specify the launch dimensions for Warp kernels.
-This is because the default behavior of inferring dimensions from the first argument may not always be suitable for matrix operations.
-Here's an example of a distributed matrix multiplication using Warp and JAX:
-
-.. code-block:: python
-
-    import warp as wp
-    import jax
-    import jax.numpy as jnp
-    from jax.sharding import PartitionSpec as P
-    from jax.experimental.multihost_utils import process_allgather as allgather
-    from jax.experimental.shard_map import shard_map
-    from warp.jax_experimental import jax_kernel
-    import numpy as np
-
-    jax.distributed.initialize()
-    num_gpus = jax.device_count()
-
-    def print_on_process_0(*args, **kwargs):
-        if jax.process_index() == 0:
-            print(*args, **kwargs)
-
-    print_on_process_0(f"Running on {num_gpus} GPU(s)")
-
-    @wp.kernel
-    def matmul_kernel(
-        a: wp.array2d(dtype=wp.float32),
-        b: wp.array2d(dtype=wp.float32),
-        c: wp.array2d(dtype=wp.float32),
-    ):
-        # a: (M/num_gpus, K), b: (K, N), c: (M/num_gpus, N)
-        i, j = wp.tid()
-        M = a.shape[0]  # M/num_gpus
-        K = a.shape[1]  # K
-        N = b.shape[1]  # N
-        if i < M and j < N:
-            s = wp.float32(0.0)
-            for k in range(K):
-                s += a[i, k] * b[k, j]
-            c[i, j] = s
-
-    # Specify launch dimensions based on the number of GPUs
-    def create_jax_warp_matmul(M, N):
-        # M: total rows, N: total columns
-        block_size_m = M // num_gpus  # Rows per GPU
-        block_size_n = N  # All columns
-        return jax_kernel(matmul_kernel, launch_dims=(block_size_m, block_size_n))
-
-    def warp_distributed_matmul(a, b):
-        # a: (M, K) sharded across GPUs, b: (K, N) replicated
-        M, K = a.shape
-        _, N = b.shape
-        jax_warp_matmul = create_jax_warp_matmul(M, N)
-        
-        def _sharded_operator(a_shard, b):
-            # a_shard: (M/num_gpus, K), b: (K, N)
-            return jax_warp_matmul(a_shard, b)[0]  # Result: (M/num_gpus, N)
-
-        return shard_map(
-            _sharded_operator,
-            mesh=jax.sharding.Mesh(np.array(jax.devices()), "x"),
-            in_specs=(P("x", None), P(None, None)),  # a sharded in first dim, b replicated
-            out_specs=P("x", None),  # Output sharded in first dim
-            check_rep=False,
-        )(a, b)
-
-    print_on_process_0("Test distributed matrix multiplication using JAX + Warp")
-
-    # Define matrix dimensions
-    M = 8 * num_gpus  # Scale M with the number of devices
-    K, N = 4, 6
-
-    # Create input matrices
-    a = jnp.arange(M * K, dtype=jnp.float32).reshape(M, K)  # Shape: (M, K)
-    b = jnp.arange(K * N, dtype=jnp.float32).reshape(K, N)  # Shape: (K, N)
-
-    devices = jax.devices()
-    mesh = jax.sharding.Mesh(np.array(devices), "x")
-    sharding_spec_a = jax.sharding.NamedSharding(mesh, P("x", None))
-    sharding_spec_b = jax.sharding.NamedSharding(mesh, P(None, None))
-
-    # Shard matrix A and replicate matrix B
-    sharded_a = jax.device_put(a, sharding_spec_a)  # Sharded shape: (M/num_gpus, K) per device
-    replicated_b = jax.device_put(b, sharding_spec_b)  # Replicated shape: (K, N) on all devices
-
-    print_on_process_0(f"Input matrix A:\n{allgather(sharded_a)}")  # Shape: (M, K)
-    print_on_process_0(f"Input matrix B:\n{allgather(replicated_b)}")  # Shape: (K, N)
-
-    warp_result = warp_distributed_matmul(sharded_a, replicated_b)  # Sharded result: (M/num_gpus, N) per device
-    print_on_process_0("Warp Output:")
-    # Use allgather to collect results from all devices
-    print_on_process_0(allgather(warp_result))  # Shape: (M, N)
-
-    jax_result = jnp.matmul(a, b)  # Shape: (M, N)
-    print_on_process_0("JAX Output:")
-    print_on_process_0(jax_result)
-
-    expected_shape = (M, N)
-    print_on_process_0(f"Expected shape: {expected_shape}")
-    print_on_process_0(f"Warp output shape: {warp_result.shape}")  # Should be (M/num_gpus, N) on each device
-    print_on_process_0(f"JAX output shape: {jax_result.shape}")  # Should be (M, N)
-
-    allclose = jnp.allclose(allgather(warp_result), jax_result, atol=1e-5)
-    print_on_process_0(f"Allclose: {allclose}")
-
-In this example, we create a function ``create_jax_warp_matmul`` that calculates the launch dimensions based on the
-number of available GPUs.
-We use ``jax.device_count()`` to get the global number of GPUs and divide the ``M`` dimension (rows) of the matrix by this number.
-This ensures that each GPU processes an equal portion of the input matrix ``A``.
-The ``N`` dimension (columns) remains unchanged as we're not sharding in that direction.
-
-Note that the launch dimensions are set to match the shape of the matrix portion on each GPU.
-The ``block_size_m`` is calculated by dividing the total number of rows by the number of GPUs,
-while ``block_size_n`` is set to the full width of the output matrix.
-
-Note that this is a naive implementation of matrix multiplication for the sake of this illustration,
-and there are many optimizations that can be made to improve performance.
 
 .. _DLPack:
 

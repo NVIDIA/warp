@@ -2278,15 +2278,22 @@ class Adjoint:
         out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
 
         if warp.config.verify_autograd_array_access:
+            # Extract the types and values passed as arguments to the function call.
+            arg_types = tuple(strip_reference(get_arg_type(x)) for x in args)
+            kwarg_types = {k: strip_reference(get_arg_type(v)) for k, v in kwargs.items()}
+
+            # Resolve the exact function signature among any existing overload.
+            resolved_func = adj.resolve_func(func, arg_types, kwarg_types, min_outputs)
+
             # update arg read/write states according to what happens to that arg in the called function
-            if hasattr(func, "adj"):
+            if hasattr(resolved_func, "adj"):
                 for i, arg in enumerate(args):
-                    if func.adj.args[i].is_write:
+                    if resolved_func.adj.args[i].is_write:
                         kernel_name = adj.fun_name
                         filename = adj.filename
                         lineno = adj.lineno + adj.fun_lineno
                         arg.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
-                    if func.adj.args[i].is_read:
+                    if resolved_func.adj.args[i].is_read:
                         arg.mark_read()
 
         return out

@@ -837,6 +837,7 @@ def count_contact_points(
                 num_actual_contacts = 8 + 4
         else:
             num_contacts = 8
+            num_actual_contacts = 8
     elif actual_type_a == wp.sim.GEO_MESH:
         mesh_a = wp.mesh_get(geo.source[actual_shape_a])
         num_contacts_a = mesh_a.points.shape[0]
@@ -1744,7 +1745,7 @@ def compute_tri_aabbs(
     v2 = pos[tri_indices[t_id, 1]]
     v3 = pos[tri_indices[t_id, 2]]
 
-    upper, lower = compute_tri_aabb(v1, v2, v3)
+    lower, upper = compute_tri_aabb(v1, v2, v3)
 
     lower_bounds[t_id] = lower
     upper_bounds[t_id] = upper
@@ -1809,7 +1810,7 @@ def init_triangle_collision_data_kernel(
 @wp.kernel
 def vertex_triangle_collision_detection_kernel(
     query_radius: float,
-    mesh_id: wp.uint64,
+    bvh_id: wp.uint64,
     pos: wp.array(dtype=wp.vec3),
     tri_indices: wp.array(dtype=wp.int32, ndim=2),
     vertex_colliding_triangles_offsets: wp.array(dtype=wp.int32),
@@ -1840,7 +1841,7 @@ def vertex_triangle_collision_detection_kernel(
         and vertex_colliding_triangles_count.
 
     Attributes:
-        mesh_id (int): the mesh id you want to collide with
+        bvh_id (int): the bvh id you want to collide with
         query_radius (float): the contact radius. vertex-triangle pairs whose distance are less than this will get detected
         pos (array): positions of all the vertices that make up triangles
         vertex_colliding_triangles (array): flattened buffer of vertices' collision triangles
@@ -1862,12 +1863,12 @@ def vertex_triangle_collision_detection_kernel(
     lower = wp.vec3(v[0] - query_radius, v[1] - query_radius, v[2] - query_radius)
     upper = wp.vec3(v[0] + query_radius, v[1] + query_radius, v[2] + query_radius)
 
-    query = wp.mesh_query_aabb(mesh_id, lower, upper)
+    query = wp.bvh_query_aabb(bvh_id, lower, upper)
 
     tri_index = wp.int32(0)
     vertex_num_collisions = wp.int32(0)
     min_dis_to_tris = query_radius
-    while wp.mesh_query_aabb_next(query, tri_index):
+    while wp.bvh_query_next(query, tri_index):
         t1 = tri_indices[tri_index, 0]
         t2 = tri_indices[tri_index, 1]
         t3 = tri_indices[tri_index, 2]
@@ -1991,7 +1992,7 @@ def edge_colliding_edges_detection_kernel(
 
 @wp.kernel
 def triangle_triangle_collision_detection_kernel(
-    mesh_id: wp.uint64,
+    bvh_id: wp.uint64,
     pos: wp.array(dtype=wp.vec3),
     tri_indices: wp.array(dtype=wp.int32, ndim=2),
     triangle_intersecting_triangles_offsets: wp.array(dtype=wp.int32),
@@ -2014,10 +2015,10 @@ def triangle_triangle_collision_detection_kernel(
     buffer_offset = triangle_intersecting_triangles_offsets[tri_index]
     buffer_size = triangle_intersecting_triangles_offsets[tri_index + 1] - buffer_offset
 
-    query = wp.mesh_query_aabb(mesh_id, lower, upper)
+    query = wp.bvh_query_aabb(bvh_id, lower, upper)
     tri_index_2 = wp.int32(0)
     intersection_count = wp.int32(0)
-    while wp.mesh_query_aabb_next(query, tri_index_2):
+    while wp.bvh_query_next(query, tri_index_2):
         t2_v1 = tri_indices[tri_index_2, 0]
         t2_v2 = tri_indices[tri_index_2, 1]
         t2_v3 = tri_indices[tri_index_2, 2]
@@ -2129,7 +2130,16 @@ class TriMeshCollisionDetector:
 
         self.edge_edge_parallel_epsilon = edge_edge_parallel_epsilon
 
-        self.mesh_tris = wp.Mesh(model.particle_q, model.tri_indices.flatten())
+        self.lower_bounds_tris = wp.array(shape=(model.tri_count,), dtype=wp.vec3, device=model.device)
+        self.upper_bounds_tris = wp.array(shape=(model.tri_count,), dtype=wp.vec3, device=model.device)
+        wp.launch(
+            kernel=compute_tri_aabbs,
+            inputs=[self.vertex_positions, model.tri_indices, self.lower_bounds_tris, self.upper_bounds_tris],
+            dim=model.tri_count,
+            device=model.device,
+        )
+
+        self.bvh_tris = wp.Bvh(self.lower_bounds_tris, self.upper_bounds_tris)
 
         # collision detections results
 
@@ -2244,15 +2254,18 @@ class TriMeshCollisionDetector:
     def refit(self, new_pos=None):
         if new_pos is not None:
             self.vertex_positions = new_pos
-            # this will automatically apply refit
-            self.mesh_tris.points = new_pos
-        else:
-            self.refit_triangles()
 
+        self.refit_triangles()
         self.refit_edges()
 
     def refit_triangles(self):
-        self.mesh_tris.refit()
+        wp.launch(
+            kernel=compute_tri_aabbs,
+            inputs=[self.vertex_positions, self.model.tri_indices, self.lower_bounds_tris, self.upper_bounds_tris],
+            dim=self.model.tri_count,
+            device=self.model.device,
+        )
+        self.bvh_tris.refit()
 
     def refit_edges(self):
         wp.launch(
@@ -2282,7 +2295,7 @@ class TriMeshCollisionDetector:
             kernel=vertex_triangle_collision_detection_kernel,
             inputs=[
                 query_radius,
-                self.mesh_tris.id,
+                self.bvh_tris.id,
                 self.vertex_positions,
                 self.model.tri_indices,
                 self.vertex_colliding_triangles_offsets,
@@ -2348,7 +2361,7 @@ class TriMeshCollisionDetector:
         wp.launch(
             kernel=triangle_triangle_collision_detection_kernel,
             inputs=[
-                self.mesh_tris.id,
+                self.bvh_tris.id,
                 self.vertex_positions,
                 self.model.tri_indices,
                 self.triangle_intersecting_triangles_offsets,

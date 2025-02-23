@@ -172,6 +172,7 @@ ruff format:
     - ruff format --diff
 
 osec:sonarqube:
+  allow_failure: true  # Uptime not guaranteed
   variables:
     # Disable C/C++ analyzer until project specific work is done to enable it.
     # See: https://confluence.nvidia.com/display/OMNIVERSE/SonarQube+Gitlab+CI+Integration#C+Project+Enablement+Additions
@@ -221,11 +222,10 @@ linux-aarch64 test:
   extends:
     - .omni_devplat_arm_docker_gpu
     - .test_common_main
-  allow_failure: true # Unsure of stability and availability of devplat ARM GPU runners
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
-    - python -m pip install coverage[toml]
+    - python -m pip install coverage[toml]==7.6.10  # 7.6.11 seems to have a bug
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
@@ -234,21 +234,20 @@ linux-aarch64 test jetson:
   image: ubuntu:22.04
   needs: [linux-aarch64 build]
   extends:
-    - .test_common_main
+    - .save_test_report_artifact
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH 
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - when: manual # If not auto-triggered, allow any pipeline to run this job manually
-  allow_failure: true # Unsure of stability of Jetson runner for now
+      allow_failure: true
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
-    - python -m pip install coverage[toml]
     - python -m pip install -U "jax[cuda12]"
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - gpu/orin
 
@@ -367,6 +366,7 @@ windows-x86_64 test mgpu:
     - if: $CI_COMMIT_TAG
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
+  allow_failure: true # GitLab runners are too unstable to run this job
   before_script:
     - !reference [.snippets, define-powershell-GetTime]
     - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
@@ -503,17 +503,19 @@ linux-x86_64 asv:
     - source _venv/bin/activate
     - python -m pip install --upgrade pip
     - python -m pip install asv
-    - export GIT_LFS_SKIP_SMUDGE=1
+    - GIT_LFS_SKIP_SMUDGE=1
+    # Make sure the comparison ref can be checked out by asv
+    - COMPARE_REF="${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}}"
+    - 'echo "COMPARE_REF value: ${COMPARE_REF}"' 
     - git config --global --add safe.directory '*' 
-    - git fetch origin main
-    # Make sure the main branch can be checked out by asv
-    - git checkout -f main
+    - git fetch origin $COMPARE_REF
+    - git checkout -f $COMPARE_REF
     - git checkout -f $CI_COMMIT_SHA
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - cd benchmarks
     - asv machine --yes
-    - asv continuous --interleave-rounds --append-samples --no-only-changed -f 1.15 main $CI_COMMIT_SHA
+    - asv continuous --interleave-rounds --append-samples --no-only-changed -f 1.15 --bench '^(?!api)' $COMPARE_REF $CI_COMMIT_SHA
   allow_failure: True # Can make success required after we have tested this job more
 
 # ==============================================================================
@@ -679,7 +681,6 @@ create dev wheels:
     - .runner-utility-linux-x86_64
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - when: never
   before_script:
     # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
     - mkdir -p warp/bin/windows-x86_64
@@ -799,31 +800,22 @@ publish dev wheels to artifactory:
   script:
     - cd dist
     - >
-      jf rt u --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
-      --target-props 'component_name=warp-lang;release_approver=ershi;release_status=ready'
-      '*.whl' sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/
+      jf rt u --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
+      --target-props="component_name=warp-lang;release_approver=ershi;release_status=ready;version=$VERSION;branch=$CI_COMMIT_REF_SLUG"
+      '*.whl' sw-warp-pypi-local/nightly/warp-lang/
     # Set build-specific properties on individual artifacts
     - >
-      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*-win_amd64.whl
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-win_amd64.whl
       'arch=x86_64;os=windows'
     - >
-      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*-manylinux2014_aarch64.whl
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-manylinux2014_aarch64.whl
       'arch=aarch64;os=linux'
     - >
-      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*-manylinux2014_x86_64.whl
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-manylinux2014_x86_64.whl
       'arch=x86_64;os=linux'
-    # Set additional common properties on all artifacts
-    - >
-      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*.whl
-      version=$VERSION
-    - >
-      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*.whl
-      branch=$CI_COMMIT_REF_NAME
 
 publish tag wheels to artifactory:
   stage: deploy

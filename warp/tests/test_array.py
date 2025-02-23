@@ -2836,6 +2836,31 @@ def test_array_len(test, device):
     test.assertEqual(out.numpy()[1], 2)
 
 
+def test_cuda_interface_conversion(test, device):
+    class MyArrayInterface:
+        def __init__(self, data):
+            self.data = np.array(data)
+            self.__array_interface__ = self.data.__array_interface__
+            self.__cuda_array_interface__ = self.data.__array_interface__
+            self.__len__ = self.data.__len__
+
+    array = MyArrayInterface((1, 2, 3))
+    wp_array = wp.array(array, dtype=wp.int8, device=device)
+    assert wp_array.ptr != 0
+
+    array = MyArrayInterface((1, 2, 3))
+    wp_array = wp.array(array, dtype=wp.float32, device=device)
+    assert wp_array.ptr != 0
+
+    array = MyArrayInterface((1, 2, 3))
+    wp_array = wp.array(array, dtype=wp.vec3, device=device)
+    assert wp_array.ptr != 0
+
+    array = MyArrayInterface((1, 2, 3, 4))
+    wp_array = wp.array(array, dtype=wp.mat22, device=device)
+    assert wp_array.ptr != 0
+
+
 devices = get_test_devices()
 
 
@@ -2908,6 +2933,7 @@ add_function_test(TestArray, "test_indexing_types", test_indexing_types, devices
 add_function_test(TestArray, "test_alloc_strides", test_alloc_strides, devices=devices)
 add_function_test(TestArray, "test_casting", test_casting, devices=devices)
 add_function_test(TestArray, "test_array_len", test_array_len, devices=devices)
+add_function_test(TestArray, "test_cuda_interface_conversion", test_cuda_interface_conversion, devices=devices)
 
 try:
     import torch

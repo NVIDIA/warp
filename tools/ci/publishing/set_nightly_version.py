@@ -11,7 +11,7 @@ import os
 import datetime
 import re
 
-def increment_patch(version):
+def increment_minor(version):
     """Return a incremented version based on the input semantic version."""
 
     # Split the version string into components
@@ -19,9 +19,10 @@ def increment_patch(version):
     if len(parts) != 3:
         raise ValueError("Version string must be in <major>.<minor>.<patch> format")
     
-    # Increment the patch version
+    # Increment the minor version and reset patch to 0
     major, minor, patch = map(int, parts)
-    patch += 1
+    minor += 1
+    patch = 0
     
     # Return the new version string
     return f"{major}.{minor}.{patch}"
@@ -51,8 +52,8 @@ if __name__ == "__main__":
     with open(version_file, "r") as file:
         base_version = file.readline().strip()
 
-    # Increment the patch version so the nightly build is considered newer than the latest release
-    base_version_incremented = increment_patch(base_version)
+    # Increment the minor version so the nightly build is considered newer than the latest release
+    base_version_incremented = increment_minor(base_version)
 
     # See https://peps.python.org/pep-0440/#developmental-releases
     dateint = datetime.date.today().strftime("%Y%m%d")

@@ -1,5 +1,5 @@
 <project toolsVersion="5.0">
   <dependency name="kit-kernel" linkPath="../_build/kit-deps/kit-kernel">
-    <package name="kit-kernel" version="106.2.0+release.142336.833efde4.gl.${platform}.release" platforms="linux-x86_64"/>
+    <package name="kit-kernel" version="106.5.2+production.170256.12577025.gl.${platform}.release"/>
   </dependency>
 </project>

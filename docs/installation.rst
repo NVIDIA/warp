@@ -11,6 +11,19 @@ The easiest way to install Warp is from `PyPI <https://pypi.org/project/warp-lan
 
 .. _GitHub Installation:
 
+Nightly Builds
+--------------
+
+Nightly builds of Warp from the ``main`` branch are available on the `NVIDIA Package Index <https://pypi.nvidia.com/warp-lang/>`_.
+
+To install the latest nightly build, use the following command:
+
+.. code-block:: sh
+
+    $ pip install -U --pre warp-lang --extra-index-url=https://pypi.nvidia.com/
+
+Note that the nightly builds are built with the CUDA 12 runtime and are not published for macOS.
+
 Installing from GitHub Releases
 -------------------------------
 
@@ -25,11 +38,11 @@ the ``pip install`` command, e.g.
    * - Platform
      - Install Command
    * - Linux aarch64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.6.0/warp_lang-1.6.0+cu11-py3-none-manylinux2014_aarch64.whl``
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.6.1/warp_lang-1.6.1+cu11-py3-none-manylinux2014_aarch64.whl``
    * - Linux x86-64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.6.0/warp_lang-1.6.0+cu11-py3-none-manylinux2014_x86_64.whl``
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.6.1/warp_lang-1.6.1+cu11-py3-none-manylinux2014_x86_64.whl``
    * - Windows x86-64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.6.0/warp_lang-1.6.0+cu11-py3-none-win_amd64.whl``
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.6.1/warp_lang-1.6.1+cu11-py3-none-win_amd64.whl``
 
 The ``--force-reinstall`` option may need to be used to overwrite a previous installation.
 

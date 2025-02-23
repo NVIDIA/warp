@@ -19,6 +19,7 @@ import glob
 import os
 import platform
 import shutil
+import subprocess
 
 from warp.build_dll import build_dll, find_host_compiler, machine_architecture, set_msvc_env, verbose_cmd
 from warp.context import export_builtins
@@ -124,64 +125,39 @@ def find_libmathdx():
         print(f"Using libmathdx path '{libmathdx_path}' provided through the 'LIBMATHDX_HOME' environment variable")
         return libmathdx_path
     else:
-        base_url = "https://developer.nvidia.com/downloads/compute/cublasdx/redist/cublasdx"
-        libmathdx_ver = "0.1.2"
-
-        # First check if a libmathdx folder exists in the target location
-        extract_dir_base = os.path.join(".", "_build", "target-deps", "libmathdx")
-        version_dir = os.path.join(extract_dir_base, libmathdx_ver)
-
-        if os.path.isdir(version_dir) and os.listdir(version_dir):
-            # Directory is not empty, so let's try to use it
-            print(f"Using existing libmathdx at path '{os.path.abspath(version_dir)}'")
-            return os.path.abspath(version_dir)
-
+        # Fetch libmathdx from https://developer.nvidia.com/cublasdx-downloads using Packman
         if platform.system() == "Windows":
-            source_url = f"{base_url}/libmathdx-win64-{machine_architecture()}-{libmathdx_ver}.zip"
+            packman = "tools\\packman\\packman.cmd"
         elif platform.system() == "Linux":
-            source_url = f"{base_url}/libmathdx-Linux-{machine_architecture()}-{libmathdx_ver}.tar.gz"
+            packman = "./tools/packman/packman"
         else:
-            return None
-
-        import urllib.request
+            raise RuntimeError(f"Unsupported platform for libmathdx: {platform.system()}")
 
         try:
-            local_filename, _ = urllib.request.urlretrieve(source_url)
-        except Exception as e:
-            print(f"Unable to download libmathdx from {source_url}, skipping: {e}")
-            return None
+            subprocess.check_output(
+                [
+                    packman,
+                    "pull",
+                    "--verbose",
+                    "--platform",
+                    f"{platform.system()}-{machine_architecture()}".lower(),
+                    os.path.join(base_path, "deps", "libmathdx-deps.packman.xml"),
+                ],
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            print(e.output)
 
-        try:
-            if platform.system() == "Windows":
-                import zipfile
-
-                with zipfile.ZipFile(local_filename, "r") as zip_file:
-                    zip_file.extractall(extract_dir_base)
-            else:
-                import tarfile
-
-                with tarfile.open(local_filename, "r:gz") as tar_file:
-                    if hasattr(tarfile, "data_filter"):
-                        tar_file.extractall(extract_dir_base, filter="data")
-                    else:
-                        # The parameter `filter` of `TarFile.extractall()` was
-                        # introduced in Python 3.12 (and then backported to
-                        # 3.11.4, 3.10.12, 3.9.17, and 3.8.17), so we need
-                        # a fallback for older versions.
-                        tar_file.extractall(extract_dir_base)
-        except Exception as e:
-            print(f"Unable to extract libmathdx to {extract_dir_base}, skipping: {e}")
-            return None
-
-        try:
-            # Move extracted contents to a directory named with the version number
-            os.rename(os.path.join(extract_dir_base, "libmathdx"), version_dir)
-        except Exception:
-            # Unable to rename to preferred directory name, return the intermediate one
-            return os.path.abspath(os.path.join(extract_dir_base, "libmathdx"))
+            # Check if the libmathdx target directory exists and is not a symbolic link
+            libmathdx_target_dir = os.path.join(base_path, "_build", "target-deps", "libmathdx")
+            if os.path.exists(libmathdx_target_dir) and not os.path.islink(libmathdx_target_dir):
+                print(f"\nError: {libmathdx_target_dir} exists and is not a symbolic link.")
+                print("Please try deleting this folder and running the script again.")
+            raise e
 
         # Success
-        return os.path.abspath(version_dir)
+        return os.path.join(base_path, "_build", "target-deps", "libmathdx", "libmathdx")
 
 
 # setup CUDA Toolkit path

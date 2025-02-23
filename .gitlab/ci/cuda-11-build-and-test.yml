@@ -93,7 +93,7 @@ linux-aarch64 test:
   image: ubuntu:22.04
   needs: [linux-aarch64 build]
   extends:
-    - .runner-test-linux-aarch64  # TODO: Change to GPU runners
+    - .runner-test-linux-aarch64  # TODO: Change to .omni_devplat_arm_docker_gpu
     - .save_test_report_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -161,6 +161,80 @@ check extensions public API:
   script:
     - tools/repo.sh checkapi
 
+linux-x86_64 extension omni.warp.core test:
+  stage: test
+  needs: ["linux-x86_64 build"]
+  extends:
+    - .runner-test-linux-x86_64-gpu
+  before_script:
+    - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
+    - export TEST_KIT_EXT="omni.warp.core"
+    - mv warp/bin/linux-x86_64/*.so warp/bin
+  script:
+    - !reference [.snippets, test-kit-ext-linux-x86_64]
+  artifacts:
+    name: $CI_JOB_NAME_SLUG
+    paths:
+      - "./_testoutput"
+    expire_in: 1 week
+    when: always
+  allow_failure: true
+
+windows-x86_64 extension omni.warp.core test:
+  stage: test
+  needs: ["windows-x86_64 build"]
+  extends:
+    - .runner-test-windows-x86_64-gpu
+  before_script:
+    - tools\packman\packman.cmd pull -p windows-x86_64 deps/kit-deps.packman.xml
+    - $env:TEST_KIT_EXT = "omni.warp.core"
+  script:
+    - !reference [.snippets, test-kit-ext-windows-x86_64]
+  artifacts:
+    name: $CI_JOB_NAME_SLUG
+    paths:
+      - "./_testoutput"
+    expire_in: 1 week
+    when: always
+  allow_failure: true
+
+linux-x86_64 extension omni.warp test:
+  stage: test
+  needs: ["linux-x86_64 build"]
+  extends:
+    - .runner-test-linux-x86_64-gpu
+  before_script:
+    - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
+    - export TEST_KIT_EXT="omni.warp"
+    - mv warp/bin/linux-x86_64/*.so warp/bin
+  script:
+    - !reference [.snippets, test-kit-ext-linux-x86_64]
+  artifacts:
+    name: $CI_JOB_NAME_SLUG
+    paths:
+      - "./_testoutput"
+    expire_in: 1 week
+    when: always
+  allow_failure: true
+
+windows-x86_64 extension omni.warp test:
+  stage: test
+  needs: ["windows-x86_64 build"]
+  extends:
+    - .runner-test-windows-x86_64-gpu
+  before_script:
+    - tools\packman\packman.cmd pull -p windows-x86_64 deps/kit-deps.packman.xml
+    - $env:TEST_KIT_EXT = "omni.warp"
+  script:
+    - !reference [.snippets, test-kit-ext-windows-x86_64]
+  artifacts:
+    name: $CI_JOB_NAME_SLUG
+    paths:
+      - "./_testoutput"
+    expire_in: 1 week
+    when: always
+  allow_failure: true
+
 # ==============================================================================
 # Packaging Jobs
 #
@@ -199,6 +273,26 @@ create pypi wheels:
     when: always
 
 # Creates an artifact suitable for publishing the Kit extensions
+create linux-aarch64 kit artifacts:
+  stage: package
+  needs:
+    - linux-aarch64 build
+  extends:
+    - .runner-utility-linux-x86_64
+  before_script:
+    - apt-get update && apt-get install zip --no-install-recommends -y
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-aarch64/*.so warp/bin/
+    - rm -r warp/bin/linux-aarch64/
+  script:
+    - !reference [.snippets, prepare-kit-artifacts]
+    - zip -r kit-extensions-linux-aarch64.zip exts/
+  artifacts:
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    expose_as: "Kit Extensions linux-aarch64"
+    paths:
+      - kit-extensions-linux-aarch64.zip
+
 create linux-x86_64 kit artifacts:
   stage: package
   needs:
@@ -297,7 +391,11 @@ publish wheels to gitlab package registry:
 # Uploads the extensions to packman.
 publish extensions to packman:
   stage: deploy
-  needs: ["check extensions public API", "create linux-x86_64 kit artifacts", "create windows-x86_64 kit artifacts"]
+  needs:
+    - check extensions public API
+    - create linux-aarch64 kit artifacts
+    - create linux-x86_64 kit artifacts
+    - create windows-x86_64 kit artifacts
   extends:
     - .runner-utility-linux-x86_64
     - .osec:vault:v3:prod_token_job
@@ -312,6 +410,8 @@ publish extensions to packman:
     url: http://omniexts.nvidia.com/omni.warp
     deployment_tier: production
   before_script:
+    - mkdir -p _build/linux-aarch64/release
+    - unzip kit-extensions-linux-aarch64.zip -d _build/linux-aarch64/release
     - mkdir -p _build/linux-x86_64/release
     - unzip kit-extensions-linux-x86_64.zip -d _build/linux-x86_64/release
     - mkdir -p _build/windows-x86_64/release

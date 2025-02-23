@@ -1079,9 +1079,12 @@ struct tile_shared_t
             constexpr bool contiguous_src = Layout::Stride::dim(lastdim) == 1;
             const bool contiguous_dest = dest.data.strides[lastdim] == sizeof(T);
             const int elements = (dest.data.shape[lastdim] - dest.offset[lastdim]);
-            const bool aligned = (elements*sizeof(T))%sizeof(float4) == 0;
+            const bool aligned_size = (elements*sizeof(T))%sizeof(float4) == 0;
            
-            if (contiguous_dest && contiguous_src && aligned)
+            float4* dest128 = (float4*)&dest.data.data[dest.index_from_coord(tile_coord(0,0))];
+            const bool aligned_dst = (uint64_t)(dest128)%sizeof(float4) == 0;
+
+            if (contiguous_dest && contiguous_src && aligned_size && aligned_dst)
             {                    
                 constexpr int M = Layout::Shape::dim(0);
                 constexpr int N = (Layout::Shape::dim(1)*sizeof(T))/sizeof(float4);            
@@ -1089,10 +1092,9 @@ struct tile_shared_t
                 // alias of shared tile with 128bit type
                 using SrcLayout = tile_layout_strided_t<tile_shape_t<M, N>>;
                 tile_shared_t<float4, SrcLayout> src128((float4*)data.ptr);
-                float4* dest128 = (float4*)&dest.data.data[dest.index_from_coord(tile_coord(0,0))];
 
                 assert(((uint64_t)(data.ptr))%sizeof(float4) == 0);
-                assert(((uint64_t)(ptr))%sizeof(float4) == 0);
+                assert(((uint64_t)(dest128))%sizeof(float4) == 0);
 
                 const int stride_i = dest.data.strides[0]/sizeof(float4);
                 const int stride_j = 1;
@@ -1164,17 +1166,19 @@ struct tile_shared_t
             constexpr bool contiguous_dest = Layout::Stride::dim(lastdim) == 1;
             const bool contiguous_src = src.data.strides[lastdim] == sizeof(T);
             const int elements = (src.data.shape[lastdim] - src.offset[lastdim]);
-            const bool aligned = (elements*sizeof(T))%sizeof(float4) == 0;
+            const bool aligned_size = (elements*sizeof(T))%sizeof(float4) == 0;
 
-            if (contiguous_dest && contiguous_src && aligned)
+            float4* src128 = (float4*)&src.data.data[src.index_from_coord(tile_coord(0,0))];
+            const bool aligned_src = (uint64_t)(src128)%sizeof(float4) == 0;
+
+            if (contiguous_dest && contiguous_src && aligned_size && aligned_src)
             {            
                 constexpr int M = Layout::Shape::dim(0);
                 constexpr int N = (Layout::Shape::dim(1)*sizeof(T))/sizeof(float4);
 
                 // alias of shared tile with 128bit type
                 using DestLayout = tile_layout_strided_t<tile_shape_t<M, N>>;
-                tile_shared_t<float4, DestLayout> dest128((float4*)data.ptr);
-                float4* src128 = (float4*)&src.data.data[src.index_from_coord(tile_coord(0,0))];
+                tile_shared_t<float4, DestLayout> dest128((float4*)data.ptr);                
 
                 assert(((uint64_t)(dest128.data.ptr))%sizeof(float4) == 0);
                 assert(((uint64_t)(src128))%sizeof(float4) == 0);

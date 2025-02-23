@@ -7,6 +7,8 @@
 
 """A module for building simulation models and state."""
 
+from __future__ import annotations
+
 import copy
 import math
 from typing import List, Optional, Tuple
@@ -262,47 +264,51 @@ class Mesh:
 
 
 class State:
-    """The State object holds all *time-varying* data for a model.
+    """Time-varying state data for a :class:`Model`.
 
-    Time-varying data includes particle positions, velocities, rigid body states, and
+    Time-varying state data includes particle positions, velocities, rigid body states, and
     anything that is output from the integrator as derived data, e.g.: forces.
 
     The exact attributes depend on the contents of the model. State objects should
     generally be created using the :func:`Model.state()` function.
-
-    Attributes:
-
-        particle_q (array): Array of 3D particle positions, shape [particle_count], :class:`vec3`
-        particle_qd (array): Array of 3D particle velocities, shape [particle_count], :class:`vec3`
-        particle_f (array): Array of 3D particle forces, shape [particle_count], :class:`vec3`
-
-        body_q (array): Array of body coordinates (7-dof transforms) in maximal coordinates, shape [body_count], :class:`transform`
-        body_qd (array): Array of body velocities in maximal coordinates (first 3 entries represent angular velocity, last 3 entries represent linear velocity), shape [body_count], :class:`spatial_vector`
-        body_f (array): Array of body forces in maximal coordinates (first 3 entries represent torque, last 3 entries represent linear force), shape [body_count], :class:`spatial_vector`
-
-            Note:
-
-                :attr:`body_f` represents external wrenches in world frame and denotes wrenches measured w.r.t. to the body's center of mass for all integrators except :class:`FeatherstoneIntegrator` which assumes the wrenches are measured w.r.t. world origin.
-
-        joint_q (array): Array of generalized joint coordinates, shape [joint_coord_count], float
-        joint_qd (array): Array of generalized joint velocities, shape [joint_dof_count], float
-
     """
 
     def __init__(self):
-        self.particle_q = None
-        self.particle_qd = None
-        self.particle_f = None
+        self.particle_q: Optional[wp.array] = None
+        """Array of 3D particle positions with shape ``(particle_count,)`` and type :class:`vec3`."""
 
-        self.body_q = None
-        self.body_qd = None
-        self.body_f = None
+        self.particle_qd: Optional[wp.array] = None
+        """Array of 3D particle velocities with shape ``(particle_count,)`` and type :class:`vec3`."""
 
-        self.joint_q = None
-        self.joint_qd = None
+        self.particle_f: Optional[wp.array] = None
+        """Array of 3D particle forces with shape ``(particle_count,)`` and type :class:`vec3`."""
 
-    def clear_forces(self):
-        """Clears all forces (for particles and bodies) in the state object."""
+        self.body_q: Optional[wp.array] = None
+        """Array of body coordinates (7-dof transforms) in maximal coordinates with shape ``(body_count,)`` and type :class:`transform`."""
+
+        self.body_qd: Optional[wp.array] = None
+        """Array of body velocities in maximal coordinates (first three entries represent angular velocity,
+        last three entries represent linear velocity) with shape ``(body_count,)`` and type :class:`spatial_vector`.
+        """
+
+        self.body_f: Optional[wp.array] = None
+        """Array of body forces in maximal coordinates (first three entries represent torque, last three
+        entries represent linear force) with shape ``(body_count,)`` and type :class:`spatial_vector`.
+
+        .. note::
+            :attr:`body_f` represents external wrenches in world frame and denotes wrenches measured w.r.t.
+            to the body's center of mass for all integrators except :class:`FeatherstoneIntegrator`, which
+            assumes the wrenches are measured w.r.t. world origin.
+        """
+
+        self.joint_q: Optional[wp.array] = None
+        """Array of generalized joint coordinates with shape ``(joint_coord_count,)`` and type ``float``."""
+
+        self.joint_qd: Optional[wp.array] = None
+        """Array of generalized joint velocities with shape ``(joint_dof_count,)`` and type ``float``."""
+
+    def clear_forces(self) -> None:
+        """Clear all forces (for particles and bodies) in the state object."""
         with wp.ScopedTimer("clear_forces", False):
             if self.particle_count:
                 self.particle_f.zero_()
@@ -311,7 +317,7 @@ class State:
                 self.body_f.zero_()
 
     @property
-    def requires_grad(self):
+    def requires_grad(self) -> bool:
         """Indicates whether the state arrays have gradient computation enabled."""
         if self.particle_q:
             return self.particle_q.requires_grad
@@ -320,28 +326,28 @@ class State:
         return False
 
     @property
-    def body_count(self):
+    def body_count(self) -> int:
         """The number of bodies represented in the state."""
         if self.body_q is None:
             return 0
         return len(self.body_q)
 
     @property
-    def particle_count(self):
+    def particle_count(self) -> int:
         """The number of particles represented in the state."""
         if self.particle_q is None:
             return 0
         return len(self.particle_q)
 
     @property
-    def joint_coord_count(self):
+    def joint_coord_count(self) -> int:
         """The number of generalized joint position coordinates represented in the state."""
         if self.joint_q is None:
             return 0
         return len(self.joint_q)
 
     @property
-    def joint_dof_count(self):
+    def joint_dof_count(self) -> int:
         """The number of generalized joint velocity coordinates represented in the state."""
         if self.joint_qd is None:
             return 0
@@ -349,37 +355,34 @@ class State:
 
 
 class Control:
-    """
-    The Control object holds all *time-varying* control data for a model.
+    """Time-varying control data for a :class:`Model`.
 
-    Time-varying control data includes joint control inputs, muscle activations, and activation forces for triangle and tetrahedral elements.
+    Time-varying control data includes joint control inputs, muscle activations,
+    and activation forces for triangle and tetrahedral elements.
 
-    The exact attributes depend on the contents of the model. Control objects should generally be created using the :func:`Model.control()` function.
-
-    Attributes:
-
-        joint_act (array): Array of joint control inputs, shape [joint_axis_count], float
-        tri_activations (array): Array of triangle element activations, shape [tri_count], float
-        tet_activations (array): Array of tetrahedral element activations, shape [tet_count], float
-        muscle_activations (array): Array of muscle activations, shape [muscle_count], float
-
+    The exact attributes depend on the contents of the model. Control objects
+    should generally be created using the :func:`Model.control()` function.
     """
 
-    def __init__(self, model):
-        """
-        Args:
-            model (Model): The model to use as a reference for the control inputs
-        """
-        self.model = model
-        self.joint_act = None
-        self.tri_activations = None
-        self.tet_activations = None
-        self.muscle_activations = None
+    def __init__(self, model: Model):
+        self.model: Model = model
+        """Model to use as a reference for the control inputs."""
 
-    def reset(self):
-        """
-        Resets the control inputs to their initial state defined in :class:`Model`.
-        """
+        self.joint_act: Optional[wp.array] = None
+        """Array of joint control inputs with shape ``(joint_axis_count,)`` and type ``float``."""
+
+        self.tri_activations: Optional[wp.array] = None
+        """Array of triangle element activations with shape ``(tri_count,)`` and type ``float``."""
+
+        self.tet_activations: Optional[wp.array] = None
+        """Array of tetrahedral element activations with shape with shape ``(tet_count,) and type ``float``."""
+
+        self.muscle_activations: Optional[wp.array] = None
+        """Array of muscle activations with shape ``(muscle_count,)`` and type ``float``."""
+
+    def reset(self) -> None:
+        """Reset the control inputs to their initial state defined in :attr:`model`."""
+
         if self.joint_act is not None:
             self.joint_act.assign(self.model.joint_act)
         if self.tri_activations is not None:
@@ -1396,6 +1399,8 @@ class ModelBuilder:
                 # apply offset transform to root bodies
                 if xform is not None:
                     self.shape_transform.append(xform * builder.shape_transform[s])
+                else:
+                    self.shape_transform.append(builder.shape_transform[s])
 
         for b, shapes in builder.body_shapes.items():
             self.body_shapes[b + start_body_idx] = [s + start_shape_idx for s in shapes]
@@ -1418,18 +1423,16 @@ class ModelBuilder:
 
             # offset the indices
             self.articulation_start.extend([a + self.joint_count for a in builder.articulation_start])
-            self.joint_parent.extend([p + self.joint_count if p != -1 else -1 for p in builder.joint_parent])
-            self.joint_child.extend([c + self.joint_count for c in builder.joint_child])
+            self.joint_parent.extend([p + self.body_count if p != -1 else -1 for p in builder.joint_parent])
+            self.joint_child.extend([c + self.body_count for c in builder.joint_child])
 
             self.joint_q_start.extend([c + self.joint_coord_count for c in builder.joint_q_start])
             self.joint_qd_start.extend([c + self.joint_dof_count for c in builder.joint_qd_start])
 
             self.joint_axis_start.extend([a + self.joint_axis_total_count for a in builder.joint_axis_start])
 
-        joint_children = set(builder.joint_child)
         for i in range(builder.body_count):
-            if xform is not None and i not in joint_children:
-                # rigid body is not attached to a joint, so apply input transform directly
+            if xform is not None:
                 self.body_q.append(xform * builder.body_q[i])
             else:
                 self.body_q.append(builder.body_q[i])

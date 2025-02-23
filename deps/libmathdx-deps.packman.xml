@@ -1,0 +1,13 @@
+<project toolsVersion="5.0">
+  <remote2 name="cublasdx-linux">
+    <transport actions="download" protocol="https" packageLocation="developer.nvidia.com/downloads/compute/cublasdx/redist/cublasdx/${name}-${version}.tar.gz" />
+  </remote2>
+  <remote2 name="cublasdx-windows">
+    <transport actions="download" protocol="https" packageLocation="developer.nvidia.com/downloads/compute/cublasdx/redist/cublasdx/${name}-${version}.zip" />
+  </remote2>
+  <dependency name="libmathdx" linkPath="../_build/target-deps/libmathdx">
+    <package name="libmathdx-win64-x86_64" version="0.1.2" platforms="windows-x86_64" remotes="cublasdx-windows"/>
+    <package name="libmathdx-Linux-x86_64" version="0.1.2" platforms="linux-x86_64" remotes="cublasdx-linux"/>
+    <package name="libmathdx-Linux-aarch64" version="0.1.2" platforms="linux-aarch64" remotes="cublasdx-linux"/>
+  </dependency>
+</project>

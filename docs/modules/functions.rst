@@ -2286,7 +2286,7 @@ Random
 
 .. py:function:: randi(state: uint32) -> int
 
-    Return a random integer in the range [0, 2^32).
+    Return a random integer in the range [-2^31, 2^31).
 
 
 .. py:function:: randi(state: uint32, low: int32, high: int32) -> int

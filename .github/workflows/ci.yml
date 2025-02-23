@@ -20,7 +20,7 @@ on:
     - cron: "45 9 * * *"
 
 env:
-  PYTHON_VERSION: 3.11
+  PYTHON_VERSION: 3.12
 
 jobs:
   build-warp-windows:
@@ -53,7 +53,7 @@ jobs:
           name: build-artifact-windows
           path: ./warp/bin/
 
-  build-warp-ubuntu:
+  build-warp-ubuntu-x86_64:
     runs-on: ubuntu-22.04
     outputs:
       artifact-url: ${{ steps.exports-header.outputs.artifact-url }}
@@ -83,7 +83,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifact-ubuntu
+          name: build-artifact-ubuntu-x86_64
           path: warp/bin/
       - name: Upload exports.h
         uses: actions/upload-artifact@v4
@@ -91,6 +91,37 @@ jobs:
         with:
           name: exports-header
           path: warp/native/exports.h
+
+  build-warp-ubuntu-aarch64:
+    runs-on: ubuntu-22.04-arm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install CTK
+        uses: Jimver/cuda-toolkit@v0.2.21
+        id: cuda-toolkit
+        with:
+          sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
+          non-cuda-sub-packages: '["libnvjitlink-dev"]'
+          method: 'network'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --no-cache-dir --upgrade numpy
+      - name: Build Warp
+        run: |
+          python build_lib.py
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifact-ubuntu-aarch64
+          path: warp/bin/
 
   build-warp-macos:
     runs-on: macos-latest
@@ -157,9 +188,9 @@ jobs:
           flags: unittests
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  test-warp-ubuntu:
+  test-warp-ubuntu-x86_64:
     runs-on: ubuntu-latest
-    needs: build-warp-ubuntu
+    needs: build-warp-ubuntu-x86_64
     env:
       OS: ubuntu-latest
     steps:
@@ -174,13 +205,54 @@ jobs:
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
         with:
-          name: build-artifact-ubuntu
+          name: build-artifact-ubuntu-x86_64
           path: ./warp/bin/
       - name: Install Dependencies
         run: |
           python -m pip cache purge
           python -m pip install --upgrade pip
           pip install --no-cache-dir --upgrade numpy coverage[toml] usd-core
+          pip install --no-cache-dir .
+      - name: Run Tests
+        run: python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+      - name: Test Summary
+        uses: test-summary/action@v2.3
+        with:
+          paths: "rspec.xml"
+          show: "fail"
+        if: always()
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4.4.0
+        with:
+          env_vars: OS,PYTHON_VERSION
+          files: ./coverage.xml
+          flags: unittests
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  test-warp-ubuntu-aarch64:
+    runs-on: ubuntu-22.04-arm
+    needs: build-warp-ubuntu-aarch64
+    env:
+      OS: ubuntu-22.04-arm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Download Warp build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifact-ubuntu-aarch64
+          path: ./warp/bin/
+      - name: Install Dependencies
+        run: |
+          python -m pip cache purge
+          python -m pip install --upgrade pip
+          pip install --no-cache-dir --upgrade numpy coverage[toml]==7.6.10
           pip install --no-cache-dir .
       - name: Run Tests
         run: python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
@@ -241,7 +313,7 @@ jobs:
 
   pull-request-docs:
     runs-on: ubuntu-latest
-    needs: build-warp-ubuntu
+    needs: build-warp-ubuntu-x86_64
     if: ${{ github.event_name == 'pull_request' }}
     outputs:
       artifact-url: ${{ steps.build-docs-output.outputs.artifact-url }}
@@ -255,7 +327,7 @@ jobs:
       - name: Download Warp binaries
         uses: actions/download-artifact@v4
         with:
-          name: build-artifact-ubuntu
+          name: build-artifact-ubuntu-x86_64
           path: warp/bin/
       - name: Install dependencies
         run: |
@@ -298,7 +370,7 @@ jobs:
 
   check-exports-header:
     runs-on: ubuntu-latest
-    needs: build-warp-ubuntu
+    needs: build-warp-ubuntu-x86_64
     if: ${{ github.event_name == 'pull_request' }}
     steps:
       - name: Checkout repository
@@ -310,7 +382,7 @@ jobs:
           path: warp/native/
       - name: Check exports.h
         env:
-          ARTIFACT_URL: ${{ needs.build-warp-ubuntu.outputs.artifact-url }}
+          ARTIFACT_URL: ${{ needs.build-warp-ubuntu-x86_64.outputs.artifact-url }}
         run: >
           git diff --exit-code warp/native/exports.h ||
           (echo "Please run build_lib.py (or download from $ARTIFACT_URL) and add warp/native/exports.h to your pull request." && false)

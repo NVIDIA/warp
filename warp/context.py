@@ -34,6 +34,7 @@ import warp
 import warp.build
 import warp.codegen
 import warp.config
+from warp.types import launch_bounds_t
 
 # represents either a built-in or user-defined function
 
@@ -5187,8 +5188,23 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
 # represents all data required for a kernel launch
 # so that launches can be replayed quickly, use `wp.launch(..., record_cmd=True)`
 class Launch:
+    """Represents all data required for a kernel launch so that launches can be replayed quickly.
+
+    Users should not directly instantiate this class, instead use
+    ``wp.launch(..., record_cmd=True)`` to record a launch.
+    """
+
     def __init__(
-        self, kernel, device, hooks=None, params=None, params_addr=None, bounds=None, max_blocks=0, block_dim=256
+        self,
+        kernel,
+        device: Device,
+        hooks: Optional[KernelHooks] = None,
+        params: Optional[Sequence[Any]] = None,
+        params_addr: Optional[Sequence[ctypes.c_void_p]] = None,
+        bounds: Optional[launch_bounds_t] = None,
+        max_blocks: int = 0,
+        block_dim: int = 256,
+        adjoint: bool = False,
     ):
         # retain the module executable so it doesn't get unloaded
         self.module_exec = kernel.module.load(device)
@@ -5201,13 +5217,14 @@ class Launch:
 
         # if not specified set a zero bound
         if not bounds:
-            bounds = warp.types.launch_bounds_t(0)
+            bounds = launch_bounds_t(0)
 
         # if not specified then build a list of default value params for args
         if not params:
             params = []
             params.append(bounds)
 
+            # Pack forward parameters
             for a in kernel.adj.args:
                 if isinstance(a.type, warp.types.array):
                     params.append(a.type.__ctype__())
@@ -5216,6 +5233,18 @@ class Launch:
                 else:
                     params.append(pack_arg(kernel, a.type, a.label, 0, device, False))
 
+            # Pack adjoint parameters if adjoint=True
+            if adjoint:
+                for a in kernel.adj.args:
+                    if isinstance(a.type, warp.types.array):
+                        params.append(a.type.__ctype__())
+                    elif isinstance(a.type, warp.codegen.Struct):
+                        params.append(a.type().__ctype__())
+                    else:
+                        # For primitive types in adjoint mode, initialize with 0
+                        params.append(pack_arg(kernel, a.type, a.label, 0, device, True))
+
+            # Create array of parameter addresses
             kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
             kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
@@ -5225,13 +5254,30 @@ class Launch:
         self.hooks = hooks
         self.params = params
         self.params_addr = params_addr
-        self.device = device
-        self.bounds = bounds
-        self.max_blocks = max_blocks
-        self.block_dim = block_dim
+        self.device: Device = device
+        """The device to launch on.
+        This should not be changed after the launch object is created.
+        """
 
-    def set_dim(self, dim):
-        self.bounds = warp.types.launch_bounds_t(dim)
+        self.bounds: launch_bounds_t = bounds
+        """The launch bounds. Update with :meth:`set_dim`."""
+
+        self.max_blocks: int = max_blocks
+        """The maximum number of CUDA thread blocks to use."""
+
+        self.block_dim: int = block_dim
+        """The number of threads per block."""
+
+        self.adjoint: bool = adjoint
+        """Whether to run the adjoint kernel instead of the forward kernel."""
+
+    def set_dim(self, dim: Union[int, List[int], Tuple[int, ...]]):
+        """Set the launch dimensions.
+
+        Args:
+            dim: The dimensions of the launch.
+        """
+        self.bounds = launch_bounds_t(dim)
 
         # launch bounds always at index 0
         self.params[0] = self.bounds
@@ -5240,22 +5286,36 @@ class Launch:
         if self.params_addr:
             self.params_addr[0] = ctypes.c_void_p(ctypes.addressof(self.bounds))
 
-    # set kernel param at an index, will convert to ctype as necessary
-    def set_param_at_index(self, index, value):
+    def set_param_at_index(self, index: int, value: Any, adjoint: bool = False):
+        """Set a kernel parameter at an index.
+
+        Args:
+            index: The index of the param to set.
+            value: The value to set the param to.
+        """
         arg_type = self.kernel.adj.args[index].type
         arg_name = self.kernel.adj.args[index].label
 
-        carg = pack_arg(self.kernel, arg_type, arg_name, value, self.device, False)
+        carg = pack_arg(self.kernel, arg_type, arg_name, value, self.device, adjoint)
 
-        self.params[index + 1] = carg
+        if adjoint:
+            params_index = index + len(self.kernel.adj.args) + 1
+        else:
+            params_index = index + 1
+
+        self.params[params_index] = carg
 
         # for CUDA kernels we need to update the address to each arg
         if self.params_addr:
-            self.params_addr[index + 1] = ctypes.c_void_p(ctypes.addressof(carg))
+            self.params_addr[params_index] = ctypes.c_void_p(ctypes.addressof(carg))
 
-    # set kernel param at an index without any type conversion
-    # args must be passed as ctypes or basic int / float types
-    def set_param_at_index_from_ctype(self, index, value):
+    def set_param_at_index_from_ctype(self, index: int, value: Union[ctypes.Structure, int, float]):
+        """Set a kernel parameter at an index without any type conversion.
+
+        Args:
+            index: The index of the param to set.
+            value: The value to set the param to.
+        """
         if isinstance(value, ctypes.Structure):
             # not sure how to directly assign struct->struct without reallocating using ctypes
             self.params[index + 1] = value
@@ -5267,32 +5327,62 @@ class Launch:
         else:
             self.params[index + 1].__init__(value)
 
-    # set kernel param by argument name
-    def set_param_by_name(self, name, value):
+    def set_param_by_name(self, name: str, value: Any, adjoint: bool = False):
+        """Set a kernel parameter by argument name.
+
+        Args:
+            name: The name of the argument to set.
+            value: The value to set the argument to.
+            adjoint: If ``True``, set the adjoint of this parameter instead of the forward parameter.
+        """
         for i, arg in enumerate(self.kernel.adj.args):
             if arg.label == name:
-                self.set_param_at_index(i, value)
+                self.set_param_at_index(i, value, adjoint)
+                return
 
-    # set kernel param by argument name with no type conversions
-    def set_param_by_name_from_ctype(self, name, value):
+        raise ValueError(f"Argument '{name}' not found in kernel '{self.kernel.key}'")
+
+    def set_param_by_name_from_ctype(self, name: str, value: ctypes.Structure):
+        """Set a kernel parameter by argument name with no type conversions.
+
+        Args:
+            name: The name of the argument to set.
+            value: The value to set the argument to.
+        """
         # lookup argument index
         for i, arg in enumerate(self.kernel.adj.args):
             if arg.label == name:
                 self.set_param_at_index_from_ctype(i, value)
 
-    # set all params
-    def set_params(self, values):
+    def set_params(self, values: Sequence[Any]):
+        """Set all parameters.
+
+        Args:
+            values: A list of values to set the params to.
+        """
         for i, v in enumerate(values):
             self.set_param_at_index(i, v)
 
-    # set all params without performing type-conversions
-    def set_params_from_ctypes(self, values):
+    def set_params_from_ctypes(self, values: Sequence[ctypes.Structure]):
+        """Set all parameters without performing type-conversions.
+
+        Args:
+            values: A list of ctypes or basic int / float types.
+        """
         for i, v in enumerate(values):
             self.set_param_at_index_from_ctype(i, v)
 
-    def launch(self, stream=None) -> Any:
+    def launch(self, stream: Optional[Stream] = None) -> None:
+        """Launch the kernel.
+
+        Args:
+            stream: The stream to launch on.
+        """
         if self.device.is_cpu:
-            self.hooks.forward(*self.params)
+            if self.adjoint:
+                self.hooks.backward(*self.params)
+            else:
+                self.hooks.forward(*self.params)
         else:
             if stream is None:
                 stream = self.device.stream
@@ -5305,32 +5395,44 @@ class Launch:
                 if graph is not None:
                     graph.retain_module_exec(self.module_exec)
 
-            runtime.core.cuda_launch_kernel(
-                self.device.context,
-                self.hooks.forward,
-                self.bounds.size,
-                self.max_blocks,
-                self.block_dim,
-                self.hooks.forward_smem_bytes,
-                self.params_addr,
-                stream.cuda_stream,
-            )
+            if self.adjoint:
+                runtime.core.cuda_launch_kernel(
+                    self.device.context,
+                    self.hooks.backward,
+                    self.bounds.size,
+                    self.max_blocks,
+                    self.block_dim,
+                    self.hooks.backward_smem_bytes,
+                    self.params_addr,
+                    stream.cuda_stream,
+                )
+            else:
+                runtime.core.cuda_launch_kernel(
+                    self.device.context,
+                    self.hooks.forward,
+                    self.bounds.size,
+                    self.max_blocks,
+                    self.block_dim,
+                    self.hooks.forward_smem_bytes,
+                    self.params_addr,
+                    stream.cuda_stream,
+                )
 
 
 def launch(
     kernel,
-    dim: Tuple[int],
+    dim: Union[int, Sequence[int]],
     inputs: Sequence = [],
     outputs: Sequence = [],
     adj_inputs: Sequence = [],
     adj_outputs: Sequence = [],
     device: Devicelike = None,
-    stream: Stream = None,
-    adjoint=False,
-    record_tape=True,
-    record_cmd=False,
-    max_blocks=0,
-    block_dim=256,
+    stream: Optional[Stream] = None,
+    adjoint: bool = False,
+    record_tape: bool = True,
+    record_cmd: bool = False,
+    max_blocks: int = 0,
+    block_dim: int = 256,
 ):
     """Launch a Warp kernel on the target device
 
@@ -5338,18 +5440,23 @@ def launch(
 
     Args:
         kernel: The name of a Warp kernel function, decorated with the ``@wp.kernel`` decorator
-        dim: The number of threads to launch the kernel, can be an integer, or a Tuple of ints with max of 4 dimensions
+        dim: The number of threads to launch the kernel, can be an integer or a
+          sequence of integers with a maximum of 4 dimensions.
         inputs: The input parameters to the kernel (optional)
         outputs: The output parameters (optional)
         adj_inputs: The adjoint inputs (optional)
         adj_outputs: The adjoint outputs (optional)
-        device: The device to launch on (optional)
-        stream: The stream to launch on (optional)
-        adjoint: Whether to run forward or backward pass (typically use False)
-        record_tape: When true the launch will be recorded the global wp.Tape() object when present
-        record_cmd: When True the launch will be returned as a ``Launch`` command object, the launch will not occur until the user calls ``cmd.launch()``
-        max_blocks: The maximum number of CUDA thread blocks to use. Only has an effect for CUDA kernel launches.
-            If negative or zero, the maximum hardware value will be used.
+        device: The device to launch on.
+        stream: The stream to launch on.
+        adjoint: Whether to run forward or backward pass (typically use ``False``).
+        record_tape: When ``True``, the launch will be recorded the global
+          :class:`wp.Tape() <warp.Tape>` object when present.
+        record_cmd: When ``True``, the launch will return a :class:`Launch`
+          object. The launch will not occur until the user calls
+          :meth:`Launch.launch()`.
+        max_blocks: The maximum number of CUDA thread blocks to use.
+          Only has an effect for CUDA kernel launches.
+          If negative or zero, the maximum hardware value will be used.
         block_dim: The number of threads per block.
     """
 
@@ -5370,7 +5477,7 @@ def launch(
         print(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
 
     # construct launch bounds
-    bounds = warp.types.launch_bounds_t(dim)
+    bounds = launch_bounds_t(dim)
 
     if bounds.size > 0:
         # first param is the number of threads
@@ -5427,6 +5534,17 @@ def launch(
                         f"Failed to find backward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
                     )
 
+                if record_cmd:
+                    launch = Launch(
+                        kernel=kernel,
+                        hooks=hooks,
+                        params=params,
+                        params_addr=None,
+                        bounds=bounds,
+                        device=device,
+                        adjoint=adjoint,
+                    )
+                    return launch
                 hooks.backward(*params)
 
             else:
@@ -5437,7 +5555,13 @@ def launch(
 
                 if record_cmd:
                     launch = Launch(
-                        kernel=kernel, hooks=hooks, params=params, params_addr=None, bounds=bounds, device=device
+                        kernel=kernel,
+                        hooks=hooks,
+                        params=params,
+                        params_addr=None,
+                        bounds=bounds,
+                        device=device,
+                        adjoint=adjoint,
                     )
                     return launch
                 else:
@@ -5464,16 +5588,30 @@ def launch(
                         f"Failed to find backward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
                     )
 
-                runtime.core.cuda_launch_kernel(
-                    device.context,
-                    hooks.backward,
-                    bounds.size,
-                    max_blocks,
-                    block_dim,
-                    hooks.backward_smem_bytes,
-                    kernel_params,
-                    stream.cuda_stream,
-                )
+                if record_cmd:
+                    launch = Launch(
+                        kernel=kernel,
+                        hooks=hooks,
+                        params=params,
+                        params_addr=kernel_params,
+                        bounds=bounds,
+                        device=device,
+                        max_blocks=max_blocks,
+                        block_dim=block_dim,
+                        adjoint=adjoint,
+                    )
+                    return launch
+                else:
+                    runtime.core.cuda_launch_kernel(
+                        device.context,
+                        hooks.backward,
+                        bounds.size,
+                        max_blocks,
+                        block_dim,
+                        hooks.backward_smem_bytes,
+                        kernel_params,
+                        stream.cuda_stream,
+                    )
 
             else:
                 if hooks.forward is None:
@@ -5493,7 +5631,6 @@ def launch(
                         block_dim=block_dim,
                     )
                     return launch
-
                 else:
                     # launch
                     runtime.core.cuda_launch_kernel(

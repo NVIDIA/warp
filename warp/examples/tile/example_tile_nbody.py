@@ -26,7 +26,7 @@ import warp as wp
 
 wp.init()
 
-DT = wp.constant(0.01)
+DT = wp.constant(0.016)
 SOFTENING_SQ = wp.constant(0.1**2)  # Softening factor for numerical stability
 TILE_SIZE = wp.constant(64)
 PARTICLE_MASS = wp.constant(1.0)
@@ -75,25 +75,33 @@ def integrate_bodies_tiled(
 
 
 class Example:
-    def __init__(self, headless=False, num_bodies=1024):
+    def __init__(self, headless=False, num_bodies=16384):
         self.num_bodies = num_bodies
 
         rng = np.random.default_rng(42)
 
         # Sample the surface of a sphere
-        r = 10.0 * (num_bodies / 1024) ** (1 / 2)  # Scale factor to maintain a constant density
-        phi = np.arccos(1.0 - 2.0 * rng.uniform(size=self.num_bodies))
+        phi = np.arccos(1.0 - 2.0 * rng.uniform(low=0.0, high=1.0, size=self.num_bodies))
         theta = rng.uniform(low=0.0, high=2.0 * np.pi, size=self.num_bodies)
-        x = r * np.cos(theta) * np.sin(phi)
-        y = r * np.sin(theta) * np.sin(phi)
-        z = r * np.cos(phi)
-
-        self.scale = r
+        x = np.cos(theta) * np.sin(phi)
+        y = np.sin(theta) * np.sin(phi)
+        z = np.cos(phi)
         init_pos_np = np.stack((x, y, z), axis=1)
 
+        scale = (num_bodies / 1024) ** (1 / 2)  # Scale factor to maintain a constant density
+        inner = 0.9625 * scale
+        outer = 1.54 * scale
+        radii = inner + (outer - inner) * rng.uniform(size=(self.num_bodies, 1))
+        init_pos_np = init_pos_np * radii
+
+        axis = np.array([0.0, 0.0, 1.0])
+        v_scale = scale * 3.08
+        init_vel_np = v_scale * np.cross(init_pos_np, axis)
+
+        self.graph_scale = np.max(radii) * 5.0
         self.pos_array_0 = wp.array(init_pos_np, dtype=wp.vec3)
         self.pos_array_1 = wp.empty_like(self.pos_array_0)
-        self.vel_array = wp.zeros(self.num_bodies, dtype=wp.vec3)
+        self.vel_array = wp.array(init_vel_np, dtype=wp.vec3)
 
         if headless:
             self.scatter_plot = None
@@ -108,13 +116,16 @@ class Example:
         ax = self.fig.add_subplot(111, projection="3d")
 
         # Scatter plot of initial positions
+        point_size = 0.05 * self.graph_scale
         init_pos_np = self.pos_array_0.numpy()
-        scatter_plot = ax.scatter(init_pos_np[:, 0], init_pos_np[:, 1], init_pos_np[:, 2], c="#76b900", alpha=0.5)
+        scatter_plot = ax.scatter(
+            init_pos_np[:, 0], init_pos_np[:, 1], init_pos_np[:, 2], s=point_size, c="#76b900", alpha=0.5
+        )
 
         # Set axis limits
-        ax.set_xlim(-self.scale, self.scale)
-        ax.set_ylim(-self.scale, self.scale)
-        ax.set_zlim(-self.scale, self.scale)
+        ax.set_xlim(-self.graph_scale, self.graph_scale)
+        ax.set_ylim(-self.graph_scale, self.graph_scale)
+        ax.set_zlim(-self.graph_scale, self.graph_scale)
 
         return scatter_plot
 
@@ -149,7 +160,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
     parser.add_argument("--num_frames", type=int, default=1000, help="Total number of frames.")
-    parser.add_argument("-N", help="Number of bodies. Should be a multiple of 64.", type=int, default=1024)
+    parser.add_argument("-N", help="Number of bodies. Should be a multiple of 64.", type=int, default=16384)
     parser.add_argument(
         "--headless",
         action="store_true",
