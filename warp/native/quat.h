@@ -366,7 +366,7 @@ inline CUDA_CALLABLE mat_t<3,3,Type> quat_to_matrix(const quat_t<Type>& q)
     vec_t<3,Type> c2 = quat_rotate(q, vec_t<3,Type>(0.0, 1.0, 0.0));
     vec_t<3,Type> c3 = quat_rotate(q, vec_t<3,Type>(0.0, 0.0, 1.0));
 
-    return mat_t<3,3,Type>(c1, c2, c3);
+    return matrix_from_cols<Type>(c1, c2, c3);
 }
 
 template<typename Type>

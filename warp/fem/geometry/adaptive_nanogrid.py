@@ -15,7 +15,6 @@ from .nanogrid import (
     _extract_axis_flag,
     _get_boundary_mask,
     _make_face_flags,
-    _mat32,
 )
 
 _FACE_LEVEL_BIT = wp.constant(wp.uint8(4))  # follows nanogrid.FACE_OUTER_OFFSET_BIT
@@ -316,7 +315,7 @@ class AdaptiveNanogrid(Geometry):
         flip = Nanogrid._get_face_inner_offset(flags)
         scale = AdaptiveNanogrid._get_face_scale(flags)
         v1, v2 = Nanogrid._face_tangent_vecs(args.cell_arg.cell_grid, axis, flip)
-        return _mat32(v1, v2) * scale
+        return wp.matrix_from_cols(v1, v2) * scale
 
     @wp.func
     def side_inner_inverse_deformation_gradient(args: SideArg, s: Sample):

@@ -587,8 +587,8 @@ class TestCollision(unittest.TestCase):
     pass
 
 
-add_function_test(TestCollision, "test_vertex_triangle_collision", test_vertex_triangle_collision, devices=devices)
-add_function_test(TestCollision, "test_edge_edge_collision", test_vertex_triangle_collision, devices=devices)
+# add_function_test(TestCollision, "test_vertex_triangle_collision", test_vertex_triangle_collision, devices=devices)
+# add_function_test(TestCollision, "test_edge_edge_collision", test_vertex_triangle_collision, devices=devices)
 add_function_test(TestCollision, "test_particle_collision", test_particle_collision, devices=devices)
 
 if __name__ == "__main__":

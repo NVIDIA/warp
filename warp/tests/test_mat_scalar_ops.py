@@ -326,19 +326,19 @@ def test_constructors(test, device, dtype, register_kernels=False):
         outcomponents: wp.array(dtype=wptype),
     ):
         # multiply outputs by 2 so we've got something to backpropagate:
-        m2result = wptype(2) * mat22(vec2(input[0], input[2]), vec2(input[1], input[3]))
-        m3result = wptype(2) * mat33(
+        m2result = wptype(2) * wp.matrix_from_cols(vec2(input[0], input[2]), vec2(input[1], input[3]))
+        m3result = wptype(2) * wp.matrix_from_cols(
             vec3(input[4], input[7], input[10]),
             vec3(input[5], input[8], input[11]),
             vec3(input[6], input[9], input[12]),
         )
-        m4result = wptype(2) * mat44(
+        m4result = wptype(2) * wp.matrix_from_cols(
             vec4(input[13], input[17], input[21], input[25]),
             vec4(input[14], input[18], input[22], input[26]),
             vec4(input[15], input[19], input[23], input[27]),
             vec4(input[16], input[20], input[24], input[28]),
         )
-        m5result = wptype(2) * mat55(
+        m5result = wptype(2) * wp.matrix_from_cols(
             vec5(input[29], input[34], input[39], input[44], input[49]),
             vec5(input[30], input[35], input[40], input[45], input[50]),
             vec5(input[31], input[36], input[41], input[46], input[51]),
