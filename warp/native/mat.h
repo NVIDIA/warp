@@ -2183,4 +2183,29 @@ CUDA_CALLABLE inline void adj_len(const mat_t<Rows,Cols,Type>& x, mat_t<Rows,Col
 {
 }
 
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void expect_near(const mat_t<Rows,Cols,Type>& actual, const mat_t<Rows,Cols,Type>& expected, const Type& tolerance)
+{
+    Type diff(0);
+    for (unsigned i = 0; i < Rows; ++i)
+    {
+        for (unsigned j = 0; j < Cols; ++j)
+        {
+            diff = max(diff, abs(actual.data[i][j] - expected.data[i][j]));
+        }
+    }
+    if (diff > tolerance)
+    {
+        printf("Error, expect_near() failed with tolerance "); print(tolerance);
+        printf("\t Expected: "); print(expected);
+        printf("\t Actual: "); print(actual);
+    }
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_expect_near(const mat_t<Rows,Cols,Type>& actual, const mat_t<Rows,Cols,Type>& expected, Type tolerance, mat_t<Rows,Cols,Type>& adj_actual, mat_t<Rows,Cols,Type>& adj_expected, Type adj_tolerance)
+{
+    // nop
+}
+
 } // namespace wp

@@ -1702,18 +1702,31 @@ def test_quat_rpy_grad(test, device, dtype, register_kernels=False):
 def test_quat_from_matrix(test, device, dtype, register_kernels=False):
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
     mat33 = wp.types.matrix((3, 3), wptype)
+    mat44 = wp.types.matrix((4, 4), wptype)
     quat = wp.types.quaternion(wptype)
 
     def quat_from_matrix(m: wp.array2d(dtype=wptype), loss: wp.array(dtype=wptype), idx: int):
         tid = wp.tid()
 
-        matrix = mat33(
-            m[tid, 0], m[tid, 1], m[tid, 2], m[tid, 3], m[tid, 4], m[tid, 5], m[tid, 6], m[tid, 7], m[tid, 8]
+        # fmt: off
+        m3 = mat33(
+            m[tid, 0], m[tid, 1], m[tid, 2],
+            m[tid, 3], m[tid, 4], m[tid, 5],
+            m[tid, 6], m[tid, 7], m[tid, 8],
         )
+        q1 = wp.quat_from_matrix(m3)
 
-        q = wp.quat_from_matrix(matrix)
+        m4 = mat44(
+            m[tid, 0], m[tid, 1], m[tid, 2], wptype(0.0),
+            m[tid, 3], m[tid, 4], m[tid, 5], wptype(0.0),
+            m[tid, 6], m[tid, 7], m[tid, 8], wptype(0.0),
+            wptype(0.0), wptype(0.0), wptype(0.0), wptype(1.0),
+        )
+        q2 = wp.quat_from_matrix(m4)
+        # fmt: on
 
-        wp.atomic_add(loss, 0, q[idx])
+        wp.expect_eq(q1, q2)
+        wp.atomic_add(loss, 0, q1[idx])
 
     def quat_from_matrix_forward(mats: wp.array2d(dtype=wptype), loss: wp.array(dtype=wptype), idx: int):
         tid = wp.tid()

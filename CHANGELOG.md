@@ -17,6 +17,7 @@
 - Add Array Overwrites section to Differentiability documentation ([docs](https://nvidia.github.io/warp/modules/differentiability.html#array-overwrites)).
 - Add `wp.randu()` for random uint32 generation.
 - Add `wp.matrix_from_cols()` and `wp.matrix_from_rows()` ([GH-728](https://github.com/NVIDIA/warp/issues/278)).
+- Add a `wp.transform_from_matrix()` built-in ([GH-211](https://github.com/NVIDIA/warp/issues/211)).
 
 ### Changed
 
@@ -30,6 +31,8 @@
 - `warp.sim.Control.reset()` now zeros-out the controls and is deprecated. Use `warp.sim.Control.clear()` instead.
 - `warp.sparse.bsr_assign()` now longer requires source and destination block shapes to evenly divide each other
 - Deprecate constructing a matrix from vectors using `wp.matrix()`.
+- Extend `wp.expect_near()` to support all vectors and quaternions.
+- Extend `wp.quat_from_matrix()` to support 4x4 matrices.
 
 ### Fixed
 

@@ -943,6 +943,9 @@ WP_API void builtin_quat_from_axis_angle_vec3d_float64(vec3d& axis, float64 angl
 WP_API void builtin_quat_from_matrix_mat33h(mat33h& mat, quath* ret) { *ret = wp::quat_from_matrix(mat); }
 WP_API void builtin_quat_from_matrix_mat33f(mat33f& mat, quatf* ret) { *ret = wp::quat_from_matrix(mat); }
 WP_API void builtin_quat_from_matrix_mat33d(mat33d& mat, quatd* ret) { *ret = wp::quat_from_matrix(mat); }
+WP_API void builtin_quat_from_matrix_mat44h(mat44h& mat, quath* ret) { *ret = wp::quat_from_matrix(mat); }
+WP_API void builtin_quat_from_matrix_mat44f(mat44f& mat, quatf* ret) { *ret = wp::quat_from_matrix(mat); }
+WP_API void builtin_quat_from_matrix_mat44d(mat44d& mat, quatd* ret) { *ret = wp::quat_from_matrix(mat); }
 WP_API void builtin_quat_rpy_float16_float16_float16(float16 roll, float16 pitch, float16 yaw, quath* ret) { *ret = wp::quat_rpy(roll, pitch, yaw); }
 WP_API void builtin_quat_rpy_float32_float32_float32(float32 roll, float32 pitch, float32 yaw, quatf* ret) { *ret = wp::quat_rpy(roll, pitch, yaw); }
 WP_API void builtin_quat_rpy_float64_float64_float64(float64 roll, float64 pitch, float64 yaw, quatd* ret) { *ret = wp::quat_rpy(roll, pitch, yaw); }

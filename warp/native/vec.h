@@ -826,7 +826,7 @@ inline CUDA_CALLABLE vec_t<Length,Type> sign(vec_t<Length,Type> v)
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void expect_near(const vec_t<Length, Type>& actual, const vec_t<Length, Type>& expected, const Type& tolerance)
 {
-    const Type diff(0);
+    Type diff(0);
     for(size_t i=0; i<Length; ++i)
     {
         diff = max(diff,abs(actual[i] - expected[i]));

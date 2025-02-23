@@ -662,6 +662,13 @@ Quaternion Math
     Construct a quaternion from a 3x3 matrix.
 
 
+.. py:function:: quat_from_matrix(mat: Matrix[4,4,Float]) -> Quaternion[Float]
+    :noindex:
+    :nocontentsentry:
+
+    Construct a quaternion from a 4x4 matrix.
+
+
 .. py:function:: quat_rpy(roll: Float, pitch: Float, yaw: Float) -> Quaternion[Float]
 
     Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
@@ -762,6 +769,8 @@ Transformations
     Compute the inverse of the transformation ``xform``.
 
 
+.. autofunction:: warp.math.transform_from_matrix
+.. autofunction:: warp.math.transform_to_matrix
 
 
 Spatial Math
@@ -1882,7 +1891,21 @@ Utility
     Prints an error to stdout if ``a`` and ``b`` are not closer than tolerance in magnitude
 
 
-.. py:function:: expect_near(a: vec3f, b: vec3f, tolerance: float32) -> None
+.. py:function:: expect_near(a: Vector[Any,Float], b: Vector[Any,Float], tolerance: Float) -> None
+    :noindex:
+    :nocontentsentry:
+
+    Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
+
+
+.. py:function:: expect_near(a: Quaternion[Float], b: Quaternion[Float], tolerance: Float) -> None
+    :noindex:
+    :nocontentsentry:
+
+    Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
+
+
+.. py:function:: expect_near(a: Matrix[Any,Any,Float], b: Matrix[Any,Any,Float], tolerance: Float) -> None
     :noindex:
     :nocontentsentry:
 

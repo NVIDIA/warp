@@ -1961,6 +1961,67 @@ def test_transform_anon_type_instance(test, device, dtype, register_kernels=Fals
         tape.zero()
 
 
+def test_transform_from_matrix(test, device, dtype, register_kernels=False):
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat44 = wp.types.matrix((4, 4), wptype)
+    vec3 = wp.types.vector(3, wptype)
+    quat = wp.types.quaternion(wptype)
+
+    def transform_from_matrix_kernel():
+        # fmt: off
+        m = mat44(
+            wptype(0.6), wptype(0.48), wptype(0.64), wptype(1.0),
+            wptype(-0.8), wptype(0.36), wptype(0.48), wptype(2.0),
+            wptype(0.0), wptype(-0.8), wptype(0.6), wptype(3.0),
+            wptype(0.0), wptype(0.0), wptype(0.0), wptype(1.0),
+        )
+        # fmt: on
+        t = wp.transform_from_matrix(m)
+        p = wp.transform_get_translation(t)
+        q = wp.transform_get_rotation(t)
+        wp.expect_near(p, vec3(wptype(1.0), wptype(2.0), wptype(3.0)), tolerance=wptype(1e-3))
+        wp.expect_near(q, quat(wptype(-0.4), wptype(0.2), wptype(-0.4), wptype(0.8)), tolerance=wptype(1e-3))
+
+    kernel = getkernel(transform_from_matrix_kernel, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    wp.launch(kernel, dim=1, device=device)
+
+
+def test_transform_to_matrix(test, device, dtype, register_kernels=False):
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat44 = wp.types.matrix((4, 4), wptype)
+    vec3 = wp.types.vector(3, wptype)
+    quat = wp.types.quaternion(wptype)
+
+    def transform_to_matrix_kernel():
+        p = vec3(wptype(1.0), wptype(2.0), wptype(3.0))
+        q = quat(wptype(-0.4), wptype(0.2), wptype(-0.4), wptype(0.8))
+        t = wp.transformation(p, q)
+        m = wp.transform_to_matrix(t)
+        # fmt: off
+        wp.expect_near(
+            m,
+            mat44(
+                wptype(0.6), wptype(0.48), wptype(0.64), wptype(1.0),
+                wptype(-0.8), wptype(0.36), wptype(0.48), wptype(2.0),
+                wptype(0.0), wptype(-0.8), wptype(0.6), wptype(3.0),
+                wptype(0.0), wptype(0.0), wptype(0.0), wptype(1.0),
+            ),
+            tolerance=wptype(1e-3),
+        )
+        # fmt: on
+
+    kernel = getkernel(transform_to_matrix_kernel, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    wp.launch(kernel, dim=1, device=device)
+
+
 devices = get_test_devices()
 
 
@@ -2136,6 +2197,20 @@ for dtype in np_float_types:
     )
     add_function_test_register_kernel(
         TestSpatial, f"test_spatial_adjoint_{dtype.__name__}", test_spatial_adjoint, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_transform_from_matrix_{dtype.__name__}",
+        test_transform_from_matrix,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_transform_to_matrix_{dtype.__name__}",
+        test_transform_to_matrix,
+        devices=devices,
+        dtype=dtype,
     )
 
     # \TODO: test spatial_mass and spatial_jacobian

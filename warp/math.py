@@ -19,6 +19,8 @@ __all__ = [
     "norm_huber",
     "norm_pseudo_huber",
     "smooth_normalize",
+    "transform_from_matrix",
+    "transform_to_matrix",
 ]
 
 
@@ -123,6 +125,85 @@ def smooth_normalize(v: Any, delta: float = 1.0):
     return v / norm_pseudo_huber(v, delta)
 
 
+def create_transform_from_matrix_func(dtype):
+    mat44 = wp.types.matrix((4, 4), dtype)
+    vec3 = wp.types.vector(3, dtype)
+    transform = wp.types.transformation(dtype)
+
+    def transform_from_matrix(mat: mat44) -> transform:
+        """
+        Construct a transformation from a 4x4 matrix.
+
+        Args:
+            mat (Matrix[4, 4, Float]): Matrix to convert.
+
+        Returns:
+            Transformation[Float]: The transformation.
+        """
+        p = vec3(mat[0][3], mat[1][3], mat[2][3])
+        q = wp.quat_from_matrix(mat)
+        return transform(p, q)
+
+    return transform_from_matrix
+
+
+transform_from_matrix = wp.func(
+    create_transform_from_matrix_func(wp.float32),
+    name="transform_from_matrix",
+)
+wp.func(
+    create_transform_from_matrix_func(wp.float16),
+    name="transform_from_matrix",
+)
+wp.func(
+    create_transform_from_matrix_func(wp.float64),
+    name="transform_from_matrix",
+)
+
+
+def create_transform_to_matrix_func(dtype):
+    mat44 = wp.types.matrix((4, 4), dtype)
+    transform = wp.types.transformation(dtype)
+
+    def transform_to_matrix(xform: transform) -> mat44:
+        """
+        Convert a transformation to a 4x4 matrix.
+
+        Args:
+            xform (Transformation[Float]): Transformation to convert.
+
+        Returns:
+            Matrix[4, 4, Float]: The matrix.
+        """
+        p = wp.transform_get_translation(xform)
+        q = wp.transform_get_rotation(xform)
+        rot = wp.quat_to_matrix(q)
+        # fmt: off
+        return mat44(
+            rot[0][0], rot[0][1], rot[0][2], p[0],
+            rot[1][0], rot[1][1], rot[1][2], p[1],
+            rot[2][0], rot[2][1], rot[2][2], p[2],
+            dtype(0.0), dtype(0.0), dtype(0.0), dtype(1.0),
+        )
+        # fmt: on
+
+    return transform_to_matrix
+
+
+transform_to_matrix = wp.func(
+    create_transform_to_matrix_func(wp.float32),
+    name="transform_to_matrix",
+)
+wp.func(
+    create_transform_to_matrix_func(wp.float16),
+    name="transform_to_matrix",
+)
+wp.func(
+    create_transform_to_matrix_func(wp.float64),
+    name="transform_to_matrix",
+)
+
+
 # register API functions so they appear in the documentation
 
 wp.context.register_api_function(
@@ -144,4 +225,12 @@ wp.context.register_api_function(
 wp.context.register_api_function(
     smooth_normalize,
     group="Vector Math",
+)
+wp.context.register_api_function(
+    transform_from_matrix,
+    group="Transformations",
+)
+wp.context.register_api_function(
+    transform_to_matrix,
+    group="Transformations",
 )
