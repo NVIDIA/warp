@@ -613,6 +613,31 @@ cuda 11 build and test:
   extends:
     - .trigger_common
 
+trigger kit extensions pipeline:
+  stage: test
+  image: busybox
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - when: manual # Can be triggered in all other scenarios
+      allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - echo "Run this job to test the kit extensions."
+
+# Kit Extensions
+kit extensions:
+  stage: child pipelines
+  needs: [trigger kit extensions pipeline]
+  trigger:
+    include: /.gitlab/ci/kit-extensions.yml
+  extends:
+    - .trigger_common
+
 # ==============================================================================
 # Packaging Jobs
 #
