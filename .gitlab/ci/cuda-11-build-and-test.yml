@@ -191,8 +191,9 @@ publish wheels to gitlab pypi registry:
   extends:
     - .runner-utility-linux-x86_64
   rules:
-    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/ || $PARENT_COMMIT_TAG
-      when: manual
+    - if: $PARENT_COMMIT_TAG
+    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
+    - when: manual # Can be triggered in all other scenarios
       allow_failure: true
   before_script:
     - python3 -m pip install --upgrade pip
@@ -204,7 +205,7 @@ publish wheels to gitlab pypi registry:
 # Generated files will be in a branch/tag-specific folder
 publish wheels to gitlab package registry:
   stage: deploy
-  needs: ["create pypi wheels", "create linux-x86_64 kit artifacts", "create windows-x86_64 kit artifacts"]
+  needs: ["create pypi wheels"]
   extends:
     - .runner-utility-linux-x86_64
   rules:
@@ -220,16 +221,4 @@ publish wheels to gitlab package registry:
           filename=$(basename -- "$file")
           curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/${filename}"
       done
-    - |
-      if [ -f kit-extensions-linux-x86_64.zip ]; then
-        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions-linux-x86_64.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions-linux-x86_64.zip"
-      else
-        echo "kit-extensions-linux-x86_64.zip not found, skipping upload."
-      fi
-    - |
-      if [ -f kit-extensions-windows-x86_64.zip ]; then
-        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions-windows-x86_64.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions-windows-x86_64.zip"
-      else
-        echo "kit-extensions-windows-x86_64.zip not found, skipping upload."
-      fi
     - echo "See the published files at $CI_PROJECT_URL/-/packages"

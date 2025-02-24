@@ -227,3 +227,41 @@ publish extensions to packman:
     - !reference [.osec:vault:v3:linux, packman_s3:perform_vault_requests]
     - !reference [.osec:vault:v3:linux, nucleus:kit-extensions.ov.nvidia.com:kit-extension-svc:perform_vault_requests]
     - tools/repo.sh publish_exts --publish-all
+
+# Uploads the extension artifacts to the internal GitLab package registry in the Warp project
+# Generated files will be in a branch/tag-specific folder
+publish to gitlab package registry:
+  stage: deploy
+  needs:
+    - create linux-aarch64 kit artifacts
+    - create linux-x86_64 kit artifacts
+    - create windows-x86_64 kit artifacts
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $PARENT_COMMIT_TAG
+    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
+    - when: manual # Can be triggered in all other scenarios
+      allow_failure: true
+  before_script:
+    - apt-get update && apt-get install curl --no-install-recommends -y
+  script:
+    - |
+      if [ -f kit-extensions-linux-aarch64.zip ]; then
+        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions-linux-aarch64.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions-linux-aarch64.zip"
+      else
+        echo "kit-extensions-linux-aarch64.zip not found, skipping upload."
+      fi
+    - |
+      if [ -f kit-extensions-linux-x86_64.zip ]; then
+        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions-linux-x86_64.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions-linux-x86_64.zip"
+      else
+        echo "kit-extensions-linux-x86_64.zip not found, skipping upload."
+      fi
+    - |
+      if [ -f kit-extensions-windows-x86_64.zip ]; then
+        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions-windows-x86_64.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions-windows-x86_64.zip"
+      else
+        echo "kit-extensions-windows-x86_64.zip not found, skipping upload."
+      fi
+    - echo "See the published files at $CI_PROJECT_URL/-/packages"
