@@ -63,6 +63,15 @@ pip install -U --pre warp-lang --extra-index-url=https://pypi.nvidia.com/
 
 Note that the nightly builds are built with the CUDA 12 runtime and are not published for macOS.
 
+If you plan to install nightly builds regularly, you can simplify future installations by adding NVIDIA's package
+repository as an extra index via the `PIP_EXTRA_INDEX_URL` environment variable. For example:
+
+```text
+export PIP_EXTRA_INDEX_URL="https://pypi.nvidia.com"
+```
+
+This ensures the index is automatically used for `pip` commands, avoiding the need to specify it explicitly.
+
 ### CUDA Requirements
 
 * Warp packages built with CUDA Toolkit 11.x require NVIDIA driver 470 or newer.

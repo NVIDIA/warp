@@ -24,6 +24,15 @@ To install the latest nightly build, use the following command:
 
 Note that the nightly builds are built with the CUDA 12 runtime and are not published for macOS.
 
+If you plan to install nightly builds regularly, you can simplify future installations by adding NVIDIA's package
+repository as an extra index via the ``PIP_EXTRA_INDEX_URL`` environment variable. For example:
+
+.. code-block:: text
+
+    export PIP_EXTRA_INDEX_URL="https://pypi.nvidia.com"
+
+This ensures the index is automatically used for ``pip`` commands, avoiding the need to specify it explicitly.
+
 Installing from GitHub Releases
 -------------------------------
 
