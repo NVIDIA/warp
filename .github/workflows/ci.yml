@@ -238,7 +238,7 @@ jobs:
         run: |
           python -m pip cache purge
           python -m pip install --upgrade pip
-          pip install --no-cache-dir --upgrade numpy coverage[toml]==7.6.10
+          pip install --no-cache-dir --upgrade numpy coverage[toml]
           pip install --no-cache-dir .
       - name: Run Tests
         run: python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
