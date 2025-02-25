@@ -161,7 +161,7 @@ def to_jax(warp_array):
     """
     import jax.dlpack
 
-    return jax.dlpack.from_dlpack(warp.to_dlpack(warp_array))
+    return jax.dlpack.from_dlpack(warp_array)
 
 
 def from_jax(jax_array, dtype=None) -> warp.array:
