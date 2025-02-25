@@ -241,7 +241,7 @@ def parse_mjcf(
             return wp.quat_from_matrix(rot_matrix)
         return wp.quat_identity()
 
-    def parse_shapes(defaults, body_name, link, geoms, density, visible=True, just_visual=False):
+    def parse_shapes(defaults, body_name, link, geoms, density, visible=True, just_visual=False, incoming_xform=None):
         shapes = []
         for geo_count, geom in enumerate(geoms):
             geom_defaults = defaults
@@ -278,6 +278,10 @@ def parse_mjcf(
             geom_pos = parse_vec(geom_attrib, "pos", (0.0, 0.0, 0.0)) * scale
             geom_rot = parse_orientation(geom_attrib)
             geom_density = parse_float(geom_attrib, "density", density)
+
+            if incoming_xform is not None:
+                geom_pos = wp.transform_point(incoming_xform, geom_pos)
+                geom_rot = incoming_xform.q * geom_rot
 
             if geom_type == "sphere":
                 s = builder.add_shape_sphere(
@@ -414,6 +418,21 @@ def parse_mjcf(
                         **contact_vars,
                     )
                     shapes.append(s)
+
+            elif geom_type == "plane":
+                normal = wp.quat_rotate(geom_rot, wp.vec3(0.0, 0.0, 1.0))
+                p = wp.dot(geom_pos, normal)
+                s = builder.add_shape_plane(
+                    body=link,
+                    plane=(*normal, p),
+                    width=geom_size[0],
+                    length=geom_size[1],
+                    is_visible=visible,
+                    has_ground_collision=False,
+                    has_shape_collision=not just_visual,
+                    **contact_vars,
+                )
+                shapes.append(s)
 
             else:
                 if verbose:
@@ -740,6 +759,11 @@ def parse_mjcf(
 
     for body in world.findall("body"):
         parse_body(body, -1, world_defaults)
+
+    # -----------------
+    # add static geoms
+
+    parse_shapes(world_defaults, "world", -1, world.findall("geom"), density, incoming_xform=xform)
 
     end_shape_count = len(builder.shape_geo_type)
 
