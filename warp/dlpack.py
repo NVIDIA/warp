@@ -40,10 +40,6 @@ Py_DecRef.restype = None
 
 PyCapsule_Destructor = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
 
-PyCapsule_New = ctypes.pythonapi.PyCapsule_New
-PyCapsule_New.argtypes = [ctypes.c_void_p, ctypes.c_char_p, PyCapsule_Destructor]
-PyCapsule_New.restype = ctypes.py_object
-
 PyCapsule_IsValid = ctypes.pythonapi.PyCapsule_IsValid
 PyCapsule_IsValid.argtypes = [ctypes.py_object, ctypes.c_char_p]
 PyCapsule_IsValid.restype = ctypes.c_int
@@ -97,8 +93,8 @@ def _dlpack_capsule_deleter(ptr) -> None:
 
     capsule = ctypes.cast(ptr, ctypes.py_object)
 
-    if ctypes.pythonapi.PyCapsule_IsValid(capsule, _c_str_dltensor):
-        managed_ptr = ctypes.pythonapi.PyCapsule_GetPointer(capsule, _c_str_dltensor)
+    if PyCapsule_IsValid(capsule, _c_str_dltensor):
+        managed_ptr = PyCapsule_GetPointer(capsule, _c_str_dltensor)
         managed_tensor = DLManagedTensor.from_address(managed_ptr)
         if managed_tensor.deleter:
             managed_tensor.deleter(managed_ptr)
@@ -293,6 +289,12 @@ def to_dlpack(wp_array: warp.array):
     Py_IncRef(wp_array)
 
     managed_tensor.deleter = _dlpack_tensor_deleter
+
+    # NOTE: jax.ffi.pycapsule() defines the PyCapsule_New() argtypes incorrectly, which causes problems.
+    # Here we make sure that the PyCapsule_Destructor callback is correctly defined.
+    PyCapsule_New = ctypes.pythonapi.PyCapsule_New
+    PyCapsule_New.argtypes = [ctypes.c_void_p, ctypes.c_char_p, PyCapsule_Destructor]
+    PyCapsule_New.restype = ctypes.py_object
 
     capsule = PyCapsule_New(
         ctypes.byref(managed_tensor),
