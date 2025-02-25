@@ -51,6 +51,7 @@
   ([GH-454](https://github.com/NVIDIA/warp/issues/454)).
 - Fix `ModelBuilder.add_builder()` to use correct offsets for `ModelBuilder.joint_parent` and `ModelBuilder.joint_child` ([GH-432](https://github.com/NVIDIA/warp/issues/432))
 - Fix incorrect contact point allocation resulting from `count_contact_points()` for box-sphere and box-capsule collisions.
+- Fix capsule error when using DLPack interop after `jax_kernel()` ([GH-547](https://github.com/NVIDIA/warp/issues/547)).
 
 ## [1.6.0] - 2025-02-03
 
