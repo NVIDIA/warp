@@ -247,7 +247,7 @@ template <int... V>
 struct tile_tuple_t
 {
     static constexpr int N = sizeof...(V);
-    static_assert(N > 0);
+    static_assert(N > 0, "Expected N > 0");
 
     static constexpr int data[N] = { V... };
 
@@ -877,7 +877,7 @@ struct tile_shared_t
         using OtherTile = tile_shared_t<OtherT, OtherLayout>;
 
         // check dimensions are compatible
-        static_assert(Size == OtherTile::Size);
+        static_assert(Size == OtherTile::Size, "Expected Size == OtherTile::Size");
 
         // alias tile directly
         data = rhs.data;
@@ -1476,7 +1476,7 @@ inline CUDA_CALLABLE auto tile(const T& x)
     tile_register_t<T, tile_layout_register_t<tile_shape_t<WP_TILE_BLOCK_DIM>>> result;
     
     using Layout = typename decltype(result)::Layout;
-    static_assert(Layout::NumRegs == 1);
+    static_assert(Layout::NumRegs == 1, "Expected Layout::NumRegs == 1");
 
     result.data[0] = x;
     return result;
@@ -1489,7 +1489,7 @@ inline CUDA_CALLABLE auto tile(const wp::vec_t<Length, T>& x)
     tile_register_t<T, tile_layout_register_t<tile_shape_t<Length, WP_TILE_BLOCK_DIM>>> result;
     
     using Layout = typename decltype(result)::Layout;
-    static_assert(Layout::NumRegs == Length);
+    static_assert(Layout::NumRegs == Length, "Expected Layout::NumRegs == Length");
 
     for (int i=0; i < Length; ++i)
         result.data[i] = x[i]; 
@@ -1501,8 +1501,8 @@ inline CUDA_CALLABLE auto tile(const wp::vec_t<Length, T>& x)
 template <typename T, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile(const T& x, T& adj_x, AdjTile& adj_ret)
 {
-    static_assert(AdjTile::Layout::Shape::N == 1);
-    static_assert(AdjTile::Layout::Shape::dim(0) == WP_TILE_BLOCK_DIM);
+    static_assert(AdjTile::Layout::Shape::N == 1, "Expected AdjTile::Layout::Shape::N == 1");
+    static_assert(AdjTile::Layout::Shape::dim(0) == WP_TILE_BLOCK_DIM, "Expected AdjTile::Layout::Shape::dim(0) == WP_TILE_BLOCK_DIM");
     
     auto adj_reg = adj_ret.copy_to_register();
 
@@ -1512,9 +1512,9 @@ inline CUDA_CALLABLE void adj_tile(const T& x, T& adj_x, AdjTile& adj_ret)
 template <typename T, unsigned Length, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile(const wp::vec_t<Length, T>& x, wp::vec_t<Length, T>& adj_x, AdjTile& adj_ret)
 {
-    static_assert(AdjTile::Layout::Shape::N == 2);
-    static_assert(AdjTile::Layout::Shape::dim(0) == Length);
-    static_assert(AdjTile::Layout::Shape::dim(1) == WP_TILE_BLOCK_DIM);
+    static_assert(AdjTile::Layout::Shape::N == 2, "Expected AdjTile::Layout::Shape::N == 2");
+    static_assert(AdjTile::Layout::Shape::dim(0) == Length, "Expected AdjTile::Layout::Shape::dim(0) == Length");
+    static_assert(AdjTile::Layout::Shape::dim(1) == WP_TILE_BLOCK_DIM, "Expected AdjTile::Layout::Shape::dim(1) == WP_TILE_BLOCK_DIM");
 
     auto adj_reg = adj_ret.copy_to_register();
 
@@ -2068,13 +2068,13 @@ TileC& tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, Ti
     using ShapeB = typename TileB::Layout::Shape;
     using ShapeC = typename TileC::Layout::Shape;
 
-    static_assert(ShapeA::N == 2);
-    static_assert(ShapeB::N == 2);
-    static_assert(ShapeC::N == 2);
+    static_assert(ShapeA::N == 2, "Expected ShapeA::N == 2");
+    static_assert(ShapeB::N == 2, "Expected ShapeB::N == 2");
+    static_assert(ShapeC::N == 2, "Expected ShapeC::N == 2");
 
-    static_assert(ShapeA::dim(1) == ShapeB::dim(0));
-    static_assert(ShapeC::dim(0) == ShapeA::dim(0));
-    static_assert(ShapeC::dim(1) == ShapeB::dim(1));
+    static_assert(ShapeA::dim(1) == ShapeB::dim(0), "Expected ShapeA::dim(1) == ShapeB::dim(0)");
+    static_assert(ShapeC::dim(0) == ShapeA::dim(0), "Expected ShapeC::dim(0) == ShapeA::dim(0)");
+    static_assert(ShapeC::dim(1) == ShapeB::dim(1), "Expected ShapeC::dim(1) == ShapeB::dim(1)");
     
 
     using T = typename TileA::Type;
@@ -2211,7 +2211,7 @@ TileY& tile_cholesky_solve(Fwd fun_forward, TileL& L, TileX& X, TileY& Y)
 template <typename Tile>
 inline CUDA_CALLABLE auto tile_transpose(Tile& t)
 {    
-    static_assert(Tile::Layout::Shape::N == 2);
+    static_assert(Tile::Layout::Shape::N == 2, "Expected Tile::Layout::Shape::N == 2");
 
     // alias incoming tile 
     constexpr int M = Tile::Layout::Shape::dim(0);
@@ -2351,10 +2351,10 @@ inline CUDA_CALLABLE TileC& tile_diag_add(TileA& a, TileB& b, TileC& c)
     using ShapeB = typename TileB::Layout::Shape;
     using ShapeC = typename TileC::Layout::Shape;
 
-    static_assert(ShapeA::dim(0) == ShapeA::dim(1));
-    static_assert(ShapeB::dim(0) == ShapeA::dim(0));
-    static_assert(ShapeC::dim(0) == ShapeA::dim(0));
-    static_assert(ShapeC::dim(0) == ShapeC::dim(1));
+    static_assert(ShapeA::dim(0) == ShapeA::dim(1), "Expected ShapeA::dim(0) == ShapeA::dim(1)");
+    static_assert(ShapeB::dim(0) == ShapeA::dim(0), "Expected ShapeB::dim(0) == ShapeA::dim(0)");
+    static_assert(ShapeC::dim(0) == ShapeA::dim(0), "Expected ShapeC::dim(0) == ShapeA::dim(0)");
+    static_assert(ShapeC::dim(0) == ShapeC::dim(1), "Expected ShapeC::dim(0) == ShapeC::dim(1)");
 
     c = a;
     
