@@ -318,10 +318,13 @@ def parse_urdf(
             I_m = rot @ wp.mat33(I_m)
             m = float(inertial.find("mass").get("value") or "0")
             builder.body_mass[link] = m
-            builder.body_inv_mass[link] = 1.0 / m
+            builder.body_inv_mass[link] = 1.0 / m if m > 0.0 else 0.0
             builder.body_com[link] = com
             builder.body_inertia[link] = I_m
-            builder.body_inv_inertia[link] = wp.inverse(I_m)
+            if any(x for x in I_m):
+                builder.body_inv_inertia[link] = wp.inverse(I_m)
+            else:
+                builder.body_inv_inertia[link] = I_m
         if m == 0.0 and ensure_nonstatic_links:
             # set the mass to something nonzero to ensure the body is dynamic
             m = static_link_mass
