@@ -119,30 +119,6 @@ def test_tpl_constructor_error_incompatible_sizes(test, device):
         wp.launch(kernel, dim=1, inputs=[], device=device)
 
 
-def test_tpl_constructor_error_invalid_vector_count(test, device):
-    @wp.kernel
-    def kernel():
-        wp.mat33(wp.vec3(1.0, 2.0, 3.0), wp.vec3(1.0, 2.0, 3.0))
-
-    with test.assertRaisesRegex(
-        RuntimeError,
-        r"incompatible number of column vectors given \(2\) when constructing a matrix of shape \(3, 3\)$",
-    ):
-        wp.launch(kernel, dim=1, inputs=[], device=device)
-
-
-def test_tpl_constructor_error_invalid_vector_shape(test, device):
-    @wp.kernel
-    def kernel():
-        wp.mat22(wp.vec3(1.0, 2.0, 3.0), wp.vec3(4.0, 5.0, 6.0))
-
-    with test.assertRaisesRegex(
-        RuntimeError,
-        r"incompatible column vector lengths given when constructing a matrix of shape \(2, 2\)$",
-    ):
-        wp.launch(kernel, dim=1, inputs=[], device=device)
-
-
 def test_tpl_constructor_error_invalid_arg_count(test, device):
     @wp.kernel
     def kernel():
@@ -226,7 +202,7 @@ def test_quat_constructor(test, device, dtype, register_kernels=False):
         c0 = s[0][0] * R[0]
         c1 = s[0][1] * R[1]
         c2 = s[0][2] * R[2]
-        m_alt = mat44(
+        m_alt = wp.matrix_from_cols(
             vec4(c0[0], c0[1], c0[2], wptype(0.0)),
             vec4(c1[0], c1[1], c1[2], wptype(0.0)),
             vec4(c2[0], c2[1], c2[2], wptype(0.0)),
@@ -1710,10 +1686,61 @@ def test_matrix_constructor_value_func():
     c = mat32d()
     d = mat32d(c, shape=(3, 2))
     e = mat32d(wp.float64(1.0), wp.float64(2.0), wp.float64(1.0), wp.float64(2.0), wp.float64(1.0), wp.float64(2.0))
-    f = mat32d(
-        wp.vec3d(wp.float64(1.0), wp.float64(2.0), wp.float64(3.0)),
-        wp.vec3d(wp.float64(1.0), wp.float64(2.0), wp.float64(3.0)),
+
+
+@wp.kernel
+def test_matrix_from_vecs():
+    m1 = wp.matrix_from_cols(
+        wp.vec3(1.0, 2.0, 3.0),
+        wp.vec3(4.0, 5.0, 6.0),
+        wp.vec3(7.0, 8.0, 9.0),
     )
+    wp.expect_eq(m1[0, 0], 1.0)
+    wp.expect_eq(m1[0, 1], 4.0)
+    wp.expect_eq(m1[0, 2], 7.0)
+    wp.expect_eq(m1[1, 0], 2.0)
+    wp.expect_eq(m1[1, 1], 5.0)
+    wp.expect_eq(m1[1, 2], 8.0)
+    wp.expect_eq(m1[2, 0], 3.0)
+    wp.expect_eq(m1[2, 1], 6.0)
+    wp.expect_eq(m1[2, 2], 9.0)
+
+    m2 = wp.matrix_from_rows(
+        wp.vec3(1.0, 2.0, 3.0),
+        wp.vec3(4.0, 5.0, 6.0),
+        wp.vec3(7.0, 8.0, 9.0),
+    )
+    wp.expect_eq(m2[0, 0], 1.0)
+    wp.expect_eq(m2[0, 1], 2.0)
+    wp.expect_eq(m2[0, 2], 3.0)
+    wp.expect_eq(m2[1, 0], 4.0)
+    wp.expect_eq(m2[1, 1], 5.0)
+    wp.expect_eq(m2[1, 2], 6.0)
+    wp.expect_eq(m2[2, 0], 7.0)
+    wp.expect_eq(m2[2, 1], 8.0)
+    wp.expect_eq(m2[2, 2], 9.0)
+
+    m3 = wp.matrix_from_cols(
+        wp.vec3(1.0, 2.0, 3.0),
+        wp.vec3(4.0, 5.0, 6.0),
+    )
+    wp.expect_eq(m3[0, 0], 1.0)
+    wp.expect_eq(m3[0, 1], 4.0)
+    wp.expect_eq(m3[1, 0], 2.0)
+    wp.expect_eq(m3[1, 1], 5.0)
+    wp.expect_eq(m3[2, 0], 3.0)
+    wp.expect_eq(m3[2, 1], 6.0)
+
+    m4 = wp.matrix_from_rows(
+        wp.vec3(1.0, 2.0, 3.0),
+        wp.vec3(4.0, 5.0, 6.0),
+    )
+    wp.expect_eq(m4[0, 0], 1.0)
+    wp.expect_eq(m4[0, 1], 2.0)
+    wp.expect_eq(m4[0, 2], 3.0)
+    wp.expect_eq(m4[1, 0], 4.0)
+    wp.expect_eq(m4[1, 1], 5.0)
+    wp.expect_eq(m4[1, 2], 6.0)
 
 
 # Same as above but with a default (float/int) type
@@ -1940,6 +1967,7 @@ add_kernel_test(TestMat, test_constructors_explicit_precision, dim=1, devices=de
 add_kernel_test(TestMat, test_constructors_default_precision, dim=1, devices=devices)
 add_kernel_test(TestMat, test_constructors_constant_shape, dim=1, devices=devices)
 add_kernel_test(TestMat, test_matrix_constructor_value_func, dim=1, devices=devices)
+add_kernel_test(TestMat, test_matrix_from_vecs, dim=1, devices=devices)
 
 mat103 = wp.types.matrix(shape=(10, 3), dtype=float)
 add_kernel_test(
@@ -2002,18 +2030,6 @@ add_function_test(
     TestMat,
     "test_tpl_constructor_error_incompatible_sizes",
     test_tpl_constructor_error_incompatible_sizes,
-    devices=devices,
-)
-add_function_test(
-    TestMat,
-    "test_tpl_constructor_error_invalid_vector_count",
-    test_tpl_constructor_error_invalid_vector_count,
-    devices=devices,
-)
-add_function_test(
-    TestMat,
-    "test_tpl_constructor_error_invalid_vector_shape",
-    test_tpl_constructor_error_invalid_vector_shape,
     devices=devices,
 )
 add_function_test(

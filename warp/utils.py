@@ -146,6 +146,38 @@ def radix_sort_pairs(keys, values, count: int):
             raise RuntimeError("Unsupported data type")
 
 
+# The parameter segment_indices is an array of length num_segments + 1, where segment_indices[i] is the index of the first element in the i-th segment
+# The end of a segment is given by segment_indices[i+1]
+def segmented_sort_pairs(keys, values, count: int, segment_indices, num_segments: int):
+    if keys.device != values.device:
+        raise RuntimeError("Array storage devices do not match")
+
+    if count == 0:
+        return
+
+    if keys.size < 2 * count or values.size < 2 * count:
+        raise RuntimeError("Array storage must be large enough to contain 2*count elements")
+
+    from warp.context import runtime
+
+    if keys.device.is_cpu:
+        if keys.dtype == wp.int32 and values.dtype == wp.int32:
+            runtime.core.segmented_sort_pairs_int_host(keys.ptr, values.ptr, count, segment_indices.ptr, num_segments)
+        elif keys.dtype == wp.float32 and values.dtype == wp.int32:
+            runtime.core.segmented_sort_pairs_float_host(keys.ptr, values.ptr, count, segment_indices.ptr, num_segments)
+        else:
+            raise RuntimeError("Unsupported data type")
+    elif keys.device.is_cuda:
+        if keys.dtype == wp.int32 and values.dtype == wp.int32:
+            runtime.core.segmented_sort_pairs_int_device(keys.ptr, values.ptr, count, segment_indices.ptr, num_segments)
+        elif keys.dtype == wp.float32 and values.dtype == wp.int32:
+            runtime.core.segmented_sort_pairs_float_device(
+                keys.ptr, values.ptr, count, segment_indices.ptr, num_segments
+            )
+        else:
+            raise RuntimeError("Unsupported data type")
+
+
 def runlength_encode(values, run_values, run_lengths, run_count=None, value_count=None):
     if run_values.device != values.device or run_lengths.device != values.device:
         raise RuntimeError("Array storage devices do not match")

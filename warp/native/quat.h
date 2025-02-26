@@ -366,12 +366,14 @@ inline CUDA_CALLABLE mat_t<3,3,Type> quat_to_matrix(const quat_t<Type>& q)
     vec_t<3,Type> c2 = quat_rotate(q, vec_t<3,Type>(0.0, 1.0, 0.0));
     vec_t<3,Type> c3 = quat_rotate(q, vec_t<3,Type>(0.0, 0.0, 1.0));
 
-    return mat_t<3,3,Type>(c1, c2, c3);
+    return matrix_from_cols<Type>(c1, c2, c3);
 }
 
-template<typename Type>
-inline CUDA_CALLABLE quat_t<Type> quat_from_matrix(const mat_t<3,3,Type>& m)
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE quat_t<Type> quat_from_matrix(const mat_t<Rows,Cols,Type>& m)
 {
+    static_assert((Rows == 3 && Cols == 3) || (Rows == 4 && Cols == 4));
+
     const Type tr = m.data[0][0] + m.data[1][1] + m.data[2][2];
     Type x, y, z, w, h = Type(0);
 
@@ -1101,9 +1103,11 @@ inline CUDA_CALLABLE void adj_quat_to_matrix(const quat_t<Type>& q, quat_t<Type>
     adj_quat_rotate(q, vec_t<3,Type>(0.0, 0.0, 1.0), adj_q, t, adj_ret.get_col(2));
 }
 
-template<typename Type>
-inline CUDA_CALLABLE void adj_quat_from_matrix(const mat_t<3,3,Type>& m, mat_t<3,3,Type>& adj_m, const quat_t<Type>& adj_ret)
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_quat_from_matrix(const mat_t<Rows,Cols,Type>& m, mat_t<Rows,Cols,Type>& adj_m, const quat_t<Type>& adj_ret)
 {
+    static_assert((Rows == 3 && Cols == 3) || (Rows == 4 && Cols == 4));
+
     const Type tr = m.data[0][0] + m.data[1][1] + m.data[2][2];
     Type x, y, z, w, h = Type(0);
 
@@ -1331,6 +1335,28 @@ CUDA_CALLABLE inline int len(const quat_t<Type>& x)
 template<typename Type>
 CUDA_CALLABLE inline void adj_len(const quat_t<Type>& x, quat_t<Type>& adj_x, const int& adj_ret)
 {
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void expect_near(const quat_t<Type>& actual, const quat_t<Type>& expected, const Type& tolerance)
+{
+    Type diff(0);
+    for(size_t i = 0; i < 4; ++i)
+    {
+        diff = max(diff, abs(actual[i] - expected[i]));
+    }
+    if (diff > tolerance)
+    {
+        printf("Error, expect_near() failed with tolerance "); print(tolerance);
+        printf("\t Expected: "); print(expected);
+        printf("\t Actual: "); print(actual);
+    }
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_expect_near(const quat_t<Type>& actual, const quat_t<Type>& expected, Type tolerance, quat_t<Type>& adj_actual, quat_t<Type>& adj_expected, Type adj_tolerance)
+{
+    // nop
 }
 
 } // namespace wp

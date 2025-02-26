@@ -639,6 +639,18 @@ def matrix(*args: Scalar, shape: Tuple[int, int], dtype: Scalar) -> Matrix[Any, 
 
 
 @over
+def matrix_from_cols(*args: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Construct a matrix from column vectors."""
+    ...
+
+
+@over
+def matrix_from_rows(*args: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Construct a matrix from row vectors."""
+    ...
+
+
+@over
 def identity(n: int32, dtype: Scalar) -> Matrix[Any, Any, Scalar]:
     """Create an identity matrix with shape=(n,n) with the type given by ``dtype``."""
     ...
@@ -723,6 +735,12 @@ def quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[3, Float], angle: F
 @over
 def quat_from_matrix(mat: Matrix[3, 3, Float]) -> Quaternion[Float]:
     """Construct a quaternion from a 3x3 matrix."""
+    ...
+
+
+@over
+def quat_from_matrix(mat: Matrix[4, 4, Float]) -> Quaternion[Float]:
+    """Construct a quaternion from a 4x4 matrix."""
     ...
 
 
@@ -1809,6 +1827,18 @@ def randi(state: uint32, low: int32, high: int32) -> int:
 
 
 @over
+def randu(state: uint32) -> uint32:
+    """Return a random unsigned integer in the range [0, 2^32)."""
+    ...
+
+
+@over
+def randu(state: uint32, low: uint32, high: uint32) -> uint32:
+    """Return a random unsigned integer between [low, high)."""
+    ...
+
+
+@over
 def randf(state: uint32) -> float:
     """Return a random float between [0.0, 1.0)."""
     ...
@@ -2490,7 +2520,19 @@ def expect_near(a: Float, b: Float, tolerance: Float):
 
 
 @over
-def expect_near(a: vec3f, b: vec3f, tolerance: float32):
+def expect_near(a: Vector[Any, Float], b: Vector[Any, Float], tolerance: Float):
+    """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude"""
+    ...
+
+
+@over
+def expect_near(a: Quaternion[Float], b: Quaternion[Float], tolerance: Float):
+    """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude"""
+    ...
+
+
+@over
+def expect_near(a: Matrix[Any, Any, Float], b: Matrix[Any, Any, Float], tolerance: Float):
     """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude"""
     ...
 
@@ -3130,5 +3172,31 @@ def smooth_normalize(v: Any, delta: float):
 
     Returns:
         Vector[Any,Float]: The normalized vector.
+    """
+    ...
+
+
+@over
+def transform_from_matrix(mat: Matrix[4, 4, float32]) -> Transformation[float32]:
+    """Construct a transformation from a 4x4 matrix.
+
+    Args:
+        mat (Matrix[4, 4, Float]): Matrix to convert.
+
+    Returns:
+        Transformation[Float]: The transformation.
+    """
+    ...
+
+
+@over
+def transform_to_matrix(xform: Transformation[float32]) -> Matrix[4, 4, float32]:
+    """Convert a transformation to a 4x4 matrix.
+
+    Args:
+        xform (Transformation[Float]): Transformation to convert.
+
+    Returns:
+        Matrix[4, 4, Float]: The matrix.
     """
     ...

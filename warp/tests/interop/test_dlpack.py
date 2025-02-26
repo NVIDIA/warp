@@ -381,11 +381,23 @@ def test_dlpack_paddle_to_warp(test, device):
 def test_dlpack_warp_to_jax(test, device):
     import jax
     import jax.dlpack
+    import jax.numpy as jnp
 
-    a = wp.array(data=np.arange(N, dtype=np.float32), device=device)
+    cpu_device = jax.devices("cpu")[0]
+
+    # Create a numpy array from a JAX array to respect XLA alignment needs
+    with jax.default_device(cpu_device):
+        x_jax = jnp.arange(N, dtype=jnp.float32)
+        x_numpy = np.asarray(x_jax)
+        test.assertEqual(x_jax.unsafe_buffer_pointer(), np.lib.array_utils.byte_bounds(x_numpy)[0])
+
+    a = wp.array(x_numpy, device=device, dtype=wp.float32, copy=False)
+
+    if device.is_cpu:
+        test.assertEqual(a.ptr, np.lib.array_utils.byte_bounds(x_numpy)[0])
 
     # use generic dlpack conversion
-    j1 = jax.dlpack.from_dlpack(wp.to_dlpack(a))
+    j1 = jax.dlpack.from_dlpack(a, copy=False)
 
     # use jax wrapper
     j2 = wp.to_jax(a)
@@ -415,14 +427,25 @@ def test_dlpack_warp_to_jax(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 4, 15), "Jax version too old")
 def test_dlpack_warp_to_jax_v2(test, device):
     # same as original test, but uses newer __dlpack__() method
-
     import jax
     import jax.dlpack
+    import jax.numpy as jnp
 
-    a = wp.array(data=np.arange(N, dtype=np.float32), device=device)
+    cpu_device = jax.devices("cpu")[0]
+
+    # Create a numpy array from a JAX array to respect XLA alignment needs
+    with jax.default_device(cpu_device):
+        x_jax = jnp.arange(N, dtype=jnp.float32)
+        x_numpy = np.asarray(x_jax)
+        test.assertEqual(x_jax.unsafe_buffer_pointer(), np.lib.array_utils.byte_bounds(x_numpy)[0])
+
+    a = wp.array(x_numpy, device=device, dtype=wp.float32, copy=False)
+
+    if device.is_cpu:
+        test.assertEqual(a.ptr, np.lib.array_utils.byte_bounds(x_numpy)[0])
 
     # pass warp array directly
-    j1 = jax.dlpack.from_dlpack(a)
+    j1 = jax.dlpack.from_dlpack(a, copy=False)
 
     # use jax wrapper
     j2 = wp.to_jax(a)

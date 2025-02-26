@@ -561,7 +561,7 @@ class Trimesh2D(Trimesh):
         p0 = args.positions[tri_idx[0]]
         p1 = args.positions[tri_idx[1]]
         p2 = args.positions[tri_idx[2]]
-        return wp.mat22(p1 - p0, p2 - p0)
+        return wp.matrix_from_cols(p1 - p0, p2 - p0)
 
     @wp.func
     def cell_lookup(args: CellArg, pos: wp.vec2):
@@ -674,9 +674,6 @@ class Trimesh3DSideArg:
     positions: wp.array(dtype=wp.vec3)
 
 
-_mat32 = wp.mat(shape=(3, 2), dtype=float)
-
-
 class Trimesh3D(Trimesh):
     """3D Triangular mesh geometry"""
 
@@ -699,7 +696,7 @@ class Trimesh3D(Trimesh):
         p0 = args.positions[tri_idx[0]]
         p1 = args.positions[tri_idx[1]]
         p2 = args.positions[tri_idx[2]]
-        return _mat32(p1 - p0, p2 - p0)
+        return wp.matrix_from_cols(p1 - p0, p2 - p0)
 
     @wp.func
     def cell_lookup(args: CellArg, pos: wp.vec3):

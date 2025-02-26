@@ -1,0 +1,267 @@
+# Copyright (c) 2025 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+# ==============================================================================
+# Warp Kit Extensions Testing and Deployment Child Pipeline
+# ==============================================================================
+
+include:
+  - /.gitlab/ci/common.yml
+  - project: "omniverse/sectools/vault"
+    file:
+      - "templates/v3/common/token_job.gitlab-ci.yml"
+      - "templates/v3/linux/codesign.gitlab-ci.yml"
+      - "templates/v3/windows/codesign.gitlab-ci.yml"
+      - "templates/v3/linux/packman_s3.gitlab-ci.yml"
+      - "templates/v3/windows/packman_s3.gitlab-ci.yml"
+      - "templates/v3/linux/nucleus/kit-extensions.ov.nvidia.com/kit-extension-svc.gitlab-ci.yml"
+    ref: v1_latest
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "parent_pipeline"
+
+stages:
+  - test
+  - package
+  - deploy
+
+check extensions public API:
+  stage: test
+  needs:
+    - pipeline: $PARENT_PIPELINE_ID
+      job: linux-x86_64 build
+  extends:
+    - .runner-utility-linux-x86_64
+  before_script:
+    - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
+  script:
+    - tools/repo.sh checkapi
+
+linux-x86_64 extension omni.warp.core test:
+  stage: test
+  needs:
+    - pipeline: $PARENT_PIPELINE_ID
+      job: linux-x86_64 build
+  extends:
+    - .runner-test-linux-x86_64-gpu
+  before_script:
+    - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
+    - export TEST_KIT_EXT="omni.warp.core"
+    - mv warp/bin/linux-x86_64/*.so warp/bin
+  script:
+    - !reference [.snippets, test-kit-ext-linux-x86_64]
+  artifacts:
+    name: $CI_JOB_NAME_SLUG
+    paths:
+      - "./_testoutput"
+    expire_in: 1 week
+    when: always
+  allow_failure: true
+
+windows-x86_64 extension omni.warp.core test:
+  stage: test
+  needs:
+    - pipeline: $PARENT_PIPELINE_ID
+      job: windows-x86_64 build
+  extends:
+    - .runner-test-windows-x86_64-gpu
+  before_script:
+    - tools\packman\packman.cmd pull -p windows-x86_64 deps/kit-deps.packman.xml
+    - $env:TEST_KIT_EXT = "omni.warp.core"
+  script:
+    - !reference [.snippets, test-kit-ext-windows-x86_64]
+  artifacts:
+    name: $CI_JOB_NAME_SLUG
+    paths:
+      - "./_testoutput"
+    expire_in: 1 week
+    when: always
+  allow_failure: true
+
+linux-x86_64 extension omni.warp test:
+  stage: test
+  needs:
+    - pipeline: $PARENT_PIPELINE_ID
+      job: linux-x86_64 build
+  extends:
+    - .runner-test-linux-x86_64-gpu
+  before_script:
+    - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
+    - export TEST_KIT_EXT="omni.warp"
+    - mv warp/bin/linux-x86_64/*.so warp/bin
+  script:
+    - !reference [.snippets, test-kit-ext-linux-x86_64]
+  artifacts:
+    name: $CI_JOB_NAME_SLUG
+    paths:
+      - "./_testoutput"
+    expire_in: 1 week
+    when: always
+  allow_failure: true
+
+windows-x86_64 extension omni.warp test:
+  stage: test
+  needs:
+    - pipeline: $PARENT_PIPELINE_ID
+      job: windows-x86_64 build
+  extends:
+    - .runner-test-windows-x86_64-gpu
+  before_script:
+    - tools\packman\packman.cmd pull -p windows-x86_64 deps/kit-deps.packman.xml
+    - $env:TEST_KIT_EXT = "omni.warp"
+  script:
+    - !reference [.snippets, test-kit-ext-windows-x86_64]
+  artifacts:
+    name: $CI_JOB_NAME_SLUG
+    paths:
+      - "./_testoutput"
+    expire_in: 1 week
+    when: always
+  allow_failure: true
+
+# ==============================================================================
+# Packaging Jobs
+# ==============================================================================
+
+# Creates an artifact suitable for publishing the Kit extensions
+create linux-aarch64 kit artifacts:
+  stage: package
+  needs:
+    - pipeline: $PARENT_PIPELINE_ID
+      job: linux-aarch64 build
+  extends:
+    - .runner-utility-linux-x86_64
+  before_script:
+    - apt-get update && apt-get install zip --no-install-recommends -y
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-aarch64/*.so warp/bin/
+    - rm -r warp/bin/linux-aarch64/
+  script:
+    - !reference [.snippets, prepare-kit-artifacts]
+    - zip -r kit-extensions-linux-aarch64.zip exts/
+  artifacts:
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    expose_as: "Kit Extensions linux-aarch64"
+    paths:
+      - kit-extensions-linux-aarch64.zip
+
+create linux-x86_64 kit artifacts:
+  stage: package
+  needs:
+    - pipeline: $PARENT_PIPELINE_ID
+      job: linux-x86_64 build
+  extends:
+    - .runner-utility-linux-x86_64
+  before_script:
+    - apt-get update && apt-get install zip --no-install-recommends -y
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/*.so warp/bin/
+    - rm -r warp/bin/linux-x86_64/
+  script:
+    - !reference [.snippets, prepare-kit-artifacts]
+    - zip -r kit-extensions-linux-x86_64.zip exts/
+  artifacts:
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    expose_as: "Kit Extensions linux-x86_64"
+    paths:
+      - kit-extensions-linux-x86_64.zip
+
+create windows-x86_64 kit artifacts:
+  stage: package
+  needs:
+    - pipeline: $PARENT_PIPELINE_ID
+      job: windows-x86_64 build
+  extends:
+    - .runner-utility-linux-x86_64
+  before_script:
+    - apt-get update && apt-get install zip --no-install-recommends -y
+  script:
+    - !reference [.snippets, prepare-kit-artifacts]
+    - zip -r kit-extensions-windows-x86_64.zip exts/
+  artifacts:
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    expose_as: "Kit Extensions windows-x86_64"
+    paths:
+      - kit-extensions-windows-x86_64.zip
+
+# ==============================================================================
+# Deployment Jobs
+# ==============================================================================
+
+# Uploads the extensions to packman.
+publish extensions to packman:
+  stage: deploy
+  needs:
+    - check extensions public API
+    - create linux-aarch64 kit artifacts
+    - create linux-x86_64 kit artifacts
+    - create windows-x86_64 kit artifacts
+  extends:
+    - .runner-utility-linux-x86_64
+    - .osec:vault:v3:prod_token_job
+  rules:
+    - if: $CI_PROJECT_PATH != "omniverse/warp" # Prevent fork pipelines from running this job
+      when: never
+    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/ || $PARENT_COMMIT_TAG
+      when: manual
+      allow_failure: true
+  environment:
+    name: Kit Extension Registry
+    url: http://omniexts.nvidia.com/omni.warp
+    deployment_tier: production
+  before_script:
+    - mkdir -p _build/linux-aarch64/release
+    - unzip kit-extensions-linux-aarch64.zip -d _build/linux-aarch64/release
+    - mkdir -p _build/linux-x86_64/release
+    - unzip kit-extensions-linux-x86_64.zip -d _build/linux-x86_64/release
+    - mkdir -p _build/windows-x86_64/release
+    - unzip kit-extensions-windows-x86_64.zip -d _build/windows-x86_64/release
+    - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
+  script:
+    - !reference [.osec:vault:v3:linux, codesign:perform_vault_requests]
+    - !reference [.osec:vault:v3:linux, packman_s3:perform_vault_requests]
+    - !reference [.osec:vault:v3:linux, nucleus:kit-extensions.ov.nvidia.com:kit-extension-svc:perform_vault_requests]
+    - tools/repo.sh publish_exts --publish-all
+
+# Uploads the extension artifacts to the internal GitLab package registry in the Warp project
+# Generated files will be in a branch/tag-specific folder
+publish to gitlab package registry:
+  stage: deploy
+  needs:
+    - create linux-aarch64 kit artifacts
+    - create linux-x86_64 kit artifacts
+    - create windows-x86_64 kit artifacts
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $PARENT_COMMIT_TAG
+    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
+    - when: manual # Can be triggered in all other scenarios
+      allow_failure: true
+  before_script:
+    - apt-get update && apt-get install curl --no-install-recommends -y
+  script:
+    - |
+      if [ -f kit-extensions-linux-aarch64.zip ]; then
+        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions-linux-aarch64.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions-linux-aarch64.zip"
+      else
+        echo "kit-extensions-linux-aarch64.zip not found, skipping upload."
+      fi
+    - |
+      if [ -f kit-extensions-linux-x86_64.zip ]; then
+        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions-linux-x86_64.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions-linux-x86_64.zip"
+      else
+        echo "kit-extensions-linux-x86_64.zip not found, skipping upload."
+      fi
+    - |
+      if [ -f kit-extensions-windows-x86_64.zip ]; then
+        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions-windows-x86_64.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions-windows-x86_64.zip"
+      else
+        echo "kit-extensions-windows-x86_64.zip not found, skipping upload."
+      fi
+    - echo "See the published files at $CI_PROJECT_URL/-/packages"

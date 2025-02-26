@@ -767,27 +767,37 @@ class Kernel:
 
 
 # decorator to register function, @func
-def func(f: Callable) -> Callable:
-    name = warp.codegen.make_full_qualified_name(f)
+def func(f: Optional[Callable] = None, *, name: Optional[str] = None):
+    def wrapper(f, *args, **kwargs):
+        if name is None:
+            key = warp.codegen.make_full_qualified_name(f)
+        else:
+            key = name
 
-    scope_locals = inspect.currentframe().f_back.f_locals
+        scope_locals = inspect.currentframe().f_back.f_back.f_locals
 
-    m = get_module(f.__module__)
-    doc = getattr(f, "__doc__", "") or ""
-    Function(
-        func=f,
-        key=name,
-        namespace="",
-        module=m,
-        value_func=None,
-        scope_locals=scope_locals,
-        doc=doc.strip(),
-    )  # value_type not known yet, will be inferred during Adjoint.build()
+        m = get_module(f.__module__)
+        doc = getattr(f, "__doc__", "") or ""
+        Function(
+            func=f,
+            key=key,
+            namespace="",
+            module=m,
+            value_func=None,
+            scope_locals=scope_locals,
+            doc=doc.strip(),
+        )  # value_type not known yet, will be inferred during Adjoint.build()
 
-    # use the top of the list of overloads for this key
-    g = m.functions[name]
-    # copy over the function attributes, including docstring
-    return functools.update_wrapper(g, f)
+        # use the top of the list of overloads for this key
+        g = m.functions[key]
+        # copy over the function attributes, including docstring
+        return functools.update_wrapper(g, f)
+
+    if f is None:
+        # Arguments were passed to the decorator.
+        return wrapper
+
+    return wrapper(f)
 
 
 def func_native(snippet: str, adj_snippet: Optional[str] = None, replay_snippet: Optional[str] = None):
@@ -3202,6 +3212,36 @@ class Runtime:
 
             self.core.radix_sort_pairs_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
             self.core.radix_sort_pairs_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+
+            self.core.segmented_sort_pairs_int_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_int,
+            ]
+            self.core.segmented_sort_pairs_int_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_int,
+            ]
+
+            self.core.segmented_sort_pairs_float_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_int,
+            ]
+            self.core.segmented_sort_pairs_float_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_int,
+            ]
 
             self.core.runlength_encode_int_host.argtypes = [
                 ctypes.c_uint64,

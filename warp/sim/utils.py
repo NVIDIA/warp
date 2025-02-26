@@ -50,7 +50,7 @@ def quat_decompose(q: wp.quat):
     Decompose a quaternion into a sequence of 3 rotations around x,y',z' respectively, i.e.: q = q_z''q_y'q_x.
     """
 
-    R = wp.mat33(
+    R = wp.matrix_from_cols(
         wp.quat_rotate(q, wp.vec3(1.0, 0.0, 0.0)),
         wp.quat_rotate(q, wp.vec3(0.0, 1.0, 0.0)),
         wp.quat_rotate(q, wp.vec3(0.0, 0.0, 1.0)),
@@ -234,7 +234,7 @@ def transform_inertia(t: wp.transform, I: wp.spatial_matrix):
     r2 = wp.quat_rotate(q, wp.vec3(0.0, 1.0, 0.0))
     r3 = wp.quat_rotate(q, wp.vec3(0.0, 0.0, 1.0))
 
-    R = wp.mat33(r1, r2, r3)
+    R = wp.matrix_from_cols(r1, r2, r3)
     S = wp.mul(wp.skew(p), R)
 
     T = wp.spatial_adjoint(R, S)

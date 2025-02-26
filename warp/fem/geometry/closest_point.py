@@ -44,7 +44,7 @@ def project_on_tri_at_origin(q: Any, e1: Any, e2: Any):
 
 @wp.func
 def project_on_tet_at_origin(q: wp.vec3, e1: wp.vec3, e2: wp.vec3, e3: wp.vec3):
-    mat = wp.inverse(wp.mat33(e1, e2, e3))
+    mat = wp.inverse(wp.matrix_from_cols(e1, e2, e3))
     coords = mat * q
 
     if wp.min(coords) >= 0.0 and coords[0] + coords[1] + coords[2] <= 1.0:

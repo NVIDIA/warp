@@ -120,7 +120,7 @@ def spatial_transform_inertia(t: wp.transform, I: wp.spatial_matrix):
     r2 = wp.quat_rotate(q, wp.vec3(0.0, 1.0, 0.0))
     r3 = wp.quat_rotate(q, wp.vec3(0.0, 0.0, 1.0))
 
-    R = wp.mat33(r1, r2, r3)
+    R = wp.matrix_from_cols(r1, r2, r3)
     S = wp.skew(p) @ R
 
     T = spatial_adjoint(R, S)
@@ -290,7 +290,7 @@ def jcalc_motion(
     if type == wp.sim.JOINT_UNIVERSAL:
         axis_0 = joint_axis[axis_start + 0]
         axis_1 = joint_axis[axis_start + 1]
-        q_off = wp.quat_from_matrix(wp.mat33(axis_0, axis_1, wp.cross(axis_0, axis_1)))
+        q_off = wp.quat_from_matrix(wp.matrix_from_cols(axis_0, axis_1, wp.cross(axis_0, axis_1)))
         local_0 = wp.quat_rotate(q_off, wp.vec3(1.0, 0.0, 0.0))
         local_1 = wp.quat_rotate(q_off, wp.vec3(0.0, 1.0, 0.0))
 
@@ -311,7 +311,7 @@ def jcalc_motion(
         axis_0 = joint_axis[axis_start + 0]
         axis_1 = joint_axis[axis_start + 1]
         axis_2 = joint_axis[axis_start + 2]
-        q_off = wp.quat_from_matrix(wp.mat33(axis_0, axis_1, axis_2))
+        q_off = wp.quat_from_matrix(wp.matrix_from_cols(axis_0, axis_1, axis_2))
         local_0 = wp.quat_rotate(q_off, wp.vec3(1.0, 0.0, 0.0))
         local_1 = wp.quat_rotate(q_off, wp.vec3(0.0, 1.0, 0.0))
         local_2 = wp.quat_rotate(q_off, wp.vec3(0.0, 0.0, 1.0))

@@ -567,6 +567,16 @@ Vector Math
     Construct a matrix. If the positional ``arg_types`` are not given, then matrix will be zero-initialized.
 
 
+.. py:function:: matrix_from_cols(*args: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
+
+    Construct a matrix from column vectors.
+
+
+.. py:function:: matrix_from_rows(*args: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
+
+    Construct a matrix from row vectors.
+
+
 .. py:function:: identity(n: int32, dtype: Scalar) -> Matrix[Any,Any,Scalar]
 
     Create an identity matrix with shape=(n,n) with the type given by ``dtype``.
@@ -650,6 +660,13 @@ Quaternion Math
 .. py:function:: quat_from_matrix(mat: Matrix[3,3,Float]) -> Quaternion[Float]
 
     Construct a quaternion from a 3x3 matrix.
+
+
+.. py:function:: quat_from_matrix(mat: Matrix[4,4,Float]) -> Quaternion[Float]
+    :noindex:
+    :nocontentsentry:
+
+    Construct a quaternion from a 4x4 matrix.
 
 
 .. py:function:: quat_rpy(roll: Float, pitch: Float, yaw: Float) -> Quaternion[Float]
@@ -752,6 +769,8 @@ Transformations
     Compute the inverse of the transformation ``xform``.
 
 
+.. autofunction:: warp.math.transform_from_matrix
+.. autofunction:: warp.math.transform_to_matrix
 
 
 Spatial Math
@@ -1872,7 +1891,21 @@ Utility
     Prints an error to stdout if ``a`` and ``b`` are not closer than tolerance in magnitude
 
 
-.. py:function:: expect_near(a: vec3f, b: vec3f, tolerance: float32) -> None
+.. py:function:: expect_near(a: Vector[Any,Float], b: Vector[Any,Float], tolerance: Float) -> None
+    :noindex:
+    :nocontentsentry:
+
+    Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
+
+
+.. py:function:: expect_near(a: Quaternion[Float], b: Quaternion[Float], tolerance: Float) -> None
+    :noindex:
+    :nocontentsentry:
+
+    Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
+
+
+.. py:function:: expect_near(a: Matrix[Any,Any,Float], b: Matrix[Any,Any,Float], tolerance: Float) -> None
     :noindex:
     :nocontentsentry:
 
@@ -2300,6 +2333,18 @@ Random
     :nocontentsentry:
 
     Return a random integer between [low, high).
+
+
+.. py:function:: randu(state: uint32) -> uint32
+
+    Return a random unsigned integer in the range [0, 2^32).
+
+
+.. py:function:: randu(state: uint32, low: uint32, high: uint32) -> uint32
+    :noindex:
+    :nocontentsentry:
+
+    Return a random unsigned integer between [low, high).
 
 
 .. py:function:: randf(state: uint32) -> float

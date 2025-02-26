@@ -12,8 +12,8 @@ the setting at the more-specific scope takes precedence.
 Global Settings
 ---------------
 
-To change a setting, prepend ``wp.config.`` to the name of the variable and assign a value to it.
-Some settings may be changed on the fly, while others need to be set prior to calling ``wp.init()`` to take effect.
+Settings can be modified by direct assignment before or after calling ``wp.init()``,
+though some settings only take effect if set prior to initialization.
 
 For example, the location of the user kernel cache can be changed with:
 
@@ -30,85 +30,8 @@ For example, the location of the user kernel cache can be changed with:
 
     wp.init()
 
-
-Basic Global Settings
-^^^^^^^^^^^^^^^^^^^^^
-
-
-+------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-| Field                                          | Type    |Default Value| Description                                                              |
-+================================================+=========+=============+==========================================================================+
-|``verify_fp``                                   | Boolean | ``False``   | If ``True``, Warp will check that inputs and outputs are finite before   |
-|                                                |         |             | and/or after various operations. **Has performance implications.**       |
-+------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``verify_cuda``                                 | Boolean | ``False``   | If ``True``, Warp will check for CUDA errors after every launch          |
-|                                                |         |             | operation. CUDA error verification cannot be used during graph           |
-|                                                |         |             | capture. **Has performance implications.**                               |              
-+------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``print_launches``                              | Boolean | ``False``   | If ``True``, Warp will print details of every kernel launch to standard  |
-|                                                |         |             | out (e.g. launch dimensions, inputs, outputs, device, etc.).             |
-|                                                |         |             | **Has performance implications.**                                        |
-+------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``mode``                                        | String  |``"release"``| Controls whether to compile Warp kernels in debug or release mode.       |
-|                                                |         |             | Valid choices are ``"release"`` or ``"debug"``.                          |
-|                                                |         |             | **Has performance implications.**                                        |
-+------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``max_unroll``                                  | Integer | Global      | The maximum fixed-size loop to unroll. Note that ``max_unroll`` does not |
-|                                                |         | setting     | consider the total number of iterations in nested loops. This can result |
-|                                                |         |             | in a large amount of automatically generated code if each nested loop is |
-|                                                |         |             | below the ``max_unroll`` threshold.                                      |
-+------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``verbose``                                     | Boolean | ``False``   | If ``True``, additional information will be printed to standard out      |
-|                                                |         |             | during code generation, compilation, etc.                                |
-+------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``verbose_warnings``                            | Boolean | ``False``   | If ``True``, Warp warnings will include extra information such as        |
-|                                                |         |             | the source file and line number.                                         |
-+------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``quiet``                                       | Boolean | ``False``   | If ``True``, Warp module initialization messages will be disabled.       |
-|                                                |         |             | This setting does not affect error messages and warnings.                |
-+------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``kernel_cache_dir``                            | String  | ``None``    | The path to the directory used for the user kernel cache. Subdirectories |
-|                                                |         |             | beginning with ``wp_`` will be created in this directory. If ``None``,   |
-|                                                |         |             | a directory will be automatically determined using the value of the      |
-|                                                |         |             | environment variable ``WARP_CACHE_PATH`` or the                          |
-|                                                |         |             | `appdirs.user_cache_directory <https://github.com/ActiveState/appdirs>`_ |
-|                                                |         |             | if ``WARP_CACHE_PATH`` is also not set. ``kernel_cache_dir`` will be     |
-|                                                |         |             | updated to reflect the location of the cache directory used.             |
-+------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``enable_backward``                             | Boolean | ``True``    | If ``True``, backward passes of kernels will be compiled by default.     |
-|                                                |         |             | Disabling this setting can reduce kernel compilation times.              |
-+------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``enable_graph_capture_module_load_by_default`` | Boolean | ``True``    | If ``True``, ``wp.capture_begin()`` will call ``wp.force_load()`` to     |
-|                                                |         |             | compile and load Warp kernels from all imported modules before graph     |
-|                                                |         |             | capture if the ``force_module_load`` argument is not explicitly provided |
-|                                                |         |             | to ``wp.capture_begin()``. This setting is ignored if the CUDA driver    |
-|                                                |         |             | supports CUDA 12.3 or newer.                                             |
-+------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``enable_mempools_at_init``                     | Boolean | ``False``   | If ``True``, ``wp.init()`` will enable pooled allocators on all CUDA     |
-|                                                |         |             | devices that support memory pools.                                       |
-|                                                |         |             | Pooled allocators are generally faster and can be used during CUDA graph |
-|                                                |         |             | capture.  For the caveats, see CUDA Pooled Allocators documentation.     |
-+------------------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-
-
-Advanced Global Settings
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-| Field              | Type    |Default Value| Description                                                              |
-+====================+=========+=============+==========================================================================+
-|``cache_kernels``   | Boolean | ``True``    | If ``True``, kernels that have already been compiled from previous       |
-|                    |         |             | application launches will not be recompiled.                             |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``cuda_output``     | String  | ``None``    | The preferred CUDA output format for kernels. Valid choices are ``None``,|
-|                    |         |             | ``"ptx"``, and ``"cubin"``. If ``None``, a format will be determined     |
-|                    |         |             | automatically.                                                           |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``ptx_target_arch`` | Integer | 70          | The target architecture for PTX generation.                              |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
-|``llvm_cuda``       | Boolean | ``False``   | If ``True``, Clang/LLVM will be used to compile CUDA code instead of     |
-|                    |         |             | NVTRC.                                                                   |
-+--------------------+---------+-------------+--------------------------------------------------------------------------+
+.. automodule:: warp.config
+   :members:
 
 Module Settings
 ---------------
@@ -159,10 +82,6 @@ The options for a module can also be queried using ``wp.get_module_options()``.
 |                                      |         |             | ``"ptx"``, and ``"cubin"``. If ``None``, a format will be determined     |
 |                                      |         |             | automatically. The module-level setting takes precedence over the global |
 |                                      |         |             | setting.                                                                 |
-+--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|`enable_vector_component_overwrites```| Boolean | ``False``   | If ``True``, vector components can be overwritten in kernels and         |
-|                                      |         |             | gradients will still be computed correctly, but compilation time may     |
-|                                      |         |             | significantly increase.                                                  |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 
 Kernel Settings

@@ -18,8 +18,6 @@ FACE_AXIS_MASK = wp.constant(wp.uint8((1 << 2) - 1))
 FACE_INNER_OFFSET_BIT = wp.constant(wp.uint8(2))
 FACE_OUTER_OFFSET_BIT = wp.constant(wp.uint8(3))
 
-_mat32 = wp.mat(shape=(3, 2), dtype=float)
-
 
 @wp.func
 def _add_axis_flag(ijk: wp.vec3i, axis: int):
@@ -312,7 +310,7 @@ class Nanogrid(Geometry):
         axis = Nanogrid._get_face_axis(flags)
         flip = Nanogrid._get_face_inner_offset(flags)
         v1, v2 = Nanogrid._face_tangent_vecs(args.cell_arg.cell_grid, axis, flip)
-        return _mat32(v1, v2)
+        return wp.matrix_from_cols(v1, v2)
 
     @wp.func
     def side_inner_inverse_deformation_gradient(args: SideArg, s: Sample):

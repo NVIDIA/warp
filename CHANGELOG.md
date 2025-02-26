@@ -15,6 +15,9 @@
 - Add [documentation](https://nvidia.github.io/warp/modules/runtime.html#launch-objects) for `Launch` objects
   ([GH-428](https://github.com/NVIDIA/warp/issues/428)).
 - Add Array Overwrites section to Differentiability documentation ([docs](https://nvidia.github.io/warp/modules/differentiability.html#array-overwrites)).
+- Add `wp.randu()` for random uint32 generation.
+- Add `wp.matrix_from_cols()` and `wp.matrix_from_rows()` ([GH-728](https://github.com/NVIDIA/warp/issues/278)).
+- Add a `wp.transform_from_matrix()` built-in ([GH-211](https://github.com/NVIDIA/warp/issues/211)).
 
 ### Changed
 
@@ -24,6 +27,12 @@
 - Vector/matrix/quaternion component assignment operations compile and run faster in the backward pass. Assignment should only happen once per component.
 - Multiple warp.sparse routines (`bsr_set_from_triplets`, `bsr_assign`, `bsr_axpy`, `bsr_mm`) now accept a `masked` flag to discard any non-zero not already present in the destination matrix
 - `warp.sparse.bsr_assign()` no longer requires source and destination block shapes to evenly divide each other
+- `warp.sim.Control` no longer has a `model` attribute ([GH-487](https://github.com/NVIDIA/warp/issues/487))..
+- `warp.sim.Control.reset()` now zeros-out the controls and is deprecated. Use `warp.sim.Control.clear()` instead.
+- `warp.sparse.bsr_assign()` now longer requires source and destination block shapes to evenly divide each other
+- Deprecate constructing a matrix from vectors using `wp.matrix()`.
+- Extend `wp.expect_near()` to support all vectors and quaternions.
+- Extend `wp.quat_from_matrix()` to support 4x4 matrices.
 
 ### Fixed
 
@@ -42,6 +51,7 @@
   ([GH-454](https://github.com/NVIDIA/warp/issues/454)).
 - Fix `ModelBuilder.add_builder()` to use correct offsets for `ModelBuilder.joint_parent` and `ModelBuilder.joint_child` ([GH-432](https://github.com/NVIDIA/warp/issues/432))
 - Fix incorrect contact point allocation resulting from `count_contact_points()` for box-sphere and box-capsule collisions.
+- Fix capsule error when using DLPack interop after `jax_kernel()` ([GH-547](https://github.com/NVIDIA/warp/issues/547)).
 
 ## [1.6.0] - 2025-02-03
 

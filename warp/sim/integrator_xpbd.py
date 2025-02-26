@@ -587,7 +587,7 @@ def solve_tetrahedra(
     x20 = x2 - x0
     x30 = x3 - x0
 
-    Ds = wp.mat33(x10, x20, x30)
+    Ds = wp.matrix_from_cols(x10, x20, x30)
     Dm = rest_matrix[tid]
     inv_QT = wp.transpose(Dm)
 
@@ -619,7 +619,7 @@ def solve_tetrahedra(
         elif term == 1:
             # volume conservation
             C = wp.determinant(F) - 1.0
-            dC = wp.mat33(wp.cross(f2, f3), wp.cross(f3, f1), wp.cross(f1, f2))
+            dC = wp.matrix_from_cols(wp.cross(f2, f3), wp.cross(f3, f1), wp.cross(f1, f2))
             compliance = volume_compliance
 
         if C != 0.0:
@@ -683,7 +683,7 @@ def solve_tetrahedra(
     # J = wp.determinant(F)
 
     # C_vol = J - alpha
-    # # dCdx = wp.mat33(wp.cross(f2, f3), wp.cross(f3, f1), wp.cross(f1, f2))*wp.transpose(Dm)
+    # # dCdx = wp.matrix_from_cols(wp.cross(f2, f3), wp.cross(f3, f1), wp.cross(f1, f2))*wp.transpose(Dm)
 
     # # grad1 = wp.vec3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
     # # grad2 = wp.vec3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
@@ -758,7 +758,7 @@ def solve_tetrahedra2(
     x20 = x2 - x0
     x30 = x3 - x0
 
-    Ds = wp.mat33(x10, x20, x30)
+    Ds = wp.matrix_from_cols(x10, x20, x30)
     Dm = pose[tid]
 
     inv_rest_volume = wp.determinant(Dm) * 6.0
@@ -829,7 +829,7 @@ def solve_tetrahedra2(
     J = wp.determinant(F)
 
     C_vol = J - alpha
-    # dCdx = wp.mat33(wp.cross(f2, f3), wp.cross(f3, f1), wp.cross(f1, f2))*wp.transpose(Dm)
+    # dCdx = wp.matrix_from_cols(wp.cross(f2, f3), wp.cross(f3, f1), wp.cross(f1, f2))*wp.transpose(Dm)
 
     # grad1 = wp.vec3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
     # grad2 = wp.vec3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
