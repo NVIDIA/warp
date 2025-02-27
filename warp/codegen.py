@@ -1844,25 +1844,6 @@ class Adjoint:
                 ) from e
             raise WarpCodegenAttributeError(f"Error, `{node.attr}` is not an attribute of '{aggregate}'") from e
 
-    def emit_String(adj, node):
-        # string constant
-        return adj.add_constant(node.s)
-
-    def emit_Num(adj, node):
-        # lookup constant, if it has already been assigned then return existing var
-        key = (node.n, type(node.n))
-
-        if key in adj.symbols:
-            return adj.symbols[key]
-        else:
-            out = adj.add_constant(node.n)
-            adj.symbols[key] = out
-            return out
-
-    def emit_Ellipsis(adj, node):
-        # stubbed @wp.native_func
-        return
-
     def emit_Assert(adj, node):
         # eval condition
         cond = adj.eval(node.test)
@@ -1874,24 +1855,11 @@ class Adjoint:
 
         adj.add_forward(f'assert(("{escaped_segment}",{cond.emit()}));')
 
-    def emit_NameConstant(adj, node):
-        if node.value:
-            return adj.add_constant(node.value)
-        elif node.value is None:
+    def emit_Constant(adj, node):
+        if node.value is None:
             raise WarpCodegenTypeError("None type unsupported")
         else:
-            return adj.add_constant(False)
-
-    def emit_Constant(adj, node):
-        if isinstance(node, ast.Str):
-            return adj.emit_String(node)
-        elif isinstance(node, ast.Num):
-            return adj.emit_Num(node)
-        elif isinstance(node, ast.Ellipsis):
-            return adj.emit_Ellipsis(node)
-        else:
-            assert isinstance(node, ast.NameConstant) or isinstance(node, ast.Constant)
-            return adj.emit_NameConstant(node)
+            return adj.add_constant(node.value)
 
     def emit_BinOp(adj, node):
         # evaluate binary operator arguments
@@ -2720,9 +2688,6 @@ class Adjoint:
         ast.BoolOp: emit_BoolOp,
         ast.Name: emit_Name,
         ast.Attribute: emit_Attribute,
-        ast.Str: emit_String,  # Deprecated in 3.8; use Constant
-        ast.Num: emit_Num,  # Deprecated in 3.8; use Constant
-        ast.NameConstant: emit_NameConstant,  # Deprecated in 3.8; use Constant
         ast.Constant: emit_Constant,
         ast.BinOp: emit_BinOp,
         ast.UnaryOp: emit_UnaryOp,
@@ -2732,14 +2697,13 @@ class Adjoint:
         ast.Continue: emit_Continue,
         ast.Expr: emit_Expr,
         ast.Call: emit_Call,
-        ast.Index: emit_Index,  # Deprecated in 3.8; Use the index value directly instead.
+        ast.Index: emit_Index,  # Deprecated in 3.9
         ast.Subscript: emit_Subscript,
         ast.Assign: emit_Assign,
         ast.Return: emit_Return,
         ast.AugAssign: emit_AugAssign,
         ast.Tuple: emit_Tuple,
         ast.Pass: emit_Pass,
-        ast.Ellipsis: emit_Ellipsis,
         ast.Assert: emit_Assert,
     }
 
