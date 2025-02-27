@@ -12,7 +12,6 @@ from typing import Union
 import numpy as np
 
 import warp as wp
-import warp.sim
 from warp.sim.model import Mesh
 
 
@@ -38,6 +37,7 @@ def parse_urdf(
     joint_limit_lower=-1e6,
     joint_limit_upper=1e6,
     scale=1.0,
+    hide_visuals=False,
     parse_visuals_as_colliders=False,
     force_show_colliders=False,
     enable_self_collisions=True,
@@ -71,6 +71,7 @@ def parse_urdf(
         joint_limit_lower (float): The default lower joint limit if not specified in the URDF.
         joint_limit_upper (float): The default upper joint limit if not specified in the URDF.
         scale (float): The scaling factor to apply to the imported mechanism.
+        hide_visuals (bool): If True, hide visual shapes.
         parse_visuals_as_colliders (bool): If True, the geometry defined under the `<visual>` tags is used for collision handling instead of the `<collision>` geometries.
         force_show_colliders (bool): If True, the collision shapes are always shown, even if there are visual shapes.
         enable_self_collisions (bool): If True, self-collisions are enabled.
@@ -165,6 +166,22 @@ def parse_urdf(
                 )
                 shapes.append(s)
 
+            for capsule in geo.findall("capsule"):
+                s = builder.add_shape_capsule(
+                    body=link,
+                    pos=wp.vec3(tf.p),
+                    rot=wp.quat(tf.q),
+                    radius=float(capsule.get("radius") or "1") * scale,
+                    half_height=float(capsule.get("height") or "1") * 0.5 * scale,
+                    density=density,
+                    up_axis=2,  # capsules in URDF are aligned with z-axis
+                    is_visible=visible,
+                    has_ground_collision=not just_visual,
+                    has_shape_collision=not just_visual,
+                    **contact_vars,
+                )
+                shapes.append(s)
+
             for mesh in geo.findall("mesh"):
                 filename = mesh.get("filename")
                 if filename is None:
@@ -211,15 +228,15 @@ def parse_urdf(
                 scaling = np.array([float(x) * scale for x in scaling.split()])
                 if hasattr(m, "geometry"):
                     # multiple meshes are contained in a scene
-                    for geom in m.geometry.values():
-                        geom_vertices = np.array(geom.vertices, dtype=np.float32) * scaling
-                        geom_faces = np.array(geom.faces.flatten(), dtype=np.int32)
-                        geom_mesh = Mesh(geom_vertices, geom_faces)
+                    for m_geom in m.geometry.values():
+                        m_vertices = np.array(m_geom.vertices, dtype=np.float32) * scaling
+                        m_faces = np.array(m_geom.faces.flatten(), dtype=np.int32)
+                        m_mesh = Mesh(m_vertices, m_faces)
                         s = builder.add_shape_mesh(
                             body=link,
                             pos=wp.vec3(tf.p),
                             rot=wp.quat(tf.q),
-                            mesh=geom_mesh,
+                            mesh=m_mesh,
                             density=density,
                             is_visible=visible,
                             has_ground_collision=not just_visual,
@@ -270,7 +287,7 @@ def parse_urdf(
         if parse_visuals_as_colliders:
             colliders = visuals
         else:
-            s = parse_shapes(link, visuals, density=0.0, just_visual=True)
+            s = parse_shapes(link, visuals, density=0.0, just_visual=True, visible=not hide_visuals)
             visual_shapes.extend(s)
 
         show_colliders = force_show_colliders
@@ -301,10 +318,13 @@ def parse_urdf(
             I_m = rot @ wp.mat33(I_m)
             m = float(inertial.find("mass").get("value") or "0")
             builder.body_mass[link] = m
-            builder.body_inv_mass[link] = 1.0 / m
+            builder.body_inv_mass[link] = 1.0 / m if m > 0.0 else 0.0
             builder.body_com[link] = com
             builder.body_inertia[link] = I_m
-            builder.body_inv_inertia[link] = wp.inverse(I_m)
+            if any(x for x in I_m):
+                builder.body_inv_inertia[link] = wp.inverse(I_m)
+            else:
+                builder.body_inv_inertia[link] = I_m
         if m == 0.0 and ensure_nonstatic_links:
             # set the mass to something nonzero to ensure the body is dynamic
             m = static_link_mass
@@ -512,7 +532,7 @@ def parse_urdf(
 
             builder.add_joint_d6(
                 linear_axes=[
-                    warp.sim.JointAxis(
+                    wp.sim.JointAxis(
                         u,
                         limit_lower=lower * scale,
                         limit_upper=upper * scale,
@@ -522,7 +542,7 @@ def parse_urdf(
                         target_kd=joint_damping,
                         mode=joint_mode,
                     ),
-                    warp.sim.JointAxis(
+                    wp.sim.JointAxis(
                         v,
                         limit_lower=lower * scale,
                         limit_upper=upper * scale,
