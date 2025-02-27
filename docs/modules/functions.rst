@@ -582,25 +582,57 @@ Vector Math
     Create an identity matrix with shape=(n,n) with the type given by ``dtype``.
 
 
-.. py:function:: svd3(A: Matrix[3,3,Float], U: Matrix[3,3,Float], sigma: Vector[3,Float], V: Matrix[3,3,Scalar]) -> None
+.. py:function:: svd3(A: Matrix[3,3,Float], U: Matrix[3,3,Float], sigma: Vector[3,Float], V: Matrix[3,3,Float]) -> None
 
     Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
     while the left and right basis vectors are returned in ``U`` and ``V``.
 
 
-.. py:function:: svd2(A: Matrix[2,2,Float], U: Matrix[2,2,Float], sigma: Vector[2,Float], V: Matrix[2,2,Scalar]) -> None
+.. py:function:: svd3(A: Matrix[3,3,Float]) -> Tuple[Matrix[3,3,Float], Vector[3,Float], Matrix[3,3,Float]]
+    :noindex:
+    :nocontentsentry:
+
+    Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
+    while the left and right basis vectors are returned in ``U`` and ``V``.
+
+
+.. py:function:: svd2(A: Matrix[2,2,Float]) -> Tuple[Matrix[2,2,Float], Vector[2,Float], Matrix[2,2,Float]]
 
     Compute the SVD of a 2x2 matrix ``A``. The singular values are returned in ``sigma``,
     while the left and right basis vectors are returned in ``U`` and ``V``.
 
 
-.. py:function:: qr3(A: Matrix[3,3,Float], Q: Matrix[3,3,Float], R: Matrix[3,3,Float]) -> None
+.. py:function:: svd2(A: Matrix[2,2,Float], U: Matrix[2,2,Float], sigma: Vector[2,Float], V: Matrix[2,2,Float]) -> None
+    :noindex:
+    :nocontentsentry:
+
+    Compute the SVD of a 2x2 matrix ``A``. The singular values are returned in ``sigma``,
+    while the left and right basis vectors are returned in ``U`` and ``V``.
+
+
+.. py:function:: qr3(A: Matrix[3,3,Float]) -> Tuple[Matrix[3,3,Float], Matrix[3,3,Float]]
 
     Compute the QR decomposition of a 3x3 matrix ``A``. The orthogonal matrix is returned in ``Q``,
     while the upper triangular matrix is returned in ``R``.
 
 
+.. py:function:: qr3(A: Matrix[3,3,Float], Q: Matrix[3,3,Float], R: Matrix[3,3,Float]) -> None
+    :noindex:
+    :nocontentsentry:
+
+    Compute the QR decomposition of a 3x3 matrix ``A``. The orthogonal matrix is returned in ``Q``,
+    while the upper triangular matrix is returned in ``R``.
+
+
+.. py:function:: eig3(A: Matrix[3,3,Float]) -> Tuple[Matrix[3,3,Float], Vector[3,Float]]
+
+    Compute the eigendecomposition of a 3x3 matrix ``A``. The eigenvectors are returned as the columns of ``Q``,
+    while the corresponding eigenvalues are returned in ``d``.
+
+
 .. py:function:: eig3(A: Matrix[3,3,Float], Q: Matrix[3,3,Float], d: Vector[3,Float]) -> None
+    :noindex:
+    :nocontentsentry:
 
     Compute the eigendecomposition of a 3x3 matrix ``A``. The eigenvectors are returned as the columns of ``Q``,
     while the corresponding eigenvalues are returned in ``d``.
@@ -653,6 +685,13 @@ Quaternion Math
 
 
 .. py:function:: quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[3,Float], angle: Float) -> None
+
+    Extract the rotation axis and angle radians a quaternion represents.
+
+
+.. py:function:: quat_to_axis_angle(quat: Quaternion[Float]) -> Tuple[Vector[3,Float], Float]
+    :noindex:
+    :nocontentsentry:
 
     Extract the rotation axis and angle radians a quaternion represents.
 

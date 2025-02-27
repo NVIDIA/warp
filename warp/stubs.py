@@ -673,7 +673,7 @@ def identity(n: int32, dtype: Scalar) -> Matrix[Any, Any, Scalar]:
 
 
 @over
-def svd3(A: Matrix[3, 3, Float], U: Matrix[3, 3, Float], sigma: Vector[3, Float], V: Matrix[3, 3, Scalar]):
+def svd3(A: Matrix[3, 3, Float], U: Matrix[3, 3, Float], sigma: Vector[3, Float], V: Matrix[3, 3, Float]):
     """Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
     while the left and right basis vectors are returned in ``U`` and ``V``.
     """
@@ -681,9 +681,33 @@ def svd3(A: Matrix[3, 3, Float], U: Matrix[3, 3, Float], sigma: Vector[3, Float]
 
 
 @over
-def svd2(A: Matrix[2, 2, Float], U: Matrix[2, 2, Float], sigma: Vector[2, Float], V: Matrix[2, 2, Scalar]):
+def svd3(A: Matrix[3, 3, Float]) -> Tuple[Matrix[3, 3, Float], Vector[3, Float], Matrix[3, 3, Float]]:
+    """Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
+    while the left and right basis vectors are returned in ``U`` and ``V``.
+    """
+    ...
+
+
+@over
+def svd2(A: Matrix[2, 2, Float]) -> Tuple[Matrix[2, 2, Float], Vector[2, Float], Matrix[2, 2, Float]]:
     """Compute the SVD of a 2x2 matrix ``A``. The singular values are returned in ``sigma``,
     while the left and right basis vectors are returned in ``U`` and ``V``.
+    """
+    ...
+
+
+@over
+def svd2(A: Matrix[2, 2, Float], U: Matrix[2, 2, Float], sigma: Vector[2, Float], V: Matrix[2, 2, Float]):
+    """Compute the SVD of a 2x2 matrix ``A``. The singular values are returned in ``sigma``,
+    while the left and right basis vectors are returned in ``U`` and ``V``.
+    """
+    ...
+
+
+@over
+def qr3(A: Matrix[3, 3, Float]) -> Tuple[Matrix[3, 3, Float], Matrix[3, 3, Float]]:
+    """Compute the QR decomposition of a 3x3 matrix ``A``. The orthogonal matrix is returned in ``Q``,
+    while the upper triangular matrix is returned in ``R``.
     """
     ...
 
@@ -692,6 +716,14 @@ def svd2(A: Matrix[2, 2, Float], U: Matrix[2, 2, Float], sigma: Vector[2, Float]
 def qr3(A: Matrix[3, 3, Float], Q: Matrix[3, 3, Float], R: Matrix[3, 3, Float]):
     """Compute the QR decomposition of a 3x3 matrix ``A``. The orthogonal matrix is returned in ``Q``,
     while the upper triangular matrix is returned in ``R``.
+    """
+    ...
+
+
+@over
+def eig3(A: Matrix[3, 3, Float]) -> Tuple[Matrix[3, 3, Float], Vector[3, Float]]:
+    """Compute the eigendecomposition of a 3x3 matrix ``A``. The eigenvectors are returned as the columns of ``Q``,
+    while the corresponding eigenvalues are returned in ``d``.
     """
     ...
 
@@ -744,6 +776,12 @@ def quat_from_axis_angle(axis: Vector[3, Float], angle: Float) -> Quaternion[Flo
 
 @over
 def quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[3, Float], angle: Float):
+    """Extract the rotation axis and angle radians a quaternion represents."""
+    ...
+
+
+@over
+def quat_to_axis_angle(quat: Quaternion[Float]) -> Tuple[Vector[3, Float], Float]:
     """Extract the rotation axis and angle radians a quaternion represents."""
     ...
 

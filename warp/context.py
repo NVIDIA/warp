@@ -6466,7 +6466,7 @@ def type_str(t):
         return "Callable"
     elif isinstance(t, int):
         return str(t)
-    elif isinstance(t, List):
+    elif isinstance(t, (List, tuple)):
         return "Tuple[" + ", ".join(map(type_str, t)) + "]"
     elif isinstance(t, warp.array):
         return f"Array[{type_str(t.dtype)}]"
