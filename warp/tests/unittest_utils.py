@@ -384,7 +384,8 @@ def write_junit_results(
             error.text = str(test_data[4])  # Stacktrace
         elif test_status == "SKIP":
             skip = ET.SubElement(test_case, "skipped")
-            skip.text = str(test_data[3])  # The skip reason
+            # Set the skip reason
+            skip.set("message", str(test_data[3]))
 
     tree = ET.ElementTree(root)
 
