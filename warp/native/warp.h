@@ -325,7 +325,7 @@ extern "C"
 
     WP_API void* cuda_event_create(void* context, unsigned flags);
     WP_API void cuda_event_destroy(void* event);
-    WP_API void cuda_event_record(void* event, void* stream);
+    WP_API void cuda_event_record(void* event, void* stream, bool timing=false);
     WP_API void cuda_event_synchronize(void* event);
     WP_API float cuda_event_elapsed_time(void* start_event, void* end_event);
 

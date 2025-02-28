@@ -2461,6 +2461,7 @@ class Event:
             raise RuntimeError(f"Device {device} is not a CUDA device")
 
         self.device = device
+        self.enable_timing = enable_timing
 
         if cuda_event is not None:
             self.cuda_event = cuda_event
@@ -2608,7 +2609,7 @@ class Stream:
                 f"Event from device {event.device} cannot be recorded on stream from device {self.device}"
             )
 
-        runtime.core.cuda_event_record(event.cuda_event, self.cuda_stream)
+        runtime.core.cuda_event_record(event.cuda_event, self.cuda_stream, event.enable_timing)
 
         return event
 
@@ -3595,7 +3596,7 @@ class Runtime:
             self.core.cuda_event_create.restype = ctypes.c_void_p
             self.core.cuda_event_destroy.argtypes = [ctypes.c_void_p]
             self.core.cuda_event_destroy.restype = None
-            self.core.cuda_event_record.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_event_record.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool]
             self.core.cuda_event_record.restype = None
             self.core.cuda_event_synchronize.argtypes = [ctypes.c_void_p]
             self.core.cuda_event_synchronize.restype = None

@@ -334,6 +334,27 @@ def test_event_elapsed_time(test, device):
     test.assertGreater(elapsed, 0)
 
 
+def test_event_elapsed_time_graph(test, device):
+    stream = wp.get_stream(device)
+    e1 = wp.Event(device, enable_timing=True)
+    e2 = wp.Event(device, enable_timing=True)
+
+    a = wp.zeros(N, dtype=float, device=device)
+
+    with wp.ScopedCapture(device) as capture:
+        stream.record_event(e1)
+        wp.launch(inc, dim=N, inputs=[a], device=device)
+        stream.record_event(e2)
+
+    wp.capture_launch(capture.graph)
+
+    wp.synchronize_device(device)
+
+    elapsed = wp.get_event_elapsed_time(e1, e2)
+
+    test.assertGreater(elapsed, 0)
+
+
 def test_stream_priority_basics(test, device):
     standard_stream = wp.Stream(device)
     test.assertEqual(standard_stream.priority, 0, "Default priority of streams must be 0.")
@@ -549,6 +570,7 @@ add_function_test(TestStreams, "test_stream_priority_timings", test_stream_prior
 
 add_function_test(TestStreams, "test_event_synchronize", test_event_synchronize, devices=devices)
 add_function_test(TestStreams, "test_event_elapsed_time", test_event_elapsed_time, devices=devices)
+add_function_test(TestStreams, "test_event_elapsed_time_graph", test_event_elapsed_time_graph, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

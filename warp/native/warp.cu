@@ -2512,9 +2512,17 @@ void cuda_event_destroy(void* event)
     check_cu(cuEventDestroy_f(static_cast<CUevent>(event)));
 }
 
-void cuda_event_record(void* event, void* stream)
+void cuda_event_record(void* event, void* stream, bool timing)
 {
-    check_cu(cuEventRecord_f(static_cast<CUevent>(event), static_cast<CUstream>(stream)));
+    if (timing && !g_captures.empty() && cuda_stream_is_capturing(stream))
+    {
+        // record timing event during graph capture
+        check_cu(cuEventRecordWithFlags_f(static_cast<CUevent>(event), static_cast<CUstream>(stream), CU_EVENT_RECORD_EXTERNAL));
+    }
+    else
+    {
+        check_cu(cuEventRecord_f(static_cast<CUevent>(event), static_cast<CUstream>(stream)));
+    }
 }
 
 void cuda_event_synchronize(void* event)

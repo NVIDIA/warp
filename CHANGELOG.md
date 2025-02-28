@@ -18,6 +18,7 @@
 - Add `wp.randu()` for random uint32 generation.
 - Add `wp.matrix_from_cols()` and `wp.matrix_from_rows()` ([GH-728](https://github.com/NVIDIA/warp/issues/278)).
 - Add a `wp.transform_from_matrix()` built-in ([GH-211](https://github.com/NVIDIA/warp/issues/211)).
+- Add support for timing events inside of CUDA graphs ([GH-556](https://github.com/NVIDIA/warp/issues/556)).
 
 ### Changed
 
