@@ -44,48 +44,54 @@ class BsrMatrix(Generic[_BlockType]):
     Should not be constructed directly but through functions such as :func:`bsr_zeros`.
 
     Attributes:
-        nrow (int): Number of rows of blocks
-        ncol (int): Number of columns of blocks
-        nnz (int):  Upper bound for the number of non-zero blocks, used for dimensioning launches; the exact number is at ``offsets[nrow-1]``. See also :meth:`nnz_sync`.
-        offsets (Array[int]): Array of size at least ``1 + nrows`` such that the start and end indices of the blocks of row ``r`` are ``offsets[r]`` and ``offsets[r+1]``, respectively.
-        columns (Array[int]): Array of size at least equal to ``nnz`` containing block column indices
-        values (Array[BlockType]): Array of size at least equal to ``nnz`` containing block values
+        nrow (int): Number of rows of blocks.
+        ncol (int): Number of columns of blocks.
+        nnz (int):  Upper bound for the number of non-zero blocks, used for
+          dimensioning launches. The exact number is at ``offsets[nrow-1]``.
+          See also :meth:`nnz_sync`.
+        offsets (Array[int]): Array of size at least ``1 + nrow`` such that the
+          start and end indices of the blocks of row ``r`` are ``offsets[r]``
+          and ``offsets[r+1]``, respectively.
+        columns (Array[int]): Array of size at least equal to ``nnz`` containing
+          block column indices.
+        values (Array[BlockType]): Array of size at least equal to ``nnz``
+          containing block values.
     """
 
     @property
     def scalar_type(self) -> Scalar:
-        """Scalar type for individual block coefficients. For CSR matrices, this is the same as the block type"""
+        """Scalar type for individual block coefficients. For CSR matrices, this is the same as the block type."""
         return type_scalar_type(self.values.dtype)
 
     @property
     def block_shape(self) -> Tuple[int, int]:
-        """Shape of the individual blocks"""
+        """Shape of the individual blocks."""
         return getattr(self.values.dtype, "_shape_", (1, 1))
 
     @property
     def block_size(self) -> int:
-        """Size of the individual blocks, i.e. number of rows per block times number of columns per block"""
+        """Size of the individual blocks, i.e. number of rows per block times number of columns per block."""
         return type_length(self.values.dtype)
 
     @property
     def shape(self) -> Tuple[int, int]:
-        """Shape of the matrix, i.e. number of rows/columns of blocks times number of rows/columns per block"""
+        """Shape of the matrix, i.e. number of rows/columns of blocks times number of rows/columns per block."""
         block_shape = self.block_shape
         return (self.nrow * block_shape[0], self.ncol * block_shape[1])
 
     @property
     def dtype(self) -> type:
-        """Data type for individual block values"""
+        """Data type for individual block values."""
         return self.values.dtype
 
     @property
     def device(self) -> wp.context.Device:
-        """Device on which offsets, columns and values are allocated -- assumed to be the same for all three arrays"""
+        """Device on which ``offsets``, ``columns``, and ``values`` are allocated -- assumed to be the same for all three arrays."""
         return self.values.device
 
     @property
     def scalar_values(self) -> wp.array:
-        """Accesses the `values` array as a 3d scalar array"""
+        """Accesses the ``values`` array as a 3d scalar array."""
         if self.block_shape == (1, 1):
             return self.values.reshape((self.nnz, 1, 1))
 
@@ -104,7 +110,7 @@ class BsrMatrix(Generic[_BlockType]):
         return values_view
 
     def uncompress_rows(self, out: wp.array = None) -> wp.array:
-        """Computes the row index for each non-zero block from the compressed row offsets"""
+        """Compute the row index for each non-zero block from the compressed row offsets."""
         if out is None:
             out = wp.empty(self.nnz, dtype=int, device=self.device)
 
@@ -117,10 +123,10 @@ class BsrMatrix(Generic[_BlockType]):
         return out
 
     def nnz_sync(self):
-        """Ensures that any ongoing transfer of the exact nnz number from the device offsets array to the host has completed,
-        and updates the nnz upper bound.
+        """Ensure that any ongoing transfer of the exact nnz number from the device offsets array to the host has completed
+        and update the nnz upper bound.
 
-        See also :meth:`copy_nnz_async`
+        See also :meth:`copy_nnz_async`.
         """
 
         if self._is_nnz_transfer_setup():
@@ -131,10 +137,11 @@ class BsrMatrix(Generic[_BlockType]):
 
     def copy_nnz_async(self, known_nnz: int = None):
         """
-        Starts the asynchronous transfer of the exact nnz from the device offsets array to host, and records an event for completion.
+        Start the asynchronous transfer of the exact nnz from the device offsets array to host and records an event for completion.
+
         Needs to be called whenever the offsets array has been modified from outside ``warp.sparse``.
 
-        See also :meth:`nnz_sync`
+        See also :meth:`nnz_sync`.
         """
         if known_nnz is not None:
             self.nnz = int(known_nnz)
@@ -218,7 +225,7 @@ class BsrMatrix(Generic[_BlockType]):
         return _BsrScalingExpression(self, -1.0)
 
     def transpose(self):
-        """Returns a transposed copy of this matrix"""
+        """Return a transposed copy of this matrix."""
         return bsr_transposed(self)
 
 
@@ -230,15 +237,15 @@ def bsr_matrix_t(dtype: BlockType):
 
     class BsrMatrixTyped(BsrMatrix):
         nrow: int
-        """Number of rows of blocks"""
+        """Number of rows of blocks."""
         ncol: int
-        """Number of columns of blocks"""
+        """Number of columns of blocks."""
         nnz: int
-        """Upper bound for the number of non-zeros"""
+        """Upper bound for the number of non-zeros."""
         offsets: wp.array(dtype=int)
-        """Array of size at least 1 + nrows"""
+        """Array of size at least ``1 + nrow``."""
         columns: wp.array(dtype=int)
-        """Array of size at least equal to nnz"""
+        """Array of size at least equal to ``nnz``."""
         values: wp.array(dtype=dtype)
 
     module = wp.get_module(BsrMatrix.__module__)
@@ -265,16 +272,16 @@ def bsr_zeros(
     block_type: BlockType,
     device: wp.context.Devicelike = None,
 ) -> BsrMatrix:
-    """
-    Constructs and returns an empty BSR or CSR matrix with the given shape
+    """Construct and return an empty BSR or CSR matrix with the given shape.
 
     Args:
-        bsr: The BSR or CSR matrix to set to zero
-        rows_of_blocks: Number of rows of blocks
-        cols_of_blocks: Number of columns of blocks
-        block_type: Type of individual blocks. For CSR matrices, this should be a scalar type;
-                    for BSR matrices, this should be a matrix type (e.g. from :func:`warp.mat`)
-        device: Device on which to allocate the matrix arrays
+        bsr: The BSR or CSR matrix to set to zero.
+        rows_of_blocks: Number of rows of blocks.
+        cols_of_blocks: Number of columns of blocks.
+        block_type: Type of individual blocks.
+          For CSR matrices, this should be a scalar type.
+          For BSR matrices, this should be a matrix type (e.g. from :func:`warp.mat`).
+        device: Device on which to allocate the matrix arrays.
     """
 
     bsr = bsr_matrix_t(block_type)()
@@ -311,13 +318,12 @@ def bsr_set_zero(
     rows_of_blocks: Optional[int] = None,
     cols_of_blocks: Optional[int] = None,
 ):
-    """
-    Sets a BSR matrix to zero, possibly changing its size
+    """Set a BSR matrix to zero, possibly changing its size.
 
     Args:
-        bsr: The BSR or CSR matrix to set to zero
-        rows_of_blocks: If not ``None``, the new number of rows of blocks
-        cols_of_blocks: If not ``None``, the new number of columns of blocks
+        bsr: The BSR or CSR matrix to set to zero.
+        rows_of_blocks: If not ``None``, the new number of rows of blocks.
+        cols_of_blocks: If not ``None``, the new number of columns of blocks.
     """
 
     if rows_of_blocks is not None:
@@ -338,20 +344,19 @@ def bsr_set_from_triplets(
     prune_numerical_zeros: bool = True,
     masked: bool = False,
 ):
-    """
-    Fills a BSR matrix with values defined by coordinate-oriented (COO) triplets, discarding existing blocks.
+    """Fill a BSR matrix with values defined by coordinate-oriented (COO) triplets, discarding existing blocks.
 
     The first dimension of the three input arrays must match and indicates the number of COO triplets.
 
     Args:
-        dest: Sparse matrix to populate
-        rows: Row index for each non-zero
-        columns: Columns index for each non-zero
+        dest: Sparse matrix to populate.
+        rows: Row index for each non-zero.
+        columns: Columns index for each non-zero.
         values: Block values for each non-zero. Must be either a one-dimensional array with data type identical
-          to the `dest` matrix's block type, or a 3d array with data type equal to the `dest` matrix's scalar type.
-          If None, the values array of the rsulting matrix will be allocated but uninitialized
-        prune_numerical_zeros: If True, will ignore the zero-valued blocks
-        masked: If True, ignore blocks that are not existing non-zeros of `dest`
+          to the ``dest`` matrix's block type, or a 3d array with data type equal to the ``dest`` matrix's scalar type.
+          If ``None``, the values array of the resulting matrix will be allocated but uninitialized.
+        prune_numerical_zeros: If ``True``, will ignore the zero-valued blocks.
+        masked: If ``True``, ignore blocks that are not existing non-zeros of ``dest``.
     """
 
     if rows.device != columns.device or rows.device != dest.device:
@@ -441,19 +446,18 @@ def bsr_from_triplets(
     values: "Array[Union[Scalar, BlockType[Rows, Cols, Scalar]]]",
     prune_numerical_zeros: bool = True,
 ):
-    """
-    Constructs a BSR matrix with values defined by coordinate-oriented (COO) triplets.
+    """Constructs a BSR matrix with values defined by coordinate-oriented (COO) triplets.
 
     The first dimension of the three input arrays must match and indicates the number of COO triplets.
 
     Args:
-        rows_of_blocks: Number of rows of blocks
-        cols_of_blocks: Number of columns of blocks
-        rows: Row index for each non-zero
-        columns: Columns index for each non-zero
+        rows_of_blocks: Number of rows of blocks.
+        cols_of_blocks: Number of columns of blocks.
+        rows: Row index for each non-zero.
+        columns: Columns index for each non-zero.
         values: Block values for each non-zero. Must be either a one-dimensional array with data type identical
-          to the `dest` matrix's block type, or a 3d array with data type equal to the `dest` matrix's scalar type.
-        prune_numerical_zeros: If True, will ignore the zero-valued blocks
+          to the ``dest`` matrix's block type, or a 3d array with data type equal to the ``dest`` matrix's scalar type.
+        prune_numerical_zeros: If ``True``, will ignore the zero-valued blocks.
     """
 
     if values.ndim == 3:
@@ -584,7 +588,7 @@ def _bsr_row_index(
     row_count: int,
     block: int,
 ):
-    """Index of the row containing a block, or -1 if non-existing"""
+    """Index of the row containing a block, or -1 if non-existing."""
     return wp.select(block >= offsets[row_count], wp.lower_bound(offsets, 0, row_count + 1, block + 1), 0) - 1
 
 
@@ -696,15 +700,16 @@ def bsr_assign(
     structure_only: bool = False,
     masked: bool = False,
 ):
-    """Copies the content of the `src` BSR matrix to `dest`.
+    """Copy the content of the ``src`` BSR matrix to ``dest``.
 
     Args:
-      src: Matrix to be copied
-      dest: Destination matrix. May have a different block shape of scalar type than `src`, in which case the required casting will be performed.
+      src: Matrix to be copied.
+      dest: Destination matrix. May have a different block shape or scalar type
+        than ``src``, in which case the required casting will be performed.
       structure_only: If ``True``, only the non-zeros indices are copied, and uninitialized value storage is allocated
-        to accommodate at least `src.nnz` blocks. If `structure_only` is ``False``, values are also copied with implicit
+        to accommodate at least ``src.nnz`` blocks. If ``structure_only`` is ``False``, values are also copied with implicit
         casting if the two matrices use distinct scalar types.
-      masked: If ``True``, prevent the assignement operatio from adding new non-zeros blocks to `dest`
+      masked: If ``True``, prevent the assignment operation from adding new non-zeros blocks to ``dest``.
     """
 
     src, src_scale = _extract_matrix_and_scale(src)
@@ -846,15 +851,15 @@ def bsr_copy(
     block_shape: Optional[Tuple[int, int]] = None,
     structure_only: bool = False,
 ):
-    """Returns a copy of matrix ``A``, possibly changing its scalar type.
+    """Return a copy of matrix ``A``, possibly changing its scalar type.
 
     Args:
-       A: Matrix to be copied
-       scalar_type: If provided, the returned matrix will use this scalar type instead of the one from `A`.
-       block_shape: If provided, the returned matrix will use blocks of this shape instead of the one from `A`.
-         Both dimensions of `block_shape` must be either a multiple or an exact divider of the ones from `A`.
+       A: Matrix to be copied.
+       scalar_type: If provided, the returned matrix will use this scalar type instead of the one from ``A``.
+       block_shape: If provided, the returned matrix will use blocks of this shape instead of the one from ``A``.
+         Both dimensions of ``block_shape`` must be either a multiple or an exact divider of the ones from ``A``.
        structure_only: If ``True``, only the non-zeros indices are copied, and uninitialized value storage is allocated
-         to accommodate at least `src.nnz` blocks. If `structure_only` is ``False``, values are also copied with implicit
+         to accommodate at least ``src.nnz`` blocks. If ``structure_only`` is ``False``, values are also copied with implicit
          casting if the two matrices use distinct scalar types.
     """
     if scalar_type is None:
@@ -881,7 +886,7 @@ def bsr_set_transpose(
     dest: BsrMatrix[BlockType[Cols, Rows, Scalar]],
     src: BsrMatrixOrExpression[BlockType[Rows, Cols, Scalar]],
 ):
-    """Assigns the transposed matrix `src` to matrix `dest`"""
+    """Assign the transposed matrix ``src`` to matrix ``dest``."""
 
     src, src_scale = _extract_matrix_and_scale(src)
 
@@ -942,8 +947,8 @@ def bsr_set_transpose(
     bsr_scale(dest, src_scale)
 
 
-def bsr_transposed(A: BsrMatrixOrExpression):
-    """Returns a copy of the transposed matrix `A`"""
+def bsr_transposed(A: BsrMatrixOrExpression) -> BsrMatrix:
+    """Return a copy of the transposed matrix ``A``."""
 
     if A.block_shape == (1, 1):
         block_type = A.values.dtype
@@ -976,11 +981,11 @@ def _bsr_get_diag_kernel(
 
 
 def bsr_get_diag(A: BsrMatrixOrExpression[BlockType], out: "Optional[Array[BlockType]]" = None) -> "Array[BlockType]":
-    """Returns the array of blocks that constitute the diagonal of a sparse matrix.
+    """Return the array of blocks that constitute the diagonal of a sparse matrix.
 
     Args:
-        A: the sparse matrix from which to extract the diagonal
-        out: if provided, the array into which to store the diagonal blocks
+        A: The sparse matrix from which to extract the diagonal.
+        out: If provided, the array into which to store the diagonal blocks.
     """
 
     A, scale = _extract_matrix_and_scale(A)
@@ -1024,21 +1029,26 @@ def bsr_set_diag(
     diag: "Union[BlockType, Array[BlockType]]",
     rows_of_blocks: Optional[int] = None,
     cols_of_blocks: Optional[int] = None,
-):
-    """Sets `A` as a block-diagonal matrix
+) -> None:
+    """Set ``A`` as a block-diagonal matrix.
 
     Args:
-        A: the sparse matrix to modify
-        diag: Either a warp array of type ``A.values.dtype``, in which case each element will define one block of the diagonal,
-              a constant value of type ``A.values.dtype``, in which case it will get assigned to all diagonal blocks,
-              or ``None``, in which case the values are left uninitialized
-        rows_of_blocks: If not ``None``, the new number of rows of blocks
-        cols_of_blocks: If not ``None``, the new number of columns of blocks
+        A: The sparse matrix to modify.
+        diag: Specifies the values for diagonal blocks. Can be one of:
 
-    The shape of the matrix will be defined one of the following, in that order:
-      - `rows_of_blocks` and `cols_of_blocks`, if provided. If only one is given, the second is assumed equal.
-      - the first dimension of `diag`, if `diag` is an array
-      - the current dimensions of `A` otherwise
+          - A Warp array of type ``A.values.dtype``: Each element defines one block of the diagonal
+          - A constant value of type ``A.values.dtype``: This value is assigned to all diagonal blocks
+          - ``None``: Diagonal block values are left uninitialized
+
+        rows_of_blocks: If not ``None``, the new number of rows of blocks.
+        cols_of_blocks: If not ``None``, the new number of columns of blocks.
+
+    The shape of the matrix will be defined one of the following, in this order:
+
+    - ``rows_of_blocks`` and ``cols_of_blocks``, if provided.
+      If only one is given, the second is assumed equal.
+    - The first dimension of ``diag``, if ``diag`` is an array
+    - The current dimensions of ``A`` otherwise
     """
 
     if rows_of_blocks is None and cols_of_blocks is not None:
@@ -1080,19 +1090,23 @@ def bsr_diag(
     block_type: Optional[BlockType] = None,
     device=None,
 ) -> BsrMatrix["BlockType"]:
-    """Creates and returns a block-diagonal BSR matrix from an given block value or array of block values.
+    """Create and return a block-diagonal BSR matrix from an given block value or array of block values.
 
     Args:
-        diag: Either a warp array of type ``A.values.dtype``, in which case each element will define one block of the diagonal,
-              or a constant value of type ``A.values.dtype``, in which case it will get assigned to all diagonal blocks.
+        diag: Specifies the values for diagonal blocks. Can be one of:
+
+          - A Warp array of type ``A.values.dtype``: Each element defines one block of the diagonal
+          - A constant value of type ``A.values.dtype``: This value is assigned to all diagonal blocks
         rows_of_blocks: If not ``None``, the new number of rows of blocks
         cols_of_blocks: If not ``None``, the new number of columns of blocks
-        block_type: If `diag` is ``None``, block type of the matrix. Otherwise deduced from `diag`
-        device: If `diag` is not a warp array, device on which to alocate the matrix. Otherwise deduced from `diag`
+        block_type: If ``diag`` is ``None``, block type of the matrix. Otherwise deduced from ``diag``
+        device: If ``diag`` is not a Warp array, device on which to allocate the matrix. Otherwise deduced from ``diag``
 
-    The shape of the matrix will be defined one of the following, in that order:
-      - `rows_of_blocks` and `cols_of_blocks`, if provided. If only one is given, the second is assumed equal.
-      - the first dimension of `diag`, if `diag` is an array
+    The shape of the matrix will be defined one of the following, in this order:
+
+    - ``rows_of_blocks`` and ``cols_of_blocks``, if provided.
+      If only one is given, the second is assumed equal.
+    - The first dimension of ``diag`` if ``diag`` is an array.
     """
 
     if rows_of_blocks is None and cols_of_blocks is not None:
@@ -1126,12 +1140,13 @@ def bsr_diag(
     return A
 
 
-def bsr_set_identity(A: BsrMatrix, rows_of_blocks: Optional[int] = None):
-    """Sets `A` as the identity matrix
+def bsr_set_identity(A: BsrMatrix, rows_of_blocks: Optional[int] = None) -> None:
+    """Set ``A`` as the identity matrix.
 
     Args:
-        A: the sparse matrix to modify
-        rows_of_blocks: if provided, the matrix will be resized as a square matrix with `rows_of_blocks` rows and columns.
+        A: The sparse matrix to modify.
+        rows_of_blocks: If provided, the matrix will be resized as a square
+          matrix with ``rows_of_blocks`` rows and columns.
     """
 
     if A.block_shape == (1, 1):
@@ -1149,11 +1164,11 @@ def bsr_identity(
     block_type: BlockType[Rows, Rows, Scalar],
     device: wp.context.Devicelike = None,
 ) -> BsrMatrix[BlockType[Rows, Rows, Scalar]]:
-    """Creates and returns a square identity matrix.
+    """Create and return a square identity matrix.
 
     Args:
         rows_of_blocks: Number of rows and columns of blocks in the created matrix.
-        block_type: Block type for the newly created matrix -- must be square
+        block_type: Block type for the newly created matrix. Must be square
         device: Device onto which to allocate the data arrays
     """
     A = bsr_zeros(
@@ -1175,9 +1190,7 @@ def _bsr_scale_kernel(
 
 
 def bsr_scale(x: BsrMatrixOrExpression, alpha: Scalar) -> BsrMatrix:
-    """
-    Performs the operation ``x := alpha * x`` on BSR matrix `x` and returns `x`
-    """
+    """Perform the operation ``x := alpha * x`` on BSR matrix ``x`` and return ``x``."""
 
     x, scale = _extract_matrix_and_scale(x)
     alpha *= scale
@@ -1225,7 +1238,7 @@ def _bsr_axpy_add_block(
 
 
 class bsr_axpy_work_arrays:
-    """Opaque structure for persisting :func:`bsr_axpy` temporary work buffers across calls"""
+    """Opaque structure for persisting :func:`bsr_axpy` temporary work buffers across calls."""
 
     def __init__(self):
         self._reset(None)
@@ -1259,17 +1272,20 @@ def bsr_axpy(
     work_arrays: Optional[bsr_axpy_work_arrays] = None,
 ) -> BsrMatrix[BlockType[Rows, Cols, Scalar]]:
     """
-    Performs the sparse matrix addition ``y := alpha * X + beta * y`` on BSR matrices `x` and `y` and returns `y`.
+    Perform the sparse matrix addition ``y := alpha * X + beta * y`` on BSR matrices ``x`` and ``y`` and return ``y``.
 
-    The `x` and `y` matrices are allowed to alias.
+    The ``x`` and ``y`` matrices are allowed to alias.
 
     Args:
         x: Read-only right-hand-side.
-        y: Mutable left-hand-side. If `y` is not provided, it will be allocated and treated as zero.
-        alpha: Uniform scaling factor for `x`
-        beta: Uniform scaling factor for `y`
-        masked: If true, discard all blocks from `x` which are not existing non-zeros of `y`
-        work_arrays: In most cases this function will require the use of temporary storage; this storage can be reused across calls by passing an instance of :class:`bsr_axpy_work_arrays` in `work_arrays`.
+        y: Mutable left-hand-side. If ``y`` is not provided, it will be allocated and treated as zero.
+        alpha: Uniform scaling factor for ``x``.
+        beta: Uniform scaling factor for ``y``.
+        masked: If ``True``, discard all blocks from ``x`` which are not
+          existing non-zeros of ``y``.
+        work_arrays: In most cases, this function will require the use of temporary storage.
+          This storage can be reused across calls by passing an instance of
+          :class:`bsr_axpy_work_arrays` in ``work_arrays``.
     """
 
     x, x_scale = _extract_matrix_and_scale(x)
@@ -1521,7 +1537,7 @@ def _bsr_mm_compute_values(
 
 
 class bsr_mm_work_arrays:
-    """Opaque structure for persisting :func:`bsr_mm` temporary work buffers across calls"""
+    """Opaque structure for persisting :func:`bsr_mm` temporary work buffers across calls."""
 
     def __init__(self):
         self._reset(None)
@@ -1580,22 +1596,26 @@ def bsr_mm(
     reuse_topology: bool = False,
 ) -> BsrMatrix[BlockType[Rows, Cols, Scalar]]:
     """
-    Performs the sparse matrix-matrix multiplication ``z := alpha * x @ y + beta * z`` on BSR matrices `x`, `y` and `z`, and returns `z`.
+    Perform the sparse matrix-matrix multiplication ``z := alpha * x @ y + beta * z`` on BSR matrices ``x``, ``y`` and ``z``, and return ``z``.
 
-    The `x`, `y` and `z` matrices are allowed to alias.
-    If the matrix `z` is not provided as input, it will be allocated and treated as zero.
+    The ``x``, ``y`` and ``z`` matrices are allowed to alias.
+    If the matrix ``z`` is not provided as input, it will be allocated and treated as zero.
 
     Args:
         x: Read-only left factor of the matrix-matrix product.
         y: Read-only right factor of the matrix-matrix product.
-        z: Mutable left-hand-side. If `z` is not provided, it will be allocated and treated as zero.
+        z: Mutable left-hand-side. If ``z`` is not provided, it will be allocated and treated as zero.
         alpha: Uniform scaling factor for the ``x @ y`` product
-        beta: Uniform scaling factor for `z`
-        masked: If true, ignore all blocks from `x @ y` which are not existing non-zeros of `y`
-        work_arrays: In most cases this function will require the use of temporary storage; this storage can be reused across calls by passing an instance of :class:`bsr_mm_work_arrays` in `work_arrays`.
-        reuse_topology: If True, reuse the product topology information stored in `work_arrays` rather than recompute it from scratch.
-            The matrices x, y and z must be structurally similar to the previous call in which `work_arrays` were populated.
-            This is necessary for `bsr_mm` to be captured in a CUDA graph.
+        beta: Uniform scaling factor for ``z``
+        masked: If ``True``, ignore all blocks from ``x @ y`` which are not existing non-zeros of ``y``
+        work_arrays: In most cases, this function will require the use of temporary storage.
+          This storage can be reused across calls by passing an instance of
+          :class:`bsr_mm_work_arrays` in ``work_arrays``.
+        reuse_topology: If ``True``, reuse the product topology information
+          stored in ``work_arrays`` rather than recompute it from scratch.
+          The matrices ``x``, ``y`` and ``z`` must be structurally similar to
+          the previous call in which ``work_arrays`` were populated.
+          This is necessary for ``bsr_mm`` to be captured in a CUDA graph.
     """
 
     x, x_scale = _extract_matrix_and_scale(x)
@@ -1925,20 +1945,20 @@ def bsr_mv(
     transpose: bool = False,
     work_buffer: Optional["Array[Vector[Rows, Scalar] | Scalar]"] = None,
 ) -> "Array[Vector[Rows, Scalar] | Scalar]":
-    """
-    Performs the sparse matrix-vector product ``y := alpha * A * x + beta * y`` and returns `y`.
+    """Perform the sparse matrix-vector product ``y := alpha * A * x + beta * y`` and return ``y``.
 
-    The `x` and `y` vectors are allowed to alias.
+    The ``x`` and ``y`` vectors are allowed to alias.
 
     Args:
         A: Read-only, left matrix factor of the matrix-vector product.
         x: Read-only, right vector factor of the matrix-vector product.
-        y: Mutable left-hand-side. If `y` is not provided, it will be allocated and treated as zero.
-        alpha: Uniform scaling factor for `x`. If zero, `x` will not be read and may be left uninitialized.
-        beta: Uniform scaling factor for `y`. If zero, `y` will not be read and may be left uninitialized.
-        transpose: If ``True``, use the transpose of the matrix `A`. In this case the result is **non-deterministic**.
-        work_buffer: Temporary storage is required if and only if `x` and `y` are the same vector. If provided the `work_buffer` array
-            will be used for this purpose, otherwise a temporary allocation will be performed.
+        y: Mutable left-hand-side. If ``y`` is not provided, it will be allocated and treated as zero.
+        alpha: Uniform scaling factor for ``x``. If zero, ``x`` will not be read and may be left uninitialized.
+        beta: Uniform scaling factor for ``y``. If zero, ``y`` will not be read and may be left uninitialized.
+        transpose: If ``True``, use the transpose of the matrix ``A``. In this case the result is **non-deterministic**.
+        work_buffer: Temporary storage is required if and only if ``x`` and ``y`` are the same vector.
+          If provided, the ``work_buffer`` array will be used for this purpose,
+          otherwise a temporary allocation will be performed.
     """
 
     A, A_scale = _extract_matrix_and_scale(A)
@@ -1962,7 +1982,7 @@ def bsr_mv(
     beta = A.scalar_type(beta)
 
     if A.values.device != x.device or A.values.device != y.device:
-        raise ValueError("A, x and y must reside on the same device")
+        raise ValueError("A, x, and y must reside on the same device")
 
     if x.ptr == y.ptr:
         # Aliasing case, need temporary storage
