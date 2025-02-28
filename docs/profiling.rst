@@ -271,6 +271,43 @@ In most cases, CUDA activity profiling with ``ScopedTimer`` will have less overh
 For the most accurate results, a profiling tool such as NVIDIA Nsight Systems should be used.
 The main benefit of using the manual event timing API is that it allows timing arbitrary sections of code rather than individual activities.
 
+Timing in CUDA Graphs
+~~~~~~~~~~~~~~~~~~~~~
+
+Events created with the ``enable_timing=True`` flag can be used for timing inside of CUDA graphs. We record the events during graph capture as usual, but the timings won't be available until the graph is launched and synchronized.
+
+.. code:: python
+
+    with wp.ScopedDevice("cuda:0") as device:
+
+        # ensure the module is loaded
+        wp.load_module(device=device)
+
+        # create events with enabled timing
+        e1 = wp.Event(enable_timing=True)
+        e2 = wp.Event(enable_timing=True)
+
+        n = 10000000
+
+        # begin graph capture
+        with wp.ScopedCapture() as capture:
+            # start timing...
+            wp.record_event(e1)
+
+            a = wp.zeros(n, dtype=float)
+            wp.launch(inc, dim=n, inputs=[a])
+
+            # ...end timing
+            wp.record_event(e2)
+
+        # launch the graph
+        wp.capture_launch(capture.graph)
+
+        # get elapsed time between the two events during the launch
+        elapsed = wp.get_event_elapsed_time(e1, e2)
+        print(elapsed)
+
+
 Profiling API Reference
 -----------------------
 

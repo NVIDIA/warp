@@ -1033,7 +1033,7 @@ WP_API int cuda_stream_get_priority(void* stream) { return 0; }
 
 WP_API void* cuda_event_create(void* context, unsigned flags) { return NULL; }
 WP_API void cuda_event_destroy(void* event) {}
-WP_API void cuda_event_record(void* event, void* stream) {}
+WP_API void cuda_event_record(void* event, void* stream, bool timing) {}
 WP_API void cuda_event_synchronize(void* event) {}
 WP_API float cuda_event_elapsed_time(void* start_event, void* end_event) { return 0.0f; }
 
