@@ -173,7 +173,7 @@ class Quadrature:
         qp_eval_index: QuadraturePointIndex,
     ):
         """Maps from quadrature point evaluation indices to their index in the element to which they belong
-        If the quadrature poin does not exist, should return NULL_ELEMENT_INDEX as the domain element index
+        If the quadrature point does not exist, should return NULL_ELEMENT_INDEX as the domain element index
         """
 
         element_index = element_index_arg[qp_eval_index]
@@ -181,7 +181,7 @@ class Quadrature:
 
 
 class _QuadratureWithRegularEvaluationPoints(Quadrature):
-    """Helper sublcass for quadrature formulas which use a uniform number of
+    """Helper subclass for quadrature formulas which use a uniform number of
     evaluations points per element. Avoids building explicit mapping"""
 
     def __init__(self, domain: GeometryDomain, N: int):
