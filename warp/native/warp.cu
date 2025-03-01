@@ -3233,7 +3233,7 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
         std::vector<char> lto(lto_size);
         CHECK_CUSOLVER(cusolverGetLTOIR(h, lto.size(), lto.data()));   
 
-        // This fatbin is universal, ie it is the same for any instantations of a cusolver device function
+        // This fatbin is universal, ie it is the same for any instantiations of a cusolver device function
         size_t fatbin_size = 0;
         CHECK_CUSOLVER(cusolverGetUniversalFATBINSize(h, &fatbin_size));
 
