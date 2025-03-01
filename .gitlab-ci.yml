@@ -838,7 +838,7 @@ publish dev wheels to artifactory:
     - cd dist
     - >
       jf rt u --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
-      --target-props="component_name=warp-lang;release_approver=ershi;release_status=ready;version=$VERSION;branch=$CI_COMMIT_REF_SLUG"
+      --target-props="component_name=warp-lang;release_approver=ershi;release_status=ready;version=$VERSION;branch=$CI_COMMIT_REF_SLUG;commit=$CI_COMMIT_SHA"
       '*.whl' sw-warp-pypi-local/nightly/warp-lang/
     # Set build-specific properties on individual artifacts
     - >
