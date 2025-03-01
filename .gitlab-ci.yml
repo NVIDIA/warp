@@ -725,6 +725,7 @@ create dev wheels:
     - python3 -m pip install --upgrade pip
     - python3 -m pip install build
   script:
+    - python3 tools/ci/publishing/update_git_hash.py  # Modify config.py with git hash
     - python3 tools/ci/publishing/set_nightly_version.py  # Modify VERSION.md with dev version
     - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
     - python3 -m build --wheel -C--build-option=-Plinux-x86_64

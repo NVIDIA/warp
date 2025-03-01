@@ -112,3 +112,9 @@ enable_mempools_at_init: bool = True
 
 max_unroll: int = 16
 """Maximum unroll factor for loops."""
+
+_git_commit_hash: Optional[str] = None
+"""Git commit hash associated with the Warp installation.
+
+Set automatically by CI, do not modify.
+"""
