@@ -582,13 +582,13 @@ Vector Math
     Create an identity matrix with shape=(n,n) with the type given by ``dtype``.
 
 
-.. py:function:: svd3(A: Matrix[3,3,Float], U: Matrix[3,3,Float], sigma: Vector[3,Float], V: Matrix[3,3,Float]) -> None
+.. py:function:: svd3(A: Matrix[3,3,Float]) -> Tuple[Matrix[3,3,Float], Vector[3,Float], Matrix[3,3,Float]]
 
     Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
     while the left and right basis vectors are returned in ``U`` and ``V``.
 
 
-.. py:function:: svd3(A: Matrix[3,3,Float]) -> Tuple[Matrix[3,3,Float], Vector[3,Float], Matrix[3,3,Float]]
+.. py:function:: svd3(A: Matrix[3,3,Float], U: Matrix[3,3,Float], sigma: Vector[3,Float], V: Matrix[3,3,Float]) -> None
     :noindex:
     :nocontentsentry:
 
@@ -684,12 +684,12 @@ Quaternion Math
     Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
-.. py:function:: quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[3,Float], angle: Float) -> None
+.. py:function:: quat_to_axis_angle(quat: Quaternion[Float]) -> Tuple[Vector[3,Float], Float]
 
     Extract the rotation axis and angle radians a quaternion represents.
 
 
-.. py:function:: quat_to_axis_angle(quat: Quaternion[Float]) -> Tuple[Vector[3,Float], Float]
+.. py:function:: quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[3,Float], angle: Float) -> None
     :noindex:
     :nocontentsentry:
 

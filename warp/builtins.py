@@ -1212,24 +1212,6 @@ add_builtin(
 )
 
 
-# not making these functions available outside kernels (export=False) as they
-# return data via references, which we don't currently support:
-add_builtin(
-    "svd3",
-    input_types={
-        "A": matrix(shape=(3, 3), dtype=Float),
-        "U": matrix(shape=(3, 3), dtype=Float),
-        "sigma": vector(length=3, dtype=Float),
-        "V": matrix(shape=(3, 3), dtype=Float),
-    },
-    value_type=None,
-    group="Vector Math",
-    export=False,
-    doc="""Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
-    while the left and right basis vectors are returned in ``U`` and ``V``.""",
-)
-
-
 def svd3_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is None:
         return (
@@ -1250,6 +1232,20 @@ add_builtin(
     "svd3",
     input_types={"A": matrix(shape=(3, 3), dtype=Float)},
     value_func=svd3_value_func,
+    group="Vector Math",
+    doc="""Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
+    while the left and right basis vectors are returned in ``U`` and ``V``.""",
+)
+
+add_builtin(
+    "svd3",
+    input_types={
+        "A": matrix(shape=(3, 3), dtype=Float),
+        "U": matrix(shape=(3, 3), dtype=Float),
+        "sigma": vector(length=3, dtype=Float),
+        "V": matrix(shape=(3, 3), dtype=Float),
+    },
+    value_type=None,
     group="Vector Math",
     export=False,
     doc="""Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
@@ -1521,14 +1517,6 @@ add_builtin(
     group="Quaternion Math",
     doc="Construct a quaternion representing a rotation of angle radians around the given axis.",
 )
-add_builtin(
-    "quat_to_axis_angle",
-    input_types={"quat": quaternion(dtype=Float), "axis": vector(length=3, dtype=Float), "angle": Float},
-    value_type=None,
-    group="Quaternion Math",
-    doc="Extract the rotation axis and angle radians a quaternion represents.",
-    export=False,
-)
 
 
 def quat_to_axis_angle_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
@@ -1543,6 +1531,14 @@ add_builtin(
     "quat_to_axis_angle",
     input_types={"quat": quaternion(dtype=Float)},
     value_func=quat_to_axis_angle_value_func,
+    group="Quaternion Math",
+    doc="Extract the rotation axis and angle radians a quaternion represents.",
+)
+
+add_builtin(
+    "quat_to_axis_angle",
+    input_types={"quat": quaternion(dtype=Float), "axis": vector(length=3, dtype=Float), "angle": Float},
+    value_type=None,
     group="Quaternion Math",
     doc="Extract the rotation axis and angle radians a quaternion represents.",
     export=False,
@@ -1673,7 +1669,6 @@ add_builtin(
 
 
 def transform_identity_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
-    # if arg_types is None then we are in 'export' mode
     if arg_types is None:
         # return transformation(dtype=Float)
         return transformf
@@ -4265,6 +4260,7 @@ add_builtin(
     input_types={"id": uint64, "i": int, "j": int, "k": int, "value": float},
     group="Volumes",
     doc="""Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.""",
+    export=False,
 )
 
 add_builtin(
@@ -4292,6 +4288,7 @@ add_builtin(
     input_types={"id": uint64, "i": int, "j": int, "k": int, "value": vec3},
     group="Volumes",
     doc="""Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.""",
+    export=False,
 )
 
 add_builtin(
@@ -4317,6 +4314,7 @@ add_builtin(
     input_types={"id": uint64, "i": int, "j": int, "k": int, "value": int},
     group="Volumes",
     doc="""Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.""",
+    export=False,
 )
 
 
@@ -5460,6 +5458,7 @@ add_builtin(
     input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
     value_type=None,
     hidden=True,
+    export=False,
     group="Utility",
 )
 
@@ -5469,6 +5468,7 @@ add_builtin(
     input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
     value_type=None,
     hidden=True,
+    export=False,
     group="Utility",
 )
 
@@ -5502,6 +5502,7 @@ add_builtin(
     input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
     value_type=None,
     hidden=True,
+    export=False,
     group="Utility",
 )
 
@@ -5511,6 +5512,7 @@ add_builtin(
     input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
     value_type=None,
     hidden=True,
+    export=False,
     group="Utility",
 )
 
@@ -5520,6 +5522,7 @@ add_builtin(
     input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
     value_type=None,
     hidden=True,
+    export=False,
     group="Utility",
 )
 
@@ -5529,6 +5532,7 @@ add_builtin(
     input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
     value_type=None,
     hidden=True,
+    export=False,
     group="Utility",
 )
 
@@ -5583,6 +5587,7 @@ add_builtin(
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
     value_type=None,
     hidden=True,
+    export=False,
     group="Utility",
 )
 
@@ -5594,6 +5599,7 @@ add_builtin(
     constraint=matrix_vector_sametype,
     value_type=None,
     hidden=True,
+    export=False,
     group="Utility",
 )
 
@@ -5630,6 +5636,7 @@ add_builtin(
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
     value_type=None,
     hidden=True,
+    export=False,
     group="Utility",
 )
 
@@ -5641,6 +5648,7 @@ add_builtin(
     constraint=matrix_vector_sametype,
     value_type=None,
     hidden=True,
+    export=False,
     group="Utility",
 )
 
@@ -5651,6 +5659,7 @@ add_builtin(
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
     value_type=None,
     hidden=True,
+    export=False,
     group="Utility",
 )
 
@@ -5661,6 +5670,7 @@ add_builtin(
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
     value_type=None,
     hidden=True,
+    export=False,
     group="Utility",
 )
 
@@ -5685,6 +5695,7 @@ for t in scalar_types + vector_types + (bool,):
         doc="Prints an error to stdout if ``a`` and ``b`` are not equal",
         group="Utility",
         hidden=True,
+        export=False,
     )
 
 
@@ -5712,6 +5723,7 @@ add_builtin(
     doc="Prints an error to stdout if ``a`` and ``b`` are equal",
     group="Utility",
     hidden=True,
+    export=False,
 )
 
 add_builtin(
@@ -5731,6 +5743,7 @@ add_builtin(
     doc="Prints an error to stdout if ``a`` and ``b`` are equal",
     group="Utility",
     hidden=True,
+    export=False,
 )
 
 add_builtin(
@@ -5801,11 +5814,23 @@ add_builtin(
     group="Utility",
 )
 
+
 # fuzzy compare for float values
+def expect_near_constraint(arg_types: Mapping[str, type]):
+    if not types_equal(arg_types["a"], arg_types["b"]):
+        return False
+
+    if hasattr(arg_types["a"], "_wp_scalar_type_"):
+        return types_equal(arg_types["a"]._wp_scalar_type_, arg_types["tolerance"])
+
+    return types_equal(arg_types["a"], arg_types["tolerance"])
+
+
 add_builtin(
     "expect_near",
     input_types={"a": Float, "b": Float, "tolerance": Float},
     defaults={"tolerance": 1.0e-6},
+    constraint=expect_near_constraint,
     value_type=None,
     doc="Prints an error to stdout if ``a`` and ``b`` are not closer than tolerance in magnitude",
     group="Utility",
@@ -5814,6 +5839,7 @@ add_builtin(
     "expect_near",
     input_types={"a": vector(length=Any, dtype=Float), "b": vector(length=Any, dtype=Float), "tolerance": Float},
     defaults={"tolerance": 1.0e-6},
+    constraint=expect_near_constraint,
     value_type=None,
     doc="Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude",
     group="Utility",
@@ -5822,6 +5848,7 @@ add_builtin(
     "expect_near",
     input_types={"a": quaternion(dtype=Float), "b": quaternion(dtype=Float), "tolerance": Float},
     defaults={"tolerance": 1.0e-6},
+    constraint=expect_near_constraint,
     value_type=None,
     doc="Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude",
     group="Utility",
@@ -5834,6 +5861,7 @@ add_builtin(
         "tolerance": Float,
     },
     defaults={"tolerance": 1.0e-6},
+    constraint=expect_near_constraint,
     value_type=None,
     doc="Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude",
     group="Utility",

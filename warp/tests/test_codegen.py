@@ -747,6 +747,14 @@ def test_multiple_return_values(test, device):
     expected_axis = wp.vec3h(0.26726124, 0.53452247, 0.80178368)
     expected_angle = 1.50408018
 
+    axis, angle = wp.quat_to_axis_angle(q)
+
+    test.assertAlmostEqual(axis[0], expected_axis[0], places=3)
+    test.assertAlmostEqual(axis[1], expected_axis[1], places=3)
+    test.assertAlmostEqual(axis[2], expected_axis[2], places=3)
+
+    test.assertAlmostEqual(angle, expected_angle, places=3)
+
     wp.launch(
         test_multiple_return_values_quat_to_axis_angle_kernel,
         dim=1,
@@ -767,6 +775,32 @@ def test_multiple_return_values(test, device):
         0.66506463, 0.62531471, 0.40825251,
     )
     # fmt: on
+
+    U, sigma, V = wp.svd3(A)
+
+    test.assertAlmostEqual(U[0][0], expected_U[0][0], places=5)
+    test.assertAlmostEqual(U[0][1], expected_U[0][1], places=5)
+    test.assertAlmostEqual(U[0][2], expected_U[0][2], places=5)
+    test.assertAlmostEqual(U[1][0], expected_U[1][0], places=5)
+    test.assertAlmostEqual(U[1][1], expected_U[1][1], places=5)
+    test.assertAlmostEqual(U[1][2], expected_U[1][2], places=5)
+    test.assertAlmostEqual(U[2][0], expected_U[2][0], places=5)
+    test.assertAlmostEqual(U[2][1], expected_U[2][1], places=5)
+    test.assertAlmostEqual(U[2][2], expected_U[2][2], places=5)
+
+    test.assertAlmostEqual(sigma[0], expected_sigma[0], places=5)
+    test.assertAlmostEqual(sigma[1], expected_sigma[1], places=5)
+    test.assertAlmostEqual(sigma[2], expected_sigma[2], places=5)
+
+    test.assertAlmostEqual(V[0][0], expected_V[0][0], places=5)
+    test.assertAlmostEqual(V[0][1], expected_V[0][1], places=5)
+    test.assertAlmostEqual(V[0][2], expected_V[0][2], places=5)
+    test.assertAlmostEqual(V[1][0], expected_V[1][0], places=5)
+    test.assertAlmostEqual(V[1][1], expected_V[1][1], places=5)
+    test.assertAlmostEqual(V[1][2], expected_V[1][2], places=5)
+    test.assertAlmostEqual(V[2][0], expected_V[2][0], places=5)
+    test.assertAlmostEqual(V[2][1], expected_V[2][1], places=5)
+    test.assertAlmostEqual(V[2][2], expected_V[2][2], places=5)
 
     wp.launch(
         test_multiple_return_values_svd3_kernel,

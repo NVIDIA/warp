@@ -953,10 +953,25 @@ WP_API void builtin_cw_div_mat22d_mat22d(mat22d& a, mat22d& b, mat22d* ret) { *r
 WP_API void builtin_cw_div_mat33d_mat33d(mat33d& a, mat33d& b, mat33d* ret) { *ret = wp::cw_div(a, b); }
 WP_API void builtin_cw_div_mat44d_mat44d(mat44d& a, mat44d& b, mat44d* ret) { *ret = wp::cw_div(a, b); }
 WP_API void builtin_cw_div_spatial_matrixd_spatial_matrixd(spatial_matrixd& a, spatial_matrixd& b, spatial_matrixd* ret) { *ret = wp::cw_div(a, b); }
+WP_API void builtin_svd3_mat33h(mat33h& A, mat33h& ret_0, vec3h& ret_1, mat33h& ret_2) { wp::svd3(A, ret_0, ret_1, ret_2); }
+WP_API void builtin_svd3_mat33f(mat33f& A, mat33f& ret_0, vec3f& ret_1, mat33f& ret_2) { wp::svd3(A, ret_0, ret_1, ret_2); }
+WP_API void builtin_svd3_mat33d(mat33d& A, mat33d& ret_0, vec3d& ret_1, mat33d& ret_2) { wp::svd3(A, ret_0, ret_1, ret_2); }
+WP_API void builtin_svd2_mat22h(mat22h& A, mat22h& ret_0, vec2h& ret_1, mat22h& ret_2) { wp::svd2(A, ret_0, ret_1, ret_2); }
+WP_API void builtin_svd2_mat22f(mat22f& A, mat22f& ret_0, vec2f& ret_1, mat22f& ret_2) { wp::svd2(A, ret_0, ret_1, ret_2); }
+WP_API void builtin_svd2_mat22d(mat22d& A, mat22d& ret_0, vec2d& ret_1, mat22d& ret_2) { wp::svd2(A, ret_0, ret_1, ret_2); }
+WP_API void builtin_qr3_mat33h(mat33h& A, mat33h& ret_0, mat33h& ret_1) { wp::qr3(A, ret_0, ret_1); }
+WP_API void builtin_qr3_mat33f(mat33f& A, mat33f& ret_0, mat33f& ret_1) { wp::qr3(A, ret_0, ret_1); }
+WP_API void builtin_qr3_mat33d(mat33d& A, mat33d& ret_0, mat33d& ret_1) { wp::qr3(A, ret_0, ret_1); }
+WP_API void builtin_eig3_mat33h(mat33h& A, mat33h& ret_0, vec3h& ret_1) { wp::eig3(A, ret_0, ret_1); }
+WP_API void builtin_eig3_mat33f(mat33f& A, mat33f& ret_0, vec3f& ret_1) { wp::eig3(A, ret_0, ret_1); }
+WP_API void builtin_eig3_mat33d(mat33d& A, mat33d& ret_0, vec3d& ret_1) { wp::eig3(A, ret_0, ret_1); }
 WP_API void builtin_quat_identity(quatf* ret) { *ret = wp::quat_identity(); }
 WP_API void builtin_quat_from_axis_angle_vec3h_float16(vec3h& axis, float16 angle, quath* ret) { *ret = wp::quat_from_axis_angle(axis, angle); }
 WP_API void builtin_quat_from_axis_angle_vec3f_float32(vec3f& axis, float32 angle, quatf* ret) { *ret = wp::quat_from_axis_angle(axis, angle); }
 WP_API void builtin_quat_from_axis_angle_vec3d_float64(vec3d& axis, float64 angle, quatd* ret) { *ret = wp::quat_from_axis_angle(axis, angle); }
+WP_API void builtin_quat_to_axis_angle_quath(quath& quat, vec3h& ret_0, float16& ret_1) { wp::quat_to_axis_angle(quat, ret_0, ret_1); }
+WP_API void builtin_quat_to_axis_angle_quatf(quatf& quat, vec3f& ret_0, float32& ret_1) { wp::quat_to_axis_angle(quat, ret_0, ret_1); }
+WP_API void builtin_quat_to_axis_angle_quatd(quatd& quat, vec3d& ret_0, float64& ret_1) { wp::quat_to_axis_angle(quat, ret_0, ret_1); }
 WP_API void builtin_quat_from_matrix_mat33h(mat33h& mat, quath* ret) { *ret = wp::quat_from_matrix(mat); }
 WP_API void builtin_quat_from_matrix_mat33f(mat33f& mat, quatf* ret) { *ret = wp::quat_from_matrix(mat); }
 WP_API void builtin_quat_from_matrix_mat33d(mat33d& mat, quatd* ret) { *ret = wp::quat_from_matrix(mat); }
@@ -1193,6 +1208,72 @@ WP_API void builtin_assign_copy_mat22d_int32_vec2d(mat22d& a, int32 i, vec2d& va
 WP_API void builtin_assign_copy_mat33d_int32_vec3d(mat33d& a, int32 i, vec3d& value, mat33d* ret) { *ret = wp::assign_copy(a, i, value); }
 WP_API void builtin_assign_copy_mat44d_int32_vec4d(mat44d& a, int32 i, vec4d& value, mat44d* ret) { *ret = wp::assign_copy(a, i, value); }
 WP_API void builtin_assign_copy_spatial_matrixd_int32_spatial_vectord(spatial_matrixd& a, int32 i, spatial_vectord& value, spatial_matrixd* ret) { *ret = wp::assign_copy(a, i, value); }
+WP_API void builtin_expect_eq_int8_int8(int8 a, int8 b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_uint8_uint8(uint8 a, uint8 b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_int16_int16(int16 a, int16 b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_uint16_uint16(uint16 a, uint16 b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_int32_int32(int32 a, int32 b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_uint32_uint32(uint32 a, uint32 b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_int64_int64(int64 a, int64 b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_uint64_uint64(uint64 a, uint64 b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_float16_float16(float16 a, float16 b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_float32_float32(float32 a, float32 b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_float64_float64(float64 a, float64 b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_quath_quath(quath& a, quath& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_quatf_quatf(quatf& a, quatf& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_quatd_quatd(quatd& a, quatd& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_transformh_transformh(transformh& a, transformh& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_transformf_transformf(transformf& a, transformf& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_transformd_transformd(transformd& a, transformd& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_bool_bool(bool a, bool b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec2h_vec2h(vec2h& a, vec2h& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec3h_vec3h(vec3h& a, vec3h& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec4h_vec4h(vec4h& a, vec4h& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_spatial_vectorh_spatial_vectorh(spatial_vectorh& a, spatial_vectorh& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec2f_vec2f(vec2f& a, vec2f& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec3f_vec3f(vec3f& a, vec3f& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec4f_vec4f(vec4f& a, vec4f& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_spatial_vectorf_spatial_vectorf(spatial_vectorf& a, spatial_vectorf& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec2d_vec2d(vec2d& a, vec2d& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec3d_vec3d(vec3d& a, vec3d& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec4d_vec4d(vec4d& a, vec4d& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_spatial_vectord_spatial_vectord(spatial_vectord& a, spatial_vectord& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec2s_vec2s(vec2s& a, vec2s& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec3s_vec3s(vec3s& a, vec3s& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec4s_vec4s(vec4s& a, vec4s& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec2i_vec2i(vec2i& a, vec2i& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec3i_vec3i(vec3i& a, vec3i& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec4i_vec4i(vec4i& a, vec4i& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec2l_vec2l(vec2l& a, vec2l& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec3l_vec3l(vec3l& a, vec3l& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec4l_vec4l(vec4l& a, vec4l& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec2b_vec2b(vec2b& a, vec2b& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec3b_vec3b(vec3b& a, vec3b& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec4b_vec4b(vec4b& a, vec4b& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec2us_vec2us(vec2us& a, vec2us& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec3us_vec3us(vec3us& a, vec3us& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec4us_vec4us(vec4us& a, vec4us& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec2ui_vec2ui(vec2ui& a, vec2ui& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec3ui_vec3ui(vec3ui& a, vec3ui& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec4ui_vec4ui(vec4ui& a, vec4ui& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec2ul_vec2ul(vec2ul& a, vec2ul& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec3ul_vec3ul(vec3ul& a, vec3ul& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec4ul_vec4ul(vec4ul& a, vec4ul& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec2ub_vec2ub(vec2ub& a, vec2ub& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec3ub_vec3ub(vec3ub& a, vec3ub& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_vec4ub_vec4ub(vec4ub& a, vec4ub& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_mat22h_mat22h(mat22h& a, mat22h& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_mat33h_mat33h(mat33h& a, mat33h& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_mat44h_mat44h(mat44h& a, mat44h& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_spatial_matrixh_spatial_matrixh(spatial_matrixh& a, spatial_matrixh& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_mat22f_mat22f(mat22f& a, mat22f& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_mat33f_mat33f(mat33f& a, mat33f& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_mat44f_mat44f(mat44f& a, mat44f& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_spatial_matrixf_spatial_matrixf(spatial_matrixf& a, spatial_matrixf& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_mat22d_mat22d(mat22d& a, mat22d& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_mat33d_mat33d(mat33d& a, mat33d& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_mat44d_mat44d(mat44d& a, mat44d& b) { wp::expect_eq(a, b); }
+WP_API void builtin_expect_eq_spatial_matrixd_spatial_matrixd(spatial_matrixd& a, spatial_matrixd& b) { wp::expect_eq(a, b); }
 WP_API void builtin_lerp_float16_float16_float16(float16 a, float16 b, float16 t, float16* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void builtin_lerp_float32_float32_float32(float32 a, float32 b, float32 t, float32* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void builtin_lerp_float64_float64_float64(float64 a, float64 b, float64 t, float64* ret) { *ret = wp::lerp(a, b, t); }
@@ -1229,6 +1310,36 @@ WP_API void builtin_lerp_transformd_transformd_float64(transformd& a, transformd
 WP_API void builtin_smoothstep_float16_float16_float16(float16 a, float16 b, float16 x, float16* ret) { *ret = wp::smoothstep(a, b, x); }
 WP_API void builtin_smoothstep_float32_float32_float32(float32 a, float32 b, float32 x, float32* ret) { *ret = wp::smoothstep(a, b, x); }
 WP_API void builtin_smoothstep_float64_float64_float64(float64 a, float64 b, float64 x, float64* ret) { *ret = wp::smoothstep(a, b, x); }
+WP_API void builtin_expect_near_float16_float16_float16(float16 a, float16 b, float16 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_float32_float32_float32(float32 a, float32 b, float32 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_float64_float64_float64(float64 a, float64 b, float64 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_vec2h_vec2h_float16(vec2h& a, vec2h& b, float16 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_vec3h_vec3h_float16(vec3h& a, vec3h& b, float16 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_vec4h_vec4h_float16(vec4h& a, vec4h& b, float16 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_spatial_vectorh_spatial_vectorh_float16(spatial_vectorh& a, spatial_vectorh& b, float16 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_vec2f_vec2f_float32(vec2f& a, vec2f& b, float32 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_vec3f_vec3f_float32(vec3f& a, vec3f& b, float32 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_vec4f_vec4f_float32(vec4f& a, vec4f& b, float32 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_spatial_vectorf_spatial_vectorf_float32(spatial_vectorf& a, spatial_vectorf& b, float32 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_vec2d_vec2d_float64(vec2d& a, vec2d& b, float64 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_vec3d_vec3d_float64(vec3d& a, vec3d& b, float64 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_vec4d_vec4d_float64(vec4d& a, vec4d& b, float64 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_spatial_vectord_spatial_vectord_float64(spatial_vectord& a, spatial_vectord& b, float64 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_quath_quath_float16(quath& a, quath& b, float16 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_quatf_quatf_float32(quatf& a, quatf& b, float32 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_quatd_quatd_float64(quatd& a, quatd& b, float64 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_mat22h_mat22h_float16(mat22h& a, mat22h& b, float16 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_mat33h_mat33h_float16(mat33h& a, mat33h& b, float16 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_mat44h_mat44h_float16(mat44h& a, mat44h& b, float16 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_spatial_matrixh_spatial_matrixh_float16(spatial_matrixh& a, spatial_matrixh& b, float16 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_mat22f_mat22f_float32(mat22f& a, mat22f& b, float32 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_mat33f_mat33f_float32(mat33f& a, mat33f& b, float32 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_mat44f_mat44f_float32(mat44f& a, mat44f& b, float32 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_spatial_matrixf_spatial_matrixf_float32(spatial_matrixf& a, spatial_matrixf& b, float32 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_mat22d_mat22d_float64(mat22d& a, mat22d& b, float64 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_mat33d_mat33d_float64(mat33d& a, mat33d& b, float64 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_mat44d_mat44d_float64(mat44d& a, mat44d& b, float64 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void builtin_expect_near_spatial_matrixd_spatial_matrixd_float64(spatial_matrixd& a, spatial_matrixd& b, float64 tolerance) { wp::expect_near(a, b, tolerance); }
 WP_API void builtin_add_float16_float16(float16 a, float16 b, float16* ret) { *ret = wp::add(a, b); }
 WP_API void builtin_add_float32_float32(float32 a, float32 b, float32* ret) { *ret = wp::add(a, b); }
 WP_API void builtin_add_float64_float64(float64 a, float64 b, float64* ret) { *ret = wp::add(a, b); }
