@@ -1,5 +1,38 @@
 # CHANGELOG
 
+## [1.6.1] - 2025-03-03
+
+### Added
+
+- Document `wp.Launch` objects ([docs](https://nvidia.github.io/warp/modules/runtime.html#launch-objects),
+  [GH-428](https://github.com/NVIDIA/warp/issues/428)).
+- Document how overwriting previously computed results can lead to incorrect gradients
+  ([docs](https://nvidia.github.io/warp/modules/differentiability.html#array-overwrites),
+  [GH-525](https://github.com/NVIDIA/warp/issues/525)).
+
+### Fixed
+
+- Fix unaligned loads with offset 2D tiles in `wp.tile_load()`.
+- Fix FP64 accuracy of thread-level matrix-matrix multiplications ([GH-489](https://github.com/NVIDIA/warp/issues/489)).
+- Fix `wp.array()` not initializing from arrays defining a CUDA array interface when the target device is CPU
+  ([GH-523](https://github.com/NVIDIA/warp/issues/523)).
+- Fix `wp.Launch` objects not storing and replaying adjoint kernel launches
+  ([GH-449](https://github.com/NVIDIA/warp/issues/449)).
+- Fix `wp.config.verify_autograd_array_access` failing to detect overwrites in generic Warp functions
+  ([GH-493](https://github.com/NVIDIA/warp/issues/493)).
+- Fix an error on Windows when closing an `OpenGLRenderer` app ([GH-488](https://github.com/NVIDIA/warp/issues/488)).
+- Fix per-vertex colors not being correctly written out to USD meshes when a constant color is being passed
+  ([GH-480](https://github.com/NVIDIA/warp/issues/480)).
+- Fix an error in capturing the `wp.sim.VBDIntegrator` with CUDA graphs when `handle_self_contact` is enabled
+  ([GH-441](https://github.com/NVIDIA/warp/issues/441)).
+- Fix an error of AABB computation in `wp.collide.TriMeshCollisionDetector`.
+- Fix URDF-imported planar joints not being set with the intended `target_ke`, `target_kd`, and `mode` parameters
+  ([GH-454](https://github.com/NVIDIA/warp/issues/454)).
+- Fix `ModelBuilder.add_builder()` to use correct offsets for `ModelBuilder.joint_parent` and `ModelBuilder.joint_child`
+  ([GH-432](https://github.com/NVIDIA/warp/issues/432))
+- Fix underallocation of contact points for box–sphere and box–capsule collisions.
+- Fix `wp.randi()` documentation to show correct output range of `[-2^31, 2^31)`.
+
 ## [1.6.0] - 2025-02-03
 
 ### Added
