@@ -332,10 +332,10 @@ class VBDClothSim:
 
         self.init_pos = np.array(self.state0.particle_q.numpy(), copy=True)
 
-        self.use_cuda_graph = wp.get_device().is_cuda and use_cuda_graph
+        self.use_cuda_graph = device.is_cuda and use_cuda_graph
         self.graph = None
         if self.use_cuda_graph:
-            with wp.ScopedCapture() as capture:
+            with wp.ScopedCapture(device=device) as capture:
                 self.simulate()
             self.graph = capture.graph
 
