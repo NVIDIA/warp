@@ -332,10 +332,10 @@ class VBDClothSim:
 
         self.init_pos = np.array(self.state0.particle_q.numpy(), copy=True)
 
-        self.use_cuda_graph = wp.get_device().is_cuda and use_cuda_graph
+        self.use_cuda_graph = device.is_cuda and use_cuda_graph
         self.graph = None
         if self.use_cuda_graph:
-            with wp.ScopedCapture() as capture:
+            with wp.ScopedCapture(device=device) as capture:
                 self.simulate()
             self.graph = capture.graph
 
@@ -403,8 +403,7 @@ class TestVbd(unittest.TestCase):
 
 
 add_function_test(TestVbd, "test_vbd_cloth", test_vbd_cloth, devices=devices)
-# TODO: Fix errors on GitLab CI
-# add_function_test(TestVbd, "test_vbd_cloth_cuda_graph", test_vbd_cloth_cuda_graph, devices=cuda_devices)
+add_function_test(TestVbd, "test_vbd_cloth_cuda_graph", test_vbd_cloth_cuda_graph, devices=cuda_devices)
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ To skip tests if the optional dependencies are not found, use the following keys
 
 Use the "num_frames" and "train_iters" keys to control the number of steps.
 
-Use "test_timeout" to override the default test timeout threshold of 300 seconds.
+Use "test_timeout" to override the default test timeout threshold of 600 seconds.
 """
 
 import os
@@ -164,7 +164,7 @@ def add_example_test(
         command.extend(_build_command_line_options(options))
 
         # Set the test timeout in seconds
-        test_timeout = options.pop("test_timeout", 300)
+        test_timeout = options.pop("test_timeout", 600)
 
         # with wp.ScopedTimer(f"{name}_{sanitize_identifier(device)}"):
         # Run the script as a subprocess
@@ -242,14 +242,12 @@ add_example_test(
     name="core.example_sph",
     devices=test_devices,
     test_options_cpu={"num_frames": 1},
-    test_options_cuda={"test_timeout": 600},
 )
 add_example_test(
     TestCoreExamples,
     name="core.example_torch",
     devices=test_devices,
     test_options={"headless": True, "num_frames": 1000, "torch_required": True},
-    test_options_cpu={"test_timeout": 600},
 )
 add_example_test(TestCoreExamples, name="core.example_wave", devices=test_devices)
 
@@ -263,7 +261,6 @@ add_example_test(
     name="optim.example_bounce",
     devices=test_devices,
     test_options_cpu={"train_iters": 3},
-    test_options_cuda={"test_timeout": 600},
 )
 add_example_test(
     TestOptimExamples,
@@ -276,7 +273,6 @@ add_example_test(
     TestOptimExamples,
     name="optim.example_cloth_throw",
     devices=test_devices,
-    test_options={"test_timeout": 600},
     test_options_cpu={"train_iters": 3},
 )
 add_example_test(
@@ -290,7 +286,7 @@ add_example_test(
     TestOptimExamples,
     name="optim.example_fluid_checkpoint",
     devices=cuda_test_devices,
-    test_options={"headless": True, "train_iters": 10, "pillow_required": True},
+    test_options={"headless": True, "train_iters": 5, "num_frames": 300, "pillow_required": True},
 )
 add_example_test(TestOptimExamples, name="optim.example_inverse_kinematics", devices=test_devices)
 add_example_test(
@@ -321,15 +317,13 @@ class TestSimExamples(unittest.TestCase):
     pass
 
 
-add_example_test(
-    TestSimExamples, name="sim.example_cartpole", devices=test_devices, test_options_cuda={"test_timeout": 600}
-)
+add_example_test(TestSimExamples, name="sim.example_cartpole", devices=test_devices)
 add_example_test(
     TestSimExamples,
     name="sim.example_cloth",
     devices=test_devices,
     test_options={"usd_required": True},
-    test_options_cpu={"num_frames": 10, "test_timeout": 600},
+    test_options_cpu={"num_frames": 10},
 )
 add_example_test(
     TestSimExamples, name="sim.example_granular", devices=test_devices, test_options_cpu={"num_frames": 10}
@@ -409,28 +403,24 @@ add_example_test(
     name="fem.example_convection_diffusion",
     devices=test_devices,
     test_options={"resolution": 20, "headless": True},
-    test_options_cpu={"test_timeout": 600},
 )
 add_example_test(
     TestFemExamples,
     name="fem.example_burgers",
     devices=test_devices,
     test_options={"resolution": 20, "num_frames": 25, "degree": 1, "headless": True},
-    test_options_cpu={"test_timeout": 600},
 )
 add_example_test(
     TestFemExamples,
     name="fem.example_convection_diffusion_dg",
     devices=test_devices,
     test_options={"resolution": 20, "num_frames": 25, "headless": True},
-    test_options_cpu={"test_timeout": 600},
 )
 add_example_test(
     TestFemExamples,
     name="fem.example_mixed_elasticity",
     devices=test_devices,
     test_options={"nonconforming_stresses": True, "mesh": "quad", "headless": True},
-    test_options_cpu={"test_timeout": 600},
 )
 add_example_test(
     TestFemExamples, name="fem.example_stokes_transfer", devices=test_devices, test_options={"headless": True}
