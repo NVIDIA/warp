@@ -135,6 +135,8 @@ def radix_sort_pairs(keys, values, count: int):
             runtime.core.radix_sort_pairs_int_host(keys.ptr, values.ptr, count)
         elif keys.dtype == wp.float32 and values.dtype == wp.int32:
             runtime.core.radix_sort_pairs_float_host(keys.ptr, values.ptr, count)
+        elif keys.dtype == wp.int64 and values.dtype == wp.int32:
+            runtime.core.radix_sort_pairs_int64_host(keys.ptr, values.ptr, count)
         else:
             raise RuntimeError("Unsupported data type")
     elif keys.device.is_cuda:
@@ -142,13 +144,40 @@ def radix_sort_pairs(keys, values, count: int):
             runtime.core.radix_sort_pairs_int_device(keys.ptr, values.ptr, count)
         elif keys.dtype == wp.float32 and values.dtype == wp.int32:
             runtime.core.radix_sort_pairs_float_device(keys.ptr, values.ptr, count)
+        elif keys.dtype == wp.int64 and values.dtype == wp.int32:
+            runtime.core.radix_sort_pairs_int64_device(keys.ptr, values.ptr, count)
         else:
             raise RuntimeError("Unsupported data type")
 
 
-# The parameter segment_indices is an array of length num_segments + 1, where segment_indices[i] is the index of the first element in the i-th segment
-# The end of a segment is given by segment_indices[i+1]
-def segmented_sort_pairs(keys, values, count: int, segment_indices, num_segments: int):
+def segmented_sort_pairs(
+    keys,
+    values,
+    count: int,
+    segment_start_indices: wp.array(dtype=wp.int32),
+    segment_end_indices: wp.array(dtype=wp.int32) = None,
+):
+    """Sort key-value pairs within segments.
+
+    This function performs a segmented sort of key-value pairs, where the sorting is done independently within each segment.
+    The segments are defined by their start and optionally end indices.
+
+    Args:
+        keys: Array of keys to sort. Must be of type int32 or float32.
+        values: Array of values to sort along with keys. Must be of type int32.
+        count: Number of elements to sort.
+        segment_start_indices: Array containing start index of each segment. Must be of type int32.
+            If segment_end_indices is None, this array must have length at least num_segments + 1,
+            and segment_end_indices will be inferred as segment_start_indices[1:].
+            If segment_end_indices is provided, this array must have length at least num_segments.
+        segment_end_indices: Optional array containing end index of each segment. Must be of type int32 if provided.
+            If None, segment_end_indices will be inferred from segment_start_indices[1:].
+            If provided, must have length at least num_segments.
+
+    Raises:
+        RuntimeError: If array storage devices don't match, if storage size is insufficient,
+                     if segment_start_indices is not of type int32, or if data types are unsupported.
+    """
     if keys.device != values.device:
         raise RuntimeError("Array storage devices do not match")
 
@@ -160,19 +189,44 @@ def segmented_sort_pairs(keys, values, count: int, segment_indices, num_segments
 
     from warp.context import runtime
 
+    if segment_start_indices.dtype != wp.int32:
+        raise RuntimeError("segment_start_indices array must be of type int32")
+
+    # Handle case where segment_end_indices is not provided
+    if segment_end_indices is None:
+        num_segments = max(0, segment_start_indices.size - 1)
+
+        segment_end_indices = segment_start_indices[1:]
+        segment_end_indices_ptr = segment_end_indices.ptr
+        segment_start_indices_ptr = segment_start_indices.ptr
+    else:
+        if segment_end_indices.dtype != wp.int32:
+            raise RuntimeError("segment_end_indices array must be of type int32")
+
+        num_segments = segment_start_indices.size
+
+        segment_end_indices_ptr = segment_end_indices.ptr
+        segment_start_indices_ptr = segment_start_indices.ptr
+
     if keys.device.is_cpu:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
-            runtime.core.segmented_sort_pairs_int_host(keys.ptr, values.ptr, count, segment_indices.ptr, num_segments)
+            runtime.core.segmented_sort_pairs_int_host(
+                keys.ptr, values.ptr, count, segment_start_indices_ptr, segment_end_indices_ptr, num_segments
+            )
         elif keys.dtype == wp.float32 and values.dtype == wp.int32:
-            runtime.core.segmented_sort_pairs_float_host(keys.ptr, values.ptr, count, segment_indices.ptr, num_segments)
+            runtime.core.segmented_sort_pairs_float_host(
+                keys.ptr, values.ptr, count, segment_start_indices_ptr, segment_end_indices_ptr, num_segments
+            )
         else:
             raise RuntimeError("Unsupported data type")
     elif keys.device.is_cuda:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
-            runtime.core.segmented_sort_pairs_int_device(keys.ptr, values.ptr, count, segment_indices.ptr, num_segments)
+            runtime.core.segmented_sort_pairs_int_device(
+                keys.ptr, values.ptr, count, segment_start_indices_ptr, segment_end_indices_ptr, num_segments
+            )
         elif keys.dtype == wp.float32 and values.dtype == wp.int32:
             runtime.core.segmented_sort_pairs_float_device(
-                keys.ptr, values.ptr, count, segment_indices.ptr, num_segments
+                keys.ptr, values.ptr, count, segment_start_indices_ptr, segment_end_indices_ptr, num_segments
             )
         else:
             raise RuntimeError("Unsupported data type")

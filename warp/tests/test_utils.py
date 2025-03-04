@@ -79,7 +79,7 @@ def test_array_scan_error_unsupported_dtype(test, device):
 
 
 def test_radix_sort_pairs(test, device):
-    keyTypes = [int, wp.float32]
+    keyTypes = [int, wp.float32, wp.int64]
 
     for keyType in keyTypes:
         keys = wp.array((7, 2, 8, 4, 1, 6, 5, 3, 0, 0, 0, 0, 0, 0, 0, 0), dtype=keyType, device=device)
@@ -95,13 +95,19 @@ def test_segmented_sort_pairs(test, device):
     for keyType in keyTypes:
         keys = wp.array((7, 2, 8, 4, 1, 6, 5, 3, 0, 0, 0, 0, 0, 0, 0, 0), dtype=keyType, device=device)
         values = wp.array((1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 0, 0, 0, 0), dtype=int, device=device)
-        wp.utils.segmented_sort_pairs(keys, values, 8, wp.array((0, 4, 8), dtype=int, device=device), 2)
+        wp.utils.segmented_sort_pairs(
+            keys,
+            values,
+            8,
+            wp.array((0, 4), dtype=int, device=device),
+            wp.array((4, 8), dtype=int, device=device),
+        )
         assert_np_equal(keys.numpy()[:8], np.array((2, 4, 7, 8, 1, 3, 5, 6)))
         assert_np_equal(values.numpy()[:8], np.array((2, 4, 1, 3, 5, 8, 7, 6)))
 
 
 def test_radix_sort_pairs_empty(test, device):
-    keyTypes = [int, wp.float32]
+    keyTypes = [int, wp.float32, wp.int64]
 
     for keyType in keyTypes:
         keys = wp.array((), dtype=keyType, device=device)
@@ -115,11 +121,13 @@ def test_segmented_sort_pairs_empty(test, device):
     for keyType in keyTypes:
         keys = wp.array((), dtype=keyType, device=device)
         values = wp.array((), dtype=int, device=device)
-        wp.utils.segmented_sort_pairs(keys, values, 0, wp.array((0), dtype=int, device=device), 0)
+        wp.utils.segmented_sort_pairs(
+            keys, values, 0, wp.array((), dtype=int, device=device), wp.array((), dtype=int, device=device)
+        )
 
 
 def test_radix_sort_pairs_error_insufficient_storage(test, device):
-    keyTypes = [int, wp.float32]
+    keyTypes = [int, wp.float32, wp.int64]
 
     for keyType in keyTypes:
         keys = wp.array((1, 2, 3), dtype=keyType, device=device)
@@ -141,11 +149,17 @@ def test_segmented_sort_pairs_error_insufficient_storage(test, device):
             RuntimeError,
             r"Array storage must be large enough to contain 2\*count elements$",
         ):
-            wp.utils.segmented_sort_pairs(keys, values, 3, wp.array((0, 3), dtype=int, device=device), 1)
+            wp.utils.segmented_sort_pairs(
+                keys,
+                values,
+                3,
+                wp.array((0,), dtype=int, device=device),
+                wp.array((3,), dtype=int, device=device),
+            )
 
 
 def test_radix_sort_pairs_error_unsupported_dtype(test, device):
-    keyTypes = [int, wp.float32]
+    keyTypes = [int, wp.float32, wp.int64]
 
     for keyType in keyTypes:
         keys = wp.array((1.0, 2.0, 3.0), dtype=keyType, device=device)
@@ -167,7 +181,13 @@ def test_segmented_sort_pairs_error_unsupported_dtype(test, device):
             RuntimeError,
             r"Unsupported data type$",
         ):
-            wp.utils.segmented_sort_pairs(keys, values, 1, wp.array((0, 3), dtype=int, device=device), 1)
+            wp.utils.segmented_sort_pairs(
+                keys,
+                values,
+                1,
+                wp.array((0,), dtype=int, device=device),
+                wp.array((3,), dtype=int, device=device),
+            )
 
 
 def test_array_sum(test, device):

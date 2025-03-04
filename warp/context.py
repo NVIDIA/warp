@@ -3214,10 +3214,14 @@ class Runtime:
             self.core.radix_sort_pairs_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
             self.core.radix_sort_pairs_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
 
+            self.core.radix_sort_pairs_int64_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.radix_sort_pairs_int64_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+
             self.core.segmented_sort_pairs_int_host.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_int,
+                ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
@@ -3225,6 +3229,7 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_int,
+                ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
@@ -3234,12 +3239,14 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_int,
                 ctypes.c_uint64,
+                ctypes.c_uint64,
                 ctypes.c_int,
             ]
             self.core.segmented_sort_pairs_float_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_int,
+                ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
