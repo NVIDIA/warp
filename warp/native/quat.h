@@ -372,7 +372,7 @@ inline CUDA_CALLABLE mat_t<3,3,Type> quat_to_matrix(const quat_t<Type>& q)
 template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE quat_t<Type> quat_from_matrix(const mat_t<Rows,Cols,Type>& m)
 {
-    static_assert((Rows == 3 && Cols == 3) || (Rows == 4 && Cols == 4));
+    static_assert((Rows == 3 && Cols == 3) || (Rows == 4 && Cols == 4), "Non-square matrix");
 
     const Type tr = m.data[0][0] + m.data[1][1] + m.data[2][2];
     Type x, y, z, w, h = Type(0);
@@ -1106,7 +1106,7 @@ inline CUDA_CALLABLE void adj_quat_to_matrix(const quat_t<Type>& q, quat_t<Type>
 template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_quat_from_matrix(const mat_t<Rows,Cols,Type>& m, mat_t<Rows,Cols,Type>& adj_m, const quat_t<Type>& adj_ret)
 {
-    static_assert((Rows == 3 && Cols == 3) || (Rows == 4 && Cols == 4));
+    static_assert((Rows == 3 && Cols == 3) || (Rows == 4 && Cols == 4), "Non-square matrix");
 
     const Type tr = m.data[0][0] + m.data[1][1] + m.data[2][2];
     Type x, y, z, w, h = Type(0);
