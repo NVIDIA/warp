@@ -51,7 +51,7 @@ When should I call ``wp.synchronize()``?
 ----------------------------------------
 
 One of the common sources of confusion for new users is when calls to
-:func:`wp.synchronize() <warp.synchronize>` are necessary. The answer is “almost never”!
+:func:`wp.synchronize() <warp.synchronize>` are necessary. The answer is "almost never"!
 Synchronization is quite expensive and should generally be avoided
 unless necessary. Warp naturally takes care of synchronization between
 operations (e.g.: kernel launches, device memory copies).
@@ -147,3 +147,12 @@ also support the following forms:
   to ``1.23``.
 - ``arr.fill_(1.23)``: sets the content of an existing float array to ``1.23``.
 - ``arr[:4].fill(1.23)``: sets the four first values of an existing float array to ``1.23``.
+
+How can I contact the Warp team directly?
+-----------------------------------------
+
+For bug reports, feature requests, and technical questions, we recommend using `GitHub Issues <https://github.com/NVIDIA/warp/issues>`_.
+
+The Warp team also monitors the **#warp** forum on the public `Omniverse Discord <https://discord.com/invite/nvidiaomniverse>`_ server.
+
+For inquiries not suited for GitHub Issues or Discord, please email warp-python@nvidia.com.
