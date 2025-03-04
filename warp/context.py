@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import ast
 import ctypes
-import errno
 import functools
 import hashlib
 import inspect
@@ -20,7 +19,6 @@ import operator
 import os
 import platform
 import sys
-import time
 import types
 import typing
 import weakref
@@ -1622,6 +1620,7 @@ class ModuleBuilder:
         self.fatbins = {}  # map from <some identifier> to fatbins, to add at link time
         self.ltoirs = {}  # map from lto symbol to lto binary
         self.ltoirs_decl = {}  # map from lto symbol to lto forward declaration
+        self.shared_memory_bytes = {}  # map from lto symbol to shared memory requirements
 
         if hasher is None:
             hasher = ModuleHasher(module)
@@ -2206,34 +2205,8 @@ class Module:
                 # -----------------------------------------------------------
                 # update cache
 
-                def safe_rename(src, dst, attempts=5, delay=0.1):
-                    for i in range(attempts):
-                        try:
-                            os.rename(src, dst)
-                            return
-                        except FileExistsError:
-                            return
-                        except OSError as e:
-                            if e.errno == errno.ENOTEMPTY:
-                                # if directory exists we assume another process
-                                # got there first, in which case we will copy
-                                # our output to the directory manually in second step
-                                return
-                            else:
-                                # otherwise assume directory creation failed e.g.: access denied
-                                # on Windows we see occasional failures to rename directories due to
-                                # some process holding a lock on a file to be moved to workaround
-                                # this we make multiple attempts to rename with some delay
-                                if i < attempts - 1:
-                                    time.sleep(delay)
-                                else:
-                                    print(
-                                        f"Could not update Warp cache with module binaries, trying to rename {build_dir} to {module_dir}, error {e}"
-                                    )
-                                    raise e
-
                 # try to move process outputs to cache
-                safe_rename(build_dir, module_dir)
+                warp.build.safe_rename(build_dir, module_dir)
 
                 if os.path.exists(module_dir):
                     if not os.path.exists(binary_path):
@@ -5984,6 +5957,7 @@ def set_module_options(options: Dict[str, Any], module: Optional[Any] = None):
 
     * **mode**: The compilation mode to use, can be "debug", or "release", defaults to the value of ``warp.config.mode``.
     * **max_unroll**: The maximum fixed-size loop to unroll, defaults to the value of ``warp.config.max_unroll``.
+    * **block_dim**: The default number of threads to assign to each block
 
     Args:
 

@@ -18,6 +18,8 @@
 - Add `wp.transform_from_matrix()` to obtain a transform from a 4x4 matrix
   ([GH-211](https://github.com/NVIDIA/warp/issues/211)).
 - Support timing events inside of CUDA graphs ([GH-556](https://github.com/NVIDIA/warp/issues/556)).
+- Add LTO cache to speed up compilation times for kernels using mathdx libraries.
+- Add `wp.clear_lto_cache()` to clear the LTO cache.
 
 ### Changed
 

@@ -1286,3 +1286,15 @@ process can use this information to import the original event by calling
 .. autofunction:: from_ipc_handle
 
 .. autofunction:: event_from_ipc_handle
+
+LTO Cache
+---------
+
+:ref:`MathDx <mathdx>` generates Link-Time Optimization (LTO) files for GEMM, Cholesky, and FFT tile operations.
+Warp caches these to speed up kernel compilation. Each LTO file maps to a specific Linear Algebra
+solver configuration, and is otherwise independent of the kernel in which its corresponding routine
+is called. Therefore, LTOs are stored in a cache that is independent of a given module's kernel cache,
+and will remain cached even if :func:`wp.clear_kernel_cache() <clear_kernel_cache>` is called.
+:func:`wp.clear_lto_cache() <clear_lto_cache>` can be used to clear the LTO cache.
+
+.. autofunction:: clear_lto_cache

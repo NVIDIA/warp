@@ -347,6 +347,8 @@ Warp can automatically generate the backward version of tile-based programs.
 In general, tile programs must obey the same rules for auto-diff as regular Warp programs, e.g. avoiding in-place operations, etc.
 Please see the :ref:`differentiability` section for more details.
 
+.. _mathdx:
+
 Building with MathDx
 --------------------
 
