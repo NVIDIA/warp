@@ -211,8 +211,8 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     	var_17 = wp::div(var_5, var_4);
     	var_18 = wp::cast_float(var_17);
     }
-    var_19 = wp::select(var_15, var_7, var_16);
-    var_20 = wp::select(var_15, var_8, var_18);
+    var_19 = wp::where(var_15, var_16, var_7);
+    var_20 = wp::where(var_15, var_18, var_8);
     if (!var_15) {
     	var_21 = wp::dot(var_0, var_2);
     	var_22 = (var_4 <= var_epsilon);
@@ -222,8 +222,8 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     		var_26 = wp::clamp(var_24, var_6, var_25);
     		var_27 = wp::cast_float(var_6);
     	}
-    	var_28 = wp::select(var_22, var_19, var_26);
-    	var_29 = wp::select(var_22, var_20, var_27);
+    	var_28 = wp::where(var_22, var_26, var_19);
+    	var_29 = wp::where(var_22, var_27, var_20);
     	if (!var_22) {
     		var_30 = wp::dot(var_0, var_1);
     		var_31 = wp::mul(var_3, var_4);
@@ -237,10 +237,10 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     			var_38 = wp::div(var_37, var_33);
     			var_39 = wp::clamp(var_38, var_6, var_25);
     		}
-    		var_40 = wp::select(var_34, var_28, var_39);
+    		var_40 = wp::where(var_34, var_39, var_28);
     		if (!var_34) {
     		}
-    		var_41 = wp::select(var_34, var_6, var_40);
+    		var_41 = wp::where(var_34, var_40, var_6);
     		var_42 = wp::mul(var_30, var_41);
     		var_43 = wp::add(var_42, var_5);
     		var_44 = wp::div(var_43, var_4);
@@ -250,8 +250,8 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     			var_47 = wp::div(var_46, var_3);
     			var_48 = wp::clamp(var_47, var_6, var_25);
     		}
-    		var_49 = wp::select(var_45, var_41, var_48);
-    		var_50 = wp::select(var_45, var_44, var_6);
+    		var_49 = wp::where(var_45, var_48, var_41);
+    		var_50 = wp::where(var_45, var_6, var_44);
     		if (!var_45) {
     			var_51 = (var_50 > var_25);
     			if (var_51) {
@@ -259,17 +259,17 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     				var_53 = wp::div(var_52, var_3);
     				var_54 = wp::clamp(var_53, var_6, var_25);
     			}
-    			var_55 = wp::select(var_51, var_49, var_54);
-    			var_56 = wp::select(var_51, var_50, var_25);
+    			var_55 = wp::where(var_51, var_54, var_49);
+    			var_56 = wp::where(var_51, var_25, var_50);
     		}
-    		var_57 = wp::select(var_45, var_55, var_49);
-    		var_58 = wp::select(var_45, var_56, var_50);
+    		var_57 = wp::where(var_45, var_49, var_55);
+    		var_58 = wp::where(var_45, var_50, var_56);
     	}
-    	var_59 = wp::select(var_22, var_57, var_28);
-    	var_60 = wp::select(var_22, var_58, var_29);
+    	var_59 = wp::where(var_22, var_28, var_57);
+    	var_60 = wp::where(var_22, var_29, var_58);
     }
-    var_61 = wp::select(var_15, var_59, var_19);
-    var_62 = wp::select(var_15, var_60, var_20);
+    var_61 = wp::where(var_15, var_19, var_59);
+    var_62 = wp::where(var_15, var_20, var_60);
     var_63 = wp::sub(var_q1, var_p1);
     var_64 = wp::mul(var_63, var_61);
     var_65 = wp::add(var_p1, var_64);
@@ -293,25 +293,25 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     wp::adj_add(var_p1, var_64, adj_p1, adj_64, adj_65);
     wp::adj_mul(var_63, var_61, adj_63, adj_61, adj_64);
     wp::adj_sub(var_q1, var_p1, adj_q1, adj_p1, adj_63);
-    wp::adj_select(var_15, var_60, var_20, adj_15, adj_60, adj_20, adj_62);
-    wp::adj_select(var_15, var_59, var_19, adj_15, adj_59, adj_19, adj_61);
+    wp::adj_where(var_15, var_20, var_60, adj_15, adj_20, adj_60, adj_62);
+    wp::adj_where(var_15, var_19, var_59, adj_15, adj_19, adj_59, adj_61);
     if (!var_15) {
-    	wp::adj_select(var_22, var_58, var_29, adj_22, adj_58, adj_29, adj_60);
-    	wp::adj_select(var_22, var_57, var_28, adj_22, adj_57, adj_28, adj_59);
+    	wp::adj_where(var_22, var_29, var_58, adj_22, adj_29, adj_58, adj_60);
+    	wp::adj_where(var_22, var_28, var_57, adj_22, adj_28, adj_57, adj_59);
     	if (!var_22) {
-    		wp::adj_select(var_45, var_56, var_50, adj_45, adj_56, adj_50, adj_58);
-    		wp::adj_select(var_45, var_55, var_49, adj_45, adj_55, adj_49, adj_57);
+    		wp::adj_where(var_45, var_50, var_56, adj_45, adj_50, adj_56, adj_58);
+    		wp::adj_where(var_45, var_49, var_55, adj_45, adj_49, adj_55, adj_57);
     		if (!var_45) {
-    			wp::adj_select(var_51, var_50, var_25, adj_51, adj_50, adj_25, adj_56);
-    			wp::adj_select(var_51, var_49, var_54, adj_51, adj_49, adj_54, adj_55);
+    			wp::adj_where(var_51, var_25, var_50, adj_51, adj_25, adj_50, adj_56);
+    			wp::adj_where(var_51, var_54, var_49, adj_51, adj_54, adj_49, adj_55);
     			if (var_51) {
     				wp::adj_clamp(var_53, var_6, var_25, adj_53, adj_6, adj_25, adj_54);
     				wp::adj_div(var_52, var_3, var_53, adj_52, adj_3, adj_53);
     				wp::adj_sub(var_30, var_21, adj_30, adj_21, adj_52);
     			}
     		}
-    		wp::adj_select(var_45, var_44, var_6, adj_45, adj_44, adj_6, adj_50);
-    		wp::adj_select(var_45, var_41, var_48, adj_45, adj_41, adj_48, adj_49);
+    		wp::adj_where(var_45, var_6, var_44, adj_45, adj_6, adj_44, adj_50);
+    		wp::adj_where(var_45, var_48, var_41, adj_45, adj_48, adj_41, adj_49);
     		if (var_45) {
     			wp::adj_clamp(var_47, var_6, var_25, adj_47, adj_6, adj_25, adj_48);
     			wp::adj_div(var_46, var_3, var_47, adj_46, adj_3, adj_47);
@@ -320,10 +320,10 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     		wp::adj_div(var_43, var_4, var_44, adj_43, adj_4, adj_44);
     		wp::adj_add(var_42, var_5, adj_42, adj_5, adj_43);
     		wp::adj_mul(var_30, var_41, adj_30, adj_41, adj_42);
-    		wp::adj_select(var_34, var_6, var_40, adj_34, adj_6, adj_40, adj_41);
+    		wp::adj_where(var_34, var_40, var_6, adj_34, adj_40, adj_6, adj_41);
     		if (!var_34) {
     		}
-    		wp::adj_select(var_34, var_28, var_39, adj_34, adj_28, adj_39, adj_40);
+    		wp::adj_where(var_34, var_39, var_28, adj_34, adj_39, adj_28, adj_40);
     		if (var_34) {
     			wp::adj_clamp(var_38, var_6, var_25, adj_38, adj_6, adj_25, adj_39);
     			wp::adj_div(var_37, var_33, var_38, adj_37, adj_33, adj_38);
@@ -336,8 +336,8 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     		wp::adj_mul(var_3, var_4, adj_3, adj_4, adj_31);
     		wp::adj_dot(var_0, var_1, adj_0, adj_1, adj_30);
     	}
-    	wp::adj_select(var_22, var_20, var_27, adj_22, adj_20, adj_27, adj_29);
-    	wp::adj_select(var_22, var_19, var_26, adj_22, adj_19, adj_26, adj_28);
+    	wp::adj_where(var_22, var_27, var_20, adj_22, adj_27, adj_20, adj_29);
+    	wp::adj_where(var_22, var_26, var_19, adj_22, adj_26, adj_19, adj_28);
     	if (var_22) {
     		wp::adj_cast_float(var_6, adj_6, adj_27);
     		wp::adj_clamp(var_24, var_6, var_25, adj_24, adj_6, adj_25, adj_26);
@@ -346,8 +346,8 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     	}
     	wp::adj_dot(var_0, var_2, adj_0, adj_2, adj_21);
     }
-    wp::adj_select(var_15, var_8, var_18, adj_15, adj_8, adj_18, adj_20);
-    wp::adj_select(var_15, var_7, var_16, adj_15, adj_7, adj_16, adj_19);
+    wp::adj_where(var_15, var_18, var_8, adj_15, adj_18, adj_8, adj_20);
+    wp::adj_where(var_15, var_16, var_7, adj_15, adj_16, adj_7, adj_19);
     if (var_15) {
     	wp::adj_cast_float(var_17, adj_17, adj_18);
     	wp::adj_div(var_5, var_4, var_17, adj_5, adj_4, adj_17);
