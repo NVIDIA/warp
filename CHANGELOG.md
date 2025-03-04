@@ -21,6 +21,9 @@
 - Add LTO cache to speed up compilation times for kernels using MathDx-based tile functions
   ([GH-507](https://github.com/NVIDIA/warp/issues/507)).
 - Add `wp.clear_lto_cache()` to clear the LTO cache.
+- Add `wp.where()` to select between two arguments conditionally using a
+  more intuitive argument order (`cond`, `value_if_true`, `value_if_false`)
+  ([GH-469](https://github.com/NVIDIA/warp/issues/469)).
 
 ### Changed
 

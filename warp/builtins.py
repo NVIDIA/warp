@@ -4628,7 +4628,10 @@ add_builtin(
     "select",
     input_types={"cond": builtins.bool, "value_if_false": Any, "value_if_true": Any},
     value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
-    doc="Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``",
+    doc="""Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
+    ``where(cond, value_if_true, value_if_false)``.""",
     group="Utility",
 )
 for t in int_types:
@@ -4636,14 +4639,20 @@ for t in int_types:
         "select",
         input_types={"cond": t, "value_if_false": Any, "value_if_true": Any},
         value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
-        doc="Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``",
+        doc="""Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
+    ``where(cond, value_if_true, value_if_false)``.""",
         group="Utility",
     )
 add_builtin(
     "select",
     input_types={"arr": array(dtype=Any), "value_if_false": Any, "value_if_true": Any},
     value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
-    doc="Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``",
+    doc="""Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
+    ``where(arr, value_if_true, value_if_false)``.""",
     group="Utility",
 )
 
@@ -4651,7 +4660,7 @@ add_builtin(
     "where",
     input_types={"cond": builtins.bool, "value_if_true": Any, "value_if_false": Any},
     value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
-    doc="Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``",
+    doc="Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.",
     group="Utility",
 )
 for t in int_types:
@@ -4659,14 +4668,14 @@ for t in int_types:
         "where",
         input_types={"cond": t, "value_if_true": Any, "value_if_false": Any},
         value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
-        doc="Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``",
+        doc="Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.",
         group="Utility",
     )
 add_builtin(
     "where",
     input_types={"arr": array(dtype=Any), "value_if_true": Any, "value_if_false": Any},
     value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
-    doc="Select between two arguments, if ``arr`` is not null then return ``value_if_true``, otherwise return ``value_if_false``",
+    doc="Select between two arguments, if ``arr`` is not null then return ``value_if_true``, otherwise return ``value_if_false``.",
     group="Utility",
 )
 

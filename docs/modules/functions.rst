@@ -1405,138 +1405,168 @@ Utility
 
 .. py:function:: select(cond: bool, value_if_false: Any, value_if_true: Any) -> Any
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
+    ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: int8, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
+    ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: uint8, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
+    ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: int16, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
+    ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: uint16, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
+    ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: int32, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
+    ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: uint32, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
+    ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: int64, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
+    ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: uint64, value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``
+    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
+    ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(arr: Array[Any], value_if_false: Any, value_if_true: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``
+    Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
+    ``where(arr, value_if_true, value_if_false)``.
 
 
 .. py:function:: where(cond: bool, value_if_true: Any, value_if_false: Any) -> Any
 
-    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``
+    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
 
 
 .. py:function:: where(cond: int8, value_if_true: Any, value_if_false: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``
+    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
 
 
 .. py:function:: where(cond: uint8, value_if_true: Any, value_if_false: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``
+    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
 
 
 .. py:function:: where(cond: int16, value_if_true: Any, value_if_false: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``
+    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
 
 
 .. py:function:: where(cond: uint16, value_if_true: Any, value_if_false: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``
+    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
 
 
 .. py:function:: where(cond: int32, value_if_true: Any, value_if_false: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``
+    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
 
 
 .. py:function:: where(cond: uint32, value_if_true: Any, value_if_false: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``
+    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
 
 
 .. py:function:: where(cond: int64, value_if_true: Any, value_if_false: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``
+    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
 
 
 .. py:function:: where(cond: uint64, value_if_true: Any, value_if_false: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``
+    Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
 
 
 .. py:function:: where(arr: Array[Any], value_if_true: Any, value_if_false: Any) -> Any
     :noindex:
     :nocontentsentry:
 
-    Select between two arguments, if ``arr`` is not null then return ``value_if_true``, otherwise return ``value_if_false``
+    Select between two arguments, if ``arr`` is not null then return ``value_if_true``, otherwise return ``value_if_false``.
 
 
 .. py:function:: atomic_add(arr: Array[Any], i: Int, value: Any) -> Any
