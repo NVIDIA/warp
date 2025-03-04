@@ -417,6 +417,8 @@ Problems, questions, and feature requests can be opened on [GitHub Issues](https
 
 The Warp team also monitors the **#warp** forum on the public [Omniverse Discord](https://discord.com/invite/nvidiaomniverse) server, come chat with us!
 
+For inquiries not suited for GitHub Issues or Discord, please email warp-python@nvidia.com.
+
 ## Versioning
 
 Versions take the format X.Y.Z, similar to [Python itself](https://devguide.python.org/developer-workflow/development-cycle/#devcycle):
