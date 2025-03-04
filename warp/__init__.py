@@ -117,6 +117,7 @@ from warp.paddle import device_from_paddle, device_to_paddle
 from warp.paddle import stream_from_paddle
 
 from warp.build import clear_kernel_cache
+from warp.build import clear_lto_cache
 
 from warp.constants import *
 
