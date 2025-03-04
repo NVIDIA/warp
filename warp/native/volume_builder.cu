@@ -258,11 +258,21 @@ __device__ std::enable_if_t<nanovdb::BuildTraits<typename Node::BuildType>::is_i
 {
 }
 
+template <typename T>
+struct alignas(alignof(T)) AlignedProxy
+{
+    char data[sizeof(T)];
+};
+
 template <typename Tree, typename NodeT>
 __global__ void setInternalBBoxAndBackgroundValue(Tree *tree, const typename Tree::BuildType background_value)
 {
     using BBox = nanovdb::math::BBox<typename NodeT::CoordT>;
-    __shared__ BBox bbox;
+    using BBoxProxy = AlignedProxy<BBox>;
+
+    __shared__ BBoxProxy bbox_mem;
+
+    BBox& bbox = reinterpret_cast<BBox&>(bbox_mem);
 
     const unsigned node_count = tree->mNodeCount[NodeT::LEVEL];
     const unsigned node_id = blockIdx.x;
@@ -272,7 +282,7 @@ __global__ void setInternalBBoxAndBackgroundValue(Tree *tree, const typename Tre
 
         if (threadIdx.x == 0)
         {
-            bbox = BBox();
+            new(&bbox) BBox();
         }
 
         __syncthreads();
@@ -304,14 +314,17 @@ __global__ void setRootBBoxAndBackgroundValue(nanovdb::Grid<Tree> *grid,
                                               const typename Tree::BuildType background_value)
 {
     using BBox = typename Tree::RootNodeType::BBoxType;
-    __shared__ BBox bbox;
+    using BBoxProxy = AlignedProxy<BBox>;
+    __shared__ BBoxProxy bbox_mem;
+
+    BBox& bbox = reinterpret_cast<BBox&>(bbox_mem);
 
     Tree &tree = grid->tree();
     const unsigned upper_count = tree.mNodeCount[2];
 
     if (threadIdx.x == 0)
     {
-        bbox = BBox();
+        new(&bbox) BBox();
     }
 
     __syncthreads();

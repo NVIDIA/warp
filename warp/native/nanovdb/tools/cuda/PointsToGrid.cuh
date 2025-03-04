@@ -777,9 +777,9 @@ inline void PointsToGrid<BuildT, AllocT>::processGridTreeRoot(const PtrT points,
         auto &root = d_data->getRoot();
         root.mBBox = CoordBBox(); // init to empty
         root.mTableSize = d_data->nodeCount[2];
-        root.mBackground = NanoRoot<BuildT>::ValueType(0);// background_value
-        root.mMinimum = root.mMaximum = NanoRoot<BuildT>::ValueType(0);
-        root.mAverage = root.mStdDevi = NanoRoot<BuildT>::FloatType(0);
+        root.mBackground = typename NanoRoot<BuildT>::ValueType(0);// background_value
+        root.mMinimum = root.mMaximum = typename NanoRoot<BuildT>::ValueType(0);
+        root.mAverage = root.mStdDevi = typename NanoRoot<BuildT>::FloatType(0);
 
         // process Tree
         auto &tree = d_data->getTree();
@@ -927,8 +927,8 @@ inline void PointsToGrid<BuildT, AllocT>::processUpperNodes()
         upper.mFlags = 0;
         upper.mValueMask.setOff();
         upper.mChildMask.setOff();
-        upper.mMinimum = upper.mMaximum = NanoLower<BuildT>::ValueType(0);
-        upper.mAverage = upper.mStdDevi = NanoLower<BuildT>::FloatType(0);
+        upper.mMinimum = upper.mMaximum = typename NanoLower<BuildT>::ValueType(0);
+        upper.mAverage = upper.mStdDevi = typename NanoLower<BuildT>::FloatType(0);
     }, mDeviceData);
     cudaCheckError();
 
@@ -937,7 +937,7 @@ inline void PointsToGrid<BuildT, AllocT>::processUpperNodes()
     const uint64_t valueCount = mData.nodeCount[2] << 15;
     util::cuda::lambdaKernel<<<numBlocks(valueCount), mNumThreads, 0, mStream>>>(valueCount, [=] __device__(size_t tid, Data *d_data) {
         auto &upper = d_data->getUpper(tid >> 15);
-        upper.mTable[tid & 32767u].value = NanoUpper<BuildT>::ValueType(0);// background
+        upper.mTable[tid & 32767u].value = typename NanoUpper<BuildT>::ValueType(0);// background
     }, mDeviceData);
     cudaCheckError();
 }// PointsToGrid<BuildT>::processUpperNodes
@@ -959,15 +959,15 @@ inline void PointsToGrid<BuildT, AllocT>::processLowerNodes()
         lower.mFlags = 0;
         lower.mValueMask.setOff();
         lower.mChildMask.setOff();
-        lower.mMinimum = lower.mMaximum = NanoLower<BuildT>::ValueType(0);// background;
-        lower.mAverage = lower.mStdDevi = NanoLower<BuildT>::FloatType(0);
+        lower.mMinimum = lower.mMaximum = typename NanoLower<BuildT>::ValueType(0);// background;
+        lower.mAverage = lower.mStdDevi = typename NanoLower<BuildT>::FloatType(0);
     }, mDeviceData);
     cudaCheckError();
 
     const uint64_t valueCount = mData.nodeCount[1] << 12;
     util::cuda::lambdaKernel<<<numBlocks(valueCount), mNumThreads, 0, mStream>>>(valueCount, [=] __device__(size_t tid, Data *d_data) {
         auto &lower = d_data->getLower(tid >> 12);
-        lower.mTable[tid & 4095u].value = NanoLower<BuildT>::ValueType(0);// background
+        lower.mTable[tid & 4095u].value = typename NanoLower<BuildT>::ValueType(0);// background
     }, mDeviceData);
     cudaCheckError();
 }// PointsToGrid<BuildT>::processLowerNodes
@@ -1002,8 +1002,8 @@ inline void PointsToGrid<BuildT, AllocT>::processLeafNodes(const PtrT points)
             leaf.mOffset = tid*512u + 1u;// background is index 0
             leaf.mPrefixSum = 0u;
         } else if constexpr(!BuildTraits<BuildT>::is_special) {
-            leaf.mAverage = leaf.mStdDevi = NanoLeaf<BuildT>::FloatType(0);
-            leaf.mMinimum = leaf.mMaximum = NanoLeaf<BuildT>::ValueType(0);
+            leaf.mAverage = leaf.mStdDevi = typename NanoLeaf<BuildT>::FloatType(0);
+            leaf.mMinimum = leaf.mMaximum = typename NanoLeaf<BuildT>::ValueType(0);
         }
     }, mDeviceData); cudaCheckError();
 
@@ -1020,7 +1020,7 @@ inline void PointsToGrid<BuildT, AllocT>::processLeafNodes(const PtrT points)
         if constexpr(util::is_same<Point, BuildT>::value) {
             leaf.mValues[n] = uint16_t(pointID + d_data->pointsPerVoxel[tid] - leaf.offset());
         } else if constexpr(!BuildTraits<BuildT>::is_special) {
-            leaf.mValues[n] = NanoLeaf<BuildT>::ValueType(1);// set value of active voxels that are not points (or index)
+            leaf.mValues[n] = typename NanoLeaf<BuildT>::ValueType(1);// set value of active voxels that are not points (or index)
         }
     }, mDeviceData); cudaCheckError();
 
@@ -1036,7 +1036,7 @@ inline void PointsToGrid<BuildT, AllocT>::processLeafNodes(const PtrT points)
             const uint32_t m = leaf.mValueMask.findPrev<true>(n - 1);
             leaf.mValues[n] = m < 512u ? leaf.mValues[m] : 0u;
         } else if constexpr(!BuildTraits<BuildT>::is_special) {
-            leaf.mValues[n] = NanoLeaf<BuildT>::ValueType(0);// value of inactive voxels
+            leaf.mValues[n] = typename NanoLeaf<BuildT>::ValueType(0);// value of inactive voxels
         }
     }, mDeviceData); cudaCheckError();
 

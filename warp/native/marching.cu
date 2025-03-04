@@ -496,7 +496,7 @@ WP_API int marching_cubes_surface_device(
         return -1;
     }
 
-    wp_launch_device(WP_CURRENT_CONTEXT, create_cell_tris, mc.num_cells, (mc, field, triangles, threshold));
+    wp_launch_device(WP_CURRENT_CONTEXT, wp::create_cell_tris, mc.num_cells, (mc, field, triangles, threshold));
 
     *out_num_verts = num_verts;
     *out_num_tris = num_tris;
