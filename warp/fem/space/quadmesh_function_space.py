@@ -166,10 +166,10 @@ class QuadmeshSpaceTopology(SpaceTopology):
 
             if wp.static(EDGE_NODE_COUNT > 0):
                 # EDGE_X, EDGE_Y
-                side_start = wp.select(
+                side_start = wp.where(
                     node_type == SquareShapeFunction.EDGE_X,
-                    wp.select(type_instance == 0, 1, 3),
-                    wp.select(type_instance == 0, 2, 0),
+                    wp.where(type_instance == 0, 0, 2),
+                    wp.where(type_instance == 0, 3, 1),
                 )
 
                 side_index = topo_arg.quad_edge_indices[element_index, side_start]
@@ -178,7 +178,7 @@ class QuadmeshSpaceTopology(SpaceTopology):
 
                 # Flip indexing direction
                 flipped = int(side_start >= 2) ^ int(local_vs != global_vs)
-                index_in_side = wp.select(flipped, type_index, EDGE_NODE_COUNT - 1 - type_index)
+                index_in_side = wp.where(flipped, EDGE_NODE_COUNT - 1 - type_index, type_index)
 
                 return global_offset + EDGE_NODE_COUNT * side_index + index_in_side
 
@@ -197,10 +197,10 @@ class QuadmeshSpaceTopology(SpaceTopology):
             node_type, type_instance, type_index = self._shape.node_type_and_type_index(node_index_in_elt)
 
             if node_type == SquareShapeFunction.EDGE_X or node_type == SquareShapeFunction.EDGE_Y:
-                side_start = wp.select(
+                side_start = wp.where(
                     node_type == SquareShapeFunction.EDGE_X,
-                    wp.select(type_instance == 0, 1, 3),
-                    wp.select(type_instance == 0, 2, 0),
+                    wp.where(type_instance == 0, 0, 2),
+                    wp.where(type_instance == 0, 3, 1),
                 )
 
                 side_index = topo_arg.quad_edge_indices[element_index, side_start]
@@ -209,7 +209,7 @@ class QuadmeshSpaceTopology(SpaceTopology):
 
                 # Flip indexing direction
                 flipped = int(side_start >= 2) ^ int(local_vs != global_vs)
-                return wp.select(flipped, 1.0, -1.0)
+                return wp.where(flipped, -1.0, 1.0)
 
             return 1.0
 

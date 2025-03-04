@@ -173,7 +173,7 @@ class Grid2D(Geometry):
             return Grid2D.Side(axis, origin)
 
         axis_side_index = side_index - 2 * arg.cell_count
-        axis = wp.select(axis_side_index < arg.axis_offsets[1], 1, 0)
+        axis = wp.where(axis_side_index < arg.axis_offsets[1], 0, 1)
 
         altitude = arg.cell_arg.res[Grid2D.ROTATION[axis, 0]]
         longitude = axis_side_index - arg.axis_offsets[axis]
@@ -273,7 +273,7 @@ class Grid2D(Geometry):
     def side_position(args: SideArg, s: Sample):
         side = Grid2D.get_side(args, s.element_index)
 
-        coord = wp.select((side.origin[0] == 0) == (side.axis == 0), 1.0 - s.element_coords[0], s.element_coords[0])
+        coord = wp.where((side.origin[0] == 0) == (side.axis == 0), s.element_coords[0], 1.0 - s.element_coords[0])
 
         local_pos = wp.vec2(
             float(side.origin[0]),
@@ -288,7 +288,7 @@ class Grid2D(Geometry):
     def side_deformation_gradient(args: SideArg, s: Sample):
         side = Grid2D.get_side(args, s.element_index)
 
-        sign = wp.select((side.origin[0] == 0) == (side.axis == 0), -1.0, 1.0)
+        sign = wp.where((side.origin[0] == 0) == (side.axis == 0), 1.0, -1.0)
 
         return wp.cw_mul(Grid2D._rotate(side.axis, wp.vec2(0.0, sign)), args.cell_arg.cell_size)
 
@@ -316,7 +316,7 @@ class Grid2D(Geometry):
     def side_normal(args: SideArg, s: Sample):
         side = Grid2D.get_side(args, s.element_index)
 
-        sign = wp.select(side.origin[0] == 0, 1.0, -1.0)
+        sign = wp.where(side.origin[0] == 0, -1.0, 1.0)
 
         local_n = wp.vec2(sign, 0.0)
         return Grid2D._rotate(side.axis, local_n)
@@ -325,7 +325,7 @@ class Grid2D(Geometry):
     def side_inner_cell_index(arg: SideArg, side_index: ElementIndex):
         side = Grid2D.get_side(arg, side_index)
 
-        inner_alt = wp.select(side.origin[0] == 0, side.origin[0] - 1, 0)
+        inner_alt = wp.where(side.origin[0] == 0, 0, side.origin[0] - 1)
 
         inner_origin = wp.vec2i(inner_alt, side.origin[1])
 
@@ -337,8 +337,8 @@ class Grid2D(Geometry):
         side = Grid2D.get_side(arg, side_index)
 
         alt_axis = Grid2D.ROTATION[side.axis, 0]
-        outer_alt = wp.select(
-            side.origin[0] == arg.cell_arg.res[alt_axis], side.origin[0], arg.cell_arg.res[alt_axis] - 1
+        outer_alt = wp.where(
+            side.origin[0] == arg.cell_arg.res[alt_axis], arg.cell_arg.res[alt_axis] - 1, side.origin[0]
         )
 
         outer_origin = wp.vec2i(outer_alt, side.origin[1])
@@ -350,9 +350,9 @@ class Grid2D(Geometry):
     def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
         side = Grid2D.get_side(args, side_index)
 
-        inner_alt = wp.select(side.origin[0] == 0, 1.0, 0.0)
+        inner_alt = wp.where(side.origin[0] == 0, 0.0, 1.0)
 
-        side_coord = wp.select((side.origin[0] == 0) == (side.axis == 0), 1.0 - side_coords[0], side_coords[0])
+        side_coord = wp.where((side.origin[0] == 0) == (side.axis == 0), side_coords[0], 1.0 - side_coords[0])
 
         coords = Grid2D._rotate(side.axis, wp.vec2(inner_alt, side_coord))
         return Coords(coords[0], coords[1], 0.0)
@@ -362,9 +362,9 @@ class Grid2D(Geometry):
         side = Grid2D.get_side(args, side_index)
 
         alt_axis = Grid2D.ROTATION[side.axis, 0]
-        outer_alt = wp.select(side.origin[0] == args.cell_arg.res[alt_axis], 0.0, 1.0)
+        outer_alt = wp.where(side.origin[0] == args.cell_arg.res[alt_axis], 1.0, 0.0)
 
-        side_coord = wp.select((side.origin[0] == 0) == (side.axis == 0), 1.0 - side_coords[0], side_coords[0])
+        side_coord = wp.where((side.origin[0] == 0) == (side.axis == 0), side_coords[0], 1.0 - side_coords[0])
 
         coords = Grid2D._rotate(side.axis, wp.vec2(outer_alt, side_coord))
         return Coords(coords[0], coords[1], 0.0)
@@ -382,7 +382,7 @@ class Grid2D(Geometry):
         if float(side.origin[0] - cell[side.axis]) == element_coords[side.axis]:
             long_axis = Grid2D.ROTATION[side.axis, 1]
             axis_coord = element_coords[long_axis]
-            side_coord = wp.select((side.origin[0] == 0) == (side.axis == 0), 1.0 - axis_coord, axis_coord)
+            side_coord = wp.where((side.origin[0] == 0) == (side.axis == 0), axis_coord, 1.0 - axis_coord)
             return Coords(side_coord, 0.0, 0.0)
 
         return Coords(OUTSIDE)

@@ -237,13 +237,13 @@ class HexmeshSpaceTopology(SpaceTopology):
                     hex_edge = _CUBE_TO_HEX_EDGE[type_instance]
                     v0 = geo_arg.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 0]]
                     v1 = geo_arg.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 1]]
-                    return wp.select(v0 > v1, 1.0, -1.0)
+                    return wp.where(v0 > v1, -1.0, 1.0)
 
             if wp.static(FACE_NODE_COUNT > 0):
                 if node_type == CubeShapeFunction.FACE:
                     face_index_and_ori = topo_arg.hex_face_indices[element_index, type_instance]
                     flip = face_index_and_ori[1] & 1
-                    return wp.select(flip == 0, -1.0, 1.0)
+                    return wp.where(flip == 0, 1.0, -1.0)
 
             return 1.0
 

@@ -4647,6 +4647,29 @@ add_builtin(
     group="Utility",
 )
 
+add_builtin(
+    "where",
+    input_types={"cond": builtins.bool, "value_if_true": Any, "value_if_false": Any},
+    value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
+    doc="Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``",
+    group="Utility",
+)
+for t in int_types:
+    add_builtin(
+        "where",
+        input_types={"cond": t, "value_if_true": Any, "value_if_false": Any},
+        value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
+        doc="Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``",
+        group="Utility",
+    )
+add_builtin(
+    "where",
+    input_types={"arr": array(dtype=Any), "value_if_true": Any, "value_if_false": Any},
+    value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
+    doc="Select between two arguments, if ``arr`` is not null then return ``value_if_true``, otherwise return ``value_if_false``",
+    group="Utility",
+)
+
 
 def array_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is None:

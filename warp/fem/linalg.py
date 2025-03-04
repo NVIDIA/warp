@@ -172,11 +172,11 @@ def householder_qr_decomposition(A: Any):
 
     for i in range(type(x).length):
         for k in range(type(x).length):
-            x[k] = wp.select(k < i, A[k, i], zero)
+            x[k] = wp.where(k < i, zero, A[k, i])
 
         alpha = wp.length(x) * wp.sign(x[i])
         x[i] += alpha
-        two_over_x_sq = wp.select(alpha == zero, two / wp.length_sq(x), zero)
+        two_over_x_sq = wp.where(alpha == zero, zero, two / wp.length_sq(x))
 
         A -= wp.outer(two_over_x_sq * x, x * A)
         Q -= wp.outer(Q * x, two_over_x_sq * x)
@@ -201,11 +201,11 @@ def householder_make_hessenberg(A: Any):
 
     for i in range(1, type(x).length):
         for k in range(type(x).length):
-            x[k] = wp.select(k < i, A[k, i - 1], zero)
+            x[k] = wp.where(k < i, zero, A[k, i - 1])
 
         alpha = wp.length(x) * wp.sign(x[i])
         x[i] += alpha
-        two_over_x_sq = wp.select(alpha == zero, two / wp.length_sq(x), zero)
+        two_over_x_sq = wp.where(alpha == zero, zero, two / wp.length_sq(x))
 
         # apply on both sides
         A -= wp.outer(two_over_x_sq * x, x * A)
@@ -226,7 +226,7 @@ def solve_triangular(R: Any, b: Any):
     for i in range(b.length, 0, -1):
         j = i - 1
         r = b[j] - wp.dot(R[j], x)
-        x[j] = wp.select(R[j, j] == zero, r / R[j, j], zero)
+        x[j] = wp.where(R[j, j] == zero, zero, r / R[j, j])
 
     return x
 

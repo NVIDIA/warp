@@ -57,7 +57,7 @@ def boundary_projector_form(
     Bilinear boundary condition projector form, non-zero on radial edges
     """
     nor = fem.normal(domain, s)
-    active = wp.select(nor[0] < -0.9999 or nor[1] < -0.9999, 0.0, 1.0)
+    active = wp.where(nor[0] < -0.9999 or nor[1] < -0.9999, 1.0, 0.0)
     return active * u(s) * v(s)
 
 

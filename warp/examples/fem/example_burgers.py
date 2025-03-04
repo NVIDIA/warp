@@ -75,7 +75,7 @@ def cell_transport_form(s: fem.Sample, domain: fem.Domain, u: fem.Field, v: fem.
 def initial_condition(s: fem.Sample, domain: fem.Domain):
     x = domain(s)[0] * 2.0
     wave = wp.sin(x * wp.pi)
-    return wp.vec2(wp.select(x <= 1.0, 0.0, wave), 0.0)
+    return wp.vec2(wp.where(x <= 1.0, wave, 0.0), 0.0)
 
 
 @fem.integrand
@@ -87,7 +87,7 @@ def velocity_norm(s: fem.Sample, u: fem.Field):
 def minmod(a: float, b: float):
     sa = wp.sign(a)
     sb = wp.sign(b)
-    return wp.select(sa == sb, 0.0, sa * wp.min(wp.abs(a), wp.abs(b)))
+    return wp.where(sa == sb, sa * wp.min(wp.abs(a), wp.abs(b)), 0.0)
 
 
 @fem.integrand

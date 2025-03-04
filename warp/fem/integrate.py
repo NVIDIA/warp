@@ -818,10 +818,10 @@ def get_integrate_bilinear_kernel(
             element_trial_node_count = trial.space.topology.element_node_count(
                 domain_arg, trial_topology_arg, element_index
             )
-            qp_point_count = wp.select(
+            qp_point_count = wp.where(
                 trial_node < element_trial_node_count,
-                0,
                 quadrature.point_count(domain_arg, qp_arg, test_element_index.domain_element_index, element_index),
+                0,
             )
 
             test_dof_index = DofIndex(

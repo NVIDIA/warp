@@ -461,8 +461,8 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
             node_i, node_j = self._node_lobatto_indices(node_type, type_instance, type_index)
 
             if node_type == SquareSerendipityShapeFunctions.VERTEX:
-                cx = wp.select(node_i == 0, coords[0], 1.0 - coords[0])
-                cy = wp.select(node_j == 0, coords[1], 1.0 - coords[1])
+                cx = wp.where(node_i == 0, 1.0 - coords[0], coords[0])
+                cy = wp.where(node_j == 0, 1.0 - coords[1], coords[1])
 
                 w = cx * cy
 
@@ -475,7 +475,7 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
 
             w = float(1.0)
             if node_type == SquareSerendipityShapeFunctions.EDGE_Y:
-                w *= wp.select(node_i == 0, coords[0], 1.0 - coords[0])
+                w *= wp.where(node_i == 0, 1.0 - coords[0], coords[0])
             else:
                 for k in range(ORDER_PLUS_ONE):
                     if k != node_i:
@@ -484,7 +484,7 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
                 w *= LAGRANGE_SCALE[node_i]
 
             if node_type == SquareSerendipityShapeFunctions.EDGE_X:
-                w *= wp.select(node_j == 0, coords[1], 1.0 - coords[1])
+                w *= wp.where(node_j == 0, 1.0 - coords[1], coords[1])
             else:
                 for k in range(ORDER_PLUS_ONE):
                     if k != node_j:
@@ -513,11 +513,11 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
             node_i, node_j = self._node_lobatto_indices(node_type, type_instance, type_index)
 
             if node_type == SquareSerendipityShapeFunctions.VERTEX:
-                cx = wp.select(node_i == 0, coords[0], 1.0 - coords[0])
-                cy = wp.select(node_j == 0, coords[1], 1.0 - coords[1])
+                cx = wp.where(node_i == 0, 1.0 - coords[0], coords[0])
+                cy = wp.where(node_j == 0, 1.0 - coords[1], coords[1])
 
-                gx = wp.select(node_i == 0, 1.0, -1.0)
-                gy = wp.select(node_j == 0, 1.0, -1.0)
+                gx = wp.where(node_i == 0, -1.0, 1.0)
+                gy = wp.where(node_j == 0, -1.0, 1.0)
 
                 if ORDER == 2:
                     w = cx + cy - 2.0 + LOBATTO_COORDS[1]
@@ -537,7 +537,7 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
                     return wp.vec2(grad_x, grad_y) * DEGREE_3_CIRCLE_SCALE
 
             if node_type == SquareSerendipityShapeFunctions.EDGE_X:
-                prefix_x = wp.select(node_j == 0, coords[1], 1.0 - coords[1])
+                prefix_x = wp.where(node_j == 0, 1.0 - coords[1], coords[1])
             else:
                 prefix_x = LAGRANGE_SCALE[node_j]
                 for k in range(ORDER_PLUS_ONE):
@@ -545,7 +545,7 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
                         prefix_x *= coords[1] - LOBATTO_COORDS[k]
 
             if node_type == SquareSerendipityShapeFunctions.EDGE_Y:
-                prefix_y = wp.select(node_i == 0, coords[0], 1.0 - coords[0])
+                prefix_y = wp.where(node_i == 0, 1.0 - coords[0], coords[0])
             else:
                 prefix_y = LAGRANGE_SCALE[node_i]
                 for k in range(ORDER_PLUS_ONE):
@@ -553,7 +553,7 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
                         prefix_y *= coords[0] - LOBATTO_COORDS[k]
 
             if node_type == SquareSerendipityShapeFunctions.EDGE_X:
-                grad_y = wp.select(node_j == 0, 1.0, -1.0) * prefix_y
+                grad_y = wp.where(node_j == 0, -1.0, 1.0) * prefix_y
             else:
                 prefix_y *= LAGRANGE_SCALE[node_j]
                 grad_y = float(0.0)
@@ -564,7 +564,7 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
                         prefix_y *= delta_y
 
             if node_type == SquareSerendipityShapeFunctions.EDGE_Y:
-                grad_x = wp.select(node_i == 0, 1.0, -1.0) * prefix_x
+                grad_x = wp.where(node_i == 0, -1.0, 1.0) * prefix_x
             else:
                 prefix_x *= LAGRANGE_SCALE[node_i]
                 grad_x = float(0.0)

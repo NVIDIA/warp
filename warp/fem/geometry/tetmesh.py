@@ -388,7 +388,7 @@ class Tetmesh(Geometry):
         else:
             c2 = 1.0 - tet_coords[0] - tet_coords[1] - tet_coords[2]
 
-        return wp.select(c0 + c1 + c2 > 0.999, Coords(OUTSIDE), Coords(c0, c1, c2))
+        return wp.where(c0 + c1 + c2 > 0.999, Coords(c0, c1, c2), Coords(OUTSIDE))
 
     @wp.func
     def side_to_cell_arg(side_arg: SideArg):

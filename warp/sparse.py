@@ -604,7 +604,7 @@ def _bsr_row_index(
     block: int,
 ):
     """Index of the row containing a block, or -1 if non-existing."""
-    return wp.select(block >= offsets[row_count], wp.lower_bound(offsets, 0, row_count + 1, block + 1), 0) - 1
+    return wp.where(block < offsets[row_count], wp.lower_bound(offsets, 0, row_count + 1, block + 1), 0) - 1
 
 
 @wp.func
@@ -628,7 +628,7 @@ def _bsr_block_index(
         return -1
 
     block_index = wp.lower_bound(bsr_columns, mask_row_beg, mask_row_end, col)
-    return wp.select(bsr_columns[block_index] == col, -1, block_index)
+    return wp.where(bsr_columns[block_index] == col, block_index, -1)
 
 
 @wp.kernel(enable_backward=False)

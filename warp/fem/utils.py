@@ -175,7 +175,7 @@ def _prepare_node_sort_kernel(
 ):
     i = wp.tid()
     node = node_indices[i]
-    sort_keys[i] = wp.select(node < 0, node, NULL_NODE_INDEX)
+    sort_keys[i] = wp.where(node >= 0, node, NULL_NODE_INDEX)
     sort_values[i] = i // divisor
 
 
