@@ -17,8 +17,10 @@ Generally the test_options[_cpu,_cuda] dictionaries should be used to prevent
 graphical windows from being open by the example {"headless": True} and to
 override example defaults so the example can run in less than ten seconds.
 
-Use {"usd_required": True} and {"torch_required": True} to skip running the test
-if usd-core or torch are not found in the Python environment.
+To skip tests if the optional dependencies are not found, use the following keys:
+- {"usd_required": True} (requires usd-core)
+- {"torch_required": True} (requires torch)
+- {"pillow_required": True} (requires pillow)
 
 Use the "num_frames" and "train_iters" keys to control the number of steps.
 
@@ -107,6 +109,14 @@ def add_example_test(
         usd_required = options.pop("usd_required", False)
         if usd_required and not USD_AVAILABLE:
             test.skipTest("Requires usd-core")
+
+        # Mark the test as skipped if pillow is not installed but required
+        pillow_required = options.pop("pillow_required", False)
+        if pillow_required:
+            try:
+                import PIL  # noqa: F401
+            except ImportError:
+                test.skipTest("Requires pillow")
 
         # Find the current Warp cache
         warp_cache_path = wp.config.kernel_cache_dir
@@ -275,6 +285,12 @@ add_example_test(
     devices=test_devices,
     test_options={"usd_required": True, "headless": True},
     test_options_cpu={"train_iters": 2},
+)
+add_example_test(
+    TestOptimExamples,
+    name="optim.example_fluid_checkpoint",
+    devices=cuda_test_devices,
+    test_options={"headless": True, "train_iters": 10, "pillow_required": True},
 )
 add_example_test(TestOptimExamples, name="optim.example_inverse_kinematics", devices=test_devices)
 add_example_test(
