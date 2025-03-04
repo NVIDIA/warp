@@ -3860,6 +3860,11 @@ class Runtime:
             greeting = []
 
             greeting.append(f"Warp {warp.config.version} initialized:")
+
+            # Add git commit hash to greeting if available
+            if warp.config._git_commit_hash is not None:
+                greeting.append(f"   Git commit: {warp.config._git_commit_hash}")
+
             if cuda_device_count > 0:
                 # print CUDA version info
                 greeting.append(

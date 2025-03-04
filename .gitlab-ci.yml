@@ -725,6 +725,7 @@ create dev wheels:
     - python3 -m pip install --upgrade pip
     - python3 -m pip install build
   script:
+    - python3 tools/ci/publishing/update_git_hash.py  # Modify config.py with git hash
     - python3 tools/ci/publishing/set_nightly_version.py  # Modify VERSION.md with dev version
     - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
     - python3 -m build --wheel -C--build-option=-Plinux-x86_64
@@ -837,7 +838,7 @@ publish dev wheels to artifactory:
     - cd dist
     - >
       jf rt u --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
-      --target-props="component_name=warp-lang;release_approver=ershi;release_status=ready;version=$VERSION;branch=$CI_COMMIT_REF_SLUG"
+      --target-props="component_name=warp-lang;release_approver=ershi;release_status=ready;version=$VERSION;branch=$CI_COMMIT_REF_SLUG;commit=$CI_COMMIT_SHA"
       '*.whl' sw-warp-pypi-local/nightly/warp-lang/
     # Set build-specific properties on individual artifacts
     - >
