@@ -170,7 +170,7 @@ jobs:
         run: |
           python -m pip cache purge
           python -m pip install --upgrade pip
-          pip install --no-cache-dir --upgrade numpy coverage[toml] usd-core
+          pip install --no-cache-dir --upgrade numpy coverage[toml] usd-core Pillow
           pip install --no-cache-dir .
       - name: Run Tests
         run: python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
@@ -204,7 +204,7 @@ jobs:
         run: |
           python -m pip cache purge
           python -m pip install --upgrade pip
-          pip install --no-cache-dir --upgrade numpy coverage[toml] usd-core
+          pip install --no-cache-dir --upgrade numpy coverage[toml] usd-core Pillow
           pip install --no-cache-dir .
       - name: Run Tests
         run: python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
@@ -272,7 +272,7 @@ jobs:
         run: |
           python -m pip cache purge
           python -m pip install --upgrade pip
-          pip install --no-cache-dir --upgrade numpy coverage[toml] usd-core
+          pip install --no-cache-dir --upgrade numpy coverage[toml] usd-core Pillow
           pip install --no-cache-dir .
       - name: Run Tests
         run: python -m warp.tests --maxjobs 4  --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
