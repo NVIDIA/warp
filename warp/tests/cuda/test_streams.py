@@ -341,7 +341,9 @@ def test_event_elapsed_time_graph(test, device):
 
     a = wp.zeros(N, dtype=float, device=device)
 
-    with wp.ScopedCapture(device) as capture:
+    wp.load_module(device=device)
+
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
         stream.record_event(e1)
         wp.launch(inc, dim=N, inputs=[a], device=device)
         stream.record_event(e2)
