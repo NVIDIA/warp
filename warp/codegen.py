@@ -3112,7 +3112,7 @@ class Adjoint:
 # code generation
 
 cpu_module_header = """
-#define WP_TILE_BLOCK_DIM {tile_size}
+#define WP_TILE_BLOCK_DIM {block_dim}
 #define WP_NO_CRT
 #include "builtin.h"
 
@@ -3131,7 +3131,7 @@ cpu_module_header = """
 """
 
 cuda_module_header = """
-#define WP_TILE_BLOCK_DIM {tile_size}
+#define WP_TILE_BLOCK_DIM {block_dim}
 #define WP_NO_CRT
 #include "builtin.h"
 
@@ -3274,8 +3274,15 @@ WP_API void {name}_cpu_forward(
 {{
     for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
+        // init shared memory allocator
+        wp::tile_alloc_shared(0, true);
+
         {name}_cpu_kernel_forward(
             {forward_params});
+
+        // check shared memory allocator
+        wp::tile_alloc_shared(0, false, true);
+
     }}
 }}
 
@@ -3292,8 +3299,14 @@ WP_API void {name}_cpu_backward(
 {{
     for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
+        // initialize shared memory allocator
+        wp::tile_alloc_shared(0, true);
+
         {name}_cpu_kernel_backward(
             {reverse_params});
+
+        // check shared memory allocator
+        wp::tile_alloc_shared(0, false, true);
     }}
 }}
 

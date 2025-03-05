@@ -225,7 +225,7 @@ linux-aarch64 test:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
-    - python -m pip install -U "coverage[toml]" "jax[cuda12]"
+    - python -m pip install -U "coverage[toml]"
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast

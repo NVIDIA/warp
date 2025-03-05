@@ -224,6 +224,16 @@ inline CUDA_CALLABLE half operator * (half a,half b)
     return float_to_half( half_to_float(a) * half_to_float(b) );
 }
 
+inline CUDA_CALLABLE half operator * (half a,float b)
+{
+    return float_to_half( half_to_float(a) * b );
+}
+
+inline CUDA_CALLABLE half operator * (float a,half b)
+{
+    return float_to_half( a * half_to_float(b) );
+}
+
 inline CUDA_CALLABLE half operator * (half a,double b)
 {
     return float_to_half( half_to_float(a) * b );
@@ -1758,8 +1768,7 @@ inline CUDA_CALLABLE void adj_expect_near(const vec3& actual, const vec3& expect
 #include "noise.h"
 #include "matnn.h"
 
-// only include in kernels for now
-#if defined(__CUDACC_RTC__)
+#if !defined(WP_ENABLE_CUDA) // only include in kernels for now
 #include "tile.h"
 #include "tile_reduce.h"
-#endif
+#endif //!defined(WP_ENABLE_CUDA)

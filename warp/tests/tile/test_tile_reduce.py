@@ -357,7 +357,7 @@ def test_tile_arange(test, device):
     assert_np_equal(output.numpy()[4], np.arange(17, 0, -1))
 
 
-devices = get_cuda_test_devices()
+devices = get_test_devices()
 
 
 class TestTileReduce(unittest.TestCase):

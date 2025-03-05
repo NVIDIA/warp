@@ -12,8 +12,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()  # For wp.context.runtime.core.is_mathdx_enabled()
-
 TILE_M = wp.constant(8)
 TILE_N = wp.constant(4)
 TILE_K = wp.constant(8)
@@ -208,7 +206,6 @@ def test_tile_binary_map(test, device):
     assert_np_equal(B_wp.grad.numpy(), B_grad)
 
 
-@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_grouped_gemm(test, device):
     @wp.kernel
     def tile_grouped_gemm(A: wp.array3d(dtype=float), B: wp.array3d(dtype=float), C: wp.array3d(dtype=float)):
@@ -248,7 +245,6 @@ def test_tile_grouped_gemm(test, device):
     assert_np_equal(C_wp.numpy(), C, 1e-6)
 
 
-@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_gemm(test, device):
     @wp.kernel
     def tile_gemm(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), C: wp.array2d(dtype=float)):
@@ -542,7 +538,6 @@ def test_tile_transpose(test, device):
     assert_np_equal(output.numpy(), input.numpy().T)
 
 
-@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_transpose_matmul(test, device):
     @wp.kernel
     def test_tile_transpose_matmul_kernel(input: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
@@ -657,7 +652,7 @@ def test_tile_print(test, device):
     wp.synchronize()
 
 
-devices = get_cuda_test_devices()
+devices = get_test_devices()
 
 
 class TestTile(unittest.TestCase):
@@ -673,7 +668,7 @@ add_function_test(TestTile, "test_tile_gemm", test_tile_gemm, devices=devices)
 add_function_test(TestTile, "test_tile_transpose", test_tile_transpose, devices=devices)
 add_function_test(TestTile, "test_tile_transpose_matmul", test_tile_transpose_matmul, devices=devices)
 add_function_test(TestTile, "test_tile_operators", test_tile_operators, devices=devices)
-add_function_test(TestTile, "test_tile_sum", test_tile_sum, devices=devices)
+add_function_test(TestTile, "test_tile_sum", test_tile_sum, devices=devices, check_output=False)
 add_function_test(TestTile, "test_tile_sum_launch", test_tile_sum_launch, devices=devices)
 add_function_test(TestTile, "test_tile_extract", test_tile_extract, devices=devices)
 add_function_test(TestTile, "test_tile_extract_repeated", test_tile_extract_repeated, devices=devices)
