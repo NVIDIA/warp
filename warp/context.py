@@ -1737,9 +1737,9 @@ class ModuleBuilder:
 
         # add headers
         if device == "cpu":
-            source = warp.codegen.cpu_module_header.format(tile_size=self.options["block_dim"]) + source
+            source = warp.codegen.cpu_module_header.format(block_dim=self.options["block_dim"]) + source
         else:
-            source = warp.codegen.cuda_module_header.format(tile_size=self.options["block_dim"]) + source
+            source = warp.codegen.cuda_module_header.format(block_dim=self.options["block_dim"]) + source
 
         return source
 
@@ -5558,7 +5558,7 @@ def launch(
         max_blocks: The maximum number of CUDA thread blocks to use.
           Only has an effect for CUDA kernel launches.
           If negative or zero, the maximum hardware value will be used.
-        block_dim: The number of threads per block.
+        block_dim: The number of threads per block (always 1 for "cpu" devices).
     """
 
     init()
@@ -5568,6 +5568,9 @@ def launch(
         device = stream.device
     else:
         device = runtime.get_device(device)
+
+    if device == "cpu":
+        block_dim = 1
 
     # check function is a Kernel
     if not isinstance(kernel, Kernel):
@@ -5800,6 +5803,18 @@ def launch_tiled(*args, **kwargs):
         raise RuntimeError(
             "Launch block dimension 'block_dim' argument should be passed via. keyword args for wp.launch_tiled()"
         )
+
+    if "device" in kwargs:
+        device = kwargs["device"]
+    else:
+        # todo: this doesn't consider the case where device
+        # is passed through positional args
+        device = None
+
+    # force the block_dim to 1 if running on "cpu"
+    device = runtime.get_device(device)
+    if device.is_cpu:
+        kwargs["block_dim"] = 1
 
     dim = kwargs["dim"]
     if not isinstance(dim, list):

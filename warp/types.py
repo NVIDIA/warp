@@ -3246,7 +3246,7 @@ class Tile:
                 return f"wp::tile_alloc_empty<{Var.type_to_ctype(self.dtype)},wp::tile_shape_t<{','.join(map(str, self.shape))}>,{'true' if requires_grad else 'false'}>()"
             else:
                 # tile will be initialized by another call, e.g.: tile_transpose()
-                return "NULL"
+                return "nullptr"
 
     # return total tile size in bytes
     def size_in_bytes(self):

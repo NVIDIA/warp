@@ -1058,7 +1058,7 @@ inline CUDA_CALLABLE mat_t<Rows,ColsOut,Type> mul(const mat_t<Rows,Cols,Type>& a
     mat_t<Rows,ColsOut,Type> t(0);
     for (unsigned i=0; i < Rows; ++i)
     {        
-        for (unsigned j=0; j < ColsOut; ++j)     
+        for (unsigned j=0; j < ColsOut; ++j)
         {
             Type sum(0.0);
 

@@ -6255,72 +6255,77 @@ def tile_matmul_generic_lto_dispatch_func(
     num_threads = options["block_dim"]
     arch = options["output_arch"]
 
-    def tile_flip_layout(layout):
-        if layout == "rowmajor":
-            return "colmajor"
-        elif layout == "colmajor":
-            return "rowmajor"
+    if arch is None:
+        # CPU dispatch
+        return ((0, 0, 0, a, b, out), template_args, [], 0)
+    else:
 
-    # generate the LTOs
-    #    C += A * B
-    (fun_forward, lto_forward) = warp.build.build_lto_dot(
-        M,
-        N,
-        K,
-        a.type.dtype,
-        b.type.dtype,
-        out.type.dtype,
-        a.type.layout,
-        b.type.layout,
-        out.type.layout,
-        arch,
-        num_threads,
-        builder,
-    )
-    # adjA += adjC * B^T - Transpose ~= flipped layout
-    (fun_backward_A, lto_backward_A) = warp.build.build_lto_dot(
-        M,
-        K,
-        N,
-        out.type.dtype,
-        b.type.dtype,
-        a.type.dtype,
-        out.type.layout,
-        tile_flip_layout(b.type.layout),
-        a.type.layout,
-        arch,
-        num_threads,
-        builder,
-    )
-    # adjB += A^T * adjC - Transpose ~= flipped layout
-    (fun_backward_B, lto_backward_B) = warp.build.build_lto_dot(
-        K,
-        N,
-        M,
-        a.type.dtype,
-        out.type.dtype,
-        b.type.dtype,
-        tile_flip_layout(a.type.layout),
-        out.type.layout,
-        b.type.layout,
-        arch,
-        num_threads,
-        builder,
-    )
+        def tile_flip_layout(layout):
+            if layout == "rowmajor":
+                return "colmajor"
+            elif layout == "colmajor":
+                return "rowmajor"
 
-    return (
-        (
-            Var(fun_forward, str, False, True, False),
-            Var(fun_backward_A, str, False, True, False),
-            Var(fun_backward_B, str, False, True, False),
-            a,
-            b,
-            out,
-        ),
-        template_args,
-        [lto_forward, lto_backward_A, lto_backward_B],
-        0,
-    )
+        # generate the LTOs
+        #    C += A * B
+        (fun_forward, lto_forward) = warp.build.build_lto_dot(
+            M,
+            N,
+            K,
+            a.type.dtype,
+            b.type.dtype,
+            out.type.dtype,
+            a.type.layout,
+            b.type.layout,
+            out.type.layout,
+            arch,
+            num_threads,
+            builder,
+        )
+        # adjA += adjC * B^T - Transpose ~= flipped layout
+        (fun_backward_A, lto_backward_A) = warp.build.build_lto_dot(
+            M,
+            K,
+            N,
+            out.type.dtype,
+            b.type.dtype,
+            a.type.dtype,
+            out.type.layout,
+            tile_flip_layout(b.type.layout),
+            a.type.layout,
+            arch,
+            num_threads,
+            builder,
+        )
+        # adjB += A^T * adjC - Transpose ~= flipped layout
+        (fun_backward_B, lto_backward_B) = warp.build.build_lto_dot(
+            K,
+            N,
+            M,
+            a.type.dtype,
+            out.type.dtype,
+            b.type.dtype,
+            tile_flip_layout(a.type.layout),
+            out.type.layout,
+            b.type.layout,
+            arch,
+            num_threads,
+            builder,
+        )
+
+        return (
+            (
+                Var(fun_forward, str, False, True, False),
+                Var(fun_backward_A, str, False, True, False),
+                Var(fun_backward_B, str, False, True, False),
+                a,
+                b,
+                out,
+            ),
+            template_args,
+            [lto_forward, lto_backward_A, lto_backward_B],
+            0,
+        )
 
 
 add_builtin(
@@ -6435,24 +6440,28 @@ def tile_fft_generic_lto_dispatch_func(
     arch = options["output_arch"]
     ept = size // num_threads
 
-    # generate the LTO
-    lto_symbol, lto_code_data, shared_memory_bytes = warp.build.build_lto_fft(
-        arch, size, ept, direction, dir, precision, builder
-    )
+    if arch is None:
+        # CPU dispatch (nop)
+        return ([], [], [], 0)
+    else:
+        # generate the LTO
+        lto_symbol, lto_code_data, shared_memory_bytes = warp.build.build_lto_fft(
+            arch, size, ept, direction, dir, precision, builder
+        )
 
-    return (
-        (
-            Var(lto_symbol, str, False, True, False),
-            Var(dtype, str, False, True, False),
-            Var(str(shared_memory_bytes), str, False, True, False),
-            Var(str(batch), str, False, True, False),
-            Var(str(ept), str, False, True, False),
-            inout,
-        ),
-        [],
-        [lto_code_data],
-        shared_memory_bytes,
-    )
+        return (
+            (
+                Var(lto_symbol, str, False, True, False),
+                Var(dtype, str, False, True, False),
+                Var(str(shared_memory_bytes), str, False, True, False),
+                Var(str(batch), str, False, True, False),
+                Var(str(ept), str, False, True, False),
+                inout,
+            ),
+            [],
+            [lto_code_data],
+            shared_memory_bytes,
+        )
 
 
 add_builtin(
@@ -6566,21 +6575,25 @@ def tile_cholesky_generic_lto_dispatch_func(
     num_threads = options["block_dim"]
     parameter_list = f"({dtype}*, unsigned)"
 
-    # generate the LTO
-    lto_symbol, lto_code_data = warp.build.build_lto_solver(
-        M,
-        N,
-        solver,
-        solver_enum,
-        fill_mode,
-        arch,
-        precision_enum,
-        num_threads,
-        parameter_list,
-        builder,
-    )
+    if arch is None:
+        # CPU dispatch
+        return ((0, a, out), [], [], 0)
+    else:
+        # generate the LTO
+        lto_symbol, lto_code_data = warp.build.build_lto_solver(
+            M,
+            N,
+            solver,
+            solver_enum,
+            fill_mode,
+            arch,
+            precision_enum,
+            num_threads,
+            parameter_list,
+            builder,
+        )
 
-    return ((Var(lto_symbol, str, False, True, False), a, out), [], [lto_code_data], 0)
+        return ((Var(lto_symbol, str, False, True, False), a, out), [], [lto_code_data], 0)
 
 
 add_builtin(
@@ -6685,21 +6698,25 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
     num_threads = options["block_dim"]
     parameter_list = f"({dtype}*, {dtype}*)"
 
-    # generate the LTO
-    lto_symbol, lto_code_data = warp.build.build_lto_solver(
-        M,
-        N,
-        solver,
-        solver_enum,
-        fill_mode,
-        arch,
-        precision_enum,
-        num_threads,
-        parameter_list,
-        builder,
-    )
+    if arch is None:
+        # CPU dispatch
+        return ((0, L, x, y), [], [], 0)
+    else:
+        # generate the LTO
+        lto_symbol, lto_code_data = warp.build.build_lto_solver(
+            M,
+            N,
+            solver,
+            solver_enum,
+            fill_mode,
+            arch,
+            precision_enum,
+            num_threads,
+            parameter_list,
+            builder,
+        )
 
-    return ((Var(lto_symbol, str, False, True, False), L, x, y), [], [lto_code_data], 0)
+        return ((Var(lto_symbol, str, False, True, False), L, x, y), [], [lto_code_data], 0)
 
 
 add_builtin(

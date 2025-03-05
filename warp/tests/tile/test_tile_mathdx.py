@@ -84,6 +84,7 @@ def tile_math_fft_kernel_vec2d(gx: wp.array2d(dtype=wp.vec2d), gy: wp.array2d(dt
     wp.tile_store(gy, xy)
 
 
+@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_math_fft(test, device, wp_dtype):
     np_real_dtype = {wp.vec2f: np.float32, wp.vec2d: np.float64}[wp_dtype]
     np_cplx_dtype = {wp.vec2f: np.complex64, wp.vec2d: np.complex128}[wp_dtype]
@@ -164,31 +165,33 @@ def test_tile_math_cholesky(test, device):
     # TODO: implement and test backward pass
 
 
-devices = get_cuda_test_devices()
+all_devices = get_test_devices()
+cuda_devices = get_cuda_test_devices()
 
 
-@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 class TestTileMathDx(unittest.TestCase):
     pass
 
 
 # check_output=False so we can enable libmathdx's logging without failing the tests
-add_function_test(TestTileMathDx, "test_tile_math_matmul", test_tile_math_matmul, devices=devices, check_output=False)
 add_function_test(
-    TestTileMathDx, "test_tile_math_cholesky", test_tile_math_cholesky, devices=devices, check_output=False
+    TestTileMathDx, "test_tile_math_matmul", test_tile_math_matmul, devices=all_devices, check_output=False
+)
+add_function_test(
+    TestTileMathDx, "test_tile_math_cholesky", test_tile_math_cholesky, devices=all_devices, check_output=False
 )
 add_function_test(
     TestTileMathDx,
     "test_tile_math_fft_vec2f",
     functools.partial(test_tile_math_fft, wp_dtype=wp.vec2f),
-    devices=devices,
+    devices=cuda_devices,
     check_output=False,
 )
 add_function_test(
     TestTileMathDx,
     "test_tile_math_fft_vec2d",
     functools.partial(test_tile_math_fft, wp_dtype=wp.vec2d),
-    devices=devices,
+    devices=cuda_devices,
     check_output=False,
 )
 

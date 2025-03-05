@@ -147,7 +147,7 @@ def test_tile_view_offset(test, device):
     assert_np_equal(a.grad.numpy(), np.ones_like(a.numpy()))
 
 
-devices = get_cuda_test_devices()
+devices = get_test_devices()
 
 
 class TestTileView(unittest.TestCase):

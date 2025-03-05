@@ -15,6 +15,8 @@
 namespace wp
 {
 
+#if defined(__CUDA_ARCH__)
+
 template <typename T>
 inline CUDA_CALLABLE T warp_shuffle_down(T val, int offset, int mask)
 {
@@ -148,7 +150,39 @@ auto tile_reduce_impl(Op f, Tile& t)
     return output;
 }
 
-void adj_tile_reduce_impl() 
+#else
+
+// CPU implementation
+
+template <typename Tile, typename Op>
+auto tile_reduce_impl(Op f, Tile& t)
+{
+   using T = typename Tile::Type;
+
+    auto input = t.copy_to_register();
+    auto output = tile_register_t<T, tile_layout_register_t<tile_shape_t<1>>>();
+
+   using Layout = typename decltype(input)::Layout;
+
+   T sum = input.data[0];
+
+    WP_PRAGMA_UNROLL
+    for (int i=1; i < Layout::NumRegs; ++i)
+    {
+        int linear = Layout::linear_from_register(i);
+        if (!Layout::valid(linear))
+            break;
+
+        sum = f(sum, input.data[i]);
+    }
+
+    output.data[0] = sum;
+    return output;
+}
+
+#endif // !defined(__CUDA_ARCH__)
+
+inline void adj_tile_reduce_impl() 
 {
     // todo: general purpose reduction gradients not implemented 
 }
@@ -171,16 +205,25 @@ void adj_tile_sum(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {
     using T = typename Tile::Type;
 
+#if !defined(__CUDA_ARCH__)
+
+    for (int i=0; i < Tile::Layout::Size; ++i)
+    {
+        adj_t(i) += adj_ret.data[0];
+
+    }
+#else
     // broadcast incoming adjoint to block
     WP_TILE_SHARED T scratch;
-    if (threadIdx.x == 0)
+    if (WP_TILE_THREAD_IDX == 0)
         scratch = adj_ret.data[0];
 
     WP_TILE_SYNC();
 
     // broadcast scalar across input dimensions (note zero strides)
-    auto adj_ret_reg = tile_shared_t<T, tile_layout_strided_t<typename Tile::Layout::Shape, tile_stride_t<0, 0>>>(&scratch, NULL).copy_to_register();
+    auto adj_ret_reg = tile_shared_t<T, tile_layout_strided_t<typename Tile::Layout::Shape, tile_stride_t<0, 0>>, false>(&scratch, nullptr).copy_to_register();
     adj_t.grad_add(adj_ret_reg);
+#endif 
 }
 
 template <typename Tile>

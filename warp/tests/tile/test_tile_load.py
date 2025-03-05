@@ -368,7 +368,7 @@ def test_tile_load_fortran(test, device):
     assert_array_equal(B_wp.grad, A_wp.grad)
 
 
-devices = get_cuda_test_devices()
+devices = get_test_devices()
 
 
 class TestTileLoad(unittest.TestCase):
