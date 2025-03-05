@@ -1953,10 +1953,11 @@ class Adjoint:
         adj.end_while()
 
     def eval_num(adj, a):
-        if isinstance(a, ast.Num):
-            return True, a.n
-        if isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
-            return True, -a.operand.n
+        if isinstance(a, ast.Constant):
+            return True, a.value
+        if isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Constant):
+            # Negative constant
+            return True, -a.operand.value
 
         # try and resolve the expression to an object
         # e.g.: wp.constant in the globals scope
