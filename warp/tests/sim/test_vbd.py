@@ -12,6 +12,8 @@ import unittest
 import warp as wp
 import warp.optim
 import warp.sim
+import warp.sim.graph_coloring
+import warp.sim.integrator_vbd
 from warp.sim.model import PARTICLE_FLAG_ACTIVE
 from warp.tests.unittest_utils import *
 
@@ -335,7 +337,10 @@ class VBDClothSim:
         self.use_cuda_graph = device.is_cuda and use_cuda_graph
         self.graph = None
         if self.use_cuda_graph:
-            with wp.ScopedCapture(device=device) as capture:
+            wp.load_module(device=device)
+            wp.set_module_options({"block_dim": 256}, warp.sim.integrator_vbd)
+            wp.load_module(warp.sim.integrator_vbd, device=device)
+            with wp.ScopedCapture(device=device, force_module_load=False) as capture:
                 self.simulate()
             self.graph = capture.graph
 
@@ -380,6 +385,7 @@ def test_vbd_cloth(test, device):
 def test_vbd_cloth_cuda_graph(test, device):
     with contextlib.redirect_stdout(io.StringIO()) as f:
         example = VBDClothSim(device, use_cuda_graph=True)
+
     test.assertRegex(
         f.getvalue(),
         r"Warp UserWarning: The graph is not optimizable anymore, terminated with a max/min ratio: 2.0 without reaching the target ratio: 1.1",
