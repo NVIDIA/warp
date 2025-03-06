@@ -7,7 +7,6 @@
 
 import math
 import os
-import platform
 import unittest
 
 import warp as wp
@@ -17,9 +16,6 @@ from warp.tests.unittest_utils import *
 
 
 def test_fk_ik(test, device):
-    if platform.machine() == "arm64" or platform.machine() == "aarch64":
-        test.skipTest("Skipping test on ARM64 due to undiagnosed segfault bug.")
-
     builder = wp.sim.ModelBuilder()
 
     num_envs = 1
