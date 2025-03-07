@@ -23,6 +23,7 @@
 
 ### Changed
 
+- Update the license to *Apache License, Version 2.0*.
 - **Breaking:** Remove CUTLASS dependency and `wp.matmul()` functionality (including batched version).
 - Deprecate constructing a matrix from vectors using `wp.matrix()`.
 - Vector/matrix/quaternion component assignment operations compile and run faster in the backward pass.

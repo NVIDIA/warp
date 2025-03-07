@@ -34,8 +34,9 @@ Include any limitations or non-handled areas in the changes.
 
 ## Before your PR is "Ready for review"
 
-- [ ] Do you agree to the terms under which contributions are accepted as described in Section 9 the [Warp License](https://github.com/NVIDIA/warp/blob/main/LICENSE.md)?
+- [ ] All commits are [signed-off](https://git-scm.com/docs/git-commit#Documentation/git-commit.txt--s) to indicate that your contribution
+adheres to the [Developer Certificate of Origin](https://developercertificate.org/) requirements
 - [ ] Necessary tests have been added
 - [ ] Documentation is up-to-date
 - [ ] Auto-generated files modified by compiling Warp and building the documentation have been updated (e.g. `stubs.py`, `functions.rst`)
-- [ ] Code passes `ruff check` and `ruff format --check`?
+- [ ] Code passes formatting and linting checks with `pre-commit run -a`
