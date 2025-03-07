@@ -1,5 +1,45 @@
 # Changelog
 
+## [Unreleased] - 2025-??
+
+### Added
+
+- Support JAX foreign function interface (FFI)
+  ([docs](https://nvidia.github.io/warp/modules/interoperability.html#jax-foreign-function-interface-ffi),
+  [GH-511](https://github.com/NVIDIA/warp/issues/511)).
+- Support `vec4f` grid construction in `wp.Volume.allocate_by_tiles()`.
+- Add `wp.get_mempool_used_mem_current()` and `wp.get_mempool_used_mem_high()` to
+  query the respective current and high-water mark memory pool allocator usage.
+  ([GH-446](https://github.com/NVIDIA/warp/issues/446)).
+- Add 2D SVD `svd2` ([GH-436](https://github.com/NVIDIA/warp/issues/436)).
+- Add `wp.randu()` for random `uint32` generation.
+- Add matrix construction functions `wp.matrix_from_cols()` and `wp.matrix_from_rows()`
+  ([GH-728](https://github.com/NVIDIA/warp/issues/728)).
+- Add `wp.transform_from_matrix()` to obtain a transform from a 4x4 matrix
+  ([GH-211](https://github.com/NVIDIA/warp/issues/211)).
+- Support timing events inside of CUDA graphs ([GH-556](https://github.com/NVIDIA/warp/issues/556)).
+- Add LTO cache to speed up compilation times for kernels using mathdx libraries.
+- Add `wp.clear_lto_cache()` to clear the LTO cache.
+
+### Changed
+
+- Update the license to *Apache License, Version 2.0*.
+- **Breaking:** Remove CUTLASS dependency and `wp.matmul()` functionality (including batched version).
+- Deprecate constructing a matrix from vectors using `wp.matrix()`.
+- Vector/matrix/quaternion component assignment operations compile and run faster in the backward pass.
+  Assignment should only happen once per component.
+- `wp.fem.integrate()` and `wp.fem.interpolate()` may now perform parallel evaluation of quadrature points within elements.
+- `wp.fem.interpolate()` can now build Jacobian sparse matrices of interpolated functions with respect to a trial field.
+- Multiple `wp.sparse` routines (`bsr_set_from_triplets`, `bsr_assign`, `bsr_axpy`, `bsr_mm`) now accept a `masked`
+  flag to discard any non-zero not already present in the destination matrix.
+- `wp.sparse.bsr_assign()` no longer requires source and destination block shapes to evenly divide each other.
+- `wp.sim.Control` no longer has a `model` attribute ([GH-487](https://github.com/NVIDIA/warp/issues/487)).
+- `wp.sim.Control.reset()` now zeros-out the controls and is deprecated. Use `wp.sim.Control.clear()` instead.
+- Extend `wp.expect_near()` to support all vectors and quaternions.
+- Extend `wp.quat_from_matrix()` to support 4x4 matrices.
+
+### Fixed
+
 ## [1.6.1] - 2025-03-03
 
 ### Added

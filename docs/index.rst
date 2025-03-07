@@ -339,7 +339,7 @@ Note that prior to 0.11.0, this schema was not strictly adhered to.
 License
 -------
 
-Warp is provided under the NVIDIA Software License, please see
+Warp is provided under the Apache License, Version 2.0. Please see
 `LICENSE.md <https://github.com/NVIDIA/warp/blob/main/LICENSE.md>`__ for the full license text.
 
 Contributing
