@@ -29,6 +29,7 @@ from typing import (
     Callable,
     Dict,
     List,
+    Literal,
     Mapping,
     Optional,
     Sequence,
@@ -981,22 +982,71 @@ def func_replay(forward_fn):
     return wrapper
 
 
-# decorator to register kernel, @kernel, custom_name may be a string
-# that creates a kernel with a different name from the actual function
-def kernel(f: Optional[Callable] = None, *, enable_backward: Optional[bool] = None):
+def kernel(
+    f: Optional[Callable] = None,
+    *,
+    enable_backward: Optional[bool] = None,
+    module: Optional[Union[Module, Literal["unique"]]] = None,
+):
+    """
+    Decorator to register a Warp kernel from a Python function.
+    The function must be defined with type annotations for all arguments.
+    The function must not return anything.
+
+    Example::
+
+        @wp.kernel
+        def my_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+            tid = wp.tid()
+            b[tid] = a[tid] + 1.0
+
+
+        @wp.kernel(enable_backward=False)
+        def my_kernel_no_backward(a: wp.array(dtype=float, ndim=2), x: float):
+            # the backward pass will not be generated
+            i, j = wp.tid()
+            a[i, j] = x
+
+
+        @wp.kernel(module="unique")
+        def my_kernel_unique_module(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+            # the kernel will be registered in new unique module created just for this
+            # kernel and its dependent functions and structs
+            tid = wp.tid()
+            b[tid] = a[tid] + 1.0
+
+    Args:
+        f: The function to be registered as a kernel.
+        enable_backward: If False, the backward pass will not be generated.
+        module: The :class:`warp.context.Module` to which the kernel belongs. Alternatively, if a string `"unique"` is provided, the kernel is assigned to a new module named after the kernel name and hash. If None, the module is inferred from the function's module.
+
+    Returns:
+        The registered kernel.
+    """
+
     def wrapper(f, *args, **kwargs):
         options = {}
 
         if enable_backward is not None:
             options["enable_backward"] = enable_backward
 
-        m = get_module(f.__module__)
+        if module is None:
+            m = get_module(f.__module__)
+        elif module == "unique":
+            m = Module(f.__name__, None)
+        else:
+            m = module
         k = Kernel(
             func=f,
             key=warp.codegen.make_full_qualified_name(f),
             module=m,
             options=options,
         )
+        if module == "unique":
+            # add the hash to the module name
+            hasher = warp.context.ModuleHasher(m)
+            k.module.name = f"{k.key}_{hasher.module_hash.hex()[:8]}"
+
         k = functools.update_wrapper(k, f)
         return k
 
@@ -1849,7 +1899,7 @@ class ModuleExec:
 # creates a hash of the function to use for checking
 # build cache
 class Module:
-    def __init__(self, name, loader):
+    def __init__(self, name: Optional[str], loader=None):
         self.name = name if name is not None else "None"
 
         self.loader = loader

@@ -316,7 +316,7 @@ Example: Static Math Expressions
 
     wp.launch(my_kernel, 1)
 
-The static expressions are evaluated at the time of when the ``@wp.kernel`` decorator is evaluated and replaced in the code by their respective constant result values. The generated code will therefore contain the results of the expressions hard-coded in the source file (shown an abbreviated version):
+The static expressions are evaluated at the time of when the :func:`@wp.kernel <warp.kernel>` decorator is evaluated and replaced in the code by their respective constant result values. The generated code will therefore contain the results of the expressions hard-coded in the source file (shown an abbreviated version):
 
 .. code:: cpp
 

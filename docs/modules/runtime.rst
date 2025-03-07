@@ -11,9 +11,20 @@ the *Kernel Scope*, please see the :doc:`functions` section.
 Kernels
 -------
 
+Kernels are defined via Python functions that are annotated with the :func:`@wp.kernel <kernel>` decorator.
+All arguments of the Python function must be annotated with their respective type.
+The following example shows a simple kernel that adds two arrays together::
+
+    import warp as wp
+
+    @wp.kernel
+    def add_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), c: wp.array(dtype=float)):
+        tid = wp.tid()
+        c[tid] = a[tid] + b[tid]
+
 Kernels are launched with the :func:`wp.launch() <launch>` function on a specific device (CPU/GPU)::
 
-    wp.launch(simple_kernel, dim=1024, inputs=[a, b, c], device="cuda")
+    wp.launch(add_kernel, dim=1024, inputs=[a, b, c], device="cuda")
 
 Note that all the kernel inputs must live on the target device or a runtime exception will be raised.
 Kernels may be launched with multi-dimensional grid bounds. In this case, threads are not assigned a single index,
@@ -36,6 +47,8 @@ named with a module-dependent hash to allow for the reuse of previously compiled
 The location of the kernel cache is printed when Warp is initialized.
 :func:`wp.clear_kernel_cache() <clear_kernel_cache>` can be used to clear the kernel cache of previously
 generated compilation artifacts as Warp does not automatically try to keep the cache below a certain size.
+
+.. autofunction:: kernel
 
 .. autofunction:: launch
 .. autofunction:: launch_tiled

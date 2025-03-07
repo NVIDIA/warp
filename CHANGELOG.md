@@ -36,6 +36,7 @@
 - `wp.sim.Control.reset()` now zeros-out the controls and is deprecated. Use `wp.sim.Control.clear()` instead.
 - Extend `wp.expect_near()` to support all vectors and quaternions.
 - Extend `wp.quat_from_matrix()` to support 4x4 matrices.
+- `@wp.kernel` has now an optional `module` argument that allows passing a `wp.context.Module` to the kernel, or, if set to `"unique"` let Warp create a new unique module just for this kernel. The default behavior to use the current module is unchanged.
 
 ### Fixed
 
