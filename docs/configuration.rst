@@ -87,8 +87,7 @@ The options for a module can also be queried using ``wp.get_module_options()``.
 Kernel Settings
 ---------------
 
-``enable_backward`` is currently the only setting that can also be configured on a per-kernel level.
-Backward-pass compilation can be disabled by passing an argument into the ``@wp.kernel`` decorator
+Backward-pass compilation can be disabled on a per-kernel basis by passing the ``enable_backward`` argument into the :func:`@wp.kernel <warp.kernel>` decorator
 as in the following example:
 
 .. code-block:: python

@@ -37,7 +37,7 @@ It's also possible to explicitly initialize Warp with the ``wp.init()`` method::
 Kernels
 -------
 
-In Warp, compute kernels are defined as Python functions and annotated with the ``@wp.kernel`` decorator::
+In Warp, compute kernels are defined as Python functions and annotated with the :func:`@wp.kernel <warp.kernel>` decorator::
 
     import warp as wp
 
@@ -259,7 +259,7 @@ All kernels belonging to a Python module are runtime compiled into dynamic libra
 The result is then cached between application restarts for fast startup times.
 
 Note that compilation is triggered on the first kernel launch for that module.
-Any kernels registered in the module with ``@wp.kernel`` will be included in the shared library.
+Any kernels registered in the module with :func:`@wp.kernel <warp.kernel>` will be included in the shared library.
 
 .. image:: ./img/compiler_pipeline.svg
 
