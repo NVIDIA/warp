@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.2] - 2025-03-07
+
+### Changed
+
+- Update project license from *NVIDIA Software License* to *Apache License, Version 2.0* (see `LICENSE.md`).
+
+### Fixed
+
 ## [1.6.1] - 2025-03-03
 
 ### Added
@@ -1365,7 +1373,8 @@
 
 - Initial publish for alpha testing
 
-[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.6.1...HEAD
+[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.6.2...HEAD
+[1.6.2]: https://github.com/NVIDIA/warp/releases/tag/v1.6.2
 [1.6.1]: https://github.com/NVIDIA/warp/releases/tag/v1.6.1
 [1.6.0]: https://github.com/NVIDIA/warp/releases/tag/v1.6.0
 [1.5.1]: https://github.com/NVIDIA/warp/releases/tag/v1.5.1

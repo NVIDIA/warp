@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [1.6.2] - 2025-03-07
+
+### Changed
+
+- Update project license from *NVIDIA Software License* to *Apache License, Version 2.0* (see `LICENSE.md`).
+
 ## [1.6.1] - 2025-03-03
 
 ### Added

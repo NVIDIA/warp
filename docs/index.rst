@@ -312,7 +312,7 @@ projects at NVIDIA including the following publications:
    Visuomotor Control - Murthy, J. Krishna, Miles Macklin, Florian
    Golemo, Vikram Voleti, Linda Petrini, Martin Weiss, Breandan
    Considine et
-   al. `(2021) <https://gradsim.github.io>`__
+   al. `(2021) <https://gradsim.github.io>`__
 
 Support
 -------
@@ -322,6 +322,8 @@ Problems, questions, and feature requests can be opened on
 
 The Warp team also monitors the **#warp** forum on the public
 `Omniverse Discord <https://discord.com/invite/nvidiaomniverse>`_ server, come chat with us!
+
+For inquiries not suited for GitHub Issues or Discord, please email warp-python@nvidia.com.
 
 Versioning
 ----------
@@ -339,7 +341,7 @@ Note that prior to 0.11.0, this schema was not strictly adhered to.
 License
 -------
 
-Warp is provided under the NVIDIA Software License, please see
+Warp is provided under the Apache License, Version 2.0. Please see
 `LICENSE.md <https://github.com/NVIDIA/warp/blob/main/LICENSE.md>`__ for the full license text.
 
 Contributing

@@ -1,3 +1,18 @@
+# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 [build-system]
 requires = ["setuptools>=61", "build", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -5,17 +20,18 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "warp-lang"
 requires-python = ">=3.8" # 3.9 recommended
-authors = [{ name = "NVIDIA Corporation", email = "mmacklin@nvidia.com" }]
+authors = [{ name = "NVIDIA Corporation", email = "warp-python@nvidia.com" }]
 description = "A Python framework for high-performance simulation and graphics programming"
-license = { text = "NVIDIA Software License" }
+license = { text = "Apache-2.0" }
 classifiers = [
-    "Programming Language :: Python :: 3.8",  # Deprecated
-    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.8",  # EOL on 2024-10-07
+    "Programming Language :: Python :: 3.9",  # EOL scheduled for 2025-10
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3 :: Only",
-    "License :: Other/Proprietary License",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
 ]
 dependencies = ["numpy"]
@@ -27,8 +43,15 @@ Documentation = "https://nvidia.github.io/warp"
 Changelog = "https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = ["pre-commit", "ruff", "nvtx", "nvidia-sphinx-theme", "sphinx-copybutton", "coverage[toml]"]
-extras = ['usd-core', 'matplotlib', 'pyglet']
+dev = [
+    "pre-commit",
+    "ruff",
+    "nvtx",
+    'nvidia-sphinx-theme; python_version >= "3.9"',
+    "sphinx-copybutton",
+    "coverage[toml]",
+]
+extras = ['usd-core', 'matplotlib', 'pillow', 'pyglet']
 
 [tool.setuptools.packages.find]
 include = ["warp*"]
@@ -52,25 +75,25 @@ extend-exclude = [
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle errors
-    "I",  # isort
-    "F", # pyflakes
-    "W",  # pycodestyle warnings
-    "B",  # flake8-bugbear
+    "E",   # pycodestyle errors
+    "I",   # isort
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "B",   # flake8-bugbear
     "C4",  # flake8-comprehensions
-    "NPY",  # NumPy-specific rules
-    "PLC",  # pylint convention
-    "PLE",  # pylint error
-    "PLW"  # pylint warning
+    "NPY", # NumPy-specific rules
+    "PLC", # pylint convention
+    "PLE", # pylint error
+    "PLW", # pylint warning
 ]
 ignore = [
-    "E501", # Many lines are over 120 characters already
-    "E741", # Warp often uses l as a variable name
-    "F403", # Allow wildcard imports
-    "F405", # Related to use of wildcard imports
-    "F811", # Warp often uses overloads
-    "E721", # Warp often uses == in float and int type comparisons
-    "PLW0603" # Allow assignments to global variables
+    "E501",    # Many lines are over 120 characters already
+    "E741",    # Warp often uses l as a variable name
+    "F403",    # Allow wildcard imports
+    "F405",    # Related to use of wildcard imports
+    "F811",    # Warp often uses overloads
+    "E721",    # Warp often uses == in float and int type comparisons
+    "PLW0603", # Allow assignments to global variables
 ]
 
 [tool.ruff.lint.per-file-ignores]

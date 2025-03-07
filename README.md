@@ -1,4 +1,5 @@
 [![PyPI version](https://badge.fury.io/py/warp-lang.svg)](https://badge.fury.io/py/warp-lang)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/NVIDIA/warp?link=https%3A%2F%2Fgithub.com%2FNVIDIA%2Fwarp%2Fcommits%2Fmain)
 [![Downloads](https://static.pepy.tech/badge/warp-lang/month)](https://pepy.tech/project/warp-lang)
 [![codecov](https://codecov.io/github/NVIDIA/warp/graph/badge.svg?token=7O1KSM79FG)](https://codecov.io/github/NVIDIA/warp)
@@ -45,9 +46,9 @@ the `pip install` command, e.g.
 
 | Platform        | Install Command                                                                                                               |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.6.1/warp_lang-1.6.1+cu11-py3-none-manylinux2014_aarch64.whl` |
-| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.6.1/warp_lang-1.6.1+cu11-py3-none-manylinux2014_x86_64.whl`  |
-| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.6.1/warp_lang-1.6.1+cu11-py3-none-win_amd64.whl`             |
+| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.6.2/warp_lang-1.6.2+cu11-py3-none-manylinux2014_aarch64.whl` |
+| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.6.2/warp_lang-1.6.2+cu11-py3-none-manylinux2014_x86_64.whl`  |
+| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.6.2/warp_lang-1.6.2+cu11-py3-none-win_amd64.whl`             |
 
 The `--force-reinstall` option may need to be used to overwrite a previous installation.
 
@@ -416,6 +417,8 @@ Problems, questions, and feature requests can be opened on [GitHub Issues](https
 
 The Warp team also monitors the **#warp** forum on the public [Omniverse Discord](https://discord.com/invite/nvidiaomniverse) server, come chat with us!
 
+For inquiries not suited for GitHub Issues or Discord, please email warp-python@nvidia.com.
+
 ## Versioning
 
 Versions take the format X.Y.Z, similar to [Python itself](https://devguide.python.org/developer-workflow/development-cycle/#devcycle):
@@ -431,7 +434,7 @@ Note that prior to 0.11.0, this schema was not strictly adhered to.
 
 ## License
 
-Warp is provided under the NVIDIA Software License, please see [LICENSE.md](./LICENSE.md) for full license text.
+Warp is provided under the Apache License, Version 2.0. Please see [LICENSE.md](./LICENSE.md) for full license text.
 
 ## Contributing
 
