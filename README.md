@@ -1,4 +1,5 @@
 [![PyPI version](https://badge.fury.io/py/warp-lang.svg)](https://badge.fury.io/py/warp-lang)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/NVIDIA/warp?link=https%3A%2F%2Fgithub.com%2FNVIDIA%2Fwarp%2Fcommits%2Fmain)
 [![Downloads](https://static.pepy.tech/badge/warp-lang/month)](https://pepy.tech/project/warp-lang)
 [![codecov](https://codecov.io/github/NVIDIA/warp/graph/badge.svg?token=7O1KSM79FG)](https://codecov.io/github/NVIDIA/warp)
@@ -442,7 +443,7 @@ Note that prior to 0.11.0, this schema was not strictly adhered to.
 
 ## License
 
-Warp is provided under the NVIDIA Software License, please see [LICENSE.md](./LICENSE.md) for full license text.
+Warp is provided under the Apache License, Version 2.0. Please see [LICENSE.md](./LICENSE.md) for full license text.
 
 ## Contributing
 
