@@ -196,6 +196,15 @@ warp/examples/optim
       - spring cage
       - trajectory
       - soft body properties
+    * - .. image:: ./img/examples/optim_fluid_checkpoint.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_fluid_checkpoint.py
+      -
+      -
+      -
+    * - fluid checkpoint
+      -
+      -
+      -
 
 warp/examples/sim
 ^^^^^^^^^^^^^^^^^
