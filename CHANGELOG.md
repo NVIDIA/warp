@@ -18,12 +18,12 @@
 - Add `wp.transform_from_matrix()` to obtain a transform from a 4x4 matrix
   ([GH-211](https://github.com/NVIDIA/warp/issues/211)).
 - Support timing events inside of CUDA graphs ([GH-556](https://github.com/NVIDIA/warp/issues/556)).
-- Add LTO cache to speed up compilation times for kernels using mathdx libraries.
+- Add LTO cache to speed up compilation times for kernels using MathDx-based tile functions
+  ([GH-507](https://github.com/NVIDIA/warp/issues/507)).
 - Add `wp.clear_lto_cache()` to clear the LTO cache.
 
 ### Changed
 
-- Update the license to *Apache License, Version 2.0*.
 - **Breaking:** Remove CUTLASS dependency and `wp.matmul()` functionality (including batched version).
 - Deprecate constructing a matrix from vectors using `wp.matrix()`.
 - Vector/matrix/quaternion component assignment operations compile and run faster in the backward pass.
@@ -37,9 +37,17 @@
 - `wp.sim.Control.reset()` now zeros-out the controls and is deprecated. Use `wp.sim.Control.clear()` instead.
 - Extend `wp.expect_near()` to support all vectors and quaternions.
 - Extend `wp.quat_from_matrix()` to support 4x4 matrices.
-- `@wp.kernel` has now an optional `module` argument that allows passing a `wp.context.Module` to the kernel, or, if set to `"unique"` let Warp create a new unique module just for this kernel. The default behavior to use the current module is unchanged.
+- `@wp.kernel` has now an optional `module` argument that allows passing a `wp.context.Module` to the kernel,
+  or, if set to `"unique"` let Warp create a new unique module just for this kernel.
+  The default behavior to use the current module is unchanged.
 
 ### Fixed
+
+## [1.6.2] - 2025-03-07
+
+### Changed
+
+- Update project license from *NVIDIA Software License* to *Apache License, Version 2.0* (see `LICENSE.md`).
 
 ## [1.6.1] - 2025-03-03
 
