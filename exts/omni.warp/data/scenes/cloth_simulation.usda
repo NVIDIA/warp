@@ -165,26 +165,25 @@ def Xform "World"
         {
             custom rel inputs:cloth
             prepend rel inputs:cloth = </World/ActionGraph/grid_create/outputs_mesh>
-            custom float inputs:clothDensity = 100
+            custom float inputs:clothDensity = 0.1
             custom float inputs:clothEdgeBendingStiffness = 0.01
-            custom float inputs:clothEdgeDampingStiffness = 0
-            custom float inputs:clothTriAreaStiffness = 1000000
-            custom float inputs:clothTriDampingStiffness = 100
+            custom float inputs:clothEdgeDampingStiffness = 0.00001
+            custom float inputs:clothTriAreaStiffness = 100000
+            custom float inputs:clothTriDampingStiffness = 0.00001
             custom float inputs:clothTriDrag = 0
-            custom float inputs:clothTriElasticStiffness = 1000000
+            custom float inputs:clothTriElasticStiffness = 100000
             custom float inputs:clothTriLift = 0
             custom rel inputs:collider
             prepend rel inputs:collider = </World/ActionGraph/read_collider/outputs_primsBundle>
             custom float inputs:colliderContactDistance = 5
             custom float inputs:colliderContactQueryRange = 100
             custom float inputs:contactDampingStiffness = 10000
-            custom float inputs:contactElasticStiffness = 500000
+            custom float inputs:contactElasticStiffness = 100000
             custom float inputs:contactFrictionCoeff = 0.75
             custom float inputs:contactFrictionStiffness = 10000
             custom bool inputs:enabled = 1
             custom uint inputs:execIn
             prepend uint inputs:execIn.connect = </World/ActionGraph/grid_create.outputs:execOut>
-            custom float inputs:globalScale = 100
             custom vector3f inputs:gravity = (0, -980, 0)
             custom float inputs:groundAltitude = 8
             custom bool inputs:groundEnabled = 1

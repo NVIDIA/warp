@@ -40,6 +40,8 @@
 - `@wp.kernel` has now an optional `module` argument that allows passing a `wp.context.Module` to the kernel,
   or, if set to `"unique"` let Warp create a new unique module just for this kernel.
   The default behavior to use the current module is unchanged.
+- Updated the `OgnClothSimulate` node to use the VBD integrator ([GH-512](https://github.com/NVIDIA/warp/issues/512)).
+- Removed the `globalScale` parameter from the `OgnClothSimulate` node.
 
 ### Fixed
 

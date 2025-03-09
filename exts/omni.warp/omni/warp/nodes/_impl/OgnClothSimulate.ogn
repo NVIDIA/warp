@@ -31,20 +31,11 @@
                 "uiName": "Gravity",
                 "default": [0.0, -980, 0.0]
             },
-            "globalScale": {
-                "type": "float",
-                "description": "Global scale value for the simulation attributes.",
-                "uiName": "Global Scale",
-                "default": 100.0,
-                "metadata": {
-                    "min": 0.0
-                }
-            },
             "contactElasticStiffness": {
                 "type": "float",
                 "description": "Contact elastic stiffness. Multiple of the global scale value.",
                 "uiName": "Contact Elastic Stiffness",
-                "default": 500000.0,
+                "default": 100000.0,
                 "metadata": {
                     "min": 0.0
                 }
@@ -86,7 +77,7 @@
                 "type": "float",
                 "description": "Cloth density.",
                 "uiName": "Cloth Density",
-                "default": 100.0,
+                "default": 0.1,
                 "metadata": {
                     "min": 0.0
                 }
@@ -95,7 +86,7 @@
                 "type": "float",
                 "description": "Triangle elastic stiffness. Multiple of the global scale value.",
                 "uiName": "Cloth Triangle Elastic Stiffness",
-                "default": 1000000.0,
+                "default": 100000.0,
                 "metadata": {
                     "min": 0.0
                 }
@@ -104,7 +95,7 @@
                 "type": "float",
                 "description": "Triangle area stiffness. Multiple of the global scale value.",
                 "uiName": "Cloth Triangle Area Stiffness",
-                "default": 1000000.0,
+                "default": 100000.0,
                 "metadata": {
                     "min": 0.0
                 }
@@ -113,7 +104,7 @@
                 "type": "float",
                 "description": "Triangle damping stiffness. Multiple of the global scale value.",
                 "uiName": "Cloth Triangle Damping Stiffness",
-                "default": 100.0,
+                "default": 0.00001,
                 "metadata": {
                     "min": 0.0
                 }
@@ -149,7 +140,7 @@
                 "type": "float",
                 "description": "Edge damping stiffness. Multiple of the global scale value.",
                 "uiName": "Cloth Edge Damping Stiffness",
-                "default": 0.0,
+                "default": 0.00001,
                 "metadata": {
                     "min": 0.0
                 }
@@ -174,7 +165,7 @@
                 "type": "float",
                 "description": "Distance to start probing for contacts with the collider's surface. Multiple of the collider contact distance.",
                 "uiName": "Collider Contact Query Range",
-                "default": 100.0,
+                "default": 10.0,
                 "metadata": {
                     "min": 1.0
                 }
