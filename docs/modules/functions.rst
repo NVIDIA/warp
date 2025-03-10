@@ -1407,8 +1407,9 @@ Utility
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
-    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
-    ``where(cond, value_if_true, value_if_false)``.
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: int8, value_if_false: Any, value_if_true: Any) -> Any
@@ -1417,8 +1418,9 @@ Utility
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
-    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
-    ``where(cond, value_if_true, value_if_false)``.
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: uint8, value_if_false: Any, value_if_true: Any) -> Any
@@ -1427,8 +1429,9 @@ Utility
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
-    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
-    ``where(cond, value_if_true, value_if_false)``.
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: int16, value_if_false: Any, value_if_true: Any) -> Any
@@ -1437,8 +1440,9 @@ Utility
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
-    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
-    ``where(cond, value_if_true, value_if_false)``.
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: uint16, value_if_false: Any, value_if_true: Any) -> Any
@@ -1447,8 +1451,9 @@ Utility
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
-    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
-    ``where(cond, value_if_true, value_if_false)``.
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: int32, value_if_false: Any, value_if_true: Any) -> Any
@@ -1457,8 +1462,9 @@ Utility
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
-    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
-    ``where(cond, value_if_true, value_if_false)``.
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: uint32, value_if_false: Any, value_if_true: Any) -> Any
@@ -1467,8 +1473,9 @@ Utility
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
-    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
-    ``where(cond, value_if_true, value_if_false)``.
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: int64, value_if_false: Any, value_if_true: Any) -> Any
@@ -1477,8 +1484,9 @@ Utility
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
-    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
-    ``where(cond, value_if_true, value_if_false)``.
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(cond: uint64, value_if_false: Any, value_if_true: Any) -> Any
@@ -1487,8 +1495,9 @@ Utility
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
-    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
-    ``where(cond, value_if_true, value_if_false)``.
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
 
 
 .. py:function:: select(arr: Array[Any], value_if_false: Any, value_if_true: Any) -> Any
@@ -1497,8 +1506,9 @@ Utility
 
     Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``.
 
-    Note: Consider using :func:`where` instead, which has the more intuitive argument order:
-    ``where(arr, value_if_true, value_if_false)``.
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(arr, value_if_true, value_if_false)``.
 
 
 .. py:function:: where(cond: bool, value_if_true: Any, value_if_false: Any) -> Any
