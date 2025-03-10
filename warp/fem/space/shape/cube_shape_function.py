@@ -152,13 +152,13 @@ class CubeTripolynomialShapeFunctions(CubeShapeFunction):
         ):
             i, j, k = self._node_ijk(node_index_in_elt)
 
-            zi = wp.select(i == 0, 0, 1)
-            zj = wp.select(j == 0, 0, 1)
-            zk = wp.select(k == 0, 0, 1)
+            zi = wp.where(i == 0, 1, 0)
+            zj = wp.where(j == 0, 1, 0)
+            zk = wp.where(k == 0, 1, 0)
 
-            mi = wp.select(i == ORDER, 0, 1)
-            mj = wp.select(j == ORDER, 0, 1)
-            mk = wp.select(k == ORDER, 0, 1)
+            mi = wp.where(i == ORDER, 1, 0)
+            mj = wp.where(j == ORDER, 1, 0)
+            mk = wp.where(k == ORDER, 1, 0)
 
             if zi + mi == 1:
                 if zj + mj == 1:
@@ -634,9 +634,9 @@ class CubeSerendipityShapeFunctions(CubeShapeFunction):
             if node_type == CubeSerendipityShapeFunctions.VERTEX:
                 node_ijk = CubeSerendipityShapeFunctions._vertex_coords(type_instance)
 
-                cx = wp.select(node_ijk[0] == 0, coords[0], 1.0 - coords[0])
-                cy = wp.select(node_ijk[1] == 0, coords[1], 1.0 - coords[1])
-                cz = wp.select(node_ijk[2] == 0, coords[2], 1.0 - coords[2])
+                cx = wp.where(node_ijk[0] == 0, 1.0 - coords[0], coords[0])
+                cy = wp.where(node_ijk[1] == 0, 1.0 - coords[1], coords[1])
+                cz = wp.where(node_ijk[2] == 0, 1.0 - coords[2], coords[2])
 
                 w = cx * cy * cz
 
@@ -659,8 +659,8 @@ class CubeSerendipityShapeFunctions(CubeShapeFunction):
             local_coords = Grid3D._world_to_local(axis, coords)
 
             w = float(1.0)
-            w *= wp.select(node_all[1] == 0, local_coords[1], 1.0 - local_coords[1])
-            w *= wp.select(node_all[2] == 0, local_coords[2], 1.0 - local_coords[2])
+            w *= wp.where(node_all[1] == 0, 1.0 - local_coords[1], local_coords[1])
+            w *= wp.where(node_all[2] == 0, 1.0 - local_coords[2], local_coords[2])
 
             for k in range(ORDER_PLUS_ONE):
                 if k != node_all[0]:
@@ -690,13 +690,13 @@ class CubeSerendipityShapeFunctions(CubeShapeFunction):
             if node_type == CubeSerendipityShapeFunctions.VERTEX:
                 node_ijk = CubeSerendipityShapeFunctions._vertex_coords(type_instance)
 
-                cx = wp.select(node_ijk[0] == 0, coords[0], 1.0 - coords[0])
-                cy = wp.select(node_ijk[1] == 0, coords[1], 1.0 - coords[1])
-                cz = wp.select(node_ijk[2] == 0, coords[2], 1.0 - coords[2])
+                cx = wp.where(node_ijk[0] == 0, 1.0 - coords[0], coords[0])
+                cy = wp.where(node_ijk[1] == 0, 1.0 - coords[1], coords[1])
+                cz = wp.where(node_ijk[2] == 0, 1.0 - coords[2], coords[2])
 
-                gx = wp.select(node_ijk[0] == 0, 1.0, -1.0)
-                gy = wp.select(node_ijk[1] == 0, 1.0, -1.0)
-                gz = wp.select(node_ijk[2] == 0, 1.0, -1.0)
+                gx = wp.where(node_ijk[0] == 0, -1.0, 1.0)
+                gy = wp.where(node_ijk[1] == 0, -1.0, 1.0)
+                gz = wp.where(node_ijk[2] == 0, -1.0, 1.0)
 
                 if wp.static(ORDER == 2):
                     w = cx + cy + cz - 3.0 + LOBATTO_COORDS[1]
@@ -728,11 +728,11 @@ class CubeSerendipityShapeFunctions(CubeShapeFunction):
 
             local_coords = Grid3D._world_to_local(axis, coords)
 
-            w_long = wp.select(node_all[1] == 0, local_coords[1], 1.0 - local_coords[1])
-            w_lat = wp.select(node_all[2] == 0, local_coords[2], 1.0 - local_coords[2])
+            w_long = wp.where(node_all[1] == 0, 1.0 - local_coords[1], local_coords[1])
+            w_lat = wp.where(node_all[2] == 0, 1.0 - local_coords[2], local_coords[2])
 
-            g_long = wp.select(node_all[1] == 0, 1.0, -1.0)
-            g_lat = wp.select(node_all[2] == 0, 1.0, -1.0)
+            g_long = wp.where(node_all[1] == 0, -1.0, 1.0)
+            g_lat = wp.where(node_all[2] == 0, -1.0, 1.0)
 
             w_alt = LAGRANGE_SCALE[node_all[0]]
             g_alt = float(0.0)

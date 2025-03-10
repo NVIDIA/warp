@@ -117,7 +117,7 @@ def divergence_form(s: Sample, domain: Domain, u: Field, psi: Field):
 def invert_volume_kernel(values: wp.array(dtype=float)):
     i = wp.tid()
     m = values[i]
-    values[i] = wp.select(m == 0.0, 1.0 / m, 0.0)
+    values[i] = wp.where(m == 0.0, 0.0, 1.0 / m)
 
 
 @wp.kernel

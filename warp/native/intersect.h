@@ -815,7 +815,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     	var_17 = wp::vec2(var_5, var_9);
     	goto label1;
     }
-    var_18 = wp::select(var_16, var_10, var_17);
+    var_18 = wp::where(var_16, var_17, var_10);
     var_19 = wp::mul(var_3, var_13);
     var_20 = wp::mul(var_12, var_4);
     var_21 = wp::sub(var_19, var_20);
@@ -830,7 +830,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     	var_29 = wp::vec2(var_28, var_23);
     	goto label2;
     }
-    var_30 = wp::select(var_27, var_18, var_29);
+    var_30 = wp::where(var_27, var_29, var_18);
     var_31 = wp::sub(var_p, var_c);
     var_32 = wp::dot(var_0, var_31);
     var_33 = wp::dot(var_1, var_31);
@@ -841,7 +841,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     	var_37 = wp::vec2(var_5, var_5);
     	goto label3;
     }
-    var_38 = wp::select(var_36, var_30, var_37);
+    var_38 = wp::where(var_36, var_37, var_30);
     var_39 = wp::mul(var_32, var_4);
     var_40 = wp::mul(var_3, var_33);
     var_41 = wp::sub(var_39, var_40);
@@ -856,7 +856,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     	var_49 = wp::vec2(var_48, var_5);
     	goto label4;
     }
-    var_50 = wp::select(var_47, var_38, var_49);
+    var_50 = wp::where(var_47, var_49, var_38);
     var_51 = wp::mul(var_12, var_33);
     var_52 = wp::mul(var_32, var_13);
     var_53 = wp::sub(var_51, var_52);
@@ -876,7 +876,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     	var_66 = wp::vec2(var_5, var_65);
     	goto label5;
     }
-    // var_67 = wp::select(var_64, var_50, var_66);
+    // var_67 = wp::where(var_64, var_66, var_50);
     var_68 = wp::add(var_53, var_41);
     var_69 = wp::add(var_68, var_21);
     var_70 = wp::div(var_9, var_69);
@@ -898,7 +898,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     wp::adj_div(var_9, var_69, var_70, adj_9, adj_69, adj_70);
     wp::adj_add(var_68, var_21, adj_68, adj_21, adj_69);
     wp::adj_add(var_53, var_41, adj_53, adj_41, adj_68);
-    wp::adj_select(var_64, var_50, var_66, adj_64, adj_50, adj_66, adj_67);
+    wp::adj_where(var_64, var_66, var_50, adj_64, adj_66, adj_50, adj_67);
     if (var_64) {
     	label5:;
     	adj_66 += adj_ret;
@@ -915,7 +915,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     wp::adj_sub(var_51, var_52, adj_51, adj_52, adj_53);
     wp::adj_mul(var_32, var_13, adj_32, adj_13, adj_52);
     wp::adj_mul(var_12, var_33, adj_12, adj_33, adj_51);
-    wp::adj_select(var_47, var_38, var_49, adj_47, adj_38, adj_49, adj_50);
+    wp::adj_where(var_47, var_49, var_38, adj_47, adj_49, adj_38, adj_50);
     if (var_47) {
     	label4:;
     	adj_49 += adj_ret;
@@ -927,7 +927,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     wp::adj_sub(var_39, var_40, adj_39, adj_40, adj_41);
     wp::adj_mul(var_3, var_33, adj_3, adj_33, adj_40);
     wp::adj_mul(var_32, var_4, adj_32, adj_4, adj_39);
-    wp::adj_select(var_36, var_30, var_37, adj_36, adj_30, adj_37, adj_38);
+    wp::adj_where(var_36, var_37, var_30, adj_36, adj_37, adj_30, adj_38);
     if (var_36) {
     	label3:;
     	adj_37 += adj_ret;
@@ -936,7 +936,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     wp::adj_dot(var_1, var_31, adj_1, adj_31, adj_33);
     wp::adj_dot(var_0, var_31, adj_0, adj_31, adj_32);
     wp::adj_sub(var_p, var_c, adj_p, adj_c, adj_31);
-    wp::adj_select(var_27, var_18, var_29, adj_27, adj_18, adj_29, adj_30);
+    wp::adj_where(var_27, var_29, var_18, adj_27, adj_29, adj_18, adj_30);
     if (var_27) {
     	label2:;
     	adj_29 += adj_ret;
@@ -948,7 +948,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     wp::adj_sub(var_19, var_20, adj_19, adj_20, adj_21);
     wp::adj_mul(var_12, var_4, adj_12, adj_4, adj_20);
     wp::adj_mul(var_3, var_13, adj_3, adj_13, adj_19);
-    wp::adj_select(var_16, var_10, var_17, adj_16, adj_10, adj_17, adj_18);
+    wp::adj_where(var_16, var_17, var_10, adj_16, adj_17, adj_10, adj_18);
     if (var_16) {
     	label1:;
     	adj_17 += adj_ret;
@@ -1156,8 +1156,8 @@ static CUDA_CALLABLE vec3 closest_point_edge_edge(vec3 var_p1,
     	var_17 = wp::div(var_5, var_4);
     	var_18 = wp::cast_float(var_17);
     }
-    var_19 = wp::select(var_15, var_7, var_16);
-    var_20 = wp::select(var_15, var_8, var_18);
+    var_19 = wp::where(var_15, var_16, var_7);
+    var_20 = wp::where(var_15, var_18, var_8);
     if (!var_15) {
     	var_21 = wp::dot(var_0, var_2);
     	var_22 = (var_4 <= var_epsilon);
@@ -1167,8 +1167,8 @@ static CUDA_CALLABLE vec3 closest_point_edge_edge(vec3 var_p1,
     		var_26 = wp::clamp(var_24, var_6, var_25);
     		var_27 = wp::cast_float(var_6);
     	}
-    	var_28 = wp::select(var_22, var_19, var_26);
-    	var_29 = wp::select(var_22, var_20, var_27);
+    	var_28 = wp::where(var_22, var_26, var_19);
+    	var_29 = wp::where(var_22, var_27, var_20);
     	if (!var_22) {
     		var_30 = wp::dot(var_0, var_1);
     		var_31 = wp::mul(var_3, var_4);
@@ -1182,10 +1182,10 @@ static CUDA_CALLABLE vec3 closest_point_edge_edge(vec3 var_p1,
     			var_38 = wp::div(var_37, var_33);
     			var_39 = wp::clamp(var_38, var_6, var_25);
     		}
-    		var_40 = wp::select(var_34, var_28, var_39);
+    		var_40 = wp::where(var_34, var_39, var_28);
     		if (!var_34) {
     		}
-    		var_41 = wp::select(var_34, var_6, var_40);
+    		var_41 = wp::where(var_34, var_40, var_6);
     		var_42 = wp::mul(var_30, var_41);
     		var_43 = wp::add(var_42, var_5);
     		var_44 = wp::div(var_43, var_4);
@@ -1195,8 +1195,8 @@ static CUDA_CALLABLE vec3 closest_point_edge_edge(vec3 var_p1,
     			var_47 = wp::div(var_46, var_3);
     			var_48 = wp::clamp(var_47, var_6, var_25);
     		}
-    		var_49 = wp::select(var_45, var_41, var_48);
-    		var_50 = wp::select(var_45, var_44, var_6);
+    		var_49 = wp::where(var_45, var_48, var_41);
+    		var_50 = wp::where(var_45, var_6, var_44);
     		if (!var_45) {
     			var_51 = (var_50 > var_25);
     			if (var_51) {
@@ -1204,17 +1204,17 @@ static CUDA_CALLABLE vec3 closest_point_edge_edge(vec3 var_p1,
     				var_53 = wp::div(var_52, var_3);
     				var_54 = wp::clamp(var_53, var_6, var_25);
     			}
-    			var_55 = wp::select(var_51, var_49, var_54);
-    			var_56 = wp::select(var_51, var_50, var_25);
+    			var_55 = wp::where(var_51, var_54, var_49);
+    			var_56 = wp::where(var_51, var_25, var_50);
     		}
-    		var_57 = wp::select(var_45, var_55, var_49);
-    		var_58 = wp::select(var_45, var_56, var_50);
+    		var_57 = wp::where(var_45, var_49, var_55);
+    		var_58 = wp::where(var_45, var_50, var_56);
     	}
-    	var_59 = wp::select(var_22, var_57, var_28);
-    	var_60 = wp::select(var_22, var_58, var_29);
+    	var_59 = wp::where(var_22, var_28, var_57);
+    	var_60 = wp::where(var_22, var_29, var_58);
     }
-    var_61 = wp::select(var_15, var_59, var_19);
-    var_62 = wp::select(var_15, var_60, var_20);
+    var_61 = wp::where(var_15, var_19, var_59);
+    var_62 = wp::where(var_15, var_20, var_60);
     var_63 = wp::sub(var_q1, var_p1);
     var_64 = wp::mul(var_63, var_61);
     var_65 = wp::add(var_p1, var_64);

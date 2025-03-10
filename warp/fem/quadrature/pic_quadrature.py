@@ -162,7 +162,7 @@ class PicQuadrature(Quadrature):
         element_mask: wp.array(dtype=int),
     ):
         i = wp.tid()
-        element_mask[i] = wp.select(element_particle_offsets[i] == element_particle_offsets[i + 1], 1, 0)
+        element_mask[i] = wp.where(element_particle_offsets[i] == element_particle_offsets[i + 1], 0, 1)
 
     @wp.kernel
     def _compute_uniform_fraction(

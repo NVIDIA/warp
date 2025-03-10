@@ -196,7 +196,7 @@ class TrianglePolynomialShapeFunctions(TriangleShapeFunction):
         def trace_node_quadrature_weight(node_index_in_element: int):
             node_type, type_index = self.node_type_and_type_index(node_index_in_element)
 
-            return wp.select(node_type == TrianglePolynomialShapeFunctions.VERTEX, EDGE_WEIGHT, VERTEX_WEIGHT)
+            return wp.where(node_type == TrianglePolynomialShapeFunctions.VERTEX, VERTEX_WEIGHT, EDGE_WEIGHT)
 
         return trace_node_quadrature_weight
 

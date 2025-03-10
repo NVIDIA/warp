@@ -244,10 +244,10 @@ class TetmeshSpaceTopology(SpaceTopology):
                     edge = type_index // INTERIOR_NODES_PER_EDGE
                     c1, c2 = TetrahedronShapeFunction.edge_vidx(edge)
 
-                    return wp.select(
+                    return wp.where(
                         geo_arg.tet_vertex_indices[element_index][c1] > geo_arg.tet_vertex_indices[element_index][c2],
-                        1.0,
                         -1.0,
+                        1.0,
                     )
 
             if wp.static(INTERIOR_NODES_PER_FACE > 0):
@@ -257,7 +257,7 @@ class TetmeshSpaceTopology(SpaceTopology):
                     global_face_index = topo_arg.tet_face_indices[element_index][face]
                     inner = topo_arg.face_tet_indices[global_face_index][0]
 
-                    return wp.select(inner == element_index, -1.0, 1.0)
+                    return wp.where(inner == element_index, 1.0, -1.0)
 
             return 1.0
 

@@ -175,11 +175,11 @@ class TrimeshSpaceTopology(SpaceTopology):
                 edge = type_index // INTERIOR_NODES_PER_SIDE
 
                 global_edge_index = topo_arg.tri_edge_indices[element_index][edge]
-                return wp.select(
+                return wp.where(
                     topo_arg.edge_vertex_indices[global_edge_index][0]
                     == geo_arg.topology.tri_vertex_indices[element_index][edge],
-                    -1.0,
                     1.0,
+                    -1.0,
                 )
 
             return 1.0

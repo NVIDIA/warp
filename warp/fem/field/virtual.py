@@ -399,7 +399,7 @@ class LocalAdjointField(SpaceField):
 
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
             dof_value = self.space.value_basis_element(value_dof, local_value_map)
-            return wp.select(taylor_dof == 0, self.dtype(0.0), dof_value)
+            return wp.where(taylor_dof == 0, dof_value, self.dtype(0.0))
 
         return eval_test_inner
 
@@ -454,7 +454,7 @@ class LocalAdjointField(SpaceField):
 
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
             dof_value = self.space.value_basis_element(value_dof, local_value_map)
-            return wp.select(taylor_dof == 0, self.dtype(0.0), dof_value)
+            return wp.where(taylor_dof == 0, dof_value, self.dtype(0.0))
 
         return eval_test_outer
 
@@ -705,10 +705,10 @@ def make_bilinear_dispatch_kernel(
                 domain_arg, trial_topology_arg, element_index
             )
 
-            qp_point_count = wp.select(
+            qp_point_count = wp.where(
                 trial_node < element_trial_node_count,
-                0,
                 quadrature.point_count(domain_arg, qp_arg, test_element_index.domain_element_index, element_index),
+                0,
             )
 
             val_sum = accumulate_dtype(0.0)

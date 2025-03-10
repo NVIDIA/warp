@@ -82,7 +82,7 @@ def boundary_projector_form(
 ):
     # Fix a single point
     # (underconstrained, solution up to a rotation in UV space)
-    w = wp.select(s.qp_index == 0, 0.0, 1.0)
+    w = wp.where(s.qp_index == 0, 1.0, 0.0)
     return w * wp.dot(u(s), v(s))
 
 

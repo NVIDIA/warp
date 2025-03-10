@@ -4624,11 +4624,31 @@ add_builtin(
     export=False,
     group="Utility",
 )
+
+
+def select_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    warp.utils.warn(
+        "wp.select() is deprecated and will be removed in a future\n"
+        "version. Use wp.where(cond, value_if_true, value_if_false) instead.",
+        category=DeprecationWarning,
+    )
+
+    func_args = tuple(args.values())
+    template_args = ()
+
+    return (func_args, template_args)
+
+
 add_builtin(
     "select",
     input_types={"cond": builtins.bool, "value_if_false": Any, "value_if_true": Any},
     value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
-    doc="Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``",
+    dispatch_func=select_dispatch_func,
+    doc="""Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.""",
     group="Utility",
 )
 for t in int_types:
@@ -4636,14 +4656,47 @@ for t in int_types:
         "select",
         input_types={"cond": t, "value_if_false": Any, "value_if_true": Any},
         value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
-        doc="Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``",
+        dispatch_func=select_dispatch_func,
+        doc="""Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.""",
         group="Utility",
     )
 add_builtin(
     "select",
     input_types={"arr": array(dtype=Any), "value_if_false": Any, "value_if_true": Any},
     value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
-    doc="Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``",
+    dispatch_func=select_dispatch_func,
+    doc="""Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(arr, value_if_true, value_if_false)``.""",
+    group="Utility",
+)
+
+add_builtin(
+    "where",
+    input_types={"cond": builtins.bool, "value_if_true": Any, "value_if_false": Any},
+    value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
+    doc="Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.",
+    group="Utility",
+)
+for t in int_types:
+    add_builtin(
+        "where",
+        input_types={"cond": t, "value_if_true": Any, "value_if_false": Any},
+        value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
+        doc="Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.",
+        group="Utility",
+    )
+add_builtin(
+    "where",
+    input_types={"arr": array(dtype=Any), "value_if_true": Any, "value_if_false": Any},
+    value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
+    doc="Select between two arguments, if ``arr`` is not null then return ``value_if_true``, otherwise return ``value_if_false``.",
     group="Utility",
 )
 

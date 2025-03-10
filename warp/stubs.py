@@ -2073,61 +2073,171 @@ def tid() -> Tuple[int, int, int, int]:
 
 @over
 def select(cond: bool, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
+    """
     ...
 
 
 @over
 def select(cond: int8, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
+    """
     ...
 
 
 @over
 def select(cond: uint8, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
+    """
     ...
 
 
 @over
 def select(cond: int16, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
+    """
     ...
 
 
 @over
 def select(cond: uint16, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
+    """
     ...
 
 
 @over
 def select(cond: int32, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
+    """
     ...
 
 
 @over
 def select(cond: uint32, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
+    """
     ...
 
 
 @over
 def select(cond: int64, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
+    """
     ...
 
 
 @over
 def select(cond: uint64, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``"""
+    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(cond, value_if_true, value_if_false)``.
+    """
     ...
 
 
 @over
 def select(arr: Array[Any], value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``"""
+    """Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``.
+
+    .. deprecated:: 1.7
+         Use :func:`where` instead, which has the more intuitive argument order:
+         ``where(arr, value_if_true, value_if_false)``.
+    """
+    ...
+
+
+@over
+def where(cond: bool, value_if_true: Any, value_if_false: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
+    ...
+
+
+@over
+def where(cond: int8, value_if_true: Any, value_if_false: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
+    ...
+
+
+@over
+def where(cond: uint8, value_if_true: Any, value_if_false: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
+    ...
+
+
+@over
+def where(cond: int16, value_if_true: Any, value_if_false: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
+    ...
+
+
+@over
+def where(cond: uint16, value_if_true: Any, value_if_false: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
+    ...
+
+
+@over
+def where(cond: int32, value_if_true: Any, value_if_false: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
+    ...
+
+
+@over
+def where(cond: uint32, value_if_true: Any, value_if_false: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
+    ...
+
+
+@over
+def where(cond: int64, value_if_true: Any, value_if_false: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
+    ...
+
+
+@over
+def where(cond: uint64, value_if_true: Any, value_if_false: Any) -> Any:
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
+    ...
+
+
+@over
+def where(arr: Array[Any], value_if_true: Any, value_if_false: Any) -> Any:
+    """Select between two arguments, if ``arr`` is not null then return ``value_if_true``, otherwise return ``value_if_false``."""
     ...
 
 

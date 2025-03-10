@@ -165,13 +165,13 @@ class Quadmesh(Geometry):
         s = side_coords[0]
 
         if vs == quad_vidx[0]:
-            return wp.select(ve == quad_vidx[1], Coords(0.0, s, 0.0), Coords(s, 0.0, 0.0))
+            return wp.where(ve == quad_vidx[1], Coords(s, 0.0, 0.0), Coords(0.0, s, 0.0))
         elif vs == quad_vidx[1]:
-            return wp.select(ve == quad_vidx[2], Coords(1.0 - s, 0.0, 0.0), Coords(1.0, s, 0.0))
+            return wp.where(ve == quad_vidx[2], Coords(1.0, s, 0.0), Coords(1.0 - s, 0.0, 0.0))
         elif vs == quad_vidx[2]:
-            return wp.select(ve == quad_vidx[3], Coords(1.0, 1.0 - s, 0.0), Coords(1.0 - s, 1.0, 0.0))
+            return wp.where(ve == quad_vidx[3], Coords(1.0 - s, 1.0, 0.0), Coords(1.0, 1.0 - s, 0.0))
 
-        return wp.select(ve == quad_vidx[0], Coords(s, 1.0, 0.0), Coords(0.0, 1.0 - s, 0.0))
+        return wp.where(ve == quad_vidx[0], Coords(0.0, 1.0 - s, 0.0), Coords(s, 1.0, 0.0))
 
     @wp.func
     def _quad_to_edge_coords(
@@ -190,18 +190,18 @@ class Quadmesh(Geometry):
         cy = quad_coords[1]
 
         if vs == quad_vidx[0]:
-            oc = wp.select(ve == quad_vidx[1], cx, cy)
-            ec = wp.select(ve == quad_vidx[1], cy, cx)
+            oc = wp.where(ve == quad_vidx[1], cy, cx)
+            ec = wp.where(ve == quad_vidx[1], cx, cy)
         elif vs == quad_vidx[1]:
-            oc = wp.select(ve == quad_vidx[2], cy, 1.0 - cx)
-            ec = wp.select(ve == quad_vidx[2], 1.0 - cx, cy)
+            oc = wp.where(ve == quad_vidx[2], 1.0 - cx, cy)
+            ec = wp.where(ve == quad_vidx[2], cy, 1.0 - cx)
         elif vs == quad_vidx[2]:
-            oc = wp.select(ve == quad_vidx[3], 1.0 - cx, 1.0 - cy)
-            ec = wp.select(ve == quad_vidx[3], 1.0 - cy, 1.0 - cx)
+            oc = wp.where(ve == quad_vidx[3], 1.0 - cy, 1.0 - cx)
+            ec = wp.where(ve == quad_vidx[3], 1.0 - cx, 1.0 - cy)
         else:
-            oc = wp.select(ve == quad_vidx[0], 1.0 - cy, cx)
-            ec = wp.select(ve == quad_vidx[0], cx, 1.0 - cy)
-        return wp.select(oc == 0.0, Coords(OUTSIDE), Coords(ec, 0.0, 0.0))
+            oc = wp.where(ve == quad_vidx[0], cx, 1.0 - cy)
+            ec = wp.where(ve == quad_vidx[0], 1.0 - cy, cx)
+        return wp.where(oc == 0.0, Coords(ec, 0.0, 0.0), Coords(OUTSIDE))
 
     @wp.func
     def boundary_side_index(args: SideIndexArg, boundary_side_index: int):

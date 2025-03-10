@@ -866,7 +866,7 @@ def _diag_mv_vec_kernel(
 def _inverse_diag_coefficient(coeff: Any, use_abs: wp.bool):
     zero = type(coeff)(0.0)
     one = type(coeff)(1.0)
-    return wp.select(coeff == zero, one / wp.select(use_abs, coeff, wp.abs(coeff)), one)
+    return wp.where(coeff == zero, one, one / wp.where(use_abs, wp.abs(coeff), coeff))
 
 
 @wp.kernel
@@ -917,7 +917,7 @@ def _cg_kernel_1(
 ):
     i = wp.tid()
 
-    alpha = wp.select(resid[0] > tol, rz_old.dtype(0.0), rz_old[0] / p_Ap[0])
+    alpha = wp.where(resid[0] > tol, rz_old[0] / p_Ap[0], rz_old.dtype(0.0))
 
     x[i] = x[i] + alpha * p[i]
     r[i] = r[i] - alpha * Ap[i]
@@ -935,7 +935,7 @@ def _cg_kernel_2(
     #    p = r + (rz_new / rz_old) * p;
     i = wp.tid()
 
-    beta = wp.select(resid[0] > tol, rz_old.dtype(0.0), rz_new[0] / rz_old[0])
+    beta = wp.where(resid[0] > tol, rz_new[0] / rz_old[0], rz_old.dtype(0.0))
 
     p[i] = z[i] + beta * p[i]
 
@@ -955,7 +955,7 @@ def _cr_kernel_1(
 ):
     i = wp.tid()
 
-    alpha = wp.select(resid[0] > tol and y_Ap[0] > 0.0, zAz_old.dtype(0.0), zAz_old[0] / y_Ap[0])
+    alpha = wp.where(resid[0] > tol and y_Ap[0] > 0.0, zAz_old[0] / y_Ap[0], zAz_old.dtype(0.0))
 
     x[i] = x[i] + alpha * p[i]
     r[i] = r[i] - alpha * Ap[i]
@@ -976,7 +976,7 @@ def _cr_kernel_2(
     #    p = r + (rz_new / rz_old) * p;
     i = wp.tid()
 
-    beta = wp.select(resid[0] > tol and zAz_old[0] > 0.0, zAz_old.dtype(0.0), zAz_new[0] / zAz_old[0])
+    beta = wp.where(resid[0] > tol and zAz_old[0] > 0.0, zAz_new[0] / zAz_old[0], zAz_old.dtype(0.0))
 
     p[i] = z[i] + beta * p[i]
     Ap[i] = Az[i] + beta * Ap[i]
@@ -995,7 +995,7 @@ def _bicgstab_kernel_1(
 ):
     i = wp.tid()
 
-    alpha = wp.select(resid[0] > tol, rho_old.dtype(0.0), rho_old[0] / r0v[0])
+    alpha = wp.where(resid[0] > tol, rho_old[0] / r0v[0], rho_old.dtype(0.0))
 
     x[i] += alpha * y[i]
     r[i] -= alpha * v[i]
@@ -1014,7 +1014,7 @@ def _bicgstab_kernel_2(
 ):
     i = wp.tid()
 
-    omega = wp.select(resid[0] > tol, st.dtype(0.0), st[0] / tt[0])
+    omega = wp.where(resid[0] > tol, st[0] / tt[0], st.dtype(0.0))
 
     x[i] += omega * z[i]
     r[i] -= omega * t[i]
@@ -1034,8 +1034,8 @@ def _bicgstab_kernel_3(
 ):
     i = wp.tid()
 
-    beta = wp.select(resid[0] > tol, st.dtype(0.0), rho_new[0] * tt[0] / (r0v[0] * st[0]))
-    beta_omega = wp.select(resid[0] > tol, st.dtype(0.0), rho_new[0] / r0v[0])
+    beta = wp.where(resid[0] > tol, rho_new[0] * tt[0] / (r0v[0] * st[0]), st.dtype(0.0))
+    beta_omega = wp.where(resid[0] > tol, rho_new[0] / r0v[0], st.dtype(0.0))
 
     p[i] = r[i] + beta * p[i] - beta_omega * v[i]
 
@@ -1123,7 +1123,7 @@ def _gmres_arnoldi_normalize_kernel(
     alpha: wp.array(dtype=Any),
 ):
     tid = wp.tid()
-    y[tid] = wp.select(alpha[0] == alpha.dtype(0.0), x[tid] / wp.sqrt(alpha[0]), x[tid])
+    y[tid] = wp.where(alpha[0] == alpha.dtype(0.0), x[tid], x[tid] / wp.sqrt(alpha[0]))
 
 
 @wp.kernel

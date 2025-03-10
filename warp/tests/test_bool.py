@@ -58,7 +58,7 @@ def identity_test(data: wp.array(dtype=wp.bool)):
     else:
         data[i] = False
 
-    data[i] = wp.select(data[i], False, True)
+    data[i] = wp.where(data[i], True, False)
 
 
 def test_bool_identity_ops(test, device):

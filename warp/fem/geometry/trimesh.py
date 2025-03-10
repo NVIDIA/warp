@@ -325,9 +325,7 @@ class Trimesh(Geometry):
             elif edge_vidx[0] == v:
                 start = k
 
-        return wp.select(
-            tri_coords[start] + tri_coords[end] > 0.999, Coords(OUTSIDE), Coords(tri_coords[end], 0.0, 0.0)
-        )
+        return wp.where(tri_coords[start] + tri_coords[end] > 0.999, Coords(tri_coords[end], 0.0, 0.0), Coords(OUTSIDE))
 
     def _build_topology(self, temporary_store: TemporaryStore):
         from warp.fem.utils import compress_node_indices, host_read_at_index, masked_indices

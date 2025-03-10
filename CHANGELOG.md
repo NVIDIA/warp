@@ -23,11 +23,16 @@
 - Add `wp.clear_lto_cache()` to clear the LTO cache.
 - Add example demonstrating gradient checkpointing for fluid optimization in
   `warp/examples/optim/example_fluid_checkpoint.py`.
+- Add `wp.where()` to select between two arguments conditionally using a
+  more intuitive argument order (`cond`, `value_if_true`, `value_if_false`)
+  ([GH-469](https://github.com/NVIDIA/warp/issues/469)).
 
 ### Changed
 
 - **Breaking:** Remove CUTLASS dependency and `wp.matmul()` functionality (including batched version).
 - Deprecate constructing a matrix from vectors using `wp.matrix()`.
+- Deprecate `wp.select()` in favor of `wp.where()`. Users should update their code to use
+  `wp.where(cond, value_if_true, value_if_false)` instead of `wp.select(cond, value_if_false, value_if_true)`.
 - Vector/matrix/quaternion component assignment operations compile and run faster in the backward pass.
   Assignment should only happen once per component.
 - `wp.fem.integrate()` and `wp.fem.interpolate()` may now perform parallel evaluation of quadrature points within elements.

@@ -543,21 +543,21 @@ Since ``func_id`` is not static, the compiler cannot eliminate the unused functi
 .. code:: cpp
 
     //...
-    var_11 = wp::select(var_9, var_4, var_10);
+    var_11 = wp::where(var_9, var_10, var_4);
     if (!var_9) {
         var_13 = (var_7 == var_12);
         if (var_13) {
             var_14 = apply_func_b_0(var_3);
         }
-        var_15 = wp::select(var_13, var_11, var_14);
+        var_15 = wp::where(var_13, var_14, var_11);
         if (!var_13) {
             var_17 = (var_7 == var_16);
             if (var_17) {
                 var_18 = apply_func_c_0(var_3);
             }
-            var_19 = wp::select(var_17, var_15, var_18);
+            var_19 = wp::where(var_17, var_18, var_15);
         }
-        var_20 = wp::select(var_13, var_19, var_15);
+        var_20 = wp::where(var_13, var_15, var_19);
     }
     //...
 
@@ -604,7 +604,7 @@ In the generated CUDA code, we can see that the optimized code does not branch f
     if (var_10) {
         var_11 = apply_func_a_1(var_3);
     }
-    var_12 = wp::select(var_10, var_4, var_11);
+    var_12 = wp::where(var_10, var_11, var_4);
     var_15 = (var_7 == var_14);
     if (var_15) {
         var_16 = apply_func_b_1(var_3);

@@ -1684,7 +1684,7 @@ class Adjoint:
 
             if var1 != var2:
                 # insert a phi function that selects var1, var2 based on cond
-                out = adj.add_builtin_call("select", [cond, var1, var2])
+                out = adj.add_builtin_call("where", [cond, var2, var1])
                 adj.symbols[sym] = out
 
         symbols_prev = adj.symbols.copy()
@@ -1708,7 +1708,7 @@ class Adjoint:
             if var1 != var2:
                 # insert a phi function that selects var1, var2 based on cond
                 # note the reversed order of vars since we want to use !cond as our select
-                out = adj.add_builtin_call("select", [cond, var2, var1])
+                out = adj.add_builtin_call("where", [cond, var1, var2])
                 adj.symbols[sym] = out
 
     def emit_Compare(adj, node):

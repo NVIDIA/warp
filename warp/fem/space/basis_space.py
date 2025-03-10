@@ -634,7 +634,7 @@ class PointBasisSpace(BasisSpace):
             qp_coord = self._quadrature.point_coords(
                 elt_arg, basis_arg, element_index, element_index, node_index_in_elt
             )
-            return wp.select(wp.length_sq(coords - qp_coord) < _DIRAC_INTEGRATION_RADIUS, 0.0, 1.0)
+            return wp.where(wp.length_sq(coords - qp_coord) < _DIRAC_INTEGRATION_RADIUS, 1.0, 0.0)
 
         return element_inner_weight
 
