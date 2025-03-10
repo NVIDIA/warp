@@ -2878,6 +2878,12 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
         opts.push_back("--define-macro=WP_VERIFY_FP");
     else
         opts.push_back("--undefine-macro=WP_VERIFY_FP");
+
+#if WP_ENABLE_MATHDX
+    opts.push_back("--define-macro=WP_ENABLE_MATHDX=1");
+#else
+    opts.push_back("--define-macro=WP_ENABLE_MATHDX=0");
+#endif
     
     if (fast_math)
         opts.push_back("--use_fast_math");

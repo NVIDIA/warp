@@ -18,6 +18,7 @@ import functools
 from typing import Any, Callable, Mapping, Sequence
 
 import warp.build
+import warp.context
 from warp.codegen import Reference, Var, strip_reference
 from warp.types import *
 
@@ -2805,44 +2806,6 @@ add_builtin(
 )
 
 
-def tile_matmul_value_func(arg_types, arg_values):
-    # return generic type (for doc builds)
-    if arg_types is None:
-        return Tile(dtype=Any, shape=Any)
-
-    if len(arg_types) != 3:
-        raise TypeError(f"tile_matmul() takes exactly 3 positional arguments but {len(arg_types)} were given")
-
-    return None
-
-
-def tile_matmul_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
-    a = arg_values["a"]
-    b = arg_values["b"]
-    out = arg_values["out"]
-
-    # force the storage type of the input variables to shared memory
-    a.type.storage = "shared"
-    b.type.storage = "shared"
-    out.type.storage = "shared"
-
-    template_args = []
-    return ((a, b, out), template_args)
-
-
-add_builtin(
-    "tile_matmul_scalar",
-    input_types={"a": Tile, "b": Tile, "out": Tile},
-    value_func=tile_matmul_value_func,
-    dispatch_func=tile_matmul_dispatch_func,
-    variadic=True,
-    doc="Compute matrix product and accumulate out += a*b.",
-    group="Tile Primitives",
-    hidden=True,
-    export=False,
-)
-
-
 def tile_sum_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
@@ -3137,7 +3100,7 @@ def tile_binary_map_value_func(arg_types, arg_values):
 
     for i in range(len(a.shape)):
         if a.shape[i] != b.shape[i]:
-            raise ValueError(f"tile_map() shapes do not match on dimension {i}, got {a.shape[i]} and {b.shape[i]}")
+            raise ValueError(f"tile_map() shapes do not match on dimension {i}, got {a.shape} and {b.shape}")
 
     return TileBinaryMap(a, b)
 
@@ -6194,7 +6157,7 @@ add_builtin(
 ##
 ## Matmul
 ##
-def tile_matmul_generic_value_func(arg_types, arg_values):
+def tile_matmul_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
         return Tile(dtype=Any, shape=Any)
@@ -6220,7 +6183,7 @@ def tile_matmul_generic_value_func(arg_types, arg_values):
     return None
 
 
-def tile_matmul_generic_lto_dispatch_func(
+def tile_matmul_lto_dispatch_func(
     arg_types: Mapping[str, type],
     return_type: Any,
     return_values: List[Var],
@@ -6264,8 +6227,8 @@ def tile_matmul_generic_lto_dispatch_func(
     num_threads = options["block_dim"]
     arch = options["output_arch"]
 
-    if arch is None:
-        # CPU dispatch
+    if arch is None or not warp.context.runtime.core.is_mathdx_enabled():
+        # CPU/no-MathDx dispatch
         return ((0, 0, 0, a, b, out), template_args, [], 0)
     else:
 
@@ -6344,8 +6307,8 @@ add_builtin(
         "b": Tile(dtype=Any, shape=Any),
         "out": Tile(dtype=Any, shape=Any),
     },
-    value_func=tile_matmul_generic_value_func,
-    lto_dispatch_func=tile_matmul_generic_lto_dispatch_func,
+    value_func=tile_matmul_value_func,
+    lto_dispatch_func=tile_matmul_lto_dispatch_func,
     variadic=False,
     doc="""Computes the matrix product and accumulates ``out += a*b``.
 
@@ -6353,7 +6316,7 @@ add_builtin(
         * fp16, fp32, fp64 (real)
         * vec2h, vec2f, vec2d (complex)
 
-    All input and output tiles must have the same datatype. Tile data will be automatically be migrated
+    All input and output tiles must have the same datatype. Tile data will automatically be migrated
     to shared memory if necessary and will use TensorCore operations when available.
 
     :param a: A tile with ``shape=(M, K)``
@@ -6367,8 +6330,8 @@ add_builtin(
 add_builtin(
     "tile_matmul",
     input_types={"a": Tile(dtype=Any, shape=Any), "b": Tile(dtype=Any, shape=Any)},
-    value_func=tile_matmul_generic_value_func,
-    lto_dispatch_func=tile_matmul_generic_lto_dispatch_func,
+    value_func=tile_matmul_value_func,
+    lto_dispatch_func=tile_matmul_lto_dispatch_func,
     variadic=False,
     doc="""Computes the matrix product ``out = a*b``.
 
@@ -6376,7 +6339,7 @@ add_builtin(
         * fp16, fp32, fp64 (real)
         * vec2h, vec2f, vec2d (complex)
 
-    Both input tiles must have the same datatype. Tile data will be automatically be migrated
+    Both input tiles must have the same datatype. Tile data will automatically be migrated
     to shared memory if necessary and will use TensorCore operations when available.
 
     :param a: A tile with ``shape=(M, K)``
@@ -6449,8 +6412,8 @@ def tile_fft_generic_lto_dispatch_func(
     arch = options["output_arch"]
     ept = size // num_threads
 
-    if arch is None:
-        # CPU dispatch (nop)
+    if arch is None or not warp.context.runtime.core.is_mathdx_enabled():
+        # CPU/no-MathDx dispatch
         return ([], [], [], 0)
     else:
         # generate the LTO
@@ -6584,8 +6547,8 @@ def tile_cholesky_generic_lto_dispatch_func(
     num_threads = options["block_dim"]
     parameter_list = f"({dtype}*, unsigned)"
 
-    if arch is None:
-        # CPU dispatch
+    if arch is None or not warp.context.runtime.core.is_mathdx_enabled():
+        # CPU/no-MathDx dispatch
         return ((0, a, out), [], [], 0)
     else:
         # generate the LTO
@@ -6707,8 +6670,8 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
     num_threads = options["block_dim"]
     parameter_list = f"({dtype}*, {dtype}*)"
 
-    if arch is None:
-        # CPU dispatch
+    if arch is None or not warp.context.runtime.core.is_mathdx_enabled():
+        # CPU/no-MathDx dispatch
         return ((0, L, x, y), [], [], 0)
     else:
         # generate the LTO

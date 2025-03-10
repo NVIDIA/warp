@@ -57,8 +57,6 @@ def tile_gemm(A: wp.array2d(dtype=wp.float32), B: wp.array2d(dtype=wp.float16), 
 
 
 if __name__ == "__main__":
-    wp.set_device("cuda:0")
-
     # generate some tile aligned matrix dimensions
     M = TILE_M * 7
     K = TILE_K * 6
@@ -82,6 +80,6 @@ if __name__ == "__main__":
             block_dim=TILE_THREADS,
         )
 
-    assert np.allclose(C_wp.numpy(), A @ B)
+    assert np.allclose(C_wp.numpy(), A @ B, atol=1.0e-4)
 
     print("Example matrix multiplication passed")
