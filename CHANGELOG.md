@@ -14,7 +14,7 @@
 - Add 2D SVD `svd2` ([GH-436](https://github.com/NVIDIA/warp/issues/436)).
 - Add `wp.randu()` for random `uint32` generation.
 - Add matrix construction functions `wp.matrix_from_cols()` and `wp.matrix_from_rows()`
-  ([GH-728](https://github.com/NVIDIA/warp/issues/728)).
+  ([GH-278](https://github.com/NVIDIA/warp/issues/278)).
 - Add `wp.transform_from_matrix()` to obtain a transform from a 4x4 matrix
   ([GH-211](https://github.com/NVIDIA/warp/issues/211)).
 - Support timing events inside of CUDA graphs ([GH-556](https://github.com/NVIDIA/warp/issues/556)).
