@@ -21,6 +21,8 @@
 - Add LTO cache to speed up compilation times for kernels using MathDx-based tile functions
   ([GH-507](https://github.com/NVIDIA/warp/issues/507)).
 - Add `wp.clear_lto_cache()` to clear the LTO cache.
+- Add example demonstrating gradient checkpointing for fluid optimization in
+  `warp/examples/optim/example_fluid_checkpoint.py`.
 
 ### Changed
 
