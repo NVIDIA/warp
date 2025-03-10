@@ -2096,8 +2096,8 @@ inline CUDA_CALLABLE void matmul(TileA& A, TileB& B, TileC& out)
     }
 }
 
-template <typename LayoutA, typename LayoutB, typename LayoutC, typename StorageA, typename StorageB, typename StorageC>
-inline CUDA_CALLABLE void scalar_matmul(const StorageA& A, const StorageB& B, StorageC& C)
+template <typename LayoutA, typename LayoutB, typename LayoutC, typename StorageA, typename StorageB, typename StorageC, typename T>
+inline CUDA_CALLABLE void scalar_matmul(const StorageA& A, const StorageB& B, StorageC& C, T scale)
 {
     for (int t=WP_TILE_THREAD_IDX; t < LayoutC::Size; t += WP_TILE_BLOCK_DIM)
     {  
@@ -2107,7 +2107,7 @@ inline CUDA_CALLABLE void scalar_matmul(const StorageA& A, const StorageB& B, St
         int j = coord[1];
 
         // accumulator
-        auto sum = C(coord);
+        auto sum = C(coord)*scale;
 
         WP_PRAGMA_UNROLL
         for (int k=0; k < LayoutA::Shape::dim(1); k++)
@@ -2211,8 +2211,8 @@ TileC& tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, Ti
 
     using T = typename TileA::Type;
 
-#if !defined(__CUDA_ARCH__)
-    partitioned_gemm::scalar_matmul<typename TileA::Layout, typename TileB::Layout, typename TileC::Layout>(A.data, B.data, C.data);
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
+    partitioned_gemm::scalar_matmul<typename TileA::Layout, typename TileB::Layout, typename TileC::Layout>(A.data, B.data, C.data, T(Add));
 #else
     fun_forward(T(1.0), A.data.ptr, B.data.ptr, T(Add), C.data.ptr);
 #endif
@@ -2222,6 +2222,7 @@ TileC& tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, Ti
     return C;
 }
 
+
 // backward for the wp.tile_matmul(a, b, out) syntax
 template <typename Fwd, typename AdjA, typename AdjB, typename TileA, typename TileB, typename TileC>
 void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, TileA& A, TileB& B, TileC& C,
@@ -2229,12 +2230,12 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
 {   
     using T = typename TileA::Type;    
 
-#if !defined(__CUDA_ARCH__)
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
     auto At = tile_transpose(A);
     auto Bt = tile_transpose(B);
 
-    partitioned_gemm::scalar_matmul<typename TileC::Layout, typename decltype(Bt)::Layout, typename TileA::Layout>(adj_C.grad, Bt.data, adj_A.grad);
-    partitioned_gemm::scalar_matmul<typename decltype(At)::Layout, typename TileC::Layout, typename TileB::Layout>(At.data, adj_C.grad, adj_B.grad);
+    partitioned_gemm::scalar_matmul<typename TileC::Layout, typename decltype(Bt)::Layout, typename TileA::Layout>(adj_C.grad, Bt.data, adj_A.grad, T(1.0));
+    partitioned_gemm::scalar_matmul<typename decltype(At)::Layout, typename TileC::Layout, typename TileB::Layout>(At.data, adj_C.grad, adj_B.grad, T(1.0));
 #else
     fun_backward_A(T(1.0), adj_C.grad.ptr, B.data.ptr, T(1.0), adj_A.grad.ptr);
     fun_backward_B(T(1.0), A.data.ptr, adj_C.grad.ptr, T(1.0), adj_B.grad.ptr);
@@ -2254,8 +2255,8 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
     auto At = tile_transpose(A);
     auto Bt = tile_transpose(B);
 
-    partitioned_gemm::scalar_matmul<typename TileC::Layout, typename decltype(Bt)::Layout, typename TileA::Layout>(adj_C.grad, Bt.data, adj_A.grad);
-    partitioned_gemm::scalar_matmul<typename decltype(At)::Layout, typename TileC::Layout, typename TileB::Layout>(At.data, adj_C.grad, adj_B.grad);
+    partitioned_gemm::scalar_matmul<typename TileC::Layout, typename decltype(Bt)::Layout, typename TileA::Layout>(adj_C.grad, Bt.data, adj_A.grad, T(1.0));
+    partitioned_gemm::scalar_matmul<typename decltype(At)::Layout, typename TileC::Layout, typename TileB::Layout>(At.data, adj_C.grad, adj_B.grad, T(1.0));
 #else
     fun_backward_A(T(1.0), adj_C.grad.ptr, B.data.ptr, T(1.0), adj_A.grad.ptr);
     fun_backward_B(T(1.0), A.data.ptr, adj_C.grad.ptr, T(1.0), adj_B.grad.ptr);
@@ -2264,7 +2265,7 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
     WP_TILE_SYNC();
 }
 
-#if !defined(__CUDA_ARCH__)
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
 
 #define tile_fft()
 #define tile_ifft()
@@ -2317,7 +2318,7 @@ TileL& tile_cholesky(Fwd fun_forward, TileA& A, TileL& L)
     // Copy to L
     L = A;
 
-#if !defined(__CUDA_ARCH__)
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
 
     partitioned_gemm::scalar_cholesky(A, L);
 
@@ -2362,7 +2363,7 @@ TileY& tile_cholesky_solve(Fwd fun_forward, TileL& L, TileX& X, TileY& Y)
 
     Y = X;
 
-#if !defined(__CUDA_ARCH__)
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
 
     partitioned_gemm::scalar_cholesky_solve(L, X, Y);
 

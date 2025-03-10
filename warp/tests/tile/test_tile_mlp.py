@@ -22,11 +22,6 @@ import warp.examples
 import warp.optim
 from warp.tests.unittest_utils import *
 
-wp.init()
-
-# needs to be constant for the whole module
-NUM_THREADS = 32
-
 
 def create_layer(rng, dim_in, dim_hid, dtype=float):
     w = rng.uniform(-1.0 / np.sqrt(dim_in), 1.0 / np.sqrt(dim_in), (dim_hid, dim_in))
@@ -45,9 +40,11 @@ def create_array(rng, dim_in, dim_hid, dtype=float):
     return a
 
 
-@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_multi_layer_nn(test, device):
     import torch as tc
+
+    if device.is_cuda and not wp.context.runtime.core.is_mathdx_enabled():
+        test.skipTest("Skipping test on CUDA device without MathDx (tolerance)")
 
     NUM_FREQ = wp.constant(8)
 
@@ -60,7 +57,13 @@ def test_multi_layer_nn(test, device):
 
     BATCH_SIZE = min(512, int((IMG_WIDTH * IMG_HEIGHT) / 8))
 
+    if device.is_cpu:
+        NUM_THREADS = 1
+    else:
+        NUM_THREADS = 32
+
     dtype = wp.float16
+    npdtype = wp.types.warp_type_to_np_dtype[dtype]
 
     @wp.func
     def relu(x: dtype):
@@ -74,7 +77,7 @@ def test_multi_layer_nn(test, device):
     def zero(loss: wp.array(dtype=float)):
         loss[0] = 0.0
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def compute(
         batches: wp.array(dtype=int),
         input: wp.array2d(dtype=dtype),
@@ -234,7 +237,7 @@ def test_multi_layer_nn(test, device):
                         z_np = np.maximum(weights_3.numpy() @ z_np + bias_3.numpy(), 0.0)
 
                         # test numpy forward
-                        assert_np_equal(output.numpy()[:, indices], z_np, tol=1.0e-2)
+                        assert_np_equal(output.numpy()[:, indices].astype(npdtype), z_np, tol=1.0e-2)
 
                         # torch
                         input_tc = tc.tensor(input.numpy()[:, indices], requires_grad=True, device=torch_device)
@@ -262,7 +265,9 @@ def test_multi_layer_nn(test, device):
                         l_tc.backward()
 
                         # test torch
-                        assert_np_equal(z_tc.cpu().detach().numpy(), output.numpy()[:, indices], tol=1.0e-2)
+                        assert_np_equal(
+                            z_tc.cpu().detach().numpy(), output.numpy()[:, indices].astype(npdtype), tol=1.0e-2
+                        )
                         assert_np_equal(weights_0.grad.numpy(), weights_0_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
                         assert_np_equal(bias_0.grad.numpy(), bias_0_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
                         assert_np_equal(weights_1.grad.numpy(), weights_1_tc.grad.cpu().detach().numpy(), tol=1.0e-2)
@@ -279,7 +284,6 @@ def test_multi_layer_nn(test, device):
         test.assertLess(loss.numpy()[0], 0.002)
 
 
-@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_single_layer_nn(test, device):
     import torch as tc
 
@@ -289,11 +293,16 @@ def test_single_layer_nn(test, device):
 
     NUM_BLOCKS = 56
 
+    if device.is_cpu:
+        NUM_THREADS = 1
+    else:
+        NUM_THREADS = 32
+
     @wp.func
     def relu(x: float):
         return wp.max(x, 0.0)
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def compute(
         input: wp.array2d(dtype=float),
         weights: wp.array2d(dtype=float),
@@ -355,7 +364,6 @@ try:
     import torch
 
     # check which Warp devices work with Torch
-    # CUDA devices may fail if Torch was not compiled with CUDA support
     torch_compatible_devices = []
     torch_compatible_cuda_devices = []
 
@@ -374,7 +382,7 @@ try:
         "test_single_layer_nn",
         test_single_layer_nn,
         check_output=False,
-        devices=torch_compatible_cuda_devices,
+        devices=torch_compatible_devices,
     )
     add_function_test(
         TestTileMLP,
@@ -390,4 +398,5 @@ except Exception as e:
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
+    wp.clear_lto_cache()
     unittest.main(verbosity=2, failfast=True)
