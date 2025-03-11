@@ -861,6 +861,9 @@ publish dev wheels to artifactory:
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
       sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-manylinux2014_x86_64.whl
       'arch=x86_64;os=linux'
+  environment:
+    name: nightly
+    url: https://pypi.nvidia.com/warp-lang/
 
 publish tag wheels to artifactory:
   stage: deploy
