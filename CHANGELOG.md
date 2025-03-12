@@ -49,6 +49,7 @@
   The default behavior to use the current module is unchanged.
 - Updated the `OgnClothSimulate` node to use the VBD integrator ([GH-512](https://github.com/NVIDIA/warp/issues/512)).
 - Removed the `globalScale` parameter from the `OgnClothSimulate` node.
+- Default PTX architecture is now determined by the devices present in the system ([GH-537](https://github.com/NVIDIA/warp/issues/537)).
 
 ### Fixed
 
