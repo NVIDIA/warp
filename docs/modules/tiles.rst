@@ -70,7 +70,7 @@ Here, we have used the new :func:`warp.launch_tiled` function which assigns ``TI
 Tile Properties
 ---------------
 
-In Warp, tile objects are 2D arrays of data where the tile elements may be scalars, vectors, matrices, or user-defined structures. We can load 2D tiles directly from 2D global memory arrays as follows:
+In Warp, tile objects are arrays of data where the tile elements may be scalars, vectors, matrices, or user-defined structures. Tiles can have up to four dimensions. We can load 2D tiles directly from 2D global memory arrays as follows:
 
 .. code:: python
     

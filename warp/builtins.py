@@ -2483,7 +2483,7 @@ add_builtin(
 
     This function converts values computed using scalar kernel code to a tile representation for input into collective operations.
 
-    * If the input value is a scalar, then the resulting tile has ``shape=(1, block_dim)``
+    * If the input value is a scalar, then the resulting tile has ``shape=(block_dim,)``
     * If the input value is a vector, then the resulting tile has ``shape=(length(vector), block_dim)``
 
     :param x: A per-thread local value, e.g. scalar, vector, or matrix.
@@ -2777,11 +2777,9 @@ def tile_broadcast_value_func(arg_types, arg_values):
 def tile_broadcast_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
     tile = arg_values["a"]
 
-    template_args = []
-    template_args.append(return_type.shape[0])
-    template_args.append(return_type.shape[1])
-    template_args.append(return_type.strides[0])
-    template_args.append(return_type.strides[1])
+    assert len(return_type.shape) == len(return_type.strides)
+    assert 1 <= len(return_type.shape) <= 4
+    template_args = [*return_type.shape, *return_type.strides]
 
     return ((tile,), template_args)
 
@@ -2794,13 +2792,12 @@ add_builtin(
     variadic=False,
     doc="""Broadcast a tile.
 
-    This function will attempt to broadcast the input tile ``a`` to the destination shape (m, n).
-
+    Broadcasts the input tile ``a`` to the destination shape.
     Broadcasting follows NumPy broadcast rules.
 
     :param a: Tile to broadcast
     :param shape: The shape to broadcast to
-    :returns: Tile with broadcast ``shape=(m, n)``""",
+    :returns: Tile with broadcast shape""",
     group="Tile Primitives",
     export=False,
 )
