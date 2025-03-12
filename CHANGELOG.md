@@ -51,7 +51,6 @@
 - Removed the `globalScale` parameter from the `OgnClothSimulate` node.
 
 ### Fixed
-- Fix an out-of-bounds access bug caused by an unbalanced BVH tree ([GH-536](https://github.com/NVIDIA/warp/issues/536)).
 
 ## [1.6.2] - 2025-03-07
 
