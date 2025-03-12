@@ -32,6 +32,7 @@ workflow:
 
 linux-x86_64 test:
   stage: test
+  image: ubuntu:22.04
   needs:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 build
@@ -41,6 +42,7 @@ linux-x86_64 test:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
+    - apt-get update && apt-get install curl --no-install-recommends -y
       # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
