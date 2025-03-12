@@ -63,10 +63,10 @@ def write_new_version_to_config(config_file_path: str, new_version: str, dry_run
             content = file.read()
 
         # Define the regex to match the version assignment
-        pattern = r'^(version\s*:\s*str\s*=\s*")(\d+\.\d+\.\d+(?:\.\w+\d+)?)(")$'
+        pattern = r'^version\s*:\s*str\s*=\s*"(\d+\.\d+\.\d+(?:\.\w+\d+)?)"$'
 
         # Replace the old version with the new version
-        updated_content = re.sub(pattern, rf"\g<1>{new_version}\g<3>", content, flags=re.MULTILINE)
+        updated_content = re.sub(pattern, f'version: str = "{new_version}"', content, flags=re.MULTILINE)
         
         if dry_run:
             print(f"Dry run: Would update version in {config_file_path} to {new_version}")
