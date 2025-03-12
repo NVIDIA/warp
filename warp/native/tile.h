@@ -2412,11 +2412,32 @@ inline CUDA_CALLABLE void adj_tile_transpose(Tile& t, Tile& adj_t, AdjTile& adj_
     adj_t.assign(tile_add(a,b));
 }
 
+template <int N, int StrideN, typename Tile>
+inline CUDA_CALLABLE auto tile_broadcast(Tile& t)
+{
+    // alias incoming tile with new strides
+    return tile_shared_t<typename Tile::Type, tile_layout_strided_t<tile_shape_t<N>, tile_stride_t<StrideN>>, false>(t.data.ptr, t.grad.ptr);
+}
+
 template <int M, int N, int StrideM, int StrideN, typename Tile>
 inline CUDA_CALLABLE auto tile_broadcast(Tile& t)
-{    
+{
     // alias incoming tile with new strides
     return tile_shared_t<typename Tile::Type, tile_layout_strided_t<tile_shape_t<M, N>, tile_stride_t<StrideM, StrideN>>, false>(t.data.ptr, t.grad.ptr);
+}
+
+template <int M, int N, int O, int StrideM, int StrideN, int StrideO, typename Tile>
+inline CUDA_CALLABLE auto tile_broadcast(Tile& t)
+{
+    // alias incoming tile with new strides
+    return tile_shared_t<typename Tile::Type, tile_layout_strided_t<tile_shape_t<M, N, O>, tile_stride_t<StrideM, StrideN, StrideO>>, false>(t.data.ptr, t.grad.ptr);
+}
+
+template <int M, int N, int O, int P, int StrideM, int StrideN, int StrideO, int StrideP, typename Tile>
+inline CUDA_CALLABLE auto tile_broadcast(Tile& t)
+{
+    // alias incoming tile with new strides
+    return tile_shared_t<typename Tile::Type, tile_layout_strided_t<tile_shape_t<M, N, O, P>, tile_stride_t<StrideM, StrideN, StrideO, StrideP>>, false>(t.data.ptr, t.grad.ptr);
 }
 
 template <typename Tile, typename AdjTile>

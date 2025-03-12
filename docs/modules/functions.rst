@@ -932,7 +932,7 @@ Tile Primitives
 
     This function converts values computed using scalar kernel code to a tile representation for input into collective operations.
 
-    * If the input value is a scalar, then the resulting tile has ``shape=(1, block_dim)``
+    * If the input value is a scalar, then the resulting tile has ``shape=(block_dim,)``
     * If the input value is a vector, then the resulting tile has ``shape=(length(vector), block_dim)``
 
     :param x: A per-thread local value, e.g. scalar, vector, or matrix.
@@ -1017,13 +1017,12 @@ Tile Primitives
 
     Broadcast a tile.
 
-    This function will attempt to broadcast the input tile ``a`` to the destination shape (m, n).
-
+    Broadcasts the input tile ``a`` to the destination shape.
     Broadcasting follows NumPy broadcast rules.
 
     :param a: Tile to broadcast
     :param shape: The shape to broadcast to
-    :returns: Tile with broadcast ``shape=(m, n)``
+    :returns: Tile with broadcast shape
 
 
 .. py:function:: tile_sum(a: Tile) -> Tile
