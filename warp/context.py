@@ -2150,7 +2150,11 @@ class Module:
                     use_ptx = True
 
                 if use_ptx:
-                    output_arch = min(device.arch, warp.config.ptx_target_arch)
+                    # use the default PTX arch if the device supports it
+                    if warp.config.ptx_target_arch is not None:
+                        output_arch = min(device.arch, warp.config.ptx_target_arch)
+                    else:
+                        output_arch = min(device.arch, runtime.default_ptx_arch)
                     output_name = f"{module_name_short}.sm{output_arch}.ptx"
                 else:
                     output_arch = device.arch
@@ -3883,9 +3887,20 @@ class Runtime:
                 cuda_device_count = len(self.cuda_devices)
             else:
                 self.set_default_device("cuda:0")
+
+            # the minimum PTX architecture that supports all of Warp's features
+            self.default_ptx_arch = 75
+
+            # Update the default PTX architecture based on devices present in the system.
+            # Use the lowest architecture among devices that meet the minimum architecture requirement.
+            # Devices below the required minimum will use the highest architecture they support.
+            eligible_archs = [d.arch for d in self.cuda_devices if d.arch >= self.default_ptx_arch]
+            if eligible_archs:
+                self.default_ptx_arch = min(eligible_archs)
         else:
             # CUDA not available
             self.set_default_device("cpu")
+            self.default_ptx_arch = None
 
         # initialize kernel cache
         warp.build.init_kernel_cache(warp.config.kernel_cache_dir)

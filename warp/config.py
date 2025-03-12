@@ -97,10 +97,10 @@ Args:
     cuda_output: One of {``None``, ``"ptx"``, ``"cubin"``}. If ``None``, format is auto-determined.
 """
 
-ptx_target_arch: int = 75
-"""Target architecture version for PTX generation.
+ptx_target_arch: Optional[int] = None
+"""Target architecture version for PTX generation, e.g., ``ptx_target_arch = 75``.
 
-Defaults to minimum architecture version supporting all Warp features.
+If ``None``, the architecture is determined by devices present in the system.
 """
 
 enable_backward: bool = True
