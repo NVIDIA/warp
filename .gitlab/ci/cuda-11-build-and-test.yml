@@ -38,31 +38,44 @@ stages:
   - deploy
 
 # ==============================================================================
-# Build Jobs (Debug)
+# Build Jobs
 # ==============================================================================
 
 linux-aarch64 build:
   stage: build
-  image: ubuntu:20.04
+  image: quay.io/pypa/manylinux2014_aarch64:latest
   extends:
     - .runner-build-linux-aarch64
     - .save_warp_bin_artifact
+  variables:
+    PM_PYTHON_EXT: "python"
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - apt-get update && apt-get install build-essential curl --no-install-recommends -y
+    - yum update && yum install curl wget -y
+    - wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+    - bash Miniforge3.sh -b -p "${CI_PROJECT_DIR}/conda"
+    - source "${CI_PROJECT_DIR}/conda/etc/profile.d/conda.sh"
+    - conda activate
+    - python -m pip install --upgrade pip
+    - python -m pip install --upgrade numpy
+    - tools/packman/packman pull --platform linux-aarch64 --include-tag cuda-11 deps/cuda-toolkit-deps.packman.xml
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - ./tools/ci/building/build-linux-aarch64/build.sh --cuda 11 --no-docker # We are already using the builder image
+    - python build_lib.py --cuda_path $CUDA
     - mkdir -p warp/bin/linux-aarch64
     - mv warp/bin/warp.so warp/bin/linux-aarch64
     - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
 
 linux-x86_64 build:
   stage: build
-  image: urm.nvidia.com/ct-omniverse-docker/centos7-gcc10-builder:3.2.0
+  image: quay.io/pypa/manylinux2014_x86_64:latest
   extends:
     - .save_warp_bin_artifact
     - .runner-large-build-linux-x86_64
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - yum update && yum install curl wget -y
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - ./tools/ci/building/build-linux-x86_64/build.sh --cuda 11 --no-docker # We are already using the builder image
     - mkdir -p warp/bin/linux-x86_64
@@ -102,12 +115,14 @@ linux-aarch64 test:
 
 linux-x86_64 test:
   stage: test
+  image: ubuntu:22.04
   needs: [linux-x86_64 build]
   extends:
     - .omni_nvks_gpu_2x
     - .save_test_report_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - apt-get update && apt-get install curl --no-install-recommends -y
     - df -h
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
@@ -174,8 +189,8 @@ create pypi wheels:
   script:
     - sed -i "s/^\(.*\)$/\1+cu11/" VERSION.md  # Modify VERSION.md with +cu11
     - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
-    - python3 -m build --wheel -C--build-option=-Plinux-x86_64
-    - python3 -m build --wheel -C--build-option=-Plinux-aarch64
+    - python3 -m build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux2014
+    - python3 -m build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux2014
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
   artifacts:

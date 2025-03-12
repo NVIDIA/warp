@@ -63,9 +63,14 @@ jobs:
 
   build-warp-ubuntu-x86_64:
     runs-on: ubuntu-22.04
+    container:
+      image: quay.io/pypa/manylinux_2_34_x86_64:latest
     outputs:
       artifact-url: ${{ steps.exports-header.outputs.artifact-url }}
     steps:
+      - name: Install Git LFS
+        run: |
+          yum install -y git-lfs
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -102,7 +107,12 @@ jobs:
 
   build-warp-ubuntu-aarch64:
     runs-on: ubuntu-22.04-arm
+    container:
+      image: quay.io/pypa/manylinux_2_34_aarch64:latest
     steps:
+      - name: Install Git LFS
+        run: |
+          yum install -y git-lfs
       - name: Checkout repository
         uses: actions/checkout@v4
         with:

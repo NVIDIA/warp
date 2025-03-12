@@ -43,13 +43,13 @@ stages:
 # Hide this job for now until debug aarch64 builds work
 .linux-aarch64 build:
   stage: build
-  image: ubuntu:20.04
+  image: quay.io/pypa/manylinux_2_34_aarch64:latest
   extends:
     - .runner-build-linux-aarch64
     - .save_warp_bin_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - apt-get update && apt-get install build-essential curl --no-install-recommends -y
+    - yum update && yum install curl wget -y
     - >
       curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
       $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/release-0.1.2/L1_Nightly/5/libmathdx-Linux-aarch64-0.1.2.tar.gz
@@ -64,13 +64,13 @@ stages:
 
 linux-x86_64 build:
   stage: build
-  image: ubuntu:22.04
+  image: quay.io/pypa/manylinux_2_34_x86_64:latest
   extends:
     - .save_warp_bin_artifact
     - .runner-large-build-linux-x86_64
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - apt-get update && apt-get install build-essential curl --no-install-recommends -y
+    - yum update && yum install curl wget -y
     - >
       curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
       $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/release-0.1.2/L1_Nightly/5/libmathdx-Linux-x86_64-0.1.2.tar.gz
@@ -137,6 +137,7 @@ mac-x86_64 build:
 
 linux-x86_64 test:
   stage: test
+  image: ubuntu:22.04
   needs: [linux-x86_64 build]
   extends:
     - .omni_nvks_gpu_2x
@@ -144,6 +145,7 @@ linux-x86_64 test:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
+    - apt-get update && apt-get install curl --no-install-recommends -y
     - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-x86_64
     - export PATH="$CUDA_BIN:$PATH"
     - $PYTHON -m venv _venv

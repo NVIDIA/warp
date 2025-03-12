@@ -69,13 +69,13 @@ stages:
 
 linux-aarch64 build:
   stage: build
-  image: ubuntu:20.04
+  image: quay.io/pypa/manylinux_2_34_aarch64:latest
   extends:
     - .runner-build-linux-aarch64
     - .save_warp_bin_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - apt-get update && apt-get install build-essential curl --no-install-recommends -y
+    - yum update && yum install curl wget -y
     - >
       curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
       $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/release-0.1.2/L1_Nightly/5/libmathdx-Linux-aarch64-0.1.2.tar.gz
@@ -93,13 +93,13 @@ linux-aarch64 build:
 
 linux-x86_64 build:
   stage: build
-  image: ubuntu:20.04
+  image: quay.io/pypa/manylinux_2_34_x86_64:latest
   extends:
     - .save_warp_bin_artifact
     - .runner-build-linux-x86_64
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - apt-get update && apt-get install build-essential curl --no-install-recommends -y
+    - yum update && yum install curl wget -y
     - >
       curl -k -H "Authorization: Bearer $ARTIFACTORY_ACCESS_TOKEN"
       $ARTIFACTORY_BASE_URL/sw-cuda-math-mathdx-generic-local/cicd/libmathdx/release-0.1.2/L1_Nightly/5/libmathdx-Linux-x86_64-0.1.2.tar.gz
@@ -239,8 +239,8 @@ linux-aarch64 test:
     - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 linux-aarch64 test jetson:
-  image: ubuntu:22.04
   needs: [linux-aarch64 build]
+  image: ubuntu:22.04
   extends:
     - .save_test_report_artifact
   rules:
@@ -261,12 +261,14 @@ linux-aarch64 test jetson:
 
 linux-x86_64 test:
   needs: [linux-x86_64 build]
+  image: ubuntu:22.04
   extends:
     - .omni_nvks_gpu_2x
     - .test_common_main
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
+    - apt-get update && apt-get install curl git --no-install-recommends -y
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
@@ -318,7 +320,6 @@ windows-x86_64 test:
     - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --plugin pycoverage -F unittests -f coverage.xml
     - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
 
-
 mac-x86_64 test:
   stage: test
   needs: [mac-x86_64 build]
@@ -337,6 +338,7 @@ mac-x86_64 test:
 # Test the Linux release build in an environment with minimal Python dependencies installed
 linux-x86_64 test minimal:
   stage: test
+  image: ubuntu:22.04
   needs: [linux-x86_64 build]
   extends:
     - .omni_nvks_gpu_2x
@@ -360,6 +362,7 @@ linux-x86_64 test minimal:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
+    - apt-get update && apt-get install curl --no-install-recommends -y
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
@@ -408,6 +411,7 @@ windows-x86_64 test mgpu:
 # Note: This will no longer be needed once Warp auto-initializes upon import
 linux-x86_64 test warp-init:
   stage: test
+  image: ubuntu:22.04
   needs: [linux-x86_64 build]
   extends:
     - .omni_nvks_gpu
@@ -432,6 +436,7 @@ linux-x86_64 test warp-init:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
+    - apt-get update && apt-get install curl --no-install-recommends -y
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
@@ -855,11 +860,11 @@ publish dev wheels to artifactory:
       'arch=x86_64;os=windows'
     - >
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-manylinux2014_aarch64.whl
+      sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-manylinux_2_34_aarch64.whl
       'arch=aarch64;os=linux'
     - >
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-manylinux2014_x86_64.whl
+      sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-manylinux_2_34_x86_64.whl
       'arch=x86_64;os=linux'
   environment:
     name: nightly
@@ -889,11 +894,11 @@ publish tag wheels to artifactory:
       'arch=x86_64;os=windows'
     - >
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*-manylinux2014_aarch64.whl
+      sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*-manylinux_2_34_aarch64.whl
       'arch=aarch64;os=linux'
     - >
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*-manylinux2014_x86_64.whl
+      sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*-manylinux_2_34_x86_64.whl
       'arch=x86_64;os=linux'
     - >
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
