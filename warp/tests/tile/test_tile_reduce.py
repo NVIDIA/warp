@@ -176,6 +176,64 @@ def test_tile_reduce_custom(test, device):
         test.assertAlmostEqual(prod_wp[i], prod_np, places=4)
 
 
+@wp.struct
+class KeyValue:
+    key: wp.int32
+    value: wp.float32
+
+
+@wp.func
+def kv_max(a: KeyValue, b: KeyValue) -> KeyValue:
+    return wp.where(a.value < b.value, b, a)
+
+
+@wp.kernel
+def initialize_key_value(values: wp.array2d(dtype=wp.float32), keyvalues: wp.array2d(dtype=KeyValue)):
+    batch, idx = wp.tid()
+    keyvalues[batch, idx] = KeyValue(idx, values[batch, idx])
+
+
+@wp.kernel(enable_backward=False)
+def tile_reduce_custom_struct_kernel(values: wp.array2d(dtype=KeyValue), res: wp.array(dtype=KeyValue)):
+    # output tile index
+    i = wp.tid()
+
+    t = wp.tile_load(values, shape=(1, TILE_DIM), offset=(i, 0))
+
+    max_el = wp.tile_reduce(kv_max, t)
+    wp.tile_store(res, max_el, offset=i)
+
+
+def test_tile_reduce_custom_struct(test, device):
+    batch_count = 56
+
+    N = TILE_DIM
+
+    rng = np.random.default_rng(42)
+    input = rng.random((batch_count, N), dtype=np.float32)
+
+    input_wp = wp.array(input, dtype=wp.float32, device=device)
+    keyvalues_wp = wp.empty(input_wp.shape, dtype=KeyValue, device=device)
+
+    wp.launch(initialize_key_value, dim=[batch_count, N], inputs=[input_wp], outputs=[keyvalues_wp], device=device)
+
+    output_wp = wp.empty(batch_count, dtype=KeyValue, device=device)
+
+    wp.launch_tiled(
+        tile_reduce_custom_struct_kernel,
+        dim=[batch_count],
+        inputs=[keyvalues_wp],
+        outputs=[output_wp],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    prod_wp = np.array([k for k, v in output_wp.numpy()])
+    expected = np.argmax(input, axis=1)
+
+    assert_np_equal(prod_wp, expected)
+
+
 @wp.kernel
 def tile_grouped_sum_kernel(input: wp.array3d(dtype=float), output: wp.array(dtype=float)):
     # output tile index
@@ -376,6 +434,7 @@ add_function_test(TestTileReduce, "test_tile_reduce_sum", test_tile_reduce_sum, 
 add_function_test(TestTileReduce, "test_tile_reduce_min", test_tile_reduce_min, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_max", test_tile_reduce_max, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_custom", test_tile_reduce_custom, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_custom_struct", test_tile_reduce_custom_struct, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_grouped_sum", test_tile_reduce_sum, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_simt", test_tile_reduce_simt, devices=devices)
 add_function_test(TestTileReduce, "test_tile_ones", test_tile_ones, devices=devices)

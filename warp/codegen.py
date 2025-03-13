@@ -3162,6 +3162,7 @@ struct {name}
 {{
 {struct_body}
 
+    {defaulted_constructor_def}
     CUDA_CALLABLE {name}({forward_args})
     {forward_initializers}
     {{
@@ -3426,7 +3427,8 @@ def codegen_struct(struct, device="cpu", indent_size=4):
     # forward args
     for label, var in struct.vars.items():
         var_ctype = var.ctype()
-        forward_args.append(f"{var_ctype} const& {label} = {{}}")
+        default_arg_def = " = {}" if forward_args else ""
+        forward_args.append(f"{var_ctype} const& {label}{default_arg_def}")
         reverse_args.append(f"{var_ctype} const&")
 
         namespace = "wp::" if var_ctype.startswith("wp::") or var_ctype == "bool" else ""
@@ -3450,6 +3452,9 @@ def codegen_struct(struct, device="cpu", indent_size=4):
 
     reverse_args.append(name + " & adj_ret")
 
+    # explicitly defaulted default constructor if no default constructor has been defined
+    defaulted_constructor_def = f"{name}() = default;" if forward_args else ""
+
     return struct_template.format(
         name=name,
         struct_body="".join([indent_block + l for l in body]),
@@ -3459,6 +3464,7 @@ def codegen_struct(struct, device="cpu", indent_size=4):
         reverse_body="".join(reverse_body),
         prefix_add_body="".join(prefix_add_body),
         atomic_add_body="".join(atomic_add_body),
+        defaulted_constructor_def=defaulted_constructor_def,
     )
 
 
