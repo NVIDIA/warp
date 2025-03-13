@@ -53,6 +53,8 @@ Args:
     mode: Either ``"release"`` or ``"debug"``.
 
 Note: Debug mode may impact performance.
+
+This setting can be overridden at the module level by setting the ``"mode"`` module option.
 """
 
 verbose: bool = False
@@ -103,8 +105,29 @@ ptx_target_arch: Optional[int] = None
 If ``None``, the architecture is determined by devices present in the system.
 """
 
+lineinfo: bool = False
+"""Enable the compilation of modules with line information.
+
+Modules compiled for GPU execution will be compiled with the
+``--generate-line-info`` compiler option, which generates line-number
+information for device code. Line-number information is always included when
+compiling a module in ``"debug"`` mode regardless of this setting.
+
+This setting can be overridden at the module level by setting the ``"lineinfo"`` module option.
+"""
+
+line_directives: bool = True
+"""Enable Python source line mapping in generated code.
+
+If ``True``, ``#line`` directives are inserted in generated code for modules
+compiled with line information  to map back to the original Python source file.
+"""
+
 enable_backward: bool = True
-"""Enable compilation of kernel backward passes."""
+"""Enable compilation of kernel backward passes.
+
+This setting can be overridden at the module level by setting the ``"enable_backward"`` module option.
+"""
 
 llvm_cuda: bool = False
 """Use Clang/LLVM compiler instead of NVRTC for CUDA compilation."""
@@ -119,7 +142,14 @@ enable_mempools_at_init: bool = True
 """Enable CUDA memory pools during device initialization when supported."""
 
 max_unroll: int = 16
-"""Maximum unroll factor for loops."""
+"""Maximum unroll factor for loops.
+
+Note that ``max_unroll`` does not consider the total number of iterations in
+nested loops. This can result in a large amount of automatically generated code
+if each nested loop is below the ``max_unroll`` threshold.
+
+This setting can be overridden at the module level by setting the ``"max_unroll"`` module option.
+"""
 
 _git_commit_hash: Optional[str] = None
 """Git commit hash associated with the Warp installation.

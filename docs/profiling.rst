@@ -307,6 +307,145 @@ Events created with the ``enable_timing=True`` flag can be used for timing insid
         elapsed = wp.get_event_elapsed_time(e1, e2)
         print(elapsed)
 
+Nsight Compute Profiling
+------------------------
+
+While Nsight Systems provides a system-wide visualization of software and hardware activity for an application,
+`Nsight Compute <https://developer.nvidia.com/nsight-compute>`_ can be used for detailed CUDA kernel performance
+analysis. A possible workflow cycle might consist of the following steps:
+
+#. Use Nsight Systems to identify the most time-consuming kernels.
+#. Use Nsight Compute to profile just a few executions of the kernels identified in the previous step to obtain
+   detailed recommendations for optimization actions.
+#. Re-check the overall performance by repeating the cycle.
+
+Before profiling kernels with Nsight Compute, it is important that the module(s) containing the kernels of interest
+are compiled with line information. This can be set at a global level by using the :attr:`warp.config.lineinfo` setting
+or on a per-module basis using the ``lineinfo`` flag (see :ref:`module-settings`),
+e.g. ``wp.set_module_options({"lineinfo": True})``.
+This allows Nsight Compute to correlate assembly (SASS) with high-level Python or CUDA-C code at the expense of
+larger files in the kernel cache (approximately double the file size without line information).
+
+Elevated application privileges may be required to access the necessary hardware counters to profile kernels
+with Nsight Compute (`Instructions <https://developer.nvidia.com/ERR_NVGPUCTRPERM>`__)
+
+Nsight Compute can be run as an interactive profiler and as a command-line profiler. The command-line profiler can store
+reports in a file that can be opened later with the UI executable (``ncu-ui``).
+
+Source code correlation options
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, Warp emits line directives in the CUDA-C code that help correlate SASS instructions with the Python
+Warp kernel or function code that produced it. This can sometimes complicate the analysis of data in Nsight Compute as
+one line of Python code might be correlated to tens or hundreds of SASS instructions.
+It can sometimes be helpful to correlate SASS instructions directly with CUDA-C source code in the kernel cache
+by setting :attr:`warp.config.line_directives` to ``False``. Comments in the CUDA-C code indicate the Python
+code that produced it.
+
+Example: Profiling kernels from ``example_sph.py``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+First, we need to modify the `example <https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_sph.py>`__
+to compile with line information.
+
+.. code-block:: python
+
+    import numpy as np
+
+    import warp as wp
+    import warp.render
+
+    wp.config.lineinfo = True
+
+Rather than profiling the full example in Nsight Systems, we decide to profile the first 10 frames of the simulation and
+also skip writing particle positions to a USD file so that we can focus on the GPU-related optimizations:
+
+.. code-block:: bash
+
+    nsys profile --stats=true python example_sph.py --stage_path None --num_frames 10
+
+The output tells us that the ``get_acceleration`` and the ``compute_density`` kernels take up the majority of the
+time on the GPU. We also see from the output that their full names become
+``get_acceleration_a9fb4286_cuda_kernel_forward`` and ``compute_density_99e58138_cuda_kernel_forward``, but the exact
+names may vary between different systems and Warp versions.
+
+Next, we use Nsight Compute to profile the kernels. Let's focus on the ``get_acceleration`` kernel first.
+A basic command to use the command-line profiler to save the report to ``example_sph.ncu-rep`` is:
+
+.. code-block:: bash
+
+    ncu -o example_sph -k get_acceleration_a9fb4286_cuda_kernel_forward --set full python example_sph.py --stage_path None --num_frames 10
+
+This command takes a much longer time to execute than the Nsight Systems command since Nsight Compute performs
+multiple passes of each kernel launch to collect different metrics.
+To speed up the profiling, we can use the ``-c [ --launch-count ] arg`` option to limit the number of collected profile
+results:
+
+.. code-block:: bash
+
+    ncu -o example_sph -k get_acceleration_a9fb4286_cuda_kernel_forward --set full -c 5 python example_sph.py --stage_path None --num_frames 10
+
+Additionally, we can add the ``-f`` option to overwrite the output file and ``--open-in-ui`` to automatically open the
+report in the UI:
+
+.. code-block:: bash
+
+    ncu --open-in-ui -f -o example_sph -k get_acceleration_a9fb4286_cuda_kernel_forward --set full -c 5 python example_sph.py --stage_path None --num_frames 10
+
+The following screenshot shows the Python/SASS correlation view from the Nsight Compute report (click to enlarge):
+
+.. image:: ./img/nsight_compute_python_vs_sass.png
+    :width: 95%
+    :align: center
+
+Please consult the `Nsight Compute User Guide <https://docs.nvidia.com/nsight-compute/NsightCompute/index.html#profiler-report>`__
+for more information on how to navigate the report in the UI.
+If the `source comparison <https://docs.nvidia.com/nsight-compute/NsightCompute/index.html#source-comparison>`__ window
+only shows low-level SASS code, it is likely that the modules were not compiled with line information.
+
+We can profile the ``compute_density`` kernel in a similar manner by changing the kernel name in the command to
+``compute_density_99e58138_cuda_kernel_forward``.
+
+Profiling all kernels in an application
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In the previous example, we used the ``-k`` option to selectively profile the most time-consuming kernels according
+to the Nsight Systems analysis. If we simply wanted to profile the first 20 kernel launches in the application,
+we can drop the ``-k`` option and increase the value of the ``-c`` option to 20:
+
+.. code-block:: bash
+
+    ncu --open-in-ui -f -o example_sph --set full -c 20 python example_sph.py --stage_path None --num_frames 10
+
+Preserving source code context in Nsight Compute reports
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is convenient to permanently import the Python or CUDA-C source files into the report by using the
+``-import-source 1`` option when running ``ncu``, e.g.
+
+.. code-block:: bash
+
+    ncu --open-in-ui --import-source 1 -f -o example_sph -k get_acceleration_a9fb4286_cuda_kernel_forward --set full -c 5 python example_sph.py --stage_path None --num_frames 10
+
+This ensures that a snapshot of the source files is taken at the time the profiling report was created,
+which prevents subsequent source-code modifications from affecting the SASS/source correlation information.
+For example, adding a single-line comment line to the top of
+``example_sph.py`` after running the profiling command will make the Python/SASS correlation in Nsight Compute incorrect
+by one line if the source files were not imported into the report.
+
+The ``--source-folders arg`` option is also required to tell Nsight Compute which directories to search for the source
+files to import into the report when the profiling command is not run from the same directory as the source files.
+This is typically true when profiling with CUDA-C/SASS correlation (:attr:`warp.config.line_directives` set to
+``False``), unless :attr:`warp.config.kernel_cache_dir` has been set to the current working directory. An example
+profiling command that directs Nsight Compute to search for the source files in kernel cache directory on Linux is:
+
+.. code-block:: bash
+
+    ncu --open-in-ui --import-source 1 --source-folders ~/.cache/warp/ -f -o example_sph -k get_acceleration_a9fb4286_cuda_kernel_forward --set full -c 5 python example_sph.py --stage_path None --num_frames 10
+
+For similar reasons, it may sometimes be necessary to clear the kernel cache using :func:`warp.clear_kernel_cache`
+to force an update of the ``#line`` directives added into the CUDA-C code. This is because there can be changes to
+Python source files that do not affect the module hash but make the line-correlation information incorrect.
 
 Profiling API Reference
 -----------------------

@@ -1528,6 +1528,9 @@ class ModuleHasher:
         if warp.config.verify_fp:
             ch.update(bytes("verify_fp", "utf-8"))
 
+        # line directives, e.g. for Nsight Compute
+        ch.update(bytes(ctypes.c_int(warp.config.line_directives)))
+
         # build config
         ch.update(bytes(warp.config.mode, "utf-8"))
 
@@ -1947,7 +1950,7 @@ class Module:
             "enable_backward": warp.config.enable_backward,
             "fast_math": False,
             "fuse_fp": True,
-            "lineinfo": False,
+            "lineinfo": warp.config.lineinfo,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": warp.config.mode,
             "block_dim": 256,

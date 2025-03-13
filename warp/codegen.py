@@ -622,6 +622,7 @@ class Var:
         requires_grad: builtins.bool = False,
         constant: Optional[builtins.bool] = None,
         prefix: builtins.bool = True,
+        relative_lineno: Optional[int] = None,
     ):
         # convert built-in types to wp types
         if type == float:
@@ -644,6 +645,9 @@ class Var:
 
         # used to associate a view array Var with its parent array Var
         self.parent = None
+
+        # Used to associate the variable with the Python statement that resulted in it being created.
+        self.relative_lineno = relative_lineno
 
     def __str__(self):
         return self.label
@@ -865,6 +869,9 @@ class Adjoint:
                 "Directly evaluating Warp code defined as a string using `exec()` is not supported, "
                 "please save it on a file and use `importlib` if needed."
             ) from e
+
+        # Indicates where the function definition starts (excludes decorators)
+        adj.fun_def_lineno = None
 
         # get function source code
         adj.source = inspect.getsource(func)
@@ -1129,7 +1136,7 @@ class Adjoint:
         name = str(index)
 
         # allocate new variable
-        v = Var(name, type=type, constant=constant)
+        v = Var(name, type=type, constant=constant, relative_lineno=adj.lineno)
 
         adj.variables.append(v)
 
@@ -1154,11 +1161,44 @@ class Adjoint:
 
         return var
 
-    # append a statement to the forward pass
-    def add_forward(adj, statement, replay=None, skip_replay=False):
+    def get_line_directive(adj, statement: str, relative_lineno: Optional[int] = None) -> Optional[str]:
+        """Get a line directive for the given statement.
+
+        Args:
+            statement: The statement to get the line directive for.
+            relative_lineno: The line number of the statement relative to the function.
+
+        Returns:
+            A line directive for the given statement, or None if no line directive is needed.
+        """
+
+        # lineinfo is enabled by default in debug mode regardless of the builder option, don't want to unnecessarily
+        # emit line directives in generated code if it's not being compiled with line information
+        lineinfo_enabled = (
+            adj.builder_options.get("lineinfo", False) or adj.builder_options.get("mode", "release") == "debug"
+        )
+
+        if relative_lineno is not None and lineinfo_enabled and warp.config.line_directives:
+            is_comment = statement.strip().startswith("//")
+            if not is_comment:
+                line = relative_lineno + adj.fun_lineno
+                # Convert backslashes to forward slashes for CUDA compatibility
+                normalized_path = adj.filename.replace("\\", "/")
+                return f'#line {line} "{normalized_path}"'
+        return None
+
+    def add_forward(adj, statement: str, replay: Optional[str] = None, skip_replay: builtins.bool = False) -> None:
+        """Append a statement to the forward pass."""
+
+        if line_directive := adj.get_line_directive(statement, adj.lineno):
+            adj.blocks[-1].body_forward.append(line_directive)
+
         adj.blocks[-1].body_forward.append(adj.indentation + statement)
 
         if not skip_replay:
+            if line_directive:
+                adj.blocks[-1].body_replay.append(line_directive)
+
             if replay:
                 # if custom replay specified then output it
                 adj.blocks[-1].body_replay.append(adj.indentation + replay)
@@ -1167,8 +1207,13 @@ class Adjoint:
                 adj.blocks[-1].body_replay.append(adj.indentation + statement)
 
     # append a statement to the reverse pass
-    def add_reverse(adj, statement):
+    def add_reverse(adj, statement: str) -> None:
+        """Append a statement to the reverse pass."""
+
         adj.blocks[-1].body_reverse.append(adj.indentation + statement)
+
+        if line_directive := adj.get_line_directive(statement, adj.lineno):
+            adj.blocks[-1].body_reverse.append(line_directive)
 
     def add_constant(adj, n):
         output = adj.add_var(type=type(n), constant=n)
@@ -1620,6 +1665,8 @@ class Adjoint:
         adj.blocks[-1].body_reverse.extend(reversed(reverse))
 
     def emit_FunctionDef(adj, node):
+        adj.fun_def_lineno = node.lineno
+
         for f in node.body:
             # Skip variable creation for standalone constants, including docstrings
             if isinstance(f, ast.Expr) and isinstance(f.value, ast.Constant):
@@ -3205,53 +3252,53 @@ static void adj_{name}(
 
 cuda_forward_function_template = """
 // {filename}:{lineno}
-static CUDA_CALLABLE {return_type} {name}(
+{line_directive}static CUDA_CALLABLE {return_type} {name}(
     {forward_args})
 {{
-{forward_body}}}
+{forward_body}{line_directive}}}
 
 """
 
 cuda_reverse_function_template = """
 // {filename}:{lineno}
-static CUDA_CALLABLE void adj_{name}(
+{line_directive}static CUDA_CALLABLE void adj_{name}(
     {reverse_args})
 {{
-{reverse_body}}}
+{reverse_body}{line_directive}}}
 
 """
 
 cuda_kernel_template_forward = """
 
-extern "C" __global__ void {name}_cuda_kernel_forward(
+{line_directive}extern "C" __global__ void {name}_cuda_kernel_forward(
     {forward_args})
 {{
-    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
-         _idx < dim.size;
-         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
+{line_directive}    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
+{line_directive}         _idx < dim.size;
+{line_directive}         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
         // reset shared memory allocator
-        wp::tile_alloc_shared(0, true);
+{line_directive}        wp::tile_alloc_shared(0, true);
 
-{forward_body}    }}
-}}
+{forward_body}{line_directive}    }}
+{line_directive}}}
 
 """
 
 cuda_kernel_template_backward = """
 
-extern "C" __global__ void {name}_cuda_kernel_backward(
+{line_directive}extern "C" __global__ void {name}_cuda_kernel_backward(
     {reverse_args})
 {{
-    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
-         _idx < dim.size;
-         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
+{line_directive}    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
+{line_directive}         _idx < dim.size;
+{line_directive}         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
         // reset shared memory allocator
-        wp::tile_alloc_shared(0, true);
+{line_directive}        wp::tile_alloc_shared(0, true);
 
-{reverse_body}    }}
-}}
+{reverse_body}{line_directive}    }}
+{line_directive}}}
 
 """
 
@@ -3281,7 +3328,7 @@ extern "C" {{
 WP_API void {name}_cpu_forward(
     {forward_args})
 {{
-    for (size_t task_index = 0; task_index < dim.size; ++task_index)
+for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
         // init shared memory allocator
         wp::tile_alloc_shared(0, true);
@@ -3494,6 +3541,9 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
         else:
             lines += [f"const {var.ctype()} {var.emit()} = {constant_str(var.constant)};\n"]
 
+        if line_directive := adj.get_line_directive(lines[-1], var.relative_lineno):
+            lines.insert(-1, f"{line_directive}\n")
+
     # forward pass
     lines += ["//---------\n"]
     lines += ["// forward\n"]
@@ -3501,7 +3551,7 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
     for f in adj.blocks[0].body_forward:
         lines += [f + "\n"]
 
-    return "".join([indent_block + l for l in lines])
+    return "".join(l.lstrip() if l.lstrip().startswith("#line") else indent_block + l for l in lines)
 
 
 def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
@@ -3531,6 +3581,9 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
         else:
             lines += [f"const {var.ctype()} {var.emit()} = {constant_str(var.constant)};\n"]
 
+        if line_directive := adj.get_line_directive(lines[-1], var.relative_lineno):
+            lines.insert(-1, f"{line_directive}\n")
+
     # dual vars
     lines += ["//---------\n"]
     lines += ["// dual vars\n"]
@@ -3550,6 +3603,9 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
                 ]  # reverse mode tiles alias the forward vars since shared tiles store both primal/dual vars together
         else:
             lines += [f"{ctype} {name} = {{}};\n"]
+
+        if line_directive := adj.get_line_directive(lines[-1], var.relative_lineno):
+            lines.insert(-1, f"{line_directive}\n")
 
     # forward pass
     lines += ["//---------\n"]
@@ -3571,7 +3627,7 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     else:
         lines += ["return;\n"]
 
-    return "".join([indent_block + l for l in lines])
+    return "".join(l.lstrip() if l.lstrip().startswith("#line") else indent_block + l for l in lines)
 
 
 def codegen_func(adj, c_func_name: str, device="cpu", options=None):
@@ -3604,6 +3660,13 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None):
                 f"annotated as `{warp.context.type_str(adj.arg_types['return'])}` "
                 f"but the code returns a value of type `{warp.context.type_str(adj.return_var[0].type)}`."
             )
+
+    # Build line directive for function definition (subtract 1 to account for 1-indexing of AST line numbers)
+    # This is used as a catch-all C-to-Python source line mapping for any code that does not have
+    # a direct mapping to a Python source line.
+    func_line_directive = ""
+    if line_directive := adj.get_line_directive("", adj.fun_def_lineno - 1):
+        func_line_directive = f"{line_directive}\n"
 
     # forward header
     if adj.return_var is not None and len(adj.return_var) == 1:
@@ -3668,6 +3731,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None):
             forward_body=forward_body,
             filename=adj.filename,
             lineno=adj.fun_lineno,
+            line_directive=func_line_directive,
         )
 
     if not adj.skip_reverse_codegen:
@@ -3686,6 +3750,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None):
             reverse_body=reverse_body,
             filename=adj.filename,
             lineno=adj.fun_lineno,
+            line_directive=func_line_directive,
         )
 
     return s
@@ -3728,6 +3793,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet):
         forward_body=snippet,
         filename=adj.filename,
         lineno=adj.fun_lineno,
+        line_directive="",
     )
 
     if replay_snippet is not None:
@@ -3738,6 +3804,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet):
             forward_body=replay_snippet,
             filename=adj.filename,
             lineno=adj.fun_lineno,
+            line_directive="",
         )
 
     if adj_snippet:
@@ -3753,6 +3820,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet):
         reverse_body=reverse_body,
         filename=adj.filename,
         lineno=adj.fun_lineno,
+        line_directive="",
     )
 
     return s
@@ -3764,6 +3832,13 @@ def codegen_kernel(kernel, device, options):
     options.update(kernel.options)
 
     adj = kernel.adj
+
+    # Build line directive for function definition (subtract 1 to account for 1-indexing of AST line numbers)
+    # This is used as a catch-all C-to-Python source line mapping for any code that does not have
+    # a direct mapping to a Python source line.
+    func_line_directive = ""
+    if line_directive := adj.get_line_directive("", adj.fun_def_lineno - 1):
+        func_line_directive = f"{line_directive}\n"
 
     if device == "cpu":
         template_forward = cpu_kernel_template_forward
@@ -3792,6 +3867,7 @@ def codegen_kernel(kernel, device, options):
         {
             "forward_args": indent(forward_args),
             "forward_body": forward_body,
+            "line_directive": func_line_directive,
         }
     )
     template += template_forward
