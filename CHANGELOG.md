@@ -26,6 +26,10 @@
 - Add `wp.where()` to select between two arguments conditionally using a
   more intuitive argument order (`cond`, `value_if_true`, `value_if_false`)
   ([GH-469](https://github.com/NVIDIA/warp/issues/469)).
+- Support Python/SASS correlation in Nsight Compute reports by emitting `#line` directives in CUDA-C code.
+  This setting is controlled by `wp.config.line_directives` and is `True` by default.
+  ([docs](https://nvidia.github.io/warp/profiling.html#nsight-compute-profiling),
+   [GH-437](https://github.com/NVIDIA/warp/issues/437))
 
 ### Changed
 

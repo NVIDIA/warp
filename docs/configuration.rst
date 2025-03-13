@@ -33,6 +33,8 @@ For example, the location of the user kernel cache can be changed with:
 .. automodule:: warp.config
    :members:
 
+.. _module-settings:
+
 Module Settings
 ---------------
 
@@ -50,16 +52,14 @@ The options for a module can also be queried using ``wp.get_module_options()``.
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 | Field                                | Type    |Default Value| Description                                                              |
 +======================================+=========+=============+==========================================================================+
-|``mode``                              | String  | Global      | Controls whether to compile the module's kernels in debug or release     |
-|                                      |         | setting     | mode by default. Valid choices are ``"release"`` or ``"debug"``.         |
+|``mode``                              | String  | Global      | A module-level override of the :attr:`warp.config.mode` setting.         |
+|                                      |         | setting     |                                                                          |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``max_unroll``                        | Integer | Global      | The maximum fixed-size loop to unroll. Note that ``max_unroll`` does not |
-|                                      |         | setting     | consider the total number of iterations in nested loops. This can result |
-|                                      |         |             | in a large amount of automatically generated code if each nested loop is |
-|                                      |         |             | below the ``max_unroll`` threshold.                                      |
+|``max_unroll``                        | Integer | Global      | A module-level override of the :attr:`warp.config.max_unroll` setting.   |
+|                                      |         | setting     |                                                                          |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``enable_backward``                   | Boolean | Global      | If ``True``, backward passes of kernels will be compiled by default.     |
-|                                      |         | setting     | Valid choices are ``"release"`` or ``"debug"``.                          |
+|``enable_backward``                   | Boolean | Global      | A module-level override of the :attr:`warp.config.enable_backward`       |
+|                                      |         | setting     | setting.                                                                 |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``fast_math``                         | Boolean | ``False``   | If ``True``, CUDA kernels will be compiled with the ``--use_fast_math``  |
 |                                      |         |             | compiler option, which enables some fast math operations that are faster |
@@ -71,17 +71,10 @@ The options for a module can also be queried using ``wp.get_module_options()``.
 |                                      |         |             | that functionally equivalent kernels will produce identical results      |
 |                                      |         |             | unaffected by the presence or absence of fused operations.               |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``lineinfo``                          | Boolean | ``False``   | If ``True``, CUDA kernels will be compiled with the                      |
-|                                      |         |             | ``--generate-line-info`` compiler option, which generates line-number    |
-|                                      |         |             | information for device code, e.g. to allow NVIDIA Nsight Compute to      |
-|                                      |         |             | correlate CUDA-C source and SASS. Line-number information is always      |
-|                                      |         |             | included when compiling kernels in ``"debug"`` mode regardless of this   |
-|                                      |         |             | setting.                                                                 |
+|``lineinfo``                          | Boolean | Global      | A module-level override of the :attr:`warp.config.lineinfo` setting.     |
+|                                      |         | setting     |                                                                          |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``cuda_output``                       | String  | ``None``    | The preferred CUDA output format for kernels. Valid choices are ``None``,|
-|                                      |         |             | ``"ptx"``, and ``"cubin"``. If ``None``, a format will be determined     |
-|                                      |         |             | automatically. The module-level setting takes precedence over the global |
-|                                      |         |             | setting.                                                                 |
+|``cuda_output``                       | String  | ``None``    | A module-level override of the :attr:`warp.config.cuda_output` setting.  |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 
 Kernel Settings
