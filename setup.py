@@ -35,8 +35,8 @@ parser.add_argument(
     "--manylinux",
     "-M",
     type=str,
-    default="manylinux_2_34",
-    help="Manylinux flavor for Linux wheels: manylinux2014|manylinux_2_34",
+    default="manylinux_2_28",
+    help="Manylinux flavor for Linux wheels: manylinux2014|manylinux_2_28|manylinux_2_34",
 )
 args = parser.parse_known_args()[0]
 
@@ -82,7 +82,7 @@ class Platform(NamedTuple):
 
 platforms = [
     Platform("windows", "x86_64", "Windows x86-64", ".dll", "win_amd64"),
-    Platform("linux", "x86_64", "Linux x86-64", ".so", "manylinux_2_34_x86_64"),
+    Platform("linux", "x86_64", "Linux x86-64", ".so", "manylinux_2_28_x86_64"),
     Platform("linux", "aarch64", "Linux AArch64", ".so", "manylinux_2_34_aarch64"),
     Platform("macos", "universal", "macOS universal", ".dylib", "macosx_10_13_universal2"),
 ]
@@ -163,7 +163,7 @@ class WarpBDistWheel(bdist_wheel):
     # setuptools.Command can validate the command line options.
     user_options = bdist_wheel.user_options + [
         ("platform=", "P", "Wheel platform: windows|linux|macos-x86_64|aarch64|universal"),
-        ("manylinux=", "M", "Manylinux flavor for Linux wheels: manylinux2014|manylinux_2_34"),
+        ("manylinux=", "M", "Manylinux flavor for Linux wheels: manylinux2014|manylinux_2_28|manylinux_2_34"),
     ]
 
     def initialize_options(self):
