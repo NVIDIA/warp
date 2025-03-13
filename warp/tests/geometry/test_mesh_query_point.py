@@ -750,11 +750,11 @@ def triangle_closest_point_for_test(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp.ve
     return a + v * ab + w * ac, bary
 
 
-def load_mesh():
+def load_mesh(model_name="bunny"):
     from pxr import Usd, UsdGeom
 
-    usd_stage = Usd.Stage.Open(os.path.join(wp.examples.get_asset_directory(), "bunny.usd"))
-    usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/bunny"))
+    usd_stage = Usd.Stage.Open(os.path.join(wp.examples.get_asset_directory(), model_name + ".usd"))
+    usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/" + model_name))
 
     vertices = np.array(usd_geom.GetPointsAttr().Get())
     faces = np.array(usd_geom.GetFaceVertexIndicesAttr().Get())
@@ -820,76 +820,79 @@ def test_set_mesh_points(test, device):
 
     rng = np.random.default_rng(123)
 
-    vs, fs = load_mesh()
-    vertices1 = wp.array(vs, dtype=wp.vec3, device=device)
-    velocities1_np = rng.standard_normal(size=(vertices1.shape[0], 3))
-    velocities1 = wp.array(velocities1_np, dtype=wp.vec3, device=device)
+    models = ["bunny", "nonuniform"]
 
-    faces = wp.array(fs, dtype=wp.int32, device=device)
+    for model in models:
+        vs, fs = load_mesh(model)
+        vertices1 = wp.array(vs, dtype=wp.vec3, device=device)
+        velocities1_np = rng.standard_normal(size=(vertices1.shape[0], 3))
+        velocities1 = wp.array(velocities1_np, dtype=wp.vec3, device=device)
 
-    n = 1000
-    query_radius = 0.2
-    pts1 = wp.array(rng.standard_normal(size=(n, 3)), dtype=wp.vec3, device=device)
+        faces = wp.array(fs, dtype=wp.int32, device=device)
 
-    query_results_num_cols1 = wp.zeros(n, dtype=wp.int32, device=device)
-    query_results_min_dist1 = wp.zeros(n, dtype=float, device=device)
-    query_results_closest_point_velocity1 = wp.zeros(n, dtype=wp.vec3, device=device)
+        n = 1000
+        query_radius = 0.2
+        pts1 = wp.array(rng.standard_normal(size=(n, 3)), dtype=wp.vec3, device=device)
 
-    for constructor in constructors:
-        mesh = wp.Mesh(vertices1, faces, velocities=velocities1, bvh_constructor=constructor)
-        fs_2D = faces.reshape((-1, 3))
+        query_results_num_cols1 = wp.zeros(n, dtype=wp.int32, device=device)
+        query_results_min_dist1 = wp.zeros(n, dtype=float, device=device)
+        query_results_closest_point_velocity1 = wp.zeros(n, dtype=wp.vec3, device=device)
 
-        wp.launch(
-            kernel=point_query_aabb_and_closest,
-            inputs=[
-                query_radius,
-                mesh.id,
-                pts1,
-                vertices1,
-                fs_2D,
-                query_results_num_cols1,
-                query_results_min_dist1,
-                query_results_closest_point_velocity1,
-            ],
-            dim=n,
-            device=device,
-        )
+        for constructor in constructors:
+            mesh = wp.Mesh(vertices1, faces, velocities=velocities1, bvh_constructor=constructor)
+            fs_2D = faces.reshape((-1, 3))
 
-        shift = rng.standard_normal(size=3)
+            wp.launch(
+                kernel=point_query_aabb_and_closest,
+                inputs=[
+                    query_radius,
+                    mesh.id,
+                    pts1,
+                    vertices1,
+                    fs_2D,
+                    query_results_num_cols1,
+                    query_results_min_dist1,
+                    query_results_closest_point_velocity1,
+                ],
+                dim=n,
+                device=device,
+            )
 
-        vs_higher = vs + shift
-        vertices2 = wp.array(vs_higher, dtype=wp.vec3, device=device)
+            shift = rng.standard_normal(size=3)
 
-        velocities2_np = velocities1_np + shift[None, ...]
-        velocities2 = wp.array(velocities2_np, dtype=wp.vec3, device=device)
+            vs_higher = vs + shift
+            vertices2 = wp.array(vs_higher, dtype=wp.vec3, device=device)
 
-        pts2 = wp.array(pts1.numpy() + shift, dtype=wp.vec3, device=device)
+            velocities2_np = velocities1_np + shift[None, ...]
+            velocities2 = wp.array(velocities2_np, dtype=wp.vec3, device=device)
 
-        mesh.points = vertices2
-        mesh.velocities = velocities2
+            pts2 = wp.array(pts1.numpy() + shift, dtype=wp.vec3, device=device)
 
-        query_results_num_cols2 = wp.zeros(n, dtype=wp.int32, device=device)
-        query_results_min_dist2 = wp.zeros(n, dtype=float, device=device)
-        query_results_closest_point_velocity2 = wp.array([shift for i in range(n)], dtype=wp.vec3, device=device)
+            mesh.points = vertices2
+            mesh.velocities = velocities2
 
-        wp.launch(
-            kernel=point_query_aabb_and_closest,
-            inputs=[
-                query_radius,
-                mesh.id,
-                pts2,
-                vertices2,
-                fs_2D,
-                query_results_num_cols2,
-                query_results_min_dist2,
-                query_results_closest_point_velocity2,
-            ],
-            dim=n,
-            device=device,
-        )
+            query_results_num_cols2 = wp.zeros(n, dtype=wp.int32, device=device)
+            query_results_min_dist2 = wp.zeros(n, dtype=float, device=device)
+            query_results_closest_point_velocity2 = wp.array([shift for i in range(n)], dtype=wp.vec3, device=device)
 
-        test.assertTrue((query_results_num_cols1.numpy() == query_results_num_cols2.numpy()).all())
-        test.assertTrue(((query_results_min_dist1.numpy() - query_results_min_dist2.numpy()) < 1e-5).all())
+            wp.launch(
+                kernel=point_query_aabb_and_closest,
+                inputs=[
+                    query_radius,
+                    mesh.id,
+                    pts2,
+                    vertices2,
+                    fs_2D,
+                    query_results_num_cols2,
+                    query_results_min_dist2,
+                    query_results_closest_point_velocity2,
+                ],
+                dim=n,
+                device=device,
+            )
+
+            test.assertTrue((query_results_num_cols1.numpy() == query_results_num_cols2.numpy()).all())
+            test.assertTrue(((query_results_min_dist1.numpy() - query_results_min_dist2.numpy()) < 1e-5).all())
 
 
 devices = get_test_devices()

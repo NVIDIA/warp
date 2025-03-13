@@ -23,6 +23,7 @@
 #define BVH_LEAF_SIZE (4)
 #define SAH_NUM_BUCKETS (16)
 #define USE_LOAD4
+#define BVH_QUERY_STACK_SIZE (32)
 
 #define BVH_CONSTRUCTOR_SAH (0)
 #define BVH_CONSTRUCTOR_MEDIAN (1)
@@ -300,7 +301,7 @@ struct bvh_query_t
     BVH bvh;
 
 	// BVH traversal stack:
-	int stack[32];
+	int stack[BVH_QUERY_STACK_SIZE];
 	int count;
 
 	// >= 0 if currently in a packed leaf node
