@@ -123,7 +123,7 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
 {
     Mesh mesh = mesh_get(id);
 
-    int stack[32];
+    int stack[BVH_QUERY_STACK_SIZE];
     stack[0] = *mesh.bvh.root;
 
     int count = 1;
@@ -311,7 +311,7 @@ CUDA_CALLABLE inline bool mesh_query_point_no_sign(uint64_t id, const vec3& poin
 {
     Mesh mesh = mesh_get(id);
 
-    int stack[32];
+    int stack[BVH_QUERY_STACK_SIZE];
     stack[0] = *mesh.bvh.root;
 
     int count = 1;
@@ -495,7 +495,7 @@ CUDA_CALLABLE inline bool mesh_query_furthest_point_no_sign(uint64_t id, const v
 {
     Mesh mesh = mesh_get(id);
 
-    int stack[32];
+    int stack[BVH_QUERY_STACK_SIZE];
     stack[0] = *mesh.bvh.root;
 
     int count = 1;
@@ -682,7 +682,7 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_normal(uint64_t id, const vec3& 
 {
     Mesh mesh = mesh_get(id);
 
-    int stack[32];
+    int stack[BVH_QUERY_STACK_SIZE];
     stack[0] = *mesh.bvh.root;
     int count = 1;
     float min_dist = max_dist;
@@ -926,9 +926,9 @@ CUDA_CALLABLE inline float solid_angle_iterative(uint64_t id, const vec3& p, con
 {
     Mesh mesh = mesh_get(id);
 
-    int stack[32];
-    int at_child[32]; // 0 for left, 1 for right, 2 for done	
-    float angle[32]; 
+    int stack[BVH_QUERY_STACK_SIZE];
+    int at_child[BVH_QUERY_STACK_SIZE]; // 0 for left, 1 for right, 2 for done	
+    float angle[BVH_QUERY_STACK_SIZE];
     stack[0] = *mesh.bvh.root;	
     at_child[0] = 0;
 
@@ -1017,7 +1017,7 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_winding_number(uint64_t id, cons
 {
     Mesh mesh = mesh_get(id);
 
-    int stack[32];
+    int stack[BVH_QUERY_STACK_SIZE];
     stack[0] = *mesh.bvh.root;
 
     int count = 1;
@@ -1371,7 +1371,7 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
 {
     Mesh mesh = mesh_get(id);
 
-    int stack[32];
+    int stack[BVH_QUERY_STACK_SIZE];
     stack[0] = *mesh.bvh.root;
     int count = 1;
 
@@ -1587,7 +1587,7 @@ struct mesh_query_aabb_t
     // Mesh Id
     Mesh mesh;
     // BVH traversal stack:
-    int stack[32];
+    int stack[BVH_QUERY_STACK_SIZE];
     int count;
 
     // inputs

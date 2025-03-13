@@ -40,7 +40,7 @@ namespace wp
 // for LBVH: this will start with some muted leaf nodes, but that is okay, we can still trace up because there parents information is still valid
 // the only thing worth mentioning is that when the parent leaf node is also a leaf node, we need to recompute its bounds, since their child information are lost
 // for a compact tree such as those from SAH or Median constructor, there is no muted leaf nodes
-__global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __restrict__ child_count, int* __restrict__ primitive_indices, BVHPackedNodeHalf* __restrict__ node_lowers, BVHPackedNodeHalf* __restrict__ node_uppers, const vec3* item_lowers, const vec3* item_uppers)
+__global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __restrict__ child_count, const int* __restrict__ primitive_indices, BVHPackedNodeHalf* __restrict__ node_lowers, BVHPackedNodeHalf* __restrict__ node_uppers, const vec3* __restrict__ item_lowers, const vec3* __restrict__ item_uppers)
 {
     int index = blockDim.x*blockIdx.x + threadIdx.x;
 
@@ -257,7 +257,7 @@ __global__ void build_leaves(const vec3* __restrict__ item_lowers, const vec3* _
 // there is one thread launched per-leaf node, each thread calculates it's parent node and assigns
 // itself to either the left or right parent slot, the last child to complete the parent and moves
 // up the hierarchy
-__global__ void build_hierarchy(int n, int* root, const int* __restrict__ deltas,  int* __restrict__ num_children, volatile int* __restrict__ range_lefts, volatile int* __restrict__ range_rights, volatile int* __restrict__ parents, volatile BVHPackedNodeHalf* __restrict__ lowers, volatile BVHPackedNodeHalf* __restrict__ uppers)
+__global__ void build_hierarchy(int n, int* root, const int* __restrict__ deltas,  int* __restrict__ num_children, const int* __restrict__ primitive_indices, volatile int* __restrict__ range_lefts, volatile int* __restrict__ range_rights, volatile int* __restrict__ parents, volatile BVHPackedNodeHalf* __restrict__ lowers, volatile BVHPackedNodeHalf* __restrict__ uppers)
 {
     int index = blockDim.x*blockIdx.x + threadIdx.x;
 
@@ -283,13 +283,34 @@ __global__ void build_hierarchy(int n, int* root, const int* __restrict__ deltas
 
             int parent;
 
-            if (left == 0 || (right != n-1 && deltas[right] < deltas[left-1]))
+            bool parent_right = false;
+            if (left == 0) 
+            {
+                parent_right = true;
+            }
+            else if ((right != n - 1 && deltas[right] <= deltas[left - 1]))
+            {
+                // tie breaking, this avoid always choosing the right node which can result in a very deep tree
+                // generate a pseudo-random binary value to randomly choose left or right groupings
+                // since the primitives with same Morton code are not sorted at all, determining order based on primitive_indices may also be unreliable.  
+                // Here, the decision is made using the XOR result of whether the keys before and after the internal node are divisible by 2.  
+                if (deltas[right] == deltas[left - 1])
+                {
+                    parent_right = (primitive_indices[left - 1] % 2) ^ (primitive_indices[right] % 2);
+                }
+                else
+                {
+                    parent_right = true;
+                }
+            }
+
+            if (parent_right)
             {
                 parent = right + internal_offset;
 
                 // set parent left child
                 parents[index] = parent;
-                lowers[parent].i = index;				
+                lowers[parent].i = index;
                 range_lefts[parent] = left;
 
                 // ensure above writes are visible to all threads
@@ -363,27 +384,34 @@ __global__ void build_hierarchy(int n, int* root, const int* __restrict__ deltas
 * <= BVH_LEAF_SIZE into a new leaf node. This process is done using the new kernel function called 
 * mark_packed_leaf_nodes .
 */
-__global__ void mark_packed_leaf_nodes(int n, volatile int* __restrict__ range_lefts, volatile int* __restrict__ range_rights,
-    volatile BVHPackedNodeHalf* __restrict__ lowers, volatile BVHPackedNodeHalf* __restrict__ uppers)
+__global__ void mark_packed_leaf_nodes(int n, const int* __restrict__ range_lefts, const int* __restrict__ range_rights, const int* __restrict__ parents,
+    BVHPackedNodeHalf* __restrict__ lowers, BVHPackedNodeHalf* __restrict__ uppers)
 {
     int node_index = blockDim.x * blockIdx.x + threadIdx.x;
     if (node_index < n)
     {
-        // mark the node as leaf if its range is less than LEAF_SIZE_LBVH
+        // mark the node as leaf if its range is less than LEAF_SIZE_LBVH or it is deeper than BVH_QUERY_STACK_SIZE
         // this will forever mute its child nodes so that they will never be accessed
+
+        // calculate depth
+        int depth = 1;
+        int parent = parents[node_index];
+        while (parent != -1)
+        {
+            int old_parent = parent;
+            parent = parents[parent];
+            depth++;
+        }
 
         int left = range_lefts[node_index];
         // the LBVH constructor's range is defined as left <= i <= right
         // we need to convert it to our convention: left <= i < right
         int right = range_rights[node_index] + 1;
-        // printf("node %d (left %d right %d)", node_index, left, right);
-        if (right - left <= BVH_LEAF_SIZE)
+        if (right - left <= BVH_LEAF_SIZE || depth >= BVH_QUERY_STACK_SIZE)
         {
             lowers[node_index].b = 1;
             lowers[node_index].i = left;
             uppers[node_index].i = right;
-
-            // printf("node %d (left %d right %d) is set to child\n", node_index, left, right);
         }
     }
 }
@@ -516,8 +544,8 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
     memset_device(WP_CURRENT_CONTEXT, num_children, 0, sizeof(int)*bvh.max_nodes);
 
     // build the tree and internal node bounds
-    wp_launch_device(WP_CURRENT_CONTEXT, build_hierarchy, num_items, (num_items, bvh.root, deltas, num_children, range_lefts, range_rights, bvh.node_parents, bvh.node_lowers, bvh.node_uppers));
-    wp_launch_device(WP_CURRENT_CONTEXT, mark_packed_leaf_nodes, bvh.max_nodes, (bvh.max_nodes, range_lefts, range_rights, bvh.node_lowers, bvh.node_uppers));
+    wp_launch_device(WP_CURRENT_CONTEXT, build_hierarchy, num_items, (num_items, bvh.root, deltas, num_children, bvh.primitive_indices, range_lefts, range_rights, bvh.node_parents, bvh.node_lowers, bvh.node_uppers));
+    wp_launch_device(WP_CURRENT_CONTEXT, mark_packed_leaf_nodes, bvh.max_nodes, (bvh.max_nodes, range_lefts, range_rights, bvh.node_parents, bvh.node_lowers, bvh.node_uppers));
 
     // free temporary memory
     free_device(WP_CURRENT_CONTEXT, indices);
@@ -673,7 +701,7 @@ void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items,
     else if (constructor_type == BVH_CONSTRUCTOR_LBVH)
     {
         bvh_device_on_host.num_items = num_items;
-        bvh_device_on_host.max_nodes = 2 * num_items;
+        bvh_device_on_host.max_nodes = 2 * num_items - 1;
         bvh_device_on_host.num_leaf_nodes = num_items;
         bvh_device_on_host.node_lowers = (BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes);
         memset_device(WP_CURRENT_CONTEXT, bvh_device_on_host.node_lowers, 0, sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes);

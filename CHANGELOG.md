@@ -53,6 +53,7 @@
 - Default PTX architecture is now determined by the devices present in the system ([GH-537](https://github.com/NVIDIA/warp/issues/537)).
 
 ### Fixed
+- Fix an out-of-bounds access bug caused by an unbalanced BVH tree ([GH-536](https://github.com/NVIDIA/warp/issues/536)).
 
 ## [1.6.2] - 2025-03-07
 
