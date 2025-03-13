@@ -6545,7 +6545,7 @@ def tile_cholesky_generic_value_func(arg_types, arg_values):
         raise TypeError(f"tile_cholesky() argument must be a tile, got {a!r}")
 
     if len(a.shape) != 2:
-        raise ValueError("tile_cholesky() argumust must be a 2D tile")
+        raise ValueError("tile_cholesky() argument must be a 2D tile")
 
     if a.shape[0] != a.shape[1]:
         raise ValueError("tile_cholesky() argument must be square")
