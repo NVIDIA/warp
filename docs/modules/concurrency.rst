@@ -237,7 +237,7 @@ In general, we recommend using :class:`wp.ScopedStream <ScopedStream>` rather th
 Synchronization
 ~~~~~~~~~~~~~~~
 
-The :func:`wp.synchronize_stream() <synchronize_stream>` function can be used to block the host thread until the given stream completes:
+:func:`wp.synchronize_stream() <synchronize_stream>` can be used to block the host thread until the given stream completes:
 
 .. code:: python
 
@@ -375,6 +375,32 @@ The function :func:`wp.synchronize_event() <synchronize_event>` can be used to b
         # process second array on the CPU
         assert np.array_equal(b_host.numpy(), np.full(N, fill_value=42.0))
 
+Querying Stream and Event Status
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :attr:`Stream.is_complete` and :attr:`Event.is_complete` attributes can be used to query the status of a stream or
+event. These queries do not block the host thread unlike :func:`wp.synchronize_stream() <synchronize_stream>` and
+:func:`wp.synchronize_event() <synchronize_event>`.
+
+These attributes are useful for running operations on the CPU while waiting for GPU operations to complete:
+
+.. code:: python
+
+    @wp.kernel
+    def test_kernel(sum: wp.array(dtype=wp.uint64)):
+        wp.atomic_add(sum, 0, wp.uint64(1))
+
+
+    sum = wp.zeros(1, dtype=wp.uint64)
+    wp.launch(test_kernel, dim=8 * 1024 * 1024, outputs=[sum])
+
+    # Have the CPU do some unrelated work while the GPU is computing
+    counter = 0
+    while not wp.get_stream().is_complete:
+        print(f"counter: {counter}")
+        counter += 1
+
+:attr:`Stream.is_complete` and :attr:`Event.is_complete` cannot be accessed during a graph capture.
 
 CUDA Default Stream
 ~~~~~~~~~~~~~~~~~~~
