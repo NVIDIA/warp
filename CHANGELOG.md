@@ -59,6 +59,7 @@
 
 ### Fixed
 - Fix an out-of-bounds access bug caused by an unbalanced BVH tree ([GH-536](https://github.com/NVIDIA/warp/issues/536)).
+- Fix an error of incorrectly adding the offset to -1 elements in `edge_indices` when adding a ModelBuilder to another ([GH-557](https://github.com/NVIDIA/warp/issues/557)).
 
 ## [1.6.2] - 2025-03-07
 

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import unittest
 
 import numpy as np
@@ -177,6 +178,45 @@ class TestModel(unittest.TestCase):
         builder2.add_builder(builder)
         assert builder2.articulation_count == 2 * builder.articulation_count
         assert builder2.articulation_start == [0, 1, 2, 3]
+
+    def test_add_builder_with_open_edges(self):
+        builder = wp.sim.ModelBuilder()
+
+        dim_x = 16
+        dim_y = 16
+
+        env_builder = wp.sim.ModelBuilder()
+        env_builder.add_cloth_grid(
+            pos=wp.vec3(0.0, 0.0, 0.0),
+            vel=wp.vec3(0.1, 0.1, 0.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), -math.pi * 0.25),
+            dim_x=dim_x,
+            dim_y=dim_y,
+            cell_x=1.0 / dim_x,
+            cell_y=1.0 / dim_y,
+            mass=1.0,
+        )
+
+        num_envs = 2
+        env_offsets = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
+
+        builder_open_edge_count = np.sum(np.array(builder.edge_indices) == -1)
+        env_builder_open_edge_count = np.sum(np.array(env_builder.edge_indices) == -1)
+
+        for i in range(num_envs):
+            xform = wp.transform(env_offsets[i], wp.quat_identity())
+            builder.add_builder(
+                env_builder,
+                xform,
+                update_num_env_count=True,
+                separate_collision_group=True,
+            )
+
+        self.assertEqual(
+            np.sum(np.array(builder.edge_indices) == -1),
+            builder_open_edge_count + num_envs * env_builder_open_edge_count,
+            "builder does not have the expected number of open edges",
+        )
 
 
 if __name__ == "__main__":

@@ -1400,7 +1400,11 @@ class ModelBuilder:
         if builder.spring_count:
             self.spring_indices.extend((np.array(builder.spring_indices, dtype=np.int32) + start_particle_idx).tolist())
         if builder.edge_count:
-            self.edge_indices.extend((np.array(builder.edge_indices, dtype=np.int32) + start_particle_idx).tolist())
+            # Update edge indices by adding offset, preserving -1 values
+            edge_indices = np.array(builder.edge_indices, dtype=np.int32)
+            mask = edge_indices != -1
+            edge_indices[mask] += start_particle_idx
+            self.edge_indices.extend(edge_indices.tolist())
         if builder.tri_count:
             self.tri_indices.extend((np.array(builder.tri_indices, dtype=np.int32) + start_particle_idx).tolist())
         if builder.tet_count:
