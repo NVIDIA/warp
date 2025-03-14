@@ -914,6 +914,26 @@ publish tag wheels to artifactory:
       sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*.whl
       branch=$CI_COMMIT_REF_NAME
 
+publish wheels to github release:
+  stage: deploy
+  image: ubuntu:22.04
+  needs: ["create pypi wheels"]
+  extends:
+    - .runner-utility-linux-x86_64
+  rules:
+    - if: $CI_COMMIT_TAG
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - apt-get update && apt-get install wget ca-certificates --no-install-recommends -y
+    - wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+    - bash Miniforge3.sh -b -p "${HOME}/conda"
+    - source "${HOME}/conda/etc/profile.d/conda.sh"
+    - conda activate
+    - conda install gh --channel conda-forge
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - gh release upload $CI_COMMIT_TAG ./dist-github/*.whl
+
 .build-docs-common:
   stage: deploy
   image: python:3.11-slim
