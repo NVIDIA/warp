@@ -30,6 +30,8 @@
   This setting is controlled by `wp.config.line_directives` and is `True` by default.
   ([docs](https://nvidia.github.io/warp/profiling.html#nsight-compute-profiling),
    [GH-437](https://github.com/NVIDIA/warp/issues/437))
+- Add `Stream.is_complete` and `Event.is_complete` properties to query completion status
+  ([GH-435](https://github.com/NVIDIA/warp/issues/435)).
 
 ### Changed
 

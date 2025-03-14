@@ -86,6 +86,7 @@ static PFN_cuCtxEnablePeerAccess_v4000 pfn_cuCtxEnablePeerAccess;
 static PFN_cuCtxDisablePeerAccess_v4000 pfn_cuCtxDisablePeerAccess;
 static PFN_cuStreamCreate_v2000 pfn_cuStreamCreate;
 static PFN_cuStreamDestroy_v4000 pfn_cuStreamDestroy;
+static PFN_cuStreamQuery_v2000 pfn_cuStreamQuery;
 static PFN_cuStreamSynchronize_v2000 pfn_cuStreamSynchronize;
 static PFN_cuStreamWaitEvent_v3020 pfn_cuStreamWaitEvent;
 static PFN_cuStreamGetCtx_v9020 pfn_cuStreamGetCtx;
@@ -95,6 +96,7 @@ static PFN_cuStreamCreateWithPriority_v5050 pfn_cuStreamCreateWithPriority;
 static PFN_cuStreamGetPriority_v5050 pfn_cuStreamGetPriority;
 static PFN_cuEventCreate_v2000 pfn_cuEventCreate;
 static PFN_cuEventDestroy_v4000 pfn_cuEventDestroy;
+static PFN_cuEventQuery_v2000 pfn_cuEventQuery;
 static PFN_cuEventRecord_v2000 pfn_cuEventRecord;
 static PFN_cuEventRecordWithFlags_v11010 pfn_cuEventRecordWithFlags;
 static PFN_cuEventSynchronize_v2000 pfn_cuEventSynchronize;
@@ -227,6 +229,7 @@ bool init_cuda_driver()
     get_driver_entry_point("cuCtxDisablePeerAccess", 4000, &(void*&)pfn_cuCtxDisablePeerAccess);
     get_driver_entry_point("cuStreamCreate", 2000, &(void*&)pfn_cuStreamCreate);
     get_driver_entry_point("cuStreamDestroy", 4000, &(void*&)pfn_cuStreamDestroy);
+    get_driver_entry_point("cuStreamQuery", 2000, &(void*&)pfn_cuStreamQuery);
     get_driver_entry_point("cuStreamSynchronize", 2000, &(void*&)pfn_cuStreamSynchronize);
     get_driver_entry_point("cuStreamWaitEvent", 3020, &(void*&)pfn_cuStreamWaitEvent);
     get_driver_entry_point("cuStreamGetCtx", 9020, &(void*&)pfn_cuStreamGetCtx);
@@ -236,6 +239,7 @@ bool init_cuda_driver()
     get_driver_entry_point("cuStreamGetPriority", 5050, &(void*&)pfn_cuStreamGetPriority);
     get_driver_entry_point("cuEventCreate", 2000, &(void*&)pfn_cuEventCreate);
     get_driver_entry_point("cuEventDestroy", 4000, &(void*&)pfn_cuEventDestroy);
+    get_driver_entry_point("cuEventQuery", 2000, &(void*&)pfn_cuEventQuery);
     get_driver_entry_point("cuEventRecord", 2000, &(void*&)pfn_cuEventRecord);
     get_driver_entry_point("cuEventRecordWithFlags", 11010, &(void*&)pfn_cuEventRecordWithFlags);
     get_driver_entry_point("cuEventSynchronize", 2000, &(void*&)pfn_cuEventSynchronize);
@@ -479,6 +483,11 @@ CUresult cuStreamDestroy_f(CUstream stream)
     return pfn_cuStreamDestroy ? pfn_cuStreamDestroy(stream) : DRIVER_ENTRY_POINT_ERROR;
 }
 
+CUresult cuStreamQuery_f(CUstream stream)
+{
+    return pfn_cuStreamQuery ? pfn_cuStreamQuery(stream) : DRIVER_ENTRY_POINT_ERROR;
+}
+
 CUresult cuStreamSynchronize_f(CUstream stream)
 {
     return pfn_cuStreamSynchronize ? pfn_cuStreamSynchronize(stream) : DRIVER_ENTRY_POINT_ERROR;
@@ -522,6 +531,11 @@ CUresult cuEventCreate_f(CUevent* event, unsigned int flags)
 CUresult cuEventDestroy_f(CUevent event)
 {
     return pfn_cuEventDestroy ? pfn_cuEventDestroy(event) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuEventQuery_f(CUevent event)
+{
+    return pfn_cuEventQuery ? pfn_cuEventQuery(event) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuEventRecord_f(CUevent event, CUstream stream)

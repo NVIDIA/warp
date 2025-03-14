@@ -85,6 +85,7 @@ CUresult cuCtxEnablePeerAccess_f(CUcontext peer_ctx, unsigned int flags);
 CUresult cuCtxDisablePeerAccess_f(CUcontext peer_ctx);
 CUresult cuStreamCreate_f(CUstream* stream, unsigned int flags);
 CUresult cuStreamDestroy_f(CUstream stream);
+CUresult cuStreamQuery_f(CUstream stream);
 CUresult cuStreamSynchronize_f(CUstream stream);
 CUresult cuStreamWaitEvent_f(CUstream stream, CUevent event, unsigned int flags);
 CUresult cuStreamGetCtx_f(CUstream stream, CUcontext* pctx);
@@ -94,6 +95,7 @@ CUresult cuStreamCreateWithPriority_f(CUstream* phStream, unsigned int flags, in
 CUresult cuStreamGetPriority_f(CUstream hStream, int* priority);
 CUresult cuEventCreate_f(CUevent* event, unsigned int flags);
 CUresult cuEventDestroy_f(CUevent event);
+CUresult cuEventQuery_f(CUevent event);
 CUresult cuEventRecord_f(CUevent event, CUstream stream);
 CUresult cuEventRecordWithFlags_f(CUevent event, CUstream stream, unsigned int flags);
 CUresult cuEventSynchronize_f(CUevent event);

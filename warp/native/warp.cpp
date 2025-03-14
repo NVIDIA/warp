@@ -1030,6 +1030,7 @@ WP_API void* cuda_ipc_open_event_handle(void* context, char* handle) { return NU
 
 WP_API void* cuda_stream_create(void* context, int priority) { return NULL; }
 WP_API void cuda_stream_destroy(void* context, void* stream) {}
+WP_API int cuda_stream_query(void* stream) { return 0; }
 WP_API void cuda_stream_register(void* context, void* stream) {}
 WP_API void cuda_stream_unregister(void* context, void* stream) {}
 WP_API void* cuda_stream_get_current() { return NULL; }
@@ -1042,6 +1043,7 @@ WP_API int cuda_stream_get_priority(void* stream) { return 0; }
 
 WP_API void* cuda_event_create(void* context, unsigned flags) { return NULL; }
 WP_API void cuda_event_destroy(void* event) {}
+WP_API int cuda_event_query(void* event) { return 0; }
 WP_API void cuda_event_record(void* event, void* stream, bool timing) {}
 WP_API void cuda_event_synchronize(void* event) {}
 WP_API float cuda_event_elapsed_time(void* start_event, void* end_event) { return 0.0f; }

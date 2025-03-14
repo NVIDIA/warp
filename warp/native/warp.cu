@@ -2427,6 +2427,19 @@ void cuda_stream_destroy(void* context, void* stream)
     check_cu(cuStreamDestroy_f(static_cast<CUstream>(stream)));
 }
 
+int cuda_stream_query(void* stream)
+{
+    CUresult res =  cuStreamQuery_f(static_cast<CUstream>(stream));
+
+    if ((res != CUDA_SUCCESS) && (res != CUDA_ERROR_NOT_READY))
+    {
+        // Abnormal, print out error
+        check_cu(res);
+    }
+
+    return res;
+}
+
 void cuda_stream_register(void* context, void* stream)
 {
     if (!stream)
@@ -2519,6 +2532,19 @@ void* cuda_event_create(void* context, unsigned flags)
 void cuda_event_destroy(void* event)
 {
     check_cu(cuEventDestroy_f(static_cast<CUevent>(event)));
+}
+
+int cuda_event_query(void* event)
+{
+    CUresult res = cuEventQuery_f(static_cast<CUevent>(event));
+
+    if ((res != CUDA_SUCCESS) && (res != CUDA_ERROR_NOT_READY))
+    {
+        // Abnormal, print out error
+        check_cu(res);
+    }
+
+    return res;
 }
 
 void cuda_event_record(void* event, void* stream, bool timing)

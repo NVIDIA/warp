@@ -2549,6 +2549,17 @@ class Event:
         else:
             raise RuntimeError(f"Device {self.device} does not support IPC.")
 
+    @property
+    def is_complete(self) -> bool:
+        """A boolean indicating whether all work on the stream when the event was recorded has completed.
+
+        This property may not be accessed during a graph capture on any stream.
+        """
+
+        result_code = runtime.core.cuda_event_query(self.cuda_event)
+
+        return result_code == 0
+
     def __del__(self):
         if not self.owner:
             return
@@ -2680,6 +2691,17 @@ class Stream:
             event = other_stream.cached_event
 
         runtime.core.cuda_stream_wait_stream(self.cuda_stream, other_stream.cuda_stream, event.cuda_event)
+
+    @property
+    def is_complete(self) -> bool:
+        """A boolean indicating whether all work on the stream has completed.
+
+        This property may not be accessed during a graph capture on any stream.
+        """
+
+        result_code = runtime.core.cuda_stream_query(self.cuda_stream)
+
+        return result_code == 0
 
     @property
     def is_capturing(self) -> bool:
@@ -3620,6 +3642,8 @@ class Runtime:
             self.core.cuda_stream_create.restype = ctypes.c_void_p
             self.core.cuda_stream_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.cuda_stream_destroy.restype = None
+            self.core.cuda_stream_query.argtypes = [ctypes.c_void_p]
+            self.core.cuda_stream_query.restype = ctypes.c_int
             self.core.cuda_stream_register.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.cuda_stream_register.restype = None
             self.core.cuda_stream_unregister.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
@@ -3641,6 +3665,8 @@ class Runtime:
             self.core.cuda_event_create.restype = ctypes.c_void_p
             self.core.cuda_event_destroy.argtypes = [ctypes.c_void_p]
             self.core.cuda_event_destroy.restype = None
+            self.core.cuda_event_query.argtypes = [ctypes.c_void_p]
+            self.core.cuda_event_query.restype = ctypes.c_int
             self.core.cuda_event_record.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool]
             self.core.cuda_event_record.restype = None
             self.core.cuda_event_synchronize.argtypes = [ctypes.c_void_p]

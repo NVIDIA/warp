@@ -424,6 +424,52 @@ def test_stream_priority_timings(test, device):
     test.assertLess(elapsed_hi, elapsed_lo, "Copies on higher-priority stream should be faster.")
 
 
+@wp.kernel
+def sum_threads(sum: wp.array(dtype=wp.uint64)):
+    i = wp.tid()
+    wp.atomic_add(sum, 0, wp.uint64(1))
+
+
+def test_stream_event_is_complete(test, device):
+    with wp.ScopedDevice(device):
+        stream = wp.Stream()
+        event = wp.Event()
+        # No operations on stream, should be complete
+        test.assertTrue(stream.is_complete)
+
+        # Event not recorded yet, should be complete
+        test.assertTrue(event.is_complete)
+
+        a = wp.zeros(1, dtype=wp.uint64)
+
+        threads = 1024 * 1024 * 8
+
+        with wp.ScopedStream(stream):
+            # Launch some work on the stream and reuse the event
+
+            for iter in range(5):
+                # Kernel takes about 1 ms to run on an RTX 3090
+                wp.launch(sum_threads, dim=threads, outputs=[a])
+
+                stream.record_event(event)
+
+                # Kernel should still be running
+                test.assertFalse(stream.is_complete)
+
+                # Event should not be finished
+                test.assertFalse(event.is_complete)
+
+                # Force the stream operations to complete
+                wp.synchronize_stream(stream)
+
+                # Now all operations are complete
+                test.assertTrue(stream.is_complete)
+                test.assertTrue(event.is_complete)
+
+                # Verify result
+                test.assertEqual(a.numpy()[0], (iter + 1) * threads)
+
+
 devices = get_selected_cuda_test_devices()
 
 
@@ -577,6 +623,7 @@ add_function_test(TestStreams, "test_stream_scope_wait_event", test_stream_scope
 add_function_test(TestStreams, "test_stream_scope_wait_stream", test_stream_scope_wait_stream, devices=devices)
 add_function_test(TestStreams, "test_stream_priority_basics", test_stream_priority_basics, devices=devices)
 add_function_test(TestStreams, "test_stream_priority_timings", test_stream_priority_timings, devices=devices)
+add_function_test(TestStreams, "test_stream_event_is_complete", test_stream_event_is_complete, devices=devices)
 
 add_function_test(TestStreams, "test_event_synchronize", test_event_synchronize, devices=devices)
 add_function_test(TestStreams, "test_event_elapsed_time", test_event_elapsed_time, devices=devices)
