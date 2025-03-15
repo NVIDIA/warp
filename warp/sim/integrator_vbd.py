@@ -347,6 +347,172 @@ def evaluate_stvk_force_hessian(
 
 
 @wp.func
+def mat_vec_cross_from_3_basis(e1: wp.vec3, e2: wp.vec3, e3: wp.vec3, a: wp.vec3):
+    e1_cross_a = wp.cross(e1, a)
+    e2_cross_a = wp.cross(e2, a)
+    e3_cross_a = wp.cross(e3, a)
+
+    return wp.mat33(
+        e1_cross_a[0],
+        e2_cross_a[0],
+        e3_cross_a[0],
+        e1_cross_a[1],
+        e2_cross_a[1],
+        e3_cross_a[1],
+        e1_cross_a[2],
+        e2_cross_a[2],
+        e3_cross_a[2],
+    )
+
+
+@wp.func
+def mat_vec_cross(mat: wp.mat33, a: wp.vec3):
+    e1 = wp.vec3(mat[0, 0], mat[1, 0], mat[2, 0])
+    e2 = wp.vec3(mat[0, 1], mat[1, 1], mat[2, 1])
+    e3 = wp.vec3(mat[0, 2], mat[1, 2], mat[2, 2])
+
+    return mat_vec_cross_from_3_basis(e1, e2, e3, a)
+
+
+@wp.func
+def evaluate_dihedral_angle_based_bending_force_hessian(
+    bending_index: int,
+    v_order: int,
+    pos: wp.array(dtype=wp.vec3),
+    pos_prev: wp.array(dtype=wp.vec3),
+    edge_indices: wp.array(dtype=wp.int32, ndim=2),
+    edge_rest_angle: wp.array(dtype=float),
+    edge_rest_length: wp.array(dtype=float),
+    stiffness: float,
+    damping: float,
+    dt: float,
+):
+    if edge_indices[bending_index, 0] == -1 or edge_indices[bending_index, 1] == -1:
+        return wp.vec3(0.0), wp.mat33(0.0)
+
+    x1 = pos[edge_indices[bending_index, 0]]
+    x2 = pos[edge_indices[bending_index, 2]]
+    x3 = pos[edge_indices[bending_index, 3]]
+    x4 = pos[edge_indices[bending_index, 1]]
+
+    e1 = wp.vec3(1.0, 0.0, 0.0)
+    e2 = wp.vec3(0.0, 1.0, 0.0)
+    e3 = wp.vec3(0.0, 0.0, 1.0)
+
+    n1 = wp.cross((x2 - x1), (x3 - x1))
+    n2 = wp.cross((x3 - x4), (x2 - x4))
+    n1_norm = wp.length(n1)
+    n2_norm = wp.length(n2)
+
+    # degenerated bending edge
+    if n1_norm < 1.0e-6 or n2_norm < 1.0e-6:
+        return wp.vec3(0.0), wp.mat33(0.0)
+
+    n1_n = n1 / n1_norm
+    n2_n = n2 / n2_norm
+
+    # avoid the infinite gradient of acos at -1 or 1
+    cos_theta = wp.dot(n1_n, n2_n)
+    if wp.abs(cos_theta) > 0.9999:
+        cos_theta = 0.9999 * wp.sign(cos_theta)
+
+    angle_sign = wp.sign(wp.dot(wp.cross(n1, n2), x3 - x2))
+    theta = wp.acos(cos_theta) * angle_sign
+    rest_angle = edge_rest_angle[bending_index]
+
+    dE_dtheta = stiffness * (theta - rest_angle)
+
+    d_theta_d_cos_theta = angle_sign * (-1.0 / wp.sqrt(1.0 - cos_theta * cos_theta))
+    sin_theta = angle_sign * wp.sqrt(1.0 - cos_theta * cos_theta)
+    one_over_sin_theta = 1.0 / sin_theta
+    d_one_over_sin_theta_d_cos_theta = cos_theta / (sin_theta * sin_theta * sin_theta)
+
+    e_rest_len = edge_rest_length[bending_index]
+
+    if v_order == 0:
+        d_cos_theta_dx1 = 1.0 / n1_norm * (-wp.cross(x3 - x1, n2_n) + wp.cross(x2 - x1, n2_n))
+        d_one_over_sin_theta_dx1 = d_cos_theta_dx1 * d_one_over_sin_theta_d_cos_theta
+
+        d_theta_dx1 = d_theta_d_cos_theta * d_cos_theta_dx1
+        d2_theta_dx1_dx1 = -wp.outer(d_one_over_sin_theta_dx1, d_cos_theta_dx1)
+
+        dE_dx1 = e_rest_len * dE_dtheta * d_theta_d_cos_theta * d_cos_theta_dx1
+
+        d2_E_dx1_dx1 = (
+            e_rest_len * stiffness * (wp.outer(d_theta_dx1, d_theta_dx1) + (theta - rest_angle) * d2_theta_dx1_dx1)
+        )
+
+        bending_force = -dE_dx1
+        bending_hessian = d2_E_dx1_dx1
+    elif v_order == 1:
+        d_cos_theta_dx4 = 1.0 / n2_norm * (-wp.cross(x2 - x4, n1_n) + wp.cross(x3 - x4, n1_n))
+        d_one_over_sin_theta_dx4 = d_cos_theta_dx4 * d_one_over_sin_theta_d_cos_theta
+
+        d_theta_dx4 = d_theta_d_cos_theta * d_cos_theta_dx4
+        d2_theta_dx4_dx4 = -wp.outer(d_one_over_sin_theta_dx4, d_cos_theta_dx4)
+
+        dE_dx4 = e_rest_len * dE_dtheta * d_theta_d_cos_theta * d_cos_theta_dx4
+        d2_E_dx4_dx4 = (
+            e_rest_len * stiffness * (wp.outer(d_theta_dx4, d_theta_dx4) + (theta - rest_angle) * (d2_theta_dx4_dx4))
+        )
+
+        bending_force = -dE_dx4
+        bending_hessian = d2_E_dx4_dx4
+    elif v_order == 2:
+        d_cos_theta_dx2 = 1.0 / n1_norm * wp.cross(x3 - x1, n2_n) - 1.0 / n2_norm * wp.cross(x3 - x4, n1_n)
+        dn1_dx2 = mat_vec_cross_from_3_basis(e1, e2, e3, x3 - x1)
+        dn2_dx2 = -mat_vec_cross_from_3_basis(e1, e2, e3, x3 - x4)
+        d_one_over_sin_theta_dx2 = d_cos_theta_dx2 * d_one_over_sin_theta_d_cos_theta
+        d2_cos_theta_dx2_dx2 = -mat_vec_cross(dn2_dx2, (x3 - x1)) / (n1_norm * n2_norm) + mat_vec_cross(
+            dn1_dx2, x3 - x4
+        ) / (n1_norm * n2_norm)
+
+        d_theta_dx2 = d_theta_d_cos_theta * d_cos_theta_dx2
+        d2_theta_dx2_dx2 = (
+            -wp.outer(d_one_over_sin_theta_dx2, d_cos_theta_dx2) - one_over_sin_theta * d2_cos_theta_dx2_dx2
+        )
+
+        dE_dx2 = e_rest_len * dE_dtheta * d_theta_d_cos_theta * d_cos_theta_dx2
+        d2_E_dx2_dx2 = (
+            e_rest_len * stiffness * (wp.outer(d_theta_dx2, d_theta_dx2) + (theta - rest_angle) * d2_theta_dx2_dx2)
+        )
+
+        bending_force = -dE_dx2
+        bending_hessian = d2_E_dx2_dx2
+    else:
+        d_cos_theta_dx3 = -1.0 / n1_norm * wp.cross(x2 - x1, n2_n) + 1.0 / n2_norm * wp.cross(x2 - x4, n1_n)
+        dn1_dx3 = -mat_vec_cross_from_3_basis(e1, e2, e3, x2 - x1)
+        dn2_dx3 = mat_vec_cross_from_3_basis(e1, e2, e3, x2 - x4)
+        d_one_over_sin_theta_dx3 = d_cos_theta_dx3 * d_one_over_sin_theta_d_cos_theta
+        d2_cos_theta_dx3_dx3 = mat_vec_cross(dn2_dx3, (x2 - x1)) / (n1_norm * n2_norm) - mat_vec_cross(
+            dn1_dx3, x2 - x4
+        ) / (n1_norm * n2_norm)
+
+        d_theta_dx3 = d_theta_d_cos_theta * d_cos_theta_dx3
+        d2_theta_dx3_dx3 = (
+            -wp.outer(d_one_over_sin_theta_dx3, d_cos_theta_dx3) - one_over_sin_theta * d2_cos_theta_dx3_dx3
+        )
+
+        dE_dx3 = e_rest_len * dE_dtheta * d_theta_d_cos_theta * d_cos_theta_dx3
+
+        d2_E_dx3_dx3 = (
+            e_rest_len * stiffness * (wp.outer(d_theta_dx3, d_theta_dx3) + (theta - rest_angle) * d2_theta_dx3_dx3)
+        )
+
+        bending_force = -dE_dx3
+        bending_hessian = d2_E_dx3_dx3
+
+    displacement = pos_prev[edge_indices[bending_index, v_order]] - pos[edge_indices[bending_index, v_order]]
+    h_d = bending_hessian * (damping / dt)
+    f_d = h_d * displacement
+
+    bending_force = bending_force - f_d
+    bending_hessian = bending_hessian + h_d
+
+    return bending_force, bending_hessian
+
+
+@wp.func
 def evaluate_ground_contact_force_hessian(
     particle_pos: wp.vec3,
     particle_prev_pos: wp.vec3,
@@ -866,6 +1032,9 @@ def VBD_solve_trimesh_no_self_contact(
     tri_materials: wp.array(dtype=float, ndim=2),
     tri_areas: wp.array(dtype=float),
     edge_indices: wp.array(dtype=wp.int32, ndim=2),
+    edge_rest_angles: wp.array(dtype=float),
+    edge_rest_length: wp.array(dtype=float),
+    edge_bending_properties: wp.array(dtype=float, ndim=2),
     adjacency: ForceElementAdjacencyInfo,
     # contact info
     #   self contact
@@ -956,6 +1125,24 @@ def VBD_solve_trimesh_no_self_contact(
                 f[0], f[1], f[2], h[0, 0], h[0, 1], h[0, 2], h[1, 0], h[1, 1], h[1, 2], h[2, 0], h[2, 1], h[2, 2],
             )
         # fmt: on
+
+    for i_adj_edge in range(get_vertex_num_adjacent_edges(adjacency, particle_index)):
+        nei_edge_index, vertex_order_on_edge = get_vertex_adjacent_edge_id_order(adjacency, particle_index, i_adj_edge)
+        f_edge, h_edge = evaluate_dihedral_angle_based_bending_force_hessian(
+            nei_edge_index,
+            vertex_order_on_edge,
+            pos,
+            prev_pos,
+            edge_indices,
+            edge_rest_angles,
+            edge_rest_length,
+            edge_bending_properties[nei_edge_index, 0],
+            edge_bending_properties[nei_edge_index, 1],
+            dt,
+        )
+
+        f = f + f_edge
+        h = h + h_edge
 
     # body-particle contact
     particle_contact_count = min(body_particle_contact_count[particle_index], body_particle_contact_buffer_pre_alloc)
@@ -1072,6 +1259,9 @@ def VBD_solve_trimesh_with_self_contact_penetration_free(
     tri_materials: wp.array(dtype=float, ndim=2),
     tri_areas: wp.array(dtype=float),
     edge_indices: wp.array(dtype=wp.int32, ndim=2),
+    edge_rest_angles: wp.array(dtype=float),
+    edge_rest_length: wp.array(dtype=float),
+    edge_bending_properties: wp.array(dtype=float, ndim=2),
     adjacency: ForceElementAdjacencyInfo,
     # contact info
     #   self contact
@@ -1239,6 +1429,15 @@ def VBD_solve_trimesh_with_self_contact_penetration_free(
     for i_adj_edge in range(get_vertex_num_adjacent_edges(adjacency, particle_index)):
         nei_edge_index, vertex_order_on_edge = get_vertex_adjacent_edge_id_order(adjacency, particle_index, i_adj_edge)
         # vertex is on the edge; otherwise it only effects the bending energy n
+        if edge_bending_properties[nei_edge_index, 0] != 0:
+            f_edge, h_edge = evaluate_dihedral_angle_based_bending_force_hessian(
+                nei_edge_index, vertex_order_on_edge, pos, pos_prev, edge_indices, edge_rest_angles, edge_rest_length,
+                edge_bending_properties[nei_edge_index, 0], edge_bending_properties[nei_edge_index, 1], dt
+            )
+
+            f = f + f_edge
+            h = h + h_edge
+
         if vertex_order_on_edge == 2 or vertex_order_on_edge == 3:
             # collisions of neighbor triangles
             if wp.static("contact_info" in VBD_DEBUG_PRINTING_OPTIONS):
@@ -1572,6 +1771,9 @@ class VBDIntegrator(Integrator):
                         self.model.tri_materials,
                         self.model.tri_areas,
                         self.model.edge_indices,
+                        self.model.edge_rest_angle,
+                        self.model.edge_rest_length,
+                        self.model.edge_bending_properties,
                         self.adjacency,
                         self.model.soft_contact_ke,
                         self.model.soft_contact_mu,
@@ -1659,6 +1861,9 @@ class VBDIntegrator(Integrator):
                         self.model.tri_materials,
                         self.model.tri_areas,
                         self.model.edge_indices,
+                        self.model.edge_rest_angle,
+                        self.model.edge_rest_length,
+                        self.model.edge_bending_properties,
                         self.adjacency,
                         #   self-contact
                         self.trimesh_collision_detector.collision_info,
@@ -1783,7 +1988,7 @@ class VBDIntegrator(Integrator):
             vertex_adjacent_edges[buffer_offset_v1 + fill_count_v1 * 2 + 1] = 3
             vertex_adjacent_edges_fill_count[v1] = fill_count_v1 + 1
 
-            o0 = edges_array[edge_id, 2]
+            o0 = edges_array[edge_id, 0]
             if o0 != -1:
                 fill_count_o0 = vertex_adjacent_edges_fill_count[o0]
                 buffer_offset_o0 = vertex_adjacent_edges_offsets[o0]
@@ -1791,7 +1996,7 @@ class VBDIntegrator(Integrator):
                 vertex_adjacent_edges[buffer_offset_o0 + fill_count_o0 * 2 + 1] = 0
                 vertex_adjacent_edges_fill_count[o0] = fill_count_o0 + 1
 
-            o1 = edges_array[edge_id, 3]
+            o1 = edges_array[edge_id, 1]
             if o1 != -1:
                 fill_count_o1 = vertex_adjacent_edges_fill_count[o1]
                 buffer_offset_o1 = vertex_adjacent_edges_offsets[o1]

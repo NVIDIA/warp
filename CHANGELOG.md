@@ -32,6 +32,7 @@
    [GH-437](https://github.com/NVIDIA/warp/issues/437))
 - Add `Stream.is_complete` and `Event.is_complete` properties to query completion status
   ([GH-435](https://github.com/NVIDIA/warp/issues/435)).
+- Add a hinge-angle based bending force to VBDIntegrator.
 
 ### Changed
 

@@ -559,6 +559,7 @@ class Model:
 
         edge_indices (array): Bending edge indices, shape [edge_count*4], int, each row is [o0, o1, v1, v2], where v1, v2 are on the edge
         edge_rest_angle (array): Bending edge rest angle, shape [edge_count], float
+        edge_rest_length (array): Bending edge rest length, shape [edge_count], float
         edge_bending_properties (array): Bending edge stiffness and damping parameters, shape [edge_count, 2], float
 
         tet_indices (array): Tetrahedral element indices, shape [tet_count*4], int
@@ -732,6 +733,7 @@ class Model:
 
         self.edge_indices = None
         self.edge_rest_angle = None
+        self.edge_rest_length = None
         self.edge_bending_properties = None
         self.edge_constraint_lambdas = None
 
@@ -1221,6 +1223,7 @@ class ModelBuilder:
         # edges (bending)
         self.edge_indices = []
         self.edge_rest_angle = []
+        self.edge_rest_length = []
         self.edge_bending_properties = []
 
         # tetrahedra
@@ -1538,6 +1541,7 @@ class ModelBuilder:
             "particle_radius",
             "particle_flags",
             "edge_rest_angle",
+            "edge_rest_length",
             "edge_bending_properties",
             "spring_rest_length",
             "spring_stiffness",
@@ -3777,11 +3781,11 @@ class ModelBuilder:
         edge_kd = edge_kd if edge_kd is not None else self.default_edge_kd
 
         # compute rest angle
+        x3 = self.particle_q[k]
+        x4 = self.particle_q[l]
         if rest is None:
             x1 = self.particle_q[i]
             x2 = self.particle_q[j]
-            x3 = self.particle_q[k]
-            x4 = self.particle_q[l]
 
             n1 = wp.normalize(wp.cross(x3 - x1, x4 - x1))
             n2 = wp.normalize(wp.cross(x4 - x2, x3 - x2))
@@ -3796,6 +3800,7 @@ class ModelBuilder:
 
         self.edge_indices.append((i, j, k, l))
         self.edge_rest_angle.append(rest)
+        self.edge_rest_length.append(wp.length(x4 - x3))
         self.edge_bending_properties.append((edge_ke, edge_kd))
 
     def add_edges(
@@ -3827,6 +3832,8 @@ class ModelBuilder:
             winding: (i, k, l), (j, l, k).
 
         """
+        x3 = np.array(self.particle_q)[k]
+        x4 = np.array(self.particle_q)[l]
         if rest is None:
             # compute rest angle
             x1 = np.array(self.particle_q)[i]
@@ -3857,6 +3864,7 @@ class ModelBuilder:
 
         self.edge_indices.extend(inds.tolist())
         self.edge_rest_angle.extend(rest.tolist())
+        self.edge_rest_length.extend(np.linalg.norm(x4 - x3, axis=1).tolist())
 
         def init_if_none(arr, defaultValue):
             if arr is None:
@@ -4648,6 +4656,7 @@ class ModelBuilder:
 
             m.edge_indices = wp.array(self.edge_indices, dtype=wp.int32)
             m.edge_rest_angle = wp.array(self.edge_rest_angle, dtype=wp.float32, requires_grad=requires_grad)
+            m.edge_rest_length = wp.array(self.edge_rest_length, dtype=wp.float32, requires_grad=requires_grad)
             m.edge_bending_properties = wp.array(
                 self.edge_bending_properties, dtype=wp.float32, requires_grad=requires_grad
             )

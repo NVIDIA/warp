@@ -302,7 +302,11 @@ class VBDClothSim:
         self.num_substeps = 10
         self.iterations = 10
         self.dt = self.frame_dt / self.num_substeps
+        self.device = device
+        self.use_cuda_graph = self.device.is_cuda and use_cuda_graph
+        self.builder = wp.sim.ModelBuilder()
 
+    def set_up_sagging_experiment(self):
         stiffness = 1e5
         kd = 1.0e-7
 
@@ -311,8 +315,7 @@ class VBDClothSim:
         vertices = [wp.vec3(v) * self.input_scale_factor for v in CLOTH_POINTS]
         faces_flatten = [fv - 1 for fv in CLOTH_FACES]
 
-        builder = wp.sim.ModelBuilder()
-        builder.add_cloth_mesh(
+        self.builder.add_cloth_mesh(
             pos=wp.vec3(0.0, 200.0, 0.0),
             rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
             scale=1.0,
@@ -324,15 +327,85 @@ class VBDClothSim:
             tri_ka=stiffness,
             tri_kd=kd,
         )
-        builder.color()
+        self.fixed_particles = [0, 9]
 
-        self.model = builder.finalize(device=device)
+    def set_up_bending_experiment(self):
+        stretching_stiffness = 1e4
+        stretching_damping = 1e-6
+        bending_damping = 1e-3
+        # fmt: off
+        vs = [[-6.0, 0.0, -6.0], [-3.6, 0.0, -6.0], [-1.2, 0.0, -6.0], [1.2, 0.0, -6.0], [3.6, 0.0, -6.0], [6.0, 0.0, -6.0],
+         [-6.0, 0.0, -3.6], [-3.6, 0.0, -3.6], [-1.2, 0.0, -3.6], [1.2, 0.0, -3.6], [3.6, 0.0, -3.6], [6.0, 0.0, -3.6],
+         [-6.0, 0.0, -1.2], [-3.6, 0.0, -1.2], [-1.2, 0.0, -1.2], [1.2, 0.0, -1.2], [3.6, 0.0, -1.2], [6.0, 0.0, -1.2],
+         [-6.0, 0.0, 1.2], [-3.6, 0.0, 1.2], [-1.2, 0.0, 1.2], [1.2, 0.0, 1.2], [3.6, 0.0, 1.2], [6.0, 0.0, 1.2],
+         [-6.0, 0.0, 3.6], [-3.6, 0.0, 3.6], [-1.2, 0.0, 3.6], [1.2, 0.0, 3.6], [3.6, 0.0, 3.6], [6.0, 0.0, 3.6],
+         [-6.0, 0.0, 6.0], [-3.6, 0.0, 6.0], [-1.2, 0.0, 6.0], [1.2, 0.0, 6.0], [3.6, 0.0, 6.0], [6.0, 0.0, 6.0]]
+
+        fs = [0, 7, 1, 0, 6, 7, 1, 7, 2, 7, 8, 2, 2, 9, 3, 2, 8, 9, 3, 9, 4, 9, 10, 4, 4, 11, 5, 4, 10, 11, 6, 12, 7, 12, 13,
+         7, 7, 14, 8, 7, 13, 14, 8, 14, 9, 14, 15, 9, 9, 16, 10, 9, 15, 16, 10, 16, 11, 16, 17, 11, 12, 19, 13, 12, 18,
+         19, 13, 19, 14, 19, 20, 14, 14, 21, 15, 14, 20, 21, 15, 21, 16, 21, 22, 16, 16, 23, 17, 16, 22, 23, 18, 24, 19,
+         24, 25, 19, 19, 26, 20, 19, 25, 26, 20, 26, 21, 26, 27, 21, 21, 28, 22, 21, 27, 28, 22, 28, 23, 28, 29, 23, 24,
+         31, 25, 24, 30, 31, 25, 31, 26, 31, 32, 26, 26, 33, 27, 26, 32, 33, 27, 33, 28, 33, 34, 28, 28, 35, 29, 28, 34,
+         35]
+        # fmt: on
+
+        vs = [wp.vec3(v) for v in vs]
+
+        self.builder.add_cloth_mesh(
+            pos=wp.vec3(0.0, 10.0, 0.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
+            scale=1.0,
+            vertices=vs,
+            indices=fs,
+            vel=wp.vec3(0.0, 0.0, 0.0),
+            density=0.02,
+            tri_ke=stretching_stiffness,
+            tri_ka=stretching_stiffness,
+            tri_kd=stretching_damping,
+            edge_ke=10,
+            edge_kd=bending_damping,
+        )
+
+        self.builder.add_cloth_mesh(
+            pos=wp.vec3(15.0, 10.0, 0.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
+            scale=1.0,
+            vertices=vs,
+            indices=fs,
+            vel=wp.vec3(0.0, 0.0, 0.0),
+            density=0.02,
+            tri_ke=stretching_stiffness,
+            tri_ka=stretching_stiffness,
+            tri_kd=stretching_damping,
+            edge_ke=100,
+            edge_kd=bending_damping,
+        )
+
+        self.builder.add_cloth_mesh(
+            pos=wp.vec3(30.0, 10.0, 0.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
+            scale=1.0,
+            vertices=vs,
+            indices=fs,
+            vel=wp.vec3(0.0, 0.0, 0.0),
+            density=0.02,
+            tri_ke=stretching_stiffness,
+            tri_ka=stretching_stiffness,
+            tri_kd=stretching_damping,
+            edge_ke=1000,
+            edge_kd=bending_damping,
+        )
+
+        self.fixed_particles = [0, 29, 36, 65, 72, 101]
+
+    def finalize(self):
+        self.builder.color()
+
+        self.model = self.builder.finalize(device=self.device)
         self.model.ground = True
         self.model.gravity = wp.vec3(0, -1000.0, 0)
         self.model.soft_contact_ke = 1.0e4
         self.model.soft_contact_kd = 1.0e2
-
-        self.fixed_particles = [0, 9]
 
         self.set_points_fixed(self.model, self.fixed_particles)
 
@@ -342,13 +415,12 @@ class VBDClothSim:
 
         self.init_pos = np.array(self.state0.particle_q.numpy(), copy=True)
 
-        self.use_cuda_graph = device.is_cuda and use_cuda_graph
         self.graph = None
         if self.use_cuda_graph:
-            wp.load_module(device=device)
+            wp.load_module(device=self.device)
             wp.set_module_options({"block_dim": 256}, warp.sim.integrator_vbd)
-            wp.load_module(warp.sim.integrator_vbd, device=device)
-            with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+            wp.load_module(warp.sim.integrator_vbd, device=self.device)
+            with wp.ScopedCapture(device=self.device, force_module_load=False) as capture:
                 self.simulate()
             self.graph = capture.graph
 
@@ -375,6 +447,9 @@ class VBDClothSim:
 def test_vbd_cloth(test, device):
     with contextlib.redirect_stdout(io.StringIO()) as f:
         example = VBDClothSim(device)
+        example.set_up_bending_experiment()
+        example.finalize()
+        example.model.ground = False
 
     test.assertRegex(
         f.getvalue(),
@@ -393,6 +468,28 @@ def test_vbd_cloth(test, device):
 def test_vbd_cloth_cuda_graph(test, device):
     with contextlib.redirect_stdout(io.StringIO()) as f:
         example = VBDClothSim(device, use_cuda_graph=True)
+        example.set_up_sagging_experiment()
+        example.finalize()
+
+    test.assertRegex(
+        f.getvalue(),
+        r"Warp UserWarning: The graph is not optimizable anymore, terminated with a max/min ratio: 2.0 without reaching the target ratio: 1.1",
+    )
+
+    example.run()
+
+    # examine that the simulation does not explode
+    final_pos = example.state0.particle_q.numpy()
+    test.assertTrue((final_pos < 1e5).all())
+    # examine that the simulation have moved
+    test.assertTrue((example.init_pos != final_pos).any())
+
+
+def test_vbd_bending(test, device):
+    with contextlib.redirect_stdout(io.StringIO()) as f:
+        example = VBDClothSim(device, use_cuda_graph=True)
+        example.set_up_bending_experiment()
+        example.finalize()
 
     test.assertRegex(
         f.getvalue(),
@@ -418,6 +515,7 @@ class TestVbd(unittest.TestCase):
 
 add_function_test(TestVbd, "test_vbd_cloth", test_vbd_cloth, devices=devices)
 add_function_test(TestVbd, "test_vbd_cloth_cuda_graph", test_vbd_cloth_cuda_graph, devices=cuda_devices)
+add_function_test(TestVbd, "test_vbd_bending", test_vbd_bending, devices=devices)
 
 
 if __name__ == "__main__":
