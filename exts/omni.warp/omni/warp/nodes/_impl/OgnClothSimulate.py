@@ -341,6 +341,7 @@ class InternalState:
             # modules to avoid the capture to load all the modules that are
             # registered and possibly not relevant.
             wp.load_module(device=device)
+            wp.set_module_options({"block_dim": 256}, warp.sim.integrator_vbd)
             wp.load_module(module=warp.sim, device=device, recursive=True)
             wp.capture_begin(force_module_load=False)
             try:
