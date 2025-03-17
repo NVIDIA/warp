@@ -18,11 +18,11 @@
 import unittest
 
 import omni.kit
-import omni.timeline
 import omni.usd
 import omni.warp
 
 from ._common import (
+    FrameRange,
     open_sample,
     validate_render,
 )
@@ -34,11 +34,9 @@ class TestSampleTextureMandelbrot(omni.kit.test.AsyncTestCase):
     async def _test_capture(self, enable_fsd: bool) -> None:
         await open_sample(f"{TEST_ID}.usda", enable_fsd=enable_fsd)
 
-        timeline = omni.timeline.get_timeline_interface()
-        timeline.play()
-
-        for _ in range(30):
-            await omni.kit.app.get_app().next_update_async()
+        with FrameRange(30) as frames:
+            async for _ in frames:
+                pass
 
         fsd_str = "fsd_on" if enable_fsd else "fsd_off"
         await validate_render(f"{TEST_ID}_{fsd_str}")

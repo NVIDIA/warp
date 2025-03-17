@@ -20,11 +20,11 @@ import unittest
 import numpy as np
 import omni.graph.core as og
 import omni.kit
-import omni.timeline
 import omni.usd
 import omni.warp
 
 from ._common import (
+    FrameRange,
     array_are_almost_equal,
     attr_disconnect_all,
     open_sample,
@@ -37,9 +37,6 @@ TEST_ID = "wave_solver"
 class TestSampleWaveSolver(omni.kit.test.AsyncTestCase):
     async def _test_eval(self, enable_fsd: bool) -> None:
         await open_sample(f"{TEST_ID}.usda", enable_fsd=enable_fsd)
-
-        timeline = omni.timeline.get_timeline_interface()
-        timeline.play()
 
         graph = og.Controller.graph("/World/ActionGraph")
 
@@ -56,17 +53,16 @@ class TestSampleWaveSolver(omni.kit.test.AsyncTestCase):
         prev_points_hash = None
         curr_points_hash = None
 
-        for _ in range(60):
-            await omni.kit.app.get_app().next_update_async()
+        with FrameRange(60) as frames:
+            async for _ in frames:
+                points = np.array(points_attr.Get())
+                assert np.isfinite(points).all()
+                array_are_almost_equal(np.min(points, axis=0), (-300, 0.0, -150.0), atol=5.0)
+                array_are_almost_equal(np.max(points, axis=0), (300.0, 0.0, 150.0), atol=5.0)
 
-            points = np.array(points_attr.Get())
-            assert np.isfinite(points).all()
-            array_are_almost_equal(np.min(points, axis=0), (-300, 0.0, -150.0), atol=5.0)
-            array_are_almost_equal(np.max(points, axis=0), (300.0, 0.0, 150.0), atol=5.0)
-
-            curr_points_hash = hash(points.tobytes())
-            assert curr_points_hash != prev_points_hash
-            prev_points_hash = curr_points_hash
+                curr_points_hash = hash(points.tobytes())
+                assert curr_points_hash != prev_points_hash
+                prev_points_hash = curr_points_hash
 
     async def test_eval_fsd_off(self) -> None:
         await self._test_eval(enable_fsd=False)
@@ -77,11 +73,9 @@ class TestSampleWaveSolver(omni.kit.test.AsyncTestCase):
     async def _test_capture(self, enable_fsd: bool) -> None:
         await open_sample(f"{TEST_ID}.usda", enable_fsd=enable_fsd)
 
-        timeline = omni.timeline.get_timeline_interface()
-        timeline.play()
-
-        for _ in range(60):
-            await omni.kit.app.get_app().next_update_async()
+        with FrameRange(60) as frames:
+            async for _ in frames:
+                pass
 
         fsd_str = "fsd_on" if enable_fsd else "fsd_off"
         await validate_render(f"{TEST_ID}_{fsd_str}")
