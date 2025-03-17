@@ -15,6 +15,7 @@
 
 """Tests for the texture mandelbrot sample scene."""
 
+import platform
 import unittest
 
 import omni.kit
@@ -47,6 +48,6 @@ class TestSampleTextureMandelbrot(omni.kit.test.AsyncTestCase):
     async def test_capture_fsd_off(self) -> None:
         await self._test_capture(enable_fsd=False)
 
-    @unittest.skipIf(omni.kit.test.utils.is_etm_run(), "Regression in Kit")
+    @unittest.skipIf(omni.kit.test.utils.is_etm_run() or platform.system() == "Windows", "Regression in Kit")
     async def test_capture_fsd_on(self) -> None:
         await self._test_capture(enable_fsd=True)
