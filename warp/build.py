@@ -232,6 +232,9 @@ def get_cached_lto_meta(path, symbol):
 
 
 def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, arch, num_threads, builder):
+    # TODO: MathDx doesn't yet have heuristics for Blackwell
+    arch = min(arch, 90)
+
     # Maps Python/Warp types to C++ types and enums
     def cublasdx_type_map(dtype):
         if dtype == float16:
@@ -354,6 +357,9 @@ def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, ar
 
 
 def build_lto_solver(M, N, solver, solver_enum, fill_mode, arch, precision_enum, num_threads, parameter_list, builder):
+    # TODO: MathDx doesn't yet have heuristics for Blackwell
+    arch = min(arch, 90)
+
     lto_symbol = f"{solver}_{M}_{N}_{arch}_{precision_enum}"
     ltoir_decl = f"void {lto_symbol}{parameter_list};"
 
@@ -450,6 +456,9 @@ def build_lto_solver(M, N, solver, solver_enum, fill_mode, arch, precision_enum,
 
 
 def build_lto_fft(arch, size, ept, direction, dir, precision, builder):
+    # TODO: MathDx doesn't yet have heuristics for Blackwell
+    arch = min(arch, 90)
+
     lto_symbol = f"fft_{size}_{ept}_{arch}_{direction}_{precision}"
 
     # early out if LTO for this symbol is already cached in current module
