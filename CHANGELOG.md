@@ -33,6 +33,8 @@
 - Add `Stream.is_complete` and `Event.is_complete` properties to query completion status
   ([GH-435](https://github.com/NVIDIA/warp/issues/435)).
 - Add a hinge-angle based bending force to VBDIntegrator.
+- Add the `Device.sm_count` property to get the number of streaming multiprocessors on a CUDA device
+  ([GH-584](https://github.com/NVIDIA/warp/issues/584)).
 
 ### Changed
 
