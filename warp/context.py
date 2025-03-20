@@ -2723,6 +2723,8 @@ class Device:
             or ``"CPU"`` if the processor name cannot be determined.
         arch (int): The compute capability version number calculated as ``10 * major + minor``.
             ``0`` for CPU devices.
+        sm_count (int): The number of streaming multiprocessors on the CUDA device.
+            ``0`` for CPU devices.
         is_uva (bool): Indicates whether the device supports unified addressing.
             ``False`` for CPU devices.
         is_cubin_supported (bool): Indicates whether Warp's version of NVRTC can directly
@@ -2768,6 +2770,7 @@ class Device:
             # CPU device
             self.name = platform.processor() or "CPU"
             self.arch = 0
+            self.sm_count = 0
             self.is_uva = False
             self.is_mempool_supported = False
             self.is_mempool_enabled = False
@@ -2787,6 +2790,7 @@ class Device:
             # CUDA device
             self.name = runtime.core.cuda_device_get_name(ordinal).decode()
             self.arch = runtime.core.cuda_device_get_arch(ordinal)
+            self.sm_count = runtime.core.cuda_device_get_sm_count(ordinal)
             self.is_uva = runtime.core.cuda_device_is_uva(ordinal) > 0
             self.is_mempool_supported = runtime.core.cuda_device_is_mempool_supported(ordinal) > 0
             if platform.system() == "Linux":
@@ -3559,6 +3563,8 @@ class Runtime:
             self.core.cuda_device_get_name.restype = ctypes.c_char_p
             self.core.cuda_device_get_arch.argtypes = [ctypes.c_int]
             self.core.cuda_device_get_arch.restype = ctypes.c_int
+            self.core.cuda_device_get_sm_count.argtypes = [ctypes.c_int]
+            self.core.cuda_device_get_sm_count.restype = ctypes.c_int
             self.core.cuda_device_is_uva.argtypes = [ctypes.c_int]
             self.core.cuda_device_is_uva.restype = ctypes.c_int
             self.core.cuda_device_is_mempool_supported.argtypes = [ctypes.c_int]

@@ -155,6 +155,7 @@ struct DeviceInfo
     int arch = 0;
     int is_uva = 0;
     int is_mempool_supported = 0;
+    int sm_count = 0;
     int is_ipc_supported = -1;
     int max_smem_bytes = 0;
     CUcontext primary_context = NULL;
@@ -280,6 +281,7 @@ int cuda_init()
                 check_cu(cuDeviceGetAttribute_f(&g_devices[i].pci_device_id, CU_DEVICE_ATTRIBUTE_PCI_DEVICE_ID, device));
                 check_cu(cuDeviceGetAttribute_f(&g_devices[i].is_uva, CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING, device));
                 check_cu(cuDeviceGetAttribute_f(&g_devices[i].is_mempool_supported, CU_DEVICE_ATTRIBUTE_MEMORY_POOLS_SUPPORTED, device));
+                check_cu(cuDeviceGetAttribute_f(&g_devices[i].sm_count, CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT, device));
 #ifdef CUDA_VERSION
 #if CUDA_VERSION >= 12000
                 int device_attribute_integrated = 0;
@@ -1783,6 +1785,13 @@ int cuda_device_get_arch(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
         return g_devices[ordinal].arch;
+    return 0;
+}
+
+int cuda_device_get_sm_count(int ordinal)
+{
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+        return g_devices[ordinal].sm_count;
     return 0;
 }
 
