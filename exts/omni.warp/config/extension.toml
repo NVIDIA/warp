@@ -83,6 +83,8 @@ args = [
     "--/renderer/active=rtx",
     "--/rtx/hydra/materialSyncLoads=true",
     "--/rtx/materialDb/syncLoads=true",
+    "--/rtx-transient/dldenoiser/enabled=false",
+    "--/rtx-transient/dlssg/enabled=false",
     "--/rtx-transient/post/aa/limitedOps=false",
     "--/rtx-transient/resourcemanager/texturestreaming/async=false",
     "--no-window",
