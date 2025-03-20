@@ -3027,7 +3027,7 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
                     fprintf(stderr, "Warp error: num_ltoirs > 0 but ltoir_input_types, ltoirs or ltoir_sizes are NULL\n");
                     return size_t(-1);
                 }
-                nvJitLinkHandle handle;
+                nvJitLinkHandle handle = nullptr;
                 std::vector<const char *> lopts = {"-dlto", arch_opt_lto};
                 if (use_ptx) {
                     lopts.push_back("-ptx");
