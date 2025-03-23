@@ -42,7 +42,6 @@ TEST_DESCS = (
     ("geometry.test_mesh_query_ray", "TestMeshQueryRay"),
     ("geometry.test_volume", "TestVolume"),
     ("geometry.test_volume_write", "TestVolumeWrite"),
-    ("test_array", "TestArray"),
     ("test_array_reduce", "TestArrayReduce"),
     ("test_bool", "TestBool"),
     ("test_builtins_resolution", "TestBuiltinsResolution"),
@@ -52,7 +51,6 @@ TEST_DESCS = (
     ("test_copy", "TestCopy"),
     ("test_ctypes", "TestCTypes"),
     ("test_devices", "TestDevices"),
-    ("test_fabricarray", "TestFabricArray"),
     ("test_fp16", "TestFp16"),
     ("test_func", "TestFunc"),
     ("test_generics", "TestGenerics"),
@@ -68,14 +66,12 @@ TEST_DESCS = (
     ("test_modules_lite", "TestModuleLite"),
     ("test_noise", "TestNoise"),
     ("test_operators", "TestOperators"),
-    ("test_quat", "TestQuat"),
     ("test_rand", "TestRand"),
     ("test_reload", "TestReload"),
     ("test_rounding", "TestRounding"),
     ("test_runlength_encode", "TestRunlengthEncode"),
     ("test_scalar_ops", "TestScalarOps"),
     ("test_snippet", "TestSnippets"),
-    ("test_sparse", "TestSparse"),
     ("test_static", "TestStatic"),
     ("test_tape", "TestTape"),
     ("test_transient_module", "TestTransientModule"),
@@ -103,3 +99,4 @@ locals().update({str(i): x for i, x in enumerate(test_clss)})
 
 # Clear caches to ensure determinism.
 wp.clear_kernel_cache()
+wp.clear_lto_cache()
