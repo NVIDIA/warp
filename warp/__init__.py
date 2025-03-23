@@ -82,6 +82,7 @@ from warp.context import capture_begin, capture_end, capture_launch
 from warp.context import Kernel, Function, Launch
 from warp.context import Stream, get_stream, set_stream, wait_stream, synchronize_stream
 from warp.context import Event, record_event, wait_event, synchronize_event, get_event_elapsed_time
+from warp.context import ExternalMemoryBuffer, ExternalSemaphore, signal_external_semaphore, wait_external_semaphore
 from warp.context import RegisteredGLBuffer
 from warp.context import is_mempool_supported, is_mempool_enabled, set_mempool_enabled
 from warp.context import (
