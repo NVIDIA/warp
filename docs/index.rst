@@ -123,17 +123,18 @@ warp/examples/core
       - nvdb
       - raycast
       - raymarch
-    * - .. image:: ./img/examples/core_sph.png
+    * - .. image:: ./img/examples/core_sample_mesh.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_sample_mesh.py
+      - .. image:: ./img/examples/core_sph.png
            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_sph.py
       - .. image:: ./img/examples/core_torch.png
            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_torch.py
       - .. image:: ./img/examples/core_wave.png
            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_wave.py
-      -
-    * - sph
+    * - sample_mesh
+      - sph
       - torch
       - wave
-      -
 
 warp/examples/fem
 ^^^^^^^^^^^^^^^^^
