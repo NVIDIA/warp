@@ -30,6 +30,7 @@ import numpy as np
 import omni.graph.core as og
 import omni.graph.tools.ogn as ogn
 import omni.kit
+import omni.timeline
 import omni.usd
 from omni.kit.test_helpers_gfx.compare_utils import (
     ComparisonMetric,
@@ -297,3 +298,38 @@ def array_are_almost_equal(
         assert len(a) == len(b)
 
     np.testing.assert_allclose(a, b, rtol=rtol, atol=atol)
+
+
+class FrameRange:
+    def __init__(self, count: int):
+        self.count = count
+        self.step = 0
+        self.initial_auto_update = None
+
+        self.timeline = omni.timeline.get_timeline_interface()
+        self.timeline.stop()
+        self.timeline.set_current_time(0)
+        self.timeline.commit()
+
+    def __enter__(self):
+        self.initial_auto_update = self.timeline.is_auto_updating()
+        self.timeline.set_auto_update(False)
+        self.timeline.commit()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.timeline.set_auto_update(self.initial_auto_update)
+        self.timeline.commit()
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self) -> int:
+        self.step += 1
+        if self.step > self.count:
+            raise StopAsyncIteration
+
+        self.timeline.forward_one_frame()
+        self.timeline.commit()
+        await omni.kit.app.get_app().next_update_async()
+        return self.step
