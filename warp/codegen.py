@@ -1492,6 +1492,8 @@ class Adjoint:
 
     def add_return(adj, var):
         if var is None or len(var) == 0:
+            # NOTE: If this kernel gets compiled for a CUDA device, then we need
+            # to convert the return; into a continue; in codegen_func_forward()
             adj.add_forward("return;", f"goto label{adj.label_count};")
         elif len(var) == 1:
             adj.add_forward(f"return {var[0].emit()};", f"goto label{adj.label_count};")
@@ -3549,7 +3551,11 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
     lines += ["// forward\n"]
 
     for f in adj.blocks[0].body_forward:
-        lines += [f + "\n"]
+        if func_type == "kernel" and device == "cuda" and f.lstrip().startswith("return;"):
+            # Use of grid-stride loops in CUDA kernels requires that we convert return; to continue;
+            lines += [f.replace("return;", "continue;") + "\n"]
+        else:
+            lines += [f + "\n"]
 
     return "".join(l.lstrip() if l.lstrip().startswith("#line") else indent_block + l for l in lines)
 
