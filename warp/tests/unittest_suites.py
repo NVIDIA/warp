@@ -332,7 +332,6 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.geometry.test_volume import TestVolume
     from warp.tests.geometry.test_volume_write import TestVolumeWrite
     from warp.tests.interop.test_dlpack import TestDLPack
-    from warp.tests.test_array import TestArray
     from warp.tests.test_array_reduce import TestArrayReduce
     from warp.tests.test_bool import TestBool
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
@@ -342,7 +341,6 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_copy import TestCopy
     from warp.tests.test_ctypes import TestCTypes
     from warp.tests.test_devices import TestDevices
-    from warp.tests.test_fabricarray import TestFabricArray
     from warp.tests.test_fp16 import TestFp16
     from warp.tests.test_func import TestFunc
     from warp.tests.test_generics import TestGenerics
@@ -358,14 +356,12 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_modules_lite import TestModuleLite
     from warp.tests.test_noise import TestNoise
     from warp.tests.test_operators import TestOperators
-    from warp.tests.test_quat import TestQuat
     from warp.tests.test_rand import TestRand
     from warp.tests.test_reload import TestReload
     from warp.tests.test_rounding import TestRounding
     from warp.tests.test_runlength_encode import TestRunlengthEncode
     from warp.tests.test_scalar_ops import TestScalarOps
     from warp.tests.test_snippet import TestSnippets
-    from warp.tests.test_sparse import TestSparse
     from warp.tests.test_static import TestStatic
     from warp.tests.test_tape import TestTape
     from warp.tests.test_transient_module import TestTransientModule
@@ -375,7 +371,6 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.tile.test_tile_reduce import TestTileReduce
 
     test_classes = [
-        TestArray,
         TestArrayReduce,
         TestBool,
         TestBuiltinsResolution,
@@ -387,7 +382,6 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestCTypes,
         TestDevices,
         TestDLPack,
-        TestFabricArray,
         TestFp16,
         TestFunc,
         TestGenerics,
@@ -412,14 +406,12 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestOperators,
         TestPeer,
         TestPinned,
-        TestQuat,
         TestRand,
         TestReload,
         TestRounding,
         TestRunlengthEncode,
         TestScalarOps,
         TestSnippets,
-        TestSparse,
         TestStatic,
         TestStreams,
         TestTape,
