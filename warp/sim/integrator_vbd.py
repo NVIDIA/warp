@@ -416,7 +416,7 @@ def evaluate_dihedral_angle_based_bending_force_hessian(
     if wp.abs(cos_theta) > 0.9999:
         cos_theta = 0.9999 * wp.sign(cos_theta)
 
-    angle_sign = wp.sign(wp.dot(wp.cross(n1, n2), x3 - x2))
+    angle_sign = wp.sign(wp.dot(wp.cross(n2, n1), x3 - x2))
     theta = wp.acos(cos_theta) * angle_sign
     rest_angle = edge_rest_angle[bending_index]
 
@@ -506,7 +506,7 @@ def evaluate_dihedral_angle_based_bending_force_hessian(
     h_d = bending_hessian * (damping / dt)
     f_d = h_d * displacement
 
-    bending_force = bending_force - f_d
+    bending_force = bending_force + f_d
     bending_hessian = bending_hessian + h_d
 
     return bending_force, bending_hessian
