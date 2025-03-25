@@ -107,6 +107,8 @@
   ([GH-557](https://github.com/NVIDIA/warp/issues/557)).
 - Fix an error of incorrectly adding the offset to -1 elements in `edge_indices` when adding a ModelBuilder to another ([GH-557](https://github.com/NVIDIA/warp/issues/557)).
 - Fix the jitter for the `OgnParticlesFromMesh` node not being computed correctly.
+- Fix a code generation bug involving return statements in Warp kernels, which could result in some threads in Warp
+  being skipped when processed on the GPU ([GH-594](https://github.com/NVIDIA/warp/issues/594)).
 
 ## [1.6.2] - 2025-03-07
 

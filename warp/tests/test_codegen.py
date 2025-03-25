@@ -672,6 +672,27 @@ def test_while_condition_eval():
         it.valid = False
 
 
+@wp.kernel
+def conditional_return_or_sum(result: wp.array(dtype=wp.int32)):
+    tid = wp.tid()
+
+    if tid < 256:
+        return
+
+    wp.atomic_add(result, 0, 1)
+
+
+def test_codegen_return_in_kernel(test, device):
+    result = wp.zeros(1, dtype=wp.int32, device=device)
+
+    grid_size = 1024
+
+    # On CUDA devices, this becomes a grid-stride loop
+    wp.launch(conditional_return_or_sum, dim=grid_size, inputs=[result], block_dim=256, max_blocks=1, device=device)
+
+    test.assertEqual(result.numpy()[0], grid_size - 256)
+
+
 class TestCodeGen(unittest.TestCase):
     pass
 
@@ -803,8 +824,8 @@ add_function_test(
 add_kernel_test(TestCodeGen, name="test_call_syntax", kernel=test_call_syntax, dim=1, devices=devices)
 add_kernel_test(TestCodeGen, name="test_shadow_builtin", kernel=test_shadow_builtin, dim=1, devices=devices)
 add_kernel_test(TestCodeGen, name="test_while_condition_eval", kernel=test_while_condition_eval, dim=1, devices=devices)
-
+add_function_test(TestCodeGen, "test_codegen_return_in_kernel", test_codegen_return_in_kernel, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
-    unittest.main(verbosity=2, failfast=True)
+    unittest.main(verbosity=2)
