@@ -1433,14 +1433,18 @@ add_builtin(
     input_types={"mat": matrix(shape=(3, 3), dtype=Float)},
     value_func=lambda arg_types, arg_values: quaternion(dtype=float_infer_type(arg_types)),
     group="Quaternion Math",
-    doc="Construct a quaternion from a 3x3 matrix.",
+    doc="""Construct a quaternion from a 3x3 matrix.
+
+    If the matrix is not a pure rotation, but for example includes scaling or skewing, the result is undefined.""",
 )
 add_builtin(
     "quat_from_matrix",
     input_types={"mat": matrix(shape=(4, 4), dtype=Float)},
     value_func=lambda arg_types, arg_values: quaternion(dtype=float_infer_type(arg_types)),
     group="Quaternion Math",
-    doc="Construct a quaternion from a 4x4 matrix.",
+    doc="""Construct a quaternion from a 4x4 matrix.
+
+    If the top-left 3x3 block of the matrix is not a pure rotation, but for example includes scaling or skewing, the result is undefined.""",
 )
 add_builtin(
     "quat_rpy",

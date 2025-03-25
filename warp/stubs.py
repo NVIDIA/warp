@@ -750,13 +750,19 @@ def quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[3, Float], angle: F
 
 @over
 def quat_from_matrix(mat: Matrix[3, 3, Float]) -> Quaternion[Float]:
-    """Construct a quaternion from a 3x3 matrix."""
+    """Construct a quaternion from a 3x3 matrix.
+
+    If the matrix is not a pure rotation, but for example includes scaling or skewing, the result is undefined.
+    """
     ...
 
 
 @over
 def quat_from_matrix(mat: Matrix[4, 4, Float]) -> Quaternion[Float]:
-    """Construct a quaternion from a 4x4 matrix."""
+    """Construct a quaternion from a 4x4 matrix.
+
+    If the top-left 3x3 block of the matrix is not a pure rotation, but for example includes scaling or skewing, the result is undefined.
+    """
     ...
 
 
