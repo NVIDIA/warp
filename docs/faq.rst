@@ -32,9 +32,12 @@ individual threads.
 What are some examples of projects that use Warp?
 -------------------------------------------------
 
-* `NCLaw <https://github.com/PingchuanMa/NCLaw>`__: Implements a differentiable MPM simulator using Warp.
-* `XLB <https://github.com/Autodesk/XLB>`__: A lattice Boltzmann solver with a backend option using Warp.
-* `warp-mpm <https://github.com/zeshunzong/warp-mpm>`__: An MPM simulator using Warp and used in
+* `MuJoCo Warp <https://github.com/google-deepmind/mujoco_warp>`__: A GPU-optimized version of the MuJoCo physics simulator,
+  designed for NVIDIA hardware. Maintained by Google DeepMind and NVIDIA.
+* `Rewarped <https://github.com/rewarped/rewarped>`__: A platform for reinforcement learning in parallel differentiable multi-physics simulation.
+* `XLB (Accelerated Lattice Boltzmann) <https://github.com/Autodesk/XLB>`__: A lattice Boltzmann solver with a backend option using Warp.
+  Maintained by Autodesk.
+* `warp-mpm <https://github.com/zeshunzong/warp-mpm>`__: An MPM simulator used in projects like
   `Neural Stress Fields for Reduced-order Elastoplasticity and Fracture <https://zeshunzong.github.io/reduced-order-mpm/>`__
   and `PhysGaussian: Physics-Integrated 3D Gaussians for Generative Dynamics <https://xpandora.github.io/PhysGaussian/>`__.
 
