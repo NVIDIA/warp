@@ -307,7 +307,7 @@ def test_function_lookup(test, device):
 
 def count_ssa_occurrences(kernel: wp.Kernel, ssas: List[str]) -> Dict[str, int]:
     # analyze the generated code
-    counts = {ssa: 0 for ssa in ssas}
+    counts = dict.fromkeys(ssas, 0)
     for line in kernel.adj.blocks[0].body_forward:
         for ssa in ssas:
             if ssa in line:
