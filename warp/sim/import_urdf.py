@@ -389,7 +389,7 @@ def parse_urdf(
 
     # topological sorting of joints because the FK solver will resolve body transforms
     # in joint order and needs the parent link transform to be resolved before the child
-    visited = {name: False for name in link_index.keys()}
+    visited = dict.fromkeys(link_index.keys(), False)
     sorted_joints = []
 
     # depth-first search
