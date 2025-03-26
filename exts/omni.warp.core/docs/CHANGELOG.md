@@ -32,6 +32,8 @@
 - Add example demonstrating gradient checkpointing for fluid optimization in
   `warp/examples/optim/example_fluid_checkpoint.py`.
 - Add a hinge-angle-based bending force to `wp.sim.VBDIntegrator`.
+- Add an example to show mesh sampling using a CDF
+  ([GH-476](https://github.com/NVIDIA/warp/issues/476)).
 
 ### Changed
 
