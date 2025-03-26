@@ -513,6 +513,7 @@ linux-x86_64 asv:
       changes:
         - .gitlab-ci.yml
         - asv/**/*
+        - asv.conf.json
         - warp/**/*
         - pyproject.toml
         - deps/*
@@ -538,9 +539,8 @@ linux-x86_64 asv:
     - git checkout -f $CI_COMMIT_SHA
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - cd asv
     - asv machine --yes
-    - asv continuous --interleave-rounds --append-samples --no-only-changed -f 1.15 --bench '^(?!api)' $COMPARE_REF $CI_COMMIT_SHA
+    - asv continuous --interleave-rounds --append-samples --no-only-changed -f 1.10 --bench '^(?!api)' $COMPARE_REF $CI_COMMIT_SHA
   allow_failure: True # Can make success required after we have tested this job more
 
 # ==============================================================================
