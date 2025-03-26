@@ -5,7 +5,8 @@ warp.sim
 
 .. currentmodule:: warp.sim
 
-Warp includes a simulation module ``warp.sim`` that includes many common physical simulation models and integrators for explicit and implicit time-stepping.
+Warp includes a simulation module ``warp.sim`` that includes many common physical simulation models and integrators
+for explicit and implicit time-stepping.
 
 Model
 -----
@@ -101,13 +102,13 @@ By default, it behaves as a direct force application via :data:`JOINT_MODE_FORCE
         \tau = k_e (\mathbf{\dot{q}}_{\text{target}} - \mathbf{\dot{q}})
 
 State
---------------
+-----
 
 .. autoclass:: State
     :members:
 
 Control
---------------
+-------
 
 .. autoclass:: Control
     :members:
@@ -168,6 +169,11 @@ Integrators
 
 .. autoclass:: VBDIntegrator
     :members:
+
+Collisions
+----------
+
+.. autofunction:: collide
 
 Importers
 ---------
