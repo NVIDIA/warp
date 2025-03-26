@@ -17,10 +17,12 @@
 Collision handling functions and kernels.
 """
 
+from typing import Optional
+
 import numpy as np
 
 import warp as wp
-from warp.sim.model import Model
+from warp.sim.model import Model, State
 
 from .model import PARTICLE_FLAG_ACTIVE, ModelShapeGeometry
 
@@ -1556,17 +1558,23 @@ def handle_contact_pairs(
         contact_thickness[index] = thickness
 
 
-def collide(model, state, edge_sdf_iter: int = 10, iterate_mesh_vertices: bool = True, requires_grad: bool = None):
-    """
-    Generates contact points for the particles and rigid bodies in the model,
-    to be used in the contact dynamics kernel of the integrator.
+def collide(
+    model: Model,
+    state: State,
+    edge_sdf_iter: int = 10,
+    iterate_mesh_vertices: bool = True,
+    requires_grad: Optional[bool] = None,
+) -> None:
+    """Generate contact points for the particles and rigid bodies in the model for use in contact-dynamics kernels.
 
     Args:
-        model: the model to be simulated
-        state: the state of the model
-        edge_sdf_iter: number of search iterations for finding closest contact points between edges and SDF
-        iterate_mesh_vertices: whether to iterate over all vertices of a mesh for contact generation (used for capsule/box <> mesh collision)
-        requires_grad: whether to duplicate contact arrays for gradient computation (if None uses model.requires_grad)
+        model: The model to be simulated.
+        state: The state of the model.
+        edge_sdf_iter: Number of search iterations for finding closest contact points between edges and SDF.
+        iterate_mesh_vertices: Whether to iterate over all vertices of a mesh for contact generation
+            (used for capsule/box <> mesh collision).
+        requires_grad: Whether to duplicate contact arrays for gradient computation
+            (if ``None``, uses ``model.requires_grad``).
     """
 
     if requires_grad is None:
@@ -1685,13 +1693,16 @@ def collide(model, state, edge_sdf_iter: int = 10, iterate_mesh_vertices: bool =
                 model.rigid_contact_tids = wp.zeros_like(model.rigid_contact_tids)
                 model.rigid_contact_shape0 = wp.empty_like(model.rigid_contact_shape0)
                 model.rigid_contact_shape1 = wp.empty_like(model.rigid_contact_shape1)
+
                 if model.rigid_contact_pairwise_counter is not None:
                     model.rigid_contact_pairwise_counter = wp.zeros_like(model.rigid_contact_pairwise_counter)
             else:
                 model.rigid_contact_count.zero_()
                 model.rigid_contact_tids.zero_()
+
                 if model.rigid_contact_pairwise_counter is not None:
                     model.rigid_contact_pairwise_counter.zero_()
+
             model.rigid_contact_shape0.fill_(-1)
             model.rigid_contact_shape1.fill_(-1)
 
