@@ -370,6 +370,16 @@ extern "C"
     WP_API void* cuda_graphics_register_gl_buffer(void* context, uint32_t gl_buffer, unsigned int flags);
     WP_API void cuda_graphics_unregister_resource(void* context, void* resource);
 
+    // external resource interoperability
+    WP_API void* cuda_import_external_memory(void* context, unsigned int type, void* handle, uint64_t size, unsigned int flags);
+    WP_API void cuda_destroy_external_memory(void* context, void* external_memory);
+    WP_API void cuda_external_memory_get_mapped_buffer(void* context, void* external_memory, uint64_t offset, uint64_t size, unsigned int flags, uint64_t* ptr);
+
+    WP_API void* cuda_import_external_semaphore(void* context, unsigned int type, void* handle, unsigned int flags);
+    WP_API void cuda_destroy_external_semaphore(void* context, void* external_semaphore);
+    WP_API void cuda_signal_external_semaphore_async(void* context, void* external_semaphore, uint64_t value, void* stream);
+    WP_API void cuda_wait_external_semaphore_async(void* context, void* external_semaphore, uint64_t value, void* stream);
+
     // CUDA timing
     WP_API void cuda_timing_begin(int flags);
     WP_API int cuda_timing_get_result_count();

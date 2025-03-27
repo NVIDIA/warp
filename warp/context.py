@@ -2669,6 +2669,20 @@ class Stream:
         """
         runtime.core.cuda_stream_wait_event(self.cuda_stream, event.cuda_event)
 
+    def signal_external_semaphore(self, semaphore: ExternalSemaphore, value: int = 0):
+        """TODO: docs"""
+
+        runtime.core.cuda_signal_external_semaphore_async(
+            semaphore.device.context, semaphore.external_semaphore, value, self.cuda_stream
+        )
+
+    def wait_external_semaphore(self, semaphore: ExternalSemaphore, value: int = 0):
+        """TODO: docs"""
+
+        runtime.core.cuda_wait_external_semaphore_async(
+            semaphore.device.context, semaphore.external_semaphore, value, self.cuda_stream
+        )
+
     def wait_stream(self, other_stream: "Stream", event: Optional[Event] = None):
         """Records an event on `other_stream` and makes this stream wait on it.
 
@@ -3809,6 +3823,50 @@ class Runtime:
             self.core.cuda_graphics_unregister_resource.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.cuda_graphics_unregister_resource.restype = None
 
+            self.core.cuda_import_external_memory.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_uint,
+                ctypes.c_void_p,
+                ctypes.c_uint64,
+                ctypes.c_uint,
+            ]
+            self.core.cuda_import_external_memory.restype = ctypes.c_void_p
+            self.core.cuda_external_memory_get_mapped_buffer.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint,
+                ctypes.POINTER(ctypes.c_uint64),
+            ]
+            self.core.cuda_external_memory_get_mapped_buffer.restype = None
+            self.core.cuda_destroy_external_memory.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_destroy_external_memory.restype = None
+
+            self.core.cuda_import_external_semaphore.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_uint,
+                ctypes.c_void_p,
+                ctypes.c_uint,
+            ]
+            self.core.cuda_import_external_semaphore.restype = ctypes.c_void_p
+            self.core.cuda_destroy_external_semaphore.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_destroy_external_semaphore.restype = None
+            self.core.cuda_signal_external_semaphore_async.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_uint64,
+                ctypes.c_void_p,
+            ]
+            self.core.cuda_signal_external_semaphore_async.restype = None
+            self.core.cuda_wait_external_semaphore_async.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_uint64,
+                ctypes.c_void_p,
+            ]
+            self.core.cuda_wait_external_semaphore_async.restype = None
+
             self.core.cuda_timing_begin.argtypes = [ctypes.c_int]
             self.core.cuda_timing_begin.restype = None
             self.core.cuda_timing_get_result_count.argtypes = []
@@ -4732,6 +4790,52 @@ def wait_event(event: Event):
     get_stream().wait_event(event)
 
 
+class ExternalSemaphore:
+    """TODO: docs"""
+
+    HANDLE_TYPE_OPAQUEFD = 1
+    HANDLE_TYPE_OPAQUEWIN32 = 2
+    HANDLE_TYPE_OPAQUEWIN32KMT = 3
+    HANDLE_TYPE_D3D12HEAP = 4
+    HANDLE_TYPE_D3D12RESOURCE = 5
+    HANDLE_TYPE_D3D11RESOURCE = 6
+    HANDLE_TYPE_D3D11RESOURCEKMT = 7
+    HANDLE_TYPE_NVSCIBUF = 8
+
+    def __init__(
+        self, handle: Union[ctypes.c_void_p, int], handle_type: int, flags: int = 0, device: Devicelike = None
+    ):
+        """TODO: docs"""
+
+        self.device = get_device(device)
+        self.context = self.device.context
+        self.external_semaphore = runtime.core.cuda_import_external_semaphore(self.context, handle_type, handle, flags)
+        if self.external_semaphore is None:
+            raise RuntimeError(f"Failed to import external semaphore {handle} with CUDA")
+
+    def __del__(self):
+        """TODO: docs"""
+
+        if not self.external_semaphore:
+            return
+
+        # use CUDA context guard to avoid side effects during garbage collection
+        with self.device.context_guard:
+            runtime.core.cuda_destroy_external_semaphore(self.context, self.external_semaphore)
+
+
+def signal_external_semaphore(semaphore: ExternalSemaphore, value: int = 0):
+    """TODO: docs"""
+
+    return get_stream().signal_external_semaphore(semaphore, value)
+
+
+def wait_external_semaphore(semaphore: ExternalSemaphore, value: int = 0):
+    """TODO: docs"""
+
+    get_stream().wait_external_semaphore(semaphore, value)
+
+
 def get_event_elapsed_time(start_event: Event, end_event: Event, synchronize: bool = True):
     """Get the elapsed time between two recorded events.
 
@@ -4770,6 +4874,57 @@ def wait_stream(other_stream: Stream, event: Optional[Event] = None):
     """
 
     get_stream().wait_stream(other_stream, event=event)
+
+
+class ExternalMemoryBuffer:
+    """TODO: docs"""
+
+    HANDLE_TYPE_OPAQUEFD = 1
+    HANDLE_TYPE_OPAQUEWIN32 = 2
+    HANDLE_TYPE_OPAQUEWIN32KMT = 3
+    HANDLE_TYPE_D3D12HEAP = 4
+    HANDLE_TYPE_D3D12RESOURCE = 5
+    HANDLE_TYPE_D3D11RESOURCE = 6
+    HANDLE_TYPE_D3D11RESOURCEKMT = 7
+    HANDLE_TYPE_NVSCIBUF = 8
+
+    FLAG_DEDICATED = 1
+
+    def __init__(
+        self,
+        handle: Union[ctypes.c_void_p, int],
+        handle_type: int,
+        size: int,
+        flags: int = 0,
+        device: Devicelike = None,
+    ):
+        """TODO: docs"""
+
+        self.device = get_device(device)
+        self.context = self.device.context
+        self.external_memory = runtime.core.cuda_import_external_memory(self.context, handle_type, handle, size, flags)
+        self.size = size
+        if self.external_memory is None:
+            raise RuntimeError(f"Failed to import external memory {handle} with CUDA")
+
+    def map(self, dtype: type, shape: Sequence[int]) -> warp.array:
+        """TODO: docs"""
+
+        ptr = ctypes.c_uint64(0)
+        runtime.core.cuda_external_memory_get_mapped_buffer(
+            self.context, self.external_memory, 0, self.size, 0, ctypes.byref(ptr)
+        )
+        return warp.array(ptr=ptr.value, dtype=dtype, shape=shape, device=self.device, capacity=self.size)
+
+    def __del__(self):
+        """TODO: docs"""
+
+        if not self.external_memory:
+            return
+
+        # use CUDA context guard to avoid side effects during garbage collection
+        with self.device.context_guard:
+            runtime.core.cuda_destroy_external_memory(self.context, self.external_memory)
 
 
 class RegisteredGLBuffer:

@@ -3584,6 +3584,100 @@ void cuda_graphics_unregister_resource(void* context, void* resource)
     delete res;
 }
 
+void* cuda_import_external_memory(void* context, unsigned int type, void* handle, uint64_t size, unsigned int flags)
+{
+    ContextGuard guard(context);
+
+    cudaExternalMemory_t *external_memory = new cudaExternalMemory_t;
+    cudaExternalMemoryHandleDesc desc = {};
+    desc.type = (cudaExternalMemoryHandleType)type;
+    desc.handle.win32.handle = handle;
+    desc.size = size;
+    desc.flags = flags;
+
+    bool success = check_cuda(cudaImportExternalMemory(external_memory, &desc));
+    if (!success)
+    {
+        delete external_memory;
+        return NULL;
+    }
+
+    return external_memory;
+}
+
+void cuda_external_memory_get_mapped_buffer(void* context, void* external_memory, uint64_t offset, uint64_t size, unsigned int flags, uint64_t* ptr)
+{
+    ContextGuard guard(context);
+
+    cudaExternalMemory_t *memory = (cudaExternalMemory_t*)external_memory;
+    cudaExternalMemoryBufferDesc desc = {};
+    desc.offset = offset;
+    desc.size = size;
+    desc.flags = flags;
+
+    void* device_ptr;
+    check_cuda(cudaExternalMemoryGetMappedBuffer(&device_ptr, *memory, &desc));
+    *ptr = (uint64_t)device_ptr;
+}
+
+void cuda_destroy_external_memory(void* context, void* external_memory)
+{
+    ContextGuard guard(context);
+
+    cudaExternalMemory_t *memory = (cudaExternalMemory_t*)external_memory;
+    check_cuda(cudaDestroyExternalMemory(*memory));
+    delete memory;
+}
+
+void* cuda_import_external_semaphore(void* context, unsigned int type, void* handle, unsigned int flags)
+{
+    ContextGuard guard(context);
+
+    cudaExternalSemaphore_t *external_semaphore = new cudaExternalSemaphore_t;
+    cudaExternalSemaphoreHandleDesc desc = {};
+    desc.type = (cudaExternalSemaphoreHandleType)type;
+    desc.handle.win32.handle = handle;
+    desc.flags = flags;
+
+    bool success = check_cuda(cudaImportExternalSemaphore(external_semaphore, &desc));
+    if (!success)
+    {
+        delete external_semaphore;
+        return NULL;
+    }
+
+    return external_semaphore;
+}
+
+void cuda_destroy_external_semaphore(void* context, void* external_semaphore)
+{
+    ContextGuard guard(context);
+
+    cudaExternalSemaphore_t *semaphore = (cudaExternalSemaphore_t*)external_semaphore;
+    check_cuda(cudaDestroyExternalSemaphore(*semaphore));
+    delete semaphore;
+}
+
+void cuda_signal_external_semaphore_async(void* context, void* external_semaphore, uint64_t value, void* stream)
+{
+    ContextGuard guard(context);
+
+    cudaExternalSemaphore_t *semaphore = (cudaExternalSemaphore_t*)external_semaphore;
+    cudaExternalSemaphoreSignalParams params = {};
+    params.params.fence.value = value;
+    check_cuda(cudaSignalExternalSemaphoresAsync(semaphore, &params, 1, static_cast<CUstream>(stream)));
+}
+
+void cuda_wait_external_semaphore_async(void* context, void* external_semaphore, uint64_t value, void* stream)
+{
+    ContextGuard guard(context);
+
+    cudaExternalSemaphore_t *semaphore = (cudaExternalSemaphore_t*)external_semaphore;
+    cudaExternalSemaphoreWaitParams params = {};
+    params.params.fence.value = value;
+    check_cuda(cudaWaitExternalSemaphoresAsync(semaphore, &params, 1, static_cast<CUstream>(stream)));
+}
+
 void cuda_timing_begin(int flags)
 {
     g_cuda_timing_state = new CudaTimingState(flags, g_cuda_timing_state);
