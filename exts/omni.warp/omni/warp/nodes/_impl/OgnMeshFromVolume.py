@@ -121,9 +121,7 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
 
     if db.inputs.data.shape[0] != size:
         raise RuntimeError(
-            "The length of the input array data doesn't match with the given size: `{} != {}`.".format(
-                db.inputs.data.shape[0], size
-            )
+            f"The length of the input array data doesn't match with the given size: `{db.inputs.data.shape[0]} != {size}`."
         )
 
     # Alias the incoming memory to a Warp array.

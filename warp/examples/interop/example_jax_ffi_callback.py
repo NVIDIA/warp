@@ -45,11 +45,11 @@ def example1():
     # the Python function to call
     def print_args(inputs, outputs, attrs, ctx):
         def buffer_to_string(b):
-            return str(b.dtype) + str(list(b.shape)) + " @%x" % b.data
+            return f"{b.dtype}{list(b.shape)} @{b.data:x}"
 
         print("Inputs:     ", ", ".join([buffer_to_string(b) for b in inputs]))
         print("Outputs:    ", ", ".join([buffer_to_string(b) for b in outputs]))
-        print("Attributes: ", "".join(["\n  %s: %s" % (k, str(v)) for k, v in attrs.items()]))
+        print("Attributes: ", "".join([f"\n  {k}: {str(v)}" for k, v in attrs.items()]))
 
     # register callback
     register_ffi_callback("print_args", print_args)

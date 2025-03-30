@@ -8,7 +8,7 @@
   - def have_attrs_changed(self, db: og.Database) -> bool
   - def update_state(self, db: og.Database)
 
-- class NodeTimer(object)
+- class NodeTimer
   - def __init__(self, name: str, db: Any, active: bool = False)
 
 ## Functions

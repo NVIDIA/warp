@@ -44,11 +44,11 @@ class IntEnum(int, Enum):
 # ------------------------------------------------------------------------------
 
 
-class NodeTimer(object):
+class NodeTimer:
     """Context wrapping Warp's scoped timer for use with nodes."""
 
     def __init__(self, name: str, db: Any, active: bool = False) -> None:
-        name = "{}:{}".format(db.node.get_prim_path(), name)
+        name = f"{db.node.get_prim_path()}:{name}"
         self.timer = wp.ScopedTimer(name, active=active, synchronize=True)
 
     def __enter__(self) -> None:
@@ -131,22 +131,15 @@ def get_warp_type_from_data_type_name(
     str_namespace: Optional[str] = "wp",
 ):
     if as_str:
-        prefix = "" if str_namespace is None else "{}.".format(str_namespace)
+        prefix = "" if str_namespace is None else f"{str_namespace}."
 
         if dim_count == 0:
-            return "{prefix}{dtype}".format(prefix=prefix, dtype=data_type_name)
+            return f"{prefix}{data_type_name}"
 
         if dim_count == 1:
-            return "{prefix}array(dtype={prefix}{dtype})".format(
-                prefix=prefix,
-                dtype=data_type_name,
-            )
+            return f"{prefix}array(dtype={prefix}{data_type_name})"
 
-        return "{prefix}array(dtype={prefix}{dtype}, ndim={ndim})".format(
-            prefix=prefix,
-            dtype=data_type_name,
-            ndim=dim_count,
-        )
+        return f"{prefix}array(dtype={prefix}{data_type_name}, ndim={dim_count})"
 
     dtype = getattr(wp.types, data_type_name)
     if dim_count == 0:
@@ -169,7 +162,7 @@ def type_convert_og_to_warp(
         (og_type.base_type, og_type.tuple_count, og_type.role),
     )
     if data_type_name is None:
-        raise RuntimeError("Unsupported attribute type '{}'.".format(og_type))
+        raise RuntimeError(f"Unsupported attribute type '{og_type}'.")
 
     if dim_count is None:
         dim_count = og_type.array_depth
@@ -198,7 +191,7 @@ def type_convert_sdf_name_to_warp(
 
     data_type_name = _SDF_DATA_TYPE_NAME_TO_WARP.get(sdf_type_name)
     if data_type_name is None:
-        raise RuntimeError("Unsupported attribute type '{}'.".format(sdf_type_name))
+        raise RuntimeError(f"Unsupported attribute type '{sdf_type_name}'.")
 
     return get_warp_type_from_data_type_name(
         data_type_name,
@@ -222,7 +215,7 @@ def type_convert_sdf_name_to_og(
 
     data_type = _SDF_DATA_TYPE_TO_OG.get(sdf_type_name)
     if data_type is None:
-        raise RuntimeError("Unsupported attribute type '{}'.".format(sdf_type_name))
+        raise RuntimeError(f"Unsupported attribute type '{sdf_type_name}'.")
 
     base_data_type, tuple_count, role = data_type
     return og.Type(

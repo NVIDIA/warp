@@ -17,17 +17,13 @@
 # designed to be executed as part of CI / developer workflows, not
 # as part of the user runtime (since it requires CUDA toolkit, etc)
 
-import sys
-
-if sys.version_info < (3, 8):
-    raise Exception("Warp requires Python 3.8 minimum")
-
 import argparse
 import glob
 import os
 import platform
 import shutil
 import subprocess
+import sys
 
 from warp.build_dll import build_dll, find_host_compiler, machine_architecture, set_msvc_env, verbose_cmd
 from warp.context import export_builtins

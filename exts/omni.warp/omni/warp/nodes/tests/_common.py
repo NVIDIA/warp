@@ -176,7 +176,7 @@ def register_node(
             destination_directory=None,
         ),
     )
-    module_name = "{}.{}".format(extension, cls.__name__)
+    module_name = f"{extension}.{cls.__name__}"
     file, file_path = tempfile.mkstemp(suffix=".py")
     try:
         with os.fdopen(file, "w") as f:
@@ -189,7 +189,7 @@ def register_node(
         os.remove(file_path)
 
     # Register the node.
-    db_cls = getattr(module, "{}Database".format(cls.__name__))
+    db_cls = getattr(module, f"{cls.__name__}Database")
     db_cls.register(cls)
 
 

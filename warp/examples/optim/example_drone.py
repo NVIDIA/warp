@@ -708,7 +708,7 @@ class Example:
         self.tape.zero()
 
     def step(self):
-        if self.frame % int((self.num_frames / len(self.targets))) == 0:
+        if self.frame % int(self.num_frames / len(self.targets)) == 0:
             if self.verbose:
                 print(f"Choosing new flight target: {self.target_idx + 1}")
 

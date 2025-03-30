@@ -52,7 +52,7 @@ _ATTR_PORT_TYPES = (
     og.AttributePortType.ATTRIBUTE_PORT_TYPE_STATE,
 )
 
-_ATTR_NAME_FMTS = {x: "{}:{{}}".format(og.get_port_type_namespace(x)) for x in _ATTR_PORT_TYPES}
+_ATTR_NAME_FMTS = {x: f"{og.get_port_type_namespace(x)}:{{}}" for x in _ATTR_PORT_TYPES}
 
 
 def attr_join_name(
@@ -161,7 +161,7 @@ def attr_cast_array_to_warp(
             device=device,
         )
 
-    raise AssertionError("Unexpected device '{}'.".format(device.alias))
+    raise AssertionError(f"Unexpected device '{device.alias}'.")
 
 
 #   Tracking
@@ -264,9 +264,7 @@ def from_omni_graph(
         if shape is None:
             if arr_size % element_size != 0:
                 raise RuntimeError(
-                    "Cannot infer a size matching the Warp data type '{}' with an array size of '{}' bytes.".format(
-                        dtype.__name__, arr_size
-                    )
+                    f"Cannot infer a size matching the Warp data type '{dtype.__name__}' with an array size of '{arr_size}' bytes."
                 )
             shape = (arr_size // element_size,)
 
@@ -325,9 +323,7 @@ def from_omni_graph(
             if shape is None:
                 if arr_size % element_size != 0:
                     raise RuntimeError(
-                        "Cannot infer a size matching the Warp data type '{}' with an array size of '{}' bytes.".format(
-                            dtype.__name__, arr_size
-                        )
+                        f"Cannot infer a size matching the Warp data type '{dtype.__name__}' with an array size of '{arr_size}' bytes."
                     )
                 shape = (arr_size // element_size,)
 
@@ -369,6 +365,6 @@ def from_omni_graph(
         elif device.is_cuda:
             return from_data_wrapper(value.gpu, dtype, shape, device)
         else:
-            raise AssertionError("Unexpected device '{}'.".format(device.alias))
+            raise AssertionError(f"Unexpected device '{device.alias}'.")
 
     return None

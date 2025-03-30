@@ -65,7 +65,7 @@ class _DLPackTensorHolder:
     """Class responsible for deleting DLManagedTensor memory after ownership is transferred from a capsule."""
 
     def __new__(cls, *args, **kwargs):
-        instance = super(_DLPackTensorHolder, cls).__new__(cls)
+        instance = super().__new__(cls)
         instance.mem_ptr = None
         return instance
 

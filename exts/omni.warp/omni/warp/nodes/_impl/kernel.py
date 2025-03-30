@@ -30,10 +30,7 @@ from typing import (
     Callable,
     Mapping,
     NamedTuple,
-    Optional,
     Sequence,
-    Tuple,
-    Union,
 )
 
 import omni.graph.core as og
@@ -109,14 +106,14 @@ class UserAttributeDesc(NamedTuple):
     data_type_name: str
     is_array: bool
     array_format: ArrayAttributeFormat
-    array_shape_source: Union[None, OutputArrayShapeSource]
+    array_shape_source: OutputArrayShapeSource | None
     optional: bool
 
     @classmethod
     def deserialize(
         cls,
         data: Mapping[str:Any],
-    ) -> Optional[UserAttributeDesc]:
+    ) -> UserAttributeDesc | None:
         """Creates a new instance based on a serialized representation."""
         # Retrieve the port type. It's invalid not to have any set.
         port_type = data.get("port_type")
@@ -173,7 +170,7 @@ class UserAttributeDesc(NamedTuple):
     def type_name(self) -> str:
         """Retrieves OmniGraph's attribute type name."""
         if self.is_array:
-            return "{}[]".format(self.data_type_name)
+            return f"{self.data_type_name}[]"
 
         return self.data_type_name
 
@@ -208,9 +205,9 @@ def serialize_user_attribute_descs(
 class OutputAttributeInfo(NamedTuple):
     """Information relating to an output node attribute."""
 
-    array_shape_source: Optional[OutputArrayShapeSource]
-    bundle_type_source: Optional[OutputBundleTypeSource]
-    bundle_type_explicit: Optional[str] = None
+    array_shape_source: OutputArrayShapeSource | None
+    bundle_type_source: OutputBundleTypeSource | None
+    bundle_type_explicit: str | None = None
 
 
 class AttributeInfo(NamedTuple):
@@ -239,7 +236,7 @@ class AttributeInfo(NamedTuple):
     base_name: str
     og_type: og.Type
     warp_type: type
-    output: Optional[OutputAttributeInfo] = None
+    output: OutputAttributeInfo | None = None
 
     @property
     def name(self) -> str:
@@ -305,13 +302,13 @@ def gather_attribute_infos(
     db_outputs: Any,
     attr_descs: Mapping[str, UserAttributeDesc],
     kernel_dim_count: int,
-) -> Mapping[og.AttributePortType, Tuple[AttributeInfo, ...]]:
+) -> Mapping[og.AttributePortType, tuple[AttributeInfo, ...]]:
     """Gathers the information for each user attribute.
 
     See also: :class:`AttributeInfo`.
     """
 
-    def extract_partial_info_from_attr(attr: og.Attribute) -> Tuple[Any, ...]:
+    def extract_partial_info_from_attr(attr: og.Attribute) -> tuple[Any, ...]:
         """Extract a partial information set from an attribute."""
         name = attr_get_name(attr)
         base_name = attr_get_base_name(attr)
@@ -376,7 +373,7 @@ def gather_attribute_infos(
         elif array_shape_source == OutputArrayShapeSource.AS_KERNEL:
             dim_count = kernel_dim_count
         else:
-            raise AssertionError("Unexpected array shape source method '{}'.".format(array_shape_source))
+            raise AssertionError(f"Unexpected array shape source method '{array_shape_source}'.")
 
         og_data_type = og.Type(
             og_type.base_type,
@@ -433,7 +430,7 @@ def _generate_struct_declaration_code(warp_struct: wp.struct) -> str:
             dim_count=dim_count,
             as_str=True,
         )
-        lines.append("    {}: {}".format(label, warp_type_name))
+        lines.append(f"    {label}: {warp_type_name}")
 
     return _STRUCT_DECLARATION_CODE_TEMPLATE.format(
         name=warp_struct.cls.__name__,
@@ -456,7 +453,7 @@ class Outputs:
 
 
 def _generate_header_code(
-    attr_infos: Mapping[og.AttributePortType, Tuple[AttributeInfo, ...]],
+    attr_infos: Mapping[og.AttributePortType, tuple[AttributeInfo, ...]],
 ) -> str:
     """Generates the code header based on the node's attributes."""
     # Retrieve all the Warp struct types corresponding to bundle attributes.
@@ -467,7 +464,7 @@ def _generate_header_code(
     declarations.extend(_generate_struct_declaration_code(x) for _, x in struct_types.items())
 
     # Generate the lines of code declaring the members for each port type.
-    lines = {k: tuple("    {}: {}".format(x.base_name, x.warp_type_name) for x in v) for k, v in attr_infos.items()}
+    lines = {k: tuple(f"    {x.base_name}: {x.warp_type_name}" for x in v) for k, v in attr_infos.items()}
 
     # Return the template code populated with the members.
     return _HEADER_CODE_TEMPLATE.format(
@@ -483,10 +480,10 @@ def _get_user_code(code_provider: str, code_str: str, code_file: str) -> str:
         return code_str
 
     if code_provider == "file":
-        with open(code_file, "r") as f:
+        with open(code_file) as f:
             return f.read()
 
-    raise AssertionError("Unexpected code provider '{}'.".format(code_provider))
+    raise AssertionError(f"Unexpected code provider '{code_provider}'.")
 
 
 #   Kernel Module
@@ -528,7 +525,7 @@ def _load_code_as_module(code: str, name: str) -> Any:
 
 
 def initialize_kernel_module(
-    attr_infos: Mapping[og.AttributePortType, Tuple[AttributeInfo, ...]],
+    attr_infos: Mapping[og.AttributePortType, tuple[AttributeInfo, ...]],
     code_provider: str,
     code_str: str,
     code_file: str,
@@ -546,13 +543,13 @@ def initialize_kernel_module(
     # Retrieve the kernel code to evaluate.
     code_header = _generate_header_code(attr_infos)
     user_code = _get_user_code(code_provider, code_str, code_file)
-    code = "{}\n{}".format(code_header, user_code)
+    code = f"{code_header}\n{user_code}"
 
     # Create a Python module made of the kernel code.
     # We try to keep its name unique to ensure that it's not clashing with
     # other kernel modules from the same session.
     uid = hashlib.blake2b(bytes(code, encoding="utf-8"), digest_size=8)
-    module_name = "warp-kernelnode-{}".format(uid.hexdigest())
+    module_name = f"warp-kernelnode-{uid.hexdigest()}"
     kernel_module = _load_code_as_module(code, module_name)
 
     # Validate the module's contents.
@@ -573,10 +570,10 @@ def initialize_kernel_module(
 
 def _infer_output_array_shape(
     attr_info: AttributeInfo,
-    input_attr_infos: Tuple[AttributeInfo, ...],
+    input_attr_infos: tuple[AttributeInfo, ...],
     kernel_inputs: Any,
     kernel_shape: Sequence[int],
-) -> Tuple[int, ...]:
+) -> tuple[int, ...]:
     if attr_info.output.array_shape_source == OutputArrayShapeSource.AS_INPUT_OR_AS_KERNEL:
         # Check if we have an input attribute with a matching name,
         # in which case we use its array shape.
@@ -594,25 +591,25 @@ def _infer_output_array_shape(
     if attr_info.output.array_shape_source == OutputArrayShapeSource.AS_KERNEL:
         return tuple(kernel_shape)
 
-    raise AssertionError("Unexpected array shape source method '{}'.".format(attr_info.output.array_shape_source))
+    raise AssertionError(f"Unexpected array shape source method '{attr_info.output.array_shape_source}'.")
 
 
 class KernelArgsConfig(NamedTuple):
     """Configuration for resolving kernel arguments."""
 
-    input_bundle_handlers: Optional[Mapping[str, Callable]] = None
-    output_bundle_handlers: Optional[Mapping[str, Callable]] = None
+    input_bundle_handlers: Mapping[str, Callable] | None = None
+    output_bundle_handlers: Mapping[str, Callable] | None = None
 
 
 def get_kernel_args(
     db_inputs: Any,
     db_outputs: Any,
-    attr_infos: Mapping[og.AttributePortType, Tuple[AttributeInfo, ...]],
+    attr_infos: Mapping[og.AttributePortType, tuple[AttributeInfo, ...]],
     kernel_module: Any,
     kernel_shape: Sequence[int],
-    device: Optional[wp.context.Device] = None,
-    config: Optional[KernelArgsConfig] = None,
-) -> Tuple[Any, Any]:
+    device: wp.context.Device | None = None,
+    config: KernelArgsConfig | None = None,
+) -> tuple[Any, Any]:
     """Retrieves the in/out argument values to pass to the kernel."""
     if device is None:
         device = wp.get_device()
@@ -663,7 +660,7 @@ def get_kernel_args(
 
             # Allocate a buffer for the array.
             size = functools.reduce(operator.mul, shape)
-            setattr(db_outputs, "{}_size".format(info.base_name), size)
+            setattr(db_outputs, f"{info.base_name}_size", size)
 
             value = getattr(db_outputs, info.base_name)
             value = attr_cast_array_to_warp(
@@ -685,9 +682,9 @@ def get_kernel_args(
 
 def write_output_attrs(
     db_outputs: Any,
-    attr_infos: Mapping[og.AttributePortType, Tuple[AttributeInfo, ...]],
+    attr_infos: Mapping[og.AttributePortType, tuple[AttributeInfo, ...]],
     kernel_outputs: Any,
-    device: Optional[wp.context.Device] = None,
+    device: wp.context.Device | None = None,
 ) -> None:
     """Writes the output values to the node's attributes."""
     if device is None:
@@ -708,7 +705,7 @@ def write_output_attrs(
 
 def validate_input_arrays(
     node: og.Node,
-    attr_infos: Mapping[og.AttributePortType, Tuple[AttributeInfo, ...]],
+    attr_infos: Mapping[og.AttributePortType, tuple[AttributeInfo, ...]],
     kernel_inputs: Any,
 ) -> None:
     """Validates array input attributes."""
@@ -721,7 +718,7 @@ def validate_input_arrays(
         # unless they are set as being optional.
         attr = og.Controller.attribute(info.name, node)
         if not attr.is_optional_for_compute and not value.ptr:
-            raise RuntimeError("Empty value for non-optional attribute '{}'.".format(info.name))
+            raise RuntimeError(f"Empty value for non-optional attribute '{info.name}'.")
 
 
 #   Node's Internal State
@@ -776,7 +773,7 @@ class InternalStateBase:
             ):
                 return True
         else:
-            raise AssertionError("Unexpected code provider '{}'.".format(self._code_provider))
+            raise AssertionError(f"Unexpected code provider '{self._code_provider}'.")
 
         return False
 

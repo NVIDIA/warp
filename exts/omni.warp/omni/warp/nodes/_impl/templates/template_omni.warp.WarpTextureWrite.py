@@ -96,7 +96,7 @@ class CustomLayout:
                 for i in range(dim_count):
                     prop = find_prop(
                         props,
-                        "inputs:dim{}".format(i + 1),
+                        f"inputs:dim{i + 1}",
                     )
                     if prop is not None:
                         CustomLayoutProperty(

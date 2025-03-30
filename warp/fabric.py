@@ -121,7 +121,7 @@ class fabricarray(noncontiguous_array_base[T]):
     _vars = None
 
     def __new__(cls, *args, **kwargs):
-        instance = super(fabricarray, cls).__new__(cls)
+        instance = super().__new__(cls)
         instance.deleter = None
         return instance
 

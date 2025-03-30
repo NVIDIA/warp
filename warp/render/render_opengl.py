@@ -689,7 +689,7 @@ class ShapeInstancer:
             cls.gl = gl
 
     def __new__(cls, *args, **kwargs):
-        instance = super(ShapeInstancer, cls).__new__(cls)
+        instance = super().__new__(cls)
         instance.instance_transform_gl_buffer = None
         instance.vao = None
         return instance

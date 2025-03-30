@@ -84,6 +84,7 @@ select = [
     "PLC", # pylint convention
     "PLE", # pylint error
     "PLW", # pylint warning
+    "UP",  # pyupgrade
 ]
 ignore = [
     "E501",    # Many lines are over 120 characters already
@@ -93,6 +94,7 @@ ignore = [
     "F811",    # Warp often uses overloads
     "E721",    # Warp often uses == in float and int type comparisons
     "PLW0603", # Allow assignments to global variables
+    "UP018"    # Warp kernels often use float(val) and int(val)
 ]
 
 [tool.ruff.lint.per-file-ignores]

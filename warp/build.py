@@ -223,7 +223,7 @@ def get_cached_lto(path):
 
 def get_cached_lto_meta(path, symbol):
     if os.path.exists(path):
-        with open(path, "r") as f:
+        with open(path) as f:
             keys = json.load(f)
         value = keys[symbol]
         return value

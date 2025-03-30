@@ -24,14 +24,11 @@ from typing import (
     Any,
     Callable,
     Generic,
-    List,
     Literal,
     NamedTuple,
-    Optional,
     Sequence,
     Tuple,
     TypeVar,
-    Union,
     get_args,
     get_origin,
 )
@@ -70,7 +67,7 @@ class Transformation(Generic[Float]):
 
 
 class Array(Generic[DType]):
-    device: Optional[warp.context.Device]
+    device: warp.context.Device | None
     dtype: type
     size: int
 
@@ -1155,7 +1152,7 @@ ARRAY_TYPE_FABRIC_INDEXED = 3
 class launch_bounds_t(ctypes.Structure):
     _fields_ = [("shape", ctypes.c_int32 * LAUNCH_MAX_DIMS), ("ndim", ctypes.c_int32), ("size", ctypes.c_size_t)]
 
-    def __init__(self, shape: Union[int, Sequence[int]]):
+    def __init__(self, shape: int | Sequence[int]):
         if isinstance(shape, int):
             # 1d launch
             self.ndim = 1
@@ -1534,7 +1531,7 @@ def types_equal(a, b, match_generic=False):
     return scalars_equal(a, b, match_generic)
 
 
-def strides_from_shape(shape: Tuple, dtype):
+def strides_from_shape(shape: tuple, dtype):
     ndims = len(shape)
     strides = [None] * ndims
 
@@ -1548,7 +1545,7 @@ def strides_from_shape(shape: Tuple, dtype):
     return tuple(strides)
 
 
-def check_array_shape(shape: Tuple):
+def check_array_shape(shape: tuple):
     """Checks that the size in each dimension is positive and less than 2^31."""
 
     for dim_index, dim_size in enumerate(shape):
@@ -1624,8 +1621,8 @@ class array(Array[DType]):
         ndim (int): The number of array dimensions.
         size (int): The number of items in the array.
         capacity (int): The amount of memory in bytes allocated for this array.
-        shape (Tuple[int]): Dimensions of the array.
-        strides (Tuple[int]): Number of bytes in each dimension between successive elements of the array.
+        shape (tuple[int]): Dimensions of the array.
+        strides (tuple[int]): Number of bytes in each dimension between successive elements of the array.
         ptr (int): Pointer to underlying memory allocation backing the array.
         device (Device): The device where the array's memory allocation resides.
         pinned (bool): Indicates whether the array was allocated in pinned host memory.
@@ -1639,26 +1636,26 @@ class array(Array[DType]):
     _vars = None
 
     def __new__(cls, *args, **kwargs):
-        instance = super(array, cls).__new__(cls)
+        instance = super().__new__(cls)
         instance.deleter = None
         return instance
 
     def __init__(
         self,
-        data: Union[List, Tuple, npt.NDArray, None] = None,
+        data: list | tuple | npt.NDArray | None = None,
         dtype: Any = Any,
-        shape: Union[int, Tuple[int, ...], List[int], None] = None,
-        strides: Optional[Tuple[int, ...]] = None,
-        length: Optional[int] = None,
-        ptr: Optional[int] = None,
-        capacity: Optional[int] = None,
+        shape: int | tuple[int, ...] | list[int] | None = None,
+        strides: tuple[int, ...] | None = None,
+        length: int | None = None,
+        ptr: int | None = None,
+        capacity: int | None = None,
         device=None,
         pinned: builtins.bool = False,
         copy: builtins.bool = True,
         owner: builtins.bool = False,  # deprecated - pass deleter instead
-        deleter: Optional[Callable[[int, int], None]] = None,
-        ndim: Optional[int] = None,
-        grad: Optional[array] = None,
+        deleter: Callable[[int, int], None] | None = None,
+        ndim: int | None = None,
+        grad: array | None = None,
         requires_grad: builtins.bool = False,
     ):
         """Constructs a new Warp array object
@@ -2368,9 +2365,7 @@ class array(Array[DType]):
 
         if self.ndim != 2 or other.ndim != 2:
             raise RuntimeError(
-                "A has dim = {}, B has dim = {}. If multiplying with @, A and B must have dim = 2.".format(
-                    self.ndim, other.ndim
-                )
+                f"A has dim = {self.ndim}, B has dim = {other.ndim}. If multiplying with @, A and B must have dim = 2."
             )
 
         m = self.shape[0]
@@ -2913,7 +2908,7 @@ def _close_cuda_ipc_handle(ptr, size):
 
 
 def from_ipc_handle(
-    handle: bytes, dtype, shape: Tuple[int, ...], strides: Optional[Tuple[int, ...]] = None, device=None
+    handle: bytes, dtype, shape: tuple[int, ...], strides: tuple[int, ...] | None = None, device=None
 ) -> array:
     """Create an array from an IPC handle.
 
@@ -3059,10 +3054,10 @@ class indexedarray(noncontiguous_array_base):
 
     def __init__(
         self,
-        data: Optional[array] = None,
-        indices: Union[array, List[array], None] = None,
+        data: array | None = None,
+        indices: array | list[array] | None = None,
         dtype=None,
-        ndim: Optional[int] = None,
+        ndim: int | None = None,
     ):
         super().__init__(ARRAY_TYPE_INDEXED)
 
@@ -3340,11 +3335,11 @@ bvh_constructor_values = {"sah": 0, "median": 1, "lbvh": 2}
 
 class Bvh:
     def __new__(cls, *args, **kwargs):
-        instance = super(Bvh, cls).__new__(cls)
+        instance = super().__new__(cls)
         instance.id = None
         return instance
 
-    def __init__(self, lowers: array, uppers: array, constructor: Optional[str] = None):
+    def __init__(self, lowers: array, uppers: array, constructor: str | None = None):
         """Class representing a bounding volume hierarchy.
 
         Depending on which device the input bounds live, it can be either a CPU tree or a GPU tree.
@@ -3470,7 +3465,7 @@ class Mesh:
     }
 
     def __new__(cls, *args, **kwargs):
-        instance = super(Mesh, cls).__new__(cls)
+        instance = super().__new__(cls)
         instance.id = None
         return instance
 
@@ -3478,9 +3473,9 @@ class Mesh:
         self,
         points: array,
         indices: array,
-        velocities: Optional[array] = None,
-        support_winding_number: bool = False,
-        bvh_constructor: Optional[str] = None,
+        velocities: array | None = None,
+        support_winding_number: builtins.bool = False,
+        bvh_constructor: str | None = None,
     ):
         """Class representing a triangle mesh.
 
@@ -3652,7 +3647,7 @@ class Volume:
     LINEAR = constant(1)
 
     def __new__(cls, *args, **kwargs):
-        instance = super(Volume, cls).__new__(cls)
+        instance = super().__new__(cls)
         instance.id = None
         return instance
 
@@ -3713,7 +3708,7 @@ class Volume:
         self.runtime.core.volume_get_tile_and_voxel_count(self.id, ctypes.byref(tile_count), ctypes.byref(voxel_count))
         return tile_count.value
 
-    def get_tiles(self, out: Optional[array] = None) -> array:
+    def get_tiles(self, out: array | None = None) -> array:
         """Return the integer coordinates of all allocated tiles for this volume.
 
         Args:
@@ -3753,7 +3748,7 @@ class Volume:
         self.runtime.core.volume_get_tile_and_voxel_count(self.id, ctypes.byref(tile_count), ctypes.byref(voxel_count))
         return voxel_count.value
 
-    def get_voxels(self, out: Optional[array] = None) -> array:
+    def get_voxels(self, out: array | None = None) -> array:
         """Return the integer coordinates of all allocated voxels for this volume.
 
         Args:
@@ -3782,7 +3777,7 @@ class Volume:
 
         return out
 
-    def get_voxel_size(self) -> Tuple[float, float, float]:
+    def get_voxel_size(self) -> tuple[float, float, float]:
         """Return the voxel size, i.e, world coordinates of voxel's diagonal vector"""
 
         if self.id == 0:
@@ -4312,8 +4307,8 @@ class Volume:
     @classmethod
     def allocate(
         cls,
-        min: List[int],
-        max: List[int],
+        min: list[int],
+        max: list[int],
         voxel_size: float,
         bg_value=0.0,
         translation=(0.0, 0.0, 0.0),
@@ -4361,7 +4356,7 @@ class Volume:
 
     @staticmethod
     def _fill_transform_buffers(
-        voxel_size: Union[float, List[float]],
+        voxel_size: float | list[float],
         translation,
         transform,
     ):
@@ -4396,7 +4391,7 @@ class Volume:
     def allocate_by_tiles(
         cls,
         tile_points: array,
-        voxel_size: Union[float, List[float]] = None,
+        voxel_size: float | list[float] | None = None,
         bg_value=0.0,
         translation=(0.0, 0.0, 0.0),
         device=None,
@@ -4504,7 +4499,7 @@ class Volume:
     def allocate_by_voxels(
         cls,
         voxel_points: array,
-        voxel_size: Union[float, List[float]] = None,
+        voxel_size: float | list[float] | None = None,
         translation=(0.0, 0.0, 0.0),
         device=None,
         transform=None,
@@ -4560,7 +4555,7 @@ class Volume:
         return volume
 
 
-def _is_contiguous_vec_like_array(array, vec_length: int, scalar_types: Tuple[type]) -> bool:
+def _is_contiguous_vec_like_array(array, vec_length: int, scalar_types: tuple[type]) -> builtins.bool:
     if not (is_array(array) and array.is_contiguous):
         return False
     if type_scalar_type(array.dtype) not in scalar_types:
@@ -4765,7 +4760,7 @@ def adj_batched_matmul(
 
 class HashGrid:
     def __new__(cls, *args, **kwargs):
-        instance = super(HashGrid, cls).__new__(cls)
+        instance = super().__new__(cls)
         instance.id = None
         return instance
 
@@ -4840,7 +4835,7 @@ class HashGrid:
 
 class MarchingCubes:
     def __new__(cls, *args, **kwargs):
-        instance = super(MarchingCubes, cls).__new__(cls)
+        instance = super().__new__(cls)
         instance.id = None
         return instance
 
@@ -5207,8 +5202,8 @@ def get_type_code(arg_type: type) -> str:
         raise TypeError(f"Unrecognized type '{arg_type}'")
 
 
-def get_signature(arg_types: List[type], func_name: Optional[str] = None, arg_names: Optional[List[str]] = None) -> str:
-    type_codes: List[str] = []
+def get_signature(arg_types: list[type], func_name: str | None = None, arg_names: list[str] | None = None) -> str:
+    type_codes: list[str] = []
     for i, arg_type in enumerate(arg_types):
         try:
             type_codes.append(get_type_code(arg_type))

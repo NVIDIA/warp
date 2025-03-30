@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import builtins
 import functools
 from typing import Any, Callable, Mapping, Sequence
@@ -399,7 +401,7 @@ add_builtin(
 )
 
 
-def scalar_infer_type(arg_types: Union[Mapping[str, type], Tuple[type, ...], None]):
+def scalar_infer_type(arg_types: Mapping[str, type] | tuple[type, ...] | None):
     if arg_types is None:
         return Scalar
 

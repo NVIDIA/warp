@@ -301,7 +301,7 @@ class Temporary:
     """
 
     def __new__(cls, *args, **kwargs):
-        instance = super(Temporary, cls).__new__(cls)
+        instance = super().__new__(cls)
         instance._pool = None
         return instance
 
