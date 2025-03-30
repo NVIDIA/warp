@@ -264,4 +264,4 @@ publish wheels to github release:
     - conda install gh --channel conda-forge
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - gh release upload $PARENT_CI_COMMIT_TAG ./dist/*.whl
+    - gh release upload $PARENT_COMMIT_TAG ./dist/*.whl
