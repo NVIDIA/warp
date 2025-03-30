@@ -2,7 +2,7 @@
     "version": 1,
     "project": "warp-lang",
     "project_url": "https://github.com/NVIDIA/warp",
-    "repo": "..",
+    "repo": ".",
     "build_command": [
          "python -mpip install numpy",
          "python build_lib.py",
@@ -17,9 +17,9 @@
             "usd-core": [""]
         }
     },
-    "benchmark_dir": "benchmarks",
-    "env_dir": "env",
-    "results_dir": "results",
-    "html_dir": "html",
+    "benchmark_dir": "asv/benchmarks",
+    "env_dir": "asv/env",
+    "results_dir": "asv/results",
+    "html_dir": "asv/html",
     "build_cache_size": 20
 }

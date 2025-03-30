@@ -247,6 +247,12 @@ add_example_test(
 )
 add_example_test(
     TestCoreExamples,
+    name="core.example_sample_mesh",
+    devices=test_devices,
+    test_options_cpu={"num_frames": 1},
+)
+add_example_test(
+    TestCoreExamples,
     name="core.example_sph",
     devices=test_devices,
     test_options_cpu={"num_frames": 1},
