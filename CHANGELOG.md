@@ -11,6 +11,11 @@
 
 ### Changed
 
+- The rigid body contact in `wp.sim.VBDIntegrator` now uses only the shape's friction coefficient, instead of averaging the shape's and the cloth's coefficients.
+- `wp.sim.VBDIntegrator` now has a `rebuild_bvh` method to rebuild the BVH used for detecting self contacts.
+- Added damping terms for collisions in `wp.sim.VBDIntegrator`, whose strength is controlled by `Model.soft_contact_kd`.
+- Changed the USD renderer to use `framesPerSecond` for time sampling instead of `timeCodesPerSecond`.
+
 ### Fixed
 
 - Fix the jitter for the `OgnParticlesFromMesh` node not being computed correctly.
