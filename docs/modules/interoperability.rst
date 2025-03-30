@@ -454,7 +454,11 @@ but cannot be used in other places that require a ``wp.array``.
 
         wp.launch(saxpy, dim=n, inputs=[x_ctype, y_ctype, 1.0], device=device)
 
-An alternative approach is to pass the PyTorch tensors to Warp kernels directly.  This avoids constructing temporary Warp arrays by leveraging standard array interfaces (like ``__cuda_array_interface__``) supported by both PyTorch and Warp.  The main advantage of this approach is convenience, since there is no need to call any conversion functions.  The main limitation is that it does not handle gradients, because gradient information is not included in the standard array interfaces.  This technique is therefore most suitable for algorithms that do not involve differentiation.
+An alternative approach is to pass the PyTorch tensors to Warp kernels directly.
+This avoids constructing temporary Warp arrays by leveraging standard array interfaces (like ``__cuda_array_interface__``) supported by both PyTorch and Warp.
+The main advantage of this approach is convenience, since there is no need to call any conversion functions.
+The main limitation is that it does not handle gradients, because gradient information is not included in the standard array interfaces.
+This technique is therefore most suitable for algorithms that do not involve differentiation.
 
 .. code:: python
 
@@ -517,16 +521,17 @@ Using Warp kernels as JAX primitives
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. note::
-    This version of ``jax_kernel()`` is based on JAX features that are now deprecated.
+    This version of :func:`jax_kernel() <warp.jax_experimental.jax_kernel>` is based on JAX features that are now deprecated.
 
-    For JAX version 0.4.31 or newer, users are encouraged to switch to the new version of ``jax_kernel()``
+    For JAX version 0.4.31 or newer, users are encouraged to switch to the new version of
+    :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>`
     based on the new :ref:`Foreign Function Interface (FFI)<jax-ffi>`.
 
 Warp kernels can be used as JAX primitives, which allows calling them inside of jitted JAX functions::
 
     import warp as wp
     import jax
-    import jax.numpy as jp
+    import jax.numpy as jnp
 
     from warp.jax_experimental import jax_kernel
 
@@ -541,7 +546,7 @@ Warp kernels can be used as JAX primitives, which allows calling them inside of 
     # use the Warp kernel in a Jax jitted function
     @jax.jit
     def f():
-        x = jp.arange(0, 64, dtype=jp.float32)
+        x = jnp.arange(0, 64, dtype=jnp.float32)
         return jax_triple(x)
 
     print(f())
@@ -552,11 +557,14 @@ Warp kernels can be used as JAX primitives, which allows calling them inside of 
 Input and Output Semantics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-All kernel arguments must be contiguous arrays. Input arguments must come before output arguments in the kernel definition. At least one input array and one output array are required. Here is a kernel with three inputs and two outputs::
+All kernel arguments must be contiguous arrays.
+Input arguments must come before output arguments in the kernel definition.
+At least one input array and one output array are required.
+Here is a kernel with three inputs and two outputs::
 
     import warp as wp
     import jax
-    import jax.numpy as jp
+    import jax.numpy as jnp
 
     from warp.jax_experimental import jax_kernel
 
@@ -581,9 +589,9 @@ All kernel arguments must be contiguous arrays. Input arguments must come before
     # use the Warp kernel in a Jax jitted function with three inputs and two outputs
     @jax.jit
     def f():
-        a = jp.full(64, 1, dtype=jp.float32)
-        b = jp.full(64, 2, dtype=jp.float32)
-        c = jp.full(64, 3, dtype=jp.float32)
+        a = jnp.full(64, 1, dtype=jnp.float32)
+        b = jnp.full(64, 2, dtype=jnp.float32)
+        c = jnp.full(64, 3, dtype=jnp.float32)
         return jax_multiarg(a, b, c)
 
     x, y = f()
@@ -595,12 +603,17 @@ All kernel arguments must be contiguous arrays. Input arguments must come before
 Kernel Launch and Output Dimensions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-By default, the launch dimensions are inferred from the shape of the first input array. When that's not appropriate, the ``launch_dims`` argument can be used to override this behavior. The launch dimensions also determine the shape of the output arrays. Here is a simple matrix multiplication kernel that multiplies an NxK matrix by a KxM matrix. The launch dimensions and output shape must be (N, M), which is different than the shape of the input arrays::
+By default, the launch dimensions are inferred from the shape of the first input array.
+When that's not appropriate, the ``launch_dims`` argument can be used to override this behavior.
+The launch dimensions also determine the shape of the output arrays.
+Here is a simple matrix multiplication kernel that multiplies an NxK matrix by a KxM matrix.
+The launch dimensions and output shape must be (N, M), which is different than the shape of the input arrays::
 
     import warp as wp
     import jax
-    import jax.numpy as jp
+    import jax.numpy as jnp
 
+    import warp as wp
     from warp.jax_experimental import jax_kernel
 
     @wp.kernel
@@ -643,9 +656,14 @@ JAX Foreign Function Interface (FFI)
 
 .. versionadded:: 1.7
 
-JAX v0.4.31 introduced a new `foreign function interface <https://docs.jax.dev/en/latest/ffi.html>`_ that supersedes the older custom call mechanism. One important benefit is that it allows the foreign function to be captured in a CUDA graph together with other JAX operations. This can lead to significant performance improvements.
+JAX v0.4.31 introduced a new `foreign function interface <https://docs.jax.dev/en/latest/ffi.html>`_ that supersedes
+the older custom call mechanism. One important benefit is that it allows the foreign function to be captured in a CUDA
+graph together with other JAX operations. This can lead to significant performance improvements.
 
-Users of newer JAX versions are encouraged to switch to the new implementation of ``jax_kernel()`` based on FFI. The old implementation is still available to avoid breaking existing code, but future development will likely focus on the FFI version.
+Users of newer JAX versions are encouraged to switch to the new implementation of
+:func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>` based on FFI.
+The old implementation is still available to avoid breaking existing code,
+but future development will likely focus on the FFI version.
 
 .. code-block:: python
 
@@ -653,13 +671,24 @@ Users of newer JAX versions are encouraged to switch to the new implementation o
 
 The new implementation is likely to be faster and it is also more flexible.
 
+.. autofunction:: warp.jax_experimental.ffi.jax_kernel
 
 Input and Output Semantics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Input arguments must come before output arguments in the kernel definition. At least one output array is required, but it's ok to have kernels with no inputs. The new ``jax_kernel()`` allows specifying the number of outputs using the ``num_outputs`` argument.  It defaults to one, so this argument is only needed for kernels with multiple outputs.
+Input arguments must come before output arguments in the kernel definition.
+At least one output array is required, but it's ok to have kernels with no inputs.
+The new :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>` allows specifying the number of outputs using the
+``num_outputs`` argument.
+It defaults to one, so this argument is only needed for kernels with multiple outputs.
 
 Here's a kernel with two inputs and one output::
+
+    import jax
+    import jax.numpy as jnp
+
+    import warp as wp
+    from warp.jax_experimental.ffi import jax_kernel
 
     @wp.kernel
     def add_kernel(a: wp.array(dtype=int),
@@ -681,6 +710,14 @@ Here's a kernel with two inputs and one output::
 
 One input and two outputs::
 
+    import math
+
+    import jax
+    import jax.numpy as jnp
+
+    import warp as wp
+    from warp.jax_experimental.ffi import jax_kernel
+
     @wp.kernel
     def sincos_kernel(angle: wp.array(dtype=float),
                       # outputs
@@ -701,7 +738,8 @@ One input and two outputs::
     print(s)
     print(c)
 
-Here is a kernel with no inputs that initializes an array of 3x3 matrices with the diagonal values (1, 2, 3). With no inputs, specifying the launch dimensions is required to determine the shape of the output array::
+Here is a kernel with no inputs that initializes an array of 3x3 matrices with the diagonal values (1, 2, 3).
+With no inputs, specifying the launch dimensions is required to determine the shape of the output array::
 
     @wp.kernel
     def diagonal_kernel(output: wp.array(dtype=wp.mat33)):
@@ -764,11 +802,15 @@ JAX static arguments to the rescue::
 Kernel Launch and Output Dimensions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-By default, the launch dimensions are inferred from the shape of the first input array. When that's not appropriate, the ``launch_dims`` argument can be used to override this behavior. The launch dimensions also determine the shape of the output arrays.
+By default, the launch dimensions are inferred from the shape of the first input array.
+When that's not appropriate, the ``launch_dims`` argument can be used to override this behavior.
+The launch dimensions also determine the shape of the output arrays.
 
-Here is a simple matrix multiplication kernel that multiplies an NxK matrix by a KxM matrix. The launch dimensions and output shape must be (N, M), which is different than the shape of the input arrays.
+Here is a simple matrix multiplication kernel that multiplies an NxK matrix by a KxM matrix.
+The launch dimensions and output shape must be (N, M), which is different than the shape of the input arrays.
 
-Note that the new ``jax_kernel()`` allows specifying custom launch dimensions with each call, which is more flexible than the old implementation, although the old approach is still supported::
+Note that the new :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>` allows specifying custom launch
+dimensions with each call, which is more flexible than the old implementation, although the old approach is still supported::
 
     @wp.kernel
     def matmul_kernel(
@@ -813,7 +855,8 @@ Note that the new ``jax_kernel()`` allows specifying custom launch dimensions wi
     print(r2)
 
 
-By default, output array shapes are determined from the launch dimensions, but it's possible to specify custom output dimensions using the ``output_dims`` argument. Consider a kernel like this::
+By default, output array shapes are determined from the launch dimensions, but it's possible to specify custom output
+dimensions using the ``output_dims`` argument. Consider a kernel like this::
 
     @wp.kernel
     def funky_kernel(a: wp.array(dtype=float),
@@ -823,7 +866,6 @@ By default, output array shapes are determined from the launch dimensions, but i
         ...
 
     jax_funky = jax_kernel(funky_kernel, num_outputs=2)
-
 
 Specify a custom output shape used for all outputs::
 
@@ -839,11 +881,13 @@ Specify custom launch and output dimensions together::
 
 One-dimensional shapes can be specified using an integer. Multi-dimensional shapes can be specified using tuples or lists of integers.
 
-
 Vector and Matrix Arrays
 ........................
 
-Arrays of Warp vector and matrix types are supported. Since JAX does not have corresponding data types, the components are packed into extra inner dimensions of JAX arrays. For example, a Warp array of ``wp.vec3`` will have a JAX array shape of (..., 3) and a Warp array of ``wp.mat22`` will have a JAX array shape of (..., 2, 2)::
+Arrays of Warp vector and matrix types are supported.
+Since JAX does not have corresponding data types, the components are packed into extra inner dimensions of JAX arrays.
+For example, a Warp array of ``wp.vec3`` will have a JAX array shape of (..., 3) and a Warp array of ``wp.mat22`` will
+have a JAX array shape of (..., 2, 2)::
 
     @wp.kernel
     def vecmat_kernel(a: wp.array(dtype=float),
@@ -866,7 +910,10 @@ Arrays of Warp vector and matrix types are supported. Since JAX does not have co
 
         d, e, f = vecmat_kernel(a, b, c)
 
-It's important to recognize that the Warp and JAX array shapes are different for vector and matrix types. In the above snippet, Warp sees ``a``, ``b``, and ``c`` as one-dimensional arrays of ``wp.float32``, ``wp.vec3``, and ``wp.mat22``, respectively. In JAX, ``a`` is a one-dimensional array with length n, ``b`` is a two-dimensional array with shape (n, 3), and ``c`` is a three-dimensional array with shape (n, 2, 2).
+It's important to recognize that the Warp and JAX array shapes are different for vector and matrix types.
+In the above snippet, Warp sees ``a``, ``b``, and ``c`` as one-dimensional arrays of ``wp.float32``, ``wp.vec3``, and
+``wp.mat22``, respectively. In JAX, ``a`` is a one-dimensional array with length n, ``b`` is a two-dimensional array
+with shape (n, 3), and ``c`` is a three-dimensional array with shape (n, 2, 2).
 
 When specifying custom output dimensions, it's possible to use either convention. The following calls are equivalent::
 
@@ -874,7 +921,9 @@ When specifying custom output dimensions, it's possible to use either convention
     d, e, f = vecmat_kernel(a, b, c, output_dims={"d": n, "e": n, "f": n})
     d, e, f = vecmat_kernel(a, b, c, output_dims={"d": n, "e": (n, 3), "f": (n, 2, 2)})
 
-This is a convenience feature meant to simplify writing code. For example, when Warp expects the arrays to be of the same shape, we only need to specify the shape once without worrying about the extra vector and matrix dimensions required by JAX::
+This is a convenience feature meant to simplify writing code.
+For example, when Warp expects the arrays to be of the same shape, we only need to specify the shape once without
+worrying about the extra vector and matrix dimensions required by JAX::
 
     d, e, f = vecmat_kernel(a, b, c, output_dims=n)
 
@@ -888,7 +937,9 @@ See `example_jax_kernel.py <https://github.com/NVIDIA/warp/tree/main/warp/exampl
 JAX VMAP Support
 ~~~~~~~~~~~~~~~~
 
-The ``vmap_method`` argument can be used to specify how the callback transforms under :func:`jax.vmap`. The default is ``"broadcast_all"``. This argument can be passed to ``jax_kernel()`` and it can also be passed to each call::
+The ``vmap_method`` argument can be used to specify how the callback transforms under :func:`jax.vmap`.
+The default is ``"broadcast_all"``. This argument can be passed to :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>`,
+and it can also be passed to each call::
 
     # set default vmap behavior
     jax_callback = jax_kernel(my_kernel, vmap_method="sequential")
@@ -905,7 +956,10 @@ The ``vmap_method`` argument can be used to specify how the callback transforms 
 Calling Annotated Python Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``jax_kernel()`` mechanism can be used to launch a single Warp kernel from JAX, but it's also possible to call a Python function that launches multiple kernels.  The target Python function should have argument type annotations as if it were a Warp kernel. To call this function from JAX, use ``jax_callable()``::
+The :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>` mechanism can be used to launch a single Warp kernel
+from JAX, but it's also possible to call a Python function that launches multiple kernels.
+The target Python function should have argument type annotations as if it were a Warp kernel.
+To call this function from JAX, use :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>`::
 
     from warp.jax_experimental.ffi import jax_callable
 
@@ -956,19 +1010,28 @@ The ``jax_kernel()`` mechanism can be used to launch a single Warp kernel from J
     print(r1)
     print(r2)
 
+The input and output semantics of :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` are similar to
+:func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>`, so we won't recap everything here,
+just focus on the differences:
 
-The input and output semantics of ``jax_callable()`` are similar to ``jax_kernel()``, so we won't recap everything here, just focus on the differences:
-
-    - ``jax_callable()`` does not take a ``launch_dims`` argument, since the target function is responsible for launching kernels using appropriate dimensions.
-    - ``jax_callable()`` takes an optional Boolean ``graph_compatible`` argument, which defaults to True. This argument determines whether JAX can capture the function in a CUDA graph. It is generally desirable, since CUDA graphs can greatly improve the application performance. However, if the target function performs operations that are not allowed during graph capture, it may lead to errors. This includes any operations that require synchronization with the host. In such cases, pass ``graph_compatible=False``.
+- :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` does not take a ``launch_dims`` argument,
+  since the target function is responsible for launching kernels using appropriate dimensions.
+- :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` takes an optional Boolean
+  ``graph_compatible`` argument, which defaults to ``True``.
+  This argument determines whether JAX can capture the function in a CUDA graph.
+  It is generally desirable, since CUDA graphs can greatly improve the application performance.
+  However, if the target function performs operations that are not allowed during graph capture, it may lead to errors.
+  This includes any operations that require synchronization with the host. In such cases, pass ``graph_compatible=False``.
 
 See `example_jax_callable.py <https://github.com/NVIDIA/warp/tree/main/warp/examples/interop/example_jax_callable.py>`_ for examples.
 
+.. autofunction:: warp.jax_experimental.ffi.jax_callable
 
 Generic JAX FFI Callbacks
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Another way to call Python functions is to use ``register_ffi_callback()``::
+Another way to call Python functions is to use
+:func:`register_ffi_callback() <warp.jax_experimental.ffi.register_ffi_callback>`::
 
     from warp.jax_experimental.ffi import register_ffi_callback
 
@@ -978,12 +1041,14 @@ This allows calling functions that don't have Warp-style type annotations, but m
 
 where:
 
-    - ``inputs`` is a list of input buffers.
-    - ``outputs`` is a list of output buffers.
-    - ``attrs`` is a dictionary of attributes.
-    - ``ctx`` is the execution context, including the CUDA stream.
+- ``inputs`` is a list of input buffers.
+- ``outputs`` is a list of output buffers.
+- ``attrs`` is a dictionary of attributes.
+- ``ctx`` is the execution context, including the CUDA stream.
 
-The input and output buffers are neither JAX nor Warp arrays. They are objects that expose the ``__cuda_array_interface__``, which can be passed to Warp kernels directly. Here is an example::
+The input and output buffers are neither JAX nor Warp arrays.
+They are objects that expose the ``__cuda_array_interface__``, which can be passed to Warp kernels directly.
+Here is an example::
 
     from warp.jax_experimental.ffi import register_ffi_callback
 
@@ -1044,11 +1109,15 @@ The input and output buffers are neither JAX nor Warp arrays. They are objects t
     print(c)
     print(d)
 
-
-This is a more low-level approach to JAX FFI callbacks. A proposal was made to incorporate such a mechanism in JAX, but for now we have a prototype here. This approach leaves a lot of work up to the user, such as verifying argument types and shapes. But it can be used when other utilities like ``jax_kernel()`` and ``jax_callable()`` are not sufficient.
+This is a more low-level approach to JAX FFI callbacks.
+A proposal was made to incorporate such a mechanism in JAX, but for now we have a prototype here.
+This approach leaves a lot of work up to the user, such as verifying argument types and shapes,
+but it can be used when other utilities like :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>` and
+:func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` are not sufficient.
 
 See `example_jax_ffi_callback.py <https://github.com/NVIDIA/warp/tree/main/warp/examples/interop/example_jax_ffi_callback.py>`_ for examples.
 
+.. autofunction:: warp.jax_experimental.ffi.register_ffi_callback
 
 Distributed Computation
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -1215,9 +1284,9 @@ This approach is generally faster because it skips any stream synchronization, b
 ordering of operations.  In situations where no synchronization is required, using this approach can yield better performance.
 This may be a good choice in situations like these:
 
-    - The external framework is using the synchronous CUDA default stream.
-    - Warp and the external framework are using the same CUDA stream.
-    - Another synchronization mechanism is already in place.
+- The external framework is using the synchronous CUDA default stream.
+- Warp and the external framework are using the same CUDA stream.
+- Another synchronization mechanism is already in place.
 
 .. autofunction:: warp.from_dlpack
 .. autofunction:: warp.to_dlpack
@@ -1383,7 +1452,8 @@ This descriptor is a simple C structure that can be passed to Warp kernels inste
 
         wp.launch(saxpy, dim=n, inputs=[x_ctype, y_ctype, 1.0], device=device)
 
-An alternative approach is to pass the Paddle tensors to Warp kernels directly.  This avoids constructing temporary Warp arrays by leveraging standard array interfaces (like ``__cuda_array_interface__``) supported by both Paddle and Warp.
+An alternative approach is to pass the Paddle tensors to Warp kernels directly.
+This avoids constructing temporary Warp arrays by leveraging standard array interfaces (like ``__cuda_array_interface__``) supported by both Paddle and Warp.
 The main advantage of this approach is convenience, since there is no need to call any conversion functions.
 The main limitation is that it does not handle gradients, because gradient information is not included in the standard array interfaces.
 This technique is therefore most suitable for algorithms that do not involve differentiation.
