@@ -15,6 +15,7 @@
 
 import ctypes
 import traceback
+from typing import Callable
 
 import jax
 
@@ -54,8 +55,15 @@ def jax_kernel(kernel, num_outputs=1, vmap_method="broadcast_all", launch_dims=N
     return FfiKernel(kernel, num_outputs, vmap_method, launch_dims, output_dims)
 
 
-def jax_callable(func, num_outputs=1, graph_compatible=True, vmap_method="broadcast_all", output_dims=None):
+def jax_callable(
+    func: Callable,
+    num_outputs: int = 1,
+    graph_compatible: bool = True,
+    vmap_method: str = "broadcast_all",
+    output_dims=None,
+):
     """Create a JAX callback from an annotated Python function.
+
     The Python function arguments must have type annotations like Warp kernels.
 
     NOTE: This is an experimental feature under development.
@@ -65,10 +73,10 @@ def jax_callable(func, num_outputs=1, graph_compatible=True, vmap_method="broadc
         num_outputs: Optional. Specify the number of output arguments if greater than 1.
         graph_compatible: Optional. Whether the function can be called during CUDA graph capture.
         vmap_method: Optional. String specifying how the callback transforms under ``vmap()``.
-                     This argument can also be specified for individual calls.
-        output_dims: Optional. Specify the default dimensions of output arrays.  If None, output
-                     dimensions are inferred from the launch dimensions.
-                     This argument can also be specified for individual calls.
+            This argument can also be specified for individual calls.
+        output_dims: Optional. Specify the default dimensions of output arrays.
+            If ``None``, output dimensions are inferred from the launch dimensions.
+            This argument can also be specified for individual calls.
 
     Limitations:
         - All kernel arguments must be contiguous arrays or scalars.
@@ -574,9 +582,10 @@ class FfiCallable:
 ffi_callbacks = {}
 
 
-def register_ffi_callback(name, func, graph_compatible=True):
+def register_ffi_callback(name: str, func: Callable, graph_compatible: bool = True) -> None:
     """Create a JAX callback from a Python function.
-    The Python function must have the form func(inputs, outputs, attrs, ctx).
+
+    The Python function must have the form ``func(inputs, outputs, attrs, ctx)``.
 
     NOTE: This is an experimental feature under development.
 

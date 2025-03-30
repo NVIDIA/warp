@@ -73,6 +73,9 @@ autodoc_default_options = {
     "exclude-members": "__weakref__",
 }
 
+# Mock imports for modules that are not installed by default
+autodoc_mock_imports = ["jax", "torch", "paddle", "pxr"]
+
 # autodoc_typehints_format
 # add_module_names = False
 
