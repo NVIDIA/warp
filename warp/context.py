@@ -39,9 +39,7 @@ from typing import (
     List,
     Literal,
     Mapping,
-    Optional,
     Sequence,
-    Set,
     Tuple,
     TypeVar,
     Union,
@@ -84,7 +82,7 @@ def get_function_args(func):
 complex_type_hints = (Any, Callable, Tuple)
 sequence_types = (list, tuple)
 
-function_key_counts: Dict[str, int] = {}
+function_key_counts: dict[str, int] = {}
 
 
 def generate_unique_function_identifier(key: str) -> str:
@@ -120,18 +118,18 @@ def generate_unique_function_identifier(key: str) -> str:
 class Function:
     def __init__(
         self,
-        func: Optional[Callable],
+        func: Callable | None,
         key: str,
         namespace: str,
-        input_types: Optional[Dict[str, Union[type, TypeVar]]] = None,
-        value_type: Optional[type] = None,
-        value_func: Optional[Callable[[Mapping[str, type], Mapping[str, Any]], type]] = None,
-        export_func: Optional[Callable[[Dict[str, type]], Dict[str, type]]] = None,
-        dispatch_func: Optional[Callable] = None,
-        lto_dispatch_func: Optional[Callable] = None,
-        module: Optional[Module] = None,
+        input_types: dict[str, type | TypeVar] | None = None,
+        value_type: type | None = None,
+        value_func: Callable[[Mapping[str, type], Mapping[str, Any]], type] | None = None,
+        export_func: Callable[[dict[str, type]], dict[str, type]] | None = None,
+        dispatch_func: Callable | None = None,
+        lto_dispatch_func: Callable | None = None,
+        module: Module | None = None,
         variadic: bool = False,
-        initializer_list_func: Optional[Callable[[Dict[str, Any], type], bool]] = None,
+        initializer_list_func: Callable[[dict[str, Any], type], bool] | None = None,
         export: bool = False,
         doc: str = "",
         group: str = "",
@@ -139,21 +137,21 @@ class Function:
         skip_replay: bool = False,
         missing_grad: bool = False,
         generic: bool = False,
-        native_func: Optional[str] = None,
-        defaults: Optional[Dict[str, Any]] = None,
-        custom_replay_func: Optional[Function] = None,
-        native_snippet: Optional[str] = None,
-        adj_native_snippet: Optional[str] = None,
-        replay_snippet: Optional[str] = None,
+        native_func: str | None = None,
+        defaults: dict[str, Any] | None = None,
+        custom_replay_func: Function | None = None,
+        native_snippet: str | None = None,
+        adj_native_snippet: str | None = None,
+        replay_snippet: str | None = None,
         skip_forward_codegen: bool = False,
         skip_reverse_codegen: bool = False,
         custom_reverse_num_input_args: int = -1,
         custom_reverse_mode: bool = False,
-        overloaded_annotations: Optional[Dict[str, type]] = None,
-        code_transformers: Optional[List[ast.NodeTransformer]] = None,
+        overloaded_annotations: dict[str, type] | None = None,
+        code_transformers: list[ast.NodeTransformer] | None = None,
         skip_adding_overload: bool = False,
         require_original_output_arg: bool = False,
-        scope_locals: Optional[Dict[str, Any]] = None,
+        scope_locals: dict[str, Any] | None = None,
     ):
         if code_transformers is None:
             code_transformers = []
@@ -178,7 +176,7 @@ class Function:
         self.native_snippet = native_snippet
         self.adj_native_snippet = adj_native_snippet
         self.replay_snippet = replay_snippet
-        self.custom_grad_func: Optional[Function] = None
+        self.custom_grad_func: Function | None = None
         self.require_original_output_arg = require_original_output_arg
         self.generic_parent = None  # generic function that was used to instantiate this overload
 
@@ -194,7 +192,7 @@ class Function:
         )
         self.missing_grad = missing_grad  # whether builtin is missing a corresponding adjoint
         self.generic = generic
-        self.mangled_name: Optional[str] = None
+        self.mangled_name: str | None = None
 
         # allow registering functions with a different name in Python and native code
         if native_func is None:
@@ -211,8 +209,8 @@ class Function:
             # user-defined function
 
             # generic and concrete overload lookups by type signature
-            self.user_templates: Dict[str, Function] = {}
-            self.user_overloads: Dict[str, Function] = {}
+            self.user_templates: dict[str, Function] = {}
+            self.user_overloads: dict[str, Function] = {}
 
             # user defined (Python) function
             self.adj = warp.codegen.Adjoint(
@@ -244,7 +242,7 @@ class Function:
 
             # embedded linked list of all overloads
             # the builtin_functions dictionary holds the list head for a given key (func name)
-            self.overloads: List[Function] = []
+            self.overloads: list[Function] = []
 
             # builtin (native) function, canonicalize argument types
             if input_types is not None:
@@ -404,7 +402,7 @@ class Function:
             else:
                 self.user_overloads[sig] = f
 
-    def get_overload(self, arg_types: List[type], kwarg_types: Mapping[str, type]) -> Optional[Function]:
+    def get_overload(self, arg_types: list[type], kwarg_types: Mapping[str, type]) -> Function | None:
         assert not self.is_builtin()
 
         for f in self.user_overloads.values():
@@ -457,7 +455,7 @@ class Function:
         return f"<Function {self.key}({inputs_str})>"
 
 
-def call_builtin(func: Function, *params: Any) -> Tuple[bool, Any]:
+def call_builtin(func: Function, *params: Any) -> tuple[bool, Any]:
     uses_non_warp_array_type = False
 
     init()
@@ -774,7 +772,7 @@ class Kernel:
 
 
 # decorator to register function, @func
-def func(f: Optional[Callable] = None, *, name: Optional[str] = None):
+def func(f: Callable | None = None, *, name: str | None = None):
     def wrapper(f, *args, **kwargs):
         if name is None:
             key = warp.codegen.make_full_qualified_name(f)
@@ -807,7 +805,7 @@ def func(f: Optional[Callable] = None, *, name: Optional[str] = None):
     return wrapper(f)
 
 
-def func_native(snippet: str, adj_snippet: Optional[str] = None, replay_snippet: Optional[str] = None):
+def func_native(snippet: str, adj_snippet: str | None = None, replay_snippet: str | None = None):
     """
     Decorator to register native code snippet, @func_native
     """
@@ -991,10 +989,10 @@ def func_replay(forward_fn):
 
 
 def kernel(
-    f: Optional[Callable] = None,
+    f: Callable | None = None,
     *,
-    enable_backward: Optional[bool] = None,
-    module: Optional[Union[Module, Literal["unique"]]] = None,
+    enable_backward: bool | None = None,
+    module: Module | Literal["unique"] | None = None,
 ):
     """
     Decorator to register a Warp kernel from a Python function.
@@ -1157,7 +1155,7 @@ def overload(kernel, arg_types=Union[None, Dict[str, Any], List[Any]]):
 
 
 # native functions that are part of the Warp API
-builtin_functions: Dict[str, Function] = {}
+builtin_functions: dict[str, Function] = {}
 
 
 def get_generic_vtypes():
@@ -1180,13 +1178,13 @@ scalar_types.update({x: x._wp_scalar_type_ for x in warp.types.vector_types})
 
 def add_builtin(
     key: str,
-    input_types: Optional[Dict[str, Union[type, TypeVar]]] = None,
-    constraint: Optional[Callable[[Mapping[str, type]], bool]] = None,
-    value_type: Optional[type] = None,
-    value_func: Optional[Callable] = None,
-    export_func: Optional[Callable] = None,
-    dispatch_func: Optional[Callable] = None,
-    lto_dispatch_func: Optional[Callable] = None,
+    input_types: dict[str, type | TypeVar] | None = None,
+    constraint: Callable[[Mapping[str, type]], bool] | None = None,
+    value_type: type | None = None,
+    value_func: Callable | None = None,
+    export_func: Callable | None = None,
+    dispatch_func: Callable | None = None,
+    lto_dispatch_func: Callable | None = None,
     doc: str = "",
     namespace: str = "wp::",
     variadic: bool = False,
@@ -1196,8 +1194,8 @@ def add_builtin(
     hidden: bool = False,
     skip_replay: bool = False,
     missing_grad: bool = False,
-    native_func: Optional[str] = None,
-    defaults: Optional[Dict[str, Any]] = None,
+    native_func: str | None = None,
+    defaults: dict[str, Any] | None = None,
     require_original_output_arg: bool = False,
 ):
     """Main entry point to register a new built-in function.
@@ -1443,7 +1441,7 @@ def register_api_function(
 
 
 # global dictionary of modules
-user_modules: Dict[str, Module] = {}
+user_modules: dict[str, Module] = {}
 
 
 def get_module(name: str) -> Module:
@@ -1566,7 +1564,7 @@ class ModuleHasher:
         ch.update(bytes(func.key, "utf-8"))
 
         # include all concrete and generic overloads
-        overloads: Dict[str, Function] = {**func.user_overloads, **func.user_templates}
+        overloads: dict[str, Function] = {**func.user_overloads, **func.user_templates}
         for sig in sorted(overloads.keys()):
             ovl = overloads[sig]
 
@@ -1815,7 +1813,7 @@ class ModuleBuilder:
 # the original Modules get reloaded.
 class ModuleExec:
     def __new__(cls, *args, **kwargs):
-        instance = super(ModuleExec, cls).__new__(cls)
+        instance = super().__new__(cls)
         instance.handle = None
         return instance
 
@@ -1910,7 +1908,7 @@ class ModuleExec:
 # creates a hash of the function to use for checking
 # build cache
 class Module:
-    def __init__(self, name: Optional[str], loader=None):
+    def __init__(self, name: str | None, loader=None):
         self.name = name if name is not None else "None"
 
         self.loader = loader
@@ -2301,7 +2299,7 @@ class Module:
             # Load CPU or CUDA binary
 
             meta_path = os.path.join(module_dir, f"{module_name_short}.meta")
-            with open(meta_path, "r") as meta_file:
+            with open(meta_path) as meta_file:
                 meta = json.load(meta_file)
 
             if device.is_cpu:
@@ -2468,12 +2466,12 @@ class Event:
 
     def __new__(cls, *args, **kwargs):
         """Creates a new event instance."""
-        instance = super(Event, cls).__new__(cls)
+        instance = super().__new__(cls)
         instance.owner = False
         return instance
 
     def __init__(
-        self, device: "Devicelike" = None, cuda_event=None, enable_timing: bool = False, interprocess: bool = False
+        self, device: Devicelike = None, cuda_event=None, enable_timing: bool = False, interprocess: bool = False
     ):
         """Initializes the event on a CUDA device.
 
@@ -2569,12 +2567,12 @@ class Event:
 
 class Stream:
     def __new__(cls, *args, **kwargs):
-        instance = super(Stream, cls).__new__(cls)
+        instance = super().__new__(cls)
         instance.cuda_stream = None
         instance.owner = False
         return instance
 
-    def __init__(self, device: Union["Device", str, None] = None, priority: int = 0, **kwargs):
+    def __init__(self, device: Device | str | None = None, priority: int = 0, **kwargs):
         """Initialize the stream on a device with an optional specified priority.
 
         Args:
@@ -2640,7 +2638,7 @@ class Stream:
             self._cached_event = Event(self.device)
         return self._cached_event
 
-    def record_event(self, event: Optional[Event] = None) -> Event:
+    def record_event(self, event: Event | None = None) -> Event:
         """Record an event onto the stream.
 
         Args:
@@ -2669,7 +2667,7 @@ class Stream:
         """
         runtime.core.cuda_stream_wait_event(self.cuda_stream, event.cuda_event)
 
-    def wait_stream(self, other_stream: "Stream", event: Optional[Event] = None):
+    def wait_stream(self, other_stream: Stream, event: Event | None = None):
         """Records an event on `other_stream` and makes this stream wait on it.
 
         All work added to this stream after this function has been called will
@@ -3032,8 +3030,8 @@ class Graph:
     def __init__(self, device: Device, capture_id: int):
         self.device = device
         self.capture_id = capture_id
-        self.module_execs: Set[ModuleExec] = set()
-        self.graph_exec: Optional[ctypes.c_void_p] = None
+        self.module_execs: set[ModuleExec] = set()
+        self.graph_exec: ctypes.c_void_p | None = None
 
     def __del__(self):
         if not hasattr(self, "graph_exec") or not hasattr(self, "device") or not self.graph_exec:
@@ -3050,8 +3048,6 @@ class Graph:
 
 class Runtime:
     def __init__(self):
-        if sys.version_info < (3, 8):
-            raise RuntimeError("Warp requires Python 3.8 as a minimum")
         if sys.version_info < (3, 9):
             warp.utils.warn(f"Python 3.9 or newer is recommended for running Warp, detected {sys.version_info}")
 
@@ -4234,7 +4230,7 @@ def is_cuda_driver_initialized() -> bool:
     return runtime.core.cuda_driver_is_initialized()
 
 
-def get_devices() -> List[Device]:
+def get_devices() -> list[Device]:
     """Returns a list of devices supported in this environment."""
 
     init()
@@ -4255,7 +4251,7 @@ def get_cuda_device_count() -> int:
     return len(runtime.cuda_devices)
 
 
-def get_cuda_device(ordinal: Union[int, None] = None) -> Device:
+def get_cuda_device(ordinal: int | None = None) -> Device:
     """Returns the CUDA device with the given ordinal or the current CUDA device if ordinal is None."""
 
     init()
@@ -4266,7 +4262,7 @@ def get_cuda_device(ordinal: Union[int, None] = None) -> Device:
         return runtime.cuda_devices[ordinal]
 
 
-def get_cuda_devices() -> List[Device]:
+def get_cuda_devices() -> list[Device]:
     """Returns a list of CUDA devices supported in this environment."""
 
     init()
@@ -4305,7 +4301,7 @@ def set_device(ident: Devicelike) -> None:
     device.make_current()
 
 
-def map_cuda_device(alias: str, context: Optional[ctypes.c_void_p] = None) -> Device:
+def map_cuda_device(alias: str, context: ctypes.c_void_p | None = None) -> Device:
     """Assign a device alias to a CUDA context.
 
     This function can be used to create a wp.Device for an external CUDA context.
@@ -4400,7 +4396,7 @@ def set_mempool_enabled(device: Devicelike, enable: bool) -> None:
             raise ValueError("Memory pools are only supported on CUDA devices")
 
 
-def set_mempool_release_threshold(device: Devicelike, threshold: Union[int, float]) -> None:
+def set_mempool_release_threshold(device: Devicelike, threshold: int | float) -> None:
     """Set the CUDA memory pool release threshold on the device.
 
     This is the amount of reserved memory to hold onto before trying to release memory back to the OS.
@@ -4708,7 +4704,7 @@ def set_stream(stream: Stream, device: Devicelike = None, sync: bool = False) ->
     get_device(device).set_stream(stream, sync=sync)
 
 
-def record_event(event: Optional[Event] = None):
+def record_event(event: Event | None = None):
     """Convenience function for calling :meth:`Stream.record_event` on the current stream.
 
     Args:
@@ -4757,7 +4753,7 @@ def get_event_elapsed_time(start_event: Event, end_event: Event, synchronize: bo
     return runtime.core.cuda_event_elapsed_time(start_event.cuda_event, end_event.cuda_event)
 
 
-def wait_stream(other_stream: Stream, event: Optional[Event] = None):
+def wait_stream(other_stream: Stream, event: Event | None = None):
     """Convenience function for calling :meth:`Stream.wait_stream` on the current stream.
 
     Args:
@@ -4827,7 +4823,7 @@ class RegisteredGLBuffer:
     __fallback_warning_shown = False
 
     def __new__(cls, *args, **kwargs):
-        instance = super(RegisteredGLBuffer, cls).__new__(cls)
+        instance = super().__new__(cls)
         instance.resource = None
         return instance
 
@@ -4924,8 +4920,8 @@ class RegisteredGLBuffer:
 
 
 def zeros(
-    shape: Union[int, Tuple[int, ...], List[int], None] = None,
-    dtype=float,
+    shape: int | tuple[int, ...] | list[int] | None = None,
+    dtype: type = float,
     device: Devicelike = None,
     requires_grad: bool = False,
     pinned: bool = False,
@@ -4952,7 +4948,7 @@ def zeros(
 
 
 def zeros_like(
-    src: Array, device: Devicelike = None, requires_grad: Optional[bool] = None, pinned: Optional[bool] = None
+    src: Array, device: Devicelike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
     """Return a zero-initialized array with the same type and dimension of another array
 
@@ -4974,8 +4970,8 @@ def zeros_like(
 
 
 def ones(
-    shape: Union[int, Tuple[int, ...], List[int], None] = None,
-    dtype=float,
+    shape: int | tuple[int, ...] | list[int] | None = None,
+    dtype: type = float,
     device: Devicelike = None,
     requires_grad: bool = False,
     pinned: bool = False,
@@ -4998,7 +4994,7 @@ def ones(
 
 
 def ones_like(
-    src: Array, device: Devicelike = None, requires_grad: Optional[bool] = None, pinned: Optional[bool] = None
+    src: Array, device: Devicelike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
     """Return a one-initialized array with the same type and dimension of another array
 
@@ -5016,7 +5012,7 @@ def ones_like(
 
 
 def full(
-    shape: Union[int, Tuple[int, ...], List[int], None] = None,
+    shape: int | tuple[int, ...] | list[int] | None = None,
     value=0,
     dtype=Any,
     device: Devicelike = None,
@@ -5085,8 +5081,8 @@ def full_like(
     src: Array,
     value: Any,
     device: Devicelike = None,
-    requires_grad: Optional[bool] = None,
-    pinned: Optional[bool] = None,
+    requires_grad: bool | None = None,
+    pinned: bool | None = None,
 ) -> warp.array:
     """Return an array with all elements initialized to the given value with the same type and dimension of another array
 
@@ -5109,7 +5105,7 @@ def full_like(
 
 
 def clone(
-    src: warp.array, device: Devicelike = None, requires_grad: Optional[bool] = None, pinned: Optional[bool] = None
+    src: warp.array, device: Devicelike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
     """Clone an existing array, allocates a copy of the src memory
 
@@ -5131,7 +5127,7 @@ def clone(
 
 
 def empty(
-    shape: Union[int, Tuple[int, ...], List[int], None] = None,
+    shape: int | tuple[int, ...] | list[int] | None = None,
     dtype=float,
     device: Devicelike = None,
     requires_grad: bool = False,
@@ -5164,7 +5160,7 @@ def empty(
 
 
 def empty_like(
-    src: Array, device: Devicelike = None, requires_grad: Optional[bool] = None, pinned: Optional[bool] = None
+    src: Array, device: Devicelike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
     """Return an uninitialized array with the same type and dimension of another array
 
@@ -5199,9 +5195,9 @@ def empty_like(
 
 def from_numpy(
     arr: np.ndarray,
-    dtype: Optional[type] = None,
-    shape: Optional[Sequence[int]] = None,
-    device: Optional[Devicelike] = None,
+    dtype: type | None = None,
+    shape: Sequence[int] | None = None,
+    device: Devicelike | None = None,
     requires_grad: bool = False,
 ) -> warp.array:
     """Returns a Warp array created from a NumPy array.
@@ -5219,7 +5215,7 @@ def from_numpy(
     if dtype is None:
         base_type = warp.types.np_dtype_to_warp_type.get(arr.dtype)
         if base_type is None:
-            raise RuntimeError("Unsupported NumPy data type '{}'.".format(arr.dtype))
+            raise RuntimeError(f"Unsupported NumPy data type '{arr.dtype}'.")
 
         dim_count = len(arr.shape)
         if dim_count == 2:
@@ -5238,7 +5234,7 @@ def from_numpy(
     )
 
 
-def event_from_ipc_handle(handle, device: "Devicelike" = None) -> Event:
+def event_from_ipc_handle(handle, device: Devicelike = None) -> Event:
     """Create an event from an IPC handle.
 
     Args:
@@ -5407,10 +5403,10 @@ class Launch:
         self,
         kernel,
         device: Device,
-        hooks: Optional[KernelHooks] = None,
-        params: Optional[Sequence[Any]] = None,
-        params_addr: Optional[Sequence[ctypes.c_void_p]] = None,
-        bounds: Optional[launch_bounds_t] = None,
+        hooks: KernelHooks | None = None,
+        params: Sequence[Any] | None = None,
+        params_addr: Sequence[ctypes.c_void_p] | None = None,
+        bounds: launch_bounds_t | None = None,
         max_blocks: int = 0,
         block_dim: int = 256,
         adjoint: bool = False,
@@ -5480,7 +5476,7 @@ class Launch:
         self.adjoint: bool = adjoint
         """Whether to run the adjoint kernel instead of the forward kernel."""
 
-    def set_dim(self, dim: Union[int, List[int], Tuple[int, ...]]):
+    def set_dim(self, dim: int | list[int] | tuple[int, ...]):
         """Set the launch dimensions.
 
         Args:
@@ -5518,7 +5514,7 @@ class Launch:
         if self.params_addr:
             self.params_addr[params_index] = ctypes.c_void_p(ctypes.addressof(carg))
 
-    def set_param_at_index_from_ctype(self, index: int, value: Union[ctypes.Structure, int, float]):
+    def set_param_at_index_from_ctype(self, index: int, value: ctypes.Structure | int | float):
         """Set a kernel parameter at an index without any type conversion.
 
         Args:
@@ -5581,7 +5577,7 @@ class Launch:
         for i, v in enumerate(values):
             self.set_param_at_index_from_ctype(i, v)
 
-    def launch(self, stream: Optional[Stream] = None) -> None:
+    def launch(self, stream: Stream | None = None) -> None:
         """Launch the kernel.
 
         Args:
@@ -5630,13 +5626,13 @@ class Launch:
 
 def launch(
     kernel,
-    dim: Union[int, Sequence[int]],
+    dim: int | Sequence[int],
     inputs: Sequence = [],
     outputs: Sequence = [],
     adj_inputs: Sequence = [],
     adj_outputs: Sequence = [],
     device: Devicelike = None,
-    stream: Optional[Stream] = None,
+    stream: Stream | None = None,
     adjoint: bool = False,
     record_tape: bool = True,
     record_cmd: bool = False,
@@ -5980,7 +5976,7 @@ def synchronize_device(device: Devicelike = None):
         runtime.core.cuda_context_synchronize(device.context)
 
 
-def synchronize_stream(stream_or_device: Union[Stream, Devicelike, None] = None):
+def synchronize_stream(stream_or_device: Stream | Devicelike | None = None):
     """Synchronize the calling CPU thread with any outstanding CUDA work on the specified stream.
 
     This function allows the host application code to ensure that all kernel launches
@@ -6010,7 +6006,7 @@ def synchronize_event(event: Event):
     runtime.core.cuda_event_synchronize(event.cuda_event)
 
 
-def force_load(device: Union[Device, str, List[Device], List[str]] = None, modules: List[Module] = None):
+def force_load(device: Device | str | list[Device] | list[str] | None = None, modules: list[Module] | None = None):
     """Force user-defined kernels to be compiled and loaded
 
     Args:
@@ -6042,7 +6038,7 @@ def force_load(device: Union[Device, str, List[Device], List[str]] = None, modul
 
 
 def load_module(
-    module: Union[Module, types.ModuleType, str] = None, device: Union[Device, str] = None, recursive: bool = False
+    module: Module | types.ModuleType | str | None = None, device: Device | str | None = None, recursive: bool = False
 ):
     """Force user-defined module to be compiled and loaded
 
@@ -6084,7 +6080,7 @@ def load_module(
     force_load(device=device, modules=modules)
 
 
-def set_module_options(options: Dict[str, Any], module: Optional[Any] = None):
+def set_module_options(options: dict[str, Any], module: Any = None):
     """Set options for the current module.
 
     Options can be used to control runtime compilation and code-generation
@@ -6108,7 +6104,7 @@ def set_module_options(options: Dict[str, Any], module: Optional[Any] = None):
     get_module(m.__name__).mark_modified()
 
 
-def get_module_options(module: Optional[Any] = None) -> Dict[str, Any]:
+def get_module_options(module: Any = None) -> dict[str, Any]:
     """Returns a list of options for the current module."""
     if module is None:
         m = inspect.getmodule(inspect.stack()[1][0])
@@ -6120,8 +6116,8 @@ def get_module_options(module: Optional[Any] = None) -> Dict[str, Any]:
 
 def capture_begin(
     device: Devicelike = None,
-    stream: Optional[Stream] = None,
-    force_module_load: Optional[bool] = None,
+    stream: Stream | None = None,
+    force_module_load: bool | None = None,
     external: bool = False,
 ):
     """Begin capture of a CUDA graph
@@ -6190,7 +6186,7 @@ def capture_begin(
     runtime.captures[capture_id] = graph
 
 
-def capture_end(device: Devicelike = None, stream: Optional[Stream] = None) -> Graph:
+def capture_end(device: Devicelike = None, stream: Stream | None = None) -> Graph:
     """End the capture of a CUDA graph.
 
     Args:
@@ -6232,7 +6228,7 @@ def capture_end(device: Devicelike = None, stream: Optional[Stream] = None) -> G
     return graph
 
 
-def capture_launch(graph: Graph, stream: Optional[Stream] = None):
+def capture_launch(graph: Graph, stream: Stream | None = None):
     """Launch a previously captured CUDA graph
 
     Args:
@@ -6258,7 +6254,7 @@ def copy(
     dest_offset: int = 0,
     src_offset: int = 0,
     count: int = 0,
-    stream: Optional[Stream] = None,
+    stream: Stream | None = None,
 ):
     """Copy array contents from `src` to `dest`.
 

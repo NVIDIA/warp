@@ -269,8 +269,8 @@ if __name__ == "__main__":
 
                 stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "rocks.usd"))
                 mesh = UsdGeom.Mesh(stage.GetPrimAtPath("/root/rocks"))
-                points = np.array((mesh.GetPointsAttr().Get()))
-                counts = np.array((mesh.GetFaceVertexCountsAttr().Get()))
+                points = np.array(mesh.GetPointsAttr().Get())
+                counts = np.array(mesh.GetFaceVertexCountsAttr().Get())
                 indices = np.array(mesh.GetFaceVertexIndicesAttr().Get())
                 ref_geom = (points, counts, indices)
             except Exception:

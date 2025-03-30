@@ -98,7 +98,7 @@ def compute(db: OgnTextureWriteDatabase) -> None:
             return
 
     dim_count = min(max(db.inputs.dimCount, 0), wp.types.ARRAY_MAX_DIMS)
-    resolution = tuple(max(getattr(db.inputs, "dim{}".format(i + 1)), 0) for i in range(dim_count))
+    resolution = tuple(max(getattr(db.inputs, f"dim{i + 1}"), 0) for i in range(dim_count))
 
     # We need to dereference OG's attribute pointer to get the actual pointer
     # to the data.

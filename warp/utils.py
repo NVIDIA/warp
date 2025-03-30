@@ -21,7 +21,7 @@ import os
 import sys
 import time
 import warnings
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable
 
 import numpy as np
 
@@ -52,7 +52,7 @@ def warp_showwarning(message, category, filename, lineno, file=None, line=None):
 
         if line:
             line = line.strip()
-            s += "  %s\n" % line
+            s += f"  {line}\n"
     else:
         # simple warning
         s = f"Warp {category.__name__}: {message}\n"
@@ -634,7 +634,7 @@ def mem_report():  # pragma: no cover
             element_size = tensor.storage().element_size()
             mem = numel * element_size / 1024 / 1024  # 32bit=4Byte, MByte
             total_mem += mem
-        print("Type: %s Total Tensors: %d \tUsed Memory Space: %.2f MBytes" % (mem_type, total_numel, total_mem))
+        print(f"Type: {mem_type:<4} | Total Tensors: {total_numel:>8} | Used Memory: {total_mem:>8.2f} MB")
 
     import gc
 
@@ -712,7 +712,7 @@ class ScopedStream:
         device (Device): The device associated with the stream.
     """
 
-    def __init__(self, stream: Optional[wp.Stream], sync_enter: bool = True, sync_exit: bool = False):
+    def __init__(self, stream: wp.Stream | None, sync_enter: bool = True, sync_exit: bool = False):
         """Initializes the context manager with a stream and synchronization options.
 
         Args:
@@ -765,12 +765,12 @@ class ScopedTimer:
         active: bool = True,
         print: bool = True,
         detailed: bool = False,
-        dict: Optional[Dict[str, List[float]]] = None,
+        dict: dict[str, list[float]] | None = None,
         use_nvtx: bool = False,
-        color: Union[int, str] = "rapids",
+        color: int | str = "rapids",
         synchronize: bool = False,
         cuda_filter: int = 0,
-        report_func: Optional[Callable[[List[TimingResult], str], None]] = None,
+        report_func: Callable[[list[TimingResult], str], None] | None = None,
         skip_tape: bool = False,
     ):
         """Context manager object for a timer
@@ -792,7 +792,7 @@ class ScopedTimer:
         Attributes:
             extra_msg (str): Can be set to a string that will be added to the printout at context exit.
             elapsed (float): The duration of the ``with`` block used with this object
-            timing_results (List[TimingResult]): The list of activity timing results, if collection was requested using ``cuda_filter``
+            timing_results (list[TimingResult]): The list of activity timing results, if collection was requested using ``cuda_filter``
         """
         self.name = name
         self.active = active and self.enabled
@@ -1025,7 +1025,7 @@ def timing_begin(cuda_filter: int = TIMING_ALL, synchronize: bool = True) -> Non
     warp.context.runtime.core.cuda_timing_begin(cuda_filter)
 
 
-def timing_end(synchronize: bool = True) -> List[TimingResult]:
+def timing_end(synchronize: bool = True) -> list[TimingResult]:
     """End detailed activity timing.
 
     Parameters:
@@ -1071,7 +1071,7 @@ def timing_end(synchronize: bool = True) -> List[TimingResult]:
     return results
 
 
-def timing_print(results: List[TimingResult], indent: str = "") -> None:
+def timing_print(results: list[TimingResult], indent: str = "") -> None:
     """Print timing results.
 
     Parameters:

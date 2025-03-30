@@ -316,7 +316,7 @@ if __name__ == "__main__":
             print(f"[{i:4d}/{example.num_frames}]")
 
         frame_times = example.profiler["step"]
-        print("\nAverage frame sim time: {:.2f} ms".format(sum(frame_times) / len(frame_times)))
+        print(f"\nAverage frame sim time: {sum(frame_times) / len(frame_times):.2f} ms")
 
         if example.renderer:
             example.renderer.save()

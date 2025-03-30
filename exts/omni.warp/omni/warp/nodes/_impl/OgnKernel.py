@@ -127,24 +127,20 @@ def infer_kernel_shape(
     source = db.inputs.dimSource
     if source == EXPLICIT_SOURCE:
         dim_count = min(max(db.inputs.dimCount, 0), wp.types.ARRAY_MAX_DIMS)
-        return tuple(max(getattr(db.inputs, "dim{}".format(i + 1)), 0) for i in range(dim_count))
+        return tuple(max(getattr(db.inputs, f"dim{i + 1}"), 0) for i in range(dim_count))
 
     try:
         value = getattr(db.inputs, source)
     except AttributeError as e:
         raise RuntimeError(
-            "The attribute '{}' used to source the dimension doesn't exist.".format(
-                attr_join_name(ATTR_PORT_TYPE_INPUT, source)
-            )
+            f"The attribute '{attr_join_name(ATTR_PORT_TYPE_INPUT, source)}' used to source the dimension doesn't exist."
         ) from e
 
     try:
         return (value.shape[0],)
     except AttributeError as e:
         raise RuntimeError(
-            "The attribute '{}' used to source the dimension isn't an array.".format(
-                attr_join_name(ATTR_PORT_TYPE_INPUT, source)
-            )
+            f"The attribute '{attr_join_name(ATTR_PORT_TYPE_INPUT, source)}' used to source the dimension isn't an array."
         ) from e
 
 

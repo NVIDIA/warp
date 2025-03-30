@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import copy
 import math
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import numpy as np
 
@@ -187,7 +187,7 @@ class SDF:
         return self.volume.id
 
     def __hash__(self):
-        return hash((self.volume.id))
+        return hash(self.volume.id)
 
 
 class Mesh:
@@ -219,7 +219,7 @@ class Mesh:
         com (Vec3): The center of mass of the body
     """
 
-    def __init__(self, vertices: List[Vec3], indices: List[int], compute_inertia=True, is_solid=True):
+    def __init__(self, vertices: list[Vec3], indices: list[int], compute_inertia=True, is_solid=True):
         """Construct a Mesh object from a triangle mesh
 
         The mesh center of mass and inertia tensor will automatically be
@@ -282,24 +282,24 @@ class State:
     """
 
     def __init__(self):
-        self.particle_q: Optional[wp.array] = None
+        self.particle_q: wp.array | None = None
         """Array of 3D particle positions with shape ``(particle_count,)`` and type :class:`vec3`."""
 
-        self.particle_qd: Optional[wp.array] = None
+        self.particle_qd: wp.array | None = None
         """Array of 3D particle velocities with shape ``(particle_count,)`` and type :class:`vec3`."""
 
-        self.particle_f: Optional[wp.array] = None
+        self.particle_f: wp.array | None = None
         """Array of 3D particle forces with shape ``(particle_count,)`` and type :class:`vec3`."""
 
-        self.body_q: Optional[wp.array] = None
+        self.body_q: wp.array | None = None
         """Array of body coordinates (7-dof transforms) in maximal coordinates with shape ``(body_count,)`` and type :class:`transform`."""
 
-        self.body_qd: Optional[wp.array] = None
+        self.body_qd: wp.array | None = None
         """Array of body velocities in maximal coordinates (first three entries represent angular velocity,
         last three entries represent linear velocity) with shape ``(body_count,)`` and type :class:`spatial_vector`.
         """
 
-        self.body_f: Optional[wp.array] = None
+        self.body_f: wp.array | None = None
         """Array of body forces in maximal coordinates (first three entries represent torque, last three
         entries represent linear force) with shape ``(body_count,)`` and type :class:`spatial_vector`.
 
@@ -309,10 +309,10 @@ class State:
             assumes the wrenches are measured w.r.t. world origin.
         """
 
-        self.joint_q: Optional[wp.array] = None
+        self.joint_q: wp.array | None = None
         """Array of generalized joint coordinates with shape ``(joint_coord_count,)`` and type ``float``."""
 
-        self.joint_qd: Optional[wp.array] = None
+        self.joint_qd: wp.array | None = None
         """Array of generalized joint velocities with shape ``(joint_dof_count,)`` and type ``float``."""
 
     def clear_forces(self) -> None:
@@ -372,7 +372,7 @@ class Control:
     should generally be created using the :func:`Model.control()` function.
     """
 
-    def __init__(self, model: Model = None):
+    def __init__(self, model: Model | None = None):
         if model:
             wp.utils.warn(
                 "Passing arguments to Control's __init__ is deprecated\n"
@@ -381,16 +381,16 @@ class Control:
                 stacklevel=2,
             )
 
-        self.joint_act: Optional[wp.array] = None
+        self.joint_act: wp.array | None = None
         """Array of joint control inputs with shape ``(joint_axis_count,)`` and type ``float``."""
 
-        self.tri_activations: Optional[wp.array] = None
+        self.tri_activations: wp.array | None = None
         """Array of triangle element activations with shape ``(tri_count,)`` and type ``float``."""
 
-        self.tet_activations: Optional[wp.array] = None
+        self.tet_activations: wp.array | None = None
         """Array of tetrahedral element activations with shape with shape ``(tet_count,) and type ``float``."""
 
-        self.muscle_activations: Optional[wp.array] = None
+        self.muscle_activations: wp.array | None = None
         """Array of muscle activations with shape ``(muscle_count,)`` and type ``float``."""
 
     def clear(self) -> None:
@@ -499,7 +499,7 @@ def compute_shape_mass(type, scale, src, density, is_solid, thickness):
             vertices = np.array(src.vertices) * np.array(scale)
             m, c, I, vol = compute_mesh_inertia(density, vertices, src.indices, is_solid, thickness)
             return m, c, I
-    raise ValueError("Unsupported shape type: {}".format(type))
+    raise ValueError(f"Unsupported shape type: {type}")
 
 
 class Model:
@@ -1573,12 +1573,12 @@ class ModelBuilder:
     # register a rigid body and return its index.
     def add_body(
         self,
-        origin: Optional[Transform] = None,
+        origin: Transform | None = None,
         armature: float = 0.0,
-        com: Optional[Vec3] = None,
-        I_m: Optional[Mat33] = None,
+        com: Vec3 | None = None,
+        I_m: Mat33 | None = None,
         m: float = 0.0,
-        name: str = None,
+        name: str | None = None,
     ) -> int:
         """Adds a rigid body to the model.
 
@@ -1637,11 +1637,11 @@ class ModelBuilder:
         joint_type: wp.constant,
         parent: int,
         child: int,
-        linear_axes: Optional[List[JointAxis]] = None,
-        angular_axes: Optional[List[JointAxis]] = None,
-        name: str = None,
-        parent_xform: Optional[wp.transform] = None,
-        child_xform: Optional[wp.transform] = None,
+        linear_axes: list[JointAxis] | None = None,
+        angular_axes: list[JointAxis] | None = None,
+        name: str | None = None,
+        parent_xform: wp.transform | None = None,
+        child_xform: wp.transform | None = None,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
         armature: float = 1e-2,
@@ -1777,21 +1777,21 @@ class ModelBuilder:
         self,
         parent: int,
         child: int,
-        parent_xform: Optional[wp.transform] = None,
-        child_xform: Optional[wp.transform] = None,
+        parent_xform: wp.transform | None = None,
+        child_xform: wp.transform | None = None,
         axis: Vec3 = (1.0, 0.0, 0.0),
-        target: float = None,
+        target: float | None = None,
         target_ke: float = 0.0,
         target_kd: float = 0.0,
         mode: int = JOINT_MODE_FORCE,
         limit_lower: float = -2 * math.pi,
         limit_upper: float = 2 * math.pi,
-        limit_ke: float = None,
-        limit_kd: float = None,
+        limit_ke: float | None = None,
+        limit_kd: float | None = None,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
         armature: float = 1e-2,
-        name: str = None,
+        name: str | None = None,
         collision_filter_parent: bool = True,
         enabled: bool = True,
     ) -> int:
@@ -1867,21 +1867,21 @@ class ModelBuilder:
         self,
         parent: int,
         child: int,
-        parent_xform: Optional[wp.transform] = None,
-        child_xform: Optional[wp.transform] = None,
+        parent_xform: wp.transform | None = None,
+        child_xform: wp.transform | None = None,
         axis: Vec3 = (1.0, 0.0, 0.0),
-        target: float = None,
+        target: float | None = None,
         target_ke: float = 0.0,
         target_kd: float = 0.0,
         mode: int = JOINT_MODE_FORCE,
         limit_lower: float = -1e4,
         limit_upper: float = 1e4,
-        limit_ke: float = None,
-        limit_kd: float = None,
+        limit_ke: float | None = None,
+        limit_kd: float | None = None,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
         armature: float = 1e-2,
-        name: str = None,
+        name: str | None = None,
         collision_filter_parent: bool = True,
         enabled: bool = True,
     ) -> int:
@@ -1957,12 +1957,12 @@ class ModelBuilder:
         self,
         parent: int,
         child: int,
-        parent_xform: Optional[wp.transform] = None,
-        child_xform: Optional[wp.transform] = None,
+        parent_xform: wp.transform | None = None,
+        child_xform: wp.transform | None = None,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
         armature: float = 1e-2,
-        name: str = None,
+        name: str | None = None,
         collision_filter_parent: bool = True,
         enabled: bool = True,
     ) -> int:
@@ -2008,12 +2008,12 @@ class ModelBuilder:
         self,
         parent: int,
         child: int,
-        parent_xform: Optional[wp.transform] = None,
-        child_xform: Optional[wp.transform] = None,
+        parent_xform: wp.transform | None = None,
+        child_xform: wp.transform | None = None,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
         armature: float = 1e-2,
-        name: str = None,
+        name: str | None = None,
         collision_filter_parent: bool = True,
         enabled: bool = True,
     ) -> int:
@@ -2059,11 +2059,11 @@ class ModelBuilder:
     def add_joint_free(
         self,
         child: int,
-        parent_xform: Optional[wp.transform] = None,
-        child_xform: Optional[wp.transform] = None,
+        parent_xform: wp.transform | None = None,
+        child_xform: wp.transform | None = None,
         armature: float = 0.0,
         parent: int = -1,
-        name: str = None,
+        name: str | None = None,
         collision_filter_parent: bool = True,
         enabled: bool = True,
     ) -> int:
@@ -2106,8 +2106,8 @@ class ModelBuilder:
         self,
         parent: int,
         child: int,
-        parent_xform: Optional[wp.transform] = None,
-        child_xform: Optional[wp.transform] = None,
+        parent_xform: wp.transform | None = None,
+        child_xform: wp.transform | None = None,
         min_distance: float = -1.0,
         max_distance: float = 1.0,
         compliance: float = 0.0,
@@ -2163,12 +2163,12 @@ class ModelBuilder:
         child: int,
         axis_0: JointAxis,
         axis_1: JointAxis,
-        parent_xform: Optional[wp.transform] = None,
-        child_xform: Optional[wp.transform] = None,
+        parent_xform: wp.transform | None = None,
+        child_xform: wp.transform | None = None,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
         armature: float = 1e-2,
-        name: str = None,
+        name: str | None = None,
         collision_filter_parent: bool = True,
         enabled: bool = True,
     ) -> int:
@@ -2220,12 +2220,12 @@ class ModelBuilder:
         axis_0: JointAxis,
         axis_1: JointAxis,
         axis_2: JointAxis,
-        parent_xform: Optional[wp.transform] = None,
-        child_xform: Optional[wp.transform] = None,
+        parent_xform: wp.transform | None = None,
+        child_xform: wp.transform | None = None,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
         armature: float = 1e-2,
-        name: str = None,
+        name: str | None = None,
         collision_filter_parent: bool = True,
         enabled: bool = True,
     ) -> int:
@@ -2278,11 +2278,11 @@ class ModelBuilder:
         self,
         parent: int,
         child: int,
-        linear_axes: Optional[List[JointAxis]] = None,
-        angular_axes: Optional[List[JointAxis]] = None,
-        name: str = None,
-        parent_xform: Optional[wp.transform] = None,
-        child_xform: Optional[wp.transform] = None,
+        linear_axes: list[JointAxis] | None = None,
+        angular_axes: list[JointAxis] | None = None,
+        name: str | None = None,
+        parent_xform: wp.transform | None = None,
+        child_xform: wp.transform | None = None,
         linear_compliance: float = 0.0,
         angular_compliance: float = 0.0,
         armature: float = 1e-2,
@@ -2727,7 +2727,7 @@ class ModelBuilder:
 
     # muscles
     def add_muscle(
-        self, bodies: List[int], positions: List[Vec3], f0: float, lm: float, lt: float, lmax: float, pen: float
+        self, bodies: list[int], positions: list[Vec3], f0: float, lm: float, lt: float, lmax: float, pen: float
     ) -> float:
         """Adds a muscle-tendon activation unit.
 
@@ -3232,19 +3232,19 @@ class ModelBuilder:
     def add_shape_mesh(
         self,
         body: int,
-        pos: Optional[Vec3] = None,
-        rot: Optional[Quat] = None,
-        mesh: Optional[Mesh] = None,
-        scale: Optional[Vec3] = None,
-        density: float = None,
-        ke: float = None,
-        kd: float = None,
-        kf: float = None,
-        ka: float = None,
-        mu: float = None,
-        restitution: float = None,
+        pos: Vec3 | None = None,
+        rot: Quat | None = None,
+        mesh: Mesh | None = None,
+        scale: Vec3 | None = None,
+        density: float | None = None,
+        ke: float | None = None,
+        kd: float | None = None,
+        kf: float | None = None,
+        ka: float | None = None,
+        mu: float | None = None,
+        restitution: float | None = None,
         is_solid: bool = True,
-        thickness: float = None,
+        thickness: float | None = None,
         has_ground_collision: bool = True,
         has_shape_collision: bool = True,
         collision_group: int = -1,
@@ -3611,15 +3611,15 @@ class ModelBuilder:
 
     def add_triangles(
         self,
-        i: List[int],
-        j: List[int],
-        k: List[int],
-        tri_ke: Optional[List[float]] = None,
-        tri_ka: Optional[List[float]] = None,
-        tri_kd: Optional[List[float]] = None,
-        tri_drag: Optional[List[float]] = None,
-        tri_lift: Optional[List[float]] = None,
-    ) -> List[float]:
+        i: list[int],
+        j: list[int],
+        k: list[int],
+        tri_ke: list[float] | None = None,
+        tri_ka: list[float] | None = None,
+        tri_kd: list[float] | None = None,
+        tri_drag: list[float] | None = None,
+        tri_lift: list[float] | None = None,
+    ) -> list[float]:
         """Adds triangular FEM elements between groups of three particles in the system.
 
         Triangles are modeled as viscoelastic elements with elastic stiffness and damping
@@ -3754,10 +3754,10 @@ class ModelBuilder:
         j: int,
         k: int,
         l: int,
-        rest: float = None,
-        edge_ke: float = None,
-        edge_kd: float = None,
-    ):
+        rest: float | None = None,
+        edge_ke: float | None = None,
+        edge_kd: float | None = None,
+    ) -> None:
         """Adds a bending edge element between four particles in the system.
 
         Bending elements are designed to be between two connected triangles. Then
@@ -3809,10 +3809,10 @@ class ModelBuilder:
         j,
         k,
         l,
-        rest: Optional[List[float]] = None,
-        edge_ke: Optional[List[float]] = None,
-        edge_kd: Optional[List[float]] = None,
-    ):
+        rest: list[float] | None = None,
+        edge_ke: list[float] | None = None,
+        edge_kd: list[float] | None = None,
+    ) -> None:
         """Adds bending edge elements between groups of four particles in the system.
 
         Bending elements are designed to be between two connected triangles. Then
@@ -4030,23 +4030,23 @@ class ModelBuilder:
         rot: Quat,
         scale: float,
         vel: Vec3,
-        vertices: List[Vec3],
-        indices: List[int],
+        vertices: list[Vec3],
+        indices: list[int],
         density: float,
         edge_callback=None,
         face_callback=None,
-        tri_ke: float = None,
-        tri_ka: float = None,
-        tri_kd: float = None,
-        tri_drag: float = None,
-        tri_lift: float = None,
-        edge_ke: float = None,
-        edge_kd: float = None,
+        tri_ke: float | None = None,
+        tri_ka: float | None = None,
+        tri_kd: float | None = None,
+        tri_drag: float | None = None,
+        tri_lift: float | None = None,
+        edge_ke: float | None = None,
+        edge_kd: float | None = None,
         add_springs: bool = False,
-        spring_ke: float = None,
-        spring_kd: float = None,
-        particle_radius: float = None,
-    ):
+        spring_ke: float | None = None,
+        spring_kd: float | None = None,
+        particle_radius: float | None = None,
+    ) -> None:
         """Helper to create a cloth model from a regular triangle mesh
 
         Creates one FEM triangle element and one bending element for every face
@@ -4314,18 +4314,18 @@ class ModelBuilder:
         rot: Quat,
         scale: float,
         vel: Vec3,
-        vertices: List[Vec3],
-        indices: List[int],
+        vertices: list[Vec3],
+        indices: list[int],
         density: float,
         k_mu: float,
         k_lambda: float,
         k_damp: float,
-        tri_ke: float = None,
-        tri_ka: float = None,
-        tri_kd: float = None,
-        tri_drag: float = None,
-        tri_lift: float = None,
-    ):
+        tri_ke: float | None = None,
+        tri_ka: float | None = None,
+        tri_kd: float | None = None,
+        tri_drag: float | None = None,
+        tri_lift: float | None = None,
+    ) -> None:
         """Helper to create a tetrahedral model from an input tetrahedral mesh
 
         Args:

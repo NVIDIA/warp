@@ -77,7 +77,7 @@ def create_mlp(m, n):
 
     class FeedForward(torch.nn.Module):
         def __init__(self, input_size, hidden_size):
-            super(FeedForward, self).__init__()
+            super().__init__()
 
             self.input_size = input_size
             self.hidden_size = hidden_size

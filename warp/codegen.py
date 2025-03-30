@@ -26,7 +26,7 @@ import re
 import sys
 import textwrap
 import types
-from typing import Any, Callable, Dict, Mapping, Optional, Sequence, get_args, get_origin
+from typing import Any, Callable, Mapping, Sequence, get_args, get_origin
 
 import warp.config
 from warp.types import *
@@ -57,7 +57,7 @@ class WarpCodegenKeyError(KeyError):
 
 
 # map operator to function name
-builtin_operators: Dict[type[ast.AST], str] = {}
+builtin_operators: dict[type[ast.AST], str] = {}
 
 # see https://www.ics.uci.edu/~pattis/ICS-31/lectures/opexp.pdf for a
 # nice overview of python operators
@@ -411,7 +411,7 @@ class Struct:
         self.cls = cls
         self.module = module
         self.key = key
-        self.vars: Dict[str, Var] = {}
+        self.vars: dict[str, Var] = {}
 
         annotations = get_annotations(self.cls)
         for label, type in annotations.items():
@@ -620,9 +620,9 @@ class Var:
         label: str,
         type: type,
         requires_grad: builtins.bool = False,
-        constant: Optional[builtins.bool] = None,
+        constant: builtins.bool | None = None,
         prefix: builtins.bool = True,
-        relative_lineno: Optional[int] = None,
+        relative_lineno: int | None = None,
     ):
         # convert built-in types to wp types
         if type == float:
@@ -848,7 +848,7 @@ class Adjoint:
         skip_reverse_codegen=False,
         custom_reverse_mode=False,
         custom_reverse_num_input_args=-1,
-        transformers: Optional[List[ast.NodeTransformer]] = None,
+        transformers: list[ast.NodeTransformer] | None = None,
     ):
         adj.func = func
 
@@ -935,7 +935,7 @@ class Adjoint:
 
         # try to replace static expressions by their constant result if the
         # expression can be evaluated at declaration time
-        adj.static_expressions: Dict[str, Any] = {}
+        adj.static_expressions: dict[str, Any] = {}
         if "static" in adj.source:
             adj.replace_static_expressions()
 
@@ -1161,7 +1161,7 @@ class Adjoint:
 
         return var
 
-    def get_line_directive(adj, statement: str, relative_lineno: Optional[int] = None) -> Optional[str]:
+    def get_line_directive(adj, statement: str, relative_lineno: int | None = None) -> str | None:
         """Get a line directive for the given statement.
 
         Args:
@@ -1187,7 +1187,7 @@ class Adjoint:
                 return f'#line {line} "{normalized_path}"'
         return None
 
-    def add_forward(adj, statement: str, replay: Optional[str] = None, skip_replay: builtins.bool = False) -> None:
+    def add_forward(adj, statement: str, replay: str | None = None, skip_replay: builtins.bool = False) -> None:
         """Append a statement to the forward pass."""
 
         if line_directive := adj.get_line_directive(statement, adj.lineno):
@@ -2864,7 +2864,7 @@ class Adjoint:
         raise ValueError(f"value of type {type(value)} cannot be constructed inside Warp kernels")
 
     # find the source code string of an AST node
-    def extract_node_source(adj, node) -> Optional[str]:
+    def extract_node_source(adj, node) -> str | None:
         if not hasattr(node, "lineno") or not hasattr(node, "col_offset"):
             return None
 
@@ -3119,14 +3119,14 @@ class Adjoint:
         # return the Python code corresponding to the given AST node
         return ast.get_source_segment(adj.source, node)
 
-    def get_references(adj) -> Tuple[Dict[str, Any], Dict[Any, Any], Dict[warp.context.Function, Any]]:
+    def get_references(adj) -> tuple[dict[str, Any], dict[Any, Any], dict[warp.context.Function, Any]]:
         """Traverses ``adj.tree`` and returns referenced constants, types, and user-defined functions."""
 
         local_variables = set()  # Track local variables appearing on the LHS so we know when variables are shadowed
 
-        constants: Dict[str, Any] = {}
-        types: Dict[Union[Struct, type], Any] = {}
-        functions: Dict[warp.context.Function, Any] = {}
+        constants: dict[str, Any] = {}
+        types: dict[Struct | type, Any] = {}
+        functions: dict[warp.context.Function, Any] = {}
 
         for node in ast.walk(adj.tree):
             if isinstance(node, ast.Name) and node.id not in local_variables:

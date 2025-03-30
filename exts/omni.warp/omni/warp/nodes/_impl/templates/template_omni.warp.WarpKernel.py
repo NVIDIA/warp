@@ -194,7 +194,7 @@ class CustomLayout:
                         wp.types.ARRAY_MAX_DIMS,
                     )
                     for i in range(dim_count):
-                        prop = find_prop(props, "inputs:dim{}".format(i + 1))
+                        prop = find_prop(props, f"inputs:dim{i + 1}")
                         if prop is not None:
                             CustomLayoutProperty(
                                 prop.prop_name,
@@ -232,6 +232,6 @@ class CustomLayout:
                             ),
                         )
                 else:
-                    raise RuntimeError("Unexpected code provider '{}'".format(code_provider))
+                    raise RuntimeError(f"Unexpected code provider '{code_provider}'")
 
         return frame.apply(props)

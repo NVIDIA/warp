@@ -859,8 +859,8 @@ class Plot:
         value_range = field_options.get("clim", None)
         if value_range is None:
             value_range = (
-                min((np.min(_value_or_magnitude(v)) for v in values)),
-                max((np.max(_value_or_magnitude(v)) for v in values)),
+                min(np.min(_value_or_magnitude(v)) for v in values),
+                max(np.max(_value_or_magnitude(v)) for v in values),
             )
 
         return value_range

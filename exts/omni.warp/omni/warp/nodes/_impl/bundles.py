@@ -111,7 +111,7 @@ def bundle_create_child(
     if child_idx < bundle.bundle.get_child_bundle_count():
         return bundle.bundle.get_child_bundle(child_idx)
 
-    return bundle.bundle.create_child_bundle("prim{}".format(child_idx))
+    return bundle.bundle.create_child_bundle(f"prim{child_idx}")
 
 
 def bundle_get_attr(

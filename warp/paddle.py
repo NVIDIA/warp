@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 import ctypes
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 import numpy
 
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 
 # return the warp device corresponding to a paddle device
-def device_from_paddle(paddle_device: Union[Place, CPUPlace, CUDAPinnedPlace, CUDAPlace, str]) -> warp.context.Device:
+def device_from_paddle(paddle_device: Place | CPUPlace | CUDAPinnedPlace | CUDAPlace | str) -> warp.context.Device:
     """Return the Warp device corresponding to a Paddle device.
 
     Args:
@@ -218,9 +218,9 @@ dtype_is_compatible.compatible_sets = None
 # wrap a paddle tensor to a wp array, data is not copied
 def from_paddle(
     t: paddle.Tensor,
-    dtype: Optional[paddle.dtype] = None,
-    requires_grad: Optional[bool] = None,
-    grad: Optional[paddle.Tensor] = None,
+    dtype: paddle.dtype | None = None,
+    requires_grad: bool | None = None,
+    grad: paddle.Tensor | None = None,
     return_ctype: bool = False,
 ) -> warp.array:
     """Convert a Paddle tensor to a Warp array without copying the data.

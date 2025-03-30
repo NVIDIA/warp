@@ -243,7 +243,7 @@ def run_benchmark(mode, dim, timers, render=False):
             # run one warm-up iteration to accurately measure initialization time (some engines do lazy init)
             positions = integrator.simulate(sim_dt, sim_substeps)
 
-    label = "Dim ({}^2)".format(dim)
+    label = f"Dim ({dim}^2)"
 
     # run simulation
     for _i in range(sim_frames):
@@ -275,7 +275,7 @@ run_benchmark(mode, 128, timers, render=False)
 # write results
 
 for k, v in timers.items():
-    print("{:16} min: {:8.2f} max: {:8.2f} avg: {:8.2f}".format(k, np.min(v), np.max(v), np.mean(v)))
+    print(f"{k:16} min: {np.min(v):8.2f} max: {np.max(v):8.2f} avg: {np.mean(v):8.2f}")
 
 report = open(os.path.join("benchmark.csv"), "a")
 writer = csv.writer(report, delimiter=",")
