@@ -118,7 +118,7 @@
 - Support for loading tiles from arrays whose shapes are not multiples of the tile dimensions.
   Out-of-bounds reads will be zero-filled and out-of-bounds writes will be skipped.
 - Support for higher-dimensional (up to 4D) tile shapes and memory operations.
-- Add intersection-free self-contact support in `wp.sim.VDBIntegrator` by passing `handle_self_contact=True`.
+- Add intersection-free self-contact support in `wp.sim.VBDIntegrator` by passing `handle_self_contact=True`.
   See `warp/examples/sim/example_cloth_self_contact.py` for a usage example.
 - Add functions `wp.norm_l1()`, `wp.norm_l2()`, `wp.norm_huber()`, `wp.norm_pseudo_huber()`, and `wp.smooth_normalize()`
   for vector types to a new `wp.math` module.
