@@ -228,6 +228,9 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
             "--extended-lambda",
         ]
 
+        if ctk_version >= (12, 8) and args.compile_time_trace:
+            nvcc_opts.append("--fdevice-time-trace=build_warp_time_trace")
+
         if args.fast_math:
             nvcc_opts.append("--use_fast_math")
 

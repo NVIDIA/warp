@@ -81,6 +81,12 @@ parser.add_argument("--libmathdx", action="store_true", help="Build Warp with Ma
 parser.add_argument("--no_libmathdx", dest="libmathdx", action="store_false")
 parser.set_defaults(libmathdx=True)
 
+parser.add_argument(
+    "--compile_time_trace",
+    action="store_true",
+    help="Output a 'build_warp_time_trace.json' trace file for the NVCC compilation process, default disabled",
+)
+
 args = parser.parse_args()
 
 # set build output path off this file
