@@ -1952,6 +1952,7 @@ class Module:
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": warp.config.mode,
             "block_dim": 256,
+            "compile_time_trace": warp.config.compile_time_trace,
         }
 
         # Module dependencies are determined by scanning each function
@@ -2247,6 +2248,7 @@ class Module:
                                 fast_math=self.options["fast_math"],
                                 fuse_fp=self.options["fuse_fp"],
                                 lineinfo=self.options["lineinfo"],
+                                compile_time_trace=self.options["compile_time_trace"],
                                 ltoirs=builder.ltoirs.values(),
                                 fatbins=builder.fatbins.values(),
                             )
@@ -3702,6 +3704,7 @@ class Runtime:
                 ctypes.c_bool,  # fast_math
                 ctypes.c_bool,  # fuse_fp
                 ctypes.c_bool,  # lineinfo
+                ctypes.c_bool,  # compile_time_trace
                 ctypes.c_char_p,  # output_path
                 ctypes.c_size_t,  # num_ltoirs
                 ctypes.POINTER(ctypes.c_char_p),  # ltoirs

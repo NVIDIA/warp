@@ -39,6 +39,7 @@ def build_cuda(
     fast_math=False,
     fuse_fp=True,
     lineinfo=False,
+    compile_time_trace=False,
     ltoirs=None,
     fatbins=None,
 ) -> None:
@@ -79,6 +80,7 @@ def build_cuda(
                 fast_math,
                 fuse_fp,
                 lineinfo,
+                compile_time_trace,
                 output_path,
                 num_link,
                 arr_link,

@@ -1054,7 +1054,7 @@ WP_API bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret
 WP_API bool cuda_graph_launch(void* graph, void* stream) { return false; }
 WP_API bool cuda_graph_destroy(void* context, void* graph) { return false; }
 
-WP_API size_t cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types) { return 0; }
+WP_API size_t cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, bool compile_time_trace, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types) { return 0; }
 
 WP_API void* cuda_load_module(void* context, const char* ptx) { return NULL; }
 WP_API void cuda_unload_module(void* context, void* module) {}

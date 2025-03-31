@@ -2841,7 +2841,7 @@ bool write_file(const char* data, size_t size, std::string filename, const char*
     }
 #endif
 
-size_t cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types)
+size_t cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, bool compile_time_trace, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types)
 {
     // use file extension to determine whether to output PTX or CUBIN
     const char* output_ext = strrchr(output_path, '.');
@@ -2928,11 +2928,11 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
     else
         opts.push_back("--fmad=false");
 
-    std::vector<std::string> cuda_include_opt;
+    std::vector<std::string> stored_options;
     for(int i = 0; i < num_cuda_include_dirs; i++)
     {
-        cuda_include_opt.push_back(std::string("--include-path=") + cuda_include_dirs[i]);
-        opts.push_back(cuda_include_opt.back().c_str());
+        stored_options.push_back(std::string("--include-path=") + cuda_include_dirs[i]);
+        opts.push_back(stored_options.back().c_str());
     }
 
     opts.push_back("--device-as-default-execution-space");
@@ -2943,6 +2943,16 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
     {
         opts.push_back("-dlto");
         opts.push_back("--relocatable-device-code=true");
+    }
+
+    if (compile_time_trace)
+    {
+#if CUDA_VERSION >= 12080
+        stored_options.push_back(std::string("--fdevice-time-trace=") + std::string(output_path).append("_compile-time-trace.json"));
+        opts.push_back(stored_options.back().c_str());
+#else
+        fprintf(stderr, "Warp warning: CUDA version is less than 12.8, compile_time_trace is not supported\n");
+#endif
     }
 
     nvrtcProgram prog;
