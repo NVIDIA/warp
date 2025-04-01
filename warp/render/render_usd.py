@@ -19,6 +19,8 @@ import numpy as np
 
 import warp as wp
 
+UP_AXIS_TOKEN = ("X", "Y", "Z")
+
 
 def _usd_add_xform(prim):
     from pxr import UsdGeom
@@ -160,12 +162,13 @@ class UsdRenderer:
     def add_shape_instance(
         self,
         name: str,
-        shape,
+        shape: int,
         body,
         pos: tuple,
         rot: tuple,
         scale: tuple = (1.0, 1.0, 1.0),
-        color: tuple = (1.0, 1.0, 1.0),
+        color1=None,
+        color2=None,
         custom_index: int = -1,
         visible: bool = True,
     ):
@@ -188,9 +191,12 @@ class UsdRenderer:
         rot: tuple,
         width: float,
         length: float,
-        color: tuple = None,
+        color: tuple = (1.0, 1.0, 1.0),
+        color2=None,
         parent_body: str = None,
         is_template: bool = False,
+        u_scaling=1.0,
+        v_scaling=1.0,
     ):
         """
         Render a plane with the given dimensions.
@@ -341,6 +347,7 @@ class UsdRenderer:
         half_height: float,
         parent_body: str = None,
         is_template: bool = False,
+        up_axis: int = 1,
         color: tuple = None,
     ):
         """
@@ -374,7 +381,7 @@ class UsdRenderer:
 
         capsule.GetRadiusAttr().Set(float(radius))
         capsule.GetHeightAttr().Set(float(half_height * 2.0))
-        capsule.GetAxisAttr().Set("Y")
+        capsule.GetAxisAttr().Set(UP_AXIS_TOKEN[up_axis])
 
         if color is not None:
             capsule.GetDisplayColorAttr().Set([Gf.Vec3f(color)], self.time)
@@ -395,6 +402,7 @@ class UsdRenderer:
         half_height: float,
         parent_body: str = None,
         is_template: bool = False,
+        up_axis: int = 1,
         color: tuple = None,
     ):
         """
@@ -428,7 +436,7 @@ class UsdRenderer:
 
         cylinder.GetRadiusAttr().Set(float(radius))
         cylinder.GetHeightAttr().Set(float(half_height * 2.0))
-        cylinder.GetAxisAttr().Set("Y")
+        cylinder.GetAxisAttr().Set(UP_AXIS_TOKEN[up_axis])
 
         if color is not None:
             cylinder.GetDisplayColorAttr().Set([Gf.Vec3f(color)], self.time)
@@ -449,6 +457,7 @@ class UsdRenderer:
         half_height: float,
         parent_body: str = None,
         is_template: bool = False,
+        up_axis: int = 1,
         color: tuple = None,
     ):
         """
@@ -482,7 +491,7 @@ class UsdRenderer:
 
         cone.GetRadiusAttr().Set(float(radius))
         cone.GetHeightAttr().Set(float(half_height * 2.0))
-        cone.GetAxisAttr().Set("Y")
+        cone.GetAxisAttr().Set(UP_AXIS_TOKEN[up_axis])
 
         if color is not None:
             cone.GetDisplayColorAttr().Set([Gf.Vec3f(color)], self.time)
@@ -575,6 +584,7 @@ class UsdRenderer:
         update_topology=False,
         parent_body: str = None,
         is_template: bool = False,
+        smooth_shading: bool = True,
     ):
         from pxr import Sdf, UsdGeom
 
@@ -624,7 +634,7 @@ class UsdRenderer:
 
         return prim_path
 
-    def render_line_list(self, name, vertices, indices, color, radius):
+    def render_line_list(self, name: str, vertices, indices, color: tuple = None, radius: float = 0.01):
         """Debug helper to add a line list as a set of capsules
 
         Args:
@@ -676,7 +686,7 @@ class UsdRenderer:
 
     #      instancer.GetPrimvar("displayColor").Set(line_colors, time)
 
-    def render_line_strip(self, name: str, vertices, color: tuple, radius: float = 0.01):
+    def render_line_strip(self, name: str, vertices, color: tuple = None, radius: float = 0.01):
         from pxr import Gf, UsdGeom
 
         num_lines = int(len(vertices) - 1)

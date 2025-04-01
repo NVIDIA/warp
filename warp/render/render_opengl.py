@@ -2289,9 +2289,9 @@ Instances: {len(self._instances)}"""
         name: str,
         shape: int,
         body,
-        pos,
-        rot,
-        scale=(1.0, 1.0, 1.0),
+        pos: tuple,
+        rot: tuple,
+        scale: tuple = (1.0, 1.0, 1.0),
         color1=None,
         color2=None,
         custom_index: int = -1,
@@ -2808,7 +2808,7 @@ Instances: {len(self._instances)}"""
         radius: float,
         parent_body: str = None,
         is_template: bool = False,
-        color=None,
+        color: tuple = None,
     ):
         """Add a sphere for visualization
 
