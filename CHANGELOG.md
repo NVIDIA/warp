@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased] - 2025-??
+
+### Added
+
+- Add the `Device.sm_count` property to get the number of streaming multiprocessors on a CUDA device
+  ([GH-584](https://github.com/NVIDIA/warp/issues/584)).
+- Add support for animating visibility of objects in the USD renderer
+  ([GH-598](https://github.com/NVIDIA/warp/issues/598)).
+
+### Changed
+
+### Fixed
+
+- Fix the jitter for the `OgnParticlesFromMesh` node not being computed correctly.
+- Fix a code generation bug involving return statements in Warp kernels, which could result in some threads in Warp
+  being skipped when processed on the GPU ([GH-594](https://github.com/NVIDIA/warp/issues/594)).
+- Fix `show_joints` not working with `wp.sim.render.SimRenderer` set to render to USD
+  ([GH-510](https://github.com/NVIDIA/warp/issues/510)).
+
 ## [1.7.0] - 2025-03-30
 
 ### Added

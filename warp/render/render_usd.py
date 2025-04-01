@@ -19,6 +19,13 @@ import numpy as np
 
 import warp as wp
 
+UP_AXIS_TOKEN = ("X", "Y", "Z")
+UP_AXIS_VEC = (
+    np.array((1.0, 0.0, 0.0), dtype=float),
+    np.array((0.0, 1.0, 0.0), dtype=float),
+    np.array((0.0, 0.0, 1.0), dtype=float),
+)
+
 
 def _usd_add_xform(prim):
     from pxr import UsdGeom
@@ -31,7 +38,13 @@ def _usd_add_xform(prim):
     prim.AddScaleOp()
 
 
-def _usd_set_xform(xform, pos: tuple, rot: tuple, scale: tuple, time):
+def _usd_set_xform(
+    xform,
+    pos: tuple | None = None,
+    rot: tuple | None = None,
+    scale: tuple | None = None,
+    time: float = 0.0,
+):
     from pxr import Gf, UsdGeom
 
     xform = UsdGeom.Xform(xform)
@@ -624,7 +637,82 @@ class UsdRenderer:
 
         return prim_path
 
-    def render_line_list(self, name, vertices, indices, color, radius):
+    def render_arrow(
+        self,
+        name: str,
+        pos: tuple,
+        rot: tuple,
+        base_radius: float,
+        base_height: float,
+        cap_radius: float = None,
+        cap_height: float = None,
+        parent_body: str = None,
+        is_template: bool = False,
+        up_axis: int = 1,
+        color: tuple[float, float, float] = None,
+        visible: bool = True,
+    ):
+        from pxr import Gf, Sdf, UsdGeom
+
+        if is_template:
+            prim_path = self._resolve_path(name, parent_body, is_template)
+            blueprint = UsdGeom.Scope.Define(self.stage, prim_path)
+            blueprint_prim = blueprint.GetPrim()
+            blueprint_prim.SetInstanceable(True)
+            blueprint_prim.SetSpecifier(Sdf.SpecifierClass)
+            arrow_path = prim_path.AppendChild("arrow")
+        else:
+            arrow_path = self._resolve_path(name, parent_body)
+            prim_path = arrow_path
+
+        arrow = UsdGeom.Xform.Get(self.stage, arrow_path)
+        if not arrow:
+            arrow = UsdGeom.Xform.Define(self.stage, arrow_path)
+            _usd_add_xform(arrow)
+
+        base_path = arrow_path.AppendChild("base")
+        base = UsdGeom.Xform.Get(self.stage, base_path)
+        if not base:
+            base = UsdGeom.Cylinder.Define(self.stage, base_path)
+            _usd_add_xform(base)
+
+        base.GetRadiusAttr().Set(float(base_radius))
+        base.GetHeightAttr().Set(float(base_height))
+        base.GetAxisAttr().Set(UP_AXIS_TOKEN[up_axis])
+        _usd_set_xform(base, UP_AXIS_VEC[up_axis] * base_height * 0.5)
+
+        cap_path = arrow_path.AppendChild("cap")
+        cap = UsdGeom.Xform.Get(self.stage, cap_path)
+        if not cap:
+            cap = UsdGeom.Cone.Define(self.stage, arrow_path.AppendChild("cap"))
+            _usd_add_xform(cap)
+
+        cap.GetRadiusAttr().Set(float(cap_radius))
+        cap.GetHeightAttr().Set(float(cap_height))
+        cap.GetAxisAttr().Set(UP_AXIS_TOKEN[up_axis])
+        _usd_set_xform(cap, UP_AXIS_VEC[up_axis] * (base_height + cap_height * 0.5))
+
+        if color is not None:
+            base.GetDisplayColorAttr().Set([Gf.Vec3f(color)], self.time)
+            cap.GetDisplayColorAttr().Set([Gf.Vec3f(color)], self.time)
+
+        self._shape_constructors[name] = UsdGeom.Xform
+
+        if not is_template:
+            _usd_set_xform(arrow, pos, rot, (1.0, 1.0, 1.0), self.time)
+
+        arrow.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
+        return prim_path
+
+    def render_line_list(
+        self,
+        name: str,
+        vertices,
+        indices,
+        color: tuple = None,
+        radius: float = 0.01,
+        visible: bool = True,
+    ):
         """Debug helper to add a line list as a set of capsules
 
         Args:
