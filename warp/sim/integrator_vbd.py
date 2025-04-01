@@ -37,6 +37,8 @@ wp.set_module_options({"enable_backward": False})
 VBD_DEBUG_PRINTING_OPTIONS = {
     # "elasticity_force_hessian",
     # "contact_force_hessian",
+    # "contact_force_hessian_vt",
+    # "contact_force_hessian_ee",
     # "overall_force_hessian",
     # "inertia_force_hessian",
     # "connectivity",
@@ -49,6 +51,10 @@ class mat66(matrix(shape=(6, 6), dtype=float32)):
 
 
 class mat32(matrix(shape=(3, 2), dtype=float32)):
+    pass
+
+
+class mat43(matrix(shape=(4, 3), dtype=float32)):
     pass
 
 
@@ -520,6 +526,7 @@ def evaluate_ground_contact_force_hessian(
     ground_normal: wp.vec3,
     ground_level: float,
     soft_contact_ke: float,
+    soft_contact_kd: float,
     friction_mu: float,
     friction_epsilon: float,
     dt: float,
@@ -532,6 +539,11 @@ def evaluate_ground_contact_force_hessian(
         ground_contact_hessian = soft_contact_ke * wp.outer(ground_normal, ground_normal)
 
         dx = particle_pos - particle_prev_pos
+
+        if wp.dot(dx, ground_normal) < 0:
+            damping_hessian = (soft_contact_kd / dt) * ground_contact_hessian
+            ground_contact_hessian = ground_contact_hessian + damping_hessian
+            ground_contact_force = ground_contact_force - damping_hessian * dx
 
         # friction
         e0, e1 = build_orthonormal_basis(ground_normal)
@@ -559,6 +571,7 @@ def evaluate_body_particle_contact(
     particle_prev_pos: wp.vec3,
     contact_index: int,
     soft_contact_ke: float,
+    soft_contact_kd: float,
     friction_mu: float,
     friction_epsilon: float,
     particle_radius: wp.array(dtype=float),
@@ -594,9 +607,14 @@ def evaluate_body_particle_contact(
         body_contact_force = n * body_contact_force_norm
         body_contact_hessian = soft_contact_ke * wp.outer(n, n)
 
-        mu = 0.5 * (friction_mu + shape_materials.mu[shape_index])
+        mu = shape_materials.mu[shape_index]
 
         dx = particle_pos - particle_prev_pos
+
+        if wp.dot(n, dx) < 0:
+            damping_hessian = (soft_contact_kd / dt) * body_contact_hessian
+            body_contact_hessian = body_contact_hessian + damping_hessian
+            body_contact_force = body_contact_force - damping_hessian * dx
 
         # body velocity
         body_v_s = wp.spatial_vector()
@@ -663,6 +681,7 @@ def evaluate_edge_edge_contact(
     edge_indices: wp.array(dtype=wp.int32, ndim=2),
     collision_radius: float,
     collision_stiffness: float,
+    collision_damping: float,
     friction_coefficient: float,
     friction_epsilon: float,
     dt: float,
@@ -721,15 +740,14 @@ def evaluate_edge_edge_contact(
         c2_prev = pos_prev[e2_v1] + (pos_prev[e2_v2] - pos_prev[e2_v1]) * t
 
         dx = (c1 - c1_prev) - (c2 - c2_prev)
-        e1_vec_normalized = wp.normalize(e1_vec)
-        axis_2 = wp.normalize(wp.cross(e1_vec_normalized, collision_normal))
+        axis_1, axis_2 = build_orthonormal_basis(collision_normal)
 
         T = mat32(
-            e1_vec_normalized[0],
+            axis_1[0],
             axis_2[0],
-            e1_vec_normalized[1],
+            axis_1[1],
             axis_2[1],
-            e1_vec_normalized[2],
+            axis_1[2],
             axis_2[2],
         )
 
@@ -737,7 +755,7 @@ def evaluate_edge_edge_contact(
         eps_U = friction_epsilon * dt
 
         # fmt: off
-        if wp.static("contact_force_hessian" in VBD_DEBUG_PRINTING_OPTIONS):
+        if wp.static("contact_force_hessian_ee" in VBD_DEBUG_PRINTING_OPTIONS):
             wp.printf(
                 "    collision force:\n    %f %f %f,\n    collision hessian:\n    %f %f %f,\n    %f %f %f,\n    %f %f %f\n",
                 collision_force[0], collision_force[1], collision_force[2], collision_hessian[0, 0], collision_hessian[0, 1], collision_hessian[0, 2], collision_hessian[1, 0], collision_hessian[1, 1], collision_hessian[1, 2], collision_hessian[2, 0], collision_hessian[2, 1], collision_hessian[2, 2],
@@ -748,13 +766,28 @@ def evaluate_edge_edge_contact(
         friction_force = friction_force * v_bary
         friction_hessian = friction_hessian * v_bary * v_bary
 
-        # fmt: off
-        if wp.static("contact_force_hessian" in VBD_DEBUG_PRINTING_OPTIONS):
-            wp.printf(
-                "    friction force:\n    %f %f %f,\n    friction hessian:\n    %f %f %f,\n    %f %f %f,\n    %f %f %f\n",
-                friction_force[0], friction_force[1], friction_force[2], friction_hessian[0, 0], friction_hessian[0, 1], friction_hessian[0, 2], friction_hessian[1, 0], friction_hessian[1, 1], friction_hessian[1, 2], friction_hessian[2, 0], friction_hessian[2, 1], friction_hessian[2, 2],
-            )
-        # fmt: on
+        # # fmt: off
+        # if wp.static("contact_force_hessian_ee" in VBD_DEBUG_PRINTING_OPTIONS):
+        #     wp.printf(
+        #         "    friction force:\n    %f %f %f,\n    friction hessian:\n    %f %f %f,\n    %f %f %f,\n    %f %f %f\n",
+        #         friction_force[0], friction_force[1], friction_force[2], friction_hessian[0, 0], friction_hessian[0, 1], friction_hessian[0, 2], friction_hessian[1, 0], friction_hessian[1, 1], friction_hessian[1, 2], friction_hessian[2, 0], friction_hessian[2, 1], friction_hessian[2, 2],
+        #     )
+        # # fmt: on
+
+        if v_order == 0:
+            displacement = pos_prev[e1_v1] - e1_v1_pos
+        elif v_order == 1:
+            displacement = pos_prev[e1_v2] - e1_v2_pos
+        elif v_order == 2:
+            displacement = pos_prev[e2_v1] - e2_v1_pos
+        else:
+            displacement = pos_prev[e2_v2] - e2_v2_pos
+
+        collision_normal_normal_sign = wp.vec4(1.0, 1.0, -1.0, -1.0)
+        if wp.dot(displacement, collision_normal * collision_normal_normal_sign[v_order]) > 0:
+            damping_hessian = (collision_damping / dt) * collision_hessian
+            collision_hessian = collision_hessian + damping_hessian
+            collision_force = collision_force + damping_hessian * displacement
 
         collision_force = collision_force + friction_force
         collision_hessian = collision_hessian + friction_hessian
@@ -775,6 +808,7 @@ def evaluate_vertex_triangle_collision_force_hessian(
     tri_indices: wp.array(dtype=wp.int32, ndim=2),
     collision_radius: float,
     collision_stiffness: float,
+    collision_damping: float,
     friction_coefficient: float,
     friction_epsilon: float,
     dt: float,
@@ -811,8 +845,7 @@ def evaluate_vertex_triangle_collision_force_hessian(
 
         dx = dx_v - (closest_p - closest_p_prev)
 
-        e0 = wp.normalize(b - a)
-        e1 = wp.normalize(wp.cross(e0, collision_normal))
+        e0, e1 = build_orthonormal_basis(collision_normal)
 
         T = mat32(e0[0], e1[0], e0[1], e1[1], e0[2], e1[2])
 
@@ -822,7 +855,7 @@ def evaluate_vertex_triangle_collision_force_hessian(
         friction_force, friction_hessian = compute_friction(friction_coefficient, -dEdD, T, u, eps_U)
 
         # fmt: off
-        if wp.static("contact_force_hessian" in VBD_DEBUG_PRINTING_OPTIONS):
+        if wp.static("contact_force_hessian_vt" in VBD_DEBUG_PRINTING_OPTIONS):
             wp.printf(
                 "v: %d dEdD: %f\nnormal force: %f %f %f\nfriction force: %f %f %f\n",
                 v,
@@ -830,6 +863,21 @@ def evaluate_vertex_triangle_collision_force_hessian(
                 collision_force[0], collision_force[1], collision_force[2], friction_force[0], friction_force[1], friction_force[2],
             )
         # fmt: on
+
+        if v_order == 0:
+            displacement = pos_prev[tri_indices[tri, 0]] - a
+        elif v_order == 1:
+            displacement = pos_prev[tri_indices[tri, 1]] - b
+        elif v_order == 2:
+            displacement = pos_prev[tri_indices[tri, 2]] - c
+        else:
+            displacement = pos_prev[v] - p
+
+        collision_normal_normal_sign = wp.vec4(-1.0, -1.0, -1.0, 1.0)
+        if wp.dot(displacement, collision_normal * collision_normal_normal_sign[v_order]) > 0:
+            damping_hessian = (collision_damping / dt) * collision_hessian
+            collision_hessian = collision_hessian + damping_hessian
+            collision_force = collision_force + damping_hessian * displacement
 
         collision_force = collision_force + v_bary * friction_force
         collision_hessian = collision_hessian + v_bary * v_bary * friction_hessian
@@ -1039,6 +1087,7 @@ def VBD_solve_trimesh_no_self_contact(
     # contact info
     #   self contact
     soft_contact_ke: float,
+    soft_contact_kd: float,
     friction_mu: float,
     friction_epsilon: float,
     #   body-particle contact
@@ -1158,6 +1207,7 @@ def VBD_solve_trimesh_no_self_contact(
             particle_prev_pos,
             contact_index,
             soft_contact_ke,
+            soft_contact_kd,
             friction_mu,
             friction_epsilon,
             particle_radius,
@@ -1186,6 +1236,7 @@ def VBD_solve_trimesh_no_self_contact(
             ground_normal,
             ground_level,
             soft_contact_ke,
+            soft_contact_kd,
             friction_mu,
             friction_epsilon,
             dt,
@@ -1268,6 +1319,7 @@ def VBD_solve_trimesh_with_self_contact_penetration_free(
     collision_info: TriMeshCollisionInfo,
     collision_radius: float,
     soft_contact_ke: float,
+    soft_contact_kd: float,
     friction_mu: float,
     friction_epsilon: float,
     pos_prev_collision_detection: wp.array(dtype=wp.vec3),
@@ -1339,6 +1391,7 @@ def VBD_solve_trimesh_with_self_contact_penetration_free(
             tri_indices,
             collision_radius,
             soft_contact_ke,
+            soft_contact_kd,
             friction_mu,
             friction_epsilon,
             dt,
@@ -1347,7 +1400,7 @@ def VBD_solve_trimesh_with_self_contact_penetration_free(
         h = h + collision_hessian
 
         # fmt: off
-        if wp.static("contact_force_hessian" in VBD_DEBUG_PRINTING_OPTIONS):
+        if wp.static("contact_force_hessian_vt" in VBD_DEBUG_PRINTING_OPTIONS):
             wp.printf(
                 "vertex: %d collision %d:\nforce:\n %f %f %f, \nhessian:, \n%f %f %f, \n%f %f %f, \n%f %f %f\n",
                 particle_index,
@@ -1417,6 +1470,7 @@ def VBD_solve_trimesh_with_self_contact_penetration_free(
                 tri_indices,
                 collision_radius,
                 soft_contact_ke,
+                soft_contact_kd,
                 friction_mu,
                 friction_epsilon,
                 dt,
@@ -1459,6 +1513,7 @@ def VBD_solve_trimesh_with_self_contact_penetration_free(
                     edge_indices,
                     collision_radius,
                     soft_contact_ke,
+                    soft_contact_kd,
                     friction_mu,
                     friction_epsilon,
                     dt,
@@ -1468,7 +1523,7 @@ def VBD_solve_trimesh_with_self_contact_penetration_free(
                 h = h + collision_hessian
 
                 # fmt: off
-                if wp.static("contact_force_hessian" in VBD_DEBUG_PRINTING_OPTIONS):
+                if wp.static("contact_force_hessian_ee" in VBD_DEBUG_PRINTING_OPTIONS):
                     wp.printf(
                         "vertex: %d edge %d collision %d:\nforce:\n %f %f %f, \nhessian:, \n%f %f %f, \n%f %f %f, \n%f %f %f\n",
                         particle_index,
@@ -1492,6 +1547,7 @@ def VBD_solve_trimesh_with_self_contact_penetration_free(
             particle_prev_pos,
             contact_index,
             soft_contact_ke,
+            soft_contact_kd,
             friction_mu,
             friction_epsilon,
             particle_radius,
@@ -1520,6 +1576,7 @@ def VBD_solve_trimesh_with_self_contact_penetration_free(
             ground_normal,
             ground_level,
             soft_contact_ke,
+            soft_contact_kd,
             friction_mu,
             friction_epsilon,
             dt,
@@ -1776,6 +1833,7 @@ class VBDIntegrator(Integrator):
                         self.model.edge_bending_properties,
                         self.adjacency,
                         self.model.soft_contact_ke,
+                        self.model.soft_contact_kd,
                         self.model.soft_contact_mu,
                         self.friction_epsilon,
                         #   body-particle contact
@@ -1869,6 +1927,7 @@ class VBDIntegrator(Integrator):
                         self.trimesh_collision_detector.collision_info,
                         self.model.soft_contact_radius,
                         self.model.soft_contact_ke,
+                        self.model.soft_contact_kd,
                         self.model.soft_contact_mu,
                         self.friction_epsilon,
                         self.pos_prev_collision_detection,
@@ -1945,6 +2004,17 @@ class VBDIntegrator(Integrator):
             dim=self.model.soft_contact_max,
             device=self.device,
         )
+
+    def rebuild_bvh(self, state: State):
+        """This function will rebuild the BVHs used for detecting self-contacts using the input `state`.
+
+        When the simulated object deforms significantly, simply refitting the BVH can lead to deterioration of the BVH's
+        quality. In these cases, rebuilding the entire tree is necessary to achieve better querying efficiency.
+
+        Args:
+            state (wp.sim.State):  The state whose particle positions (:attr:`State.particle_q`) will be used for rebuilding the BVHs.
+        """
+        self.trimesh_collision_detector.rebuild(state.particle_q)
 
     @wp.kernel
     def count_num_adjacent_edges(

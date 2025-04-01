@@ -398,6 +398,44 @@ class VBDClothSim:
 
         self.fixed_particles = [0, 29, 36, 65, 72, 101]
 
+    def set_collision_experiment(self):
+        elasticity_ke = 1e4
+        elasticity_kd = 1e-6
+
+        vs1 = [wp.vec3(v) for v in [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]]]
+        fs1 = [0, 1, 2, 0, 2, 3]
+
+        self.builder.add_cloth_mesh(
+            pos=wp.vec3(0.0, 0.0, 0.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
+            scale=1.0,
+            vertices=vs1,
+            indices=fs1,
+            vel=wp.vec3(0.0, 0.0, 0.0),
+            density=0.02,
+            tri_ke=elasticity_ke,
+            tri_ka=elasticity_ke,
+            tri_kd=elasticity_kd,
+        )
+
+        vs2 = [wp.vec3(v) for v in [[0.3, 0, 0.7], [0.3, 0, 0.2], [0.8, 0, 0.4]]]
+        fs2 = [0, 1, 2]
+
+        self.builder.add_cloth_mesh(
+            pos=wp.vec3(0.0, 0.5, 0.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
+            scale=1.0,
+            vertices=vs2,
+            indices=fs2,
+            vel=wp.vec3(0.0, 0.0, 0.0),
+            density=0.02,
+            tri_ke=elasticity_ke,
+            tri_ka=elasticity_ke,
+            tri_kd=elasticity_kd,
+        )
+
+        self.fixed_particles = range(0, 4)
+
     def set_up_non_zero_rest_angle_bending_experiment(self):
         # fmt: off
         vs = [
@@ -458,18 +496,18 @@ class VBDClothSim:
         )
         self.fixed_particles = [0, 1]
 
-    def finalize(self):
+    def finalize(self, handle_self_contact=False):
         self.builder.color()
 
         self.model = self.builder.finalize(device=self.device)
         self.model.ground = True
         self.model.gravity = wp.vec3(0, -1000.0, 0)
         self.model.soft_contact_ke = 1.0e4
-        self.model.soft_contact_kd = 1.0e2
+        self.model.soft_contact_kd = 1.0e-2
 
         self.set_points_fixed(self.model, self.fixed_particles)
 
-        self.integrator = wp.sim.VBDIntegrator(self.model, self.iterations)
+        self.integrator = wp.sim.VBDIntegrator(self.model, self.iterations, handle_self_contact=handle_self_contact)
         self.state0 = self.model.state()
         self.state1 = self.model.state()
 
@@ -485,15 +523,22 @@ class VBDClothSim:
             self.graph = capture.graph
 
     def simulate(self):
-        for _step in range(self.num_substeps * self.num_test_frames):
+        for _step in range(self.num_substeps):
             self.integrator.simulate(self.model, self.state0, self.state1, self.dt, None)
             (self.state0, self.state1) = (self.state1, self.state0)
 
     def run(self):
-        if self.graph:
-            wp.capture_launch(self.graph)
-        else:
-            self.simulate()
+        # self.renderer = wp.sim.render.SimRendererOpenGL(self.model, None, scaling=1)
+        # self.sim_time = 0.
+        for _frame in range(self.num_test_frames):
+            if self.graph:
+                wp.capture_launch(self.graph)
+            else:
+                self.simulate()
+            # self.sim_time = self.sim_time + self.frame_dt
+            # self.renderer.begin_frame(self.sim_time)
+            # self.renderer.render(self.state0)
+            # self.renderer.end_frame()
 
     def set_points_fixed(self, model, fixed_particles):
         if len(fixed_particles):
@@ -567,7 +612,30 @@ def test_vbd_bending_non_zero_rest_angle_bending(test, device):
 
     # examine that the simulation does not explode
     final_pos = example.state0.particle_q.numpy()
-    test.assertTrue((final_pos < 1e5).all())
+    test.assertTrue((np.abs(final_pos) < 1e5).all())
+    # examine that the simulation have moved
+    test.assertTrue((example.init_pos != final_pos).any())
+
+
+def test_vbd_collision(test, device):
+    example = VBDClothSim(device, use_cuda_graph=True)
+    example.set_collision_experiment()
+    example.finalize(handle_self_contact=True)
+    example.model.soft_contact_radius = 0.1
+    example.model.soft_contact_margin = 0.1
+    example.model.soft_contact_ke = 1e4
+    example.model.soft_contact_kd = 1e-3
+    example.model.soft_contact_mu = 0.2
+    example.model.gravity = wp.vec3(0.0, -1000.0, 0)
+    example.model.ground = False
+    example.num_test_frames = 30
+
+    example.run()
+
+    # examine that the velocity has died out
+    final_vel = example.state0.particle_qd.numpy()
+    final_pos = example.state0.particle_q.numpy()
+    test.assertTrue((np.linalg.norm(final_vel, axis=0) < 1.0).all())
     # examine that the simulation have moved
     test.assertTrue((example.init_pos != final_pos).any())
 
@@ -583,6 +651,7 @@ class TestVbd(unittest.TestCase):
 add_function_test(TestVbd, "test_vbd_cloth", test_vbd_cloth, devices=devices)
 add_function_test(TestVbd, "test_vbd_cloth_cuda_graph", test_vbd_cloth_cuda_graph, devices=cuda_devices)
 add_function_test(TestVbd, "test_vbd_bending", test_vbd_bending, devices=devices, check_output=False)
+add_function_test(TestVbd, "test_vbd_collision", test_vbd_collision, devices=devices, check_output=False)
 add_function_test(
     TestVbd,
     "test_vbd_bending_non_zero_rest_angle_bending",
