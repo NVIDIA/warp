@@ -2270,6 +2270,31 @@ class TriMeshCollisionDetector:
 
         offsets.assign(offsets_np)
 
+    def rebuild(self, new_pos=None):
+        if new_pos is not None:
+            self.vertex_positions = new_pos
+
+        wp.launch(
+            kernel=compute_tri_aabbs,
+            inputs=[
+                self.vertex_positions,
+                self.model.tri_indices,
+            ],
+            outputs=[self.lower_bounds_tris, self.upper_bounds_tris],
+            dim=self.model.tri_count,
+            device=self.model.device,
+        )
+        self.bvh_tris = wp.Bvh(self.lower_bounds_tris, self.upper_bounds_tris)
+
+        wp.launch(
+            kernel=compute_edge_aabbs,
+            inputs=[self.vertex_positions, self.model.edge_indices],
+            outputs=[self.lower_bounds_edges, self.upper_bounds_edges],
+            dim=self.model.edge_count,
+            device=self.model.device,
+        )
+        self.bvh_edges = wp.Bvh(self.lower_bounds_edges, self.upper_bounds_edges)
+
     def refit(self, new_pos=None):
         if new_pos is not None:
             self.vertex_positions = new_pos
