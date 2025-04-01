@@ -197,6 +197,7 @@ class UsdRenderer:
         is_template: bool = False,
         u_scaling=1.0,
         v_scaling=1.0,
+        visible: bool = True,
     ):
         """
         Render a plane with the given dimensions.
@@ -247,6 +248,7 @@ class UsdRenderer:
         if not is_template:
             _usd_set_xform(plane, pos, rot, (1.0, 1.0, 1.0), 0.0)
 
+        plane.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
         return prim_path
 
     def render_ground(self, size: float = 100.0, plane=None):
@@ -298,6 +300,7 @@ class UsdRenderer:
         parent_body: str = None,
         is_template: bool = False,
         color: tuple = None,
+        visible: bool = True,
     ):
         """Debug helper to add a sphere for visualization
 
@@ -336,6 +339,7 @@ class UsdRenderer:
         if not is_template:
             _usd_set_xform(sphere, pos, rot, (1.0, 1.0, 1.0), self.time)
 
+        sphere.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
         return prim_path
 
     def render_capsule(
@@ -349,6 +353,7 @@ class UsdRenderer:
         is_template: bool = False,
         up_axis: int = 1,
         color: tuple = None,
+        visible: bool = True,
     ):
         """
         Debug helper to add a capsule for visualization
@@ -391,6 +396,7 @@ class UsdRenderer:
         if not is_template:
             _usd_set_xform(capsule, pos, rot, (1.0, 1.0, 1.0), self.time)
 
+        capsule.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
         return prim_path
 
     def render_cylinder(
@@ -404,6 +410,7 @@ class UsdRenderer:
         is_template: bool = False,
         up_axis: int = 1,
         color: tuple = None,
+        visible: bool = True,
     ):
         """
         Debug helper to add a cylinder for visualization
@@ -446,6 +453,7 @@ class UsdRenderer:
         if not is_template:
             _usd_set_xform(cylinder, pos, rot, (1.0, 1.0, 1.0), self.time)
 
+        cylinder.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
         return prim_path
 
     def render_cone(
@@ -459,6 +467,7 @@ class UsdRenderer:
         is_template: bool = False,
         up_axis: int = 1,
         color: tuple = None,
+        visible: bool = True,
     ):
         """
         Debug helper to add a cone for visualization
@@ -501,6 +510,7 @@ class UsdRenderer:
         if not is_template:
             _usd_set_xform(cone, pos, rot, (1.0, 1.0, 1.0), self.time)
 
+        cone.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
         return prim_path
 
     def render_box(
@@ -512,6 +522,7 @@ class UsdRenderer:
         parent_body: str = None,
         is_template: bool = False,
         color: tuple = None,
+        visible: bool = True,
     ):
         """Debug helper to add a box for visualization
 
@@ -549,6 +560,7 @@ class UsdRenderer:
         if not is_template:
             _usd_set_xform(cube, pos, rot, extents, self.time)
 
+        cube.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
         return prim_path
 
     def render_ref(self, name: str, path: str, pos: tuple, rot: tuple, scale: tuple, color: tuple = None):
@@ -585,6 +597,7 @@ class UsdRenderer:
         parent_body: str = None,
         is_template: bool = False,
         smooth_shading: bool = True,
+        visible: bool = True,
     ):
         from pxr import Sdf, UsdGeom
 
@@ -632,9 +645,18 @@ class UsdRenderer:
         if not is_template:
             _usd_set_xform(mesh, pos, rot, scale, self.time)
 
+        mesh.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
         return prim_path
 
-    def render_line_list(self, name: str, vertices, indices, color: tuple = None, radius: float = 0.01):
+    def render_line_list(
+        self,
+        name: str,
+        vertices,
+        indices,
+        color: tuple = None,
+        radius: float = 0.01,
+        visible: bool = True,
+    ):
         """Debug helper to add a line list as a set of capsules
 
         Args:
@@ -684,9 +706,11 @@ class UsdRenderer:
         instancer.GetScalesAttr().Set(line_scales, self.time)
         instancer.GetProtoIndicesAttr().Set([0] * num_lines, self.time)
 
-    #      instancer.GetPrimvar("displayColor").Set(line_colors, time)
+        # instancer.GetPrimvar("displayColor").Set(line_colors, time)
 
-    def render_line_strip(self, name: str, vertices, color: tuple = None, radius: float = 0.01):
+        instancer.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
+
+    def render_line_strip(self, name: str, vertices, color: tuple = None, radius: float = 0.01, visible: bool = True):
         from pxr import Gf, UsdGeom
 
         num_lines = int(len(vertices) - 1)
@@ -729,7 +753,9 @@ class UsdRenderer:
         instancer_capsule = UsdGeom.Capsule.Get(self.stage, instancer.GetPath().AppendChild("capsule"))
         instancer_capsule.GetDisplayColorAttr().Set([Gf.Vec3f(color)], self.time)
 
-    def render_points(self, name: str, points, radius, colors=None):
+        instancer.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
+
+    def render_points(self, name: str, points, radius, colors=None, visible: bool = True):
         from pxr import Gf, UsdGeom
 
         instancer_path = self.root.GetPath().AppendChild(name)
@@ -767,6 +793,8 @@ class UsdRenderer:
         else:
             instancer.GetPointsAttr().Set(points, self.time)
             instancer.GetDisplayColorAttr().Set(colors, self.time)
+
+        instancer.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
 
     def update_body_transforms(self, body_q):
         from pxr import Sdf, UsdGeom

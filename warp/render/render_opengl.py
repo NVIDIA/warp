@@ -2720,6 +2720,7 @@ Instances: {len(self._instances)}"""
         is_template: bool = False,
         u_scaling=1.0,
         v_scaling=1.0,
+        visible: bool = True,
     ):
         """Add a plane for visualization
 
@@ -2809,6 +2810,7 @@ Instances: {len(self._instances)}"""
         parent_body: str = None,
         is_template: bool = False,
         color: tuple = None,
+        visible: bool = True,
     ):
         """Add a sphere for visualization
 
@@ -2842,6 +2844,7 @@ Instances: {len(self._instances)}"""
         is_template: bool = False,
         up_axis: int = 1,
         color: tuple = None,
+        visible: bool = True,
     ):
         """Add a capsule for visualization
 
@@ -2877,6 +2880,7 @@ Instances: {len(self._instances)}"""
         is_template: bool = False,
         up_axis: int = 1,
         color: tuple = None,
+        visible: bool = True,
     ):
         """Add a cylinder for visualization
 
@@ -2912,6 +2916,7 @@ Instances: {len(self._instances)}"""
         is_template: bool = False,
         up_axis: int = 1,
         color: tuple = None,
+        visible: bool = True,
     ):
         """Add a cone for visualization
 
@@ -2945,6 +2950,7 @@ Instances: {len(self._instances)}"""
         parent_body: str = None,
         is_template: bool = False,
         color: tuple = None,
+        visible: bool = True,
     ):
         """Add a box for visualization
 
@@ -2980,6 +2986,7 @@ Instances: {len(self._instances)}"""
         parent_body: str = None,
         is_template: bool = False,
         smooth_shading: bool = True,
+        visible: bool = True,
     ):
         """Add a mesh for visualization
 
@@ -3095,6 +3102,7 @@ Instances: {len(self._instances)}"""
         is_template: bool = False,
         up_axis: int = 1,
         color: tuple[float, float, float] = None,
+        visible: bool = True,
     ):
         """Add a arrow for visualization
 
@@ -3136,7 +3144,7 @@ Instances: {len(self._instances)}"""
 
         raise Exception("Cannot create reference to path: " + path)
 
-    def render_points(self, name: str, points, radius, colors=None):
+    def render_points(self, name: str, points, radius, colors=None, visible: bool = True):
         """Add a set of points
 
         Args:
@@ -3215,7 +3223,15 @@ Instances: {len(self._instances)}"""
                 device=self._device,
             )
 
-    def render_line_list(self, name: str, vertices, indices, color: tuple = None, radius: float = 0.01):
+    def render_line_list(
+        self,
+        name: str,
+        vertices,
+        indices,
+        color: tuple = None,
+        radius: float = 0.01,
+        visible: bool = True,
+    ):
         """Add a line list as a set of capsules
 
         Args:
@@ -3230,7 +3246,7 @@ Instances: {len(self._instances)}"""
         lines = np.array(lines)
         self._render_lines(name, lines, color, radius)
 
-    def render_line_strip(self, name: str, vertices, color: tuple = None, radius: float = 0.01):
+    def render_line_strip(self, name: str, vertices, color: tuple = None, radius: float = 0.01, visible: bool = True):
         """Add a line strip as a set of capsules
 
         Args:

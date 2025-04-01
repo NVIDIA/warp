@@ -6,6 +6,8 @@
 
 - Add the `Device.sm_count` property to get the number of streaming multiprocessors on a CUDA device
   ([GH-584](https://github.com/NVIDIA/warp/issues/584)).
+- Add support for animating visibility of objects in the USD renderer
+  ([GH-598](https://github.com/NVIDIA/warp/issues/598)).
 
 ### Changed
 
