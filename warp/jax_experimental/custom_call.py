@@ -262,7 +262,10 @@ def _create_jax_warp_primitive():
     capsule = PyCapsule_New(ccall_address.value, b"xla._CUSTOM_CALL_TARGET", PyCapsule_Destructor(0))
 
     # Register the callback in XLA.
-    jax.lib.xla_client.register_custom_call_target("warp_call", capsule, platform="gpu")
+    try:
+        jax.ffi.register_ffi_target("warp_call", capsule, platform="gpu", api_version=0)
+    except AttributeError:
+        jax.lib.xla_client.register_custom_call_target("warp_call", capsule, platform="gpu")
 
     def default_layout(shape):
         return range(len(shape) - 1, -1, -1)
