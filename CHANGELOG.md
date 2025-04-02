@@ -24,6 +24,8 @@
 - Fix the jitter for the `OgnParticlesFromMesh` node not being computed correctly.
 - Fix a code generation bug involving return statements in Warp kernels, which could result in some threads in Warp
   being skipped when processed on the GPU ([GH-594](https://github.com/NVIDIA/warp/issues/594)).
+- Fix `show_joints` not working with `wp.sim.render.SimRenderer` set to render to USD
+  ([GH-510](https://github.com/NVIDIA/warp/issues/510)).
 
 ## [1.7.0] - 2025-03-30
 

@@ -273,6 +273,10 @@ def CreateSimRenderer(renderer):
                             continue
                         tf = joint_tf[i]
                         body = int(joint_parent[i])
+                        if body >= 0 and body < len(self.body_names):
+                            body = self.body_names[body]
+                        else:
+                            body = None
                         # if body == -1:
                         #     continue
                         num_linear_axes = int(joint_axis_dim[i][0])
