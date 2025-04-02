@@ -13,11 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import ctypes
 import sys
 import time
 from collections import defaultdict
-from typing import List, Optional, Tuple, Union
+from typing import Union
 
 import numpy as np
 
@@ -25,7 +27,7 @@ import warp as wp
 
 from .utils import tab10_color_map
 
-Mat44 = Union[List[float], List[List[float]], np.ndarray]
+Mat44 = Union[list[float], list[list[float]], np.ndarray]
 
 
 wp.set_module_options({"enable_backward": False})
@@ -1500,16 +1502,16 @@ class OpenGLRenderer:
 
     def setup_tiled_rendering(
         self,
-        instances: List[List[int]],
+        instances: list[list[int]],
         rescale_window: bool = False,
-        tile_width: Optional[int] = None,
-        tile_height: Optional[int] = None,
-        tile_ncols: Optional[int] = None,
-        tile_nrows: Optional[int] = None,
-        tile_positions: Optional[List[Tuple[int]]] = None,
-        tile_sizes: Optional[List[Tuple[int]]] = None,
-        projection_matrices: Optional[List[Mat44]] = None,
-        view_matrices: Optional[List[Mat44]] = None,
+        tile_width: int | None = None,
+        tile_height: int | None = None,
+        tile_ncols: int | None = None,
+        tile_nrows: int | None = None,
+        tile_positions: list[tuple[int]] | None = None,
+        tile_sizes: list[tuple[int]] | None = None,
+        projection_matrices: list[Mat44] | None = None,
+        view_matrices: list[Mat44] | None = None,
     ):
         """
         Set up tiled rendering where the render buffer is split into multiple tiles that can visualize
@@ -1602,11 +1604,11 @@ class OpenGLRenderer:
     def update_tile(
         self,
         tile_id,
-        instances: Optional[List[int]] = None,
-        projection_matrix: Optional[Mat44] = None,
-        view_matrix: Optional[Mat44] = None,
-        tile_size: Optional[Tuple[int]] = None,
-        tile_position: Optional[Tuple[int]] = None,
+        instances: list[int] | None = None,
+        projection_matrix: Mat44 | None = None,
+        view_matrix: Mat44 | None = None,
+        tile_size: tuple[int] | None = None,
+        tile_position: tuple[int] | None = None,
     ):
         """
         Update the shape instances, projection matrix, view matrix, tile size, or tile position
@@ -1806,7 +1808,7 @@ class OpenGLRenderer:
 
         return np.array((scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, 1), dtype=np.float32)
 
-    def update_model_matrix(self, model_matrix: Optional[Mat44] = None):
+    def update_model_matrix(self, model_matrix: Mat44 | None = None):
         gl = OpenGLRenderer.gl
 
         self._switch_context()
@@ -2287,9 +2289,9 @@ Instances: {len(self._instances)}"""
         name: str,
         shape: int,
         body,
-        pos,
-        rot,
-        scale=(1.0, 1.0, 1.0),
+        pos: tuple,
+        rot: tuple,
+        scale: tuple = (1.0, 1.0, 1.0),
         color1=None,
         color2=None,
         custom_index: int = -1,
@@ -2718,6 +2720,7 @@ Instances: {len(self._instances)}"""
         is_template: bool = False,
         u_scaling=1.0,
         v_scaling=1.0,
+        visible: bool = True,
     ):
         """Add a plane for visualization
 
@@ -2806,7 +2809,8 @@ Instances: {len(self._instances)}"""
         radius: float,
         parent_body: str = None,
         is_template: bool = False,
-        color=None,
+        color: tuple = None,
+        visible: bool = True,
     ):
         """Add a sphere for visualization
 
@@ -2840,6 +2844,7 @@ Instances: {len(self._instances)}"""
         is_template: bool = False,
         up_axis: int = 1,
         color: tuple = None,
+        visible: bool = True,
     ):
         """Add a capsule for visualization
 
@@ -2875,6 +2880,7 @@ Instances: {len(self._instances)}"""
         is_template: bool = False,
         up_axis: int = 1,
         color: tuple = None,
+        visible: bool = True,
     ):
         """Add a cylinder for visualization
 
@@ -2910,6 +2916,7 @@ Instances: {len(self._instances)}"""
         is_template: bool = False,
         up_axis: int = 1,
         color: tuple = None,
+        visible: bool = True,
     ):
         """Add a cone for visualization
 
@@ -2943,6 +2950,7 @@ Instances: {len(self._instances)}"""
         parent_body: str = None,
         is_template: bool = False,
         color: tuple = None,
+        visible: bool = True,
     ):
         """Add a box for visualization
 
@@ -2978,6 +2986,7 @@ Instances: {len(self._instances)}"""
         parent_body: str = None,
         is_template: bool = False,
         smooth_shading: bool = True,
+        visible: bool = True,
     ):
         """Add a mesh for visualization
 
@@ -3092,7 +3101,8 @@ Instances: {len(self._instances)}"""
         parent_body: str = None,
         is_template: bool = False,
         up_axis: int = 1,
-        color: Tuple[float, float, float] = None,
+        color: tuple[float, float, float] = None,
+        visible: bool = True,
     ):
         """Add a arrow for visualization
 
@@ -3134,7 +3144,7 @@ Instances: {len(self._instances)}"""
 
         raise Exception("Cannot create reference to path: " + path)
 
-    def render_points(self, name: str, points, radius, colors=None):
+    def render_points(self, name: str, points, radius, colors=None, visible: bool = True):
         """Add a set of points
 
         Args:
@@ -3213,7 +3223,15 @@ Instances: {len(self._instances)}"""
                 device=self._device,
             )
 
-    def render_line_list(self, name: str, vertices, indices, color: tuple = None, radius: float = 0.01):
+    def render_line_list(
+        self,
+        name: str,
+        vertices,
+        indices,
+        color: tuple = None,
+        radius: float = 0.01,
+        visible: bool = True,
+    ):
         """Add a line list as a set of capsules
 
         Args:
@@ -3228,7 +3246,7 @@ Instances: {len(self._instances)}"""
         lines = np.array(lines)
         self._render_lines(name, lines, color, radius)
 
-    def render_line_strip(self, name: str, vertices, color: tuple = None, radius: float = 0.01):
+    def render_line_strip(self, name: str, vertices, color: tuple = None, radius: float = 0.01, visible: bool = True):
         """Add a line strip as a set of capsules
 
         Args:
