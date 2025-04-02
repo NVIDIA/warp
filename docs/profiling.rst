@@ -447,6 +447,23 @@ For similar reasons, it may sometimes be necessary to clear the kernel cache usi
 to force an update of the ``#line`` directives added into the CUDA-C code. This is because there can be changes to
 Python source files that do not affect the module hash but make the line-correlation information incorrect.
 
+Profiling Module Compilation
+----------------------------
+
+Versions of Warp built with at least CUDA 12.8 support the generation of
+`Trace Event Format <https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview?tab=t.0#heading=h.yr4qxyxotyw>`__
+files when compiling modules for the GPU. This feature can be used to identify
+bottlenecks in the runtime compilation process.
+
+By setting the global configuration option :attr:`warp.config.compile_time_trace` to ``True``,
+an additional JSON file with the suffix ``_compile-time-trace.json`` will be
+generated in the corresponding kernel cache directory (see :attr:`warp.config.kernel_cache_dir`)
+when modules are compiled. This file can be opened in a viewer like a Chronium browser's built in
+profiler (e.g. ``chrome://tracing/`` or ``edge://tracing/``) or the `Perfetto UI <https://ui.perfetto.dev/>`__.
+
+For more information about profiling the compilation process, see the NVIDIA Developer blog post
+`Optimizing Compile Times for CUDA C++ <https://developer.nvidia.com/blog/optimizing-compile-times-for-cuda-c/>`__.
+
 Profiling API Reference
 -----------------------
 

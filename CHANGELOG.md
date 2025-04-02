@@ -6,6 +6,10 @@
 
 - Add the `Device.sm_count` property to get the number of streaming multiprocessors on a CUDA device
   ([GH-584](https://github.com/NVIDIA/warp/issues/584)).
+- Add support for profiling GPU runtime module compilation using the global `wp.config.compile_time_trace`
+  setting or the module-level `"compile_time_trace"` option. When used, JSON files in the Trace Event
+  format will be written in the kernel cache, which can be opened in a viewer like `chrome://tracing/`
+  ([GH-609](https://github.com/NVIDIA/warp/issues/609)).
 
 ### Changed
 

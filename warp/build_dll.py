@@ -228,6 +228,12 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
             "--extended-lambda",
         ]
 
+        if args.compile_time_trace:
+            if ctk_version >= (12, 8):
+                nvcc_opts.append("--fdevice-time-trace=build_lib_compile-time-trace")
+            else:
+                print("Warp warning: CUDA version is less than 12.8, compile_time_trace is not supported")
+
         if args.fast_math:
             nvcc_opts.append("--use_fast_math")
 

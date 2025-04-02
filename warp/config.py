@@ -123,6 +123,17 @@ If ``True``, ``#line`` directives are inserted in generated code for modules
 compiled with line information  to map back to the original Python source file.
 """
 
+compile_time_trace: bool = False
+"""Enable the generation of Trace Event Format files for runtime module compilation.
+
+These are JSON files that can be opened by tools like ``edge://tracing/`` and
+``chrome://tracing/``.
+
+This setting is currently only effective when compiling modules for the GPU with NVRTC (CUDA 12.8+).
+
+This setting can be overridden at the module level by setting the ``"compile_time_trace"`` module option.
+"""
+
 enable_backward: bool = True
 """Enable compilation of kernel backward passes.
 
