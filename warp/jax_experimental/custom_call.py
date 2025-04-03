@@ -126,7 +126,14 @@ def _create_jax_warp_primitive():
 
     # Create and register the primitive.
     # TODO add default implementation that calls the kernel via warp.
-    _jax_warp_p = jax.core.Primitive("jax_warp")
+    try:
+        # newer JAX versions
+        import jax.extend
+
+        _jax_warp_p = jax.extend.core.Primitive("jax_warp")
+    except (ImportError, AttributeError):
+        # older JAX versions
+        _jax_warp_p = jax.core.Primitive("jax_warp")
     _jax_warp_p.multiple_results = True
 
     # TODO Just launch the kernel directly, but make sure the argument
@@ -262,7 +269,12 @@ def _create_jax_warp_primitive():
     capsule = PyCapsule_New(ccall_address.value, b"xla._CUSTOM_CALL_TARGET", PyCapsule_Destructor(0))
 
     # Register the callback in XLA.
-    jax.lib.xla_client.register_custom_call_target("warp_call", capsule, platform="gpu")
+    try:
+        # newer JAX versions
+        jax.ffi.register_ffi_target("warp_call", capsule, platform="gpu", api_version=0)
+    except AttributeError:
+        # older JAX versions
+        jax.lib.xla_client.register_custom_call_target("warp_call", capsule, platform="gpu")
 
     def default_layout(shape):
         return range(len(shape) - 1, -1, -1)
