@@ -292,6 +292,37 @@ linux-x86_64 test:
     - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --plugin pycoverage -F unittests -f coverage.xml
     - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
 
+# A temporary job for testing on Blackwell until more runners are available
+linux-x86_64-blackwell test:
+  needs: [linux-x86_64 build]
+  image: ubuntu:22.04
+  extends:
+    - .test_common_main
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
+    - apt-get update && apt-get install curl git --no-install-recommends -y
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-x86_64
+    - export PATH="$CUDA_BIN:$PATH"
+    - $PYTHON -m venv _venv
+    - source _venv/bin/activate
+    - python -m pip install --upgrade pip
+    - python -m pip install --upgrade usd-core coverage[toml] blosc Pillow
+    - python -m pip install -U --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128
+    - python -m pip install -U --pre jax jaxlib "jax-cuda12-plugin[with_cuda]" jax-cuda12-pjrt -f https://storage.googleapis.com/jax-releases/jax_nightly_releases.html
+    - python -m pip install -e .
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+  tags:
+    - arch/x86_64
+    - gpu/B40
+    - os/linux
+    - platform/horde
+
 # Note that for throughput reasons this runs on a single-GPU runner
 windows-x86_64 test:
   stage: test
