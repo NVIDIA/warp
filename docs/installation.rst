@@ -33,6 +33,22 @@ repository as an extra index via the ``PIP_EXTRA_INDEX_URL`` environment variabl
 
 This ensures the index is automatically used for ``pip`` commands, avoiding the need to specify it explicitly.
 
+Conda Installation
+------------------
+
+Conda packages for Warp are also available on the `conda-forge <https://anaconda.org/conda-forge/warp-lang>`__ channel.
+
+.. code-block:: sh
+
+    # Install warp-lang specifically built against CUDA Toolkit 12.6
+    $ conda install conda-forge::warp-lang=*=*cuda126*
+
+    # Install warp-lang specifically built against CUDA Toolkit 11.8
+    $ conda install conda-forge::warp-lang=*=*cuda118*
+
+For more information, see the community-maintained feedstock for Warp
+`here <https://github.com/conda-forge/warp-lang-feedstock>`__.
+
 Installing from GitHub Releases
 -------------------------------
 
