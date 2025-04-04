@@ -55,6 +55,16 @@ variables:
       - "3.9.18+nv1"
       - "3.8.18+nv1"
     description: "The default Python version used in the main testing jobs."
+  UV_PYTHON:
+    value: "3.12"
+    options:
+      - "3.13"
+      - "3.12"
+      - "3.11"
+      - "3.10"
+      - "3.9"
+      - "3.8"
+    description: "The default UV Python version used in the main testing jobs."
 
 stages:
   - build
@@ -687,6 +697,15 @@ kit extensions:
   needs: [trigger kit extensions pipeline]
   trigger:
     include: /.gitlab/ci/kit-extensions.yml
+  extends:
+    - .trigger_common
+
+# Test Warp compilation with Clang instead of GCC and NVCC
+clang compilation:
+  stage: child pipelines
+  trigger:
+    include: /.gitlab/ci/clang-build-and-test.yml
+  needs: []
   extends:
     - .trigger_common
 

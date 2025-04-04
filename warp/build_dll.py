@@ -17,16 +17,18 @@ import os
 import platform
 import subprocess
 import sys
+from typing import List, Optional
 
 from warp.utils import ScopedTimer
 
 verbose_cmd = True  # print command lines before executing them
 
 
-# returns a canonical machine architecture string
-# - "x86_64" for x86-64, aka. AMD64, aka. x64
-# - "aarch64" for AArch64, aka. ARM64
 def machine_architecture() -> str:
+    """Return a canonical machine architecture string.
+    - "x86_64" for x86-64, aka. AMD64, aka. x64
+    - "aarch64" for AArch64, aka. ARM64
+    """
     machine = platform.machine()
     if machine == "x86_64" or machine == "AMD64":
         return "x86_64"
@@ -142,22 +144,54 @@ def quote(path):
     return '"' + path + '"'
 
 
-def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None):
+def add_llvm_bin_to_path(args):
+    """Add the LLVM bin directory to the PATH environment variable if it's set.
+
+    Args:
+        args: The argument namespace containing llvm_path.
+
+    Returns:
+        ``True`` if the PATH was updated, ``False`` otherwise.
+    """
+    if not hasattr(args, "llvm_path") or not args.llvm_path:
+        return False
+
+    # Construct the bin directory path
+    llvm_bin_path = os.path.join(args.llvm_path, "bin")
+
+    # Check if the directory exists
+    if not os.path.isdir(llvm_bin_path):
+        print(f"Warning: LLVM bin directory not found at {llvm_bin_path}")
+        return False
+
+    # Add to PATH environment variable
+    os.environ["PATH"] = llvm_bin_path + os.pathsep + os.environ.get("PATH", "")
+
+    print(f"Added {llvm_bin_path} to PATH")
+    return True
+
+
+def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: Optional[List[str]] = None, mode=None):
     mode = args.mode if (mode is None) else mode
     cuda_home = args.cuda_path
     cuda_cmd = None
+
+    # Add LLVM bin directory to PATH
+    add_llvm_bin_to_path(args)
 
     if args.quick or cu_path is None:
         cuda_compat_enabled = "WP_ENABLE_CUDA_COMPATIBILITY=0"
     else:
         cuda_compat_enabled = "WP_ENABLE_CUDA_COMPATIBILITY=1"
 
+    if libs is None:
+        libs = []
+
     import pathlib
 
     warp_home_path = pathlib.Path(__file__).parent
     warp_home = warp_home_path.resolve()
 
-    # output stale, rebuild
     if args.verbose:
         print(f"Building {dll_path}")
 
@@ -176,11 +210,16 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
             print("MathDx support requires at least CUDA 12, skipping")
             args.libmathdx_path = None
 
+        # NVCC gencode options
         gencode_opts = []
+
+        # Clang architecture flags
+        clang_arch_flags = []
 
         if args.quick:
             # minimum supported architectures (PTX)
             gencode_opts += ["-gencode=arch=compute_52,code=compute_52", "-gencode=arch=compute_75,code=compute_75"]
+            clang_arch_flags += ["--cuda-gpu-arch=sm_52", "--cuda-gpu-arch=sm_75"]
         else:
             # generate code for all supported architectures
             gencode_opts += [
@@ -193,6 +232,19 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
                 "-gencode=arch=compute_80,code=sm_80",  # Ampere
                 "-gencode=arch=compute_86,code=sm_86",
             ]
+
+            # TODO: Get this working with sm_52, sm_60, sm_61
+            clang_arch_flags += [
+                # SASS for supported desktop/datacenter architectures
+                "--cuda-gpu-arch=sm_52",
+                "--cuda-gpu-arch=sm_60",
+                "--cuda-gpu-arch=sm_61",
+                "--cuda-gpu-arch=sm_70",  # Volta
+                "--cuda-gpu-arch=sm_75",  # Turing
+                "--cuda-gpu-arch=sm_80",  # Ampere
+                "--cuda-gpu-arch=sm_86",
+            ]
+
             if arch == "aarch64" and sys.platform == "linux":
                 gencode_opts += [
                     # SASS for supported mobile architectures (e.g. Tegra/Jetson)
@@ -200,6 +252,14 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
                     "-gencode=arch=compute_62,code=sm_62",  # X2
                     "-gencode=arch=compute_72,code=sm_72",  # Xavier
                     "-gencode=arch=compute_87,code=sm_87",  # Orin
+                ]
+
+                clang_arch_flags += [
+                    # SASS for supported mobile architectures
+                    "--cuda-gpu-arch=sm_53",  # X1
+                    "--cuda-gpu-arch=sm_62",  # X2
+                    "--cuda-gpu-arch=sm_72",  # Xavier
+                    "--cuda-gpu-arch=sm_87",  # Orin
                 ]
 
             if ctk_version >= (12, 8):
@@ -211,6 +271,13 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
                     "-gencode=arch=compute_120,code=sm_120",  # Blackwell
                     "-gencode=arch=compute_120,code=compute_120",  # PTX for future hardware
                 ]
+
+                clang_arch_flags += [
+                    "--cuda-gpu-arch=sm_89",  # Ada
+                    "--cuda-gpu-arch=sm_90",  # Hopper
+                    "--cuda-gpu-arch=sm_100",  # Blackwell
+                    "--cuda-gpu-arch=sm_120",  # Blackwell
+                ]
             elif ctk_version >= (11, 8):
                 # Support for Ada and Hopper is available with CUDA Toolkit 11.8+
                 gencode_opts += [
@@ -218,14 +285,30 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
                     "-gencode=arch=compute_90,code=sm_90",  # Hopper
                     "-gencode=arch=compute_90,code=compute_90",  # PTX for future hardware
                 ]
+
+                clang_arch_flags += [
+                    "--cuda-gpu-arch=sm_89",  # Ada
+                    "--cuda-gpu-arch=sm_90",  # Hopper
+                ]
             else:
                 gencode_opts += [
                     "-gencode=arch=compute_86,code=compute_86",  # PTX for future hardware
                 ]
 
+                clang_arch_flags += [
+                    "--cuda-gpu-arch=sm_86",  # PTX for future hardware
+                ]
+
         nvcc_opts = gencode_opts + [
             "-t0",  # multithreaded compilation
             "--extended-lambda",
+        ]
+
+        # Clang options
+        clang_opts = clang_arch_flags + [
+            "-std=c++17",
+            "-xcuda",
+            f'--cuda-path="{cuda_home}"',
         ]
 
         if args.compile_time_trace:
@@ -317,6 +400,10 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
             run_cmd(link_cmd)
 
     else:
+        # Unix compilation
+        cuda_compiler = "clang++" if getattr(args, "clang_build_toolchain", False) else "nvcc"
+        cpp_compiler = "clang++" if getattr(args, "clang_build_toolchain", False) else "g++"
+
         cpp_includes = f' -I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}-{arch}/include"'
         cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
         cuda_includes = f' -I"{cuda_home}/include"' if cu_path else ""
@@ -325,9 +412,12 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
         if sys.platform == "darwin":
             version = f"--target={arch}-apple-macos11"
         else:
-            version = "-fabi-version=13"  # GCC 8.2+
+            if cpp_compiler == "g++":
+                version = "-fabi-version=13"  # GCC 8.2+
+            else:
+                version = ""
 
-        cpp_flags = f'{version} --std=c++17 -fno-rtti -D{cuda_enabled} -D{mathdx_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes} '
+        cpp_flags = f'-Werror -Wuninitialized {version} --std=c++17 -fno-rtti -D{cuda_enabled} -D{mathdx_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes} '
 
         if mode == "debug":
             cpp_flags += "-O0 -g -D_DEBUG -DWP_ENABLE_DEBUG=1 -fkeep-inline-functions"
@@ -348,17 +438,23 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
                 cpp_out = cpp_path + ".o"
                 ld_inputs.append(quote(cpp_out))
 
-                build_cmd = f'g++ {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'
+                build_cmd = f'{cpp_compiler} {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'
                 run_cmd(build_cmd)
 
         if cu_path:
             cu_out = cu_path + ".o"
 
-            if mode == "debug":
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
-
-            elif mode == "release":
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+            if cuda_compiler == "nvcc":
+                if mode == "debug":
+                    cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                elif mode == "release":
+                    cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+            else:
+                # Use Clang compiler
+                if mode == "debug":
+                    cuda_cmd = f'clang++ -Werror -Wuninitialized -Wno-unknown-cuda-version {" ".join(clang_opts)} -g -O0 -fPIC -fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                elif mode == "release":
+                    cuda_cmd = f'clang++ -Werror -Wuninitialized -Wno-unknown-cuda-version {" ".join(clang_opts)} -O3 -fPIC -fvisibility=hidden -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=args.verbose):
                 run_cmd(cuda_cmd)
@@ -380,7 +476,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
 
         with ScopedTimer("link", active=args.verbose):
             origin = "@loader_path" if (sys.platform == "darwin") else "$ORIGIN"
-            link_cmd = f"g++ {version} -shared -Wl,-rpath,'{origin}' {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
+            link_cmd = f"{cpp_compiler} {version} -shared -Wl,-rpath,'{origin}' {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
             run_cmd(link_cmd)
 
             # Strip symbols to reduce the binary size
@@ -395,17 +491,14 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, arch, mode=None
 
 
 def build_dll(args, dll_path, cpp_paths, cu_path, libs=None):
-    if libs is None:
-        libs = []
-
     if sys.platform == "darwin":
         # create a universal binary by combining x86-64 and AArch64 builds
-        build_dll_for_arch(args, dll_path + "-x86_64", cpp_paths, cu_path, libs, "x86_64")
-        build_dll_for_arch(args, dll_path + "-aarch64", cpp_paths, cu_path, libs, "aarch64")
+        build_dll_for_arch(args, dll_path + "-x86_64", cpp_paths, cu_path, "x86_64", libs)
+        build_dll_for_arch(args, dll_path + "-aarch64", cpp_paths, cu_path, "aarch64", libs)
 
         run_cmd(f"lipo -create -output {dll_path} {dll_path}-x86_64 {dll_path}-aarch64")
         os.remove(f"{dll_path}-x86_64")
         os.remove(f"{dll_path}-aarch64")
 
     else:
-        build_dll_for_arch(args, dll_path, cpp_paths, cu_path, libs, machine_architecture())
+        build_dll_for_arch(args, dll_path, cpp_paths, cu_path, machine_architecture(), libs)

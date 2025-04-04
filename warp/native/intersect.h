@@ -665,7 +665,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     bool var_25;
     bool var_26;
     bool var_27;
-    float32 var_28;
+    float32 var_28 = 0.0;
     vec2 var_29;
     vec2 var_30;
     vec3 var_31;
@@ -685,7 +685,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     bool var_45;
     bool var_46;
     bool var_47;
-    float32 var_48;
+    float32 var_48 = 0.0;
     vec2 var_49;
     vec2 var_50;
     float32 var_51;
@@ -702,7 +702,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     float32 var_62;
     bool var_63;
     bool var_64;
-    float32 var_65;
+    float32 var_65 = 0.0;
     vec2 var_66;
     // vec2 var_67;
     float32 var_68;
