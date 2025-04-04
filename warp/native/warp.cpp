@@ -114,7 +114,7 @@ float half_bits_to_float(uint16_t u)
 int init()
 {
 #if WP_ENABLE_CUDA
-    int cuda_init();
+    int cuda_init(void);
     // note: it's safe to proceed even if CUDA initialization failed
     cuda_init();
 #endif

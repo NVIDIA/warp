@@ -52,6 +52,11 @@
 __device__ void __debugbreak() {}
 #endif
 
+#if defined(__clang__) && defined(__CUDA__) && defined(__CUDA_ARCH__)
+// clang compiling CUDA code, device mode (NOTE: Used when building core library with Clang)
+#include <cuda_fp16.h>
+#endif
+
 namespace wp
 {
 
@@ -177,14 +182,14 @@ CUDA_CALLABLE inline float half_to_float(half x)
 #elif defined(__clang__)
 
 // _Float16 is Clang's native half-precision floating-point type
-inline half float_to_half(float x)
+CUDA_CALLABLE inline half float_to_half(float x)
 {
 
     _Float16 f16 = static_cast<_Float16>(x);
     return *reinterpret_cast<half*>(&f16);
 }
 
-inline float half_to_float(half h)
+CUDA_CALLABLE inline float half_to_float(half h)
 {
     _Float16 f16 = *reinterpret_cast<_Float16*>(&h);
     return static_cast<float>(f16);
@@ -1278,34 +1283,35 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
     float16 old = buf[0];
     buf[0] += value;
     return old;
-#elif defined(__clang__)  // CUDA compiled by Clang
-	__half r = atomicAdd(reinterpret_cast<__half*>(buf), *reinterpret_cast<__half*>(&value));
-    return *reinterpret_cast<float16*>(&r);
 #else  // CUDA compiled by NVRTC
-    //return atomicAdd(buf, value);
-    
-    /* Define __PTR for atomicAdd prototypes below, undef after done */
-    #if (defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)
-    #define __PTR   "l"
-    #else
-    #define __PTR   "r"
-    #endif /*(defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)*/
-   
-    half r = 0.0;
-
     #if __CUDA_ARCH__ >= 700
+        #if defined(__clang__)  // CUDA compiled by Clang
+            __half r = atomicAdd(reinterpret_cast<__half*>(buf), *reinterpret_cast<__half*>(&value));
+            return *reinterpret_cast<float16*>(&r);
+        #else  // CUDA compiled by NVRTC
+            /* Define __PTR for atomicAdd prototypes below, undef after done */
+            #if (defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)
+            #define __PTR   "l"
+            #else
+            #define __PTR   "r"
+            #endif /*(defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)*/
+        
+            half r = 0.0;
 
-        asm volatile ("{ atom.add.noftz.f16 %0,[%1],%2; }\n"
-                    : "=h"(r.u)
-                    : __PTR(buf), "h"(value.u)
-                    : "memory");
+            asm volatile ("{ atom.add.noftz.f16 %0,[%1],%2; }\n"
+                        : "=h"(r.u)
+                        : __PTR(buf), "h"(value.u)
+                        : "memory");
+
+            return r;
+
+            #undef __PTR
+        #endif
+    #else
+        // No native __half atomic support on compute capability < 7.0
+        return float16(0.0f);
     #endif
-
-    return r;
-
-    #undef __PTR
-
-#endif  // CUDA compiled by NVRTC
+#endif
 
 }
 

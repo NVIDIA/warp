@@ -33,7 +33,7 @@ __global__ void cpyGridHandleMeta(const GridData *d_data, GridHandleMetaData *d_
 __global__ void updateGridCount(GridData *d_data, uint32_t gridIndex, uint32_t gridCount, bool *d_dirty)
 {
     NANOVDB_ASSERT(gridIndex < gridCount);
-    if (*d_dirty = d_data->mGridIndex != gridIndex || d_data->mGridCount != gridCount) {
+    if ((*d_dirty = (d_data->mGridIndex != gridIndex || d_data->mGridCount != gridCount))) {
         d_data->mGridIndex = gridIndex;
         d_data->mGridCount = gridCount;
         if (d_data->mChecksum.isEmpty()) *d_dirty = false;// no need to update checksum if it didn't already exist
