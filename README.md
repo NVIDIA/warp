@@ -459,8 +459,7 @@ Warp is provided under the Apache License, Version 2.0. Please see [LICENSE.md](
 
 ## Contributing
 
-Contributions and pull requests from the community are welcome and are taken under the
-terms described in the **Feedback** section of [LICENSE.md](LICENSE.md#9-feedback).
+Contributions and pull requests from the community are welcome.
 Please see the [Contribution Guide](https://nvidia.github.io/warp/modules/contribution_guide.html) for more
 information on contributing to the development of Warp.
 
