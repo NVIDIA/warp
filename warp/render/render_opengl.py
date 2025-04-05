@@ -19,7 +19,7 @@ import ctypes
 import sys
 import time
 from collections import defaultdict
-from typing import Union
+from typing import List, Union
 
 import numpy as np
 
@@ -27,7 +27,7 @@ import warp as wp
 
 from .utils import tab10_color_map
 
-Mat44 = Union[list[float], list[list[float]], np.ndarray]
+Mat44 = Union[List[float], List[List[float]], np.ndarray]
 
 
 wp.set_module_options({"enable_backward": False})
