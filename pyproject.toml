@@ -14,7 +14,7 @@
 # limitations under the License.
 
 [build-system]
-requires = ["setuptools>=61", "build", "wheel"]
+requires = ["setuptools>=77.0.0", "build", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -22,24 +22,33 @@ name = "warp-lang"
 requires-python = ">=3.8" # 3.9 recommended
 authors = [{ name = "NVIDIA Corporation", email = "warp-python@nvidia.com" }]
 description = "A Python framework for high-performance simulation and graphics programming"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE.md", "licenses/**/*.txt"]
 classifiers = [
-    "Programming Language :: Python :: 3.8",  # EOL on 2024-10-07
-    "Programming Language :: Python :: 3.9",  # EOL scheduled for 2025-10
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3.8",       # EOL on 2024-10-07
+    "Programming Language :: Python :: 3.9",       # EOL scheduled for 2025-10
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3 :: Only",
-    "License :: OSI Approved :: Apache Software License",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Environment :: GPU :: NVIDIA CUDA :: 12",
     "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
 ]
 dependencies = ["numpy"]
 dynamic = ["version", "readme"]
 
 [project.urls]
-GitHub = "https://github.com/NVIDIA/warp"
+Homepage = "https://developer.nvidia.com/warp-python"
 Documentation = "https://nvidia.github.io/warp"
+Repository = "https://github.com/NVIDIA/warp"
+Issues = "https://github.com/NVIDIA/warp/issues"
 Changelog = "https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
