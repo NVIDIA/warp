@@ -18,7 +18,12 @@ import unittest
 import warp as wp
 import warp.examples
 import warp.sim
-from warp.sim.collide import *
+from warp.sim.collide import (
+    TriMeshCollisionDetector,
+    init_triangle_collision_data_kernel,
+    triangle_closest_point,
+    vertex_adjacent_to_triangle,
+)
 from warp.sim.integrator_euler import eval_triangles_contact
 from warp.tests.unittest_utils import *
 
@@ -260,229 +265,205 @@ def validate_edge_collisions(
         wp.expect_eq(dist >= min_dist, True)
 
 
-class Example:
-    def __init__(self, device, vs, fs):
-        self.device = device
+def init_model(vs, fs, device):
+    vertices = [wp.vec3(v) for v in vs]
 
-        self.input_scale_factor = 1.0
-        self.renderer_scale_factor = 0.01
-        vertices = [wp.vec3(v) * self.input_scale_factor for v in vs]
+    builder = wp.sim.ModelBuilder()
+    builder.add_cloth_mesh(
+        pos=wp.vec3(0.0, 200.0, 0.0),
+        rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
+        scale=1.0,
+        vertices=vertices,
+        indices=fs,
+        vel=wp.vec3(0.0, 0.0, 0.0),
+        density=0.02,
+        tri_ke=0,
+        tri_ka=0,
+        tri_kd=0,
+    )
+    model = builder.finalize(device=device)
 
-        builder = wp.sim.ModelBuilder()
-        builder.add_cloth_mesh(
-            pos=wp.vec3(0.0, 200.0, 0.0),
-            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
-            scale=1.0,
-            vertices=vertices,
-            indices=fs,
-            vel=wp.vec3(0.0, 0.0, 0.0),
-            density=0.02,
-            tri_ke=0,
-            tri_ka=0,
-            tri_kd=0,
-        )
-        self.model = builder.finalize(device=self.device)
+    collision_detector = TriMeshCollisionDetector(model=model)
 
-        self.collision_detector = TriMeshCollisionDetector(model=self.model)
+    return model, collision_detector
 
-    def run_vertex_triangle_test(self):
-        rs = [1e-2, 2e-2, 5e-2, 1e-1]
-        for query_radius in rs:
-            self.collision_detector.vertex_triangle_collision_detection(query_radius)
-            vertex_colliding_triangles_count_1 = self.collision_detector.vertex_colliding_triangles_count.numpy()
-            vertex_min_dis_1 = self.collision_detector.vertex_colliding_triangles_min_dist.numpy()
 
-            triangle_colliding_vertices_count_1 = self.collision_detector.triangle_colliding_vertices_count.numpy()
-            triangle_min_dis_1 = self.collision_detector.triangle_colliding_vertices_min_dist.numpy()
+def get_data():
+    from pxr import Usd, UsdGeom
 
-            wp.launch(
-                kernel=init_triangle_collision_data_kernel,
-                inputs=[
-                    query_radius,
-                    self.collision_detector.triangle_colliding_vertices_count,
-                    self.collision_detector.triangle_colliding_vertices_min_dist,
-                    self.collision_detector.resize_flags,
-                ],
-                dim=self.model.tri_count,
-                device=self.model.device,
-            )
+    usd_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
+    usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/bunny"))
 
-            wp.launch(
-                kernel=vertex_triangle_collision_detection_brute_force,
-                inputs=[
-                    query_radius,
-                    self.collision_detector.bvh_tris.id,
-                    self.collision_detector.model.particle_q,
-                    self.collision_detector.model.tri_indices,
-                    self.collision_detector.vertex_colliding_triangles,
-                    self.collision_detector.vertex_colliding_triangles_count,
-                    self.collision_detector.vertex_colliding_triangles_offsets,
-                    self.collision_detector.vertex_colliding_triangles_buffer_sizes,
-                    self.collision_detector.vertex_colliding_triangles_min_dist,
-                    self.collision_detector.triangle_colliding_vertices,
-                    self.collision_detector.triangle_colliding_vertices_count,
-                    self.collision_detector.triangle_colliding_vertices_offsets,
-                    self.collision_detector.triangle_colliding_vertices_buffer_sizes,
-                    self.collision_detector.triangle_colliding_vertices_min_dist,
-                    self.collision_detector.resize_flags,
-                ],
-                dim=self.model.particle_count,
-                device=self.model.device,
-            )
+    vertices = np.array(usd_geom.GetPointsAttr().Get())
+    faces = np.array(usd_geom.GetFaceVertexIndicesAttr().Get())
 
-            vertex_colliding_triangles_count_2 = self.collision_detector.vertex_colliding_triangles_count.numpy()
-            vertex_min_dis_2 = self.collision_detector.vertex_colliding_triangles_min_dist.numpy()
-
-            triangle_colliding_vertices_count_2 = self.collision_detector.triangle_colliding_vertices_count.numpy()
-            triangle_min_dis_2 = self.collision_detector.triangle_colliding_vertices_min_dist.numpy()
-
-            assert (vertex_colliding_triangles_count_2 == vertex_colliding_triangles_count_1).all()
-            assert (triangle_min_dis_2 == triangle_min_dis_1).all()
-            assert (triangle_colliding_vertices_count_2 == triangle_colliding_vertices_count_1).all()
-            assert (vertex_min_dis_2 == vertex_min_dis_1).all()
-
-            wp.launch(
-                kernel=validate_vertex_collisions,
-                inputs=[
-                    query_radius,
-                    self.collision_detector.bvh_tris.id,
-                    self.collision_detector.model.particle_q,
-                    self.collision_detector.model.tri_indices,
-                    self.collision_detector.vertex_colliding_triangles,
-                    self.collision_detector.vertex_colliding_triangles_count,
-                    self.collision_detector.vertex_colliding_triangles_offsets,
-                    self.collision_detector.vertex_colliding_triangles_buffer_sizes,
-                    self.collision_detector.vertex_colliding_triangles_min_dist,
-                    self.collision_detector.resize_flags,
-                ],
-                dim=self.model.particle_count,
-                device=self.model.device,
-            )
-
-            wp.launch(
-                kernel=validate_triangle_collisions,
-                inputs=[
-                    query_radius,
-                    self.collision_detector.bvh_tris.id,
-                    self.collision_detector.model.particle_q,
-                    self.collision_detector.model.tri_indices,
-                    self.collision_detector.triangle_colliding_vertices,
-                    self.collision_detector.triangle_colliding_vertices_count,
-                    self.collision_detector.triangle_colliding_vertices_offsets,
-                    self.collision_detector.triangle_colliding_vertices_buffer_sizes,
-                    self.collision_detector.triangle_colliding_vertices_min_dist,
-                    self.collision_detector.resize_flags,
-                ],
-                dim=self.model.tri_count,
-                device=self.model.device,
-            )
-
-    def run_edge_edge_test(self):
-        rs = [1e-2, 2e-2, 5e-2, 1e-1]
-        edge_edge_parallel_epsilon = 1e-5
-        for query_radius in rs:
-            self.collision_detector.edge_edge_collision_detection(query_radius)
-            edge_colliding_edges_count_1 = self.collision_detector.edge_colliding_edges_count.numpy()
-            edge_min_dist_1 = self.collision_detector.edge_colliding_edges_min_dist.numpy()
-
-            print(edge_colliding_edges_count_1)
-
-            wp.launch(
-                kernel=edge_edge_collision_detection_brute_force,
-                inputs=[
-                    query_radius,
-                    self.collision_detector.bvh_edges.id,
-                    self.collision_detector.model.particle_q,
-                    self.collision_detector.model.edge_indices,
-                    self.collision_detector.edge_colliding_edges_offsets,
-                    self.collision_detector.edge_colliding_edges_buffer_sizes,
-                    edge_edge_parallel_epsilon,
-                ],
-                outputs=[
-                    self.collision_detector.edge_colliding_edges,
-                    self.collision_detector.edge_colliding_edges_count,
-                    self.collision_detector.edge_colliding_edges_min_dist,
-                    self.collision_detector.resize_flags,
-                ],
-                dim=self.model.edge_count,
-                device=self.model.device,
-            )
-
-            edge_colliding_edges_count_2 = self.collision_detector.edge_colliding_edges_count.numpy()
-            edge_min_dist_2 = self.collision_detector.edge_colliding_edges_min_dist.numpy()
-
-            assert (edge_colliding_edges_count_2 == edge_colliding_edges_count_1).all()
-            assert (edge_min_dist_1 == edge_min_dist_2).all()
-
-            wp.launch(
-                kernel=validate_edge_collisions,
-                inputs=[
-                    query_radius,
-                    self.collision_detector.bvh_edges.id,
-                    self.collision_detector.model.particle_q,
-                    self.collision_detector.model.edge_indices,
-                    self.collision_detector.edge_colliding_edges_offsets,
-                    self.collision_detector.edge_colliding_edges_buffer_sizes,
-                    edge_edge_parallel_epsilon,
-                ],
-                outputs=[
-                    self.collision_detector.edge_colliding_edges,
-                    self.collision_detector.edge_colliding_edges_count,
-                    self.collision_detector.edge_colliding_edges_min_dist,
-                    self.collision_detector.resize_flags,
-                ],
-                dim=self.model.particle_count,
-                device=self.model.device,
-            )
-
-    def set_points_fixed(self, model, fixed_particles):
-        if len(fixed_particles):
-            flags = model.particle_flags.numpy()
-            for fixed_vertex_id in fixed_particles:
-                flags[fixed_vertex_id] = wp.uint32(int(flags[fixed_vertex_id]) & ~int(PARTICLE_FLAG_ACTIVE))
-
-            model.particle_flags = wp.array(flags, device=model.device)
+    return vertices, faces
 
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_vertex_triangle_collision(test, device):
-    from pxr import Usd, UsdGeom
-
-    def get_data():
-        usd_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
-        usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/bunny"))
-
-        vertices = np.array(usd_geom.GetPointsAttr().Get())
-        faces = np.array(usd_geom.GetFaceVertexIndicesAttr().Get())
-
-        return vertices, faces
-
     vertices, faces = get_data()
 
-    sim = Example(device, vertices, faces)
-    sim.run_vertex_triangle_test()
+    model, collision_detector = init_model(vertices, faces, device)
+
+    rs = [1e-2, 2e-2, 5e-2, 1e-1]
+
+    for query_radius in rs:
+        collision_detector.vertex_triangle_collision_detection(query_radius)
+        vertex_colliding_triangles_count_1 = collision_detector.vertex_colliding_triangles_count.numpy()
+        vertex_min_dis_1 = collision_detector.vertex_colliding_triangles_min_dist.numpy()
+
+        triangle_colliding_vertices_count_1 = collision_detector.triangle_colliding_vertices_count.numpy()
+        triangle_min_dis_1 = collision_detector.triangle_colliding_vertices_min_dist.numpy()
+
+        wp.launch(
+            kernel=init_triangle_collision_data_kernel,
+            inputs=[
+                query_radius,
+                collision_detector.triangle_colliding_vertices_count,
+                collision_detector.triangle_colliding_vertices_min_dist,
+                collision_detector.resize_flags,
+            ],
+            dim=model.tri_count,
+            device=device,
+        )
+
+        wp.launch(
+            kernel=vertex_triangle_collision_detection_brute_force,
+            inputs=[
+                query_radius,
+                collision_detector.bvh_tris.id,
+                collision_detector.model.particle_q,
+                collision_detector.model.tri_indices,
+                collision_detector.vertex_colliding_triangles,
+                collision_detector.vertex_colliding_triangles_count,
+                collision_detector.vertex_colliding_triangles_offsets,
+                collision_detector.vertex_colliding_triangles_buffer_sizes,
+                collision_detector.vertex_colliding_triangles_min_dist,
+                collision_detector.triangle_colliding_vertices,
+                collision_detector.triangle_colliding_vertices_count,
+                collision_detector.triangle_colliding_vertices_offsets,
+                collision_detector.triangle_colliding_vertices_buffer_sizes,
+                collision_detector.triangle_colliding_vertices_min_dist,
+                collision_detector.resize_flags,
+            ],
+            dim=model.particle_count,
+            device=device,
+        )
+
+        vertex_colliding_triangles_count_2 = collision_detector.vertex_colliding_triangles_count.numpy()
+        vertex_min_dis_2 = collision_detector.vertex_colliding_triangles_min_dist.numpy()
+
+        triangle_colliding_vertices_count_2 = collision_detector.triangle_colliding_vertices_count.numpy()
+        triangle_min_dis_2 = collision_detector.triangle_colliding_vertices_min_dist.numpy()
+
+        assert_np_equal(vertex_colliding_triangles_count_2, vertex_colliding_triangles_count_1)
+        assert_np_equal(triangle_min_dis_2, triangle_min_dis_1)
+        assert_np_equal(triangle_colliding_vertices_count_2, triangle_colliding_vertices_count_1)
+        assert_np_equal(vertex_min_dis_2, vertex_min_dis_1)
+
+        wp.launch(
+            kernel=validate_vertex_collisions,
+            inputs=[
+                query_radius,
+                collision_detector.bvh_tris.id,
+                collision_detector.model.particle_q,
+                collision_detector.model.tri_indices,
+                collision_detector.vertex_colliding_triangles,
+                collision_detector.vertex_colliding_triangles_count,
+                collision_detector.vertex_colliding_triangles_offsets,
+                collision_detector.vertex_colliding_triangles_buffer_sizes,
+                collision_detector.vertex_colliding_triangles_min_dist,
+                collision_detector.resize_flags,
+            ],
+            dim=model.particle_count,
+            device=device,
+        )
+
+        wp.launch(
+            kernel=validate_triangle_collisions,
+            inputs=[
+                query_radius,
+                collision_detector.bvh_tris.id,
+                collision_detector.model.particle_q,
+                collision_detector.model.tri_indices,
+                collision_detector.triangle_colliding_vertices,
+                collision_detector.triangle_colliding_vertices_count,
+                collision_detector.triangle_colliding_vertices_offsets,
+                collision_detector.triangle_colliding_vertices_buffer_sizes,
+                collision_detector.triangle_colliding_vertices_min_dist,
+                collision_detector.resize_flags,
+            ],
+            dim=model.tri_count,
+            device=device,
+        )
+
+    wp.synchronize_device(device)
 
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_edge_edge_collision(test, device):
-    from pxr import Usd, UsdGeom
-
-    def get_data():
-        usd_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
-        usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/bunny"))
-
-        vertices = np.array(usd_geom.GetPointsAttr().Get())
-        faces = np.array(usd_geom.GetFaceVertexIndicesAttr().Get())
-
-        return vertices, faces
-
     vertices, faces = get_data()
 
-    sim = Example(device, vertices, faces)
-    sim.run_edge_edge_test()
+    model, collision_detector = init_model(vertices, faces, device)
 
+    rs = [1e-2, 2e-2, 5e-2, 1e-1]
+    edge_edge_parallel_epsilon = 1e-5
 
-devices = get_test_devices()
+    for query_radius in rs:
+        collision_detector.edge_edge_collision_detection(query_radius)
+        edge_colliding_edges_count_1 = collision_detector.edge_colliding_edges_count.numpy()
+        edge_min_dist_1 = collision_detector.edge_colliding_edges_min_dist.numpy()
+
+        wp.launch(
+            kernel=edge_edge_collision_detection_brute_force,
+            inputs=[
+                query_radius,
+                collision_detector.bvh_edges.id,
+                collision_detector.model.particle_q,
+                collision_detector.model.edge_indices,
+                collision_detector.edge_colliding_edges_offsets,
+                collision_detector.edge_colliding_edges_buffer_sizes,
+                edge_edge_parallel_epsilon,
+            ],
+            outputs=[
+                collision_detector.edge_colliding_edges,
+                collision_detector.edge_colliding_edges_count,
+                collision_detector.edge_colliding_edges_min_dist,
+                collision_detector.resize_flags,
+            ],
+            dim=model.edge_count,
+            device=device,
+        )
+
+        edge_colliding_edges_count_2 = collision_detector.edge_colliding_edges_count.numpy()
+        edge_min_dist_2 = collision_detector.edge_colliding_edges_min_dist.numpy()
+
+        assert_np_equal(edge_colliding_edges_count_2, edge_colliding_edges_count_1)
+        assert_np_equal(edge_min_dist_2, edge_min_dist_1)
+
+        wp.launch(
+            kernel=validate_edge_collisions,
+            inputs=[
+                query_radius,
+                collision_detector.bvh_edges.id,
+                collision_detector.model.particle_q,
+                collision_detector.model.edge_indices,
+                collision_detector.edge_colliding_edges_offsets,
+                collision_detector.edge_colliding_edges_buffer_sizes,
+                edge_edge_parallel_epsilon,
+            ],
+            outputs=[
+                collision_detector.edge_colliding_edges,
+                collision_detector.edge_colliding_edges_count,
+                collision_detector.edge_colliding_edges_min_dist,
+                collision_detector.resize_flags,
+            ],
+            dim=model.particle_count,
+            device=device,
+        )
+
+    wp.synchronize_device(device)
 
 
 def test_particle_collision(test, device):
@@ -591,14 +572,17 @@ def test_particle_collision(test, device):
     test.assertTrue((np.linalg.norm(particle_f_2.numpy(), axis=1) == 0).all())
 
 
+devices = get_test_devices(mode="basic")
+
+
 class TestCollision(unittest.TestCase):
     pass
 
 
-# add_function_test(TestCollision, "test_vertex_triangle_collision", test_vertex_triangle_collision, devices=devices)
-# add_function_test(TestCollision, "test_edge_edge_collision", test_vertex_triangle_collision, devices=devices)
+add_function_test(TestCollision, "test_vertex_triangle_collision", test_vertex_triangle_collision, devices=devices)
+add_function_test(TestCollision, "test_edge_edge_collision", test_edge_edge_collision, devices=devices)
 add_function_test(TestCollision, "test_particle_collision", test_particle_collision, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
-    unittest.main(verbosity=2)
+    unittest.main(verbosity=2, failfast=True)
