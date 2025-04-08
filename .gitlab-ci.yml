@@ -151,33 +151,14 @@ mac-x86_64 build:
 # They can run immediately without waiting for the build jobs to complete.
 # ==============================================================================
 
-ruff lint:
+pre-commit checks:
   stage: test
-  image: python:3.11-slim
+  image: ghcr.io/astral-sh/uv:bookworm
   needs: []
   extends:
     - .runner-utility-linux-x86_64
-  before_script:
-    - python -m pip install --upgrade pip
-    - pip install ruff --constraint docs/requirements.txt
   script:
-    - ruff check --output-format full  --exit-zero # Just to get something in the log
-    - ruff check --output-format gitlab > gl-code-quality-report.json
-  artifacts:
-    reports:
-      codequality: gl-code-quality-report.json
-
-ruff format:
-  stage: test
-  image: python:3.11-slim
-  needs: []
-  extends:
-    - .runner-utility-linux-x86_64
-  before_script:
-    - python -m pip install --upgrade pip
-    - pip install ruff --constraint docs/requirements.txt
-  script:
-    - ruff format --diff
+    - uvx pre-commit run --all-files --show-diff-on-failure
 
 osec:sonarqube:
   allow_failure: true  # Uptime not guaranteed
