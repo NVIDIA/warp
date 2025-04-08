@@ -19,6 +19,7 @@
 - `wp.sim.VBDIntegrator` now has a `rebuild_bvh` method to rebuild the BVH used for detecting self contacts.
 - Added damping terms for collisions in `wp.sim.VBDIntegrator`, whose strength is controlled by `Model.soft_contact_kd`.
 - Improve handling of deprecated JAX features ([GH-613](https://github.com/NVIDIA/warp/pull/613)).
+- Changed the USD renderer to use `framesPerSecond` for time sampling instead of `timeCodesPerSecond`.
 
 ### Fixed
 

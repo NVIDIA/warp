@@ -9,12 +9,12 @@
             string boundCamera = "/OmniverseKit_Persp"
         }
     }
+    defaultPrim = "Boid"
     endTimeCode = 100
+    framesPerSecond = 60
     metersPerUnit = 0.01
     startTimeCode = 0
-    timeCodesPerSecond = 60
     upAxis = "Y"
-    defaultPrim = "Boid"
 )
 
 def DistantLight "light_0"

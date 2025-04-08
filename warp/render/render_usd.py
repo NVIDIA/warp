@@ -123,7 +123,7 @@ class UsdRenderer:
         self.stage.SetDefaultPrim(self.root.GetPrim())
         self.stage.SetStartTimeCode(0.0)
         self.stage.SetEndTimeCode(0.0)
-        self.stage.SetTimeCodesPerSecond(self.fps)
+        self.stage.SetFramesPerSecond(self.fps)
 
         if up_axis == "X":
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.x)

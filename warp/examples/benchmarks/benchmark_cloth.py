@@ -160,7 +160,7 @@ def run_benchmark(mode, dim, timers, render=False):
         stage = Usd.Stage.CreateNew("benchmark.usd")
         stage.SetStartTimeCode(0.0)
         stage.SetEndTimeCode(sim_duration * sim_fps)
-        stage.SetTimeCodesPerSecond(sim_fps)
+        stage.SetFramesPerSecond(sim_fps)
 
         grid = UsdGeom.Mesh.Define(stage, "/root")
         grid.GetPointsAttr().Set(cloth.positions, 0.0)
