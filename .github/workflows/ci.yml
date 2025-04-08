@@ -27,9 +27,6 @@ on:
   schedule: # Schedule workflow only runs on the default branch
     - cron: "45 9 * * *"
 
-env:
-  PYTHON_VERSION: 3.12
-
 jobs:
   build-warp-windows:
     runs-on: windows-2019
@@ -41,7 +38,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: '.python-version'
       - name: Install CTK
         uses: Jimver/cuda-toolkit@v0.2.21
         id: cuda-toolkit
@@ -73,7 +70,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: '.python-version'
       - name: Install CTK
         uses: Jimver/cuda-toolkit@v0.2.21
         id: cuda-toolkit
@@ -110,7 +107,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: '.python-version'
       - name: Install CTK
         uses: Jimver/cuda-toolkit@v0.2.21
         id: cuda-toolkit
@@ -141,7 +138,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: '.python-version'
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -168,7 +165,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: '.python-version'
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
         with:
@@ -178,10 +175,10 @@ jobs:
         run: |
           python -m pip cache purge
           python -m pip install --upgrade pip
-          pip install --no-cache-dir --upgrade numpy coverage[toml] usd-core Pillow
+          pip install --no-cache-dir --upgrade numpy usd-core Pillow
           pip install --no-cache-dir .
       - name: Run Tests
-        run: python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        run: python -m warp.tests --junit-report-xml rspec.xml -s autodetect
       - name: Test Summary
         uses: test-summary/action@v2.3
         with:
@@ -202,7 +199,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: '.python-version'
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
         with:
@@ -212,10 +209,10 @@ jobs:
         run: |
           python -m pip cache purge
           python -m pip install --upgrade pip
-          pip install --no-cache-dir --upgrade numpy coverage[toml] usd-core Pillow
+          pip install --no-cache-dir --upgrade numpy usd-core Pillow
           pip install --no-cache-dir .
       - name: Run Tests
-        run: python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        run: python -m warp.tests --junit-report-xml rspec.xml -s autodetect
       - name: Test Summary
         uses: test-summary/action@v2.3
         with:
@@ -236,7 +233,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: '.python-version'
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
         with:
@@ -246,10 +243,10 @@ jobs:
         run: |
           python -m pip cache purge
           python -m pip install --upgrade pip
-          pip install --no-cache-dir --upgrade numpy coverage[toml]
+          pip install --no-cache-dir --upgrade numpy
           pip install --no-cache-dir .
       - name: Run Tests
-        run: python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        run: python -m warp.tests --junit-report-xml rspec.xml -s autodetect
       - name: Test Summary
         uses: test-summary/action@v2.3
         with:
@@ -270,7 +267,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: '.python-version'
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
         with:
@@ -280,10 +277,10 @@ jobs:
         run: |
           python -m pip cache purge
           python -m pip install --upgrade pip
-          pip install --no-cache-dir --upgrade numpy coverage[toml] usd-core Pillow
+          pip install --no-cache-dir --upgrade numpy usd-core Pillow
           pip install --no-cache-dir .
       - name: Run Tests
-        run: python -m warp.tests --maxjobs 4  --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        run: python -m warp.tests --maxjobs 4  --junit-report-xml rspec.xml -s autodetect
       - name: Test Summary
         uses: test-summary/action@v2.3
         with:
@@ -303,7 +300,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version-file: '.python-version'
       - name: Download Warp binaries
         uses: actions/download-artifact@v4
         with:

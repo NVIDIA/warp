@@ -29,9 +29,6 @@ on:
   schedule:
     - cron: "45 9 * * *"
 
-env:
-  PYTHON_VERSION: 3.11
-
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
