@@ -314,34 +314,6 @@ linux-x86_64-blackwell test:
     - os/linux
     - platform/horde
 
-# Note that for throughput reasons this runs on a single-GPU runner
-windows-x86_64 test:
-  stage: test
-  needs: [windows-x86_64 build]
-  extends:
-    - .runner-test-windows-x86_64-gpu
-    - .test_common_main
-  before_script:
-    - !reference [.snippets, define-powershell-GetTime]
-    - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
-    - powershell -command "Get-Volume | Format-Table -AutoSize"
-    - $python_name = $DEFAULT_PYTHON + "-windows-x86_64"
-    - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
-    - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
-    - .\_venv\Scripts\Activate.ps1
-    - python -m pip install --upgrade pip
-    - python -m pip install --upgrade usd-core coverage[toml] numpy blosc Pillow
-    - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
-    - python -m pip install -e .
-    - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
-  script:
-    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
-    # Upload report to Codecov
-    - git config --global --add safe.directory $env:CI_PROJECT_DIR
-    - python -m pip install codecov-cli
-    - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --plugin pycoverage -F unittests -f coverage.xml
-    - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
-
 mac-x86_64 test:
   stage: test
   needs: [mac-x86_64 build]
@@ -357,45 +329,34 @@ mac-x86_64 test:
   script:
     - python -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
-# Test the Linux release build in an environment with minimal Python dependencies installed
-linux-x86_64 test minimal:
+# Optional single-GPU Windows job (likely longer queue time)
+windows-x86_64 test:
   stage: test
-  image: ubuntu:22.04
-  needs: [linux-x86_64 build]
+  needs: [windows-x86_64 build]
   extends:
-    - .omni_nvks_gpu_2x
-    - .save_test_report_artifact
+    - .runner-test-windows-x86_64-gpu
+    - .test_common_main
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH 
     - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
-    - if: $CI_PIPELINE_SOURCE == "web"
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       changes:
-        - .gitlab/ci/*
-        - warp/**/*
-        - pyproject.toml
-        - tools/**/*
-        - deps/*
-        - build_lib.py
-        - build_llvm.py
-    - when: manual # If not auto-triggered, allow any pipeline to run this job manually
+        - warp/native/*
+    - when: manual # Can be triggered in all other scenarios
       allow_failure: true
   before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - df -h
-    - apt-get update && apt-get install curl --no-install-recommends -y
-    # Move compiled binaries out of platform-specific directory
-    - mv warp/bin/linux-x86_64/warp.so warp/bin/
-    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
-    - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-x86_64
-    - $PYTHON -m venv _venv
-    - source _venv/bin/activate
+    - !reference [.snippets, define-powershell-GetTime]
+    - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
+    - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - $python_name = $DEFAULT_PYTHON + "-windows-x86_64"
+    - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
+    - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
+    - .\_venv\Scripts\Activate.ps1
     - python -m pip install --upgrade pip
+    - python -m pip install --upgrade usd-core numpy blosc Pillow
+    - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
     - python -m pip install -e .
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
-    # HACK: disable P2P tests due to misbehaving agents
-    - export WARP_DISABLE_P2P_TESTS=1
+    - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
@@ -420,7 +381,7 @@ windows-x86_64 test mgpu:
     - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
     - .\_venv\Scripts\Activate.ps1
     - python -m pip install --upgrade pip
-    - python -m pip install --upgrade usd-core numpy Pillow
+    - python -m pip install --upgrade usd-core numpy blosc Pillow
     - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
     - python -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
