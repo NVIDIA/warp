@@ -30,6 +30,8 @@
   This setting is controlled by `wp.config.line_directives` and is `True` by default.
   ([docs](https://nvidia.github.io/warp/profiling.html#nsight-compute-profiling),
    [GH-437](https://github.com/NVIDIA/warp/issues/437))
+- Add example of a distributed Jacobi solver using `mpi4py` in `warp/examples/distributed/example_jacobi_mpi.py`
+  ([GH-475](https://github.com/NVIDIA/warp/issues/475)).
 
 ### Changed
 
