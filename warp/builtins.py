@@ -2861,6 +2861,85 @@ add_builtin(
 )
 
 
+def tile_sort_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return Tile(dtype=Any, shape=(1,))
+
+    if len(arg_types) != 2:
+        raise TypeError(
+            f"tile_sort() takes exactly 2 positional arguments (keys and values) but {len(arg_types)} were given"
+        )
+
+    a = arg_types["keys"]
+    b = arg_types["values"]
+
+    if not is_tile(a):
+        raise TypeError(f"First tile_sort() argument must be a tile, got {a!r}")
+
+    if not is_tile(b):
+        raise TypeError(f"Second tile_sort() argument must be a tile, got {b!r}")
+
+    if not (a.dtype is warp.float32 or a.dtype is warp.int32 or a.dtype is warp.uint32):
+        raise TypeError(f"First tile_sort() argument must be a tile of type float or int, got {a.dtype}")
+
+    # set the storage type to the inputs to shared
+    a.storage = "shared"
+    b.storage = "shared"
+
+    if len(a.shape) != len(b.shape):
+        raise ValueError(
+            f"tile_sort() shapes must have the same number of dimensions, got {len(a.shape)} and {len(b.shape)}"
+        )
+
+    for i in range(len(a.shape)):
+        if a.shape[i] != b.shape[i]:
+            raise ValueError(f"tile_sort() shapes do not match on dimension {i}, got {a.shape} and {b.shape}")
+
+    return None
+
+
+add_builtin(
+    "tile_sort",
+    input_types={"keys": Tile(dtype=Any, shape=Any), "values": Tile(dtype=Any, shape=Any)},
+    value_func=tile_sort_value_func,
+    variadic=True,
+    doc="""Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
+
+    :param keys: Keys to sort by. Supported key types: :class:`float32`, :class:`int32`, :class:`uint32`. Must be in shared memory.
+    :param values: Values to sort along with keys. No type restrictions. Must be in shared memory.
+    :returns: No return value. Sorts both tiles in-place.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            keys = wp.tile_arange(32, 0, -1, dtype=int, storage="shared")
+            values = wp.tile_arange(0, 32, 1, dtype=int, storage="shared")
+            wp.tile_sort(keys, values)
+
+            print(keys)
+            print(values)
+
+
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+
+    Prints:
+
+    .. code-block:: text
+
+        [1, 2, ..., 32] = tile(shape=(32), storage=shared)
+        [31, 30, 29, ..., 0] = tile(shape=(32), storage=shared)
+
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_min_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:

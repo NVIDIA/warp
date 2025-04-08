@@ -1059,6 +1059,41 @@ Tile Primitives
     
 
 
+.. py:function:: tile_sort(keys: Tile, values: Tile) -> Tile
+
+    Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
+
+    :param keys: Keys to sort by. Supported key types: :class:`float32`, :class:`int32`, :class:`uint32`. Must be in shared memory.
+    :param values: Values to sort along with keys. No type restrictions. Must be in shared memory.
+    :returns: No return value. Sorts both tiles in-place.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            keys = wp.tile_arange(32, 0, -1, dtype=int, storage="shared")
+            values = wp.tile_arange(0, 32, 1, dtype=int, storage="shared")
+            wp.tile_sort(keys, values)
+
+            print(keys)
+            print(values)
+
+
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+
+    Prints:
+
+    .. code-block:: text
+
+        [1, 2, ..., 32] = tile(shape=(32), storage=shared)
+        [31, 30, 29, ..., 0] = tile(shape=(32), storage=shared)
+
+    
+
+
 .. py:function:: tile_min(a: Tile) -> Tile
 
     Cooperatively compute the minimum of the tile elements using all threads in the block.
