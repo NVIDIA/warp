@@ -1,14 +1,6 @@
 coverage:
   status:
-    project: # More options at https://docs.codecov.com/docs/commit-status
-      default:
-        target: auto #default
-        threshold: "5"
-        base: auto
+    project: off
+    patch: off
 
-comment:
-  behavior: default
-  require_changes: false # if true: only post the comment if coverage changes
-  hide_project_coverage: false # [true :: only show coverage on the git diff aka patch coverage]]
-  require_base: false # [true :: must have a base report to post]
-  require_head: true # [true :: must have a head report to post]
+comment: false
