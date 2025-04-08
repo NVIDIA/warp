@@ -12,6 +12,8 @@
   ([GH-609](https://github.com/NVIDIA/warp/issues/609)).
 - Add support for animating visibility of objects in the USD renderer
   ([GH-598](https://github.com/NVIDIA/warp/issues/598)).
+- Add support for returning multiple values from native functions like `wp.svd3()` and `wp.quat_to_axis_angle()`
+  ([GH-503](https://github.com/NVIDIA/warp/issues/503)).
 
 ### Changed
 

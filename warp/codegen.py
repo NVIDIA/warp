@@ -1285,7 +1285,8 @@ class Adjoint:
 
                 # check output dimensions match expectations
                 if min_outputs:
-                    if not isinstance(f.value_type, Sequence) or len(f.value_type) != min_outputs:
+                    value_type = f.value_func(None, None)
+                    if not isinstance(value_type, Sequence) or len(value_type) != min_outputs:
                         continue
 
                 # found a match, use it

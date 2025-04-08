@@ -693,6 +693,122 @@ def test_codegen_return_in_kernel(test, device):
     test.assertEqual(result.numpy()[0], grid_size - 256)
 
 
+@wp.kernel
+def test_multiple_return_values_quat_to_axis_angle_kernel(
+    q: wp.quath,
+    expected_axis: wp.vec3h,
+    expected_angle: wp.float16,
+):
+    axis, angle = wp.quat_to_axis_angle(q)
+
+    wp.expect_near(axis[0], expected_axis[0], tolerance=wp.float16(1e-3))
+    wp.expect_near(axis[1], expected_axis[1], tolerance=wp.float16(1e-3))
+    wp.expect_near(axis[2], expected_axis[2], tolerance=wp.float16(1e-3))
+
+    wp.expect_near(angle, expected_angle, tolerance=wp.float16(1e-3))
+
+
+@wp.kernel
+def test_multiple_return_values_svd3_kernel(
+    A: wp.mat33f,
+    expected_U: wp.mat33f,
+    expected_sigma: wp.vec3f,
+    expected_V: wp.mat33f,
+):
+    U, sigma, V = wp.svd3(A)
+
+    wp.expect_near(U[0][0], expected_U[0][0], tolerance=1e-5)
+    wp.expect_near(U[0][1], expected_U[0][1], tolerance=1e-5)
+    wp.expect_near(U[0][2], expected_U[0][2], tolerance=1e-5)
+    wp.expect_near(U[1][0], expected_U[1][0], tolerance=1e-5)
+    wp.expect_near(U[1][1], expected_U[1][1], tolerance=1e-5)
+    wp.expect_near(U[1][2], expected_U[1][2], tolerance=1e-5)
+    wp.expect_near(U[2][0], expected_U[2][0], tolerance=1e-5)
+    wp.expect_near(U[2][1], expected_U[2][1], tolerance=1e-5)
+    wp.expect_near(U[2][2], expected_U[2][2], tolerance=1e-5)
+
+    wp.expect_near(sigma[0], expected_sigma[0], tolerance=1e-5)
+    wp.expect_near(sigma[1], expected_sigma[1], tolerance=1e-5)
+    wp.expect_near(sigma[2], expected_sigma[2], tolerance=1e-5)
+
+    wp.expect_near(V[0][0], expected_V[0][0], tolerance=1e-5)
+    wp.expect_near(V[0][1], expected_V[0][1], tolerance=1e-5)
+    wp.expect_near(V[0][2], expected_V[0][2], tolerance=1e-5)
+    wp.expect_near(V[1][0], expected_V[1][0], tolerance=1e-5)
+    wp.expect_near(V[1][1], expected_V[1][1], tolerance=1e-5)
+    wp.expect_near(V[1][2], expected_V[1][2], tolerance=1e-5)
+    wp.expect_near(V[2][0], expected_V[2][0], tolerance=1e-5)
+    wp.expect_near(V[2][1], expected_V[2][1], tolerance=1e-5)
+    wp.expect_near(V[2][2], expected_V[2][2], tolerance=1e-5)
+
+
+def test_multiple_return_values(test, device):
+    q = wp.quath(1.0, 2.0, 3.0, 4.0)
+    expected_axis = wp.vec3h(0.26726124, 0.53452247, 0.80178368)
+    expected_angle = 1.50408018
+
+    axis, angle = wp.quat_to_axis_angle(q)
+
+    test.assertAlmostEqual(axis[0], expected_axis[0], places=3)
+    test.assertAlmostEqual(axis[1], expected_axis[1], places=3)
+    test.assertAlmostEqual(axis[2], expected_axis[2], places=3)
+
+    test.assertAlmostEqual(angle, expected_angle, places=3)
+
+    wp.launch(
+        test_multiple_return_values_quat_to_axis_angle_kernel,
+        dim=1,
+        inputs=(q, expected_axis, expected_angle),
+    )
+
+    # fmt: off
+    A = wp.mat33(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0)
+    expected_U = wp.mat33(
+        0.21483721, 0.88723058, -0.40824816,
+        0.52058744, 0.24964368, 0.81649637,
+        0.82633746, -0.38794267, -0.40824834,
+    )
+    expected_sigma = wp.vec3(16.84809875, 1.06836915, 0.00000019)
+    expected_V = wp.mat33(
+        0.47967088, -0.77669406, 0.40824246,
+        0.57236743, -0.07568054, -0.81649727,
+        0.66506463, 0.62531471, 0.40825251,
+    )
+    # fmt: on
+
+    U, sigma, V = wp.svd3(A)
+
+    test.assertAlmostEqual(U[0][0], expected_U[0][0], places=5)
+    test.assertAlmostEqual(U[0][1], expected_U[0][1], places=5)
+    test.assertAlmostEqual(U[0][2], expected_U[0][2], places=5)
+    test.assertAlmostEqual(U[1][0], expected_U[1][0], places=5)
+    test.assertAlmostEqual(U[1][1], expected_U[1][1], places=5)
+    test.assertAlmostEqual(U[1][2], expected_U[1][2], places=5)
+    test.assertAlmostEqual(U[2][0], expected_U[2][0], places=5)
+    test.assertAlmostEqual(U[2][1], expected_U[2][1], places=5)
+    test.assertAlmostEqual(U[2][2], expected_U[2][2], places=5)
+
+    test.assertAlmostEqual(sigma[0], expected_sigma[0], places=5)
+    test.assertAlmostEqual(sigma[1], expected_sigma[1], places=5)
+    test.assertAlmostEqual(sigma[2], expected_sigma[2], places=5)
+
+    test.assertAlmostEqual(V[0][0], expected_V[0][0], places=5)
+    test.assertAlmostEqual(V[0][1], expected_V[0][1], places=5)
+    test.assertAlmostEqual(V[0][2], expected_V[0][2], places=5)
+    test.assertAlmostEqual(V[1][0], expected_V[1][0], places=5)
+    test.assertAlmostEqual(V[1][1], expected_V[1][1], places=5)
+    test.assertAlmostEqual(V[1][2], expected_V[1][2], places=5)
+    test.assertAlmostEqual(V[2][0], expected_V[2][0], places=5)
+    test.assertAlmostEqual(V[2][1], expected_V[2][1], places=5)
+    test.assertAlmostEqual(V[2][2], expected_V[2][2], places=5)
+
+    wp.launch(
+        test_multiple_return_values_svd3_kernel,
+        dim=1,
+        inputs=(A, expected_U, expected_sigma, expected_V),
+    )
+
+
 class TestCodeGen(unittest.TestCase):
     pass
 
@@ -825,6 +941,13 @@ add_kernel_test(TestCodeGen, name="test_call_syntax", kernel=test_call_syntax, d
 add_kernel_test(TestCodeGen, name="test_shadow_builtin", kernel=test_shadow_builtin, dim=1, devices=devices)
 add_kernel_test(TestCodeGen, name="test_while_condition_eval", kernel=test_while_condition_eval, dim=1, devices=devices)
 add_function_test(TestCodeGen, "test_codegen_return_in_kernel", test_codegen_return_in_kernel, devices=devices)
+add_function_test(
+    TestCodeGen,
+    func=test_multiple_return_values,
+    name="test_multiple_return_values",
+    devices=devices,
+)
+
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

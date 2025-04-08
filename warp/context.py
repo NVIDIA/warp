@@ -304,7 +304,23 @@ class Function:
                 if overload.generic:
                     continue
 
-                success, return_value = call_builtin(overload, *args)
+                try:
+                    # Try to bind the given arguments to the function's signature.
+                    # This is not checking whether the argument types are matching,
+                    # rather it's just assigning each argument to the corresponding
+                    # function parameter.
+                    bound_args = self.signature.bind(*args, **kwargs)
+                except TypeError:
+                    continue
+
+                if self.defaults:
+                    # Populate the bound arguments with any default values.
+                    default_args = {k: v for k, v in self.defaults.items() if k not in bound_args.arguments}
+                    warp.codegen.apply_defaults(bound_args, default_args)
+
+                bound_args = tuple(bound_args.arguments.values())
+
+                success, return_value = call_builtin(overload, bound_args)
                 if success:
                     return return_value
 
@@ -355,9 +371,6 @@ class Function:
         for v in self.input_types.values():
             if warp.types.is_array(v) or v in complex_type_hints:
                 return False
-
-        if type(self.value_type) in sequence_types:
-            return False
 
         return True
 
@@ -455,7 +468,36 @@ class Function:
         return f"<Function {self.key}({inputs_str})>"
 
 
-def call_builtin(func: Function, *params: Any) -> tuple[bool, Any]:
+def get_builtin_type(return_type: type) -> type:
+    # The return_type might just be vector_t(length=3,dtype=wp.float32), so we've got to match that
+    # in the list of hard coded types so it knows it's returning one of them:
+    if hasattr(return_type, "_wp_generic_type_hint_"):
+        return_type_match = tuple(
+            x
+            for x in generic_vtypes
+            if x._wp_generic_type_hint_ == return_type._wp_generic_type_hint_
+            and x._wp_type_params_ == return_type._wp_type_params_
+        )
+        if not return_type_match:
+            raise RuntimeError("No match")
+
+        return return_type_match[0]
+
+    return return_type
+
+
+def extract_return_value(value_type: type, value_ctype: type, ret: Any) -> Any:
+    if issubclass(value_ctype, ctypes.Array) or issubclass(value_ctype, ctypes.Structure):
+        # return vector types as ctypes
+        return ret
+
+    if value_type is warp.types.float16:
+        return warp.types.half_bits_to_float(ret.value)
+
+    return ret.value
+
+
+def call_builtin(func: Function, params: tuple) -> tuple[bool, Any]:
     uses_non_warp_array_type = False
 
     init()
@@ -468,6 +510,8 @@ def call_builtin(func: Function, *params: Any) -> tuple[bool, Any]:
         func_args = func.export_func(func.input_types)
     else:
         func_args = func.input_types
+
+    value_type = func.value_func(None, None)
 
     # Try gathering the parameters that the function expects and pack them
     # into their corresponding C types.
@@ -600,25 +644,18 @@ def call_builtin(func: Function, *params: Any) -> tuple[bool, Any]:
             else:
                 c_params.append(arg_type._type_(param))
 
-    # returns the corresponding ctype for a scalar or vector warp type
+    # Retrieve the return type.
     value_type = func.value_func(None, None)
 
-    if value_type == float:
-        value_ctype = ctypes.c_float
-    elif value_type == int:
-        value_ctype = ctypes.c_int32
-    elif value_type == bool:
-        value_ctype = ctypes.c_bool
-    elif issubclass(value_type, (ctypes.Array, ctypes.Structure)):
-        value_ctype = value_type
-    else:
-        # scalar type
-        value_ctype = value_type._type_
+    if value_type is not None:
+        if not isinstance(value_type, Sequence):
+            value_type = (value_type,)
 
-    # construct return value (passed by address)
-    ret = value_ctype()
-    ret_addr = ctypes.c_void_p(ctypes.addressof(ret))
-    c_params.append(ret_addr)
+        value_ctype = tuple(warp.types.type_ctype(x) for x in value_type)
+        ret = tuple(x() for x in value_ctype)
+        ret_addr = tuple(ctypes.c_void_p(ctypes.addressof(x)) for x in ret)
+
+        c_params.extend(ret_addr)
 
     # Call the built-in function from Warp's dll.
     c_func(*c_params)
@@ -633,17 +670,14 @@ def call_builtin(func: Function, *params: Any) -> tuple[bool, Any]:
             stacklevel=3,
         )
 
-    if issubclass(value_ctype, ctypes.Array) or issubclass(value_ctype, ctypes.Structure):
-        # return vector types as ctypes
-        return (True, ret)
+    if value_type is None:
+        return (True, None)
 
-    if value_type == warp.types.float16:
-        value = warp.types.half_bits_to_float(ret.value)
-    else:
-        value = ret.value
+    return_value = tuple(extract_return_value(x, y, z) for x, y, z in zip(value_type, value_ctype, ret))
+    if len(return_value) == 1:
+        return_value = return_value[0]
 
-    # return scalar types as int/float
-    return (True, value)
+    return (True, return_value)
 
 
 class KernelHooks:
@@ -1345,18 +1379,13 @@ def add_builtin(
 
                 return_type = value_func(concrete_arg_types, None)
 
-                # The return_type might just be vector_t(length=3,dtype=wp.float32), so we've got to match that
-                # in the list of hard coded types so it knows it's returning one of them:
-                if hasattr(return_type, "_wp_generic_type_hint_"):
-                    return_type_match = tuple(
-                        x
-                        for x in generic_vtypes
-                        if x._wp_generic_type_hint_ == return_type._wp_generic_type_hint_
-                        and x._wp_type_params_ == return_type._wp_type_params_
-                    )
-                    if not return_type_match:
-                        continue
-                    return_type = return_type_match[0]
+                try:
+                    if isinstance(return_type, Sequence):
+                        return_type = tuple(get_builtin_type(x) for x in return_type)
+                    else:
+                        return_type = get_builtin_type(return_type)
+                except RuntimeError:
+                    continue
 
                 # finally we can generate a function call for these concrete types:
                 add_builtin(
@@ -6466,7 +6495,7 @@ def type_str(t):
         return "Callable"
     elif isinstance(t, int):
         return str(t)
-    elif isinstance(t, List):
+    elif isinstance(t, (List, tuple)):
         return "Tuple[" + ", ".join(map(type_str, t)) + "]"
     elif isinstance(t, warp.array):
         return f"Array[{type_str(t.dtype)}]"
@@ -6751,12 +6780,7 @@ def export_builtins(file: io.TextIOBase):  # pragma: no cover
             return t.__name__
 
     def ctype_ret_str(t):
-        if isinstance(t, int):
-            return "int"
-        elif isinstance(t, float):
-            return "float"
-        else:
-            return t.__name__
+        return get_builtin_type(t).__name__
 
     file.write("namespace wp {\n\n")
     file.write('extern "C" {\n\n')
@@ -6773,33 +6797,47 @@ def export_builtins(file: io.TextIOBase):  # pragma: no cover
             if not f.is_simple():
                 continue
 
-            try:
-                # todo: construct a default value for each of the functions args
-                # so we can generate the return type for overloaded functions
-                return_type = ctype_ret_str(f.value_func(None, None))
-            except Exception:
-                continue
-
-            if return_type.startswith("Tuple"):
-                continue
-
             # Runtime arguments that are to be passed to the function, not its template signature.
             if f.export_func is not None:
                 func_args = f.export_func(f.input_types)
             else:
                 func_args = f.input_types
 
+            # todo: construct a default value for each of the functions args
+            # so we can generate the return type for overloaded functions
+            return_type = f.value_func(func_args, None)
+
             args = ", ".join(f"{ctype_arg_str(v)} {k}" for k, v in func_args.items())
             params = ", ".join(func_args.keys())
 
-            if args == "":
-                file.write(f"WP_API void {f.mangled_name}({return_type}* ret) {{ *ret = wp::{f.key}({params}); }}\n")
-            elif return_type == "None":
+            if return_type is None:
+                # void function
                 file.write(f"WP_API void {f.mangled_name}({args}) {{ wp::{f.key}({params}); }}\n")
+            elif isinstance(return_type, tuple) and len(return_type) > 1:
+                # multiple return value function using output parameters
+                outputs = tuple(f"{ctype_ret_str(x)}& ret_{i}" for i, x in enumerate(return_type))
+                output_params = ", ".join(f"ret_{i}" for i in range(len(outputs)))
+                if args:
+                    file.write(
+                        f"WP_API void {f.mangled_name}({args}, {', '.join(outputs)}) {{ wp::{f.key}({params}, {output_params}); }}\n"
+                    )
+                else:
+                    file.write(
+                        f"WP_API void {f.mangled_name}({', '.join(outputs)}) {{ wp::{f.key}({params}, {output_params}); }}\n"
+                    )
             else:
-                file.write(
-                    f"WP_API void {f.mangled_name}({args}, {return_type}* ret) {{ *ret = wp::{f.key}({params}); }}\n"
-                )
+                # single return value function
+                try:
+                    return_str = ctype_ret_str(return_type)
+                except Exception:
+                    continue
+
+                if args:
+                    file.write(
+                        f"WP_API void {f.mangled_name}({args}, {return_str}* ret) {{ *ret = wp::{f.key}({params}); }}\n"
+                    )
+                else:
+                    file.write(f"WP_API void {f.mangled_name}({return_str}* ret) {{ *ret = wp::{f.key}({params}); }}\n")
 
     file.write('\n}  // extern "C"\n\n')
     file.write("}  // namespace wp\n")

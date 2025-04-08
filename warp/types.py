@@ -1250,6 +1250,10 @@ def type_ctype(dtype):
         return ctypes.c_float
     elif dtype == int:
         return ctypes.c_int32
+    elif dtype == bool:
+        return ctypes.c_bool
+    elif issubclass(dtype, (ctypes.Array, ctypes.Structure)):
+        return dtype
     else:
         # scalar type
         return dtype._type_
