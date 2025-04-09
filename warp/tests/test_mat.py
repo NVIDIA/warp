@@ -1607,60 +1607,6 @@ def test_transform_vector(test, device, dtype, register_kernels=False):
             tape.zero()
 
 
-def test_matrix_assign_inplace(test, device, dtype, register_kernels=False):
-    np_type = np.dtype(dtype)
-    wp_type = wp.types.np_dtype_to_warp_type[np_type]
-
-    vec2 = wp.types.vector(length=2, dtype=wp_type)
-    mat22 = wp.types.matrix(shape=(2, 2), dtype=wp_type)
-
-    def mattest_read_write_store(x: wp.array(dtype=wp_type), a: wp.array(dtype=mat22)):
-        tid = wp.tid()
-
-        t = a[tid]
-        t[0, 0] = x[tid]
-        a[tid] = t
-
-    def mattest_in_register(x: wp.array2d(dtype=mat22), y: wp.array(dtype=vec2)):
-        i, j = wp.tid()
-
-        a = mat22(wp_type(0.0))
-        a[0] = y[i]
-        a[1, 1] = wp_type(3.0)
-        x[i, j] = a
-
-    kernel_read_write_store = getkernel(mattest_read_write_store, suffix=dtype.__name__)
-    kernel_in_register = getkernel(mattest_in_register, suffix=dtype.__name__)
-
-    if register_kernels:
-        return
-
-    a = wp.ones(1, dtype=mat22, device=device, requires_grad=True)
-    x = wp.full(1, value=2.0, dtype=wp_type, device=device, requires_grad=True)
-
-    tape = wp.Tape()
-    with tape:
-        wp.launch(kernel_read_write_store, dim=1, inputs=[x, a], device=device)
-
-    tape.backward(grads={a: wp.ones_like(a, requires_grad=False)})
-
-    assert_np_equal(a.numpy(), np.array([[[2.0, 1.0], [1.0, 1.0]]], dtype=np_type))
-    assert_np_equal(x.grad.numpy(), np.array([1.0], dtype=np_type))
-
-    tape.reset()
-
-    x = wp.zeros((1, 1), dtype=mat22, device=device, requires_grad=True)
-    y = wp.ones(1, dtype=vec2, device=device, requires_grad=True)
-
-    with tape:
-        wp.launch(kernel_in_register, dim=(1, 1), inputs=[x, y], device=device)
-
-    tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
-
-    assert_np_equal(x.numpy(), np.array([[[[1.0, 1.0], [0.0, 3.0]]]], dtype=np_type))
-    assert_np_equal(y.grad.numpy(), np.array([[1.0, 1.0]], dtype=np_type))
-
-
 # Test matrix constructors using explicit type (float16)
 # note that these tests are specifically not using generics / closure
 # args to create kernels dynamically (like the rest of this file)
@@ -1864,63 +1810,105 @@ def test_matrix_len(test, device):
 
 
 @wp.kernel
-def matrix_augassign_kernel(
-    a: wp.array(dtype=wp.mat22),
-    b: wp.array(dtype=wp.mat22),
-    x: wp.array(dtype=wp.vec2),
-    c: wp.array(dtype=wp.mat22),
-    d: wp.array(dtype=wp.mat22),
-    y: wp.array(dtype=wp.vec2),
-):
-    i = wp.tid()
+def mat_extract_element(x: wp.array(dtype=wp.mat22), y: wp.array(dtype=float)):
+    tid = wp.tid()
 
-    m1 = wp.mat22()
-    m2 = b[i]
-    v2 = x[i]
-
-    m1[0] += v2
-    m1[1, 0] += m2[1, 0]
-    m1[1, 1] += m2[1, 1]
-
-    a[i] = m1
-
-    m3 = wp.mat22()
-    m4 = d[i]
-    v4 = y[i]
-
-    m3[0] -= v4
-    m3[1, 0] -= m4[1, 0]
-    m3[1, 1] -= m4[1, 1]
-
-    c[i] = m3
+    a = x[tid]
+    b = a[0, 0] + 2.0 * a[0, 1] + 3.0 * a[1, 0] + 4.0 * a[1, 1]
+    y[tid] = b
 
 
-def test_matrix_augassign(test, device):
-    N = 1
+@wp.kernel
+def mat_extract_row(x: wp.array(dtype=wp.mat22), y: wp.array(dtype=wp.vec2)):
+    tid = wp.tid()
 
-    a = wp.zeros(N, dtype=wp.mat22, requires_grad=True, device=device)
-    b = wp.ones(N, dtype=wp.mat22, requires_grad=True, device=device)
-    x = wp.ones(N, dtype=wp.vec2, requires_grad=True, device=device)
+    a = x[tid]
+    b = a[0] + 2.0 * a[1]
+    y[tid] = b
 
-    c = wp.zeros(N, dtype=wp.mat22, requires_grad=True, device=device)
-    d = wp.ones(N, dtype=wp.mat22, requires_grad=True, device=device)
-    y = wp.ones(N, dtype=wp.vec2, requires_grad=True, device=device)
+
+def test_mat_extract(test, device):
+    # matrix element
+    x = wp.ones(1, dtype=wp.mat22, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=float, requires_grad=True, device=device)
 
     tape = wp.Tape()
     with tape:
-        wp.launch(matrix_augassign_kernel, N, inputs=[a, b, x, c, d, y], device=device)
+        wp.launch(mat_extract_element, 1, inputs=[x], outputs=[y], device=device)
 
-    tape.backward(grads={a: wp.ones_like(a), c: wp.ones_like(c)})
+    y.grad = wp.ones_like(y)
+    tape.backward()
 
-    assert_np_equal(a.numpy(), wp.ones_like(a).numpy())
-    assert_np_equal(a.grad.numpy(), wp.ones_like(a).numpy())
-    assert_np_equal(b.grad.numpy(), np.array([[[0, 0], [1, 1]]], dtype=float))
-    assert_np_equal(x.grad.numpy(), np.array([[1, 1]], dtype=float))
+    assert_np_equal(y.numpy(), np.array([10.0], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[[1.0, 2.0], [3.0, 4.0]]], dtype=float))
 
-    assert_np_equal(c.numpy(), -wp.ones_like(c).numpy())
-    assert_np_equal(c.grad.numpy(), wp.ones_like(c).numpy())
-    assert_np_equal(d.grad.numpy(), np.array([[[0, 0], [-1, -1]]], dtype=float))
-    assert_np_equal(y.grad.numpy(), np.array([[-1, -1]], dtype=float))
+    # matrix row
+    x = wp.ones(1, dtype=wp.mat22, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.vec2, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(mat_extract_row, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[3.0, 3.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[[1.0, 1.0], [2.0, 2.0]]], dtype=float))
+
+
+@wp.kernel
+def mat_assign_element(x: wp.array(dtype=float), y: wp.array(dtype=wp.mat22)):
+    i = wp.tid()
+
+    a = wp.mat22()
+    a[0, 0] = 1.0 * x[i]
+    a[0, 1] = 2.0 * x[i]
+    a[1, 0] = 3.0 * x[i]
+    a[1, 1] = 4.0 * x[i]
+
+    y[i] = a
+
+
+@wp.kernel
+def mat_assign_row(x: wp.array(dtype=wp.vec2), y: wp.array(dtype=wp.mat22)):
+    i = wp.tid()
+
+    a = wp.mat22()
+    a[0] = 1.0 * x[i]
+    a[1] = 2.0 * x[i]
+
+    y[i] = a
+
+
+def test_mat_assign(test, device):
+    # matrix element
+    x = wp.ones(1, dtype=float, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.mat22, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(mat_assign_element, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[[1.0, 2.0], [3.0, 4.0]]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([10.0], dtype=float))
+
+    # matrix row
+    x = wp.ones(1, dtype=wp.vec2, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.mat22, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(mat_assign_row, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[[1.0, 1.0], [2.0, 2.0]]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[3.0, 3.0]], dtype=float))
 
 
 def test_matrix_assign_copy(test, device):
@@ -1951,6 +1939,260 @@ def test_matrix_assign_copy(test, device):
 
     finally:
         wp.config.enable_vector_component_overwrites = saved_enable_vector_component_overwrites_setting
+
+
+@wp.kernel
+def mat_array_extract_element(x: wp.array2d(dtype=wp.mat22), y: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    a = x[i, j][0, 0]
+    b = x[i, j][0, 1]
+    c = x[i, j][1, 0]
+    d = x[i, j][1, 1]
+    y[i, j] = 1.0 * a + 2.0 * b + 3.0 * c + 4.0 * d
+
+
+@wp.kernel
+def mat_array_extract_row(x: wp.array2d(dtype=wp.mat22), y: wp.array2d(dtype=wp.vec2)):
+    i, j = wp.tid()
+    a = x[i, j][0]
+    b = x[i, j][1]
+    y[i, j] = 1.0 * a + 2.0 * b
+
+
+def test_mat_array_extract(test, device):
+    # matrix element
+    x = wp.ones((1, 1), dtype=wp.mat22, requires_grad=True, device=device)
+    y = wp.zeros((1, 1), dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(mat_array_extract_element, (1, 1), inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[10.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[[[1.0, 2.0], [3.0, 4.0]]]], dtype=float))
+
+    # matrix row
+    x = wp.ones((1, 1), dtype=wp.mat22, requires_grad=True, device=device)
+    y = wp.zeros((1, 1), dtype=wp.vec2, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(mat_array_extract_row, (1, 1), inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[[3.0, 3.0]]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[[[1.0, 1.0], [2.0, 2.0]]]], dtype=float))
+
+
+""" TODO: gradient propagation for in-place array assignment
+@wp.kernel
+def mat_array_assign_element(x: wp.array2d(dtype=float), y: wp.array2d(dtype=wp.mat22)):
+    i, j = wp.tid()
+
+    y[i, j][0, 0] = 1.0 * x[i, j]
+    y[i, j][0, 1] = 2.0 * x[i, j]
+    y[i, j][1, 0] = 3.0 * x[i, j]
+    y[i, j][1, 1] = 4.0 * x[i, j]
+
+
+@wp.kernel
+def mat_array_assign_row(x: wp.array2d(dtype=wp.vec3), y: wp.array2d(dtype=wp.mat(shape=(2, 3), dtype=float))):
+    i, j = wp.tid()
+
+    y[i, j][0] = 1.0 * x[i, j]
+    y[i, j][1] = 2.0 * x[i, j]
+
+
+def test_mat_array_assign(test, device):
+    # matrix element
+    x = wp.ones((1, 1), dtype=float, requires_grad=True, device=device)
+    y = wp.zeros((1, 1), dtype=wp.mat22, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(mat_array_assign_element, (1, 1), inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[[[1.0, 2.0], [3.0, 4.0]]]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[10.0]], dtype=float))
+
+    # matrix row
+    x = wp.ones((1, 1), dtype=wp.vec3, requires_grad=True, device=device)
+    y = wp.zeros((1, 1), dtype=wp.mat(shape=(2, 3), dtype=float), requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(mat_array_assign_row, (1, 1), inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]]]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[[3.0, 3.0, 3.0]]], dtype=float))
+"""
+
+
+@wp.kernel
+def mat_add_inplace_element(x: wp.array(dtype=wp.mat22), y: wp.array(dtype=wp.mat22)):
+    i = wp.tid()
+
+    a = wp.mat22()
+    b = x[i]
+
+    a[0, 0] += 1.0 * b[0, 0]
+    a[0, 1] += 2.0 * b[0, 1]
+    a[1, 0] += 3.0 * b[1, 0]
+    a[1, 1] += 4.0 * b[1, 1]
+
+    y[i] = a
+
+
+@wp.kernel
+def mat_add_inplace_row(x: wp.array(dtype=wp.mat22), y: wp.array(dtype=wp.mat22)):
+    i = wp.tid()
+
+    a = wp.mat22()
+    b = x[i]
+
+    a[0] += 1.0 * b[0]
+    a[1] += 2.0 * b[1]
+
+    y[i] = a
+
+
+def test_mat_add_inplace(test, device):
+    x = wp.ones(1, dtype=wp.mat22, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.mat22, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(mat_add_inplace_element, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[[1.0, 2.0], [3.0, 4.0]]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[[1.0, 2.0], [3.0, 4.0]]], dtype=float))
+
+    x = wp.ones(1, dtype=wp.mat22, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.mat22, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(mat_add_inplace_row, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[[1.0, 1.0], [2.0, 2.0]]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[[1.0, 1.0], [2.0, 2.0]]], dtype=float))
+
+
+@wp.kernel
+def mat_sub_inplace_element(x: wp.array(dtype=wp.mat22), y: wp.array(dtype=wp.mat22)):
+    i = wp.tid()
+
+    a = wp.mat22()
+    b = x[i]
+
+    a[0, 0] -= 1.0 * b[0, 0]
+    a[0, 1] -= 2.0 * b[0, 1]
+    a[1, 0] -= 3.0 * b[1, 0]
+    a[1, 1] -= 4.0 * b[1, 1]
+
+    y[i] = a
+
+
+@wp.kernel
+def mat_sub_inplace_row(x: wp.array(dtype=wp.mat22), y: wp.array(dtype=wp.mat22)):
+    i = wp.tid()
+
+    a = wp.mat22()
+    b = x[i]
+
+    a[0] -= 1.0 * b[0]
+    a[1] -= 2.0 * b[1]
+
+    y[i] = a
+
+
+def test_mat_sub_inplace(test, device):
+    x = wp.ones(1, dtype=wp.mat22, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.mat22, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(mat_sub_inplace_element, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[[-1.0, -2.0], [-3.0, -4.0]]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[[-1.0, -2.0], [-3.0, -4.0]]], dtype=float))
+
+    x = wp.ones(1, dtype=wp.mat22, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.mat22, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(mat_sub_inplace_row, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[[-1.0, -1.0], [-2.0, -2.0]]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[[-1.0, -1.0], [-2.0, -2.0]]], dtype=float))
+
+
+@wp.kernel
+def mat_array_add_inplace(x: wp.array(dtype=wp.mat22), y: wp.array(dtype=wp.mat22)):
+    i = wp.tid()
+
+    y[i] += x[i]
+
+
+def test_mat_array_add_inplace(test, device):
+    x = wp.ones(1, dtype=wp.mat22, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.mat22, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(mat_array_add_inplace, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[[1.0, 1.0], [1.0, 1.0]]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[[1.0, 1.0], [1.0, 1.0]]], dtype=float))
+
+
+@wp.kernel
+def mat_array_sub_inplace(x: wp.array(dtype=wp.mat22), y: wp.array(dtype=wp.mat22)):
+    i = wp.tid()
+
+    y[i] -= x[i]
+
+
+def test_mat_array_sub_inplace(test, device):
+    x = wp.ones(1, dtype=wp.mat22, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.mat22, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(mat_array_sub_inplace, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[[-1.0, -1.0], [-1.0, -1.0]]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[[-1.0, -1.0], [-1.0, -1.0]]], dtype=float))
 
 
 devices = get_test_devices()
@@ -2073,16 +2315,18 @@ for dtype in np_float_types:
         TestMat, f"test_determinant_{dtype.__name__}", test_determinant, devices=devices, dtype=dtype
     )
     add_function_test_register_kernel(TestMat, f"test_skew_{dtype.__name__}", test_skew, devices=devices, dtype=dtype)
-    add_function_test_register_kernel(
-        TestMat,
-        f"test_matrix_assign_inplace_{dtype.__name__}",
-        test_matrix_assign_inplace,
-        devices=devices,
-        dtype=dtype,
-    )
+
 add_function_test(TestMat, "test_matrix_len", test_matrix_len, devices=devices)
-add_function_test(TestMat, "test_matrix_augassign", test_matrix_augassign, devices=devices)
+add_function_test(TestMat, "test_mat_extract", test_mat_extract, devices=devices)
+add_function_test(TestMat, "test_mat_assign", test_mat_assign, devices=devices)
 add_function_test(TestMat, "test_matrix_assign_copy", test_matrix_assign_copy, devices=devices)
+add_function_test(TestMat, "test_mat_array_extract", test_mat_array_extract, devices=devices)
+# add_function_test(TestMat, "test_mat_array_assign", test_mat_array_assign, devices=devices)
+add_function_test(TestMat, "test_mat_add_inplace", test_mat_add_inplace, devices=devices)
+add_function_test(TestMat, "test_mat_sub_inplace", test_mat_sub_inplace, devices=devices)
+add_function_test(TestMat, "test_mat_array_add_inplace", test_mat_array_add_inplace, devices=devices)
+add_function_test(TestMat, "test_mat_array_sub_inplace", test_mat_array_sub_inplace, devices=devices)
+
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
