@@ -274,8 +274,32 @@ inline CUDA_CALLABLE quat_t<Type> add(const quat_t<Type>& a, const quat_t<Type>&
 template<typename Type>
 inline CUDA_CALLABLE quat_t<Type> sub(const quat_t<Type>& a, const quat_t<Type>& b)
 {
-    return quat_t<Type>(a.x-b.x, a.y-b.y, a.z-b.z, a.w-b.w);}
+    return quat_t<Type>(a.x-b.x, a.y-b.y, a.z-b.z, a.w-b.w);
+}
 
+template<typename Type>
+inline CUDA_CALLABLE quat_t<Type> operator - (const quat_t<Type>& q)
+{
+    return quat_t<Type>(-q.x, -q.y, -q.z, -q.w);
+}
+
+template<typename Type>
+CUDA_CALLABLE inline quat_t<Type> pos(const quat_t<Type>& q)
+{
+    return q;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline quat_t<Type> neg(const quat_t<Type>& q)
+{
+    return -q;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline void adj_neg(const quat_t<Type>& q, quat_t<Type>& adj_q, const quat_t<Type>& adj_ret)
+{
+    adj_q -= adj_ret;
+}
 
 template<typename Type>
 inline CUDA_CALLABLE quat_t<Type> mul(const quat_t<Type>& a, const quat_t<Type>& b)
@@ -298,7 +322,6 @@ inline CUDA_CALLABLE quat_t<Type> mul(Type s, const quat_t<Type>& a)
     return mul(a, s);
 }
 
-// division
 template<typename Type>
 inline CUDA_CALLABLE quat_t<Type> div(quat_t<Type> q, Type s)
 {

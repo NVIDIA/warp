@@ -2041,7 +2041,6 @@ def quat_extract_subscript(x: wp.array(dtype=wp.quat), y: wp.array(dtype=float))
     y[tid] = b
 
 
-""" TODO: rhs attribute indexing
 @wp.kernel
 def quat_extract_attribute(x: wp.array(dtype=wp.quat), y: wp.array(dtype=float)):
     tid = wp.tid()
@@ -2049,7 +2048,6 @@ def quat_extract_attribute(x: wp.array(dtype=wp.quat), y: wp.array(dtype=float))
     a = x[tid]
     b = a.x + float(2.0) * a.y + 3.0 * a.z + 4.0 * a.w
     y[tid] = b
-"""
 
 
 def test_quat_extract(test, device):
@@ -2068,7 +2066,7 @@ def test_quat_extract(test, device):
         assert_np_equal(x.grad.numpy(), np.array([[1.0, 2.0, 3.0, 4.0]], dtype=float))
 
     run(quat_extract_subscript)
-    # run(quat_extract_attribute)
+    run(quat_extract_attribute)
 
 
 @wp.kernel
@@ -2157,7 +2155,6 @@ def quat_array_extract_subscript(x: wp.array2d(dtype=wp.quat), y: wp.array2d(dty
     y[i, j] = 1.0 * a + 2.0 * b + 3.0 * c + 4.0 * d
 
 
-""" TODO: rhs attribute indexing
 @wp.kernel
 def quat_array_extract_attribute(x: wp.array2d(dtype=wp.quat), y: wp.array2d(dtype=float)):
     i, j = wp.tid()
@@ -2166,7 +2163,6 @@ def quat_array_extract_attribute(x: wp.array2d(dtype=wp.quat), y: wp.array2d(dty
     c = x[i, j].z
     d = x[i, j].w
     y[i, j] = 1.0 * a + 2.0 * b + 3.0 * c + 4.0 * d
-"""
 
 
 def test_quat_array_extract(test, device):
@@ -2185,7 +2181,7 @@ def test_quat_array_extract(test, device):
         assert_np_equal(x.grad.numpy(), np.array([[[1.0, 2.0, 3.0, 4.0]]], dtype=float))
 
     run(quat_array_extract_subscript)
-    # run(quat_array_extract_attribute)
+    run(quat_array_extract_attribute)
 
 
 @wp.kernel
@@ -2243,7 +2239,6 @@ def quat_add_inplace_subscript(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.
     y[i] = a
 
 
-""" TODO: rhs attribute indexing
 @wp.kernel
 def quat_add_inplace_attribute(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.quat)):
     i = wp.tid()
@@ -2257,7 +2252,6 @@ def quat_add_inplace_attribute(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.
     a.w += 4.0 * b.w
 
     y[i] = a
-"""
 
 
 def test_quat_add_inplace(test, device):
@@ -2276,7 +2270,7 @@ def test_quat_add_inplace(test, device):
         assert_np_equal(x.grad.numpy(), np.array([[1.0, 2.0, 3.0, 4.0]], dtype=float))
 
     run(quat_add_inplace_subscript)
-    # run(quat_add_inplace_attribute)
+    run(quat_add_inplace_attribute)
 
 
 @wp.kernel
@@ -2294,7 +2288,6 @@ def quat_sub_inplace_subscript(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.
     y[i] = a
 
 
-""" TODO: rhs attribute indexing
 @wp.kernel
 def quat_sub_inplace_attribute(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.quat)):
     i = wp.tid()
@@ -2308,7 +2301,6 @@ def quat_sub_inplace_attribute(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.
     a.w -= 4.0 * b.w
 
     y[i] = a
-"""
 
 
 def test_quat_sub_inplace(test, device):
@@ -2327,7 +2319,7 @@ def test_quat_sub_inplace(test, device):
         assert_np_equal(x.grad.numpy(), np.array([[-1.0, -2.0, -3.0, -4.0]], dtype=float))
 
     run(quat_sub_inplace_subscript)
-    # run(quat_sub_inplace_attribute)
+    run(quat_sub_inplace_attribute)
 
 
 @wp.kernel
@@ -2352,7 +2344,6 @@ def test_quat_array_add_inplace(test, device):
     assert_np_equal(x.grad.numpy(), np.array([[1.0, 1.0, 1.0, 1.0]], dtype=float))
 
 
-""" TODO: quat negation operator
 @wp.kernel
 def quat_array_sub_inplace(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.quat)):
     i = wp.tid()
@@ -2373,7 +2364,7 @@ def test_quat_array_sub_inplace(test, device):
 
     assert_np_equal(y.numpy(), np.array([[-1.0, -1.0, -1.0, -1.0]], dtype=float))
     assert_np_equal(x.grad.numpy(), np.array([[-1.0, -1.0, -1.0, -1.0]], dtype=float))
-"""
+
 
 devices = get_test_devices()
 
@@ -2485,7 +2476,7 @@ add_function_test(TestQuat, "test_quat_array_assign", test_quat_array_assign, de
 add_function_test(TestQuat, "test_quat_add_inplace", test_quat_add_inplace, devices=devices)
 add_function_test(TestQuat, "test_quat_sub_inplace", test_quat_sub_inplace, devices=devices)
 add_function_test(TestQuat, "test_quat_array_add_inplace", test_quat_array_add_inplace, devices=devices)
-# add_function_test(TestQuat, "test_quat_array_sub_inplace", test_quat_array_sub_inplace, devices=devices)
+add_function_test(TestQuat, "test_quat_array_sub_inplace", test_quat_array_sub_inplace, devices=devices)
 
 
 if __name__ == "__main__":
