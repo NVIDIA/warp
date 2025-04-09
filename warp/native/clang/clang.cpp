@@ -30,6 +30,7 @@
 #include <clang/Lex/PreprocessorOptions.h>
 
 #include <llvm/Support/TargetSelect.h>
+#include <llvm/Support/VirtualFileSystem.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/ExecutionEngine/GenericValue.h>
@@ -133,17 +134,17 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
         args.push_back("+f16c");  // Enables support for _Float16
     #endif
 
-    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagnostic_options = new clang::DiagnosticOptions();
-    std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer =
-            std::make_unique<clang::TextDiagnosticPrinter>(llvm::errs(), &*diagnostic_options);
-    clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagnostic_ids;
-    std::unique_ptr<clang::DiagnosticsEngine> diagnostic_engine =
-            std::make_unique<clang::DiagnosticsEngine>(diagnostic_ids, &*diagnostic_options, text_diagnostic_printer.release());
+    auto diagnostic_engine = std::make_unique<clang::DiagnosticsEngine>(
+            new clang::DiagnosticIDs(), new clang::DiagnosticOptions(),
+            new clang::TextDiagnosticPrinter(llvm::errs(), new clang::DiagnosticOptions()));
+
+
+
 
     clang::CompilerInstance compiler_instance;
 
     auto& compiler_invocation = compiler_instance.getInvocation();
-    clang::CompilerInvocation::CreateFromArgs(compiler_invocation, args, *diagnostic_engine.release());
+    clang::CompilerInvocation::CreateFromArgs(compiler_invocation, args, *diagnostic_engine);
 
     if(debug)
     {
@@ -171,7 +172,7 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
     compiler_instance.getLangOpts().MicrosoftExt = 1;  // __forceinline / __int64
     compiler_instance.getLangOpts().DeclSpecKeyword = 1;  // __declspec
 
-    compiler_instance.createDiagnostics(text_diagnostic_printer.get(), false);
+    compiler_instance.createDiagnostics(*llvm::vfs::getRealFileSystem(), diagnostic_engine->getClient(), false);
 
     clang::EmitLLVMOnlyAction emit_llvm_only_action(&context);
     bool success = compiler_instance.ExecuteAction(emit_llvm_only_action);
@@ -197,17 +198,17 @@ static std::unique_ptr<llvm::Module> cuda_to_llvm(const std::string& input_file,
     args.push_back("-target-cpu");
     args.push_back("sm_70");
 
-    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagnostic_options = new clang::DiagnosticOptions();
-    std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer =
-            std::make_unique<clang::TextDiagnosticPrinter>(llvm::errs(), &*diagnostic_options);
-    clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagnostic_ids;
-    std::unique_ptr<clang::DiagnosticsEngine> diagnostic_engine =
-            std::make_unique<clang::DiagnosticsEngine>(diagnostic_ids, &*diagnostic_options, text_diagnostic_printer.release());
+    auto diagnostic_engine = std::make_unique<clang::DiagnosticsEngine>(
+            new clang::DiagnosticIDs(), new clang::DiagnosticOptions(),
+            new clang::TextDiagnosticPrinter(llvm::errs(), new clang::DiagnosticOptions()));
+
+
+
 
     clang::CompilerInstance compiler_instance;
 
     auto& compiler_invocation = compiler_instance.getInvocation();
-    clang::CompilerInvocation::CreateFromArgs(compiler_invocation, args, *diagnostic_engine.release());
+    clang::CompilerInvocation::CreateFromArgs(compiler_invocation, args, *diagnostic_engine);
 
     if(debug)
     {
@@ -236,7 +237,7 @@ static std::unique_ptr<llvm::Module> cuda_to_llvm(const std::string& input_file,
     compiler_instance.getLangOpts().CUDAIsDevice = 1;
     compiler_instance.getLangOpts().CUDAAllowVariadicFunctions = 1;
 
-    compiler_instance.createDiagnostics(text_diagnostic_printer.get(), false);
+    compiler_instance.createDiagnostics(*llvm::vfs::getRealFileSystem(), diagnostic_engine->getClient(), false);
 
     clang::EmitLLVMOnlyAction emit_llvm_only_action(&context);
     bool success = compiler_instance.ExecuteAction(emit_llvm_only_action);
@@ -363,7 +364,7 @@ WP_API int load_obj(const char* object_file, const char* module_name)
 
         auto jit_expected = llvm::orc::LLJITBuilder()
             .setObjectLinkingLayerCreator(
-                [&](llvm::orc::ExecutionSession &session, const llvm::Triple &triple) {
+                [&](llvm::orc::ExecutionSession &session) {
                     auto get_memory_manager = []() {
                         return std::make_unique<llvm::SectionMemoryManager>();
                     };
