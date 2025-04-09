@@ -853,6 +853,45 @@ def test_deformed_geometry(test, device):
             ],
         )
 
+        # Test with Trimesh3d (different space and cell dimensions)
+        positions, tri_vidx = _gen_trimesh(N, N)
+        positions = positions.numpy()
+        positions = np.hstack((positions, np.ones((positions.shape[0], 1))))
+        positions = wp.array(positions, device=device, dtype=wp.vec3)
+
+        geo = fem.Trimesh3D(tri_vertex_indices=tri_vidx, positions=positions)
+
+        vector_space = fem.make_polynomial_space(geo, dtype=wp.vec3, degree=1)
+        pos_field = vector_space.make_field()
+        fem.interpolate(
+            _rigid_deformation_field,
+            dest=pos_field,
+            values={"translation": translation, "rotation": rotation, "scale": scale},
+        )
+
+        deformed_geo = pos_field.make_deformed_geometry()
+
+        @wp.kernel
+        def _test_deformed_geometry_normal(geo_arg: geo.CellArg, def_arg: deformed_geo.CellArg, rotation: wp.vec3):
+            i = wp.tid()
+
+            s = make_free_sample(i, Coords(0.5, 0.5, 0.0))
+            geo_n = geo.cell_normal(geo_arg, s)
+            def_n = deformed_geo.cell_normal(def_arg, s)
+
+            q = wp.quat_from_axis_angle(wp.normalize(rotation), wp.length(rotation))
+            wp.expect_near(wp.quat_rotate(q, geo_n), def_n, 0.001)
+
+        wp.launch(
+            _test_deformed_geometry_normal,
+            dim=geo.cell_count(),
+            inputs=[
+                geo.cell_arg_value(wp.get_device()),
+                deformed_geo.cell_arg_value(wp.get_device()),
+                rotation,
+            ],
+        )
+
     wp.synchronize()
 
 
