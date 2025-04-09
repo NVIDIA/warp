@@ -103,14 +103,16 @@ class NodalFieldBase(DiscreteField):
         if not self.space.gradient_valid():
             return None
 
-        @cache.dynamic_func(suffix=self.name)
+        gradient_dtype = self.gradient_dtype if world_space else self.reference_gradient_dtype
+
+        @cache.dynamic_func(suffix=f"{self.name}{world_space}")
         def eval_grad_inner(args: self.ElementEvalArg, s: Sample, grad_transform: Any):
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
             node_count = self.space.topology.element_node_count(
                 args.elt_arg, args.eval_arg.topology_arg, s.element_index
             )
 
-            res = self.gradient_dtype(0.0)
+            res = gradient_dtype(0.0)
             for k in range(node_count):
                 res += self.space.space_gradient(
                     self._read_node_value(args, s.element_index, k),
@@ -122,17 +124,22 @@ class NodalFieldBase(DiscreteField):
                 )
             return res
 
-        @cache.dynamic_func(suffix=self.name)
-        def eval_grad_inner_ref_space(args: self.ElementEvalArg, s: Sample):
-            grad_transform = 1.0
-            return eval_grad_inner(args, s, grad_transform)
+        if world_space:
 
-        @cache.dynamic_func(suffix=self.name)
-        def eval_grad_inner_world_space(args: self.ElementEvalArg, s: Sample):
-            grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
-            return eval_grad_inner(args, s, grad_transform)
+            @cache.dynamic_func(suffix=self.name)
+            def eval_grad_inner_world_space(args: self.ElementEvalArg, s: Sample):
+                grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
+                return eval_grad_inner(args, s, grad_transform)
 
-        return eval_grad_inner_world_space if world_space else eval_grad_inner_ref_space
+            return eval_grad_inner_world_space
+        else:
+
+            @cache.dynamic_func(suffix=self.name)
+            def eval_grad_inner_ref_space(args: self.ElementEvalArg, s: Sample):
+                grad_transform = 1.0
+                return eval_grad_inner(args, s, grad_transform)
+
+            return eval_grad_inner_ref_space
 
     def _make_eval_div_inner(self):
         if not self.divergence_valid():
@@ -185,14 +192,16 @@ class NodalFieldBase(DiscreteField):
         if not self.space.gradient_valid():
             return None
 
-        @cache.dynamic_func(suffix=self.name)
+        gradient_dtype = self.gradient_dtype if world_space else self.reference_gradient_dtype
+
+        @cache.dynamic_func(suffix=f"{self.name}{world_space}")
         def eval_grad_outer(args: self.ElementEvalArg, s: Sample, grad_transform: Any):
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
             node_count = self.space.topology.element_node_count(
                 args.elt_arg, args.eval_arg.topology_arg, s.element_index
             )
 
-            res = self.gradient_dtype(0.0)
+            res = gradient_dtype(0.0)
             for k in range(node_count):
                 res += self.space.space_gradient(
                     self._read_node_value(args, s.element_index, k),
@@ -204,17 +213,22 @@ class NodalFieldBase(DiscreteField):
                 )
             return res
 
-        @cache.dynamic_func(suffix=self.name)
-        def eval_grad_outer_ref_space(args: self.ElementEvalArg, s: Sample):
-            grad_transform = 1.0
-            return eval_grad_outer_ref_space(args, s, grad_transform)
+        if world_space:
 
-        @cache.dynamic_func(suffix=self.name)
-        def eval_grad_outer_world_space(args: self.ElementEvalArg, s: Sample):
-            grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
-            return eval_grad_outer_ref_space(args, s, grad_transform)
+            @cache.dynamic_func(suffix=self.name)
+            def eval_grad_outer_world_space(args: self.ElementEvalArg, s: Sample):
+                grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
+                return eval_grad_outer_ref_space(args, s, grad_transform)
 
-        return eval_grad_outer_world_space if world_space else eval_grad_outer_ref_space
+            return eval_grad_outer_world_space
+        else:
+
+            @cache.dynamic_func(suffix=self.name)
+            def eval_grad_outer_ref_space(args: self.ElementEvalArg, s: Sample):
+                grad_transform = 1.0
+                return eval_grad_outer_ref_space(args, s, grad_transform)
+
+            return eval_grad_outer_ref_space
 
     def _make_eval_div_outer(self):
         if not self.divergence_valid():
