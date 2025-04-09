@@ -54,3 +54,4 @@ pyCoverageOmit = [
     "warp/torch.py",
 ]
 timeout = 900
+waiver = "Tested by Warp's library"
