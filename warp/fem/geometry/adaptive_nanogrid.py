@@ -184,9 +184,13 @@ class AdaptiveNanogrid(Geometry):
 
     @wp.func
     def cell_position(args: CellArg, s: Sample):
-        scale = AdaptiveNanogrid._cell_scale(args, s.element_index)
-        uvw = wp.vec3(args.cell_ijk[s.element_index]) + s.element_coords * scale
-        return wp.volume_index_to_world(args.cell_grid, uvw - wp.vec3(0.5))
+        cell_idx = s.element_index
+        scale = AdaptiveNanogrid._cell_scale(args, cell_idx)
+        cell_coords = s.element_coords
+        cell_ijk = args.cell_ijk[cell_idx]
+        uvw = wp.vec3(cell_ijk) + cell_coords * scale
+        grid_id = args.cell_grid
+        return wp.volume_index_to_world(grid_id, uvw - wp.vec3(0.5))
 
     @wp.func
     def cell_deformation_gradient(args: CellArg, s: Sample):

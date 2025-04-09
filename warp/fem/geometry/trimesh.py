@@ -190,7 +190,7 @@ class Trimesh(Geometry):
         return args
 
     def _bvh_id(self, device):
-        if self._tri_bvh is None or self._tri_bvh.device != device:
+        if self._tri_bvh is None or self._tri_bvh.device != wp.get_device(device):
             return _NULL_BVH
         return self._tri_bvh.id
 
@@ -519,7 +519,7 @@ class Trimesh(Geometry):
     @wp.kernel
     def _compute_tri_bounds(
         tri_vertex_indices: wp.array2d(dtype=int),
-        positions: wp.array(dtype=wp.vec2),
+        positions: wp.array(dtype=Any),
         lowers: wp.array(dtype=wp.vec3),
         uppers: wp.array(dtype=wp.vec3),
     ):
@@ -528,16 +528,8 @@ class Trimesh(Geometry):
         p1 = _bvh_vec(positions[tri_vertex_indices[t, 1]])
         p2 = _bvh_vec(positions[tri_vertex_indices[t, 2]])
 
-        lowers[t] = wp.vec3(
-            wp.min(wp.min(p0[0], p1[0]), p2[0]),
-            wp.min(wp.min(p0[1], p1[1]), p2[1]),
-            wp.min(wp.min(p0[2], p1[2]), p2[2]),
-        )
-        uppers[t] = wp.vec3(
-            wp.max(wp.max(p0[0], p1[0]), p2[0]),
-            wp.max(wp.max(p0[1], p1[1]), p2[1]),
-            wp.max(wp.max(p0[2], p1[2]), p2[2]),
-        )
+        lowers[t] = wp.min(wp.min(p0, p1), p2)
+        uppers[t] = wp.max(wp.max(p0, p1), p2)
 
 
 @wp.struct
