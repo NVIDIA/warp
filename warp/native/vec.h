@@ -149,26 +149,15 @@ using vec2d = vec_t<2,double>;
 using vec3d = vec_t<3,double>;
 using vec4d = vec_t<4,double>;
 
-//--------------
-// vec<Length, Type> methods
-
-// Should these accept const references as arguments? It's all
-// inlined so maybe it doesn't matter? Even if it does, it
-// probably depends on the Length of the vector...
-
-// negation:
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> operator - (vec_t<Length, Type> a)
+inline CUDA_CALLABLE vec_t<Length, Type> operator - (const vec_t<Length, Type>& x)
 {
-    // NB: this constructor will initialize all ret's components to 0, which is
-    // unnecessary... 
     vec_t<Length, Type> ret;
-    for( unsigned i=0; i < Length; ++i )
+    for(unsigned i=0; i < Length; ++i)
     {
-        ret[i] = -a[i];
+        ret[i] = -x[i];
     }
 
-    // Wonder if this does a load of copying when it returns... hopefully not as it's inlined?
     return ret;
 }
 

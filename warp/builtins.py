@@ -5574,7 +5574,7 @@ add_builtin(
 
 
 def matrix_vector_sametype(arg_types: Mapping[str, Any]):
-    mat_size = arg_types["a"]._shape_[0]
+    mat_size = arg_types["a"]._shape_[1]
     vec_size = arg_types["value"]._length_
     mat_type = arg_types["a"]._type_
     vec_type = arg_types["value"]._type_

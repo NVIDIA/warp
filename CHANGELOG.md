@@ -14,6 +14,8 @@
   ([GH-598](https://github.com/NVIDIA/warp/issues/598)).
 - Add support for returning multiple values from native functions like `wp.svd3()` and `wp.quat_to_axis_angle()`
   ([GH-503](https://github.com/NVIDIA/warp/issues/503)).
+- Support attribute indexing for quaternions on the right-hand side of expressions
+  ([GH-625](https://github.com/NVIDIA/warp/issues/625))
 - Add example of a distributed Jacobi solver using `mpi4py` in `warp/examples/distributed/example_jacobi_mpi.py`
   ([GH-475](https://github.com/NVIDIA/warp/issues/475)).
 

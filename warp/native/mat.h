@@ -389,22 +389,16 @@ inline CUDA_CALLABLE bool operator==(const mat_t<Rows,Cols,Type>& a, const mat_t
     return true;
 }
 
-
-// negation:
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE mat_t<Rows,Cols,Type> operator - (mat_t<Rows,Cols,Type> a)
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> operator - (const mat_t<Rows,Cols,Type>& x)
 {
-    // NB: this constructor will initialize all ret's components to 0, which is
-    // unnecessary... 
     mat_t<Rows,Cols,Type> ret;
     for (unsigned i=0; i < Rows; ++i)
         for (unsigned j=0; j < Cols; ++j)
-            ret.data[i][j] = -a.data[i][j];
+            ret.data[i][j] = -x.data[i][j];
 
-    // Wonder if this does a load of copying when it returns... hopefully not as it's inlined?
     return ret;
 }
-
 
 template<unsigned Rows, unsigned Cols, typename Type>
 CUDA_CALLABLE inline mat_t<Rows,Cols,Type> pos(const mat_t<Rows,Cols,Type>& x)

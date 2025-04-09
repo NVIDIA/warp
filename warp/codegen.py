@@ -1866,8 +1866,8 @@ class Adjoint:
 
             aggregate_type = strip_reference(aggregate.type)
 
-            # reading a vector component
-            if type_is_vector(aggregate_type):
+            # reading a vector or quaternion component
+            if type_is_vector(aggregate_type) or type_is_quaternion(aggregate_type):
                 index = adj.vector_component_index(node.attr, aggregate_type)
 
                 return adj.add_builtin_call("extract", [aggregate, index])
