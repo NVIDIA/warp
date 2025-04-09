@@ -33,6 +33,7 @@
 - Fix `show_joints` not working with `wp.sim.render.SimRenderer` set to render to USD
   ([GH-510](https://github.com/NVIDIA/warp/issues/510)).
 - Fix constructing `DeformedGeometry` from `fem.Trimesh3D` geometries ([GH-614](https://github.com/NVIDIA/warp/issues/614)).
+- Fix `lookup` operator for `fem.Trimesh3D` ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
 
 ## [1.7.0] - 2025-03-30
 
