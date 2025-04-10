@@ -3144,7 +3144,7 @@ Instances: {len(self._instances)}"""
 
         raise Exception("Cannot create reference to path: " + path)
 
-    def render_points(self, name: str, points, radius, colors=None, visible: bool = True):
+    def render_points(self, name: str, points, radius, colors=None, as_spheres: bool = True, visible: bool = True):
         """Add a set of points
 
         Args:
