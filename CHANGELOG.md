@@ -25,6 +25,8 @@
   ([GH-510](https://github.com/NVIDIA/warp/issues/510)).
 - Fix constructing `DeformedGeometry` from `fem.Trimesh3D` geometries ([GH-614](https://github.com/NVIDIA/warp/issues/614)).
 - Fix `lookup` operator for `fem.Trimesh3D` ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
+- LTO symbol hash for Cholesky solver updates when kernel block_dim changes.
+  ([GH-639](https://github.com/NVIDIA/warp/issues/639)).
 
 ## [1.7.0] - 2025-03-30
 
