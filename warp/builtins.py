@@ -3107,6 +3107,59 @@ add_builtin(
 )
 
 
+def tile_argmin_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return Tile(dtype=Any, shape=(1,))
+
+    if len(arg_types) != 1:
+        raise TypeError(f"tile_argmin() takes exactly 1 positional argument but {len(arg_types)} were given")
+
+    a = arg_types["a"]
+
+    if not is_tile(a):
+        raise TypeError(f"tile_argmin() argument must be a tile, got {a!r}")
+
+    return Tile(dtype=warp.int32, shape=(1,), op="min")
+
+
+add_builtin(
+    "tile_argmin",
+    input_types={"a": Tile},
+    value_func=tile_argmin_value_func,
+    variadic=True,
+    doc="""Cooperatively compute the index of the minimum element in the tile using all threads in the block.
+
+    :param a: The tile to compute the argmin from
+    :returns: A single-element tile holding the index of the minimum value
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_arange(64, 128)
+            s = wp.tile_argmin(t)
+
+            print(s)
+
+
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+
+    Prints:
+
+    .. code-block:: text
+
+        [0] = tile(shape=(1), storage=register)
+
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_max_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
@@ -3120,7 +3173,7 @@ def tile_max_value_func(arg_types, arg_values):
     if not is_tile(a):
         raise TypeError(f"tile_max() argument must be a tile, got {a!r}")
 
-    return Tile(dtype=a.dtype, shape=(1,), op="min")
+    return Tile(dtype=a.dtype, shape=(1,), op="max")
 
 
 add_builtin(
@@ -3152,6 +3205,58 @@ add_builtin(
     .. code-block:: text
 
         [127] = tile(shape=(1), storage=register)
+
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_argmax_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return Tile(dtype=Any, shape=(1,))
+
+    if len(arg_types) != 1:
+        raise TypeError(f"tile_argmax() takes exactly 1 positional argument but {len(arg_types)} were given")
+
+    a = arg_types["a"]
+
+    if not is_tile(a):
+        raise TypeError(f"tile_argmax() argument must be a tile, got {a!r}")
+
+    return Tile(dtype=warp.int32, shape=(1,), op="max")
+
+
+add_builtin(
+    "tile_argmax",
+    input_types={"a": Tile(dtype=Any, shape=Any)},
+    value_func=tile_argmax_value_func,
+    variadic=False,
+    doc="""Cooperatively compute the index of the maximum element in the tile using all threads in the block.
+
+    :param a: The tile to compute the argmax from
+    :returns: A single-element tile holding the index of the maximum value
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_arange(64, 128)
+            s = wp.tile_argmax(t)
+
+            print(s)
+
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+
+    Prints:
+
+    .. code-block:: text
+
+        [63] = tile(shape=(1), storage=register)
 
     """,
     group="Tile Primitives",

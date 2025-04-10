@@ -1164,6 +1164,37 @@ Tile Primitives
     
 
 
+.. py:function:: tile_argmin(a: Tile) -> Tile
+
+    Cooperatively compute the index of the minimum element in the tile using all threads in the block.
+
+    :param a: The tile to compute the argmin from
+    :returns: A single-element tile holding the index of the minimum value
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_arange(64, 128)
+            s = wp.tile_argmin(t)
+
+            print(s)
+
+
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+
+    Prints:
+
+    .. code-block:: text
+
+        [0] = tile(shape=(1), storage=register)
+
+    
+
+
 .. py:function:: tile_max(a: Tile) -> Tile
 
     Cooperatively compute the maximum of the tile elements using all threads in the block.
@@ -1190,6 +1221,36 @@ Tile Primitives
     .. code-block:: text
 
         [127] = tile(shape=(1), storage=register)
+
+    
+
+
+.. py:function:: tile_argmax(a: Tile) -> Tile
+
+    Cooperatively compute the index of the maximum element in the tile using all threads in the block.
+
+    :param a: The tile to compute the argmax from
+    :returns: A single-element tile holding the index of the maximum value
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_arange(64, 128)
+            s = wp.tile_argmax(t)
+
+            print(s)
+
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+
+    Prints:
+
+    .. code-block:: text
+
+        [63] = tile(shape=(1), storage=register)
 
     
 

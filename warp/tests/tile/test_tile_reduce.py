@@ -107,6 +107,39 @@ def test_tile_reduce_min(test, device):
 
 
 @wp.kernel
+def tile_argmin_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=int)):
+    # output tile index
+    i = wp.tid()
+
+    a = wp.tile_load(input[i], shape=TILE_DIM)
+    m = wp.tile_argmin(a)
+
+    wp.tile_store(output, m, offset=i)
+
+
+def test_tile_reduce_argmin(test, device):
+    batch_count = 56
+
+    N = TILE_DIM
+
+    rng = np.random.default_rng(42)
+    input = rng.random((batch_count, N), dtype=np.float32)
+
+    input_wp = wp.array(input, requires_grad=True, device=device)
+    output_wp = wp.zeros(batch_count, dtype=wp.int32, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_argmin_kernel, dim=[batch_count], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device
+        )
+
+    argmin_wp = output_wp.numpy()
+    for i in range(batch_count):
+        argmin_np = np.argmin(input[i])
+        test.assertAlmostEqual(argmin_wp[i], argmin_np, places=4)
+
+
+@wp.kernel
 def tile_max_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=float)):
     # output tile index
     i = wp.tid()
@@ -137,6 +170,39 @@ def test_tile_reduce_max(test, device):
     for i in range(batch_count):
         max_np = np.max(input[i])
         test.assertAlmostEqual(max_wp[i], max_np, places=4)
+
+
+@wp.kernel
+def tile_argmax_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=int)):
+    # output tile index
+    i = wp.tid()
+
+    a = wp.tile_load(input[i], shape=TILE_DIM)
+    m = wp.tile_argmax(a)
+
+    wp.tile_store(output, m, offset=i)
+
+
+def test_tile_reduce_argmax(test, device):
+    batch_count = 56
+
+    N = TILE_DIM
+
+    rng = np.random.default_rng(42)
+    input = rng.random((batch_count, N), dtype=np.float32)
+
+    input_wp = wp.array(input, requires_grad=True, device=device)
+    output_wp = wp.zeros(batch_count, dtype=wp.int32, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_argmax_kernel, dim=[batch_count], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device
+        )
+
+    argmax_wp = output_wp.numpy()
+    for i in range(batch_count):
+        argmax_np = np.argmax(input[i])
+        test.assertAlmostEqual(argmax_wp[i], argmax_np, places=4)
 
 
 @wp.kernel
@@ -433,6 +499,8 @@ class TestTileReduce(unittest.TestCase):
 add_function_test(TestTileReduce, "test_tile_reduce_sum", test_tile_reduce_sum, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_min", test_tile_reduce_min, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_max", test_tile_reduce_max, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_argmin", test_tile_reduce_argmin, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_argmax", test_tile_reduce_argmax, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_custom", test_tile_reduce_custom, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_custom_struct", test_tile_reduce_custom_struct, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_grouped_sum", test_tile_reduce_sum, devices=devices)
