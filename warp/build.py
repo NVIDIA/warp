@@ -362,7 +362,7 @@ def build_lto_solver(M, N, solver, solver_enum, fill_mode, arch, precision_enum,
     # TODO: MathDx doesn't yet have heuristics for Blackwell
     arch = min(arch, 90)
 
-    lto_symbol = f"{solver}_{M}_{N}_{arch}_{precision_enum}"
+    lto_symbol = f"{solver}_{M}_{N}_{arch}_{num_threads}_{precision_enum}_{fill_mode}"
     ltoir_decl = f"void {lto_symbol}{parameter_list};"
 
     # early out if LTO for this symbol is already cached in current module
