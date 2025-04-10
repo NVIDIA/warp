@@ -2030,6 +2030,66 @@ def test_transform_to_matrix(test, device, dtype, register_kernels=False):
     wp.launch(kernel, dim=1, device=device)
 
 
+def test_transform_compose(test, device, dtype, register_kernels=False):
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat44 = wp.types.matrix((4, 4), wptype)
+    vec3 = wp.types.vector(3, wptype)
+    quat = wp.types.quaternion(wptype)
+
+    def transform_compose_kernel():
+        p = vec3(wptype(1.0), wptype(2.0), wptype(3.0))
+        q = quat(wptype(-0.4), wptype(0.2), wptype(-0.4), wptype(0.8))
+        s = vec3(wptype(4.0), wptype(5.0), wptype(6.0))
+        m = wp.transform_compose(p, q, s)
+        # fmt: off
+        wp.expect_near(
+            m,
+            mat44(
+                wptype(0.6 * 4.0), wptype(0.48 * 5.0), wptype(0.64 * 6.0), wptype(1.0),
+                wptype(-0.8 * 4.0), wptype(0.36 * 5.0), wptype(0.48 * 6.0), wptype(2.0),
+                wptype(0.0 * 4.0), wptype(-0.8 * 5.0), wptype(0.6 * 6.0), wptype(3.0),
+                wptype(0.0), wptype(0.0), wptype(0.0), wptype(1.0),
+            ),
+            tolerance=wptype(1e-2),
+        )
+        # fmt: on
+
+    kernel = getkernel(transform_compose_kernel, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    wp.launch(kernel, dim=1, device=device)
+
+
+def test_transform_decompose(test, device, dtype, register_kernels=False):
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat44 = wp.types.matrix((4, 4), wptype)
+    vec3 = wp.types.vector(3, wptype)
+    quat = wp.types.quaternion(wptype)
+
+    def transform_decompose_kernel():
+        # fmt: off
+        m = mat44(
+            wptype(0.6 * 4.0), wptype(0.48 * 5.0), wptype(0.64 * 6.0), wptype(1.0),
+            wptype(-0.8 * 4.0), wptype(0.36 * 5.0), wptype(0.48 * 6.0), wptype(2.0),
+            wptype(0.0 * 4.0), wptype(-0.8 * 5.0), wptype(0.6 * 6.0), wptype(3.0),
+            wptype(0.0), wptype(0.0), wptype(0.0), wptype(1.0),
+        )
+        # fmt: on
+        p, q, s = wp.transform_decompose(m)
+        wp.expect_near(p, vec3(wptype(1.0), wptype(2.0), wptype(3.0)), tolerance=wptype(1e-2))
+        wp.expect_near(q, quat(wptype(-0.4), wptype(0.2), wptype(-0.4), wptype(0.8)), tolerance=wptype(1e-2))
+        wp.expect_near(s, vec3(wptype(4.0), wptype(5.0), wptype(6.0)), tolerance=wptype(1e-2))
+
+    kernel = getkernel(transform_decompose_kernel, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    wp.launch(kernel, dim=1, device=device)
+
+
 devices = get_test_devices()
 
 
@@ -2217,6 +2277,20 @@ for dtype in np_float_types:
         TestSpatial,
         f"test_transform_to_matrix_{dtype.__name__}",
         test_transform_to_matrix,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_transform_compose_{dtype.__name__}",
+        test_transform_compose,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_transform_decompose_{dtype.__name__}",
+        test_transform_decompose,
         devices=devices,
         dtype=dtype,
     )

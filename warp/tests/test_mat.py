@@ -98,23 +98,6 @@ def test_anon_constructor_error_invalid_arg_count(test, device):
         wp.launch(kernel, dim=1, inputs=[], device=device)
 
 
-def test_anon_xform_constructor_error_type_mismatch(test, device):
-    @wp.kernel
-    def kernel():
-        wp.matrix(wp.vec3(1.0, 2.0, 3.0), wp.quat(0.0, 0.0, 0.0, 1.0), wp.vec3(2.0, 2.0, 2.0), wp.float64)
-
-    with test.assertRaisesRegex(
-        RuntimeError,
-        r"all values used to initialize this transformation matrix are expected to be of the type `float64`$",
-    ):
-        wp.launch(
-            kernel,
-            dim=1,
-            inputs=[],
-            device=device,
-        )
-
-
 def test_tpl_constructor_error_incompatible_sizes(test, device):
     @wp.kernel
     def kernel():
@@ -204,7 +187,7 @@ def test_quat_constructor(test, device, dtype, register_kernels=False):
         outcomponents: wp.array(dtype=wptype),
         outcomponents_alt: wp.array(dtype=wptype),
     ):
-        m = mat44(p[0], r[0], s[0])
+        m = wp.transform_compose(p[0], r[0], s[0])
 
         R = wp.transpose(wp.quat_to_matrix(r[0]))
         c0 = s[0][0] * R[0]
@@ -2268,12 +2251,6 @@ add_function_test(
     TestMat,
     "test_anon_constructor_error_invalid_arg_count",
     test_anon_constructor_error_invalid_arg_count,
-    devices=devices,
-)
-add_function_test(
-    TestMat,
-    "test_anon_xform_constructor_error_type_mismatch",
-    test_anon_xform_constructor_error_type_mismatch,
     devices=devices,
 )
 add_function_test(

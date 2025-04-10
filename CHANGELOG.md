@@ -18,6 +18,7 @@
   ([GH-625](https://github.com/NVIDIA/warp/issues/625))
 - Add example of a distributed Jacobi solver using `mpi4py` in `warp/examples/distributed/example_jacobi_mpi.py`
   ([GH-475](https://github.com/NVIDIA/warp/issues/475)).
+- Add `transform_compose` and `transform_decompose` math functions for converting between transforms and mat44 with 3D scale information ([GH-576](https://github.com/NVIDIA/warp/issues/576)).
 
 ### Changed
 
@@ -26,6 +27,7 @@
 - Added damping terms for collisions in `wp.sim.VBDIntegrator`, whose strength is controlled by `Model.soft_contact_kd`.
 - Improve handling of deprecated JAX features ([GH-613](https://github.com/NVIDIA/warp/pull/613)).
 - Changed the USD renderer to use `framesPerSecond` for time sampling instead of `timeCodesPerSecond`.
+- Deprecate `wp.matrix(pos, quat, scale)` built-in function that constructs a 4x4 matrix from a 3D position, a quaternion, and a 3D scale. Use `wp.transform_compose()` instead ([GH-576](https://github.com/NVIDIA/warp/issues/576)).
 
 ### Fixed
 

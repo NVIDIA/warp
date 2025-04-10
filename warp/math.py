@@ -29,6 +29,8 @@ __all__ = [
     "smooth_normalize",
     "transform_from_matrix",
     "transform_to_matrix",
+    "transform_compose",
+    "transform_decompose",
 ]
 
 
@@ -142,6 +144,19 @@ def create_transform_from_matrix_func(dtype):
         """
         Construct a transformation from a 4x4 matrix.
 
+        .. math::
+            M = \\begin{bmatrix}
+            R_{00} & R_{01} & R_{02} & p_x \\\\
+            R_{10} & R_{11} & R_{12} & p_y \\\\
+            R_{20} & R_{21} & R_{22} & p_z \\\\
+            0 & 0 & 0 & 1
+            \\end{bmatrix}
+
+        Where:
+
+        * :math:`R` is the 3x3 rotation matrix created from the orientation quaternion of the input transform.
+        * :math:`p` is the 3D position vector :math:`[p_x, p_y, p_z]` of the input transform.
+
         Args:
             mat (Matrix[4, 4, Float]): Matrix to convert.
 
@@ -176,6 +191,19 @@ def create_transform_to_matrix_func(dtype):
     def transform_to_matrix(xform: transform) -> mat44:
         """
         Convert a transformation to a 4x4 matrix.
+
+        .. math::
+            M = \\begin{bmatrix}
+            R_{00} & R_{01} & R_{02} & p_x \\\\
+            R_{10} & R_{11} & R_{12} & p_y \\\\
+            R_{20} & R_{21} & R_{22} & p_z \\\\
+            0 & 0 & 0 & 1
+            \\end{bmatrix}
+
+        Where:
+
+        * :math:`R` is the 3x3 rotation matrix created from the orientation quaternion of the input transform.
+        * :math:`p` is the 3D position vector :math:`[p_x, p_y, p_z]` of the input transform.
 
         Args:
             xform (Transformation[Float]): Transformation to convert.
@@ -212,6 +240,140 @@ wp.func(
 )
 
 
+def create_transform_compose_func(dtype):
+    mat44 = wp.types.matrix((4, 4), dtype)
+    quat = wp.types.quaternion(dtype)
+    vec3 = wp.types.vector(3, dtype)
+
+    def transform_compose(position: vec3, rotation: quat, scale: vec3):
+        """
+        Compose a 4x4 transformation matrix from a 3D position, quaternion orientation, and 3D scale.
+
+        .. math::
+            M = \\begin{bmatrix}
+            s_x R_{00} & s_y R_{01} & s_z R_{02} & p_x \\\\
+            s_x R_{10} & s_y R_{11} & s_z R_{12} & p_y \\\\
+            s_x R_{20} & s_y R_{21} & s_z R_{22} & p_z \\\\
+            0 & 0 & 0 & 1
+            \\end{bmatrix}
+
+        Where:
+
+        * :math:`R` is the 3x3 rotation matrix created from the orientation quaternion of the input transform.
+        * :math:`p` is the 3D position vector :math:`[p_x, p_y, p_z]` of the input transform.
+        * :math:`s` is the 3D scale vector :math:`[s_x, s_y, s_z]` of the input transform.
+
+        Args:
+            position (Vector[3, Float]): The 3D position vector.
+            rotation (Quaternion[Float]): The quaternion orientation.
+            scale (Vector[3, Float]): The 3D scale vector.
+
+        Returns:
+            Matrix[4, 4, Float]: The transformation matrix.
+        """
+        R = wp.quat_to_matrix(rotation)
+        # fmt: off
+        return mat44(
+            scale[0] * R[0,0], scale[1] * R[0,1], scale[2] * R[0,2], position[0],
+            scale[0] * R[1,0], scale[1] * R[1,1], scale[2] * R[1,2], position[1],
+            scale[0] * R[2,0], scale[1] * R[2,1], scale[2] * R[2,2], position[2],
+            dtype(0.0), dtype(0.0), dtype(0.0), dtype(1.0),
+        )
+        # fmt: on
+
+    return transform_compose
+
+
+transform_compose = wp.func(
+    create_transform_compose_func(wp.float32),
+    name="transform_compose",
+)
+wp.func(
+    create_transform_compose_func(wp.float16),
+    name="transform_compose",
+)
+wp.func(
+    create_transform_compose_func(wp.float64),
+    name="transform_compose",
+)
+
+
+def create_transform_decompose_func(dtype):
+    mat44 = wp.types.matrix((4, 4), dtype)
+    vec3 = wp.types.vector(3, dtype)
+    mat33 = wp.types.matrix((3, 3), dtype)
+    zero = dtype(0.0)
+
+    def transform_decompose(m: mat44):
+        """
+        Decompose a 4x4 transformation matrix into 3D position, quaternion orientation, and 3D scale.
+
+        .. math::
+            M = \\begin{bmatrix}
+            s_x R_{00} & s_y R_{01} & s_z R_{02} & p_x \\\\
+            s_x R_{10} & s_y R_{11} & s_z R_{12} & p_y \\\\
+            s_x R_{20} & s_y R_{21} & s_z R_{22} & p_z \\\\
+            0 & 0 & 0 & 1
+            \\end{bmatrix}
+
+        Where:
+
+        * :math:`R` is the 3x3 rotation matrix created from the orientation quaternion of the input transform.
+        * :math:`p` is the 3D position vector :math:`[p_x, p_y, p_z]` of the input transform.
+        * :math:`s` is the 3D scale vector :math:`[s_x, s_y, s_z]` of the input transform.
+
+        Args:
+            m (Matrix[4, 4, Float]): The matrix to decompose.
+
+        Returns:
+            Tuple[Vector[3, Float], Quaternion[Float], Vector[3, Float]]: A tuple containing the position vector, quaternion orientation, and scale vector.
+        """
+        # extract position
+        position = vec3(m[0, 3], m[1, 3], m[2, 3])
+        # extract rotation matrix components
+        r00, r01, r02 = m[0, 0], m[0, 1], m[0, 2]
+        r10, r11, r12 = m[1, 0], m[1, 1], m[1, 2]
+        r20, r21, r22 = m[2, 0], m[2, 1], m[2, 2]
+        # get scale magnitudes
+        sx = wp.sqrt(r00 * r00 + r10 * r10 + r20 * r20)
+        sy = wp.sqrt(r01 * r01 + r11 * r11 + r21 * r21)
+        sz = wp.sqrt(r02 * r02 + r12 * r12 + r22 * r22)
+        # normalize rotation matrix components
+        if sx != zero:
+            r00 /= sx
+            r10 /= sx
+            r20 /= sx
+        if sy != zero:
+            r01 /= sy
+            r11 /= sy
+            r21 /= sy
+        if sz != zero:
+            r02 /= sz
+            r12 /= sz
+            r22 /= sz
+        # extract rotation (quaternion)
+        rotation = wp.quat_from_matrix(mat33(r00, r01, r02, r10, r11, r12, r20, r21, r22))
+        # extract scale
+        scale = vec3(sx, sy, sz)
+        return position, rotation, scale
+
+    return transform_decompose
+
+
+transform_decompose = wp.func(
+    create_transform_decompose_func(wp.float32),
+    name="transform_decompose",
+)
+wp.func(
+    create_transform_decompose_func(wp.float16),
+    name="transform_decompose",
+)
+wp.func(
+    create_transform_decompose_func(wp.float64),
+    name="transform_decompose",
+)
+
+
 # register API functions so they appear in the documentation
 
 wp.context.register_api_function(
@@ -240,5 +402,13 @@ wp.context.register_api_function(
 )
 wp.context.register_api_function(
     transform_to_matrix,
+    group="Transformations",
+)
+wp.context.register_api_function(
+    transform_compose,
+    group="Transformations",
+)
+wp.context.register_api_function(
+    transform_decompose,
     group="Transformations",
 )

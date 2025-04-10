@@ -559,6 +559,9 @@ Vector Math
     Construct a 4x4 transformation matrix that applies the transformations as
     Translation(pos)*Rotation(rot)*Scaling(scale) when applied to column vectors, i.e.: y = (TRS)*x
 
+    .. warning::
+       This function has been deprecated in favor of :func:`warp.math.transform_compose()`.
+
 
 .. py:function:: matrix(*args: Scalar, shape: Tuple[int, int], dtype: Scalar) -> Matrix[Any,Any,Scalar]
     :noindex:
@@ -814,6 +817,8 @@ Transformations
 
 .. autofunction:: warp.math.transform_from_matrix
 .. autofunction:: warp.math.transform_to_matrix
+.. autofunction:: warp.math.transform_compose
+.. autofunction:: warp.math.transform_decompose
 
 
 Spatial Math
