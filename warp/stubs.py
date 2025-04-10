@@ -644,6 +644,9 @@ def vector(*args: Scalar, length: int32, dtype: Scalar) -> Vector[Any, Scalar]:
 def matrix(pos: Vector[3, Float], rot: Quaternion[Float], scale: Vector[3, Float], dtype: Float) -> Matrix[4, 4, Float]:
     """Construct a 4x4 transformation matrix that applies the transformations as
     Translation(pos)*Rotation(rot)*Scaling(scale) when applied to column vectors, i.e.: y = (TRS)*x
+
+    .. warning::
+       This function has been deprecated in favor of :func:`warp.math.transform_compose()`.
     """
     ...
 
@@ -3385,11 +3388,24 @@ def smooth_normalize(v: Any, delta: float):
 def transform_from_matrix(mat: Matrix[4, 4, float32]) -> Transformation[float32]:
     """Construct a transformation from a 4x4 matrix.
 
-    Args:
-        mat (Matrix[4, 4, Float]): Matrix to convert.
+        .. math::
+            M = \begin{bmatrix}
+            R_{00} & R_{01} & R_{02} & p_x \\
+            R_{10} & R_{11} & R_{12} & p_y \\
+            R_{20} & R_{21} & R_{22} & p_z \\
+            0 & 0 & 0 & 1
+            \end{bmatrix}
 
-    Returns:
-        Transformation[Float]: The transformation.
+        Where:
+
+        * :math:`R` is the 3x3 rotation matrix created from the orientation quaternion of the input transform.
+        * :math:`p` is the 3D position vector :math:`[p_x, p_y, p_z]` of the input transform.
+
+        Args:
+            mat (Matrix[4, 4, Float]): Matrix to convert.
+
+        Returns:
+            Transformation[Float]: The transformation.
     """
     ...
 
@@ -3398,10 +3414,79 @@ def transform_from_matrix(mat: Matrix[4, 4, float32]) -> Transformation[float32]
 def transform_to_matrix(xform: Transformation[float32]) -> Matrix[4, 4, float32]:
     """Convert a transformation to a 4x4 matrix.
 
-    Args:
-        xform (Transformation[Float]): Transformation to convert.
+        .. math::
+            M = \begin{bmatrix}
+            R_{00} & R_{01} & R_{02} & p_x \\
+            R_{10} & R_{11} & R_{12} & p_y \\
+            R_{20} & R_{21} & R_{22} & p_z \\
+            0 & 0 & 0 & 1
+            \end{bmatrix}
 
-    Returns:
-        Matrix[4, 4, Float]: The matrix.
+        Where:
+
+        * :math:`R` is the 3x3 rotation matrix created from the orientation quaternion of the input transform.
+        * :math:`p` is the 3D position vector :math:`[p_x, p_y, p_z]` of the input transform.
+
+        Args:
+            xform (Transformation[Float]): Transformation to convert.
+
+        Returns:
+            Matrix[4, 4, Float]: The matrix.
+    """
+    ...
+
+
+@over
+def transform_compose(position: Vector[3, float32], rotation: Quaternion[float32], scale: Vector[3, float32]):
+    """Compose a 4x4 transformation matrix from a 3D position, quaternion orientation, and 3D scale.
+
+        .. math::
+            M = \begin{bmatrix}
+            s_x R_{00} & s_y R_{01} & s_z R_{02} & p_x \\
+            s_x R_{10} & s_y R_{11} & s_z R_{12} & p_y \\
+            s_x R_{20} & s_y R_{21} & s_z R_{22} & p_z \\
+            0 & 0 & 0 & 1
+            \end{bmatrix}
+
+        Where:
+
+        * :math:`R` is the 3x3 rotation matrix created from the orientation quaternion of the input transform.
+        * :math:`p` is the 3D position vector :math:`[p_x, p_y, p_z]` of the input transform.
+        * :math:`s` is the 3D scale vector :math:`[s_x, s_y, s_z]` of the input transform.
+
+        Args:
+            position (Vector[3, Float]): The 3D position vector.
+            rotation (Quaternion[Float]): The quaternion orientation.
+            scale (Vector[3, Float]): The 3D scale vector.
+
+        Returns:
+            Matrix[4, 4, Float]: The transformation matrix.
+    """
+    ...
+
+
+@over
+def transform_decompose(m: Matrix[4, 4, float32]):
+    """Decompose a 4x4 transformation matrix into 3D position, quaternion orientation, and 3D scale.
+
+        .. math::
+            M = \begin{bmatrix}
+            s_x R_{00} & s_y R_{01} & s_z R_{02} & p_x \\
+            s_x R_{10} & s_y R_{11} & s_z R_{12} & p_y \\
+            s_x R_{20} & s_y R_{21} & s_z R_{22} & p_z \\
+            0 & 0 & 0 & 1
+            \end{bmatrix}
+
+        Where:
+
+        * :math:`R` is the 3x3 rotation matrix created from the orientation quaternion of the input transform.
+        * :math:`p` is the 3D position vector :math:`[p_x, p_y, p_z]` of the input transform.
+        * :math:`s` is the 3D scale vector :math:`[s_x, s_y, s_z]` of the input transform.
+
+        Args:
+            m (Matrix[4, 4, Float]): The matrix to decompose.
+
+        Returns:
+            Tuple[Vector[3, Float], Quaternion[Float], Vector[3, Float]]: A tuple containing the position vector, quaternion orientation, and scale vector.
     """
     ...

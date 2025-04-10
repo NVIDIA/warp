@@ -541,25 +541,6 @@ def test_scalar_array_types(test, device, load, store):
         )
 
 
-@wp.kernel
-def test_transform_matrix():
-    r = wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.5)
-    t = wp.vec3(0.25, 0.5, -0.75)
-    s = wp.vec3(2.0, 0.5, 0.75)
-
-    m = wp.mat44(t, r, s)
-
-    p = wp.vec3(1.0, 2.0, 3.0)
-
-    r_0 = wp.quat_rotate(r, wp.cw_mul(s, p)) + t
-    r_1 = wp.transform_point(m, p)
-
-    r_2 = wp.transform_vector(m, p)
-
-    wp.expect_near(r_0, r_1, 1.0e-4)
-    wp.expect_near(r_2, r_0 - t, 1.0e-4)
-
-
 devices = get_test_devices()
 
 
@@ -628,7 +609,6 @@ add_function_test(TestCTypes, "test_vec2_transform", test_vec2_transform, device
 add_function_test(TestCTypes, "test_vec3_arg", test_vec3_arg, devices=devices, n=8)
 add_function_test(TestCTypes, "test_vec3_transform", test_vec3_transform, devices=devices, n=8)
 add_function_test(TestCTypes, "test_transform_multiply", test_transform_multiply, devices=devices, n=8)
-add_kernel_test(TestCTypes, name="test_transform_matrix", kernel=test_transform_matrix, dim=1, devices=devices)
 add_function_test(TestCTypes, "test_scalar_array", test_scalar_array, devices=devices)
 add_function_test(TestCTypes, "test_vector_array", test_vector_array, devices=devices)
 

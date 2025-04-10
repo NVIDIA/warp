@@ -1157,6 +1157,11 @@ add_builtin(
 
 
 def matrix_transform_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    warp.utils.warn(
+        "the built-in `wp.matrix()` function to construct a 4x4 matrix from a 3D position, quaternion, "
+        "and 3D scale vector will be deprecated in favor of `wp.transform_compose()`.",
+        DeprecationWarning,
+    )
     if arg_types is None:
         return matrix(shape=(4, 4), dtype=Float)
 
@@ -1206,7 +1211,10 @@ add_builtin(
     dispatch_func=matrix_transform_dispatch_func,
     native_func="mat_t",
     doc="""Construct a 4x4 transformation matrix that applies the transformations as
-    Translation(pos)*Rotation(rot)*Scaling(scale) when applied to column vectors, i.e.: y = (TRS)*x""",
+    Translation(pos)*Rotation(rot)*Scaling(scale) when applied to column vectors, i.e.: y = (TRS)*x
+
+    .. warning::
+       This function has been deprecated in favor of :func:`warp.math.transform_compose()`.""",
     group="Vector Math",
     export=False,
 )
