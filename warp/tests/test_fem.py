@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import math
+import platform
 import unittest
 from typing import Any
 
@@ -753,6 +754,9 @@ def _refinement_field(x: wp.vec3):
 
 def test_adaptive_nanogrid(test, device):
     # 3 res-1 voxels, 8 res-0 voxels
+
+    if platform.system() == "Windows" or (device.is_cuda and wp.context.runtime.toolkit_version[0] == 11):
+        test.skipTest("Skipping test due to NVRTC bug on CUDA 11 and Windows")
 
     res0 = wp.array(
         [
