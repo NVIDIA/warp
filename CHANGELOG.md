@@ -24,6 +24,7 @@
 - Added damping terms for collisions in `wp.sim.VBDIntegrator`, whose strength is controlled by `Model.soft_contact_kd`.
 - Improve handling of deprecated JAX features ([GH-613](https://github.com/NVIDIA/warp/pull/613)).
 - Changed the USD renderer to use `framesPerSecond` for time sampling instead of `timeCodesPerSecond`.
+- Improve `repr()` for Warp types, including adding `repr()` for  `wp.array`.
 
 ### Fixed
 
@@ -32,6 +33,7 @@
   being skipped when processed on the GPU ([GH-594](https://github.com/NVIDIA/warp/issues/594)).
 - Fix `show_joints` not working with `wp.sim.render.SimRenderer` set to render to USD
   ([GH-510](https://github.com/NVIDIA/warp/issues/510)).
+- Fix length/shape matching for vectors and matrices from a Python context.
 
 ## [1.7.0] - 2025-03-30
 

@@ -202,7 +202,7 @@ def get_full_arg_spec(func: Callable) -> inspect.FullArgSpec:
     return spec._replace(annotations=eval_annotations(spec.annotations, func))
 
 
-def struct_instance_repr_recursive(inst: StructInstance, depth: int) -> str:
+def struct_instance_repr_recursive(inst: StructInstance, depth: int, use_repr: bool) -> str:
     indent = "\t"
 
     # handle empty structs
@@ -218,7 +218,10 @@ def struct_instance_repr_recursive(inst: StructInstance, depth: int) -> str:
         if isinstance(field_value, StructInstance):
             field_value = struct_instance_repr_recursive(field_value, depth + 1)
 
-        lines.append(f"{indent * (depth + 1)}{field_name}={field_value},")
+        if use_repr:
+            lines.append(f"{indent * (depth + 1)}{field_name}={repr(field_value)},")
+        else:
+            lines.append(f"{indent * (depth + 1)}{field_name}={str(field_value)},")
 
     lines.append(f"{indent * depth})")
     return "\n".join(lines)
@@ -341,7 +344,10 @@ class StructInstance:
         return self._ctype
 
     def __repr__(self):
-        return struct_instance_repr_recursive(self, 0)
+        return struct_instance_repr_recursive(self, 0, use_repr=True)
+
+    def __str__(self):
+        return struct_instance_repr_recursive(self, 0, use_repr=False)
 
     def to(self, device):
         """Copies this struct with all array members moved onto the given device.

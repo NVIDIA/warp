@@ -482,7 +482,7 @@ def test_error_unmatched_arguments(test, device):
     kernel = wp.Kernel(func=kernel_2_fn)
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Input types must be exactly the same, got \[\"vector\(length=2, dtype=<class 'warp.types.float32'>\)\", \"vector\(length=2, dtype=<class 'warp.types.float16'>\)\"\]",
+        r"Input types must be exactly the same, got \['vec2f', 'vector\(length=2, dtype=float16\)'\]",
     ):
         wp.launch(kernel, dim=1, device=device)
 
