@@ -769,6 +769,12 @@ class Kernel:
 
         return f"{self.key}_{hash_suffix}"
 
+    def __call__(self, *args, **kwargs):
+        # we implement this function only to ensure Kernel is a callable object
+        # so that we can document Warp kernels in the same way as Python functions
+        # annotated by @wp.kernel (see functools.update_wrapper())
+        raise NotImplementedError("Kernel.__call__() is not implemented, please use wp.launch() instead")
+
 
 # ----------------------
 

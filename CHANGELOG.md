@@ -15,6 +15,7 @@
 - `wp.sim.VBDIntegrator` now has a `rebuild_bvh` method to rebuild the BVH used for detecting self contacts.
 - Added damping terms for collisions in `wp.sim.VBDIntegrator`, whose strength is controlled by `Model.soft_contact_kd`.
 - Changed the USD renderer to use `framesPerSecond` for time sampling instead of `timeCodesPerSecond`.
+- Improve `repr()` for Warp types, including adding `repr()` for  `wp.array`.
 
 ### Fixed
 
@@ -27,6 +28,7 @@
 - Fix `lookup` operator for `fem.Trimesh3D` ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
 - LTO symbol hash for Cholesky solver updates when kernel block_dim changes.
   ([GH-639](https://github.com/NVIDIA/warp/issues/639)).
+- Fix length/shape matching for vectors and matrices from a Python context.
 
 ## [1.7.0] - 2025-03-30
 

@@ -50,6 +50,22 @@ def get_select_kernel(dtype):
     return getkernel(output_select_kernel_fn, suffix=dtype.__name__)
 
 
+def test_shape_mismatch(test, device):
+    test.assertNotEqual(wp.mat33f(0.0), wp.mat22f(0.0))
+    test.assertNotEqual(wp.mat22f(0.0), wp.mat33f(0.0))
+
+    @wp.kernel
+    def kernel():
+        wp.expect_neq(wp.mat33f(0.0), wp.mat22f(0.0))
+        wp.expect_neq(wp.mat22f(0.0), wp.mat33f(0.0))
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Can't test equality for objects with different types$",
+    ):
+        wp.launch(kernel, dim=1, inputs=[], device=device)
+
+
 def test_anon_constructor_error_shape_arg_missing(test, device):
     @wp.kernel
     def kernel():
@@ -2252,6 +2268,12 @@ for dtype in np_signed_int_types + np_float_types:
         TestMat, f"test_matmul_{dtype.__name__}", test_matmul, devices=devices, dtype=dtype
     )
 
+add_function_test(
+    TestMat,
+    "test_shape_mismatch",
+    test_shape_mismatch,
+    devices=devices,
+)
 add_function_test(
     TestMat,
     "test_anon_constructor_error_shape_arg_missing",

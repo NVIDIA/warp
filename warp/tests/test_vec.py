@@ -58,6 +58,22 @@ def getkernel(func, suffix=""):
     return kernel_cache[key]
 
 
+def test_length_mismatch(test, device):
+    test.assertNotEqual(wp.vec3f(0.0, 0.0, 0.0), wp.vec2f(0.0, 0.0))
+    test.assertNotEqual(wp.vec2f(0.0, 0.0), wp.vec3f(0.0, 0.0, 0.0))
+
+    @wp.kernel
+    def kernel():
+        wp.expect_neq(wp.vec3f(0.0, 0.0, 0.0), wp.vec2f(0.0, 0.0))
+        wp.expect_neq(wp.vec2f(0.0, 0.0), wp.vec3f(0.0, 0.0, 0.0))
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Can't test equality for objects with different types$",
+    ):
+        wp.launch(kernel, dim=1, inputs=[], device=device)
+
+
 def test_anon_constructor_error_length_mismatch(test, device):
     @wp.kernel
     def kernel():
@@ -1552,6 +1568,12 @@ for dtype in np_float_types:
         dtype=dtype,
     )
 
+add_function_test(
+    TestVec,
+    "test_length_mismatch",
+    test_length_mismatch,
+    devices=devices,
+)
 add_function_test(
     TestVec,
     "test_anon_constructor_error_length_mismatch",
