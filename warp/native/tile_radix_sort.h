@@ -19,9 +19,11 @@
 
 #include "tile.h"
 
+#if defined(__clang__)
 // disable warnings related to C++17 extensions on CPU JIT builds
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc++17-extensions"
+#endif
 
 namespace wp
 {
@@ -1101,4 +1103,6 @@ inline void adj_tile_sort(TileK& t, TileV& t2, int start, int length, TileK& adj
 
 } // namespace wp
 
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#endif
