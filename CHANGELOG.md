@@ -28,6 +28,7 @@
 - Improve handling of deprecated JAX features ([GH-613](https://github.com/NVIDIA/warp/pull/613)).
 - Changed the USD renderer to use `framesPerSecond` for time sampling instead of `timeCodesPerSecond`.
 - Deprecate `wp.matrix(pos, quat, scale)` built-in function that constructs a 4x4 matrix from a 3D position, a quaternion, and a 3D scale. Use `wp.transform_compose()` instead ([GH-576](https://github.com/NVIDIA/warp/issues/576)).
+- Improve `repr()` for Warp types, including adding `repr()` for  `wp.array`.
 
 ### Fixed
 
@@ -40,6 +41,7 @@
 - Fix `lookup` operator for `fem.Trimesh3D` ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
 - LTO symbol hash for Cholesky solver updates when kernel block_dim changes.
   ([GH-639](https://github.com/NVIDIA/warp/issues/639)).
+- Fix length/shape matching for vectors and matrices from a Python context.
 
 ## [1.7.0] - 2025-03-30
 
