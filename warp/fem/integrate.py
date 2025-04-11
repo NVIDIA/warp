@@ -232,7 +232,7 @@ class IntegrandOperatorParser(IntegrandVisitor):
 
     @staticmethod
     def apply(
-        integrand: Integrand, field_args: Dict[str, FieldLike], operator_callback: Callable = None
+        integrand: Integrand, field_args: Dict[str, FieldLike], operator_callback: Optional[Callable] = None
     ) -> wp.Function:
         field_info = IntegrandVisitor._build_field_info(integrand, field_args)
         IntegrandOperatorParser(integrand, field_info, callback=operator_callback)._apply()
@@ -267,7 +267,7 @@ class IntegrandTransformer(IntegrandVisitor):
             setattr(field_info.concrete_type, pointer.key, pointer)
 
             # also insert callee as first argument
-            call.args = [ast.Name(id=callee, ctx=ast.Load())] + call.args
+            call.args = [ast.Name(id=callee, ctx=ast.Load()), *call.args]
 
     def _process_integrand_call(
         self, call: ast.Call, callee: Integrand, callee_field_args: Dict[str, IntegrandVisitor.FieldInfo]

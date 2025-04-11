@@ -119,7 +119,7 @@ def verify_kernel_node_load(nodes: Sequence[og.Node]):
         await omni.kit.app.get_app().next_update_async()
         dialog.show()
 
-    asyncio.ensure_future(show_async())
+    asyncio.ensure_future(show_async())  # noqa: RUF006
 
 
 def check_for_kernel_nodes() -> None:

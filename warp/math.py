@@ -22,15 +22,15 @@ Vector norm functions
 """
 
 __all__ = [
+    "norm_huber",
     "norm_l1",
     "norm_l2",
-    "norm_huber",
     "norm_pseudo_huber",
     "smooth_normalize",
-    "transform_from_matrix",
-    "transform_to_matrix",
     "transform_compose",
     "transform_decompose",
+    "transform_from_matrix",
+    "transform_to_matrix",
 ]
 
 

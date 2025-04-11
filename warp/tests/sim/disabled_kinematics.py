@@ -123,7 +123,7 @@ def build_complex_joint_mechanism(chain_length):
             parent_xform=tf1,
             child_xform=tf2,
         )
-        builder.joint_q[-7:] = [0.5, -0.9, 1.4] + list(wp.quat_rpy(0.3, -0.5, 0.7))
+        builder.joint_q[-7:] = [0.5, -0.9, 1.4, *wp.quat_rpy(0.3, -0.5, 0.7)]
         builder.joint_qd[-6:] = [1.0, -1.0, 0.5, 0.8, -0.3, 0.1]
 
         b8 = builder.add_body(com=com2)
@@ -133,7 +133,7 @@ def build_complex_joint_mechanism(chain_length):
             parent_xform=tf1,
             child_xform=tf2,
         )
-        builder.joint_q[-7:] = [-0.3, -0.7, 0.2] + list(wp.quat_rpy(0.1, 0.1, 0.4))
+        builder.joint_q[-7:] = [-0.3, -0.7, 0.2, *wp.quat_rpy(0.1, 0.1, 0.4)]
         builder.joint_qd[-6:] = [-0.34, 0.5, -0.6, -0.4, 0.2, 0.1]
 
         # D6 joint that behaves like a fixed joint

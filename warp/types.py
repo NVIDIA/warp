@@ -23,6 +23,7 @@ import zlib
 from typing import (
     Any,
     Callable,
+    ClassVar,
     Generic,
     Literal,
     NamedTuple,
@@ -131,8 +132,8 @@ def vector(length, dtype):
 
         # warp scalar type:
         _wp_scalar_type_ = dtype
-        _wp_type_params_ = [length, dtype]
-        _wp_type_args_ = {"length": length, "dtype": dtype}
+        _wp_type_params_ = (length, dtype)
+        _wp_type_args_: ClassVar[dict[str, Any]] = {"length": length, "dtype": dtype}
         _wp_generic_type_str_ = "vec_t"
         _wp_generic_type_hint_ = Vector
         _wp_constructor_ = "vector"
@@ -322,8 +323,8 @@ def matrix(shape, dtype):
         # warp scalar type:
         # used in type checking and when writing out c++ code for constructors:
         _wp_scalar_type_ = dtype
-        _wp_type_params_ = [shape[0], shape[1], dtype]
-        _wp_type_args_ = {"shape": (shape[0], shape[1]), "dtype": dtype}
+        _wp_type_params_ = (shape[0], shape[1], dtype)
+        _wp_type_args_: ClassVar[dict[str, Any]] = {"shape": (shape[0], shape[1]), "dtype": dtype}
         _wp_generic_type_str_ = "mat_t"
         _wp_generic_type_hint_ = Matrix
         _wp_constructor_ = "matrix"
@@ -691,8 +692,8 @@ def transformation(dtype=Any):
                 ),
             ),
         )
-        _wp_type_params_ = [dtype]
-        _wp_type_args_ = {"dtype": dtype}
+        _wp_type_params_ = (dtype,)
+        _wp_type_args_: ClassVar[dict[str, type]] = {"dtype": dtype}
         _wp_generic_type_str_ = "transform_t"
         _wp_generic_type_hint_ = Transformation
         _wp_constructor_ = "transformation"
@@ -964,7 +965,7 @@ spatial_matrix = spatial_matrixf
 int_types = (int8, uint8, int16, uint16, int32, uint32, int64, uint64)
 float_types = (float16, float32, float64)
 scalar_types = int_types + float_types
-scalar_and_bool_types = scalar_types + (bool,)
+scalar_and_bool_types = (*scalar_types, bool)
 
 vector_types = (
     vec2b,
@@ -1150,7 +1151,11 @@ ARRAY_TYPE_FABRIC_INDEXED = 3
 
 # represents bounds for kernel launch (number of threads across multiple dimensions)
 class launch_bounds_t(ctypes.Structure):
-    _fields_ = [("shape", ctypes.c_int32 * LAUNCH_MAX_DIMS), ("ndim", ctypes.c_int32), ("size", ctypes.c_size_t)]
+    _fields_ = (
+        ("shape", ctypes.c_int32 * LAUNCH_MAX_DIMS),
+        ("ndim", ctypes.c_int32),
+        ("size", ctypes.c_size_t),
+    )
 
     def __init__(self, shape: int | Sequence[int]):
         if isinstance(shape, int):
@@ -1174,20 +1179,20 @@ class launch_bounds_t(ctypes.Structure):
 
 
 class shape_t(ctypes.Structure):
-    _fields_ = [("dims", ctypes.c_int32 * ARRAY_MAX_DIMS)]
+    _fields_ = (("dims", ctypes.c_int32 * ARRAY_MAX_DIMS),)
 
     def __init__(self):
         pass
 
 
 class array_t(ctypes.Structure):
-    _fields_ = [
+    _fields_ = (
         ("data", ctypes.c_uint64),
         ("grad", ctypes.c_uint64),
         ("shape", ctypes.c_int32 * ARRAY_MAX_DIMS),
         ("strides", ctypes.c_int32 * ARRAY_MAX_DIMS),
         ("ndim", ctypes.c_int32),
-    ]
+    )
 
     def __init__(self, data=0, grad=0, ndim=0, shape=(0,), strides=(0,)):
         self.data = data
@@ -1223,11 +1228,11 @@ array_t._numpy_dtype_ = {
 
 
 class indexedarray_t(ctypes.Structure):
-    _fields_ = [
+    _fields_ = (
         ("data", array_t),
         ("indices", ctypes.c_void_p * ARRAY_MAX_DIMS),
         ("shape", ctypes.c_int32 * ARRAY_MAX_DIMS),
-    ]
+    )
 
     def __init__(self, data, indices, shape):
         if data is None:
@@ -1393,7 +1398,7 @@ def type_is_transformation(t):
     return getattr(t, "_wp_generic_type_hint_", None) is Transformation
 
 
-value_types = (int, float, builtins.bool) + scalar_and_bool_types
+value_types = (int, float, builtins.bool, *scalar_and_bool_types)
 
 
 # returns true for all value types (int, float, bool, scalars, vectors, matrices)
@@ -1701,7 +1706,7 @@ class array(Array[DType]):
             pinned: Whether to allocate pinned host memory, which allows asynchronous host–device transfers
                 (only applicable with ``device="cpu"``)
 
-        """
+        """  # noqa: RUF002
 
         self.ctype = None
 
@@ -3424,14 +3429,14 @@ class Bvh:
                 constructor = "sah"
 
             self.id = self.runtime.core.bvh_create_host(
-                get_data(lowers), get_data(uppers), int(len(lowers)), bvh_constructor_values[constructor]
+                get_data(lowers), get_data(uppers), len(lowers), bvh_constructor_values[constructor]
             )
         else:
             self.id = self.runtime.core.bvh_create_device(
                 self.device.context,
                 get_data(lowers),
                 get_data(uppers),
-                int(len(lowers)),
+                len(lowers),
                 bvh_constructor_values[constructor],
             )
 
@@ -3462,7 +3467,7 @@ class Bvh:
 class Mesh:
     from warp.codegen import Var
 
-    vars = {
+    vars: ClassVar[dict[str, Var]] = {
         "points": Var("points", array(dtype=vec3)),
         "velocities": Var("velocities", array(dtype=vec3)),
         "indices": Var("indices", array(dtype=int32)),
@@ -3541,7 +3546,7 @@ class Mesh:
                 points.__ctype__(),
                 velocities.__ctype__() if velocities else array().__ctype__(),
                 indices.__ctype__(),
-                int(len(points)),
+                len(points),
                 int(indices.size / 3),
                 int(support_winding_number),
                 bvh_constructor_values[bvh_constructor],
@@ -3552,7 +3557,7 @@ class Mesh:
                 points.__ctype__(),
                 velocities.__ctype__() if velocities else array().__ctype__(),
                 indices.__ctype__(),
-                int(len(points)),
+                len(points),
                 int(indices.size / 3),
                 int(support_winding_number),
                 bvh_constructor_values[bvh_constructor],
@@ -3844,7 +3849,7 @@ class Volume:
             mat33f.from_buffer_copy(transform_buffer),
         )
 
-    _nvdb_type_to_dtype = {
+    _nvdb_type_to_dtype: ClassVar[dict[str, type]] = {
         "float": float32,
         "double": float64,
         "int16": int16,
@@ -4042,15 +4047,15 @@ class Volume:
         codec_dict = {"none": 0, "zip": 1, "blosc": 2}
 
         class FileHeader(ctypes.Structure):
-            _fields_ = [
+            _fields_ = (
                 ("magic", ctypes.c_uint64),
                 ("version", ctypes.c_uint32),
                 ("gridCount", ctypes.c_uint16),
                 ("codec", ctypes.c_uint16),
-            ]
+            )
 
         class FileMetaData(ctypes.Structure):
-            _fields_ = [
+            _fields_ = (
                 ("gridSize", ctypes.c_uint64),
                 ("fileSize", ctypes.c_uint64),
                 ("nameKey", ctypes.c_uint64),
@@ -4066,10 +4071,10 @@ class Volume:
                 ("codec", ctypes.c_uint16),
                 ("padding", ctypes.c_uint16),
                 ("version", ctypes.c_uint32),
-            ]
+            )
 
         class GridData(ctypes.Structure):
-            _fields_ = [
+            _fields_ = (
                 ("magic", ctypes.c_uint64),
                 ("checksum", ctypes.c_uint64),
                 ("version", ctypes.c_uint32),
@@ -4088,7 +4093,7 @@ class Volume:
                 ("data0", ctypes.c_uint32),
                 ("data1", ctypes.c_uint64),
                 ("data2", ctypes.c_uint64),
-            ]
+            )
 
         NVDB_MAGIC = 0x304244566F6E614E
         NVDB_VERSION = 32 << 21 | 3 << 10 | 3
@@ -4384,12 +4389,7 @@ class Volume:
 
     # nanovdb types for which we instantiate the grid builder
     # Should be in sync with WP_VOLUME_BUILDER_INSTANTIATE_TYPES in volume_builder.h
-    _supported_allocation_types = [
-        "int32",
-        "float",
-        "Vec3f",
-        "Vec4f",
-    ]
+    _supported_allocation_types = ("int32", "float", "Vec3f", "Vec4f")
 
     @classmethod
     def allocate_by_tiles(
@@ -4592,7 +4592,7 @@ class mesh_query_point_t:
 
     from warp.codegen import Var
 
-    vars = {
+    vars: ClassVar[dict[str, Var]] = {
         "result": Var("result", bool),
         "sign": Var("sign", float32),
         "face": Var("face", int32),
@@ -4624,7 +4624,7 @@ class mesh_query_ray_t:
 
     from warp.codegen import Var
 
-    vars = {
+    vars: ClassVar[dict[str, Var]] = {
         "result": Var("result", bool),
         "sign": Var("sign", float32),
         "face": Var("face", int32),

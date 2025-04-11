@@ -90,7 +90,7 @@ def test_boolean_compound():
 
     d = 1.0
 
-    if a > 0.0 and b > 0.0 or c > a:
+    if (a > 0.0 and b > 0.0) or c > a:
         d = -1.0
 
     wp.expect_eq(d, -1.0)

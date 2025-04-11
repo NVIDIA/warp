@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from collections import defaultdict, namedtuple
-from typing import Dict, List
 
 import warp as wp
 
@@ -77,17 +78,16 @@ class Tape:
     #
     #  adj_tensor = tape.gradients[tensor]
     #
-    def backward(self, loss: wp.array = None, grads: dict = None):
-        """
-        Evaluate the backward pass of the recorded operations on the tape.
+    def backward(self, loss: wp.array | None = None, grads: dict[wp.array, wp.array] | None = None):
+        """Evaluate the backward pass of the recorded operations on the tape.
+
         A single-element array ``loss`` or a dictionary of arrays ``grads``
         can be provided to assign the incoming gradients for the reverse-mode
         automatic differentiation pass.
 
         Args:
-            loss (wp.array): A single-element array that holds the loss function value whose gradient is to be computed
-            grads (dict): A dictionary of arrays that map from Warp arrays to their incoming gradients
-
+            loss: A single-element array that holds the loss function value whose gradient is to be computed
+            grads: A dictionary of arrays that map from Warp arrays to their incoming gradients
         """
         # if scalar loss is specified then initialize
         # a 'seed' array for it, with gradient of one
@@ -291,20 +291,19 @@ class Tape:
 
     def visualize(
         self,
-        filename: str = None,
-        simplify_graph=True,
-        hide_readonly_arrays=False,
-        array_labels: Dict[wp.array, str] = None,
+        filename: str | None = None,
+        simplify_graph: bool = True,
+        hide_readonly_arrays: bool = False,
+        array_labels: dict[wp.array, str] | None = None,
         choose_longest_node_name: bool = True,
         ignore_graph_scopes: bool = False,
-        track_inputs: List[wp.array] = None,
-        track_outputs: List[wp.array] = None,
-        track_input_names: List[str] = None,
-        track_output_names: List[str] = None,
+        track_inputs: list[wp.array] | None = None,
+        track_outputs: list[wp.array] | None = None,
+        track_input_names: list[str] | None = None,
+        track_output_names: list[str] | None = None,
         graph_direction: str = "LR",
     ) -> str:
-        """
-        Visualize the recorded operations on the tape as a `GraphViz diagram <https://graphviz.org/>`_.
+        """Visualize the recorded operations on the tape as a `GraphViz diagram <https://graphviz.org/>`_.
 
         Example
         -------
@@ -327,22 +326,22 @@ class Tape:
                 dot -Tpng tape.dot -o tape.png
 
         Args:
-            filename (str): The filename to save the visualization to (optional).
-            simplify_graph (bool): If True, simplify the graph by detecting repeated kernel launch sequences and summarizing them in subgraphs.
-            hide_readonly_arrays (bool): If True, hide arrays that are not modified by any kernel launch.
-            array_labels (Dict[wp.array, str]): A dictionary mapping arrays to custom labels.
-            choose_longest_node_name (bool): If True, the automatic name resolution will aim to find the longest name for each array in the computation graph.
-            ignore_graph_scopes (bool): If True, ignore the scopes recorded on the tape when visualizing the graph.
-            track_inputs (List[wp.array]): A list of arrays to track as inputs in the graph to ensure they are shown regardless of the `hide_readonly_arrays` setting.
-            track_outputs (List[wp.array]): A list of arrays to track as outputs in the graph so that they remain visible.
-            track_input_names (List[str]): A list of custom names for the input arrays to track in the graph (used in conjunction with `track_inputs`).
-            track_output_names (List[str]): A list of custom names for the output arrays to track in the graph (used in conjunction with `track_outputs`).
-            graph_direction (str): The direction of the graph layout (default: "LR").
+            filename: The filename to save the visualization to (optional).
+            simplify_graph: If True, simplify the graph by detecting repeated kernel launch sequences and summarizing them in subgraphs.
+            hide_readonly_arrays: If True, hide arrays that are not modified by any kernel launch.
+            array_labels: A dictionary mapping arrays to custom labels.
+            choose_longest_node_name: If True, the automatic name resolution will aim to find the longest name for each array in the computation graph.
+            ignore_graph_scopes: If True, ignore the scopes recorded on the tape when visualizing the graph.
+            track_inputs: A list of arrays to track as inputs in the graph to ensure they are shown regardless of the `hide_readonly_arrays` setting.
+            track_outputs: A list of arrays to track as outputs in the graph so that they remain visible.
+            track_input_names: A list of custom names for the input arrays to track in the graph (used in conjunction with `track_inputs`).
+            track_output_names: A list of custom names for the output arrays to track in the graph (used in conjunction with `track_outputs`).
+            graph_direction: The direction of the graph layout (default: "LR").
 
         Returns:
             str: The dot code representing the graph.
-
         """
+
         if track_output_names is None:
             track_output_names = []
         if track_input_names is None:
@@ -370,7 +369,7 @@ class Tape:
 
 
 class TapeVisitor:
-    def emit_array_node(self, arr: wp.array, label: str, active_scope_stack: List[str], indent_level: int):
+    def emit_array_node(self, arr: wp.array, label: str, active_scope_stack: list[str], indent_level: int):
         pass
 
     def emit_kernel_launch_node(
@@ -441,7 +440,7 @@ class GraphvizTapeVisitor(TapeVisitor):
             type_str = type_str.split("'")[1]
         return type_str
 
-    def emit_array_node(self, arr: wp.array, label: str, active_scope_stack: List[str], indent_level: int):
+    def emit_array_node(self, arr: wp.array, label: str, active_scope_stack: list[str], indent_level: int):
         if arr.ptr in self.array_nodes:
             return
         if arr.ptr in self.pointer_to_port:
@@ -462,7 +461,9 @@ class GraphvizTapeVisitor(TapeVisitor):
         # type_str = self.sanitize(type_str)
         # class_name = "array" if not arr.requires_grad else "array_grad"
         # self.graphviz_lines.append(chart_indent + f'{arr_id}(["`{label}`"]):::{class_name}')
-        tooltip = f"Array {label} / ptr={arr.ptr}, shape={str(arr.shape)}, dtype={type_str}, requires_grad={arr.requires_grad}"
+        tooltip = (
+            f"Array {label} / ptr={arr.ptr}, shape={arr.shape}, dtype={type_str}, requires_grad={arr.requires_grad}"
+        )
         options.append(f'tooltip="{tooltip}"')
         # self.graphviz_lines.append(chart_indent + f'click {arr_id} callback "{tooltip}"')
         # self.max_indent = max(self.max_indent, indent_level)
@@ -594,7 +595,7 @@ class ArrayStatsVisitor(TapeVisitor):
         self.array_value_stats = []
         self.array_grad_stats = []
 
-    def emit_array_node(self, arr: wp.array, label: str, active_scope_stack: List[str], indent_level: int):
+    def emit_array_node(self, arr: wp.array, label: str, active_scope_stack: list[str], indent_level: int):
         if arr.device.is_capturing:
             raise RuntimeError("Cannot record arrays while graph capturing is active.")
         self.array_names[arr.ptr] = label
@@ -631,15 +632,15 @@ RepeatedSequence = namedtuple("RepeatedSequence", ["start", "end", "repetitions"
 def visit_tape(
     tape: Tape,
     visitor: TapeVisitor,
-    simplify_graph=True,
-    hide_readonly_arrays=False,
-    array_labels: Dict[wp.array, str] = None,
+    simplify_graph: bool = True,
+    hide_readonly_arrays: bool = False,
+    array_labels: dict[wp.array, str] | None = None,
     choose_longest_node_name: bool = True,
     ignore_graph_scopes: bool = False,
-    track_inputs: List[wp.array] = None,
-    track_outputs: List[wp.array] = None,
-    track_input_names: List[str] = None,
-    track_output_names: List[str] = None,
+    track_inputs: list[wp.array] | None = None,
+    track_outputs: list[wp.array] | None = None,
+    track_input_names: list[str] | None = None,
+    track_output_names: list[str] | None = None,
 ):
     if track_output_names is None:
         track_output_names = []
@@ -697,7 +698,7 @@ def visit_tape(
     ]
     launch_ids = [get_launch_id(launch) for launch in kernel_launches]
 
-    def get_repeating_sequences(sequence: List[str]):
+    def get_repeating_sequences(sequence: list[str]):
         # yield all consecutively repeating subsequences in descending order of length
         for length in range(len(sequence) // 2 + 1, 0, -1):
             for start in range(len(sequence) - length):
@@ -725,7 +726,7 @@ def visit_tape(
                             yield candidate
                             break
 
-    def process_sequence(sequence: List[str]) -> RepeatedSequence:
+    def process_sequence(sequence: list[str]) -> RepeatedSequence | None:
         # find the longest contiguous repetition in the sequence
         if len(sequence) < 2:
             return None
@@ -1149,17 +1150,17 @@ def visit_tape(
 def visualize_tape_graphviz(
     tape: Tape,
     filename: str,
-    simplify_graph=True,
-    hide_readonly_arrays=False,
-    array_labels: Dict[wp.array, str] = None,
+    simplify_graph: bool = True,
+    hide_readonly_arrays: bool = False,
+    array_labels: dict[wp.array, str] | None = None,
     choose_longest_node_name: bool = True,
     ignore_graph_scopes: bool = False,
-    track_inputs: List[wp.array] = None,
-    track_outputs: List[wp.array] = None,
-    track_input_names: List[str] = None,
-    track_output_names: List[str] = None,
+    track_inputs: list[wp.array] | None = None,
+    track_outputs: list[wp.array] | None = None,
+    track_input_names: list[str] | None = None,
+    track_output_names: list[str] | None = None,
     graph_direction: str = "LR",
-):
+) -> str:
     if track_output_names is None:
         track_output_names = []
     if track_input_names is None:

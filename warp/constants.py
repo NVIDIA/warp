@@ -17,7 +17,7 @@ import math
 
 from warp.types import constant
 
-__all__ = [
+__all__ = [  # noqa: RUF022
     "E",
     "e",
     "INF",

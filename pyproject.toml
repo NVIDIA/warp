@@ -24,8 +24,8 @@ authors = [{ name = "NVIDIA Corporation", email = "warp-python@nvidia.com" }]
 description = "A Python framework for high-performance simulation and graphics programming"
 license = { text = "Apache-2.0" }
 classifiers = [
-    "Programming Language :: Python :: 3.8",  # EOL on 2024-10-07
-    "Programming Language :: Python :: 3.9",  # EOL scheduled for 2025-10
+    "Programming Language :: Python :: 3.8",              # EOL on 2024-10-07
+    "Programming Language :: Python :: 3.9",              # EOL scheduled for 2025-10
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -85,6 +85,7 @@ select = [
     "PLE", # pylint error
     "PLW", # pylint warning
     "UP",  # pyupgrade
+    "RUF",
 ]
 ignore = [
     "E501",    # Many lines are over 120 characters already
@@ -94,12 +95,14 @@ ignore = [
     "F811",    # Warp often uses overloads
     "E721",    # Warp often uses == in float and int type comparisons
     "PLW0603", # Allow assignments to global variables
-    "UP018"    # Warp kernels often use float(val) and int(val)
+    "UP018",   # Warp kernels often use float(val) and int(val)
+    "RUF046",  # Warp kernels often use int(val)
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "warp/tests/*.py" = ["F841"]
+"asv/benchmarks/**.py" = ["RUF012"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

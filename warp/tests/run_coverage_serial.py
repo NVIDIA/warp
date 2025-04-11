@@ -28,7 +28,7 @@ cover = coverage.Coverage(config_file=True, messages=True)
 cover.start()
 
 with cover.collect():
-    import unittest_serial  # noqa: E402
+    import unittest_serial
 
     unittest_serial.run_specified()
 

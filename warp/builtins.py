@@ -6674,7 +6674,7 @@ def tile_fft_generic_lto_dispatch_func(
     arg_values: Mapping[str, Var],
     options: Mapping[str, Any],
     builder: warp.context.ModuleBuilder,
-    direction: str = None,
+    direction: str | None = None,
 ):
     inout = arg_values["inout"]
     inout.type.storage = "register"

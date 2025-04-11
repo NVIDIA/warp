@@ -286,7 +286,7 @@ class TestTypes(unittest.TestCase):
             v2[:1] = (v2,)
 
     def test_matrix(self):
-        for dtype in tuple(wp.types.float_types) + (float,):
+        for dtype in (*wp.types.float_types, float):
 
             def make_scalar(x, dtype=dtype):
                 # Cast to the correct integer type to simulate wrapping.
@@ -554,7 +554,7 @@ for dtype in wp.types.int_types:
 for dtype in wp.types.float_types:
     add_function_test(TestTypes, f"test_floats_{dtype.__name__}", test_floats, devices=devices, dtype=dtype)
 
-for dtype in tuple(wp.types.scalar_types) + (int, float):
+for dtype in (*wp.types.scalar_types, int, float):
     add_function_test(TestTypes, f"test_vector_{dtype.__name__}", test_vector, devices=devices, dtype=dtype)
 
 if __name__ == "__main__":

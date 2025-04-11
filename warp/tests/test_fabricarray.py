@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import math
 import unittest
 from typing import Any
@@ -70,7 +72,7 @@ def _warp_type_to_fabric(dtype, is_array=False):
 
 
 # returns a fabric array interface constructed from a regular array
-def _create_fabric_array_interface(data: wp.array, attrib: str, bucket_sizes: list = None, copy=False):
+def _create_fabric_array_interface(data: wp.array, attrib: str, bucket_sizes: list[int] | None = None, copy=False):
     assert isinstance(data, wp.array)
     assert data.ndim == 1
 
@@ -138,7 +140,7 @@ def _create_fabric_array_interface(data: wp.array, attrib: str, bucket_sizes: li
 
 
 # returns a fabric array array interface constructed from a list of regular arrays
-def _create_fabric_array_array_interface(data: list, attrib: str, bucket_sizes: list = None):
+def _create_fabric_array_array_interface(data: list, attrib: str, bucket_sizes: list[int] | None = None):
     # data should be a list of arrays
     assert isinstance(data, list)
 

@@ -1825,7 +1825,7 @@ class FeatherstoneIntegrator(Integrator):
                 )
 
                 if model.rigid_contact_max and (
-                    model.ground and model.shape_ground_contact_pair_count or model.shape_contact_pair_count
+                    (model.ground and model.shape_ground_contact_pair_count) or model.shape_contact_pair_count
                 ):
                     wp.launch(
                         kernel=eval_rigid_contacts,

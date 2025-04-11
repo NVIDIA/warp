@@ -1858,7 +1858,7 @@ class OpenGLRenderer:
         self._scaling = scaling
         self.update_model_matrix()
 
-    def begin_frame(self, t: float = None):
+    def begin_frame(self, t: float | None = None):
         self._last_begin_frame_time = time.time()
         self.time = t or self.clock_time
 
@@ -2716,7 +2716,7 @@ Instances: {len(self._instances)}"""
         length: float,
         color: tuple = (1.0, 1.0, 1.0),
         color2=None,
-        parent_body: str = None,
+        parent_body: str | None = None,
         is_template: bool = False,
         u_scaling=1.0,
         v_scaling=1.0,
@@ -2807,9 +2807,9 @@ Instances: {len(self._instances)}"""
         pos: tuple,
         rot: tuple,
         radius: float,
-        parent_body: str = None,
+        parent_body: str | None = None,
         is_template: bool = False,
-        color: tuple = None,
+        color: tuple[float, float, float] | None = None,
         visible: bool = True,
     ):
         """Add a sphere for visualization
@@ -2840,10 +2840,10 @@ Instances: {len(self._instances)}"""
         rot: tuple,
         radius: float,
         half_height: float,
-        parent_body: str = None,
+        parent_body: str | None = None,
         is_template: bool = False,
         up_axis: int = 1,
-        color: tuple = None,
+        color: tuple[float, float, float] | None = None,
         visible: bool = True,
     ):
         """Add a capsule for visualization
@@ -2876,10 +2876,10 @@ Instances: {len(self._instances)}"""
         rot: tuple,
         radius: float,
         half_height: float,
-        parent_body: str = None,
+        parent_body: str | None = None,
         is_template: bool = False,
         up_axis: int = 1,
-        color: tuple = None,
+        color: tuple[float, float, float] | None = None,
         visible: bool = True,
     ):
         """Add a cylinder for visualization
@@ -2912,10 +2912,10 @@ Instances: {len(self._instances)}"""
         rot: tuple,
         radius: float,
         half_height: float,
-        parent_body: str = None,
+        parent_body: str | None = None,
         is_template: bool = False,
         up_axis: int = 1,
-        color: tuple = None,
+        color: tuple[float, float, float] | None = None,
         visible: bool = True,
     ):
         """Add a cone for visualization
@@ -2947,9 +2947,9 @@ Instances: {len(self._instances)}"""
         pos: tuple,
         rot: tuple,
         extents: tuple,
-        parent_body: str = None,
+        parent_body: str | None = None,
         is_template: bool = False,
-        color: tuple = None,
+        color: tuple[float, float, float] | None = None,
         visible: bool = True,
     ):
         """Add a box for visualization
@@ -2983,7 +2983,7 @@ Instances: {len(self._instances)}"""
         rot=(0.0, 0.0, 0.0, 1.0),
         scale=(1.0, 1.0, 1.0),
         update_topology=False,
-        parent_body: str = None,
+        parent_body: str | None = None,
         is_template: bool = False,
         smooth_shading: bool = True,
         visible: bool = True,
@@ -3096,12 +3096,12 @@ Instances: {len(self._instances)}"""
         rot: tuple,
         base_radius: float,
         base_height: float,
-        cap_radius: float = None,
-        cap_height: float = None,
-        parent_body: str = None,
+        cap_radius: float | None = None,
+        cap_height: float | None = None,
+        parent_body: str | None = None,
         is_template: bool = False,
         up_axis: int = 1,
-        color: tuple[float, float, float] = None,
+        color: tuple[float, float, float] | None = None,
         visible: bool = True,
     ):
         """Add a arrow for visualization
@@ -3130,10 +3130,16 @@ Instances: {len(self._instances)}"""
             self.add_shape_instance(name, shape, body, pos, rot, color1=color, color2=color)
         return shape
 
-    def render_ref(self, name: str, path: str, pos: tuple, rot: tuple, scale: tuple, color: tuple = None):
-        """
-        Create a reference (instance) with the given name to the given path.
-        """
+    def render_ref(
+        self,
+        name: str,
+        path: str,
+        pos: tuple,
+        rot: tuple,
+        scale: tuple,
+        color: tuple[float, float, float] | None = None,
+    ):
+        """Create a reference (instance) with the given name to the given path."""
 
         if path in self._instances:
             _, body, shape, _, original_scale, color1, color2 = self._instances[path]
@@ -3202,7 +3208,7 @@ Instances: {len(self._instances)}"""
         if name not in self._shape_instancers:
             instancer = ShapeInstancer(self._shape_shader, self._device)
             vertices, indices = self._create_capsule_mesh(radius, 0.5)
-            if color is None or isinstance(color, list) and len(color) > 0 and isinstance(color[0], list):
+            if color is None or (isinstance(color, list) and len(color) > 0 and isinstance(color[0], list)):
                 color = tab10_color_map(len(self._shape_geo_hash))
             instancer.register_shape(vertices, indices, color, color)
             instancer.allocate_instances(np.zeros((len(lines), 3)))
@@ -3228,7 +3234,7 @@ Instances: {len(self._instances)}"""
         name: str,
         vertices,
         indices,
-        color: tuple = None,
+        color: tuple[float, float, float] | None = None,
         radius: float = 0.01,
         visible: bool = True,
     ):
@@ -3246,7 +3252,14 @@ Instances: {len(self._instances)}"""
         lines = np.array(lines)
         self._render_lines(name, lines, color, radius)
 
-    def render_line_strip(self, name: str, vertices, color: tuple = None, radius: float = 0.01, visible: bool = True):
+    def render_line_strip(
+        self,
+        name: str,
+        vertices,
+        color: tuple[float, float, float] | None = None,
+        radius: float = 0.01,
+        visible: bool = True,
+    ):
         """Add a line strip as a set of capsules
 
         Args:

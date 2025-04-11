@@ -2405,7 +2405,7 @@ class ModelBuilder:
             return "unknown"
 
         if show_body_names:
-            vertices = ["world"] + self.body_name
+            vertices = ["world", *self.body_name]
         else:
             vertices = ["-1"] + [str(i) for i in range(self.body_count)]
         if plot_shapes:
@@ -2762,28 +2762,28 @@ class ModelBuilder:
     # shapes
     def add_shape_plane(
         self,
-        plane: Vec4 = (0.0, 1.0, 0.0, 0.0),
-        pos: Vec3 = None,
-        rot: Quat = None,
+        plane: Vec4 | tuple[float, float, float, float] = (0.0, 1.0, 0.0, 0.0),
+        pos: Vec3 | None = None,
+        rot: Quat | None = None,
         width: float = 10.0,
         length: float = 10.0,
         body: int = -1,
-        ke: float = None,
-        kd: float = None,
-        kf: float = None,
-        ka: float = None,
-        mu: float = None,
-        restitution: float = None,
-        thickness: float = None,
+        ke: float | None = None,
+        kd: float | None = None,
+        kf: float | None = None,
+        ka: float | None = None,
+        mu: float | None = None,
+        restitution: float | None = None,
+        thickness: float | None = None,
         has_ground_collision: bool = False,
         has_shape_collision: bool = True,
         is_visible: bool = True,
         collision_group: int = -1,
-    ):
-        """
-        Adds a plane collision shape.
-        If pos and rot are defined, the plane is assumed to have its normal as (0, 1, 0).
-        Otherwise, the plane equation defined through the `plane` argument is used.
+    ) -> int:
+        """Add a plane collision shape.
+
+        If ``pos`` and ``rot`` are defined, the plane is assumed to have its normal as (0, 1, 0).
+        Otherwise, the plane equation defined through the ``plane`` argument is used.
 
         Args:
             plane: The plane equation in form a*x + b*y + c*z + d = 0
@@ -2847,24 +2847,24 @@ class ModelBuilder:
     def add_shape_sphere(
         self,
         body,
-        pos: Vec3 = (0.0, 0.0, 0.0),
-        rot: Quat = (0.0, 0.0, 0.0, 1.0),
+        pos: Vec3 | tuple[float, float, float] = (0.0, 0.0, 0.0),
+        rot: Quat | tuple[float, float, float, float] = (0.0, 0.0, 0.0, 1.0),
         radius: float = 1.0,
-        density: float = None,
-        ke: float = None,
-        kd: float = None,
-        kf: float = None,
-        ka: float = None,
-        mu: float = None,
-        restitution: float = None,
+        density: float | None = None,
+        ke: float | None = None,
+        kd: float | None = None,
+        kf: float | None = None,
+        ka: float | None = None,
+        mu: float | None = None,
+        restitution: float | None = None,
         is_solid: bool = True,
-        thickness: float = None,
+        thickness: float | None = None,
         has_ground_collision: bool = True,
         has_shape_collision: bool = True,
         collision_group: int = -1,
         is_visible: bool = True,
-    ):
-        """Adds a sphere collision shape to a body.
+    ) -> int:
+        """Add a sphere collision shape to a body.
 
         Args:
             body: The index of the parent body this shape belongs to (use -1 for static shapes)
@@ -2916,26 +2916,26 @@ class ModelBuilder:
     def add_shape_box(
         self,
         body: int,
-        pos: Vec3 = (0.0, 0.0, 0.0),
-        rot: Quat = (0.0, 0.0, 0.0, 1.0),
+        pos: Vec3 | tuple[float, float, float] = (0.0, 0.0, 0.0),
+        rot: Quat | tuple[float, float, float, float] = (0.0, 0.0, 0.0, 1.0),
         hx: float = 0.5,
         hy: float = 0.5,
         hz: float = 0.5,
-        density: float = None,
-        ke: float = None,
-        kd: float = None,
-        kf: float = None,
-        ka: float = None,
-        mu: float = None,
-        restitution: float = None,
+        density: float | None = None,
+        ke: float | None = None,
+        kd: float | None = None,
+        kf: float | None = None,
+        ka: float | None = None,
+        mu: float | None = None,
+        restitution: float | None = None,
         is_solid: bool = True,
-        thickness: float = None,
+        thickness: float | None = None,
         has_ground_collision: bool = True,
         has_shape_collision: bool = True,
         collision_group: int = -1,
         is_visible: bool = True,
-    ):
-        """Adds a box collision shape to a body.
+    ) -> int:
+        """Add a box collision shape to a body.
 
         Args:
             body: The index of the parent body this shape belongs to (use -1 for static shapes)
@@ -2960,7 +2960,6 @@ class ModelBuilder:
 
         Returns:
             The index of the added shape
-
         """
 
         return self._add_shape(
@@ -2988,26 +2987,26 @@ class ModelBuilder:
     def add_shape_capsule(
         self,
         body: int,
-        pos: Vec3 = (0.0, 0.0, 0.0),
-        rot: Quat = (0.0, 0.0, 0.0, 1.0),
+        pos: Vec3 | tuple[float, float, float] = (0.0, 0.0, 0.0),
+        rot: Quat | tuple[float, float, float, float] = (0.0, 0.0, 0.0, 1.0),
         radius: float = 1.0,
         half_height: float = 0.5,
         up_axis: int = 1,
-        density: float = None,
-        ke: float = None,
-        kd: float = None,
-        kf: float = None,
-        ka: float = None,
-        mu: float = None,
-        restitution: float = None,
+        density: float | None = None,
+        ke: float | None = None,
+        kd: float | None = None,
+        kf: float | None = None,
+        ka: float | None = None,
+        mu: float | None = None,
+        restitution: float | None = None,
         is_solid: bool = True,
-        thickness: float = None,
+        thickness: float | None = None,
         has_ground_collision: bool = True,
         has_shape_collision: bool = True,
         collision_group: int = -1,
         is_visible: bool = True,
-    ):
-        """Adds a capsule collision shape to a body.
+    ) -> int:
+        """Add a capsule collision shape to a body.
 
         Args:
             body: The index of the parent body this shape belongs to (use -1 for static shapes)
@@ -3068,26 +3067,26 @@ class ModelBuilder:
     def add_shape_cylinder(
         self,
         body: int,
-        pos: Vec3 = (0.0, 0.0, 0.0),
-        rot: Quat = (0.0, 0.0, 0.0, 1.0),
+        pos: Vec3 | tuple[float, float, float] = (0.0, 0.0, 0.0),
+        rot: Quat | tuple[float, float, float, float] = (0.0, 0.0, 0.0, 1.0),
         radius: float = 1.0,
         half_height: float = 0.5,
         up_axis: int = 1,
-        density: float = None,
-        ke: float = None,
-        kd: float = None,
-        kf: float = None,
-        ka: float = None,
-        mu: float = None,
-        restitution: float = None,
+        density: float | None = None,
+        ke: float | None = None,
+        kd: float | None = None,
+        kf: float | None = None,
+        ka: float | None = None,
+        mu: float | None = None,
+        restitution: float | None = None,
         is_solid: bool = True,
-        thickness: float = None,
+        thickness: float | None = None,
         has_ground_collision: bool = True,
         has_shape_collision: bool = True,
         collision_group: int = -1,
         is_visible: bool = True,
-    ):
-        """Adds a cylinder collision shape to a body.
+    ) -> int:
+        """Add a cylinder collision shape to a body.
 
         Args:
             body: The index of the parent body this shape belongs to (use -1 for static shapes)
@@ -3150,26 +3149,26 @@ class ModelBuilder:
     def add_shape_cone(
         self,
         body: int,
-        pos: Vec3 = (0.0, 0.0, 0.0),
-        rot: Quat = (0.0, 0.0, 0.0, 1.0),
+        pos: Vec3 | tuple[float, float, float] = (0.0, 0.0, 0.0),
+        rot: Quat | tuple[float, float, float, float] = (0.0, 0.0, 0.0, 1.0),
         radius: float = 1.0,
         half_height: float = 0.5,
         up_axis: int = 1,
-        density: float = None,
-        ke: float = None,
-        kd: float = None,
-        kf: float = None,
-        ka: float = None,
-        mu: float = None,
-        restitution: float = None,
+        density: float | None = None,
+        ke: float | None = None,
+        kd: float | None = None,
+        kf: float | None = None,
+        ka: float | None = None,
+        mu: float | None = None,
+        restitution: float | None = None,
         is_solid: bool = True,
-        thickness: float = None,
+        thickness: float | None = None,
         has_ground_collision: bool = True,
         has_shape_collision: bool = True,
         collision_group: int = -1,
         is_visible: bool = True,
-    ):
-        """Adds a cone collision shape to a body.
+    ) -> int:
+        """Add a cone collision shape to a body.
 
         Args:
             body: The index of the parent body this shape belongs to (use -1 for static shapes)
@@ -3249,8 +3248,8 @@ class ModelBuilder:
         has_shape_collision: bool = True,
         collision_group: int = -1,
         is_visible: bool = True,
-    ):
-        """Adds a triangle mesh collision shape to a body.
+    ) -> int:
+        """Add a triangle mesh collision shape to a body.
 
         Args:
             body: The index of the parent body this shape belongs to (use -1 for static shapes)
@@ -3313,25 +3312,25 @@ class ModelBuilder:
     def add_shape_sdf(
         self,
         body: int,
-        pos: Vec3 = (0.0, 0.0, 0.0),
-        rot: Quat = (0.0, 0.0, 0.0, 1.0),
-        sdf: SDF = None,
-        scale: Vec3 = (1.0, 1.0, 1.0),
-        density: float = None,
-        ke: float = None,
-        kd: float = None,
-        kf: float = None,
-        ka: float = None,
-        mu: float = None,
-        restitution: float = None,
+        pos: Vec3 | tuple[float, float, float] = (0.0, 0.0, 0.0),
+        rot: Quat | tuple[float, float, float, float] = (0.0, 0.0, 0.0, 1.0),
+        sdf: SDF | None = None,
+        scale: Vec3 | tuple[float, float, float] = (1.0, 1.0, 1.0),
+        density: float | None = None,
+        ke: float | None = None,
+        kd: float | None = None,
+        kf: float | None = None,
+        ka: float | None = None,
+        mu: float | None = None,
+        restitution: float | None = None,
         is_solid: bool = True,
-        thickness: float = None,
+        thickness: float | None = None,
         has_ground_collision: bool = True,
         has_shape_collision: bool = True,
         collision_group: int = -1,
         is_visible: bool = True,
-    ):
-        """Adds SDF collision shape to a body.
+    ) -> int:
+        """Add a SDF collision shape to a body.
 
         Args:
             body: The index of the parent body this shape belongs to (use -1 for static shapes)
@@ -3422,8 +3421,8 @@ class ModelBuilder:
         collision_filter_parent=True,
         has_ground_collision=True,
         has_shape_collision=True,
-        is_visible=True,
-    ):
+        is_visible: bool = True,
+    ) -> int:
         self.shape_body.append(body)
         shape = self.shape_count
         if body in self.body_shapes:
@@ -3481,7 +3480,7 @@ class ModelBuilder:
         pos: Vec3,
         vel: Vec3,
         mass: float,
-        radius: float = None,
+        radius: float | None = None,
         flags: wp.uint32 = PARTICLE_FLAG_ACTIVE,
     ) -> int:
         """Adds a single particle to the model
@@ -3546,11 +3545,11 @@ class ModelBuilder:
         i: int,
         j: int,
         k: int,
-        tri_ke: float = None,
-        tri_ka: float = None,
-        tri_kd: float = None,
-        tri_drag: float = None,
-        tri_lift: float = None,
+        tri_ke: float | None = None,
+        tri_ka: float | None = None,
+        tri_kd: float | None = None,
+        tri_drag: float | None = None,
+        tri_lift: float | None = None,
     ) -> float:
         """Adds a triangular FEM element between three particles in the system.
 
@@ -3891,18 +3890,18 @@ class ModelBuilder:
         fix_right: bool = False,
         fix_top: bool = False,
         fix_bottom: bool = False,
-        tri_ke: float = None,
-        tri_ka: float = None,
-        tri_kd: float = None,
-        tri_drag: float = None,
-        tri_lift: float = None,
-        edge_ke: float = None,
-        edge_kd: float = None,
+        tri_ke: float | None = None,
+        tri_ka: float | None = None,
+        tri_kd: float | None = None,
+        tri_drag: float | None = None,
+        tri_lift: float | None = None,
+        edge_ke: float | None = None,
+        edge_kd: float | None = None,
         add_springs: bool = False,
-        spring_ke: float = None,
-        spring_kd: float = None,
-        particle_radius: float = None,
-    ):
+        spring_ke: float | None = None,
+        spring_kd: float | None = None,
+        particle_radius: float | None = None,
+    ) -> None:
         """Helper to create a regular planar cloth grid
 
         Creates a rectangular grid of particles with FEM triangles and bending elements
@@ -4154,9 +4153,9 @@ class ModelBuilder:
         cell_z: float,
         mass: float,
         jitter: float,
-        radius_mean: float = None,
+        radius_mean: float | None = None,
         radius_std: float = 0.0,
-    ):
+    ) -> None:
         radius_mean = radius_mean if radius_mean is not None else self.default_particle_radius
 
         rng = np.random.default_rng(42)
@@ -4193,12 +4192,12 @@ class ModelBuilder:
         fix_right: bool = False,
         fix_top: bool = False,
         fix_bottom: bool = False,
-        tri_ke: float = None,
-        tri_ka: float = None,
-        tri_kd: float = None,
-        tri_drag: float = None,
-        tri_lift: float = None,
-    ):
+        tri_ke: float | None = None,
+        tri_ka: float | None = None,
+        tri_kd: float | None = None,
+        tri_drag: float | None = None,
+        tri_lift: float | None = None,
+    ) -> None:
         """Helper to create a rectangular tetrahedral FEM grid
 
         Creates a regular grid of FEM tetrahedra and surface triangles. Useful for example
@@ -4435,15 +4434,15 @@ class ModelBuilder:
         self,
         normal=None,
         offset=0.0,
-        ke: float = None,
-        kd: float = None,
-        kf: float = None,
-        mu: float = None,
-        restitution: float = None,
-    ):
-        """
-        Creates a ground plane for the world. If the normal is not specified,
-        the up_vector of the ModelBuilder is used.
+        ke: float | None = None,
+        kd: float | None = None,
+        kf: float | None = None,
+        mu: float | None = None,
+        restitution: float | None = None,
+    ) -> None:
+        """Create a ground plane for the world.
+
+        If the normal is not specified, the ``up_vector`` of the :class:`ModelBuilder` is used.
         """
         ke = ke if ke is not None else self.default_shape_ke
         kd = kd if kd is not None else self.default_shape_kd
@@ -4464,16 +4463,15 @@ class ModelBuilder:
             "restitution": restitution,
         }
 
-    def _create_ground_plane(self):
+    def _create_ground_plane(self) -> None:
         ground_id = self.add_shape_plane(**self._ground_params)
         self._ground_created = True
         # disable ground collisions as they will be treated separately
         for i in range(self.shape_count - 1):
             self.shape_collision_filter_pairs.add((i, ground_id))
 
-    def set_coloring(self, particle_coloring):
-        """
-        Set coloring information with user-provided coloring.
+    def set_coloring(self, particle_coloring) -> None:
+        """Set coloring information with user-provided coloring.
 
         Args:
             particle_coloring: A list of list or `np.array` with `dtype`=`int`. The length of the list is the number of colors
@@ -4491,9 +4489,8 @@ class ModelBuilder:
         balance_colors=True,
         target_max_min_color_ratio=1.1,
         coloring_algorithm=ColoringAlgorithm.MCS,
-    ):
-        """
-        Run coloring algorithm to generate coloring information.
+    ) -> None:
+        """Run coloring algorithm to generate coloring information.
 
         Args:
             include_bending_energy: Whether to consider bending energy for trimeshes in the coloring process. If set to `True`, the generated

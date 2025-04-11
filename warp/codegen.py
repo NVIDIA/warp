@@ -26,7 +26,7 @@ import re
 import sys
 import textwrap
 import types
-from typing import Any, Callable, Mapping, Sequence, get_args, get_origin
+from typing import Any, Callable, ClassVar, Mapping, Sequence, get_args, get_origin
 
 import warp.config
 from warp.types import *
@@ -1043,7 +1043,7 @@ class Adjoint:
     # code generation methods
     def format_template(adj, template, input_vars, output_var):
         # output var is always the 0th index
-        args = [output_var] + input_vars
+        args = [output_var, *input_vars]
         s = template.format(*args)
 
         return s
@@ -2740,7 +2740,7 @@ class Adjoint:
     def emit_Pass(adj, node):
         pass
 
-    node_visitors = {
+    node_visitors: ClassVar[dict[type[ast.AST], Callable]] = {
         ast.FunctionDef: emit_FunctionDef,
         ast.If: emit_If,
         ast.Compare: emit_Compare,
@@ -2850,7 +2850,7 @@ class Adjoint:
             for key in s._cls.vars.keys():
                 v = getattr(s, key)
                 if issubclass(type(v), StructInstance):
-                    verify_struct(v, attr_path + [key])
+                    verify_struct(v, [*attr_path, key])
                 else:
                     try:
                         adj.verify_static_return_value(v)

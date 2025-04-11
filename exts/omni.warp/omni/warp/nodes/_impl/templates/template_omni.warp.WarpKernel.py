@@ -140,7 +140,7 @@ class CustomLayout:
                 and x.get_resolved_type().array_depth > 0
             )
         )
-        dim_sources = (EXPLICIT_SOURCE,) + tuple(attr_get_base_name(x) for x in input_array_attrs)
+        dim_sources = (EXPLICIT_SOURCE, *(attr_get_base_name(x) for x in input_array_attrs))
 
         frame = CustomLayoutFrame(hide_extra=True)
 

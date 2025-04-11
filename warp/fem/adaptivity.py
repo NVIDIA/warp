@@ -50,7 +50,7 @@ def adaptive_nanogrid_from_hierarchy(
     # Concatenate voxels for each grid
     voxel_counts = [grid.get_voxel_count() for grid in grids]
 
-    voxel_offsets = np.cumsum(np.array([0] + voxel_counts))
+    voxel_offsets = np.cumsum(np.array([0, *voxel_counts]))
     merged_ijks = cache.borrow_temporary(temporary_store, dtype=wp.vec3i, shape=int(voxel_offsets[-1]), device=device)
     for l in range(level_count):
         voxel_count = voxel_counts[l]

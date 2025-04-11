@@ -207,7 +207,7 @@ class OgnKernel:
         attr = og.Controller.attribute("inputs:device", node)
         if attr.get_metadata(ogn.MetadataKeys.ALLOWED_TOKENS) is None:
             cuda_devices = [x.alias for x in wp.get_cuda_devices()]
-            attr.set_metadata(ogn.MetadataKeys.ALLOWED_TOKENS, ",".join(["cpu", "cuda"] + cuda_devices))
+            attr.set_metadata(ogn.MetadataKeys.ALLOWED_TOKENS, ",".join(["cpu", "cuda", *cuda_devices]))
 
     @staticmethod
     def compute(db: OgnKernelDatabase) -> None:

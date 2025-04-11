@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import re
 
 import numpy as np
@@ -810,17 +812,19 @@ def parse_usd(
     }
 
 
-def resolve_usd_from_url(url: str, target_folder_name: str = None, export_usda: bool = False):
-    """
-    Downloads a USD file from a URL and resolves all references to other USD files to be downloaded to the given target folder.
+def resolve_usd_from_url(url: str, target_folder_name: str | None = None, export_usda: bool = False) -> str:
+    """Download a USD file from a URL and resolves all references to other USD files to be downloaded to the given target folder.
 
     Args:
-        url (str): URL to the USD file.
-        target_folder_name (str): Target folder name. If None, a timestamped folder will be created in the current directory.
-        export_usda (bool): If True, converts each downloaded USD file to USDA and saves the additional USDA file in the target folder with the same base name as the original USD file.
+        url: URL to the USD file.
+        target_folder_name: Target folder name. If ``None``, a time-stamped
+          folder will be created in the current directory.
+        export_usda: If ``True``, converts each downloaded USD file to USDA and
+          saves the additional USDA file in the target folder with the same
+          base name as the original USD file.
 
     Returns:
-        str: File path to the downloaded USD file.
+        File path to the downloaded USD file.
     """
     import datetime
     import os

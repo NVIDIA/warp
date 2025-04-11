@@ -492,7 +492,7 @@ class TestStreams(unittest.TestCase):
 
         # Can't get the stream on a CPU device
         with self.assertRaises(RuntimeError):
-            cpu_stream = cpu_device.stream  # noqa: F841
+            cpu_stream = cpu_device.stream
 
     @unittest.skipUnless(len(wp.get_cuda_devices()) > 1, "Requires at least two CUDA devices")
     @unittest.skipUnless(check_p2p(), "Peer-to-Peer transfers not supported")

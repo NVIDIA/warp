@@ -339,9 +339,8 @@ def from_paddle(
         return a
 
 
-def to_paddle(a: warp.array, requires_grad: bool = None) -> paddle.Tensor:
-    """
-    Convert a Warp array to a Paddle tensor without copying the data.
+def to_paddle(a: warp.array, requires_grad: bool | None = None) -> paddle.Tensor:
+    """Convert a Warp array to a Paddle tensor without copying the data.
 
     Args:
         a (warp.array): The Warp array to convert.

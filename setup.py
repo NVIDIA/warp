@@ -19,7 +19,7 @@ import pathlib
 import platform
 import shutil
 import sys
-from typing import NamedTuple, Optional
+from typing import ClassVar, NamedTuple, Optional
 
 import setuptools
 from wheel.bdist_wheel import bdist_wheel
@@ -161,7 +161,8 @@ if args.command == "bdist_wheel":
 class WarpBDistWheel(bdist_wheel):
     # Even though we parse the platform argument ourselves, we need to declare it here as well so
     # setuptools.Command can validate the command line options.
-    user_options = bdist_wheel.user_options + [
+    user_options: ClassVar[list[tuple[str, str, str]]] = [
+        *bdist_wheel.user_options,
         ("platform=", "P", "Wheel platform: windows|linux|macos-x86_64|aarch64|universal"),
         ("manylinux=", "M", "Manylinux flavor for Linux wheels: manylinux2014|manylinux_2_28|manylinux_2_34"),
     ]
@@ -226,8 +227,8 @@ setuptools.setup(
             "native/nanovdb/*.h",
             "tests/assets/*",
             "examples/assets/*",
+            *warp_binary_libraries,
         ]
-        + warp_binary_libraries,
     },
     distclass=BinaryDistribution,
     cmdclass={

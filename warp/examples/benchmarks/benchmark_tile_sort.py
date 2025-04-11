@@ -151,5 +151,5 @@ if __name__ == "__main__":
 
                 # Print results
                 print(
-                    f"{str(dtype):<12s} {batch_size:<12d} {length:<12d} {shared_benchmark_data[length]:<16.4g} {cub_segmented_sort_benchmark_data[length]:<24.4g} {cub_segmented_sort_benchmark_data[length] / shared_benchmark_data[length]:<16.4g}"
+                    f"{dtype!s:<12s} {batch_size:<12d} {length:<12d} {shared_benchmark_data[length]:<16.4g} {cub_segmented_sort_benchmark_data[length]:<24.4g} {cub_segmented_sort_benchmark_data[length] / shared_benchmark_data[length]:<16.4g}"
                 )
