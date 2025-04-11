@@ -412,7 +412,7 @@ def test_slicing(test, device):
     assert_array_equal(wp_arr[:5], wp.array(np_arr[:5], dtype=int, device=device))
     assert_array_equal(wp_arr[1:5], wp.array(np_arr[1:5], dtype=int, device=device))
     assert_array_equal(wp_arr[-9:-5:1], wp.array(np_arr[-9:-5:1], dtype=int, device=device))
-    assert_array_equal(wp_arr[:5,], wp.array(np_arr[:5], dtype=int, device=device))  # noqa: E231
+    assert_array_equal(wp_arr[:5,], wp.array(np_arr[:5], dtype=int, device=device))
 
 
 def test_view(test, device):
@@ -2604,7 +2604,7 @@ def test_array_inplace_non_diff_ops(test, device):
     wp.launch(inplace_div_1d, N, inputs=[x1, y1], device=device)
     assert_np_equal(x1.numpy(), np.full(N, fill_value=2.0, dtype=float))
 
-    for dtype in wp.types.non_atomic_types + (wp.vec2b, wp.vec2ub, wp.vec2s, wp.vec2us, uint16vec3):
+    for dtype in (*wp.types.non_atomic_types, wp.vec2b, wp.vec2ub, wp.vec2s, wp.vec2us, uint16vec3):
         x = wp.full(N, value=0, dtype=dtype, device=device)
         y = wp.full(N, value=1, dtype=dtype, device=device)
 

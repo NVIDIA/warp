@@ -893,7 +893,7 @@ def test_volume_from_numpy_3d(test, device):
     nums = np.ceil((maxs - mins) / (voxel_size)).astype(dtype=int)
     centers = np.array([[-1.0, -1.0, -1.0], [0.0, 0.0, 0.0], [1.0, 1.0, 1.0]])
     rad = 2.5
-    sphere_sdf_np = np.zeros(tuple(nums) + (3,))
+    sphere_sdf_np = np.zeros((*tuple(nums), 3))
     for x in range(nums[0]):
         for y in range(nums[1]):
             for z in range(nums[2]):
@@ -935,7 +935,7 @@ def test_volume_aniso_transform(test, device):
 def test_volume_write(test, device):
     codecs = ["none", "zip", "blosc"]
     try:
-        import blosc  # noqa: F401 I001
+        import blosc  # noqa: F401
     except ImportError:
         codecs.pop()
 

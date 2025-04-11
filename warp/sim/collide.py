@@ -232,11 +232,11 @@ def box_sdf_grad(upper: wp.vec3, p: wp.vec3):
     sz = wp.sign(p[2])
 
     # x projection
-    if qx > qy and qx > qz or qy == 0.0 and qz == 0.0:
+    if (qx > qy and qx > qz) or (qy == 0.0 and qz == 0.0):
         return wp.vec3(sx, 0.0, 0.0)
 
     # y projection
-    if qy > qx and qy > qz or qx == 0.0 and qz == 0.0:
+    if (qy > qx and qy > qz) or (qx == 0.0 and qz == 0.0):
         return wp.vec3(0.0, sy, 0.0)
 
     # z projection
@@ -341,9 +341,9 @@ def closest_point_box(upper: wp.vec3, point: wp.vec3):
         sy = wp.abs(wp.abs(point[1]) - upper[1])
         sz = wp.abs(wp.abs(point[2]) - upper[2])
         # return closest point on closest side, handle corner cases
-        if sx < sy and sx < sz or sy == 0.0 and sz == 0.0:
+        if (sx < sy and sx < sz) or (sy == 0.0 and sz == 0.0):
             x = wp.sign(point[0]) * upper[0]
-        elif sy < sx and sy < sz or sx == 0.0 and sz == 0.0:
+        elif (sy < sx and sy < sz) or (sx == 0.0 and sz == 0.0):
             y = wp.sign(point[1]) * upper[1]
         else:
             z = wp.sign(point[2]) * upper[2]
@@ -1516,11 +1516,8 @@ def handle_contact_pairs(
         diff = p_a_world - p_b_world
 
         # if the plane is infinite or the point is within the plane we fix the normal to prevent intersections
-        if (
-            geo_scale_b[0] == 0.0
-            and geo_scale_b[1] == 0.0
-            or wp.abs(query_b[0]) < geo_scale_b[0]
-            and wp.abs(query_b[2]) < geo_scale_b[1]
+        if (geo_scale_b[0] == 0.0 and geo_scale_b[1] == 0.0) or (
+            wp.abs(query_b[0]) < geo_scale_b[0] and wp.abs(query_b[2]) < geo_scale_b[1]
         ):
             normal = wp.transform_vector(X_ws_b, wp.vec3(0.0, 1.0, 0.0))
             distance = wp.dot(diff, normal)
@@ -1616,7 +1613,7 @@ def collide(
                 device=model.device,
             )
 
-        if model.shape_contact_pair_count or model.ground and model.shape_ground_contact_pair_count:
+        if model.shape_contact_pair_count or (model.ground and model.shape_ground_contact_pair_count):
             # clear old count
             model.rigid_contact_count.zero_()
 
@@ -1681,7 +1678,7 @@ def collide(
                 record_tape=False,
             )
 
-        if model.shape_contact_pair_count or model.ground and model.shape_ground_contact_pair_count:
+        if model.shape_contact_pair_count or (model.ground and model.shape_ground_contact_pair_count):
             if requires_grad:
                 model.rigid_contact_point0 = wp.empty_like(model.rigid_contact_point0)
                 model.rigid_contact_point1 = wp.empty_like(model.rigid_contact_point1)

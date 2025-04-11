@@ -3102,7 +3102,7 @@ class XPBDIntegrator(Integrator):
 
                     # Solve rigid contact constraints
                     if model.rigid_contact_max and (
-                        model.ground and model.shape_ground_contact_pair_count or model.shape_contact_pair_count
+                        (model.ground and model.shape_ground_contact_pair_count) or model.shape_contact_pair_count
                     ):
                         if self.rigid_contact_con_weighting:
                             rigid_contact_inv_weight.zero_()

@@ -49,7 +49,7 @@ def example1():
 
         print("Inputs:     ", ", ".join([buffer_to_string(b) for b in inputs]))
         print("Outputs:    ", ", ".join([buffer_to_string(b) for b in outputs]))
-        print("Attributes: ", "".join([f"\n  {k}: {str(v)}" for k, v in attrs.items()]))
+        print("Attributes: ", "".join([f"\n  {k}: {str(v)}" for k, v in attrs.items()]))  # noqa: RUF010
 
     # register callback
     register_ffi_callback("print_args", print_args)

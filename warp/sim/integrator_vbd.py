@@ -62,11 +62,11 @@ class mat43(matrix(shape=(4, 3), dtype=float32)):
 class ForceElementAdjacencyInfo:
     r"""
     - vertex_adjacent_[element]: the flatten adjacency information. Its size is \sum_{i\inV} 2*N_i, where N_i is the
-    number of vertex i’s adjacent [element]. For each adjacent element it stores 2 information:
+    number of vertex i's adjacent [element]. For each adjacent element it stores 2 information:
         - the id of the adjacent element
         - the order of the vertex in the element, which is essential to compute the force and hessian for the vertex
-    - vertex_adjacent_[element]_offsets: stores where each vertex’ information starts in the  flatten adjacency array.
-    Its size is |V|+1 such that the number of vertex i’s adjacent [element] can be computed as
+    - vertex_adjacent_[element]_offsets: stores where each vertex information starts in the  flatten adjacency array.
+    Its size is |V|+1 such that the number of vertex i's adjacent [element] can be computed as
     vertex_adjacent_[element]_offsets[i+1]-vertex_adjacent_[element]_offsets[i].
     """
 

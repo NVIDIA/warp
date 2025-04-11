@@ -150,7 +150,7 @@ class BsrMatrix(Generic[_BlockType]):
             self.nnz = int(self._nnz_buf.numpy()[0])
         return self.nnz
 
-    def copy_nnz_async(self, known_nnz: int = None):
+    def copy_nnz_async(self, known_nnz: Optional[int] = None) -> None:
         """
         Start the asynchronous transfer of the exact nnz from the device offsets array to host and records an event for completion.
 
@@ -303,7 +303,7 @@ def bsr_zeros(
 
     bsr.nrow = int(rows_of_blocks)
     bsr.ncol = int(cols_of_blocks)
-    bsr.nnz = int(0)
+    bsr.nnz = 0
     bsr.columns = wp.empty(shape=(0,), dtype=int, device=device)
     bsr.values = wp.empty(shape=(0,), dtype=block_type, device=device)
     bsr.offsets = wp.zeros(shape=(bsr.nrow + 1,), dtype=int, device=device)
@@ -311,7 +311,7 @@ def bsr_zeros(
     return bsr
 
 
-def _bsr_ensure_fits(bsr: BsrMatrix, nrow: int = None, nnz: int = None):
+def _bsr_ensure_fits(bsr: BsrMatrix, nrow: Optional[int] = None, nnz: Optional[int] = None) -> None:
     if nrow is None:
         nrow = bsr.nrow
     if nnz is None:

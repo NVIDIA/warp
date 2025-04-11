@@ -33,7 +33,7 @@ class Integrand:
         self.kernel_options = {} if kernel_options is None else kernel_options
 
         # Operators for each field argument. This will be populated at first integrate call
-        self.operators: Dict[str, Set[Operator]] = None
+        self.operators: Optional[Dict[str, Set[Operator]]] = None
 
 
 class Operator:
@@ -41,14 +41,14 @@ class Operator:
     Operators provide syntactic sugar over Field and Domain evaluation functions and arguments
     """
 
-    def __init__(self, func: Callable, resolver: Callable, field_result: Callable = None):
+    def __init__(self, func: Callable, resolver: Callable, field_result: Optional[Callable] = None):
         self.func = func
         self.name = func.__name__
         self.resolver = resolver
         self.field_result = field_result
 
 
-def integrand(func: Callable = None, kernel_options: Optional[Dict[str, Any]] = None):
+def integrand(func: Optional[Callable] = None, kernel_options: Optional[Dict[str, Any]] = None):
     """Decorator for functions to be integrated (or interpolated) using warp.fem
 
     Args:

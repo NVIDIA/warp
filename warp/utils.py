@@ -986,12 +986,12 @@ def check_p2p():
 class timing_result_t(ctypes.Structure):
     """CUDA timing struct for fetching values from C++"""
 
-    _fields_ = [
+    _fields_ = (
         ("context", ctypes.c_void_p),
         ("name", ctypes.c_char_p),
         ("filter", ctypes.c_int),
         ("elapsed", ctypes.c_float),
-    ]
+    )
 
 
 class TimingResult:

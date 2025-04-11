@@ -13,34 +13,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import inspect
 import itertools
-from typing import Any, Callable, Dict, List, Sequence, Tuple, Union
+from typing import Any, Callable, Sequence
 
 import numpy as np
 
 import warp as wp
 
 __all__ = [
-    "jacobian",
-    "jacobian_fd",
     "gradcheck",
     "gradcheck_tape",
+    "jacobian",
+    "jacobian_fd",
     "jacobian_plot",
 ]
 
 
 def gradcheck(
-    function: Union[wp.Kernel, Callable],
-    dim: Tuple[int] = None,
-    inputs: Sequence = None,
-    outputs: Sequence = None,
+    function: wp.Kernel | Callable,
+    dim: tuple[int] | None = None,
+    inputs: Sequence | None = None,
+    outputs: Sequence | None = None,
     *,
     eps: float = 1e-4,
     atol: float = 1e-3,
     rtol: float = 1e-2,
     raise_exception: bool = True,
-    input_output_mask: List[Tuple[Union[str, int], Union[str, int]]] = None,
+    input_output_mask: list[tuple[str | int, str | int]] | None = None,
     device: wp.context.Devicelike = None,
     max_blocks: int = 0,
     block_dim: int = 256,
@@ -237,9 +239,9 @@ def gradcheck_tape(
     atol=1e-3,
     rtol=1e-2,
     raise_exception=True,
-    input_output_masks: Dict[str, List[Tuple[Union[str, int], Union[str, int]]]] = None,
-    blacklist_kernels: List[str] = None,
-    whitelist_kernels: List[str] = None,
+    input_output_masks: dict[str, list[tuple[str | int, str | int]]] | None = None,
+    blacklist_kernels: list[str] | None = None,
+    whitelist_kernels: list[str] | None = None,
     max_inputs_per_var=-1,
     max_outputs_per_var=-1,
     plot_relative_error=False,
@@ -354,13 +356,13 @@ class FunctionMetadata:
 
     def __init__(
         self,
-        key: str = None,
-        input_labels: List[str] = None,
-        output_labels: List[str] = None,
-        input_strides: List[tuple] = None,
-        output_strides: List[tuple] = None,
-        input_dtypes: list = None,
-        output_dtypes: list = None,
+        key: str | None = None,
+        input_labels: list[str] | None = None,
+        output_labels: list[str] | None = None,
+        input_strides: list[tuple] | None = None,
+        output_strides: list[tuple] | None = None,
+        input_dtypes: list | None = None,
+        output_dtypes: list | None = None,
     ):
         self.key = key
         self.input_labels = input_labels
@@ -403,7 +405,7 @@ class FunctionMetadata:
                 self.output_strides.append(None)
                 self.output_dtypes.append(None)
 
-    def update_from_function(self, function: Callable, inputs: Sequence, outputs: Sequence = None):
+    def update_from_function(self, function: Callable, inputs: Sequence, outputs: Sequence | None = None):
         self.key = function.__name__
         self.input_labels = list(inspect.signature(function).parameters.keys())
         if outputs is None:
@@ -432,16 +434,16 @@ class FunctionMetadata:
 
 
 def jacobian_plot(
-    jacobians: Dict[Tuple[int, int], wp.array],
-    kernel: Union[FunctionMetadata, wp.Kernel],
-    inputs: Sequence = None,
-    outputs: Sequence = None,
-    show_plot=True,
-    show_colorbar=True,
-    scale_colors_per_submatrix=False,
-    title: str = None,
+    jacobians: dict[tuple[int, int], wp.array],
+    kernel: FunctionMetadata | wp.Kernel,
+    inputs: Sequence | None = None,
+    outputs: Sequence | None = None,
+    show_plot: bool = True,
+    show_colorbar: bool = True,
+    scale_colors_per_submatrix: bool = False,
+    title: str | None = None,
     colormap: str = "coolwarm",
-    log_scale=False,
+    log_scale: bool = False,
 ):
     """
     Visualizes the Jacobians computed by :func:`jacobian` or :func:`jacobian_fd` in a combined image plot.
@@ -626,16 +628,16 @@ def jacobian_plot(
 
 
 def plot_kernel_jacobians(
-    jacobians: Dict[Tuple[int, int], wp.array],
+    jacobians: dict[tuple[int, int], wp.array],
     kernel: wp.Kernel,
     inputs: Sequence,
     outputs: Sequence,
-    show_plot=True,
-    show_colorbar=True,
-    scale_colors_per_submatrix=False,
-    title: str = None,
+    show_plot: bool = True,
+    show_colorbar: bool = True,
+    scale_colors_per_submatrix: bool = False,
+    title: str | None = None,
     colormap: str = "coolwarm",
-    log_scale=False,
+    log_scale: bool = False,
 ):
     """
     Visualizes the Jacobians computed by :func:`jacobian` or :func:`jacobian_fd` in a combined image plot.
@@ -714,19 +716,19 @@ def scalarize_array_2d(arr):
 
 
 def jacobian(
-    function: Union[wp.Kernel, Callable],
-    dim: Tuple[int] = None,
-    inputs: Sequence = None,
-    outputs: Sequence = None,
-    input_output_mask: List[Tuple[Union[str, int], Union[str, int]]] = None,
+    function: wp.Kernel | Callable,
+    dim: tuple[int] | None = None,
+    inputs: Sequence | None = None,
+    outputs: Sequence | None = None,
+    input_output_mask: list[tuple[str | int, str | int]] | None = None,
     device: wp.context.Devicelike = None,
     max_blocks=0,
     block_dim=256,
     max_outputs_per_var=-1,
     plot_jacobians=False,
-    metadata: FunctionMetadata = None,
-    kernel: wp.Kernel = None,
-) -> Dict[Tuple[int, int], wp.array]:
+    metadata: FunctionMetadata | None = None,
+    kernel: wp.Kernel | None = None,
+) -> dict[tuple[int, int], wp.array]:
     """
     Computes the Jacobians of a function or Warp kernel for the provided selection of differentiable inputs to differentiable outputs.
 
@@ -858,20 +860,20 @@ def jacobian(
 
 
 def jacobian_fd(
-    function: Union[wp.Kernel, Callable],
-    dim: Tuple[int] = None,
-    inputs: Sequence = None,
-    outputs: Sequence = None,
-    input_output_mask: List[Tuple[Union[str, int], Union[str, int]]] = None,
+    function: wp.Kernel | Callable,
+    dim: tuple[int] | None | None = None,
+    inputs: Sequence | None = None,
+    outputs: Sequence | None = None,
+    input_output_mask: list[tuple[str | int, str | int]] | None = None,
     device: wp.context.Devicelike = None,
     max_blocks=0,
     block_dim=256,
     max_inputs_per_var=-1,
     eps: float = 1e-4,
     plot_jacobians=False,
-    metadata: FunctionMetadata = None,
-    kernel: wp.Kernel = None,
-) -> Dict[Tuple[int, int], wp.array]:
+    metadata: FunctionMetadata | None = None,
+    kernel: wp.Kernel | None = None,
+) -> dict[tuple[int, int], wp.array]:
     """
     Computes the finite-difference Jacobian of a function or Warp kernel for the provided selection of differentiable inputs to differentiable outputs.
     The method uses a central difference scheme to approximate the Jacobian.
@@ -993,8 +995,8 @@ def jacobian_fd(
         outputs_until_right = [conditional_clone(output) for output in outputs_copy[:output_i]]
         outputs_after_left = [conditional_clone(output) for output in outputs_copy[output_i + 1 :]]
         outputs_after_right = [conditional_clone(output) for output in outputs_copy[output_i + 1 :]]
-        left_outputs = outputs_until_left + [left] + outputs_after_left
-        right_outputs = outputs_until_right + [right] + outputs_after_right
+        left_outputs = [*outputs_until_left, left, *outputs_after_left]
+        right_outputs = [*outputs_until_right, right, *outputs_after_right]
 
         input_num = flat_input.shape[0]
         flat_input_copy = wp.clone(flat_input)

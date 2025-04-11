@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Set
+from typing import Any, ClassVar, Dict, Set
 
 import warp as wp
 import warp.fem.operator as operator
@@ -30,7 +30,7 @@ from .field import SpaceField
 class AdjointField(SpaceField):
     """Adjoint of a discrete field with respect to its degrees of freedom"""
 
-    def __init__(self, space: FunctionSpace, space_partition: SpaceRestriction):
+    def __init__(self, space: FunctionSpace, space_partition: SpacePartition):
         super().__init__(space, space_partition=space_partition)
 
         self.node_dof_count = self.space.NODE_DOF_COUNT
@@ -269,7 +269,7 @@ class LocalAdjointField(SpaceField):
     OUTER_GRAD_DOF = wp.constant(3)
     DOF_TYPE_COUNT = wp.constant(4)
 
-    _OP_DOF_MAP_CONTINUOUS = {
+    _OP_DOF_MAP_CONTINUOUS: ClassVar[Dict[operator.Operator, int]] = {
         operator.inner: INNER_DOF,
         operator.outer: INNER_DOF,
         operator.grad: INNER_GRAD_DOF,
@@ -278,7 +278,7 @@ class LocalAdjointField(SpaceField):
         operator.div_outer: INNER_GRAD_DOF,
     }
 
-    _OP_DOF_MAP_DISCONTINUOUS = {
+    _OP_DOF_MAP_DISCONTINUOUS: ClassVar[Dict[operator.Operator, int]] = {
         operator.inner: INNER_DOF,
         operator.outer: OUTER_DOF,
         operator.grad: INNER_GRAD_DOF,

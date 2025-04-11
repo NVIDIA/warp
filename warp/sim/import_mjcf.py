@@ -13,11 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import math
 import os
 import re
 import xml.etree.ElementTree as ET
-from typing import Union
 
 import numpy as np
 
@@ -30,7 +31,7 @@ def parse_mjcf(
     builder,
     xform=None,
     floating=False,
-    base_joint: Union[dict, str, None] = None,
+    base_joint: dict | str | None = None,
     density=1000.0,
     stiffness=100.0,
     damping=10.0,
@@ -447,7 +448,7 @@ def parse_mjcf(
 
         return shapes
 
-    def parse_body(body, parent, incoming_defaults: dict, childclass: str = None):
+    def parse_body(body, parent, incoming_defaults: dict, childclass: str | None = None):
         body_class = body.get("class")
         if body_class is None:
             body_class = childclass

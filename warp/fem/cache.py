@@ -63,7 +63,7 @@ def get_kernel(
     func,
     suffix: str,
     use_qualified_name: bool = False,
-    kernel_options: Dict[str, Any] = None,
+    kernel_options: Optional[Dict[str, Any]] = None,
 ):
     if kernel_options is None:
         kernel_options = {}
@@ -82,7 +82,7 @@ def get_kernel(
     return _kernel_cache[key]
 
 
-def dynamic_kernel(suffix: str, use_qualified_name=False, kernel_options: Dict[str, Any] = None):
+def dynamic_kernel(suffix: str, use_qualified_name=False, kernel_options: Optional[Dict[str, Any]] = None):
     if kernel_options is None:
         kernel_options = {}
 
@@ -227,7 +227,7 @@ def get_integrand_kernel(
     integrand: Integrand,
     suffix: str,
     kernel_fn: Optional[Callable] = None,
-    kernel_options: Dict[str, Any] = None,
+    kernel_options: Optional[Dict[str, Any]] = None,
     code_transformers=None,
 ):
     options = integrand.module.options.copy()

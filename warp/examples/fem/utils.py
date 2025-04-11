@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
@@ -23,15 +24,15 @@ from warp.optim.linear import LinearOperator, aslinearoperator, preconditioner
 from warp.sparse import BsrMatrix, bsr_get_diag, bsr_mv, bsr_transposed
 
 __all__ = [
+    "Plot",
+    "SaddleSystem",
+    "bsr_cg",
+    "bsr_solve_saddle",
     "gen_hexmesh",
     "gen_quadmesh",
     "gen_tetmesh",
     "gen_trimesh",
-    "bsr_cg",
-    "bsr_solve_saddle",
-    "SaddleSystem",
     "invert_diagonal_bsr_matrix",
-    "Plot",
 ]
 
 # matrix inversion routines contain nested loops,
@@ -576,7 +577,7 @@ class Plot:
         else:
             self._usd_renderer.render_points(name, points, radius=self.default_point_radius)
 
-    def plot(self, options: Dict[str, Any] = None, backend: str = "auto"):
+    def plot(self, options: Optional[Dict[str, Any]] = None, backend: str = "auto"):
         if options is None:
             options = {}
 
@@ -611,7 +612,7 @@ class Plot:
                 offsets = np.cumsum(counts)
                 ranges = np.array([offsets - counts, offsets]).T
                 faces = np.concatenate(
-                    [[count] + list(indices[beg:end]) for (count, (beg, end)) in zip(counts, ranges)]
+                    [[count, *list(indices[beg:end])] for (count, (beg, end)) in zip(counts, ranges)]
                 )
                 ref_geom = pyvista.PolyData(vertices, faces)
             else:

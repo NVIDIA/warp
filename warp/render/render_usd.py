@@ -80,7 +80,7 @@ class UsdRenderer:
     """A USD renderer"""
 
     def __init__(self, stage, up_axis="Y", fps=60, scaling=1.0):
-        """Construct a UsdRenderer object
+        """Construct a UsdRenderer object.
 
         Args:
             model: A simulation model
@@ -202,16 +202,15 @@ class UsdRenderer:
         rot: tuple,
         width: float,
         length: float,
-        color: tuple = (1.0, 1.0, 1.0),
+        color: tuple[float, float, float] = (1.0, 1.0, 1.0),
         color2=None,
-        parent_body: str = None,
+        parent_body: str | None = None,
         is_template: bool = False,
-        u_scaling=1.0,
-        v_scaling=1.0,
+        u_scaling: float = 1.0,
+        v_scaling: float = 1.0,
         visible: bool = True,
     ):
-        """
-        Render a plane with the given dimensions.
+        """Render a plane with the given dimensions.
 
         Args:
             name: Name of the plane
@@ -308,9 +307,9 @@ class UsdRenderer:
         pos: tuple,
         rot: tuple,
         radius: float,
-        parent_body: str = None,
+        parent_body: str | None = None,
         is_template: bool = False,
-        color: tuple = None,
+        color: tuple[float, float, float] | None = None,
         visible: bool = True,
     ):
         """Debug helper to add a sphere for visualization
@@ -360,14 +359,13 @@ class UsdRenderer:
         rot: tuple,
         radius: float,
         half_height: float,
-        parent_body: str = None,
+        parent_body: str | None = None,
         is_template: bool = False,
         up_axis: int = 1,
-        color: tuple = None,
+        color: tuple[float, float, float] | None = None,
         visible: bool = True,
     ):
-        """
-        Debug helper to add a capsule for visualization
+        """Debug helper to add a capsule for visualization
 
         Args:
             pos: The position of the capsule
@@ -417,14 +415,13 @@ class UsdRenderer:
         rot: tuple,
         radius: float,
         half_height: float,
-        parent_body: str = None,
+        parent_body: str | None = None,
         is_template: bool = False,
         up_axis: int = 1,
-        color: tuple = None,
+        color: tuple[float, float, float] | None = None,
         visible: bool = True,
     ):
-        """
-        Debug helper to add a cylinder for visualization
+        """Debug helper to add a cylinder for visualization
 
         Args:
             pos: The position of the cylinder
@@ -474,14 +471,13 @@ class UsdRenderer:
         rot: tuple,
         radius: float,
         half_height: float,
-        parent_body: str = None,
+        parent_body: str | None = None,
         is_template: bool = False,
         up_axis: int = 1,
-        color: tuple = None,
+        color: tuple[float, float, float] | None = None,
         visible: bool = True,
     ):
-        """
-        Debug helper to add a cone for visualization
+        """Debug helper to add a cone for visualization
 
         Args:
             pos: The position of the cone
@@ -530,9 +526,9 @@ class UsdRenderer:
         pos: tuple,
         rot: tuple,
         extents: tuple,
-        parent_body: str = None,
+        parent_body: str | None = None,
         is_template: bool = False,
-        color: tuple = None,
+        color: tuple[float, float, float] | None = None,
         visible: bool = True,
     ):
         """Debug helper to add a box for visualization
@@ -574,7 +570,7 @@ class UsdRenderer:
         cube.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
         return prim_path
 
-    def render_ref(self, name: str, path: str, pos: tuple, rot: tuple, scale: tuple, color: tuple = None):
+    def render_ref(self, name: str, path: str, pos: tuple, rot: tuple, scale: tuple, color: tuple | None = None):
         from pxr import Gf, Usd, UsdGeom
 
         ref_path = "/root/" + name
@@ -605,7 +601,7 @@ class UsdRenderer:
         rot=(0.0, 0.0, 0.0, 1.0),
         scale=(1.0, 1.0, 1.0),
         update_topology=False,
-        parent_body: str = None,
+        parent_body: str | None = None,
         is_template: bool = False,
         smooth_shading: bool = True,
         visible: bool = True,
@@ -666,12 +662,12 @@ class UsdRenderer:
         rot: tuple,
         base_radius: float,
         base_height: float,
-        cap_radius: float = None,
-        cap_height: float = None,
-        parent_body: str = None,
+        cap_radius: float | None = None,
+        cap_height: float | None = None,
+        parent_body: str | None = None,
         is_template: bool = False,
         up_axis: int = 1,
-        color: tuple[float, float, float] = None,
+        color: tuple[float, float, float] | None = None,
         visible: bool = True,
     ):
         from pxr import Gf, Sdf, UsdGeom
@@ -731,7 +727,7 @@ class UsdRenderer:
         name: str,
         vertices,
         indices,
-        color: tuple = None,
+        color: tuple[float, float, float] | None = None,
         radius: float = 0.01,
         visible: bool = True,
     ):
@@ -788,7 +784,14 @@ class UsdRenderer:
 
         instancer.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
 
-    def render_line_strip(self, name: str, vertices, color: tuple = None, radius: float = 0.01, visible: bool = True):
+    def render_line_strip(
+        self,
+        name: str,
+        vertices,
+        color: tuple[float, float, float] | None = None,
+        radius: float = 0.01,
+        visible: bool = True,
+    ):
         from pxr import Gf, UsdGeom
 
         num_lines = int(len(vertices) - 1)

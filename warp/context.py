@@ -628,9 +628,9 @@ def call_builtin(func: Function, params: tuple) -> tuple[bool, Any]:
 
             if not (
                 isinstance(param, arg_type)
-                or (type(param) is float and arg_type is warp.types.float32)  # noqa: E721
-                or (type(param) is int and arg_type is warp.types.int32)  # noqa: E721
-                or (type(param) is bool and arg_type is warp.types.bool)  # noqa: E721
+                or (type(param) is float and arg_type is warp.types.float32)
+                or (type(param) is int and arg_type is warp.types.int32)
+                or (type(param) is bool and arg_type is warp.types.bool)
                 or warp.types.np_dtype_to_warp_type.get(getattr(param, "dtype", None)) is arg_type
             ):
                 return (False, None)
@@ -5966,7 +5966,7 @@ def launch_tiled(*args, **kwargs):
         raise RuntimeError("wp.launch_tiled() requires a grid with fewer than 4 dimensions")
 
     # add trailing dimension
-    kwargs["dim"] = dim + [kwargs["block_dim"]]
+    kwargs["dim"] = [*dim, kwargs["block_dim"]]
 
     # forward to original launch method
     return launch(*args, **kwargs)
@@ -6429,11 +6429,8 @@ def copy(
 
         # can't copy to/from fabric arrays of arrays, because they are jagged arrays of arbitrary lengths
         # TODO?
-        if (
-            isinstance(src, (warp.fabricarray, warp.indexedfabricarray))
-            and src.ndim > 1
-            or isinstance(dest, (warp.fabricarray, warp.indexedfabricarray))
-            and dest.ndim > 1
+        if (isinstance(src, (warp.fabricarray, warp.indexedfabricarray)) and src.ndim > 1) or (
+            isinstance(dest, (warp.fabricarray, warp.indexedfabricarray)) and dest.ndim > 1
         ):
             raise RuntimeError("Copying to/from Fabric arrays of arrays is not supported")
 

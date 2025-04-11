@@ -105,10 +105,8 @@ def find_host_compiler():
         cl_required_major = 14
         cl_required_minor = 29
 
-        if (
-            (int(cl_version[0]) < cl_required_major)
-            or (int(cl_version[0]) == cl_required_major)
-            and int(cl_version[1]) < cl_required_minor
+        if int(cl_version[0]) < cl_required_major or (
+            (int(cl_version[0]) == cl_required_major) and (int(cl_version[1]) < cl_required_minor)
         ):
             print(
                 f"Warp: MSVC found but compiler version too old, found {cl_version[0]}.{cl_version[1]}, but must be {cl_required_major}.{cl_required_minor} or higher, kernel host compilation will be disabled."
@@ -299,13 +297,15 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: Optional[
                     "--cuda-gpu-arch=sm_86",  # PTX for future hardware
                 ]
 
-        nvcc_opts = gencode_opts + [
+        nvcc_opts = [
+            *gencode_opts,
             "-t0",  # multithreaded compilation
             "--extended-lambda",
         ]
 
         # Clang options
-        clang_opts = clang_arch_flags + [
+        clang_opts = [
+            *clang_arch_flags,
             "-std=c++17",
             "-xcuda",
             f'--cuda-path="{cuda_home}"',
