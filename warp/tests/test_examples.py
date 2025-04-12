@@ -36,6 +36,7 @@ Use "test_timeout" to override the default test timeout threshold of 600 seconds
 """
 
 import os
+import platform
 import subprocess
 import sys
 import unittest
@@ -239,12 +240,21 @@ add_example_test(
     devices=test_devices,
     test_options={"usd_required": True, "headless": True},
 )
-add_example_test(
-    TestCoreExamples,
-    name="core.example_raymarch",
-    devices=test_devices,
-    test_options={"height": 512, "width": 1024, "headless": True},
-)
+if platform.system() == "Windows":
+    # Skip GPU testing because of obscure NVRTC bug with illegal memory access
+    add_example_test(
+        TestCoreExamples,
+        name="core.example_raymarch",
+        devices=[wp.get_device("cpu")],
+        test_options={"height": 512, "width": 1024, "headless": True},
+    )
+else:
+    add_example_test(
+        TestCoreExamples,
+        name="core.example_raymarch",
+        devices=test_devices,
+        test_options={"height": 512, "width": 1024, "headless": True},
+    )
 add_example_test(
     TestCoreExamples,
     name="core.example_sample_mesh",
