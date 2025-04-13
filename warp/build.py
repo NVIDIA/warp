@@ -233,6 +233,104 @@ def get_cached_lto_meta(path, symbol):
         return None
 
 
+def _build_lto_base(lto_symbol, compile_func, builder, extra_files=None):
+    """Generic LTO build function that handles caching, file operations and process management.
+
+    Args:
+        lto_symbol: Unique identifier for the LTO operation
+        compile_func: Function to compile the specific LTO
+            (receives a dictionary of build paths)
+        builder: Builder object to store results
+        extra_files: Dictionary of additional file types to handle (e.g.,
+            {".meta": None, ".fatbin": None}). Values are the functions to get
+            the cached file data.
+
+    Returns:
+        Tuple containing lto_code_data followed by any extra data from extra_files
+    """
+    if extra_files is None:
+        extra_files = {}
+
+    # Hash symbol and set up paths
+    h = hash_symbol(lto_symbol)
+    lto_dir = get_lto_cache_dir()
+    lto_name = f"{h[:7]}.lto"
+    lto_path = os.path.join(lto_dir, lto_name)
+
+    # Set up paths for extra files
+    file_paths = {".lto": lto_path}
+    temp_file_paths = {}
+
+    for ext, _ in extra_files.items():
+        name = f"{h[:7]}{ext}"
+        file_paths[ext] = os.path.join(lto_dir, name)
+
+    # Check if already built but not cached
+    lto_code_data = get_cached_lto(lto_path)
+    if lto_code_data is not None:
+        # Get the cached data for the extra files and early return
+        all_files_cached = True
+        for ext, getter in extra_files.items():
+            if getter and os.path.exists(file_paths[ext]):
+                cached_data = getter(file_paths[ext])
+                if cached_data is None:
+                    all_files_cached = False
+                    break
+                extra_files[ext] = cached_data
+            elif getter:  # If there's a getter but file doesn't exist
+                all_files_cached = False
+                break
+
+        if all_files_cached:
+            if not extra_files:
+                return (lto_code_data,)
+            else:
+                return (lto_code_data, *[extra_files[ext] for ext in extra_files.keys()])
+
+    # Create process-dependent temporary build directory
+    build_dir = f"{lto_dir}_p{os.getpid()}"
+    Path(build_dir).mkdir(parents=True, exist_ok=True)
+
+    # Set up temporary paths for the build outputs
+    for ext, path in file_paths.items():
+        temp_file_paths[ext] = os.path.join(build_dir, os.path.basename(path))
+
+    # Compile LTO with the specialized function
+    result, outputs = compile_func(temp_file_paths)
+
+    if not result:
+        # Clean up and fail
+        for path in temp_file_paths.values():
+            if Path(path).exists():
+                Path(path).unlink()
+        raise RuntimeError(f"Failed to compile {lto_symbol}")
+
+    # Move outputs to cache
+    safe_rename(build_dir, lto_dir)
+
+    # If build_dir couldn't be moved by a rename, move the outputs one-by-one to lto_dir
+    if os.path.exists(lto_dir):
+        for ext, path in file_paths.items():
+            if not os.path.exists(path):
+                try:
+                    # copy output file to the destination lto dir
+                    os.rename(temp_file_paths[ext], path)
+                except (OSError, FileExistsError):
+                    # another process likely updated the lto dir first
+                    pass
+
+    # Clean up the temporary build directory
+    if build_dir:
+        import shutil
+
+        shutil.rmtree(build_dir, ignore_errors=True)
+
+    if not extra_files:
+        return (outputs[".lto"],)
+    else:
+        return (outputs[".lto"], *[outputs[ext] for ext in extra_files.keys()])
+
+
 def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, arch, num_threads, builder):
     # TODO: MathDx doesn't yet have heuristics for Blackwell
     arch = min(arch, 90)
@@ -268,92 +366,50 @@ def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, ar
     c_arrangement = cublasdx_arrangement_map(clayout)
 
     if a_type != b_type or a_type != c_type:
-        raise TypeError("time_matmul(A, B, C) requires all inputs to be real or complex")
+        raise TypeError("tile_matmul(A, B, C) requires all inputs to be real or complex")
 
     element_type = a_type
 
     lto_symbol = f"dot_{M}_{N}_{K}_{arch}_{num_threads}_{a_arrangement}_{b_arrangement}_{c_arrangement}_{a_prec}_{b_prec}_{c_prec}_{element_type}"
 
-    # early out if LTO for this symbol is already cached in current module
+    def compile_lto_dot(temp_paths):
+        result = warp.context.runtime.core.cuda_compile_dot(
+            temp_paths[".lto"].encode("utf-8"),
+            lto_symbol.encode("utf-8"),
+            0,
+            None,
+            None,
+            arch,
+            M,
+            N,
+            K,
+            a_prec,
+            b_prec,
+            c_prec,
+            element_type,
+            a_arrangement,
+            b_arrangement,
+            c_arrangement,
+            num_threads,
+        )
+
+        if result:
+            with open(temp_paths[".lto"], "rb") as f:
+                lto_code_data = f.read()
+            return True, {".lto": lto_code_data}
+        return False, {}
+
+    # Early out if already cached in module
     if lto_symbol in builder.ltoirs:
-        return lto_symbol, builder.ltoirs[lto_symbol]
+        lto_code_data = builder.ltoirs[lto_symbol]
+    else:
+        (lto_code_data,) = _build_lto_base(lto_symbol, compile_lto_dot, builder, {})
 
-    # hash symbol and determine output path
-    h = hash_symbol(lto_symbol)
-
-    lto_dir = get_lto_cache_dir()
-    lto_name = f"{h[:7]}.lto"
-    lto_path = os.path.join(lto_dir, lto_name)
-
-    # early out if LTO for this symbol is already built but not cached in current module
-    lto_code_data = get_cached_lto(lto_path)
-
-    if lto_code_data is not None:
+        # Update builder
         builder.ltoirs[lto_symbol] = lto_code_data
         builder.ltoirs_decl[lto_symbol] = (
             f"void {lto_symbol}({c_dtype}, {a_dtype}*, {b_dtype}*, {c_dtype}, {c_dtype}*);"
         )
-
-        return lto_symbol, lto_code_data
-
-    # create a temporary (process unique) dir for build outputs before moving to the binary dir
-    build_dir = f"{lto_dir}_p{os.getpid()}"
-
-    # dir may exist from previous attempts / runs / archs
-    Path(build_dir).mkdir(parents=True, exist_ok=True)
-
-    # temporary path to compile to in build_dir
-    temp_lto_path = os.path.join(build_dir, lto_name)
-
-    # compile LTO
-    result = warp.context.runtime.core.cuda_compile_dot(
-        temp_lto_path.encode("utf-8"),
-        lto_symbol.encode("utf-8"),
-        0,
-        None,
-        None,
-        arch,
-        M,
-        N,
-        K,
-        a_prec,
-        b_prec,
-        c_prec,
-        element_type,
-        a_arrangement,
-        b_arrangement,
-        c_arrangement,
-        num_threads,
-    )
-
-    if not result:
-        if Path(temp_lto_path).exists():
-            Path(temp_lto_path).unlink()
-        raise RuntimeError("Failed to compile tile_matmul")
-    else:
-        with open(temp_lto_path, "rb") as f:
-            lto_code_data = f.read()
-
-    builder.ltoirs[lto_symbol] = lto_code_data
-    builder.ltoirs_decl[lto_symbol] = f"void {lto_symbol}({c_dtype}, {a_dtype}*, {b_dtype}*, {c_dtype}, {c_dtype}*);"
-
-    # try to move process outputs to cache
-    safe_rename(build_dir, lto_dir)
-
-    if os.path.exists(lto_dir):
-        if not os.path.exists(lto_path):
-            # copy output file to the destination lto dir
-            try:
-                os.rename(temp_lto_path, lto_path)
-            except (OSError, FileExistsError):
-                # another process likely updated the lto dir first
-                pass
-
-    if build_dir:
-        import shutil
-
-        # clean up build_dir used for this process
-        shutil.rmtree(build_dir, ignore_errors=True)
 
     return lto_symbol, lto_code_data
 
@@ -363,96 +419,45 @@ def build_lto_solver(M, N, solver, solver_enum, fill_mode, arch, precision_enum,
     arch = min(arch, 90)
 
     lto_symbol = f"{solver}_{M}_{N}_{arch}_{num_threads}_{precision_enum}_{fill_mode}"
-    ltoir_decl = f"void {lto_symbol}{parameter_list};"
 
-    # early out if LTO for this symbol is already cached in current module
+    def compile_lto_solver(temp_paths):
+        # compile LTO
+        result = warp.context.runtime.core.cuda_compile_solver(
+            temp_paths["_fatbin.lto"].encode("utf-8"),
+            temp_paths[".lto"].encode("utf-8"),
+            lto_symbol.encode("utf-8"),
+            0,
+            None,
+            None,
+            arch,
+            M,
+            N,
+            solver_enum,
+            precision_enum,
+            fill_mode,
+            num_threads,
+        )
+
+        if result:
+            with open(temp_paths[".lto"], "rb") as f:
+                lto_code_data = f.read()
+            with open(temp_paths["_fatbin.lto"], "rb") as f:
+                universal_fatbin_code_data = f.read()
+            return True, {".lto": lto_code_data, "_fatbin.lto": universal_fatbin_code_data}
+        return False, {}
+
+    # Early out if already cached in module
     if lto_symbol in builder.ltoirs:
-        return lto_symbol, builder.ltoirs[lto_symbol]
-
-    # hash symbol and determine output path
-    h = hash_symbol(lto_symbol)
-
-    lto_dir = get_lto_cache_dir()
-    lto_name = f"{h[:7]}.lto"
-    lto_path = os.path.join(lto_dir, lto_name)
-
-    # we also cache a universal fatbin binary for this symbol
-    universal_fatbin_name = f"{h[:7]}_fatbin.lto"
-    universal_fatbin_path = os.path.join(lto_dir, universal_fatbin_name)
-
-    lto_code_data = get_cached_lto(lto_path)
-    universal_fatbin_code_data = get_cached_lto(universal_fatbin_path)
-
-    # early out if LTO for this symbol is already built but not cached in current module
-    if lto_code_data is not None and universal_fatbin_code_data is not None:
-        builder.ltoirs[lto_symbol] = lto_code_data
-        builder.ltoirs_decl[lto_symbol] = ltoir_decl
-        builder.fatbins[lto_symbol] = universal_fatbin_code_data
-
-        return lto_symbol, lto_code_data
-
-    # create a temporary (process unique) dir for build outputs before moving to the binary dir
-    build_dir = f"{lto_dir}_p{os.getpid()}"
-
-    # dir may exist from previous attempts / runs / archs
-    Path(build_dir).mkdir(parents=True, exist_ok=True)
-
-    # temporary paths to compile to in build_dir
-    temp_lto_path = os.path.join(build_dir, lto_name)
-    temp_universal_fatbin_path = os.path.join(build_dir, universal_fatbin_name)
-
-    # compile LTO
-    result = warp.context.runtime.core.cuda_compile_solver(
-        temp_universal_fatbin_path.encode("utf-8"),
-        temp_lto_path.encode("utf-8"),
-        lto_symbol.encode("utf-8"),
-        0,
-        None,
-        None,
-        arch,
-        M,
-        N,
-        solver_enum,
-        precision_enum,
-        fill_mode,
-        num_threads,
-    )
-
-    if not result:
-        for path in [temp_universal_fatbin_path, temp_lto_path]:
-            if Path(path).exists():
-                Path(path).unlink()
-        raise RuntimeError("Failed to compile tile_cholesky")
-
+        lto_code_data = builder.ltoirs[lto_symbol]
     else:
-        with open(temp_lto_path, "rb") as f:
-            lto_code_data = f.read()
-        with open(temp_universal_fatbin_path, "rb") as f:
-            universal_fatbin_code_data = f.read()
+        lto_code_data, universal_fatbin_code_data = _build_lto_base(
+            lto_symbol, compile_lto_solver, builder, {"_fatbin.lto": get_cached_lto}
+        )
 
-    builder.ltoirs[lto_symbol] = lto_code_data
-    builder.ltoirs_decl[lto_symbol] = ltoir_decl
-    builder.fatbins[lto_symbol] = universal_fatbin_code_data
-
-    # try to move process outputs to lto cache
-    safe_rename(build_dir, lto_dir)
-
-    if os.path.exists(lto_dir):
-        for p in [(lto_path, temp_lto_path), (universal_fatbin_path, temp_universal_fatbin_path)]:
-            path, temp_path = p
-            if not os.path.exists(path):
-                # copy output file to the destination lto dir
-                try:
-                    os.rename(temp_path, path)
-                except (OSError, FileExistsError):
-                    # another process likely updated the lto dir first
-                    pass
-
-    if build_dir:
-        import shutil
-
-        # clean up build_dir used for this process
-        shutil.rmtree(build_dir, ignore_errors=True)
+        # Update builder
+        builder.ltoirs[lto_symbol] = lto_code_data
+        builder.ltoirs_decl[lto_symbol] = f"void {lto_symbol}{parameter_list};"
+        builder.fatbins[lto_symbol] = universal_fatbin_code_data
 
     return lto_symbol, lto_code_data
 
@@ -463,97 +468,51 @@ def build_lto_fft(arch, size, ept, direction, dir, precision, builder):
 
     lto_symbol = f"fft_{size}_{ept}_{arch}_{direction}_{precision}"
 
-    # early out if LTO for this symbol is already cached in current module
-    if lto_symbol in builder.ltoirs:
-        return lto_symbol, builder.ltoirs[lto_symbol], builder.shared_memory_bytes[lto_symbol]
+    def compile_lto_fft(temp_paths):
+        shared_memory_size = ctypes.c_int(0)
 
-    # hash symbol and determine output path
-    h = hash_symbol(lto_symbol)
+        result = warp.context.runtime.core.cuda_compile_fft(
+            temp_paths[".lto"].encode("utf-8"),
+            lto_symbol.encode("utf-8"),
+            0,
+            None,
+            None,
+            arch,
+            size,
+            ept,
+            dir,
+            precision,
+            ctypes.byref(shared_memory_size),
+        )
 
-    lto_dir = get_lto_cache_dir()
-    lto_name = f"{h[:7]}.lto"
-    lto_path = os.path.join(lto_dir, lto_name)
+        if result:
+            with open(temp_paths[".lto"], "rb") as f:
+                lto_code_data = f.read()
 
-    # we also cache shared memory requirements for this kernel in a .meta file
-    meta_name = f"{h[:7]}.meta"
-    meta_path = os.path.join(lto_dir, meta_name)
+            shared_memory_bytes = Tile.round_up(shared_memory_size.value)
 
-    # early out if LTO for this symbol is already built but not cached in current module
-    lto_code_data = get_cached_lto(lto_path)
-    shared_memory_bytes = get_cached_lto_meta(meta_path, lto_symbol)
+            # output meta file with shared memory requirements for this lto_symbol
+            meta = {}
+            meta[lto_symbol] = shared_memory_bytes
 
-    if lto_code_data is not None and shared_memory_bytes is not None:
+            with open(temp_paths[".meta"], "w") as meta_file:
+                json.dump(meta, meta_file)
+
+            return True, {".lto": lto_code_data, ".meta": shared_memory_bytes}
+
+        return False, {}
+
+    # Early out if already cached in module
+    if lto_symbol in builder.ltoirs and lto_symbol in builder.shared_memory_bytes:
+        lto_code_data = builder.ltoirs[lto_symbol]
+        shared_memory_bytes = builder.shared_memory_bytes[lto_symbol]
+    else:
+        lto_code_data, shared_memory_bytes = _build_lto_base(
+            lto_symbol, compile_lto_fft, builder, {".meta": lambda path: get_cached_lto_meta(path, lto_symbol)}
+        )
+
+        # Update builder
         builder.ltoirs[lto_symbol] = lto_code_data
         builder.shared_memory_bytes[lto_symbol] = shared_memory_bytes
-
-        return lto_symbol, lto_code_data, shared_memory_bytes
-
-    # create a temporary (process unique) dir for build outputs before moving to the binary dir
-    build_dir = f"{lto_dir}_p{os.getpid()}"
-
-    # dir may exist from previous attempts / runs / archs
-    Path(build_dir).mkdir(parents=True, exist_ok=True)
-
-    # temporary paths to compile to in build_dir
-    temp_lto_path = os.path.join(build_dir, lto_name)
-    temp_meta_path = os.path.join(build_dir, meta_name)
-
-    # compile LTO
-    shared_memory_size = ctypes.c_int(0)
-
-    result = warp.context.runtime.core.cuda_compile_fft(
-        temp_lto_path.encode("utf-8"),
-        lto_symbol.encode("utf-8"),
-        0,
-        None,
-        None,
-        arch,
-        size,
-        ept,
-        dir,
-        precision,
-        ctypes.byref(shared_memory_size),
-    )
-
-    shared_memory_bytes = Tile.round_up(shared_memory_size.value)
-
-    if not result:
-        if Path(temp_lto_path).exists():
-            Path(temp_lto_path).unlink()
-        raise RuntimeError("Failed to compile tile_fft")
-
-    else:
-        with open(temp_lto_path, "rb") as f:
-            lto_code_data = f.read()
-
-        # output meta file with shared memory requirements for this lto_symbol
-        meta = {}
-        meta[lto_symbol] = shared_memory_bytes
-
-        with open(temp_meta_path, "w") as meta_file:
-            json.dump(meta, meta_file)
-
-    builder.ltoirs[lto_symbol] = lto_code_data
-    builder.shared_memory_bytes[lto_symbol] = shared_memory_bytes
-
-    # try to move process outputs to cache
-    safe_rename(build_dir, lto_dir)
-
-    if os.path.exists(lto_dir):
-        for p in [(lto_path, temp_lto_path), (meta_path, temp_meta_path)]:
-            path, temp_path = p
-            if not os.path.exists(path):
-                # copy output file to the destination lto dir
-                try:
-                    os.rename(temp_path, path)
-                except (OSError, FileExistsError):
-                    # another process likely updated the lto dir first
-                    pass
-
-    if build_dir:
-        import shutil
-
-        # clean up build_dir used for this process
-        shutil.rmtree(build_dir, ignore_errors=True)
 
     return lto_symbol, lto_code_data, shared_memory_bytes
