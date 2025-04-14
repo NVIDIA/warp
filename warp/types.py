@@ -1478,7 +1478,7 @@ def is_array(a) -> builtins.bool:
     return isinstance(a, array_types)
 
 
-def scalars_equal(a, b, match_generic):
+def scalars_equal(a, b, match_generic=False):
     # convert to canonical types
     if a == float:
         a = float32

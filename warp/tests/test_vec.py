@@ -1066,6 +1066,7 @@ def test_vector_constructor_value_func():
     b = wp.vector(a, dtype=wp.float16)
     c = wp.vector(a)
     d = wp.vector(a, length=2)
+    e = wp.vector(1.0, 2.0, 3.0, dtype=float)
 
 
 # Test matrix constructors using explicit type (float16)

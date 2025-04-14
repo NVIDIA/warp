@@ -47,6 +47,9 @@
 - Fix `UsdRenderer.render_points()` not supporting multiple colors
   ([GH-634](https://github.com/NVIDIA/warp/issues/634)).
 - Fix the `dtype` parameter missing for `wp.quaternion()`.
+- Fix invalid `dtype` comparison when using the `wp.matrix()`/`wp.vector()`/`wp.quaternion()` constructors
+  with literal values and an explicit `dtype` argument
+  ([GH-651](https://github.com/NVIDIA/warp/issues/651)).
 
 ## [1.7.0] - 2025-03-30
 
