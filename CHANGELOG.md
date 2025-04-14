@@ -46,6 +46,7 @@
 - Fix length/shape matching for vectors and matrices from a Python context.
 - Fix `UsdRenderer.render_points()` not supporting multiple colors
   ([GH-634](https://github.com/NVIDIA/warp/issues/634)).
+- Fix the `dtype` parameter missing for `wp.quaternion()`.
 
 ## [1.7.0] - 2025-03-30
 

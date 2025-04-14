@@ -748,7 +748,7 @@ def quaternion(dtype: Float) -> Quaternion[Float]:
 
 
 @over
-def quaternion(x: Float, y: Float, z: Float, w: Float) -> Quaternion[Float]:
+def quaternion(x: Float, y: Float, z: Float, w: Float, dtype: Scalar) -> Quaternion[Float]:
     """Create a quaternion using the supplied components (type inferred from component type)."""
     ...
 
