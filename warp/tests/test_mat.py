@@ -1656,6 +1656,7 @@ def test_matrix_constructor_value_func():
     c = mat32d()
     d = mat32d(c, shape=(3, 2))
     e = mat32d(wp.float64(1.0), wp.float64(2.0), wp.float64(1.0), wp.float64(2.0), wp.float64(1.0), wp.float64(2.0))
+    f = wp.matrix(1.0, 2.0, 3.0, 4.0, shape=(2, 2), dtype=float)
 
 
 @wp.kernel

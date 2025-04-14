@@ -1982,6 +1982,12 @@ def test_constructor_default():
     wp.expect_eq(qeye[2], 0.0)
     wp.expect_eq(qeye[3], 1.0)
 
+    qlit = wp.quaternion(1.0, 2.0, 3.0, 4.0, dtype=float)
+    wp.expect_eq(qlit[0], 1.0)
+    wp.expect_eq(qlit[1], 2.0)
+    wp.expect_eq(qlit[2], 3.0)
+    wp.expect_eq(qlit[3], 4.0)
+
 
 def test_py_arithmetic_ops(test, device, dtype):
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
