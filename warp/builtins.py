@@ -859,7 +859,7 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             dtype = value_type
         elif value_type != dtype:
             raise RuntimeError(
-                f"all values used to initialize this vector matrix are expected to be of the type `{dtype.__name__}`"
+                f"all values used to initialize this vector are expected to be of the type `{dtype.__name__}`"
             )
 
     if length is None:
