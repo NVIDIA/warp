@@ -621,7 +621,7 @@ Quaternion Math
     [ix, iy, iz, r], where ix, iy, iz are the imaginary part, and r the real part.
 
 
-.. py:function:: quaternion(x: Float, y: Float, z: Float, w: Float) -> Quaternion[Float]
+.. py:function:: quaternion(x: Float, y: Float, z: Float, w: Float, dtype: Scalar) -> Quaternion[Float]
     :noindex:
     :nocontentsentry:
 

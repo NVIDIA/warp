@@ -1345,7 +1345,8 @@ add_builtin(
 )
 add_builtin(
     "quaternion",
-    input_types={"x": Float, "y": Float, "z": Float, "w": Float},
+    input_types={"x": Float, "y": Float, "z": Float, "w": Float, "dtype": Scalar},
+    defaults={"dtype": None},
     value_func=quaternion_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
     dispatch_func=quaternion_dispatch_func,
