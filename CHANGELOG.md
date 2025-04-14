@@ -19,6 +19,8 @@
 - Add example of a distributed Jacobi solver using `mpi4py` in `warp/examples/distributed/example_jacobi_mpi.py`
   ([GH-475](https://github.com/NVIDIA/warp/issues/475)).
 - Add `transform_compose` and `transform_decompose` math functions for converting between transforms and mat44 with 3D scale information ([GH-576](https://github.com/NVIDIA/warp/issues/576)).
+- Add a parameter `as_spheres` to `UsdRenderer.render_points()` in order to choose whether to render
+  the points as USD spheres using a point instancer, or as simple USD points otherwise.
 
 ### Changed
 
@@ -42,6 +44,8 @@
 - LTO symbol hash for Cholesky solver updates when kernel block_dim changes.
   ([GH-639](https://github.com/NVIDIA/warp/issues/639)).
 - Fix length/shape matching for vectors and matrices from a Python context.
+- Fix `UsdRenderer.render_points()` not supporting multiple colors
+  ([GH-634](https://github.com/NVIDIA/warp/issues/634)).
 
 ## [1.7.0] - 2025-03-30
 

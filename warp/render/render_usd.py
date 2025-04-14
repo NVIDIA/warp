@@ -836,46 +836,78 @@ class UsdRenderer:
 
         instancer.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
 
-    def render_points(self, name: str, points, radius, colors=None, visible: bool = True):
-        from pxr import Gf, UsdGeom
+    def render_points(self, name: str, points, radius, colors=None, as_spheres: bool = True, visible: bool = True):
+        from pxr import Sdf, UsdGeom
 
-        instancer_path = self.root.GetPath().AppendChild(name)
-        instancer = UsdGeom.PointInstancer.Get(self.stage, instancer_path)
-        radius_is_scalar = np.isscalar(radius)
-        if not instancer:
-            if colors is None or len(colors) == 3:
+        instancer_path = self._resolve_path(name)
+
+        if np.isscalar(radius):
+            radius_interp = "constant"
+        else:
+            radius_interp = "vertex"
+
+        if colors is None:
+            color_interp = "constant"
+        elif len(colors) == 3 and all(np.isscalar(x) for x in colors):
+            color_interp = "constant"
+            is_single_color = True
+        else:
+            color_interp = "vertex"
+            is_single_color = False
+
+        if as_spheres:
+            instancer = UsdGeom.PointInstancer.Get(self.stage, instancer_path)
+            if not instancer:
                 instancer = UsdGeom.PointInstancer.Define(self.stage, instancer_path)
-                instancer_sphere = UsdGeom.Sphere.Define(self.stage, instancer.GetPath().AppendChild("sphere"))
-                if radius_is_scalar:
-                    instancer_sphere.GetRadiusAttr().Set(radius)
-                else:
-                    instancer_sphere.GetRadiusAttr().Set(1.0)
-                    instancer.GetScalesAttr().Set(np.tile(radius, (3, 1)).T)
+                sphere = UsdGeom.Sphere.Define(self.stage, instancer.GetPath().AppendChild("sphere"))
+                primvar_api = UsdGeom.PrimvarsAPI(instancer)
+
+                instancer.CreatePrototypesRel().SetTargets((sphere.GetPath(),))
+                instancer.CreateProtoIndicesAttr().Set((0,) * len(points))
 
                 if colors is not None:
-                    instancer_sphere.GetDisplayColorAttr().Set([Gf.Vec3f(colors)], self.time)
+                    primvar_api.CreatePrimvar("displayColor", Sdf.ValueTypeNames.Color3fArray, color_interp, 1)
 
-                instancer.CreatePrototypesRel().SetTargets([instancer_sphere.GetPath()])
-                instancer.CreateProtoIndicesAttr().Set([0] * len(points))
+            instancer.GetPositionsAttr().Set(points, self.time)
 
-                # set identity rotations
-                quats = [Gf.Quath(1.0, 0.0, 0.0, 0.0)] * len(points)
-                instancer.GetOrientationsAttr().Set(quats, self.time)
+            if radius_interp == "constant":
+                radius = np.tile(radius, (3, len(points))).T
             else:
+                radius = np.tile(radius, (3, 1)).T
+
+            instancer.GetScalesAttr().Set(radius, self.time)
+
+            if colors is not None:
+                if is_single_color:
+                    colors = (colors,)
+
+                primvar_api = UsdGeom.PrimvarsAPI(instancer)
+                primvar_api.GetPrimvar("displayColor").Set(colors, self.time)
+        else:
+            instancer = UsdGeom.Points.Get(self.stage, instancer_path)
+            if not instancer:
                 instancer = UsdGeom.Points.Define(self.stage, instancer_path)
 
-                if radius_is_scalar:
-                    instancer.GetWidthsAttr().Set([radius * 2.0] * len(points))
-                else:
-                    instancer.GetWidthsAttr().Set(radius * 2.0)
+                UsdGeom.Primvar(instancer.GetWidthsAttr()).SetInterpolation(radius_interp)
+                UsdGeom.Primvar(instancer.GetDisplayColorAttr()).SetInterpolation(color_interp)
 
-        if colors is None or len(colors) == 3:
-            instancer.GetPositionsAttr().Set(points, self.time)
-        else:
             instancer.GetPointsAttr().Set(points, self.time)
-            instancer.GetDisplayColorAttr().Set(colors, self.time)
+
+            if np.isscalar(radius):
+                widths = (radius * 2.0,)
+            else:
+                widths = np.array(radius) * 2.0
+
+            instancer.GetWidthsAttr().Set(widths, self.time)
+
+            if colors is not None:
+                if len(colors) == 3:
+                    colors = (colors,)
+
+                instancer.GetDisplayColorAttr().Set(colors, self.time)
 
         instancer.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
+        return instancer.GetPath()
 
     def update_body_transforms(self, body_q):
         from pxr import Sdf, UsdGeom
