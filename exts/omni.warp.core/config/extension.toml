@@ -1,14 +1,14 @@
 [package]
 # Semantic Versioning is used: https://semver.org/
-version = "1.7.0"
+version = "1.7.1-rc.1"
 authors = ["NVIDIA"]
 title = "Warp Core"
-description="The core Warp Python module"
-readme  = "docs/README.md"
-repository="https://github.com/nvidia/warp"
+description = "The core Warp Python module"
+readme = "docs/README.md"
+repository = "https://github.com/nvidia/warp"
 category = "core"
 keywords = ["warp", "simulation"]
-changelog="docs/CHANGELOG.md"
+changelog = "docs/CHANGELOG.md"
 writeTarget.platform = true
 support_level = "Enterprise"
 

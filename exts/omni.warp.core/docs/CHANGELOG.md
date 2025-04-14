@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## [1.7.1-rc.1] - 2025-05-01
+
+### Added
+
+- Add example of a distributed Jacobi solver using `mpi4py` in `warp/examples/distributed/example_jacobi_mpi.py`
+  ([GH-475](https://github.com/NVIDIA/warp/issues/475)).
+
+### Changed
+
+- Change the USD renderer to use `framesPerSecond` for time sampling instead of `timeCodesPerSecond`
+  ([GH-617](https://github.com/NVIDIA/warp/issues/617)).
+- Improve `repr()` for Warp types, including adding `repr()` for  `wp.array`.
+
+### Fixed
+
+- Fix the jitter for the `OgnParticlesFromMesh` node not being computed correctly.
+- Fix a code generation bug involving return statements in Warp kernels, which could result in some threads in Warp
+  being skipped when processed on the GPU ([GH-594](https://github.com/NVIDIA/warp/issues/594)).
+- Fix `show_joints` not working with `wp.sim.render.SimRenderer` set to render to USD
+  ([GH-510](https://github.com/NVIDIA/warp/issues/510)).
+- Fix constructing `DeformedGeometry` from `wp.fem.Trimesh3D` geometries
+  ([GH-614](https://github.com/NVIDIA/warp/issues/614)).
+- Fix `lookup` operator for `wp.fem.Trimesh3D` ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
+- Include the block dimension in the LTO file hash for the Cholesky solver
+  ([GH-639](https://github.com/NVIDIA/warp/issues/639)).
+- Fix length/shape matching for vectors and matrices from the Python scope.
+
 ## [1.7.0] - 2025-03-30
 
 ### Added

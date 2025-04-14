@@ -1,20 +1,16 @@
 # Changelog
 
-## [Unreleased] - 2025-??
+## [1.7.1] - 2025-05-01
 
 ### Added
 
-- Add the `Device.sm_count` property to get the number of streaming multiprocessors on a CUDA device
-  ([GH-584](https://github.com/NVIDIA/warp/issues/584)).
-- Add support for animating visibility of objects in the USD renderer
-  ([GH-598](https://github.com/NVIDIA/warp/issues/598)).
+- Add example of a distributed Jacobi solver using `mpi4py` in `warp/examples/distributed/example_jacobi_mpi.py`
+  ([GH-475](https://github.com/NVIDIA/warp/issues/475)).
 
 ### Changed
 
-- The rigid body contact in `wp.sim.VBDIntegrator` now uses only the shape's friction coefficient, instead of averaging the shape's and the cloth's coefficients.
-- `wp.sim.VBDIntegrator` now has a `rebuild_bvh` method to rebuild the BVH used for detecting self contacts.
-- Added damping terms for collisions in `wp.sim.VBDIntegrator`, whose strength is controlled by `Model.soft_contact_kd`.
-- Changed the USD renderer to use `framesPerSecond` for time sampling instead of `timeCodesPerSecond`.
+- Change the USD renderer to use `framesPerSecond` for time sampling instead of `timeCodesPerSecond`
+  ([GH-617](https://github.com/NVIDIA/warp/issues/617)).
 - Improve `repr()` for Warp types, including adding `repr()` for  `wp.array`.
 
 ### Fixed
@@ -24,11 +20,12 @@
   being skipped when processed on the GPU ([GH-594](https://github.com/NVIDIA/warp/issues/594)).
 - Fix `show_joints` not working with `wp.sim.render.SimRenderer` set to render to USD
   ([GH-510](https://github.com/NVIDIA/warp/issues/510)).
-- Fix constructing `DeformedGeometry` from `fem.Trimesh3D` geometries ([GH-614](https://github.com/NVIDIA/warp/issues/614)).
-- Fix `lookup` operator for `fem.Trimesh3D` ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
-- LTO symbol hash for Cholesky solver updates when kernel block_dim changes.
+- Fix constructing `DeformedGeometry` from `wp.fem.Trimesh3D` geometries
+  ([GH-614](https://github.com/NVIDIA/warp/issues/614)).
+- Fix `lookup` operator for `wp.fem.Trimesh3D` ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
+- Include the block dimension in the LTO file hash for the Cholesky solver
   ([GH-639](https://github.com/NVIDIA/warp/issues/639)).
-- Fix length/shape matching for vectors and matrices from a Python context.
+- Fix length/shape matching for vectors and matrices from the Python scope.
 
 ## [1.7.0] - 2025-03-30
 
@@ -64,12 +61,6 @@
 - Add a hinge-angle-based bending force to `wp.sim.VBDIntegrator`.
 - Add an example to show mesh sampling using a CDF
   ([GH-476](https://github.com/NVIDIA/warp/issues/476)).
-- Support Python/SASS correlation in Nsight Compute reports by emitting `#line` directives in CUDA-C code.
-  This setting is controlled by `wp.config.line_directives` and is `True` by default.
-  ([docs](https://nvidia.github.io/warp/profiling.html#nsight-compute-profiling),
-   [GH-437](https://github.com/NVIDIA/warp/issues/437))
-- Add example of a distributed Jacobi solver using `mpi4py` in `warp/examples/distributed/example_jacobi_mpi.py`
-  ([GH-475](https://github.com/NVIDIA/warp/issues/475)).
 
 ### Changed
 
@@ -105,10 +96,6 @@
 - Fix an out-of-bounds access bug caused by an unbalanced BVH tree ([GH-536](https://github.com/NVIDIA/warp/issues/536)).
 - Fix an error of incorrectly adding the offset to -1 elements in `edge_indices` when adding a ModelBuilder to another
   ([GH-557](https://github.com/NVIDIA/warp/issues/557)).
-- Fix an error of incorrectly adding the offset to -1 elements in `edge_indices` when adding a ModelBuilder to another ([GH-557](https://github.com/NVIDIA/warp/issues/557)).
-- Fix the jitter for the `OgnParticlesFromMesh` node not being computed correctly.
-- Fix a code generation bug involving return statements in Warp kernels, which could result in some threads in Warp
-  being skipped when processed on the GPU ([GH-594](https://github.com/NVIDIA/warp/issues/594)).
 
 ## [1.6.2] - 2025-03-07
 
@@ -1481,6 +1468,7 @@
 
 - Initial publish for alpha testing
 
+[1.7.1]: https://github.com/NVIDIA/warp/releases/tag/v1.7.1
 [1.7.0]: https://github.com/NVIDIA/warp/releases/tag/v1.7.0
 [1.6.2]: https://github.com/NVIDIA/warp/releases/tag/v1.6.2
 [1.6.1]: https://github.com/NVIDIA/warp/releases/tag/v1.6.1
