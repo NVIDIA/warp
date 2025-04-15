@@ -658,6 +658,7 @@ clang compilation:
 # Creates wheel files for PyPI
 create pypi wheels:
   stage: package
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs:
     - linux-aarch64 build
     - linux-x86_64 build
@@ -683,22 +684,20 @@ create pypi wheels:
     - mkdir -p warp/bin/macos-universal
     - mv warp/bin/libwarp.dylib warp/bin/macos-universal/
     - mv warp/bin/libwarp-clang.dylib warp/bin/macos-universal/
-    - python3 -m pip install --upgrade pip
-    - python3 -m pip install build
   script:
     - sed -i "s/^\(.*\)$/\1+cu12/" VERSION.md # Modify VERSION.md with +cu12
-    - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
-    - python3 -m build --wheel -C--build-option=-Plinux-x86_64
-    - python3 -m build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
+    - uv build --wheel -C--build-option=-Pwindows-x86_64
+    - uv build --wheel -C--build-option=-Plinux-x86_64
+    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
     - sed -i "s/^\(.*\)+cu12$/\1+cpu/" VERSION.md # Modify VERSION.md with +cu12 replaced by +cpu
-    - python3 -m build --wheel -C--build-option=-Pmacos-universal
+    - uv build --wheel -C--build-option=-Pmacos-universal
     - sed -i "s/^\(.*\)+cpu$/\1/" VERSION.md # Revert VERSION.md changes
     - mv dist dist-github
     # Now make the wheels meant for PyPI publishing
-    - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
-    - python3 -m build --wheel -C--build-option=-Plinux-x86_64
-    - python3 -m build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
-    - python3 -m build --wheel -C--build-option=-Pmacos-universal
+    - uv build --wheel -C--build-option=-Pwindows-x86_64
+    - uv build --wheel -C--build-option=-Plinux-x86_64
+    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
+    - uv build --wheel -C--build-option=-Pmacos-universal
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
   artifacts:
@@ -711,6 +710,7 @@ create pypi wheels:
 
 create dev wheels:
   stage: package
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs:
     - linux-aarch64 build
     - linux-x86_64 build
@@ -724,14 +724,12 @@ create dev wheels:
     - mkdir -p warp/bin/windows-x86_64
     - mv warp/bin/warp.dll warp/bin/windows-x86_64/
     - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
-    - python3 -m pip install --upgrade pip
-    - python3 -m pip install build
   script:
-    - python3 tools/ci/publishing/update_git_hash.py # Modify config.py with git hash
-    - python3 tools/ci/publishing/set_nightly_version.py # Modify VERSION.md with dev version
-    - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
-    - python3 -m build --wheel -C--build-option=-Plinux-x86_64
-    - python3 -m build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
+    - uv run tools/ci/publishing/update_git_hash.py # Modify config.py with git hash
+    - uv run tools/ci/publishing/set_nightly_version.py # Modify VERSION.md with dev version
+    - uv build --wheel -C--build-option=-Pwindows-x86_64
+    - uv build --wheel -C--build-option=-Plinux-x86_64
+    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
     - cp VERSION.md dist/
@@ -749,7 +747,7 @@ create dev wheels:
 
 publish wheels to testpypi registry:
   stage: deploy
-  image: python:3.11-slim
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: ["create pypi wheels"]
   extends:
     - .runner-utility-linux-x86_64
@@ -760,15 +758,12 @@ publish wheels to testpypi registry:
   environment:
     name: staging
     url: https://test.pypi.org/project/warp-lang/
-  before_script:
-    - python3 -m pip install --upgrade pip
-    - python3 -m pip install --upgrade build twine
   script:
-    - python3 -m twine upload --verbose --skip-existing --non-interactive --repository testpypi dist/* -u __token__ -p $TESTPYPI_DEPLOY_KEY
+    - uvx twine upload --verbose --skip-existing --non-interactive --repository testpypi dist/* -u __token__ -p $TESTPYPI_DEPLOY_KEY
 
 publish wheels to pypi registry:
   stage: deploy
-  image: python:3.11-slim
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: ["create pypi wheels"]
   extends:
     - .runner-utility-linux-x86_64
@@ -779,15 +774,12 @@ publish wheels to pypi registry:
   environment:
     name: production
     url: https://pypi.org/project/warp-lang/
-  before_script:
-    - python3 -m pip install --upgrade pip
-    - python3 -m pip install --upgrade build twine
   script:
-    - python3 -m twine upload --verbose --skip-existing --non-interactive dist/* -u __token__ -p $PYPI_DEPLOY_KEY
+    - uvx twine upload --verbose --skip-existing --non-interactive dist/* -u __token__ -p $PYPI_DEPLOY_KEY
 
 publish wheels to gitlab pypi registry:
   stage: deploy
-  image: python:3.11-slim
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: ["create pypi wheels"]
   extends:
     - .runner-utility-linux-x86_64
@@ -795,11 +787,8 @@ publish wheels to gitlab pypi registry:
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/ || $CI_COMMIT_TAG
       when: manual
       allow_failure: true
-  before_script:
-    - python3 -m pip install --upgrade pip
-    - python3 -m pip install --upgrade build twine
   script:
-    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python3 -m twine upload --verbose --skip-existing --non-interactive --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist-github/*
+    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token uvx twine upload --verbose --skip-existing --non-interactive --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist-github/*
 
 # Uploads the wheels to the internal GitLab package registry in the Warp project
 # Generated files will be in a branch/tag-specific folder
@@ -925,7 +914,7 @@ publish wheels to github release:
 
 .build-docs-common:
   stage: deploy
-  image: python:3.11-slim
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: [linux-x86_64 build]
   extends:
     - .runner-utility-linux-x86_64
@@ -939,11 +928,11 @@ publish wheels to github release:
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
-    - python -m pip install --upgrade pip
-    - python -m pip install -r docs/requirements.txt
+    - uv venv
+    - uv pip install -r docs/requirements.txt
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python build_docs.py --quick
+    - uv run build_docs.py --quick
     - mv docs/_build/html/ ./public/
 
 # Merge requests: Build documentation and save as an artifact

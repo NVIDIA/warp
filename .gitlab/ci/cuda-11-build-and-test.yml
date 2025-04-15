@@ -173,6 +173,7 @@ windows-x86_64 test:
 # due to problems building a debug binary
 create pypi wheels:
   stage: package
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs:
     - linux-aarch64 build
     - linux-x86_64 build
@@ -184,13 +185,11 @@ create pypi wheels:
     - mkdir -p warp/bin/windows-x86_64
     - mv warp/bin/warp.dll warp/bin/windows-x86_64/
     - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
-    - python3 -m pip install --upgrade pip
-    - python3 -m pip install build
   script:
     - sed -i "s/^\(.*\)$/\1+cu11/" VERSION.md  # Modify VERSION.md with +cu11
-    - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
-    - python3 -m build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux2014
-    - python3 -m build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux2014
+    - uv build --wheel -C--build-option=-Pwindows-x86_64
+    - uv build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux2014
+    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux2014
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
   artifacts:
@@ -209,7 +208,7 @@ create pypi wheels:
 
 publish wheels to gitlab pypi registry:
   stage: deploy
-  image: python:3.11-slim
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: ["create pypi wheels"]
   extends:
     - .runner-utility-linux-x86_64
@@ -218,11 +217,8 @@ publish wheels to gitlab pypi registry:
     - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
-  before_script:
-    - python3 -m pip install --upgrade pip
-    - python3 -m pip install --upgrade build twine
   script:
-    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python3 -m twine upload --verbose --skip-existing --non-interactive --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
+    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token uvx twine upload --verbose --skip-existing --non-interactive --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
 
 # Uploads the wheels to the internal GitLab package registry in the Warp project
 # Generated files will be in a branch/tag-specific folder
