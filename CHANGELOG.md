@@ -31,6 +31,10 @@
   ([GH-614](https://github.com/NVIDIA/warp/issues/614)).
 - Fix `lookup` operator for `wp.fem.Trimesh3D` ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
 - Include the block dimension in the LTO file hash for the Cholesky solver
+- Fix tile loads for small tiles with aligned source memory. ([GH-622](https://github.com/NVIDIA/warp/issues/622))
+- Fix constructing `DeformedGeometry` from `fem.Trimesh3D` geometries ([GH-614](https://github.com/NVIDIA/warp/issues/614)).
+- Fix `lookup` operator for `fem.Trimesh3D` ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
+- LTO symbol hash for Cholesky solver updates when kernel block_dim changes.
   ([GH-639](https://github.com/NVIDIA/warp/issues/639)).
 - Fix length/shape matching for vectors and matrices from the Python scope.
 - Fix length/shape matching for vectors and matrices from a Python context.

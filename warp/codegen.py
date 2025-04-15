@@ -219,9 +219,9 @@ def struct_instance_repr_recursive(inst: StructInstance, depth: int, use_repr: b
             field_value = struct_instance_repr_recursive(field_value, depth + 1, use_repr)
 
         if use_repr:
-            lines.append(f"{indent * (depth + 1)}{field_name}={repr(field_value)},")
+            lines.append(f"{indent * (depth + 1)}{field_name}={field_value!r},")
         else:
-            lines.append(f"{indent * (depth + 1)}{field_name}={str(field_value)},")
+            lines.append(f"{indent * (depth + 1)}{field_name}={field_value!s},")
 
     lines.append(f"{indent * depth})")
     return "\n".join(lines)
