@@ -543,7 +543,7 @@ def test_dlpack_jax_to_warp(test, device):
         j = jax.numpy.arange(N, dtype=jax.numpy.float32)
 
         # use generic dlpack conversion
-        a1 = wp.from_dlpack(jax.dlpack.to_dlpack(j))
+        a1 = wp.from_dlpack(j)
 
         # use jax wrapper
         a2 = wp.from_jax(j)

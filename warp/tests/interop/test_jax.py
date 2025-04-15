@@ -319,7 +319,6 @@ try:
     os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
 
     import jax
-    import jax.dlpack
 
     # NOTE: we must enable 64-bit types in Jax to test the full gamut of types
     jax.config.update("jax_enable_x64", True)

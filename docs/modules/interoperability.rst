@@ -1272,7 +1272,7 @@ on the device.
 Alternatively, arrays can be shared by explicitly creating PyCapsules using a ``to_dlpack()`` function provided by the producer framework.
 This approach may be used for older versions of frameworks that do not support the v2022.12 standard::
 
-    warp_array1 = wp.from_dlpack(jax.dlpack.to_dlpack(jax_array))
+    warp_array1 = wp.from_dlpack(jax_array)
     warp_array2 = wp.from_dlpack(torch.utils.dlpack.to_dlpack(torch_tensor))
     warp_array3 = wp.from_dlpack(paddle.utils.dlpack.to_dlpack(paddle_tensor))
 
