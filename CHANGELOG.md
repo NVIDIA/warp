@@ -9,42 +9,31 @@
 
 ### Changed
 
+- Improve `repr()` for Warp types, including adding `repr()` for  `wp.array`.
 - Change the USD renderer to use `framesPerSecond` for time sampling instead of `timeCodesPerSecond`
   ([GH-617](https://github.com/NVIDIA/warp/issues/617)).
-- The rigid body contact in `wp.sim.VBDIntegrator` now uses only the shape's friction coefficient, instead of averaging the shape's and the cloth's coefficients.
-- `wp.sim.VBDIntegrator` now has a `rebuild_bvh` method to rebuild the BVH used for detecting self contacts.
-- Added damping terms for collisions in `wp.sim.VBDIntegrator`, whose strength is controlled by `Model.soft_contact_kd`.
-- Improve handling of deprecated JAX features ([GH-613](https://github.com/NVIDIA/warp/pull/613)).
-- `Model.rigid_contact_tids` are now -1 at non-active contact indices which allows to retrieve the vertex index of a mesh collision, see `test_collision.py` ([GH-623](https://github.com/NVIDIA/warp/issues/623)).
-- Changed the USD renderer to use `framesPerSecond` for time sampling instead of `timeCodesPerSecond`.
-- Deprecate `wp.matrix(pos, quat, scale)` built-in function that constructs a 4x4 matrix from a 3D position, a quaternion, and a 3D scale. Use `wp.transform_compose()` instead ([GH-576](https://github.com/NVIDIA/warp/issues/576)).
-- Improve `repr()` for Warp types, including adding `repr()` for  `wp.array`.
+- `Model.rigid_contact_tids` are now -1 at non-active contact indices which allows to retrieve the vertex index of a
+  mesh collision, see `test_collision.py` ([GH-623](https://github.com/NVIDIA/warp/issues/623)).
 
 ### Fixed
 
-- Fix the jitter for the `OgnParticlesFromMesh` node not being computed correctly.
 - Fix a code generation bug involving return statements in Warp kernels, which could result in some threads in Warp
   being skipped when processed on the GPU ([GH-594](https://github.com/NVIDIA/warp/issues/594)).
-- Fix `show_joints` not working with `wp.sim.render.SimRenderer` set to render to USD
-  ([GH-510](https://github.com/NVIDIA/warp/issues/510)).
 - Fix constructing `DeformedGeometry` from `wp.fem.Trimesh3D` geometries
   ([GH-614](https://github.com/NVIDIA/warp/issues/614)).
 - Fix `lookup` operator for `wp.fem.Trimesh3D` ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
 - Include the block dimension in the LTO file hash for the Cholesky solver
-- Fix tile loads for small tiles with aligned source memory. ([GH-622](https://github.com/NVIDIA/warp/issues/622))
-- Fix constructing `DeformedGeometry` from `fem.Trimesh3D` geometries ([GH-614](https://github.com/NVIDIA/warp/issues/614)).
-- Fix `lookup` operator for `fem.Trimesh3D` ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
-- LTO symbol hash for Cholesky solver updates when kernel block_dim changes.
   ([GH-639](https://github.com/NVIDIA/warp/issues/639)).
+- Fix tile loads for small tiles with aligned source memory ([GH-622](https://github.com/NVIDIA/warp/issues/622)).
 - Fix length/shape matching for vectors and matrices from the Python scope.
-- Fix length/shape matching for vectors and matrices from a Python context.
-- Fix `UsdRenderer.render_points()` not supporting multiple colors
-  ([GH-634](https://github.com/NVIDIA/warp/issues/634)).
 - Fix the `dtype` parameter missing for `wp.quaternion()`.
 - Fix invalid `dtype` comparison when using the `wp.matrix()`/`wp.vector()`/`wp.quaternion()` constructors
-  with literal values and an explicit `dtype` argument
-  ([GH-651](https://github.com/NVIDIA/warp/issues/651)).
-- Fix incorrect thread index lookup for the backward pass of `wp.sim.collide()` ([GH-459](https://github.com/NVIDIA/warp/issues/459)).
+  with literal values and an explicit `dtype` argument ([GH-651](https://github.com/NVIDIA/warp/issues/651)).
+- Fix incorrect thread index lookup for the backward pass of `wp.sim.collide()`
+  ([GH-459](https://github.com/NVIDIA/warp/issues/459)).
+- Fix `show_joints` not working with `wp.sim.render.SimRenderer` set to render to USD
+  ([GH-510](https://github.com/NVIDIA/warp/issues/510)).
+- Fix the jitter for the `OgnParticlesFromMesh` node not being computed correctly.
 
 ## [1.7.0] - 2025-03-30
 
