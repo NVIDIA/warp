@@ -572,6 +572,52 @@ def test_particle_collision(test, device):
     test.assertTrue((np.linalg.norm(particle_f_2.numpy(), axis=1) == 0).all())
 
 
+def test_mesh_ground_collision_index(test, device):
+    # create a mesh with 1 triangle for testing
+    vertices = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.5, 2.0, 0.0],
+        ]
+    )
+    mesh = wp.sim.Mesh(vertices=vertices, indices=[0, 1, 2])
+    builder = wp.sim.ModelBuilder()
+    # create body with nonzero mass to ensure it is not static
+    # and contact points will be computed
+    b = builder.add_body(m=1.0)
+    builder.add_shape_mesh(
+        body=b,
+        mesh=mesh,
+        has_shape_collision=False,
+    )
+    # add another mesh that is not in contact
+    b2 = builder.add_body(m=1.0, origin=wp.transform((0.0, 3.0, 0.0), wp.quat_identity()))
+    builder.add_shape_mesh(
+        body=b2,
+        mesh=mesh,
+        has_shape_collision=False,
+    )
+    model = builder.finalize(device=device)
+    test.assertEqual(model.rigid_contact_max, 6)
+    test.assertEqual(model.shape_contact_pair_count, 0)
+    test.assertEqual(model.shape_ground_contact_pair_count, 2)
+    model.ground = True
+    # ensure all the mesh vertices will be within the contact margin
+    model.rigid_contact_margin = 2.0
+    state = model.state()
+    wp.sim.collide(model, state)
+    test.assertEqual(model.rigid_contact_count.numpy()[0], 3)
+    tids = model.rigid_contact_tids.list()
+    test.assertEqual(sorted(tids), [-1, -1, -1, 0, 1, 2])
+    tids = [t for t in tids if t != -1]
+    # retrieve the mesh vertices from the contact thread indices
+    assert_np_equal(model.rigid_contact_point0.numpy()[:3], vertices[tids])
+    assert_np_equal(model.rigid_contact_point1.numpy()[:3, 0], vertices[tids, 0])
+    assert_np_equal(model.rigid_contact_point1.numpy()[:3, 1:], np.zeros((3, 2)))
+    assert_np_equal(model.rigid_contact_normal.numpy()[:3], np.tile([0.0, 1.0, 0.0], (3, 1)))
+
+
 devices = get_test_devices(mode="basic")
 
 
@@ -582,6 +628,7 @@ class TestCollision(unittest.TestCase):
 add_function_test(TestCollision, "test_vertex_triangle_collision", test_vertex_triangle_collision, devices=devices)
 add_function_test(TestCollision, "test_edge_edge_collision", test_edge_edge_collision, devices=devices)
 add_function_test(TestCollision, "test_particle_collision", test_particle_collision, devices=devices)
+add_function_test(TestCollision, "test_mesh_ground_collision_index", test_mesh_ground_collision_index, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

@@ -173,6 +173,153 @@ Integrators
 Collisions
 ----------
 
+
+Shapes are used to define the geometry of the rigid bodies in the simulation. Shapes without a parent body are considered static shapes.
+Use the ``add_shape_*`` methods in :class:`ModelBuilder` to add shapes to the model, such as :meth:`ModelBuilder.add_shape_sphere`, :meth:`ModelBuilder.add_shape_box`, :meth:`ModelBuilder.add_shape_capsule`, :meth:`ModelBuilder.add_shape_cylinder`, :meth:`ModelBuilder.add_shape_cone`, :meth:`ModelBuilder.add_shape_mesh`, :meth:`ModelBuilder.add_shape_sdf`, and :meth:`ModelBuilder.add_shape_plane`.
+The following shape types are supported:
+
+.. data:: GEO_SPHERE
+
+    Sphere shape
+
+.. data:: GEO_BOX
+    
+    Box shape
+
+.. data:: GEO_CAPSULE
+
+    Capsule shape
+
+.. data:: GEO_CYLINDER
+
+    Cylinder shape
+
+.. data:: GEO_CONE
+
+    Cone shape
+
+.. data:: GEO_MESH
+
+    Triangular mesh shape, see :class:`Mesh`
+
+.. data:: GEO_SDF
+
+    Signed distance field (volume) shape, see :class:`SDF`
+
+.. data:: GEO_PLANE
+
+    Rectangular plane shape (unlimited if the width or length is set to 0)
+
+
+Besides particle collisions with these shapes, the following rigid-body shape collisions are supported:
+
+.. list-table::
+   :header-rows: 1
+   :stub-columns: 1
+   :align: center
+   :widths: 10 10 10 10 10 10 10 10 10 10
+
+   * - 
+     - Particle
+     - Sphere
+     - Box
+     - Capsule
+     - Cylinder
+     - Cone
+     - Mesh
+     - SDF
+     - Plane
+   * - Particle
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+   * - Sphere
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - 
+     - 
+     - ✅
+     - 
+     - ✅
+   * - Box
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - 
+     - 
+     - ✅
+     - 
+     - ✅
+   * - Capsule
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - 
+     - 
+     - ✅
+     - 
+     - ✅
+   * - Cylinder
+     - ✅
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+   * - Cone
+     - ✅
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+   * - Mesh
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - 
+     - 
+     - ✅
+     - 
+     - ✅
+   * - SDF
+     - ✅
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+   * - Plane
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - 
+     - 
+     - ✅
+     - 
+     - 
+
 .. autofunction:: collide
 
 Importers

@@ -614,9 +614,9 @@ def volume_grad(volume: wp.uint64, p: wp.vec3):
 @wp.func
 def counter_increment(counter: wp.array(dtype=int), counter_index: int, tids: wp.array(dtype=int), tid: int):
     # increment counter, remember which thread received which counter value
-    next_count = wp.atomic_add(counter, counter_index, 1)
-    tids[tid] = next_count
-    return next_count
+    count = wp.atomic_add(counter, counter_index, 1)
+    tids[tid] = count
+    return count
 
 
 @wp.func_replay(counter_increment)
@@ -629,10 +629,10 @@ def limited_counter_increment(
     counter: wp.array(dtype=int), counter_index: int, tids: wp.array(dtype=int), tid: int, index_limit: int
 ):
     # increment counter but only if it is smaller than index_limit, remember which thread received which counter value
-    next_count = wp.atomic_add(counter, counter_index, 1)
-    if next_count < index_limit or index_limit < 0:
-        tids[tid] = next_count
-        return next_count
+    count = wp.atomic_add(counter, counter_index, 1)
+    if count < index_limit or index_limit < 0:
+        tids[tid] = count
+        return count
     tids[tid] = -1
     return -1
 
@@ -1544,6 +1544,8 @@ def handle_contact_pairs(
                 # reached contact point limit
                 return
         index = counter_increment(contact_count, 0, contact_tids, tid)
+        if index == -1:
+            return
         contact_shape0[index] = shape_a
         contact_shape1[index] = shape_b
         # transform from world into body frame (so the contact point includes the shape transform)
@@ -1687,7 +1689,7 @@ def collide(
                 model.rigid_contact_normal = wp.empty_like(model.rigid_contact_normal)
                 model.rigid_contact_thickness = wp.empty_like(model.rigid_contact_thickness)
                 model.rigid_contact_count = wp.zeros_like(model.rigid_contact_count)
-                model.rigid_contact_tids = wp.zeros_like(model.rigid_contact_tids)
+                model.rigid_contact_tids = wp.full_like(model.rigid_contact_tids, -1)
                 model.rigid_contact_shape0 = wp.empty_like(model.rigid_contact_shape0)
                 model.rigid_contact_shape1 = wp.empty_like(model.rigid_contact_shape1)
 
@@ -1695,7 +1697,7 @@ def collide(
                     model.rigid_contact_pairwise_counter = wp.zeros_like(model.rigid_contact_pairwise_counter)
             else:
                 model.rigid_contact_count.zero_()
-                model.rigid_contact_tids.zero_()
+                model.rigid_contact_tids.fill_(-1)
 
                 if model.rigid_contact_pairwise_counter is not None:
                     model.rigid_contact_pairwise_counter.zero_()
