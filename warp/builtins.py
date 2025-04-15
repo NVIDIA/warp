@@ -838,7 +838,7 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
 
             if dtype is None:
                 dtype = value_type
-            elif value_type != dtype:
+            elif not warp.types.scalars_equal(value_type, dtype):
                 raise RuntimeError(
                     f"the value used to fill this vector is expected to be of the type `{dtype.__name__}`"
                 )
@@ -859,9 +859,9 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
 
         if dtype is None:
             dtype = value_type
-        elif value_type != dtype:
+        elif not warp.types.scalars_equal(value_type, dtype):
             raise RuntimeError(
-                f"all values used to initialize this vector matrix are expected to be of the type `{dtype.__name__}`"
+                f"all values used to initialize this vector are expected to be of the type `{dtype.__name__}`"
             )
 
     if length is None:
@@ -942,7 +942,7 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
 
             if dtype is None:
                 dtype = value_type
-            elif value_type != dtype:
+            elif not warp.types.scalars_equal(value_type, dtype):
                 raise RuntimeError(
                     f"the value used to fill this matrix is expected to be of the type `{dtype.__name__}`"
                 )
@@ -981,7 +981,7 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
 
         if dtype is None:
             dtype = value_type
-        elif value_type != dtype:
+        elif not warp.types.scalars_equal(value_type, dtype):
             raise RuntimeError(
                 f"all values used to initialize this matrix are expected to be of the type `{dtype.__name__}`"
             )
@@ -1177,7 +1177,7 @@ def matrix_transform_value_func(arg_types: Mapping[str, type], arg_values: Mappi
 
     if dtype is None:
         dtype = value_type
-    elif value_type != dtype:
+    elif not warp.types.scalars_equal(value_type, dtype):
         raise RuntimeError(
             f"all values used to initialize this transformation matrix are expected to be of the type `{dtype.__name__}`"
         )
@@ -1409,7 +1409,7 @@ def quaternion_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
 
         if dtype is None:
             dtype = value_type
-        elif value_type != dtype:
+        elif not warp.types.scalars_equal(value_type, dtype):
             raise RuntimeError(
                 f"all values used to initialize this quaternion are expected to be of the type `{dtype.__name__}`"
             )
@@ -1449,7 +1449,8 @@ add_builtin(
 )
 add_builtin(
     "quaternion",
-    input_types={"x": Float, "y": Float, "z": Float, "w": Float},
+    input_types={"x": Float, "y": Float, "z": Float, "w": Float, "dtype": Scalar},
+    defaults={"dtype": None},
     value_func=quaternion_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
     dispatch_func=quaternion_dispatch_func,
@@ -1640,7 +1641,7 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
     dtype = arg_values.get("dtype", None)
     if dtype is None:
         dtype = value_type
-    elif value_type != dtype:
+    elif not warp.types.scalars_equal(value_type, dtype):
         raise RuntimeError(
             f"all values used to initialize this transformation matrix are expected to be of the type `{dtype.__name__}`"
         )
@@ -1806,7 +1807,7 @@ def spatial_vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping
 
         if dtype is None:
             dtype = value_type
-        elif value_type != dtype:
+        elif not warp.types.scalars_equal(value_type, dtype):
             raise RuntimeError(
                 f"all values used to initialize this spatial vector are expected to be of the type `{dtype.__name__}`"
             )
