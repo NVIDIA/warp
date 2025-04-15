@@ -182,6 +182,5 @@ def from_jax(jax_array, dtype=None) -> warp.array:
     Returns:
         warp.array: The converted Warp array.
     """
-    import jax.dlpack
 
-    return warp.from_dlpack(jax.dlpack.to_dlpack(jax_array), dtype=dtype)
+    return warp.from_dlpack(jax_array, dtype=dtype)
