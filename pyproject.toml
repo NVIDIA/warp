@@ -14,7 +14,7 @@
 # limitations under the License.
 
 [build-system]
-requires = ["setuptools>=77.0.0", "build", "wheel"]
+requires = ["setuptools>=61", "build", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -22,8 +22,7 @@ name = "warp-lang"
 requires-python = ">=3.8" # 3.9 recommended
 authors = [{ name = "NVIDIA Corporation", email = "warp-python@nvidia.com" }]
 description = "A Python framework for high-performance simulation and graphics programming"
-license = "Apache-2.0"
-license-files = ["LICENSE.md", "licenses/**/*.txt"]
+license = { text = "Apache-2.0" }
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
