@@ -40,6 +40,7 @@
   being skipped when processed on the GPU ([GH-594](https://github.com/NVIDIA/warp/issues/594)).
 - Fix `show_joints` not working with `wp.sim.render.SimRenderer` set to render to USD
   ([GH-510](https://github.com/NVIDIA/warp/issues/510)).
+- Fix tile loads for small tiles with aligned source memory. ([GH-622](https://github.com/NVIDIA/warp/issues/622))
 - Fix constructing `DeformedGeometry` from `fem.Trimesh3D` geometries ([GH-614](https://github.com/NVIDIA/warp/issues/614)).
 - Fix `lookup` operator for `fem.Trimesh3D` ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
 - LTO symbol hash for Cholesky solver updates when kernel block_dim changes.
