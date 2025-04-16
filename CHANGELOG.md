@@ -45,6 +45,8 @@
 - Fix `lookup` operator for `fem.Trimesh3D` ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
 - LTO symbol hash for Cholesky solver updates when kernel block_dim changes.
   ([GH-639](https://github.com/NVIDIA/warp/issues/639)).
+- Fix the `Formal parameter space overflowed` error when compiling the `wp.sim.VBDIntegrator` kernels for the backward pass in CUDA 11 Warp builds. This is done by decoupling the collision evaluation
+  and elasticity evaluations to separate kernels, which also increases the parallelism of the collision handling and speeds up the solver ([GH-442](https://github.com/NVIDIA/warp/issues/442)).
 - Fix length/shape matching for vectors and matrices from a Python context.
 - Fix `UsdRenderer.render_points()` not supporting multiple colors
   ([GH-634](https://github.com/NVIDIA/warp/issues/634)).

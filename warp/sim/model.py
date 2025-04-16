@@ -678,7 +678,8 @@ class Model:
         joint_dof_count (int): Total number of velocity degrees of freedom of all joints in the system
         joint_coord_count (int): Total number of position degrees of freedom of all joints in the system
 
-        particle_coloring (list of array): The coloring of all the particles, used for VBD's Gauss-Seidel iteration.
+        particle_color_groups (list of array): The coloring of all the particles, used for VBD's Gauss-Seidel iteration. Each array contains indices of particles sharing the same color.
+        particle_colors (array): Contains the color assignment for every particle
 
         device (wp.Device): Device on which the Model was allocated
 
@@ -858,7 +859,10 @@ class Model:
         self.joint_dof_count = 0
         self.joint_coord_count = 0
 
-        self.particle_coloring = []
+        # indices of particles sharing the same color
+        self.particle_color_groups = []
+        # the color of each particles
+        self.particle_colors = None
 
         self.device = wp.get_device(device)
 
@@ -1183,7 +1187,7 @@ class ModelBuilder:
         self.particle_flags = []
         self.particle_max_velocity = 1e5
         # list of np.array
-        self.particle_coloring = []
+        self.particle_color_groups = []
 
         # shapes (each shape has an entry in these arrays)
         # transform from shape to body
@@ -1427,9 +1431,9 @@ class ModelBuilder:
         if builder.tet_count:
             self.tet_indices.extend((np.array(builder.tet_indices, dtype=np.int32) + start_particle_idx).tolist())
 
-        builder_coloring_translated = [group + start_particle_idx for group in builder.particle_coloring]
-        self.particle_coloring = combine_independent_particle_coloring(
-            self.particle_coloring, builder_coloring_translated
+        builder_coloring_translated = [group + start_particle_idx for group in builder.particle_color_groups]
+        self.particle_color_groups = combine_independent_particle_coloring(
+            self.particle_color_groups, builder_coloring_translated
         )
 
         start_body_idx = self.body_count
@@ -4484,18 +4488,18 @@ class ModelBuilder:
         for i in range(self.shape_count - 1):
             self.shape_collision_filter_pairs.add((i, ground_id))
 
-    def set_coloring(self, particle_coloring) -> None:
+    def set_coloring(self, particle_color_groups):
         """Set coloring information with user-provided coloring.
 
         Args:
-            particle_coloring: A list of list or `np.array` with `dtype`=`int`. The length of the list is the number of colors
-             and each list or `np.array` contains the indices of vertices with this color.
+            particle_color_groups: A list of list or `np.array` with `dtype`=`int`. The length of the list is the number of colors
+                and each list or `np.array` contains the indices of vertices with this color.
         """
-        particle_coloring = [
+        particle_color_groups = [
             color_group if isinstance(color_group, np.ndarray) else np.array(color_group)
-            for color_group in particle_coloring
+            for color_group in particle_color_groups
         ]
-        self.particle_coloring = particle_coloring
+        self.particle_color_groups = particle_color_groups
 
     def color(
         self,
@@ -4530,7 +4534,7 @@ class ModelBuilder:
         # ignore bending energy if it is too small
         edge_indices = np.array(self.edge_indices)
 
-        self.particle_coloring = color_trimesh(
+        self.particle_color_groups = color_trimesh(
             len(self.particle_q),
             edge_indices,
             include_bending,
@@ -4590,7 +4594,11 @@ class ModelBuilder:
             m.particle_max_radius = np.max(self.particle_radius) if len(self.particle_radius) > 0 else 0.0
             m.particle_max_velocity = self.particle_max_velocity
 
-            m.particle_coloring = [wp.array(group, dtype=int) for group in self.particle_coloring]
+            particle_colors = np.empty(self.particle_count, dtype=int)
+            for color in range(len(self.particle_color_groups)):
+                particle_colors[self.particle_color_groups[color]] = color
+            m.particle_colors = wp.array(particle_colors, dtype=int)
+            m.particle_color_groups = [wp.array(group, dtype=int) for group in self.particle_color_groups]
 
             # hash-grid for particle interactions
             m.particle_grid = wp.HashGrid(128, 128, 128)
