@@ -56,6 +56,7 @@
   ([GH-651](https://github.com/NVIDIA/warp/issues/651)).
 - Fix incorrect thread index lookup for the backward pass of `wp.sim.collide()` ([GH-459](https://github.com/NVIDIA/warp/issues/459)).
 - Fix a bug where `wp.sim.ModelBuilder` adds springs with -1 as vertex indices ([GH-621](https://github.com/NVIDIA/warp/issues/621)). 
+- Fix documentation of `atol` and `rtol` arguments to `wp.autograd.gradcheck` and `gradcheck_tape` ([GH-508](https://github.com/NVIDIA/warp/issues/508)).
 
 ## [1.7.0] - 2025-03-30
 
