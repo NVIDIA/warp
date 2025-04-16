@@ -44,7 +44,7 @@ check extensions public API:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 build
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   before_script:
     - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
   script:
@@ -139,7 +139,7 @@ create linux-aarch64 kit artifacts:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-aarch64 build
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   before_script:
     - apt-get update && apt-get install zip --no-install-recommends -y
     # Move compiled binaries out of platform-specific directory
@@ -160,7 +160,7 @@ create linux-x86_64 kit artifacts:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 build
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   before_script:
     - apt-get update && apt-get install zip --no-install-recommends -y
     # Move compiled binaries out of platform-specific directory
@@ -181,7 +181,7 @@ create windows-x86_64 kit artifacts:
     - pipeline: $PARENT_PIPELINE_ID
       job: windows-x86_64 build
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   before_script:
     - apt-get update && apt-get install zip --no-install-recommends -y
   script:
@@ -206,7 +206,7 @@ publish extensions to packman:
     - create linux-x86_64 kit artifacts
     - create windows-x86_64 kit artifacts
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
     - .osec:vault:v3:prod_token_job
   rules:
     - if: $CI_PROJECT_PATH != "omniverse/warp" # Prevent fork pipelines from running this job
@@ -229,7 +229,10 @@ publish extensions to packman:
   script:
     - !reference [.osec:vault:v3:linux, codesign:perform_vault_requests]
     - !reference [.osec:vault:v3:linux, packman_s3:perform_vault_requests]
-    - !reference [.osec:vault:v3:linux, nucleus:kit-extensions.ov.nvidia.com:kit-extension-svc:perform_vault_requests]
+    - !reference [
+        .osec:vault:v3:linux,
+        nucleus:kit-extensions.ov.nvidia.com:kit-extension-svc:perform_vault_requests,
+      ]
     - tools/repo.sh publish_exts --publish-all
 
 # Uploads the extension artifacts to the internal GitLab package registry in the Warp project
@@ -241,7 +244,7 @@ publish to gitlab package registry:
     - create linux-x86_64 kit artifacts
     - create windows-x86_64 kit artifacts
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   rules:
     - if: $PARENT_COMMIT_TAG
     - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
