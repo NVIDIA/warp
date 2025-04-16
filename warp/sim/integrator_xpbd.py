@@ -401,6 +401,9 @@ def solve_springs(
     i = spring_indices[tid * 2 + 0]
     j = spring_indices[tid * 2 + 1]
 
+    if i == -1 or j == -1:
+        return
+
     ke = spring_stiffness[tid]
     kd = spring_damping[tid]
     rest = spring_rest_lengths[tid]
