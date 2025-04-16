@@ -104,7 +104,7 @@ linux-aarch64 test:
   image: ubuntu:22.04
   needs: [linux-aarch64 build]
   extends:
-    - .runner-test-linux-aarch64  # TODO: Change to .omni_devplat_arm_docker_gpu
+    - .runner-test-linux-aarch64 # TODO: Change to .omni_devplat_arm_docker_gpu
     - .save_test_report_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -178,7 +178,7 @@ create pypi wheels:
     - linux-x86_64 build
     - windows-x86_64 build
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   before_script:
     # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
     - mkdir -p warp/bin/windows-x86_64
@@ -187,10 +187,10 @@ create pypi wheels:
     - python3 -m pip install --upgrade pip
     - python3 -m pip install build
   script:
-    - sed -i "s/^\(.*\)$/\1+cu11/" VERSION.md  # Modify VERSION.md with +cu11
-    - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
-    - python3 -m build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux2014
-    - python3 -m build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux2014
+    - sed -i "s/^\(.*\)$/\1+cu11/" VERSION.md # Modify VERSION.md with +cu11
+    - uv build --wheel -C--build-option=-Pwindows-x86_64
+    - uv build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux2014
+    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux2014
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
   artifacts:
@@ -212,7 +212,7 @@ publish wheels to gitlab pypi registry:
   image: python:3.11-slim
   needs: ["create pypi wheels"]
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   rules:
     - if: $PARENT_COMMIT_TAG
     - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
@@ -230,7 +230,7 @@ publish wheels to gitlab package registry:
   stage: deploy
   needs: ["create pypi wheels"]
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   rules:
     - if: $PARENT_COMMIT_TAG
     - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
@@ -251,7 +251,7 @@ publish wheels to github release:
   image: ubuntu:22.04
   needs: ["create pypi wheels"]
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   rules:
     - if: $PARENT_COMMIT_TAG
   before_script:

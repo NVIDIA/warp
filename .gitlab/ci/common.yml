@@ -32,9 +32,9 @@ default:
 # Include the Omniverse DevPlat runner job definitions
 # ==============================================================================
 include:
-  - project: 'omniverse/devplat/gitlab/templates/runners'
-    file: '/modules/include.yml'
-    ref: v1_latest
+  - project: "omniverse/devplat/gitlab/templates/runners"
+    file: "/modules/include.yml"
+    ref: v2_latest
 
 # ==============================================================================
 # Use !reference [.snippets, NAME] to reuse the following snippets
@@ -142,13 +142,13 @@ include:
     PARENT_COMMIT_TAG: $CI_COMMIT_TAG
     PARENT_COMMIT_REF_SLUG: $CI_COMMIT_REF_SLUG
     PARENT_COMMIT_SHORT_SHA: $CI_COMMIT_SHORT_SHA
-    PM_PACKAGES_ROOT: '$PARENT_PROJECT_DIR/packman-repo'
-    PIP_CACHE_DIR: '$PARENT_PROJECT_DIR/.cache/pip'
-    CUDA_BIN: '$PARENT_PROJECT_DIR/_build/target-deps/cuda/bin'
-    CUDA: '$PARENT_PROJECT_DIR/_build/target-deps/cuda'
-    CUDA_HOME: '$CI_PROJECT_DIR/_build/target-deps/cuda'
-    PYTHON: '$PARENT_PROJECT_DIR/_build/target-deps/python/python'
-    LINBUILD: '$PARENT_PROJECT_DIR/_build/host-deps/linbuild/linbuild.sh'
-    WARP_CACHE_ROOT: '$PARENT_PROJECT_DIR/.cache/warp' # Used by the parallel test runner
+    PM_PACKAGES_ROOT: "$PARENT_PROJECT_DIR/packman-repo"
+    PIP_CACHE_DIR: "$PARENT_PROJECT_DIR/.cache/pip"
+    CUDA_BIN: "$PARENT_PROJECT_DIR/_build/target-deps/cuda/bin"
+    CUDA: "$PARENT_PROJECT_DIR/_build/target-deps/cuda"
+    CUDA_HOME: "$CI_PROJECT_DIR/_build/target-deps/cuda"
+    PYTHON: "$PARENT_PROJECT_DIR/_build/target-deps/python/python"
+    LINBUILD: "$PARENT_PROJECT_DIR/_build/host-deps/linbuild/linbuild.sh"
+    WARP_CACHE_ROOT: "$PARENT_PROJECT_DIR/.cache/warp" # Used by the parallel test runner
   trigger:
     strategy: depend

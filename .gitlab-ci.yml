@@ -156,7 +156,7 @@ pre-commit checks:
   image: ghcr.io/astral-sh/uv:bookworm
   needs: []
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   script:
     - uvx pre-commit run --all-files --show-diff-on-failure
 
@@ -166,6 +166,10 @@ osec:sonarqube:
     # Disable C/C++ analyzer until project specific work is done to enable it.
     # See: https://confluence.nvidia.com/display/OMNIVERSE/SonarQube+Gitlab+CI+Integration#C+Project+Enablement+Additions
     SONAR_EXTRA_ARGS: "-Dsonar.c.file.suffixes=- -Dsonar.cpp.file.suffixes=- -Dsonar.objc.file.suffixes=-"
+  tags: !reference [.omni_nvks_micro_runner, tags]
+
+osec:pulse-trufflehog:
+  tags: !reference [.omni_nvks_micro_runner, tags]
 
 # ==============================================================================
 # Main Unit Testing Jobs
@@ -568,7 +572,7 @@ trigger python 3.X test pipelines:
   stage: test
   image: busybox
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
@@ -596,7 +600,7 @@ trigger debug build and test pipeline:
   stage: test
   image: busybox
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   needs: []
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
@@ -624,7 +628,7 @@ trigger cuda 11 pipeline:
   stage: test
   image: busybox
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   needs: []
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
@@ -650,7 +654,7 @@ trigger kit extensions pipeline:
   stage: test
   image: busybox
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
@@ -687,7 +691,7 @@ create pypi wheels:
     - windows-x86_64 build
     - mac-x86_64 build
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
@@ -739,7 +743,7 @@ create dev wheels:
     - linux-x86_64 build
     - windows-x86_64 build
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   before_script:
@@ -775,7 +779,7 @@ publish wheels to testpypi registry:
   image: python:3.11-slim
   needs: ["create pypi wheels"]
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   rules:
     - if: $CI_COMMIT_BRANCH =~ /release-.*/ || $CI_COMMIT_TAG
       when: manual
@@ -794,7 +798,7 @@ publish wheels to pypi registry:
   image: python:3.11-slim
   needs: ["create pypi wheels"]
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   rules:
     - if: $CI_COMMIT_TAG
       when: manual
@@ -813,7 +817,7 @@ publish wheels to gitlab pypi registry:
   image: python:3.11-slim
   needs: ["create pypi wheels"]
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   rules:
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/ || $CI_COMMIT_TAG
       when: manual
@@ -830,7 +834,7 @@ publish wheels to gitlab package registry:
   stage: deploy
   needs: ["create pypi wheels"]
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   rules:
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/
@@ -853,7 +857,7 @@ publish dev wheels to artifactory:
     - job: create dev wheels
       optional: true
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   rules: # Should be consistent with create dev wheels
     - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   allow_failure: true
@@ -887,7 +891,7 @@ publish tag wheels to artifactory:
   image: releases-docker.jfrog.io/jfrog/jfrog-cli-v2-jf
   needs: ["create pypi wheels"]
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   rules:
     - if: $CI_COMMIT_TAG
   allow_failure: true
@@ -931,7 +935,7 @@ publish wheels to github release:
   image: ubuntu:22.04
   needs: ["create pypi wheels"]
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   rules:
     - if: $CI_COMMIT_TAG
   before_script:
@@ -951,7 +955,7 @@ publish wheels to github release:
   image: python:3.11-slim
   needs: [linux-x86_64 build]
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   artifacts:
     paths:
       - public
@@ -1008,7 +1012,7 @@ check generated files:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   timeout: 10m
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   script:
     - >
       git diff --exit-code warp/stubs.py docs/modules/functions.rst ||
