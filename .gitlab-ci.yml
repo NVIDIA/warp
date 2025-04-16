@@ -167,7 +167,11 @@ pre-commit checks:
   needs: []
   extends:
     - .omni_nvks_micro_runner
+  before_script:
+    - apt-get update -q
+    - apt-get install -y -q --no-install-recommends git-lfs
   script:
+    - git lfs pull
     - uvx pre-commit run --all-files --show-diff-on-failure
 
 osec:sonarqube:
