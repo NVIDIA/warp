@@ -34,6 +34,10 @@
 - Fix `show_joints` not working with `wp.sim.render.SimRenderer` set to render to USD
   ([GH-510](https://github.com/NVIDIA/warp/issues/510)).
 - Fix the jitter for the `OgnParticlesFromMesh` node not being computed correctly.
+  with literal values and an explicit `dtype` argument
+  ([GH-651](https://github.com/NVIDIA/warp/issues/651)).
+- Fix incorrect thread index lookup for the backward pass of `wp.sim.collide()` ([GH-459](https://github.com/NVIDIA/warp/issues/459)).
+- Fix a bug where `wp.sim.ModelBuilder` adds springs with -1 as vertex indices ([GH-621](https://github.com/NVIDIA/warp/issues/621)). 
 
 ## [1.7.0] - 2025-03-30
 

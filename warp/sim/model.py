@@ -4024,15 +4024,16 @@ class ModelBuilder:
             )  # opposite 0, opposite 1, vertex 0, vertex 1
 
             # skip constraints open edges
-            if e.f0 != -1 and e.f1 != -1:
-                spring_indices.add((min(e.o0, e.o1), max(e.o0, e.o1)))
+            spring_indices.add((min(e.v0, e.v1), max(e.v0, e.v1)))
+            if e.f0 != -1:
                 spring_indices.add((min(e.o0, e.v0), max(e.o0, e.v0)))
                 spring_indices.add((min(e.o0, e.v1), max(e.o0, e.v1)))
-
+            if e.f1 != -1:
                 spring_indices.add((min(e.o1, e.v0), max(e.o1, e.v0)))
                 spring_indices.add((min(e.o1, e.v1), max(e.o1, e.v1)))
 
-                spring_indices.add((min(e.v0, e.v1), max(e.v0, e.v1)))
+            if e.f0 != -1 and e.f1 != -1:
+                spring_indices.add((min(e.o0, e.o1), max(e.o0, e.o1)))
 
         if add_springs:
             for i, j in spring_indices:
@@ -4143,14 +4144,15 @@ class ModelBuilder:
         if add_springs:
             spring_indices = set()
             for i, j, k, l in edge_indices:
-                spring_indices.add((min(i, j), max(i, j)))
-                spring_indices.add((min(i, k), max(i, k)))
-                spring_indices.add((min(i, l), max(i, l)))
-
-                spring_indices.add((min(j, k), max(j, k)))
-                spring_indices.add((min(j, l), max(j, l)))
-
                 spring_indices.add((min(k, l), max(k, l)))
+                if i != -1:
+                    spring_indices.add((min(i, k), max(i, k)))
+                    spring_indices.add((min(i, l), max(i, l)))
+                if j != -1:
+                    spring_indices.add((min(j, k), max(j, k)))
+                    spring_indices.add((min(j, l), max(j, l)))
+                if i != -1 and j != -1:
+                    spring_indices.add((min(i, j), max(i, j)))
 
             for i, j in spring_indices:
                 self.add_spring(i, j, spring_ke, spring_kd, control=0.0)
