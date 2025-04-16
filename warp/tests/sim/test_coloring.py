@@ -227,7 +227,7 @@ def test_combine_coloring(test, device):
 
         particle_number_colored = np.full((model.particle_count), -1, dtype=int)
         particle_colors = np.full((model.particle_count), -1, dtype=int)
-        for color, color_group in enumerate(model.particle_coloring):
+        for color, color_group in enumerate(model.particle_color_groups):
             particle_number_colored[color_group.numpy()] += 1
             particle_colors[color_group.numpy()] = color
 
