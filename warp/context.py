@@ -736,6 +736,10 @@ class Kernel:
         if self.module:
             self.module.register_kernel(self)
 
+    @property
+    def disable_hashing(self) -> bool:
+        return self.module.disable_hashing
+
     def infer_argument_types(self, args):
         template_types = list(self.adj.arg_types.values())
 
@@ -799,7 +803,7 @@ class Kernel:
         # TODO: allow customizing the number of hash characters used
         hash_suffix = self.hash.hex()[:8]
 
-        return f"{self.key}_{hash_suffix}"
+        return self.key if self.disable_hashing else f"{self.key}_{hash_suffix}"
 
     def __call__(self, *args, **kwargs):
         # we implement this function only to ensure Kernel is a callable object
@@ -1943,6 +1947,8 @@ class ModuleExec:
 # creates a hash of the function to use for checking
 # build cache
 class Module:
+    disable_hashing: bool = False
+
     def __init__(self, name: str | None, loader=None):
         self.name = name if name is not None else "None"
 
@@ -1989,6 +1995,12 @@ class Module:
             "block_dim": 256,
             "compile_time_trace": warp.config.compile_time_trace,
         }
+
+        for prefix in [m.strip() for m in os.environ.get("WARP_DISABLE_HASHING_PREFIX", "").split(",")]:
+            if len(prefix) > 0 and self.name.startswith(prefix):
+                self.disable_hashing = True
+                print(f"Prefix {prefix} hit. Disabling hashing for module {self.name}")
+                break
 
         # Module dependencies are determined by scanning each function
         # and kernel for references to external functions and structs.
@@ -2148,7 +2160,7 @@ class Module:
         # check if executable module is already loaded and not stale
         exec = self.execs.get((device.context, active_block_dim))
         if exec is not None:
-            if exec.module_hash == self.hashers[active_block_dim].get_module_hash():
+            if self.disable_hashing or exec.module_hash == self.hashers[active_block_dim].get_module_hash():
                 return exec
 
         # quietly avoid repeated build attempts to reduce error spew
@@ -2159,7 +2171,7 @@ class Module:
         module_hash = self.hashers[active_block_dim].get_module_hash()
 
         # use a unique module path using the module short hash
-        module_name_short = f"{module_name}_{module_hash.hex()[:7]}"
+        module_name_short = module_name if self.disable_hashing else f"{module_name}_{module_hash.hex()[:7]}"
         module_dir = os.path.join(warp.config.kernel_cache_dir, module_name_short)
 
         with warp.ScopedTimer(
@@ -2220,9 +2232,12 @@ class Module:
                 builder = ModuleBuilder(self, builder_options, hasher=self.hashers[active_block_dim])
 
                 # create a temporary (process unique) dir for build outputs before moving to the binary dir
-                build_dir = os.path.join(
-                    warp.config.kernel_cache_dir, f"{module_name}_{module_hash.hex()[:7]}_p{os.getpid()}"
-                )
+                if self.disable_hashing:
+                    build_dir = os.path.join(warp.config.kernel_cache_dir, f"{module_name}_p{os.getpid()}")
+                else:
+                    build_dir = os.path.join(
+                        warp.config.kernel_cache_dir, f"{module_name}_{module_hash.hex()[:7]}_p{os.getpid()}"
+                    )
 
                 # dir may exist from previous attempts / runs / archs
                 Path(build_dir).mkdir(parents=True, exist_ok=True)
