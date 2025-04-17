@@ -169,10 +169,9 @@ windows-x86_64 test:
 # ==============================================================================
 
 # Creates wheel files for PyPI
-# Note that compared to the job in .gitlab-ci.yml, there is no aarch64 job
-# due to problems building a debug binary
 create pypi wheels:
   stage: package
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs:
     - linux-aarch64 build
     - linux-x86_64 build
@@ -184,8 +183,6 @@ create pypi wheels:
     - mkdir -p warp/bin/windows-x86_64
     - mv warp/bin/warp.dll warp/bin/windows-x86_64/
     - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
-    - python3 -m pip install --upgrade pip
-    - python3 -m pip install build
   script:
     - sed -i "s/^\(.*\)$/\1+cu11/" VERSION.md # Modify VERSION.md with +cu11
     - uv build --wheel -C--build-option=-Pwindows-x86_64
