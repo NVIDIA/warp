@@ -2730,6 +2730,22 @@ class Adjoint:
             else:
                 raise WarpCodegenError("Can only subscript in-place assign array, vector, quaternion, and matrix types")
 
+        elif isinstance(lhs, ast.Name):
+            target = adj.eval(node.target)
+            rhs = adj.eval(node.value)
+
+            if is_tile(target.type) and is_tile(rhs.type):
+                if isinstance(node.op, ast.Add):
+                    adj.add_builtin_call("add_inplace", [target, rhs])
+                elif isinstance(node.op, ast.Sub):
+                    adj.add_builtin_call("sub_inplace", [target, rhs])
+                else:
+                    make_new_assign_statement()
+                    return
+            else:
+                make_new_assign_statement()
+                return
+
         # TODO
         elif isinstance(lhs, ast.Attribute):
             make_new_assign_statement()

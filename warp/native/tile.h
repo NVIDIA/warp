@@ -803,7 +803,7 @@ struct tile_layout_strided_t
     }
 
     // checks whether a strided layout is unique, i.e.: if memory locations are only
-    // every referred to by one element in the tile, this is a basic test that only
+    // ever referred to by one element in the tile, this is a basic test that only
     // checks for broadcast dimensions, it would be possible to do the full check
     // using sorted shape/strides in Python and add it as a template parameter to the type
     static constexpr bool is_unique() 
@@ -1944,6 +1944,126 @@ inline CUDA_CALLABLE void adj_tile_mul(const typename Tile::Type& s, Tile& a,
                                        AdjTile& adj_c)
 {
     adj_tile_mul(a, s, adj_a, adj_s, adj_c);
+}
+
+
+template <typename TileA, typename TileB>
+inline CUDA_CALLABLE void tile_add_inplace(TileA& a, TileB& b)
+{
+    using ShapeA = typename TileA::Layout::Shape;
+    using ShapeB = typename TileB::Layout::Shape;
+
+    // verify shapes and sizes are compatible
+    static_assert(ShapeA::N == ShapeB::N, "Tile shapes must match for inplace addition");
+    static_assert(ShapeA::size() == ShapeB::size(), "Tile sizes must match for inplace addition");
+
+    auto a_reg = a.copy_to_register();
+    auto b_reg = b.copy_to_register();
+
+    using Layout = typename decltype(b_reg)::Layout;
+
+    WP_PRAGMA_UNROLL
+    for (int i=0; i < Layout::NumRegs; ++i)
+    {
+        const int linear = Layout::linear_from_register(i);
+
+        if(!Layout::valid(linear))
+            break;
+
+        a_reg.data[i] += b_reg.data[i];
+    }
+
+    a.assign(a_reg);
+}
+
+template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB>
+inline CUDA_CALLABLE void adj_tile_add_inplace(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b)
+{
+    using ShapeA = typename TileA::Layout::Shape;
+    using ShapeB = typename TileB::Layout::Shape;
+
+    // verify shapes and sizes are compatible
+    static_assert(ShapeA::N == ShapeB::N, "Tile shapes must match for inplace addition");
+    static_assert(ShapeA::size() == ShapeB::size(), "Tile sizes must match for inplace addition");
+
+    // allocate storage for adjoints
+    auto adj_a_reg = adj_a.grad_to_register();
+    auto adj_b_reg = tile_register_like<TileB>();
+
+    using Layout = typename decltype(adj_a_reg)::Layout;
+
+    WP_PRAGMA_UNROLL
+    for (int i=0; i < Layout::NumRegs; ++i)
+    {
+        const int linear = Layout::linear_from_register(i);
+
+        if(!Layout::valid(linear))
+            break;
+
+        adj_b_reg.data[i] += adj_a_reg.data[i];
+    }
+
+    adj_b.grad_add(adj_b_reg);
+}
+
+template <typename TileA, typename TileB>
+inline CUDA_CALLABLE void tile_sub_inplace(TileA& a, TileB& b)
+{
+    using ShapeA = typename TileA::Layout::Shape;
+    using ShapeB = typename TileB::Layout::Shape;
+
+    // verify shapes and sizes are compatible
+    static_assert(ShapeA::N == ShapeB::N, "Tile shapes must match for inplace subtraction");
+    static_assert(ShapeA::size() == ShapeB::size(), "Tile sizes must match for inplace subtraction");
+
+    // work with register tiles for inplace operations, regardless of the storage type of the input tiles
+    auto a_reg = a.copy_to_register();
+    auto b_reg = b.copy_to_register();
+
+    using Layout = typename decltype(a_reg)::Layout;
+
+    WP_PRAGMA_UNROLL
+    for (int i=0; i < Layout::NumRegs; ++i)
+    {
+        const int linear = Layout::linear_from_register(i);
+
+        if(!Layout::valid(linear))
+            break;
+
+        a_reg.data[i] -= b_reg.data[i];
+    }
+
+    a.assign(a_reg);
+}
+
+template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB>
+inline CUDA_CALLABLE void adj_tile_sub_inplace(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b)
+{
+    using ShapeA = typename TileA::Layout::Shape;
+    using ShapeB = typename TileB::Layout::Shape;
+
+    // verify shapes and sizes are compatible
+    static_assert(ShapeA::N == ShapeB::N, "Tile shapes must match for inplace subtraction");
+    static_assert(ShapeA::size() == ShapeB::size(), "Tile sizes must match for inplace subtraction");
+
+    // allocate storage for adjoints
+    auto adj_a_reg = adj_a.grad_to_register();
+    auto adj_b_reg = tile_register_like<TileB>();
+
+    using Layout = typename decltype(adj_a_reg)::Layout;
+
+    WP_PRAGMA_UNROLL
+    for (int i=0; i < Layout::NumRegs; ++i)
+    {
+        const int linear = Layout::linear_from_register(i);
+
+        if(!Layout::valid(linear))
+            break;
+
+        adj_b_reg.data[i] -= adj_a_reg.data[i];
+    }
+
+    adj_b.grad_add(adj_b_reg);
 }
 
 

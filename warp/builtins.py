@@ -6481,6 +6481,45 @@ add_builtin(
 )
 
 
+def tile_inplace_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    a = args["a"]
+    b = args["b"]
+
+    a_type = input_types["a"]
+    b_type = input_types["b"]
+
+    if a_type.shape != b_type.shape:
+        raise ValueError(f"Tile inplace arguments must have the same shape, got {a_type.shape} and {b_type.shape}")
+
+    func_args = (a, b)
+    template_args = ()
+    return (func_args, template_args)
+
+
+add_builtin(
+    "add_inplace",
+    input_types={"a": Tile(dtype=Any, shape=Any), "b": Tile(dtype=Any, shape=Any)},
+    value_type=None,
+    dispatch_func=tile_inplace_dispatch_func,
+    export=False,
+    hidden=True,
+    native_func="tile_add_inplace",
+    group="Operators",
+)
+
+
+add_builtin(
+    "sub_inplace",
+    input_types={"a": Tile(dtype=Any, shape=Any), "b": Tile(dtype=Any, shape=Any)},
+    value_type=None,
+    dispatch_func=tile_inplace_dispatch_func,
+    export=False,
+    hidden=True,
+    native_func="tile_sub_inplace",
+    group="Operators",
+)
+
+
 def tile_diag_add_value_func(arg_types, arg_values):
     if arg_types is None:
         return Tile(dtype=Any, shape=Any)
