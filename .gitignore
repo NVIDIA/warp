@@ -37,3 +37,6 @@ asv/env
 asv/results
 asv/html
 asv/warp-lang
+
+# For disable-hashing unit test
+!warp/tests/misc/wp_warp.tests.misc.add_kernel/*.o
