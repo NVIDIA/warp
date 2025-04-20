@@ -1758,8 +1758,9 @@ inline CUDA_CALLABLE void expect_near(const T& actual, const T& expected, const 
     if (abs(actual - expected) > tolerance)
     {
         printf("Error, expect_near() failed with tolerance "); print(tolerance);
-        printf("\t Expected: "); print(expected); 
-        printf("\t Actual: "); print(actual);
+        printf("    Expected: "); print(expected); 
+        printf("    Actual: "); print(actual);
+        printf("    Absolute difference: "); print(abs(actual - expected));
     }
 }
 
@@ -1769,8 +1770,9 @@ inline CUDA_CALLABLE void expect_near(const vec3& actual, const vec3& expected, 
     if (diff > tolerance)
     {
         printf("Error, expect_near() failed with tolerance "); print(tolerance);
-        printf("\t Expected: "); print(expected); 
-        printf("\t Actual: "); print(actual);
+        printf("    Expected: "); print(expected); 
+        printf("    Actual: "); print(actual);
+        printf("    Max absolute difference: "); print(diff);
     }
 }
 
