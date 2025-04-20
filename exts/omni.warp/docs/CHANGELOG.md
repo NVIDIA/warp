@@ -33,6 +33,9 @@
   ([GH-459](https://github.com/NVIDIA/warp/issues/459)).
 - Fix a bug where `wp.sim.ModelBuilder` adds springs with -1 as vertex indices
   ([GH-621](https://github.com/NVIDIA/warp/issues/621)).
+- Fix center of mass, inertia computation for mesh shapes ([GH-251](https://github.com/NVIDIA/warp/issues/251)).
+- Fix computation of body center of mass to account for shape orientation
+  ([GH-648](https://github.com/NVIDIA/warp/issues/648)).
 - Fix `show_joints` not working with `wp.sim.render.SimRenderer` set to render to USD
   ([GH-510](https://github.com/NVIDIA/warp/issues/510)).
 - Fix the jitter for the `OgnParticlesFromMesh` node not being computed correctly.

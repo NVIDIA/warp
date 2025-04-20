@@ -33,18 +33,14 @@
   ([GH-459](https://github.com/NVIDIA/warp/issues/459)).
 - Fix a bug where `wp.sim.ModelBuilder` adds springs with -1 as vertex indices
   ([GH-621](https://github.com/NVIDIA/warp/issues/621)).
+- Fix center of mass, inertia computation for mesh shapes ([GH-251](https://github.com/NVIDIA/warp/issues/251)).
+- Fix computation of body center of mass to account for shape orientation
+  ([GH-648](https://github.com/NVIDIA/warp/issues/648)).
 - Fix `show_joints` not working with `wp.sim.render.SimRenderer` set to render to USD
   ([GH-510](https://github.com/NVIDIA/warp/issues/510)).
 - Fix the jitter for the `OgnParticlesFromMesh` node not being computed correctly.
 - Fix documentation of `atol` and `rtol` arguments to `wp.autograd.gradcheck()` and `wp.autograd.gradcheck_tape()`
   ([GH-508](https://github.com/NVIDIA/warp/issues/508)).
-  with literal values and an explicit `dtype` argument
-  ([GH-651](https://github.com/NVIDIA/warp/issues/651)).
-- Fix incorrect thread index lookup for the backward pass of `wp.sim.collide()` ([GH-459](https://github.com/NVIDIA/warp/issues/459)).
-- Fix a bug where `wp.sim.ModelBuilder` adds springs with -1 as vertex indices ([GH-621](https://github.com/NVIDIA/warp/issues/621)). 
-- Fix documentation of `atol` and `rtol` arguments to `wp.autograd.gradcheck` and `gradcheck_tape` ([GH-508](https://github.com/NVIDIA/warp/issues/508)).
-- Fix center of mass, inertia computation for mesh shapes ([GH-251](https://github.com/NVIDIA/warp/issues/251)).
-- Fix computation of body center of mass to account for shape orientation ([GH-648](https://github.com/NVIDIA/warp/issues/648)).
 
 ## [1.7.0] - 2025-03-30
 
