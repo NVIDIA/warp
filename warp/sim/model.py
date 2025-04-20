@@ -3488,8 +3488,9 @@ class ModelBuilder:
         self.shape_shape_collision.append(has_shape_collision)
 
         (m, c, I) = compute_shape_mass(type, scale, src, density, is_solid, thickness)
+        com_body = wp.transform_point(wp.transform(pos, rot), c)
 
-        self._update_body_mass(body, m, I, pos + c, rot)
+        self._update_body_mass(body, m, I, com_body, rot)
         return shape
 
     # particles
