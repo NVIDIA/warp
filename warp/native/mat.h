@@ -2200,8 +2200,9 @@ inline CUDA_CALLABLE void expect_near(const mat_t<Rows,Cols,Type>& actual, const
     if (diff > tolerance)
     {
         printf("Error, expect_near() failed with tolerance "); print(tolerance);
-        printf("\t Expected: "); print(expected);
-        printf("\t Actual: "); print(actual);
+        printf("    Expected: "); print(expected);
+        printf("    Actual: "); print(actual);
+        printf("    Max absolute difference: "); print(diff);
     }
 }
 
