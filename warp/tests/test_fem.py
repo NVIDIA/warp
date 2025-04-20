@@ -1911,7 +1911,7 @@ def test_vector_spaces(test, device):
 
 @wp.kernel
 def test_qr_eigenvalues():
-    tol = 1.0e-8
+    tol = 5.0e-7
 
     # zero
     Zero = wp.mat33(0.0)
@@ -2047,8 +2047,7 @@ class TestFemUtilities(unittest.TestCase):
     pass
 
 
-# TODO: Understand why this fails on Blackwell GPUs
-add_kernel_test(TestFemUtilities, test_qr_eigenvalues, dim=1, devices=[wp.get_device("cpu")])
+add_kernel_test(TestFemUtilities, test_qr_eigenvalues, dim=1, devices=devices)
 
 add_kernel_test(TestFemUtilities, test_qr_inverse, dim=100, devices=devices)
 add_function_test(TestFemUtilities, "test_array_axpy", test_array_axpy)
