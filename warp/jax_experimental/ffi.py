@@ -560,7 +560,11 @@ class FfiCallable:
 
             # call the Python function with reconstructed arguments
             with wp.ScopedStream(stream, sync_enter=False):
-                self.func(*arg_list)
+                if stream.is_capturing:
+                    with wp.ScopedCapture(stream=stream, external=True):
+                        self.func(*arg_list)
+                else:
+                    self.func(*arg_list)
 
         except Exception as e:
             print(traceback.format_exc())

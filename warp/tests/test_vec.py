@@ -58,6 +58,22 @@ def getkernel(func, suffix=""):
     return kernel_cache[key]
 
 
+def test_length_mismatch(test, device):
+    test.assertNotEqual(wp.vec3f(0.0, 0.0, 0.0), wp.vec2f(0.0, 0.0))
+    test.assertNotEqual(wp.vec2f(0.0, 0.0), wp.vec3f(0.0, 0.0, 0.0))
+
+    @wp.kernel
+    def kernel():
+        wp.expect_neq(wp.vec3f(0.0, 0.0, 0.0), wp.vec2f(0.0, 0.0))
+        wp.expect_neq(wp.vec2f(0.0, 0.0), wp.vec3f(0.0, 0.0, 0.0))
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Can't test equality for objects with different types$",
+    ):
+        wp.launch(kernel, dim=1, inputs=[], device=device)
+
+
 def test_anon_constructor_error_length_mismatch(test, device):
     @wp.kernel
     def kernel():
@@ -1044,122 +1060,13 @@ def test_casting_constructors(test, device, dtype, register_kernels=False):
     assert_np_equal(out, a_grad.numpy())
 
 
-def test_vector_assign_inplace(test, device, dtype, register_kernels=False):
-    np_type = np.dtype(dtype)
-    wp_type = wp.types.np_dtype_to_warp_type[np_type]
-
-    vec2 = wp.types.vector(length=2, dtype=wp_type)
-    vec3 = wp.types.vector(length=3, dtype=wp_type)
-    vec4 = wp.types.vector(length=4, dtype=wp_type)
-
-    def vectest_read_write_store(
-        x: wp.array(dtype=wp_type), a: wp.array(dtype=vec2), b: wp.array(dtype=vec3), c: wp.array(dtype=vec4)
-    ):
-        tid = wp.tid()
-
-        t = a[tid]
-        t[0] = x[tid]
-        a[tid] = t
-
-        u = b[tid]
-        u[1] = x[tid]
-        b[tid] = u
-
-        v = c[tid]
-        v[2] = x[tid]
-        c[tid] = v
-
-    def vectest_in_register(
-        x: wp.array(dtype=wp_type), y: wp.array(dtype=vec3), a: wp.array(dtype=vec2), b: wp.array(dtype=vec3)
-    ):
-        tid = wp.tid()
-
-        f = vec3(wp_type(0.0))
-        b_vec = b[tid]
-        f[0] = b_vec[1]
-        f[2] = b_vec[0] * b_vec[1]
-        y[tid] = f
-
-        g = wp_type(0.0)
-        a_vec = a[tid]
-        g = a_vec[0] + a_vec[1]
-        x[tid] = g
-
-    def vectest_component(x: wp.array(dtype=vec3), y: wp.array(dtype=wp_type)):
-        i = wp.tid()
-
-        a = vec3(wp_type(0.0))
-        a.x = wp_type(1.0) * y[i]
-        a.y = wp_type(2.0) * y[i]
-        a.z = wp_type(3.0) * y[i]
-        x[i] = a
-
-    kernel_read_write_store = getkernel(vectest_read_write_store, suffix=dtype.__name__)
-    kernel_in_register = getkernel(vectest_in_register, suffix=dtype.__name__)
-    kernel_component = getkernel(vectest_component, suffix=dtype.__name__)
-
-    if register_kernels:
-        return
-
-    a = wp.ones(1, dtype=vec2, device=device, requires_grad=True)
-    b = wp.ones(1, dtype=vec3, device=device, requires_grad=True)
-    c = wp.ones(1, dtype=vec4, device=device, requires_grad=True)
-    x = wp.full(1, value=2.0, dtype=wp_type, device=device, requires_grad=True)
-
-    tape = wp.Tape()
-    with tape:
-        wp.launch(kernel_read_write_store, dim=1, inputs=[x, a, b, c], device=device)
-
-    tape.backward(
-        grads={
-            a: wp.ones_like(a, requires_grad=False),
-            b: wp.ones_like(b, requires_grad=False),
-            c: wp.ones_like(c, requires_grad=False),
-        }
-    )
-
-    assert_np_equal(a.numpy(), np.array([[2.0, 1.0]], dtype=np_type))
-    assert_np_equal(b.numpy(), np.array([[1.0, 2.0, 1.0]], dtype=np_type))
-    assert_np_equal(c.numpy(), np.array([[1.0, 1.0, 2.0, 1.0]], dtype=np_type))
-    assert_np_equal(x.grad.numpy(), np.array([3.0], dtype=np_type))
-
-    tape.reset()
-
-    a = wp.ones(1, dtype=vec2, device=device, requires_grad=True)
-    b = wp.ones(1, dtype=vec3, device=device, requires_grad=True)
-    x = wp.zeros(1, dtype=wp_type, device=device, requires_grad=True)
-    y = wp.zeros(1, dtype=vec3, device=device, requires_grad=True)
-
-    with tape:
-        wp.launch(kernel_in_register, dim=1, inputs=[x, y, a, b], device=device)
-
-    tape.backward(grads={x: wp.ones_like(x, requires_grad=False), y: wp.ones_like(y, requires_grad=False)})
-
-    assert_np_equal(x.numpy(), np.array([2.0], dtype=np_type))
-    assert_np_equal(y.numpy(), np.array([[1.0, 0.0, 1.0]], dtype=np_type))
-    assert_np_equal(a.grad.numpy(), np.array([[1.0, 1.0]], dtype=np_type))
-    assert_np_equal(b.grad.numpy(), np.array([[1.0, 2.0, 0.0]], dtype=np_type))
-
-    tape.reset()
-
-    x = wp.zeros(1, dtype=vec3, device=device, requires_grad=True)
-    y = wp.ones(1, dtype=wp_type, device=device, requires_grad=True)
-
-    with tape:
-        wp.launch(kernel_component, dim=1, inputs=[x, y], device=device)
-
-    tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
-
-    assert_np_equal(x.numpy(), np.array([[1.0, 2.0, 3.0]], dtype=np_type))
-    assert_np_equal(y.grad.numpy(), np.array([6.0], dtype=np_type))
-
-
 @wp.kernel
 def test_vector_constructor_value_func():
     a = wp.vec2()
     b = wp.vector(a, dtype=wp.float16)
     c = wp.vector(a)
     d = wp.vector(a, length=2)
+    e = wp.vector(1.0, 2.0, 3.0, dtype=float)
 
 
 # Test matrix constructors using explicit type (float16)
@@ -1272,84 +1179,327 @@ def test_vector_len(test, device):
 
 
 @wp.kernel
-def vector_augassign_kernel(
-    a: wp.array(dtype=wp.vec3), b: wp.array(dtype=wp.vec3), c: wp.array(dtype=wp.vec3), d: wp.array(dtype=wp.vec3)
-):
+def vec_extract_subscript(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=float)):
+    tid = wp.tid()
+
+    a = x[tid]
+    b = a[0] + 2.0 * a[1] + 3.0 * a[2]
+    y[tid] = b
+
+
+@wp.kernel
+def vec_extract_attribute(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=float)):
+    tid = wp.tid()
+
+    a = x[tid]
+    b = a.x + float(2.0) * a.y + 3.0 * a.z
+    y[tid] = b
+
+
+def test_vec_extract(test, device):
+    def run(kernel):
+        x = wp.ones(1, dtype=wp.vec3, requires_grad=True, device=device)
+        y = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, 1, inputs=[x], outputs=[y], device=device)
+
+        y.grad = wp.ones_like(y)
+        tape.backward()
+
+        assert_np_equal(y.numpy(), np.array([6.0], dtype=float))
+        assert_np_equal(x.grad.numpy(), np.array([[1.0, 2.0, 3.0]], dtype=float))
+
+    run(vec_extract_subscript)
+    run(vec_extract_attribute)
+
+
+@wp.kernel
+def vec_assign_subscript(x: wp.array(dtype=float), y: wp.array(dtype=wp.vec3)):
     i = wp.tid()
 
-    v1 = wp.vec3()
-    v2 = b[i]
-
-    v1[0] += v2[0]
-    v1[1] += v2[1]
-    v1[2] += v2[2]
-
-    a[i] = v1
-
-    v3 = wp.vec3()
-    v4 = d[i]
-
-    v3[0] -= v4[0]
-    v3[1] -= v4[1]
-    v3[2] -= v4[2]
-
-    c[i] = v3
+    a = wp.vec3()
+    a[0] = 1.0 * x[i]
+    a[1] = 2.0 * x[i]
+    a[2] = 3.0 * x[i]
+    y[i] = a
 
 
-def test_vector_augassign(test, device):
-    N = 3
+@wp.kernel
+def vec_assign_attribute(x: wp.array(dtype=float), y: wp.array(dtype=wp.vec3)):
+    i = wp.tid()
 
-    a = wp.zeros(N, dtype=wp.vec3, requires_grad=True, device=device)
-    b = wp.ones(N, dtype=wp.vec3, requires_grad=True, device=device)
-
-    c = wp.zeros(N, dtype=wp.vec3, requires_grad=True, device=device)
-    d = wp.ones(N, dtype=wp.vec3, requires_grad=True, device=device)
-
-    tape = wp.Tape()
-    with tape:
-        wp.launch(vector_augassign_kernel, N, inputs=[a, b, c, d], device=device)
-
-    tape.backward(grads={a: wp.ones_like(a), c: wp.ones_like(c)})
-
-    assert_np_equal(a.numpy(), wp.ones_like(a).numpy())
-    assert_np_equal(a.grad.numpy(), wp.ones_like(a).numpy())
-    assert_np_equal(b.grad.numpy(), wp.ones_like(a).numpy())
-
-    assert_np_equal(c.numpy(), -wp.ones_like(c).numpy())
-    assert_np_equal(c.grad.numpy(), wp.ones_like(c).numpy())
-    assert_np_equal(d.grad.numpy(), -wp.ones_like(d).numpy())
+    a = wp.vec3()
+    a.x = 1.0 * x[i]
+    a.y = 2.0 * x[i]
+    a.z = 3.0 * x[i]
+    y[i] = a
 
 
-def test_vector_assign_copy(test, device):
+def test_vec_assign(test, device):
+    def run(kernel):
+        x = wp.ones(1, dtype=float, requires_grad=True, device=device)
+        y = wp.zeros(1, dtype=wp.vec3, requires_grad=True, device=device)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, 1, inputs=[x], outputs=[y], device=device)
+
+        y.grad = wp.ones_like(y)
+        tape.backward()
+
+        assert_np_equal(y.numpy(), np.array([[1.0, 2.0, 3.0]], dtype=float))
+        assert_np_equal(x.grad.numpy(), np.array([6.0], dtype=float))
+
+    run(vec_assign_subscript)
+    run(vec_assign_attribute)
+
+
+def test_vec_assign_copy(test, device):
     saved_enable_vector_component_overwrites_setting = wp.config.enable_vector_component_overwrites
     try:
         wp.config.enable_vector_component_overwrites = True
 
         @wp.kernel
-        def vec_in_register_overwrite(x: wp.array(dtype=wp.vec3), a: wp.array(dtype=wp.vec3)):
+        def vec_assign_overwrite(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
             tid = wp.tid()
 
-            f = wp.vec3(0.0)
-            a_vec = a[tid]
-            f = a_vec
-            f[1] = 3.0
+            a = wp.vec3()
+            b = x[tid]
+            a = b
+            a[1] = 3.0
 
-            x[tid] = f
+            y[tid] = a
 
-        x = wp.zeros(1, dtype=wp.vec3, device=device, requires_grad=True)
-        a = wp.ones(1, dtype=wp.vec3, device=device, requires_grad=True)
+        x = wp.ones(1, dtype=wp.vec3, device=device, requires_grad=True)
+        y = wp.zeros(1, dtype=wp.vec3, device=device, requires_grad=True)
 
         tape = wp.Tape()
         with tape:
-            wp.launch(vec_in_register_overwrite, dim=1, inputs=[x, a], device=device)
+            wp.launch(vec_assign_overwrite, dim=1, inputs=[x, y], device=device)
 
-        tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
+        y.grad = wp.ones_like(y, requires_grad=False)
+        tape.backward()
 
-        assert_np_equal(x.numpy(), np.array([[1.0, 3.0, 1.0]], dtype=float))
-        assert_np_equal(a.grad.numpy(), np.array([[1.0, 0.0, 1.0]], dtype=float))
+        assert_np_equal(y.numpy(), np.array([[1.0, 3.0, 1.0]], dtype=float))
+        assert_np_equal(x.grad.numpy(), np.array([[1.0, 0.0, 1.0]], dtype=float))
 
     finally:
         wp.config.enable_vector_component_overwrites = saved_enable_vector_component_overwrites_setting
+
+
+@wp.kernel
+def vec_array_extract_subscript(x: wp.array2d(dtype=wp.vec3), y: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    a = x[i, j][0]
+    b = x[i, j][1]
+    c = x[i, j][2]
+    y[i, j] = 1.0 * a + 2.0 * b + 3.0 * c
+
+
+@wp.kernel
+def vec_array_extract_attribute(x: wp.array2d(dtype=wp.vec3), y: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    a = x[i, j].x
+    b = x[i, j].y
+    c = x[i, j].z
+    y[i, j] = 1.0 * a + 2.0 * b + 3.0 * c
+
+
+def test_vec_array_extract(test, device):
+    def run(kernel):
+        x = wp.ones((1, 1), dtype=wp.vec3, requires_grad=True, device=device)
+        y = wp.zeros((1, 1), dtype=float, requires_grad=True, device=device)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, (1, 1), inputs=[x], outputs=[y], device=device)
+
+        y.grad = wp.ones_like(y)
+        tape.backward()
+
+        assert_np_equal(y.numpy(), np.array([[6.0]], dtype=float))
+        assert_np_equal(x.grad.numpy(), np.array([[[1.0, 2.0, 3.0]]], dtype=float))
+
+    run(vec_array_extract_subscript)
+    run(vec_array_extract_attribute)
+
+
+@wp.kernel
+def vec_array_assign_subscript(x: wp.array2d(dtype=float), y: wp.array2d(dtype=wp.vec3)):
+    i, j = wp.tid()
+
+    y[i, j][0] = 1.0 * x[i, j]
+    y[i, j][1] = 2.0 * x[i, j]
+    y[i, j][2] = 3.0 * x[i, j]
+
+
+@wp.kernel
+def vec_array_assign_attribute(x: wp.array2d(dtype=float), y: wp.array2d(dtype=wp.vec3)):
+    i, j = wp.tid()
+
+    y[i, j].x = 1.0 * x[i, j]
+    y[i, j].y = 2.0 * x[i, j]
+    y[i, j].z = 3.0 * x[i, j]
+
+
+def test_vec_array_assign(test, device):
+    def run(kernel):
+        x = wp.ones((1, 1), dtype=float, requires_grad=True, device=device)
+        y = wp.zeros((1, 1), dtype=wp.vec3, requires_grad=True, device=device)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, (1, 1), inputs=[x], outputs=[y], device=device)
+
+        y.grad = wp.ones_like(y)
+        tape.backward()
+
+        assert_np_equal(y.numpy(), np.array([[[1.0, 2.0, 3.0]]], dtype=float))
+        # TODO: gradient propagation for in-place array assignment
+        # assert_np_equal(x.grad.numpy(), np.array([[6.0]], dtype=float))
+
+    run(vec_array_assign_subscript)
+    run(vec_array_assign_attribute)
+
+
+@wp.kernel
+def vec_add_inplace_subscript(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+    i = wp.tid()
+
+    a = wp.vec3()
+    b = x[i]
+
+    a[0] += 1.0 * b[0]
+    a[1] += 2.0 * b[1]
+    a[2] += 3.0 * b[2]
+
+    y[i] = a
+
+
+@wp.kernel
+def vec_add_inplace_attribute(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+    i = wp.tid()
+
+    a = wp.vec3()
+    b = x[i]
+
+    a.x += 1.0 * b.x
+    a.y += 2.0 * b.y
+    a.z += 3.0 * b.z
+
+    y[i] = a
+
+
+def test_vec_add_inplace(test, device):
+    def run(kernel):
+        x = wp.ones(1, dtype=wp.vec3, requires_grad=True, device=device)
+        y = wp.zeros(1, dtype=wp.vec3, requires_grad=True, device=device)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, 1, inputs=[x], outputs=[y], device=device)
+
+        y.grad = wp.ones_like(y)
+        tape.backward()
+
+        assert_np_equal(y.numpy(), np.array([[1.0, 2.0, 3.0]], dtype=float))
+        assert_np_equal(x.grad.numpy(), np.array([[1.0, 2.0, 3.0]], dtype=float))
+
+    run(vec_add_inplace_subscript)
+    run(vec_add_inplace_attribute)
+
+
+@wp.kernel
+def vec_sub_inplace_subscript(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+    i = wp.tid()
+
+    a = wp.vec3()
+    b = x[i]
+
+    a[0] -= 1.0 * b[0]
+    a[1] -= 2.0 * b[1]
+    a[2] -= 3.0 * b[2]
+
+    y[i] = a
+
+
+@wp.kernel
+def vec_sub_inplace_attribute(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+    i = wp.tid()
+
+    a = wp.vec3()
+    b = x[i]
+
+    a.x -= 1.0 * b.x
+    a.y -= 2.0 * b.y
+    a.z -= 3.0 * b.z
+
+    y[i] = a
+
+
+def test_vec_sub_inplace(test, device):
+    def run(kernel):
+        x = wp.ones(1, dtype=wp.vec3, requires_grad=True, device=device)
+        y = wp.zeros(1, dtype=wp.vec3, requires_grad=True, device=device)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, 1, inputs=[x], outputs=[y], device=device)
+
+        y.grad = wp.ones_like(y)
+        tape.backward()
+
+        assert_np_equal(y.numpy(), np.array([[-1.0, -2.0, -3.0]], dtype=float))
+        assert_np_equal(x.grad.numpy(), np.array([[-1.0, -2.0, -3.0]], dtype=float))
+
+    run(vec_sub_inplace_subscript)
+    run(vec_sub_inplace_attribute)
+
+
+@wp.kernel
+def vec_array_add_inplace(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+    i = wp.tid()
+
+    y[i] += x[i]
+
+
+def test_vec_array_add_inplace(test, device):
+    x = wp.ones(1, dtype=wp.vec3, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.vec3, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(vec_array_add_inplace, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[1.0, 1.0, 1.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[1.0, 1.0, 1.0]], dtype=float))
+
+
+@wp.kernel
+def vec_array_sub_inplace(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+    i = wp.tid()
+
+    y[i] -= x[i]
+
+
+def test_vec_array_sub_inplace(test, device):
+    x = wp.ones(1, dtype=wp.vec3, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.vec3, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(vec_array_sub_inplace, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[-1.0, -1.0, -1.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[-1.0, -1.0, -1.0]], dtype=float))
 
 
 devices = get_test_devices()
@@ -1418,14 +1568,13 @@ for dtype in np_float_types:
         devices=devices,
         dtype=dtype,
     )
-    add_function_test_register_kernel(
-        TestVec,
-        f"test_vector_assign_inplace_{dtype.__name__}",
-        test_vector_assign_inplace,
-        devices=devices,
-        dtype=dtype,
-    )
 
+add_function_test(
+    TestVec,
+    "test_length_mismatch",
+    test_length_mismatch,
+    devices=devices,
+)
 add_function_test(
     TestVec,
     "test_anon_constructor_error_length_mismatch",
@@ -1468,18 +1617,15 @@ add_function_test(
     test_vector_len,
     devices=devices,
 )
-add_function_test(
-    TestVec,
-    "test_vector_augassign",
-    test_vector_augassign,
-    devices=devices,
-)
-add_function_test(
-    TestVec,
-    "test_vector_assign_copy",
-    test_vector_assign_copy,
-    devices=devices,
-)
+add_function_test(TestVec, "test_vec_extract", test_vec_extract, devices=devices)
+add_function_test(TestVec, "test_vec_assign", test_vec_assign, devices=devices)
+add_function_test(TestVec, "test_vec_assign_copy", test_vec_assign_copy, devices=devices)
+add_function_test(TestVec, "test_vec_array_extract", test_vec_array_extract, devices=devices)
+add_function_test(TestVec, "test_vec_array_assign", test_vec_array_assign, devices=devices)
+add_function_test(TestVec, "test_vec_add_inplace", test_vec_add_inplace, devices=devices)
+add_function_test(TestVec, "test_vec_sub_inplace", test_vec_sub_inplace, devices=devices)
+add_function_test(TestVec, "test_vec_array_add_inplace", test_vec_array_add_inplace, devices=devices)
+add_function_test(TestVec, "test_vec_array_sub_inplace", test_vec_array_sub_inplace, devices=devices)
 
 
 if __name__ == "__main__":

@@ -59,7 +59,7 @@ def update_collider_kernel(
     point_0 = wp.transform_point(xform_0, points_0[tid])
     point_1 = wp.transform_point(xform_1, points_1[tid])
 
-    out_points[tid] = point_0
+    out_points[tid] = point_1
     out_velocities[tid] = (point_1 - point_0) / sim_dt
 
 
@@ -298,11 +298,11 @@ class InternalState:
 
         # Register the ground.
         builder.set_ground_plane(
-            offset=-db.inputs.groundAltitude + db.inputs.colliderContactDistance,
-            ke=db.inputs.contactElasticStiffness,
-            kd=db.inputs.contactDampingStiffness,
-            kf=db.inputs.contactFrictionStiffness,
-            mu=db.inputs.contactFrictionCoeff,
+            offset=-db.inputs.groundAltitude + db.inputs.colliderContactDistance * 0.99,
+            ke=0.0,
+            kd=0.0,
+            kf=0.0,
+            mu=0.0,
         )
 
         # Create the coloring required by the VBD integrator.
@@ -367,12 +367,6 @@ def update_collider(
     points = omni.warp.nodes.mesh_get_points(db.inputs.collider)
     xform = omni.warp.nodes.bundle_get_world_xform(db.inputs.collider)
 
-    # Swap the previous and current collider point positions.
-    (state.collider_points_0, state.collider_points_1) = (
-        state.collider_points_1,
-        state.collider_points_0,
-    )
-
     # Store the current point positions.
     wp.copy(state.collider_points_1, points)
 
@@ -395,6 +389,12 @@ def update_collider(
             state.collider_mesh.mesh.points,
             state.collider_mesh.mesh.velocities,
         ],
+    )
+
+    # Swap the previous and current collider point positions.
+    (state.collider_points_0, state.collider_points_1) = (
+        state.collider_points_1,
+        state.collider_points_0,
     )
 
     # Refit the BVH.

@@ -129,6 +129,8 @@ From the project root, run:
     pre-commit run --all
 
 This command will attempt to fix any lint violations and then format the code.
+Some lint violations cannot be `fixed automatically <https://docs.astral.sh/ruff/linter/#fix-safety>`__
+and will require manual resolution.
 
 To run Ruff checks at the same time as ``git commit``, pre-commit hooks can be installed by running this command in the project root:
 
@@ -141,18 +143,21 @@ To run Ruff checks at the same time as ``git commit``, pre-commit hooks can be i
 Building the Documentation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The Sphinx documentation can be built by running the following from the project root:
+The Warp library should first be built locally by running ``build_lib.py`` before building the Sphinx documentation.
+The documentation can then be built by running the following from the project root:
 
 .. code-block:: bash
 
-    pip install -r docs/requirements.txt
-    python build_docs.py
+    python -m pip install -e .[docs]
+    python build_docs.py --quick
 
-This command also regenerates the stub file (``warp/stubs.py``) and the reStructuredText file for the
+The ``-quick`` flag skip running the `doctest tests <https://www.sphinx-doc.org/en/master/usage/extensions/doctest.html>`__,
+which take some time to run. If your changes modify core library functionality, it can be a good idea to run ``build_docs.py``
+without the ``-quick`` flag to ensure that the documentation code snippets are still up to date.
+
+Running ``build_docs.py`` also regenerates both the stub file (``warp/stubs.py``) and the reStructuredText file for the
 :doc:`functions` page. After building the documentation, it is recommended to run a ``git status`` to
 check if your changes have modified these files. If so, please commit the modified files to your branch.
-
-.. note:: In the future, Warp needs to be built at least once prior to building the documentation.
 
 .. _pull-requests:
 

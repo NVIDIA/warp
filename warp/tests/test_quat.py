@@ -1903,89 +1903,6 @@ def test_quat_identity(test, device, dtype, register_kernels=False):
     assert_np_equal(output.numpy(), expected)
 
 
-############################################################
-
-
-def test_quat_assign_inplace(test, device, dtype, register_kernels=False):
-    np_type = np.dtype(dtype)
-    wp_type = wp.types.np_dtype_to_warp_type[np_type]
-
-    quat = wp.types.quaternion(dtype=wp_type)
-
-    def quattest_read_write_store(x: wp.array(dtype=wp_type), a: wp.array(dtype=quat)):
-        tid = wp.tid()
-
-        t = a[tid]
-        t[0] = x[tid]
-        a[tid] = t
-
-    def quattest_in_register(x: wp.array(dtype=wp_type), a: wp.array(dtype=quat)):
-        tid = wp.tid()
-
-        g = wp_type(0.0)
-        q = a[tid]
-        g = q[0] + wp_type(2.0) * q[1] + wp_type(3.0) * q[2] + wp_type(4.0) * q[3]
-        x[tid] = g
-
-    def quattest_component(x: wp.array(dtype=quat), y: wp.array(dtype=wp_type)):
-        i = wp.tid()
-
-        a = quat()
-        a.x = wp_type(1.0) * y[i]
-        a.y = wp_type(2.0) * y[i]
-        a.z = wp_type(3.0) * y[i]
-        a.w = wp_type(4.0) * y[i]
-        x[i] = a
-
-    kernel_read_write_store = getkernel(quattest_read_write_store, suffix=dtype.__name__)
-    kernel_in_register = getkernel(quattest_in_register, suffix=dtype.__name__)
-    kernel_component = getkernel(quattest_component, suffix=dtype.__name__)
-
-    if register_kernels:
-        return
-
-    a = wp.ones(1, dtype=quat, device=device, requires_grad=True)
-    x = wp.full(1, value=2.0, dtype=wp_type, device=device, requires_grad=True)
-
-    tape = wp.Tape()
-    with tape:
-        wp.launch(kernel_read_write_store, dim=1, inputs=[x, a], device=device)
-
-    tape.backward(grads={a: wp.ones_like(a, requires_grad=False)})
-
-    assert_np_equal(a.numpy(), np.array([[2.0, 1.0, 1.0, 1.0]], dtype=np_type))
-    assert_np_equal(x.grad.numpy(), np.array([1.0], dtype=np_type))
-
-    tape.reset()
-
-    a = wp.ones(1, dtype=quat, device=device, requires_grad=True)
-    x = wp.zeros(1, dtype=wp_type, device=device, requires_grad=True)
-
-    with tape:
-        wp.launch(kernel_in_register, dim=1, inputs=[x, a], device=device)
-
-    tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
-
-    assert_np_equal(x.numpy(), np.array([10.0], dtype=np_type))
-    assert_np_equal(a.grad.numpy(), np.array([[1.0, 2.0, 3.0, 4.0]], dtype=np_type))
-
-    tape.reset()
-
-    x = wp.zeros(1, dtype=quat, requires_grad=True)
-    y = wp.ones(1, dtype=wp_type, requires_grad=True)
-
-    with tape:
-        wp.launch(kernel_component, dim=1, inputs=[x, y])
-
-    tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
-
-    assert_np_equal(x.numpy(), np.array([[1.0, 2.0, 3.0, 4.0]], dtype=np_type))
-    assert_np_equal(y.grad.numpy(), np.array([10.0], dtype=np_type))
-
-
-############################################################
-
-
 def test_quat_euler_conversion(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
     N = 3
@@ -2065,6 +1982,12 @@ def test_constructor_default():
     wp.expect_eq(qeye[2], 0.0)
     wp.expect_eq(qeye[3], 1.0)
 
+    qlit = wp.quaternion(1.0, 2.0, 3.0, 4.0, dtype=float)
+    wp.expect_eq(qlit[0], 1.0)
+    wp.expect_eq(qlit[1], 2.0)
+    wp.expect_eq(qlit[2], 3.0)
+    wp.expect_eq(qlit[3], 4.0)
+
 
 def test_py_arithmetic_ops(test, device, dtype):
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
@@ -2116,54 +2039,85 @@ def test_quat_len(test, device):
 
 
 @wp.kernel
-def quat_augassign_kernel(
-    a: wp.array(dtype=wp.quat), b: wp.array(dtype=wp.quat), c: wp.array(dtype=wp.quat), d: wp.array(dtype=wp.quat)
-):
+def quat_extract_subscript(x: wp.array(dtype=wp.quat), y: wp.array(dtype=float)):
+    tid = wp.tid()
+
+    a = x[tid]
+    b = a[0] + 2.0 * a[1] + 3.0 * a[2] + 4.0 * a[3]
+    y[tid] = b
+
+
+""" TODO: rhs attribute indexing
+@wp.kernel
+def quat_extract_attribute(x: wp.array(dtype=wp.quat), y: wp.array(dtype=float)):
+    tid = wp.tid()
+
+    a = x[tid]
+    b = a.x + float(2.0) * a.y + 3.0 * a.z + 4.0 * a.w
+    y[tid] = b
+"""
+
+
+def test_quat_extract(test, device):
+    def run(kernel):
+        x = wp.ones(1, dtype=wp.quat, requires_grad=True, device=device)
+        y = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, 1, inputs=[x], outputs=[y], device=device)
+
+        y.grad = wp.ones_like(y)
+        tape.backward()
+
+        assert_np_equal(y.numpy(), np.array([10.0], dtype=float))
+        assert_np_equal(x.grad.numpy(), np.array([[1.0, 2.0, 3.0, 4.0]], dtype=float))
+
+    run(quat_extract_subscript)
+    # run(quat_extract_attribute)
+
+
+@wp.kernel
+def quat_assign_subscript(x: wp.array(dtype=float), y: wp.array(dtype=wp.quat)):
     i = wp.tid()
 
-    q1 = wp.quat()
-    q2 = b[i]
-
-    q1[0] += q2[0]
-    q1[1] += q2[1]
-    q1[2] += q2[2]
-    q1[3] += q2[3]
-
-    a[i] = q1
-
-    q3 = wp.quat()
-    q4 = d[i]
-
-    q3[0] -= q4[0]
-    q3[1] -= q4[1]
-    q3[2] -= q4[2]
-    q3[3] -= q4[3]
-
-    c[i] = q3
+    a = wp.quat()
+    a[0] = 1.0 * x[i]
+    a[1] = 2.0 * x[i]
+    a[2] = 3.0 * x[i]
+    a[3] = 4.0 * x[i]
+    y[i] = a
 
 
-def test_quat_augassign(test, device):
-    N = 3
+@wp.kernel
+def quat_assign_attribute(x: wp.array(dtype=float), y: wp.array(dtype=wp.quat)):
+    i = wp.tid()
 
-    a = wp.zeros(N, dtype=wp.quat, requires_grad=True, device=device)
-    b = wp.ones(N, dtype=wp.quat, requires_grad=True, device=device)
+    a = wp.quat()
+    a.x = 1.0 * x[i]
+    a.y = 2.0 * x[i]
+    a.z = 3.0 * x[i]
+    a.w = 4.0 * x[i]
+    y[i] = a
 
-    c = wp.zeros(N, dtype=wp.quat, requires_grad=True, device=device)
-    d = wp.ones(N, dtype=wp.quat, requires_grad=True, device=device)
 
-    tape = wp.Tape()
-    with tape:
-        wp.launch(quat_augassign_kernel, N, inputs=[a, b, c, d], device=device)
+def test_quat_assign(test, device):
+    def run(kernel):
+        x = wp.ones(1, dtype=float, requires_grad=True, device=device)
+        y = wp.zeros(1, dtype=wp.quat, requires_grad=True, device=device)
 
-    tape.backward(grads={a: wp.ones_like(a), c: wp.ones_like(c)})
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, 1, inputs=[x], outputs=[y], device=device)
 
-    assert_np_equal(a.numpy(), wp.ones_like(a).numpy())
-    assert_np_equal(a.grad.numpy(), wp.ones_like(a).numpy())
-    assert_np_equal(b.grad.numpy(), wp.ones_like(a).numpy())
+        y.grad = wp.ones_like(y)
+        tape.backward()
 
-    assert_np_equal(c.numpy(), -wp.ones_like(c).numpy())
-    assert_np_equal(c.grad.numpy(), wp.ones_like(c).numpy())
-    assert_np_equal(d.grad.numpy(), -wp.ones_like(d).numpy())
+        assert_np_equal(y.numpy(), np.array([[1.0, 2.0, 3.0, 4.0]], dtype=float))
+        assert_np_equal(x.grad.numpy(), np.array([10.0], dtype=float))
+
+    run(quat_assign_subscript)
+    run(quat_assign_attribute)
 
 
 def test_quat_assign_copy(test, device):
@@ -2172,31 +2126,260 @@ def test_quat_assign_copy(test, device):
         wp.config.enable_vector_component_overwrites = True
 
         @wp.kernel
-        def quat_in_register_overwrite(x: wp.array(dtype=wp.quat), a: wp.array(dtype=wp.quat)):
+        def quat_assign_overwrite(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.quat)):
             tid = wp.tid()
 
-            f = wp.quat()
-            a_quat = a[tid]
-            f = a_quat
-            f[1] = 3.0
+            a = wp.quat()
+            b = x[tid]
+            a = b
+            a[1] = 3.0
 
-            x[tid] = f
+            y[tid] = a
 
-        x = wp.zeros(1, dtype=wp.quat, device=device, requires_grad=True)
-        a = wp.ones(1, dtype=wp.quat, device=device, requires_grad=True)
+        x = wp.ones(1, dtype=wp.quat, device=device, requires_grad=True)
+        y = wp.zeros(1, dtype=wp.quat, device=device, requires_grad=True)
 
         tape = wp.Tape()
         with tape:
-            wp.launch(quat_in_register_overwrite, dim=1, inputs=[x, a], device=device)
+            wp.launch(quat_assign_overwrite, dim=1, inputs=[x, y], device=device)
 
-        tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
+        y.grad = wp.ones_like(y, requires_grad=False)
+        tape.backward()
 
-        assert_np_equal(x.numpy(), np.array([[1.0, 3.0, 1.0, 1.0]], dtype=float))
-        assert_np_equal(a.grad.numpy(), np.array([[1.0, 0.0, 1.0, 1.0]], dtype=float))
+        assert_np_equal(y.numpy(), np.array([[1.0, 3.0, 1.0, 1.0]], dtype=float))
+        assert_np_equal(x.grad.numpy(), np.array([[1.0, 0.0, 1.0, 1.0]], dtype=float))
 
     finally:
         wp.config.enable_vector_component_overwrites = saved_enable_vector_component_overwrites_setting
 
+
+@wp.kernel
+def quat_array_extract_subscript(x: wp.array2d(dtype=wp.quat), y: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    a = x[i, j][0]
+    b = x[i, j][1]
+    c = x[i, j][2]
+    d = x[i, j][3]
+    y[i, j] = 1.0 * a + 2.0 * b + 3.0 * c + 4.0 * d
+
+
+""" TODO: rhs attribute indexing
+@wp.kernel
+def quat_array_extract_attribute(x: wp.array2d(dtype=wp.quat), y: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    a = x[i, j].x
+    b = x[i, j].y
+    c = x[i, j].z
+    d = x[i, j].w
+    y[i, j] = 1.0 * a + 2.0 * b + 3.0 * c + 4.0 * d
+"""
+
+
+def test_quat_array_extract(test, device):
+    def run(kernel):
+        x = wp.ones((1, 1), dtype=wp.quat, requires_grad=True, device=device)
+        y = wp.zeros((1, 1), dtype=float, requires_grad=True, device=device)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, (1, 1), inputs=[x], outputs=[y], device=device)
+
+        y.grad = wp.ones_like(y)
+        tape.backward()
+
+        assert_np_equal(y.numpy(), np.array([[10.0]], dtype=float))
+        assert_np_equal(x.grad.numpy(), np.array([[[1.0, 2.0, 3.0, 4.0]]], dtype=float))
+
+    run(quat_array_extract_subscript)
+    # run(quat_array_extract_attribute)
+
+
+@wp.kernel
+def quat_array_assign_subscript(x: wp.array2d(dtype=float), y: wp.array2d(dtype=wp.quat)):
+    i, j = wp.tid()
+
+    y[i, j][0] = 1.0 * x[i, j]
+    y[i, j][1] = 2.0 * x[i, j]
+    y[i, j][2] = 3.0 * x[i, j]
+    y[i, j][3] = 4.0 * x[i, j]
+
+
+@wp.kernel
+def quat_array_assign_attribute(x: wp.array2d(dtype=float), y: wp.array2d(dtype=wp.quat)):
+    i, j = wp.tid()
+
+    y[i, j].x = 1.0 * x[i, j]
+    y[i, j].y = 2.0 * x[i, j]
+    y[i, j].z = 3.0 * x[i, j]
+    y[i, j].w = 4.0 * x[i, j]
+
+
+def test_quat_array_assign(test, device):
+    def run(kernel):
+        x = wp.ones((1, 1), dtype=float, requires_grad=True, device=device)
+        y = wp.zeros((1, 1), dtype=wp.quat, requires_grad=True, device=device)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, (1, 1), inputs=[x], outputs=[y], device=device)
+
+        y.grad = wp.ones_like(y)
+        tape.backward()
+
+        assert_np_equal(y.numpy(), np.array([[[1.0, 2.0, 3.0, 4.0]]], dtype=float))
+        # TODO: gradient propagation for in-place array assignment
+        # assert_np_equal(x.grad.numpy(), np.array([[10.0]], dtype=float))
+
+    run(quat_array_assign_subscript)
+    run(quat_array_assign_attribute)
+
+
+@wp.kernel
+def quat_add_inplace_subscript(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.quat)):
+    i = wp.tid()
+
+    a = wp.quat()
+    b = x[i]
+
+    a[0] += 1.0 * b[0]
+    a[1] += 2.0 * b[1]
+    a[2] += 3.0 * b[2]
+    a[3] += 4.0 * b[3]
+
+    y[i] = a
+
+
+""" TODO: rhs attribute indexing
+@wp.kernel
+def quat_add_inplace_attribute(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.quat)):
+    i = wp.tid()
+
+    a = wp.quat()
+    b = x[i]
+
+    a.x += 1.0 * b.x
+    a.y += 2.0 * b.y
+    a.z += 3.0 * b.z
+    a.w += 4.0 * b.w
+
+    y[i] = a
+"""
+
+
+def test_quat_add_inplace(test, device):
+    def run(kernel):
+        x = wp.ones(1, dtype=wp.quat, requires_grad=True, device=device)
+        y = wp.zeros(1, dtype=wp.quat, requires_grad=True, device=device)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, 1, inputs=[x], outputs=[y], device=device)
+
+        y.grad = wp.ones_like(y)
+        tape.backward()
+
+        assert_np_equal(y.numpy(), np.array([[1.0, 2.0, 3.0, 4.0]], dtype=float))
+        assert_np_equal(x.grad.numpy(), np.array([[1.0, 2.0, 3.0, 4.0]], dtype=float))
+
+    run(quat_add_inplace_subscript)
+    # run(quat_add_inplace_attribute)
+
+
+@wp.kernel
+def quat_sub_inplace_subscript(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.quat)):
+    i = wp.tid()
+
+    a = wp.quat()
+    b = x[i]
+
+    a[0] -= 1.0 * b[0]
+    a[1] -= 2.0 * b[1]
+    a[2] -= 3.0 * b[2]
+    a[3] -= 4.0 * b[3]
+
+    y[i] = a
+
+
+""" TODO: rhs attribute indexing
+@wp.kernel
+def quat_sub_inplace_attribute(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.quat)):
+    i = wp.tid()
+
+    a = wp.quat()
+    b = x[i]
+
+    a.x -= 1.0 * b.x
+    a.y -= 2.0 * b.y
+    a.z -= 3.0 * b.z
+    a.w -= 4.0 * b.w
+
+    y[i] = a
+"""
+
+
+def test_quat_sub_inplace(test, device):
+    def run(kernel):
+        x = wp.ones(1, dtype=wp.quat, requires_grad=True, device=device)
+        y = wp.zeros(1, dtype=wp.quat, requires_grad=True, device=device)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, 1, inputs=[x], outputs=[y], device=device)
+
+        y.grad = wp.ones_like(y)
+        tape.backward()
+
+        assert_np_equal(y.numpy(), np.array([[-1.0, -2.0, -3.0, -4.0]], dtype=float))
+        assert_np_equal(x.grad.numpy(), np.array([[-1.0, -2.0, -3.0, -4.0]], dtype=float))
+
+    run(quat_sub_inplace_subscript)
+    # run(quat_sub_inplace_attribute)
+
+
+@wp.kernel
+def quat_array_add_inplace(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.quat)):
+    i = wp.tid()
+
+    y[i] += x[i]
+
+
+def test_quat_array_add_inplace(test, device):
+    x = wp.ones(1, dtype=wp.quat, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.quat, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(quat_array_add_inplace, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[1.0, 1.0, 1.0, 1.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[1.0, 1.0, 1.0, 1.0]], dtype=float))
+
+
+""" TODO: quat negation operator
+@wp.kernel
+def quat_array_sub_inplace(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.quat)):
+    i = wp.tid()
+
+    y[i] -= x[i]
+
+
+def test_quat_array_sub_inplace(test, device):
+    x = wp.ones(1, dtype=wp.quat, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.quat, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(quat_array_sub_inplace, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[-1.0, -1.0, -1.0, -1.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[-1.0, -1.0, -1.0, -1.0]], dtype=float))
+"""
 
 devices = get_test_devices()
 
@@ -2295,20 +2478,21 @@ for dtype in np_float_types:
         devices=devices,
         dtype=dtype,
     )
-    add_function_test_register_kernel(
-        TestQuat,
-        f"test_quat_assign_inplace_{dtype.__name__}",
-        test_quat_assign_inplace,
-        devices=devices,
-        dtype=dtype,
-    )
     add_function_test(
         TestQuat, f"test_py_arithmetic_ops_{dtype.__name__}", test_py_arithmetic_ops, devices=None, dtype=dtype
     )
 
 add_function_test(TestQuat, "test_quat_len", test_quat_len, devices=devices)
-add_function_test(TestQuat, "test_quat_augassign", test_quat_augassign, devices=devices)
+add_function_test(TestQuat, "test_quat_extract", test_quat_extract, devices=devices)
+add_function_test(TestQuat, "test_quat_assign", test_quat_assign, devices=devices)
 add_function_test(TestQuat, "test_quat_assign_copy", test_quat_assign_copy, devices=devices)
+add_function_test(TestQuat, "test_quat_array_extract", test_quat_array_extract, devices=devices)
+add_function_test(TestQuat, "test_quat_array_assign", test_quat_array_assign, devices=devices)
+add_function_test(TestQuat, "test_quat_add_inplace", test_quat_add_inplace, devices=devices)
+add_function_test(TestQuat, "test_quat_sub_inplace", test_quat_sub_inplace, devices=devices)
+add_function_test(TestQuat, "test_quat_array_add_inplace", test_quat_array_add_inplace, devices=devices)
+# add_function_test(TestQuat, "test_quat_array_sub_inplace", test_quat_array_sub_inplace, devices=devices)
+
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

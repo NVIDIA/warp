@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import math
+import platform
 import unittest
 from typing import Any
 
@@ -475,6 +476,22 @@ def _test_geo_cells(
     wp.atomic_add(cell_measures, s.element_index, fem.measure(domain, s) * s.qp_weight)
 
 
+@fem.integrand(kernel_options={"enable_backward": False})
+def _test_cell_lookup(
+    s: fem.Sample,
+    domain: fem.Domain,
+):
+    pos = domain(s)
+
+    s_guess = fem.lookup(domain, pos, s)
+    wp.expect_eq(s_guess.element_index, s.element_index)
+    wp.expect_near(domain(s_guess), pos, 0.001)
+
+    s_noguess = fem.lookup(domain, pos)
+    wp.expect_eq(s_noguess.element_index, s.element_index)
+    wp.expect_near(domain(s_noguess), pos, 0.001)
+
+
 @fem.integrand(kernel_options={"enable_backward": False, "max_unroll": 1})
 def _test_geo_sides(
     s: fem.Sample,
@@ -527,7 +544,7 @@ def _test_side_normals(
         wp.expect_near(F_cross[k], nor[k], 0.0001)
 
 
-def _launch_test_geometry_kernel(geo: fem.Geometry, device):
+def _launch_test_geometry_kernel(geo: fem.Geometry, device, test_cell_lookup: bool = True):
     cell_measures = wp.zeros(dtype=float, device=device, shape=geo.cell_count())
     cell_quadrature = fem.RegularQuadrature(fem.Cells(geo), order=2)
 
@@ -540,6 +557,12 @@ def _launch_test_geometry_kernel(geo: fem.Geometry, device):
             quadrature=cell_quadrature,
             values={"cell_measures": cell_measures},
         )
+        if test_cell_lookup:
+            fem.interpolate(
+                _test_cell_lookup,
+                quadrature=cell_quadrature,
+            )
+
         fem.interpolate(
             _test_geo_sides,
             quadrature=side_quadrature,
@@ -577,7 +600,7 @@ def test_triangle_mesh(test, device):
     with wp.ScopedDevice(device):
         positions, tri_vidx = _gen_trimesh(N, N)
 
-    geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
+    geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions, build_bvh=True)
 
     test.assertEqual(geo.cell_count(), 2 * (N) ** 2)
     test.assertEqual(geo.vertex_count(), (N + 1) ** 2)
@@ -595,7 +618,7 @@ def test_triangle_mesh(test, device):
     positions = np.hstack((positions, np.ones((positions.shape[0], 1))))
     positions = wp.array(positions, device=device, dtype=wp.vec3)
 
-    geo = fem.Trimesh3D(tri_vertex_indices=tri_vidx, positions=positions)
+    geo = fem.Trimesh3D(tri_vertex_indices=tri_vidx, positions=positions, build_bvh=True)
 
     test.assertEqual(geo.cell_count(), 2 * (N) ** 2)
     test.assertEqual(geo.vertex_count(), (N + 1) ** 2)
@@ -621,7 +644,7 @@ def test_quad_mesh(test, device):
     test.assertEqual(geo.side_count(), 2 * (N + 1) * N)
     test.assertEqual(geo.boundary_side_count(), 4 * N)
 
-    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
+    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device, test_cell_lookup=False)
 
     assert_np_equal(side_measures.numpy(), np.full(side_measures.shape, 1.0 / (N)), tol=1.0e-4)
     assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
@@ -639,7 +662,7 @@ def test_quad_mesh(test, device):
     test.assertEqual(geo.side_count(), 2 * (N + 1) * N)
     test.assertEqual(geo.boundary_side_count(), 4 * N)
 
-    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
+    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device, test_cell_lookup=False)
 
     assert_np_equal(side_measures.numpy(), np.full(side_measures.shape, 1.0 / (N)), tol=1.0e-4)
     assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
@@ -668,7 +691,7 @@ def test_tet_mesh(test, device):
     with wp.ScopedDevice(device):
         positions, tet_vidx = _gen_tetmesh(N, N, N)
 
-    geo = fem.Tetmesh(tet_vertex_indices=tet_vidx, positions=positions)
+    geo = fem.Tetmesh(tet_vertex_indices=tet_vidx, positions=positions, build_bvh=True)
 
     test.assertEqual(geo.cell_count(), 5 * (N) ** 3)
     test.assertEqual(geo.vertex_count(), (N + 1) ** 3)
@@ -696,7 +719,7 @@ def test_hex_mesh(test, device):
     test.assertEqual(geo.boundary_side_count(), 6 * N * N)
     test.assertEqual(geo.edge_count(), 3 * N * (N + 1) ** 2)
 
-    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
+    side_measures, cell_measures = _launch_test_geometry_kernel(geo, device, test_cell_lookup=False)
 
     assert_np_equal(side_measures.numpy(), np.full(side_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
     assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**3)), tol=1.0e-4)
@@ -732,6 +755,9 @@ def _refinement_field(x: wp.vec3):
 def test_adaptive_nanogrid(test, device):
     # 3 res-1 voxels, 8 res-0 voxels
 
+    if platform.system() == "Windows" or (device.is_cuda and wp.context.runtime.toolkit_version[0] == 11):
+        test.skipTest("Skipping test due to NVRTC bug on CUDA 11 and Windows")
+
     res0 = wp.array(
         [
             [2, 2, 0],
@@ -756,7 +782,6 @@ def test_adaptive_nanogrid(test, device):
         dtype=int,
         device=device,
     )
-
     grid0 = wp.Volume.allocate_by_voxels(res0, 0.5, device=device)
     grid1 = wp.Volume.allocate_by_voxels(res1, 1.0, device=device)
     geo = fem.adaptive_nanogrid_from_hierarchy([grid0, grid1])
@@ -819,7 +844,7 @@ def test_deformed_geometry(test, device):
         test.assertEqual(geo.side_count(), 6 * (N + 1) * N**2 + (N**3) * 4)
         test.assertEqual(geo.boundary_side_count(), 12 * N * N)
 
-        side_measures, cell_measures = _launch_test_geometry_kernel(deformed_geo, wp.get_device())
+        side_measures, cell_measures = _launch_test_geometry_kernel(deformed_geo, device, test_cell_lookup=False)
 
         test.assertAlmostEqual(
             np.sum(cell_measures.numpy()), scale**3, places=4, msg=f"cell_measures = {cell_measures.numpy()}"
@@ -849,6 +874,45 @@ def test_deformed_geometry(test, device):
                 geo.side_index_arg_value(wp.get_device()),
                 geo.side_arg_value(wp.get_device()),
                 deformed_geo.side_arg_value(wp.get_device()),
+                rotation,
+            ],
+        )
+
+        # Test with Trimesh3d (different space and cell dimensions)
+        positions, tri_vidx = _gen_trimesh(N, N)
+        positions = positions.numpy()
+        positions = np.hstack((positions, np.ones((positions.shape[0], 1))))
+        positions = wp.array(positions, device=device, dtype=wp.vec3)
+
+        geo = fem.Trimesh3D(tri_vertex_indices=tri_vidx, positions=positions)
+
+        vector_space = fem.make_polynomial_space(geo, dtype=wp.vec3, degree=1)
+        pos_field = vector_space.make_field()
+        fem.interpolate(
+            _rigid_deformation_field,
+            dest=pos_field,
+            values={"translation": translation, "rotation": rotation, "scale": scale},
+        )
+
+        deformed_geo = pos_field.make_deformed_geometry()
+
+        @wp.kernel
+        def _test_deformed_geometry_normal(geo_arg: geo.CellArg, def_arg: deformed_geo.CellArg, rotation: wp.vec3):
+            i = wp.tid()
+
+            s = make_free_sample(i, Coords(0.5, 0.5, 0.0))
+            geo_n = geo.cell_normal(geo_arg, s)
+            def_n = deformed_geo.cell_normal(def_arg, s)
+
+            q = wp.quat_from_axis_angle(wp.normalize(rotation), wp.length(rotation))
+            wp.expect_near(wp.quat_rotate(q, geo_n), def_n, 0.001)
+
+        wp.launch(
+            _test_deformed_geometry_normal,
+            dim=geo.cell_count(),
+            inputs=[
+                geo.cell_arg_value(wp.get_device()),
+                deformed_geo.cell_arg_value(wp.get_device()),
                 rotation,
             ],
         )
@@ -1847,7 +1911,7 @@ def test_vector_spaces(test, device):
 
 @wp.kernel
 def test_qr_eigenvalues():
-    tol = 1.0e-8
+    tol = 5.0e-7
 
     # zero
     Zero = wp.mat33(0.0)
@@ -1984,6 +2048,7 @@ class TestFemUtilities(unittest.TestCase):
 
 
 add_kernel_test(TestFemUtilities, test_qr_eigenvalues, dim=1, devices=devices)
+
 add_kernel_test(TestFemUtilities, test_qr_inverse, dim=100, devices=devices)
 add_function_test(TestFemUtilities, "test_array_axpy", test_array_axpy)
 

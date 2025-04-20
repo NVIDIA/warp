@@ -184,6 +184,96 @@ def test_tile_load_unaligned(test, device):
     assert_np_equal(input.grad.numpy(), expected_grad)
 
 
+@wp.kernel
+def tile_load_aligned_small_kernel(
+    input: wp.array2d(dtype=float),
+    output: wp.array2d(dtype=float),
+):
+    t = wp.tile_load(input, shape=(3, 3), offset=(0, 0), storage="shared")
+    wp.tile_store(output, t, offset=(0, 0))
+
+
+# regression test for tiles that are smaller than sizeof(float4) in that last
+# dimension but are aligned to float4. Did trigger the fast float4 path by accident.
+def test_tile_load_aligned_small(test, device):
+    rng = np.random.default_rng(42)
+
+    shape = [TILE_M, TILE_N]
+
+    input = wp.array(rng.random(shape), dtype=float, requires_grad=True, device=device)
+    output = wp.zeros(shape, dtype=float, device=device)
+
+    wp.launch_tiled(
+        tile_load_aligned_small_kernel,
+        dim=[1],
+        inputs=[input, output],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    # zeros except for the 3x3 tile at 0, 0
+    assert_np_equal(output.numpy()[3:, :], np.zeros((TILE_M - 3, TILE_N)))
+    assert_np_equal(output.numpy()[:, 3:], np.zeros((TILE_M, TILE_N - 3)))
+
+    # check output elements
+    assert_np_equal(output.numpy()[:3, :3], input.numpy()[:3, :3])
+
+
+TILE_WIDTH = 5
+TILE_OFFSET_X = 0
+TILE_OFFSET_Y = 8
+
+
+@wp.kernel
+def test_tile_load_aligned_offset_unaligned_size_kernel(
+    input: wp.array2d(dtype=float),
+    output: wp.array2d(dtype=float),
+):
+    # Load a 5x5 tile from the input array starting at offset (0,8)
+    # and store it in shared memory
+    tile = wp.tile_load(input, shape=(TILE_WIDTH, TILE_WIDTH), offset=(TILE_OFFSET_X, TILE_OFFSET_Y), storage="shared")
+
+    # Store the loaded tile back to the output array at the same offset
+    wp.tile_store(output, tile, offset=(TILE_OFFSET_X, TILE_OFFSET_Y))
+
+
+def test_tile_load_aligned_offset_unaligned_size(test, device):
+    """Test loading a tile with aligned offset but unaligned size."""
+
+    rng = np.random.default_rng(42)
+    array_shape = [TILE_N, TILE_M]
+
+    input_array = wp.array(rng.random(array_shape), dtype=float, requires_grad=True, device=device)
+    output_array = wp.zeros(array_shape, dtype=float, device=device)
+
+    wp.launch_tiled(
+        test_tile_load_aligned_offset_unaligned_size_kernel,
+        dim=[1],
+        inputs=[input_array, output_array],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    # Region before the tile offset should be zeros
+    assert_np_equal(output_array.numpy()[:TILE_WIDTH, :TILE_OFFSET_Y], np.zeros((TILE_WIDTH, TILE_OFFSET_Y)))
+
+    # Region where the tile was loaded/stored should match input
+    assert_np_equal(
+        output_array.numpy()[:TILE_WIDTH, TILE_OFFSET_Y : TILE_OFFSET_Y + TILE_WIDTH],
+        input_array.numpy()[:TILE_WIDTH, TILE_OFFSET_Y : TILE_OFFSET_Y + TILE_WIDTH],
+    )
+
+    # Region after the tile should be zeros
+    remaining_width = TILE_M - (TILE_OFFSET_Y + TILE_WIDTH)
+    assert_np_equal(
+        output_array.numpy()[:TILE_WIDTH, TILE_OFFSET_Y + TILE_WIDTH :], np.zeros((TILE_WIDTH, remaining_width))
+    )
+
+    # Rows below the tile should all be zeros
+    remaining_height = TILE_N - TILE_WIDTH
+    assert_np_equal(output_array.numpy()[TILE_WIDTH:, :], np.zeros((remaining_height, TILE_M)))
+
+
 # ----------------------------------------------------------------------------------------
 
 TILE_SIZE = 4
@@ -388,6 +478,13 @@ add_function_test(TestTileLoad, "test_tile_load_2d", test_tile_load(tile_load_2d
 add_function_test(TestTileLoad, "test_tile_load_3d", test_tile_load(tile_load_3d_kernel, 3), devices=devices)
 add_function_test(TestTileLoad, "test_tile_load_4d", test_tile_load(tile_load_4d_kernel, 4), devices=devices)
 add_function_test(TestTileLoad, "test_tile_load_unaligned", test_tile_load_unaligned, devices=devices)
+add_function_test(TestTileLoad, "test_tile_load_aligned_small", test_tile_load_aligned_small, devices=devices)
+add_function_test(
+    TestTileLoad,
+    "test_tile_load_aligned_offset_unaligned_size",
+    test_tile_load_aligned_offset_unaligned_size,
+    devices=devices,
+)
 
 add_function_test(TestTileLoad, "test_tile_extract_1d", test_tile_extract(tile_extract_1d_kernel, 1), devices=devices)
 add_function_test(TestTileLoad, "test_tile_extract_2d", test_tile_extract(tile_extract_2d_kernel, 2), devices=devices)

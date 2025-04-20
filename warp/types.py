@@ -278,7 +278,12 @@ def vector(length, dtype):
         def __str__(self):
             return f"[{', '.join(map(str, self))}]"
 
+        def __repr__(self):
+            return f"{type_repr(self)}([{', '.join(map(repr, self))}])"
+
         def __eq__(self, other):
+            if self._length_ != len(other):
+                return False
             for i in range(self._length_):
                 if self[i] != other[i]:
                     return False
@@ -421,7 +426,11 @@ def matrix(shape, dtype):
             return "[" + ",\n ".join(row_str) + "]"
 
         def __eq__(self, other):
+            if self._shape_[0] != len(other):
+                return False
             for i in range(self._shape_[0]):
+                if self._shape_[1] != len(other[i]):
+                    return False
                 for j in range(self._shape_[1]):
                     if self[i][j] != other[i][j]:
                         return False
@@ -1339,22 +1348,67 @@ def type_typestr(dtype: type) -> str:
         raise Exception("Unknown ctype")
 
 
+def scalar_short_name(t):
+    if t == float32:
+        return "f"
+    elif t == float64:
+        return "d"
+    elif t == int8:
+        return "b"
+    elif t == int16:
+        return "s"
+    elif t == int32:
+        return "i"
+    elif t == int64:
+        return "l"
+    elif t == uint8:
+        return "ub"
+    elif t == uint16:
+        return "us"
+    elif t == uint32:
+        return "ui"
+    elif t == uint64:
+        return "ul"
+    return None
+
+
 # converts any known type to a human readable string, good for error messages, reporting etc
 def type_repr(t):
     if is_array(t):
-        return str(f"array(ndim={t.ndim}, dtype={t.dtype})")
+        if t.device is None:
+            # array is used as a type annotation - display ndim instead of shape
+            return f"array(ndim={t.ndim}, dtype={type_repr(t.dtype)})"
+        return f"array(shape={t.shape}, dtype={type_repr(t.dtype)})"
     if is_tile(t):
-        return str(f"tile(dtype={t.dtype}, shape={t.shape}")
-    if type_is_vector(t):
-        return str(f"vector(length={t._shape_[0]}, dtype={t._wp_scalar_type_})")
-    if type_is_matrix(t):
-        return str(f"matrix(shape=({t._shape_[0]}, {t._shape_[1]}), dtype={t._wp_scalar_type_})")
+        return f"tile(shape={t.shape}, dtype={type_repr(t.dtype)})"
     if isinstance(t, warp.codegen.Struct):
         return type_repr(t.cls)
+    sn = None
+    if hasattr(t, "_wp_scalar_type_"):
+        sn = scalar_short_name(t._wp_scalar_type_)
+    if type_is_transformation(t):
+        if sn is not None:
+            return f"transform{sn}"
+        return f"transform(dtype={type_repr(t._wp_scalar_type_)})"
+    if type_is_quaternion(t):
+        if sn is not None:
+            return f"quat{sn}"
+        return f"quat(dtype={type_repr(t._wp_scalar_type_)})"
+    if type_is_vector(t):
+        if sn is not None and t._shape_[0] <= 4:
+            return f"vec{t._shape_[0]}{sn}"
+        return f"vector(length={t._shape_[0]}, dtype={type_repr(t._wp_scalar_type_)})"
+    if type_is_matrix(t):
+        if sn is not None and t._shape_[0] <= 4 and t._shape_[1] <= 4:
+            return f"mat{t._shape_[0]}{t._shape_[1]}({sn})"
+        return f"matrix(shape=({t._shape_[0]}, {t._shape_[1]}), dtype={type_repr(t._wp_scalar_type_)})"
     if t in scalar_types:
         return t.__name__
 
-    name = getattr(t, "__qualname__", t.__name__)
+    name = getattr(t, "__name__", None)
+    if name is None:
+        return repr(t)
+    name = getattr(t, "__qualname__", name)
     return t.__module__ + "." + name
 
 
@@ -1418,7 +1472,7 @@ def is_array(a) -> builtins.bool:
     return isinstance(a, array_types)
 
 
-def scalars_equal(a, b, match_generic):
+def scalars_equal(a, b, match_generic=False):
     # convert to canonical types
     if a == float:
         a = float32
@@ -2234,6 +2288,9 @@ class array(Array[DType]):
             return f"array{self.dtype}"
         else:
             return str(self.numpy())
+
+    def __repr__(self):
+        return type_repr(self)
 
     def __getitem__(self, key):
         if isinstance(key, int):

@@ -180,13 +180,23 @@ class SpaceField(GeometryField):
 
     @property
     def gradient_dtype(self):
-        """Return type of the gradient operator. Assumes self.gradient_valid()"""
+        """Return type of the (world space) gradient operator. Assumes self.gradient_valid()"""
         if wp.types.type_is_vector(self.dtype):
             return cache.cached_mat_type(
                 shape=(wp.types.type_length(self.dtype), self.geometry.dimension),
                 dtype=wp.types.type_scalar_type(self.dtype),
             )
         return cache.cached_vec_type(length=self.geometry.dimension, dtype=wp.types.type_scalar_type(self.dtype))
+
+    @property
+    def reference_gradient_dtype(self):
+        """Return type of the reference space gradient operator. Assumes self.gradient_valid()"""
+        if wp.types.type_is_vector(self.dtype):
+            return cache.cached_mat_type(
+                shape=(wp.types.type_length(self.dtype), self.geometry.cell_dimension),
+                dtype=wp.types.type_scalar_type(self.dtype),
+            )
+        return cache.cached_vec_type(length=self.geometry.cell_dimension, dtype=wp.types.type_scalar_type(self.dtype))
 
     @property
     def divergence_dtype(self):

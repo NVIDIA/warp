@@ -46,9 +46,9 @@ the `pip install` command, e.g.
 
 | Platform        | Install Command                                                                                                               |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.7.0/warp_lang-1.7.0+cu11-py3-none-manylinux2014_aarch64.whl` |
-| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.7.0/warp_lang-1.7.0+cu11-py3-none-manylinux2014_x86_64.whl`  |
-| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.7.0/warp_lang-1.7.0+cu11-py3-none-win_amd64.whl`             |
+| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.7.1/warp_lang-1.7.1+cu11-py3-none-manylinux2014_aarch64.whl` |
+| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.7.1/warp_lang-1.7.1+cu11-py3-none-manylinux2014_x86_64.whl`  |
+| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.7.1/warp_lang-1.7.1+cu11-py3-none-win_amd64.whl`             |
 
 The `--force-reinstall` option may need to be used to overwrite a previous installation.
 
@@ -459,8 +459,7 @@ Warp is provided under the Apache License, Version 2.0. Please see [LICENSE.md](
 
 ## Contributing
 
-Contributions and pull requests from the community are welcome and are taken under the
-terms described in the **Feedback** section of [LICENSE.md](LICENSE.md#9-feedback).
+Contributions and pull requests from the community are welcome.
 Please see the [Contribution Guide](https://nvidia.github.io/warp/modules/contribution_guide.html) for more
 information on contributing to the development of Warp.
 

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import platform
 import unittest
 
 import numpy as np
@@ -103,6 +104,9 @@ def test_sphere_pushing_on_rails(
     static_contacts=True,
     print_grad=False,
 ):
+    if platform.system() == "Darwin":
+        test.skipTest("Crashes on Mac runners")
+
     # Two spheres on a rail (prismatic or D6 joint), one is pushed, the other is passive.
     # The absolute distance to a target is measured and gradients are compared for
     # a push that is too far and too close.

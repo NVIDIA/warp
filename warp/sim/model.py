@@ -633,6 +633,7 @@ class Model:
         soft_contact_body_pos (array), Positional offset of soft contact point in body frame, shape [soft_contact_max], vec3
         soft_contact_body_vel (array), Linear velocity of soft contact point in body frame, shape [soft_contact_max], vec3
         soft_contact_normal (array), Contact surface normal of soft contact point in world space, shape [soft_contact_max], vec3
+        soft_contact_tids (array), Thread indices of the soft contact points, shape [soft_contact_max], int
 
         rigid_contact_max (int): Maximum number of potential rigid body contact points to generate ignoring the `rigid_mesh_contact_max` limit.
         rigid_contact_max_limited (int): Maximum number of potential rigid body contact points to generate respecting the `rigid_mesh_contact_max` limit.
@@ -650,6 +651,12 @@ class Model:
         rigid_contact_thickness (array): Total contact thickness, shape [rigid_contact_max], float
         rigid_contact_shape0 (array): Index of shape 0 per contact, shape [rigid_contact_max], int
         rigid_contact_shape1 (array): Index of shape 1 per contact, shape [rigid_contact_max], int
+        rigid_contact_tids (array): Triangle indices of the contact points, shape [rigid_contact_max], int
+        rigid_contact_pairwise_counter (array): Pairwise counter for contact generation, shape [rigid_contact_max], int
+        rigid_contact_broad_shape0 (array): Broadphase shape index of shape 0 per contact, shape [rigid_contact_max], int
+        rigid_contact_broad_shape1 (array): Broadphase shape index of shape 1 per contact, shape [rigid_contact_max], int
+        rigid_contact_point_id (array): Contact point ID, shape [rigid_contact_max], int
+        rigid_contact_point_limit (array): Contact point limit, shape [rigid_contact_max], int
 
         ground (bool): Whether the ground plane and ground contacts are enabled
         ground_plane (array): Ground plane 3D normal and offset, shape [4], float
@@ -805,6 +812,7 @@ class Model:
         self.soft_contact_body_pos = None
         self.soft_contact_body_vel = None
         self.soft_contact_normal = None
+        self.soft_contact_tids = None
 
         self.rigid_contact_max = 0
         self.rigid_contact_max_limited = 0
@@ -822,6 +830,12 @@ class Model:
         self.rigid_contact_thickness = None
         self.rigid_contact_shape0 = None
         self.rigid_contact_shape1 = None
+        self.rigid_contact_tids = None
+        self.rigid_contact_pairwise_counter = None
+        self.rigid_contact_broad_shape0 = None
+        self.rigid_contact_broad_shape1 = None
+        self.rigid_contact_point_id = None
+        self.rigid_contact_point_limit = None
 
         # toggles ground contact for all shapes
         self.ground = True
@@ -3471,8 +3485,9 @@ class ModelBuilder:
         self.shape_shape_collision.append(has_shape_collision)
 
         (m, c, I) = compute_shape_mass(type, scale, src, density, is_solid, thickness)
+        com_body = wp.transform_point(wp.transform(pos, rot), c)
 
-        self._update_body_mass(body, m, I, pos + c, rot)
+        self._update_body_mass(body, m, I, com_body, rot)
         return shape
 
     # particles
@@ -4010,15 +4025,16 @@ class ModelBuilder:
             )  # opposite 0, opposite 1, vertex 0, vertex 1
 
             # skip constraints open edges
-            if e.f0 != -1 and e.f1 != -1:
-                spring_indices.add((min(e.o0, e.o1), max(e.o0, e.o1)))
+            spring_indices.add((min(e.v0, e.v1), max(e.v0, e.v1)))
+            if e.f0 != -1:
                 spring_indices.add((min(e.o0, e.v0), max(e.o0, e.v0)))
                 spring_indices.add((min(e.o0, e.v1), max(e.o0, e.v1)))
-
+            if e.f1 != -1:
                 spring_indices.add((min(e.o1, e.v0), max(e.o1, e.v0)))
                 spring_indices.add((min(e.o1, e.v1), max(e.o1, e.v1)))
 
-                spring_indices.add((min(e.v0, e.v1), max(e.v0, e.v1)))
+            if e.f0 != -1 and e.f1 != -1:
+                spring_indices.add((min(e.o0, e.o1), max(e.o0, e.o1)))
 
         if add_springs:
             for i, j in spring_indices:
@@ -4129,14 +4145,15 @@ class ModelBuilder:
         if add_springs:
             spring_indices = set()
             for i, j, k, l in edge_indices:
-                spring_indices.add((min(i, j), max(i, j)))
-                spring_indices.add((min(i, k), max(i, k)))
-                spring_indices.add((min(i, l), max(i, l)))
-
-                spring_indices.add((min(j, k), max(j, k)))
-                spring_indices.add((min(j, l), max(j, l)))
-
                 spring_indices.add((min(k, l), max(k, l)))
+                if i != -1:
+                    spring_indices.add((min(i, k), max(i, k)))
+                    spring_indices.add((min(i, l), max(i, l)))
+                if j != -1:
+                    spring_indices.add((min(j, k), max(j, k)))
+                    spring_indices.add((min(j, l), max(j, l)))
+                if i != -1 and j != -1:
+                    spring_indices.add((min(i, j), max(i, j)))
 
             for i, j in spring_indices:
                 self.add_spring(i, j, spring_ke, spring_kd, control=0.0)

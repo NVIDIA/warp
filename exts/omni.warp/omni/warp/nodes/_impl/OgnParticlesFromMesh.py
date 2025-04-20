@@ -55,7 +55,6 @@ def sample_mesh_kernel(
     out_point_count: wp.array(dtype=int),
     out_points: wp.array(dtype=wp.vec3),
 ):
-    tid = wp.tid()
     x, y, z = wp.tid()
 
     # Retrieve the cell's center position.
@@ -91,7 +90,7 @@ def sample_mesh_kernel(
 
     # Compute the spacing jitter value while making sure it's normalized
     # in a range [-1, 1].
-    rng = wp.rand_init(seed, tid)
+    rng = wp.rand_init(seed, point_index)
     jitter = wp.vec3(
         wp.randf(rng) * 2.0 - 1.0,
         wp.randf(rng) * 2.0 - 1.0,

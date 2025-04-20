@@ -202,7 +202,7 @@ def get_full_arg_spec(func: Callable) -> inspect.FullArgSpec:
     return spec._replace(annotations=eval_annotations(spec.annotations, func))
 
 
-def struct_instance_repr_recursive(inst: StructInstance, depth: int) -> str:
+def struct_instance_repr_recursive(inst: StructInstance, depth: int, use_repr: bool) -> str:
     indent = "\t"
 
     # handle empty structs
@@ -216,9 +216,12 @@ def struct_instance_repr_recursive(inst: StructInstance, depth: int) -> str:
         field_value = getattr(inst, field_name, None)
 
         if isinstance(field_value, StructInstance):
-            field_value = struct_instance_repr_recursive(field_value, depth + 1)
+            field_value = struct_instance_repr_recursive(field_value, depth + 1, use_repr)
 
-        lines.append(f"{indent * (depth + 1)}{field_name}={field_value},")
+        if use_repr:
+            lines.append(f"{indent * (depth + 1)}{field_name}={field_value!r},")
+        else:
+            lines.append(f"{indent * (depth + 1)}{field_name}={field_value!s},")
 
     lines.append(f"{indent * depth})")
     return "\n".join(lines)
@@ -341,7 +344,10 @@ class StructInstance:
         return self._ctype
 
     def __repr__(self):
-        return struct_instance_repr_recursive(self, 0)
+        return struct_instance_repr_recursive(self, 0, use_repr=True)
+
+    def __str__(self):
+        return struct_instance_repr_recursive(self, 0, use_repr=False)
 
     def to(self, device):
         """Copies this struct with all array members moved onto the given device.
@@ -1492,6 +1498,8 @@ class Adjoint:
 
     def add_return(adj, var):
         if var is None or len(var) == 0:
+            # NOTE: If this kernel gets compiled for a CUDA device, then we need
+            # to convert the return; into a continue; in codegen_func_forward()
             adj.add_forward("return;", f"goto label{adj.label_count};")
         elif len(var) == 1:
             adj.add_forward(f"return {var[0].emit()};", f"goto label{adj.label_count};")
@@ -3549,7 +3557,11 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
     lines += ["// forward\n"]
 
     for f in adj.blocks[0].body_forward:
-        lines += [f + "\n"]
+        if func_type == "kernel" and device == "cuda" and f.lstrip().startswith("return;"):
+            # Use of grid-stride loops in CUDA kernels requires that we convert return; to continue;
+            lines += [f.replace("return;", "continue;") + "\n"]
+        else:
+            lines += [f + "\n"]
 
     return "".join(l.lstrip() if l.lstrip().startswith("#line") else indent_block + l for l in lines)
 

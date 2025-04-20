@@ -13,11 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import ctypes
 import sys
 import time
 from collections import defaultdict
-from typing import List, Optional, Tuple, Union
+from typing import List, Union
 
 import numpy as np
 
@@ -1500,16 +1502,16 @@ class OpenGLRenderer:
 
     def setup_tiled_rendering(
         self,
-        instances: List[List[int]],
+        instances: list[list[int]],
         rescale_window: bool = False,
-        tile_width: Optional[int] = None,
-        tile_height: Optional[int] = None,
-        tile_ncols: Optional[int] = None,
-        tile_nrows: Optional[int] = None,
-        tile_positions: Optional[List[Tuple[int]]] = None,
-        tile_sizes: Optional[List[Tuple[int]]] = None,
-        projection_matrices: Optional[List[Mat44]] = None,
-        view_matrices: Optional[List[Mat44]] = None,
+        tile_width: int | None = None,
+        tile_height: int | None = None,
+        tile_ncols: int | None = None,
+        tile_nrows: int | None = None,
+        tile_positions: list[tuple[int]] | None = None,
+        tile_sizes: list[tuple[int]] | None = None,
+        projection_matrices: list[Mat44] | None = None,
+        view_matrices: list[Mat44] | None = None,
     ):
         """
         Set up tiled rendering where the render buffer is split into multiple tiles that can visualize
@@ -1602,11 +1604,11 @@ class OpenGLRenderer:
     def update_tile(
         self,
         tile_id,
-        instances: Optional[List[int]] = None,
-        projection_matrix: Optional[Mat44] = None,
-        view_matrix: Optional[Mat44] = None,
-        tile_size: Optional[Tuple[int]] = None,
-        tile_position: Optional[Tuple[int]] = None,
+        instances: list[int] | None = None,
+        projection_matrix: Mat44 | None = None,
+        view_matrix: Mat44 | None = None,
+        tile_size: tuple[int] | None = None,
+        tile_position: tuple[int] | None = None,
     ):
         """
         Update the shape instances, projection matrix, view matrix, tile size, or tile position
@@ -1806,7 +1808,7 @@ class OpenGLRenderer:
 
         return np.array((scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, 1), dtype=np.float32)
 
-    def update_model_matrix(self, model_matrix: Optional[Mat44] = None):
+    def update_model_matrix(self, model_matrix: Mat44 | None = None):
         gl = OpenGLRenderer.gl
 
         self._switch_context()
@@ -3092,7 +3094,7 @@ Instances: {len(self._instances)}"""
         parent_body: str = None,
         is_template: bool = False,
         up_axis: int = 1,
-        color: Tuple[float, float, float] = None,
+        color: tuple[float, float, float] = None,
     ):
         """Add a arrow for visualization
 

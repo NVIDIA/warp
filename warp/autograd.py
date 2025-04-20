@@ -52,7 +52,12 @@ def gradcheck(
 ) -> bool:
     """
     Checks whether the autodiff gradient of a Warp kernel matches finite differences.
-    Fails if the relative or absolute errors between the autodiff and finite difference gradients exceed the specified tolerance, or if the autodiff gradients contain NaN values.
+
+    Given the autodiff (:math:`\\nabla_\\text{AD}`) and finite difference gradients (:math:`\\nabla_\\text{FD}`), the check succeeds if the autodiff gradients contain no NaN values and the following condition holds:
+
+    .. math::
+
+        |\\nabla_\\text{AD} - \\nabla_\\text{FD}| \\leq atol + rtol \\cdot |\\nabla_\\text{FD}|.
 
     The kernel function and its adjoint version are launched with the given inputs and outputs, as well as the provided
     ``dim``, ``max_blocks``, and ``block_dim`` arguments (see :func:`warp.launch` for more details).
@@ -250,7 +255,12 @@ def gradcheck_tape(
 ) -> bool:
     """
     Checks whether the autodiff gradients for kernels recorded on the Warp tape match finite differences.
-    Fails if the relative or absolute errors between the autodiff and finite difference gradients exceed the specified tolerance, or if the autodiff gradients contain NaN values.
+
+    Given the autodiff (:math:`\\nabla_\\text{AD}`) and finite difference gradients (:math:`\\nabla_\\text{FD}`), the check succeeds if the autodiff gradients contain no NaN values and the following condition holds:
+
+    .. math::
+
+        |\\nabla_\\text{AD} - \\nabla_\\text{FD}| \\leq atol + rtol \\cdot |\\nabla_\\text{FD}|.
 
     Note:
         Only Warp kernels recorded on the tape are checked but not arbitrary functions that have been recorded, e.g. via :meth:`Tape.record_func`.

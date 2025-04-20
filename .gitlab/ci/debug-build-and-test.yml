@@ -45,7 +45,7 @@ stages:
   stage: build
   image: quay.io/pypa/manylinux_2_34_aarch64:latest
   extends:
-    - .runner-build-linux-aarch64
+    - .omni_devplat_arm_compute
     - .save_warp_bin_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -125,7 +125,7 @@ mac-x86_64 build:
   image: ubuntu:22.04
   needs: [linux-aarch64 build]
   extends:
-    - .runner-test-linux-aarch64  # TODO: Change to .omni_devplat_arm_docker_gpu
+    - .runner-test-linux-aarch64 # TODO: Change to .omni_devplat_arm_docker_gpu
     - .save_test_report_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -213,7 +213,7 @@ create pypi wheels:
     - windows-x86_64 build
     - mac-x86_64 build
   extends:
-    - .runner-utility-linux-x86_64
+    - .omni_nvks_micro_runner
   before_script:
     # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
     - mkdir -p warp/bin/windows-x86_64

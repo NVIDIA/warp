@@ -16,9 +16,9 @@
     }
     defaultPrim = "World"
     endTimeCode = 36000
+    framesPerSecond = 60
     metersPerUnit = 0.01
     startTimeCode = 0
-    timeCodesPerSecond = 60
     upAxis = "Y"
 )
 
