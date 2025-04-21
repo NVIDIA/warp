@@ -42,6 +42,8 @@
 - Fix the jitter for the `OgnParticlesFromMesh` node not being computed correctly.
 - Fix documentation of `atol` and `rtol` arguments to `wp.autograd.gradcheck()` and `wp.autograd.gradcheck_tape()`
   ([GH-508](https://github.com/NVIDIA/warp/issues/508)).
+- Fix computation of body center of mass to account for shape orientation ([GH-648](https://github.com/NVIDIA/warp/issues/648)).
+- Fix assembly of rigid body inertia in `ModelBuilder.collapse_fixed_joints()` ([GH-631](https://github.com/NVIDIA/warp/issues/631)).
 
 ## [1.7.0] - 2025-03-30
 
