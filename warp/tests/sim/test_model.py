@@ -150,7 +150,9 @@ class TestModel(unittest.TestCase):
         assert builder.joint_count == 8
         assert builder.body_count == 8
         assert builder.articulation_count == 3
-        add_three_cubes(builder, parent_body=b4)
+        lb = add_three_cubes(builder, parent_body=b4)
+        # add shape with no mass (e.g. visual only shape)
+        builder.add_shape_sphere(lb, density=0.0)
 
         builder.collapse_fixed_joints()
 
@@ -158,8 +160,8 @@ class TestModel(unittest.TestCase):
         assert builder.articulation_count == 2
         assert builder.articulation_start == [0, 1]
         assert builder.joint_type == [wp.sim.JOINT_REVOLUTE, wp.sim.JOINT_FREE]
-        assert builder.shape_count == 11
-        assert builder.shape_body == [-1, -1, -1, -1, -1, -1, 0, 1, 1, 1, 1]
+        assert builder.shape_count == 12
+        assert builder.shape_body == [-1, -1, -1, -1, -1, -1, 0, 1, 1, 1, 1, 1]
         assert builder.body_count == 2
         assert builder.body_com[0] == wp.vec3(1.0, 2.0, 3.0)
         assert builder.body_com[1] == wp.vec3(0.25, 0.25, 0.25)
