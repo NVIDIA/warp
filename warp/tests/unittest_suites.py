@@ -356,7 +356,6 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_noise import TestNoise
     from warp.tests.test_operators import TestOperators
     from warp.tests.test_rand import TestRand
-    from warp.tests.test_reload import TestReload
     from warp.tests.test_rounding import TestRounding
     from warp.tests.test_runlength_encode import TestRunlengthEncode
     from warp.tests.test_scalar_ops import TestScalarOps
@@ -406,7 +405,6 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestPeer,
         TestPinned,
         TestRand,
-        TestReload,
         TestRounding,
         TestRunlengthEncode,
         TestScalarOps,
