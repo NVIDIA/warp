@@ -1398,7 +1398,13 @@ class ModelBuilder:
     def add_articulation(self):
         self.articulation_start.append(self.joint_count)
 
-    def add_builder(self, builder, xform=None, update_num_env_count=True, separate_collision_group=True):
+    def add_builder(
+        self,
+        builder: ModelBuilder,
+        xform: Transform | None = None,
+        update_num_env_count: bool = True,
+        separate_collision_group: bool = True,
+    ):
         """Copies the data from `builder`, another `ModelBuilder` to this `ModelBuilder`.
 
         Args:
@@ -1447,7 +1453,7 @@ class ModelBuilder:
                 self.shape_body.append(-1)
                 # apply offset transform to root bodies
                 if xform is not None:
-                    self.shape_transform.append(xform * builder.shape_transform[s])
+                    self.shape_transform.append(xform * wp.transform(*builder.shape_transform[s]))
                 else:
                     self.shape_transform.append(builder.shape_transform[s])
 
@@ -1466,7 +1472,7 @@ class ModelBuilder:
                         joint_q[qi : qi + 3] = tf.p
                         joint_q[qi + 3 : qi + 7] = tf.q
                     elif builder.joint_parent[i] == -1:
-                        joint_X_p[i] = xform * joint_X_p[i]
+                        joint_X_p[i] = xform * wp.transform(*joint_X_p[i])
             self.joint_X_p.extend(joint_X_p)
             self.joint_q.extend(joint_q)
 
@@ -1482,7 +1488,7 @@ class ModelBuilder:
 
         for i in range(builder.body_count):
             if xform is not None:
-                self.body_q.append(xform * builder.body_q[i])
+                self.body_q.append(xform * wp.transform(*builder.body_q[i]))
             else:
                 self.body_q.append(builder.body_q[i])
 
@@ -2598,22 +2604,24 @@ class ModelBuilder:
                         )
                     if last_dynamic_body > -1:
                         self.shape_body[shape] = body_data[last_dynamic_body]["id"]
-                        source_m = body_data[last_dynamic_body]["mass"]
-                        source_com = body_data[last_dynamic_body]["com"]
-                        # add inertia to last_dynamic_body
-                        m = body_data[child_body]["mass"]
-                        com = wp.transform_point(incoming_xform, body_data[child_body]["com"])
-                        inertia = body_data[child_body]["inertia"]
-                        body_data[last_dynamic_body]["inertia"] += wp.sim.transform_inertia(
-                            m, inertia, incoming_xform.p, incoming_xform.q
-                        )
-                        body_data[last_dynamic_body]["mass"] += m
-                        body_data[last_dynamic_body]["com"] = (m * com + source_m * source_com) / (m + source_m)
                         body_data[last_dynamic_body]["shapes"].append(shape)
-                        # indicate to recompute inverse mass, inertia for this body
-                        body_data[last_dynamic_body]["inv_mass"] = None
                     else:
                         self.shape_body[shape] = -1
+
+                if last_dynamic_body > -1:
+                    source_m = body_data[last_dynamic_body]["mass"]
+                    source_com = body_data[last_dynamic_body]["com"]
+                    # add inertia to last_dynamic_body
+                    m = body_data[child_body]["mass"]
+                    com = wp.transform_point(incoming_xform, body_data[child_body]["com"])
+                    inertia = body_data[child_body]["inertia"]
+                    body_data[last_dynamic_body]["inertia"] += wp.sim.transform_inertia(
+                        m, inertia, incoming_xform.p, incoming_xform.q
+                    )
+                    body_data[last_dynamic_body]["mass"] += m
+                    body_data[last_dynamic_body]["com"] = (m * com + source_m * source_com) / (m + source_m)
+                    # indicate to recompute inverse mass, inertia for this body
+                    body_data[last_dynamic_body]["inv_mass"] = None
             else:
                 joint["parent_xform"] = incoming_xform * joint["parent_xform"]
                 joint["parent"] = last_dynamic_body
@@ -3487,10 +3495,10 @@ class ModelBuilder:
         self.shape_ground_collision.append(has_ground_collision)
         self.shape_shape_collision.append(has_shape_collision)
 
-        (m, c, I) = compute_shape_mass(type, scale, src, density, is_solid, thickness)
-        com_body = wp.transform_point(wp.transform(pos, rot), c)
-
-        self._update_body_mass(body, m, I, com_body, rot)
+        if density > 0.0:
+            (m, c, I) = compute_shape_mass(type, scale, src, density, is_solid, thickness)
+            com_body = wp.transform_point(wp.transform(pos, rot), c)
+            self._update_body_mass(body, m, I, com_body, rot)
         return shape
 
     # particles
