@@ -2341,6 +2341,14 @@ Instances: {len(self._instances)}"""
         colors1 = np.array(colors1, dtype=np.float32)
         colors2 = np.array(colors2, dtype=np.float32)
 
+        # create color buffers
+        if self._instance_color1_buffer is None:
+            self._instance_color1_buffer = gl.GLuint()
+            gl.glGenBuffers(1, self._instance_color1_buffer)
+        if self._instance_color2_buffer is None:
+            self._instance_color2_buffer = gl.GLuint()
+            gl.glGenBuffers(1, self._instance_color2_buffer)
+
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_color1_buffer)
         gl.glBufferData(gl.GL_ARRAY_BUFFER, colors1.nbytes, colors1.ctypes.data, gl.GL_STATIC_DRAW)
 
@@ -2364,14 +2372,10 @@ Instances: {len(self._instances)}"""
         )
 
         gl.glUseProgram(self._shape_shader.id)
-        if self._instance_transform_gl_buffer is not None:
-            gl.glDeleteBuffers(1, self._instance_transform_gl_buffer)
-            gl.glDeleteBuffers(1, self._instance_color1_buffer)
-            gl.glDeleteBuffers(1, self._instance_color2_buffer)
-
-        # create instance buffer and bind it as an instanced array
-        self._instance_transform_gl_buffer = gl.GLuint()
-        gl.glGenBuffers(1, self._instance_transform_gl_buffer)
+        if self._instance_transform_gl_buffer is None:
+            # create instance buffer and bind it as an instanced array
+            self._instance_transform_gl_buffer = gl.GLuint()
+            gl.glGenBuffers(1, self._instance_transform_gl_buffer)
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_transform_gl_buffer)
 
         transforms = np.tile(np.diag(np.ones(4, dtype=np.float32)), (len(self._instances), 1, 1))
@@ -2381,12 +2385,6 @@ Instances: {len(self._instances)}"""
         self._instance_transform_cuda_buffer = wp.RegisteredGLBuffer(
             int(self._instance_transform_gl_buffer.value), self._device
         )
-
-        # create color buffers
-        self._instance_color1_buffer = gl.GLuint()
-        gl.glGenBuffers(1, self._instance_color1_buffer)
-        self._instance_color2_buffer = gl.GLuint()
-        gl.glGenBuffers(1, self._instance_color2_buffer)
 
         self.update_instance_colors()
 
@@ -2442,7 +2440,7 @@ Instances: {len(self._instances)}"""
         gl.glBindVertexArray(0)
 
     def update_shape_instance(self, name, pos=None, rot=None, color1=None, color2=None, visible=None):
-        """Update the instance transform of the shape
+        """Update the instance properties of the shape
 
         Args:
             name: The name of the shape
