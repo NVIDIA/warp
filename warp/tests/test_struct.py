@@ -221,6 +221,11 @@ def test_nested_struct(test, device):
     foo.bar.y = 1.23
     foo.x = 123
 
+    # verify that struct attributes are instances of their original class
+    assert isinstance(foo, Foo.cls)
+    assert isinstance(foo.bar, Bar.cls)
+    assert isinstance(foo.bar.baz, Baz.cls)
+
     wp.launch(kernel_nested_struct, dim=dim, inputs=[foo], device=device)
 
     assert_array_equal(
