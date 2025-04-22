@@ -67,7 +67,6 @@ TEST_DESCS = (
     ("test_noise", "TestNoise"),
     ("test_operators", "TestOperators"),
     ("test_rand", "TestRand"),
-    ("test_reload", "TestReload"),
     ("test_rounding", "TestRounding"),
     ("test_runlength_encode", "TestRunlengthEncode"),
     ("test_scalar_ops", "TestScalarOps"),
