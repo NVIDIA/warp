@@ -63,6 +63,7 @@
 - Fix computation of body center of mass to account for shape orientation ([GH-648](https://github.com/NVIDIA/warp/issues/648)).
 - Fix assembly of rigid body inertia in `ModelBuilder.collapse_fixed_joints()` ([GH-631](https://github.com/NVIDIA/warp/issues/631)).
 - Fix preserving base class of nested struct attributes ([GH-574](https://github.com/NVIDIA/warp/issues/574)).
+- Fix `OpenGLRenderer.update_shape_instance()` not having color buffers created for the shape instances.
 
 ## [1.7.0] - 2025-03-30
 
