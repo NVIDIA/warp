@@ -237,7 +237,7 @@ class StructInstance:
         # create Python attributes for each of the struct's variables
         for field, var in cls.vars.items():
             if isinstance(var.type, warp.codegen.Struct):
-                self.__dict__[field] = StructInstance(var.type, getattr(self._ctype, field))
+                self.__dict__[field] = var.type.instance_type(ctype=getattr(self._ctype, field))
             elif isinstance(var.type, warp.types.array):
                 self.__dict__[field] = None
             else:
@@ -486,31 +486,32 @@ class Struct:
         if module:
             module.register_struct(self)
 
-    def __call__(self):
-        """
-        This function returns s = StructInstance(self)
-        s uses self.cls as template.
-        To enable autocomplete on s, we inherit from self.cls.
-        For example,
+        # Define class for instances of this struct
+        # To enable autocomplete on s, we inherit from self.cls.
+        # For example,
 
-        @wp.struct
-        class A:
-            # annotations
-            ...
+        # @wp.struct
+        # class A:
+        #     # annotations
+        #     ...
 
-        The type annotations are inherited in A(), allowing autocomplete in kernels
-        """
-        # return StructInstance(self)
-
+        # The type annotations are inherited in A(), allowing autocomplete in kernels
         class NewStructInstance(self.cls, StructInstance):
-            def __init__(inst):
-                StructInstance.__init__(inst, self, None)
+            def __init__(inst, ctype=None):
+                StructInstance.__init__(inst, self, ctype)
 
         # make sure warp.types.get_type_code works with this StructInstance
         NewStructInstance.cls = self.cls
         NewStructInstance.native_name = self.native_name
 
-        return NewStructInstance()
+        self.instance_type = NewStructInstance
+
+    def __call__(self):
+        """
+        This function returns s = StructInstance(self)
+        s uses self.cls as template.
+        """
+        return self.instance_type()
 
     def initializer(self):
         return self.default_constructor
