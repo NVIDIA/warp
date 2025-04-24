@@ -2728,6 +2728,17 @@ class Adjoint:
                     make_new_assign_statement()
                     return
 
+            elif is_tile(target.type):
+                if isinstance(node.op, ast.Add):
+                    adj.add_builtin_call("tile_add_inplace", [target, *indices, rhs])
+                elif isinstance(node.op, ast.Sub):
+                    adj.add_builtin_call("tile_sub_inplace", [target, *indices, rhs])
+                else:
+                    if warp.config.verbose:
+                        print(f"Warning: in-place op {node.op} is not differentiable")
+                    make_new_assign_statement()
+                    return
+
             else:
                 raise WarpCodegenError("Can only subscript in-place assign array, vector, quaternion, and matrix types")
 

@@ -2747,7 +2747,6 @@ add_builtin(
     export=False,
 )
 
-
 add_builtin(
     "tile_extract",
     input_types={"a": Tile(dtype=Any, shape=Any), "i": int, "j": int},
@@ -2806,6 +2805,86 @@ add_builtin(
     :param k: Coordinate of element on the third dimension
     :param l: Coordinate of element on the fourth dimension
     :returns: The value of the element at the specified tile location, with the same data type as the input tile""",
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+
+
+def tile_inplace_value_func(arg_types, arg_values):
+    if not types_equal(arg_types["a"].dtype, arg_types["value"]):
+        raise TypeError(
+            f"'value' must have the same dtype as target tile for inplace ops, got {arg_types['a'].dtype} and {arg_types['value']}"
+        )
+
+    # force the input tile to shared memory
+    # as inplace addition/subtraction relies on shared memory atomics
+    arg_types["a"].storage = "shared"
+
+    return None
+
+
+add_builtin(
+    "tile_add_inplace",
+    input_types={"a": Tile(dtype=Any, shape=Any), "i": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+add_builtin(
+    "tile_add_inplace",
+    input_types={"a": Tile(dtype=Any, shape=Any), "i": int, "j": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+add_builtin(
+    "tile_add_inplace",
+    input_types={"a": Tile(dtype=Any, shape=Any), "i": int, "j": int, "k": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+add_builtin(
+    "tile_add_inplace",
+    input_types={"a": Tile(dtype=Any, shape=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+
+add_builtin(
+    "tile_sub_inplace",
+    input_types={"a": Tile(dtype=Any, shape=Any), "i": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+add_builtin(
+    "tile_sub_inplace",
+    input_types={"a": Tile(dtype=Any, shape=Any), "i": int, "j": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+add_builtin(
+    "tile_sub_inplace",
+    input_types={"a": Tile(dtype=Any, shape=Any), "i": int, "j": int, "k": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+add_builtin(
+    "tile_sub_inplace",
+    input_types={"a": Tile(dtype=Any, shape=Any), "i": int, "j": int, "k": int, "l": int, "value": Any},
+    value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
     export=False,
