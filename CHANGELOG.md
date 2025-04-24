@@ -23,6 +23,8 @@
   the points as USD spheres using a point instancer, or as simple USD points otherwise.
 - Support tile inplace add/subtract operations
   ([GH-518](https://github.com/NVIDIA/warp/issues/518)).
+- Add support for in-place tile component addition and subtraction
+  ([GH-659](https://github.com/NVIDIA/warp/issues/659)).
 
 ### Changed
 

@@ -989,6 +989,37 @@ struct tile_shared_t
         WP_TILE_SYNC();       
     }
 
+    // add scalar value onto a single tile element
+    inline CUDA_CALLABLE void add_inplace(const typename Layout::Coord& c, const Type& x)
+    {
+        // since multiple threads may add to the same element
+        // we need to accumulate using atomic operations
+        wp::atomic_add(&data(c), x);
+
+        WP_TILE_SYNC();
+    }
+
+    // backward of inplace scalar addition
+    inline CUDA_CALLABLE void adj_add_inplace(const typename Layout::Coord& c, Type& adj_x)
+    {
+        adj_x += grad(c);
+    }
+
+    // subtract scalar value from a single tile element
+    inline CUDA_CALLABLE void sub_inplace(const typename Layout::Coord& c, const Type& x)
+    {
+        // since multiple threads may add to the same element
+        // we need to accumulate using atomic operations
+        wp::atomic_add(&data(c), -x);
+
+        WP_TILE_SYNC();
+    }
+
+    // backward of inplace scalar subtraction
+    inline CUDA_CALLABLE void adj_sub_inplace(const typename Layout::Coord& c, Type& adj_x)
+    {
+        adj_x -= grad(c);
+    }
 
     // copy register tile to shared
     template <typename Tile>
@@ -2076,7 +2107,6 @@ typename Tile::Type tile_extract(Tile& t, int i, int j, int k) { return t.extrac
 template<typename Tile>
 typename Tile::Type tile_extract(Tile& t, int i, int j, int k, int l) { return t.extract(tile_coord(i,j,k,l)); }
 
-
 template<typename Tile, typename AdjTile>
 void adj_tile_extract(Tile& t, int i, AdjTile& adj_t, int adj_i, typename Tile::Type adj_ret) { adj_t.adj_extract(tile_coord(i), adj_ret); }
 template<typename Tile, typename AdjTile>
@@ -2086,6 +2116,42 @@ void adj_tile_extract(Tile& t, int i, int j, int k, AdjTile& adj_t, int adj_i, i
 template<typename Tile, typename AdjTile>
 void adj_tile_extract(Tile& t, int i, int j, int k, int l, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, int adj_l, typename Tile::Type adj_ret) { adj_t.adj_extract(tile_coord(i, j, k, l), adj_ret); }
 
+
+template<typename Tile>
+void tile_add_inplace(Tile& t, int i, typename Tile::Type value) { t.add_inplace(tile_coord(i), value); }
+template<typename Tile>
+void tile_add_inplace(Tile& t, int i, int j, typename Tile::Type value) { t.add_inplace(tile_coord(i,j), value); }
+template<typename Tile>
+void tile_add_inplace(Tile& t, int i, int j, int k, typename Tile::Type value) { t.add_inplace(tile_coord(i,j,k), value); }
+template<typename Tile>
+void tile_add_inplace(Tile& t, int i, int j, int k, int l, typename Tile::Type value) { t.add_inplace(tile_coord(i,j,k,l), value); }
+
+template<typename Tile>
+void tile_sub_inplace(Tile& t, int i, typename Tile::Type value) { t.sub_inplace(tile_coord(i), value); }
+template<typename Tile>
+void tile_sub_inplace(Tile& t, int i, int j, typename Tile::Type value) { t.sub_inplace(tile_coord(i,j), value); }
+template<typename Tile>
+void tile_sub_inplace(Tile& t, int i, int j, int k, typename Tile::Type value) { t.sub_inplace(tile_coord(i,j,k), value); }
+template<typename Tile>
+void tile_sub_inplace(Tile& t, int i, int j, int k, int l, typename Tile::Type value) { t.sub_inplace(tile_coord(i,j,k,l), value); }
+
+template<typename Tile, typename AdjTile>
+void adj_tile_add_inplace(Tile& t, int i, typename Tile::Type value, AdjTile& adj_t, int adj_i, typename Tile::Type& adj_value) { adj_t.adj_add_inplace(tile_coord(i), adj_value); }
+template<typename Tile, typename AdjTile>
+void adj_tile_add_inplace(Tile& t, int i, int j, typename Tile::Type value, AdjTile& adj_t, int adj_i, int adj_j, typename Tile::Type& adj_value) { adj_t.adj_add_inplace(tile_coord(i, j), adj_value); }
+template<typename Tile, typename AdjTile>
+void adj_tile_add_inplace(Tile& t, int i, int j, int k, typename Tile::Type value, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, typename Tile::Type& adj_value) { adj_t.adj_add_inplace(tile_coord(i, j, k), adj_value); }
+template<typename Tile, typename AdjTile>
+void adj_tile_add_inplace(Tile& t, int i, int j, int k, int l, typename Tile::Type value, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, int adj_l, typename Tile::Type& adj_value) { adj_t.adj_add_inplace(tile_coord(i, j, k, l), adj_value); }
+
+template<typename Tile, typename AdjTile>
+void adj_tile_sub_inplace(Tile& t, int i, typename Tile::Type value, AdjTile& adj_t, int adj_i, typename Tile::Type& adj_value) { adj_t.adj_sub_inplace(tile_coord(i), adj_value); }
+template<typename Tile, typename AdjTile>
+void adj_tile_sub_inplace(Tile& t, int i, int j, typename Tile::Type value, AdjTile& adj_t, int adj_i, int adj_j, typename Tile::Type& adj_value) { adj_t.adj_sub_inplace(tile_coord(i, j), adj_value); }
+template<typename Tile, typename AdjTile>
+void adj_tile_sub_inplace(Tile& t, int i, int j, int k, typename Tile::Type value, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, typename Tile::Type& adj_value) { adj_t.adj_sub_inplace(tile_coord(i, j, k), adj_value); }
+template<typename Tile, typename AdjTile>
+void adj_tile_sub_inplace(Tile& t, int i, int j, int k, int l, typename Tile::Type value, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, int adj_l, typename Tile::Type& adj_value) { adj_t.adj_sub_inplace(tile_coord(i, j, k, l), adj_value); }
 
 namespace partitioned_gemm
 {
