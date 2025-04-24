@@ -703,6 +703,54 @@ def test_tile_broadcast_grad(test, device):
 
 
 @wp.kernel
+def test_tile_squeeze_kernel(x: wp.array3d(dtype=float), y: wp.array(dtype=float)):
+    a = wp.tile_load(x, shape=(1, TILE_M, 1), offset=(0, 0, 0))
+    b = wp.tile_squeeze(a, axis=(2,))
+    c = wp.tile_squeeze(b)
+
+    wp.tile_store(y, c, offset=(0,))
+
+
+def test_tile_squeeze(test, device):
+    x = wp.ones((1, TILE_M, 1), dtype=float, device=device, requires_grad=True)
+    y = wp.zeros((TILE_M,), dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch_tiled(test_tile_squeeze_kernel, dim=1, inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.ones((TILE_M,), dtype=np.float32))
+    assert_np_equal(x.grad.numpy(), np.ones((1, TILE_M, 1), dtype=np.float32))
+
+
+@wp.kernel
+def test_tile_reshape_kernel(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+    a = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(0, 0))
+    b = wp.tile_reshape(a, shape=(wp.static(TILE_M * TILE_N), 1))
+    c = wp.tile_reshape(b, shape=(-1, 1))
+
+    wp.tile_store(y, c, offset=(0, 0))
+
+
+def test_tile_reshape(test, device):
+    x = wp.ones((TILE_M, TILE_N), dtype=float, device=device, requires_grad=True)
+    y = wp.zeros((TILE_M * TILE_N, 1), dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch_tiled(test_tile_reshape_kernel, dim=1, inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.ones((TILE_M * TILE_N, 1), dtype=np.float32))
+    assert_np_equal(x.grad.numpy(), np.ones((TILE_M, TILE_N), dtype=np.float32))
+
+
+@wp.kernel
 def tile_len_kernel(
     a: wp.array(dtype=float, ndim=2),
     out: wp.array(dtype=int),
@@ -877,6 +925,8 @@ add_function_test(TestTile, "test_tile_broadcast_add_2d", test_tile_broadcast_ad
 add_function_test(TestTile, "test_tile_broadcast_add_3d", test_tile_broadcast_add_3d, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_add_4d", test_tile_broadcast_add_4d, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_grad", test_tile_broadcast_grad, devices=devices)
+add_function_test(TestTile, "test_tile_squeeze", test_tile_squeeze, devices=devices)
+add_function_test(TestTile, "test_tile_reshape", test_tile_reshape, devices=devices)
 add_function_test(TestTile, "test_tile_len", test_tile_len, devices=devices)
 add_function_test(TestTile, "test_tile_print", test_tile_print, devices=devices, check_output=False)
 add_function_test(TestTile, "test_tile_inplace", test_tile_inplace, devices=devices)

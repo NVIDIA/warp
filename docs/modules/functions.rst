@@ -965,6 +965,24 @@ Tile Primitives
     :returns: A tile with dimensions given by the specified shape or the remaining source tile dimensions [1]_
 
 
+.. py:function:: tile_squeeze(t: Tile, axis: Tuple[int, ...]) -> Tile
+
+    Return a squeezed view of a tile with the same data.
+
+    :param t: Input tile to squeeze
+    :param axis: A subset of the entries of length one in the shape (optional)
+    :returns: The input tile but with all or a subset of the dimensions of length one removed.
+
+
+.. py:function:: tile_reshape(t: Tile, shape: Tuple[int, ...]) -> Tile
+
+    Return a reshaped view of a tile with the same data.
+
+    :param t: Input tile to reshape
+    :param shape: New shape for the tile
+    :returns: A tile containing the same data as the input tile, but arranged in a new shape.
+
+
 .. py:function:: tile_assign(dst: Tile, src: Tile, offset: Tuple[int, ...]) -> None
 
     Assign a tile to a subrange of a destination tile.
