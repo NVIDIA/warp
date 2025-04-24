@@ -21,6 +21,8 @@
 - Add `transform_compose` and `transform_decompose` math functions for converting between transforms and mat44 with 3D scale information ([GH-576](https://github.com/NVIDIA/warp/issues/576)).
 - Add a parameter `as_spheres` to `UsdRenderer.render_points()` in order to choose whether to render
   the points as USD spheres using a point instancer, or as simple USD points otherwise.
+- Add `wp.tile_squeeze()` ([GH-662](https://github.com/NVIDIA/warp/issues/662)).
+- Add `wp.tile_reshape()` ([GH-663](https://github.com/NVIDIA/warp/issues/663)).
 - Support tile inplace add/subtract operations
   ([GH-518](https://github.com/NVIDIA/warp/issues/518)).
 

@@ -2503,6 +2503,150 @@ add_builtin(
 )
 
 
+def tile_squeeze_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return Tile(dtype=Any, shape=Any)
+
+    tile = arg_types["t"]
+    shape = tile.shape
+    strides = tile.strides
+    ndim = len(shape)
+
+    if "axis" in arg_values:
+        axis = arg_values["axis"]
+
+        if not isinstance(axis, tuple):
+            # promote to tuple
+            axis = (axis,)
+
+        # promote negative indices to their positive equivalents
+        axis = tuple([a if a >= 0 else a + ndim for a in axis])
+
+        # validate that specified axes are size 1
+        for a in axis:
+            if shape[a] != 1:
+                raise ValueError(
+                    f"Cannot select an axis to squeeze out which has size not equal to one, axis={a}, size={shape[a]}"
+                )
+
+        # build new shape by skipping specified axes (if size is 1)
+        new_shape = tuple(dim for i, dim in enumerate(shape) if i not in axis)
+        new_strides = tuple(stride for i, stride in enumerate(strides) if i not in axis)
+
+    else:
+        # no axis specified: remove all singleton dimensions
+        new_shape = tuple(dim for dim in shape if dim != 1)
+        new_strides = tuple(stride for i, stride in enumerate(strides) if shape[i] != 1)
+
+    # force source tile to shared memory
+    tile.storage = "shared"
+
+    output = Tile(
+        dtype=tile.dtype, shape=new_shape, strides=new_strides, layout=tile.layout, storage="shared", owner=False
+    )
+    return output
+
+
+def tile_squeeze_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    tile = arg_values["t"]
+
+    return ((tile,), (return_type,))
+
+
+add_builtin(
+    "tile_squeeze",
+    input_types={"t": Tile(dtype=Any, shape=Any), "axis": Tuple[int, ...]},
+    defaults={"axis": None},
+    value_func=tile_squeeze_value_func,
+    dispatch_func=tile_squeeze_dispatch_func,
+    variadic=False,
+    doc="""Return a squeezed view of a tile with the same data.
+
+    :param t: Input tile to squeeze
+    :param axis: A subset of the entries of length one in the shape (optional)
+    :returns: The input tile but with all or a subset of the dimensions of length one removed.""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_reshape_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return Tile(dtype=Any, shape=Any)
+
+    tile = arg_types["t"]
+
+    # calculate total size of tile
+    size = 1
+    for s in tile.shape:
+        size *= int(s)
+
+    shape = tile_unpack_shape(arg_values)
+
+    # check for -1 dimension and reformat
+    if -1 in shape:
+        idx = size
+        denom = 1
+        minus_one_count = 0
+        for i, d in enumerate(shape):
+            if d == -1:
+                idx = i
+                minus_one_count += 1
+            else:
+                denom *= d
+        if minus_one_count > 1:
+            raise RuntimeError("Cannot infer shape if more than one index is -1.")
+        new_shape = list(shape)
+        new_shape[idx] = int(size / denom)
+        shape = tuple(new_shape)
+
+    # calculate total size of new shape
+    new_size = 1
+    for s in shape:
+        new_size *= int(s)
+
+    if new_size != size:
+        raise ValueError(f"New shape {shape} has total size {new_size} which does not match original size {size}")
+
+    # compute new strides matching shape
+    strides = []
+    stride = 1
+    for s in reversed(shape):
+        strides.append(stride)
+        stride *= s
+    strides = tuple(reversed(strides))
+
+    # force source tile to shared memory
+    tile.storage = "shared"
+
+    output = Tile(dtype=tile.dtype, shape=shape, strides=strides, layout=tile.layout, storage="shared", owner=False)
+    return output
+
+
+def tile_reshape_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    tile = arg_values["t"]
+
+    return ((tile,), (return_type,))
+
+
+add_builtin(
+    "tile_reshape",
+    input_types={"t": Tile(dtype=Any, shape=Any), "shape": Tuple[int, ...]},
+    value_func=tile_reshape_value_func,
+    dispatch_func=tile_reshape_dispatch_func,
+    variadic=False,
+    doc="""Return a reshaped view of a tile with the same data.
+
+    :param t: Input tile to reshape
+    :param shape: New shape for the tile
+    :returns: A tile containing the same data as the input tile, but arranged in a new shape.""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_assign_value_func(arg_types, arg_values):
     if arg_types is None:
         return None

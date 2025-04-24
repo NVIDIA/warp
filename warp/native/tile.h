@@ -912,33 +912,27 @@ struct tile_shared_t
     }
 
     // assign from a register tile
-    template <typename Tile>
-    inline CUDA_CALLABLE auto& operator=(const Tile& t)
+    inline CUDA_CALLABLE auto& operator=(const tile_register_t<Type, tile_layout_register_t<typename Layout::Shape>>& t)
     {
         assign(t);
         return *this;
     }
 
-
-/*
     // construct from another shared tile, this constructor
     // is invoked for reshape operations like `wp.tile_transpose()`
-    template <typename OtherT, typename OtherLayout>
-    inline CUDA_CALLABLE auto& operator=(const tile_shared_t<OtherT, OtherLayout>& rhs) 
+    template <typename OtherT, typename OtherLayout, bool OtherOwner>
+    inline CUDA_CALLABLE auto& operator=(const tile_shared_t<OtherT, OtherLayout, OtherOwner>& rhs) 
     {
-        using OtherTile = tile_shared_t<OtherT, OtherLayout>;
-
         // check dimensions are compatible
-        static_assert(Size == OtherTile::Size, "Expected Size == OtherTile::Size");
+        static_assert(Layout::Size == OtherLayout::Size, "Expected Size == OtherLayout::Size");
 
         // alias tile directly
-        data = rhs.data;
-        grad = rhs.grad;
+        data.ptr = rhs.data.ptr;
+        grad.ptr = rhs.grad.ptr;
         initialized = rhs.initialized;
 
         return *this;
     }    
-*/
 
     // assign from a global tile (load)
     inline CUDA_CALLABLE auto& operator=(const tile_global_t<T, typename Layout::Shape>& t)
@@ -2563,10 +2557,11 @@ inline CUDA_CALLABLE auto tile_broadcast(Tile& t)
 template <typename Tile, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_broadcast(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {   
-    // nop, since memory is aliased grads already accumulated
+    // nop, since memory is aliased, grads already accumulated
 }
 
-template <typename ReturnType, typename Tile, typename... Indices>
+
+template <typename ReturnTile, typename Tile, typename... Indices>
 inline CUDA_CALLABLE auto tile_view(Tile& t, Indices... indices)
 {   
     auto c = tile_coord(indices...);
@@ -2578,9 +2573,48 @@ inline CUDA_CALLABLE auto tile_view(Tile& t, Indices... indices)
     if (t.grad.ptr)
         grad_ptr = &t.grad(c);
 
-    return ReturnType(data_ptr, grad_ptr);
+    return ReturnTile(data_ptr, grad_ptr);
 }
 
+
+template <typename ReturnTile, typename Tile>
+inline CUDA_CALLABLE auto tile_squeeze(Tile& t)
+{
+    // ReturnTile layout is set in builtins.py
+    typename Tile::Type* data_ptr = t.data.ptr;
+    typename Tile::Type* grad_ptr = nullptr;
+    
+    if (t.grad.ptr)
+        grad_ptr = t.grad.ptr;
+
+    return ReturnTile(data_ptr, grad_ptr);
+}
+
+template <typename Tile, typename AdjTile, typename AdjReturnTile>
+inline CUDA_CALLABLE void adj_tile_squeeze(Tile& t, AdjTile& adj_t, AdjReturnTile& adj_ret)
+{
+    // nop, since memory is aliased, grads already accumulated
+}
+
+
+template <typename ReturnTile, typename Tile>
+inline CUDA_CALLABLE auto tile_reshape(Tile& t)
+{
+    // ReturnTile layout is set in builtins.py
+    typename Tile::Type* data_ptr = t.data.ptr;
+    typename Tile::Type* grad_ptr = nullptr;
+    
+    if (t.grad.ptr)
+        grad_ptr = t.grad.ptr;
+
+    return ReturnTile(data_ptr, grad_ptr);
+}
+
+template <typename Tile, typename AdjTile, typename AdjReturnTile>
+inline CUDA_CALLABLE void adj_tile_reshape(Tile& t, AdjTile& adj_t, AdjReturnTile& adj_ret)
+{
+    // nop, since memory is aliased, grads already accumulated
+}
 
 template <typename TileA, typename Scalar>
 inline CUDA_CALLABLE void assign(TileA& dest, int i, const Scalar& src)
