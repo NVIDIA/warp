@@ -43,6 +43,7 @@ struct Allocator
     {
         // in PointsToGrid stream argument always coincide with current stream, ignore
         *d_ptr = alloc_device(WP_CURRENT_CONTEXT, bytes);
+        cudaCheckError();
         return cudaSuccess;
     }
 
@@ -160,6 +161,7 @@ class DeviceBuffer
         {
             mGpuData = alloc_device(WP_CURRENT_CONTEXT, size);
         }
+        cudaCheckError();
         mSize = size;
         mManaged = true;
     }
@@ -432,35 +434,44 @@ void build_grid_from_points(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
     out_grid = nullptr;
     out_grid_size = 0;
 
-    cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
-    nanovdb::tools::cuda::PointsToGrid<BuildT, Allocator> p2g(params.map, stream);
-
-    // p2g.setVerbose(2);
-    p2g.setGridName(params.name);
-    p2g.setChecksum(nanovdb::CheckMode::Disable);
-
-    // Only compute bbox for OnIndex grids. Otherwise bbox will be computed after activating all leaf voxels
-    p2g.includeBBox(nanovdb::BuildTraits<BuildT>::is_onindex);
-
-    nanovdb::GridHandle<DeviceBuffer> grid_handle;
-
-    if (points_in_world_space)
+    try
     {
-        grid_handle = p2g.getHandle(WorldSpacePointsPtr{static_cast<const nanovdb::Vec3f *>(points), params.map}, num_points,
-                                    DeviceBuffer());
+
+        cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
+        nanovdb::tools::cuda::PointsToGrid<BuildT, Allocator> p2g(params.map, stream);
+
+        // p2g.setVerbose(2);
+        p2g.setGridName(params.name);
+        p2g.setChecksum(nanovdb::CheckMode::Disable);
+
+        // Only compute bbox for OnIndex grids. Otherwise bbox will be computed after activating all leaf voxels
+        p2g.includeBBox(nanovdb::BuildTraits<BuildT>::is_onindex);
+
+        nanovdb::GridHandle<DeviceBuffer> grid_handle;
+
+        if (points_in_world_space)
+        {
+            grid_handle = p2g.getHandle(WorldSpacePointsPtr{static_cast<const nanovdb::Vec3f*>(points), params.map},
+                                        num_points, DeviceBuffer());
+        }
+        else
+        {
+            grid_handle = p2g.getHandle(static_cast<const nanovdb::Coord*>(points), num_points, DeviceBuffer());
+        }
+
+        out_grid = grid_handle.deviceGrid<BuildT>();
+        out_grid_size = grid_handle.gridSize();
+
+        finalize_grid(*out_grid, params);
+
+        // So that buffer is not destroyed when handles goes out of scope
+        grid_handle.buffer().detachDeviceData();
     }
-    else
+    catch (const std::runtime_error& exc)
     {
-        grid_handle = p2g.getHandle(static_cast<const nanovdb::Coord *>(points), num_points, DeviceBuffer());
+        out_grid = nullptr;
+        out_grid_size = 0;
     }
-
-    out_grid = grid_handle.deviceGrid<BuildT>();
-    out_grid_size = grid_handle.gridSize();
-
-    finalize_grid(*out_grid, params);
-
-    // So that buffer is not destroyed when handles goes out of scope
-    grid_handle.buffer().detachDeviceData();
 }
 
 

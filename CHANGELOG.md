@@ -68,6 +68,7 @@
 - Fix assembly of rigid body inertia in `ModelBuilder.collapse_fixed_joints()` ([GH-631](https://github.com/NVIDIA/warp/issues/631)).
 - Fix preserving base class of nested struct attributes ([GH-574](https://github.com/NVIDIA/warp/issues/574)).
 - Fix `OpenGLRenderer.update_shape_instance()` not having color buffers created for the shape instances.
+- Allow recovering from out-of-memory errors during Volume allocation ([GH-611](https://github.com/NVIDIA/warp/issues/611)).
 
 ## [1.7.0] - 2025-03-30
 
