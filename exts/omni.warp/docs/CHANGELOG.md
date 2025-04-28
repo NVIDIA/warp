@@ -14,6 +14,7 @@
   ([GH-617](https://github.com/NVIDIA/warp/issues/617)).
 - `Model.rigid_contact_tids` are now -1 at non-active contact indices which allows to retrieve the vertex index of a
   mesh collision, see `test_collision.py` ([GH-623](https://github.com/NVIDIA/warp/issues/623)).
+- Improve handling of deprecated JAX features ([GH-613](https://github.com/NVIDIA/warp/pull/613)).
 
 ### Fixed
 
