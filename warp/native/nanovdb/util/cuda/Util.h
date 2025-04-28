@@ -25,17 +25,17 @@
         if (code != cudaSuccess) {
             fprintf(stderr, "CUDA error %u: %s (%s:%d)\n", unsigned(code), cudaGetErrorString(code), file, line);
             //fprintf(stderr, "CUDA Runtime Error: %s %s %d\n", cudaGetErrorString(code), file, line);
-            if (abort) exit(code);
+            if (abort) throw std::runtime_error(cudaGetErrorString(code));
         }
     }
     static inline void ptrAssert(const void* ptr, const char* msg, const char* file, int line, bool abort = true)
     {
         if (ptr == nullptr) {
             fprintf(stderr, "NULL pointer error: %s %s %d\n", msg, file, line);
-            if (abort) exit(1);
+            if (abort) throw std::runtime_error(msg);
         } else if (uint64_t(ptr) % 32) {
             fprintf(stderr, "Pointer misalignment error: %s %s %d\n", msg, file, line);
-            if (abort) exit(1);
+            if (abort) throw std::runtime_error(msg);
         }
     }
 #else

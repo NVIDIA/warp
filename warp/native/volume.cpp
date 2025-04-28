@@ -87,7 +87,7 @@ void volume_set_map(nanovdb::Map& map, const float transform[9], const float tra
 // NB: buf must be a host pointer
 uint64_t volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
 {
-    if (size > 0 && size < sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t))
+    if (buf == nullptr || (size > 0 && size < sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t)))
         return 0; // This cannot be a valid NanoVDB grid with data
 
     if (!copy && volume_exists(buf))
@@ -138,7 +138,7 @@ uint64_t volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
 // NB: buf must be a pointer on the same device
 uint64_t volume_create_device(void* context, void* buf, uint64_t size, bool copy, bool owner)
 {
-    if (size > 0 && size < sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t))
+    if (buf == nullptr || (size > 0 && size < sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t)))
         return 0; // This cannot be a valid NanoVDB grid with data
 
     if (!copy && volume_exists(buf))
