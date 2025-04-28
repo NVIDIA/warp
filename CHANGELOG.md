@@ -32,6 +32,7 @@
   being skipped when processed on the GPU ([GH-594](https://github.com/NVIDIA/warp/issues/594)).
 - Fix `show_joints` not working with `wp.sim.render.SimRenderer` set to render to USD
   ([GH-510](https://github.com/NVIDIA/warp/issues/510)).
+- Allow recovering from out-of-memory errors during Volume allocation ([GH-611](https://github.com/NVIDIA/warp/issues/611)).
 
 ## [1.7.0] - 2025-03-30
 
