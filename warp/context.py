@@ -6904,8 +6904,12 @@ def type_str(t):
 
         raise TypeError("Invalid vector or matrix dimensions")
     elif get_origin(t) in (list, tuple):
-        args_repr = ", ".join(type_str(x) for x in get_args(t))
-        return f"{t._name}[{args_repr}]"
+        args = get_args(t)
+        if args:
+            args_repr = ", ".join(type_str(x) for x in get_args(t))
+            return f"{t._name}[{args_repr}]"
+        else:
+            return f"{t._name}"
     elif t is Ellipsis:
         return "..."
     elif warp.types.is_tile(t):

@@ -621,7 +621,7 @@ def compute_type_str(base_name, template_params):
 
         return p.__name__
 
-    return f"{base_name}<{','.join(map(param2str, template_params))}>"
+    return f"{base_name}<{', '.join(map(param2str, template_params))}>"
 
 
 class Var:
@@ -663,38 +663,43 @@ class Var:
         return self.label
 
     @staticmethod
-    def type_to_ctype(t: type, value_type: builtins.bool = False) -> str:
-        if is_array(t):
-            if hasattr(t.dtype, "_wp_generic_type_str_"):
-                dtypestr = compute_type_str(f"wp::{t.dtype._wp_generic_type_str_}", t.dtype._wp_type_params_)
-            elif isinstance(t.dtype, Struct):
-                dtypestr = t.dtype.native_name
-            elif t.dtype.__name__ in ("bool", "int", "float"):
-                dtypestr = t.dtype.__name__
-            else:
-                dtypestr = f"wp::{t.dtype.__name__}"
-            classstr = f"wp::{type(t).__name__}"
-            return f"{classstr}_t<{dtypestr}>"
-        elif is_tile(t):
-            return t.ctype()
+    def dtype_to_ctype(t: type) -> str:
+        if hasattr(t, "_wp_generic_type_str_"):
+            return compute_type_str(f"wp::{t._wp_generic_type_str_}", t._wp_type_params_)
         elif isinstance(t, Struct):
             return t.native_name
+        elif hasattr(t, "_wp_native_name_"):
+            return f"wp::{t._wp_native_name_}"
+        elif t.__name__ in ("bool", "int", "float"):
+            return t.__name__
+
+        return f"wp::{t.__name__}"
+
+    @staticmethod
+    def type_to_ctype(t: type, value_type: builtins.bool = False) -> str:
+        if is_array(t):
+            dtypestr = Var.dtype_to_ctype(t.dtype)
+            classstr = f"wp::{type(t).__name__}"
+            return f"{classstr}_t<{dtypestr}>"
+        elif get_origin(t) is tuple:
+            dtypestr = ", ".join(Var.dtype_to_ctype(x) for x in get_args(t))
+            return f"wp::tuple_t<{dtypestr}>"
+        elif is_tuple(t):
+            dtypestr = ", ".join(Var.dtype_to_ctype(x) for x in t.types)
+            classstr = f"wp::{type(t).__name__}"
+            return f"{classstr}<{dtypestr}>"
+        elif is_tile(t):
+            return t.ctype()
         elif isinstance(t, type) and issubclass(t, StructInstance):
             # ensure the actual Struct name is used instead of "NewStructInstance"
             return t.native_name
         elif is_reference(t):
             if not value_type:
                 return Var.type_to_ctype(t.value_type) + "*"
-            else:
-                return Var.type_to_ctype(t.value_type)
-        elif hasattr(t, "_wp_generic_type_str_"):
-            return compute_type_str(f"wp::{t._wp_generic_type_str_}", t._wp_type_params_)
-        elif t.__name__ in ("bool", "int", "float"):
-            return t.__name__
-        elif hasattr(t, "_wp_native_name_"):
-            return f"wp::{t._wp_native_name_}"
-        else:
-            return f"wp::{t.__name__}"
+
+            return Var.type_to_ctype(t.value_type)
+
+        return Var.dtype_to_ctype(t)
 
     def ctype(self, value_type: builtins.bool = False) -> str:
         return Var.type_to_ctype(self.type, value_type)
@@ -818,17 +823,26 @@ def func_match_args(func, arg_types, kwarg_types):
     return True
 
 
-def get_arg_type(arg: Union[Var, Any]) -> type:
+def get_arg_type(arg: Var | Any) -> type:
     if isinstance(arg, str):
         return str
 
     if isinstance(arg, Sequence):
         return tuple(get_arg_type(x) for x in arg)
 
+    if get_origin(arg) is tuple:
+        return tuple(get_arg_type(x) for x in get_args(arg))
+
+    if is_tuple(arg):
+        return arg
+
     if isinstance(arg, (type, warp.context.Function)):
         return arg
 
     if isinstance(arg, Var):
+        if get_origin(arg.type) is tuple:
+            return get_args(arg.type)
+
         return arg.type
 
     return type(arg)
@@ -842,7 +856,11 @@ def get_arg_value(arg: Any) -> Any:
         return arg
 
     if isinstance(arg, Var):
-        return arg.constant
+        if is_tuple(arg.type):
+            return tuple(get_arg_value(x) for x in arg.type.values)
+
+        if arg.constant is not None:
+            return arg.constant
 
     return arg
 
@@ -1404,6 +1422,10 @@ class Adjoint:
             {k: strip_reference(v) for k, v in bound_arg_types.items()},
             bound_arg_values,
         )
+
+        if get_origin(return_type) is tuple:
+            types = get_args(return_type)
+            return_type = warp.types.tuple_t(types=types, values=(None,) * len(types))
 
         # immediately allocate output variables so we can pass them into the dispatch method
         if return_type is None:
@@ -2303,18 +2325,6 @@ class Adjoint:
                     f"Could not find function {'.'.join(path)} as a built-in or user-defined function. Note that user functions must be annotated with a @wp.func decorator to be called from a kernel."
                 )
 
-        # Check if any argument correspond to an unsupported construct.
-        # Tuples are supported in the context of assigning multiple variables
-        # at once, but not in place of vectors when calling built-ins like
-        # `wp.length((1, 2, 3))`.
-        # Therefore, we need to catch this specific case here instead of
-        # more generally in `adj.eval()`.
-        for arg in node.args:
-            if isinstance(arg, ast.Tuple):
-                raise WarpCodegenError(
-                    "Tuple constructs are not supported in kernels. Use vectors like `wp.vec3()` instead."
-                )
-
         # get expected return count, e.g.: for multi-assignment
         min_outputs = None
         if hasattr(node, "expects"):
@@ -2474,10 +2484,6 @@ class Adjoint:
                 raise WarpCodegenError(
                     "List constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
                 )
-            elif isinstance(node.value, ast.Tuple):
-                raise WarpCodegenError(
-                    "Tuple constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
-                )
 
         # handle the case where we are assigning multiple output variables
         if isinstance(lhs, ast.Tuple):
@@ -2492,6 +2498,17 @@ class Adjoint:
                 out = [adj.eval(v) for v in node.value.elts]
             else:
                 out = adj.eval(node.value)
+
+            subtype = getattr(out, "type", None)
+            if isinstance(subtype, warp.types.tuple_t):
+                if len(out.type.types) != len(lhs.elts):
+                    raise WarpCodegenError(
+                        f"Invalid number of values to unpack (expected {len(lhs.elts)}, got {len(out.type.types)})."
+                    )
+                target = out
+                out = tuple(
+                    adj.add_builtin_call("extract", (target, adj.add_constant(i))) for i in range(len(lhs.elts))
+                )
 
             names = []
             for v in lhs.elts:
@@ -2602,8 +2619,11 @@ class Adjoint:
                         f"Error, assigning to existing symbol {name} ({adj.symbols[name].type}) with different type ({rhs.type})"
                     )
 
-            # handle simple assignment case (a = b), where we generate a value copy rather than reference
-            if isinstance(node.value, ast.Name) or is_reference(rhs.type):
+            if isinstance(node.value, ast.Tuple):
+                out = rhs
+            elif isinstance(rhs, Sequence):
+                out = adj.add_builtin_call("tuple", rhs)
+            elif isinstance(node.value, ast.Name) or is_reference(rhs.type):
                 out = adj.add_builtin_call("copy", [rhs])
             else:
                 out = rhs
@@ -2790,8 +2810,8 @@ class Adjoint:
             return
 
     def emit_Tuple(adj, node):
-        # LHS for expressions, such as i, j, k = 1, 2, 3
-        return tuple(adj.eval(x) for x in node.elts)
+        elements = tuple(adj.eval(x) for x in node.elts)
+        return adj.add_builtin_call("tuple", elements)
 
     def emit_Pass(adj, node):
         pass
@@ -3039,8 +3059,12 @@ class Adjoint:
                     return obj._shape_[0]
                 elif type_is_transformation(obj):
                     return obj._length_
+                elif is_tuple(obj):
+                    return len(obj.types)
                 elif is_tile(obj):
                     return obj.shape[0]
+                elif get_origin(obj) is tuple:
+                    return len(get_args(obj))
 
                 return len(obj)
 
@@ -3051,7 +3075,7 @@ class Adjoint:
 
             # We want to replace the expression code in-place,
             # so reparse it to get the correct column info.
-            len_value_locs: List[Tuple[int, int, int]] = []
+            len_value_locs: list[tuple[int, int, int]] = []
             expr_tree = ast.parse(static_code)
             assert len(expr_tree.body) == 1 and isinstance(expr_tree.body[0], ast.Expr)
             expr_root = expr_tree.body[0].value

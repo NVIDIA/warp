@@ -3375,6 +3375,12 @@ def len(a: Tile[Any, Tuple[int, ...]]) -> int:
 
 
 @over
+def len(a: Tuple) -> int:
+    """Return the number of elements in a tuple."""
+    ...
+
+
+@over
 def norm_l1(v: Any):
     """Computes the L1 norm of a vector v.
 

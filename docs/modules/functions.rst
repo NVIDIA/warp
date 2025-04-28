@@ -2202,6 +2202,13 @@ Utility
     Return the number of rows in a tile.
 
 
+.. py:function:: len(a: Tuple) -> int
+    :noindex:
+    :nocontentsentry:
+
+    Return the number of elements in a tuple.
+
+
 
 
 Geometry

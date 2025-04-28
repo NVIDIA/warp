@@ -49,6 +49,8 @@
 - Warn when an incompatible data type conversion is detected when constructing an array using the
   `__cuda_array_interface__` ([GH-624](https://github.com/NVIDIA/warp/issues/624),
   [GH-670](https://github.com/NVIDIA/warp/issues/670)).
+- Improve support for tuples in kernels
+  ([GH-506](https://github.com/NVIDIA/warp/issues/506)).
 
 ### Fixed
 

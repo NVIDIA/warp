@@ -435,13 +435,7 @@ def test_error_collection_construct(test, device):
         x = [1.0, 2.0, 3.0]
 
     def kernel_2_fn():
-        x = (1.0, 2.0, 3.0)
-
-    def kernel_3_fn():
         x = {"a": 1.0, "b": 2.0, "c": 3.0}
-
-    def kernel_4_fn():
-        wp.length((1.0, 2.0, 3.0))
 
     kernel = wp.Kernel(func=kernel_1_fn)
     with test.assertRaisesRegex(
@@ -451,20 +445,7 @@ def test_error_collection_construct(test, device):
         wp.launch(kernel, dim=1, device=device)
 
     kernel = wp.Kernel(func=kernel_2_fn)
-    with test.assertRaisesRegex(
-        RuntimeError,
-        r"Tuple constructs are not supported in kernels. Use vectors like `wp.vec3\(\)` for small collections instead.",
-    ):
-        wp.launch(kernel, dim=1, device=device)
-
-    kernel = wp.Kernel(func=kernel_3_fn)
     with test.assertRaisesRegex(RuntimeError, r"Construct `ast.Dict` not supported in kernels."):
-        wp.launch(kernel, dim=1, device=device)
-
-    kernel = wp.Kernel(func=kernel_4_fn)
-    with test.assertRaisesRegex(
-        RuntimeError, r"Tuple constructs are not supported in kernels. Use vectors like `wp.vec3\(\)` instead."
-    ):
         wp.launch(kernel, dim=1, device=device)
 
 
