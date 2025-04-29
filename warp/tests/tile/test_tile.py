@@ -532,6 +532,32 @@ def test_tile_extract_repeated(test, device):
 
 
 @wp.kernel
+def test_tile_assign_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    i, j = wp.tid()
+
+    a = wp.tile_zeros(shape=(TILE_M,), dtype=float)
+
+    a[j] = x[j]
+
+    wp.tile_atomic_add(y, a, offset=(0,))
+
+
+def test_tile_assign(test, device):
+    x = wp.full(TILE_M, 2.0, dtype=float, device=device, requires_grad=True)
+    y = wp.zeros(TILE_M, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(test_tile_assign_kernel, dim=[1, TILE_M], inputs=[x], outputs=[y], block_dim=64, device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.full(TILE_M, 2.0, dtype=np.float32))
+    assert_np_equal(x.grad.numpy(), np.full(TILE_M, 1.0, dtype=np.float32))
+
+
+@wp.kernel
 def test_tile_transpose_kernel(input: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
     x = wp.tile_load(input, shape=(TILE_M, TILE_N))
     y = wp.tile_transpose(x)
@@ -872,6 +898,7 @@ add_function_test(TestTile, "test_tile_sum", test_tile_sum, devices=devices, che
 add_function_test(TestTile, "test_tile_sum_launch", test_tile_sum_launch, devices=devices)
 add_function_test(TestTile, "test_tile_extract", test_tile_extract, devices=devices)
 add_function_test(TestTile, "test_tile_extract_repeated", test_tile_extract_repeated, devices=devices)
+add_function_test(TestTile, "test_tile_assign", test_tile_assign, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_add_1d", test_tile_broadcast_add_1d, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_add_2d", test_tile_broadcast_add_2d, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_add_3d", test_tile_broadcast_add_3d, devices=devices)
