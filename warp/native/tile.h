@@ -1282,13 +1282,13 @@ struct tile_shared_t
     template <typename Global>
     inline CUDA_CALLABLE auto atomic_add(Global& dest)
     {
-        copy_to_register().atomic_add(dest);
+        return copy_to_register().atomic_add(dest);
     }
 
     template <typename Global>
     inline CUDA_CALLABLE auto atomic_add_grad(Global& dest)
     {
-        grad_to_register().atomic_add_grad(dest);
+        return grad_to_register().atomic_add_grad(dest);
     }
 
     // overload for integral types
@@ -1682,15 +1682,27 @@ template <typename T, typename Tile>
 inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, int z, int w, Tile& src) { src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape>(dest, tile_coord(x, y, z, w))); }
 
 
-
+// compiler struggles with these if they are one line
 template <typename T, typename Tile>
-inline CUDA_CALLABLE auto tile_atomic_add(array_t<T>& dest, int x, Tile& src) { return src.atomic_add(tile_global_t<T, typename Tile::Layout::Shape>(dest, tile_coord(x))); }
+inline CUDA_CALLABLE auto tile_atomic_add(array_t<T>& dest, int x, Tile& src) {
+    tile_global_t<T, typename Tile::Layout::Shape> global(dest, tile_coord(x));
+    return src.atomic_add(global);
+}
 template <typename T, typename Tile>
-inline CUDA_CALLABLE auto tile_atomic_add(array_t<T>& dest, int x, int y, Tile& src) { return src.atomic_add(tile_global_t<T, typename Tile::Layout::Shape>(dest, tile_coord(x, y)));}
+inline CUDA_CALLABLE auto tile_atomic_add(array_t<T>& dest, int x, int y, Tile& src) {
+    tile_global_t<T, typename Tile::Layout::Shape> global(dest, tile_coord(x, y));
+    return src.atomic_add(global);
+}
 template <typename T, typename Tile>
-inline CUDA_CALLABLE auto tile_atomic_add(array_t<T>& dest, int x, int y, int z, Tile& src) { return src.atomic_add(tile_global_t<T, typename Tile::Layout::Shape>(dest, tile_coord(x, y, z)));}
+inline CUDA_CALLABLE auto tile_atomic_add(array_t<T>& dest, int x, int y, int z, Tile& src) {
+    tile_global_t<T, typename Tile::Layout::Shape> global(dest, tile_coord(x, y, z));
+    return src.atomic_add(global);
+}
 template <typename T, typename Tile>
-inline CUDA_CALLABLE auto tile_atomic_add(array_t<T>& dest, int x, int y, int z, int w, Tile& src) { return src.atomic_add(tile_global_t<T, typename Tile::Layout::Shape>(dest, tile_coord(x, y, z, w)));}
+inline CUDA_CALLABLE auto tile_atomic_add(array_t<T>& dest, int x, int y, int z, int w, Tile& src) {
+    tile_global_t<T, typename Tile::Layout::Shape> global(dest, tile_coord(x, y, z, w));
+    return src.atomic_add(global);
+}
 
 
 //-------------------------------------
@@ -2468,21 +2480,18 @@ inline CUDA_CALLABLE void assign(TileA& dest, int i, const Scalar& src)
     dest.data(tile_coord(i)) = src;
     WP_TILE_SYNC();
 }
-
 template <typename TileA, typename Scalar>
 inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, const Scalar& src)
 {   
     dest.data(tile_coord(i, j)) = src;
     WP_TILE_SYNC();
 }
-
 template <typename TileA, typename Scalar>
 inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, int k, const Scalar& src)
 {   
     dest.data(tile_coord(i, j, k)) = src;
     WP_TILE_SYNC();
 }
-
 template <typename TileA, typename Scalar>
 inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, int k, int l, const Scalar& src)
 {   
@@ -2490,8 +2499,26 @@ inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, int k, int l, const 
     WP_TILE_SYNC();
 }
 
-
-
+template <typename TileA, typename AdjTileA, typename Scalar>
+inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, const Scalar& src, AdjTileA& adj_dest, int adj_i, Scalar& adj_src)
+{
+    adj_src += dest.grad(tile_coord(i));
+}
+template <typename TileA, typename AdjTileA, typename Scalar>
+inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, int j, const Scalar& src, AdjTileA& adj_dest, int adj_i, int adj_j, Scalar& adj_src)
+{
+    adj_src += dest.grad(tile_coord(i, j));
+}
+template <typename TileA, typename AdjTileA, typename Scalar>
+inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, int j, int k, const Scalar& src, AdjTileA& adj_dest, int adj_i, int adj_j, int adj_k, Scalar& adj_src)
+{
+    adj_src += dest.grad(tile_coord(i, j, k));
+}
+template <typename TileA, typename AdjTileA, typename Scalar>
+inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, int j, int k, int l, const Scalar& src, AdjTileA& adj_dest, int adj_i, int adj_j, int adj_k, int adj_l, Scalar& adj_src)
+{
+    adj_src += dest.grad(tile_coord(i, j, k, l));
+}
 
 template <typename TileA, typename TileB, typename Coord>
 inline CUDA_CALLABLE void tile_assign(TileA& dest, TileB& src, const Coord& offset)

@@ -6,6 +6,14 @@
 
 - Add example of a distributed Jacobi solver using `mpi4py` in `warp/examples/distributed/example_jacobi_mpi.py`
   ([GH-475](https://github.com/NVIDIA/warp/issues/475)).
+- Add `transform_compose` and `transform_decompose` math functions for converting between transforms and mat44 with 3D scale information ([GH-576](https://github.com/NVIDIA/warp/issues/576)).
+- Add a parameter `as_spheres` to `UsdRenderer.render_points()` in order to choose whether to render
+  the points as USD spheres using a point instancer, or as simple USD points otherwise.
+- Support tile inplace add/subtract operations
+  ([GH-518](https://github.com/NVIDIA/warp/issues/518)).
+- Add support for in-place tile component addition and subtraction
+  ([GH-659](https://github.com/NVIDIA/warp/issues/659)).
+- Add missing adjoint method for tile `assign` operations ([GH-680](https://github.com/NVIDIA/warp/issues/680)).
 
 ### Changed
 
@@ -52,6 +60,7 @@
 - Fix documentation of `atol` and `rtol` arguments to `wp.autograd.gradcheck` and `gradcheck_tape` ([GH-508](https://github.com/NVIDIA/warp/issues/508)).
 - Fix `OpenGLRenderer.update_shape_instance()` not having color buffers created for the shape instances.
 - Allow recovering from out-of-memory errors during Volume allocation ([GH-611](https://github.com/NVIDIA/warp/issues/611)).
+- Address `wp.tile_atomic_add()` compiler errors.
 
 ## [1.7.0] - 2025-03-30
 

@@ -2264,7 +2264,7 @@ def tile_atomic_add_value_func(arg_types, arg_values):
             f"tile_atomic_add() 'a' and 't' arguments must have the same dtype, got {arg_types['a'].dtype} and {arg_types['t'].dtype}"
         )
 
-    return Tile(dtype=arg_types["t"].dtype, shape=arg_types["t"].shape)
+    return Tile(dtype=arg_types["t"].dtype, shape=arg_types["t"].shape, storage=arg_types["t"].storage)
 
 
 def tile_atomic_add_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
@@ -2423,7 +2423,6 @@ add_builtin(
     group="Tile Primitives",
     export=False,
     hidden=True,
-    missing_grad=True,
 )
 
 add_builtin(
@@ -2433,7 +2432,6 @@ add_builtin(
     group="Tile Primitives",
     export=False,
     hidden=True,
-    missing_grad=True,
 )
 
 add_builtin(
@@ -2443,7 +2441,6 @@ add_builtin(
     group="Tile Primitives",
     export=False,
     hidden=True,
-    missing_grad=True,
 )
 
 add_builtin(
@@ -2453,7 +2450,6 @@ add_builtin(
     group="Tile Primitives",
     export=False,
     hidden=True,
-    missing_grad=True,
 )
 
 
