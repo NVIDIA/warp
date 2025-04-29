@@ -27,6 +27,7 @@
   ([GH-518](https://github.com/NVIDIA/warp/issues/518)).
 - Add support for in-place tile component addition and subtraction
   ([GH-659](https://github.com/NVIDIA/warp/issues/659)).
+- Add missing adjoint method for tile `assign` operations ([GH-680](https://github.com/NVIDIA/warp/issues/680)).
 
 ### Changed
 
@@ -69,6 +70,7 @@
 - Fix preserving base class of nested struct attributes ([GH-574](https://github.com/NVIDIA/warp/issues/574)).
 - Fix `OpenGLRenderer.update_shape_instance()` not having color buffers created for the shape instances.
 - Allow recovering from out-of-memory errors during Volume allocation ([GH-611](https://github.com/NVIDIA/warp/issues/611)).
+- Address `wp.tile_atomic_add()` compiler errors.
 
 ## [1.7.0] - 2025-03-30
 
