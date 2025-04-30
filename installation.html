@@ -1,0 +1,679 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Installation &#8212; Warp 1.7.1</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/nvidia-sphinx-theme.css?v=df3ac72c" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=a77542ef"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'installation';</script>
+    <link rel="icon" href="_static/favicon.png"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Basics" href="basics.html" />
+    <link rel="prev" title="NVIDIA Warp Documentation" href="index.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.7.1" />
+
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.7.1 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.7.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.7.1</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://discord.com/channels/827959428476174346/1285719658325999686" title="Discord" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-discord fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Discord</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.7.1 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.7.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.7.1</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://discord.com/channels/827959428476174346/1285719658325999686" title="Discord" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-discord fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Discord</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/tiles.html">Tiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Advanced Topics</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="modules/runtime.html">Runtime Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/functions.html">Kernel Reference</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Simulation Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="modules/sim.html">warp.sim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/render.html">warp.render</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://discord.com/channels/827959428476174346/1285719658325999686">Discord</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Installation</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h1>
+<p>Python version 3.9 or newer is <em>recommended</em>. Warp can run on x86-64 and ARMv8 CPUs on Windows, Linux, and macOS. GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).</p>
+<p>The easiest way to install Warp is from <a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a>:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>warp-lang
+</pre></div>
+</div>
+<section id="nightly-builds">
+<span id="github-installation"></span><h2>Nightly Builds<a class="headerlink" href="#nightly-builds" title="Link to this heading">#</a></h2>
+<p>Nightly builds of Warp from the <code class="docutils literal notranslate"><span class="pre">main</span></code> branch are available on the <a class="reference external" href="https://pypi.nvidia.com/warp-lang/">NVIDIA Package Index</a>.</p>
+<p>To install the latest nightly build, use the following command:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span>--pre<span class="w"> </span>warp-lang<span class="w"> </span>--extra-index-url<span class="o">=</span>https://pypi.nvidia.com/
+</pre></div>
+</div>
+<p>Note that the nightly builds are built with the CUDA 12 runtime and are not published for macOS.</p>
+<p>If you plan to install nightly builds regularly, you can simplify future installations by adding NVIDIA’s package
+repository as an extra index via the <code class="docutils literal notranslate"><span class="pre">PIP_EXTRA_INDEX_URL</span></code> environment variable. For example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>export PIP_EXTRA_INDEX_URL=&quot;https://pypi.nvidia.com&quot;
+</pre></div>
+</div>
+<p>This ensures the index is automatically used for <code class="docutils literal notranslate"><span class="pre">pip</span></code> commands, avoiding the need to specify it explicitly.</p>
+</section>
+<section id="conda-installation">
+<h2>Conda Installation<a class="headerlink" href="#conda-installation" title="Link to this heading">#</a></h2>
+<p>Conda packages for Warp are also available on the <a class="reference external" href="https://anaconda.org/conda-forge/warp-lang">conda-forge</a> channel.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install warp-lang specifically built against CUDA Toolkit 12.6</span>
+$<span class="w"> </span>conda<span class="w"> </span>install<span class="w"> </span>conda-forge::warp-lang<span class="o">=</span>*<span class="o">=</span>*cuda126*
+
+<span class="c1"># Install warp-lang specifically built against CUDA Toolkit 11.8</span>
+$<span class="w"> </span>conda<span class="w"> </span>install<span class="w"> </span>conda-forge::warp-lang<span class="o">=</span>*<span class="o">=</span>*cuda118*
+</pre></div>
+</div>
+<p>For more information, see the community-maintained feedstock for Warp
+<a class="reference external" href="https://github.com/conda-forge/warp-lang-feedstock">here</a>.</p>
+</section>
+<section id="installing-from-github-releases">
+<h2>Installing from GitHub Releases<a class="headerlink" href="#installing-from-github-releases" title="Link to this heading">#</a></h2>
+<p>The binaries hosted on PyPI are currently built with the CUDA 12 runtime.
+We also provide binaries built with the CUDA 11.8 runtime on the <a class="reference external" href="https://github.com/NVIDIA/warp/releases">GitHub Releases</a> page.
+Copy the URL of the appropriate wheel file (<code class="docutils literal notranslate"><span class="pre">warp-lang-{ver}+cu11-py3-none-{platform}.whl</span></code>) and pass it to
+the <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span></code> command, e.g.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Platform</p></th>
+<th class="head"><p>Install Command</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Linux aarch64</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.7.1/warp_lang-1.7.1+cu11-py3-none-manylinux2014_aarch64.whl</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Linux x86-64</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.7.1/warp_lang-1.7.1+cu11-py3-none-manylinux2014_x86_64.whl</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Windows x86-64</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.7.1/warp_lang-1.7.1+cu11-py3-none-win_amd64.whl</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">--force-reinstall</span></code> option may need to be used to overwrite a previous installation.</p>
+</section>
+<section id="cuda-requirements">
+<h2>CUDA Requirements<a class="headerlink" href="#cuda-requirements" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Warp packages built with CUDA Toolkit 11.x require NVIDIA driver 470 or newer.</p></li>
+<li><p>Warp packages built with CUDA Toolkit 12.x require NVIDIA driver 525 or newer.</p></li>
+</ul>
+<p>This applies to pre-built packages distributed on PyPI and GitHub and also when building Warp from source.</p>
+<p>Note that building Warp with the <code class="docutils literal notranslate"><span class="pre">--quick</span></code> flag changes the driver requirements.
+The quick build skips CUDA backward compatibility, so the minimum required driver is determined by the CUDA Toolkit version.
+Refer to the <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html">latest CUDA Toolkit release notes</a>
+to find the minimum required driver for different CUDA Toolkit versions
+(e.g., <a class="reference external" href="https://docs.nvidia.com/cuda/archive/12.6.0/cuda-toolkit-release-notes/index.html#id5">this table from CUDA Toolkit 12.6</a>).</p>
+<p>Warp checks the installed driver during initialization and will report a warning if the driver is not suitable, e.g.:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Warp UserWarning:
+   Insufficient CUDA driver version.
+   The minimum required CUDA driver version is 12.0, but the installed CUDA driver version is 11.8.
+   Visit https://github.com/NVIDIA/warp/blob/main/README.md#installing for guidance.
+</pre></div>
+</div>
+<p>This will make CUDA devices unavailable, but the CPU can still be used.</p>
+<p>To remedy the situation there are a few options:</p>
+<ul class="simple">
+<li><p>Update the driver.</p></li>
+<li><p>Install a compatible pre-built Warp package.</p></li>
+<li><p>Build Warp from source using a CUDA Toolkit that’s compatible with the installed driver.</p></li>
+</ul>
+</section>
+<section id="dependencies">
+<h2>Dependencies<a class="headerlink" href="#dependencies" title="Link to this heading">#</a></h2>
+<p>Warp supports Python versions 3.8 onwards, with 3.9 or newer recommended for full functionality. Note that <a class="reference internal" href="#conda"><span class="std std-ref">some optional dependencies may not support the latest version of Python</span></a>.</p>
+<p><a class="reference external" href="https://numpy.org">NumPy</a> must be installed.</p>
+<p>The following optional dependencies are required to support certain features:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://pypi.org/project/usd-core">usd-core</a>: Required for some Warp examples, <code class="docutils literal notranslate"><span class="pre">warp.sim.parse_usd()</span></code>, and <code class="docutils literal notranslate"><span class="pre">warp.render.UsdRenderer</span></code>.</p></li>
+<li><p><a class="reference external" href="https://jax.readthedocs.io/en/latest/installation.html">JAX</a>: Required for JAX interoperability (see <a class="reference internal" href="modules/interoperability.html#jax-interop"><span class="std std-ref">JAX</span></a>).</p></li>
+<li><p><a class="reference external" href="https://pytorch.org/get-started/locally/">PyTorch</a>: Required for PyTorch interoperability (see <a class="reference internal" href="modules/interoperability.html#pytorch-interop"><span class="std std-ref">PyTorch</span></a>).</p></li>
+<li><p><a class="reference external" href="https://github.com/PaddlePaddle/Paddle">Paddle</a>: Required for Paddle interoperability (see <a class="reference internal" href="modules/interoperability.html#paddle-interop"><span class="std std-ref">Paddle</span></a>).</p></li>
+<li><p><a class="reference external" href="https://github.com/NVIDIA/NVTX#python">NVTX for Python</a>: Required to use <a class="reference internal" href="profiling.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedTimer(use_nvtx=True)</span></code></a>.</p></li>
+</ul>
+</section>
+<section id="building-from-source">
+<h2>Building from Source<a class="headerlink" href="#building-from-source" title="Link to this heading">#</a></h2>
+<p>For developers who want to build the library themselves the following tools are required:</p>
+<ul class="simple">
+<li><p>Microsoft Visual Studio (Windows), minimum version 2019</p></li>
+<li><p>GCC (Linux), minimum version 9.4</p></li>
+<li><p><a class="reference external" href="https://developer.nvidia.com/cuda-toolkit">CUDA Toolkit</a>, minimum version 11.5</p></li>
+<li><p><a class="reference external" href="https://git-lfs.com">Git Large File Storage</a></p></li>
+</ul>
+<p>After cloning the repository, users should run:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>build_lib.py
+</pre></div>
+</div>
+<p>Upon success, the script will output platform-specific binary files in <code class="docutils literal notranslate"><span class="pre">warp/bin/</span></code>.
+The build script will look for the CUDA Toolkit in its default installation path.
+This path can be overridden by setting the <code class="docutils literal notranslate"><span class="pre">CUDA_PATH</span></code> environment variable. Alternatively,
+the path to the CUDA Toolkit can be passed to the build command as
+<code class="docutils literal notranslate"><span class="pre">--cuda_path=&quot;...&quot;</span></code>. After building, the Warp package should be installed using:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">-e</span></code> option is optional but ensures that subsequent modifications to the
+library will be reflected in the Python package.</p>
+</section>
+<section id="conda-environments">
+<span id="conda"></span><h2>Conda Environments<a class="headerlink" href="#conda-environments" title="Link to this heading">#</a></h2>
+<p>Some modules, such as <code class="docutils literal notranslate"><span class="pre">usd-core</span></code>, don’t support the latest Python version.
+To manage running Warp and other projects on different Python versions one can
+make use of an environment management system such as
+<a class="reference external" href="https://docs.conda.io/">Conda</a>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>When building and running Warp in a different environment, make sure
+the build environment has the same C++ runtime library version, or an older
+one, than the execution environment. Otherwise Warp’s shared libraries may end
+up looking for a newer runtime library version than the one available in the
+execution environment. For example, on Linux this error could occur:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>OSError: &lt;...&gt;/libstdc++.so.6: version `GLIBCXX_3.4.30&#39; not found (required by &lt;...&gt;/warp/warp/bin/warp.so)
+</pre></div>
+</div>
+<p>This can be solved by installing a newer C++ runtime version in the runtime
+Conda environment using <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">-c</span> <span class="pre">conda-forge</span> <span class="pre">libstdcxx-ng=12.1</span></code> or
+newer.</p>
+<p>Alternatively, the build environment’s C++ toolchain can be downgraded using
+<code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">-c</span> <span class="pre">conda-forge</span> <span class="pre">libstdcxx-ng=8.5</span></code>. Or, one can <code class="docutils literal notranslate"><span class="pre">activate</span></code> or
+<code class="docutils literal notranslate"><span class="pre">deactivate</span></code> Conda environments as needed for building vs. running Warp.</p>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="index.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">NVIDIA Warp Documentation</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="basics.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Basics</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nightly-builds">Nightly Builds</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#conda-installation">Conda Installation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installing-from-github-releases">Installing from GitHub Releases</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-requirements">CUDA Requirements</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dependencies">Dependencies</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-from-source">Building from Source</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#conda-environments">Conda Environments</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2025 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

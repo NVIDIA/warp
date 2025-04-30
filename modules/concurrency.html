@@ -1,0 +1,1127 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Concurrency &#8212; Warp 1.7.1</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=df3ac72c" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=a77542ef"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'modules/concurrency';</script>
+    <link rel="icon" href="../_static/favicon.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Profiling" href="../profiling.html" />
+    <link rel="prev" title="Allocators" href="allocators.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.7.1" />
+
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.7.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.7.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.7.1</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://discord.com/channels/827959428476174346/1285719658325999686" title="Discord" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-discord fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Discord</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.7.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.7.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.7.1</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://discord.com/channels/827959428476174346/1285719658325999686" title="Discord" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-discord fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Discord</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tiles.html">Tiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Advanced Topics</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="allocators.html">Allocators</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="functions.html">Kernel Reference</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Simulation Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="sim.html">warp.sim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="render.html">warp.render</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://discord.com/channels/827959428476174346/1285719658325999686">Discord</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Concurrency</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="concurrency">
+<h1>Concurrency<a class="headerlink" href="#concurrency" title="Link to this heading">#</a></h1>
+<section id="asynchronous-operations">
+<h2>Asynchronous Operations<a class="headerlink" href="#asynchronous-operations" title="Link to this heading">#</a></h2>
+<section id="kernel-launches">
+<h3>Kernel Launches<a class="headerlink" href="#kernel-launches" title="Link to this heading">#</a></h3>
+<p>Kernels launched on a CUDA device are asynchronous with respect to the host (CPU Python thread).  Launching a kernel schedules
+its execution on the CUDA device, but the <a class="reference internal" href="runtime.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> function can return before the kernel execution
+completes.  This allows us to run some CPU computations while the CUDA kernel is executing, which is an
+easy way to introduce parallelism into our programs.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel1</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="c1"># do some CPU work while the CUDA kernel is running</span>
+<span class="n">do_cpu_work</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Kernels launched on different CUDA devices can execute concurrently.  This can be used to tackle independent sub-tasks in parallel on different GPUs while using the CPU to do other useful work:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># launch concurrent kernels on different devices</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel1</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a1</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+
+<span class="c1"># do CPU work while kernels are running on both GPUs</span>
+<span class="n">do_cpu_work</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Launching kernels on the CPU is currently a synchronous operation.  In other words, <a class="reference internal" href="runtime.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> will return only after the kernel has finished executing on the CPU.  To run a CUDA kernel and a CPU kernel concurrently, the CUDA kernel should be launched first:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># schedule a kernel on a CUDA device</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="c1"># run a kernel on the CPU while the CUDA kernel is running</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel2</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="graph-launches">
+<h3>Graph Launches<a class="headerlink" href="#graph-launches" title="Link to this heading">#</a></h3>
+<p>The concurrency rules for CUDA graph launches are similar to CUDA kernel launches, except that graphs are not available on the CPU.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># capture work on cuda:0 in a graph</span>
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCapture</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">capture0</span><span class="p">:</span>
+    <span class="n">do_gpu0_work</span><span class="p">()</span>
+
+<span class="c1"># capture work on cuda:1 in a graph</span>
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCapture</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">capture1</span><span class="p">:</span>
+    <span class="n">do_gpu1_work</span><span class="p">()</span>
+
+<span class="c1"># launch captured graphs on the respective devices concurrently</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">capture0</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">capture1</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
+
+<span class="c1"># do some CPU work while the CUDA graphs are running</span>
+<span class="n">do_cpu_work</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="array-creation">
+<h3>Array Creation<a class="headerlink" href="#array-creation" title="Link to this heading">#</a></h3>
+<p>Creating CUDA arrays is also asynchronous with respect to the host.  It involves allocating memory on the device
+and initializing it, which is done under the hood using a kernel launch or an asynchronous CUDA memset operation.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a0</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">b0</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="n">a1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+<span class="n">b1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mf">42.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this snippet, arrays <code class="docutils literal notranslate"><span class="pre">a0</span></code> and <code class="docutils literal notranslate"><span class="pre">b0</span></code> are created on device <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code> and arrays <code class="docutils literal notranslate"><span class="pre">a1</span></code> and <code class="docutils literal notranslate"><span class="pre">b1</span></code> are created
+on device <code class="docutils literal notranslate"><span class="pre">cuda:1</span></code>.  The operations on the same device are sequential, but each device executes them independently of the
+other device, so they can run concurrently.</p>
+</section>
+<section id="array-copying">
+<h3>Array Copying<a class="headerlink" href="#array-copying" title="Link to this heading">#</a></h3>
+<p>Copying arrays between devices can also be asynchronous, but there are some details to be aware of.</p>
+<p>Copying from host memory to a CUDA device and copying from a CUDA device to host memory is asynchronous only if the host array is pinned.
+Pinned memory allows the CUDA driver to use direct memory transfers (DMA), which are generally faster and can be done without involving the CPU.
+There are a couple of drawbacks to using pinned memory: allocation and deallocation is usually slower and there are system-specific limits
+on how much pinned memory can be allocated on the system.  For this reason, Warp CPU arrays are not pinned by default.  You can request a pinned
+allocation by passing the <code class="docutils literal notranslate"><span class="pre">pinned=True</span></code> flag when creating a CPU array.  This is a good option for arrays that are used to copy data
+between host and device, especially if asynchronous transfers are desired.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">h</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">p</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span> <span class="n">pinned</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="c1"># host-to-device copy</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>  <span class="c1"># synchronous</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>  <span class="c1"># asynchronous</span>
+
+<span class="c1"># device-to-host copy</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>  <span class="c1"># synchronous</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>  <span class="c1"># asynchronous</span>
+
+<span class="c1"># wait for asynchronous operations to complete</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Copying between CUDA arrays on the same device is always asynchronous with respect to the host, since it does not involve the CPU:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="c1"># asynchronous device-to-device copy</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+
+<span class="c1"># wait for transfer to complete</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Copying between CUDA arrays on different devices is also asynchronous with respect to the host.  Peer-to-peer transfers require
+extra care, because CUDA devices are also asynchronous with respect to each other.  When copying an array from one GPU to another,
+the destination GPU is used to perform the copy, so we need to ensure that prior work on the source GPU completes before the transfer.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a0</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">a1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+
+<span class="c1"># wait for outstanding work on the source device to complete to ensure the source array is ready</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="c1"># asynchronous peer-to-peer copy</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">a0</span><span class="p">)</span>
+
+<span class="c1"># wait for the copy to complete on the destination device</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">(</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that peer-to-peer transfers can be accelerated using <a class="reference internal" href="allocators.html#mempool-access"><span class="std std-ref">memory pool access</span></a> or <a class="reference internal" href="devices.html#peer-access"><span class="std std-ref">peer access</span></a>, which enables DMA transfers between CUDA devices on supported systems.</p>
+</section>
+</section>
+<section id="streams">
+<span id="id1"></span><h2>Streams<a class="headerlink" href="#streams" title="Link to this heading">#</a></h2>
+<p>A CUDA stream is a sequence of operations that execute in order on the GPU.  Operations from different streams may run concurrently
+and may be interleaved by the device scheduler.</p>
+<p>Warp automatically creates a stream for each CUDA device during initialization.  This becomes the current stream for the device.
+All kernel launches and memory operations issued on that device are placed on the current stream.</p>
+<section id="creating-streams">
+<h3>Creating Streams<a class="headerlink" href="#creating-streams" title="Link to this heading">#</a></h3>
+<p>A stream is tied to a particular CUDA device.  New streams can be created using the <a class="reference internal" href="runtime.html#warp.Stream" title="warp.Stream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Stream</span></code></a> constructor:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>  <span class="c1"># create a stream on a specific CUDA device</span>
+<span class="n">s2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">()</span>          <span class="c1"># create a stream on the default device</span>
+</pre></div>
+</div>
+<p>If the device parameter is omitted, the default device will be used, which can be managed using <a class="reference internal" href="devices.html#warp.ScopedDevice" title="warp.ScopedDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code></a>.</p>
+<p>For interoperation with external code, it is possible to pass a CUDA stream handle to wrap an external stream:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s3</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="n">cuda_stream</span><span class="o">=</span><span class="n">stream_handle</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">cuda_stream</span></code> argument must be a native stream handle (<code class="docutils literal notranslate"><span class="pre">cudaStream_t</span></code> or <code class="docutils literal notranslate"><span class="pre">CUstream</span></code>) passed as a Python integer.
+This mechanism is used internally for sharing streams with external frameworks like PyTorch or DLPack.  The caller is responsible for ensuring
+that the external stream does not get destroyed while it is referenced by a <code class="docutils literal notranslate"><span class="pre">wp.Stream</span></code> object.</p>
+</section>
+<section id="using-streams">
+<h3>Using Streams<a class="headerlink" href="#using-streams" title="Link to this heading">#</a></h3>
+<p>Use <a class="reference internal" href="runtime.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> to temporarily change the current stream on a device and schedule a sequence of operations on that stream:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">stream</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Since streams are tied to a particular device, <a class="reference internal" href="runtime.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> subsumes the functionality of <a class="reference internal" href="devices.html#warp.ScopedDevice" title="warp.ScopedDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code></a>.  That’s why we don’t need to explicitly specify the <code class="docutils literal notranslate"><span class="pre">device</span></code> argument to each of the calls.</p>
+<p>An important benefit of streams is that they can be used to overlap compute and data transfer operations on the same device,
+which can improve the overall throughput of a program by doing those operations in parallel.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span> <span class="n">pinned</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">compute_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">()</span>
+    <span class="n">transfer_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">()</span>
+
+    <span class="c1"># asynchronous kernel launch on a stream</span>
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">compute_stream</span><span class="p">)</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+
+    <span class="c1"># asynchronous host-to-device copy on another stream</span>
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">transfer_stream</span><span class="p">)</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="runtime.html#warp.get_stream" title="warp.get_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.get_stream()</span></code></a> function can be used to get the current stream on a device:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>  <span class="c1"># get the current stream on a specific device</span>
+<span class="n">s2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_stream</span><span class="p">()</span>          <span class="c1"># get the current stream on the default device</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="runtime.html#warp.set_stream" title="warp.set_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_stream()</span></code></a> function can be used to set the current stream on a device:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">set_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>  <span class="c1"># set the stream on a specific device</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>                   <span class="c1"># set the stream on the default device</span>
+</pre></div>
+</div>
+<p>In general, we recommend using <a class="reference internal" href="runtime.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> rather than <a class="reference internal" href="runtime.html#warp.set_stream" title="warp.set_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_stream()</span></code></a>.</p>
+</section>
+<section id="synchronization">
+<h3>Synchronization<a class="headerlink" href="#synchronization" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="runtime.html#warp.synchronize_stream" title="warp.synchronize_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_stream()</span></code></a> can be used to block the host thread until the given stream completes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">synchronize_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In a program that uses multiple streams, this gives a more fine-grained level of control over synchronization behavior
+than <a class="reference internal" href="devices.html#warp.synchronize_device" title="warp.synchronize_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_device()</span></code></a>, which synchronizes all streams on the device.
+For example, if a program has multiple compute and transfer streams, the host might only want to wait for one transfer stream
+to complete, without waiting for the other streams.  By synchronizing only one stream, we allow the others to continue running
+concurrently with the host thread.</p>
+</section>
+<section id="events">
+<span id="cuda-events"></span><h3>Events<a class="headerlink" href="#events" title="Link to this heading">#</a></h3>
+<p>Functions like <a class="reference internal" href="devices.html#warp.synchronize_device" title="warp.synchronize_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_device()</span></code></a> or <a class="reference internal" href="runtime.html#warp.synchronize_stream" title="warp.synchronize_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_stream()</span></code></a> block the CPU thread until work completes on a CUDA device, but they’re not intended to synchronize multiple CUDA streams with each other.</p>
+<p>CUDA events provide a mechanism for device-side synchronization between streams.
+This kind of synchronization does not block the host thread, but it allows one stream to wait for work on another stream
+to complete.</p>
+<p>Like streams, events are tied to a particular device:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">e1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>  <span class="c1"># create an event on a specific CUDA device</span>
+<span class="n">e2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>          <span class="c1"># create an event on the default device</span>
+</pre></div>
+</div>
+<p>To wait for a stream to complete some work, we first record the event on that stream.  Then we make another stream
+wait on that event:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">stream2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">event</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="n">stream1</span><span class="o">.</span><span class="n">record_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+<span class="n">stream2</span><span class="o">.</span><span class="n">wait_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that when recording events, the event must be from the same device as the recording stream.
+When waiting for events, the waiting stream can be from another device.  This allows using events to synchronize streams
+on different GPUs.</p>
+<p>If the <a class="reference internal" href="runtime.html#warp.Stream.record_event" title="warp.Stream.record_event"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Stream.record_event()</span></code></a> method is called without an event argument, a temporary event will be created, recorded, and returned:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">event</span> <span class="o">=</span> <span class="n">stream1</span><span class="o">.</span><span class="n">record_event</span><span class="p">()</span>
+<span class="n">stream2</span><span class="o">.</span><span class="n">wait_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="runtime.html#warp.Stream.wait_stream" title="warp.Stream.wait_stream"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Stream.wait_stream()</span></code></a> method combines the acts of recording and waiting on an event in one call:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream2</span><span class="o">.</span><span class="n">wait_stream</span><span class="p">(</span><span class="n">stream1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Warp also provides global functions <a class="reference internal" href="runtime.html#warp.record_event" title="warp.record_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.record_event()</span></code></a>, <a class="reference internal" href="runtime.html#warp.wait_event" title="warp.wait_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.wait_event()</span></code></a>, and <a class="reference internal" href="runtime.html#warp.wait_stream" title="warp.wait_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.wait_stream()</span></code></a> which operate on the current
+stream of the default device:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">record_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>  <span class="c1"># record an event on the current stream</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">wait_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>    <span class="c1"># make the current stream wait for an event</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">wait_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>  <span class="c1"># make the current stream wait for another stream</span>
+</pre></div>
+</div>
+<p>These variants are convenient to use inside of <a class="reference internal" href="runtime.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> and <a class="reference internal" href="devices.html#warp.ScopedDevice" title="warp.ScopedDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code></a> managers.</p>
+<p>Here is a more complete example with a producer stream that copies data into an array and a consumer stream
+that uses the array in a kernel:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span> <span class="n">pinned</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">producer_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">()</span>
+    <span class="n">consumer_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">()</span>
+
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">producer_stream</span><span class="p">)</span>
+        <span class="c1"># asynchronous host-to-device copy</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+
+        <span class="c1"># record an event to create a synchronization point for the consumer stream</span>
+        <span class="n">event</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">record_event</span><span class="p">()</span>
+
+        <span class="c1"># do some unrelated work in the producer stream</span>
+        <span class="n">do_other_producer_work</span><span class="p">()</span>
+
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">consumer_stream</span><span class="p">)</span>
+        <span class="c1"># do some unrelated work in the consumer stream</span>
+        <span class="n">do_other_consumer_work</span><span class="p">()</span>
+
+        <span class="c1"># wait for the producer copy to complete</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">wait_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+
+        <span class="c1"># consume the array in a kernel</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>The function <a class="reference internal" href="runtime.html#warp.synchronize_event" title="warp.synchronize_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_event()</span></code></a> can be used to block the host thread until a recorded event completes.  This is useful when the host wants to wait for a specific synchronization point on a stream, while allowing subsequent stream operations to continue executing asynchronously.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">):</span>
+    <span class="c1"># CPU buffers for readback</span>
+    <span class="n">a_host</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">pinned</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">b_host</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">pinned</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">):</span>
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_stream</span><span class="p">()</span>
+
+    <span class="c1"># initialize first GPU array</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">17</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="c1"># asynchronous readback</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">a_host</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+    <span class="c1"># record event</span>
+    <span class="n">a_event</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">record_event</span><span class="p">()</span>
+
+    <span class="c1"># initialize second GPU array</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="c1"># asynchronous readback</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">b_host</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+    <span class="c1"># record event</span>
+    <span class="n">b_event</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">record_event</span><span class="p">()</span>
+
+    <span class="c1"># wait for first array readback to complete</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">synchronize_event</span><span class="p">(</span><span class="n">a_event</span><span class="p">)</span>
+    <span class="c1"># process first array on the CPU</span>
+    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">a_host</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mf">17.0</span><span class="p">))</span>
+
+    <span class="c1"># wait for second array readback to complete</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">synchronize_event</span><span class="p">(</span><span class="n">b_event</span><span class="p">)</span>
+    <span class="c1"># process second array on the CPU</span>
+    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">b_host</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mf">42.0</span><span class="p">))</span>
+</pre></div>
+</div>
+</section>
+<section id="querying-stream-and-event-status">
+<h3>Querying Stream and Event Status<a class="headerlink" href="#querying-stream-and-event-status" title="Link to this heading">#</a></h3>
+<p>The <a class="reference internal" href="runtime.html#warp.Stream.is_complete" title="warp.Stream.is_complete"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Stream.is_complete</span></code></a> and <a class="reference internal" href="runtime.html#warp.Event.is_complete" title="warp.Event.is_complete"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Event.is_complete</span></code></a> attributes can be used to query the status of a stream or
+event. These queries do not block the host thread unlike <a class="reference internal" href="runtime.html#warp.synchronize_stream" title="warp.synchronize_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_stream()</span></code></a> and
+<a class="reference internal" href="runtime.html#warp.synchronize_event" title="warp.synchronize_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_event()</span></code></a>.</p>
+<p>These attributes are useful for running operations on the CPU while waiting for GPU operations to complete:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_kernel</span><span class="p">(</span><span class="nb">sum</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">)):</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="nb">sum</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+
+
+<span class="nb">sum</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">test_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">8</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="nb">sum</span><span class="p">])</span>
+
+<span class="c1"># Have the CPU do some unrelated work while the GPU is computing</span>
+<span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">while</span> <span class="ow">not</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_stream</span><span class="p">()</span><span class="o">.</span><span class="n">is_complete</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;counter: </span><span class="si">{</span><span class="n">counter</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="runtime.html#warp.Stream.is_complete" title="warp.Stream.is_complete"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Stream.is_complete</span></code></a> and <a class="reference internal" href="runtime.html#warp.Event.is_complete" title="warp.Event.is_complete"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Event.is_complete</span></code></a> cannot be accessed during a graph capture.</p>
+</section>
+<section id="cuda-default-stream">
+<h3>CUDA Default Stream<a class="headerlink" href="#cuda-default-stream" title="Link to this heading">#</a></h3>
+<p>Warp avoids using the synchronous CUDA default stream, which is a special stream that synchronizes with all other streams
+on the same device.  This stream is currently only used during readback operations that are provided for convenience, such as <code class="docutils literal notranslate"><span class="pre">array.numpy()</span></code> and <code class="docutils literal notranslate"><span class="pre">array.list()</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">stream2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">stream1</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">stream2</span><span class="p">):</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In the snippet above, there are two arrays that are initialized on different CUDA streams.  Printing those arrays triggers
+a readback, which is done using the <code class="docutils literal notranslate"><span class="pre">array.numpy()</span></code> method.  This readback happens on the synchronous CUDA default stream,
+which means that no explicit synchronization is required.  The reason for this is convenience - printing an array is useful
+for debugging purposes, so it’s nice not to worry about synchronization.</p>
+<p>The drawback of this approach is that the CUDA default stream (and any methods that use it) cannot be used during graph capture.
+The regular <a class="reference internal" href="runtime.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a> function should be used to capture readback operations in a graph.</p>
+</section>
+<section id="explicit-streams-arguments">
+<h3>Explicit Streams Arguments<a class="headerlink" href="#explicit-streams-arguments" title="Link to this heading">#</a></h3>
+<p>Several Warp functions accept optional <code class="docutils literal notranslate"><span class="pre">stream</span></code> arguments.  This allows directly specifying the stream without
+using a <a class="reference internal" href="runtime.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> manager.  There are benefits and drawbacks to both approaches, which will be discussed below.
+Functions that accept stream arguments directly include <a class="reference internal" href="runtime.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a>, <a class="reference internal" href="runtime.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></a>, and <a class="reference internal" href="runtime.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>.</p>
+<p>To launch a kernel on a specific stream:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="o">...</span><span class="p">],</span> <span class="n">stream</span><span class="o">=</span><span class="n">my_stream</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>When launching a kernel with an explicit <code class="docutils literal notranslate"><span class="pre">stream</span></code> argument, the <code class="docutils literal notranslate"><span class="pre">device</span></code> argument should be omitted, since the device is inferred
+from the stream.  If both <code class="docutils literal notranslate"><span class="pre">stream</span></code> and <code class="docutils literal notranslate"><span class="pre">device</span></code> are specified, the <code class="docutils literal notranslate"><span class="pre">stream</span></code> argument takes precedence.</p>
+<p>To launch a graph on a specific stream:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="n">my_stream</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For both kernel and graph launches, specifying the stream directly can be faster than using <a class="reference internal" href="runtime.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a>.
+While <a class="reference internal" href="runtime.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> is useful for scheduling a sequence of operations on a specific stream, there is some overhead
+in setting and restoring the current stream on the device.  This overhead is negligible for larger workloads,
+but performance-sensitive code may benefit from specifying the stream directly instead of using <a class="reference internal" href="runtime.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a>, especially
+for a single kernel or graph launch.</p>
+<p>In addition to these performance considerations, specifying the stream directly can be useful when copying arrays between
+two CUDA devices.  By default, Warp uses the following rules to determine which stream will be used for the copy:</p>
+<ul class="simple">
+<li><p>If the destination array is on a CUDA device, use the current stream on the destination device.</p></li>
+<li><p>Otherwise, if the source array is on a CUDA device, use the current stream on the source device.</p></li>
+</ul>
+<p>In the case of peer-to-peer copies, specifying the <code class="docutils literal notranslate"><span class="pre">stream</span></code> argument allows overriding these rules, and the copy can
+be performed on a stream from any device.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream0</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">stream1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_stream</span><span class="p">(</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+
+<span class="n">a0</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">a1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+
+<span class="c1"># wait for the destination array to be ready</span>
+<span class="n">stream0</span><span class="o">.</span><span class="n">wait_stream</span><span class="p">(</span><span class="n">stream1</span><span class="p">)</span>
+
+<span class="c1"># use the source device stream to do the copy</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">a0</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="n">stream0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Notice that we use event synchronization to make the source stream wait for the destination stream prior to the copy.
+This is due to the <a class="reference internal" href="allocators.html#mempool-allocators"><span class="std std-ref">stream-ordered memory pool allocators</span></a> introduced in Warp 0.14.0.  The allocation of the
+empty array <code class="docutils literal notranslate"><span class="pre">a1</span></code> is scheduled on stream <code class="docutils literal notranslate"><span class="pre">stream1</span></code>.  To avoid use-before-alloc errors, we need to wait until the
+allocation completes before using that array on a different stream.</p>
+</section>
+<section id="stream-priorities">
+<h3>Stream Priorities<a class="headerlink" href="#stream-priorities" title="Link to this heading">#</a></h3>
+<p>Streams can be created with a specified numerical priority using the <code class="docutils literal notranslate"><span class="pre">priority</span></code> parameter when creating a new
+<a class="reference internal" href="runtime.html#warp.Stream" title="warp.Stream"><code class="xref py py-class docutils literal notranslate"><span class="pre">Stream</span></code></a>. High-priority streams can be created with a priority of -1, while low-priority streams
+have a priority of 0. By scheduling work on streams of different priorities, users can achieve finer-grained
+control of how the GPU schedules pending work. Priorities are only a hint to the GPU for how to
+process work and do not guarantee that pending work will be executed in a certain order.
+Stream priorities currently do not affect host-to-device or device-to-host memory transfers.</p>
+<p>Streams created with a priority outside the valid values of -1 and 0 will have
+the priority clamped.
+The priority of any stream can be queried using the <a class="reference internal" href="runtime.html#warp.Stream.priority" title="warp.Stream.priority"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Stream.priority</span></code></a> attribute.
+If a CUDA device does not support stream priorities, then all streams will have
+a priority of 0 regardless of the priority requested when creating the stream.</p>
+<p>For more information on stream priorities, see the section in the
+<a class="reference external" href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-priorities">CUDA C++ Programming Guide</a>.</p>
+<p>The following example illustrates the impact of stream priorities:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">verify_cuda</span> <span class="o">=</span> <span class="kc">True</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+
+<span class="n">total_size</span> <span class="o">=</span> <span class="mi">256</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>
+<span class="n">each_size</span> <span class="o">=</span> <span class="mi">128</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">):</span>
+    <span class="n">array_lo</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">total_size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">array_hi</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">total_size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+    <span class="n">stream_lo</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(),</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># Low priority</span>
+    <span class="n">stream_hi</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># High priority</span>
+
+    <span class="n">start_lo_event</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">enable_timing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">start_hi_event</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">enable_timing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">end_lo_event</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">enable_timing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">end_hi_event</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">enable_timing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">())</span>
+
+    <span class="n">stream_lo</span><span class="o">.</span><span class="n">record_event</span><span class="p">(</span><span class="n">start_lo_event</span><span class="p">)</span>
+    <span class="n">stream_hi</span><span class="o">.</span><span class="n">record_event</span><span class="p">(</span><span class="n">start_hi_event</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">copy_offset</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">total_size</span><span class="p">,</span> <span class="n">each_size</span><span class="p">):</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">array_lo</span><span class="p">,</span> <span class="n">array_lo</span><span class="p">,</span> <span class="n">copy_offset</span><span class="p">,</span> <span class="n">copy_offset</span><span class="p">,</span> <span class="n">each_size</span><span class="p">,</span> <span class="n">stream_lo</span><span class="p">)</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">array_hi</span><span class="p">,</span> <span class="n">array_hi</span><span class="p">,</span> <span class="n">copy_offset</span><span class="p">,</span> <span class="n">copy_offset</span><span class="p">,</span> <span class="n">each_size</span><span class="p">,</span> <span class="n">stream_hi</span><span class="p">)</span>
+
+    <span class="n">stream_lo</span><span class="o">.</span><span class="n">record_event</span><span class="p">(</span><span class="n">end_lo_event</span><span class="p">)</span>
+    <span class="n">stream_hi</span><span class="o">.</span><span class="n">record_event</span><span class="p">(</span><span class="n">end_hi_event</span><span class="p">)</span>
+
+    <span class="c1"># get elapsed time between the two events</span>
+    <span class="n">elapsed_lo</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_event_elapsed_time</span><span class="p">(</span><span class="n">start_lo_event</span><span class="p">,</span> <span class="n">end_lo_event</span><span class="p">)</span>
+    <span class="n">elapsed_hi</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_event_elapsed_time</span><span class="p">(</span><span class="n">start_hi_event</span><span class="p">,</span> <span class="n">end_hi_event</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;elapsed_lo = </span><span class="si">{</span><span class="n">elapsed_lo</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;elapsed_hi = </span><span class="si">{</span><span class="n">elapsed_hi</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The output of the example on a test workstation looks like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">elapsed_lo</span> <span class="o">=</span> <span class="mf">5.118944</span>
+<span class="n">elapsed_hi</span> <span class="o">=</span> <span class="mf">2.647040</span>
+</pre></div>
+</div>
+<p>If the example is modified so that both streams have the same priority, the output becomes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">elapsed_lo</span> <span class="o">=</span> <span class="mf">5.112832</span>
+<span class="n">elapsed_hi</span> <span class="o">=</span> <span class="mf">5.114880</span>
+</pre></div>
+</div>
+<p>Finally, if we reverse the stream priorities so that <code class="docutils literal notranslate"><span class="pre">stream_lo</span></code> has a
+a priority of -1 and <code class="docutils literal notranslate"><span class="pre">stream_hi</span></code> has a priority of 0, we get:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">elapsed_lo</span> <span class="o">=</span> <span class="mf">2.621440</span>
+<span class="n">elapsed_hi</span> <span class="o">=</span> <span class="mf">5.105664</span>
+</pre></div>
+</div>
+</section>
+<section id="stream-usage-guidance">
+<h3>Stream Usage Guidance<a class="headerlink" href="#stream-usage-guidance" title="Link to this heading">#</a></h3>
+<p>Stream synchronization can be a tricky business, even for experienced CUDA developers.  Consider the following code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">stream</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This snippet has a stream synchronization problem that is difficult to detect at first glance.
+It’s quite possible that the code will work just fine, but it introduces undefined behavior,
+which may lead to incorrect results that manifest only once in a while.  The issue is that the kernel is launched
+on stream <code class="docutils literal notranslate"><span class="pre">s</span></code>, which is different than the stream used for creating array <code class="docutils literal notranslate"><span class="pre">a</span></code>.  The array is allocated and
+initialized on the current stream of device <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code>, which means that it might not be ready when stream <code class="docutils literal notranslate"><span class="pre">s</span></code>
+begins executing the kernel that consumes the array.</p>
+<p>The solution is to synchronize the streams, which can be done like this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="c1"># wait for the current stream on cuda:0 to finish initializing the array</span>
+<span class="n">s</span><span class="o">.</span><span class="n">wait_stream</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">get_stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">))</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">stream</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="runtime.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> manager is designed to alleviate this common problem.  It synchronizes the new stream with the
+previous stream on the device.  Its behavior is equivalent to inserting the <code class="docutils literal notranslate"><span class="pre">wait_stream()</span></code> call as shown above.
+With <a class="reference internal" href="runtime.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a>, we don’t need to explicitly sync the new stream with the previous stream:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>This makes <a class="reference internal" href="runtime.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> the recommended way of getting started with streams in Warp.  Using explicit stream arguments
+might be slightly more performant, but it requires more attention to stream synchronization mechanics.
+If you are a stream novice, consider the following trajectory for integrating streams into your Warp programs:</p>
+<ul class="simple">
+<li><p>Level 1:  Don’t.  You don’t need to use streams to use Warp.  Avoiding streams is a perfectly valid and respectable way to live.  Many interesting and sophisticated algorithms can be developed without fancy stream juggling.  Often it’s better to focus on solving a problem in a simple and elegant way, unencumbered by the vagaries of low-level stream management.</p></li>
+<li><p>Level 2:  Use <a class="reference internal" href="runtime.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a>.  It helps to avoid some common hard-to-catch issues.  There’s a little bit of overhead, but it should be negligible if the GPU workloads are large enough.  Consider adding streams into your program as a form of targeted optimization, especially if some areas like memory transfers (“feeding the beast”) are a known bottleneck.  Streams are great for overlapping memory transfers with compute workloads.</p></li>
+<li><p>Level 3:  Use explicit stream arguments for kernel launches, array copying, etc.  This will be the most performant approach that can get you close to the speed of light.  You will need to take care of all stream synchronization yourself, but the results can be rewarding in the benchmarks.</p></li>
+</ul>
+</section>
+</section>
+<section id="synchronization-guidance">
+<span id="id2"></span><h2>Synchronization Guidance<a class="headerlink" href="#synchronization-guidance" title="Link to this heading">#</a></h2>
+<p>The general rule with synchronization is to use as little of it as possible, but not less.</p>
+<p>Excessive synchronization can severely limit the performance of programs.  Synchronization means that a stream or thread
+is waiting for something else to complete.  While it’s waiting, it’s not doing any useful work, which means that any
+outstanding work cannot start until the synchronization point is reached.  This limits parallel execution, which is
+often important for squeezing the most juice out of the collection of hardware components.</p>
+<p>On the other hand, insufficient synchronization can lead to errors or incorrect results if operations execute out-of-order.
+A fast program is no good if it can’t guarantee correct results.</p>
+<section id="host-side-synchronization">
+<h3>Host-side Synchronization<a class="headerlink" href="#host-side-synchronization" title="Link to this heading">#</a></h3>
+<p>Host-side synchronization blocks the host thread (Python) until GPU work completes.  This is necessary when
+you are waiting for some GPU work to complete so that you can access the results on the CPU.</p>
+<p><a class="reference internal" href="devices.html#warp.synchronize" title="warp.synchronize"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize()</span></code></a> is the most heavy-handed synchronization function, since it synchronizes all the devices in the system.  It is almost never the right function to call if performance is important.  However, it can sometimes be useful when debugging synchronization-related issues.</p>
+<p><a class="reference internal" href="devices.html#warp.synchronize_device" title="warp.synchronize_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_device(device)</span></code></a> synchronizes a single device, which is generally better and faster.  This synchronizes all the streams on the specified device, including streams created by Warp and those created by any other framework.</p>
+<p><a class="reference internal" href="runtime.html#warp.synchronize_stream" title="warp.synchronize_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_stream(stream)</span></code></a> synchronizes a single stream, which is better still.  If the program uses multiple streams, you can wait for a specific one to finish without waiting for the others.  This is handy if you have a readback stream that is copying data from the GPU to the CPU.  You can wait for the transfer to complete and start processing it on the CPU while other streams are still chugging along on the GPU, in parallel with the host code.</p>
+<p><a class="reference internal" href="runtime.html#warp.synchronize_event" title="warp.synchronize_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_event(event)</span></code></a> is the most specific host synchronization function.  It blocks the host until an event previously recorded on a CUDA stream completes.  This can be used to wait for a specific stream synchronization point to be reached, while allowing subsequent operations on that stream to continue asynchronously.</p>
+</section>
+<section id="device-side-synchronization">
+<h3>Device-side Synchronization<a class="headerlink" href="#device-side-synchronization" title="Link to this heading">#</a></h3>
+<p>Device-side synchronization uses CUDA events to make one stream wait for a synchronization point recorded on another stream (<a class="reference internal" href="runtime.html#warp.record_event" title="warp.record_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.record_event()</span></code></a>, <a class="reference internal" href="runtime.html#warp.wait_event" title="warp.wait_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.wait_event()</span></code></a>, <a class="reference internal" href="runtime.html#warp.wait_stream" title="warp.wait_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.wait_stream()</span></code></a>).</p>
+<p>These functions don’t block the host thread, so the CPU can stay busy doing useful work, like preparing the next batch of data
+to feed the beast.  Events can be used to synchronize streams on the same device or even different CUDA devices, so you can
+choreograph very sophisticated multi-stream and multi-device workloads that execute entirely on the available GPUs.
+This allows keeping host-side synchronization to a minimum, perhaps only when reading back the final results.</p>
+</section>
+<section id="synchronization-and-graph-capture">
+<h3>Synchronization and Graph Capture<a class="headerlink" href="#synchronization-and-graph-capture" title="Link to this heading">#</a></h3>
+<p>A CUDA graph captures a sequence of operations on a CUDA stream that can be replayed multiple times with low overhead.
+During capture, certain CUDA functions are not allowed, which includes host-side synchronization functions.  Using the synchronous
+CUDA default stream is also not allowed.  The only form of synchronization allowed in CUDA graphs is event-based synchronization.</p>
+<p>A CUDA graph capture must start and end on the same stream, but multiple streams can be used in the middle.  This allows CUDA graphs to encompass multiple streams and even multiple GPUs.  Events play a crucial role with multi-stream graph capture because they are used to fork and join new streams to the main capture stream, in addition to their regular synchronization duties.</p>
+<p>Here’s an example of capturing a multi-GPU graph using a stream on each device:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream0</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">stream1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+
+<span class="c1"># use stream0 as the main capture stream</span>
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCapture</span><span class="p">(</span><span class="n">stream</span><span class="o">=</span><span class="n">stream0</span><span class="p">)</span> <span class="k">as</span> <span class="n">capture</span><span class="p">:</span>
+
+    <span class="c1"># fork stream1, which adds it to the set of streams being captured</span>
+    <span class="n">stream1</span><span class="o">.</span><span class="n">wait_stream</span><span class="p">(</span><span class="n">stream0</span><span class="p">)</span>
+
+    <span class="c1"># launch a kernel on stream0</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="n">stream0</span><span class="p">)</span>
+
+    <span class="c1"># launch a kernel on stream1</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="n">stream1</span><span class="p">)</span>
+
+    <span class="c1"># join stream1</span>
+    <span class="n">stream0</span><span class="o">.</span><span class="n">wait_stream</span><span class="p">(</span><span class="n">stream1</span><span class="p">)</span>
+
+<span class="c1"># launch the multi-GPU graph, which can execute the captured kernels concurrently</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">capture</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="allocators.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Allocators</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../profiling.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Profiling</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#asynchronous-operations">Asynchronous Operations</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#kernel-launches">Kernel Launches</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#graph-launches">Graph Launches</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#array-creation">Array Creation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#array-copying">Array Copying</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#streams">Streams</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#creating-streams">Creating Streams</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#using-streams">Using Streams</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#synchronization">Synchronization</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#events">Events</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#querying-stream-and-event-status">Querying Stream and Event Status</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-default-stream">CUDA Default Stream</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#explicit-streams-arguments">Explicit Streams Arguments</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stream-priorities">Stream Priorities</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stream-usage-guidance">Stream Usage Guidance</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#synchronization-guidance">Synchronization Guidance</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#host-side-synchronization">Host-side Synchronization</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#device-side-synchronization">Device-side Synchronization</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#synchronization-and-graph-capture">Synchronization and Graph Capture</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2025 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

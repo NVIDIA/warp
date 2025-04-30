@@ -1,0 +1,1597 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Code Generation &#8212; Warp 1.7.1</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/nvidia-sphinx-theme.css?v=df3ac72c" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=a77542ef"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'codegen';</script>
+    <link rel="icon" href="_static/favicon.png"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Allocators" href="modules/allocators.html" />
+    <link rel="prev" title="Changelog" href="changelog.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.7.1" />
+
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.7.1 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.7.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.7.1</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://discord.com/channels/827959428476174346/1285719658325999686" title="Discord" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-discord fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Discord</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.7.1 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.7.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.7.1</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://discord.com/channels/827959428476174346/1285719658325999686" title="Discord" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-discord fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Discord</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/tiles.html">Tiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Advanced Topics</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="modules/runtime.html">Runtime Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/functions.html">Kernel Reference</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Simulation Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="modules/sim.html">warp.sim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/render.html">warp.render</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://discord.com/channels/827959428476174346/1285719658325999686">Discord</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Code Generation</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="code-generation">
+<span id="id1"></span><h1>Code Generation<a class="headerlink" href="#code-generation" title="Link to this heading">#</a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">#</a></h2>
+<p>Warp kernels are grouped together by Python module.  Before they can run on a device, they must be translated and compiled for the device architecture.  All kernels in a module are compiled together, which is faster than compiling each one individually.  When a kernel is launched, Warp checks if the module is up-to-date and will compile it if needed.  Adding new kernels to a module at runtime modifies the module, which means that it will need to be reloaded on next launch.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">kernel_foo</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel_foo</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">kernel_bar</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;bar&quot;</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel_bar</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In the snippet above, kernel definitions are interspersed with kernel launches.  To execute <code class="docutils literal notranslate"><span class="pre">kernel_foo</span></code>, the module is compiled during the first launch.  Defining <code class="docutils literal notranslate"><span class="pre">kernel_bar</span></code> modifies the module, so it needs to be recompiled during the second launch:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Module __main__ 6cd1d53 load on device &#39;cuda:0&#39; took 168.19 ms  (compiled)
+foo
+Module __main__ c7c0e9a load on device &#39;cuda:0&#39; took 160.35 ms  (compiled)
+bar
+</pre></div>
+</div>
+<p>The compilation can take a long time for modules with numerous complex kernels, so Warp caches the compiled modules and can reuse them on the next run of the program:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Module __main__ 6cd1d53 load on device &#39;cuda:0&#39; took 4.97 ms  (cached)
+foo
+Module __main__ c7c0e9a load on device &#39;cuda:0&#39; took 0.40 ms  (cached)
+bar
+</pre></div>
+</div>
+<p>Loading cached modules is much faster, but it’s not free.  In addition, module reloading can cause problems during CUDA graph capture, so there are good reasons to try to avoid it.</p>
+<p>The best way to avoid module reloading is to define all the kernels before launching any of them.  This way, the module will be compiled only once:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">kernel_foo</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">kernel_bar</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;bar&quot;</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel_foo</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel_bar</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Module __main__ c7c0e9a load on device &#39;cuda:0&#39; took 174.57 ms  (compiled)
+foo
+bar
+</pre></div>
+</div>
+<p>On subsequent runs it will be loaded from the kernel cache only once:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Module __main__ c7c0e9a load on device &#39;cuda:0&#39; took 4.96 ms  (cached)
+foo
+bar
+</pre></div>
+</div>
+<p>Warp tries to recognize duplicate kernels to avoid unnecessary module reloading.  For example, this program creates kernels in a loop, but they are always identical, so the module does not need to be recompiled on every launch:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">kernel_hello</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">)</span>
+
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel_hello</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Warp filters out the duplicate kernels, so the module is only loaded once:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Module __main__ 8194f57 load on device &#39;cuda:0&#39; took 178.24 ms  (compiled)
+hello
+hello
+hello
+</pre></div>
+</div>
+<p>Warp generates C++/CUDA source code for CPU/GPU and stores the .cpp/.cu source files under the module directories of the kernel cache.
+The kernel cache folder path is printed during the <a class="reference internal" href="basics.html#warp-initialization"><span class="std std-ref">Warp initialization</span></a> and
+can be retrieved after Warp has been initialized from the <code class="docutils literal notranslate"><span class="pre">warp.config.kernel_cache_dir</span></code> <a class="reference internal" href="configuration.html#global-settings"><span class="std std-ref">configuration setting</span></a>.</p>
+<p>Consider the following example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">my_func</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">*</span> <span class="n">a</span>
+    <span class="k">return</span> <span class="n">c</span>
+</pre></div>
+</div>
+<p>The resulting CUDA code looks similar to this:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// example.py:5</span>
+<span class="k">static</span><span class="w"> </span><span class="n">CUDA_CALLABLE</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">float32</span><span class="w"> </span><span class="n">my_func_0</span><span class="p">(</span>
+<span class="w">    </span><span class="n">wp</span><span class="o">::</span><span class="n">float32</span><span class="w"> </span><span class="n">var_a</span><span class="p">,</span>
+<span class="w">    </span><span class="n">wp</span><span class="o">::</span><span class="n">float32</span><span class="w"> </span><span class="n">var_b</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">//---------</span>
+<span class="w">    </span><span class="c1">// primal vars</span>
+<span class="w">    </span><span class="n">wp</span><span class="o">::</span><span class="n">float32</span><span class="w"> </span><span class="n">var_0</span><span class="p">;</span>
+<span class="w">    </span><span class="n">wp</span><span class="o">::</span><span class="n">float32</span><span class="w"> </span><span class="n">var_1</span><span class="p">;</span>
+<span class="w">    </span><span class="c1">//---------</span>
+<span class="w">    </span><span class="c1">// forward</span>
+<span class="w">    </span><span class="c1">// def my_func(a: float, b: float):                                                       &lt;L 6&gt;</span>
+<span class="w">    </span><span class="c1">// c = wp.sin(b) * a                                                                      &lt;L 7&gt;</span>
+<span class="w">    </span><span class="n">var_0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">sin</span><span class="p">(</span><span class="n">var_b</span><span class="p">);</span>
+<span class="w">    </span><span class="n">var_1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">mul</span><span class="p">(</span><span class="n">var_0</span><span class="p">,</span><span class="w"> </span><span class="n">var_a</span><span class="p">);</span>
+<span class="w">    </span><span class="c1">// return c                                                                               &lt;L 8&gt;</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">var_1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The generated code follows <a class="reference external" href="https://en.wikipedia.org/wiki/Static_single-assignment_form">static-single-assignment (SSA) form</a>.
+To ease the readability, comments referring to the original Python source code lines are inserted.
+Besides the forward pass, the gradient function is also generated, and,
+if a <a class="reference internal" href="modules/differentiability.html#custom-gradient-functions"><span class="std std-ref">custom replay function</span></a> is provided, the replay function is generated as well.</p>
+<p>Warp passes the generated source code to native compilers (e.g., LLVM for CPU and NVRTC for CUDA) to produce executable code that is invoked when launching kernels.</p>
+</section>
+<section id="external-references-and-constants">
+<span id="external-references"></span><h2>External References and Constants<a class="headerlink" href="#external-references-and-constants" title="Link to this heading">#</a></h2>
+<p>A Warp kernel can access regular Python variables defined outside of the kernel itself, as long as those variables are of a supported type. Such external references are treated as compile-time constants in the kernel. It’s not possible for code running on a different device to access the state of the Python interpreter, so these variables are folded into the kernels by value:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">C</span> <span class="o">=</span> <span class="mi">42</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>During code generation, the external variable <code class="docutils literal notranslate"><span class="pre">C</span></code> becomes a constant:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="c1">//---------</span>
+<span class="w">    </span><span class="c1">// primal vars</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">int32</span><span class="w"> </span><span class="n">var_0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">42</span><span class="p">;</span>
+<span class="w">    </span><span class="c1">//---------</span>
+<span class="w">    </span><span class="c1">// forward</span>
+<span class="w">    </span><span class="c1">// def k():</span>
+<span class="w">    </span><span class="c1">// print(C)</span>
+<span class="w">    </span><span class="n">wp</span><span class="o">::</span><span class="n">print</span><span class="p">(</span><span class="n">var_0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<section id="supported-constant-types">
+<h3>Supported Constant Types<a class="headerlink" href="#supported-constant-types" title="Link to this heading">#</a></h3>
+<p>Only value types can be used as constants in Warp kernels.  This includes integers, floating point numbers, vectors (<code class="docutils literal notranslate"><span class="pre">wp.vec*</span></code>), matrices (<code class="docutils literal notranslate"><span class="pre">wp.mat*</span></code>) and other built-in math types.  Attempting to capture other variables types will result in an exception:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">global_array</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">():</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">global_array</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="mi">42</span>  <span class="c1"># referencing external arrays is not allowed!</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">global_array</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[])</span>
+</pre></div>
+</div>
+<p>Output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>TypeError: Invalid external reference type: &lt;class &#39;warp.types.array&#39;&gt;
+</pre></div>
+</div>
+<p>The reason why arrays cannot be captured is because they exist on a particular device and contain pointers to the device memory, which would make the kernel not portable across different devices.  Arrays should always be passed as kernel inputs.</p>
+</section>
+<section id="usage-of-wp-constant">
+<h3>Usage of <code class="docutils literal notranslate"><span class="pre">wp.constant()</span></code><a class="headerlink" href="#usage-of-wp-constant" title="Link to this heading">#</a></h3>
+<p>In older versions of Warp, <code class="docutils literal notranslate"><span class="pre">wp.constant()</span></code> was required to declare constants that can be used in a kernel.  This is no longer necessary, but the old syntax is still supported for backward compatibility.  <code class="docutils literal notranslate"><span class="pre">wp.constant()</span></code> can still be used to check if a value can be referenced in a kernel:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mf">17.0</span><span class="p">)</span>  <span class="c1"># ok</span>
+<span class="n">v</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">))</span>  <span class="c1"># ok</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">))</span>  <span class="c1"># error, invalid constant type</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">():</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="n">v</span>
+</pre></div>
+</div>
+<p>In this snippet, a <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> will be raised when declaring the array with <code class="docutils literal notranslate"><span class="pre">wp.constant()</span></code>.  If <code class="docutils literal notranslate"><span class="pre">wp.constant()</span></code> was omitted, the error would be raised later during code generation, which might be slightly harder to debug.</p>
+</section>
+<section id="updating-constants">
+<h3>Updating Constants<a class="headerlink" href="#updating-constants" title="Link to this heading">#</a></h3>
+<p>One limitation of using external variables in Warp kernels is that Warp doesn’t know when the value is modified:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">C</span> <span class="o">=</span> <span class="mi">17</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># redefine constant</span>
+<span class="n">C</span> <span class="o">=</span> <span class="mi">42</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This prints:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Module __main__ 4494df2 load on device &#39;cuda:0&#39; took 163.54 ms  (compiled)
+17
+17
+</pre></div>
+</div>
+<p>During the first launch of kernel <code class="docutils literal notranslate"><span class="pre">k</span></code>, the kernel is compiled using the existing value of <code class="docutils literal notranslate"><span class="pre">C</span></code> (17).  Since <code class="docutils literal notranslate"><span class="pre">C</span></code> is just a plain Python variable, Warp has no way of detecting when it is modified.  Thus on the second launch the old value is printed again.</p>
+<p>One way to get around this limitation is to tell Warp that the module was modified:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">C</span> <span class="o">=</span> <span class="mi">17</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># redefine constant</span>
+<span class="n">C</span> <span class="o">=</span> <span class="mi">42</span>
+
+<span class="c1"># tell Warp that the module was modified</span>
+<span class="n">k</span><span class="o">.</span><span class="n">module</span><span class="o">.</span><span class="n">mark_modified</span><span class="p">()</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This produces the updated output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Module __main__ 4494df2 load on device &#39;cuda:0&#39; took 167.92 ms  (compiled)
+17
+Module __main__ 9a0664f load on device &#39;cuda:0&#39; took 164.83 ms  (compiled)
+42
+</pre></div>
+</div>
+<p>Notice that calling <code class="docutils literal notranslate"><span class="pre">module.mark_modified()</span></code> caused the module to be recompiled on the second launch using the latest value of <code class="docutils literal notranslate"><span class="pre">C</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">Module</span></code> class and the <code class="docutils literal notranslate"><span class="pre">mark_modified()</span></code> method are considered internal.  A public API for working with modules is planned, but currently it is subject to change without notice.  Programs should not overly rely on the <code class="docutils literal notranslate"><span class="pre">mark_modified()</span></code> method, but it can be used in a pinch.</p>
+</div>
+</section>
+</section>
+<section id="static-expressions">
+<span id="id2"></span><h2>Static Expressions<a class="headerlink" href="#static-expressions" title="Link to this heading">#</a></h2>
+<p>We often encounter situations where a kernel needs to be specialized for a given input or where certain parts of the code are static by the time the code is executed.
+With static expressions, we can write Python expressions to be evaluated at the time of declaring a Warp function or kernel.</p>
+<p><code class="docutils literal notranslate"><span class="pre">wp.static(...)</span></code> expressions allow the user to run arbitrary Python code at the time the Warp function or kernel containing the expression is defined.
+<code class="xref py py-func docutils literal notranslate"><span class="pre">wp.static(expr)</span></code> accepts a Python expression and replaces it with the result.
+Note that the expression can only access variables that can be evaluated at the time the expression is declared.
+This includes global variables and variables captured in a closure in which the Warp function or kernel is defined.
+Additionally, Warp constants from within the kernel or function can be accessed, such as the constant iteration variable for static for-loops (i.e. when the range is known at the time of code generation).</p>
+<p>The result from <code class="docutils literal notranslate"><span class="pre">wp.static()</span></code> must be a non-null value of one of the following types:</p>
+<ul class="simple">
+<li><p>A Warp function</p></li>
+<li><p>A string</p></li>
+<li><p>Any type that is supported by Warp inside kernels (e.g. scalars, structs, matrices, vectors, etc.), excluding Warp arrays or structs containing Warp arrays</p></li>
+</ul>
+<section id="example-static-math-expressions">
+<h3>Example: Static Math Expressions<a class="headerlink" href="#example-static-math-expressions" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.linalg</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">my_kernel</span><span class="p">():</span>
+    <span class="n">static_var</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">static</span><span class="p">(</span><span class="mi">3</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="c1"># we can call arbitrary Python code inside wp.static()</span>
+    <span class="n">static_norm</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">static</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">scipy</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">])))</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">printf</span><span class="p">(</span><span class="s2">&quot;static_var = </span><span class="si">%i</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">static_var</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">printf</span><span class="p">(</span><span class="s2">&quot;static_norm = </span><span class="si">%f</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">static_norm</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">my_kernel</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The static expressions are evaluated at the time of when the <a class="reference internal" href="modules/runtime.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code></a> decorator is evaluated and replaced in the code by their respective constant result values. The generated code will therefore contain the results of the expressions hard-coded in the source file (shown an abbreviated version):</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">int32</span><span class="w"> </span><span class="n">var_0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">float64</span><span class="w"> </span><span class="n">var_1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">5.0</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">str</span><span class="w"> </span><span class="n">var_2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;static_var = %i</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">str</span><span class="w"> </span><span class="n">var_3</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;static_norm = %f</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+
+<span class="c1">// wp.printf(&quot;static_var = %i\n&quot;, static_var)                                             &lt;L 10&gt;</span>
+<span class="n">printf</span><span class="p">(</span><span class="n">var_2</span><span class="p">,</span><span class="w"> </span><span class="n">var_0</span><span class="p">);</span>
+<span class="c1">// wp.printf(&quot;static_norm = %f\n&quot;, static_norm)                                           &lt;L 11&gt;</span>
+<span class="n">printf</span><span class="p">(</span><span class="n">var_3</span><span class="p">,</span><span class="w"> </span><span class="n">var_1</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="example-static-conditionals">
+<h3>Example: Static Conditionals<a class="headerlink" href="#example-static-conditionals" title="Link to this heading">#</a></h3>
+<p>If/else/elif conditions that are constant can be eliminated from the generated code by using <code class="docutils literal notranslate"><span class="pre">wp.static()</span></code> inside the branch condition to yield a constant boolean.
+This can provide improved performance by avoiding branching and can be useful for generating specialized kernels:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">available_colors</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="s2">&quot;blue&quot;</span><span class="p">}</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">my_kernel</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">static</span><span class="p">(</span><span class="s2">&quot;red&quot;</span> <span class="ow">in</span> <span class="n">available_colors</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;red is available&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;red is not available&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The global variable <code class="docutils literal notranslate"><span class="pre">available_colors</span></code> is known at the time of declaring the kernel and the generated code will contain only the branch that is taken:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">str</span><span class="w"> </span><span class="n">var_1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;red is available&quot;</span><span class="p">;</span>
+<span class="n">wp</span><span class="o">::</span><span class="n">print</span><span class="p">(</span><span class="n">var_1</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="example-static-loop-unrolling">
+<h3>Example: Static Loop Unrolling<a class="headerlink" href="#example-static-loop-unrolling" title="Link to this heading">#</a></h3>
+<p>Static expressions can be used to unroll for-loops during code generation. We place <code class="docutils literal notranslate"><span class="pre">wp.static()</span></code> expressions inside the loop’s <code class="docutils literal notranslate"><span class="pre">range</span></code> to yield static for-loops that can be unrolled. The iteration variable becomes a constant and can therefore be accessed from within a static expression in the loop body:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">loop_limit</span><span class="p">():</span>
+    <span class="k">return</span> <span class="mi">3</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">my_kernel</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">static</span><span class="p">(</span><span class="n">loop_limit</span><span class="p">())):</span>
+        <span class="n">static_i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">static</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">printf</span><span class="p">(</span><span class="s2">&quot;i = </span><span class="si">%i</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">static_i</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">my_kernel</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The generated code will not contain the for-loop but instead the loop body will be repeated three times:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">int32</span><span class="w"> </span><span class="n">var_0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">int32</span><span class="w"> </span><span class="n">var_1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">int32</span><span class="w"> </span><span class="n">var_2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">str</span><span class="w"> </span><span class="n">var_3</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;i = %i</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">int32</span><span class="w"> </span><span class="n">var_4</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">int32</span><span class="w"> </span><span class="n">var_5</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">str</span><span class="w"> </span><span class="n">var_6</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;i = %i</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">int32</span><span class="w"> </span><span class="n">var_7</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">int32</span><span class="w"> </span><span class="n">var_8</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">str</span><span class="w"> </span><span class="n">var_9</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;i = %i</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<span class="n">printf</span><span class="p">(</span><span class="n">var_3</span><span class="p">,</span><span class="w"> </span><span class="n">var_2</span><span class="p">);</span>
+<span class="n">printf</span><span class="p">(</span><span class="n">var_6</span><span class="p">,</span><span class="w"> </span><span class="n">var_5</span><span class="p">);</span>
+<span class="n">printf</span><span class="p">(</span><span class="n">var_9</span><span class="p">,</span><span class="w"> </span><span class="n">var_8</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="example-function-pointers">
+<h3>Example: Function Pointers<a class="headerlink" href="#example-function-pointers" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">wp.static(...)</span></code> may also return a Warp function. This can be useful to specialize a kernel or function based on information available at the time of declaring the Warp function or kernel, or to automatically generate overloads for different types.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">do_add</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">do_sub</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">-</span> <span class="n">b</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">do_mul</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span>
+
+<span class="n">op_handlers</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;add&quot;</span><span class="p">:</span> <span class="n">do_add</span><span class="p">,</span>
+    <span class="s2">&quot;sub&quot;</span><span class="p">:</span> <span class="n">do_sub</span><span class="p">,</span>
+    <span class="s2">&quot;mul&quot;</span><span class="p">:</span> <span class="n">do_mul</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">inputs</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">outputs</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">op</span> <span class="ow">in</span> <span class="n">op_handlers</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">operate</span><span class="p">(</span><span class="nb">input</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">ndim</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span> <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)):</span>
+        <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+        <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="nb">input</span><span class="p">[</span><span class="n">tid</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="nb">input</span><span class="p">[</span><span class="n">tid</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># retrieve the right function to use for the captured dtype variable</span>
+        <span class="n">output</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">static</span><span class="p">(</span><span class="n">op_handlers</span><span class="p">[</span><span class="n">op</span><span class="p">])(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">operate</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">inputs</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">outputs</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">outputs</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>The above program uses a static expression to select the right function given the captured <code class="docutils literal notranslate"><span class="pre">op</span></code> variable and prints the following output while compiling the module containing the <code class="docutils literal notranslate"><span class="pre">operate</span></code> kernel three times:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[3. 3.]
+[-1.  3.]
+[2. 0.]
+</pre></div>
+</div>
+</section>
+<section id="example-static-length-query">
+<h3>Example: Static Length Query<a class="headerlink" href="#example-static-length-query" title="Link to this heading">#</a></h3>
+<p>Python’s built-in function <code class="docutils literal notranslate"><span class="pre">len()</span></code> can also be evaluated statically for types with fixed length, such as vectors, quaternions, and matrices, and can be wrapped into <code class="docutils literal notranslate"><span class="pre">wp.static()</span></code> calls to initialize other constructs:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">my_kernel</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">):</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">static</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">v</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">expect_eq</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">ddot</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">m</span><span class="p">),</span> <span class="mf">3.0</span><span class="p">)</span>
+
+<span class="n">v</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">my_kernel</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">(</span><span class="n">v</span><span class="p">,))</span>
+</pre></div>
+</div>
+</section>
+<section id="advanced-example-branching-elimination-with-static-loop-unrolling">
+<h3>Advanced Example: Branching Elimination with Static Loop Unrolling<a class="headerlink" href="#advanced-example-branching-elimination-with-static-loop-unrolling" title="Link to this heading">#</a></h3>
+<p>In computational simulations, it’s common to apply different operations or boundary conditions based on runtime variables. However, conditional branching using runtime variables often leads to performance issues due to register pressure, as the GPU may allocate resources for all branches even if some of them are never taken. To tackle this, we can utilize static loop unrolling via <code class="docutils literal notranslate"><span class="pre">wp.static(...)</span></code>, which helps eliminate unnecessary branching at compile-time and improve parallel execution.</p>
+<p><strong>Scenario:</strong></p>
+<p>Suppose we have three different functions <code class="docutils literal notranslate"><span class="pre">apply_func_a</span></code>, <code class="docutils literal notranslate"><span class="pre">apply_func_b</span></code>, and <code class="docutils literal notranslate"><span class="pre">apply_func_c</span></code> that perform different mathematical operations.</p>
+<p>We are currently interested in applying only two of these functions (<code class="docutils literal notranslate"><span class="pre">apply_func_a</span></code> and <code class="docutils literal notranslate"><span class="pre">apply_func_b</span></code>) on a given dataset. Which function we apply to each data point is determined by a runtime variable <code class="docutils literal notranslate"><span class="pre">func_id</span></code>, which is provided as an array to the kernel called <code class="docutils literal notranslate"><span class="pre">func_field</span></code>.</p>
+<p>In practice, <code class="docutils literal notranslate"><span class="pre">func_field</span></code> represents a mapping of which operation should be applied to each data point, and is particularly useful when dealing with boundary conditions or different regions of a physical simulation. For example, in a fluid simulation, different regions of the fluid might require different updates based on pre-defined boundary conditions.</p>
+<p><strong>Naive Approach Implementation</strong></p>
+<p>To start, let us first consider a naive approach to implement this, which involves straightforward runtime branching based on the value of func_id. This approach will highlight why we need to optimize further.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="c1"># Define three functions that perform different operations</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_func_a</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="mf">10.0</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_func_b</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="mf">2.0</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_func_c</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">-</span> <span class="mf">5.0</span>
+
+<span class="c1"># Assign static IDs to represent each function</span>
+<span class="n">func_id_a</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">func_id_b</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">func_id_c</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># Not used in this kernel</span>
+
+<span class="c1"># Kernel that applies the correct function to each element of the input array</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_func_conditions_naive</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">func_field</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int8</span><span class="p">)):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="n">func_id</span> <span class="o">=</span> <span class="n">func_field</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>  <span class="c1"># Get the function ID for this element</span>
+
+    <span class="c1"># Apply the corresponding function based on func_id</span>
+    <span class="k">if</span> <span class="n">func_id</span> <span class="o">==</span> <span class="n">func_id_a</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">apply_func_a</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">func_id</span> <span class="o">==</span> <span class="n">func_id_b</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">apply_func_b</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">func_id</span> <span class="o">==</span> <span class="n">func_id_c</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">apply_func_c</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="n">x</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+
+<span class="c1"># Example usage</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+<span class="c1"># Create an array that specifies which function to apply to each element</span>
+<span class="n">func_field</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">func_id_a</span><span class="p">,</span> <span class="n">func_id_b</span><span class="p">,</span> <span class="n">func_id_b</span><span class="p">,</span> <span class="n">func_id_a</span><span class="p">,</span> <span class="n">func_id_b</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int8</span><span class="p">)</span>
+
+<span class="c1"># Launch the kernel</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">apply_func_conditions_naive</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">data</span><span class="p">,</span> <span class="n">func_field</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<p><strong>Output:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="mf">11.</span>  <span class="mf">4.</span>  <span class="mf">6.</span> <span class="mf">14.</span> <span class="mf">10.</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Since <code class="docutils literal notranslate"><span class="pre">func_id</span></code> is not static, the compiler cannot eliminate the unused function at compile time. Looking at the generated CUDA code, we can see the kernel includes an extra branching for the unused <code class="docutils literal notranslate"><span class="pre">apply_func_c</span></code>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">//...</span>
+<span class="n">var_11</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">where</span><span class="p">(</span><span class="n">var_9</span><span class="p">,</span><span class="w"> </span><span class="n">var_10</span><span class="p">,</span><span class="w"> </span><span class="n">var_4</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">var_9</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">var_13</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">var_7</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">var_12</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">var_13</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">var_14</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">apply_func_b_0</span><span class="p">(</span><span class="n">var_3</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">var_15</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">where</span><span class="p">(</span><span class="n">var_13</span><span class="p">,</span><span class="w"> </span><span class="n">var_14</span><span class="p">,</span><span class="w"> </span><span class="n">var_11</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">var_13</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">var_17</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">var_7</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">var_16</span><span class="p">);</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">var_17</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">var_18</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">apply_func_c_0</span><span class="p">(</span><span class="n">var_3</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="n">var_19</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">where</span><span class="p">(</span><span class="n">var_17</span><span class="p">,</span><span class="w"> </span><span class="n">var_18</span><span class="p">,</span><span class="w"> </span><span class="n">var_15</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">var_20</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">where</span><span class="p">(</span><span class="n">var_13</span><span class="p">,</span><span class="w"> </span><span class="n">var_15</span><span class="p">,</span><span class="w"> </span><span class="n">var_19</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="c1">//...</span>
+</pre></div>
+</div>
+<p><strong>Optimization</strong></p>
+<p>To avoid the extra branching, we can use the static loop unrolling via <code class="docutils literal notranslate"><span class="pre">wp.static(...)</span></code> to effectively “compile out” the unnecessary branches and only keep the operations that are relevant.</p>
+<p><strong>Implementation:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">funcs</span> <span class="o">=</span> <span class="p">[</span><span class="n">apply_func_a</span><span class="p">,</span> <span class="n">apply_func_b</span><span class="p">,</span> <span class="n">apply_func_c</span><span class="p">]</span>
+
+<span class="c1"># Assign static IDs to represent each function</span>
+<span class="n">func_id_a</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">func_id_b</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">func_id_c</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># Not used in this kernel</span>
+
+<span class="c1"># Define which function IDs are actually used in this kernel</span>
+<span class="n">used_func_ids</span> <span class="o">=</span> <span class="p">(</span><span class="n">func_id_a</span><span class="p">,</span> <span class="n">func_id_b</span><span class="p">)</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_func_conditions</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">func_field</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int8</span><span class="p">)):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="n">func_id</span> <span class="o">=</span> <span class="n">func_field</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>  <span class="c1"># Get the function ID for this element</span>
+
+    <span class="c1"># Unroll the loop over the used function IDs</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">static</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">used_func_ids</span><span class="p">))):</span>
+        <span class="n">func_static_id</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">static</span><span class="p">(</span><span class="n">used_func_ids</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">func_id</span> <span class="o">==</span> <span class="n">func_static_id</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">static</span><span class="p">(</span><span class="n">funcs</span><span class="p">[</span><span class="n">i</span><span class="p">])(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="n">x</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+</pre></div>
+</div>
+<p>In the generated CUDA code, we can see that the optimized code does not branch for the unused function.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">//...</span>
+<span class="n">var_10</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">var_7</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">var_9</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">var_10</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">var_11</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">apply_func_a_1</span><span class="p">(</span><span class="n">var_3</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="n">var_12</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">where</span><span class="p">(</span><span class="n">var_10</span><span class="p">,</span><span class="w"> </span><span class="n">var_11</span><span class="p">,</span><span class="w"> </span><span class="n">var_4</span><span class="p">);</span>
+<span class="n">var_15</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">var_7</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">var_14</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">var_15</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">var_16</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">apply_func_b_1</span><span class="p">(</span><span class="n">var_3</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="c1">//...</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="dynamic-kernel-creation">
+<span id="dynamic-generation"></span><h2>Dynamic Kernel Creation<a class="headerlink" href="#dynamic-kernel-creation" title="Link to this heading">#</a></h2>
+<p>It is often desirable to dynamically customize kernels with different constants, types, or functions.  We can achieve this through runtime kernel specialization using Python closures.</p>
+<section id="kernel-closures">
+<h3>Kernel Closures<a class="headerlink" href="#kernel-closures" title="Link to this heading">#</a></h3>
+<section id="constants">
+<h4>Constants<a class="headerlink" href="#constants" title="Link to this heading">#</a></h4>
+<p>Warp allows references to external constants in kernels:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">create_kernel_with_constant</span><span class="p">(</span><span class="n">constant</span><span class="p">):</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+        <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+        <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">+=</span> <span class="n">constant</span>
+    <span class="k">return</span> <span class="n">k</span>
+
+<span class="n">k1</span> <span class="o">=</span> <span class="n">create_kernel_with_constant</span><span class="p">(</span><span class="mf">17.0</span><span class="p">)</span>
+<span class="n">k2</span> <span class="o">=</span> <span class="n">create_kernel_with_constant</span><span class="p">(</span><span class="mf">42.0</span><span class="p">)</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k1</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[59. 59. 59. 59. 59.]
+</pre></div>
+</div>
+</section>
+<section id="data-types">
+<h4>Data Types<a class="headerlink" href="#data-types" title="Link to this heading">#</a></h4>
+<p>Warp data types can also be captured in a closure.  Here is an example of creating kernels that work with different vector dimensions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">create_kernel_with_dtype</span><span class="p">(</span><span class="n">vec_type</span><span class="p">):</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">vec_type</span><span class="p">)):</span>
+        <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+        <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">tid</span><span class="p">)</span> <span class="o">*</span> <span class="n">vec_type</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">k</span>
+
+<span class="n">k2</span> <span class="o">=</span> <span class="n">create_kernel_with_dtype</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">)</span>
+<span class="n">k4</span> <span class="o">=</span> <span class="n">create_kernel_with_dtype</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">vec4</span><span class="p">)</span>
+
+<span class="n">a2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">)</span>
+<span class="n">a4</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec4</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a2</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a2</span><span class="p">])</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k4</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a4</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a4</span><span class="p">])</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">a2</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a4</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[[1. 1.]
+ [2. 2.]
+ [3. 3.]]
+[[1. 1. 1. 1.]
+ [2. 2. 2. 2.]
+ [3. 3. 3. 3.]]
+</pre></div>
+</div>
+</section>
+<section id="functions">
+<h4>Functions<a class="headerlink" href="#functions" title="Link to this heading">#</a></h4>
+<p>Here’s a kernel generator that’s parameterized using different functions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">create_kernel_with_function</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+        <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+        <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">k</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">square</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">cube</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span>
+
+<span class="n">k1</span> <span class="o">=</span> <span class="n">create_kernel_with_function</span><span class="p">(</span><span class="n">square</span><span class="p">)</span>
+<span class="n">k2</span> <span class="o">=</span> <span class="n">create_kernel_with_function</span><span class="p">(</span><span class="n">cube</span><span class="p">)</span>
+
+<span class="n">a1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">a2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k1</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a1</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a1</span><span class="p">])</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a2</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a2</span><span class="p">])</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">a1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[ 1.  4.  9.  16.  25.]
+[ 1.  8.  27.  64.  125.]
+</pre></div>
+</div>
+</section>
+</section>
+<section id="function-closures">
+<h3>Function Closures<a class="headerlink" href="#function-closures" title="Link to this heading">#</a></h3>
+<p>Warp functions (<code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code>) also support closures, just like kernels:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">create_function_with_constant</span><span class="p">(</span><span class="n">constant</span><span class="p">):</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">f</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">constant</span> <span class="o">*</span> <span class="n">x</span>
+    <span class="k">return</span> <span class="n">f</span>
+
+<span class="n">f1</span> <span class="o">=</span> <span class="n">create_function_with_constant</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span>
+<span class="n">f2</span> <span class="o">=</span> <span class="n">create_function_with_constant</span><span class="p">(</span><span class="mf">3.0</span><span class="p">)</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">tid</span><span class="p">)</span>
+    <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">f1</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="n">f2</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[ 0.  5. 10. 15. 20.]
+</pre></div>
+</div>
+<p>We can also create related function and kernel closures together like this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">create_fk</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">f</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">a</span> <span class="o">*</span> <span class="n">x</span>
+
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+        <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+        <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span> <span class="o">+</span> <span class="n">b</span>
+
+    <span class="k">return</span> <span class="n">f</span><span class="p">,</span> <span class="n">k</span>
+
+<span class="c1"># create related function and kernel closures</span>
+<span class="n">f1</span><span class="p">,</span> <span class="n">k1</span> <span class="o">=</span> <span class="n">create_fk</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span>
+<span class="n">f2</span><span class="p">,</span> <span class="n">k2</span> <span class="o">=</span> <span class="n">create_fk</span><span class="p">(</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)</span>
+
+<span class="c1"># use the functions separately in a new kernel</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">kk</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">f1</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span> <span class="o">+</span> <span class="n">f2</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
+
+<span class="n">a1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">a2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">ak</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k1</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a1</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a1</span><span class="p">])</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a2</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a2</span><span class="p">])</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kk</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">ak</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">ak</span><span class="p">])</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">a1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a2</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">ak</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[ 5.  7.  9. 11. 13.]
+[ 9. 13. 17. 21. 25.]
+[ 6. 12. 18. 24. 30.]
+</pre></div>
+</div>
+</section>
+<section id="dynamic-structs">
+<h3>Dynamic Structs<a class="headerlink" href="#dynamic-structs" title="Link to this heading">#</a></h3>
+<p>Sometimes it’s useful to customize Warp structs with different data types.</p>
+<section id="customize-precision">
+<h4>Customize Precision<a class="headerlink" href="#customize-precision" title="Link to this heading">#</a></h4>
+<p>For example, we can create structs with different floating point precision:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">create_struct_with_precision</span><span class="p">(</span><span class="n">dtype</span><span class="p">):</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">struct</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">S</span><span class="p">:</span>
+        <span class="n">a</span><span class="p">:</span> <span class="n">dtype</span>
+        <span class="n">b</span><span class="p">:</span> <span class="n">dtype</span>
+    <span class="k">return</span> <span class="n">S</span>
+
+<span class="c1"># create structs with different floating point precision</span>
+<span class="n">S16</span> <span class="o">=</span> <span class="n">create_struct_with_precision</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">float16</span><span class="p">)</span>
+<span class="n">S32</span> <span class="o">=</span> <span class="n">create_struct_with_precision</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">S64</span> <span class="o">=</span> <span class="n">create_struct_with_precision</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+<span class="n">s16</span> <span class="o">=</span> <span class="n">S16</span><span class="p">()</span>
+<span class="n">s32</span> <span class="o">=</span> <span class="n">S32</span><span class="p">()</span>
+<span class="n">s64</span> <span class="o">=</span> <span class="n">S64</span><span class="p">()</span>
+
+<span class="n">s16</span><span class="o">.</span><span class="n">a</span><span class="p">,</span> <span class="n">s16</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="mf">2.0001</span><span class="p">,</span> <span class="mf">3.0000002</span>
+<span class="n">s32</span><span class="o">.</span><span class="n">a</span><span class="p">,</span> <span class="n">s32</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="mf">2.0001</span><span class="p">,</span> <span class="mf">3.0000002</span>
+<span class="n">s64</span><span class="o">.</span><span class="n">a</span><span class="p">,</span> <span class="n">s64</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="mf">2.0001</span><span class="p">,</span> <span class="mf">3.0000002</span>
+
+<span class="c1"># create a generic kernel that works with the different types</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">Any</span><span class="p">)):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">tid</span><span class="p">)</span>
+    <span class="n">output</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="n">s</span><span class="o">.</span><span class="n">a</span> <span class="o">+</span> <span class="n">s</span><span class="o">.</span><span class="n">b</span>
+
+<span class="n">a16</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float16</span><span class="p">)</span>
+<span class="n">a32</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">a64</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a16</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">s16</span><span class="p">,</span> <span class="n">a16</span><span class="p">])</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a32</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">s32</span><span class="p">,</span> <span class="n">a32</span><span class="p">])</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a64</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">s64</span><span class="p">,</span> <span class="n">a64</span><span class="p">])</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">a16</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a32</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a64</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can see the effect of using different floating point precision in the output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[ 3.  5.  7.  9. 11.]
+[ 3.0000002  5.0001     7.0002003  9.000299  11.0004   ]
+[ 3.0000002  5.0001002  7.0002002  9.0003002 11.0004002]
+</pre></div>
+</div>
+</section>
+<section id="customize-dimensions">
+<h4>Customize Dimensions<a class="headerlink" href="#customize-dimensions" title="Link to this heading">#</a></h4>
+<p>Another useful application of dynamic structs is the ability to customize dimensionality.  Here, we create structs that work with 2D and 3D data:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># create struct with different vectors and matrix dimensions</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_struct_nd</span><span class="p">(</span><span class="n">dim</span><span class="p">):</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">struct</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">S</span><span class="p">:</span>
+        <span class="n">v</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">vector</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+        <span class="n">m</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">matrix</span><span class="p">((</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">),</span> <span class="nb">float</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">S</span>
+
+<span class="n">S2</span> <span class="o">=</span> <span class="n">create_struct_nd</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">S3</span> <span class="o">=</span> <span class="n">create_struct_nd</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+<span class="n">s2</span> <span class="o">=</span> <span class="n">S2</span><span class="p">()</span>
+<span class="n">s2</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>
+<span class="n">s2</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="p">((</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+        <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">))</span>
+
+<span class="n">s3</span> <span class="o">=</span> <span class="n">S3</span><span class="p">()</span>
+<span class="n">s3</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span>
+<span class="n">s3</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="p">((</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+        <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+        <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+
+<span class="c1"># create a generic kernel that works with the different types</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">Any</span><span class="p">)):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">tid</span><span class="p">)</span>
+    <span class="n">output</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="n">s</span><span class="o">.</span><span class="n">v</span> <span class="o">*</span> <span class="n">s</span><span class="o">.</span><span class="n">m</span>
+
+<span class="n">a2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">)</span>
+<span class="n">a3</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a2</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">s2</span><span class="p">,</span> <span class="n">a2</span><span class="p">])</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a3</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">s3</span><span class="p">,</span> <span class="n">a3</span><span class="p">])</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">a2</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a3</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[[0. 0.]
+ [2. 1.]
+ [4. 2.]
+ [6. 3.]
+ [8. 4.]]
+[[ 0.  0.  0.]
+ [ 2.  1.  3.]
+ [ 4.  2.  6.]
+ [ 6.  3.  9.]
+ [ 8.  4. 12.]]
+</pre></div>
+</div>
+</section>
+</section>
+<section id="module-reloading">
+<h3>Module Reloading<a class="headerlink" href="#module-reloading" title="Link to this heading">#</a></h3>
+<p>Frequent recompilation can add overhead to a program, especially if the program is creating kernels at runtime.  Consider this program:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">create_kernel_with_constant</span><span class="p">(</span><span class="n">constant</span><span class="p">):</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+        <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+        <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">+=</span> <span class="n">constant</span>
+    <span class="k">return</span> <span class="n">k</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="n">k1</span> <span class="o">=</span> <span class="n">create_kernel_with_constant</span><span class="p">(</span><span class="mf">17.0</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k1</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+
+<span class="n">k2</span> <span class="o">=</span> <span class="n">create_kernel_with_constant</span><span class="p">(</span><span class="mf">42.0</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+
+<span class="n">k3</span> <span class="o">=</span> <span class="n">create_kernel_with_constant</span><span class="p">(</span><span class="o">-</span><span class="mf">9.0</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k3</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Kernel creation is interspersed with kernel launches, which forces reloading on each kernel launch:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Module __main__ 96db544 load on device &#39;cuda:0&#39; took 165.46 ms  (compiled)
+[17. 17. 17. 17. 17.]
+Module __main__ 9f609a4 load on device &#39;cuda:0&#39; took 151.69 ms  (compiled)
+[59. 59. 59. 59. 59.]
+Module __main__ e93fbb9 load on device &#39;cuda:0&#39; took 167.84 ms  (compiled)
+[50. 50. 50. 50. 50.]
+</pre></div>
+</div>
+<p>To avoid reloading, all kernels should be created before launching them:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">create_kernel_with_constant</span><span class="p">(</span><span class="n">constant</span><span class="p">):</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+        <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+        <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">+=</span> <span class="n">constant</span>
+    <span class="k">return</span> <span class="n">k</span>
+
+<span class="n">k1</span> <span class="o">=</span> <span class="n">create_kernel_with_constant</span><span class="p">(</span><span class="mf">17.0</span><span class="p">)</span>
+<span class="n">k2</span> <span class="o">=</span> <span class="n">create_kernel_with_constant</span><span class="p">(</span><span class="mf">42.0</span><span class="p">)</span>
+<span class="n">k3</span> <span class="o">=</span> <span class="n">create_kernel_with_constant</span><span class="p">(</span><span class="o">-</span><span class="mf">9.0</span><span class="p">)</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k1</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k3</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Module __main__ e93fbb9 load on device &#39;cuda:0&#39; took 164.87 ms  (compiled)
+[17. 17. 17. 17. 17.]
+[59. 59. 59. 59. 59.]
+[50. 50. 50. 50. 50.]
+</pre></div>
+</div>
+<p>Redefining identical kernels, functions, and structs should not cause module reloading, since Warp is able to detect duplicates:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">create_struct</span><span class="p">(</span><span class="n">dtype</span><span class="p">):</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">struct</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">S</span><span class="p">:</span>
+        <span class="n">a</span><span class="p">:</span> <span class="n">dtype</span>
+        <span class="n">b</span><span class="p">:</span> <span class="n">dtype</span>
+    <span class="k">return</span> <span class="n">S</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_function</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">S</span><span class="p">):</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">f</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="n">S</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">a</span> <span class="o">*</span> <span class="n">s</span><span class="o">.</span><span class="n">b</span>
+    <span class="k">return</span> <span class="n">f</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_kernel</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">C</span><span class="p">):</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)):</span>
+        <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">S</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">],</span> <span class="n">C</span><span class="p">)</span>
+        <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">k</span>
+
+<span class="c1"># create identical struct, function, and kernel in a loop</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+    <span class="n">S</span> <span class="o">=</span> <span class="n">create_struct</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">create_function</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">S</span><span class="p">)</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">create_kernel</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Even though struct <code class="docutils literal notranslate"><span class="pre">S</span></code>, function <code class="docutils literal notranslate"><span class="pre">f</span></code>, and kernel <code class="docutils literal notranslate"><span class="pre">k</span></code> are re-created in each iteration of the loop, they are duplicates so the module is only loaded once:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Module __main__ 4af2d60 load on device &#39;cuda:0&#39; took 181.34 ms  (compiled)
+[ 3.  6.  9. 12. 15.]
+[ 3.  6.  9. 12. 15.]
+[ 3.  6.  9. 12. 15.]
+</pre></div>
+</div>
+</section>
+</section>
+<section id="late-binding-and-static-expressions">
+<span id="late-binding"></span><h2>Late Binding and Static Expressions<a class="headerlink" href="#late-binding-and-static-expressions" title="Link to this heading">#</a></h2>
+<p>Python uses late binding, which means that variables can be referenced in a function before they are defined:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">():</span>
+    <span class="c1"># Function f() and constant C are not defined yet.</span>
+    <span class="c1"># They will be resolved when k() is called.</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="p">()</span> <span class="o">+</span> <span class="n">C</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">f</span><span class="p">():</span>
+    <span class="k">return</span> <span class="mi">42</span>
+
+<span class="n">C</span> <span class="o">=</span> <span class="mi">17</span>
+
+<span class="c1"># late binding occurs in this call</span>
+<span class="n">k</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Warp follows this convention by default, because it’s the Pythonic way.  Here is a similar program written in Warp:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">():</span>
+    <span class="c1"># Function f() and constant C are not defined yet.</span>
+    <span class="c1"># They will be resolved when k() is called.</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="p">()</span> <span class="o">+</span> <span class="n">C</span><span class="p">)</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">f</span><span class="p">():</span>
+    <span class="k">return</span> <span class="mi">42</span>
+
+<span class="n">C</span> <span class="o">=</span> <span class="mi">17</span>
+
+<span class="c1"># late binding occurs in this launch, when the module is compiled</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># wait for the output</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Late binding is often convenient, but it can sometimes lead to surprising results.  Consider this snippet, which creates kernels in a loop.  The kernels reference the loop variable as a constant.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># create a list of kernels that use the loop variable</span>
+<span class="n">kernels</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="n">kernels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+
+<span class="c1"># launch the kernels</span>
+<span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">kernels</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This prints:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>2
+2
+2
+</pre></div>
+</div>
+<p>This might be surprising, but creating a similar program in pure Python would lead to the same results.  Because of late binding, the captured loop variable <code class="docutils literal notranslate"><span class="pre">i</span></code> is not evaluated until the kernels are launched.  At that moment, the value of <code class="docutils literal notranslate"><span class="pre">i</span></code> is 2 and we see the same output from each kernel.</p>
+<p>In Warp, <code class="docutils literal notranslate"><span class="pre">wp.static()</span></code> can be used to get around this problem:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># create a list of kernels that use the loop variable</span>
+<span class="n">kernels</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+    <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">k</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">static</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>  <span class="c1"># wp.static() for the win</span>
+    <span class="n">kernels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+
+<span class="c1"># launch the kernels</span>
+<span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">kernels</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Warp replaces the call to <code class="docutils literal notranslate"><span class="pre">wp.static()</span></code> with the value of the expression passed as its argument.  The expression is evaluated immediately at the time of kernel definition.  This is similar to static binding used by languages like C++, which means that all variables referenced by the static expression must already be defined.</p>
+<p>To further illustrate the difference between the default late binding behavior and static expressions, consider this program:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">C</span> <span class="o">=</span> <span class="mi">17</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">k1</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">k2</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">static</span><span class="p">(</span><span class="n">C</span><span class="p">))</span>
+
+<span class="c1"># redefine constant</span>
+<span class="n">C</span> <span class="o">=</span> <span class="mi">42</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k1</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>42
+17
+</pre></div>
+</div>
+<p>Kernel <code class="docutils literal notranslate"><span class="pre">k1</span></code> uses late binding of <code class="docutils literal notranslate"><span class="pre">C</span></code>.  This means that it captures the latest value of <code class="docutils literal notranslate"><span class="pre">C</span></code>, determined when the module is built during the launch.  Kernel <code class="docutils literal notranslate"><span class="pre">k2</span></code> consumes <code class="docutils literal notranslate"><span class="pre">C</span></code> in a static expression, thus it captures the value of <code class="docutils literal notranslate"><span class="pre">C</span></code> when the kernel is defined.</p>
+<p>The same rules apply to resolving Warp functions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">f</span><span class="p">():</span>
+    <span class="k">return</span> <span class="mi">17</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">k1</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="p">())</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">k2</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">static</span><span class="p">(</span><span class="n">f</span><span class="p">)())</span>
+
+<span class="c1"># redefine function</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">f</span><span class="p">():</span>
+    <span class="k">return</span> <span class="mi">42</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k1</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">k2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>42
+17
+</pre></div>
+</div>
+<p>Kernel <code class="docutils literal notranslate"><span class="pre">k1</span></code> uses the latest definition of function <code class="docutils literal notranslate"><span class="pre">f</span></code>, while kernel <code class="docutils literal notranslate"><span class="pre">k2</span></code> uses the definition of <code class="docutils literal notranslate"><span class="pre">f</span></code> when the kernel was declared.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="changelog.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Changelog</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="modules/allocators.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Allocators</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#external-references-and-constants">External References and Constants</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#supported-constant-types">Supported Constant Types</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#usage-of-wp-constant">Usage of <code class="docutils literal notranslate"><span class="pre">wp.constant()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#updating-constants">Updating Constants</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#static-expressions">Static Expressions</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-static-math-expressions">Example: Static Math Expressions</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-static-conditionals">Example: Static Conditionals</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-static-loop-unrolling">Example: Static Loop Unrolling</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-function-pointers">Example: Function Pointers</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-static-length-query">Example: Static Length Query</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#advanced-example-branching-elimination-with-static-loop-unrolling">Advanced Example: Branching Elimination with Static Loop Unrolling</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dynamic-kernel-creation">Dynamic Kernel Creation</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#kernel-closures">Kernel Closures</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#constants">Constants</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#data-types">Data Types</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#functions">Functions</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#function-closures">Function Closures</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dynamic-structs">Dynamic Structs</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#customize-precision">Customize Precision</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#customize-dimensions">Customize Dimensions</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#module-reloading">Module Reloading</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#late-binding-and-static-expressions">Late Binding and Static Expressions</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2025 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>
