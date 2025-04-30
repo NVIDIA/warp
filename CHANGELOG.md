@@ -23,6 +23,7 @@
   the points as USD spheres using a point instancer, or as simple USD points otherwise.
 - Add `wp.tile_squeeze()` ([GH-662](https://github.com/NVIDIA/warp/issues/662)).
 - Add `wp.tile_reshape()` ([GH-663](https://github.com/NVIDIA/warp/issues/663)).
+- Add support for dynamic control flow in CUDA graphs, see `wp.capture_if()` and `wp.capture_while()` ([GH-597](https://github.com/NVIDIA/warp/issues/597)).
 - Support tile inplace add/subtract operations
   ([GH-518](https://github.com/NVIDIA/warp/issues/518)).
 - Add support for in-place tile component addition and subtraction

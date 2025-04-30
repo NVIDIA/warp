@@ -3070,13 +3070,20 @@ class Graph:
         self.module_execs: set[ModuleExec] = set()
         self.graph_exec: ctypes.c_void_p | None = None
 
+        self.graph: ctypes.c_void_p | None = None
+        self.has_conditional = (
+            False  # Track if there are conditional nodes in the graph since they are not allowed in child graphs
+        )
+
     def __del__(self):
-        if not hasattr(self, "graph_exec") or not hasattr(self, "device") or not self.graph_exec:
+        if not hasattr(self, "graph") or not hasattr(self, "device") or not self.graph:
             return
 
         # use CUDA context guard to avoid side effects during garbage collection
         with self.device.context_guard:
-            runtime.core.cuda_graph_destroy(self.device.context, self.graph_exec)
+            runtime.core.cuda_graph_destroy(self.device.context, self.graph)
+            if hasattr(self, "graph_exec") and self.graph_exec is not None:
+                runtime.core.cuda_graph_exec_destroy(self.device.context, self.graph_exec)
 
     # retain executable CUDA modules used by this graph, which prevents them from being unloaded
     def retain_module_exec(self, module_exec: ModuleExec):
@@ -3721,10 +3728,68 @@ class Runtime:
                 ctypes.POINTER(ctypes.c_void_p),
             ]
             self.core.cuda_graph_end_capture.restype = ctypes.c_bool
+
+            self.core.cuda_graph_create_exec.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_void_p),
+            ]
+            self.core.cuda_graph_create_exec.restype = ctypes.c_bool
+
             self.core.cuda_graph_launch.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.cuda_graph_launch.restype = ctypes.c_bool
+            self.core.cuda_graph_exec_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.cuda_graph_exec_destroy.restype = ctypes.c_bool
+
             self.core.cuda_graph_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.cuda_graph_destroy.restype = ctypes.c_bool
+
+            self.core.cuda_graph_insert_if_else.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_int),
+                ctypes.POINTER(ctypes.c_void_p),
+                ctypes.POINTER(ctypes.c_void_p),
+            ]
+            self.core.cuda_graph_insert_if_else.restype = ctypes.c_bool
+
+            self.core.cuda_graph_insert_while.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_int),
+                ctypes.POINTER(ctypes.c_void_p),
+                ctypes.POINTER(ctypes.c_uint64),
+            ]
+            self.core.cuda_graph_insert_while.restype = ctypes.c_bool
+
+            self.core.cuda_graph_set_condition.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_int),
+                ctypes.c_uint64,
+            ]
+            self.core.cuda_graph_set_condition.restype = ctypes.c_bool
+
+            self.core.cuda_graph_pause_capture.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_void_p),
+            ]
+            self.core.cuda_graph_pause_capture.restype = ctypes.c_bool
+
+            self.core.cuda_graph_resume_capture.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+            ]
+            self.core.cuda_graph_resume_capture.restype = ctypes.c_bool
+
+            self.core.cuda_graph_insert_child_graph.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+            ]
+            self.core.cuda_graph_insert_child_graph.restype = ctypes.c_bool
 
             self.core.cuda_compile_program.argtypes = [
                 ctypes.c_char_p,  # cuda_src
@@ -6253,17 +6318,309 @@ def capture_end(device: Devicelike = None, stream: Stream | None = None) -> Grap
     del runtime.captures[graph.capture_id]
 
     # get the graph executable
-    graph_exec = ctypes.c_void_p()
-    result = runtime.core.cuda_graph_end_capture(device.context, stream.cuda_stream, ctypes.byref(graph_exec))
+    g = ctypes.c_void_p()
+    result = runtime.core.cuda_graph_end_capture(device.context, stream.cuda_stream, ctypes.byref(g))
 
     if not result:
         # A concrete error should've already been reported, so we don't need to go into details here
         raise RuntimeError(f"CUDA graph capture failed. {runtime.get_error_string()}")
 
     # set the graph executable
-    graph.graph_exec = graph_exec
+    graph.graph = g
+    graph.graph_exec = None  # Lazy initialization
 
     return graph
+
+
+def assert_conditional_graph_support():
+    if runtime is None:
+        init()
+
+    if runtime.toolkit_version < (12, 4):
+        raise RuntimeError("Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes")
+
+    if runtime.driver_version < (12, 4):
+        raise RuntimeError("Conditional graph nodes require CUDA driver 12.4+")
+
+
+def capture_pause(device: Devicelike = None, stream: Stream | None = None) -> ctypes.c_void_p:
+    if stream is not None:
+        device = stream.device
+    else:
+        device = runtime.get_device(device)
+        if not device.is_cuda:
+            raise RuntimeError("Must be a CUDA device")
+        stream = device.stream
+
+    graph = ctypes.c_void_p()
+    if not runtime.core.cuda_graph_pause_capture(device.context, stream.cuda_stream, ctypes.byref(graph)):
+        raise RuntimeError(runtime.get_error_string())
+
+    return graph
+
+
+def capture_resume(graph: ctypes.c_void_p, device: Devicelike = None, stream: Stream | None = None):
+    if stream is not None:
+        device = stream.device
+    else:
+        device = runtime.get_device(device)
+        if not device.is_cuda:
+            raise RuntimeError("Must be a CUDA device")
+        stream = device.stream
+
+    if not runtime.core.cuda_graph_resume_capture(device.context, stream.cuda_stream, graph):
+        raise RuntimeError(runtime.get_error_string())
+
+
+# reusable pinned readback buffer for conditions
+condition_host = None
+
+
+def capture_if(
+    condition: warp.array(dtype=int),
+    on_true: Callable | Graph | None = None,
+    on_false: Callable | Graph | None = None,
+    stream: Stream = None,
+    **kwargs,
+):
+    """Create a dynamic branch based on a condition.
+
+    The condition value is retrieved from the first element of the ``condition`` array.
+
+    This function is particularly useful with CUDA graphs, but can be used without graph capture as well.
+    CUDA 12.4+ is required to take advantage of conditional graph nodes for dynamic control flow.
+
+    Args:
+        condition: Warp array holding the condition value.
+        on_true: A callback function or :class:`Graph` to execute if the condition is True.
+        on_false: A callback function or :class:`Graph` to execute if the condition is False.
+        stream: The CUDA stream where the condition was written. If None, use the current stream on the device where ``condition`` resides.
+
+    Any additional keyword arguments are forwarded to the callback functions.
+    """
+
+    # if neither the IF branch nor the ELSE branch is specified, it's a no-op
+    if on_true is None and on_false is None:
+        return
+
+    # check condition data type
+    if not isinstance(condition, warp.array) or condition.dtype is not warp.int32:
+        raise TypeError("Condition must be a Warp array of int32 with a single element")
+
+    device = condition.device
+
+    # determine the stream and whether a graph capture is active
+    if device.is_cuda:
+        if stream is None:
+            stream = device.stream
+        graph = device.captures.get(stream)
+    else:
+        graph = None
+
+    if graph is None:
+        # if no graph is active, just execute the correct branch directly
+        if device.is_cuda:
+            # use a pinned buffer for condition readback to host
+            global condition_host
+            if condition_host is None:
+                condition_host = warp.empty(1, dtype=int, device="cpu", pinned=True)
+            warp.copy(condition_host, condition, stream=stream)
+            warp.synchronize_stream(stream)
+            condition_value = bool(ctypes.cast(condition_host.ptr, ctypes.POINTER(ctypes.c_int32)).contents)
+        else:
+            condition_value = bool(ctypes.cast(condition.ptr, ctypes.POINTER(ctypes.c_int32)).contents)
+
+        if condition_value:
+            if on_true is not None:
+                if isinstance(on_true, Callable):
+                    on_true(**kwargs)
+                elif isinstance(on_true, Graph):
+                    capture_launch(on_true, stream=stream)
+                else:
+                    raise TypeError("on_true must be a Callable or a Graph")
+        else:
+            if on_false is not None:
+                if isinstance(on_false, Callable):
+                    on_false(**kwargs)
+                elif isinstance(on_false, Graph):
+                    capture_launch(on_false, stream=stream)
+                else:
+                    raise TypeError("on_false must be a Callable or a Graph")
+
+        return
+
+    graph.has_conditional = True
+
+    # ensure conditional graph nodes are supported
+    assert_conditional_graph_support()
+
+    # insert conditional node
+    graph_on_true = ctypes.c_void_p()
+    graph_on_false = ctypes.c_void_p()
+    if not runtime.core.cuda_graph_insert_if_else(
+        device.context,
+        stream.cuda_stream,
+        ctypes.cast(condition.ptr, ctypes.POINTER(ctypes.c_int32)),
+        None if on_true is None else ctypes.byref(graph_on_true),
+        None if on_false is None else ctypes.byref(graph_on_false),
+    ):
+        raise RuntimeError(runtime.get_error_string())
+
+    # pause capturing parent graph
+    main_graph = capture_pause(stream=stream)
+
+    # capture if-graph
+    if on_true is not None:
+        capture_resume(graph_on_true, stream=stream)
+        if isinstance(on_true, Callable):
+            on_true(**kwargs)
+        elif isinstance(on_true, Graph):
+            if on_true.has_conditional:
+                raise RuntimeError(
+                    "The on_true graph contains conditional nodes, which are not allowed in child graphs"
+                )
+            if not runtime.core.cuda_graph_insert_child_graph(
+                device.context,
+                stream.cuda_stream,
+                on_true.graph,
+            ):
+                raise RuntimeError(runtime.get_error_string())
+        else:
+            raise TypeError("on_true must be a Callable or a Graph")
+        capture_pause(stream=stream)
+
+    # capture else-graph
+    if on_false is not None:
+        capture_resume(graph_on_false, stream=stream)
+        if isinstance(on_false, Callable):
+            on_false(**kwargs)
+        elif isinstance(on_false, Graph):
+            if on_false.has_conditional:
+                raise RuntimeError(
+                    "The on_false graph contains conditional nodes, which are not allowed in child graphs"
+                )
+            if not runtime.core.cuda_graph_insert_child_graph(
+                device.context,
+                stream.cuda_stream,
+                on_false.graph,
+            ):
+                raise RuntimeError(runtime.get_error_string())
+        else:
+            raise TypeError("on_false must be a Callable or a Graph")
+        capture_pause(stream=stream)
+
+    # resume capturing parent graph
+    capture_resume(main_graph, stream=stream)
+
+
+def capture_while(condition: warp.array(dtype=int), while_body: Callable | Graph, stream: Stream = None, **kwargs):
+    """Create a dynamic loop based on a condition.
+
+    The condition value is retrieved from the first element of the ``condition`` array.
+
+    The ``while_body`` callback is responsible for updating the condition value so the loop can terminate.
+
+    This function is particularly useful with CUDA graphs, but can be used without graph capture as well.
+    CUDA 12.4+ is required to take advantage of conditional graph nodes for dynamic control flow.
+
+    Args:
+        condition: Warp array holding the condition value.
+        while_body: A callback function or :class:`Graph` to execute while the loop condition is True.
+        stream: The CUDA stream where the condition was written. If None, use the current stream on the device where ``condition`` resides.
+
+    Any additional keyword arguments are forwarded to the callback function.
+    """
+
+    # check condition data type
+    if not isinstance(condition, warp.array) or condition.dtype is not warp.int32:
+        raise TypeError("Condition must be a Warp array of int32 with a single element")
+
+    device = condition.device
+
+    # determine the stream and whether a graph capture is active
+    if device.is_cuda:
+        if stream is None:
+            stream = device.stream
+        graph = device.captures.get(stream)
+    else:
+        graph = None
+
+    if graph is None:
+        # since no graph is active, just execute the kernels directly
+        while True:
+            if device.is_cuda:
+                # use a pinned buffer for condition readback to host
+                global condition_host
+                if condition_host is None:
+                    condition_host = warp.empty(1, dtype=int, device="cpu", pinned=True)
+                warp.copy(condition_host, condition, stream=stream)
+                warp.synchronize_stream(stream)
+                condition_value = bool(ctypes.cast(condition_host.ptr, ctypes.POINTER(ctypes.c_int32)).contents)
+            else:
+                condition_value = bool(ctypes.cast(condition.ptr, ctypes.POINTER(ctypes.c_int32)).contents)
+
+            if condition_value:
+                if isinstance(while_body, Callable):
+                    while_body(**kwargs)
+                elif isinstance(while_body, Graph):
+                    capture_launch(while_body, stream=stream)
+                else:
+                    raise TypeError("while_body must be a callable or a graph")
+
+            else:
+                break
+
+        return
+
+    graph.has_conditional = True
+
+    # ensure conditional graph nodes are supported
+    assert_conditional_graph_support()
+
+    # insert conditional while-node
+    body_graph = ctypes.c_void_p()
+    cond_handle = ctypes.c_uint64()
+    if not runtime.core.cuda_graph_insert_while(
+        device.context,
+        stream.cuda_stream,
+        ctypes.cast(condition.ptr, ctypes.POINTER(ctypes.c_int32)),
+        ctypes.byref(body_graph),
+        ctypes.byref(cond_handle),
+    ):
+        raise RuntimeError(runtime.get_error_string())
+
+    # pause capturing parent graph and start capturing child graph
+    main_graph = capture_pause(stream=stream)
+    capture_resume(body_graph, stream=stream)
+
+    # capture while-body
+    if isinstance(while_body, Callable):
+        while_body(**kwargs)
+    elif isinstance(while_body, Graph):
+        if while_body.has_conditional:
+            raise RuntimeError("The body graph contains conditional nodes, which are not allowed in child graphs")
+
+        if not runtime.core.cuda_graph_insert_child_graph(
+            device.context,
+            stream.cuda_stream,
+            while_body.graph,
+        ):
+            raise RuntimeError(runtime.get_error_string())
+    else:
+        raise RuntimeError(runtime.get_error_string())
+
+    # update condition
+    if not runtime.core.cuda_graph_set_condition(
+        device.context,
+        stream.cuda_stream,
+        ctypes.cast(condition.ptr, ctypes.POINTER(ctypes.c_int32)),
+        cond_handle,
+    ):
+        raise RuntimeError(runtime.get_error_string())
+
+    # stop capturing child graph and resume capturing parent graph
+    capture_pause(stream=stream)
+    capture_resume(main_graph, stream=stream)
 
 
 def capture_launch(graph: Graph, stream: Stream | None = None):
@@ -6281,6 +6638,13 @@ def capture_launch(graph: Graph, stream: Stream | None = None):
     else:
         device = graph.device
         stream = device.stream
+
+    if graph.graph_exec is None:
+        g = ctypes.c_void_p()
+        result = runtime.core.cuda_graph_create_exec(graph.device.context, graph.graph, ctypes.byref(g))
+        if not result:
+            raise RuntimeError(f"Graph creation error: {runtime.get_error_string()}")
+        graph.graph_exec = g
 
     if not runtime.core.cuda_graph_launch(graph.graph_exec, stream.cuda_stream):
         raise RuntimeError(f"Graph launch error: {runtime.get_error_string()}")

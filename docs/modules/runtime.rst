@@ -921,9 +921,232 @@ Note that only launch calls are recorded in the graph; any Python executed outsi
 Typically it is only beneficial to use CUDA graphs when the graph will be reused or launched multiple times, as
 there is a graph-creation overhead.
 
+Conditional Execution
+#####################
+
+CUDA 12.4+ supports conditional graph nodes that enable dynamic control flow in CUDA graphs.
+
+:func:`wp.capture_if <capture_if>` creates a dynamic branch based on a condition. The condition value is read from a single-element ``int`` array, where a non-zero value means that the condition is True.
+
+.. code:: python
+
+    # create condition
+    cond = wp.zeros(1, dtype=int)
+
+    with wp.ScopedCapture() as capture:
+        wp.launch(foo, ...)
+
+        # execute a branch based on the condition value
+        wp.capture_if(cond,
+                      on_true=...,
+                      on_false=...)
+
+        wp.launch(bar, ...)
+
+The condition value can be updated by kernels launched prior to ``capture_if()`` in the same graph (e.g. kernel ``foo`` above) or it can be updated by other means before the graph is launched. Note that during graph capture, the value of the condition is ignored. It is only used when the graph is launched, making dynamic control flow possible.
+
+.. code:: python
+
+    # this will execute the `on_true` branch
+    cond.fill_(1)
+    wp.capture_launch(capture.graph)
+
+    # this will execute the `on_false` branch
+    cond.fill_(0)
+    wp.capture_launch(capture.graph)
+
+The ``on_true`` and ``on_false`` callbacks can be previously captured :class:`Graph` objects or Python callback functions. These callbacks are captured as child graphs of the enclosing graph. It's possible to specify only one or both callbacks, as needed. When the parent graph is launched, the correct child graph is executed based on the value of the condition. This is done efficiently on the device without involving the CPU. 
+
+Here is an example that uses previously captured graphs:
+
+.. code:: python
+
+    @wp.kernel
+    def hello_kernel():
+        print("Hello")
+
+    @wp.kernel
+    def goodbye_kernel():
+        print("Goodbye")
+
+    @wp.kernel
+    def yes_kernel():
+        print("Yes!")
+
+    @wp.kernel
+    def no_kernel():
+        print("No!")
+
+
+    # create condition
+    cond = wp.zeros(1, dtype=int)
+
+    # capture the on_true branch
+    with wp.ScopedCapture() as yes_capture:
+        wp.launch(yes_kernel, dim=1)
+
+    # capture the on_false branch
+    with wp.ScopedCapture() as no_capture:
+        wp.launch(no_kernel, dim=1)
+
+    # capture the main graph
+    with wp.ScopedCapture() as capture:
+        wp.launch(hello_kernel, dim=1)
+
+        # specify branches using subgraphs
+        wp.capture_if(cond,
+                      on_true=yes_capture.graph,
+                      on_false=no_capture.graph)
+
+        wp.launch(goodbye_kernel, dim=1)
+
+    # execute on_true branch
+    cond.fill_(1)
+    wp.capture_launch(capture.graph)
+
+    # execute on_false branch
+    cond.fill_(0)
+    wp.capture_launch(capture.graph)
+
+    wp.synchronize_device()
+
+Here is an example that uses Python callback functions. These callbacks will be captured as child graphs of the main graph:
+
+.. code:: python
+
+    @wp.kernel
+    def hello_kernel():
+        print("Hello")
+
+    @wp.kernel
+    def goodbye_kernel():
+        print("Goodbye")
+
+    @wp.kernel
+    def yes_kernel():
+        print("Yes!")
+
+    @wp.kernel
+    def no_kernel():
+        print("No!")
+
+
+    # create condition
+    cond = wp.zeros(1, dtype=int)
+
+    # Python callback for the on_true branch
+    def yes_callback():
+        wp.launch(yes_kernel, dim=1)
+
+    # Python callback for the on_false branch
+    def no_callback():
+        wp.launch(no_kernel, dim=1)
+
+    # capture the main graph
+    with wp.ScopedCapture() as capture:
+        wp.launch(hello_kernel, dim=1)
+
+        # specify branches using Python callback functions
+        wp.capture_if(cond,
+                      on_true=yes_callback,
+                      on_false=no_callback)
+
+        wp.launch(goodbye_kernel, dim=1)
+
+    # execute on_true branch
+    cond.fill_(1)
+    wp.capture_launch(capture.graph)
+
+    # execute on_false branch
+    cond.fill_(0)
+    wp.capture_launch(capture.graph)
+
+    wp.synchronize_device()
+
+When using Python callback functions, any extra keyword arguments to :func:`wp.capture_if <capture_if>` are forwarded to the callbacks.
+
+:func:`wp.capture_while <capture_while>` creates a dynamic loop based on a condition. Similarly to :func:`wp.capture_if <capture_if>`, the condition value is read from a single-element ``int`` array, where a non-zero value means that the condition is True.
+
+.. code:: python
+
+    # create condition
+    cond = wp.zeros(1, dtype=int)
+
+    with wp.ScopedCapture() as capture:
+        wp.launch(foo, ...)
+
+        # execute the while_body while the condition is true
+        wp.capture_while(cond, while_body=...)
+
+        wp.launch(bar, ...)
+
+The ``while_body`` callback will be executed as long as the condition is non-zero. The callback is responsible for updating the condition value so that the loop eventually terminates. The ``while_body`` argument can be a previously captured graph or a Python callback function. Here is an example that will run some number of iterations, using the condition value as a counter:
+
+.. code:: python
+
+    @wp.kernel
+    def hello_kernel():
+        print("Hello")
+
+    @wp.kernel
+    def goodbye_kernel():
+        print("Goodbye")
+
+    @wp.kernel
+    def body_kernel(cond: wp.array(dtype=int)):
+        tid = wp.tid()
+        print(cond[0])
+        # decrement the condition counter
+        if tid == 0:
+            cond[0] -= 1    
+
+
+    # create condition
+    cond = wp.zeros(1, dtype=int)
+
+    # capture the while_body
+    with wp.ScopedCapture() as body_capture:
+        wp.launch(body_kernel, dim=1, inputs=[cond])
+
+    # capture the main graph
+    with wp.ScopedCapture() as capture:
+        wp.launch(hello_kernel, dim=1)
+
+        # dynamic loop
+        wp.capture_while(cond, while_body=body_capture.graph)
+
+        wp.launch(goodbye_kernel, dim=1)
+
+    # loop 5 times
+    cond.fill_(5)
+    wp.capture_launch(capture.graph)
+
+    # loop 2 times
+    cond.fill_(2)
+    wp.capture_launch(capture.graph)
+
+    wp.synchronize_device()
+
+
+.. note::
+    Conditional graph node support is only available if Warp is built using CUDA Toolkit 12.4+ and the NVIDIA driver supports CUDA 12.4+.
+
+.. note::
+    Due to a current CUDA limitation, graphs with conditional nodes cannot be used as child graphs. It means that it's not possible to create nested conditional constructs using previously captured graphs. If nesting is required, using Python callback functions is the way to go.
+
+.. note::
+    :func:`wp.capture_if <capture_if>` and :func:`wp.capture_while <capture_while>` will work even without graph capture on any device. If there is no active capture, the condition will be evaluated on the CPU and the correct branch will be executed immediately. This makes it possible to write code that works similarly with and without graph capture.
+
+
+
+Graph API Reference
+###################
+
 .. autofunction:: capture_begin
 .. autofunction:: capture_end
 .. autofunction:: capture_launch
+.. autofunction:: capture_if
+.. autofunction:: capture_while
 
 .. autoclass:: ScopedCapture
     :members:

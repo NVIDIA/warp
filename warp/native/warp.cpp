@@ -1051,8 +1051,17 @@ WP_API float cuda_event_elapsed_time(void* start_event, void* end_event) { retur
 
 WP_API bool cuda_graph_begin_capture(void* context, void* stream, int external) { return false; }
 WP_API bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret) { return false; }
+WP_API bool cuda_graph_create_exec(void* context, void* graph, void** graph_exec_ret) { return false; }
 WP_API bool cuda_graph_launch(void* graph, void* stream) { return false; }
 WP_API bool cuda_graph_destroy(void* context, void* graph) { return false; }
+WP_API bool cuda_graph_exec_destroy(void* context, void* graph_exec) { return false; }
+
+WP_API bool cuda_graph_insert_if_else(void* context, void* stream, int* condition, void** if_graph_ret, void** else_graph_ret) { return false; }
+WP_API bool cuda_graph_insert_while(void* context, void* stream, int* condition, void** body_graph_ret, uint64_t* handle_ret) { return false; }
+WP_API bool cuda_graph_set_condition(void* context, void* stream, int* condition, uint64_t handle) { return false; }
+WP_API bool cuda_graph_pause_capture(void* context, void* stream, void** graph_ret) { return false; }
+WP_API bool cuda_graph_resume_capture(void* context, void* stream, void* graph) { return false; }
+WP_API bool cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph) { return false; }
 
 WP_API size_t cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, bool compile_time_trace, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types) { return 0; }
 
