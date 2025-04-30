@@ -21,6 +21,7 @@
 - Add `transform_compose` and `transform_decompose` math functions for converting between transforms and mat44 with 3D scale information ([GH-576](https://github.com/NVIDIA/warp/issues/576)).
 - Add a parameter `as_spheres` to `UsdRenderer.render_points()` in order to choose whether to render
   the points as USD spheres using a point instancer, or as simple USD points otherwise.
+- Add support for dynamic control flow in CUDA graphs, see `wp.capture_if()` and `wp.capture_while()` ([GH-597](https://github.com/NVIDIA/warp/issues/597)).
 - Support tile inplace add/subtract operations
   ([GH-518](https://github.com/NVIDIA/warp/issues/518)).
 - Add support for in-place tile component addition and subtraction

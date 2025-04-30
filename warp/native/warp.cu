@@ -167,6 +167,9 @@ struct ContextInfo
 
     // the current stream, managed from Python (see cuda_context_set_stream() and cuda_context_get_stream())
     CUstream stream = NULL;
+
+    // conditional graph node support, loaded on demand if the driver supports it (CUDA 12.4+)
+    CUmodule conditional_module = NULL;
 };
 
 struct CaptureInfo
@@ -2043,6 +2046,9 @@ void cuda_context_destroy(void* context)
             if (info->stream)
                 check_cu(cuStreamDestroy_f(info->stream));
             
+            if (info->conditional_module)
+                check_cu(cuModuleUnload_f(info->conditional_module));
+
             g_contexts.erase(ctx);
         }
 
@@ -2748,21 +2754,9 @@ bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
     if (external)
         return true;
 
-    cudaGraphExec_t graph_exec = NULL;
-
     // end the capture
     if (!check_cuda(cudaStreamEndCapture(cuda_stream, &graph)))
         return false;
-
-    // enable to create debug GraphVis visualization of graph
-    // cudaGraphDebugDotPrint(graph, "graph.dot", cudaGraphDebugDotFlagsVerbose);
-    
-    // can use after CUDA 11.4 to permit graphs to capture cudaMallocAsync() operations
-    if (!check_cuda(cudaGraphInstantiateWithFlags(&graph_exec, graph, cudaGraphInstantiateFlagAutoFreeOnLaunch)))
-        return false;
-
-    // free source graph
-    check_cuda(cudaGraphDestroy(graph));
 
     // process deferred free list if no more captures are ongoing
     if (g_captures.empty())
@@ -2772,10 +2766,495 @@ bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
     }
 
     if (graph_ret)
-        *graph_ret = graph_exec;
+        *graph_ret = graph;
 
     return true;
 }
+
+bool cuda_graph_create_exec(void* context, void* graph, void** graph_exec_ret)
+{
+    ContextGuard guard(context);
+
+    cudaGraphExec_t graph_exec = NULL;
+    if (!check_cuda(cudaGraphInstantiateWithFlags(&graph_exec, (cudaGraph_t)graph, cudaGraphInstantiateFlagAutoFreeOnLaunch)))
+        return false;
+
+    if (graph_exec_ret)
+        *graph_exec_ret = graph_exec;
+
+    return true;
+}
+
+// Support for conditional graph nodes available with CUDA 12.4+.
+#if CUDA_VERSION >= 12040
+
+// CUBIN data for compiled conditional modules, loaded on demand, keyed on device architecture
+static std::map<int, void*> g_conditional_cubins;
+
+// Compile module with conditional helper kernels
+static void* compile_conditional_module(int arch)
+{
+    static const char* kernel_source = R"(
+        typedef __device_builtin__ unsigned long long cudaGraphConditionalHandle;
+        extern "C" __device__ __cudart_builtin__ void cudaGraphSetConditional(cudaGraphConditionalHandle handle, unsigned int value);
+
+        extern "C" __global__ void set_conditional_if_handle_kernel(cudaGraphConditionalHandle handle, int* value)
+        {
+            if (threadIdx.x + blockIdx.x * blockDim.x == 0)
+                cudaGraphSetConditional(handle, *value);
+        }
+
+        extern "C" __global__ void set_conditional_else_handle_kernel(cudaGraphConditionalHandle handle, int* value)
+        {
+            if (threadIdx.x + blockIdx.x * blockDim.x == 0)
+                cudaGraphSetConditional(handle, !*value);
+        }
+
+        extern "C" __global__ void set_conditional_if_else_handles_kernel(cudaGraphConditionalHandle if_handle, cudaGraphConditionalHandle else_handle, int* value)
+        {
+            if (threadIdx.x + blockIdx.x * blockDim.x == 0)
+            {
+                cudaGraphSetConditional(if_handle, *value);
+                cudaGraphSetConditional(else_handle, !*value);
+            }
+        }
+    )";
+
+    // avoid recompilation
+    auto it = g_conditional_cubins.find(arch);
+    if (it != g_conditional_cubins.end())
+        return it->second;
+
+    nvrtcProgram prog;
+    if (!check_nvrtc(nvrtcCreateProgram(&prog, kernel_source, "conditional_kernels", 0, NULL, NULL)))
+        return NULL;
+
+    char arch_opt[128];
+    snprintf(arch_opt, sizeof(arch_opt), "--gpu-architecture=sm_%d", arch);
+
+    std::vector<const char*> opts;
+    opts.push_back(arch_opt);
+
+    if (!check_nvrtc(nvrtcCompileProgram(prog, int(opts.size()), opts.data())))
+    {
+        size_t log_size;
+        if (check_nvrtc(nvrtcGetProgramLogSize(prog, &log_size)))
+        {
+            std::vector<char> log(log_size);
+            if (check_nvrtc(nvrtcGetProgramLog(prog, log.data())))
+                fprintf(stderr, "%s", log.data());
+        }
+        nvrtcDestroyProgram(&prog);
+        return NULL;
+    }
+
+    // get output
+    char* output = NULL;
+    size_t output_size = 0;
+    check_nvrtc(nvrtcGetCUBINSize(prog, &output_size));
+    if (output_size > 0)
+    {
+        output = new char[output_size];
+        if (check_nvrtc(nvrtcGetCUBIN(prog, output)))
+            g_conditional_cubins[arch] = output;
+    }
+
+    nvrtcDestroyProgram(&prog);    
+
+    // return CUBIN data
+    return output;
+}
+
+
+// Load module with conditional helper kernels
+static CUmodule load_conditional_module(void* context)
+{
+    ContextInfo* context_info = get_context_info(context);
+    if (!context_info)
+        return NULL;
+
+    // check if already loaded
+    if (context_info->conditional_module)
+        return context_info->conditional_module;
+
+    int arch = context_info->device_info->arch;
+
+    // compile if needed
+    void* compiled_module = compile_conditional_module(arch);
+    if (!compiled_module)
+    {
+        fprintf(stderr, "Warp error: Failed to compile conditional kernels\n");
+        return NULL;
+    }
+
+    // load module
+    CUmodule module = NULL;
+    if (!check_cu(cuModuleLoadDataEx_f(&module, compiled_module, 0, NULL, NULL)))
+    {
+        fprintf(stderr, "Warp error: Failed to load conditional kernels module\n");
+        return NULL;
+    }
+
+    context_info->conditional_module = module;
+
+    return module;
+}
+
+static CUfunction get_conditional_kernel(void* context, const char* name)
+{
+    // load module if needed
+    CUmodule module = load_conditional_module(context);
+    if (!module)
+        return NULL;
+
+    CUfunction kernel;
+    if (!check_cu(cuModuleGetFunction_f(&kernel, module, name)))
+    {
+        fprintf(stderr, "Warp error: Failed to get kernel %s\n", name);
+        return NULL;
+    }
+
+    return kernel;
+}
+
+bool cuda_graph_pause_capture(void* context, void* stream, void** graph_ret)
+{
+    ContextGuard guard(context);
+
+    CUstream cuda_stream = static_cast<CUstream>(stream);
+    if (!check_cuda(cudaStreamEndCapture(cuda_stream, (cudaGraph_t*)graph_ret)))
+        return false;
+    return true;
+}
+
+bool cuda_graph_resume_capture(void* context, void* stream, void* graph)
+{
+    ContextGuard guard(context);
+
+    CUstream cuda_stream = static_cast<CUstream>(stream);
+    cudaGraph_t cuda_graph = static_cast<cudaGraph_t>(graph);
+
+    std::vector<cudaGraphNode_t> leaf_nodes;
+    if (!get_graph_leaf_nodes(cuda_graph, leaf_nodes))
+        return false;
+
+    if (!check_cuda(cudaStreamBeginCaptureToGraph(cuda_stream,
+                                  cuda_graph,                                  
+                                  leaf_nodes.data(),
+                                  nullptr,
+                                  leaf_nodes.size(),
+                                  cudaStreamCaptureModeGlobal)))
+        return false;
+
+    return true;
+}
+
+// https://developer.nvidia.com/blog/constructing-cuda-graphs-with-dynamic-parameters/#combined_approach
+// https://developer.nvidia.com/blog/dynamic-control-flow-in-cuda-graphs-with-conditional-nodes/
+// condition is a gpu pointer
+// if_graph_ret and else_graph_ret should be NULL if not needed
+bool cuda_graph_insert_if_else(void* context, void* stream, int* condition, void** if_graph_ret, void** else_graph_ret)
+{
+    bool has_if = if_graph_ret != NULL;
+    bool has_else = else_graph_ret != NULL;
+    int num_branches = int(has_if) + int(has_else);
+
+    // if neither the IF nor ELSE branches are required, it's a no-op
+    if (num_branches == 0)
+        return true;
+
+    ContextGuard guard(context);
+
+    CUstream cuda_stream = static_cast<CUstream>(stream);
+
+    // Get the current stream capturing graph
+    cudaStreamCaptureStatus capture_status = cudaStreamCaptureStatusNone;
+    cudaGraph_t cuda_graph = NULL;
+    const cudaGraphNode_t* capture_deps = NULL;
+    size_t dep_count = 0;
+    if (!check_cuda(cudaStreamGetCaptureInfo(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
+        return false;
+
+    // abort if not capturing
+    if (!cuda_graph || capture_status != cudaStreamCaptureStatusActive)
+    {
+        wp::set_error_string("Stream is not capturing");
+        return false;
+    }
+
+    //int driver_version = cuda_driver_version();
+
+    // IF-ELSE nodes are only supported with CUDA 12.8+
+    // Somehow child graphs produce wrong results when an else branch is used
+    // Seems to be a bug in the CUDA driver: https://nvbugs/5241330
+    if (num_branches == 1 /*|| driver_version >= 12080*/)
+    {
+        cudaGraphConditionalHandle handle;
+        cudaGraphConditionalHandleCreate(&handle, cuda_graph);
+        
+        // run a kernel to set the condition handle from the condition pointer
+        // (need to negate the condition if only the else branch is used)
+        CUfunction kernel;
+        if (has_if)
+            kernel = get_conditional_kernel(context, "set_conditional_if_handle_kernel");
+        else
+            kernel = get_conditional_kernel(context, "set_conditional_else_handle_kernel");
+
+        if (!kernel)
+        {
+            wp::set_error_string("Failed to get built-in conditional kernel");
+            return false;
+        }
+
+        void* kernel_args[2];
+        kernel_args[0] = &handle;
+        kernel_args[1] = &condition;
+
+        if (!check_cuda(cuLaunchKernel_f(kernel, 1, 1, 1, 1, 1, 1, 0, cuda_stream, kernel_args, NULL)))
+            return false;
+
+        if (!check_cuda(cudaStreamGetCaptureInfo(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
+            return false;
+        
+        // create conditional node
+        cudaGraphNode_t condition_node;
+        cudaGraphNodeParams condition_params = { cudaGraphNodeTypeConditional };
+        condition_params.conditional.handle = handle;
+        condition_params.conditional.type   = cudaGraphCondTypeIf;
+        condition_params.conditional.size   = num_branches;
+        if (!check_cuda(cudaGraphAddNode(&condition_node, cuda_graph, capture_deps, dep_count, &condition_params)))
+            return false;
+
+        if (!check_cuda(cudaStreamUpdateCaptureDependencies(cuda_stream, &condition_node, 1, cudaStreamSetCaptureDependencies)))
+            return false;
+
+        if (num_branches == 1)
+        {
+            if (has_if)
+                *if_graph_ret = condition_params.conditional.phGraph_out[0];
+            else
+                *else_graph_ret = condition_params.conditional.phGraph_out[0];
+        }
+        else
+        {
+            *if_graph_ret = condition_params.conditional.phGraph_out[0];
+            *else_graph_ret = condition_params.conditional.phGraph_out[1];
+        }
+    }
+    else
+    {
+        // Create IF node followed by an additional IF node with negated condition
+        cudaGraphConditionalHandle if_handle, else_handle;
+        cudaGraphConditionalHandleCreate(&if_handle, cuda_graph);
+        cudaGraphConditionalHandleCreate(&else_handle, cuda_graph);
+        
+        CUfunction kernel = get_conditional_kernel(context, "set_conditional_if_else_handles_kernel");
+        if (!kernel)
+        {
+            wp::set_error_string("Failed to get built-in conditional kernel");
+            return false;
+        }
+ 
+        void* kernel_args[3];
+        kernel_args[0] = &if_handle;
+        kernel_args[1] = &else_handle;
+        kernel_args[2] = &condition;
+    
+        if (!check_cu(cuLaunchKernel_f(kernel, 1, 1, 1, 1, 1, 1, 0, cuda_stream, kernel_args, NULL)))
+            return false;
+
+        if (!check_cuda(cudaStreamGetCaptureInfo(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
+            return false;
+
+        cudaGraphNode_t if_node;
+        cudaGraphNodeParams if_params = { cudaGraphNodeTypeConditional };
+        if_params.conditional.handle = if_handle;
+        if_params.conditional.type   = cudaGraphCondTypeIf;
+        if_params.conditional.size   = 1;
+        if (!check_cuda(cudaGraphAddNode(&if_node, cuda_graph, capture_deps, dep_count, &if_params)))
+            return false;
+
+        cudaGraphNode_t else_node;
+        cudaGraphNodeParams else_params = { cudaGraphNodeTypeConditional };
+        else_params.conditional.handle = else_handle;
+        else_params.conditional.type   = cudaGraphCondTypeIf;
+        else_params.conditional.size   = 1;
+        if (!check_cuda(cudaGraphAddNode(&else_node, cuda_graph, &if_node, 1, &else_params)))
+            return false;
+        
+        if (!check_cuda(cudaStreamUpdateCaptureDependencies(cuda_stream, &else_node, 1, cudaStreamSetCaptureDependencies)))
+            return false;
+
+        *if_graph_ret = if_params.conditional.phGraph_out[0];
+        *else_graph_ret = else_params.conditional.phGraph_out[0];
+    }
+
+    return true;
+}
+
+bool cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph)
+{
+    ContextGuard guard(context);
+
+    CUstream cuda_stream = static_cast<CUstream>(stream);
+
+    // Get the current stream capturing graph
+    cudaStreamCaptureStatus capture_status = cudaStreamCaptureStatusNone;
+    void* cuda_graph = NULL;
+    const cudaGraphNode_t* capture_deps = NULL;
+    size_t dep_count = 0;
+    if (!check_cuda(cudaStreamGetCaptureInfo(cuda_stream, &capture_status, nullptr, (cudaGraph_t*)&cuda_graph, &capture_deps, &dep_count)))
+        return false;
+
+    if (!cuda_graph_pause_capture(context, cuda_stream, &cuda_graph))
+        return false;
+
+    cudaGraphNode_t body_node;
+    if (!check_cuda(cudaGraphAddChildGraphNode(&body_node, 
+                                                static_cast<cudaGraph_t>(cuda_graph),
+                                                capture_deps, dep_count,
+                                                static_cast<cudaGraph_t>(child_graph))))
+        return false;
+
+    if (!cuda_graph_resume_capture(context, cuda_stream, cuda_graph))
+        return false;
+
+    if (!check_cuda(cudaStreamUpdateCaptureDependencies(cuda_stream, &body_node, 1, cudaStreamSetCaptureDependencies)))
+        return false;
+
+    return true;
+}
+
+bool cuda_graph_insert_while(void* context, void* stream, int* condition, void** body_graph_ret, uint64_t* handle_ret)
+{
+    // if there's no body, it's a no-op
+    if (!body_graph_ret)
+        return true;
+
+    ContextGuard guard(context);
+
+    CUstream cuda_stream = static_cast<CUstream>(stream);
+
+    // Get the current stream capturing graph
+    cudaStreamCaptureStatus capture_status = cudaStreamCaptureStatusNone;
+    cudaGraph_t cuda_graph = NULL;
+    const cudaGraphNode_t* capture_deps = NULL;
+    size_t dep_count = 0;
+    if (!check_cuda(cudaStreamGetCaptureInfo(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
+        return false;
+
+    // abort if not capturing
+    if (!cuda_graph || capture_status != cudaStreamCaptureStatusActive)
+    {
+        wp::set_error_string("Stream is not capturing");
+        return false;
+    }
+
+    cudaGraphConditionalHandle handle;
+    if (!check_cuda(cudaGraphConditionalHandleCreate(&handle, cuda_graph)))
+        return false;
+    
+    // launch a kernel to set the condition handle from condition pointer
+    CUfunction kernel = get_conditional_kernel(context, "set_conditional_if_handle_kernel");
+    if (!kernel)
+    {
+        wp::set_error_string("Failed to get built-in conditional kernel");
+        return false;
+    }
+
+    void* kernel_args[2];
+    kernel_args[0] = &handle;
+    kernel_args[1] = &condition;
+
+    if (!check_cu(cuLaunchKernel_f(kernel, 1, 1, 1, 1, 1, 1, 0, cuda_stream, kernel_args, NULL)))
+        return false;
+
+    if (!check_cuda(cudaStreamGetCaptureInfo(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
+        return false;
+
+    // insert conditional graph node
+    cudaGraphNode_t while_node;
+    cudaGraphNodeParams while_params = { cudaGraphNodeTypeConditional };
+    while_params.conditional.handle = handle;
+    while_params.conditional.type   = cudaGraphCondTypeWhile;
+    while_params.conditional.size   = 1;
+    if (!check_cuda(cudaGraphAddNode(&while_node, cuda_graph, capture_deps, dep_count, &while_params)))
+        return false;
+
+    if (!check_cuda(cudaStreamUpdateCaptureDependencies(cuda_stream, &while_node, 1, cudaStreamSetCaptureDependencies)))
+        return false;
+
+    *body_graph_ret = while_params.conditional.phGraph_out[0];
+    *handle_ret = handle;
+
+    return true;
+}
+
+bool cuda_graph_set_condition(void* context, void* stream, int* condition, uint64_t handle)
+{
+    ContextGuard guard(context);
+
+    CUstream cuda_stream = static_cast<CUstream>(stream);
+
+    // launch a kernel to set the condition handle from condition pointer
+    CUfunction kernel = get_conditional_kernel(context, "set_conditional_if_handle_kernel");
+    if (!kernel)
+    {
+        wp::set_error_string("Failed to get built-in conditional kernel");
+        return false;
+    }
+
+    void* kernel_args[2];
+    kernel_args[0] = &handle;
+    kernel_args[1] = &condition;
+
+    if (!check_cu(cuLaunchKernel_f(kernel, 1, 1, 1, 1, 1, 1, 0, cuda_stream, kernel_args, NULL)))
+        return false;
+
+    return true;
+}
+
+#else
+// stubs for conditional graph node API if CUDA toolkit is too old.
+
+bool cuda_graph_pause_capture(void* context, void* stream, void** graph_ret)
+{
+    wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
+    return false;
+}
+
+bool cuda_graph_resume_capture(void* context, void* stream, void* graph)
+{
+    wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
+    return false;
+}
+
+bool cuda_graph_insert_if_else(void* context, void* stream, int* condition, void** if_graph_ret, void** else_graph_ret)
+{
+    wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
+    return false;
+}
+
+bool cuda_graph_insert_while(void* context, void* stream, int* condition, void** body_graph_ret, uint64_t* handle_ret)
+{
+    wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
+    return false;
+}
+
+bool cuda_graph_set_condition(void* context, void* stream, int* condition, uint64_t handle)
+{
+    wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
+    return false;
+}
+
+bool cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph)
+{
+    wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
+    return false;
+}
+
+#endif // support for conditional graph nodes
+
 
 bool cuda_graph_launch(void* graph_exec, void* stream)
 {
@@ -2789,7 +3268,14 @@ bool cuda_graph_launch(void* graph_exec, void* stream)
     return result;
 }
 
-bool cuda_graph_destroy(void* context, void* graph_exec)
+bool cuda_graph_destroy(void* context, void* graph)
+{
+    ContextGuard guard(context);
+
+    return check_cuda(cudaGraphDestroy((cudaGraph_t)graph));
+}
+
+bool cuda_graph_exec_destroy(void* context, void* graph_exec)
 {
     ContextGuard guard(context);
 
