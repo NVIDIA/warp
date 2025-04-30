@@ -274,6 +274,32 @@ def test_tile_load_aligned_offset_unaligned_size(test, device):
     assert_np_equal(output_array.numpy()[TILE_WIDTH:, :], np.zeros((remaining_height, TILE_M)))
 
 
+@wp.kernel
+def test_tile_load_stride_unaligned_kernel(input: wp.array2d(dtype=wp.float32), output: wp.array2d(dtype=wp.float32)):
+    tile = wp.tile_load(input, shape=(4, 4))
+    wp.tile_store(output, tile)
+
+
+# regression test for float4 aligned tiles that load from a source array with an incommensurate stride
+def test_tile_load_stride_unaligned(test, device):
+    DIM = 5
+    input_np = np.eye(DIM) * 2.0
+    input_array = wp.array(input_np, dtype=wp.float32, device=device)
+    output_array = wp.zeros_like(input_array)
+
+    wp.launch_tiled(
+        test_tile_load_stride_unaligned_kernel,
+        dim=(1, 1),
+        inputs=[input_array],
+        outputs=[output_array],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    input_np[DIM - 1, DIM - 1] = 0.0
+    assert_np_equal(output_array.numpy(), input_np)
+
+
 # ----------------------------------------------------------------------------------------
 
 TILE_SIZE = 4
@@ -485,6 +511,7 @@ add_function_test(
     test_tile_load_aligned_offset_unaligned_size,
     devices=devices,
 )
+add_function_test(TestTileLoad, "test_tile_load_stride_unaligned", test_tile_load_stride_unaligned, devices=devices)
 
 add_function_test(TestTileLoad, "test_tile_extract_1d", test_tile_extract(tile_extract_1d_kernel, 1), devices=devices)
 add_function_test(TestTileLoad, "test_tile_extract_2d", test_tile_extract(tile_extract_2d_kernel, 2), devices=devices)

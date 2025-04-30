@@ -72,6 +72,7 @@
 - Fix `OpenGLRenderer.update_shape_instance()` not having color buffers created for the shape instances.
 - Allow recovering from out-of-memory errors during Volume allocation ([GH-611](https://github.com/NVIDIA/warp/issues/611)).
 - Address `wp.tile_atomic_add()` compiler errors.
+- Fix 2D tile load when source array and tile have incompatible strides
 
 ## [1.7.0] - 2025-03-30
 
