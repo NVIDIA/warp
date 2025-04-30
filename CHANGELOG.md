@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.7.1] - 2025-05-01
+## [1.7.1] - 2025-04-30
 
 ### Added
 
@@ -9,9 +9,9 @@
 
 ### Changed
 
-- Improve `repr()` for Warp types, including adding `repr()` for  `wp.array`.
+- Improve `repr()` for Warp types, including adding `repr()` for `wp.array`.
 - Change the USD renderer to use `framesPerSecond` for time sampling instead of `timeCodesPerSecond`
-  ([GH-617](https://github.com/NVIDIA/warp/issues/617)).
+  to avoid playback speed issues in some viewers ([GH-617](https://github.com/NVIDIA/warp/issues/617)).
 - `Model.rigid_contact_tids` are now -1 at non-active contact indices which allows to retrieve the vertex index of a
   mesh collision, see `test_collision.py` ([GH-623](https://github.com/NVIDIA/warp/issues/623)).
 - Improve handling of deprecated JAX features ([GH-613](https://github.com/NVIDIA/warp/pull/613)).
