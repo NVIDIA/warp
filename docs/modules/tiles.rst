@@ -202,6 +202,8 @@ Construction
 * :func:`untile`
 * :func:`tile_view`
 * :func:`tile_broadcast`
+* :func:`tile_reshape`
+* :func:`tile_squeeze`
 
 Load/Store
 ^^^^^^^^^^
