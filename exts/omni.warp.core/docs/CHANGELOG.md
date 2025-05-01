@@ -1,5 +1,48 @@
 # CHANGELOG
 
+## [1.7.1] - 2025-04-30
+
+### Added
+
+- Add example of a distributed Jacobi solver using `mpi4py` in `warp/examples/distributed/example_jacobi_mpi.py`
+  ([GH-475](https://github.com/NVIDIA/warp/issues/475)).
+
+### Changed
+
+- Improve `repr()` for Warp types, including adding `repr()` for `wp.array`.
+- Change the USD renderer to use `framesPerSecond` for time sampling instead of `timeCodesPerSecond`
+  to avoid playback speed issues in some viewers ([GH-617](https://github.com/NVIDIA/warp/issues/617)).
+- `Model.rigid_contact_tids` are now -1 at non-active contact indices which allows to retrieve the vertex index of a
+  mesh collision, see `test_collision.py` ([GH-623](https://github.com/NVIDIA/warp/issues/623)).
+- Improve handling of deprecated JAX features ([GH-613](https://github.com/NVIDIA/warp/pull/613)).
+
+### Fixed
+
+- Fix a code generation bug involving return statements in Warp kernels, which could result in some threads in Warp
+  being skipped when processed on the GPU ([GH-594](https://github.com/NVIDIA/warp/issues/594)).
+- Fix constructing `DeformedGeometry` from `wp.fem.Trimesh3D` geometries
+  ([GH-614](https://github.com/NVIDIA/warp/issues/614)).
+- Fix `lookup` operator for `wp.fem.Trimesh3D` ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
+- Include the block dimension in the LTO file hash for the Cholesky solver
+  ([GH-639](https://github.com/NVIDIA/warp/issues/639)).
+- Fix tile loads for small tiles with aligned source memory ([GH-622](https://github.com/NVIDIA/warp/issues/622)).
+- Fix length/shape matching for vectors and matrices from the Python scope.
+- Fix the `dtype` parameter missing for `wp.quaternion()`.
+- Fix invalid `dtype` comparison when using the `wp.matrix()`/`wp.vector()`/`wp.quaternion()` constructors
+  with literal values and an explicit `dtype` argument ([GH-651](https://github.com/NVIDIA/warp/issues/651)).
+- Fix incorrect thread index lookup for the backward pass of `wp.sim.collide()`
+  ([GH-459](https://github.com/NVIDIA/warp/issues/459)).
+- Fix a bug where `wp.sim.ModelBuilder` adds springs with -1 as vertex indices
+  ([GH-621](https://github.com/NVIDIA/warp/issues/621)).
+- Fix center of mass, inertia computation for mesh shapes ([GH-251](https://github.com/NVIDIA/warp/issues/251)).
+- Fix computation of body center of mass to account for shape orientation
+  ([GH-648](https://github.com/NVIDIA/warp/issues/648)).
+- Fix `show_joints` not working with `wp.sim.render.SimRenderer` set to render to USD
+  ([GH-510](https://github.com/NVIDIA/warp/issues/510)).
+- Fix the jitter for the `OgnParticlesFromMesh` node not being computed correctly.
+- Fix documentation of `atol` and `rtol` arguments to `wp.autograd.gradcheck()` and `wp.autograd.gradcheck_tape()`
+  ([GH-508](https://github.com/NVIDIA/warp/issues/508)).
+
 ## [1.7.0] - 2025-03-30
 
 ### Added
