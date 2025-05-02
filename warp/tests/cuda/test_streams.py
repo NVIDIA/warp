@@ -442,7 +442,7 @@ def test_stream_event_is_complete(test, device):
 
         a = wp.zeros(1, dtype=wp.uint64)
 
-        threads = 1024 * 1024 * 8
+        threads = 1024 * 1024 * 64
 
         with wp.ScopedStream(stream):
             # Launch some work on the stream and reuse the event
