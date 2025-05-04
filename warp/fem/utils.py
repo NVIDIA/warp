@@ -19,6 +19,7 @@ import numpy as np
 
 import warp as wp
 import warp.fem.cache as cache
+import warp.types
 from warp.fem.linalg import (  # noqa: F401 (for backward compatibility, not part of public API but used in examples)
     array_axpy,
     inverse_qr,
@@ -26,6 +27,57 @@ from warp.fem.linalg import (  # noqa: F401 (for backward compatibility, not par
 )
 from warp.fem.types import NULL_NODE_INDEX
 from warp.utils import array_scan, radix_sort_pairs, runlength_encode
+
+
+def type_zero_element(dtype):
+    suffix = warp.types.get_type_code(dtype)
+
+    if dtype in warp.types.scalar_types:
+
+        @cache.dynamic_func(suffix=suffix)
+        def zero_element():
+            return dtype(0.0)
+
+        return zero_element
+
+    @cache.dynamic_func(suffix=suffix)
+    def zero_element():
+        return dtype()
+
+    return zero_element
+
+
+def type_basis_element(dtype):
+    suffix = warp.types.get_type_code(dtype)
+
+    if dtype in warp.types.scalar_types:
+
+        @cache.dynamic_func(suffix=suffix)
+        def basis_element(coord: int):
+            return dtype(1.0)
+
+        return basis_element
+
+    if warp.types.type_is_matrix(dtype):
+        cols = dtype._shape_[1]
+
+        @cache.dynamic_func(suffix=suffix)
+        def basis_element(coord: int):
+            v = dtype()
+            i = coord // cols
+            j = coord - i * cols
+            v[i, j] = v.dtype(1.0)
+            return v
+
+        return basis_element
+
+    @cache.dynamic_func(suffix=suffix)
+    def basis_element(coord: int):
+        v = dtype()
+        v[coord] = v.dtype(1.0)
+        return v
+
+    return basis_element
 
 
 def compress_node_indices(

@@ -33,9 +33,8 @@ class HexmeshCellArg:
     hex_vertex_indices: wp.array2d(dtype=int)
     positions: wp.array(dtype=wp.vec3)
 
-    # for neighbor cell lookup
-    vertex_hex_offsets: wp.array(dtype=int)
-    vertex_hex_indices: wp.array(dtype=int)
+    # for global cell lookup
+    hex_bvh: wp.uint64
 
 
 @wp.struct
@@ -131,20 +130,28 @@ class Hexmesh(Geometry):
     dimension = 3
 
     def __init__(
-        self, hex_vertex_indices: wp.array, positions: wp.array, temporary_store: Optional[TemporaryStore] = None
+        self,
+        hex_vertex_indices: wp.array,
+        positions: wp.array,
+        assume_parallelepiped_cells=False,
+        build_bvh: bool = False,
+        temporary_store: Optional[TemporaryStore] = None,
     ):
         """
-        Constructs a tetrahedral mesh.
+        Constructs a hexahedral mesh.
 
         Args:
             hex_vertex_indices: warp array of shape (num_hexes, 8) containing vertex indices for each hex
                 following standard ordering (bottom face vertices in counter-clockwise order, then similarly for upper face)
             positions: warp array of shape (num_vertices, 3) containing 3d position for each vertex
+            assume_parallelepiped: If true, assume that all cells are parallelepipeds (cheaper position/gradient evaluations)
+            build_bvh: Whether to also build the hex BVH, which is necessary for the global `fem.lookup` operator
             temporary_store: shared pool from which to allocate temporary arrays
         """
 
         self.hex_vertex_indices = hex_vertex_indices
         self.positions = positions
+        self.parallelepiped_cells = assume_parallelepiped_cells
 
         self._face_vertex_indices: wp.array = None
         self._face_hex_indices: wp.array = None
@@ -155,7 +162,25 @@ class Hexmesh(Geometry):
         self._edge_count = 0
         self._build_topology(temporary_store)
 
+        # Use cheaper variants if we know that cells are parallelpipeds (i.e. linearly transformed)
+        # (Cells only, not as much difference for sides)
+        self.cell_position = (
+            self._cell_position_parallelepiped if assume_parallelepiped_cells else self._cell_position_generic
+        )
+        self.cell_deformation_gradient = (
+            self._cell_deformation_gradient_parallelepiped
+            if assume_parallelepiped_cells
+            else self._cell_deformation_gradient_generic
+        )
+
         self._make_default_dependent_implementations()
+        self.cell_coordinates = self._make_cell_coordinates(assume_linear=assume_parallelepiped_cells)
+        self.side_coordinates = self._make_side_coordinates(assume_linear=assume_parallelepiped_cells)
+        self.cell_closest_point = self._make_cell_closest_point(assume_linear=assume_parallelepiped_cells)
+        self.side_closest_point = self._make_side_closest_point(assume_linear=assume_parallelepiped_cells)
+
+        if build_bvh:
+            self.build_bvh(self.positions.device)
 
     def cell_count(self):
         return self.hex_vertex_indices.shape[0]
@@ -204,18 +229,22 @@ class Hexmesh(Geometry):
     # Geometry device interface
 
     @cached_arg_value
-    def cell_arg_value(self, device) -> CellArg:
+    def _cell_constant_arg_value(self, device) -> CellArg:
         args = self.CellArg()
 
         args.hex_vertex_indices = self.hex_vertex_indices.to(device)
         args.positions = self.positions.to(device)
-        args.vertex_hex_offsets = self._vertex_hex_offsets.to(device)
-        args.vertex_hex_indices = self._vertex_hex_indices.to(device)
+
+        return args
+
+    def cell_arg_value(self, device) -> CellArg:
+        args = self._cell_constant_arg_value(device)
+        args.hex_bvh = self.bvh_id(device)
 
         return args
 
     @wp.func
-    def cell_position(args: CellArg, s: Sample):
+    def _cell_position_generic(args: CellArg, s: Sample):
         hex_idx = args.hex_vertex_indices[s.element_index]
 
         w_p = s.element_coords
@@ -242,9 +271,18 @@ class Hexmesh(Geometry):
         )
 
     @wp.func
-    def cell_deformation_gradient(cell_arg: CellArg, s: Sample):
+    def _cell_position_parallelepiped(args: CellArg, s: Sample):
+        hex_idx = args.hex_vertex_indices[s.element_index]
+        w = s.element_coords
+        p0 = args.positions[hex_idx[0]]
+        p1 = args.positions[hex_idx[1]]
+        p2 = args.positions[hex_idx[3]]
+        p3 = args.positions[hex_idx[4]]
+        return w[0] * p1 + w[1] * p2 + w[2] * p3 + (1.0 - w[0] - w[1] - w[2]) * p0
+
+    @wp.func
+    def _cell_deformation_gradient_generic(cell_arg: CellArg, s: Sample):
         """Deformation gradient at `coords`"""
-        """Transposed deformation gradient at `coords`"""
         hex_idx = cell_arg.hex_vertex_indices[s.element_index]
 
         w_p = s.element_coords
@@ -261,6 +299,17 @@ class Hexmesh(Geometry):
             + wp.outer(cell_arg.positions[hex_idx[7]], wp.vec3(-w_p[1] * w_p[2], w_m[0] * w_p[2], w_m[0] * w_p[1]))
         )
 
+    @wp.func
+    def _cell_deformation_gradient_parallelepiped(cell_arg: CellArg, s: Sample):
+        """Deformation gradient at `coords`"""
+        hex_idx = cell_arg.hex_vertex_indices[s.element_index]
+
+        p0 = cell_arg.positions[hex_idx[0]]
+        p1 = cell_arg.positions[hex_idx[1]]
+        p2 = cell_arg.positions[hex_idx[3]]
+        p3 = cell_arg.positions[hex_idx[4]]
+        return wp.matrix_from_cols(p1 - p0, p2 - p0, p3 - p0)
+
     @cached_arg_value
     def side_index_arg_value(self, device) -> SideIndexArg:
         args = self.SideIndexArg()
@@ -275,7 +324,6 @@ class Hexmesh(Geometry):
 
         return args.boundary_face_indices[boundary_side_index]
 
-    @cached_arg_value
     def side_arg_value(self, device) -> CellArg:
         args = self.SideArg()
 
@@ -909,3 +957,24 @@ class Hexmesh(Geometry):
                         + unique_beg
                     )
                     hex_edge_indices[t][k] = edge_id
+
+    @wp.func
+    def cell_bvh_id(cell_arg: HexmeshCellArg):
+        return cell_arg.hex_bvh
+
+    @wp.func
+    def cell_bounds(cell_arg: HexmeshCellArg, cell_index: ElementIndex):
+        vidx = cell_arg.hex_vertex_indices[cell_index]
+        p0 = cell_arg.positions[vidx[0]]
+        p1 = cell_arg.positions[vidx[1]]
+        p2 = cell_arg.positions[vidx[2]]
+        p3 = cell_arg.positions[vidx[3]]
+        lo0, up0 = wp.min(wp.min(p0, p1), wp.min(p2, p3)), wp.max(wp.max(p0, p1), wp.max(p2, p3))
+
+        p4 = cell_arg.positions[vidx[4]]
+        p5 = cell_arg.positions[vidx[5]]
+        p6 = cell_arg.positions[vidx[6]]
+        p7 = cell_arg.positions[vidx[7]]
+        lo1, up1 = wp.min(wp.min(p4, p5), wp.min(p6, p7)), wp.max(wp.max(p4, p5), wp.max(p6, p7))
+
+        return wp.min(lo0, lo1), wp.max(up0, up1)

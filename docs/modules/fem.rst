@@ -167,13 +167,10 @@ Particle-based quadrature and position lookups
 The global :func:`.lookup` operator allows generating a :class:`.Sample` from an arbitrary position; this is illustrated in 
 the ``example_streamlines.py`` example for generating 3D streamlines by tracing through a velocity field.
 
-This operator is also leveraged by the :class:`.PicQuadrature` to provide a way to define Particle-In-Cell quadratures from a set or arbitrary particles,
+This operator is also leveraged by the :class:`.PicQuadrature` to provide a way to define Particle-In-Cell quadratures from a set of arbitrary particles,
 making it possible to implement MPM-type methods.
 The particles are automatically bucketed to the geometry cells when the quadrature is initialized.
 This is illustrated by the ``example_stokes_transfer.py`` and ``example_apic_fluid.py`` examples.
-
-.. note::
-   The global :func:`.lookup` operator is not currently supported for :class:`Quadmesh2D`, :class:`Hexmesh` and deformed geometries.
 
 Nonconforming fields
 ^^^^^^^^^^^^^^^^^^^^
@@ -282,10 +279,14 @@ Domain operators
 ^^^^^^^^^^^^^^^^
 .. autofunction:: position(domain: Domain, s: Sample)
 .. autofunction:: normal(domain: Domain, s: Sample)
-.. autofunction:: lookup(domain: Domain, x)
 .. autofunction:: measure(domain: Domain, s: Sample)
 .. autofunction:: measure_ratio(domain: Domain, s: Sample)
 .. autofunction:: deformation_gradient(domain: Domain, s: Sample)
+
+.. autofunction:: lookup(domain: Domain, x: wp.vec3, max_dist: float = 0.0, guess: fem.Sample = None, filter_array: wp.array = None, filter_target: Any=None)
+.. autofunction:: partition_lookup(domain: Domain, x: wp.vec3, max_dist: float = 0.0)
+.. autofunction:: element_closest_point(domain: Domain, element_index: int, x: wp.vec3)
+.. autofunction:: element_coordinates(domain: Domain, element_index: int, x: wp.vec3)
 
 .. autofunction:: cells(domain: Domain)
 .. autofunction:: to_inner_cell(domain: Domain, s:Sample)
@@ -301,7 +302,6 @@ Field operators
 .. autofunction:: grad_outer(f: Field, s: Sample)
 .. autofunction:: div(f: Field, s: Sample)
 .. autofunction:: div_outer(f: Field, s: Sample)
-.. autofunction:: at_node(f: Field, s: Sample)
 
 .. autofunction:: D(f: Field, s: Sample)
 .. autofunction:: curl(f: Field, s: Sample)
@@ -310,21 +310,45 @@ Field operators
 .. autofunction:: grad_jump(f: Field, s: Sample)
 .. autofunction:: grad_average(f: Field, s: Sample)
 
+.. autofunction:: node_count(f: Field, s: Sample)
+.. autofunction:: at_node(f: Field, s: Sample, node_index_in_elt: int = None)
+.. autofunction:: node_index(f: Field, s: Sample, node_index_in_elt: int = None)
+
 Integration
 -----------
 
 .. autofunction:: integrate
 .. autofunction:: interpolate
 
-.. autofunction:: integrand
+.. autodecorator:: integrand
 
-.. class:: Sample
+.. autoclass:: Sample
+   :no-members:
+   :no-special-members:
+   
+   .. py:attribute:: element_index (ElementIndex=int)
 
-   Per-sample point context for evaluating fields and related operators in integrands.
+      Index in the geometry of the the sample point is in
+   
+   .. py:attribute:: element_coords (Coords=wp.vec3f)
+
+      Coordinates of the sample point in the element
+   
+   .. py:attribute:: qp_index (QuadraturePointIndex=int)
+
+      If the sample corresponds to a quadrature point, its index
+   
+   .. py:attribute:: qp_weight (float)
+
+      If the sample corresponds to a quadrature point, its weight
 
 .. autoclass:: Field 
+   :no-members:
+   :no-special-members:
 
 .. autoclass:: Domain 
+   :no-members:
+   :no-special-members:
 
 Geometry
 --------

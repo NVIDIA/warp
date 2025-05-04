@@ -32,10 +32,10 @@ class PicQuadrature(Quadrature):
     Args:
         domain: Underlying domain for the quadrature
         positions: Either an array containing the world positions of all particles, or a tuple of arrays containing
-         the cell indices and coordinates for each particle. Note that the former requires the underlying geometry to
-         define a global :meth:`Geometry.cell_lookup` method; currently this is only available for :class:`Grid2D` and :class:`Grid3D`.
+         the cell indices and coordinates for each particle.
         measures: Array containing the measure (area/volume) of each particle, used to defined the integration weights.
          If ``None``, defaults to the cell measure divided by the number of particles in the cell.
+        max_dist: When providing world positions that fall outside of the domain's geometry partition, maximum distance to look up for embedding cells
         requires_grad: Whether gradients should be allocated for the computed quantities
         temporary_store: shared pool from which to allocate temporary arrays
     """
@@ -52,12 +52,13 @@ class PicQuadrature(Quadrature):
         ],
         measures: Optional["wp.array(dtype=float)"] = None,
         requires_grad: bool = False,
+        max_dist: float = 0.0,
         temporary_store: TemporaryStore = None,
     ):
         super().__init__(domain)
 
         self._requires_grad = requires_grad
-        self._bin_particles(positions, measures, temporary_store)
+        self._bin_particles(positions, measures, max_dist=max_dist, temporary_store=temporary_store)
         self._max_particles_per_cell: int = None
 
     @property
@@ -179,23 +180,34 @@ class PicQuadrature(Quadrature):
             cell_particle_count = cell_particle_offsets[cell + 1] - cell_particle_offsets[cell]
             cell_fraction[p] = 1.0 / float(cell_particle_count)
 
-    def _bin_particles(self, positions, measures, temporary_store: TemporaryStore):
+    def _bin_particles(self, positions, measures, max_dist: float, temporary_store: TemporaryStore):
         if wp.types.is_array(positions):
+            device = positions.device
+            if not self.domain.supports_lookup(device):
+                raise RuntimeError(
+                    "Attempting to build a PicQuadrature from positions on a domain that does not support global lookups"
+                )
+
+            cell_lookup = self.domain.element_partition_lookup
+            cell_coordinates = self.domain.element_coordinates
+
             # Initialize from positions
-            @dynamic_kernel(suffix=f"{self.domain.name}")
+            @dynamic_kernel(suffix=self.domain.name)
             def bin_particles(
                 cell_arg_value: self.domain.ElementArg,
+                domain_index_arg_value: self.domain.ElementIndexArg,
                 positions: wp.array(dtype=positions.dtype),
+                max_dist: float,
                 cell_index: wp.array(dtype=ElementIndex),
                 cell_coords: wp.array(dtype=Coords),
             ):
                 p = wp.tid()
-                sample = self.domain.element_lookup(cell_arg_value, positions[p])
+                sample = cell_lookup(
+                    self.domain.DomainArg(cell_arg_value, domain_index_arg_value), positions[p], max_dist
+                )
 
                 cell_index[p] = sample.element_index
-                cell_coords[p] = sample.element_coords
-
-            device = positions.device
+                cell_coords[p] = cell_coordinates(cell_arg_value, sample.element_index, positions[p])
 
             self._cell_index_temp = borrow_temporary(temporary_store, shape=positions.shape, dtype=int, device=device)
             self.cell_indices = self._cell_index_temp.array
@@ -210,7 +222,11 @@ class PicQuadrature(Quadrature):
                 kernel=bin_particles,
                 inputs=[
                     self.domain.element_arg_value(device),
+                    self.domain.element_index_arg_value(device),
                     positions,
+                    max_dist,
+                ],
+                outputs=[
                     self.cell_indices,
                     self.particle_coords,
                 ],

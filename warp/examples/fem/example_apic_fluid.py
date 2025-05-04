@@ -290,7 +290,7 @@ class Example:
                 vel_projector = fem.integrate(
                     velocity_boundary_projector_form,
                     fields={"u": velocity_trial, "v": velocity_test},
-                    nodal=True,
+                    assembly="nodal",
                     output_dtype=float,
                 )
                 fem.normalize_dirichlet_projector(vel_projector)

@@ -157,7 +157,7 @@ class Example:
             boundary_projector_form = (
                 vertical_boundary_projector_form if self._geo.cell_dimension == 3 else y_boundary_projector_form
             )
-            bd_matrix = fem.integrate(boundary_projector_form, fields={"u": bd_trial, "v": bd_test}, nodal=True)
+            bd_matrix = fem.integrate(boundary_projector_form, fields={"u": bd_trial, "v": bd_test}, assembly="nodal")
 
             # Diffusion form
             trial = fem.make_trial(space=self._scalar_space, domain=domain)

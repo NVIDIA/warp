@@ -205,7 +205,9 @@ class Example:
         # (Note: this is constant per body, this could be precomputed)
         sym_grad_matrix = fem.integrate(symmetric_grad_form, fields={"u": u_trial, "tau": tau_test})
 
-        tau_inv_mass_matrix = fem.integrate(tensor_mass_form, fields={"sig": tau_trial, "tau": tau_test}, nodal=True)
+        tau_inv_mass_matrix = fem.integrate(
+            tensor_mass_form, fields={"sig": tau_trial, "tau": tau_test}, assembly="nodal"
+        )
         fem_example_utils.invert_diagonal_bsr_matrix(tau_inv_mass_matrix)
 
         stress_matrix = tau_inv_mass_matrix @ fem.integrate(
@@ -227,13 +229,13 @@ class Example:
 
         # Enforce boundary conditions
         u_bd_matrix = fem.integrate(
-            bottom_boundary_projector_form, fields={"u": u_bd_trial, "v": u_bd_test}, nodal=True
+            bottom_boundary_projector_form, fields={"u": u_bd_trial, "v": u_bd_test}, assembly="nodal"
         )
 
         # read displacement from other body set create bottom boundary Dirichlet BC
         other_u_field = fem.field.field.NonconformingField(boundary, other_u_field)
         u_bd_rhs = fem.integrate(
-            bottom_boundary_projector_form, fields={"u": other_u_field, "v": u_bd_test}, nodal=True
+            bottom_boundary_projector_form, fields={"u": other_u_field, "v": u_bd_test}, assembly="nodal"
         )
 
         fem.project_linear_system(stiffness_matrix, u_rhs, u_bd_matrix, u_bd_rhs)

@@ -15,13 +15,15 @@
 
 import ast
 import bisect
+import hashlib
+import inspect
 import re
 import weakref
-from copy import copy
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import warp as wp
 from warp.fem.operator import Integrand
+from warp.fem.types import Domain, Field
 
 _kernel_cache = {}
 _struct_cache = {}
@@ -30,31 +32,77 @@ _func_cache = {}
 _key_re = re.compile("[^0-9a-zA-Z_]+")
 
 
-def _make_key(obj, suffix: str, use_qualified_name):
-    base_name = f"{obj.__module__}.{obj.__qualname__}" if use_qualified_name else obj.__name__
-    return _key_re.sub("", f"{base_name}_{suffix}")
+def _make_key(obj, suffix: str, options: Optional[Dict[str, Any]] = None):
+    # human-readable part
+    key = _key_re.sub("", f"{obj.__name__}_{suffix}")
+
+    opts_key = "".join([f"{k}:{v}" for k, v in sorted(options.items())]) if options is not None else ""
+    uid = hashlib.blake2b(
+        bytes(f"{obj.__module__}{obj.__qualname__}{suffix}{opts_key}", encoding="utf-8"), digest_size=4
+    ).hexdigest()
+
+    # avoid long keys, issues on win
+    key = f"{key[:64]}_{uid}"
+
+    return key
 
 
-def get_func(func, suffix: str, use_qualified_name: bool = False, code_transformers=None):
-    key = _make_key(func, suffix, use_qualified_name)
+def _arg_type_name(arg_type):
+    if arg_type in (Field, Domain):
+        return ""
+    return wp.types.get_type_code(wp.types.type_to_warp(arg_type))
 
-    if key not in _func_cache:
-        _func_cache[key] = wp.Function(
-            func=func,
-            key=key,
-            namespace="",
-            module=wp.get_module(
-                func.__module__,
-            ),
+
+def _make_cache_key(func, key, argspec=None):
+    if argspec is None:
+        argspec = inspect.getfullargspec(func)
+
+    sig_key = "".join([f"{k}:{_arg_type_name(v)}" for k, v in argspec.annotations.items()])
+    return key + sig_key
+
+
+def _register_function(
+    func,
+    key,
+    module,
+    **kwargs,
+):
+    # wp.Function will override existing func for a given key...
+    # manually add back our overloads
+    existing = module.functions.get(key)
+    new_fn = wp.Function(
+        func=func,
+        key=key,
+        namespace="",
+        module=module,
+        **kwargs,
+    )
+
+    if existing:
+        existing.add_overload(new_fn)
+        module.functions[key] = existing
+    return module.functions[key]
+
+
+def get_func(func, suffix: str, code_transformers=None):
+    key = _make_key(func, suffix)
+    cache_key = _make_cache_key(func, key)
+
+    if cache_key not in _func_cache:
+        module = wp.get_module(func.__module__)
+        _func_cache[cache_key] = _register_function(
+            func,
+            key,
+            module,
             code_transformers=code_transformers,
         )
 
-    return _func_cache[key]
+    return _func_cache[cache_key]
 
 
-def dynamic_func(suffix: str, use_qualified_name=False, code_transformers=None):
+def dynamic_func(suffix: str, code_transformers=None):
     def wrap_func(func: Callable):
-        return get_func(func, suffix=suffix, use_qualified_name=use_qualified_name, code_transformers=code_transformers)
+        return get_func(func, suffix=suffix, code_transformers=code_transformers)
 
     return wrap_func
 
@@ -62,38 +110,35 @@ def dynamic_func(suffix: str, use_qualified_name=False, code_transformers=None):
 def get_kernel(
     func,
     suffix: str,
-    use_qualified_name: bool = False,
     kernel_options: Optional[Dict[str, Any]] = None,
 ):
     if kernel_options is None:
         kernel_options = {}
 
-    key = _make_key(func, suffix, use_qualified_name)
+    key = _make_key(func, suffix, kernel_options)
+    cache_key = _make_cache_key(func, key)
 
-    if key not in _kernel_cache:
-        # Avoid creating too long file names -- can lead to issues on Windows
-        # We could hash the key, but prefer to keep it human-readable
+    if cache_key not in _kernel_cache:
         module_name = f"{func.__module__}.dyn.{key}"
-        module_name = module_name[:128] if len(module_name) > 128 else module_name
         module = wp.get_module(module_name)
-        module.options = copy(wp.get_module(func.__module__).options)
+        module.options = dict(wp.get_module(func.__module__).options)
         module.options.update(kernel_options)
-        _kernel_cache[key] = wp.Kernel(func=func, key=key, module=module)
-    return _kernel_cache[key]
+        _kernel_cache[cache_key] = wp.Kernel(func=func, key=key, module=module, options=kernel_options)
+    return _kernel_cache[cache_key]
 
 
-def dynamic_kernel(suffix: str, use_qualified_name=False, kernel_options: Optional[Dict[str, Any]] = None):
+def dynamic_kernel(suffix: str, kernel_options: Optional[Dict[str, Any]] = None):
     if kernel_options is None:
         kernel_options = {}
 
     def wrap_kernel(func: Callable):
-        return get_kernel(func, suffix=suffix, use_qualified_name=use_qualified_name, kernel_options=kernel_options)
+        return get_kernel(func, suffix=suffix, kernel_options=kernel_options)
 
     return wrap_kernel
 
 
-def get_struct(struct: type, suffix: str, use_qualified_name: bool = False):
-    key = _make_key(struct, suffix, use_qualified_name)
+def get_struct(struct: type, suffix: str):
+    key = _make_key(struct, suffix)
     # used in codegen
     struct.__qualname__ = key
 
@@ -108,9 +153,9 @@ def get_struct(struct: type, suffix: str, use_qualified_name: bool = False):
     return _struct_cache[key]
 
 
-def dynamic_struct(suffix: str, use_qualified_name=False):
+def dynamic_struct(suffix: str):
     def wrap_struct(struct: type):
-        return get_struct(struct, suffix=suffix, use_qualified_name=use_qualified_name)
+        return get_struct(struct, suffix=suffix)
 
     return wrap_struct
 
@@ -125,15 +170,12 @@ def get_argument_struct(arg_types: Dict[str, type]):
         setattr(Args, name, None)
         annotations[name] = arg_type
 
-    def arg_type_name(arg_type):
-        return wp.types.get_type_code(wp.types.type_to_warp(arg_type))
-
     try:
         Args.__annotations__ = annotations
     except AttributeError:
         Args.__dict__.__annotations__ = annotations
 
-    suffix = "_".join([f"{name}_{arg_type_name(arg_type)}" for name, arg_type in annotations.items()])
+    suffix = "_".join([f"{name}_{_arg_type_name(arg_type)}" for name, arg_type in annotations.items()])
 
     return get_struct(Args, suffix=suffix)
 
@@ -208,19 +250,19 @@ def get_integrand_function(
     annotations=None,
     code_transformers=None,
 ):
-    key = _make_key(integrand.func, suffix, use_qualified_name=True)
+    key = _make_key(integrand.func, suffix)
+    cache_key = _make_cache_key(integrand.func, key, integrand.argspec)
 
-    if key not in _func_cache:
-        _func_cache[key] = wp.Function(
+    if cache_key not in _func_cache:
+        _func_cache[cache_key] = _register_function(
             func=integrand.func if func is None else func,
             key=key,
-            namespace="",
             module=integrand.module,
             overloaded_annotations=annotations,
             code_transformers=code_transformers,
         )
 
-    return _func_cache[key]
+    return _func_cache[cache_key]
 
 
 def get_integrand_kernel(
@@ -235,15 +277,15 @@ def get_integrand_kernel(
     if kernel_options is not None:
         options.update(kernel_options)
 
-    kernel_key = _make_key(integrand.func, suffix, use_qualified_name=True)
-    opts_key = "".join([f"{k}:{v}" for k, v in sorted(options.items())])
-    cache_key = kernel_key + opts_key
+    kernel_key = _make_key(integrand.func, suffix, options=options)
+    cache_key = _make_cache_key(integrand, kernel_key, integrand.argspec)
 
     if cache_key not in _kernel_cache:
         if kernel_fn is None:
             return None
 
-        module = wp.get_module(f"{integrand.module.name}.{integrand.name}")
+        module = wp.get_module(f"{integrand.module.name}.{kernel_key}")
+        module.options = options
         _kernel_cache[cache_key] = wp.Kernel(
             func=kernel_fn, key=kernel_key, module=module, code_transformers=code_transformers, options=options
         )

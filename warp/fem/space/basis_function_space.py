@@ -18,8 +18,9 @@ from typing import Any, Optional
 import warp as wp
 from warp.fem import cache
 from warp.fem.geometry import Geometry
-from warp.fem.linalg import basis_element, generalized_inner, generalized_outer
+from warp.fem.linalg import generalized_inner, generalized_outer
 from warp.fem.types import NULL_QP_INDEX, Coords, ElementIndex, make_free_sample
+from warp.fem.utils import type_basis_element
 
 from .basis_space import BasisSpace
 from .dof_mapper import DofMapper, IdentityMapper
@@ -100,11 +101,8 @@ class CollocatedFunctionSpace(FunctionSpace):
         return CollocatedFunctionSpaceTrace(self)
 
     def _make_node_basis_element(self):
-        @cache.dynamic_func(suffix=self.name)
-        def node_basis_element(dof_coord: int):
-            return basis_element(self.dof_dtype(0.0), dof_coord)
-
-        return node_basis_element
+        basis_element = type_basis_element(self.dof_dtype)
+        return basis_element
 
     def _make_value_basis_element(self):
         @cache.dynamic_func(suffix=self.name)
@@ -202,7 +200,7 @@ class VectorValuedFunctionSpace(FunctionSpace):
         super().__init__(topology=basis.topology)
 
         self.dtype = cache.cached_vec_type(self.geometry.dimension, dtype=float)
-        self.dof_dtype = float
+        self.dof_dtype = wp.float32
 
         self.VALUE_DOF_COUNT = self.geometry.dimension
         self.NODE_DOF_COUNT = 1
@@ -254,9 +252,11 @@ class VectorValuedFunctionSpace(FunctionSpace):
         return 1.0
 
     def _make_value_basis_element(self):
+        basis_element = type_basis_element(self.dtype)
+
         @cache.dynamic_func(suffix=self.name)
         def value_basis_element(dof_coord: int, value_map: Any):
-            return value_map * basis_element(self.dtype(0.0), dof_coord)
+            return value_map * basis_element(dof_coord)
 
         return value_basis_element
 

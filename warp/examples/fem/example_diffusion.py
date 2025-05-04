@@ -125,9 +125,9 @@ class Example:
         bd_test = fem.make_test(space=self._scalar_space, domain=boundary)
         bd_trial = fem.make_trial(space=self._scalar_space, domain=boundary)
 
-        bd_matrix = fem.integrate(y_boundary_projector_form, fields={"u": bd_trial, "v": bd_test}, nodal=True)
+        bd_matrix = fem.integrate(y_boundary_projector_form, fields={"u": bd_trial, "v": bd_test}, assembly="nodal")
         bd_rhs = fem.integrate(
-            y_boundary_value_form, fields={"v": bd_test}, values={"val": self._boundary_value}, nodal=True
+            y_boundary_value_form, fields={"v": bd_test}, values={"val": self._boundary_value}, assembly="nodal"
         )
 
         # Assemble linear system

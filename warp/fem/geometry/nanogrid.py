@@ -13,13 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 
 import warp as wp
 from warp.fem import cache, utils
-from warp.fem.linalg import basis_element
 from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
 
 from .element import Cube, Square
@@ -180,66 +179,106 @@ class Nanogrid(Geometry):
     def cell_inverse_deformation_gradient(args: CellArg, s: Sample):
         return args.inverse_transform
 
+    def supports_cell_lookup(self, device):
+        return True
+
     @wp.func
-    def cell_lookup(args: CellArg, pos: wp.vec3):
+    def _lookup_cell_index(args: NanogridCellArg, i: int, j: int, k: int):
+        return wp.volume_lookup_index(args.cell_grid, i, j, k)
+
+    @wp.func
+    def _cell_coordinates_local(args: NanogridCellArg, cell_index: int, uvw: wp.vec3):
+        ijk = wp.vec3(args.cell_ijk[cell_index])
+        rel_pos = uvw - ijk
+        return rel_pos
+
+    @wp.func
+    def _cell_closest_point_local(args: NanogridCellArg, cell_index: int, uvw: wp.vec3):
+        ijk = wp.vec3(args.cell_ijk[cell_index])
+        rel_pos = uvw - ijk
+        coords = wp.min(wp.max(rel_pos, wp.vec3(0.0)), wp.vec3(1.0))
+        return wp.length_sq(wp.volume_index_to_world_dir(args.cell_grid, coords - rel_pos)), coords
+
+    @wp.func
+    def cell_coordinates(args: NanogridCellArg, cell_index: int, pos: wp.vec3):
         uvw = wp.volume_world_to_index(args.cell_grid, pos) + wp.vec3(0.5)
-        ijk = wp.vec3i(int(wp.floor(uvw[0])), int(wp.floor(uvw[1])), int(wp.floor(uvw[2])))
-        cell_index = wp.volume_lookup_index(args.cell_grid, ijk[0], ijk[1], ijk[2])
-
-        coords = uvw - wp.vec3(ijk)
-        if cell_index == -1:
-            if wp.min(coords) == 0.0 or wp.max(coords) == 1.0:
-                il = wp.where(coords[0] > 0.5, 0, -1)
-                jl = wp.where(coords[1] > 0.5, 0, -1)
-                kl = wp.where(coords[2] > 0.5, 0, -1)
-
-                for n in range(8):
-                    ni = n >> 2
-                    nj = (n & 2) >> 1
-                    nk = n & 1
-                    nijk = ijk + wp.vec3i(ni + il, nj + jl, nk + kl)
-
-                    coords = uvw - wp.vec3(nijk)
-                    if wp.min(coords) >= 0.0 and wp.max(coords) <= 1.0:
-                        cell_index = wp.volume_lookup_index(args.cell_grid, nijk[0], nijk[1], nijk[2])
-                        if cell_index != -1:
-                            return make_free_sample(cell_index, coords)
-
-            return make_free_sample(NULL_ELEMENT_INDEX, Coords(OUTSIDE))
-
-        return make_free_sample(cell_index, coords)
+        return Nanogrid._cell_coordinates_local(args, cell_index, uvw)
 
     @wp.func
-    def _project_on_voxel_at_origin(coords: wp.vec3):
-        proj_coords = wp.min(wp.max(coords, wp.vec3(0.0)), wp.vec3(1.0))
-        return wp.length_sq(coords - proj_coords), proj_coords
-
-    @wp.func
-    def cell_lookup(args: CellArg, pos: wp.vec3, guess: Sample):
-        s_global = Nanogrid.cell_lookup(args, pos)
-
-        if s_global.element_index != NULL_ELEMENT_INDEX:
-            return s_global
-
-        closest_voxel = int(NULL_ELEMENT_INDEX)
-        closest_coords = Coords(OUTSIDE)
-        closest_dist = float(1.0e8)
-
-        # project to closest in stencil
+    def cell_closest_point(args: NanogridCellArg, cell_index: int, pos: wp.vec3):
         uvw = wp.volume_world_to_index(args.cell_grid, pos) + wp.vec3(0.5)
-        cell_ijk = args.cell_ijk[guess.element_index]
-        for ni in range(-1, 2):
-            for nj in range(-1, 2):
-                for nk in range(-1, 2):
-                    nijk = cell_ijk + wp.vec3i(ni, nj, nk)
-                    cell_idx = wp.volume_lookup_index(args.cell_grid, nijk[0], nijk[1], nijk[2])
-                    dist, coords = Nanogrid._project_on_voxel_at_origin(uvw - wp.vec3(nijk))
-                    if cell_idx != -1 and dist <= closest_dist:
-                        closest_dist = dist
-                        closest_voxel = cell_idx
-                        closest_coords = coords
+        dist, coords = Nanogrid._cell_closest_point_local(args, cell_index, uvw)
+        return coords, dist
 
-        return make_free_sample(closest_voxel, closest_coords)
+    @staticmethod
+    def _make_filtered_cell_lookup(grid_geo, filter_func: wp.Function = None):
+        suffix = f"{grid_geo.name}{filter_func.func.__qualname__ if filter_func is not None else ''}"
+
+        @cache.dynamic_func(suffix=suffix)
+        def cell_lookup(args: grid_geo.CellArg, pos: wp.vec3, max_dist: float, filter_data: Any, filter_target: Any):
+            grid = args.cell_grid
+
+            # Start at corresponding voxel
+            uvw = wp.volume_world_to_index(grid, pos) + wp.vec3(0.5)
+            i, j, k = int(wp.floor(uvw[0])), int(wp.floor(uvw[1])), int(wp.floor(uvw[2]))
+            cell_index = grid_geo._lookup_cell_index(args, i, j, k)
+
+            if cell_index != -1:
+                coords = grid_geo._cell_coordinates_local(args, cell_index, uvw)
+                if wp.static(filter_func is None):
+                    return make_free_sample(cell_index, coords)
+                else:
+                    if filter_func(filter_data, cell_index) == filter_target:
+                        return make_free_sample(cell_index, coords)
+
+            # Iterate over increasingly larger neighborhoods
+            cell_size = wp.vec3(
+                wp.length(wp.volume_index_to_world_dir(grid, wp.vec3(1.0, 0.0, 0.0))),
+                wp.length(wp.volume_index_to_world_dir(grid, wp.vec3(0.0, 1.0, 0.0))),
+                wp.length(wp.volume_index_to_world_dir(grid, wp.vec3(0.0, 0.0, 1.0))),
+            )
+
+            offset = float(0.5)
+            min_cell_size = wp.min(cell_size)
+            max_offset = wp.ceil(max_dist / min_cell_size)
+            scales = wp.cw_div(wp.vec3(min_cell_size), wp.vec3(cell_size))
+
+            closest_cell = NULL_ELEMENT_INDEX
+            closest_coords = Coords()
+
+            while closest_cell == NULL_ELEMENT_INDEX:
+                uvw_min = wp.vec3i(uvw - offset * scales)
+                uvw_max = wp.vec3i(uvw + offset * scales) + wp.vec3i(1)
+
+                closest_dist = min_cell_size * min_cell_size * float(offset * offset)
+
+                for i in range(uvw_min[0], uvw_max[0]):
+                    for j in range(uvw_min[1], uvw_max[1]):
+                        for k in range(uvw_min[2], uvw_max[2]):
+                            cell_index = grid_geo._lookup_cell_index(args, i, j, k)
+                            if cell_index == -1:
+                                continue
+
+                            if wp.static(filter_func is not None):
+                                if filter_func(filter_data, cell_index) != filter_target:
+                                    continue
+                            dist, coords = grid_geo._cell_closest_point_local(args, cell_index, uvw)
+
+                            if dist <= closest_dist:
+                                closest_dist = dist
+                                closest_coords = coords
+                                closest_cell = cell_index
+
+                if offset >= max_offset:
+                    break
+                offset = wp.min(3.0 * offset, max_offset)
+
+            return make_free_sample(closest_cell, closest_coords)
+
+        return cell_lookup
+
+    def make_filtered_cell_lookup(self, filter_func):
+        return Nanogrid._make_filtered_cell_lookup(self, filter_func)
 
     @wp.func
     def cell_measure(args: CellArg, s: Sample):
@@ -283,12 +322,16 @@ class Nanogrid(Geometry):
         return args.boundary_face_indices[boundary_side_index]
 
     @wp.func
-    def _side_to_cell_coords(axis: int, inner: float, side_coords: Coords):
+    def _side_to_cell_coords(axis: int, flip: int, inner: float, side_coords: Coords):
         uvw = wp.vec3()
         uvw[axis] = inner
-        uvw[(axis + 1) % 3] = side_coords[0]
-        uvw[(axis + 2) % 3] = side_coords[1]
+        uvw[(axis + 1 + flip) % 3] = side_coords[0]
+        uvw[(axis + 2 - flip) % 3] = side_coords[1]
         return uvw
+
+    @wp.func
+    def _cell_to_side_coords(axis: int, flip: int, cell_coords: Coords):
+        return Coords(cell_coords[(axis + 1 + flip) % 3], cell_coords[(axis + 2 - flip) % 3], 0.0)
 
     @wp.func
     def _get_face_axis(flags: wp.uint8):
@@ -305,18 +348,21 @@ class Nanogrid(Geometry):
     @wp.func
     def side_position(args: SideArg, s: Sample):
         ijk = args.face_ijk[s.element_index]
-        axis = Nanogrid._get_face_axis(args.face_flags[s.element_index])
+        flags = args.face_flags[s.element_index]
+        axis = Nanogrid._get_face_axis(flags)
+        flip = Nanogrid._get_face_inner_offset(flags)
 
-        uvw = wp.vec3(ijk) + Nanogrid._side_to_cell_coords(axis, 0.0, s.element_coords)
+        uvw = wp.vec3(ijk) + Nanogrid._side_to_cell_coords(axis, flip, 0.0, s.element_coords)
 
         cell_grid = args.cell_arg.cell_grid
         return wp.volume_index_to_world(cell_grid, uvw - wp.vec3(0.5))
 
     @wp.func
     def _face_tangent_vecs(cell_grid: wp.uint64, axis: int, flip: int):
-        u_axis = basis_element(wp.vec3(), (axis + 1 + flip) % 3)
-        v_axis = basis_element(wp.vec3(), (axis + 2 - flip) % 3)
-
+        u_axis = wp.vec3()
+        v_axis = wp.vec3()
+        u_axis[(axis + 1 + flip) % 3] = 1.0
+        v_axis[(axis + 2 - flip) % 3] = 1.0
         return wp.volume_index_to_world_dir(cell_grid, u_axis), wp.volume_index_to_world_dir(cell_grid, v_axis)
 
     @wp.func
@@ -382,15 +428,17 @@ class Nanogrid(Geometry):
     def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
         flags = args.face_flags[side_index]
         axis = Nanogrid._get_face_axis(flags)
+        flip = Nanogrid._get_face_inner_offset(flags)
         offset = float(Nanogrid._get_face_inner_offset(flags))
-        return Nanogrid._side_to_cell_coords(axis, 1.0 - offset, side_coords)
+        return Nanogrid._side_to_cell_coords(axis, flip, 1.0 - offset, side_coords)
 
     @wp.func
     def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
         flags = args.face_flags[side_index]
         axis = Nanogrid._get_face_axis(flags)
+        flip = Nanogrid._get_face_inner_offset(flags)
         offset = float(Nanogrid._get_face_outer_offset(flags))
-        return Nanogrid._side_to_cell_coords(axis, offset, side_coords)
+        return Nanogrid._side_to_cell_coords(axis, flip, offset, side_coords)
 
     @wp.func
     def side_from_cell_coords(
@@ -401,19 +449,43 @@ class Nanogrid(Geometry):
     ):
         flags = args.face_flags[side_index]
         axis = Nanogrid._get_face_axis(flags)
+        flip = Nanogrid._get_face_inner_offset(flags)
 
         cell_ijk = args.cell_arg.cell_ijk[element_index]
         side_ijk = args.face_ijk[side_index]
 
         on_side = float(side_ijk[axis] - cell_ijk[axis]) == element_coords[axis]
 
-        return wp.where(
-            on_side, Coords(element_coords[(axis + 1) % 3], element_coords[(axis + 2) % 3], 0.0), Coords(OUTSIDE)
-        )
+        return wp.where(on_side, Nanogrid._cell_to_side_coords(axis, flip, element_coords), Coords(OUTSIDE))
 
     @wp.func
     def side_to_cell_arg(side_arg: SideArg):
         return side_arg.cell_arg
+
+    @wp.func
+    def side_coordinates(args: SideArg, side_index: int, pos: wp.vec3):
+        cell_arg = args.cell_arg
+
+        ijk = args.face_ijk[side_index]
+        cell_coords = wp.volume_world_to_index(cell_arg.cell_grid, pos) + wp.vec3(0.5) - wp.vec3(ijk)
+
+        flags = args.face_flags[side_index]
+        axis = Nanogrid._get_face_axis(flags)
+        flip = Nanogrid._get_face_inner_offset(flags)
+        return Nanogrid._cell_to_side_coords(axis, flip, cell_coords)
+
+    @wp.func
+    def side_closest_point(args: SideArg, side_index: int, pos: wp.vec3):
+        coords = Nanogrid.side_coordinates(args, side_index, pos)
+
+        proj_coords = Coords(wp.clamp(coords[0], 0.0, 1.0), wp.clamp(coords[1], 0.0, 1.0), 0.0)
+
+        flags = args.face_flags[side_index]
+        axis = Nanogrid._get_face_axis(flags)
+        flip = Nanogrid._get_face_inner_offset(flags)
+        cell_coord_offset = Nanogrid._side_to_cell_coords(axis, flip, 0, coords - proj_coords)
+
+        return proj_coords, wp.length_sq(wp.volume_index_to_world_dir(args.cell_grid, cell_coord_offset))
 
     def _build_face_grid(self, temporary_store: Optional[cache.TemporaryStore] = None):
         device = self._cell_grid.device

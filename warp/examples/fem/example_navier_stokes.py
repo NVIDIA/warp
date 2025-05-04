@@ -89,20 +89,22 @@ def div_form(
 
 
 class Example:
-    def __init__(self, quiet=False, degree=2, resolution=25, Re=1000.0, top_velocity=1.0, tri_mesh=False):
+    def __init__(self, quiet=False, degree=2, resolution=25, Re=1000.0, top_velocity=1.0, mesh: str = "grid"):
         self._quiet = quiet
 
-        res = resolution
         self.sim_dt = 1.0 / resolution
         self.current_frame = 0
 
         viscosity = top_velocity / Re
 
-        if tri_mesh:
-            positions, tri_vidx = fem_example_utils.gen_trimesh(res=wp.vec2i(res))
+        if mesh == "tri":
+            positions, tri_vidx = fem_example_utils.gen_trimesh(res=wp.vec2i(resolution))
             geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions, build_bvh=True)
+        elif mesh == "quad":
+            positions, quad_vidx = fem_example_utils.gen_quadmesh(res=wp.vec2i(resolution))
+            geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions, build_bvh=True)
         else:
-            geo = fem.Grid2D(res=wp.vec2i(res))
+            geo = fem.Grid2D(res=wp.vec2i(resolution))
 
         domain = fem.Cells(geometry=geo)
         boundary = fem.BoundarySides(geo)
@@ -130,7 +132,7 @@ class Example:
         # build projector for velocity left- and right-hand-sides
         u_bd_test = fem.make_test(space=u_space, domain=boundary)
         u_bd_trial = fem.make_trial(space=u_space, domain=boundary)
-        u_bd_projector = fem.integrate(mass_form, fields={"u": u_bd_trial, "v": u_bd_test}, nodal=True)
+        u_bd_projector = fem.integrate(mass_form, fields={"u": u_bd_trial, "v": u_bd_test}, assembly="nodal")
 
         # Define an implicit field for our boundary condition value and integrate
         u_bd_field = fem.ImplicitField(
@@ -139,7 +141,7 @@ class Example:
         u_bd_value = fem.integrate(
             mass_form,
             fields={"u": u_bd_field, "v": u_bd_test},
-            nodal=True,
+            assembly="nodal",
             output_dtype=wp.vec2d,
         )
 
@@ -225,7 +227,7 @@ if __name__ == "__main__":
         help="Horizontal velocity boundary condition at the top of the domain.",
     )
     parser.add_argument("--Re", type=float, default=1000.0, help="Reynolds number.")
-    parser.add_argument("--tri_mesh", action="store_true", help="Use a triangular mesh.")
+    parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type.")
     parser.add_argument(
         "--headless",
         action="store_true",
@@ -242,7 +244,7 @@ if __name__ == "__main__":
             resolution=args.resolution,
             Re=args.Re,
             top_velocity=args.top_velocity,
-            tri_mesh=args.tri_mesh,
+            mesh=args.mesh,
         )
 
         for k in range(args.num_frames):

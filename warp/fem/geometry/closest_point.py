@@ -82,3 +82,16 @@ def project_on_tet_at_origin(q: wp.vec3, e1: wp.vec3, e2: wp.vec3, e3: wp.vec3):
         return dmin, Coords(s31[2], 0.0, s31[1])
     else:
         return dmin, s123
+
+
+@wp.func
+def project_on_box_at_origin(coords: wp.vec3, sizes: wp.vec3):
+    proj_coords = wp.min(wp.max(coords, wp.vec3(0.0)), sizes)
+    return wp.length_sq(coords - proj_coords), wp.cw_div(proj_coords, sizes)
+
+
+@wp.func
+def project_on_box_at_origin(coords: wp.vec2, sizes: wp.vec2):
+    proj_coords = wp.min(wp.max(coords, wp.vec2(0.0)), sizes)
+    norm_coords = wp.cw_div(proj_coords, sizes)
+    return wp.length_sq(coords - proj_coords), Coords(norm_coords[0], norm_coords[1], 0.0)

@@ -374,7 +374,7 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
 class NodalQuadrature(Quadrature):
     """Quadrature using space node points as quadrature points
 
-    Note that in contrast to the `nodal=True` flag for :func:`integrate`, using this quadrature does not imply
+    Note that in contrast to the `assembly="nodal"` flag for :func:`integrate`, using this quadrature does not imply
     any assumption about orthogonality of shape functions, and is thus safe to use for arbitrary integrands.
     """
 

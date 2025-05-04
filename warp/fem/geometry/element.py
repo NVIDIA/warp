@@ -15,14 +15,18 @@
 
 from typing import List, Tuple
 
+import warp as wp
 from warp.fem.polynomial import Polynomial, quadrature_1d
 from warp.fem.types import Coords
+
+_vec1 = wp.types.vector(length=1, dtype=float)
 
 
 class Element:
     dimension = 0
     """Intrinsic dimension of the element"""
 
+    @staticmethod
     def measure() -> float:
         """Measure (area, volume, ...) of the reference element"""
         raise NotImplementedError
@@ -32,9 +36,31 @@ class Element:
         """Returns a quadrature of a given order for a prototypical element"""
         raise NotImplementedError
 
-    def center(self) -> Tuple[float]:
-        coords, _ = self.instantiate_quadrature(order=0, family=None)
+    @classmethod
+    def center(cls) -> Coords:
+        """Returns the coordinates for the center of the element"""
+        coords, _ = cls.instantiate_quadrature(order=0, family=None)
         return coords[0]
+
+    @wp.func
+    def project(v: Coords):
+        """project coordinates so that they belong to the element"""
+        return wp.min(wp.max(v, Coords(0.0)), Coords(1.0))
+
+    @wp.func
+    def coord_delta(ref_delta: wp.vec3):
+        """Transform a delta in reference space to element coords"""
+        return ref_delta
+
+    @wp.func
+    def coord_delta(ref_delta: wp.vec2):
+        """Transform a delta in reference space to element coords"""
+        return Coords(ref_delta[0], ref_delta[1], 0.0)
+
+    @wp.func
+    def coord_delta(ref_delta: _vec1):
+        """Transform a delta in reference space to element coords"""
+        return Coords(ref_delta[0], 0.0, 0.0)
 
 
 def _point_count_from_order(order: int, family: Polynomial):
@@ -454,6 +480,17 @@ class Triangle(Element):
 
         return coords, weights
 
+    @wp.func
+    def project(v: Coords):
+        n = wp.max(0.0, (v[0] + v[1] - 1.0) * 0.5)
+        a = wp.clamp(v[0] - n, 0.0, 1.0)
+        b = wp.clamp(v[1] - n, 0.0, 1.0)
+        return Coords(a, b, 1.0 - (a + b))
+
+    @wp.func
+    def coord_delta(ref_delta: wp.vec2):
+        return Coords(-ref_delta[0] - ref_delta[1], ref_delta[0], ref_delta[1])
+
 
 class Tetrahedron(Element):
     dimension = 3
@@ -774,3 +811,20 @@ class Tetrahedron(Element):
             raise NotImplementedError
 
         return coords, weights
+
+    @wp.func
+    def project(v: Coords):
+        # project on 1-2-3 half-space
+        n = wp.max(0.0, (v[0] + v[1] + v[2] - 1.0) / 3.0)
+        c = v - Coords(n)
+
+        # project on 1-2, 2-3, 3-1 half-spaces
+        n = wp.max(0.0, (c[0] + c[1] - 1.0) * 0.5)
+        c = c - Coords(n, n, 0.0)
+        n = wp.max(0.0, (c[1] + c[2] - 1.0) * 0.5)
+        c = c - Coords(0.0, n, n)
+        n = wp.max(0.0, (c[2] + c[0] - 1.0) * 0.5)
+        c = c - Coords(n, 0.0, n)
+
+        # project on cube
+        return Element.project(c)
