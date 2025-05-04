@@ -28,6 +28,7 @@
 - Add support for animating visibility of objects in the USD renderer
   ([GH-598](https://github.com/NVIDIA/warp/issues/598)).
 - Add `wp.sim.VBDIntegrator.rebuild_bvh()`, which rebuilds the BVH used for detecting self contacts.
+- Improved consistency of `warp.fem.lookup()` operator across geometries ([GH-618](https://github.com/NVIDIA/warp/pull/618)), added filtering parameters.
 
 ### Changed
 
@@ -36,26 +37,7 @@
 - Change rigid-body-contact handling in `wp.sim.VBDIntegrator` to use only the shape's friction coefficient instead of
   averaging the shape's and the cloth's coefficients.
 - Add damping terms for collisions in `wp.sim.VBDIntegrator`, whose strength is controlled by `Model.soft_contact_kd`.
-  the points as USD spheres using a point instancer, or as simple USD points otherwise.
-- Add `wp.tile_squeeze()` ([GH-662](https://github.com/NVIDIA/warp/issues/662)).
-- Add `wp.tile_reshape()` ([GH-663](https://github.com/NVIDIA/warp/issues/663)).
-- Support tile inplace add/subtract operations
-  ([GH-518](https://github.com/NVIDIA/warp/issues/518)).
-- Add support for in-place tile component addition and subtraction
-  ([GH-659](https://github.com/NVIDIA/warp/issues/659)).
 - Exposed new `warp.fem` operators: `node_count`, `node_index`, `element_coordinates`, `element_closest_point`.
-
-### Changed
-
-- The rigid body contact in `wp.sim.VBDIntegrator` now uses only the shape's friction coefficient, instead of averaging the shape's and the cloth's coefficients.
-- `wp.sim.VBDIntegrator` now has a `rebuild_bvh` method to rebuild the BVH used for detecting self contacts.
-- Added damping terms for collisions in `wp.sim.VBDIntegrator`, whose strength is controlled by `Model.soft_contact_kd`.
-- Improve handling of deprecated JAX features ([GH-613](https://github.com/NVIDIA/warp/pull/613)).
-- `Model.rigid_contact_tids` are now -1 at non-active contact indices which allows to retrieve the vertex index of a mesh collision, see `test_collision.py` ([GH-623](https://github.com/NVIDIA/warp/issues/623)).
-- Changed the USD renderer to use `framesPerSecond` for time sampling instead of `timeCodesPerSecond`.
-- Deprecate `wp.matrix(pos, quat, scale)` built-in function that constructs a 4x4 matrix from a 3D position, a quaternion, and a 3D scale. Use `wp.transform_compose()` instead ([GH-576](https://github.com/NVIDIA/warp/issues/576)).
-- Improve `repr()` for Warp types, including adding `repr()` for  `wp.array`.
-- Improved consistency of `warp.fem.lookup()` operator across geometries ([GH-618](https://github.com/NVIDIA/warp/pull/618)), added filtering parameters.
 
 ### Fixed
 
@@ -73,6 +55,7 @@
 - Fix `OpenGLRenderer.update_shape_instance()` not having color buffers created for the shape instances.
 - Fix 2D tile load when source array and tile have incompatible strides
   ([GH-688](https://github.com/NVIDIA/warp/issues/688)).
+- Fixed inconsistency in orientation of 2D geometry side normals ([GH-629](https://github.com/NVIDIA/warp/issues/629)).
 
 ## [1.7.1] - 2025-04-30
 
@@ -116,11 +99,6 @@
 - Fix the jitter for the `OgnParticlesFromMesh` node not being computed correctly.
 - Fix documentation of `atol` and `rtol` arguments to `wp.autograd.gradcheck()` and `wp.autograd.gradcheck_tape()`
   ([GH-508](https://github.com/NVIDIA/warp/issues/508)).
-- Fix computation of body center of mass to account for shape orientation ([GH-648](https://github.com/NVIDIA/warp/issues/648)).
-- Fix assembly of rigid body inertia in `ModelBuilder.collapse_fixed_joints()` ([GH-631](https://github.com/NVIDIA/warp/issues/631)).
-- Fix preserving base class of nested struct attributes ([GH-574](https://github.com/NVIDIA/warp/issues/574)).
-- Fix `OpenGLRenderer.update_shape_instance()` not having color buffers created for the shape instances.
-- Fixed inconsistency in orientation of 2D geometry side normals ([GH-629](https://github.com/NVIDIA/warp/issues/629)).
 
 ## [1.7.0] - 2025-03-30
 
