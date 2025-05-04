@@ -23,6 +23,7 @@ from warp.fem.linalg import basis_coefficient, generalized_inner, generalized_ou
 from warp.fem.quadrature import Quadrature
 from warp.fem.space import FunctionSpace, SpacePartition, SpaceRestriction
 from warp.fem.types import NULL_NODE_INDEX, DofIndex, Sample, get_node_coord, get_node_index_in_element
+from warp.fem.utils import type_zero_element
 
 from .field import SpaceField
 
@@ -36,10 +37,8 @@ class AdjointField(SpaceField):
         self.node_dof_count = self.space.NODE_DOF_COUNT
         self.value_dof_count = self.space.VALUE_DOF_COUNT
 
-        self.EvalArg = self.space.SpaceArg
+        self.EvalArg = self._make_eval_arg()
         self.ElementEvalArg = self._make_element_eval_arg()
-
-        self.eval_arg_value = self.space.space_arg_value
 
         self.eval_degree = self._make_eval_degree()
         self.eval_inner = self._make_eval_inner()
@@ -48,15 +47,30 @@ class AdjointField(SpaceField):
         self.eval_outer = self._make_eval_outer()
         self.eval_grad_outer = self._make_eval_grad_outer()
         self.eval_div_outer = self._make_eval_div_outer()
+        self.node_count = self._make_node_count()
         self.at_node = self._make_at_node()
+        self.node_index = self._make_node_index()
 
     @property
     def name(self) -> str:
         return f"{self.__class__.__name__}{self.space.name}{self._space_partition.name}"
 
-    def _make_element_eval_arg(self):
-        from warp.fem import cache
+    @cache.cached_arg_value
+    def eval_arg_value(self, device):
+        arg = self.EvalArg()
+        arg.space_arg = self.space.space_arg_value(device)
+        arg.topo_arg = self.space.topology.topo_arg_value(device)
+        return arg
 
+    def _make_eval_arg(self):
+        @cache.dynamic_struct(suffix=self.name)
+        class EvalArg:
+            space_arg: self.space.SpaceArg
+            topo_arg: self.space.topology.TopologyArg
+
+        return EvalArg
+
+    def _make_element_eval_arg(self):
         @cache.dynamic_struct(suffix=self.name)
         class ElementEvalArg:
             elt_arg: self.space.topology.ElementArg
@@ -70,7 +84,7 @@ class AdjointField(SpaceField):
             dof = self._get_dof(s)
             node_weight = self.space.element_inner_weight(
                 args.elt_arg,
-                args.eval_arg,
+                args.eval_arg.space_arg,
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
@@ -91,7 +105,7 @@ class AdjointField(SpaceField):
             dof = self._get_dof(s)
             nabla_weight = self.space.element_inner_weight_gradient(
                 args.elt_arg,
-                args.eval_arg,
+                args.eval_arg.space_arg,
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
@@ -113,7 +127,7 @@ class AdjointField(SpaceField):
             dof = self._get_dof(s)
             nabla_weight = self.space.element_inner_weight_gradient(
                 args.elt_arg,
-                args.eval_arg,
+                args.eval_arg.space_arg,
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
@@ -132,7 +146,7 @@ class AdjointField(SpaceField):
             dof = self._get_dof(s)
             node_weight = self.space.element_outer_weight(
                 args.elt_arg,
-                args.eval_arg,
+                args.eval_arg.space_arg,
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
@@ -153,7 +167,7 @@ class AdjointField(SpaceField):
             dof = self._get_dof(s)
             nabla_weight = self.space.element_outer_weight_gradient(
                 args.elt_arg,
-                args.eval_arg,
+                args.eval_arg.space_arg,
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
@@ -175,7 +189,7 @@ class AdjointField(SpaceField):
             dof = self._get_dof(s)
             nabla_weight = self.space.element_outer_weight_gradient(
                 args.elt_arg,
-                args.eval_arg,
+                args.eval_arg.space_arg,
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
@@ -193,11 +207,29 @@ class AdjointField(SpaceField):
         def at_node(args: self.ElementEvalArg, s: Sample):
             dof = self._get_dof(s)
             node_coords = self.space.node_coords_in_element(
-                args.elt_arg, args.eval_arg, s.element_index, get_node_index_in_element(dof)
+                args.elt_arg, args.eval_arg.space_arg, s.element_index, get_node_index_in_element(dof)
             )
             return Sample(s.element_index, node_coords, s.qp_index, s.qp_weight, s.test_dof, s.trial_dof)
 
         return at_node
+
+    def _make_node_index(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_index(args: self.ElementEvalArg, s: Sample):
+            dof = self._get_dof(s)
+            node_idx = self.space.topology.element_node_index(
+                args.elt_arg, args.eval_arg.topo_arg, s.element_index, get_node_index_in_element(dof)
+            )
+            return node_idx
+
+        return node_index
+
+    def _make_node_count(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_count(args: self.ElementEvalArg, s: Sample):
+            return self.space.topology.element_node_count(args.elt_arg, args.eval_arg.topo_arg, s.element_index)
+
+        return node_count
 
 
 class TestField(AdjointField):
@@ -392,6 +424,7 @@ class LocalAdjointField(SpaceField):
 
     def _make_eval_inner(self):
         DOF_BEGIN = wp.constant(self._TAYLOR_DOF_OFFSETS[LocalAdjointField.INNER_DOF])
+        zero_element = type_zero_element(self.dtype)
 
         @cache.dynamic_func(suffix=self.name)
         def eval_test_inner(args: self.ElementEvalArg, s: Sample):
@@ -399,7 +432,7 @@ class LocalAdjointField(SpaceField):
 
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
             dof_value = self.space.value_basis_element(value_dof, local_value_map)
-            return wp.where(taylor_dof == 0, dof_value, self.dtype(0.0))
+            return wp.where(taylor_dof == 0, dof_value, zero_element())
 
         return eval_test_inner
 
@@ -409,13 +442,14 @@ class LocalAdjointField(SpaceField):
 
         DOF_BEGIN = wp.constant(self._TAYLOR_DOF_OFFSETS[LocalAdjointField.INNER_GRAD_DOF])
         DOF_COUNT = wp.constant(self._TAYLOR_DOF_COUNTS[LocalAdjointField.INNER_GRAD_DOF])
+        zero_element = type_zero_element(self.gradient_dtype)
 
         @cache.dynamic_func(suffix=self.name)
         def eval_nabla_test_inner(args: self.ElementEvalArg, s: Sample):
             value_dof, taylor_dof = self._split_dof(self._get_dof(s), DOF_BEGIN)
 
             if taylor_dof < 0 or taylor_dof >= DOF_COUNT:
-                return self.gradient_dtype(0.0)
+                return zero_element()
 
             grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
@@ -430,13 +464,14 @@ class LocalAdjointField(SpaceField):
 
         DOF_BEGIN = wp.constant(self._TAYLOR_DOF_OFFSETS[LocalAdjointField.INNER_GRAD_DOF])
         DOF_COUNT = wp.constant(self._TAYLOR_DOF_COUNTS[LocalAdjointField.INNER_GRAD_DOF])
+        zero_element = type_zero_element(self.divergence_dtype)
 
         @cache.dynamic_func(suffix=self.name)
         def eval_div_test_inner(args: self.ElementEvalArg, s: Sample):
             value_dof, taylor_dof = self._split_dof(self._get_dof(s), DOF_BEGIN)
 
             if taylor_dof < 0 or taylor_dof >= DOF_COUNT:
-                return self.divergence_dtype(0.0)
+                return zero_element()
 
             grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
@@ -447,6 +482,7 @@ class LocalAdjointField(SpaceField):
 
     def _make_eval_outer(self):
         DOF_BEGIN = wp.constant(self._TAYLOR_DOF_OFFSETS[LocalAdjointField.OUTER_DOF])
+        zero_element = type_zero_element(self.dtype)
 
         @cache.dynamic_func(suffix=self.name)
         def eval_test_outer(args: self.ElementEvalArg, s: Sample):
@@ -454,7 +490,7 @@ class LocalAdjointField(SpaceField):
 
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
             dof_value = self.space.value_basis_element(value_dof, local_value_map)
-            return wp.where(taylor_dof == 0, dof_value, self.dtype(0.0))
+            return wp.where(taylor_dof == 0, dof_value, zero_element())
 
         return eval_test_outer
 
@@ -464,13 +500,14 @@ class LocalAdjointField(SpaceField):
 
         DOF_BEGIN = wp.constant(self._TAYLOR_DOF_OFFSETS[LocalAdjointField.OUTER_GRAD_DOF])
         DOF_COUNT = wp.constant(self._TAYLOR_DOF_COUNTS[LocalAdjointField.OUTER_GRAD_DOF])
+        zero_element = type_zero_element(self.gradient_dtype)
 
         @cache.dynamic_func(suffix=self.name)
         def eval_nabla_test_outer(args: self.ElementEvalArg, s: Sample):
             value_dof, taylor_dof = self._split_dof(self._get_dof(s), DOF_BEGIN)
 
             if taylor_dof < 0 or taylor_dof >= DOF_COUNT:
-                return self.gradient_dtype(0.0)
+                return zero_element()
 
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
@@ -485,13 +522,14 @@ class LocalAdjointField(SpaceField):
 
         DOF_BEGIN = wp.constant(self._TAYLOR_DOF_OFFSETS[LocalAdjointField.OUTER_GRAD_DOF])
         DOF_COUNT = wp.constant(self._TAYLOR_DOF_COUNTS[LocalAdjointField.OUTER_GRAD_DOF])
+        zero_element = type_zero_element(self.divergence_dtype)
 
         @cache.dynamic_func(suffix=self.name)
         def eval_div_test_outer(args: self.ElementEvalArg, s: Sample):
             value_dof, taylor_dof = self._split_dof(self._get_dof(s), DOF_BEGIN)
 
             if taylor_dof < 0 or taylor_dof >= DOF_COUNT:
-                return self.divergence_dtype(0.0)
+                return zero_element()
 
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)

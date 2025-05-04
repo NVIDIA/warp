@@ -17,7 +17,15 @@ from typing import Any, Callable, Dict, Optional, Set
 
 import warp as wp
 from warp.fem.linalg import skew_part, symmetric_part
-from warp.fem.types import Coords, Domain, ElementIndex, Field, NodeIndex, Sample, make_free_sample
+from warp.fem.types import (
+    Coords,
+    Domain,
+    ElementIndex,
+    Field,
+    NodeIndex,
+    Sample,
+    make_free_sample,
+)
 
 
 class Integrand:
@@ -41,10 +49,17 @@ class Operator:
     Operators provide syntactic sugar over Field and Domain evaluation functions and arguments
     """
 
-    def __init__(self, func: Callable, resolver: Callable, field_result: Optional[Callable] = None):
+    def __init__(
+        self,
+        func: Callable,
+        resolver: Callable,
+        field_result: Optional[Callable] = None,
+        attr: Optional[str] = None,
+    ):
         self.func = func
         self.name = func.__name__
         self.resolver = resolver
+        self.attr = attr
         self.field_result = field_result
 
 
@@ -83,47 +98,83 @@ def operator(**kwargs):
 # Domain operators
 
 
-@operator(resolver=lambda dmn: dmn.element_position)
+@operator(resolver=lambda dmn: dmn.element_position, attr="geo")
 def position(domain: Domain, s: Sample):
     """Evaluates the world position of the sample point `s`"""
     pass
 
 
-@operator(resolver=lambda dmn: dmn.element_normal)
+@operator(resolver=lambda dmn: dmn.element_normal, attr="geo")
 def normal(domain: Domain, s: Sample):
     """Evaluates the element normal at the sample point `s`. Non zero if the element is a side or the geometry is embedded in a higher-dimensional space (e.g. :class:`Trimesh3D`)"""
     pass
 
 
-@operator(resolver=lambda dmn: dmn.element_deformation_gradient)
+@operator(resolver=lambda dmn: dmn.element_deformation_gradient, attr="geo")
 def deformation_gradient(domain: Domain, s: Sample):
     """Evaluates the gradient of the domain position with respect to the element reference space at the sample point `s`"""
     pass
 
 
-@operator(resolver=lambda dmn: dmn.element_lookup)
+@operator(resolver=lambda dmn: dmn.element_lookup, attr="geo")
 def lookup(domain: Domain, x: Any) -> Sample:
-    """Looks-up the sample point corresponding to a world position `x`, projecting to the closest point on the domain.
+    """Looks-up the sample point corresponding to a world position `x`, projecting to the closest point on the geometry.
 
     Args:
-        x: world position of the point to look-up in the geometry
-        guess: (optional) :class:`Sample` initial guess, may help perform the query
-
-    Note:
-        Currently this operator is unsupported for :class:`Hexmesh`, :class:`Quadmesh2D`, :class:`Quadmesh3D` and deformed geometries.
+        x (vec3): world position of the point to look-up in the geometry
+        max_dist (float): maximum distance to look for a closest point
+        guess (:class:`Sample`):  initial guess, may help perform the query
+        filter_array (wp.array): Used in conjunction with `filter_target`. Only cells such that ``filter_array[element_index]==filter_target`` will be considered.
+        filter_target (Any): See `filter_array`
     """
     pass
 
 
-@operator(resolver=lambda dmn: dmn.element_measure)
+@operator(resolver=lambda dmn: dmn.element_partition_lookup)
+def partition_lookup(domain: Domain, x: Any) -> Sample:
+    """Looks-up the sample point corresponding to a world position `x`, projecting to the closest point on the geometry partition.
+
+    Args:
+        x (vec3): world position of the point to look-up in the geometry
+        max_dist (float): maximum distance to look for a closest point
+    """
+    pass
+
+
+@operator(resolver=lambda dmn: dmn.element_measure, attr="geo")
 def measure(domain: Domain, s: Sample) -> float:
     """Returns the measure (volume, area, or length) determinant of an element at a sample point `s`"""
     pass
 
 
-@operator(resolver=lambda dmn: dmn.element_measure_ratio)
+@operator(resolver=lambda dmn: dmn.element_measure_ratio, attr="geo")
 def measure_ratio(domain: Domain, s: Sample) -> float:
     """Returns the maximum ratio between the measure of this element and that of higher-dimensional neighbors."""
+    pass
+
+
+@operator(resolver=lambda dmn: dmn.element_closest_point, attr="geo")
+def element_closest_point(domain: Domain, element_index: ElementIndex, x: Any) -> Sample:
+    """
+    Computes the coordinates of the closest point to a world position within a given element.
+    Returns a tuple (closest point coordinates; squared distance to the closest point)
+
+    Args:
+        element_index: Index of the element to consider
+        x: world position of the point to compute the closest point to
+    """
+    pass
+
+
+@operator(resolver=lambda dmn: dmn.element_coordinates, attr="geo")
+def element_coordinates(domain: Domain, element_index: ElementIndex, x: Any) -> Sample:
+    """Returns the coordinates in an element reference system corresponding to a work position.
+    The returned coordinates may be in the element's exterior.
+
+    Args:
+        element_index: Index of the element to consider
+        x: world position of the point to find coordinates for
+    """
     pass
 
 
@@ -131,36 +182,40 @@ def measure_ratio(domain: Domain, s: Sample) -> float:
 
 
 @operator(
-    resolver=lambda dmn: dmn.domain_cell_arg, field_result=lambda dmn: (dmn.cell_domain(), Domain, dmn.geometry.CellArg)
+    resolver=lambda dmn: dmn.domain_cell_arg,
+    field_result=lambda dmn: (dmn.cell_domain(), Domain, dmn.cell_domain().DomainArg),
 )
 def cells(domain: Domain) -> Domain:
     """Converts a domain defined on geometry sides to a domain defined of cells."""
     pass
 
 
-@operator(resolver=lambda dmn: dmn.element_inner_cell_index)
+@operator(resolver=lambda dmn: dmn.element_inner_cell_index, attr="geo")
 def _inner_cell_index(domain: Domain, side_index: ElementIndex, side_coords: Coords) -> Sample:
     pass
 
 
-@operator(resolver=lambda dmn: dmn.element_outer_cell_index)
+@operator(resolver=lambda dmn: dmn.element_outer_cell_index, attr="geo")
 def _outer_cell_index(domain: Domain, side_index: ElementIndex, side_coords: Coords) -> Sample:
     pass
 
 
-@operator(resolver=lambda dmn: dmn.element_inner_cell_coords)
+@operator(resolver=lambda dmn: dmn.element_inner_cell_coords, attr="geo")
 def _inner_cell_coords(domain: Domain, side_index: ElementIndex, side_coords: Coords) -> Sample:
     pass
 
 
-@operator(resolver=lambda dmn: dmn.element_outer_cell_coords)
+@operator(resolver=lambda dmn: dmn.element_outer_cell_coords, attr="geo")
 def _outer_cell_coords(domain: Domain, side_index: ElementIndex, side_coords: Coords) -> Sample:
     pass
 
 
-@operator(resolver=lambda dmn: dmn.cell_to_element_coords)
+@operator(resolver=lambda dmn: dmn.cell_to_element_coords, attr="geo")
 def _cell_to_element_coords(
-    domain: Domain, side_index: ElementIndex, cell_index: ElementIndex, cell_coords: Coords
+    domain: Domain,
+    side_index: ElementIndex,
+    cell_index: ElementIndex,
+    cell_coords: Coords,
 ) -> Sample:
     pass
 
@@ -169,7 +224,8 @@ def _cell_to_element_coords(
 def to_inner_cell(domain: Domain, s: Sample):
     """Converts a :class:`Sample` defined on a side to a sample defined on the side's inner cell"""
     return make_free_sample(
-        _inner_cell_index(domain, s.element_index), _inner_cell_coords(domain, s.element_index, s.element_coords)
+        _inner_cell_index(domain, s.element_index),
+        _inner_cell_coords(domain, s.element_index, s.element_coords),
     )
 
 
@@ -177,7 +233,8 @@ def to_inner_cell(domain: Domain, s: Sample):
 def to_outer_cell(domain: Domain, s: Sample):
     """Converts a :class:`Sample` defined on a side to a sample defined on the side's outer cell"""
     return make_free_sample(
-        _outer_cell_index(domain, s.element_index), _outer_cell_coords(domain, s.element_index, s.element_coords)
+        _outer_cell_index(domain, s.element_index),
+        _outer_cell_coords(domain, s.element_index, s.element_coords),
     )
 
 
@@ -186,8 +243,24 @@ def to_cell_side(domain: Domain, cell_s: Sample, side_index: ElementIndex):
     """Converts a :class:`Sample` defined on a cell to a sample defined on one of its side.
     If the result does not lie on the side `side_index`, the resulting coordinates will be set to ``OUTSIDE``."""
     return make_free_sample(
-        side_index, _cell_to_element_coords(domain, side_index, cell_s.element_index, cell_s.element_coords)
+        side_index,
+        _cell_to_element_coords(domain, side_index, cell_s.element_index, cell_s.element_coords),
     )
+
+
+@operator(resolver=lambda dmn: dmn.element_index, attr="index")
+def element_index(domain: Domain, domain_element_index: ElementIndex):
+    """Returns the index in the geometry of the `domain_element_index`'th domain element."""
+    pass
+
+
+@operator(resolver=lambda dmn: dmn.element_partition_index, attr="index")
+def element_partition_index(domain: Domain, cell_index: ElementIndex):
+    """Returns the index of the passed cell in the domain's geometry partition, or `NULL_ELEMENT_INDEX` if not part of the partition.
+
+    :note: Currently only available for `fem.ElementKind.CELL` elements
+    """
+    pass
 
 
 # Field operators
@@ -236,9 +309,33 @@ def degree(f: Field):
     pass
 
 
+@operator(resolver=lambda f: f.node_count)
+def node_count(f: Field, s: Sample):
+    """
+    Returns the number of nodes associated to the field `f` in the element containing the sample `s`
+    """
+
+
 @operator(resolver=lambda f: f.at_node)
-def at_node(f: Field, s: Sample):
-    """For a Test or Trial field `f`, returns a copy of the Sample `s` moved to the coordinates of the node being evaluated"""
+def at_node(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+    """
+    Returns a copy of the Sample `s` moved to the coordinates of a local node of the field `f`.
+
+    If `f` is a discrete field, `node_index_in_elt` is required and indicates the element-local index of the node to consider.
+    If `f` is a Test or Trial field, `node_index_in_elt` **must not** be provided, and will be automatically set
+    to the test (resp. trial) node currently being evaluated.
+    """
+    pass
+
+
+@operator(resolver=lambda f: f.node_index)
+def node_index(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+    """Returns the index in the function space of a local node the field `f`.
+
+    If `f` is a discrete field, `node_index_in_elt` is required and indicates the element-local index of the node to consider.
+    If `f` is a Test or Trial field, `node_index_in_elt` **must not** be provided, and will be automatically set
+    to the test (resp. trial) node currently being evaluated.
+    """
     pass
 
 

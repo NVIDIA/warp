@@ -376,7 +376,7 @@ class DeformedGeometrySpaceTopology(SpaceTopology):
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            return self.base.element_node_index(elt_arg.elt_arg, topo_arg, element_index, node_index_in_elt)
+            return self.base.element_node_index(elt_arg.base_arg, topo_arg, element_index, node_index_in_elt)
 
         @cache.dynamic_func(suffix=self.name)
         def element_node_count(
@@ -384,7 +384,7 @@ class DeformedGeometrySpaceTopology(SpaceTopology):
             topo_arg: self.TopologyArg,
             element_count: ElementIndex,
         ):
-            return self.base.element_node_count(elt_arg.elt_arg, topo_arg, element_count)
+            return self.base.element_node_count(elt_arg.base_arg, topo_arg, element_count)
 
         @cache.dynamic_func(suffix=self.name)
         def side_neighbor_node_counts(
@@ -401,7 +401,7 @@ class DeformedGeometrySpaceTopology(SpaceTopology):
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            return self.base.element_node_sign(elt_arg.elt_arg, topo_arg, element_index, node_index_in_elt)
+            return self.base.element_node_sign(elt_arg.base_arg, topo_arg, element_index, node_index_in_elt)
 
         self.element_node_index = element_node_index
         self.element_node_count = element_node_count

@@ -16,9 +16,10 @@
 from typing import Any, Optional
 
 import warp as wp
-from warp.fem.cache import cached_arg_value
-from warp.fem.types import OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
+from warp.fem.cache import cached_arg_value, dynamic_func
+from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
 
+from .closest_point import project_on_box_at_origin
 from .element import Cube, Square
 from .geometry import Geometry
 
@@ -251,24 +252,87 @@ class Grid3D(Geometry):
         return wp.diag(wp.cw_div(wp.vec3(1.0), args.cell_size))
 
     @wp.func
-    def cell_lookup(args: CellArg, pos: wp.vec3):
-        loc_pos = wp.cw_div(pos - args.origin, args.cell_size)
-        x = wp.clamp(loc_pos[0], 0.0, float(args.res[0]))
-        y = wp.clamp(loc_pos[1], 0.0, float(args.res[1]))
-        z = wp.clamp(loc_pos[2], 0.0, float(args.res[2]))
-
-        x_cell = wp.min(wp.floor(x), float(args.res[0]) - 1.0)
-        y_cell = wp.min(wp.floor(y), float(args.res[1]) - 1.0)
-        z_cell = wp.min(wp.floor(z), float(args.res[2]) - 1.0)
-
-        coords = Coords(x - x_cell, y - y_cell, z - z_cell)
-        cell_index = Grid3D.cell_index(args.res, Grid3D.Cell(int(x_cell), int(y_cell), int(z_cell)))
-
-        return make_free_sample(cell_index, coords)
+    def cell_coordinates(args: Grid3DCellArg, cell_index: int, pos: wp.vec3):
+        uvw = wp.cw_div(pos - args.origin, args.cell_size)
+        ijk = Grid3D.get_cell(args.res, cell_index)
+        return uvw - ijk
 
     @wp.func
-    def cell_lookup(args: CellArg, pos: wp.vec3, guess: Sample):
-        return Grid3D.cell_lookup(args, pos)
+    def cell_closest_point(args: Grid3DCellArg, cell_index: int, pos: wp.vec3):
+        ijk_world = wp.cw_mul(wp.vec3(Grid3D.get_cell(args.res, cell_index)), args.cell_size) + args.origin
+        dist_sq, coords = project_on_box_at_origin(pos - ijk_world, args.cell_size)
+        return coords, dist_sq
+
+    def supports_cell_lookup(self, device):
+        return True
+
+    def make_filtered_cell_lookup(self, filter_func: wp.Function = None):
+        suffix = f"{self.name}{filter_func.func.__qualname__ if filter_func is not None else ''}"
+
+        @dynamic_func(suffix=suffix)
+        def cell_lookup(args: self.CellArg, pos: wp.vec3, max_dist: float, filter_data: Any, filter_target: Any):
+            cell_size = args.cell_size
+            res = args.res
+
+            # Start at closest point on grid
+            loc_pos = wp.cw_div(pos - args.origin, cell_size)
+            x = wp.clamp(loc_pos[0], 0.0, float(res[0]))
+            y = wp.clamp(loc_pos[1], 0.0, float(res[1]))
+            z = wp.clamp(loc_pos[2], 0.0, float(res[2]))
+
+            x_cell = wp.min(wp.floor(x), float(res[0]) - 1.0)
+            y_cell = wp.min(wp.floor(y), float(res[1]) - 1.0)
+            z_cell = wp.min(wp.floor(z), float(res[2]) - 1.0)
+
+            coords = Coords(x - x_cell, y - y_cell, z - z_cell)
+            cell_index = Grid3D.cell_index(res, Grid3D.Cell(int(x_cell), int(y_cell), int(z_cell)))
+
+            if wp.static(filter_func is None):
+                return make_free_sample(cell_index, coords)
+            else:
+                if filter_func(filter_data, cell_index) == filter_target:
+                    return make_free_sample(cell_index, coords)
+
+                offset = float(0.5)
+                min_cell_size = wp.min(cell_size)
+                max_offset = wp.ceil(max_dist / min_cell_size)
+                scales = wp.cw_div(wp.vec3(min_cell_size), cell_size)
+
+                closest_cell = NULL_ELEMENT_INDEX
+                closest_coords = Coords()
+
+                # Iterate over increasingly larger neighborhoods
+                while closest_cell == NULL_ELEMENT_INDEX:
+                    i_min = wp.max(0, int(wp.floor(x - offset * scales[0])))
+                    i_max = wp.min(res[0], int(wp.floor(x + offset * scales[0])) + 1)
+                    j_min = wp.max(0, int(wp.floor(y - offset * scales[1])))
+                    j_max = wp.min(res[1], int(wp.floor(y + offset * scales[1])) + 1)
+                    k_min = wp.max(0, int(wp.floor(z - offset * scales[2])))
+                    k_max = wp.min(res[2], int(wp.floor(z + offset * scales[2])) + 1)
+
+                    closest_dist = min_cell_size * min_cell_size * float(offset * offset)
+
+                    for i in range(i_min, i_max):
+                        for j in range(j_min, j_max):
+                            for k in range(k_min, k_max):
+                                ijk = Grid3D.Cell(i, j, k)
+                                cell_index = Grid3D.cell_index(res, ijk)
+                                if filter_func(filter_data, cell_index) == filter_target:
+                                    rel_pos = wp.cw_mul(loc_pos - wp.vec3(ijk), cell_size)
+                                    dist, coords = project_on_box_at_origin(rel_pos, cell_size)
+
+                                    if dist <= closest_dist:
+                                        closest_dist = dist
+                                        closest_coords = coords
+                                        closest_cell = cell_index
+
+                    if offset >= max_offset:
+                        break
+                    offset = wp.min(3.0 * offset, max_offset)
+
+                return make_free_sample(closest_cell, closest_coords)
+
+        return cell_lookup
 
     @wp.func
     def cell_measure(args: CellArg, s: Sample):
@@ -450,3 +514,27 @@ class Grid3D(Geometry):
     @wp.func
     def side_to_cell_arg(side_arg: SideArg):
         return side_arg.cell_arg
+
+    @wp.func
+    def side_coordinates(args: SideArg, side_index: int, pos: wp.vec3):
+        cell_arg = args.cell_arg
+        side = Grid3D.get_side(args, side_index)
+
+        pos_loc = Grid3D._world_to_local(side.axis, wp.cw_div(pos - cell_arg.origin, cell_arg.cell_size)) - wp.vec3(
+            side.origin
+        )
+
+        coord0 = wp.where(side.origin[0] == 0, 1.0 - pos_loc[1], pos_loc[1])
+        return Coords(coord0, pos_loc[2], 0.0)
+
+    @wp.func
+    def side_closest_point(args: SideArg, side_index: int, pos: wp.vec3):
+        coord = Grid3D.side_coordinates(args, side_index, pos)
+
+        cell_arg = args.cell_arg
+        side = Grid3D.get_side(args, side_index)
+
+        loc_cell_size = Grid3D._world_to_local(side.axis, cell_arg.cell_size)
+        long_lat_sizes = wp.vec2(loc_cell_size[1], loc_cell_size[2])
+        dist, proj_coord = project_on_box_at_origin(wp.vec2(coord[0], coord[1]), long_lat_sizes)
+        return proj_coord, dist

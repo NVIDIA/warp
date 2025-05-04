@@ -19,7 +19,7 @@ import numpy as np
 
 import warp as wp
 from warp.fem import cache, utils
-from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
+from warp.fem.types import OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
 
 from .element import Cube, Square
 from .geometry import Geometry
@@ -202,72 +202,41 @@ class AdaptiveNanogrid(Geometry):
         scale = AdaptiveNanogrid._cell_scale(args, s.element_index)
         return args.inverse_transform / scale
 
-    @wp.func
-    def _make_sample(args: CellArg, cell_index: int, uvw: wp.vec3):
-        ijk = args.cell_ijk[cell_index]
-        return make_free_sample(cell_index, (uvw - wp.vec3(ijk)) / AdaptiveNanogrid._cell_scale(args, cell_index))
+    def supports_cell_lookup(self, device):
+        return True
 
     @wp.func
-    def cell_lookup(args: CellArg, pos: wp.vec3):
+    def _lookup_cell_index(args: AdaptiveNanogridCellArg, i: int, j: int, k: int):
+        return AdaptiveNanogrid.find_cell(args.cell_grid, wp.vec3i(i, j, k), args.level_count, args.cell_level)
+
+    @wp.func
+    def _cell_coordinates_local(args: AdaptiveNanogridCellArg, cell_index: int, uvw: wp.vec3):
+        ijk = wp.vec3(args.cell_ijk[cell_index])
+        rel_pos = uvw - ijk
+        scale = AdaptiveNanogrid._cell_scale(args, cell_index)
+        return rel_pos / scale
+
+    @wp.func
+    def _cell_closest_point_local(args: AdaptiveNanogridCellArg, cell_index: int, uvw: wp.vec3):
+        ijk = wp.vec3(args.cell_ijk[cell_index])
+        rel_pos = uvw - ijk
+        scale = AdaptiveNanogrid._cell_scale(args, cell_index)
+        coords = wp.min(wp.max(rel_pos / scale, wp.vec3(0.0)), wp.vec3(1.0))
+        return wp.length_sq(wp.volume_index_to_world_dir(args.cell_grid, coords * scale - rel_pos)), coords
+
+    @wp.func
+    def cell_coordinates(args: AdaptiveNanogridCellArg, cell_index: int, pos: wp.vec3):
         uvw = wp.volume_world_to_index(args.cell_grid, pos) + wp.vec3(0.5)
-        ijk = wp.vec3i(int(wp.floor(uvw[0])), int(wp.floor(uvw[1])), int(wp.floor(uvw[2])))
-        cell_index = AdaptiveNanogrid.find_cell(args.cell_grid, ijk, args.level_count, args.cell_level)
-
-        if cell_index == -1:
-            coords = uvw - wp.vec3(ijk)
-
-            if wp.min(coords) == 0.0 or wp.max(coords) == 1.0:
-                il = wp.where(coords[0] > 0.5, 0, -1)
-                jl = wp.where(coords[1] > 0.5, 0, -1)
-                kl = wp.where(coords[2] > 0.5, 0, -1)
-
-                for n in range(8):
-                    ni = n >> 2
-                    nj = (n & 2) >> 1
-                    nk = n & 1
-                    nijk = ijk + wp.vec3i(ni + il, nj + jl, nk + kl)
-
-                    coords = uvw - wp.vec3(nijk)
-                    if wp.min(coords) >= 0.0 and wp.max(coords) <= 1.0:
-                        cell_index = AdaptiveNanogrid.find_cell(args.cell_grid, nijk, args.level_count, args.cell_level)
-                        if cell_index != -1:
-                            return AdaptiveNanogrid._make_sample(args, cell_index, uvw)
-
-            return make_free_sample(NULL_ELEMENT_INDEX, Coords(OUTSIDE))
-
-        return AdaptiveNanogrid._make_sample(args, cell_index, uvw)
+        return AdaptiveNanogrid._cell_coordinates_local(args, cell_index, uvw)
 
     @wp.func
-    def cell_lookup(args: CellArg, pos: wp.vec3, guess: Sample):
-        s_global = AdaptiveNanogrid.cell_lookup(args, pos)
-
-        if s_global.element_index != NULL_ELEMENT_INDEX:
-            return s_global
-
-        closest_voxel = int(NULL_ELEMENT_INDEX)
-        closest_coords = Coords(OUTSIDE)
-        closest_dist = float(1.0e8)
-
-        # project to closest in stencil
+    def cell_closest_point(args: AdaptiveNanogridCellArg, cell_index: int, pos: wp.vec3):
         uvw = wp.volume_world_to_index(args.cell_grid, pos) + wp.vec3(0.5)
-        cell_ijk = args.cell_ijk[guess.element_index]
-        for ni in range(-1, 2):
-            for nj in range(-1, 2):
-                for nk in range(-1, 2):
-                    nijk = cell_ijk + wp.vec3i(ni, nj, nk)
-                    cell_idx = AdaptiveNanogrid.find_cell(args.cell_grid, nijk, args.level_count, args.cell_level)
-                    if cell_idx != -1:
-                        nijk = args.cell_ijk[cell_idx]
-                        scale = AdaptiveNanogrid._cell_scale(args, cell_idx)
-                        coords = (uvw - wp.vec3(nijk)) / scale
-                        dist, proj_coords = Nanogrid._project_on_voxel_at_origin(coords)
-                        dist *= scale
-                        if dist <= closest_dist:
-                            closest_dist = dist
-                            closest_voxel = cell_idx
-                            closest_coords = proj_coords
+        dist, coords = AdaptiveNanogrid._cell_closest_point_local(args, cell_index, uvw)
+        return coords, dist
 
-        return make_free_sample(closest_voxel, closest_coords)
+    def make_filtered_cell_lookup(self, filter_func: wp.Function = None):
+        return Nanogrid._make_filtered_cell_lookup(self, filter_func)
 
     @wp.func
     def cell_measure(args: CellArg, s: Sample):
@@ -320,9 +289,10 @@ class AdaptiveNanogrid(Geometry):
         ijk = args.face_ijk[s.element_index]
         flags = args.face_flags[s.element_index]
         axis = Nanogrid._get_face_axis(flags)
+        flip = Nanogrid._get_face_inner_offset(flags)
         scale = AdaptiveNanogrid._get_face_scale(flags)
 
-        uvw = wp.vec3(ijk) + scale * Nanogrid._side_to_cell_coords(axis, 0.0, s.element_coords)
+        uvw = wp.vec3(ijk) + scale * Nanogrid._side_to_cell_coords(axis, flip, 0.0, s.element_coords)
 
         cell_grid = args.cell_arg.cell_grid
         return wp.volume_index_to_world(cell_grid, uvw - wp.vec3(0.5))
@@ -391,9 +361,10 @@ class AdaptiveNanogrid(Geometry):
     def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
         flags = args.face_flags[side_index]
         axis = Nanogrid._get_face_axis(flags)
+        flip = Nanogrid._get_face_inner_offset(flags)
         offset = Nanogrid._get_face_inner_offset(flags)
 
-        same_level_cell_coords = Nanogrid._side_to_cell_coords(axis, 1.0 - float(offset), side_coords)
+        same_level_cell_coords = Nanogrid._side_to_cell_coords(axis, flip, 1.0 - float(offset), side_coords)
         same_level_cell_ijk = args.face_ijk[side_index]
         side_level = AdaptiveNanogrid._get_face_level(flags)
         same_level_cell_ijk[axis] += (offset - 1) << side_level
@@ -410,9 +381,10 @@ class AdaptiveNanogrid(Geometry):
     def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
         flags = args.face_flags[side_index]
         axis = Nanogrid._get_face_axis(flags)
+        flip = Nanogrid._get_face_inner_offset(flags)
         offset = Nanogrid._get_face_outer_offset(flags)
 
-        same_level_cell_coords = Nanogrid._side_to_cell_coords(axis, float(offset), side_coords)
+        same_level_cell_coords = Nanogrid._side_to_cell_coords(axis, flip, float(offset), side_coords)
         same_level_cell_ijk = args.face_ijk[side_index]
         side_level = AdaptiveNanogrid._get_face_level(flags)
         same_level_cell_ijk[axis] -= offset << side_level
@@ -434,6 +406,7 @@ class AdaptiveNanogrid(Geometry):
     ):
         flags = args.face_flags[side_index]
         axis = Nanogrid._get_face_axis(flags)
+        flip = Nanogrid._get_face_inner_offset(flags)
         side_level = AdaptiveNanogrid._get_face_level(flags)
         cell_level = int(args.cell_arg.cell_level[element_index])
 
@@ -450,11 +423,35 @@ class AdaptiveNanogrid(Geometry):
             and wp.max(same_level_cell_coords) <= 1.0
         )
 
-        return wp.where(
-            on_side,
-            Coords(same_level_cell_coords[(axis + 1) % 3], same_level_cell_coords[(axis + 2) % 3], 0.0),
-            Coords(OUTSIDE),
-        )
+        return wp.where(on_side, Nanogrid._cell_to_side_coords(axis, flip, same_level_cell_coords), Coords(OUTSIDE))
+
+    @wp.func
+    def side_coordinates(args: SideArg, side_index: int, pos: wp.vec3):
+        cell_arg = args.cell_arg
+
+        ijk = args.face_ijk[side_index]
+        fine_cell_coords = wp.volume_world_to_index(cell_arg.cell_grid, pos) + wp.vec3(0.5) - wp.vec3(ijk)
+
+        flags = args.face_flags[side_index]
+        side_level = AdaptiveNanogrid._get_face_level(flags)
+        axis = Nanogrid._get_face_axis(flags)
+        flip = Nanogrid._get_face_inner_offset(flags)
+
+        return Nanogrid._cell_to_side_coords(axis, flip, fine_cell_coords / float(1 << side_level))
+
+    @wp.func
+    def side_closest_point(args: SideArg, side_index: int, pos: wp.vec3):
+        coords = AdaptiveNanogrid.side_coordinates(args, side_index, pos)
+
+        proj_coords = Coords(wp.clamp(coords[0], 0.0, 1.0), wp.clamp(coords[1], 0.0, 1.0), 0.0)
+
+        flags = args.face_flags[side_index]
+        axis = Nanogrid._get_face_axis(flags)
+        flip = Nanogrid._get_face_inner_offset(flags)
+        side_level = AdaptiveNanogrid._get_face_level(flags)
+        cell_coord_offset = Nanogrid._side_to_cell_coords(axis, flip, 0, coords - proj_coords) * float(1 << side_level)
+
+        return proj_coords, wp.length_sq(wp.volume_index_to_world_dir(args.cell_grid, cell_coord_offset))
 
     def _build_face_grid(self, temporary_store: Optional[cache.TemporaryStore] = None):
         device = self._cell_grid.device

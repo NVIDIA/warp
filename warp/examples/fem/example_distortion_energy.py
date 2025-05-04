@@ -158,7 +158,7 @@ class Example:
         u_bd_test = fem.make_test(space=self._u_space, domain=boundary)
         u_bd_trial = fem.make_trial(space=self._u_space, domain=boundary)
         u_bd_matrix = fem.integrate(
-            boundary_projector_form, fields={"u": u_bd_trial, "v": u_bd_test}, nodal=True, output_dtype=float
+            boundary_projector_form, fields={"u": u_bd_trial, "v": u_bd_test}, assembly="nodal", output_dtype=float
         )
         fem.normalize_dirichlet_projector(u_bd_matrix)
 

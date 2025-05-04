@@ -23,15 +23,13 @@ from warp.fem.cache import (
     cached_arg_value,
 )
 from warp.fem.types import (
-    NULL_ELEMENT_INDEX,
     OUTSIDE,
     Coords,
     ElementIndex,
     Sample,
-    make_free_sample,
 )
 
-from .closest_point import project_on_tet_at_origin
+from .closest_point import project_on_tet_at_origin, project_on_tri_at_origin
 from .element import Tetrahedron, Triangle
 from .geometry import Geometry
 
@@ -40,10 +38,6 @@ from .geometry import Geometry
 class TetmeshCellArg:
     tet_vertex_indices: wp.array2d(dtype=int)
     positions: wp.array(dtype=wp.vec3)
-
-    # for neighbor cell lookup
-    vertex_tet_offsets: wp.array(dtype=int)
-    vertex_tet_indices: wp.array(dtype=int)
 
     # for global cell lookup
     tet_bvh: wp.uint64
@@ -54,9 +48,6 @@ class TetmeshSideArg:
     cell_arg: TetmeshCellArg
     face_vertex_indices: wp.array(dtype=wp.vec3i)
     face_tet_indices: wp.array(dtype=wp.vec2i)
-
-
-_NULL_BVH = wp.constant(wp.uint64(-1))
 
 
 class Tetmesh(Geometry):
@@ -77,8 +68,8 @@ class Tetmesh(Geometry):
         Args:
             tet_vertex_indices: warp array of shape (num_tets, 4) containing vertex indices for each tet
             positions: warp array of shape (num_vertices, 3) containing 3d position for each vertex
-            temporary_store: shared pool from which to allocate temporary arrays
             build_bvh: Whether to also build the tet BVH, which is necessary for the global `fem.lookup` operator to function without initial guess
+            temporary_store: shared pool from which to allocate temporary arrays
         """
 
         self.tet_vertex_indices = tet_vertex_indices
@@ -93,38 +84,12 @@ class Tetmesh(Geometry):
         self._build_topology(temporary_store)
 
         self._make_default_dependent_implementations()
+        self.cell_coordinates = self._make_cell_coordinates(assume_linear=True)
+        self.side_coordinates = self._make_side_coordinates(assume_linear=True)
 
         self._tet_bvh: wp.Bvh = None
         if build_bvh:
-            self._build_bvh()
-
-    def update_bvh(self, force_rebuild: bool = False):
-        """
-        Refits the BVH, or rebuilds it from scratch if `force_rebuild` is ``True``.
-        """
-
-        if self._tet_bvh is None or force_rebuild:
-            return self.build_bvh()
-
-        wp.launch(
-            Tetmesh._compute_tet_bounds,
-            self.tet_vertex_indices,
-            self.positions,
-            self._tet_bvh.lowers,
-            self._tet_bvh.uppers,
-        )
-        self._tet_bvh.refit()
-
-    def _build_bvh(self, temporary_store: Optional[TemporaryStore] = None):
-        lowers = wp.array(shape=self.cell_count(), dtype=wp.vec3, device=self.positions.device)
-        uppers = wp.array(shape=self.cell_count(), dtype=wp.vec3, device=self.positions.device)
-        wp.launch(
-            Tetmesh._compute_tet_bounds,
-            device=self.positions.device,
-            dim=self.cell_count(),
-            inputs=[self.tet_vertex_indices, self.positions, lowers, uppers],
-        )
-        self._tet_bvh = wp.Bvh(lowers, uppers)
+            self.build_bvh(self.positions.device)
 
     def cell_count(self):
         return self.tet_vertex_indices.shape[0]
@@ -173,15 +138,15 @@ class Tetmesh(Geometry):
     # Geometry device interface
 
     @cached_arg_value
-    def cell_arg_value(self, device) -> CellArg:
+    def _cell_constant_arg_value(self, device) -> CellArg:
         args = self.CellArg()
-
         args.tet_vertex_indices = self.tet_vertex_indices.to(device)
         args.positions = self.positions.to(device)
-        args.vertex_tet_offsets = self._vertex_tet_offsets.to(device)
-        args.vertex_tet_indices = self._vertex_tet_indices.to(device)
+        return args
 
-        args.tet_bvh = _NULL_BVH if self._tet_bvh is None else self._tet_bvh.id
+    def cell_arg_value(self, device) -> CellArg:
+        args = self._cell_constant_arg_value(device)
+        args.tet_bvh = self.bvh_id(device)
 
         return args
 
@@ -209,62 +174,17 @@ class Tetmesh(Geometry):
         return wp.inverse(Tetmesh.cell_deformation_gradient(args, s))
 
     @wp.func
-    def _project_on_tet(args: CellArg, pos: wp.vec3, tet_index: int):
-        p0 = args.positions[args.tet_vertex_indices[tet_index, 0]]
+    def cell_closest_point(args: CellArg, tet_index: int, pos: wp.vec3):
+        vidx = args.tet_vertex_indices[tet_index]
+        p0 = args.positions[vidx[0]]
 
         q = pos - p0
-        e1 = args.positions[args.tet_vertex_indices[tet_index, 1]] - p0
-        e2 = args.positions[args.tet_vertex_indices[tet_index, 2]] - p0
-        e3 = args.positions[args.tet_vertex_indices[tet_index, 3]] - p0
+        e1 = args.positions[vidx[1]] - p0
+        e2 = args.positions[vidx[2]] - p0
+        e3 = args.positions[vidx[3]] - p0
 
         dist, coords = project_on_tet_at_origin(q, e1, e2, e3)
-        return dist, coords
-
-    @wp.func
-    def _bvh_lookup(args: CellArg, pos: wp.vec3):
-        closest_tet = int(NULL_ELEMENT_INDEX)
-        closest_coords = Coords(OUTSIDE)
-        closest_dist = float(1.0e8)
-
-        if args.tet_bvh != _NULL_BVH:
-            query = wp.bvh_query_aabb(args.tet_bvh, pos, pos)
-            tet = int(0)
-            while wp.bvh_query_next(query, tet):
-                dist, coords = Tetmesh._project_on_tet(args, pos, tet)
-                if dist <= closest_dist:
-                    closest_dist = dist
-                    closest_tet = tet
-                    closest_coords = coords
-
-        return closest_dist, closest_tet, closest_coords
-
-    @wp.func
-    def cell_lookup(args: CellArg, pos: wp.vec3):
-        closest_dist, closest_tet, closest_coords = Tetmesh._bvh_lookup(args, pos)
-
-        return make_free_sample(closest_tet, closest_coords)
-
-    @wp.func
-    def cell_lookup(args: CellArg, pos: wp.vec3, guess: Sample):
-        closest_dist, closest_tet, closest_coords = Tetmesh._bvh_lookup(args, pos)
-        return make_free_sample(closest_tet, closest_coords)
-
-        if closest_tet == NULL_ELEMENT_INDEX:
-            # nothing found yet, bvh may not be available or outside mesh
-            for v in range(4):
-                vtx = args.tet_vertex_indices[guess.element_index, v]
-                tet_beg = args.vertex_tet_offsets[vtx]
-                tet_end = args.vertex_tet_offsets[vtx + 1]
-
-                for t in range(tet_beg, tet_end):
-                    tet = args.vertex_tet_indices[t]
-                    dist, coords = Tetmesh._project_on_tet(args, pos, tet)
-                    if dist <= closest_dist:
-                        closest_dist = dist
-                        closest_tet = tet
-                        closest_coords = coords
-
-        return make_free_sample(closest_tet, closest_coords)
+        return coords, dist
 
     @cached_arg_value
     def side_index_arg_value(self, device) -> SideIndexArg:
@@ -280,7 +200,6 @@ class Tetmesh(Geometry):
 
         return args.boundary_face_indices[boundary_side_index]
 
-    @cached_arg_value
     def side_arg_value(self, device) -> CellArg:
         args = self.SideArg()
 
@@ -307,6 +226,18 @@ class Tetmesh(Geometry):
         v2 = args.cell_arg.positions[face_idx[2]]
 
         return v1 - v0, v2 - v0
+
+    @wp.func
+    def side_closest_point(args: SideArg, tri_index: ElementIndex, pos: wp.vec3):
+        vidx = args.topology.face_vertex_indices[tri_index]
+        p0 = args.positions[vidx[0]]
+
+        q = pos - p0
+        e1 = args.positions[vidx[1]] - p0
+        e2 = args.positions[vidx[2]] - p0
+
+        dist, coords = project_on_tri_at_origin(q, e1, e2)
+        return coords, dist
 
     @wp.func
     def side_deformation_gradient(args: SideArg, s: Sample):
@@ -838,18 +769,16 @@ class Tetmesh(Geometry):
                     )
                     tet_edge_indices[t][k + 3] = edge_id
 
-    @wp.kernel
-    def _compute_tet_bounds(
-        tet_vertex_indices: wp.array2d(dtype=int),
-        positions: wp.array(dtype=wp.vec3),
-        lowers: wp.array(dtype=wp.vec3),
-        uppers: wp.array(dtype=wp.vec3),
-    ):
-        t = wp.tid()
-        p0 = positions[tet_vertex_indices[t, 0]]
-        p1 = positions[tet_vertex_indices[t, 1]]
-        p2 = positions[tet_vertex_indices[t, 2]]
-        p3 = positions[tet_vertex_indices[t, 3]]
+    @wp.func
+    def cell_bvh_id(cell_arg: TetmeshCellArg):
+        return cell_arg.tet_bvh
 
-        lowers[t] = wp.min(wp.min(p0, p1), wp.min(p2, p3))
-        uppers[t] = wp.max(wp.max(p0, p1), wp.max(p2, p3))
+    @wp.func
+    def cell_bounds(cell_arg: TetmeshCellArg, cell_index: ElementIndex):
+        vidx = cell_arg.tet_vertex_indices[cell_index]
+        p0 = cell_arg.positions[vidx[0]]
+        p1 = cell_arg.positions[vidx[1]]
+        p2 = cell_arg.positions[vidx[2]]
+        p3 = cell_arg.positions[vidx[3]]
+
+        return wp.min(wp.min(p0, p1), wp.min(p2, p3)), wp.max(wp.max(p0, p1), wp.max(p2, p3))

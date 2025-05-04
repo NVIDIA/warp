@@ -27,6 +27,7 @@
   ([GH-518](https://github.com/NVIDIA/warp/issues/518)).
 - Add support for in-place tile component addition and subtraction
   ([GH-659](https://github.com/NVIDIA/warp/issues/659)).
+- Exposed new `warp.fem` operators: `node_count`, `node_index`, `element_coordinates`, `element_closest_point`.
 
 ### Changed
 
@@ -38,6 +39,7 @@
 - Changed the USD renderer to use `framesPerSecond` for time sampling instead of `timeCodesPerSecond`.
 - Deprecate `wp.matrix(pos, quat, scale)` built-in function that constructs a 4x4 matrix from a 3D position, a quaternion, and a 3D scale. Use `wp.transform_compose()` instead ([GH-576](https://github.com/NVIDIA/warp/issues/576)).
 - Improve `repr()` for Warp types, including adding `repr()` for  `wp.array`.
+- Improved consistency of `warp.fem.lookup()` operator across geometries ([GH-618](https://github.com/NVIDIA/warp/pull/618)), added filtering parameters.
 
 ### Fixed
 
@@ -68,6 +70,7 @@
 - Fix assembly of rigid body inertia in `ModelBuilder.collapse_fixed_joints()` ([GH-631](https://github.com/NVIDIA/warp/issues/631)).
 - Fix preserving base class of nested struct attributes ([GH-574](https://github.com/NVIDIA/warp/issues/574)).
 - Fix `OpenGLRenderer.update_shape_instance()` not having color buffers created for the shape instances.
+- Fixed inconsistency in orientation of 2D geometry side normals ([GH-629](https://github.com/NVIDIA/warp/issues/629)).
 
 ## [1.7.0] - 2025-03-30
 

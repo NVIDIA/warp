@@ -146,7 +146,7 @@ class Example:
         # For simplicity, use nodal integration so that inertia matrix is diagonal
         trial = fem.make_trial(space=vector_space, domain=domain)
         matrix_inertia = fem.integrate(
-            vel_mass_form, fields={"u": trial, "v": self._test}, output_dtype=wp.float32, nodal=True
+            vel_mass_form, fields={"u": trial, "v": self._test}, output_dtype=wp.float32, assembly="nodal"
         )
         self._inv_mass_matrix = wp.sparse.bsr_copy(matrix_inertia)
         fem_example_utils.invert_diagonal_bsr_matrix(self._inv_mass_matrix)

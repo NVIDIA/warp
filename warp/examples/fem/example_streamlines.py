@@ -158,6 +158,11 @@ class Example:
                 res=res,
             )
             self._geo = fem.Tetmesh(tet_vtx_indices, pos, build_bvh=True)
+        elif mesh == "hex":
+            pos, hex_vtx_indices = fem_example_utils.gen_hexmesh(
+                res=res,
+            )
+            self._geo = fem.Hexmesh(hex_vtx_indices, pos, assume_parallelepiped_cells=True, build_bvh=True)
         elif mesh == "nano":
             volume = fem_example_utils.gen_volume(
                 res=res,
@@ -280,7 +285,7 @@ class Example:
         inflow_test = fem.make_test(u_space, domain=self._inflow)
         inflow_trial = fem.make_trial(u_space, domain=self._inflow)
         dirichlet_projector = fem.integrate(
-            noslip_projector_form, fields={"u": inflow_test, "v": inflow_trial}, nodal=True, output_dtype=float
+            noslip_projector_form, fields={"u": inflow_test, "v": inflow_trial}, assembly="nodal", output_dtype=float
         )
 
         freeslip_test = fem.make_test(u_space, domain=self._freeslip)
@@ -288,7 +293,7 @@ class Example:
         dirichlet_projector += fem.integrate(
             freeslip_projector_form,
             fields={"u": freeslip_test, "v": freeslip_trial},
-            nodal=True,
+            assembly="nodal",
             output_dtype=float,
         )
         fem.normalize_dirichlet_projector(dirichlet_projector)
@@ -300,7 +305,7 @@ class Example:
         rho_test = fem.make_test(u_space)
         rho_trial = fem.make_trial(u_space)
         inv_mass_matrix = fem.integrate(
-            mass_form, fields={"u": rho_trial, "v": rho_test}, nodal=True, output_dtype=float
+            mass_form, fields={"u": rho_trial, "v": rho_test}, assembly="nodal", output_dtype=float
         )
         fem_example_utils.invert_diagonal_bsr_matrix(inv_mass_matrix)
 

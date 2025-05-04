@@ -186,6 +186,11 @@ class SpaceField(GeometryField):
                 shape=(wp.types.type_length(self.dtype), self.geometry.dimension),
                 dtype=wp.types.type_scalar_type(self.dtype),
             )
+        if wp.types.type_is_quaternion(self.dtype):
+            return cache.cached_mat_type(
+                shape=(4, self.geometry.dimension),
+                dtype=wp.types.type_scalar_type(self.dtype),
+            )
         return cache.cached_vec_type(length=self.geometry.dimension, dtype=wp.types.type_scalar_type(self.dtype))
 
     @property
@@ -194,6 +199,11 @@ class SpaceField(GeometryField):
         if wp.types.type_is_vector(self.dtype):
             return cache.cached_mat_type(
                 shape=(wp.types.type_length(self.dtype), self.geometry.cell_dimension),
+                dtype=wp.types.type_scalar_type(self.dtype),
+            )
+        if wp.types.type_is_quaternion(self.dtype):
+            return cache.cached_mat_type(
+                shape=(4, self.geometry.cell_dimension),
                 dtype=wp.types.type_scalar_type(self.dtype),
             )
         return cache.cached_vec_type(length=self.geometry.cell_dimension, dtype=wp.types.type_scalar_type(self.dtype))
@@ -570,20 +580,23 @@ class NonconformingField(GeometryField):
         if field_eval is None or bg_eval is None:
             return None
 
+        cell_lookup = self.field.geometry.cell_lookup
+
         @cache.dynamic_func(suffix=f"{eval_func_name}_{self.name}")
         def eval_nc(args: self.ElementEvalArg, s: Sample):
             pos = self.domain.element_position(args.elt_arg, s)
             cell_arg = args.eval_arg.field_cell_eval_arg.elt_arg
-            nonconforming_s = self.field.geometry.cell_lookup(cell_arg, pos)
-            if (
-                nonconforming_s.element_index == NULL_ELEMENT_INDEX
-                or wp.length_sq(pos - self.field.geometry.cell_position(cell_arg, nonconforming_s))
-                > NonconformingField._LOOKUP_EPS
-            ):
-                return bg_eval(self.background.ElementEvalArg(args.elt_arg, args.eval_arg.background_arg), s)
-            return field_eval(
-                self.field.ElementEvalArg(cell_arg, args.eval_arg.field_cell_eval_arg.eval_arg), nonconforming_s
-            )
+            nonconforming_s = cell_lookup(cell_arg, pos, NonconformingField._LOOKUP_EPS)
+            if nonconforming_s.element_index != NULL_ELEMENT_INDEX:
+                if (
+                    wp.length_sq(pos - self.field.geometry.cell_position(cell_arg, nonconforming_s))
+                    <= NonconformingField._LOOKUP_EPS
+                ):
+                    return field_eval(
+                        self.field.ElementEvalArg(cell_arg, args.eval_arg.field_cell_eval_arg.eval_arg), nonconforming_s
+                    )
+
+            return bg_eval(self.background.ElementEvalArg(args.elt_arg, args.eval_arg.background_arg), s)
 
         return eval_nc
 

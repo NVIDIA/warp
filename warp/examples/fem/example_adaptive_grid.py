@@ -70,7 +70,7 @@ def mass_form(
 @fem.integrand
 def side_divergence_form(s: fem.Sample, domain: fem.Domain, u: fem.Field, psi: fem.Field):
     # normal velocity jump (non-zero at resolution boundaries)
-    return -wp.dot(fem.jump(u, s), fem.normal(domain, s)) * psi(s)
+    return -wp.dot(fem.jump(u, s), fem.normal(domain, s)) * fem.average(psi, s)
 
 
 @wp.func
@@ -173,7 +173,7 @@ class Example:
         bd_test = fem.make_test(u_space, domain=boundary)
         bd_trial = fem.make_trial(u_space, domain=boundary)
         dirichlet_projector = fem.integrate(
-            noslip_projector_form, fields={"u": bd_test, "v": bd_trial}, nodal=True, output_dtype=float
+            noslip_projector_form, fields={"u": bd_test, "v": bd_trial}, assembly="nodal", output_dtype=float
         )
         fem.normalize_dirichlet_projector(dirichlet_projector)
 
@@ -187,7 +187,7 @@ class Example:
             rho_trial = fem.make_trial(rho_space)
 
         inv_mass_matrix = fem.integrate(
-            mass_form, fields={"u": rho_trial, "v": rho_test}, nodal=True, output_dtype=float
+            mass_form, fields={"u": rho_trial, "v": rho_test}, assembly="nodal", output_dtype=float
         )
         fem_example_utils.invert_diagonal_bsr_matrix(inv_mass_matrix)
 

@@ -192,11 +192,11 @@ class Example:
             vertical_displacement_form,
             fields={"v": u_bd_test},
             values={"displacement": self._displacement},
-            nodal=True,
+            assembly="nodal",
             output_dtype=wp.vec2d,
         )
         u_bd_matrix = fem.integrate(
-            vertical_boundary_projector_form, fields={"u": u_bd_trial, "v": u_bd_test}, nodal=True
+            vertical_boundary_projector_form, fields={"u": u_bd_trial, "v": u_bd_test}, assembly="nodal"
         )
 
         # Stress/velocity coupling
@@ -207,7 +207,9 @@ class Example:
         gradient_matrix = fem.integrate(displacement_gradient_form, fields={"u": u_trial, "tau": tau_test}).transpose()
 
         # Compute inverse of the (block-diagonal) tau mass matrix
-        tau_inv_mass_matrix = fem.integrate(tensor_mass_form, fields={"sig": tau_trial, "tau": tau_test}, nodal=True)
+        tau_inv_mass_matrix = fem.integrate(
+            tensor_mass_form, fields={"sig": tau_trial, "tau": tau_test}, assembly="nodal"
+        )
         fem_example_utils.invert_diagonal_bsr_matrix(tau_inv_mass_matrix)
 
         # Newton iterations (without line-search for simplicity)

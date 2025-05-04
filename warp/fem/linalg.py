@@ -16,6 +16,7 @@
 from typing import Any
 
 import warp as wp
+import warp.types
 
 
 @wp.func
@@ -32,6 +33,11 @@ def generalized_outer(x: wp.float32, y: wp.vec2):
 @wp.func
 def generalized_outer(x: wp.float32, y: wp.vec3):
     return x * y
+
+
+@wp.func
+def generalized_outer(x: wp.quatf, y: wp.vec3):
+    return generalized_outer(wp.vec4(x[0], x[1], x[2], x[3]), y)
 
 
 @wp.func
@@ -53,38 +59,6 @@ def generalized_inner(x: wp.mat22, y: wp.vec2):
 @wp.func
 def generalized_inner(x: wp.mat33, y: wp.vec3):
     return x[0] * y[0] + x[1] * y[1] + x[2] * y[2]
-
-
-@wp.func
-def basis_element(template_type: Any, coord: int):
-    """Returns a instance of `template_type` with a single coordinate set to 1 in the canonical basis"""
-
-    t = type(template_type)(0.0)
-    t[coord] = 1.0
-    return t
-
-
-@wp.func
-def basis_element(template_type: wp.float32, coord: int):
-    return 1.0
-
-
-@wp.func
-def basis_element(template_type: wp.mat22, coord: int):
-    t = wp.mat22(0.0)
-    row = coord // 2
-    col = coord - 2 * row
-    t[row, col] = 1.0
-    return t
-
-
-@wp.func
-def basis_element(template_type: wp.mat33, coord: int):
-    t = wp.mat33(0.0)
-    row = coord // 3
-    col = coord - 3 * row
-    t[row, col] = 1.0
-    return t
 
 
 @wp.func
@@ -112,15 +86,6 @@ def basis_coefficient(val: wp.vec3, i: int, j: int):
 @wp.func
 def basis_coefficient(val: Any, i: int, j: int):
     return val[i, j]
-
-
-@wp.func
-def basis_coefficient(template_type: wp.mat33, coord: int):
-    t = wp.mat33(0.0)
-    row = coord // 3
-    col = coord - 3 * row
-    t[row, col] = 1.0
-    return t
 
 
 @wp.func
