@@ -2358,7 +2358,7 @@ inline CUDA_CALLABLE void scalar_cholesky(TileA& A, TileL& L)
 }
 
 template <typename TileL, typename TileX, typename TileY>
-inline CUDA_CALLABLE void scalar_cholesky_solve(TileL& L, TileX& X, TileY& Y)
+inline CUDA_CALLABLE void scalar_cholesky_forward_substitution(TileL& L, TileX& X, TileY& Y)
 {
     using T = typename TileL::Type;    
     constexpr int n = TileL::Layout::Shape::dim(1);
@@ -2372,6 +2372,13 @@ inline CUDA_CALLABLE void scalar_cholesky_solve(TileL& L, TileX& X, TileY& Y)
 
         X.data(tile_coord(i)) = s / L.data(tile_coord(i, i));
     }
+}
+
+template <typename TileL, typename TileX>
+inline CUDA_CALLABLE void scalar_cholesky_back_substitution(TileL& L, TileX& X)
+{
+    using T = typename TileL::Type;    
+    constexpr int n = TileL::Layout::Shape::dim(1);
 
     for (int i=n-1; i >= 0; --i)
     {
@@ -2383,6 +2390,14 @@ inline CUDA_CALLABLE void scalar_cholesky_solve(TileL& L, TileX& X, TileY& Y)
         X.data(tile_coord(i)) = s / L.data(tile_coord(i, i));
     }
 }
+
+template <typename TileL, typename TileX, typename TileY>
+inline CUDA_CALLABLE void scalar_cholesky_solve(TileL& L, TileX& X, TileY& Y)
+{
+    scalar_cholesky_forward_substitution(L, X, Y);
+    scalar_cholesky_back_substitution(L, X);        
+}
+
 
 } // namespace partition_gemm
 
@@ -2581,6 +2596,244 @@ TileY& tile_cholesky_solve(Fwd fun_forward, TileL& L, TileX& X, TileY& Y)
     do { \
         assert(false); \
     } while (0)
+
+
+
+
+
+
+template <typename TileL, typename TileY, typename TileZ>
+TileZ& tile_lower_solve(TileL& L, TileY& y, TileZ& z)
+{       
+    // Copy y to z
+    //z = y;
+	
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
+
+    z = y;
+    partitioned_gemm::scalar_cholesky_forward_substitution(L, y, z);
+
+#else
+
+    // Call cholesky solve on L & z
+
+    WP_TILE_SYNC();
+    
+    using T = typename TileL::Type;    
+    constexpr int n = TileL::Layout::Shape::dim(1);
+
+    if constexpr (TileY::Layout::Shape::N == 1)
+    {
+        // Optimize similar to the N==2 case
+        constexpr int m = 1;
+        constexpr int N = n * m;
+        const int num_threads = WP_TILE_BLOCK_DIM;
+
+        // Parallel copy y to z
+        for (int idx = WP_TILE_THREAD_IDX; idx < N; idx += num_threads)
+        {
+            int row = idx; // since m == 1, col is always 0
+            if (row < n)
+                z.data(tile_coord(row)) = y.data(tile_coord(row));
+        }
+        WP_TILE_SYNC();
+
+        // Forward substitution
+        for (int i = 0; i < n; ++i)
+        {
+            // Divide the diagonal element (only one batch)
+            if (WP_TILE_THREAD_IDX == 0)
+            {
+                z.data(tile_coord(i)) /= L.data(tile_coord(i, i));
+            }
+            WP_TILE_SYNC();
+
+            // Update the rest of the column in parallel
+            for (int idx = WP_TILE_THREAD_IDX; idx < n - i - 1; idx += num_threads)
+            {
+                int row = i + 1 + idx;
+                if (row < n)
+                {
+                    z.data(tile_coord(row)) -= L.data(tile_coord(row, i)) * z.data(tile_coord(i));
+                }
+            }
+            WP_TILE_SYNC();
+        }
+    }
+    else if constexpr (TileY::Layout::Shape::N == 2)
+    {
+        // Processes multiple right hand sides in one go
+
+        constexpr int m = TileY::Layout::Shape::dim(1);
+        constexpr int N = n * m;
+        const int num_threads = WP_TILE_BLOCK_DIM;
+
+        // Parallel copy y to z
+        for (int idx = WP_TILE_THREAD_IDX; idx < N; idx += num_threads)
+        {
+            int row = idx / m;
+            int col = idx % m;
+            if (row < n && col < m)
+                z.data(tile_coord(row, col)) = y.data(tile_coord(row, col));
+        }
+        WP_TILE_SYNC();
+
+        // Forward substitution
+        for (int i = 0; i < n; ++i)
+        {
+            // Divide the diagonal element for all batches in parallel
+            for (int batchId = WP_TILE_THREAD_IDX; batchId < m; batchId += num_threads)
+            {
+                z.data(tile_coord(i, batchId)) /= L.data(tile_coord(i, i));
+            }
+            WP_TILE_SYNC();
+
+            // Update the rest of the column in parallel
+            for (int idx = WP_TILE_THREAD_IDX; idx < (n - i - 1) * m; idx += num_threads)
+            {
+                int row = i + 1 + (idx / m);
+                int col = idx % m;
+                if (row < n && col < m)
+                {
+                    z.data(tile_coord(row, col)) -= L.data(tile_coord(row, i)) * z.data(tile_coord(i, col));
+                }
+            }
+            WP_TILE_SYNC();
+        }
+    }
+
+    WP_TILE_SYNC();
+    
+#endif
+
+    return z;
+}
+
+#define adj_tile_lower_solve(L, y, z, \
+                                adj_L, adj_y, adj_z, adj_ret) \
+    do { \
+        assert(false); \
+    } while (0)
+		
+	
+
+template <typename TileU, typename TileZ, typename TileX>
+TileX& tile_upper_solve(TileU& U, TileZ& z, TileX& x)
+{       
+    // Copy z to x
+    //x = z;
+	
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
+
+    x = z;
+    partitioned_gemm::scalar_cholesky_back_substitution(U, x);
+
+#else
+
+    // Call cholesky solve on U & x
+
+    WP_TILE_SYNC();
+    
+    using T = typename TileU::Type;    
+    constexpr int n = TileU::Layout::Shape::dim(1);
+
+    if constexpr (TileZ::Layout::Shape::N == 1)
+    {
+        // Optimize similar to the N==2 case
+        constexpr int m = 1;
+        constexpr int N = n * m;
+        const int num_threads = WP_TILE_BLOCK_DIM;
+
+        // Parallel copy z to x
+        for (int idx = WP_TILE_THREAD_IDX; idx < N; idx += num_threads)
+        {
+            int row = idx; // since m == 1, col is always 0
+            if (row < n)
+                x.data(tile_coord(row)) = z.data(tile_coord(row));
+        }
+        WP_TILE_SYNC();
+
+        // Backward substitution
+        for (int i = n - 1; i >= 0; --i)
+        {
+            // Divide the diagonal element for all batches in parallel (only one batch)
+            if (WP_TILE_THREAD_IDX == 0)
+            {
+                x.data(tile_coord(i)) /= U.data(tile_coord(i, i));
+            }
+            WP_TILE_SYNC();
+
+            // Update the rest of the column in parallel
+            for (int idx = WP_TILE_THREAD_IDX; idx < i; idx += num_threads)
+            {
+                int row = idx;
+                if (row < i)
+                {
+                    x.data(tile_coord(row)) -= U.data(tile_coord(row, i)) * x.data(tile_coord(i));
+                }
+            }
+            WP_TILE_SYNC();
+        }
+    }
+    else if constexpr (TileZ::Layout::Shape::N == 2)
+    {
+        // Processes multiple right hand sides in one go
+
+        constexpr int m = TileZ::Layout::Shape::dim(1);
+        constexpr int N = n * m;
+        const int num_threads = WP_TILE_BLOCK_DIM;
+
+        // Parallel copy z to x
+        for (int idx = WP_TILE_THREAD_IDX; idx < N; idx += num_threads)
+        {
+            int row = idx / m;
+            int col = idx % m;
+            if (row < n && col < m)
+                x.data(tile_coord(row, col)) = z.data(tile_coord(row, col));
+        }
+        WP_TILE_SYNC();
+
+        // Backward substitution
+        for (int i = n - 1; i >= 0; --i)
+        {
+            // Divide the diagonal element for all batches in parallel
+            for (int batchId = WP_TILE_THREAD_IDX; batchId < m; batchId += num_threads)
+            {
+                x.data(tile_coord(i, batchId)) /= U.data(tile_coord(i, i));
+            }
+            WP_TILE_SYNC();
+
+            // Update the rest of the column in parallel
+            for (int idx = WP_TILE_THREAD_IDX; idx < i * m; idx += num_threads)
+            {
+                int row = idx / m;
+                int col = idx % m;
+                if (row < i && col < m)
+                {
+                    x.data(tile_coord(row, col)) -= U.data(tile_coord(row, i)) * x.data(tile_coord(i, col));
+                }
+            }
+            WP_TILE_SYNC();
+        }
+    }
+
+    WP_TILE_SYNC();
+    
+#endif
+
+    return x;
+}
+
+#define adj_tile_upper_solve(U, z, x, \
+                                adj_U, adj_z, adj_x, adj_ret) \
+    do { \
+        assert(false); \
+    } while (0)
+
+
+
+
+    
 
 template <typename Tile>
 inline CUDA_CALLABLE auto tile_transpose(Tile& t)
