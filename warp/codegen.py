@@ -413,11 +413,11 @@ class StructInstance:
 class Struct:
     hash: bytes
 
-    def __init__(self, cls: type, key: str, module: warp.context.Module):
+    def __init__(self, key: str, cls: type, module: warp.context.Module):
+        self.key = key
         self.cls = cls
         self.module = module
-        self.key = key
-        self.vars: Dict[str, Var] = {}
+        self.vars: dict[str, Var] = {}
 
         annotations = get_annotations(self.cls)
         for label, type in annotations.items():
