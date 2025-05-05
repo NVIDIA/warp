@@ -15,6 +15,8 @@
 - Warn when an incompatible data type conversion is detected when constructing an array using the
   `__cuda_array_interface__` ([GH-624](https://github.com/NVIDIA/warp/issues/624),
   [GH-670](https://github.com/NVIDIA/warp/issues/670)).
+- Lift the exact version requirement in `omni.warp` towards `omni.warp.core`
+  ([GH-702](https://github.com/NVIDIA/warp/issues/702)).
 
 ### Fixed
 
