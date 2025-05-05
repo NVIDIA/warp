@@ -56,6 +56,7 @@
 - Fix 2D tile load when source array and tile have incompatible strides
   ([GH-688](https://github.com/NVIDIA/warp/issues/688)).
 - Fixed inconsistency in orientation of 2D geometry side normals ([GH-629](https://github.com/NVIDIA/warp/issues/629)).
+- Fixed `wp.svd2()` with duplicate singular values and improved accuracy ([GH-679](https://github.com/NVIDIA/warp/issues/679)).
 
 ## [1.7.1] - 2025-04-30
 
