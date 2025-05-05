@@ -419,6 +419,9 @@ class Struct:
         self.module = module
         self.vars: dict[str, Var] = {}
 
+        if isinstance(self.cls, Sequence):
+            raise RuntimeError("Warp structs must be defined as base classes")
+
         annotations = get_annotations(self.cls)
         for label, type in annotations.items():
             self.vars[label] = Var(label, type)
@@ -489,7 +492,7 @@ class Struct:
 
         self.default_constructor.add_overload(self.value_constructor)
 
-        if module:
+        if isinstance(module, warp.context.Module):
             module.register_struct(self)
 
         # Define class for instances of this struct
