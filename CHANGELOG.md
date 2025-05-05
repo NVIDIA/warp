@@ -38,6 +38,8 @@
   averaging the shape's and the cloth's coefficients.
 - Add damping terms for collisions in `wp.sim.VBDIntegrator`, whose strength is controlled by `Model.soft_contact_kd`.
 - Exposed new `warp.fem` operators: `node_count`, `node_index`, `element_coordinates`, `element_closest_point`.
+- Inform about class inheritance not being supported for `wp.struct`
+  ([GH-656](https://github.com/NVIDIA/warp/issues/656)).
 
 ### Fixed
 
