@@ -1119,11 +1119,16 @@ def test_svd_2D(test, device, dtype, register_kernels=False):
 
     mats = np.concatenate(
         (
-            randvals(rng, [60, 2, 2], dtype) + np.eye(2),
+            randvals(rng, [24, 2, 2], dtype) + np.eye(2),
+            # rng unlikely to hit edge cases, build them manually
             [
                 np.zeros((2, 2)),
                 np.eye(2),
                 5.0 * np.eye(2),
+                np.array([[1.0, 0.0], [0.0, 0.0]]),
+                np.array([[0.0, 0.0], [0.0, 2.0]]),
+                np.array([[1.0, 1.0], [-1.0, -1.0]]),
+                np.array([[3.0, 0.0], [4.0, 5.0]]),
                 np.eye(2) + tol * np.array([[1.0, 1.0], [-1.0, -1.0]]),
             ],
         ),
