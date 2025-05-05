@@ -474,10 +474,15 @@ inline CUDA_CALLABLE void _svd_2( // input A
 
     // Step 4: Eigenvectors (find V)
     Type v1y = diff - sqrt_term + Type(2) * ATA12, v1x = diff + sqrt_term - Type(2) * ATA12;
-
-    Type inv_len1 = recipSqrt(v1x * v1x + v1y * v1y);
-    v11 = v1x * inv_len1;
-    v21 = v1y * inv_len1;
+    Type len1_sq = v1x * v1x + v1y * v1y;
+    if (len1_sq == Type(0)) {
+        v11 = Type(0.707106781186547524401); // M_SQRT1_2
+        v21 = v11;
+    } else {
+        Type inv_len1 = recipSqrt(len1_sq);
+        v11 = v1x * inv_len1;
+        v21 = v1y * inv_len1;
+    }
     v12 = -v21;
     v22 = v11;
 
