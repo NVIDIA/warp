@@ -213,6 +213,7 @@ osec:pulse-trufflehog:
     - if: $CI_PIPELINE_SOURCE == "web"
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       changes:
+        - .gitlab-ci.yml
         - .gitlab/ci/*
         - warp/**/*
         - pyproject.toml
@@ -411,6 +412,7 @@ linux-x86_64 test warp-init:
     - if: $CI_PIPELINE_SOURCE == "web"
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       changes:
+        - .gitlab-ci.yml
         - .gitlab/ci/*
         - warp/**/*
         - pyproject.toml
@@ -436,6 +438,55 @@ linux-x86_64 test warp-init:
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --disable-process-pooling --disable-concurrent-futures --level test -p 'test_implicit_init.py'
+
+# Optional job to test MuJoCo Warp
+linux-x86_64 test mujoco warp:
+  stage: test
+  needs: [linux-x86_64 build]
+  image: ubuntu:22.04
+  artifacts:
+    reports:
+      junit: rspec.xml
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      changes:
+        - .gitlab-ci.yml
+        - .gitlab/ci/*
+        - warp/**/*
+        - pyproject.toml
+        - tools/**/*
+        - deps/*
+        - build_lib.py
+        - build_llvm.py
+      allow_failure: true # Don't want to block MRs
+    - when: manual # If not auto-triggered, allow any pipeline to run this job manually
+      allow_failure: true # Don't want to block MRs
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - apt-get update && apt-get install git curl ca-certificates --no-install-recommends -y
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - source $HOME/.local/bin/env
+    - uv venv
+    - uv pip install -e .
+    - uv pip install --pre mujoco -f https://py.mujoco.org/
+    - uv pip install "git+https://github.com/google-deepmind/mujoco_warp@main"
+    - uv pip install pytest pytest-xdist "jax[cuda12]"
+    - source .venv/bin/activate
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - pytest -n 4 --pyargs mujoco_warp --junit-xml=rspec.xml
+  tags:
+    - arch/x86_64
+    - gpu/B40
+    - os/linux
+    - platform/horde
 
 # The only purpose of this job is to make sure documentation can be built on Windows.
 # The output does not get published anywhere, but the website can be viewed in the
@@ -515,6 +566,7 @@ linux-x86_64 asv:
     - python3 -m venv _venv
     - source _venv/bin/activate
     - python -m pip install --upgrade pip
+    - python -m pip install virtualenv==20.30.0 # Bug in 20.31.0
     - python -m pip install asv
     - GIT_LFS_SKIP_SMUDGE=1
     # Make sure the comparison ref can be checked out by asv
