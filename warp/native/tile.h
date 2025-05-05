@@ -219,8 +219,8 @@ struct tile_coord_t
 {
     int indices[N];
 
-    CUDA_CALLABLE inline int operator[](int i) const { assert(0 <= 1 && i < N); return indices[i]; }
-    CUDA_CALLABLE inline int& operator[](int i) { assert(0 <= 1 && i < N); return indices[i]; }
+    CUDA_CALLABLE inline int operator[](int i) const { assert(0 <= i && i < N); return indices[i]; }
+    CUDA_CALLABLE inline int& operator[](int i) { assert(0 <= i && i < N); return indices[i]; }
 
     CUDA_CALLABLE inline tile_coord_t<N> operator + (const tile_coord_t<N>& c) const
     {
