@@ -7367,6 +7367,201 @@ add_builtin(
     namespace="",
 )
 
+
+def tile_lower_solve_generic_lto_dispatch_func(
+    arg_types: Mapping[str, type],
+    return_type: Any,
+    return_values: List[Var],
+    arg_values: Mapping[str, Var],
+    options: Mapping[str, Any],
+    builder: warp.context.ModuleBuilder,
+):
+    L = arg_values["L"]
+    y = arg_values["y"]
+    # force the storage type of the input variables to shared memory
+    L.type.storage = "shared"
+    y.type.storage = "shared"
+
+    if len(return_values) != 1:
+        raise TypeError(f"tile_lower_solve() must return exactly one value, got {len(return_values)}")
+
+    z = return_values[0]
+
+    if any(T not in cusolver_type_map.keys() for T in [y.type.dtype, L.type.dtype]):
+        raise TypeError("tile_lower_solve() arguments must be tiles of float64 or float32")
+
+    M = L.type.shape[0]
+
+    if len(z.type.shape) > 2 or len(z.type.shape) < 1:
+        raise TypeError(f"tile_lower_solve() output vector must be 1D or 2D, got {len(z.type.shape)}-D")
+
+    if z.type.shape[0] != M:
+        raise ValueError(
+            "tile_lower_solve() output vector must have same number of elements as the number of rows in 'L' "
+            f"got {z.type.shape[0]} elements in output and {M} rows in 'L'"
+        )
+
+    # CPU/no-MathDx dispatch
+    return ((L, y, z), [], [], 0)
+
+
+def tile_lower_solve_generic_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
+    if len(arg_types) != 2:
+        raise TypeError("tile_lower_solve() requires exactly 2 positional args")
+
+    l = arg_types["L"]
+    y = arg_types["y"]
+
+    if not is_tile(l):
+        raise TypeError(f"tile_lower_solve() 'L' argument must be a tile, got {l!r}")
+
+    if not is_tile(y):
+        raise TypeError(f"tile_lower_solve() 'y' argument must be a tile, got {y!r}")
+
+    if not types_equal(l.dtype, y.dtype):
+        raise TypeError(f"tile_lower_solve() arguments must have the same dtype, got {l.dtype} and {y.dtype}")
+
+    if l.shape[0] != l.shape[1]:
+        raise ValueError("tile_lower_solve() 'L' argument must be square")
+
+    if len(y.shape) > 2 or len(y.shape) < 1:
+        raise TypeError("tile_lower_solve() 'y' argument must be a 1D or 2D tile")
+
+    if y.shape[0] != l.shape[0]:
+        raise ValueError(
+            f"tile_lower_solve() 'y' argument must have the same number of elements as the number of rows in 'L', "
+            f"got {y.shape[0]} elements in 'y' and {l.shape[0]} rows in 'L'"
+        )
+
+    return Tile(dtype=l.dtype, shape=y.shape, storage="shared")
+
+
+add_builtin(
+    "tile_lower_solve",
+    input_types={"L": Tile, "y": Tile},
+    value_func=tile_lower_solve_generic_value_func,
+    lto_dispatch_func=tile_lower_solve_generic_lto_dispatch_func,
+    variadic=True,
+    doc="""Solve for z in Lz = y, where L is a lower triangular matrix.
+
+    This performs general forward substitution for a lower triangular system.
+
+    Note that computing the adjoint is not yet supported.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param L: A square, lower triangular, matrix
+    :param y: A 1D or 2D tile with compatible shape
+    :returns z: A tile of the same shape as y such that Lz = y""",
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+    namespace="",
+)
+
+
+def tile_upper_solve_generic_lto_dispatch_func(
+    arg_types: Mapping[str, type],
+    return_type: Any,
+    return_values: List[Var],
+    arg_values: Mapping[str, Var],
+    options: Mapping[str, Any],
+    builder: warp.context.ModuleBuilder,
+):
+    U = arg_values["U"]
+    z = arg_values["z"]
+    # force the storage type of the input variables to shared memory
+    U.type.storage = "shared"
+    z.type.storage = "shared"
+
+    if len(return_values) != 1:
+        raise TypeError(f"tile_upper_solve() must return exactly one value, got {len(return_values)}")
+
+    x = return_values[0]
+
+    if any(T not in cusolver_type_map.keys() for T in [z.type.dtype, U.type.dtype]):
+        raise TypeError("tile_upper_solve() arguments must be tiles of float64 or float32")
+
+    M = U.type.shape[0]
+
+    if len(z.type.shape) > 2 or len(z.type.shape) < 1:
+        raise TypeError(f"tile_upper_solve() output tile must be 1D or 2D, got {len(z.type.shape)}-D")
+
+    if z.type.shape[0] != M:
+        raise ValueError(
+            "tile_upper_solve() output tile must have same number of elements as the number of rows in 'U' "
+            f"got {z.type.shape[0]} elements in output and {M} rows in 'U'"
+        )
+
+    # CPU/no-MathDx dispatch
+    return ((U, z, x), [], [], 0)
+
+
+def tile_upper_solve_generic_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
+    if len(arg_types) != 2:
+        raise TypeError("tile_upper_solve() requires exactly 2 positional args")
+
+    u = arg_types["U"]
+    z = arg_types["z"]
+
+    if not is_tile(u):
+        raise TypeError(f"tile_upper_solve() 'U' argument must be a tile, got {u!r}")
+
+    if not is_tile(z):
+        raise TypeError(f"tile_upper_solve() 'z' argument must be a tile, got {z!r}")
+
+    if not types_equal(u.dtype, z.dtype):
+        raise TypeError(f"tile_upper_solve() arguments must have the same dtype, got {u.dtype} and {z.dtype}")
+
+    if u.shape[0] != u.shape[1]:
+        raise ValueError("tile_upper_solve() 'U' argument must be square")
+
+    if len(z.shape) > 2 or len(z.shape) < 1:
+        raise TypeError("tile_upper_solve() 'z' argument must be a 1D or 2D tile")
+
+    if z.shape[0] != u.shape[0]:
+        raise ValueError(
+            f"tile_upper_solve() 'z' argument must have the same number of elements as the number of rows in 'U', "
+            f"got {z.shape[0]} elements in 'z' and {u.shape[0]} rows in 'U'"
+        )
+
+    return Tile(dtype=u.dtype, shape=z.shape, storage="shared")
+
+
+add_builtin(
+    "tile_upper_solve",
+    input_types={"U": Tile, "z": Tile},
+    value_func=tile_upper_solve_generic_value_func,
+    lto_dispatch_func=tile_upper_solve_generic_lto_dispatch_func,
+    variadic=True,
+    doc="""Solve for x in U x = z, where U is an upper triangular matrix.
+
+    This performs general back substitution for upper triangular systems.
+
+    Note that computing the adjoint is not yet supported.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param U: A square, upper triangular matrix
+    :param z: A 1D or 2D tile with compatible shape
+    :returns x: A tile of the same shape as z such that U x = z""",
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+    namespace="",
+)
+
+
 # ---------------------------------
 # Code Generation
 

@@ -173,6 +173,88 @@ def test_tile_math_cholesky(test, device):
     # TODO: implement and test backward pass
 
 
+@wp.kernel
+def tile_math_forward_substitution(
+    gL: wp.array2d(dtype=wp.float64), gx: wp.array1d(dtype=wp.float64), gz: wp.array1d(dtype=wp.float64)
+):
+    i, j = wp.tid()
+    # Load L & x
+    L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
+    x = wp.tile_load(gx, shape=TILE_M, storage="shared")
+    # Solve for z in Lz = x
+    z = wp.tile_lower_solve(L, x)
+    # Store z
+    wp.tile_store(gz, z)
+
+
+def test_tile_math_forward_substitution(test, device):
+    # Create test data
+    rng = np.random.default_rng()
+    L_h = np.tril(rng.random((TILE_M, TILE_M)))  # Lower triangular matrix
+    x_h = rng.random(TILE_M)
+    z_h = np.zeros_like(x_h)
+
+    # Compute reference solution using numpy
+    z_np = np.linalg.solve(L_h, x_h)
+
+    # Create Warp arrays
+    L_wp = wp.array2d(L_h, requires_grad=True, dtype=wp.float64, device=device)
+    x_wp = wp.array1d(x_h, requires_grad=True, dtype=wp.float64, device=device)
+    z_wp = wp.array1d(z_h, requires_grad=True, dtype=wp.float64, device=device)
+
+    # Run kernel
+    wp.launch_tiled(
+        tile_math_forward_substitution, dim=[1, 1], inputs=[L_wp, x_wp, z_wp], block_dim=TILE_DIM, device=device
+    )
+    wp.synchronize_device()
+
+    # Verify results
+    assert np.allclose(z_wp.numpy(), z_np)
+
+    # TODO: implement and test backward pass
+
+
+@wp.kernel
+def tile_math_back_substitution(
+    gL: wp.array2d(dtype=wp.float64), gx: wp.array1d(dtype=wp.float64), gz: wp.array1d(dtype=wp.float64)
+):
+    i, j = wp.tid()
+    # Load L & x
+    L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
+    x = wp.tile_load(gx, shape=TILE_M, storage="shared")
+    # Solve for z in L^T z = x
+    z = wp.tile_upper_solve(wp.tile_transpose(L), x)
+    # Store z
+    wp.tile_store(gz, z)
+
+
+def test_tile_math_back_substitution(test, device):
+    # Create test data
+    rng = np.random.default_rng()
+    L_h = np.tril(rng.random((TILE_M, TILE_M)))  # Lower triangular matrix
+    x_h = rng.random(TILE_M)
+    z_h = np.zeros_like(x_h)
+
+    # Compute reference solution using numpy
+    z_np = np.linalg.solve(L_h.T, x_h)
+
+    # Create Warp arrays
+    L_wp = wp.array2d(L_h, requires_grad=True, dtype=wp.float64, device=device)
+    x_wp = wp.array1d(x_h, requires_grad=True, dtype=wp.float64, device=device)
+    z_wp = wp.array1d(z_h, requires_grad=True, dtype=wp.float64, device=device)
+
+    # Run kernel
+    wp.launch_tiled(
+        tile_math_back_substitution, dim=[1, 1], inputs=[L_wp, x_wp, z_wp], block_dim=TILE_DIM, device=device
+    )
+    wp.synchronize_device()
+
+    # Verify results
+    assert np.allclose(z_wp.numpy(), z_np)
+
+    # TODO: implement and test backward pass
+
+
 all_devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 
@@ -199,6 +281,22 @@ add_function_test(
     TestTileMathDx,
     "test_tile_math_fft_vec2d",
     functools.partial(test_tile_math_fft, wp_dtype=wp.vec2d),
+    devices=cuda_devices,
+    check_output=False,
+)
+
+add_function_test(
+    TestTileMathDx,
+    "test_tile_math_forward_substitution",
+    test_tile_math_forward_substitution,
+    devices=cuda_devices,
+    check_output=False,
+)
+
+add_function_test(
+    TestTileMathDx,
+    "test_tile_math_back_substitution",
+    test_tile_math_back_substitution,
     devices=cuda_devices,
     check_output=False,
 )
