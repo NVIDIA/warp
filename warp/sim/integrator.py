@@ -32,11 +32,14 @@ def integrate_particles(
     v_new: wp.array(dtype=wp.vec3),
 ):
     tid = wp.tid()
-    if (particle_flags[tid] & PARTICLE_FLAG_ACTIVE) == 0:
-        return
-
     x0 = x[tid]
     v0 = v[tid]
+
+    if (particle_flags[tid] & PARTICLE_FLAG_ACTIVE) == 0:
+        x_new[tid] = x0
+        v_new[tid] = wp.vec3(0.0)
+        return
+
     f0 = f[tid]
 
     inv_mass = w[tid]

@@ -99,6 +99,7 @@
 - Fix the jitter for the `OgnParticlesFromMesh` node not being computed correctly.
 - Fix documentation of `atol` and `rtol` arguments to `wp.autograd.gradcheck()` and `wp.autograd.gradcheck_tape()`
   ([GH-508](https://github.com/NVIDIA/warp/issues/508)).
+- Fix an issue where the position of a fixed particle is not copied to the output state ([GH-627](https://github.com/NVIDIA/warp/issues/627)).
 
 ## [1.7.0] - 2025-03-30
 

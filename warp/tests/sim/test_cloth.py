@@ -13,15 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
-import io
 import unittest
+from functools import partial
+
+import numpy as np
 
 import warp as wp
-import warp.optim
 import warp.sim
-import warp.sim.graph_coloring
+import warp.sim.integrator
+import warp.sim.integrator_euler
 import warp.sim.integrator_vbd
+import warp.sim.integrator_xpbd
+import warp.sim.particles
 from warp.sim.model import PARTICLE_FLAG_ACTIVE
 from warp.tests.unittest_utils import *
 
@@ -295,39 +298,61 @@ CLOTH_FACES = [
 ]
 
 # fmt: on
-class VBDClothSim:
-    def __init__(self, device, use_cuda_graph=False):
+class ClothSim:
+    def __init__(self, device, solver, use_cuda_graph=False):
         self.frame_dt = 1 / 60
-        self.num_test_frames = 100
-        self.num_substeps = 10
-        self.iterations = 10
-        self.dt = self.frame_dt / self.num_substeps
+        self.num_test_frames = 50
+        self.iterations = 5
         self.device = device
         self.use_cuda_graph = self.device.is_cuda and use_cuda_graph
         self.builder = wp.sim.ModelBuilder()
+        self.solver = solver
+
+        if solver != "semi_implicit":
+            self.num_substeps = 10
+        else:
+            self.num_substeps = 32
+        self.dt = self.frame_dt / self.num_substeps
 
     def set_up_sagging_experiment(self):
-        stiffness = 1e5
-        kd = 1.0e-7
-
         self.input_scale_factor = 1.0
         self.renderer_scale_factor = 0.01
         vertices = [wp.vec3(v) * self.input_scale_factor for v in CLOTH_POINTS]
         faces_flatten = [fv - 1 for fv in CLOTH_FACES]
 
+        kd = 1.0e-7
+
+        if self.solver != "semi_implicit":
+            stretching_stiffness = 1e4
+            spring_ke = 1e3
+            bending_ke = 10
+        else:
+            stretching_stiffness = 1e5
+            spring_ke = 1e2
+            bending_ke = 0.0
+
         self.builder.add_cloth_mesh(
-            pos=wp.vec3(0.0, 200.0, 0.0),
+            pos=wp.vec3(0.0, 0.0, 0.0),
             rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
             scale=1.0,
             vertices=vertices,
             indices=faces_flatten,
             vel=wp.vec3(0.0, 0.0, 0.0),
-            density=0.02,
-            tri_ke=stiffness,
-            tri_ka=stiffness,
+            density=0.1,
+            tri_ke=stretching_stiffness,
+            tri_ka=stretching_stiffness,
             tri_kd=kd,
+            edge_ke=bending_ke,
+            add_springs=self.solver == "xpbd",
+            spring_ke=spring_ke,
+            spring_kd=0.0,
         )
+
         self.fixed_particles = [0, 9]
+
+        self.finalize(ground=False)
+
+        self.state1.particle_q.fill_(0.0)
 
     def set_up_bending_experiment(self):
         stretching_stiffness = 1e4
@@ -364,6 +389,9 @@ class VBDClothSim:
             tri_kd=stretching_damping,
             edge_ke=10,
             edge_kd=bending_damping,
+            add_springs=self.solver == "xpbd",
+            spring_ke=1.0e3,
+            spring_kd=0.0,
         )
 
         self.builder.add_cloth_mesh(
@@ -379,6 +407,9 @@ class VBDClothSim:
             tri_kd=stretching_damping,
             edge_ke=100,
             edge_kd=bending_damping,
+            add_springs=self.solver == "xpbd",
+            spring_ke=1.0e3,
+            spring_kd=0.0,
         )
 
         self.builder.add_cloth_mesh(
@@ -394,9 +425,14 @@ class VBDClothSim:
             tri_kd=stretching_damping,
             edge_ke=1000,
             edge_kd=bending_damping,
+            add_springs=self.solver == "xpbd",
+            spring_ke=1.0e3,
+            spring_kd=0.0,
         )
 
         self.fixed_particles = [0, 29, 36, 65, 72, 101]
+
+        self.finalize()
 
     def set_collision_experiment(self):
         elasticity_ke = 1e4
@@ -416,6 +452,9 @@ class VBDClothSim:
             tri_ke=elasticity_ke,
             tri_ka=elasticity_ke,
             tri_kd=elasticity_kd,
+            add_springs=self.solver == "xpbd",
+            spring_ke=1.0e3,
+            spring_kd=0.0,
         )
 
         vs2 = [wp.vec3(v) for v in [[0.3, 0, 0.7], [0.3, 0, 0.2], [0.8, 0, 0.4]]]
@@ -432,57 +471,71 @@ class VBDClothSim:
             tri_ke=elasticity_ke,
             tri_ka=elasticity_ke,
             tri_kd=elasticity_kd,
+            add_springs=self.solver == "xpbd",
+            spring_ke=1.0e3,
+            spring_kd=0.0,
         )
 
         self.fixed_particles = range(0, 4)
 
+        self.finalize(handle_self_contact=True, ground=False)
+        self.model.soft_contact_radius = 0.1
+        self.model.soft_contact_margin = 0.1
+        self.model.soft_contact_ke = 1e4
+        self.model.soft_contact_kd = 1e-3
+        self.model.soft_contact_mu = 0.2
+        self.model.gravity = wp.vec3(0.0, -1000.0, 0)
+        self.num_test_frames = 30
+
     def set_up_non_zero_rest_angle_bending_experiment(self):
         # fmt: off
-        vs = [
-            [  0.     ,  10.     , -10.     ],
-            [  0.     ,  10.     ,  10.     ],
-            [  7.07107,   7.07107, -10.     ],
-            [  7.07107,   7.07107,  10.     ],
-            [ 10.     ,   0.     , -10.     ],
-            [ 10.     ,  -0.     ,  10.     ],
-            [  7.07107,  -7.07107, -10.     ],
-            [  7.07107,  -7.07107,  10.     ],
-            [  0.     , -10.     , -10.     ],
-            [  0.     , -10.     ,  10.     ],
-            [ -7.07107,  -7.07107, -10.     ],
-            [ -7.07107,  -7.07107,  10.     ],
-            [-10.     ,   0.     , -10.     ],
-            [-10.     ,  -0.     ,  10.     ],
-            [ -7.07107,   7.07107, -10.     ],
-            [ -7.07107,   7.07107,  10.     ],
+        vs =[
+            [ 0.     ,  1.     , -1.     ],
+            [ 0.     ,  1.     ,  1.     ],
+            [ 0.70711,  0.70711, -1.     ],
+            [ 0.70711,  0.70711,  1.     ],
+            [ 1.     ,  0.     , -1.     ],
+            [ 1.     , -0.     ,  1.     ],
+            [ 0.70711, -0.70711, -1.     ],
+            [ 0.70711, -0.70711,  1.     ],
+            [ 0.     , -1.     , -1.     ],
+            [ 0.     , -1.     ,  1.     ],
+            [-0.70711, -0.70711, -1.     ],
+            [-0.70711, -0.70711,  1.     ],
+            [-1.     ,  0.     , -1.     ],
+            [-1.     , -0.     ,  1.     ],
+            [-0.70711,  0.70711, -1.     ],
+            [-0.70711,  0.70711,  1.     ],
         ]
         fs = [
-          1,  2,  0,
-          3,  4,  2,
-          5,  6,  4,
-          7,  8,  6,
-          9, 10,  8,
-         11, 12, 10,
-          3,  5,  4,
-         13, 14, 12,
-         15,  0, 14,
-          1,  3,  2,
-          5,  7,  6,
-          7,  9,  8,
-          9, 11, 10,
-         11, 13, 12,
+             1,  2,  0,
+             3,  4,  2,
+             5,  6,  4,
+             7,  8,  6,
+             9, 10,  8,
+            11, 12, 10,
+             3,  5,  4,
+            13, 14, 12,
+            15,  0, 14,
+             1,  3,  2,
+             5,  7,  6,
+             7,  9,  8,
+             9, 11, 10,
+            11, 13, 12,
+            13, 15, 14,
+            15,  1,  0,
         ]
         # fmt: on
 
-        stretching_stiffness = 1e4
-        stretching_damping = 1e-6
-        edge_ke = 1000
-        bending_damping = 1e-2
+        stretching_stiffness = 1e5
+        stretching_damping = 1e-5
+        edge_ke = 100
+        bending_damping = 1e-4
         vs = [wp.vec3(v) for v in vs]
 
         self.builder.add_cloth_mesh(
-            pos=wp.vec3(0.0, 10.0, 0.0),
-            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), np.pi / 2),
+            pos=wp.vec3(0.0, 0.0, 0.0),
+            rot=wp.quat_identity(),
             scale=1.0,
             vertices=vs,
             indices=fs,
@@ -493,21 +546,71 @@ class VBDClothSim:
             tri_kd=stretching_damping,
             edge_ke=edge_ke,
             edge_kd=bending_damping,
+            add_springs=self.solver == "xpbd",
+            spring_ke=1.0e3,
+            spring_kd=0.0,
         )
         self.fixed_particles = [0, 1]
 
-    def finalize(self, handle_self_contact=False):
-        self.builder.color()
+        self.finalize(handle_self_contact=False, ground=False)
+
+    def set_free_falling_experiment(self):
+        self.input_scale_factor = 1.0
+        self.renderer_scale_factor = 0.01
+        vertices = [wp.vec3(v) * self.input_scale_factor for v in CLOTH_POINTS]
+        faces_flatten = [fv - 1 for fv in CLOTH_FACES]
+        if self.solver != "semi_implicit":
+            stretching_stiffness = 1e4
+            spring_ke = 1e3
+            bending_ke = 10
+        else:
+            stretching_stiffness = 1e2
+            spring_ke = 1e2
+            bending_ke = 10
+
+        self.builder.add_cloth_mesh(
+            vertices=vertices,
+            indices=faces_flatten,
+            scale=0.1,
+            density=2,
+            pos=wp.vec3(0.0, 4.0, 0.0),
+            rot=wp.quat_identity(),
+            vel=wp.vec3(0.0, 0.0, 0.0),
+            edge_ke=bending_ke,
+            edge_kd=0.0,
+            tri_ke=stretching_stiffness,
+            tri_ka=stretching_stiffness,
+            tri_kd=0.0,
+            add_springs=self.solver == "xpbd",
+            spring_ke=spring_ke,
+            spring_kd=0.0,
+        )
+        self.fixed_particles = []
+        self.num_test_frames = 30
+        self.finalize(ground=False)
+
+    def finalize(self, handle_self_contact=False, ground=True):
+        self.builder.color(include_bending=True)
 
         self.model = self.builder.finalize(device=self.device)
-        self.model.ground = True
+        self.model.ground = ground
         self.model.gravity = wp.vec3(0, -1000.0, 0)
         self.model.soft_contact_ke = 1.0e4
         self.model.soft_contact_kd = 1.0e-2
 
         self.set_points_fixed(self.model, self.fixed_particles)
 
-        self.integrator = wp.sim.VBDIntegrator(self.model, self.iterations, handle_self_contact=handle_self_contact)
+        if self.solver == "vbd":
+            self.integrator = wp.sim.VBDIntegrator(self.model, self.iterations, handle_self_contact=handle_self_contact)
+        elif self.solver == "xpbd":
+            self.integrator = wp.sim.XPBDIntegrator(
+                self.iterations,
+            )
+        elif self.solver == "semi_implicit":
+            self.integrator = wp.sim.SemiImplicitIntegrator()
+        else:
+            raise ValueError("Unsupported solver type: " + self.solver)
+
         self.state0 = self.model.state()
         self.state1 = self.model.state()
 
@@ -515,30 +618,37 @@ class VBDClothSim:
 
         self.graph = None
         if self.use_cuda_graph:
+            if self.solver == "vbd":
+                wp.set_module_options({"block_dim": 256}, warp.sim.integrator_vbd)
+                wp.load_module(warp.sim.integrator_vbd, device=self.device)
+            elif self.solver == "xpbd":
+                wp.set_module_options({"block_dim": 256}, warp.sim.integrator_xpbd)
+                wp.load_module(warp.sim.integrator_xpbd, device=self.device)
+            elif self.solver == "semi_implicit":
+                wp.set_module_options({"block_dim": 256}, warp.sim.integrator_euler)
+                wp.load_module(warp.sim.integrator_euler, device=self.device)
+            wp.load_module(warp.sim.particles, device=self.device)
+            wp.load_module(warp.sim.integrator, device=self.device)
             wp.load_module(device=self.device)
-            wp.set_module_options({"block_dim": 256}, warp.sim.integrator_vbd)
-            wp.load_module(warp.sim.integrator_vbd, device=self.device)
             with wp.ScopedCapture(device=self.device, force_module_load=False) as capture:
                 self.simulate()
             self.graph = capture.graph
 
     def simulate(self):
         for _step in range(self.num_substeps):
+            self.state0.clear_forces()
+
             self.integrator.simulate(self.model, self.state0, self.state1, self.dt, None)
             (self.state0, self.state1) = (self.state1, self.state0)
 
     def run(self):
-        # self.renderer = wp.sim.render.SimRendererOpenGL(self.model, None, scaling=1)
-        # self.sim_time = 0.
+        self.sim_time = 0.0
         for _frame in range(self.num_test_frames):
             if self.graph:
                 wp.capture_launch(self.graph)
             else:
                 self.simulate()
-            # self.sim_time = self.sim_time + self.frame_dt
-            # self.renderer.begin_frame(self.sim_time)
-            # self.renderer.render(self.state0)
-            # self.renderer.end_frame()
+            self.sim_time = self.sim_time + self.frame_dt
 
     def set_points_fixed(self, model, fixed_particles):
         if len(fixed_particles):
@@ -549,86 +659,52 @@ class VBDClothSim:
             model.particle_flags = wp.array(flags, device=model.device)
 
 
-def test_vbd_cloth(test, device):
-    with contextlib.redirect_stdout(io.StringIO()) as f:
-        example = VBDClothSim(device)
-        example.set_up_bending_experiment()
-        example.finalize()
-        example.model.ground = False
+def test_cloth_sagging(test, device, solver):
+    example = ClothSim(device, solver, use_cuda_graph=True)
+    example.set_up_sagging_experiment()
 
-    test.assertRegex(
-        f.getvalue(),
-        r"Warp UserWarning: The graph is not optimizable anymore, terminated with a max/min ratio: 2.0 without reaching the target ratio: 1.1",
-    )
+    initial_pos = example.state0.particle_q.numpy().copy()
 
     example.run()
 
+    fixed_points = np.where(np.logical_not(example.model.particle_flags.numpy()))
     # examine that the simulation does not explode
     final_pos = example.state0.particle_q.numpy()
+    test.assertTrue((initial_pos[fixed_points, :] == final_pos[fixed_points, :]).all())
     test.assertTrue((final_pos < 1e5).all())
-    # examine that the simulation have moved
+    # examine that the simulation has moved
     test.assertTrue((example.init_pos != final_pos).any())
 
 
-def test_vbd_cloth_cuda_graph(test, device):
-    with contextlib.redirect_stdout(io.StringIO()) as f:
-        example = VBDClothSim(device, use_cuda_graph=True)
-        example.set_up_sagging_experiment()
-        example.finalize()
-
-    test.assertRegex(
-        f.getvalue(),
-        r"Warp UserWarning: The graph is not optimizable anymore, terminated with a max/min ratio: 2.0 without reaching the target ratio: 1.1",
-    )
-
-    example.run()
-
-    # examine that the simulation does not explode
-    final_pos = example.state0.particle_q.numpy()
-    test.assertTrue((final_pos < 1e5).all())
-    # examine that the simulation have moved
-    test.assertTrue((example.init_pos != final_pos).any())
-
-
-def test_vbd_bending(test, device):
-    example = VBDClothSim(device, use_cuda_graph=True)
+def test_cloth_bending(test, device, solver):
+    example = ClothSim(device, solver, use_cuda_graph=True)
     example.set_up_bending_experiment()
-    example.finalize()
 
     example.run()
 
     # examine that the simulation does not explode
     final_pos = example.state0.particle_q.numpy()
     test.assertTrue((final_pos < 1e5).all())
-    # examine that the simulation have moved
+    # examine that the simulation has moved
     test.assertTrue((example.init_pos != final_pos).any())
 
 
-def test_vbd_bending_non_zero_rest_angle_bending(test, device):
-    example = VBDClothSim(device, use_cuda_graph=True)
+def test_cloth_bending_non_zero_rest_angle_bending(test, device, solver):
+    example = ClothSim(device, solver, use_cuda_graph=True)
     example.set_up_non_zero_rest_angle_bending_experiment()
-    example.finalize()
+
     example.run()
 
     # examine that the simulation does not explode
     final_pos = example.state0.particle_q.numpy()
     test.assertTrue((np.abs(final_pos) < 1e5).all())
-    # examine that the simulation have moved
+    # examine that the simulation has moved
     test.assertTrue((example.init_pos != final_pos).any())
 
 
-def test_vbd_collision(test, device):
-    example = VBDClothSim(device, use_cuda_graph=True)
+def test_cloth_collision(test, device, solver):
+    example = ClothSim(device, solver, use_cuda_graph=True)
     example.set_collision_experiment()
-    example.finalize(handle_self_contact=True)
-    example.model.soft_contact_radius = 0.1
-    example.model.soft_contact_margin = 0.1
-    example.model.soft_contact_ke = 1e4
-    example.model.soft_contact_kd = 1e-3
-    example.model.soft_contact_mu = 0.2
-    example.model.gravity = wp.vec3(0.0, -1000.0, 0)
-    example.model.ground = False
-    example.num_test_frames = 30
 
     example.run()
 
@@ -636,31 +712,69 @@ def test_vbd_collision(test, device):
     final_vel = example.state0.particle_qd.numpy()
     final_pos = example.state0.particle_q.numpy()
     test.assertTrue((np.linalg.norm(final_vel, axis=0) < 1.0).all())
-    # examine that the simulation have moved
+    # examine that the simulation has moved
     test.assertTrue((example.init_pos != final_pos).any())
 
 
-devices = get_test_devices()
-cuda_devices = get_selected_cuda_test_devices()
+def test_cloth_free_fall(test, device, solver):
+    example = ClothSim(device, solver)
+    example.set_free_falling_experiment()
+
+    initial_pos = example.state0.particle_q.numpy().copy()
+
+    example.run()
+
+    # examine that the simulation does not explode
+    final_pos = example.state0.particle_q.numpy()
+    test.assertTrue((final_pos < 1e5).all())
+    # examine that the simulation has moved
+    test.assertTrue((example.init_pos != final_pos).any())
+
+    gravity = np.array(example.model.gravity)
+    diff = final_pos - initial_pos
+    vertical_translation_norm = diff @ gravity[..., None] / (np.linalg.norm(gravity) ** 2)
+    # ensure it's free-falling
+    test.assertTrue((np.abs(vertical_translation_norm - 0.5 * np.linalg.norm(gravity) * (example.dt**2)) < 2e-1).all())
+    horizontal_move = diff - (vertical_translation_norm * gravity)
+    # ensure its horizontal translation is minimal
+    test.assertTrue((np.abs(horizontal_move) < 1e-1).all())
 
 
-class TestVbd(unittest.TestCase):
+devices = get_test_devices(mode="basic")
+
+
+class TestCloth(unittest.TestCase):
     pass
 
 
-add_function_test(TestVbd, "test_vbd_cloth", test_vbd_cloth, devices=devices)
-add_function_test(TestVbd, "test_vbd_cloth_cuda_graph", test_vbd_cloth_cuda_graph, devices=cuda_devices)
-add_function_test(TestVbd, "test_vbd_bending", test_vbd_bending, devices=devices, check_output=False)
-add_function_test(TestVbd, "test_vbd_collision", test_vbd_collision, devices=devices, check_output=False)
-add_function_test(
-    TestVbd,
-    "test_vbd_bending_non_zero_rest_angle_bending",
-    test_vbd_bending_non_zero_rest_angle_bending,
-    devices=devices,
-    check_output=False,
-)
+tests_to_run = {
+    "xpbd": [
+        test_cloth_free_fall,
+        test_cloth_sagging,
+        test_cloth_bending,
+        test_cloth_bending_non_zero_rest_angle_bending,
+    ],
+    "semi_implicit": [
+        test_cloth_free_fall,
+        test_cloth_sagging,
+        test_cloth_bending,
+    ],
+    "vbd": [
+        test_cloth_free_fall,
+        test_cloth_sagging,
+        test_cloth_bending,
+        test_cloth_collision,
+        test_cloth_bending_non_zero_rest_angle_bending,
+    ],
+}
+
+for solver, tests in tests_to_run.items():
+    for test in tests:
+        add_function_test(
+            TestCloth, f"{test.__name__}_{solver}", partial(test, solver=solver), devices=devices, check_output=False
+        )
 
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
-    unittest.main(verbosity=2)
+    unittest.main(verbosity=2, failfast=True)
