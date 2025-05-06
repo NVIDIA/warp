@@ -1990,6 +1990,10 @@ class OpenGLRenderer:
             gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
             gl.glEnable(gl.GL_BLEND)
 
+            # disable depth test to fix text rendering
+            # https://github.com/pyglet/pyglet/issues/1302
+            gl.glDisable(gl.GL_DEPTH_TEST)
+
             text = f"""Sim Time: {self.time:.1f}
 Update FPS: {self._fps_update:.1f}
 Render FPS: {self._fps_render:.1f}
@@ -2002,6 +2006,8 @@ Instances: {len(self._instances)}"""
             self._info_label.text = text
             self._info_label.y = self.screen_height - 5
             self._info_label.draw()
+
+            gl.glEnable(gl.GL_DEPTH_TEST)
 
         for cb in self.render_2d_callbacks:
             cb()
