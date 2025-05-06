@@ -113,12 +113,12 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.interop.test_dlpack import TestDLPack
     from warp.tests.interop.test_jax import TestJax
     from warp.tests.interop.test_torch import TestTorch
+    from warp.tests.sim.test_cloth import TestCloth
     from warp.tests.sim.test_collision import TestCollision
     from warp.tests.sim.test_coloring import TestColoring
     from warp.tests.sim.test_model import TestModel
     from warp.tests.sim.test_sim_grad import TestSimGradients
     from warp.tests.sim.test_sim_kinematics import TestSimKinematics
-    from warp.tests.sim.test_vbd import TestVbd
     from warp.tests.test_adam import TestAdam
     from warp.tests.test_arithmetic import TestArithmetic
     from warp.tests.test_array import TestArray
@@ -212,6 +212,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestBuiltinsResolution,
         TestBvh,
         TestClosestPointEdgeEdgeMethods,
+        TestCloth,
         TestCodeGen,
         TestCodeGenInstancing,
         TestCollision,
@@ -300,7 +301,6 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTriangleClosestPoint,
         TestTypes,
         TestUtils,
-        TestVbd,
         TestVec,
         TestVecLite,
         TestVecScalarOps,
