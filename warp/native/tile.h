@@ -2608,7 +2608,7 @@ TileZ& tile_lower_solve(TileL& L, TileY& y, TileZ& z)
     // Copy y to z
     //z = y;
 	
-#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
+#if !defined(__CUDA_ARCH__)
 
     z = y;
     partitioned_gemm::scalar_cholesky_forward_substitution(L, y, z);
@@ -2723,7 +2723,7 @@ TileX& tile_upper_solve(TileU& U, TileZ& z, TileX& x)
     // Copy z to x
     //x = z;
 	
-#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
+#if !defined(__CUDA_ARCH__)
 
     x = z;
     partitioned_gemm::scalar_cholesky_back_substitution(U, x);
