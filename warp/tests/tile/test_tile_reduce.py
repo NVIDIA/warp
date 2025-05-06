@@ -489,6 +489,53 @@ def test_tile_arange(test, device):
     assert_np_equal(output.numpy()[4], np.arange(17, 0, -1))
 
 
+@wp.kernel
+def tile_strided_loop_kernel(arr: wp.array(dtype=float), max_val: wp.array(dtype=float)):
+    tid, lane = wp.tid()
+
+    num_threads = wp.block_dim()
+
+    thread_max = wp.float32(-wp.inf)
+
+    length = arr.shape[0]
+    upper = ((length + num_threads - 1) // num_threads) * num_threads
+    for el_id in range(lane, upper, num_threads):
+        if el_id < length:
+            val = arr[el_id]
+        else:
+            val = wp.float32(-wp.inf)
+
+        t = wp.tile(val)
+        local_max = wp.tile_max(t)
+
+        thread_max = wp.max(thread_max, local_max[0])
+
+    if lane == 0:
+        max_val[0] = thread_max
+
+
+def test_tile_strided_loop(test, device):
+    N = 5  # Length of array
+
+    rng = np.random.default_rng(42)
+    input = rng.random(N, dtype=np.float32)
+
+    input_wp = wp.array(input, device=device)
+    output_wp = wp.zeros(1, dtype=wp.float32, device=device)
+
+    wp.launch_tiled(
+        tile_strided_loop_kernel,
+        dim=[1],
+        inputs=[input_wp, output_wp],
+        device=device,
+        block_dim=128,
+    )
+
+    max_wp = output_wp.numpy()
+    max_np = np.max(input)
+    test.assertAlmostEqual(max_wp[0], max_np, places=4)
+
+
 devices = get_test_devices()
 
 
@@ -509,6 +556,7 @@ add_function_test(TestTileReduce, "test_tile_ones", test_tile_ones, devices=devi
 add_function_test(TestTileReduce, "test_tile_arange", test_tile_arange, devices=devices)
 add_function_test(TestTileReduce, "test_tile_untile_scalar", test_tile_untile_scalar, devices=devices)
 add_function_test(TestTileReduce, "test_tile_untile_vector", test_tile_untile_vector, devices=devices)
+add_function_test(TestTileReduce, "test_tile_strided_loop", test_tile_strided_loop, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

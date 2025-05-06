@@ -1078,6 +1078,7 @@ WP_API void builtin_pnoise_uint32_vec4f_int32_int32_int32_int32(uint32 state, ve
 WP_API void builtin_curlnoise_uint32_vec2f_uint32_float32_float32(uint32 state, vec2f& xy, uint32 octaves, float32 lacunarity, float32 gain, vec2f* ret) { *ret = wp::curlnoise(state, xy, octaves, lacunarity, gain); }
 WP_API void builtin_curlnoise_uint32_vec3f_uint32_float32_float32(uint32 state, vec3f& xyz, uint32 octaves, float32 lacunarity, float32 gain, vec3f* ret) { *ret = wp::curlnoise(state, xyz, octaves, lacunarity, gain); }
 WP_API void builtin_curlnoise_uint32_vec4f_uint32_float32_float32(uint32 state, vec4f& xyzt, uint32 octaves, float32 lacunarity, float32 gain, vec3f* ret) { *ret = wp::curlnoise(state, xyzt, octaves, lacunarity, gain); }
+WP_API void builtin_block_dim(int* ret) { *ret = wp::block_dim(); }
 WP_API void builtin_extract_vec2h_int32(vec2h& a, int32 i, float16* ret) { *ret = wp::extract(a, i); }
 WP_API void builtin_extract_vec3h_int32(vec3h& a, int32 i, float16* ret) { *ret = wp::extract(a, i); }
 WP_API void builtin_extract_vec4h_int32(vec4h& a, int32 i, float16* ret) { *ret = wp::extract(a, i); }

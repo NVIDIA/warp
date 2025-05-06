@@ -1564,6 +1564,11 @@ Utility
     This function may not be called from user-defined Warp functions.
 
 
+.. py:function:: block_dim() -> int
+
+    Returns the number of threads in the current block.
+
+
 .. py:function:: select(cond: bool, value_if_false: Any, value_if_true: Any) -> Any
 
     Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.

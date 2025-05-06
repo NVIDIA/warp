@@ -1226,6 +1226,15 @@ inline CUDA_CALLABLE launch_coord_t launch_coord(size_t linear, const launch_bou
     return coord;
 }
 
+inline CUDA_CALLABLE int block_dim()
+{
+#if defined(__CUDA_ARCH__)
+    return blockDim.x;
+#else
+    return 1;
+#endif
+}
+
 inline CUDA_CALLABLE int tid(size_t index, const launch_bounds_t& bounds)
 {
     // For the 1-D tid() we need to warn the user if we're about to provide a truncated index

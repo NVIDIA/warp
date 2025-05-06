@@ -24,6 +24,7 @@
 - Add `transform_compose` and `transform_decompose` math functions for converting between transforms and 4x4 matrices
   with 3D scale information ([GH-576](https://github.com/NVIDIA/warp/issues/576)).
 - Add a parameter `as_spheres` to `UsdRenderer.render_points()` in order to choose whether to render
+- Add `wp.block_dim()` which allows to query the block dim in kernel code ([GH-695](https://github.com/NVIDIA/warp/issues/695))
   the points as USD spheres using a point instancer or as simple USD points.
 - Add support for animating visibility of objects in the USD renderer
   ([GH-598](https://github.com/NVIDIA/warp/issues/598)).
