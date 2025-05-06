@@ -58,6 +58,7 @@
   ([GH-688](https://github.com/NVIDIA/warp/issues/688)).
 - Fixed inconsistency in orientation of 2D geometry side normals ([GH-629](https://github.com/NVIDIA/warp/issues/629)).
 - Fixed `wp.svd2()` with duplicate singular values and improved accuracy ([GH-679](https://github.com/NVIDIA/warp/issues/679)).
+- Fix text rendering in OpenGLRenderer ([GH-704](https://github.com/NVIDIA/warp/issues/629)).
 
 ## [1.7.1] - 2025-04-30
 
