@@ -5062,6 +5062,16 @@ add_builtin(
 )
 
 add_builtin(
+    "block_dim",
+    input_types={},
+    value_type=int,
+    group="Utility",
+    doc="Returns the number of threads in the current block.",
+    namespace="",
+    native_func="builtin_block_dim",
+)
+
+add_builtin(
     "tid",
     input_types={},
     value_type=[int, int],

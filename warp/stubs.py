@@ -2240,6 +2240,12 @@ def tid() -> Tuple[int, int, int, int]:
 
 
 @over
+def block_dim() -> int:
+    """Returns the number of threads in the current block."""
+    ...
+
+
+@over
 def select(cond: bool, value_if_false: Any, value_if_true: Any) -> Any:
     """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 

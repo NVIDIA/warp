@@ -3220,6 +3220,8 @@ cpu_module_header = """
 #define builtin_tid3d(x, y, z) wp::tid(x, y, z, task_index, dim)
 #define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, task_index, dim)
 
+#define builtin_block_dim() wp::block_dim()
+
 """
 
 cuda_module_header = """
@@ -3238,6 +3240,8 @@ cuda_module_header = """
 #define builtin_tid2d(x, y) wp::tid(x, y, _idx, dim)
 #define builtin_tid3d(x, y, z) wp::tid(x, y, z, _idx, dim)
 #define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, _idx, dim)
+
+#define builtin_block_dim() wp::block_dim()
 
 """
 
