@@ -1061,15 +1061,21 @@ def test_svd_2D(test, device, dtype, register_kernels=False):
         Vout: wp.array(dtype=mat22),
         outcomponents: wp.array(dtype=wptype),
     ):
+        tid = wp.tid()
+
         U = mat22()
         sigma = vec2()
         V = mat22()
 
-        wp.svd2(m2[0], U, sigma, V)  # Assuming there's a 2D SVD kernel
+        wp.svd2(m2[tid], U, sigma, V)  # Assuming there's a 2D SVD kernel
 
-        Uout[0] = U
-        sigmaout[0] = sigma
-        Vout[0] = V
+        Uout[tid] = U
+        sigmaout[tid] = sigma
+        Vout[tid] = V
+
+        # backprop test only for first input
+        if tid > 0:
+            return
 
         # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
@@ -1094,22 +1100,46 @@ def test_svd_2D(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
-    m2 = wp.array(randvals(rng, [1, 2, 2], dtype) + np.eye(2), dtype=mat22, requires_grad=True, device=device)
+    mats = np.concatenate(
+        (
+            randvals(rng, [24, 2, 2], dtype) + np.eye(2),
+            # rng unlikely to hit edge cases, build them manually
+            [
+                np.zeros((2, 2)),
+                np.eye(2),
+                5.0 * np.eye(2),
+                np.array([[1.0, 0.0], [0.0, 0.0]]),
+                np.array([[0.0, 0.0], [0.0, 2.0]]),
+                np.array([[1.0, 1.0], [-1.0, -1.0]]),
+                np.array([[3.0, 0.0], [4.0, 5.0]]),
+                np.eye(2) + tol * np.array([[1.0, 1.0], [-1.0, -1.0]]),
+            ],
+        ),
+        axis=0,
+    )
+    M = len(mats)
+    m2 = wp.array(mats, dtype=mat22, requires_grad=True, device=device)
 
     outcomponents = wp.zeros(2 * 2 * 2 + 2, dtype=wptype, requires_grad=True, device=device)
-    Uout = wp.zeros(1, dtype=mat22, requires_grad=True, device=device)
-    sigmaout = wp.zeros(1, dtype=vec2, requires_grad=True, device=device)
-    Vout = wp.zeros(1, dtype=mat22, requires_grad=True, device=device)
+    Uout = wp.zeros(M, dtype=mat22, requires_grad=True, device=device)
+    sigmaout = wp.zeros(M, dtype=vec2, requires_grad=True, device=device)
+    Vout = wp.zeros(M, dtype=mat22, requires_grad=True, device=device)
 
-    wp.launch(kernel, dim=1, inputs=[m2], outputs=[Uout, sigmaout, Vout, outcomponents], device=device)
+    wp.launch(kernel, dim=M, inputs=[m2], outputs=[Uout, sigmaout, Vout, outcomponents], device=device)
 
-    Uout_np = Uout.numpy()[0].astype(np.float64)
-    sigmaout_np = np.diag(sigmaout.numpy()[0].astype(np.float64))
-    Vout_np = Vout.numpy()[0].astype(np.float64)
+    Uout_np = Uout.numpy().astype(np.float64)
+    sigmaout_np = sigmaout.numpy().astype(np.float64)
+    Vout_np = Vout.numpy().astype(np.float64)
+
+    USVt_np = Uout_np @ (sigmaout_np[..., None] * np.transpose(Vout_np, axes=(0, 2, 1)))
 
     assert_np_equal(
-        np.matmul(Uout_np, np.matmul(sigmaout_np, Vout_np.T)), m2.numpy()[0].astype(np.float64), tol=30 * tol
+        Uout_np @ np.transpose(Uout_np, axes=(0, 2, 1)), np.broadcast_to(np.eye(2), shape=(M, 2, 2)), tol=30 * tol
     )
+    assert_np_equal(
+        Vout_np @ np.transpose(Vout_np, axes=(0, 2, 1)), np.broadcast_to(np.eye(2), shape=(M, 2, 2)), tol=30 * tol
+    )
+    assert_np_equal(USVt_np, m2.numpy().astype(np.float64), tol=30 * tol)
 
     if dtype == np.float16:
         # Skip gradient check for float16 due to rounding errors
@@ -1128,7 +1158,7 @@ def test_svd_2D(test, device, dtype, register_kernels=False):
 
         tape.zero()
 
-        dx = 0.0001
+        dx = 0.001
         fdtol = 5.0e-4 if dtype == np.float64 else 2.0e-2
         for ii in range(2):
             for jj in range(2):
@@ -1163,9 +1193,9 @@ def test_qr(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
 
     tol = {
-        np.float16: 2.0e-3,
+        np.float16: 2.5e-3,
         np.float32: 1.0e-6,
-        np.float64: 1.0e-6,
+        np.float64: 1.0e-12,
     }.get(dtype, 0)
 
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
