@@ -273,8 +273,8 @@ def bsr_matrix_t(dtype: BlockType):
 
     if key not in _struct_cache:
         _struct_cache[key] = wp.codegen.Struct(
-            cls=BsrMatrixTyped,
             key=key,
+            cls=BsrMatrixTyped,
             module=module,
         )
 

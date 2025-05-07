@@ -145,8 +145,8 @@ def get_struct(struct: type, suffix: str):
     if key not in _struct_cache:
         module = wp.get_module(struct.__module__)
         _struct_cache[key] = wp.codegen.Struct(
-            cls=struct,
             key=key,
+            cls=struct,
             module=module,
         )
 

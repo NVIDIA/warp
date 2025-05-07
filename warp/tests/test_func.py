@@ -421,7 +421,7 @@ class TestFunc(unittest.TestCase):
         b = wp.mat22d(1.0, 2.0, 3.0, 4.0)
         with self.assertRaisesRegex(
             RuntimeError,
-            r"^Couldn't find a function 'mul' compatible with " r"the arguments 'mat22f, mat22d'$",
+            r"^Couldn't find a function 'mul' compatible with the arguments 'mat22f, mat22d'$",
         ):
             a * b
 

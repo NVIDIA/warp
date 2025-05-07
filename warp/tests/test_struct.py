@@ -248,6 +248,18 @@ def test_struct_attribute_error(test, device):
         )
 
 
+def test_struct_inheritance_error(test, device):
+    with test.assertRaisesRegex(RuntimeError, r"Warp structs must be defined as base classes$"):
+
+        @wp.struct
+        class Parent:
+            x: int
+
+        @wp.struct
+        class Child(Parent):
+            y: int
+
+
 @wp.kernel
 def test_struct_instantiate(data: wp.array(dtype=int)):
     baz = Baz(data, wp.vec3(0.0, 0.0, 26.0))
@@ -682,6 +694,8 @@ add_kernel_test(
 )
 add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
 add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
+add_function_test(TestStruct, "test_struct_attribute_error", test_struct_attribute_error, devices=devices)
+add_function_test(TestStruct, "test_struct_inheritance_error", test_struct_inheritance_error, devices=devices)
 add_function_test(TestStruct, "test_nested_array_struct", test_nested_array_struct, devices=devices)
 add_function_test(TestStruct, "test_convert_to_device", test_convert_to_device, devices=devices)
 add_function_test(TestStruct, "test_nested_empty_struct", test_nested_empty_struct, devices=devices)

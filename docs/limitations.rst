@@ -63,6 +63,7 @@ Structs
 -------
 
 * Structs cannot have generic members, i.e. of type ``typing.Any``.
+* Structs do not support inheritance. Consider using composition instead.
 
 Volumes
 -------
