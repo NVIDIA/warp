@@ -512,6 +512,7 @@ class FfiCallable:
 
         return None
 
+
 # Holders for the custom callbacks to keep them alive.
 _FFI_CALLABLE_REGISTRY: dict[str, FfiCallable] = {}
 _FFI_KERNEL_REGISTRY: dict[str, FfiKernel] = {}
