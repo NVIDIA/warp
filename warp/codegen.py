@@ -1423,6 +1423,13 @@ class Adjoint:
             bound_arg_values,
         )
 
+        # Handle the special case where a Var instance is returned from the `value_func`
+        # callback, in which case we replace the call with a reference to that variable.
+        if isinstance(return_type, Var):
+            return adj.register_var(return_type)
+        elif isinstance(return_type, Sequence) and all(isinstance(x, Var) for x in return_type):
+            return tuple(adj.register_var(x) for x in return_type)
+
         if get_origin(return_type) is tuple:
             types = get_args(return_type)
             return_type = warp.types.tuple_t(types=types, values=(None,) * len(types))
@@ -2334,7 +2341,6 @@ class Adjoint:
         args = tuple(adj.resolve_arg(x) for x in node.args)
         kwargs = {x.arg: adj.resolve_arg(x.value) for x in node.keywords}
 
-        # add the call and build the callee adjoint if needed (func.adj)
         out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
 
         if warp.config.verify_autograd_array_access:
@@ -3049,29 +3055,10 @@ class Adjoint:
 
         # Replace all constant `len()` expressions with their value.
         if "len" in static_code:
-
-            def eval_len(obj):
-                if type_is_vector(obj):
-                    return obj._length_
-                elif type_is_quaternion(obj):
-                    return obj._length_
-                elif type_is_matrix(obj):
-                    return obj._shape_[0]
-                elif type_is_transformation(obj):
-                    return obj._length_
-                elif is_tuple(obj):
-                    return len(obj.types)
-                elif is_tile(obj):
-                    return obj.shape[0]
-                elif get_origin(obj) is tuple:
-                    return len(get_args(obj))
-
-                return len(obj)
-
             len_expr_ctx = vars_dict.copy()
             constant_types = {k: v.type for k, v in adj.symbols.items() if isinstance(v, Var) and v.type is not None}
             len_expr_ctx.update(constant_types)
-            len_expr_ctx.update({"len": eval_len})
+            len_expr_ctx.update({"len": warp.types.type_length})
 
             # We want to replace the expression code in-place,
             # so reparse it to get the correct column info.

@@ -1388,6 +1388,21 @@ def type_ctype(dtype):
         return dtype._type_
 
 
+def type_length(obj):
+    if is_tile(obj):
+        return obj.shape[0]
+    elif is_tuple(obj):
+        return len(obj.types)
+    elif get_origin(obj) is tuple:
+        return len(get_args(obj))
+    elif hasattr(obj, "_shape_"):
+        return obj._shape_[0]
+    elif hasattr(obj, "_length_"):
+        return obj._length_
+
+    return len(obj)
+
+
 def type_size(dtype):
     if dtype == float or dtype == int or isinstance(dtype, warp.codegen.Struct):
         return 1

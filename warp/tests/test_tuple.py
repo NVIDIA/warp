@@ -136,6 +136,9 @@ def loop_user_func(values: Tuple[int, int, int]):
     for i in range(wp.static(len(values))):
         out += values[i]
 
+    for i in range(len(values)):
+        out += values[i] * 2
+
     return out
 
 
@@ -143,7 +146,7 @@ def loop_user_func(values: Tuple[int, int, int]):
 def test_loop():
     t = (1, 2, 3)
     res = loop_user_func(t)
-    wp.expect_eq(res, 6)
+    wp.expect_eq(res, 18)
 
 
 @wp.func
@@ -152,6 +155,9 @@ def loop_variadic_any_user_func(values: Any):
     for i in range(wp.static(len(values))):
         out += values[i]
 
+    for i in range(len(values)):
+        out += values[i] * 2
+
     return out
 
 
@@ -159,19 +165,19 @@ def loop_variadic_any_user_func(values: Any):
 def test_loop_variadic_any():
     t1 = (1,)
     res = loop_variadic_any_user_func(t1)
-    wp.expect_eq(res, 1)
+    wp.expect_eq(res, 3)
 
     t2 = (2, 3)
     res = loop_variadic_any_user_func(t2)
-    wp.expect_eq(res, 5)
+    wp.expect_eq(res, 15)
 
     t3 = (3, 4, 5)
     res = loop_variadic_any_user_func(t3)
-    wp.expect_eq(res, 12)
+    wp.expect_eq(res, 36)
 
     t4 = (4, 5, 6, 7)
     res = loop_variadic_any_user_func(t4)
-    wp.expect_eq(res, 22)
+    wp.expect_eq(res, 66)
 
 
 @wp.func

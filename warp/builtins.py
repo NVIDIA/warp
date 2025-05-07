@@ -76,6 +76,14 @@ def extract_tuple(arg, as_constant=False):
     return out
 
 
+def static_len_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    if arg_types is None:
+        return int
+
+    length = warp.types.type_length(arg_types["a"])
+    return Var(None, type=int, constant=length)
+
+
 # ---------------------------------
 # Scalar Math
 
@@ -7720,7 +7728,7 @@ def static(expr):
 add_builtin(
     "len",
     input_types={"a": vector(length=Any, dtype=Scalar)},
-    value_type=int,
+    value_func=static_len_value_func,
     doc="Return the number of elements in a vector.",
     group="Utility",
     export=False,
@@ -7729,7 +7737,7 @@ add_builtin(
 add_builtin(
     "len",
     input_types={"a": quaternion(dtype=Scalar)},
-    value_type=int,
+    value_func=static_len_value_func,
     doc="Return the number of elements in a quaternion.",
     group="Utility",
     export=False,
@@ -7738,7 +7746,7 @@ add_builtin(
 add_builtin(
     "len",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
-    value_type=int,
+    value_func=static_len_value_func,
     doc="Return the number of rows in a matrix.",
     group="Utility",
     export=False,
@@ -7747,7 +7755,7 @@ add_builtin(
 add_builtin(
     "len",
     input_types={"a": transformation(dtype=Float)},
-    value_type=int,
+    value_func=static_len_value_func,
     doc="Return the number of elements in a transformation.",
     group="Utility",
     export=False,
@@ -7765,7 +7773,7 @@ add_builtin(
 add_builtin(
     "len",
     input_types={"a": tile(dtype=Any, shape=Tuple[int, ...])},
-    value_type=int,
+    value_func=static_len_value_func,
     doc="Return the number of rows in a tile.",
     group="Utility",
     export=False,
@@ -7835,10 +7843,11 @@ add_builtin(
     missing_grad=True,
 )
 
+
 add_builtin(
     "len",
     input_types={"a": Tuple},
-    value_type=int,
+    value_func=static_len_value_func,
     doc="Return the number of elements in a tuple.",
     group="Utility",
     export=False,
