@@ -1115,36 +1115,24 @@ class range_t:
 
 
 # definition just for kernel type (cannot be a parameter), see bvh.h
-class bvh_query_t:
+class BvhQuery:
     """Object used to track state during BVH traversal."""
 
-    def __init__(self):
-        pass
-
-
-BvhQuery = bvh_query_t
+    _wp_native_name_ = "bvh_query_t"
 
 
 # definition just for kernel type (cannot be a parameter), see mesh.h
-class mesh_query_aabb_t:
+class MeshQueryAABB:
     """Object used to track state during mesh traversal."""
 
-    def __init__(self):
-        pass
-
-
-MeshQueryAABB = mesh_query_aabb_t
+    _wp_native_name_ = "mesh_query_aabb_t"
 
 
 # definition just for kernel type (cannot be a parameter), see hash_grid.h
-class hash_grid_query_t:
+class HashGridQuery:
     """Object used to track state during neighbor traversal."""
 
-    def __init__(self):
-        pass
-
-
-HashGridQuery = hash_grid_query_t
+    _wp_native_name_ = "hash_grid_query_t"
 
 
 # maximum number of dimensions, must match array.h
@@ -4627,9 +4615,9 @@ def _is_contiguous_vec_like_array(array, vec_length: int, scalar_types: tuple[ty
 
 
 # definition just for kernel type (cannot be a parameter), see mesh.h
-# NOTE: its layout must match the corresponding struct defined in C.
+# NOTE: its layout must match the mesh_query_point_t struct defined in C.
 # NOTE: it needs to be defined after `indexedarray` to workaround a circular import issue.
-class mesh_query_point_t:
+class MeshQueryPoint:
     """Output for the mesh query point functions.
 
     Attributes:
@@ -4649,6 +4637,8 @@ class mesh_query_point_t:
 
     from warp.codegen import Var
 
+    _wp_native_name_ = "mesh_query_point_t"
+
     vars: ClassVar[dict[str, Var]] = {
         "result": Var("result", bool),
         "sign": Var("sign", float32),
@@ -4658,12 +4648,9 @@ class mesh_query_point_t:
     }
 
 
-MeshQueryPoint = mesh_query_point_t
-
-
 # definition just for kernel type (cannot be a parameter), see mesh.h
-# NOTE: its layout must match the corresponding struct defined in C.
-class mesh_query_ray_t:
+# NOTE: its layout must match the mesh_query_ray_t struct defined in C.
+class MeshQueryRay:
     """Output for the mesh query ray functions.
 
     Attributes:
@@ -4681,6 +4668,8 @@ class mesh_query_ray_t:
 
     from warp.codegen import Var
 
+    _wp_native_name_ = "mesh_query_ray_t"
+
     vars: ClassVar[dict[str, Var]] = {
         "result": Var("result", bool),
         "sign": Var("sign", float32),
@@ -4690,9 +4679,6 @@ class mesh_query_ray_t:
         "v": Var("v", float32),
         "normal": Var("normal", vec3),
     }
-
-
-MeshQueryRay = mesh_query_ray_t
 
 
 def matmul(
@@ -5153,10 +5139,6 @@ def infer_argument_types(args, template_types, arg_names=None):
         elif issubclass(arg_type, warp.codegen.StructInstance):
             # a struct
             arg_types.append(arg._cls)
-        # elif arg_type in [warp.types.launch_bounds_t, warp.types.shape_t, warp.types.range_t]:
-        #     arg_types.append(arg_type)
-        # elif arg_type in [warp.hash_grid_query_t, warp.mesh_query_aabb_t, warp.mesh_query_point_t, warp.mesh_query_ray_t, warp.bvh_query_t]:
-        #     arg_types.append(arg_type)
         elif arg is None:
             # allow passing None for arrays
             t = template_types[i]
@@ -5191,11 +5173,11 @@ simple_type_codes = {
     shape_t: "sh",
     range_t: "rg",
     launch_bounds_t: "lb",
-    hash_grid_query_t: "hgq",
-    mesh_query_aabb_t: "mqa",
-    mesh_query_point_t: "mqp",
-    mesh_query_ray_t: "mqr",
-    bvh_query_t: "bvhq",
+    HashGridQuery: "hgq",
+    MeshQueryAABB: "mqa",
+    MeshQueryPoint: "mqp",
+    MeshQueryRay: "mqr",
+    BvhQuery: "bvhq",
 }
 
 

@@ -1562,7 +1562,7 @@ def mlp(
 
 
 @over
-def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> bvh_query_t:
+def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQuery:
     """Construct an axis-aligned bounding box query against a BVH object.
 
     This query can be used to iterate over all bounds inside a BVH.
@@ -1575,7 +1575,7 @@ def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> bvh_query_t:
 
 
 @over
-def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> bvh_query_t:
+def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> BvhQuery:
     """Construct a ray query against a BVH object.
 
     This query can be used to iterate over all bounds that intersect the ray.
@@ -1588,7 +1588,7 @@ def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> bvh_query_t:
 
 
 @over
-def bvh_query_next(query: bvh_query_t, index: int32) -> bool:
+def bvh_query_next(query: BvhQuery, index: int32) -> bool:
     """Move to the next bound returned by the query.
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
     """
@@ -1596,7 +1596,7 @@ def bvh_query_next(query: bvh_query_t, index: int32) -> bool:
 
 
 @over
-def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> mesh_query_point_t:
+def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint:
     """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
 
     Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside.
@@ -1611,7 +1611,7 @@ def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> mesh_query_
 
 
 @over
-def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> mesh_query_point_t:
+def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint:
     """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
 
     This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
@@ -1624,7 +1624,7 @@ def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> mes
 
 
 @over
-def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float32) -> mesh_query_point_t:
+def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float32) -> MeshQueryPoint:
     """Computes the furthest point on the mesh with identifier `id` to the given point in space.
 
     This method does not compute the sign of the point (inside/outside).
@@ -1637,7 +1637,7 @@ def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float3
 
 
 @over
-def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32) -> mesh_query_point_t:
+def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32) -> MeshQueryPoint:
     """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
 
     Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal.
@@ -1656,7 +1656,7 @@ def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, ep
 @over
 def mesh_query_point_sign_winding_number(
     id: uint64, point: vec3f, max_dist: float32, accuracy: float32, threshold: float32
-) -> mesh_query_point_t:
+) -> MeshQueryPoint:
     """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given point in space.
 
     Identifies the sign using the winding number of the mesh relative to the query point. This method of sign determination is robust for poorly conditioned meshes
@@ -1675,7 +1675,7 @@ def mesh_query_point_sign_winding_number(
 
 
 @over
-def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> mesh_query_ray_t:
+def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> MeshQueryRay:
     """Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
 
     :param id: The mesh identifier
@@ -1687,7 +1687,7 @@ def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> mesh
 
 
 @over
-def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> mesh_query_aabb_t:
+def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB:
     """Construct an axis-aligned bounding box query against a :class:`Mesh`.
 
     This query can be used to iterate over all triangles inside a volume.
@@ -1700,7 +1700,7 @@ def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> mesh_query_aabb_t:
 
 
 @over
-def mesh_query_aabb_next(query: mesh_query_aabb_t, index: int32) -> bool:
+def mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool:
     """Move to the next triangle overlapping the query bounding box.
 
     The index of the current face is stored in ``index``, returns ``False`` if there are no more overlapping triangles.
@@ -1721,7 +1721,7 @@ def mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32
 
 
 @over
-def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> hash_grid_query_t:
+def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> HashGridQuery:
     """Construct a point query against a :class:`HashGrid`.
 
     This query can be used to iterate over all neighboring point within a fixed radius from the query point.
@@ -1730,7 +1730,7 @@ def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> hash_grid_qu
 
 
 @over
-def hash_grid_query_next(query: hash_grid_query_t, index: int32) -> bool:
+def hash_grid_query_next(query: HashGridQuery, index: int32) -> bool:
     """Move to the next point in the hash grid query.
 
     The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.

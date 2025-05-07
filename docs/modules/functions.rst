@@ -2230,8 +2230,9 @@ Utility
 
 Geometry
 ---------------
-.. autoclass:: BvhQuery
-.. py:function:: bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> bvh_query_t
+.. autoclass:: warp.BvhQuery
+   :exclude-members: Var, vars
+.. py:function:: bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQuery
 
     Construct an axis-aligned bounding box query against a BVH object.
 
@@ -2242,7 +2243,7 @@ Geometry
     :param high: The upper bound of the bounding box in BVH space
 
 
-.. py:function:: bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> bvh_query_t
+.. py:function:: bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> BvhQuery
 
     Construct a ray query against a BVH object.
 
@@ -2253,14 +2254,15 @@ Geometry
     :param dir: The direction of the ray in BVH space
 
 
-.. py:function:: bvh_query_next(query: bvh_query_t, index: int32) -> bool
+.. py:function:: bvh_query_next(query: BvhQuery, index: int32) -> bool
 
     Move to the next bound returned by the query.
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
 
 
-.. autoclass:: MeshQueryPoint
-.. py:function:: mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> mesh_query_point_t
+.. autoclass:: warp.MeshQueryPoint
+   :exclude-members: Var, vars
+.. py:function:: mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint
 
     Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
 
@@ -2273,7 +2275,7 @@ Geometry
     :param max_dist: Mesh faces above this distance will not be considered by the query
 
 
-.. py:function:: mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> mesh_query_point_t
+.. py:function:: mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint
 
     Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
 
@@ -2284,7 +2286,7 @@ Geometry
     :param max_dist: Mesh faces above this distance will not be considered by the query
 
 
-.. py:function:: mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float32) -> mesh_query_point_t
+.. py:function:: mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float32) -> MeshQueryPoint
 
     Computes the furthest point on the mesh with identifier `id` to the given point in space.
 
@@ -2295,7 +2297,7 @@ Geometry
     :param min_dist: Mesh faces below this distance will not be considered by the query
 
 
-.. py:function:: mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32) -> mesh_query_point_t
+.. py:function:: mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32) -> MeshQueryPoint
 
     Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
 
@@ -2310,7 +2312,7 @@ Geometry
                     fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3
 
 
-.. py:function:: mesh_query_point_sign_winding_number(id: uint64, point: vec3f, max_dist: float32, accuracy: float32, threshold: float32) -> mesh_query_point_t
+.. py:function:: mesh_query_point_sign_winding_number(id: uint64, point: vec3f, max_dist: float32, accuracy: float32, threshold: float32) -> MeshQueryPoint
 
     Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given point in space.
 
@@ -2327,8 +2329,9 @@ Geometry
     :param threshold: The threshold of the winding number to be considered inside, default 0.5
 
 
-.. autoclass:: MeshQueryRay
-.. py:function:: mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> mesh_query_ray_t
+.. autoclass:: warp.MeshQueryRay
+   :exclude-members: Var, vars
+.. py:function:: mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> MeshQueryRay
 
     Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
 
@@ -2338,8 +2341,9 @@ Geometry
     :param max_t: The maximum distance along the ray to check for intersections
 
 
-.. autoclass:: MeshQueryAABB
-.. py:function:: mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> mesh_query_aabb_t
+.. autoclass:: warp.MeshQueryAABB
+   :exclude-members: Var, vars
+.. py:function:: mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB
 
     Construct an axis-aligned bounding box query against a :class:`Mesh`.
 
@@ -2350,7 +2354,7 @@ Geometry
     :param high: The upper bound of the bounding box in mesh space
 
 
-.. py:function:: mesh_query_aabb_next(query: mesh_query_aabb_t, index: int32) -> bool
+.. py:function:: mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool
 
     Move to the next triangle overlapping the query bounding box.
 
@@ -2367,15 +2371,16 @@ Geometry
     Evaluates the velocity on the :class:`Mesh` given a face index and barycentric coordinates.
 
 
-.. autoclass:: HashGridQuery
-.. py:function:: hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> hash_grid_query_t
+.. autoclass:: warp.HashGridQuery
+   :exclude-members: Var, vars
+.. py:function:: hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> HashGridQuery
 
     Construct a point query against a :class:`HashGrid`.
 
     This query can be used to iterate over all neighboring point within a fixed radius from the query point.
 
 
-.. py:function:: hash_grid_query_next(query: hash_grid_query_t, index: int32) -> bool
+.. py:function:: hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
 
     Move to the next point in the hash grid query.
 

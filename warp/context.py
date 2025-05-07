@@ -7032,7 +7032,8 @@ def export_functions_rst(file):  # pragma: no cover
                 continue
             for f_prefix, query_type in query_types:
                 if f.key.startswith(f_prefix) and query_type not in written_query_types:
-                    print(f".. autoclass:: {query_type}", file=file)
+                    print(f".. autoclass:: warp.{query_type}", file=file)
+                    print("   :exclude-members: Var, vars", file=file)
                     written_query_types.add(query_type)
                     break
 
