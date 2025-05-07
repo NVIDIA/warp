@@ -14,9 +14,10 @@
 # limitations under the License.
 
 import ctypes
+import threading
 import traceback
 from typing import Callable
-import threading
+
 import jax
 
 import warp as wp
@@ -553,8 +554,8 @@ def jax_kernel(kernel, num_outputs=1, vmap_method="broadcast_all", launch_dims=N
 
     with _FFI_REGISTRY_LOCK:
         if key not in _FFI_KERNEL_REGISTRY:
-           new_kernel = FfiKernel(kernel, num_outputs, vmap_method, launch_dims, output_dims)
-           _FFI_KERNEL_REGISTRY[key]  = new_kernel
+            new_kernel = FfiKernel(kernel, num_outputs, vmap_method, launch_dims, output_dims)
+            _FFI_KERNEL_REGISTRY[key] = new_kernel
 
     return _FFI_KERNEL_REGISTRY[key]
 
@@ -611,6 +612,7 @@ def jax_callable(
 # func(inputs, outputs, attrs, ctx)
 #
 ###############################################################################
+
 
 def register_ffi_callback(name: str, func: Callable, graph_compatible: bool = True) -> None:
     """Create a JAX callback from a Python function.
