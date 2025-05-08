@@ -30,6 +30,7 @@ def test_disable_hashing(test, device):
     test.assertTrue(np.all(res_np == true_res_np))
 
 
+# TODO: Revision required for on-the-fly cache generation (rather than version-controlled)
 devices = wp.get_devices()
 add_function_test(TestDisableHashing, "test_disable_hashing", test_disable_hashing, devices=devices)
 
