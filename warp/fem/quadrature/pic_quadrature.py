@@ -18,7 +18,7 @@ from typing import Any, Optional, Tuple, Union
 import warp as wp
 from warp.fem.cache import TemporaryStore, borrow_temporary, cached_arg_value, dynamic_kernel
 from warp.fem.domain import GeometryDomain
-from warp.fem.types import NULL_ELEMENT_INDEX, Coords, ElementIndex, make_free_sample
+from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, make_free_sample
 from warp.fem.utils import compress_node_indices
 
 from .quadrature import Quadrature
@@ -207,7 +207,10 @@ class PicQuadrature(Quadrature):
                 )
 
                 cell_index[p] = sample.element_index
-                cell_coords[p] = cell_coordinates(cell_arg_value, sample.element_index, positions[p])
+                if sample.element_index == NULL_ELEMENT_INDEX:
+                    cell_coords[p] = Coords(OUTSIDE)
+                else:
+                    cell_coords[p] = cell_coordinates(cell_arg_value, sample.element_index, positions[p])
 
             self._cell_index_temp = borrow_temporary(temporary_store, shape=positions.shape, dtype=int, device=device)
             self.cell_indices = self._cell_index_temp.array

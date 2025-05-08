@@ -255,7 +255,7 @@ class Grid3D(Geometry):
     def cell_coordinates(args: Grid3DCellArg, cell_index: int, pos: wp.vec3):
         uvw = wp.cw_div(pos - args.origin, args.cell_size)
         ijk = Grid3D.get_cell(args.res, cell_index)
-        return uvw - ijk
+        return uvw - wp.vec3(ijk)
 
     @wp.func
     def cell_closest_point(args: Grid3DCellArg, cell_index: int, pos: wp.vec3):
