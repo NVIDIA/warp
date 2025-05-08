@@ -1106,7 +1106,7 @@ def kernel(
 # decorator to register struct, @struct
 def struct(c: type):
     m = get_module(c.__module__)
-    s = warp.codegen.Struct(cls=c, key=warp.codegen.make_full_qualified_name(c), module=m)
+    s = warp.codegen.Struct(key=warp.codegen.make_full_qualified_name(c), cls=c, module=m)
     s = functools.update_wrapper(s, c)
     return s
 
