@@ -2214,7 +2214,7 @@ class Module:
             ):
                 builder_options = {
                     **self.options,
-                    # Some of the Tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
+                    # Some of the tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
                     "output_arch": output_arch,
                 }
                 builder = ModuleBuilder(self, builder_options, hasher=self.hashers[active_block_dim])
@@ -6900,7 +6900,7 @@ def type_str(t):
     elif t is Ellipsis:
         return "..."
     elif warp.types.is_tile(t):
-        return "Tile"
+        return f"Tile[{type_str(t.dtype)},{type_str(t.shape)}]"
 
     return t.__name__
 
@@ -7089,6 +7089,7 @@ def export_stubs(file):  # pragma: no cover
     print('Rows = TypeVar("Rows", bound=int)', file=file)
     print('Cols = TypeVar("Cols", bound=int)', file=file)
     print('DType = TypeVar("DType")', file=file)
+    print('Shape = TypeVar("Shape")', file=file)
 
     print("Vector = Generic[Length, Scalar]", file=file)
     print("Matrix = Generic[Rows, Cols, Scalar]", file=file)
@@ -7097,6 +7098,7 @@ def export_stubs(file):  # pragma: no cover
     print("Array = Generic[DType]", file=file)
     print("FabricArray = Generic[DType]", file=file)
     print("IndexedFabricArray = Generic[DType]", file=file)
+    print("Tile = Generic[DType, Shape]", file=file)
 
     # prepend __init__.py
     with open(os.path.join(os.path.dirname(file.name), "__init__.py")) as header_file:

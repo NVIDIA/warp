@@ -45,6 +45,7 @@ Length = TypeVar("Length", bound=int)
 Rows = TypeVar("Rows")
 Cols = TypeVar("Cols")
 DType = TypeVar("DType")
+Shape = TypeVar("Shape", bound=tuple[int, ...])
 
 Int = TypeVar("Int")
 Float = TypeVar("Float")
@@ -71,6 +72,10 @@ class Array(Generic[DType]):
     device: warp.context.Device | None
     dtype: type
     size: int
+
+
+class Tile(Generic[DType, Shape]):
+    pass
 
 
 int_tuple_type_hints = {
@@ -3257,14 +3262,32 @@ def array_type_id(a):
         raise ValueError("Invalid array type")
 
 
-# tile object
-class Tile:
+class tile(Tile[DType, Shape]):
+    """A Warp tile object.
+
+    Attributes:
+        dtype (DType): The data type of the tile
+        shape (Shape): Dimensions of the tile
+        storage (str): 'register' or 'shared' memory storage
+        layout (str): 'rowmajor' or 'colmajor' layout
+        strides (tuple[int]): Number of tile elements between successive tile entries in each dimension
+        size (int): Total number of tile elements
+        owner (bool): Whether this tile aliases or owns its data
+    """
+
     alignment = 16
 
-    def __init__(self, dtype, shape, op=None, storage="register", layout="rowmajor", strides=None, owner=True):
+    def __init__(
+        self,
+        dtype: Any,
+        shape: tuple[int, ...] | list[int],
+        storage: str = "register",
+        layout: str = "rowmajor",
+        strides: tuple[int, ...] | None = None,
+        owner: builtins.bool = True,
+    ):
         self.dtype = type_to_warp(dtype)
         self.shape = shape
-        self.op = op
         self.storage = storage
         self.layout = layout
         self.strides = strides
@@ -3324,76 +3347,15 @@ class Tile:
 
     @staticmethod
     def round_up(bytes):
-        return ((bytes + Tile.alignment - 1) // Tile.alignment) * Tile.alignment
+        return ((bytes + tile.alignment - 1) // tile.alignment) * tile.alignment
 
     # align tile size to natural boundary, default 16-bytes
     def align(self, bytes):
-        return Tile.round_up(bytes)
-
-
-class TileZeros(Tile):
-    def __init__(self, dtype, shape, storage="register"):
-        Tile.__init__(self, dtype, shape, op="zeros", storage=storage)
-
-
-class TileOnes(Tile):
-    def __init__(self, dtype, shape, storage="register"):
-        Tile.__init__(self, dtype, shape, op="ones", storage=storage)
-
-
-class TileRange(Tile):
-    def __init__(self, dtype, start, stop, step, storage="register"):
-        self.start = start
-        self.stop = stop
-        self.step = step
-
-        n = int((stop - start) / step)
-
-        Tile.__init__(self, dtype, shape=(n,), op="arange", storage=storage)
-
-
-class TileConstant(Tile):
-    def __init__(self, dtype, shape):
-        Tile.__init__(self, dtype, shape, op="constant", storage="register")
-
-
-class TileLoad(Tile):
-    def __init__(self, array, shape, storage="register"):
-        Tile.__init__(self, array.dtype, shape, op="load", storage=storage)
-
-
-class TileUnaryMap(Tile):
-    def __init__(self, t, dtype=None, storage="register"):
-        Tile.__init__(self, dtype, t.shape, op="unary_map", storage=storage)
-
-        # if no output dtype specified then assume it's the same as the first arg
-        if self.dtype is None:
-            self.dtype = t.dtype
-
-        self.t = t
-
-
-class TileBinaryMap(Tile):
-    def __init__(self, a, b, dtype=None, storage="register"):
-        Tile.__init__(self, dtype, a.shape, op="binary_map", storage=storage)
-
-        # if no output dtype specified then assume it's the same as the first arg
-        if self.dtype is None:
-            self.dtype = a.dtype
-
-        self.a = a
-        self.b = b
-
-
-class TileShared(Tile):
-    def __init__(self, t):
-        Tile.__init__(self, t.dtype, t.shape, "shared", storage="shared")
-
-        self.t = t
+        return tile.round_up(bytes)
 
 
 def is_tile(t):
-    return isinstance(t, Tile)
+    return isinstance(t, tile)
 
 
 bvh_constructor_values = {"sah": 0, "median": 1, "lbvh": 2}
@@ -5247,6 +5209,10 @@ def get_type_code(arg_type: type) -> str:
         return f"ifa{arg_type.ndim}{get_type_code(arg_type.dtype)}"
     elif isinstance(arg_type, warp.codegen.Struct):
         return arg_type.native_name
+    elif isinstance(arg_type, tile):
+        shape_string = "".join(str(num) for num in arg_type.shape)
+        storage = "s" if arg_type.storage == "shared" else "r"
+        return f"t{storage}{shape_string}{get_type_code(arg_type.dtype)}"
     elif arg_type == Scalar:
         # generic scalar type
         return "s?"

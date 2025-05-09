@@ -882,7 +882,7 @@ Spatial Math
 
 Tile Primitives
 ---------------
-.. py:function:: tile_zeros(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile
+.. py:function:: tile_zeros(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile[Any,Tuple[int, ...]]
 
     Allocate a tile of zero-initialized items.
 
@@ -893,7 +893,7 @@ Tile Primitives
     :returns: A zero-initialized tile with shape and data type as specified [1]_
 
 
-.. py:function:: tile_ones(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile
+.. py:function:: tile_ones(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile[Any,Tuple[int, ...]]
 
     Allocate a tile of one-initialized items.
 
@@ -904,7 +904,7 @@ Tile Primitives
     :returns: A one-initialized tile with shape and data type as specified [1]_
 
 
-.. py:function:: tile_arange(*args: Scalar, dtype: Any, storage: str) -> Tile
+.. py:function:: tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar,Tuple[int]]
 
     Generate a tile of linearly spaced elements.
 
@@ -920,7 +920,7 @@ Tile Primitives
     :returns: A tile with ``shape=(n)`` with linearly spaced elements of specified data type [1]_
 
 
-.. py:function:: tile_load(a: Array[Any], shape: Tuple[int, ...], offset: Tuple[int, ...], storage: str) -> Array[Scalar]
+.. py:function:: tile_load(a: Array[Any], shape: Tuple[int, ...], offset: Tuple[int, ...], storage: str) -> Tile[Any,Tuple[int, ...]]
 
     Loads a tile from a global memory array.
 
@@ -934,7 +934,7 @@ Tile Primitives
     :returns: A tile with shape as specified and data type the same as the source array
 
 
-.. py:function:: tile_store(a: Array[Any], t: Tile, offset: Tuple[int, ...]) -> None
+.. py:function:: tile_store(a: Array[Any], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...]) -> None
 
     Store a tile to a global memory array.
 
@@ -945,9 +945,9 @@ Tile Primitives
     :param offset: Offset in the destination array (optional)
 
 
-.. py:function:: tile_atomic_add(a: Array[Any], t: Tile, offset: Tuple[int, ...]) -> Tile
+.. py:function:: tile_atomic_add(a: Array[Any], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]
 
-    Atomically add a 1D tile to the array `a`, each element will be updated atomically.
+    Atomically add a tile onto the array `a`, each element will be updated atomically.
 
     :param a: Array in global memory, should have the same ``dtype`` as the input tile
     :param t: Source tile to add to the destination array
@@ -955,7 +955,7 @@ Tile Primitives
     :returns: A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements
 
 
-.. py:function:: tile_view(t: Tile, offset: Tuple[int, ...], shape: Tuple[int, ...]) -> Tile
+.. py:function:: tile_view(t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], shape: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]
 
     Return a slice of a given tile [offset, offset+shape], if shape is not specified it will be inferred from the unspecified offset dimensions.
 
@@ -965,7 +965,7 @@ Tile Primitives
     :returns: A tile with dimensions given by the specified shape or the remaining source tile dimensions [1]_
 
 
-.. py:function:: tile_squeeze(t: Tile, axis: Tuple[int, ...]) -> Tile
+.. py:function:: tile_squeeze(t: Tile[Any,Tuple[int, ...]], axis: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]
 
     Return a squeezed view of a tile with the same data.
 
@@ -974,7 +974,7 @@ Tile Primitives
     :returns: The input tile but with all or a subset of the dimensions of length one removed.
 
 
-.. py:function:: tile_reshape(t: Tile, shape: Tuple[int, ...]) -> Tile
+.. py:function:: tile_reshape(t: Tile[Any,Tuple[int, ...]], shape: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]
 
     Return a reshaped view of a tile with the same data.
 
@@ -983,7 +983,7 @@ Tile Primitives
     :returns: A tile containing the same data as the input tile, but arranged in a new shape.
 
 
-.. py:function:: tile_assign(dst: Tile, src: Tile, offset: Tuple[int, ...]) -> None
+.. py:function:: tile_assign(dst: Tile[Any,Tuple[int, ...]], src: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...]) -> None
 
     Assign a tile to a subrange of a destination tile.
 
@@ -992,40 +992,7 @@ Tile Primitives
     :param offset: Offset in the destination tile to write to
 
 
-.. py:function:: tile(x: Any) -> Tile
-
-    Construct a new tile from per-thread kernel values.
-
-    This function converts values computed using scalar kernel code to a tile representation for input into collective operations.
-
-    * If the input value is a scalar, then the resulting tile has ``shape=(block_dim,)``
-    * If the input value is a vector, then the resulting tile has ``shape=(length(vector), block_dim)``
-
-    :param x: A per-thread local value, e.g. scalar, vector, or matrix.
-    :returns: A tile with first dimension according to the value type length and a second dimension equal to ``block_dim``
-
-    This example shows how to create a linear sequence from thread variables:
-
-    .. code-block:: python
-
-        @wp.kernel
-        def compute():
-            i = wp.tid()
-            t = wp.tile(i*2)
-            print(t)
-
-        wp.launch(compute, dim=16, inputs=[], block_dim=16)
-
-    Prints:
-
-    .. code-block:: text
-
-        [0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30] = tile(shape=(16), storage=register)
-
-    
-
-
-.. py:function:: untile(a: Tile) -> Scalar
+.. py:function:: untile(a: Tile[Any,Tuple[int, ...]]) -> Any
 
     Convert a tile back to per-thread values.
 
@@ -1068,7 +1035,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_transpose(a: Tile) -> Tile
+.. py:function:: tile_transpose(a: Tile[Any,Tuple[int, int]]) -> Tile[Any,Tuple[int, int]]
 
     Transpose a tile.
 
@@ -1079,7 +1046,7 @@ Tile Primitives
     :returns: Tile with ``shape=(N,M)``
 
 
-.. py:function:: tile_broadcast(a: Tile, shape: Tuple[int, ...]) -> Tile
+.. py:function:: tile_broadcast(a: Tile[Any,Tuple[int, ...]], shape: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]
 
     Broadcast a tile.
 
@@ -1091,7 +1058,7 @@ Tile Primitives
     :returns: Tile with broadcast shape
 
 
-.. py:function:: tile_sum(a: Tile) -> Tile
+.. py:function:: tile_sum(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]
 
     Cooperatively compute the sum of the tile elements using all threads in the block.
 
@@ -1121,7 +1088,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_sort(keys: Tile, values: Tile) -> Tile
+.. py:function:: tile_sort(keys: Tile[Any,Tuple[int]], values: Tile[Any,Tuple[int]]) -> None
 
     Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
 
@@ -1156,7 +1123,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_min(a: Tile) -> Tile
+.. py:function:: tile_min(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]
 
     Cooperatively compute the minimum of the tile elements using all threads in the block.
 
@@ -1187,7 +1154,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_argmin(a: Tile) -> Tile
+.. py:function:: tile_argmin(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Int,Tuple[1]]
 
     Cooperatively compute the index of the minimum element in the tile using all threads in the block.
 
@@ -1218,7 +1185,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_max(a: Tile) -> Tile
+.. py:function:: tile_max(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]
 
     Cooperatively compute the maximum of the tile elements using all threads in the block.
 
@@ -1248,7 +1215,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_argmax(a: Tile) -> Tile
+.. py:function:: tile_argmax(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Int,Tuple[1]]
 
     Cooperatively compute the index of the maximum element in the tile using all threads in the block.
 
@@ -1278,7 +1245,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_reduce(op: Callable, a: Tile) -> Tile
+.. py:function:: tile_reduce(op: Callable, a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]
 
     Apply a custom reduction operator across the tile.
 
@@ -1310,7 +1277,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_map(op: Callable, a: Tile) -> Tile
+.. py:function:: tile_map(op: Callable, a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
 
     Apply a unary function onto the tile.
 
@@ -1342,7 +1309,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_map(op: Callable, a: Tile, b: Tile) -> Tile
+.. py:function:: tile_map(op: Callable, a: Tile[Scalar,Tuple[int, ...]], b: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -1379,12 +1346,12 @@ Tile Primitives
         [1 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9] = tile(shape=(10), storage=register)
 
 
-.. py:function:: tile_diag_add(a: Tile, d: Tile) -> Tile
+.. py:function:: tile_diag_add(a: Tile[Any,Tuple[int, int]], d: Tile[Any,Tuple[int]]) -> Tile[Any,Tuple[int, int]]
 
     Add a square matrix and a diagonal matrix 'd' represented as a 1D tile
 
 
-.. py:function:: tile_matmul(a: Tile, b: Tile, out: Tile) -> Tile
+.. py:function:: tile_matmul(a: Tile[Float,Tuple[int, int]], b: Tile[Float,Tuple[int, int]], out: Tile[Float,Tuple[int, int]]) -> None
 
     Computes the matrix product and accumulates ``out += a*b``.
 
@@ -1401,7 +1368,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_matmul(a: Tile, b: Tile) -> Tile
+.. py:function:: tile_matmul(a: Tile[Float,Tuple[int, int]], b: Tile[Float,Tuple[int, int]]) -> Tile[Float,Tuple[int, int]]
     :noindex:
     :nocontentsentry:
 
@@ -1420,7 +1387,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_fft(inout: Tile) -> Tile
+.. py:function:: tile_fft(inout: Tile[Vector[2,Float],Tuple[int, int]]) -> Tile[Vector[2,Float],Tuple[int, int]]
 
     Compute the forward FFT along the second dimension of a 2D tile of data.
 
@@ -1434,7 +1401,7 @@ Tile Primitives
     :param inout: The input/output tile
 
 
-.. py:function:: tile_ifft(inout: Tile) -> Tile
+.. py:function:: tile_ifft(inout: Tile[Vector[2,Float],Tuple[int, int]]) -> Tile[Vector[2,Float],Tuple[int, int]]
 
     Compute the inverse FFT along the second dimension of a 2D tile of data.
 
@@ -1448,7 +1415,7 @@ Tile Primitives
     :param inout: The input/output tile
 
 
-.. py:function:: tile_cholesky(A: Tile) -> Tile
+.. py:function:: tile_cholesky(A: Tile[Float,Tuple[int, int]]) -> Tile[Float,Tuple[int, int]]
 
     Compute the Cholesky factorization L of a matrix A.
     L is lower triangular and satisfies LL^T = A.
@@ -1463,7 +1430,7 @@ Tile Primitives
     :returns L: A square, lower triangular, matrix, such that LL^T = A
 
 
-.. py:function:: tile_cholesky_solve(L: Tile, x: Tile) -> None
+.. py:function:: tile_cholesky_solve(L: Tile[Float,Tuple[int, int]], x: Tile[Float,Tuple[int]]) -> None
 
     With L such that LL^T = A, solve for x in Ax = y
 
@@ -2219,7 +2186,7 @@ Utility
     Return the size of the first dimension in an array.
 
 
-.. py:function:: len(a: Tile) -> int
+.. py:function:: len(a: Tile[Any,Tuple[int, ...]]) -> int
     :noindex:
     :nocontentsentry:
 
@@ -2828,7 +2795,7 @@ Operators
     :nocontentsentry:
 
 
-.. py:function:: add(a: Tile, b: Tile) -> Tile
+.. py:function:: add(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -2858,7 +2825,7 @@ Operators
     :nocontentsentry:
 
 
-.. py:function:: sub(a: Tile, b: Tile) -> Tile
+.. py:function:: sub(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -2933,14 +2900,14 @@ Operators
     :nocontentsentry:
 
 
-.. py:function:: mul(x: Tile, y: Scalar) -> Tile
+.. py:function:: mul(x: Tile[Any,Tuple[int, ...]], y: Scalar) -> Tile[Any,Tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
     Multiply each element of a tile by a scalar
 
 
-.. py:function:: mul(x: Scalar, y: Tile) -> Tile
+.. py:function:: mul(x: Scalar, y: Tile[Any,Tuple[int, ...]]) -> Tile[Any,Tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -3031,7 +2998,7 @@ Operators
     :nocontentsentry:
 
 
-.. py:function:: neg(x: Tile) -> Tile
+.. py:function:: neg(x: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
