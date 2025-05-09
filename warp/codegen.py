@@ -1771,6 +1771,22 @@ class Adjoint:
                 out = adj.add_builtin_call("where", [cond, var1, var2])
                 adj.symbols[sym] = out
 
+    def emit_IfExp(adj, node):
+        cond = adj.eval(node.test)
+
+        if cond.constant is not None:
+            return adj.eval(node.body) if cond.constant else adj.eval(node.orelse)
+
+        adj.begin_if(cond)
+        body = adj.eval(node.body)
+        adj.end_if(cond)
+
+        adj.begin_else(cond)
+        orelse = adj.eval(node.orelse)
+        adj.end_else(cond)
+
+        return adj.add_builtin_call("where", [cond, body, orelse])
+
     def emit_Compare(adj, node):
         # node.left, node.ops (list of ops), node.comparators (things to compare to)
         # e.g. (left ops[0] node.comparators[0]) ops[1] node.comparators[1]
@@ -2780,6 +2796,7 @@ class Adjoint:
     node_visitors: ClassVar[dict[type[ast.AST], Callable]] = {
         ast.FunctionDef: emit_FunctionDef,
         ast.If: emit_If,
+        ast.IfExp: emit_IfExp,
         ast.Compare: emit_Compare,
         ast.BoolOp: emit_BoolOp,
         ast.Name: emit_Name,
