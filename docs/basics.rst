@@ -210,6 +210,24 @@ User functions may also be overloaded by defining multiple function signatures w
     def custom(x: wp.vec3):
         return x + wp.vec3(1.0, 0.0, 0.0)
 
+Tiles may also be passed to user functions. The function signature tile argument should include
+dtype, shape, and storage parameters to match the tile type intended to be used in the function. For example:
+
+.. code-block:: python
+
+    @wp.func
+    def tile_sum_func(a: wp.tile(dtype=float, shape=(TILE_M, TILE_N), storage="shared")):
+        return wp.tile_sum(a) * 0.5
+
+For convenience, it is recommended that users rely on `typing.Any` to let the compiler automatically
+determine the tile argument type:
+
+.. code-block:: python
+
+    @wp.func
+    def tile_sum_func(a: Any):
+        return wp.tile_sum(a) * 0.5
+
 See :ref:`Generic Functions` for details on using ``typing.Any`` in user function signatures.
 
 See :doc:`modules/differentiability` for details on how to define custom gradient functions,

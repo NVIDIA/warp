@@ -489,7 +489,7 @@ def build_lto_fft(arch, size, ept, direction, dir, precision, builder):
             with open(temp_paths[".lto"], "rb") as f:
                 lto_code_data = f.read()
 
-            shared_memory_bytes = Tile.round_up(shared_memory_size.value)
+            shared_memory_bytes = tile.round_up(shared_memory_size.value)
 
             # output meta file with shared memory requirements for this lto_symbol
             meta = {}

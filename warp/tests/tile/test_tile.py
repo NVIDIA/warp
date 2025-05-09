@@ -360,13 +360,18 @@ def test_tile_operators(test, device):
     assert_np_equal(input_wp.grad.numpy(), np.ones_like(input) * 0.75)
 
 
+@wp.func
+def tile_sum_func(a: wp.tile(dtype=float, shape=(TILE_M, TILE_N))):
+    return wp.tile_sum(a) * 0.5
+
+
 @wp.kernel
 def tile_sum_kernel(input: wp.array3d(dtype=float), output: wp.array(dtype=float)):
     # output tile index
     i = wp.tid()
 
     a = wp.tile_load(input[i], shape=(TILE_M, TILE_N))
-    s = wp.tile_sum(a) * 0.5
+    s = tile_sum_func(a)
 
     wp.tile_store(output, s, offset=i)
 

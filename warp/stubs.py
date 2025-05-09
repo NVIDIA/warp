@@ -26,6 +26,7 @@ Length = TypeVar("Length", bound=int)
 Rows = TypeVar("Rows", bound=int)
 Cols = TypeVar("Cols", bound=int)
 DType = TypeVar("DType")
+Shape = TypeVar("Shape")
 Vector = Generic[Length, Scalar]
 Matrix = Generic[Rows, Cols, Scalar]
 Quaternion = Generic[Float]
@@ -33,11 +34,13 @@ Transformation = Generic[Float]
 Array = Generic[DType]
 FabricArray = Generic[DType]
 IndexedFabricArray = Generic[DType]
+Tile = Generic[DType, Shape]
 
 
 from warp.types import array, array1d, array2d, array3d, array4d, constant, from_ptr
 from warp.types import indexedarray, indexedarray1d, indexedarray2d, indexedarray3d, indexedarray4d
 from warp.fabric import fabricarray, fabricarrayarray, indexedfabricarray, indexedfabricarrayarray
+from warp.types import tile
 
 from warp.types import bool, int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64
 from warp.types import vec2, vec2b, vec2ub, vec2s, vec2us, vec2i, vec2ui, vec2l, vec2ul, vec2h, vec2f, vec2d
@@ -994,7 +997,7 @@ def spatial_mass(
 
 
 @over
-def tile_zeros(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile:
+def tile_zeros(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, Tuple[int, ...]]:
     """Allocate a tile of zero-initialized items.
 
     :param shape: Shape of the output tile
@@ -1007,7 +1010,7 @@ def tile_zeros(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile:
 
 
 @over
-def tile_ones(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile:
+def tile_ones(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, Tuple[int, ...]]:
     """Allocate a tile of one-initialized items.
 
     :param shape: Shape of the output tile
@@ -1020,7 +1023,7 @@ def tile_ones(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile:
 
 
 @over
-def tile_arange(*args: Scalar, dtype: Any, storage: str) -> Tile:
+def tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar, Tuple[int]]:
     """Generate a tile of linearly spaced elements.
 
     :param args: Variable-length positional arguments, interpreted as:
@@ -1038,7 +1041,9 @@ def tile_arange(*args: Scalar, dtype: Any, storage: str) -> Tile:
 
 
 @over
-def tile_load(a: Array[Any], shape: Tuple[int, ...], offset: Tuple[int, ...], storage: str):
+def tile_load(
+    a: Array[Any], shape: Tuple[int, ...], offset: Tuple[int, ...], storage: str
+) -> Tile[Any, Tuple[int, ...]]:
     """Loads a tile from a global memory array.
 
     This method will cooperatively load a tile from global memory using all threads in the block.
@@ -1054,7 +1059,7 @@ def tile_load(a: Array[Any], shape: Tuple[int, ...], offset: Tuple[int, ...], st
 
 
 @over
-def tile_store(a: Array[Any], t: Tile, offset: Tuple[int, ...]):
+def tile_store(a: Array[Any], t: Tile[Any, Tuple[int, ...]], offset: Tuple[int, ...]):
     """Store a tile to a global memory array.
 
     This method will cooperatively store a tile to global memory using all threads in the block.
@@ -1067,8 +1072,10 @@ def tile_store(a: Array[Any], t: Tile, offset: Tuple[int, ...]):
 
 
 @over
-def tile_atomic_add(a: Array[Any], t: Tile, offset: Tuple[int, ...]) -> Tile:
-    """Atomically add a 1D tile to the array `a`, each element will be updated atomically.
+def tile_atomic_add(
+    a: Array[Any], t: Tile[Any, Tuple[int, ...]], offset: Tuple[int, ...]
+) -> Tile[Any, Tuple[int, ...]]:
+    """Atomically add a tile onto the array `a`, each element will be updated atomically.
 
     :param a: Array in global memory, should have the same ``dtype`` as the input tile
     :param t: Source tile to add to the destination array
@@ -1079,7 +1086,9 @@ def tile_atomic_add(a: Array[Any], t: Tile, offset: Tuple[int, ...]) -> Tile:
 
 
 @over
-def tile_view(t: Tile, offset: Tuple[int, ...], shape: Tuple[int, ...]) -> Tile:
+def tile_view(
+    t: Tile[Any, Tuple[int, ...]], offset: Tuple[int, ...], shape: Tuple[int, ...]
+) -> Tile[Any, Tuple[int, ...]]:
     """Return a slice of a given tile [offset, offset+shape], if shape is not specified it will be inferred from the unspecified offset dimensions.
 
     :param t: Input tile to extract a subrange from
@@ -1091,7 +1100,7 @@ def tile_view(t: Tile, offset: Tuple[int, ...], shape: Tuple[int, ...]) -> Tile:
 
 
 @over
-def tile_squeeze(t: Tile, axis: Tuple[int, ...]) -> Tile:
+def tile_squeeze(t: Tile[Any, Tuple[int, ...]], axis: Tuple[int, ...]) -> Tile[Any, Tuple[int, ...]]:
     """Return a squeezed view of a tile with the same data.
 
     :param t: Input tile to squeeze
@@ -1102,7 +1111,7 @@ def tile_squeeze(t: Tile, axis: Tuple[int, ...]) -> Tile:
 
 
 @over
-def tile_reshape(t: Tile, shape: Tuple[int, ...]) -> Tile:
+def tile_reshape(t: Tile[Any, Tuple[int, ...]], shape: Tuple[int, ...]) -> Tile[Any, Tuple[int, ...]]:
     """Return a reshaped view of a tile with the same data.
 
     :param t: Input tile to reshape
@@ -1113,7 +1122,7 @@ def tile_reshape(t: Tile, shape: Tuple[int, ...]) -> Tile:
 
 
 @over
-def tile_assign(dst: Tile, src: Tile, offset: Tuple[int, ...]):
+def tile_assign(dst: Tile[Any, Tuple[int, ...]], src: Tile[Any, Tuple[int, ...]], offset: Tuple[int, ...]):
     """Assign a tile to a subrange of a destination tile.
 
     :param dst: The destination tile to assign to
@@ -1124,43 +1133,7 @@ def tile_assign(dst: Tile, src: Tile, offset: Tuple[int, ...]):
 
 
 @over
-def tile(x: Any) -> Tile:
-    """Construct a new tile from per-thread kernel values.
-
-    This function converts values computed using scalar kernel code to a tile representation for input into collective operations.
-
-    * If the input value is a scalar, then the resulting tile has ``shape=(block_dim,)``
-    * If the input value is a vector, then the resulting tile has ``shape=(length(vector), block_dim)``
-
-    :param x: A per-thread local value, e.g. scalar, vector, or matrix.
-    :returns: A tile with first dimension according to the value type length and a second dimension equal to ``block_dim``
-
-    This example shows how to create a linear sequence from thread variables:
-
-    .. code-block:: python
-
-        @wp.kernel
-        def compute():
-            i = wp.tid()
-            t = wp.tile(i * 2)
-            print(t)
-
-
-        wp.launch(compute, dim=16, inputs=[], block_dim=16)
-
-    Prints:
-
-    .. code-block:: text
-
-        [0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30] = tile(shape=(16), storage=register)
-
-
-    """
-    ...
-
-
-@over
-def untile(a: Tile) -> Scalar:
+def untile(a: Tile[Any, Tuple[int, ...]]) -> Any:
     """Convert a tile back to per-thread values.
 
     This function converts a block-wide tile back to per-thread values.
@@ -1206,7 +1179,7 @@ def untile(a: Tile) -> Scalar:
 
 
 @over
-def tile_transpose(a: Tile) -> Tile:
+def tile_transpose(a: Tile[Any, Tuple[int, int]]) -> Tile[Any, Tuple[int, int]]:
     """Transpose a tile.
 
     For shared memory tiles, this operation will alias the input tile.
@@ -1219,7 +1192,7 @@ def tile_transpose(a: Tile) -> Tile:
 
 
 @over
-def tile_broadcast(a: Tile, shape: Tuple[int, ...]) -> Tile:
+def tile_broadcast(a: Tile[Any, Tuple[int, ...]], shape: Tuple[int, ...]) -> Tile[Any, Tuple[int, ...]]:
     """Broadcast a tile.
 
     Broadcasts the input tile ``a`` to the destination shape.
@@ -1233,7 +1206,7 @@ def tile_broadcast(a: Tile, shape: Tuple[int, ...]) -> Tile:
 
 
 @over
-def tile_sum(a: Tile) -> Tile:
+def tile_sum(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[1]]:
     """Cooperatively compute the sum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the sum of
@@ -1265,7 +1238,7 @@ def tile_sum(a: Tile) -> Tile:
 
 
 @over
-def tile_sort(keys: Tile, values: Tile) -> Tile:
+def tile_sort(keys: Tile[Any, Tuple[int]], values: Tile[Any, Tuple[int]]):
     """Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
 
     :param keys: Keys to sort by. Supported key types: :class:`float32`, :class:`int32`, :class:`uint32`. Must be in shared memory.
@@ -1301,7 +1274,7 @@ def tile_sort(keys: Tile, values: Tile) -> Tile:
 
 
 @over
-def tile_min(a: Tile) -> Tile:
+def tile_min(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[1]]:
     """Cooperatively compute the minimum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the minimum of
@@ -1333,7 +1306,7 @@ def tile_min(a: Tile) -> Tile:
 
 
 @over
-def tile_argmin(a: Tile) -> Tile:
+def tile_argmin(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Int, Tuple[1]]:
     """Cooperatively compute the index of the minimum element in the tile using all threads in the block.
 
     :param a: The tile to compute the argmin from
@@ -1365,7 +1338,7 @@ def tile_argmin(a: Tile) -> Tile:
 
 
 @over
-def tile_max(a: Tile) -> Tile:
+def tile_max(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[1]]:
     """Cooperatively compute the maximum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the maximum from
@@ -1397,7 +1370,7 @@ def tile_max(a: Tile) -> Tile:
 
 
 @over
-def tile_argmax(a: Tile) -> Tile:
+def tile_argmax(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Int, Tuple[1]]:
     """Cooperatively compute the index of the maximum element in the tile using all threads in the block.
 
     :param a: The tile to compute the argmax from
@@ -1429,7 +1402,7 @@ def tile_argmax(a: Tile) -> Tile:
 
 
 @over
-def tile_reduce(op: Callable, a: Tile) -> Tile:
+def tile_reduce(op: Callable, a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[1]]:
     """Apply a custom reduction operator across the tile.
 
     This function cooperatively performs a reduction using the provided operator across the tile.
@@ -1463,7 +1436,7 @@ def tile_reduce(op: Callable, a: Tile) -> Tile:
 
 
 @over
-def tile_map(op: Callable, a: Tile) -> Tile:
+def tile_map(op: Callable, a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
     """Apply a unary function onto the tile.
 
     This function cooperatively applies a unary function to each element of the tile using all threads in the block.
@@ -1497,7 +1470,9 @@ def tile_map(op: Callable, a: Tile) -> Tile:
 
 
 @over
-def tile_map(op: Callable, a: Tile, b: Tile) -> Tile:
+def tile_map(
+    op: Callable, a: Tile[Scalar, Tuple[int, ...]], b: Tile[Scalar, Tuple[int, ...]]
+) -> Tile[Scalar, Tuple[int, ...]]:
     """Apply a binary function onto the tile.
 
     This function cooperatively applies a binary function to each element of the tiles using all threads in the block.
@@ -2880,7 +2855,7 @@ def add(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[
 
 
 @over
-def add(a: Tile, b: Tile) -> Tile:
+def add(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
     """Add each element of two tiles together"""
     ...
 
@@ -2916,7 +2891,7 @@ def sub(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[
 
 
 @over
-def sub(a: Tile, b: Tile) -> Tile:
+def sub(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
     """Subtract each element b from a"""
     ...
 
@@ -3042,13 +3017,13 @@ def mul(a: Transformation[Scalar], b: Scalar) -> Transformation[Scalar]:
 
 
 @over
-def mul(x: Tile, y: Scalar) -> Tile:
+def mul(x: Tile[Any, Tuple[int, ...]], y: Scalar) -> Tile[Any, Tuple[int, ...]]:
     """Multiply each element of a tile by a scalar"""
     ...
 
 
 @over
-def mul(x: Scalar, y: Tile) -> Tile:
+def mul(x: Scalar, y: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
     """Multiply each element of a tile by a scalar"""
     ...
 
@@ -3162,7 +3137,7 @@ def neg(x: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
 
 
 @over
-def neg(x: Tile) -> Tile:
+def neg(x: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
     """Negate each element of a tile"""
     ...
 
@@ -3228,13 +3203,13 @@ def unot(a: Array[Any]) -> bool:
 
 
 @over
-def tile_diag_add(a: Tile, d: Tile) -> Tile:
+def tile_diag_add(a: Tile[Any, Tuple[int, int]], d: Tile[Any, Tuple[int]]) -> Tile[Any, Tuple[int, int]]:
     """Add a square matrix and a diagonal matrix 'd' represented as a 1D tile"""
     ...
 
 
 @over
-def tile_matmul(a: Tile, b: Tile, out: Tile) -> Tile:
+def tile_matmul(a: Tile[Float, Tuple[int, int]], b: Tile[Float, Tuple[int, int]], out: Tile[Float, Tuple[int, int]]):
     """Computes the matrix product and accumulates ``out += a*b``.
 
     Supported datatypes are:
@@ -3253,7 +3228,7 @@ def tile_matmul(a: Tile, b: Tile, out: Tile) -> Tile:
 
 
 @over
-def tile_matmul(a: Tile, b: Tile) -> Tile:
+def tile_matmul(a: Tile[Float, Tuple[int, int]], b: Tile[Float, Tuple[int, int]]) -> Tile[Float, Tuple[int, int]]:
     """Computes the matrix product ``out = a*b``.
 
     Supported datatypes are:
@@ -3272,7 +3247,7 @@ def tile_matmul(a: Tile, b: Tile) -> Tile:
 
 
 @over
-def tile_fft(inout: Tile) -> Tile:
+def tile_fft(inout: Tile[Vector[2, Float], Tuple[int, int]]) -> Tile[Vector[2, Float], Tuple[int, int]]:
     """Compute the forward FFT along the second dimension of a 2D tile of data.
 
     This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
@@ -3288,7 +3263,7 @@ def tile_fft(inout: Tile) -> Tile:
 
 
 @over
-def tile_ifft(inout: Tile) -> Tile:
+def tile_ifft(inout: Tile[Vector[2, Float], Tuple[int, int]]) -> Tile[Vector[2, Float], Tuple[int, int]]:
     """Compute the inverse FFT along the second dimension of a 2D tile of data.
 
     This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
@@ -3304,7 +3279,7 @@ def tile_ifft(inout: Tile) -> Tile:
 
 
 @over
-def tile_cholesky(A: Tile) -> Tile:
+def tile_cholesky(A: Tile[Float, Tuple[int, int]]) -> Tile[Float, Tuple[int, int]]:
     """Compute the Cholesky factorization L of a matrix A.
     L is lower triangular and satisfies LL^T = A.
 
@@ -3321,7 +3296,7 @@ def tile_cholesky(A: Tile) -> Tile:
 
 
 @over
-def tile_cholesky_solve(L: Tile, x: Tile):
+def tile_cholesky_solve(L: Tile[Float, Tuple[int, int]], x: Tile[Float, Tuple[int]]):
     """With L such that LL^T = A, solve for x in Ax = y
 
     Note that computing the adjoint is not yet supported.
@@ -3382,7 +3357,7 @@ def len(a: Array[Any]) -> int:
 
 
 @over
-def len(a: Tile) -> int:
+def len(a: Tile[Any, Tuple[int, ...]]) -> int:
     """Return the number of rows in a tile."""
     ...
 
