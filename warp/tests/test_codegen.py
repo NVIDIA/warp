@@ -694,6 +694,22 @@ def test_codegen_return_in_kernel(test, device):
 
 
 @wp.kernel
+def conditional_ifexp(x: float, result: wp.array(dtype=wp.int32)):
+    wp.atomic_add(result, 0, 1) if x > 0.0 else wp.atomic_add(result, 1, 1)
+
+
+def test_ifexp_only_executes_one_branch(test, device):
+    result = wp.zeros(2, dtype=wp.int32, device=device)
+
+    wp.launch(conditional_ifexp, dim=1, inputs=[1.0, result], device=device)
+
+    values = result.numpy()
+    # Only first branch is taken
+    test.assertEqual(values[0], 1)
+    test.assertEqual(values[1], 0)
+
+
+@wp.kernel
 def test_multiple_return_values_quat_to_axis_angle_kernel(
     q: wp.quath,
     expected_axis: wp.vec3h,
@@ -941,6 +957,9 @@ add_kernel_test(TestCodeGen, name="test_call_syntax", kernel=test_call_syntax, d
 add_kernel_test(TestCodeGen, name="test_shadow_builtin", kernel=test_shadow_builtin, dim=1, devices=devices)
 add_kernel_test(TestCodeGen, name="test_while_condition_eval", kernel=test_while_condition_eval, dim=1, devices=devices)
 add_function_test(TestCodeGen, "test_codegen_return_in_kernel", test_codegen_return_in_kernel, devices=devices)
+add_function_test(
+    TestCodeGen, "test_ifexp_only_executes_one_branch", test_ifexp_only_executes_one_branch, devices=devices
+)
 add_function_test(
     TestCodeGen,
     func=test_multiple_return_values,
