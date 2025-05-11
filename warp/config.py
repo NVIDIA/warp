@@ -92,6 +92,18 @@ If ``None``, the path is determined in the following order:
 Note: Subdirectories prefixed with ``wp_`` will be created in this location.
 """
 
+force_cache_load: bool = False
+"""Force the loading of previously compiled modules from a cache directory.
+
+If enabled, Warp will load precompiled modules from a cache directory,
+regardless of whether or not the module has been modified. If the expected
+binary does not exist in the cache, then code generation will proceed as normal,
+but without including module hashes in file and kernel names.
+
+This setting can be overridden at the module level by setting the
+``"force_cache_load"`` module option.
+"""
+
 cuda_output: Optional[str] = None
 """Preferred CUDA output format for kernel compilation.
 
