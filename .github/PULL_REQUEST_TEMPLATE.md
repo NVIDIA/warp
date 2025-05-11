@@ -8,18 +8,6 @@ Please fill the relevant sections.
 Checkboxes can also be marked after you submit the PR.
 -->
 
-## Category
-<!--
-Please check all applicable options from the list below (use [x] in Markdown)
--->
-
-- [ ] New feature
-- [ ] Bugfix
-- [ ] Breaking change
-- [ ] Refactoring
-- [ ] Documentation
-- [ ] Other (please explain)
-
 ## Description
 <!--
 Please add a description of what this PR aims to accomplish. 
