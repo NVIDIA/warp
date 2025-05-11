@@ -31,6 +31,7 @@ import types
 import typing
 import weakref
 from copy import copy as shallowcopy
+from os import PathLike
 from pathlib import Path
 from typing import (
     Any,
@@ -737,8 +738,8 @@ class Kernel:
             self.module.register_kernel(self)
 
     @property
-    def disable_hashing(self) -> bool:
-        return self.module.disable_hashing
+    def force_cache_load(self) -> bool:
+        return self.module.options["force_cache_load"]
 
     def infer_argument_types(self, args):
         template_types = list(self.adj.arg_types.values())
@@ -796,14 +797,17 @@ class Kernel:
         sig = warp.types.get_signature(arg_types, func_name=self.key)
         return self.overloads.get(sig)
 
-    def get_mangled_name(self):
-        if self.hash is None:
-            raise RuntimeError(f"Missing hash for kernel {self.key} in module {self.module.name}")
+    def get_mangled_name(self) -> str:
+        if self.force_cache_load:
+            return self.key
+        else:
+            if self.hash is None:
+                raise RuntimeError(f"Missing hash for kernel {self.key} in module {self.module.name}")
 
-        # TODO: allow customizing the number of hash characters used
-        hash_suffix = self.hash.hex()[:8]
+            # TODO: allow customizing the number of hash characters used
+            hash_suffix = self.hash.hex()[:8]
 
-        return self.key if self.disable_hashing else f"{self.key}_{hash_suffix}"
+            return f"{self.key}_{hash_suffix}"
 
     def __call__(self, *args, **kwargs):
         # we implement this function only to ensure Kernel is a callable object
@@ -1947,8 +1951,6 @@ class ModuleExec:
 # creates a hash of the function to use for checking
 # build cache
 class Module:
-    disable_hashing: bool = False
-
     def __init__(self, name: str | None, loader=None):
         self.name = name if name is not None else "None"
 
@@ -1994,13 +1996,9 @@ class Module:
             "mode": warp.config.mode,
             "block_dim": 256,
             "compile_time_trace": warp.config.compile_time_trace,
+            "force_cache_load": warp.config.force_cache_load,
+            "cache_dir": None,
         }
-
-        for prefix in [m.strip() for m in os.environ.get("WARP_DISABLE_HASHING_PREFIX", "").split(",")]:
-            if len(prefix) > 0 and self.name.startswith(prefix):
-                self.disable_hashing = True
-                print(f"Prefix {prefix} hit. Disabling hashing for module {self.name}")
-                break
 
         # Module dependencies are determined by scanning each function
         # and kernel for references to external functions and structs.
@@ -2144,7 +2142,7 @@ class Module:
         self.hashers[block_dim] = ModuleHasher(self)
         return self.hashers[block_dim].get_module_hash()
 
-    def load(self, device, block_dim=None) -> ModuleExec:
+    def load(self, device, block_dim=None) -> ModuleExec | None:
         device = runtime.get_device(device)
 
         # update module options if launching with a new block dim
@@ -2160,7 +2158,7 @@ class Module:
         # check if executable module is already loaded and not stale
         exec = self.execs.get((device.context, active_block_dim))
         if exec is not None:
-            if self.disable_hashing or exec.module_hash == self.hashers[active_block_dim].get_module_hash():
+            if self.options["force_cache_load"] or exec.module_hash == self.hashers[active_block_dim].get_module_hash():
                 return exec
 
         # quietly avoid repeated build attempts to reduce error spew
@@ -2170,13 +2168,23 @@ class Module:
         module_name = "wp_" + self.name
         module_hash = self.hashers[active_block_dim].get_module_hash()
 
-        # use a unique module path using the module short hash
-        module_name_short = module_name if self.disable_hashing else f"{module_name}_{module_hash.hex()[:7]}"
-        module_dir = os.path.join(warp.config.kernel_cache_dir, module_name_short)
+        # use a unique module path using the module short hash unless force_cache_load is enabled
+        module_name_short = (
+            module_name if self.options["force_cache_load"] else f"{module_name}_{module_hash.hex()[:7]}"
+        )
 
-        with warp.ScopedTimer(
-            f"Module {self.name} {module_hash.hex()[:7]} load on device '{device}'", active=not warp.config.quiet
-        ) as module_load_timer:
+        if self.options["cache_dir"]:
+            module_dir: str | PathLike = self.options["cache_dir"]
+        else:
+            module_dir = os.path.join(warp.config.kernel_cache_dir, module_name_short)
+
+        module_load_timer_name = (
+            f"Module {self.name} load on device '{device}'"
+            if self.options["force_cache_load"]
+            else f"Module {self.name} {module_hash.hex()[:7]} load on device '{device}'"
+        )
+
+        with warp.ScopedTimer(module_load_timer_name, active=not warp.config.quiet) as module_load_timer:
             # -----------------------------------------------------------
             # determine output paths
             if device.is_cpu:
@@ -2211,6 +2219,7 @@ class Module:
 
             # final object binary path
             binary_path = os.path.join(module_dir, output_name)
+            meta_path = os.path.join(module_dir, f"{module_name_short}.meta")
 
             # -----------------------------------------------------------
             # check cache and build if necessary
@@ -2232,8 +2241,14 @@ class Module:
                 builder = ModuleBuilder(self, builder_options, hasher=self.hashers[active_block_dim])
 
                 # create a temporary (process unique) dir for build outputs before moving to the binary dir
-                if self.disable_hashing:
-                    build_dir = os.path.join(warp.config.kernel_cache_dir, f"{module_name}_p{os.getpid()}")
+                if self.options["force_cache_load"]:
+                    if warp.config.verbose:
+                        print(
+                            f"'force_cache_load' is enabled for module '{self.name}' but no cached binary was found.\n"
+                            f"Compiling '{self.name}' from source..."
+                        )
+                    module_path = Path(module_dir)
+                    build_dir = str(module_path.parent / f"{module_path.name}_p{os.getpid()}")
                 else:
                     build_dir = os.path.join(
                         warp.config.kernel_cache_dir, f"{module_name}_{module_hash.hex()[:7]}_p{os.getpid()}"
@@ -2312,9 +2327,9 @@ class Module:
                 # build meta data
 
                 meta = builder.build_meta()
-                meta_path = os.path.join(build_dir, f"{module_name_short}.meta")
+                output_meta_path = os.path.join(build_dir, f"{module_name_short}.meta")
 
-                with open(meta_path, "w") as meta_file:
+                with open(output_meta_path, "w") as meta_file:
                     json.dump(meta, meta_file)
 
                 # -----------------------------------------------------------
@@ -2330,6 +2345,16 @@ class Module:
                         # have different GPU architectures / devices
                         try:
                             os.rename(output_path, binary_path)
+                        except (OSError, FileExistsError):
+                            # another process likely updated the module dir first
+                            pass
+
+                    if not os.path.exists(meta_path):
+                        # copy our output file to the destination module
+                        # this is necessary in case different processes
+                        # have different GPU architectures / devices
+                        try:
+                            os.rename(output_meta_path, meta_path)
                         except (OSError, FileExistsError):
                             # another process likely updated the module dir first
                             pass
@@ -2350,7 +2375,6 @@ class Module:
             # -----------------------------------------------------------
             # Load CPU or CUDA binary
 
-            meta_path = os.path.join(module_dir, f"{module_name_short}.meta")
             with open(meta_path) as meta_file:
                 meta = json.load(meta_file)
 

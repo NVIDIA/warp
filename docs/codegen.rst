@@ -1,3 +1,6 @@
+.. role:: python(code)
+    :language: python
+
 .. _code_generation:
 
 Code Generation
@@ -1209,3 +1212,106 @@ Output:
     17
 
 Kernel ``k1`` uses the latest definition of function ``f``, while kernel ``k2`` uses the definition of ``f`` when the kernel was declared.
+
+Force Loading of Previously Compiled Modules
+--------------------------------------------
+
+Normally, Warp computes a hash for a module based on the kernels, build configuration, and referenced functions,
+structs, and constants. The hash is used to determine if the previously compiled binaries for a module can be safely
+reused or if the module needs to be recompiled. It is sometimes desirable to bypass this hash-checking behavior,
+for example for situations in which source-code disclosure is not an option due to licensing or intellectual
+property restrictions.
+
+To bypass Warp's standard hash-checking mechanism, you can employ one of the following methods:
+
+* **Globally for all modules:** Set the :attr:`warp.config.force_cache_load` attribute to ``True``.
+* **On a per-module basis:** Use the :python:`wp.set_module_options({"force_cache_load": True})` function.
+
+When configuring this on a per-module basis, it is recommended to also specify a custom cache directory
+for that module's compiled artifacts using :python:`wp.set_module_options({"cache_dir": "path/to/your/custom/cache"})`.
+This helps isolate these specially handled modules and their cached binaries and prevents them from being cleared
+by :func:`warp.clear_kernel_cache`.
+
+When ``force_cache_load`` is set to ``True`` for a module, the following behavior applies:
+
+* **Loading from the kernel cache:** Warp will load the module directly from the cache directory
+  as long as the expected binary file is present. This loading will occur regardless of whether the binary is consistent
+  with the current Python source code of the module (i.e., the hash check is entirely bypassed). The module
+  metadata ``.meta`` file should also be present in the same directory as the binary file.
+* **Caching of new artifacts:** If the module needs to be compiled (e.g., because its binaries are not found in the
+  specified cache directory, or it's the first compilation with this setting active), the resulting compiled files
+  (e.g. `.ptx` or `.cubin` files for CUDA kernels) and associated metadata will be written to the cache directory
+  without the usual content-based hash in their names.
+
+A possible workflow is as follows:
+
+.. testcode::
+
+    import os
+    from pathlib import Path
+
+    import warp as wp
+
+
+    @wp.kernel
+    def add_kernel(a: wp.array(dtype=wp.int32), b: wp.array(dtype=wp.int32), res: wp.array(dtype=wp.int32)):
+        i = wp.tid()
+        res[i] = a[i] + b[i]
+
+
+    test_cache_dir = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "mymodulecache")))
+
+    wp.set_module_options({"cache_dir": test_cache_dir, "force_cache_load": True, "cuda_output": "cubin"})
+
+    a = wp.ones(10, dtype=wp.int32)
+    b = wp.ones(10, dtype=wp.int32)
+    res = wp.zeros((10,), dtype=wp.int32)
+
+    wp.launch(add_kernel, dim=10, inputs=[a, b], outputs=[res])
+
+    print(res)
+
+.. testoutput::
+
+    [2 2 2 2 2 2 2 2 2 2]
+
+Next, we modify the kernel to simply contain ``pass`` and re-run the program:
+
+.. testcode::
+    :skipif: wp.get_cuda_device_count() == 0
+
+    import os
+    from pathlib import Path
+
+    import warp as wp
+
+
+    @wp.kernel
+    def add_kernel(a: wp.array(dtype=wp.int32), b: wp.array(dtype=wp.int32), res: wp.array(dtype=wp.int32)):
+        pass
+
+
+    test_cache_dir = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "mymodulecache")))
+
+    wp.set_module_options({"cache_dir": test_cache_dir, "force_cache_load": True, "cuda_output": "cubin"})
+
+    a = wp.ones(10, dtype=wp.int32)
+    b = wp.ones(10, dtype=wp.int32)
+    res = wp.zeros((10,), dtype=wp.int32)
+
+    wp.launch(add_kernel, dim=10, inputs=[a, b], outputs=[res])
+
+    print(res)
+
+.. testoutput::
+
+    [2 2 2 2 2 2 2 2 2 2]
+
+.. testcleanup::
+
+    import shutil
+
+    shutil.rmtree(test_cache_dir, ignore_errors=True)
+
+This shows that the module was being loaded from the cache directory and not recompiled despite the changes to the
+``add_kernel`` function.

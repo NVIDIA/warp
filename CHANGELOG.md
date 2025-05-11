@@ -31,6 +31,10 @@
   ([GH-598](https://github.com/NVIDIA/warp/issues/598)).
 - Add `wp.sim.VBDIntegrator.rebuild_bvh()`, which rebuilds the BVH used for detecting self contacts.
 - Improved consistency of `warp.fem.lookup()` operator across geometries ([GH-618](https://github.com/NVIDIA/warp/pull/618)), added filtering parameters.
+- Add a module-level setting `"cache_dir"` to allow customizing the location where compiled kernels are cached and
+  loaded from for a module, e.g. `wp.set_module_options({"cache_dir": "path/to/custom/cache"})`.
+- Add global (`wp.config.force_cache_load`) and module-level `"force_cache_load"` settings to load modules from the
+  cache without hashes ([GH-661](https://github.com/NVIDIA/warp/pull/661)).
 
 ### Changed
 

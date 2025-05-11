@@ -76,6 +76,19 @@ The options for a module can also be queried using ``wp.get_module_options()``.
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``cuda_output``                       | String  | ``None``    | A module-level override of the :attr:`warp.config.cuda_output` setting.  |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``cache_dir``                         | String  | ``None``    | If set, the final code-generation artifacts will be stored in and loaded |
+|                                      |         |             | from this path instead of from a subdirectory created in the location    |
+|                                      |         |             | determined from the :attr:`warp.config.kernel_cache_dir` setting.        |
+|                                      |         |             | The code-generation artifacts for this module are stored in the directory|
+|                                      |         |             | itself rather than inside a subdirectory created for the module beginning|
+|                                      |         |             | with ``wp_``.                                                            |
+|                                      |         |             |                                                                          |
+|                                      |         |             | Note that this directory is currently not cleared when                   |
+|                                      |         |             | calling :func:`warp.clear_kernel_cache()`.                               |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``force_cache_load``                  |         | Global      | A module-level override of the :attr:`warp.config.force_cache_load`      |
+|                                      |         | setting     | setting.                                                                 |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 
 Kernel Settings
 ---------------
