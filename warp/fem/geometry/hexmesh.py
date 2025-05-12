@@ -162,7 +162,7 @@ class Hexmesh(Geometry):
         self._edge_count = 0
         self._build_topology(temporary_store)
 
-        # Use cheaper variants if we know that cells are parallelpipeds (i.e. linearly transformed)
+        # Use cheaper variants if we know that cells are parallelepipeds (i.e. linearly transformed)
         # (Cells only, not as much difference for sides)
         self.cell_position = (
             self._cell_position_parallelepiped if assume_parallelepiped_cells else self._cell_position_generic
@@ -380,7 +380,7 @@ class Hexmesh(Geometry):
 
     @wp.func
     def _hex_local_face_coords(hex_coords: Coords, face_index: int):
-        # Coordinatex in local face coordinates system
+        # Coordinates in local face coordinates system
         # Sign of last coordinate (out of face)
 
         face_coords = wp.vec2(
