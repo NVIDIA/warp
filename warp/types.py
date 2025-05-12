@@ -45,7 +45,7 @@ Length = TypeVar("Length", bound=int)
 Rows = TypeVar("Rows")
 Cols = TypeVar("Cols")
 DType = TypeVar("DType")
-Shape = TypeVar("Shape", bound=tuple[int, ...])
+Shape = TypeVar("Shape", bound=Tuple[int, ...])
 
 Int = TypeVar("Int")
 Float = TypeVar("Float")

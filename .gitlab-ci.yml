@@ -68,6 +68,7 @@ variables:
 
 stages:
   - build
+  - quality
   - test
   - child pipelines
   - package
@@ -154,15 +155,31 @@ mac-x86_64 build:
   script:
     - ./tools/ci/building/build-linux-x86_64/build.sh
 
+linux-x86_64 cuda 11 build:
+  stage: build
+  image: quay.io/pypa/manylinux2014_x86_64:latest
+  extends:
+    - .save_warp_bin_artifact
+    - .runner-build-linux-x86_64
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - yum update && yum install curl wget -y
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - ./tools/ci/building/build-linux-x86_64/build.sh --cuda 11 --no-docker # We are already using the builder image
+    - mkdir -p warp/bin/linux-x86_64
+    - mv warp/bin/warp.so warp/bin/linux-x86_64
+    - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
+
 # ==============================================================================
-# Linting Jobs
+# Linting and Code Quality Jobs
 #
 # The jobs here are meant to assist with code quality analysis.
 # They can run immediately without waiting for the build jobs to complete.
 # ==============================================================================
 
 pre-commit checks:
-  stage: test
+  stage: quality
   image: ghcr.io/astral-sh/uv:bookworm
   needs: []
   extends:
@@ -175,6 +192,7 @@ pre-commit checks:
     - uvx pre-commit run --all-files --show-diff-on-failure
 
 osec:sonarqube:
+  stage: quality
   allow_failure: true # Uptime not guaranteed
   variables:
     # Disable C/C++ analyzer until project specific work is done to enable it.
@@ -183,7 +201,56 @@ osec:sonarqube:
   tags: !reference [.omni_nvks_micro_runner, tags]
 
 osec:pulse-trufflehog:
+  stage: quality
   tags: !reference [.omni_nvks_micro_runner, tags]
+
+# This job tests code snippets in the documentation
+doctest:
+  stage: quality
+  image: python:3.11-slim
+  needs: [linux-x86_64 build]
+  extends:
+    - .omni_nvks_gpu
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KSet up docs environment"
+    - df -h
+    - apt-get update && apt-get install make --no-install-recommends -y
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - python -m pip install --upgrade pip
+    - python -m pip install -r docs/requirements.txt
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - sphinx-build -b doctest docs docs/_build/doctest
+
+# The only purpose of this job is to make sure documentation can be built on Windows.
+# The output does not get published anywhere, but the website can be viewed in the
+# artifacts.
+windows-x86_64 docs:
+  stage: quality
+  needs: [windows-x86_64 build]
+  extends:
+    - .runner-utility-windows-x86_64
+  artifacts:
+    paths:
+      - public
+  before_script:
+    - !reference [.snippets, define-powershell-GetTime]
+    - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
+    - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - $python_name = "3.12.6+nv1-windows-x86_64"
+    - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
+    - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
+    - .\_venv\Scripts\Activate.ps1
+    - python -m pip install --upgrade pip
+    - python -m pip install -r docs/requirements.txt
+    - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
+  script:
+    - python build_docs.py --quick
+    - mv docs/_build/html/ ./public/
+  after_script:
+    - echo "View the website at https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
 
 # ==============================================================================
 # Main Unit Testing Jobs
@@ -193,8 +260,10 @@ osec:pulse-trufflehog:
 # added to test the user experience without any optional Python packages.
 # ==============================================================================
 
-.test_common_main:
+.test_common_with_coverage:
   stage: test
+  extends:
+    - .basic_test_changes_rules
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
     when: always
@@ -206,30 +275,13 @@ osec:pulse-trufflehog:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
-    - if: $CI_PIPELINE_SOURCE == "web"
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-      changes:
-        - .gitlab-ci.yml
-        - .gitlab/ci/*
-        - warp/**/*
-        - pyproject.toml
-        - tools/**/*
-        - deps/*
-        - build_lib.py
-        - build_llvm.py
-    - when: manual # If not auto-triggered, allow any pipeline to run this job manually
-      allow_failure: true
 
 linux-aarch64 test:
   image: ubuntu:22.04
   needs: [linux-aarch64 build]
   extends:
     - .runner-test-linux-aarch64 # TODO: Change to .omni_devplat_arm_docker_gpu
-    - .test_common_main
+    - .test_common_with_coverage
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
@@ -243,12 +295,7 @@ linux-aarch64 test jetson:
   image: ubuntu:22.04
   extends:
     - .save_test_report_artifact
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
-    - when: manual # If not auto-triggered, allow any pipeline to run this job manually
-      allow_failure: true
+    - .basic_test_changes_rules
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
@@ -264,7 +311,7 @@ linux-x86_64 test:
   image: ubuntu:22.04
   extends:
     - .omni_nvks_gpu_2x
-    - .test_common_main
+    - .test_common_with_coverage
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
@@ -297,7 +344,7 @@ linux-x86_64-blackwell test:
   needs: [linux-x86_64 build]
   image: ubuntu:22.04
   extends:
-    - .test_common_main
+    - .test_common_with_coverage
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
@@ -328,7 +375,7 @@ mac-x86_64 test:
   needs: [mac-x86_64 build]
   extends:
     - .runner-test-macos-universal
-    - .test_common_main
+    - .test_common_with_coverage
     - .macos_warp_tags
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -344,7 +391,7 @@ windows-x86_64 test:
   needs: [windows-x86_64 build]
   extends:
     - .runner-test-windows-x86_64-gpu
-    - .test_common_main
+    - .test_common_with_coverage
   before_script:
     - !reference [.snippets, define-powershell-GetTime]
     - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
@@ -405,23 +452,7 @@ linux-x86_64 test warp-init:
   extends:
     - .omni_nvks_gpu
     - .save_test_report_artifact
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
-    - if: $CI_PIPELINE_SOURCE == "web"
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-      changes:
-        - .gitlab-ci.yml
-        - .gitlab/ci/*
-        - warp/**/*
-        - pyproject.toml
-        - tools/**/*
-        - deps/*
-        - build_lib.py
-        - build_llvm.py
-    - when: manual # If not auto-triggered, allow any pipeline to run this job manually
-      allow_failure: true
+    - .basic_test_changes_rules
   timeout: 10m
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -443,10 +474,11 @@ linux-x86_64 test warp-init:
 linux-x86_64 test mujoco warp:
   stage: test
   needs: [linux-x86_64 build]
-  image: ubuntu:22.04
-  artifacts:
-    reports:
-      junit: rspec.xml
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  extends:
+    - .save_test_report_artifact
+  variables:
+    UV_PYTHON: "3.12"
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG
@@ -467,12 +499,11 @@ linux-x86_64 test mujoco warp:
       allow_failure: true # Don't want to block MRs
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - apt-get update && apt-get install git curl ca-certificates --no-install-recommends -y
+    - apt-get update -q && apt-get install -y -q --no-install-recommends git
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
-    - curl -LsSf https://astral.sh/uv/install.sh | sh
-    - source $HOME/.local/bin/env
+    # Python environment
     - uv venv
     - uv pip install -e .
     - uv pip install --pre mujoco -f https://py.mujoco.org/
@@ -488,53 +519,58 @@ linux-x86_64 test mujoco warp:
     - os/linux
     - platform/horde
 
-# The only purpose of this job is to make sure documentation can be built on Windows.
-# The output does not get published anywhere, but the website can be viewed in the
-# artifacts.
-windows-x86_64 docs:
+# Ensure minimum Python version is supported
+linux-x86_64 python 3.8 test:
   stage: test
-  needs: [windows-x86_64 build]
-  extends:
-    - .runner-utility-windows-x86_64
-  artifacts:
-    paths:
-      - public
-  before_script:
-    - !reference [.snippets, define-powershell-GetTime]
-    - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
-    - powershell -command "Get-Volume | Format-Table -AutoSize"
-    - $python_name = "3.12.6+nv1-windows-x86_64"
-    - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
-    - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
-    - .\_venv\Scripts\Activate.ps1
-    - python -m pip install --upgrade pip
-    - python -m pip install -r docs/requirements.txt
-    - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
-  script:
-    - python build_docs.py --quick
-    - mv docs/_build/html/ ./public/
-  after_script:
-    - echo "View the website at https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
-
-# This job tests code snippets in the documentation
-doctest:
-  stage: test
-  image: python:3.11-slim
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: [linux-x86_64 build]
   extends:
     - .omni_nvks_gpu
+    - .save_test_report_artifact
+    - .basic_test_changes_rules
+  variables:
+    UV_PYTHON: "3.8"
   before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KSet up docs environment"
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
-    - apt-get update && apt-get install make --no-install-recommends -y
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
-    - python -m pip install --upgrade pip
-    - python -m pip install -r docs/requirements.txt
+    # Python environment
+    - uv venv
+    - uv pip install usd-core blosc Pillow
+    - uv pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - sphinx-build -b doctest docs docs/_build/doctest
+    - uv run -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+
+# Ensure CUDA 11 is supported
+linux-x86_64 cuda 11 test:
+  stage: test
+  image: ubuntu:22.04
+  needs: [linux-x86_64 cuda 11 build]
+  extends:
+    - .omni_nvks_gpu_2x 
+    - .save_test_report_artifact
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - apt-get update && apt-get install curl --no-install-recommends -y
+    - df -h
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-x86_64
+    - export PATH="$CUDA_BIN:$PATH"
+    - $PYTHON -m venv _venv
+    - source _venv/bin/activate
+    - python -m pip install --upgrade pip
+    - python -m pip install --upgrade usd-core Pillow
+    - python -m pip install -e .
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+    # HACK: disable P2P tests due to misbehaving agents
+    - export WARP_DISABLE_P2P_TESTS=1
+  script:
+    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
 # Benchmark this commit with the current main branch using Airspeed Velocity
 # Only runs on merge requests
@@ -595,6 +631,11 @@ linux-x86_64 asv:
 trigger python 3.X test pipelines:
   stage: test
   image: busybox
+  needs:
+    - linux-aarch64 build
+    - linux-x86_64 build
+    - windows-x86_64 build
+    - mac-x86_64 build
   extends:
     - .omni_nvks_micro_runner
   rules:
@@ -653,7 +694,7 @@ trigger cuda 11 pipeline:
   image: busybox
   extends:
     - .omni_nvks_micro_runner
-  needs: []
+  needs: [linux-x86_64 cuda 11 build]
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
@@ -677,6 +718,10 @@ cuda 11 build and test:
 trigger kit extensions pipeline:
   stage: test
   image: busybox
+  needs:
+    - linux-aarch64 build
+    - linux-x86_64 build
+    - windows-x86_64 build
   extends:
     - .omni_nvks_micro_runner
   rules:
