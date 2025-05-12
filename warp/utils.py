@@ -21,6 +21,7 @@ import os
 import sys
 import time
 import warnings
+from types import ModuleType
 from typing import Any, Callable
 
 import numpy as np
@@ -29,6 +30,7 @@ import warp as wp
 import warp.context
 import warp.types
 from warp.context import Devicelike
+from warp.types import Array, DType
 
 warnings_seen = set()
 
@@ -219,22 +221,42 @@ def segmented_sort_pairs(
     if keys.device.is_cpu:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
             runtime.core.segmented_sort_pairs_int_host(
-                keys.ptr, values.ptr, count, segment_start_indices_ptr, segment_end_indices_ptr, num_segments
+                keys.ptr,
+                values.ptr,
+                count,
+                segment_start_indices_ptr,
+                segment_end_indices_ptr,
+                num_segments,
             )
         elif keys.dtype == wp.float32 and values.dtype == wp.int32:
             runtime.core.segmented_sort_pairs_float_host(
-                keys.ptr, values.ptr, count, segment_start_indices_ptr, segment_end_indices_ptr, num_segments
+                keys.ptr,
+                values.ptr,
+                count,
+                segment_start_indices_ptr,
+                segment_end_indices_ptr,
+                num_segments,
             )
         else:
             raise RuntimeError("Unsupported data type")
     elif keys.device.is_cuda:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
             runtime.core.segmented_sort_pairs_int_device(
-                keys.ptr, values.ptr, count, segment_start_indices_ptr, segment_end_indices_ptr, num_segments
+                keys.ptr,
+                values.ptr,
+                count,
+                segment_start_indices_ptr,
+                segment_end_indices_ptr,
+                num_segments,
             )
         elif keys.dtype == wp.float32 and values.dtype == wp.int32:
             runtime.core.segmented_sort_pairs_float_device(
-                keys.ptr, values.ptr, count, segment_start_indices_ptr, segment_end_indices_ptr, num_segments
+                keys.ptr,
+                values.ptr,
+                count,
+                segment_start_indices_ptr,
+                segment_end_indices_ptr,
+                num_segments,
             )
         else:
             raise RuntimeError("Unsupported data type")
@@ -532,6 +554,430 @@ def array_cast(in_array, out_array, count=None):
         wp.copy(dest=out_array, src=in_array, count=count)
     else:
         wp.launch(kernel=_array_cast_kernel, dim=dim, inputs=[out_array, in_array], device=out_array.device)
+
+
+def create_warp_function(func: Callable) -> tuple[wp.Function, warp.context.Module]:
+    """Create a Warp function from a Python function.
+
+    Args:
+        func (Callable): A Python function to be converted to a Warp function.
+
+    Returns:
+        wp.Function: A Warp function created from the input function.
+    """
+
+    from .codegen import Adjoint, get_full_arg_spec
+
+    def unique_name(code: str):
+        return "func_" + hex(hash(code))[-8:]
+
+    # Create a Warp function from the input function
+    source = None
+    argspec = get_full_arg_spec(func)
+    key = getattr(func, "__name__", None)
+    if key is None:
+        source, _ = Adjoint.extract_function_source(func)
+        key = unique_name(source)
+    elif key == "<lambda>":
+        body = Adjoint.extract_lambda_source(func, only_body=True)
+        if body is None:
+            raise ValueError("Could not extract lambda source code")
+        key = unique_name(body)
+        source = f"def {key}({', '.join(argspec.args)}):\n  return {body}"
+    else:
+        # use the qualname of the function as the key
+        key = getattr(func, "__qualname__", key)
+        key = key.replace(".", "_").replace(" ", "_").replace("<", "").replace(">", "_")
+
+    module = warp.context.get_module(f"map_{key}")
+    func = wp.Function(
+        func,
+        namespace="",
+        module=module,
+        key=key,
+        source=source,
+        overloaded_annotations=dict.fromkeys(argspec.args, Any),
+    )
+    return func, module
+
+
+def broadcast_shapes(shapes: list[tuple[int]]) -> tuple[int]:
+    """Broadcast a list of shapes to a common shape.
+
+    Following the broadcasting rules of NumPy, two shapes are compatible when:
+    starting from the trailing dimension,
+        1. the two dimensions are equal, or
+        2. one of the dimensions is 1.
+
+    Example:
+        >>> broadcast_shapes([(3, 1, 4), (5, 4)])
+        (3, 5, 4)
+
+    Returns:
+        tuple[int]: The broadcasted shape.
+
+    Raises:
+        ValueError: If the shapes are not broadcastable.
+    """
+    ref = shapes[0]
+    for shape in shapes[1:]:
+        broad = []
+        for j in range(1, max(len(ref), len(shape)) + 1):
+            if j <= len(ref) and j <= len(shape):
+                s = shape[-j]
+                r = ref[-j]
+                if s == r:
+                    broad.append(s)
+                elif s == 1 or r == 1:
+                    broad.append(max(s, r))
+                else:
+                    raise ValueError(f"Shapes {ref} and {shape} are not broadcastable")
+            elif j <= len(ref):
+                broad.append(ref[-j])
+            else:
+                broad.append(shape[-j])
+        ref = tuple(reversed(broad))
+    return ref
+
+
+def map(
+    func: Callable | wp.Function,
+    *inputs: Array[DType] | Any,
+    out: Array[DType] | list[Array[DType]] | None = None,
+    return_kernel: bool = False,
+    block_dim=256,
+    device: Devicelike = None,
+) -> Array[DType] | list[Array[DType]] | wp.Kernel:
+    """
+    Map a function over the elements of one or more arrays.
+
+    You can use a Warp function, a regular Python function, or a lambda expression to map it to a set of arrays.
+
+    .. testcode::
+
+        a = wp.array([1, 2, 3], dtype=wp.float32)
+        b = wp.array([4, 5, 6], dtype=wp.float32)
+        c = wp.array([7, 8, 9], dtype=wp.float32)
+        result = wp.map(lambda x, y, z: x + 2.0 * y - z, a, b, c)
+        print(result)
+
+    .. testoutput::
+
+        [2. 4. 6.]
+
+    Clamp values in an array in place:
+
+    .. testcode::
+
+        xs = wp.array([-1.0, 0.0, 1.0], dtype=wp.float32)
+        wp.map(wp.clamp, xs, -0.5, 0.5, out=xs)
+        print(xs)
+
+    .. testoutput::
+
+        [-0.5  0.   0.5]
+
+    Note that only one of the inputs must be a Warp array. For example, it is possible
+    vectorize the function :func:`warp.transform_point` over a collection of points
+    with a given input transform as follows:
+
+    .. code-block:: python
+
+        tf = wp.transform((1.0, 2.0, 3.0), wp.quat_rpy(0.2, -0.6, 0.1))
+        points = wp.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=wp.vec3)
+        transformed = wp.map(wp.transform_point, tf, points)
+
+    Besides regular Warp arrays, other array types, such as the ``indexedarray``, are supported as well:
+
+    .. testcode::
+
+        arr = wp.array(data=np.arange(10, dtype=np.float32))
+        indices = wp.array([1, 3, 5, 7, 9], dtype=int)
+        iarr = wp.indexedarray1d(arr, [indices])
+        out = wp.map(lambda x: x * 10.0, iarr)
+        print(out)
+
+    .. testoutput::
+
+        [10. 30. 50. 70. 90.]
+
+    If multiple arrays are provided, the
+    `NumPy broadcasting rules <https://numpy.org/doc/stable/user/basics.broadcasting.html>`_
+    are applied to determine the shape of the output array.
+    Two shapes are compatible when:
+    starting from the trailing dimension,
+
+    1. the two dimensions are equal, or
+    2. one of the dimensions is 1.
+
+    For example, given arrays of shapes ``(3, 1, 4)`` and ``(5, 4)``, the broadcasted
+    shape is ``(3, 5, 4)``.
+
+    If no array(s) are provided to the ``out`` argument, the output array(s) are created automatically.
+    The data type(s) of the output array(s) are determined by the type of the return value(s) of
+    the function. The ``requires_grad`` flag for an automatically created output array is set to ``True``
+    if any of the input arrays have it set to ``True`` and the respective output array's ``dtype`` is a type that
+    supports differentiation.
+
+    Args:
+        func (Callable | Function): The function to map over the arrays.
+        *inputs (array | Any): The input arrays or values to pass to the function.
+        out (array | list[array] | None): Optional output array(s) to store the result(s). If None, the output array(s) will be created automatically.
+        return_kernel (bool): If True, only return the generated kernel without performing the mapping operation.
+        block_dim (int): The block dimension for the kernel launch.
+        device (Devicelike): The device on which to run the kernel.
+
+    Returns:
+        array | list[array] | Kernel:
+            The resulting array(s) of the mapping. If ``return_kernel`` is True, only returns the kernel used for mapping.
+    """
+
+    import builtins
+
+    from .codegen import Adjoint, Struct, StructInstance
+    from .types import (
+        is_array,
+        type_is_matrix,
+        type_is_quaternion,
+        type_is_transformation,
+        type_is_vector,
+        type_repr,
+        type_to_warp,
+        types_equal,
+    )
+
+    # mapping from struct name to its Python definition
+    referenced_modules: dict[str, ModuleType] = {}
+
+    def type_to_code(wp_type) -> str:
+        """Returns the string representation of a given Warp type."""
+        if is_array(wp_type):
+            return f"warp.array(ndim={wp_type.ndim}, dtype={type_to_code(wp_type.dtype)})"
+        if isinstance(wp_type, Struct):
+            key = f"{wp_type.__module__}.{wp_type.key}"
+            module = sys.modules.get(wp_type.__module__, None)
+            if module is not None:
+                referenced_modules[wp_type.__module__] = module
+            return key
+        if type_is_transformation(wp_type):
+            return f"warp.types.transformation(dtype={type_to_code(wp_type._wp_scalar_type_)})"
+        if type_is_quaternion(wp_type):
+            return f"warp.types.quaternion(dtype={type_to_code(wp_type._wp_scalar_type_)})"
+        if type_is_vector(wp_type):
+            return f"warp.types.vector(length={wp_type._shape_[0]}, dtype={type_to_code(wp_type._wp_scalar_type_)})"
+        if type_is_matrix(wp_type):
+            return f"warp.types.matrix(shape=({wp_type._shape_[0]}, {wp_type._shape_[1]}), dtype={type_to_code(wp_type._wp_scalar_type_)})"
+        if wp_type == builtins.bool:
+            return "bool"
+        if wp_type == builtins.float:
+            return "float"
+        if wp_type == builtins.int:
+            return "int"
+
+        name = getattr(wp_type, "__name__", None)
+        if name is None:
+            return type_repr(wp_type)
+        name = getattr(wp_type, "__qualname__", name)
+        module = getattr(wp_type, "__module__", None)
+        if module is not None:
+            referenced_modules[wp_type.__module__] = module
+        return wp_type.__module__ + "." + name
+
+    def get_warp_type(value):
+        dtype = type(value)
+        if issubclass(dtype, StructInstance):
+            # a struct
+            return value._cls
+        return type_to_warp(dtype)
+
+    # gather the arrays in the inputs
+    array_shapes = [a.shape for a in inputs if is_array(a)]
+    if len(array_shapes) == 0:
+        raise ValueError("map requires at least one warp.array input")
+    # broadcast the shapes of the arrays
+    out_shape = broadcast_shapes(array_shapes)
+
+    module = None
+    out_dtypes = None
+    skip_arg_type_checks = False
+    if isinstance(func, wp.Function):
+        func_name = func.key
+        wp_func = func
+    else:
+        # check if op is a callable function
+        if not callable(func):
+            raise TypeError("func must be a callable function or a warp.Function")
+        wp_func, module = create_warp_function(func)
+        func_name = wp_func.key
+        # we created a generic function here (arg types are all Any)
+        skip_arg_type_checks = True
+    if module is None:
+        module = warp.context.get_module(f"map_{func_name}")
+
+    arg_names = list(wp_func.input_types.keys())
+    # determine output dtype
+    if wp_func.value_func is not None or wp_func.value_type is not None:
+        arg_types = {}
+        arg_values = {}
+        for i, arg_name in enumerate(arg_names):
+            if is_array(inputs[i]):
+                # we will pass an element of the array to the function
+                arg_types[arg_name] = inputs[i].dtype
+                if device is None:
+                    device = inputs[i].device
+            else:
+                # we pass the input value directly to the function
+                arg_types[arg_name] = get_warp_type(inputs[i])
+        func_or_none = wp_func.get_overload(list(arg_types.values()), {})
+        if func_or_none is None:
+            raise TypeError(
+                f"Function {func_name} does not support the provided argument types {', '.join(type_repr(t) for t in arg_types.values())}"
+            )
+        func = func_or_none
+        if func.value_func is not None:
+            out_dtype = func.value_func(arg_types, arg_values)
+        else:
+            out_dtype = func.value_type
+        if isinstance(out_dtype, tuple) or isinstance(out_dtype, list):
+            out_dtypes = out_dtype
+        else:
+            out_dtypes = (out_dtype,)
+    else:
+        # try to evaluate the function to determine the output type
+        args = []
+        arg_types = wp_func.input_types
+        if len(inputs) != len(arg_types):
+            raise TypeError(
+                f"Number of input arguments ({len(inputs)}) does not match expected number of function arguments ({len(arg_types)})"
+            )
+        for (arg_name, arg_type), input in zip(arg_types.items(), inputs):
+            if is_array(input):
+                if not skip_arg_type_checks and not types_equal(input.dtype, arg_type):
+                    raise TypeError(
+                        f'Incorrect input provided for argument "{arg_name}": received array of dtype {type_repr(input.dtype)}, expected {type_repr(arg_type)}'
+                    )
+                args.append(input.dtype())
+                if device is None:
+                    device = input.device
+            else:
+                if not skip_arg_type_checks and not types_equal(type(input), arg_type):
+                    raise TypeError(
+                        f'Incorrect input provided for argument "{arg_name}": received {type_repr(type(input))}, expected {type_repr(arg_type)}'
+                    )
+                args.append(input)
+        result = wp_func(*args)
+        if result is None:
+            raise TypeError("The provided function must return a value")
+        if isinstance(result, tuple) or isinstance(result, list):
+            out_dtypes = tuple(get_warp_type(r) for r in result)
+        else:
+            out_dtypes = (get_warp_type(result),)
+
+    if out_dtypes is None:
+        raise TypeError("Could not determine the output type of the function, make sure it returns a value")
+
+    if out is None:
+        requires_grad = any(getattr(a, "requires_grad", False) for a in inputs if is_array(a))
+        outputs = []
+        for dtype in out_dtypes:
+            rg = requires_grad and Adjoint.is_differentiable_value_type(dtype)
+            outputs.append(wp.empty(out_shape, dtype=dtype, requires_grad=rg, device=device))
+    elif len(out_dtypes) == 1 and is_array(out):
+        if not types_equal(out.dtype, out_dtypes[0]):
+            raise TypeError(
+                f"Output array dtype {type_repr(out.dtype)} does not match expected dtype {type_repr(out_dtypes[0])}"
+            )
+        if out.shape != out_shape:
+            raise TypeError(f"Output array shape {out.shape} does not match expected shape {out_shape}")
+        outputs = [out]
+    elif len(out_dtypes) > 1:
+        if isinstance(out, tuple) or isinstance(out, list):
+            if len(out) != len(out_dtypes):
+                raise TypeError(
+                    f"Number of provided output arrays ({len(out)}) does not match expected number of function outputs ({len(out_dtypes)})"
+                )
+            for i, a in enumerate(out):
+                if not types_equal(a.dtype, out_dtypes[i]):
+                    raise TypeError(
+                        f"Output array {i} dtype {type_repr(a.dtype)} does not match expected dtype {type_repr(out_dtypes[i])}"
+                    )
+                if a.shape != out_shape:
+                    raise TypeError(f"Output array {i} shape {a.shape} does not match expected shape {out_shape}")
+            outputs = list(out)
+        else:
+            raise TypeError(
+                f"Invalid output provided, expected {len(out_dtypes)} Warp arrays with shape {out_shape} and dtypes ({', '.join(type_repr(t) for t in out_dtypes)})"
+            )
+
+    # create code for a kernel
+    code = """def map_kernel({kernel_args}):
+    {tids} = wp.tid()
+    {load_args}
+    """
+    if len(outputs) == 1:
+        code += "__out_0[{tids}] = {func_name}({arg_names})"
+    else:
+        code += ", ".join(f"__o_{i}" for i in range(len(outputs)))
+        code += " = {func_name}({arg_names})\n"
+        for i in range(len(outputs)):
+            code += f"    __out_{i}" + "[{tids}]" + f" = __o_{i}\n"
+
+    tids = [f"__tid_{i}" for i in range(len(out_shape))]
+
+    load_args = []
+    kernel_args = []
+    for arg_name, input in zip(arg_names, inputs):
+        if is_array(input):
+            arr_name = f"{arg_name}_array"
+            array_type_name = type(input).__name__
+            kernel_args.append(
+                f"{arr_name}: wp.{array_type_name}(dtype={type_to_code(input.dtype)}, ndim={input.ndim})"
+            )
+            shape = input.shape
+            indices = []
+            for i in range(1, len(shape) + 1):
+                if shape[-i] == 1:
+                    indices.append("0")
+                else:
+                    indices.append(tids[-i])
+
+            load_args.append(f"{arg_name} = {arr_name}[{', '.join(reversed(indices))}]")
+        else:
+            kernel_args.append(f"{arg_name}: {type_to_code(type(input))}")
+    for i, o in enumerate(outputs):
+        array_type_name = type(o).__name__
+        kernel_args.append(f"__out_{i}: wp.{array_type_name}(dtype={type_to_code(o.dtype)}, ndim={o.ndim})")
+    code = code.format(
+        func_name=func_name,
+        kernel_args=", ".join(kernel_args),
+        arg_names=", ".join(arg_names),
+        tids=", ".join(tids),
+        load_args="\n    ".join(load_args),
+    )
+    namespace = {}
+    namespace.update({"wp": wp, "warp": wp, func_name: wp_func, "Any": Any})
+    namespace.update(referenced_modules)
+    exec(code, namespace)
+
+    kernel = wp.Kernel(namespace["map_kernel"], key="map_kernel", source=code, module=module)
+    if return_kernel:
+        return kernel
+
+    wp.launch(
+        kernel,
+        dim=out_shape,
+        inputs=inputs,
+        outputs=outputs,
+        block_dim=block_dim,
+        device=device,
+    )
+
+    if len(outputs) == 1:
+        o = outputs[0]
+    else:
+        o = outputs
+
+    return o
 
 
 # code snippet for invoking cProfile

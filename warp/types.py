@@ -73,6 +73,89 @@ class Array(Generic[DType]):
     dtype: type
     size: int
 
+    def __add__(self, other) -> array:
+        return warp.map(warp.add, self, other)  # type: ignore
+
+    def __radd__(self, other) -> array:
+        return warp.map(warp.add, other, self)  # type: ignore
+
+    def __sub__(self, other) -> array:
+        return warp.map(warp.sub, self, other)  # type: ignore
+
+    def __rsub__(self, other) -> array:
+        return warp.map(warp.sub, other, self)  # type: ignore
+
+    def __mul__(self, other) -> array:
+        return warp.map(warp.mul, self, other)  # type: ignore
+
+    def __rmul__(self, other) -> array:
+        return warp.map(warp.mul, other, self)  # type: ignore
+
+    def __truediv__(self, other) -> array:
+        return warp.map(warp.div, self, other)  # type: ignore
+
+    def __rtruediv__(self, other) -> array:
+        return warp.map(warp.div, other, self)  # type: ignore
+
+    def __floordiv__(self, other) -> array:
+        return warp.map(warp.floordiv, self, other)  # type: ignore
+
+    def __rfloordiv__(self, other) -> array:
+        return warp.map(warp.floordiv, other, self)  # type: ignore
+
+    def __mod__(self, other) -> array:
+        return warp.map(warp.mod, self, other)  # type: ignore
+
+    def __rmod__(self, other) -> array:
+        return warp.map(warp.mod, other, self)  # type: ignore
+
+    def __pow__(self, other) -> array:
+        return warp.map(warp.pow, self, other)  # type: ignore
+
+    def __rpow__(self, other) -> array:
+        return warp.map(warp.pow, other, self)  # type: ignore
+
+    def __neg__(self) -> array:
+        return warp.map(warp.neg, self)  # type: ignore
+
+    def __pos__(self) -> array:
+        return warp.map(warp.pos, self)  # type: ignore
+
+    def __iadd__(self, other):
+        """In-place addition operator."""
+        warp.map(warp.add, self, other, out=self)
+        return self
+
+    def __isub__(self, other):
+        """In-place subtraction operator."""
+        warp.map(warp.sub, self, other, out=self)
+        return self
+
+    def __imul__(self, other):
+        """In-place multiplication operator."""
+        warp.map(warp.mul, self, other, out=self)
+        return self
+
+    def __itruediv__(self, other):
+        """In-place division operator."""
+        warp.map(warp.div, self, other, out=self)
+        return self
+
+    def __ifloordiv__(self, other):
+        """In-place floor division operator."""
+        warp.map(warp.floordiv, self, other, out=self)
+        return self
+
+    def __imod__(self, other):
+        """In-place modulo operator."""
+        warp.map(warp.mod, self, other, out=self)
+        return self
+
+    def __ipow__(self, other):
+        """In-place power operator."""
+        warp.map(warp.pow, self, other, out=self)
+        return self
+
 
 class Tile(Generic[DType, Shape]):
     pass
@@ -106,6 +189,13 @@ def float_to_half_bits(value):
 
 def half_bits_to_float(value):
     return warp.context.runtime.core.half_bits_to_float(value)
+
+
+def safe_len(obj):
+    try:
+        return len(obj)
+    except TypeError:
+        return -1
 
 
 # ----------------------
@@ -285,7 +375,7 @@ def vector(length, dtype):
             return f"{type_repr(self)}([{', '.join(map(repr, self))}])"
 
         def __eq__(self, other):
-            if self._length_ != len(other):
+            if self._length_ != safe_len(other):
                 return False
             for i in range(self._length_):
                 if self[i] != other[i]:
@@ -429,10 +519,10 @@ def matrix(shape, dtype):
             return "[" + ",\n ".join(row_str) + "]"
 
         def __eq__(self, other):
-            if self._shape_[0] != len(other):
+            if self._shape_[0] != safe_len(other):
                 return False
             for i in range(self._shape_[0]):
-                if self._shape_[1] != len(other[i]):
+                if self._shape_[1] != safe_len(other[i]):
                     return False
                 for j in range(self._shape_[1]):
                     if self[i][j] != other[i][j]:
@@ -1384,7 +1474,7 @@ def scalar_short_name(t):
 
 
 # converts any known type to a human readable string, good for error messages, reporting etc
-def type_repr(t):
+def type_repr(t) -> str:
     if is_array(t):
         if t.device is None:
             # array is used as a type annotation - display ndim instead of shape
@@ -1415,6 +1505,12 @@ def type_repr(t):
         return f"matrix(shape=({t._shape_[0]}, {t._shape_[1]}), dtype={type_repr(t._wp_scalar_type_)})"
     if t in scalar_types:
         return t.__name__
+    if t == builtins.bool:
+        return "bool"
+    if t == builtins.float:
+        return "float"
+    if t == builtins.int:
+        return "int"
 
     name = getattr(t, "__name__", None)
     if name is None:
