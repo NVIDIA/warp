@@ -518,7 +518,7 @@ def test_mesh_grad(test, device):
             pos_np[i, j] += eps
             fd_grad[i, j] = (f1 - f2) / (2 * eps)
 
-    assert np.allclose(ad_grad, fd_grad, atol=1e-3)
+    np.testing.assert_allclose(ad_grad, fd_grad, atol=1e-3)
 
 
 @wp.func

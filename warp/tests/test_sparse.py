@@ -191,7 +191,7 @@ def test_bsr_get_set_diag(test, device):
     assert_np_equal(diag_bsr.values.numpy(), np.broadcast_to(np.eye(4), shape=(nrow, 4, 4)), tol=0.000001)
 
     diag_csr = bsr_identity(nrow, block_type=wp.float64, device=device)
-    assert np.all(diag_csr.values.numpy() == np.ones(nrow, dtype=float))
+    np.testing.assert_array_equal(diag_csr.values.numpy(), np.ones(nrow, dtype=float))
 
 
 def test_bsr_split_merge(test, device):
