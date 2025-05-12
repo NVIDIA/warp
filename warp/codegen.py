@@ -691,6 +691,8 @@ class Var:
             return compute_type_str(f"wp::{t._wp_generic_type_str_}", t._wp_type_params_)
         elif t.__name__ in ("bool", "int", "float"):
             return t.__name__
+        elif hasattr(t, "_wp_native_name_"):
+            return f"wp::{t._wp_native_name_}"
         else:
             return f"wp::{t.__name__}"
 

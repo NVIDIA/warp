@@ -3858,7 +3858,7 @@ add_builtin(
 add_builtin(
     "bvh_query_aabb",
     input_types={"id": uint64, "low": vec3, "high": vec3},
-    value_func=lambda arg_types, _: BvhQuery if arg_types is None else bvh_query_t,
+    value_type=BvhQuery,
     group="Geometry",
     doc="""Construct an axis-aligned bounding box query against a BVH object.
 
@@ -3873,7 +3873,7 @@ add_builtin(
 add_builtin(
     "bvh_query_ray",
     input_types={"id": uint64, "start": vec3, "dir": vec3},
-    value_func=lambda arg_types, _: BvhQuery if arg_types is None else bvh_query_t,
+    value_type=BvhQuery,
     group="Geometry",
     doc="""Construct a ray query against a BVH object.
 
@@ -3933,7 +3933,7 @@ add_builtin(
         "point": vec3,
         "max_dist": float,
     },
-    value_func=lambda arg_types, _: MeshQueryPoint if arg_types is None else mesh_query_point_t,
+    value_type=MeshQueryPoint,
     group="Geometry",
     doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
 
@@ -3981,7 +3981,7 @@ add_builtin(
         "point": vec3,
         "max_dist": float,
     },
-    value_func=lambda arg_types, _: MeshQueryPoint if arg_types is None else mesh_query_point_t,
+    value_type=MeshQueryPoint,
     group="Geometry",
     doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
 
@@ -4027,7 +4027,7 @@ add_builtin(
         "point": vec3,
         "min_dist": float,
     },
-    value_func=lambda arg_types, _: MeshQueryPoint if arg_types is None else mesh_query_point_t,
+    value_type=MeshQueryPoint,
     group="Geometry",
     doc="""Computes the furthest point on the mesh with identifier `id` to the given point in space.
 
@@ -4084,7 +4084,7 @@ add_builtin(
         "epsilon": float,
     },
     defaults={"epsilon": 1.0e-3},
-    value_func=lambda arg_types, _: MeshQueryPoint if arg_types is None else mesh_query_point_t,
+    value_type=MeshQueryPoint,
     group="Geometry",
     doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
 
@@ -4149,7 +4149,7 @@ add_builtin(
         "threshold": float,
     },
     defaults={"accuracy": 2.0, "threshold": 0.5},
-    value_func=lambda arg_types, _: MeshQueryPoint if arg_types is None else mesh_query_point_t,
+    value_type=MeshQueryPoint,
     group="Geometry",
     doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given point in space.
 
@@ -4208,7 +4208,7 @@ add_builtin(
         "dir": vec3,
         "max_t": float,
     },
-    value_func=lambda arg_types, _: MeshQueryRay if arg_types is None else mesh_query_ray_t,
+    value_type=MeshQueryRay,
     group="Geometry",
     doc="""Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
 
@@ -4223,7 +4223,7 @@ add_builtin(
 add_builtin(
     "mesh_query_aabb",
     input_types={"id": uint64, "low": vec3, "high": vec3},
-    value_func=lambda arg_types, _: MeshQueryAABB if arg_types is None else mesh_query_aabb_t,
+    value_type=MeshQueryAABB,
     group="Geometry",
     doc="""Construct an axis-aligned bounding box query against a :class:`Mesh`.
 
@@ -4267,7 +4267,7 @@ add_builtin(
 add_builtin(
     "hash_grid_query",
     input_types={"id": uint64, "point": vec3, "max_dist": float},
-    value_func=lambda arg_types, _: HashGridQuery if arg_types is None else hash_grid_query_t,
+    value_type=HashGridQuery,
     group="Geometry",
     doc="""Construct a point query against a :class:`HashGrid`.
 
@@ -4396,10 +4396,10 @@ add_builtin(
 
 add_builtin("iter_next", input_types={"range": range_t}, value_type=int, group="Utility", export=False, hidden=True)
 add_builtin(
-    "iter_next", input_types={"query": hash_grid_query_t}, value_type=int, group="Utility", export=False, hidden=True
+    "iter_next", input_types={"query": HashGridQuery}, value_type=int, group="Utility", export=False, hidden=True
 )
 add_builtin(
-    "iter_next", input_types={"query": mesh_query_aabb_t}, value_type=int, group="Utility", export=False, hidden=True
+    "iter_next", input_types={"query": MeshQueryAABB}, value_type=int, group="Utility", export=False, hidden=True
 )
 
 add_builtin(

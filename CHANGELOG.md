@@ -68,6 +68,8 @@
 - Fixed tile type tool tips ([GH-714](https://github.com/NVIDIA/warp/issues/714))
 - Fix an issue with graph coloring on an empty graph ([GH-509](https://github.com/NVIDIA/warp/issues/509)).
 - Fix an integer overflow bug in the native graph coloring module ([GH-718](https://github.com/NVIDIA/warp/issues/718)).
+- Fix missing documentation for geometric structs
+  ([GH-674](https://github.com/NVIDIA/warp/issues/674)).
 
 ## [1.7.1] - 2025-04-30
 
