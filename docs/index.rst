@@ -360,20 +360,28 @@ Contributing
 Contributions and pull requests from the community are welcome.
 Please see the :doc:`modules/contribution_guide` for more information on contributing to the development of Warp.
 
-Citing
-------
+Publications & Citation
+-----------------------
+
+Research Using Warp
+^^^^^^^^^^^^^^^^^^^
+:doc:`/publications` lists academic and research publications that leverage the capabilities of Warp.
+We encourage you to add your own published work using Warp to this list.
+
+Citing Warp
+^^^^^^^^^^^
 
 If you use Warp in your research, please use the following citation:
 
 .. code:: bibtex
 
     @misc{warp2022,
-        title= {Warp: A High-performance Python Framework for GPU Simulation and Graphics},
-        author = {Miles Macklin},
-        month = {March},
-        year = {2022},
-        note= {NVIDIA GPU Technology Conference (GTC)},
-        howpublished = {\url{https://github.com/nvidia/warp}}
+      title        = {Warp: A High-performance Python Framework for GPU Simulation and Graphics},
+      author       = {Miles Macklin},
+      month        = {March},
+      year         = {2022},
+      note         = {NVIDIA GPU Technology Conference (GTC)},
+      howpublished = {\url{https://github.com/nvidia/warp}}
     }
 
 Full Table of Contents
@@ -394,6 +402,7 @@ Full Table of Contents
     debugging
     limitations
     modules/contribution_guide
+    publications
     faq
     changelog
 
