@@ -372,7 +372,7 @@ public:
             // we need to update max_weight because weight_buckets[max_weight] became empty
         {
             int new_max_weight = 0;
-            for (size_t bucket_idx = max_weight - 1; bucket_idx >= 0; bucket_idx--)
+            for (int bucket_idx = max_weight - 1; bucket_idx >= 0; bucket_idx--)
             {
                 if (weight_buckets[bucket_idx].size())
                 {
