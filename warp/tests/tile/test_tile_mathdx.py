@@ -166,9 +166,10 @@ def test_tile_math_cholesky(test, device):
     wp.launch_tiled(
         tile_math_cholesky, dim=[1, 1], inputs=[A_wp, D_wp, L_wp, X_wp, Y_wp], block_dim=TILE_DIM, device=device
     )
-    wp.synchronize_device()
+    wp.synchronize_device(device)
 
-    assert np.allclose(Y_wp.numpy(), Y_np) and np.allclose(L_wp.numpy(), L_np)
+    np.testing.assert_allclose(Y_wp.numpy(), Y_np)
+    np.testing.assert_allclose(L_wp.numpy(), L_np)
 
     # TODO: implement and test backward pass
 
@@ -206,10 +207,10 @@ def test_tile_math_forward_substitution(test, device):
     wp.launch_tiled(
         tile_math_forward_substitution, dim=[1, 1], inputs=[L_wp, x_wp, z_wp], block_dim=TILE_DIM, device=device
     )
-    wp.synchronize_device()
+    wp.synchronize_device(device)
 
     # Verify results
-    assert np.allclose(z_wp.numpy(), z_np)
+    np.testing.assert_allclose(z_wp.numpy(), z_np)
 
     # TODO: implement and test backward pass
 
@@ -247,10 +248,10 @@ def test_tile_math_back_substitution(test, device):
     wp.launch_tiled(
         tile_math_back_substitution, dim=[1, 1], inputs=[L_wp, x_wp, z_wp], block_dim=TILE_DIM, device=device
     )
-    wp.synchronize_device()
+    wp.synchronize_device(device)
 
     # Verify results
-    assert np.allclose(z_wp.numpy(), z_np)
+    np.testing.assert_allclose(z_wp.numpy(), z_np)
 
     # TODO: implement and test backward pass
 

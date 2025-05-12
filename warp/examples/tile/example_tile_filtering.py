@@ -88,7 +88,7 @@ if __name__ == "__main__":
     f_np = cplx(f_h)
     y_test = cplx(y_wp.numpy())
     y_ref = np.fft.ifft(f_np * np.fft.fft(x_np))
-    assert np.allclose(y_ref, y_test)
+    np.testing.assert_allclose(y_ref, y_test)
 
 try:
     import matplotlib.pyplot as plt

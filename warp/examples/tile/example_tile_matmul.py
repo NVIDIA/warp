@@ -80,6 +80,6 @@ if __name__ == "__main__":
             block_dim=TILE_THREADS,
         )
 
-    assert np.allclose(C_wp.numpy(), A @ B, atol=1.0e-4)
+    np.testing.assert_allclose(C_wp.numpy(), A @ B, atol=1.0e-4)
 
     print("Example matrix multiplication passed")
