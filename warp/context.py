@@ -131,6 +131,7 @@ class Function:
         variadic: bool = False,
         initializer_list_func: Callable[[dict[str, Any], type], bool] | None = None,
         export: bool = False,
+        source: str | None = None,
         doc: str = "",
         group: str = "",
         hidden: bool = False,
@@ -215,6 +216,7 @@ class Function:
             # user defined (Python) function
             self.adj = warp.codegen.Adjoint(
                 func,
+                source=source,
                 is_user_function=True,
                 skip_forward_codegen=skip_forward_codegen,
                 skip_reverse_codegen=skip_reverse_codegen,
@@ -416,7 +418,11 @@ class Function:
                 self.user_overloads[sig] = f
 
     def get_overload(self, arg_types: list[type], kwarg_types: Mapping[str, type]) -> Function | None:
-        assert not self.is_builtin()
+        if self.is_builtin():
+            for f in self.overloads:
+                if warp.codegen.func_match_args(f, arg_types, kwarg_types):
+                    return f
+            return None
 
         for f in self.user_overloads.values():
             if warp.codegen.func_match_args(f, arg_types, kwarg_types):
@@ -450,7 +456,7 @@ class Function:
                         overload_annotations[k] = warp.codegen.strip_reference(warp.codegen.get_arg_type(d))
 
                 ovl = shallowcopy(f)
-                ovl.adj = warp.codegen.Adjoint(f.func, overload_annotations)
+                ovl.adj = warp.codegen.Adjoint(f.func, overload_annotations, source=f.adj.source)
                 ovl.input_types = overload_annotations
                 ovl.value_func = None
                 ovl.generic_parent = f
@@ -501,6 +507,9 @@ def call_builtin(func: Function, params: tuple) -> tuple[bool, Any]:
     uses_non_warp_array_type = False
 
     init()
+
+    if func.mangled_name is None:
+        return (False, None)
 
     # Retrieve the built-in function from Warp's dll.
     c_func = getattr(warp.context.runtime.core, func.mangled_name)
@@ -645,7 +654,7 @@ def call_builtin(func: Function, params: tuple) -> tuple[bool, Any]:
                 c_params.append(arg_type._type_(param))
 
     # Retrieve the return type.
-    value_type = func.value_func(None, None)
+    value_type = func.value_func(func_args, None)
 
     if value_type is not None:
         if not isinstance(value_type, Sequence):
@@ -691,7 +700,7 @@ class KernelHooks:
 
 # caches source and compiled entry points for a kernel (will be populated after module loads)
 class Kernel:
-    def __init__(self, func, key=None, module=None, options=None, code_transformers=None):
+    def __init__(self, func, key=None, module=None, options=None, code_transformers=None, source=None):
         self.func = func
 
         if module is None:
@@ -709,7 +718,7 @@ class Kernel:
         if code_transformers is None:
             code_transformers = []
 
-        self.adj = warp.codegen.Adjoint(func, transformers=code_transformers)
+        self.adj = warp.codegen.Adjoint(func, transformers=code_transformers, source=source)
 
         # check if generic
         self.is_generic = False
@@ -776,7 +785,7 @@ class Kernel:
 
         # instantiate this kernel with the given argument types
         ovl = shallowcopy(self)
-        ovl.adj = warp.codegen.Adjoint(self.func, overload_annotations)
+        ovl.adj = warp.codegen.Adjoint(self.func, overload_annotations, source=self.adj.source)
         ovl.is_generic = False
         ovl.overloads = {}
         ovl.sig = sig
@@ -7026,6 +7035,10 @@ def export_functions_rst(file):  # pragma: no cover
         print("---------------", file=file)
 
         for f in g:
+            if not isinstance(f, Function) and callable(f):
+                # f is a plain Python function
+                print(f".. autofunction:: {f.__module__}.{f.__name__}", file=file)
+                continue
             if f.func:
                 # f is a Warp function written in Python, we can use autofunction
                 print(f".. autofunction:: {f.func.__module__}.{f.key}", file=file)
@@ -7133,7 +7146,7 @@ def export_stubs(file):  # pragma: no cover
         if hasattr(g, "overloads"):
             for f in g.overloads:
                 add_stub(f)
-        else:
+        elif isinstance(g, Function):
             add_stub(g)
 
 

@@ -836,6 +836,13 @@ to the correct type.
 The multiplication expression ``a * b`` can also be used to perform matrix multiplication
 between `matrix types <Matrices>`_.
 
+Mapping Functions
+#################
+
+The :func:`wp.map()` function can be used to apply a function to each element of an array.
+
+.. autofunction:: warp.utils.map
+
 Streams
 -------
 

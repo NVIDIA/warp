@@ -122,6 +122,7 @@ from warp.utils import (
     TIMING_GRAPH,
     TIMING_ALL,
 )
+from warp.utils import map
 
 from warp.torch import from_torch, to_torch
 from warp.torch import dtype_from_torch, dtype_to_torch

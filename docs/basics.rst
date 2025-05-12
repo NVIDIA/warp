@@ -153,6 +153,25 @@ copy the array back to CPU memory where it is passed to NumPy.
 Calling :func:`array.numpy` on a CPU array will return a zero-copy NumPy view
 onto the Warp data.
 
+Common operators such as ``+``, ``-``, ``*``, and ``/`` are overloaded for Warp arrays.
+For example, we can add two arrays together using the ``+`` operator:
+
+.. testcode::
+
+    a = wp.array(np.arange(10), dtype=wp.float32)
+    b = wp.array(np.arange(10), dtype=wp.float32)
+    # multiply a by 2 and add these two arrays together element-wise
+    c = 2.0 * a + b
+    # multiply c by 10.0 in-place
+    c *= 10.0
+    print(c)
+
+.. testoutput::
+
+    [  0.  30.  60.  90. 120. 150. 180. 210. 240. 270.]
+
+For further details on mapping arbitrary functions to Warp arrays, see :func:`warp.utils.map`.
+
 Please see the :ref:`Arrays Reference <Arrays>` for more details.
 
 User Functions
