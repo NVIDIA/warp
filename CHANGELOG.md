@@ -65,6 +65,8 @@
 - Fixed `wp.svd2()` with duplicate singular values and improved accuracy ([GH-679](https://github.com/NVIDIA/warp/issues/679)).
 - Fix text rendering in OpenGLRenderer ([GH-704](https://github.com/NVIDIA/warp/issues/629)).
 - Fixed tile type tool tips ([GH-714](https://github.com/NVIDIA/warp/issues/714))
+- Fix an issue with graph coloring on an empty graph ([GH-509](https://github.com/NVIDIA/warp/issues/509)).
+- Fix an integer overflow bug in the native graph coloring module ([GH-718](https://github.com/NVIDIA/warp/issues/718)).
 
 ## [1.7.1] - 2025-04-30
 
