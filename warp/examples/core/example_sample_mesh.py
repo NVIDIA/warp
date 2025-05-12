@@ -176,7 +176,7 @@ def sample_mesh(
     sample = wp.randf(rng)
     tri = wp.lower_bound(cdf, sample)
 
-    # Sample the location in that triangle using random barycentric cordinates.
+    # Sample the location in that triangle using random barycentric coordinates.
     ru = wp.randf(rng)
     rv = wp.randf(rng)
     tri_u = 1.0 - wp.sqrt(ru)
