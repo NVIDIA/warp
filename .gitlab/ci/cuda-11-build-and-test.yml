@@ -66,22 +66,6 @@ linux-aarch64 build:
     - mv warp/bin/warp.so warp/bin/linux-aarch64
     - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
 
-linux-x86_64 build:
-  stage: build
-  image: quay.io/pypa/manylinux2014_x86_64:latest
-  extends:
-    - .save_warp_bin_artifact
-    - .runner-large-build-linux-x86_64
-  before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - yum update && yum install curl wget -y
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
-  script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh --cuda 11 --no-docker # We are already using the builder image
-    - mkdir -p warp/bin/linux-x86_64
-    - mv warp/bin/warp.so warp/bin/linux-x86_64
-    - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
-
 windows-x86_64 build:
   stage: build
   extends:
@@ -110,35 +94,6 @@ linux-aarch64 test:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
-  script:
-    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
-
-linux-x86_64 test:
-  stage: test
-  image: ubuntu:22.04
-  needs: [linux-x86_64 build]
-  extends:
-    - .omni_nvks_gpu_2x
-    - .save_test_report_artifact
-  before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - apt-get update && apt-get install curl --no-install-recommends -y
-    - df -h
-    # Move compiled binaries out of platform-specific directory
-    - mv warp/bin/linux-x86_64/warp.so warp/bin/
-    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
-    - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-x86_64
-    - export PATH="$CUDA_BIN:$PATH"
-    - $PYTHON -m venv _venv
-    - source _venv/bin/activate
-    - python -m pip install --upgrade pip
-    - python -m pip install --upgrade usd-core Pillow
-    - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
-    - python -m pip install -U "jax[cuda12]"
-    - python -m pip install -e .
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
-    # HACK: disable P2P tests due to misbehaving agents
-    - export WARP_DISABLE_P2P_TESTS=1
   script:
     - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
@@ -176,8 +131,9 @@ create pypi wheels:
   image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs:
     - linux-aarch64 build
-    - linux-x86_64 build
     - windows-x86_64 build
+    - pipeline: $PARENT_PIPELINE_ID
+      job: linux-x86_64 cuda 11 build
   extends:
     - .omni_nvks_micro_runner
   before_script:

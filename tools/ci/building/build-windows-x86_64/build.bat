@@ -20,7 +20,6 @@ for %%i in (%*) do (
 
 :: pull packman dependencies
 SET "PLATFORM=windows-x86_64"
-call "%~dp0..\..\..\packman\packman" pull --platform %PLATFORM% "%~dp0..\..\..\..\deps/host-deps.packman.xml" --verbose
 call "%~dp0..\..\..\packman\packman" pull --platform %PLATFORM% "%~dp0..\..\..\..\deps/target-deps.packman.xml" --verbose
 call "%~dp0..\..\..\packman\packman" pull --platform %PLATFORM% "%~dp0..\..\..\..\deps/cuda-toolkit-deps.packman.xml" --verbose --include-tag "cuda-%CUDA_MAJOR_VER%"
 call "%~dp0..\..\..\packman\packman" install --verbose -l "%~dp0..\..\..\..\_build\host-deps\winsdk" winsdk 10.17763
