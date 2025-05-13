@@ -983,6 +983,15 @@ Tile Primitives
     :returns: A tile containing the same data as the input tile, but arranged in a new shape.
 
 
+.. py:function:: tile_astype(t: Tile[Scalar,Tuple[int, ...]], dtype: Scalar) -> Tile[Any,Tuple[int, ...]]
+
+    Return a new tile with the same data as the input tile, but with a different data type.
+
+    :param t: Input tile
+    :param dtype: New data type for the tile
+    :returns: A tile with the same data as the input tile, but with a different data type
+
+
 .. py:function:: tile_assign(dst: Tile[Any,Tuple[int, ...]], src: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...]) -> None
 
     Assign a tile to a subrange of a destination tile.

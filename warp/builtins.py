@@ -2657,6 +2657,39 @@ add_builtin(
 )
 
 
+def tile_astype_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return tile(dtype=Any, shape=Tuple[int, ...])
+
+    tile_type = arg_types["t"]
+    dtype = arg_values["dtype"]
+
+    return tile(dtype=dtype, shape=tile_type.shape)
+
+
+def tile_astype_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    tile = arg_values["t"]
+
+    return ((tile,), (return_type,))
+
+
+add_builtin(
+    "tile_astype",
+    input_types={"t": tile(dtype=Scalar, shape=Tuple[int, ...]), "dtype": Scalar},
+    value_func=tile_astype_value_func,
+    dispatch_func=tile_astype_dispatch_func,
+    variadic=False,
+    doc="""Return a new tile with the same data as the input tile, but with a different data type.
+
+    :param t: Input tile
+    :param dtype: New data type for the tile
+    :returns: A tile with the same data as the input tile, but with a different data type""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_assign_value_func(arg_types, arg_values):
     if arg_types is None:
         return None

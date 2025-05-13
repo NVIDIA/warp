@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import unittest
+from typing import Any
 
 import numpy as np
 
@@ -782,6 +783,38 @@ def test_tile_reshape(test, device):
 
 
 @wp.kernel
+def test_tile_astype_kernel(x: wp.array2d(dtype=Any), y: wp.array2d(dtype=wp.float32)):
+    a = wp.tile_load(x, shape=(TILE_M, TILE_N))
+    b = wp.tile_astype(a, dtype=wp.float32)
+    wp.tile_store(y, b)
+
+
+def test_tile_astype(test, device):
+    x_np = np.arange(TILE_M * TILE_N, dtype=np.int32).reshape((TILE_M, TILE_N))
+    x = wp.array(x_np, dtype=wp.int32, device=device)
+    y = wp.zeros((TILE_M, TILE_N), dtype=wp.float32, device=device)
+
+    wp.launch_tiled(test_tile_astype_kernel, dim=1, inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device)
+
+    assert_np_equal(y.numpy(), x_np.astype(np.float32))
+
+    x_np = np.arange(TILE_M * TILE_N, dtype=np.float64).reshape((TILE_M, TILE_N))
+    x = wp.array(x_np, dtype=wp.float64, requires_grad=True, device=device)
+    y = wp.zeros((TILE_M, TILE_N), dtype=wp.float32, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch_tiled(test_tile_astype_kernel, dim=1, inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device)
+
+    y.grad = wp.ones_like(y)
+
+    tape.backward()
+
+    assert_np_equal(y.numpy(), x_np.astype(np.float32))
+    assert_np_equal(x.grad.numpy(), np.ones_like(x_np))
+
+
+@wp.kernel
 def tile_len_kernel(
     a: wp.array(dtype=float, ndim=2),
     out: wp.array(dtype=int),
@@ -962,6 +995,7 @@ add_function_test(TestTile, "test_tile_reshape", test_tile_reshape, devices=devi
 add_function_test(TestTile, "test_tile_len", test_tile_len, devices=devices)
 add_function_test(TestTile, "test_tile_print", test_tile_print, devices=devices, check_output=False)
 add_function_test(TestTile, "test_tile_inplace", test_tile_inplace, devices=devices)
+add_function_test(TestTile, "test_tile_astype", test_tile_astype, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
