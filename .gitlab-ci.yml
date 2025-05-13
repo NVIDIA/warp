@@ -29,7 +29,7 @@ workflow:
       when: never
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: $CI_MERGE_REQUEST_TARGET_BRANCH_SHA
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH 
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       auto_cancel:
         on_new_commit: none
         on_job_failure: none
@@ -38,14 +38,14 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
 
 variables:
-  PM_PACKAGES_ROOT: '$CI_PROJECT_DIR/packman-repo'
-  PIP_CACHE_DIR: '$CI_PROJECT_DIR/.cache/pip'
-  CUDA_BIN: '$CI_PROJECT_DIR/_build/target-deps/cuda/bin'
-  CUDA: '$CI_PROJECT_DIR/_build/target-deps/cuda'
-  CUDA_HOME: '$CI_PROJECT_DIR/_build/target-deps/cuda'
-  PYTHON: '$CI_PROJECT_DIR/_build/target-deps/python/python'
-  LINBUILD: '$CI_PROJECT_DIR/_build/host-deps/linbuild/linbuild.sh'
-  WARP_CACHE_ROOT: '$CI_PROJECT_DIR/.cache/warp' # Used by the parallel test runner
+  PM_PACKAGES_ROOT: "$CI_PROJECT_DIR/packman-repo"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  CUDA_BIN: "$CI_PROJECT_DIR/_build/target-deps/cuda/bin"
+  CUDA: "$CI_PROJECT_DIR/_build/target-deps/cuda"
+  CUDA_HOME: "$CI_PROJECT_DIR/_build/target-deps/cuda"
+  PYTHON: "$CI_PROJECT_DIR/_build/target-deps/python/python"
+  LINBUILD: "$CI_PROJECT_DIR/_build/host-deps/linbuild/linbuild.sh"
+  WARP_CACHE_ROOT: "$CI_PROJECT_DIR/.cache/warp" # Used by the parallel test runner
   GIT_DEPTH: 1
   DEFAULT_PYTHON:
     value: "3.9.18+nv1"
@@ -161,7 +161,7 @@ pre-commit checks:
     - uvx pre-commit run --all-files --show-diff-on-failure
 
 osec:sonarqube:
-  allow_failure: true  # Uptime not guaranteed
+  allow_failure: true # Uptime not guaranteed
   variables:
     # Disable C/C++ analyzer until project specific work is done to enable it.
     # See: https://confluence.nvidia.com/display/OMNIVERSE/SonarQube+Gitlab+CI+Integration#C+Project+Enablement+Additions
@@ -193,7 +193,7 @@ osec:pulse-trufflehog:
         coverage_format: cobertura
         path: coverage.xml
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH 
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - if: $CI_PIPELINE_SOURCE == "web"
@@ -213,7 +213,7 @@ linux-aarch64 test:
   image: ubuntu:22.04
   needs: [linux-aarch64 build]
   extends:
-    - .runner-test-linux-aarch64  # TODO: Change to .omni_devplat_arm_docker_gpu
+    - .runner-test-linux-aarch64 # TODO: Change to .omni_devplat_arm_docker_gpu
     - .test_common_main
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -229,7 +229,7 @@ linux-aarch64 test jetson:
   extends:
     - .save_test_report_artifact
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH 
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - when: manual # If not auto-triggered, allow any pipeline to run this job manually
@@ -237,7 +237,7 @@ linux-aarch64 test jetson:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
-    - python -m pip install -U "jax[cuda12]" 
+    - python -m pip install -U "jax[cuda12]"
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
@@ -360,7 +360,7 @@ linux-x86_64 test minimal:
     - .omni_nvks_gpu_2x
     - .save_test_report_artifact
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH 
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - if: $CI_PIPELINE_SOURCE == "web"
@@ -400,7 +400,7 @@ windows-x86_64 test mgpu:
   extends:
     - .save_test_report_artifact
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH 
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
@@ -433,7 +433,7 @@ linux-x86_64 test warp-init:
     - .omni_nvks_gpu
     - .save_test_report_artifact
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH 
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - if: $CI_PIPELINE_SOURCE == "web"
@@ -547,7 +547,7 @@ linux-x86_64 asv:
     - GIT_LFS_SKIP_SMUDGE=1
     # Make sure the comparison ref can be checked out by asv
     - COMPARE_REF="${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}}"
-    - 'echo "COMPARE_REF value: ${COMPARE_REF}"' 
+    - 'echo "COMPARE_REF value: ${COMPARE_REF}"'
     - git config --global --add safe.directory $CI_PROJECT_DIR
     - git fetch origin $COMPARE_REF
     - git checkout -f $COMPARE_REF
@@ -713,13 +713,13 @@ create pypi wheels:
     - python3 -m pip install --upgrade pip
     - python3 -m pip install build
   script:
-    - sed -i "s/^\(.*\)$/\1+cu12/" VERSION.md  # Modify VERSION.md with +cu12
+    - sed -i "s/^\(.*\)$/\1+cu12/" VERSION.md # Modify VERSION.md with +cu12
     - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
     - python3 -m build --wheel -C--build-option=-Plinux-x86_64
     - python3 -m build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
-    - sed -i "s/^\(.*\)+cu12$/\1+cpu/" VERSION.md  # Modify VERSION.md with +cu12 replaced by +cpu
+    - sed -i "s/^\(.*\)+cu12$/\1+cpu/" VERSION.md # Modify VERSION.md with +cu12 replaced by +cpu
     - python3 -m build --wheel -C--build-option=-Pmacos-universal
-    - sed -i "s/^\(.*\)+cpu$/\1/" VERSION.md  # Revert VERSION.md changes
+    - sed -i "s/^\(.*\)+cpu$/\1/" VERSION.md # Revert VERSION.md changes
     - mv dist dist-github
     # Now make the wheels meant for PyPI publishing
     - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
@@ -754,8 +754,8 @@ create dev wheels:
     - python3 -m pip install --upgrade pip
     - python3 -m pip install build
   script:
-    - python3 tools/ci/publishing/update_git_hash.py  # Modify config.py with git hash
-    - python3 tools/ci/publishing/set_nightly_version.py  # Modify VERSION.md with dev version
+    - python3 tools/ci/publishing/update_git_hash.py # Modify config.py with git hash
+    - python3 tools/ci/publishing/set_nightly_version.py # Modify VERSION.md with dev version
     - python3 -m build --wheel -C--build-option=-Pwindows-x86_64
     - python3 -m build --wheel -C--build-option=-Plinux-x86_64
     - python3 -m build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
@@ -992,7 +992,6 @@ merge request docs:
   after_script:
     - echo "View the website at https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
 
-
 # Merge requests: Ensure that exports.h, stubs.py, functions.rst have been
 # manually added to the MR if they are changed
 check generated files:
@@ -1003,7 +1002,7 @@ check generated files:
   stage: deploy
   artifacts:
     when: on_failure
-    expose_as: 'Generated source files'
+    expose_as: "Generated source files"
     paths:
       - warp/native/exports.h
       - warp/stubs.py
