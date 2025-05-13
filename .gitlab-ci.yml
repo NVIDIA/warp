@@ -552,6 +552,7 @@ linux-x86_64 cuda 11 test:
   extends:
     - .omni_nvks_gpu_2x 
     - .save_test_report_artifact
+    - .basic_test_changes_rules
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - apt-get update && apt-get install curl --no-install-recommends -y
