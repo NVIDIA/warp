@@ -6,6 +6,8 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 [warp-python@nvidia.com](mailto:warp-python@nvidia.com).
 
 ## 2025
+
+- **Dynamic Robot Tool Use with Vision Language Models**. *N. Trupin, Z. Wang, A. H. Qureshi*. May 2025. [arXiv:2505.01399](https://arxiv.org/abs/2505.01399)
 - **AI-Enhanced Automatic Design of Efficient Underwater Gliders**. *P. Y. Chen, P. Ma, N. Hagemann, J. Romanishin, W. Wang, D. Rus, W. Matusik*. April 2025. [arXiv:2505.00222](https://arxiv.org/abs/2505.00222)
 - **Dexonomy: Synthesizing All Dexterous Grasp Types in a Grasp Taxonomy**. *J. Chen, Y. Ke, L. Peng, H. Wang*. April 2025. [arXiv:2504.18829](https://arxiv.org/abs/2504.18829)
 - **Bolt: Clothing Virtual Characters at Scale**. *J. Leaf, D. S. Minor, G. Daviet, N. Chentanez, G. Klar, E. Quigley*. April 2025. [arXiv:2504.17614](https://arxiv.org/abs/2504.17614)
@@ -24,6 +26,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 - **OmniPhysGS: 3D Constitutive Gaussians for General Physics-Based Dynamics Generation**. *Y. Lin, C. Lin, J. Xu, Y. Mu*. January 2025. [arXiv:2501.18982](https://arxiv.org/abs/2501.18982)
 
 ## 2024
+
 - **Atlas3D: Physically Constrained Self-Supporting Text-to-3D for Simulation and Fabrication**. *Y. Chen, T. Xie, Z. Zong, X. Li, F. Gao, Y. Yang, Y. N. Wu, C. Jiang*. May 2024. [arXiv:2405.18515](https://arxiv.org/abs/2405.18515)
 - **GarmentCodeData: A Dataset of 3D Made-to-Measure Garments With Sewing Patterns**. *M. Korosteleva, T. L. Kesdogan, F. Kemper, S. Wenninger, J. Koller, Y. Zhang, M. Botsch, O. Sorkine-Hornung*. May 2024. [arXiv:2405.17609](https://arxiv.org/abs/2405.17609)
 - **LLM and Simulation as Bilevel Optimizers: A New Paradigm to Advance Physical Scientific Discovery**. *P. Ma, T. Wang, M. Guo, Z. Sun, J. B. Tenenbaum, D. Rus, C. Gan, W. Matusik*. May 2024. [arXiv:2405.09783](https://arxiv.org/abs/2405.09783)
@@ -40,12 +43,15 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 - **Physically Embodied Gaussian Splatting: A Realtime Correctable World Model for Robotics**. *J. Abou-Chakra, K. Rana, F. Dayoub, N. Sünderhauf*. June 2024. [arXiv:2406.10788](https://arxiv.org/abs/2406.10788)
 - **DreamPhysics: Learning Physics-Based 3D Dynamics with Video Diffusion Priors**. *T. Huang, H. Zhang, Y. Zeng, Z. Zhang, H. Li, W. Zuo, R. W. H. Lau*. June 2024. [arXiv:2406.01476](https://arxiv.org/abs/2406.01476)
 - **PhysDreamer: Physics-Based Interaction with 3D Objects via Video Generation**. *T. Zhang, H. Yu, R. Wu, B. Y. Feng, C. Zheng, N. Snavely, J. Wu, W. T. Freeman*. April 2024. [arXiv:2404.13026](https://arxiv.org/abs/2404.13026)
+- **Differentiable Rendering as a Way to Program Cable-Driven Soft Robots**. *K. Arnavaz, K. Erleben*. April 2024. [arXiv:2404.07590](https://arxiv.org/abs/2404.07590)
 - **Learning Quadrupedal Locomotion via Differentiable Simulation**. *C. Schwarke, V. Klemm, J. Tordesillas, J. Sleiman, M. Hutter*. April 2024. [arXiv:2404.02887](https://arxiv.org/abs/2404.02887)
 - **Sailing Through Point Clouds: Safe Navigation Using Point Cloud Based Control Barrier Functions**. *B. Dai, R. Khorrambakht, P. Krishnamurthy, F. Khorrami*. March 2024. [arXiv:2403.18206](https://arxiv.org/abs/2403.18206)
+- **Fast Explicit-Input Assistance for Teleoperation in Clutter**. *N. Walker, X. Yang, A. Garg, M. Cakmak, D. Fox, C. Pérez-D' Arpino*. February 2024. [arXiv:2402.02612](https://arxiv.org/abs/2402.02612)
 - **Diffusion Texture Painting**. *A. Hu, N. Desai, H. Abu Alhaija, S. W. Kim, M. Shugrina*. July 2024. [DOI:10.1145/3641519.3657458](https://doi.org/10.1145/3641519.3657458)
 - **Adaptive Distributed Simulation of Fluids and Rigid Bodies**. *H. Shi, V. Zordan, Y. Yang, S. Andrews*. November 2024. [DOI:10.1145/3677388.3696334](https://doi.org/10.1145/3677388.3696334)
 
 ## 2023
+
 - **IndustReal: Transferring Contact-Rich Assembly Tasks from Simulation to Reality**. *B. Tang, M. A. Lin, I. Akinola, A. Handa, G. S. Sukhatme, F. Ramos, D. Fox, Y. Narang*. May 2023. [arXiv:2305.17110](https://arxiv.org/abs/2305.17110)
 - **FoundationPose: Unified 6D Pose Estimation and Tracking of Novel Objects**. *B. Wen, W. Yang, J. Kautz, S. Birchfield*. December 2023. [arXiv:2312.08344](https://arxiv.org/abs/2312.08344)
 - **HandyPriors: Physically Consistent Perception of Hand-Object Interactions with Differentiable Priors**. *S. Zhang, Y. Qiao, G. Zhu, E. Heiden, D. Turpin, J. Liu, M. Lin, M. Macklin, A. Garg*. November 2023. [arXiv:2311.16552](https://arxiv.org/abs/2311.16552)
@@ -56,11 +62,13 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 - **Dynamic Mesh-Aware Radiance Fields**. *Y. Qiao, A. Gao, Y. Xu, Y. Feng, J. Huang, M. C. Lin*. September 2023. [arXiv:2309.04581](https://arxiv.org/abs/2309.04581)
 - **PHYFU: Fuzzing Modern Physics Simulation Engines**. *D. Xiao, Z. Liu, S. Wang*. July 2023. [arXiv:2307.10818](https://arxiv.org/abs/2307.10818)
 - **Fast-Grasp' D: Dexterous Multi-finger Grasp Generation Through Differentiable Simulation**. *D. Turpin, T. Zhong, S. Zhang, G. Zhu, J. Liu, R. Singh, E. Heiden, M. Macklin, S. Tsogkas, S. Dickinson, A. Garg*. June 2023. [arXiv:2306.08132](https://arxiv.org/abs/2306.08132)
+- **Improving Gradient Computation for Differentiable Physics Simulation with Contacts**. *Y. D. Zhong, J. Han, B. Dey, G. O. Brikis*. April 2023. [arXiv:2305.00092](https://arxiv.org/abs/2305.00092)
 - **SLoMo: A General System for Legged Robot Motion Imitation from Casual Videos**. *J. Z. Zhang, S. Yang, G. Yang, A. L. Bishop, D. Ramanan, Z. Manchester*. April 2023. [arXiv:2304.14389](https://arxiv.org/abs/2304.14389)
 - **Learning Neural Constitutive Laws From Motion Observations for Generalizable PDE Dynamics**. *P. Ma, P. Y. Chen, B. Deng, J. B. Tenenbaum, T. Du, C. Gan, W. Matusik*. April 2023. [arXiv:2304.14369](https://arxiv.org/abs/2304.14369)
 - **ManiSkill2: A Unified Benchmark for Generalizable Manipulation Skills**. *J. Gu, F. Xiang, X. Li, Z. Ling, X. Liu, T. Mu, Y. Tang, S. Tao, X. Wei, Y. Yao, X. Yuan, P. Xie, Z. Huang, R. Chen, H. Su*. February 2023. [arXiv:2302.04659](https://arxiv.org/abs/2302.04659)
 
 ## 2022
+
 - **NODE IK: Solving Inverse Kinematics with Neural Ordinary Differential Equations for Path Planning**. *S. Park, M. Schwartz, J. Park*. September 2022. [arXiv:2209.00498](https://arxiv.org/abs/2209.00498)
 - **Differentiable Physics Simulations with Contacts: Do They Have Correct Gradients w.r.t. Position, Velocity and Control?**. *Y. D. Zhong, J. Han, G. O. Brikis*. July 2022. [arXiv:2207.05060](https://arxiv.org/abs/2207.05060)
 - **Rethinking Optimization with Differentiable Simulation from a Global Perspective**. *R. Antonova, J. Yang, K. M. Jatavallabhula, J. Bohg*. June 2022. [arXiv:2207.00167](https://arxiv.org/abs/2207.00167)
