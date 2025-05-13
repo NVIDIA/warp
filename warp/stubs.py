@@ -1123,6 +1123,17 @@ def tile_reshape(t: Tile[Any, Tuple[int, ...]], shape: Tuple[int, ...]) -> Tile[
 
 
 @over
+def tile_astype(t: Tile[Scalar, Tuple[int, ...]], dtype: Scalar) -> Tile[Any, Tuple[int, ...]]:
+    """Return a new tile with the same data as the input tile, but with a different data type.
+
+    :param t: Input tile
+    :param dtype: New data type for the tile
+    :returns: A tile with the same data as the input tile, but with a different data type
+    """
+    ...
+
+
+@over
 def tile_assign(dst: Tile[Any, Tuple[int, ...]], src: Tile[Any, Tuple[int, ...]], offset: Tuple[int, ...]):
     """Assign a tile to a subrange of a destination tile.
 

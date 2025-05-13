@@ -2949,6 +2949,64 @@ inline CUDA_CALLABLE void adj_tile_reshape(Tile& t, AdjTile& adj_t, AdjReturnTil
     // nop, since memory is aliased, grads already accumulated
 }
 
+
+template <typename ReturnTile, typename Tile>
+inline CUDA_CALLABLE auto tile_astype(Tile& t)
+{
+    // verify shapes and sizes are compatible
+    using ShapeIn = typename Tile::Layout::Shape;
+    using ShapeOut = typename ReturnTile::Layout::Shape;
+
+    static_assert(ShapeIn::N == ShapeOut::N, "Tile shapes must match for data type casting");
+    static_assert(ShapeIn::size() == ShapeOut::size(), "Tile sizes must match for data type casting");
+
+    // work with register tiles for type casting
+    auto t_reg = t.copy_to_register();
+    auto result = tile_register_like<ReturnTile>();
+
+    using Layout = typename decltype(result)::Layout;
+
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i)
+    {
+        const int linear = Layout::linear_from_register(i);
+
+        if(!Layout::valid(linear))
+            break;
+
+        result.data[i] = static_cast<typename ReturnTile::Type>(t_reg.data[i]);
+    }
+
+    return result;
+}
+
+template <typename Tile, typename AdjTile, typename AdjReturnTile>
+inline CUDA_CALLABLE void adj_tile_astype(Tile& t, AdjTile& adj_t, AdjReturnTile& adj_ret)
+{
+    // gradients only flow between float conversions
+    if constexpr((is_same<typename AdjTile::Type, wp::float16>::value ||
+                  is_same<typename AdjTile::Type, wp::float32>::value ||
+                  is_same<typename AdjTile::Type, wp::float64>::value) &&
+                 (is_same<typename AdjReturnTile::Type, wp::float16>::value ||
+                  is_same<typename AdjReturnTile::Type, wp::float32>::value ||
+                  is_same<typename AdjReturnTile::Type, wp::float64>::value))
+    {
+        auto adj_ret_reg = adj_ret.grad_to_register();
+        auto adj_t_reg = tile_register_like<AdjTile>();        
+
+        using Layout = typename decltype(adj_t_reg)::Layout;
+    
+        WP_PRAGMA_UNROLL
+        for (int i = 0; i < Layout::NumRegs; ++i)
+        {
+            adj_t_reg.data[i] += static_cast<typename AdjTile::Type>(adj_ret_reg.data[i]);
+        }
+    
+        adj_t.grad_add(adj_t_reg);
+    }
+}
+
+
 template <typename TileA, typename Scalar>
 inline CUDA_CALLABLE void assign(TileA& dest, int i, const Scalar& src)
 {   
