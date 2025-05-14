@@ -37,7 +37,6 @@ def create_blocked_cholesky_kernel(block_size: int):
         A: wp.array(dtype=float, ndim=2),
         L: wp.array(dtype=float, ndim=2),
         active_matrix_size_arr: wp.array(dtype=int, ndim=1),
-        num_threads_per_block: int,
     ):
         """
         Computes the Cholesky factorization of a symmetric positive definite matrix A in blocks.
@@ -46,6 +45,8 @@ def create_blocked_cholesky_kernel(block_size: int):
         A is assumed to support block reading.
         """
         tid, tid_block = wp.tid()
+        num_threads_per_block = wp.block_dim()
+
         active_matrix_size = active_matrix_size_arr[0]
 
         # Round up active_matrix_size to next multiple of block_size
@@ -239,8 +240,9 @@ class BlockCholeskySolver:
         wp.launch_tiled(
             self.cholesky_kernel,
             dim=1,
-            inputs=[A, self.L, num_active_equations, self.num_threads_per_block_factorize],
+            inputs=[A, self.L, num_active_equations],
             block_dim=self.num_threads_per_block_factorize,
+            device=self.device,
         )
 
     def solve(self, rhs: wp.array(dtype=float, ndim=2), result: wp.array(dtype=float, ndim=2)):
@@ -274,6 +276,7 @@ class BlockCholeskySolver:
             dim=1,
             inputs=[self.L, rhs, result, self.y, matrix_size],
             block_dim=self.num_threads_per_block_solve,
+            device=self.device,
         )
 
 
@@ -339,7 +342,7 @@ class CholeskySolverNumPy:
         result[:n] = np.linalg.solve(self.L[:n, :n].T, self.y[:n])
 
 
-def test_cholesky_solver(n, warp_solver: BlockCholeskySolver):
+def test_cholesky_solver(n, warp_solver: BlockCholeskySolver, device: str = "cuda"):
     # Create a symmetric positive definite matrix
     rng = np.random.default_rng(0)
     A_full = rng.standard_normal((n, n))
@@ -380,7 +383,6 @@ def test_cholesky_solver(n, warp_solver: BlockCholeskySolver):
 
     print("\nSolving with Warp kernels:")
     # Initialize Warp arrays
-    device = "cuda"
     A_wp = wp.array(A_padded, dtype=wp.float32, device=device)
     b_wp = wp.array(b_padded, dtype=wp.float32, device=device).reshape((padded_n, 1))
     x_wp = wp.zeros_like(b_wp)
@@ -487,12 +489,14 @@ if __name__ == "__main__":
         test_cholesky_solver_graph_capture()
 
     else:
+        device = "cpu"
+
         # Test equation sys  sizes
         sizes = [32, 70, 128, 192, 257, 320, 401, 1000]
 
         # Initialize solver once with max size
-        warp_solver = BlockCholeskySolver(max(sizes), block_size=16, device="cuda")
+        warp_solver = BlockCholeskySolver(max(sizes), block_size=16, device=device)
 
         for n in sizes:
             print(f"\nTesting system size n = {n}")
-            test_cholesky_solver(n, warp_solver)
+            test_cholesky_solver(n, warp_solver, device)
