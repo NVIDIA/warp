@@ -2803,7 +2803,7 @@ def test_alloc_strides(test, device):
 
 def test_casting(test, device):
     idxs = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
-    idxs = wp.array(idxs, device=device).reshape((-1, 3))
+    idxs = wp.array(idxs, device=device, dtype=wp.int32).reshape((-1, 3))
     idxs = wp.array(idxs, shape=idxs.shape[0], dtype=wp.vec3i, device=device)
     assert idxs.dtype is wp.vec3i
     assert idxs.shape == (4,)
@@ -2846,25 +2846,25 @@ def test_array_len(test, device):
 
 def test_cuda_interface_conversion(test, device):
     class MyArrayInterface:
-        def __init__(self, data):
-            self.data = np.array(data)
+        def __init__(self, data, npdtype):
+            self.data = np.array(data, dtype=npdtype)
             self.__array_interface__ = self.data.__array_interface__
             self.__cuda_array_interface__ = self.data.__array_interface__
             self.__len__ = self.data.__len__
 
-    array = MyArrayInterface((1, 2, 3))
+    array = MyArrayInterface((1, 2, 3), np.int8)
     wp_array = wp.array(array, dtype=wp.int8, device=device)
     assert wp_array.ptr != 0
 
-    array = MyArrayInterface((1, 2, 3))
+    array = MyArrayInterface((1, 2, 3), np.float32)
     wp_array = wp.array(array, dtype=wp.float32, device=device)
     assert wp_array.ptr != 0
 
-    array = MyArrayInterface((1, 2, 3))
+    array = MyArrayInterface((1, 2, 3), np.float32)
     wp_array = wp.array(array, dtype=wp.vec3, device=device)
     assert wp_array.ptr != 0
 
-    array = MyArrayInterface((1, 2, 3, 4))
+    array = MyArrayInterface((1, 2, 3, 4), np.float32)
     wp_array = wp.array(array, dtype=wp.mat22, device=device)
     assert wp_array.ptr != 0
 
@@ -2883,6 +2883,7 @@ add_function_test(TestArray, "test_shape", test_shape, devices=devices)
 add_function_test(TestArray, "test_negative_shape", test_negative_shape, devices=devices)
 add_function_test(TestArray, "test_flatten", test_flatten, devices=devices)
 add_function_test(TestArray, "test_reshape", test_reshape, devices=devices)
+
 add_function_test(TestArray, "test_slicing", test_slicing, devices=devices)
 add_function_test(TestArray, "test_transpose", test_transpose, devices=devices)
 add_function_test(TestArray, "test_view", test_view, devices=devices)

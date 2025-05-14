@@ -825,7 +825,7 @@ def transformation(dtype=Any):
                 super().__init__(*args)
                 return
 
-            # Even if the arguments match the original “from components”
+            # Even if the arguments match the original "from components"
             # signature, we still need to make sure that they represent
             # sequences that can be unpacked.
             if hasattr(p, "__len__") and hasattr(q, "__len__"):
@@ -1201,6 +1201,39 @@ def dtype_to_numpy(warp_dtype):
         return np_dtype
     else:
         raise TypeError(f"Cannot convert {warp_dtype} to a NumPy type")
+
+
+np_dtype_compatible_sets: dict[np.dtype, set[Any]] = {
+    np.dtype(np.bool_): {bool, int8, uint8},
+    np.dtype(np.int8): {int8, uint8},
+    np.dtype(np.uint8): {int8, uint8},
+    np.dtype(np.int16): {int16, uint16},
+    np.dtype(np.uint16): {int16, uint16},
+    np.dtype(np.int32): {int32, uint32},
+    np.dtype(np.int64): {int64, uint64},
+    np.dtype(np.uint32): {int32, uint32},
+    np.dtype(np.uint64): {int64, uint64},
+    np.dtype(np.byte): {bool, int8, uint8},
+    np.dtype(np.ubyte): {bool, int8, uint8},
+    np.dtype(np.float16): {float16},
+    np.dtype(np.float32): {float32},
+    np.dtype(np.float64): {float64},
+}
+
+
+def np_dtype_is_compatible(numpy_dtype: np.dtype, warp_dtype) -> builtins.bool:
+    """Evaluate whether the given NumPy dtype is compatible with the given Warp dtype."""
+
+    compatible_set: set[Any] | None = np_dtype_compatible_sets.get(numpy_dtype)
+
+    if compatible_set is not None:
+        if warp_dtype in compatible_set:
+            return True
+        # check if it's a vector or matrix type
+        if hasattr(warp_dtype, "_wp_scalar_type_"):
+            return warp_dtype._wp_scalar_type_ in compatible_set
+
+    return False
 
 
 # represent a Python range iterator
@@ -1958,6 +1991,14 @@ class array(Array[DType]):
 
             if dtype == Any:
                 dtype = np_dtype_to_warp_type[data_dtype]
+            else:
+                # Warn if the data type is compatible with the requested dtype
+                if not np_dtype_is_compatible(data_dtype, dtype):
+                    warp.utils.warn(
+                        f"The input data type {data_dtype} does not appear to be "
+                        f"compatible with the requested dtype {dtype}. If "
+                        "data-type sizes do not match, then this may lead to memory-access violations."
+                    )
 
             if data_strides is None:
                 data_strides = strides_from_shape(data_shape, dtype)
