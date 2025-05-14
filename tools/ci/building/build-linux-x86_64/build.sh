@@ -64,12 +64,10 @@ fi
 arch=$(uname -m)
 platform="$os-$arch"
 
-source "${SCRIPT_DIR}/../../../packman/packman" pull --platform "${platform}" "${SCRIPT_DIR}/../../../../deps/host-deps.packman.xml" --verbose
 source "${SCRIPT_DIR}/../../../packman/packman" pull --platform "${platform}" "${SCRIPT_DIR}/../../../../deps/target-deps.packman.xml" --verbose
 source "${SCRIPT_DIR}/../../../packman/packman" pull --platform "${platform}" "${SCRIPT_DIR}/../../../../deps/cuda-toolkit-deps.packman.xml" --verbose --include-tag "cuda-${CUDA_MAJOR_VER}"
 
 PYTHON="$SCRIPT_DIR/../../../../_build/target-deps/python/python"
-LINBUILD="$SCRIPT_DIR/../../../../_build/host-deps/linbuild/linbuild.sh"
 CUDA="$SCRIPT_DIR/../../../../_build/target-deps/cuda"
 
 # pip deps
@@ -84,6 +82,8 @@ if [[ "$os" = "macos" ]]; then
     $PYTHON "$SCRIPT_DIR/../../../../build_lib.py"
 else
     if [ ${USE_LINBUILD} -ne 0 ]; then
+        source "${SCRIPT_DIR}/../../../packman/packman" pull --platform "${platform}" "${SCRIPT_DIR}/../../../../deps/host-deps.packman.xml" --verbose
+        LINBUILD="$SCRIPT_DIR/../../../../_build/host-deps/linbuild/linbuild.sh"
         # build with docker for increased compatibility
         $LINBUILD --profile=centos7-gcc10-builder -- $PYTHON "$SCRIPT_DIR/../../../../build_lib.py" --cuda_path=$CUDA --mode=$BUILD_MODE
     else

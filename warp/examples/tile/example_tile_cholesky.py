@@ -82,6 +82,7 @@ if __name__ == "__main__":
     print("A\\n (Warp):\n", Y_wp.numpy())
     print("A\\x (Numpy):\n", Y_np)
 
-    assert np.allclose(Y_wp.numpy(), Y_np) and np.allclose(L_wp.numpy(), L_np)
+    np.testing.assert_allclose(Y_wp.numpy(), Y_np)
+    np.testing.assert_allclose(L_wp.numpy(), L_np)
 
     print("Example Tile Cholesky passed")

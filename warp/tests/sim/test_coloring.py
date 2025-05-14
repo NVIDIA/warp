@@ -48,6 +48,19 @@ def color_lattice_grid(num_x, num_y):
     return color_groups
 
 
+def test_coloring_corner_case(test, device):
+    builder_1 = wp.sim.ModelBuilder()
+    builder_1.color()
+    test.assertTrue(len(builder_1.particle_color_groups) == 0)
+
+    builder_2 = wp.sim.ModelBuilder()
+    builder_2.add_particle(pos=wp.vec3(0, 0, 0), vel=wp.vec3(0, 0, 0), mass=1.0)
+    builder_2.add_particle(pos=wp.vec3(1, 0, 0), vel=wp.vec3(0, 0, 0), mass=1.0)
+    builder_2.color()
+    test.assertTrue(len(builder_2.particle_color_groups) == 1)
+    test.assertTrue(builder_2.particle_color_groups[0].shape[0] == 2)
+
+
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_coloring_trimesh(test, device):
     from pxr import Usd, UsdGeom
@@ -252,6 +265,7 @@ class TestColoring(unittest.TestCase):
 
 add_function_test(TestColoring, "test_coloring_trimesh", test_coloring_trimesh, devices=devices)
 add_function_test(TestColoring, "test_combine_coloring", test_combine_coloring, devices=devices)
+add_function_test(TestColoring, "test_coloring_corner_case", test_coloring_corner_case, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

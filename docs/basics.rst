@@ -153,6 +153,25 @@ copy the array back to CPU memory where it is passed to NumPy.
 Calling :func:`array.numpy` on a CPU array will return a zero-copy NumPy view
 onto the Warp data.
 
+Common operators such as ``+``, ``-``, ``*``, and ``/`` are overloaded for Warp arrays.
+For example, we can add two arrays together using the ``+`` operator:
+
+.. testcode::
+
+    a = wp.array(np.arange(10), dtype=wp.float32)
+    b = wp.array(np.arange(10), dtype=wp.float32)
+    # multiply a by 2 and add these two arrays together element-wise
+    c = 2.0 * a + b
+    # multiply c by 10.0 in-place
+    c *= 10.0
+    print(c)
+
+.. testoutput::
+
+    [  0.  30.  60.  90. 120. 150. 180. 210. 240. 270.]
+
+For further details on mapping arbitrary functions to Warp arrays, see :func:`warp.utils.map`.
+
 Please see the :ref:`Arrays Reference <Arrays>` for more details.
 
 User Functions
@@ -209,6 +228,24 @@ User functions may also be overloaded by defining multiple function signatures w
     @wp.func
     def custom(x: wp.vec3):
         return x + wp.vec3(1.0, 0.0, 0.0)
+
+Tiles may also be passed to user functions. The function signature tile argument should include
+dtype, shape, and storage parameters to match the tile type intended to be used in the function. For example:
+
+.. code-block:: python
+
+    @wp.func
+    def tile_sum_func(a: wp.tile(dtype=float, shape=(TILE_M, TILE_N), storage="shared")):
+        return wp.tile_sum(a) * 0.5
+
+For convenience, it is recommended that users rely on `typing.Any` to let the compiler automatically
+determine the tile argument type:
+
+.. code-block:: python
+
+    @wp.func
+    def tile_sum_func(a: Any):
+        return wp.tile_sum(a) * 0.5
 
 See :ref:`Generic Functions` for details on using ``typing.Any`` in user function signatures.
 

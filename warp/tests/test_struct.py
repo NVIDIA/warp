@@ -677,8 +677,8 @@ class TestStruct(unittest.TestCase):
         v.value[2] = 3.0
 
         arr = wp.array([v], dtype=VecStruct)
-        expected = np.array(([1.0, 2.0, 3.0],))
-        assert np.all(arr.numpy().tolist() == expected)
+        expected = np.array([[[1.0, 2.0, 3.0]]])
+        np.testing.assert_equal(arr.numpy().tolist(), expected)
 
 
 add_function_test(TestStruct, "test_step", test_step, devices=devices)

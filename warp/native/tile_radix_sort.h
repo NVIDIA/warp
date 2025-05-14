@@ -29,7 +29,7 @@ namespace wp
 {
 
 
-// After this threashold, using segmented_sort from cub is faster
+// After this threshold, using segmented_sort from cub is faster
 // The threshold must be a power of 2
 // The radix sort in this file is consistently slower than the bitonic sort
 #define BITONIC_SORT_THRESHOLD 2048

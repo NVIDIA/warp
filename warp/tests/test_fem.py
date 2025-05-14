@@ -501,6 +501,10 @@ def _test_cell_lookup(s: fem.Sample, domain: fem.Domain, cell_filter: wp.array(d
         coord_proj, _sq_dist = fem.element_closest_point(domain, s_filter.element_index, pos_f)
         wp.expect_near(coord_proj, s_filter.element_coords, 0.001)
 
+    # test that extrapolated coordinates yield bak correct position
+    s_filter.element_coords = fem.element_coordinates(domain, s_filter.element_index, pos)
+    wp.expect_near(domain(s_filter), pos, 0.001)
+
 
 @fem.integrand(kernel_options={"enable_backward": False, "max_unroll": 1})
 def _test_geo_sides(

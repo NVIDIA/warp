@@ -63,4 +63,4 @@ if __name__ == "__main__":
     wp.launch_tiled(conv_tiled, dim=[1, 1], inputs=[x_wp], outputs=[y_wp], block_dim=BLOCK_DIM)
 
     # Since filter is 1/N, conv_tiled is a ~no-op
-    assert np.allclose(x_h, y_wp.numpy())
+    np.testing.assert_allclose(x_h, y_wp.numpy())
