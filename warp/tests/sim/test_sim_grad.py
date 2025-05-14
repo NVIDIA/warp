@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import platform
 import unittest
 
 import numpy as np
@@ -104,9 +103,6 @@ def test_sphere_pushing_on_rails(
     static_contacts=True,
     print_grad=False,
 ):
-    if platform.system() == "Darwin":
-        test.skipTest("Crashes on Mac runners")
-
     # Two spheres on a rail (prismatic or D6 joint), one is pushed, the other is passive.
     # The absolute distance to a target is measured and gradients are compared for
     # a push that is too far and too close.
@@ -160,9 +156,6 @@ def test_sphere_pushing_on_rails(
     model.ground = False
     model.joint_attach_ke = 32000.0 * 16
     model.joint_attach_kd = 500.0 * 4
-
-    model.shape_geo.scale.requires_grad = False
-    model.shape_geo.thickness.requires_grad = False
 
     if static_contacts:
         wp.sim.eval_fk(model, model.joint_q, model.joint_qd, None, model)
@@ -272,7 +265,7 @@ def test_sphere_pushing_on_rails(
     gradcheck(rollout, [action_too_close], device=device, eps=0.2, tol=tol, print_grad=print_grad)
 
 
-devices = get_test_devices()
+devices = get_test_devices(mode="basic")
 
 
 class TestSimGradients(unittest.TestCase):
