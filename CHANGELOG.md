@@ -51,6 +51,8 @@
   [GH-670](https://github.com/NVIDIA/warp/issues/670)).
 - Improve support for tuples in kernels
   ([GH-506](https://github.com/NVIDIA/warp/issues/506)).
+- Return a constant value from `len()` where possible.
+- Rename the internal function `wp.types.type_length()` to `type_size()`.
 
 ### Fixed
 

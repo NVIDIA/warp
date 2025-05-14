@@ -57,7 +57,7 @@ class IdentityMapper(DofMapper):
         self.value_dtype = dtype
         self.dof_dtype = dtype
 
-        size = warp.types.type_length(dtype)
+        size = warp.types.type_size(dtype)
         self.DOF_SIZE = wp.constant(size)
 
     @wp.func

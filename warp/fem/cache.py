@@ -489,15 +489,13 @@ class TemporaryStore:
         dtype = wp.types.type_to_warp(dtype)
         device = wp.get_device(device)
 
-        type_length = wp.types.type_length(dtype)
-        key = (dtype._type_, type_length, pinned, device.ordinal)
+        type_size = wp.types.type_size(dtype)
+        key = (dtype._type_, type_size, pinned, device.ordinal)
 
         pool = self._temporaries.get(key, None)
         if pool is None:
             value_type = (
-                cached_vec_type(length=type_length, dtype=wp.types.type_scalar_type(dtype))
-                if type_length > 1
-                else dtype
+                cached_vec_type(length=type_size, dtype=wp.types.type_scalar_type(dtype)) if type_size > 1 else dtype
             )
             pool = TemporaryStore.Pool(value_type, device, pinned=pinned)
             self._temporaries[key] = pool

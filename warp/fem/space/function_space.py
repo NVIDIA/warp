@@ -128,7 +128,7 @@ class FunctionSpace:
     def divergence_valid(self) -> bool:
         """Whether divergence of this field can be computed. Only for vector and tensor fields with same dimension as embedding geometry"""
         if wp.types.type_is_vector(self.dtype):
-            return wp.types.type_length(self.dtype) == self.geometry.dimension
+            return wp.types.type_size(self.dtype) == self.geometry.dimension
         if wp.types.type_is_matrix(self.dtype):
             return self.dtype._shape_[0] == self.geometry.dimension
         return False

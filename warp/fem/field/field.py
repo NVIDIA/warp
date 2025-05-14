@@ -183,7 +183,7 @@ class SpaceField(GeometryField):
         """Return type of the (world space) gradient operator. Assumes self.gradient_valid()"""
         if wp.types.type_is_vector(self.dtype):
             return cache.cached_mat_type(
-                shape=(wp.types.type_length(self.dtype), self.geometry.dimension),
+                shape=(wp.types.type_size(self.dtype), self.geometry.dimension),
                 dtype=wp.types.type_scalar_type(self.dtype),
             )
         if wp.types.type_is_quaternion(self.dtype):
@@ -198,7 +198,7 @@ class SpaceField(GeometryField):
         """Return type of the reference space gradient operator. Assumes self.gradient_valid()"""
         if wp.types.type_is_vector(self.dtype):
             return cache.cached_mat_type(
-                shape=(wp.types.type_length(self.dtype), self.geometry.cell_dimension),
+                shape=(wp.types.type_size(self.dtype), self.geometry.cell_dimension),
                 dtype=wp.types.type_scalar_type(self.dtype),
             )
         if wp.types.type_is_quaternion(self.dtype):
@@ -408,11 +408,11 @@ class UniformField(GeometryField):
 
         scalar_type = wp.types.type_scalar_type(self.dtype)
         if wp.types.type_is_vector(self.dtype):
-            grad_type = wp.mat(shape=(wp.types.type_length(self.dtype), self.geometry.dimension), dtype=scalar_type)
+            grad_type = wp.mat(shape=(wp.types.type_size(self.dtype), self.geometry.dimension), dtype=scalar_type)
             div_type = scalar_type
         elif wp.types.type_is_matrix(self.dtype):
             grad_type = None
-            div_type = wp.vec(length=(wp.types.type_length(self.dtype) // self.geometry.dimension), dtype=scalar_type)
+            div_type = wp.vec(length=(wp.types.type_size(self.dtype) // self.geometry.dimension), dtype=scalar_type)
         else:
             div_type = None
             grad_type = wp.vec(length=self.geometry.dimension, dtype=scalar_type)

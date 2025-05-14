@@ -4518,7 +4518,7 @@ def _check_volume_type_is_supported(dtype):
 
 def check_volume_value_grad_compatibility(dtype, grad_dtype):
     if type_is_vector(dtype):
-        expected = matrix(shape=(type_length(dtype), 3), dtype=type_scalar_type(dtype))
+        expected = matrix(shape=(type_size(dtype), 3), dtype=type_scalar_type(dtype))
     else:
         expected = vector(length=3, dtype=dtype)
 

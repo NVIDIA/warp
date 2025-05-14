@@ -1862,7 +1862,7 @@ class Adjoint:
             if attr == "dtype":
                 return type_scalar_type(var_type)
             elif attr == "length":
-                return type_length(var_type)
+                return type_size(var_type)
 
         return getattr(var_type, attr, None)
 

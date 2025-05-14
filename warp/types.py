@@ -1388,7 +1388,7 @@ def type_ctype(dtype):
         return dtype._type_
 
 
-def type_length(dtype):
+def type_size(dtype):
     if dtype == float or dtype == int or isinstance(dtype, warp.codegen.Struct):
         return 1
     else:
@@ -4724,8 +4724,8 @@ def _is_contiguous_vec_like_array(array, vec_length: int, scalar_types: tuple[ty
         return False
     if type_scalar_type(array.dtype) not in scalar_types:
         return False
-    return (array.ndim == 1 and type_length(array.dtype) == vec_length) or (
-        array.ndim == 2 and array.shape[1] == vec_length and type_length(array.dtype) == 1
+    return (array.ndim == 1 and type_size(array.dtype) == vec_length) or (
+        array.ndim == 2 and array.shape[1] == vec_length and type_size(array.dtype) == 1
     )
 
 

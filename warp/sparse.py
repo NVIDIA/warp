@@ -28,9 +28,9 @@ from warp.types import (
     is_array,
     scalar_types,
     type_is_matrix,
-    type_length,
     type_repr,
     type_scalar_type,
+    type_size,
     type_to_warp,
     types_equal,
 )
@@ -86,7 +86,7 @@ class BsrMatrix(Generic[_BlockType]):
     @property
     def block_size(self) -> int:
         """Size of the individual blocks, i.e. number of rows per block times number of columns per block."""
-        return type_length(self.values.dtype)
+        return type_size(self.values.dtype)
 
     @property
     def shape(self) -> Tuple[int, int]:
@@ -1912,7 +1912,7 @@ def _bsr_mv_transpose_kernel(
 def _vec_array_view(array: wp.array, dtype: type, expected_scalar_count: int) -> wp.array:
     # cast a 1d or 2d array to a 1d array with the target dtype, adjusting shape as required
 
-    scalar_count = array.size * type_length(array.dtype)
+    scalar_count = array.size * type_size(array.dtype)
     if scalar_count != expected_scalar_count:
         raise ValueError(f"Invalid array scalar size, expected {expected_scalar_count}, got {scalar_count}")
 
@@ -1928,7 +1928,7 @@ def _vec_array_view(array: wp.array, dtype: type, expected_scalar_count: int) ->
     if not array.is_contiguous:
         raise ValueError("Array must be contiguous")
 
-    vec_length = type_length(dtype)
+    vec_length = type_size(dtype)
     vec_count = scalar_count // vec_length
     if vec_count * vec_length != scalar_count:
         raise ValueError(

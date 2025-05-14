@@ -78,7 +78,7 @@ def test_smoothstep(test, device):
             a = wp.array([test_data.a], dtype=data_type, device=device, requires_grad=True)
             b = wp.array([test_data.b], dtype=data_type, device=device, requires_grad=True)
             t = wp.array([test_data.t], dtype=float, device=device, requires_grad=True)
-            out = wp.array([0] * wp.types.type_length(data_type), dtype=data_type, device=device, requires_grad=True)
+            out = wp.array([0] * wp.types.type_size(data_type), dtype=data_type, device=device, requires_grad=True)
 
             with wp.Tape() as tape:
                 wp.launch(kernel, dim=1, inputs=[a, b, t, out], device=device)
