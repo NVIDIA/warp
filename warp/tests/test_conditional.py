@@ -59,6 +59,48 @@ def test_conditional_if_else_nested():
 
 
 @wp.kernel
+def test_conditional_ifexp():
+    a = 0.5
+    b = 2.0
+
+    c = 1.0 if a > b else -1.0
+
+    wp.expect_eq(c, -1.0)
+
+
+@wp.kernel
+def test_conditional_ifexp_nested():
+    a = 1.0
+    b = 2.0
+
+    c = 3.0 if a > b else 6.0
+    d = 4.0 if a > b else 7.0
+    e = 1.0 if (a > b and c > d) else (-1.0 if a > b else (2.0 if c > d else -2.0))
+
+    wp.expect_eq(e, -2.0)
+
+
+@wp.kernel
+def test_conditional_ifexp_constant():
+    a = 1.0 if False else -1.0
+    b = 2.0 if 123 else -2.0
+
+    wp.expect_eq(a, -1.0)
+    wp.expect_eq(b, 2.0)
+
+
+@wp.kernel
+def test_conditional_ifexp_constant_nested():
+    a = 1.0 if False else (2.0 if True else 3.0)
+    b = 4.0 if 0 else (5.0 if 0 else (6.0 if False else 7.0))
+    c = 8.0 if False else (9.0 if False else (10.0 if 321 else 11.0))
+
+    wp.expect_eq(a, 2.0)
+    wp.expect_eq(b, 7.0)
+    wp.expect_eq(c, 10.0)
+
+
+@wp.kernel
 def test_boolean_and():
     a = 1.0
     b = 2.0
@@ -231,6 +273,10 @@ class TestConditional(unittest.TestCase):
 
 add_kernel_test(TestConditional, kernel=test_conditional_if_else, dim=1, devices=devices)
 add_kernel_test(TestConditional, kernel=test_conditional_if_else_nested, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_conditional_ifexp, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_conditional_ifexp_nested, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_conditional_ifexp_constant, dim=1, devices=devices)
+add_kernel_test(TestConditional, kernel=test_conditional_ifexp_constant_nested, dim=1, devices=devices)
 add_kernel_test(TestConditional, kernel=test_boolean_and, dim=1, devices=devices)
 add_kernel_test(TestConditional, kernel=test_boolean_or, dim=1, devices=devices)
 add_kernel_test(TestConditional, kernel=test_boolean_compound, dim=1, devices=devices)
