@@ -396,11 +396,12 @@ windows-x86_64 test mgpu:
   extends:
     - .save_test_report_artifact
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
   allow_failure: true # GitLab runners are too unstable to run this job
+  timeout: 30m
   before_script:
     - !reference [.snippets, define-powershell-GetTime]
     - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
