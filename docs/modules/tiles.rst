@@ -204,6 +204,7 @@ Construction
 * :func:`tile_broadcast`
 * :func:`tile_reshape`
 * :func:`tile_squeeze`
+* :func:`tile_astype`
 
 Load/Store
 ^^^^^^^^^^
