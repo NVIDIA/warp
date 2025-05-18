@@ -2790,8 +2790,9 @@ Instances: {len(self._instances)}"""
                 q = (0.0, 0.0, 0.0, 1.0)
             else:
                 c = np.cross(normal, (0.0, 1.0, 0.0))
-                angle = np.arcsin(np.linalg.norm(c))
-                axis = np.abs(c) / np.linalg.norm(c)
+                angle = wp.float32(np.arcsin(np.linalg.norm(c)))
+                axis = wp.vec3(np.abs(c))
+                axis = wp.normalize(axis)
                 q = wp.quat_from_axis_angle(axis, angle)
         return self.render_plane(
             "ground",
