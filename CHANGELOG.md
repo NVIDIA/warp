@@ -74,6 +74,8 @@
 - Fix an integer overflow bug in the native graph coloring module ([GH-718](https://github.com/NVIDIA/warp/issues/718)).
 - Fix missing documentation for geometric structs
   ([GH-674](https://github.com/NVIDIA/warp/issues/674)).
+- Fix `UsdRenderer.render_points()` erroring out when passed 4 points or less
+  ([GH-708](https://github.com/NVIDIA/warp/issues/708)).
 
 ## [1.7.1] - 2025-04-30
 
