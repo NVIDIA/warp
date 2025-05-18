@@ -28,7 +28,7 @@ def make_test_array_sum(dtype):
     def test_array_sum(test, device):
         rng = np.random.default_rng(123)
 
-        cols = wp.types.type_length(dtype)
+        cols = wp.types.type_size(dtype)
 
         values_np = rng.random(size=(N, cols))
         values = wp.array(values_np, device=device, dtype=dtype)
@@ -77,7 +77,7 @@ def make_test_array_inner(dtype):
     def test_array_inner(test, device):
         rng = np.random.default_rng(123)
 
-        cols = wp.types.type_length(dtype)
+        cols = wp.types.type_size(dtype)
 
         a_np = rng.random(size=(N, cols))
         b_np = rng.random(size=(N, cols))

@@ -57,6 +57,33 @@ def sametypes_create_value_func(default: TypeVar):
     return fn
 
 
+def extract_tuple(arg, as_constant=False):
+    if isinstance(arg, Var):
+        if isinstance(arg.type, warp.types.tuple_t):
+            out = arg.type.values
+        else:
+            out = (arg,)
+    elif isinstance(arg, warp.types.tuple_t):
+        out = arg.values
+    elif not isinstance(arg, Sequence):
+        out = (arg,)
+    else:
+        out = arg
+
+    if as_constant:
+        return tuple(x.constant if isinstance(x, Var) else x for x in out)
+
+    return out
+
+
+def static_len_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    if arg_types is None:
+        return int
+
+    length = warp.types.type_length(arg_types["a"])
+    return Var(None, type=int, constant=length)
+
+
 # ---------------------------------
 # Scalar Math
 
@@ -1955,40 +1982,15 @@ add_builtin(
 # Tile-based primitives
 
 
-def tile_unpack_shape(arg_values):
-    shape = arg_values["shape"]
-
-    if not isinstance(shape, tuple):
-        # promote to tuple
-        shape = (shape,)
-
-    # check that components are constants
-    for d in shape:
-        if d is None:
-            raise ValueError("Tile functions require shape to be a compile time constant.")
-
-    return shape
-
-
-def tile_unpack_offset(arg_values, ndim=0):
-    if "offset" in arg_values:
-        offset = arg_values["offset"]
-    else:
-        offset = (0,) * ndim
-
-    if isinstance(offset, tuple):
-        return offset
-    else:
-        # promote to tuple
-        return (offset,)
-
-
 def tile_zeros_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     # return generic type (for doc builds)
     if arg_types is None:
         return tile(dtype=Any, shape=Tuple[int, ...])
 
-    shape = tile_unpack_shape(arg_values)
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
 
     if "dtype" not in arg_values:
         raise TypeError("tile_zeros() missing required keyword argument 'dtype'")
@@ -2005,13 +2007,16 @@ def tile_zeros_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
 
 
 def tile_zeros_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
-    shape = tile_unpack_shape(arg_values)
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
     dtype = arg_values["dtype"]
 
     template_args = []
     template_args.append(dtype)
-    for d in shape:
-        template_args.append(d.constant)
+    template_args.extend(shape)
 
     return ([], template_args)
 
@@ -2055,7 +2060,10 @@ def tile_ones_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str,
     if arg_types is None:
         return tile(dtype=Any, shape=Tuple[int, ...])
 
-    shape = tile_unpack_shape(arg_values)
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
 
     if "dtype" not in arg_values:
         raise TypeError("tile_ones() missing required keyword argument 'dtype'")
@@ -2072,13 +2080,16 @@ def tile_ones_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str,
 
 
 def tile_ones_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
-    shape = tile_unpack_shape(arg_values)
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
     dtype = arg_values["dtype"]
 
     template_args = []
     template_args.append(dtype)
-    for d in shape:
-        template_args.append(d.constant)
+    template_args.extend(shape)
 
     return ([], template_args)
 
@@ -2223,8 +2234,15 @@ def tile_load_tuple_value_func(arg_types: Mapping[str, type], arg_values: Mappin
 
     a = arg_types["a"]
 
-    shape = tile_unpack_shape(arg_values)
-    offset = tile_unpack_offset(arg_values, a.ndim)
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    if "offset" in arg_values:
+        offset = extract_tuple(arg_values["offset"])
+    else:
+        offset = (0,) * a.ndim
 
     if a.ndim != len(shape):
         raise ValueError(
@@ -2244,11 +2262,18 @@ def tile_load_tuple_value_func(arg_types: Mapping[str, type], arg_values: Mappin
 
 def tile_load_tuple_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
     a = args["a"]
-    shape = tile_unpack_shape(args)
-    offset = tile_unpack_offset(args, a.type.ndim)
+    shape = extract_tuple(args["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    if "offset" in args:
+        offset = extract_tuple(args["offset"])
+    else:
+        offset = (0,) * a.type.ndim
 
     func_args = (a, *offset)
-    template_args = (d.constant for d in shape)
+    template_args = shape
 
     return (func_args, template_args)
 
@@ -2295,7 +2320,10 @@ def tile_store_value_func(arg_types, arg_values):
     a = arg_types["a"]
     t = arg_types["t"]
 
-    c = tile_unpack_offset(arg_types, a.ndim)
+    if "offset" in arg_types:
+        c = extract_tuple(arg_values["offset"])
+    else:
+        c = (0,) * a.ndim
 
     if len(c) != a.ndim:
         raise ValueError(
@@ -2321,7 +2349,10 @@ def tile_store_dispatch_func(input_types: Mapping[str, type], return_type: Any, 
     a = args["a"]
     t = args["t"]
 
-    offset = tile_unpack_offset(args, a.type.ndim)
+    if "offset" in args:
+        offset = extract_tuple(args["offset"])
+    else:
+        offset = (0,) * a.type.ndim
 
     func_args = (a, *offset, t)
     template_args = []
@@ -2371,7 +2402,11 @@ def tile_atomic_add_value_func(arg_types, arg_values):
     a = arg_types["a"]
     t = arg_types["t"]
 
-    c = tile_unpack_offset(arg_types, a.ndim)
+    if "offset" in arg_types:
+        c = extract_tuple(arg_values["offset"])
+    else:
+        c = (0,) * a.ndim
+
     if len(c) != a.ndim:
         raise ValueError(
             f"tile_atomic_add() 'a' argument must have {len(c)} dimensions, "
@@ -2396,7 +2431,10 @@ def tile_atomic_add_dispatch_func(input_types: Mapping[str, type], return_type: 
     a = args["a"]
     t = args["t"]
 
-    offset = tile_unpack_offset(args, a.type.ndim)
+    if "offset" in args:
+        offset = extract_tuple(args["offset"])
+    else:
+        offset = (0,) * a.type.ndim
 
     func_args = (a, *offset, t)
     template_args = []
@@ -2443,7 +2481,7 @@ def tile_view_value_func(arg_types, arg_values):
         return tile(dtype=Any, shape=Tuple[int, ...])
 
     tile_type = arg_types["t"]
-    offset = arg_types["offset"]
+    offset = extract_tuple(arg_values["offset"])
 
     if len(offset) > len(tile_type.shape):
         raise ValueError(f"tile_view() specified too many offset coordinates {len(offset)} > {len(tile_type.shape)}")
@@ -2451,7 +2489,7 @@ def tile_view_value_func(arg_types, arg_values):
     if "shape" in arg_values:
         # if shape is specified take it directly, e.g.:
         # tile_view(t, offset=(i,j), shape=(m,n))
-        shape = arg_values["shape"]
+        shape = extract_tuple(arg_values["shape"], as_constant=True)
         strides = tile_type.strides
 
         if len(shape) != len(tile_type.shape):
@@ -2477,14 +2515,17 @@ def tile_view_value_func(arg_types, arg_values):
 
 def tile_view_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
     tile = arg_values["t"]
-    coord = arg_values["offset"]
+    coord = extract_tuple(arg_values["offset"])
 
     # zero-pad coord to match source array
     view_coord = [0] * len(tile.type.shape)
     for i in range(len(coord)):
         view_coord[i] = coord[i]
 
-    return ((tile, *view_coord), (return_type,))
+    func_args = (tile, *view_coord)
+    template_args = (return_type,)
+
+    return (func_args, template_args)
 
 
 add_builtin(
@@ -2519,7 +2560,7 @@ def tile_squeeze_value_func(arg_types, arg_values):
     if "axis" in arg_values:
         axis = arg_values["axis"]
 
-        if not isinstance(axis, tuple):
+        if not isinstance(axis, Sequence):
             # promote to tuple
             axis = (axis,)
 
@@ -2591,7 +2632,10 @@ def tile_reshape_value_func(arg_types, arg_values):
     for s in tile_type.shape:
         size *= int(s)
 
-    shape = tile_unpack_shape(arg_values)
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
 
     # check for -1 dimension and reformat
     if -1 in shape:
@@ -2703,7 +2747,10 @@ def tile_assign_dispatch_func(input_types: Mapping[str, type], return_type: Any,
     dst = args["dst"]
     src = args["src"]
 
-    offset = tile_unpack_offset(args, len(dst.type.shape))
+    if "offset" in args:
+        offset = extract_tuple(args["offset"])
+    else:
+        offset = (0,) * len(dst.type.shape)
 
     func_args = (dst, src, *offset)
     template_args = []
@@ -3145,7 +3192,11 @@ def tile_broadcast_value_func(arg_types, arg_values):
     t = arg_types["a"]
 
     # target shape and strides
-    target_shape = tile_unpack_shape(arg_values)
+    target_shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in target_shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
     target_strides = [0] * len(target_shape)
 
     offset = len(target_shape) - len(t.shape)
@@ -4475,7 +4526,7 @@ def _check_volume_type_is_supported(dtype):
 
 def check_volume_value_grad_compatibility(dtype, grad_dtype):
     if type_is_vector(dtype):
-        expected = matrix(shape=(type_length(dtype), 3), dtype=type_scalar_type(dtype))
+        expected = matrix(shape=(type_size(dtype), 3), dtype=type_scalar_type(dtype))
     else:
         expected = vector(length=3, dtype=dtype)
 
@@ -5266,7 +5317,7 @@ def array_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any
         return array(dtype=Scalar)
 
     dtype = arg_values["dtype"]
-    shape = arg_values["shape"]
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
     return array(dtype=dtype, ndim=len(shape))
 
 
@@ -5276,8 +5327,9 @@ def array_dispatch_func(input_types: Mapping[str, type], return_type: Any, args:
     # to the underlying C++ function's runtime and template params.
 
     dtype = return_type.dtype
+    shape = extract_tuple(args["shape"], as_constant=True)
 
-    func_args = (args["ptr"], *args["shape"])
+    func_args = (args["ptr"], *shape)
     template_args = (dtype,)
     return (func_args, template_args)
 
@@ -7676,7 +7728,7 @@ def static(expr):
 add_builtin(
     "len",
     input_types={"a": vector(length=Any, dtype=Scalar)},
-    value_type=int,
+    value_func=static_len_value_func,
     doc="Return the number of elements in a vector.",
     group="Utility",
     export=False,
@@ -7685,7 +7737,7 @@ add_builtin(
 add_builtin(
     "len",
     input_types={"a": quaternion(dtype=Scalar)},
-    value_type=int,
+    value_func=static_len_value_func,
     doc="Return the number of elements in a quaternion.",
     group="Utility",
     export=False,
@@ -7694,7 +7746,7 @@ add_builtin(
 add_builtin(
     "len",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
-    value_type=int,
+    value_func=static_len_value_func,
     doc="Return the number of rows in a matrix.",
     group="Utility",
     export=False,
@@ -7703,7 +7755,7 @@ add_builtin(
 add_builtin(
     "len",
     input_types={"a": transformation(dtype=Float)},
-    value_type=int,
+    value_func=static_len_value_func,
     doc="Return the number of elements in a transformation.",
     group="Utility",
     export=False,
@@ -7721,8 +7773,82 @@ add_builtin(
 add_builtin(
     "len",
     input_types={"a": tile(dtype=Any, shape=Tuple[int, ...])},
-    value_type=int,
+    value_func=static_len_value_func,
     doc="Return the number of rows in a tile.",
+    group="Utility",
+    export=False,
+)
+
+
+# ---------------------------------
+# Tuple
+
+
+def tuple_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    return tuple_t(arg_types["args"], arg_values["args"])
+
+
+def tuple_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    func_args = args.get("args", ())
+    template_args = ()
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tuple",
+    input_types={"*args": Any},
+    value_func=tuple_value_func,
+    dispatch_func=tuple_dispatch_func,
+    variadic=True,
+    doc="Construct a tuple from a list of values",
+    group="Utility",
+    hidden=True,
+    missing_grad=True,
+    export=False,
+)
+
+
+def tuple_extract_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    tuple_type = arg_types["a"]
+    elements = tuple_type.types if is_tuple(tuple_type) else tuple_type
+
+    if "i" not in arg_values:
+        raise RuntimeError("Tuple index must be a compile time expression.")
+
+    index = arg_values["i"]
+    if isinstance(index, Var):
+        raise RuntimeError("Tuple index must be a compile time expression.")
+
+    length = len(elements)
+    if index >= length:
+        raise RuntimeError(f"Tuple index out of bounds, {index} >= {length}")
+
+    value_type = elements[index]
+    return value_type
+
+
+def tuple_extract_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    func_args = (args["a"],)
+    template_args = (args["i"].constant,)
+    return (func_args, template_args)
+
+
+add_builtin(
+    "extract",
+    input_types={"a": Tuple, "i": int},
+    value_func=tuple_extract_value_func,
+    dispatch_func=tuple_extract_dispatch_func,
+    group="Utility",
+    hidden=True,
+    missing_grad=True,
+)
+
+
+add_builtin(
+    "len",
+    input_types={"a": Tuple},
+    value_func=static_len_value_func,
+    doc="Return the number of elements in a tuple.",
     group="Utility",
     export=False,
 )

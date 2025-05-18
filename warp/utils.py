@@ -332,7 +332,7 @@ def array_sum(values, out=None, value_count=None, axis=None):
 
         output_shape = tuple(output_dim(ax, dim) for ax, dim in enumerate(values.shape))
 
-    type_length = wp.types.type_length(values.dtype)
+    type_size = wp.types.type_size(values.dtype)
     scalar_type = wp.types.type_scalar_type(values.dtype)
 
     # User can provide a device output array for storing the number of runs
@@ -374,7 +374,7 @@ def array_sum(values, out=None, value_count=None, axis=None):
 
     if axis is None:
         stride = wp.types.type_size_in_bytes(values.dtype)
-        native_func(values.ptr, out.ptr, value_count, stride, type_length)
+        native_func(values.ptr, out.ptr, value_count, stride, type_size)
 
         if host_return:
             return out.numpy()[0]
@@ -389,7 +389,7 @@ def array_sum(values, out=None, value_count=None, axis=None):
                 out.ptr + out_offset,
                 value_count,
                 stride,
-                type_length,
+                type_size,
             )
 
         if host_return:
@@ -421,7 +421,7 @@ def array_inner(a, b, out=None, count=None, axis=None):
 
         output_shape = tuple(output_dim(ax, dim) for ax, dim in enumerate(a.shape))
 
-    type_length = wp.types.type_length(a.dtype)
+    type_size = wp.types.type_size(a.dtype)
     scalar_type = wp.types.type_scalar_type(a.dtype)
 
     # User can provide a device output array for storing the number of runs
@@ -464,7 +464,7 @@ def array_inner(a, b, out=None, count=None, axis=None):
     if axis is None:
         stride_a = wp.types.type_size_in_bytes(a.dtype)
         stride_b = wp.types.type_size_in_bytes(b.dtype)
-        native_func(a.ptr, b.ptr, out.ptr, count, stride_a, stride_b, type_length)
+        native_func(a.ptr, b.ptr, out.ptr, count, stride_a, stride_b, type_size)
 
         if host_return:
             return out.numpy()[0]
@@ -484,7 +484,7 @@ def array_inner(a, b, out=None, count=None, axis=None):
                 count,
                 stride_a,
                 stride_b,
-                type_length,
+                type_size,
             )
 
         if host_return:
@@ -513,8 +513,8 @@ def array_cast(in_array, out_array, count=None):
         in_array = in_array.flatten()
         out_array = out_array.flatten()
 
-        in_array_data_length = warp.types.type_length(in_array.dtype)
-        out_array_data_length = warp.types.type_length(out_array.dtype)
+        in_array_data_length = warp.types.type_size(in_array.dtype)
+        out_array_data_length = warp.types.type_size(out_array.dtype)
         in_array_scalar_type = wp.types.type_scalar_type(in_array.dtype)
         out_array_scalar_type = wp.types.type_scalar_type(out_array.dtype)
 

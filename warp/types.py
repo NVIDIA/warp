@@ -161,15 +161,6 @@ class Tile(Generic[DType, Shape]):
     pass
 
 
-int_tuple_type_hints = {
-    Tuple[int]: 1,
-    Tuple[int, int]: 2,
-    Tuple[int, int, int]: 3,
-    Tuple[int, int, int, int]: 4,
-    Tuple[int, ...]: -1,
-}
-
-
 def constant(x):
     """Function to declare compile-time constants accessible from Warp kernels
 
@@ -1375,6 +1366,14 @@ class indexedarray_t(ctypes.Structure):
                 self.shape[i] = shape[i]
 
 
+class tuple_t:
+    """Used during codegen to store multiple values into a single variable."""
+
+    def __init__(self, types, values):
+        self.types = types
+        self.values = values
+
+
 def type_ctype(dtype):
     if dtype == float:
         return ctypes.c_float
@@ -1389,7 +1388,22 @@ def type_ctype(dtype):
         return dtype._type_
 
 
-def type_length(dtype):
+def type_length(obj):
+    if is_tile(obj):
+        return obj.shape[0]
+    elif is_tuple(obj):
+        return len(obj.types)
+    elif get_origin(obj) is tuple:
+        return len(get_args(obj))
+    elif hasattr(obj, "_shape_"):
+        return obj._shape_[0]
+    elif hasattr(obj, "_length_"):
+        return obj._length_
+
+    return len(obj)
+
+
+def type_size(dtype):
     if dtype == float or dtype == int or isinstance(dtype, warp.codegen.Struct):
         return 1
     else:
@@ -1501,6 +1515,8 @@ def type_repr(t) -> str:
             # array is used as a type annotation - display ndim instead of shape
             return f"array(ndim={t.ndim}, dtype={type_repr(t.dtype)})"
         return f"array(shape={t.shape}, dtype={type_repr(t.dtype)})"
+    if is_tuple(t):
+        return f"tuple({', '.join(type_repr(x) for x in t.types)})"
     if is_tile(t):
         return f"tile(shape={t.shape}, dtype={type_repr(t.dtype)})"
     if isinstance(t, warp.codegen.Struct):
@@ -1600,6 +1616,10 @@ def is_array(a) -> builtins.bool:
     return isinstance(a, array_types)
 
 
+def is_tuple(t) -> builtins.bool:
+    return isinstance(t, tuple_t)
+
+
 def scalars_equal(a, b, match_generic=False):
     # convert to canonical types
     if a == float:
@@ -1641,45 +1661,56 @@ def scalars_equal(a, b, match_generic=False):
     return a == b
 
 
-def types_equal(a, b, match_generic=False):
-    if match_generic:
-        # Special cases to interpret the types listed in `int_tuple_type_hints`
-        # as generic hints that accept any integer types.
-        if a in int_tuple_type_hints and isinstance(b, Sequence):
-            a_length = int_tuple_type_hints[a]
-            if (a_length == -1 or a_length == len(b)) and all(
-                scalars_equal(x, Int, match_generic=match_generic) for x in b
-            ):
-                return True
-        if b in int_tuple_type_hints and isinstance(a, Sequence):
-            b_length = int_tuple_type_hints[b]
-            if (b_length == -1 or b_length == len(a)) and all(
-                scalars_equal(x, Int, match_generic=match_generic) for x in a
-            ):
-                return True
-        if a in int_tuple_type_hints and b in int_tuple_type_hints:
-            a_length = int_tuple_type_hints[a]
-            b_length = int_tuple_type_hints[b]
-            if a_length is None or b_length is None or a_length == b_length:
-                return True
+def seq_match_ellipsis(a, b, match_generic=False) -> bool:
+    assert a and a[-1] is Ellipsis and len(a) == 2
 
+    # Compare the args against the type being repeated through the ellipsis.
+    repeated_arg = a[0]
+    if not all(types_equal(x, repeated_arg, match_generic=match_generic) for x in b):
+        return False
+
+    return True
+
+
+def types_equal(a, b, match_generic=False):
     a_origin = get_origin(a)
     b_origin = get_origin(b)
-    if a_origin is tuple and b_origin is tuple:
-        a_args = get_args(a)
-        b_args = get_args(b)
-        if len(a_args) == len(b_args) and all(
-            scalars_equal(x, y, match_generic=match_generic) for x, y in zip(a_args, b_args)
-        ):
+
+    a_is_tuple = True
+    if is_tuple(a):
+        a = a.types
+    elif a_origin is tuple:
+        a = get_args(a)
+    else:
+        a_is_tuple = False
+
+    b_is_tuple = True
+    if is_tuple(b):
+        b = b.types
+    elif b_origin is tuple:
+        b = get_args(b)
+    else:
+        b_is_tuple = False
+
+    if isinstance(a, Sequence) and isinstance(b, Sequence):
+        if (not a and a_is_tuple) or (not b and b_is_tuple):
+            # We have a bare tuple definition like `Tuple`, which matches to anything.
             return True
-    elif a_origin is tuple and isinstance(b, Sequence):
-        a_args = get_args(a)
-        if len(a_args) == len(b) and all(scalars_equal(x, y, match_generic=match_generic) for x, y in zip(a_args, b)):
-            return True
-    elif b_origin is tuple and isinstance(a, Sequence):
-        b_args = get_args(b)
-        if len(b_args) == len(a) and all(scalars_equal(x, y, match_generic=match_generic) for x, y in zip(b_args, a)):
-            return True
+
+        a_has_ellipsis = a and a[-1] is Ellipsis
+        b_has_ellipsis = b and b[-1] is Ellipsis
+        if a_has_ellipsis and b_has_ellipsis:
+            # Delegate to comparing all the elements using the standard approach.
+            pass
+        elif a_has_ellipsis:
+            return seq_match_ellipsis(a, b, match_generic=match_generic)
+        elif b_has_ellipsis:
+            return seq_match_ellipsis(b, a, match_generic=match_generic)
+
+        return len(a) == len(b) and all(types_equal(x, y, match_generic=match_generic) for x, y in zip(a, b))
+    elif isinstance(a, Sequence) or isinstance(b, Sequence):
+        # A sequence can only match to another sequence.
+        return False
 
     # convert to canonical types
     if a == float:
@@ -4708,8 +4739,8 @@ def _is_contiguous_vec_like_array(array, vec_length: int, scalar_types: tuple[ty
         return False
     if type_scalar_type(array.dtype) not in scalar_types:
         return False
-    return (array.ndim == 1 and type_length(array.dtype) == vec_length) or (
-        array.ndim == 2 and array.shape[1] == vec_length and type_length(array.dtype) == 1
+    return (array.ndim == 1 and type_size(array.dtype) == vec_length) or (
+        array.ndim == 2 and array.shape[1] == vec_length and type_size(array.dtype) == 1
     )
 
 
@@ -5326,6 +5357,11 @@ def get_type_code(arg_type: type) -> str:
         return f"fa{arg_type.ndim}{get_type_code(arg_type.dtype)}"
     elif isinstance(arg_type, indexedfabricarray):
         return f"ifa{arg_type.ndim}{get_type_code(arg_type.dtype)}"
+    elif get_origin(arg_type) is tuple:
+        arg_types = get_args(arg_type)
+        return f"tpl{len(arg_types)}{''.join(get_type_code(x) for x in arg_types)}"
+    elif isinstance(arg_type, tuple_t):
+        return f"tplt{len(arg_type.types)}{''.join(get_type_code(x) for x in arg_type.types)}"
     elif isinstance(arg_type, warp.codegen.Struct):
         return arg_type.native_name
     elif isinstance(arg_type, tile):
@@ -5344,6 +5380,8 @@ def get_type_code(arg_type: type) -> str:
     elif isinstance(arg_type, Callable):
         # TODO: elaborate on Callable type?
         return "c"
+    elif arg_type is Ellipsis:
+        return "?"
     else:
         raise TypeError(f"Unrecognized type '{arg_type}'")
 

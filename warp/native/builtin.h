@@ -1801,6 +1801,7 @@ inline CUDA_CALLABLE void adj_expect_near(const vec3& actual, const vec3& expect
 
 // include array.h so we have the print, isfinite functions for the inner array types defined
 #include "array.h"
+#include "tuple.h"
 #include "mesh.h"
 #include "bvh.h" 
 #include "svd.h"

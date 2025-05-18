@@ -18,7 +18,7 @@ from typing import Any, Optional
 import warp as wp
 from warp.fem.linalg import array_axpy, symmetric_eigenvalues_qr
 from warp.sparse import BsrMatrix, bsr_assign, bsr_axpy, bsr_copy, bsr_mm, bsr_mv
-from warp.types import type_is_matrix, type_length
+from warp.types import type_is_matrix, type_size
 
 
 def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: Optional[wp.array] = None):
@@ -53,7 +53,7 @@ def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: Opti
         if fixed_value.shape[0] != projector_matrix.nrow:
             raise ValueError("Fixed value array must be of length equal to the number of rows of blocks")
 
-        if type_length(fixed_value.dtype) == 1:
+        if type_size(fixed_value.dtype) == 1:
             # array of scalars, convert to 1d array of vectors
             fixed_value = wp.array(
                 data=None,

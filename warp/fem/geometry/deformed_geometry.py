@@ -34,10 +34,7 @@ class DeformedGeometry(Geometry):
         from warp.fem.field import DiscreteField, GeometryField
 
         if isinstance(field, DiscreteField):
-            if (
-                not wp.types.type_is_vector(field.dtype)
-                or wp.types.type_length(field.dtype) != field.geometry.dimension
-            ):
+            if not wp.types.type_is_vector(field.dtype) or wp.types.type_size(field.dtype) != field.geometry.dimension:
                 raise ValueError(
                     "Invalid value type for position field, must be vector-valued with same dimension as underlying geometry"
                 )
