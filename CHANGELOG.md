@@ -53,6 +53,8 @@
   ([GH-506](https://github.com/NVIDIA/warp/issues/506)).
 - Return a constant value from `len()` where possible.
 - Rename the internal function `wp.types.type_length()` to `type_size()`.
+- Lift the exact version requirement in `omni.warp` towards `omni.warp.core`
+  ([GH-702](https://github.com/NVIDIA/warp/issues/702)).
 
 ### Fixed
 
