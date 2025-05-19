@@ -469,7 +469,7 @@ information on contributing to the development of Warp.
 
 ### Research Using Warp
 
-Our [PUBLICATIONS.MD](https://github.com/NVIDIA/warp/blob/main/PUBLICATIONS.md) file lists academic and research
+Our [PUBLICATIONS.md](https://github.com/NVIDIA/warp/blob/main/PUBLICATIONS.md) file lists academic and research
 publications that leverage the capabilities of Warp.
 We encourage you to add your own published work using Warp to this list.
 
