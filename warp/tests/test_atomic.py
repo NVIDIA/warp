@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 import unittest
 
 import numpy as np
@@ -32,8 +33,8 @@ def make_atomic_test(type):
         tid = wp.tid()
 
         wp.atomic_add(out_add, 0, val[tid])
-        wp.atomic_min(out_min, 0, val[tid])
-        wp.atomic_max(out_max, 0, val[tid])
+        wp.atomic_min(out_min, wp.uint32(0), val[tid])
+        wp.atomic_max(out_max, wp.int64(0), val[tid])
 
     # register a custom kernel (no decorator) function
     # this lets us register the same function definition
@@ -130,6 +131,102 @@ test_atomic_mat33 = make_atomic_test(wp.mat33)
 test_atomic_mat44 = make_atomic_test(wp.mat44)
 
 
+def test_atomic_add_supported_dtypes(test, device, dtype):
+    scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
+
+    @wp.kernel
+    def kernel(arr: wp.array(dtype=dtype)):
+        wp.atomic_add(arr, 0, dtype(scalar_type(0)))
+
+    arr = wp.zeros(1, dtype=dtype, device=device)
+    wp.launch(kernel, dim=1, outputs=(arr,), device=device)
+
+
+def test_atomic_min_supported_dtypes(test, device, dtype):
+    scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
+
+    @wp.kernel
+    def kernel(arr: wp.array(dtype=dtype)):
+        wp.atomic_min(arr, 0, dtype(scalar_type(0)))
+
+    arr = wp.zeros(1, dtype=dtype, device=device)
+    wp.launch(kernel, dim=1, outputs=(arr,), device=device)
+
+
+def test_atomic_max_supported_dtypes(test, device, dtype):
+    scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
+
+    @wp.kernel
+    def kernel(arr: wp.array(dtype=dtype)):
+        wp.atomic_max(arr, 0, dtype(scalar_type(0)))
+
+    arr = wp.zeros(1, dtype=dtype, device=device)
+    wp.launch(kernel, dim=1, outputs=(arr,), device=device)
+
+
+def test_atomic_add_unsupported_dtypes(test, device, dtype):
+    scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
+
+    dtype_str = re.escape(wp.types.type_repr(dtype))
+    scalar_type_str = wp.types.type_repr(scalar_type)
+
+    @wp.kernel
+    def kernel(arr: wp.array(dtype=dtype)):
+        wp.atomic_add(arr, 0, dtype(scalar_type(0)))
+
+    arr = wp.zeros(1, dtype=dtype, device=device)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        (
+            r"atomic_add\(\) operations only work on arrays with \[u\]int32, \[u\]int64, float16, float32, or float64 "
+            rf"as the underlying scalar types, but got {dtype_str} \(with scalar type {scalar_type_str}\)$"
+        ),
+    ):
+        wp.launch(kernel, dim=1, outputs=(arr,), device=device)
+
+
+def test_atomic_min_unsupported_dtypes(test, device, dtype):
+    scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
+
+    dtype_str = re.escape(wp.types.type_repr(dtype))
+    scalar_type_str = wp.types.type_repr(scalar_type)
+
+    @wp.kernel
+    def kernel(arr: wp.array(dtype=dtype)):
+        wp.atomic_min(arr, 0, dtype(scalar_type(0)))
+
+    arr = wp.zeros(1, dtype=dtype, device=device)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        (
+            r"atomic_min\(\) operations only work on arrays with \[u\]int32, \[u\]int64, float32, or float64 "
+            rf"as the underlying scalar types, but got {dtype_str} \(with scalar type {scalar_type_str}\)$"
+        ),
+    ):
+        wp.launch(kernel, dim=1, outputs=(arr,), device=device)
+
+
+def test_atomic_max_unsupported_dtypes(test, device, dtype):
+    scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
+
+    dtype_str = re.escape(wp.types.type_repr(dtype))
+    scalar_type_str = wp.types.type_repr(scalar_type)
+
+    @wp.kernel
+    def kernel(arr: wp.array(dtype=dtype)):
+        wp.atomic_max(arr, 0, dtype(scalar_type(0)))
+
+    arr = wp.zeros(1, dtype=dtype, device=device)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        (
+            r"atomic_max\(\) operations only work on arrays with \[u\]int32, \[u\]int64, float32, or float64 "
+            rf"as the underlying scalar types, but got {dtype_str} \(with scalar type {scalar_type_str}\)$"
+        ),
+    ):
+        wp.launch(kernel, dim=1, outputs=(arr,), device=device)
+
+
 devices = get_test_devices()
 
 
@@ -146,6 +243,88 @@ add_function_test(TestAtomic, "test_atomic_vec4", test_atomic_vec4, devices=devi
 add_function_test(TestAtomic, "test_atomic_mat22", test_atomic_mat22, devices=devices)
 add_function_test(TestAtomic, "test_atomic_mat33", test_atomic_mat33, devices=devices)
 add_function_test(TestAtomic, "test_atomic_mat44", test_atomic_mat44, devices=devices)
+
+for dtype in (
+    wp.int32,
+    wp.uint32,
+    wp.int64,
+    wp.uint64,
+    wp.float16,
+    wp.float32,
+    wp.float64,
+    wp.vec3i,
+    wp.vec3ui,
+    wp.vec3l,
+    wp.vec3ul,
+    wp.vec3h,
+    wp.vec3f,
+    wp.vec3d,
+):
+    scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
+
+    add_function_test(
+        TestAtomic,
+        f"test_atomic_add_supported_dtypes_{dtype.__name__}",
+        test_atomic_add_supported_dtypes,
+        devices=devices,
+        dtype=dtype,
+    )
+
+    if scalar_type is not wp.float16:
+        add_function_test(
+            TestAtomic,
+            f"test_atomic_min_supported_dtypes_{dtype.__name__}",
+            test_atomic_min_supported_dtypes,
+            devices=devices,
+            dtype=dtype,
+        )
+        add_function_test(
+            TestAtomic,
+            f"test_atomic_max_supported_dtypes_{dtype.__name__}",
+            test_atomic_max_supported_dtypes,
+            devices=devices,
+            dtype=dtype,
+        )
+
+
+for dtype in (
+    wp.int8,
+    wp.uint8,
+    wp.int16,
+    wp.uint16,
+    wp.float16,
+    wp.vec3b,
+    wp.vec3ub,
+    wp.vec3s,
+    wp.vec3us,
+    wp.vec3h,
+):
+    scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
+
+    if scalar_type is not wp.float16:
+        add_function_test(
+            TestAtomic,
+            f"test_atomic_add_unsupported_dtypes_{dtype.__name__}",
+            test_atomic_add_unsupported_dtypes,
+            devices=devices,
+            dtype=dtype,
+        )
+
+    add_function_test(
+        TestAtomic,
+        f"test_atomic_min_unsupported_dtypes_{dtype.__name__}",
+        test_atomic_min_unsupported_dtypes,
+        devices=devices,
+        dtype=dtype,
+    )
+
+    add_function_test(
+        TestAtomic,
+        f"test_atomic_max_unsupported_dtypes_{dtype.__name__}",
+        test_atomic_max_unsupported_dtypes,
+        devices=devices,
+        dtype=dtype,
+    )
 
 
 if __name__ == "__main__":
