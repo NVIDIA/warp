@@ -1285,6 +1285,29 @@ inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 #endif
 }
 
+// emulate atomic int64 add with atomicCAS()
+template <>
+inline CUDA_CALLABLE int64 atomic_add(int64* address, int64 val)
+{
+#if defined(__CUDA_ARCH__)
+    unsigned long long int *address_as_ull = (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+
+    while (val < (int64)old)
+    {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed, (int64)val);
+    }
+
+    return (int64)old;
+
+#else
+    int64 old = *address;
+    *address = min(old, val);
+    return old;
+#endif
+}
+
 template<>
 inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
 {
@@ -1321,53 +1344,6 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
         return float16(0.0f);
     #endif
 #endif
-
-}
-
-// emulate atomic float max with atomicCAS()
-inline CUDA_CALLABLE float atomic_max(float* address, float val)
-{
-#if defined(__CUDA_ARCH__)
-    int *address_as_int = (int*)address;
-    int old = *address_as_int, assumed;
-    
-	while (val > __int_as_float(old))
-	{
-        assumed = old;
-        old = atomicCAS(address_as_int, assumed,
-                        __float_as_int(val));
-    }
-
-    return __int_as_float(old);
-
-#else
-    float old = *address;
-    *address = max(old, val);
-    return old;
-#endif
-}
-
-// emulate atomic float min with atomicCAS()
-inline CUDA_CALLABLE float atomic_min(float* address, float val)
-{
-#if defined(__CUDA_ARCH__)
-    int *address_as_int = (int*)address;
-    int old = *address_as_int, assumed;
-
-    while (val < __int_as_float(old)) 
-	{
-        assumed = old;
-        old = atomicCAS(address_as_int, assumed,
-                        __float_as_int(val));
-    }
-
-    return __int_as_float(old);
-
-#else
-    float old = *address;
-    *address = min(old, val);
-    return old;
-#endif
 }
 
 template<>
@@ -1403,33 +1379,47 @@ inline CUDA_CALLABLE float64 atomic_add(float64* buf, float64 value)
     #undef __PTR
 
 #endif  // CUDA compiled by NVRTC
-
 }
 
-// emulate atomic double max with atomicCAS()
-inline CUDA_CALLABLE double atomic_max(double* address, double val)
+template <typename T>
+inline CUDA_CALLABLE T atomic_min(T* address, T val)
 {
 #if defined(__CUDA_ARCH__)
-        unsigned long long int *address_as_ull = (unsigned long long int*)address;
-        unsigned long long int old = *address_as_ull, assumed;
-    
-	while (val > __longlong_as_double(old))
-	{
-        assumed = old;
-        old = atomicCAS(address_as_ull, assumed,
-                        __double_as_longlong(val));
-    }
-
-    return __longlong_as_double(old);
+    return atomicMin(address, val);
 
 #else
-    double old = *address;
-    *address = max(old, val);
+    T old = *address;
+    *address = min(old, val);
+    return old;
+#endif
+}
+
+// emulate atomic float min with atomicCAS()
+template <>
+inline CUDA_CALLABLE float atomic_min(float* address, float val)
+{
+#if defined(__CUDA_ARCH__)
+    int *address_as_int = (int*)address;
+    int old = *address_as_int, assumed;
+
+    while (val < __int_as_float(old))
+	{
+        assumed = old;
+        old = atomicCAS(address_as_int, assumed,
+                        __float_as_int(val));
+    }
+
+    return __int_as_float(old);
+
+#else
+    float old = *address;
+    *address = min(old, val);
     return old;
 #endif
 }
 
 // emulate atomic double min with atomicCAS()
+template <>
 inline CUDA_CALLABLE double atomic_min(double* address, double val)
 {
 #if defined(__CUDA_ARCH__)
@@ -1452,27 +1442,63 @@ inline CUDA_CALLABLE double atomic_min(double* address, double val)
 #endif
 }
 
-inline CUDA_CALLABLE int atomic_max(int* address, int val)
+template <typename T>
+inline CUDA_CALLABLE T atomic_max(T* address, T val)
 {
 #if defined(__CUDA_ARCH__)
     return atomicMax(address, val);
 
 #else
-    int old = *address;
+    T old = *address;
     *address = max(old, val);
     return old;
 #endif
 }
 
-// atomic int min
-inline CUDA_CALLABLE int atomic_min(int* address, int val)
+// emulate atomic float max with atomicCAS()
+template<>
+inline CUDA_CALLABLE float atomic_max(float* address, float val)
 {
 #if defined(__CUDA_ARCH__)
-    return atomicMin(address, val);
+    int *address_as_int = (int*)address;
+    int old = *address_as_int, assumed;
+
+	while (val > __int_as_float(old))
+	{
+        assumed = old;
+        old = atomicCAS(address_as_int, assumed,
+                        __float_as_int(val));
+    }
+
+    return __int_as_float(old);
 
 #else
-    int old = *address;
-    *address = min(old, val);
+    float old = *address;
+    *address = max(old, val);
+    return old;
+#endif
+}
+
+// emulate atomic double max with atomicCAS()
+template<>
+inline CUDA_CALLABLE double atomic_max(double* address, double val)
+{
+#if defined(__CUDA_ARCH__)
+        unsigned long long int *address_as_ull = (unsigned long long int*)address;
+        unsigned long long int old = *address_as_ull, assumed;
+
+	while (val > __longlong_as_double(old))
+	{
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed,
+                        __double_as_longlong(val));
+    }
+
+    return __longlong_as_double(old);
+
+#else
+    double old = *address;
+    *address = max(old, val);
     return old;
 #endif
 }

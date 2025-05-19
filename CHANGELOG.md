@@ -86,6 +86,8 @@
 - Fix `UsdRenderer.render_points()` erroring out when passed 4 points or less
   ([GH-708](https://github.com/NVIDIA/warp/issues/708)).
 - Fix garbage collection issues with JAX FFI callbacks ([GH-711](https://github.com/NVIDIA/warp/pull/711)).
+- Fix `wp.atomic_*()` built-ins not working with some types
+  ([GH-733](https://github.com/NVIDIA/warp/issues/733)).
 
 ## [1.7.1] - 2025-04-30
 
