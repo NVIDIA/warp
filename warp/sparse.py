@@ -375,22 +375,33 @@ def bsr_set_from_triplets(
     """
 
     if rows.device != columns.device or rows.device != dest.device:
-        raise ValueError("All arguments must reside on the same device")
+        raise ValueError(
+            f"Rows and columns must reside on the destination matrix device, got {rows.device}, {columns.device} and {dest.device}"
+        )
 
     if rows.shape[0] != columns.shape[0]:
-        raise ValueError("All triplet arrays must have the same length")
+        raise ValueError(
+            f"Rows and columns arrays must have the same length, got {rows.shape[0]} and {columns.shape[0]}"
+        )
+
+    if rows.dtype != wp.int32 or columns.dtype != wp.int32:
+        raise TypeError("Rows and columns arrays must be of type int32")
 
     # Accept either array1d(dtype) or contiguous array3d(scalar_type) as values
     if values is not None:
         if values.device != rows.device:
-            raise ValueError("All arguments must reside on the same device")
+            raise ValueError(f"Values and rows must reside on the same device, got {values.device} and {rows.device}")
 
         if values.shape[0] != rows.shape[0]:
-            raise ValueError("All triplet arrays must have the same length")
+            raise ValueError(
+                f"Values and rows arrays must have the same length, got {values.shape[0]} and {rows.shape[0]}"
+            )
 
         if values.ndim == 1:
-            if values.dtype != dest.values.dtype:
-                raise ValueError("Values array type must correspond to that of dest matrix")
+            if not types_equal(values.dtype, dest.values.dtype):
+                raise ValueError(
+                    f"Values array type must correspond to that of the dest matrix, got {type_repr(values.dtype)} and {type_repr(dest.values.dtype)}"
+                )
         elif values.ndim == 3:
             if values.shape[1:] != dest.block_shape:
                 raise ValueError(
@@ -398,12 +409,14 @@ def bsr_set_from_triplets(
                 )
 
             if type_scalar_type(values.dtype) != dest.scalar_type:
-                raise ValueError("Scalar type of values array should correspond to that of matrix")
+                raise ValueError(
+                    f"Scalar type of values array ({type_repr(values.dtype)}) should correspond to that of matrix ({type_repr(dest.scalar_type)})"
+                )
 
             if not values.is_contiguous:
                 raise ValueError("Multi-dimensional values array should be contiguous")
         else:
-            raise ValueError("Number of dimension for values array should be 1 or 3")
+            raise ValueError(f"Number of dimension for values array should be 1 or 3, got {values.ndim}")
 
     nnz = rows.shape[0]
     if nnz == 0:
@@ -721,10 +734,10 @@ def bsr_assign(
       src: Matrix to be copied.
       dest: Destination matrix. May have a different block shape or scalar type
         than ``src``, in which case the required casting will be performed.
-      structure_only: If ``True``, only the non-zeros indices are copied, and uninitialized value storage is allocated
+      structure_only: If ``True``, only the non-zero indices are copied, and uninitialized value storage is allocated
         to accommodate at least ``src.nnz`` blocks. If ``structure_only`` is ``False``, values are also copied with implicit
         casting if the two matrices use distinct scalar types.
-      masked: If ``True``, prevent the assignment operation from adding new non-zeros blocks to ``dest``.
+      masked: If ``True``, prevent the assignment operation from adding new non-zero blocks to ``dest``.
     """
 
     src, src_scale = _extract_matrix_and_scale(src)
@@ -741,7 +754,7 @@ def bsr_assign(
 
     if src_subrows * dest.block_shape[0] != src.block_shape[0] * dest_subrows:
         raise ValueError(
-            f"Incompatible dest and src block shapes; block rows must evenly divide one another (Got {src.block_shape[0]}, {dest.block_shape[0]})"
+            f"Incompatible dest and src block shapes; block rows must evenly divide one another (Got {dest.block_shape[0]}, {src.block_shape[0]})"
         )
 
     if src.block_shape[1] >= dest.block_shape[1]:
@@ -753,14 +766,16 @@ def bsr_assign(
 
     if src_subcols * dest.block_shape[1] != src.block_shape[1] * dest_subcols:
         raise ValueError(
-            f"Incompatible dest and src block shapes; block columns must evenly divide one another (Got {src.block_shape[1]}, {dest.block_shape[1]})"
+            f"Incompatible dest and src block shapes; block columns must evenly divide one another (Got {dest.block_shape[1]}, {src.block_shape[1]})"
         )
 
     dest_nrow = (src.nrow * src_subrows) // dest_subrows
     dest_ncol = (src.ncol * src_subcols) // dest_subcols
 
     if src.nrow * src_subrows != dest_nrow * dest_subrows or src.ncol * src_subcols != dest_ncol * dest_subcols:
-        raise ValueError("The requested block shape does not evenly divide the source matrix")
+        raise ValueError(
+            f"The requested block shape {dest.block_shape} does not evenly divide the source matrix of total size {src.shape}"
+        )
 
     nnz_alloc = src.nnz * src_subrows * src_subcols
     if masked:
@@ -906,15 +921,17 @@ def bsr_set_transpose(
     src, src_scale = _extract_matrix_and_scale(src)
 
     if dest.values.device != src.values.device:
-        raise ValueError("All arguments must reside on the same device")
+        raise ValueError(
+            f"All arguments must reside on the same device, got {dest.values.device} and {src.values.device}"
+        )
 
     if dest.scalar_type != src.scalar_type:
-        raise ValueError("All arguments must have the same scalar type")
+        raise ValueError(f"All arguments must have the same scalar type, got {dest.scalar_type} and {src.scalar_type}")
 
     transpose_block_shape = src.block_shape[::-1]
 
     if dest.block_shape != transpose_block_shape:
-        raise ValueError(f"Destination block shape must be {transpose_block_shape}")
+        raise ValueError(f"Destination block shape must be {transpose_block_shape}, got {dest.block_shape}")
 
     nnz = src.nnz
     dest.nrow = src.ncol
@@ -1010,12 +1027,12 @@ def bsr_get_diag(A: BsrMatrixOrExpression[BlockType], out: "Optional[Array[Block
     if out is None:
         out = wp.zeros(shape=(dim,), dtype=A.values.dtype, device=A.values.device)
     else:
-        if out.dtype != A.values.dtype:
-            raise ValueError(f"Output array must have type {A.values.dtype}")
+        if not types_equal(out.dtype, A.values.dtype):
+            raise ValueError(f"Output array must have type {A.values.dtype}, got {out.dtype}")
         if out.device != A.values.device:
-            raise ValueError(f"Output array must reside on device {A.values.device}")
+            raise ValueError(f"Output array must reside on device {A.values.device}, got {out.device}")
         if out.shape[0] < dim:
-            raise ValueError(f"Output array must be of length at least {dim}")
+            raise ValueError(f"Output array must be of length at least {dim}, got {out.shape[0]}")
 
     wp.launch(
         kernel=_bsr_get_diag_kernel,
@@ -1292,8 +1309,8 @@ def bsr_axpy(
     The ``x`` and ``y`` matrices are allowed to alias.
 
     Args:
-        x: Read-only right-hand-side.
-        y: Mutable left-hand-side. If ``y`` is not provided, it will be allocated and treated as zero.
+        x: Read-only first operand.
+        y: Mutable second operand and output matrix. If ``y`` is not provided, it will be allocated and treated as zero.
         alpha: Uniform scaling factor for ``x``.
         beta: Uniform scaling factor for ``y``.
         masked: If ``True``, discard all blocks from ``x`` which are not
@@ -1337,13 +1354,17 @@ def bsr_axpy(
     # General case
 
     if x.values.device != y.values.device:
-        raise ValueError("All arguments must reside on the same device")
+        raise ValueError(f"All arguments must reside on the same device, got {x.values.device} and {y.values.device}")
 
     if x.scalar_type != y.scalar_type or x.block_shape != y.block_shape:
-        raise ValueError("Matrices must have the same block type")
+        raise ValueError(
+            f"Matrices must have the same block type, got ({x.block_shape}, {x.scalar_type}) and ({y.block_shape}, {y.scalar_type})"
+        )
 
     if x.nrow != y.nrow or x.ncol != y.ncol:
-        raise ValueError("Matrices must have the same number of rows and columns")
+        raise ValueError(
+            f"Matrices must have the same number of rows and columns, got ({x.nrow}, {x.ncol}) and ({y.nrow}, {y.ncol})"
+        )
 
     if work_arrays is None:
         work_arrays = bsr_axpy_work_arrays()
@@ -1617,9 +1638,9 @@ def bsr_mm(
     If the matrix ``z`` is not provided as input, it will be allocated and treated as zero.
 
     Args:
-        x: Read-only left factor of the matrix-matrix product.
-        y: Read-only right factor of the matrix-matrix product.
-        z: Mutable left-hand-side. If ``z`` is not provided, it will be allocated and treated as zero.
+        x: Read-only left operand of the matrix-matrix product.
+        y: Read-only right operand of the matrix-matrix product.
+        z: Mutable affine operand and result matrix. If ``z`` is not provided, it will be allocated and treated as zero.
         alpha: Uniform scaling factor for the ``x @ y`` product
         beta: Uniform scaling factor for ``z``
         masked: If ``True``, ignore all blocks from ``x @ y`` which are not existing non-zeros of ``y``
@@ -1652,20 +1673,28 @@ def bsr_mm(
         beta = 0.0
 
     if x.values.device != y.values.device or x.values.device != z.values.device:
-        raise ValueError("All arguments must reside on the same device")
+        raise ValueError(
+            f"All arguments must reside on the same device, got {x.values.device}, {y.values.device} and {z.values.device}"
+        )
 
     if x.scalar_type != y.scalar_type or x.scalar_type != z.scalar_type:
-        raise ValueError("Matrices must have the same scalar type")
+        raise ValueError(
+            f"Matrices must have the same scalar type, got {x.scalar_type}, {y.scalar_type} and {z.scalar_type}"
+        )
 
     if (
         x.block_shape[0] != z.block_shape[0]
         or y.block_shape[1] != z.block_shape[1]
         or x.block_shape[1] != y.block_shape[0]
     ):
-        raise ValueError("Incompatible block sizes for matrix multiplication")
+        raise ValueError(
+            f"Incompatible block sizes for matrix multiplication, got ({x.block_shape}, {y.block_shape}) and ({z.block_shape})"
+        )
 
     if x.nrow != z.nrow or z.ncol != y.ncol or x.ncol != y.nrow:
-        raise ValueError("Incompatible number of rows/columns for matrix multiplication")
+        raise ValueError(
+            f"Incompatible number of rows/columns for matrix multiplication, got ({x.nrow}, {x.ncol}) and ({y.nrow}, {y.ncol})"
+        )
 
     device = z.values.device
 
@@ -1920,10 +1949,10 @@ def _vec_array_view(array: wp.array, dtype: type, expected_scalar_count: int) ->
         return array
 
     if type_scalar_type(array.dtype) != type_scalar_type(dtype):
-        raise ValueError(f"Incompatible scalar types, {type_repr(array.dtype)} vs {type_repr(dtype)}")
+        raise ValueError(f"Incompatible scalar types, expected {type_repr(array.dtype)}, got {type_repr(dtype)}")
 
     if array.ndim > 2:
-        raise ValueError(f"Incompatible array number of dimensions {array.ndim}")
+        raise ValueError(f"Incompatible array number of dimensions, expected 1 or 2, got {array.ndim}")
 
     if not array.is_contiguous:
         raise ValueError("Array must be contiguous")
@@ -1965,9 +1994,9 @@ def bsr_mv(
     The ``x`` and ``y`` vectors are allowed to alias.
 
     Args:
-        A: Read-only, left matrix factor of the matrix-vector product.
-        x: Read-only, right vector factor of the matrix-vector product.
-        y: Mutable left-hand-side. If ``y`` is not provided, it will be allocated and treated as zero.
+        A: Read-only, left matrix operand of the matrix-vector product.
+        x: Read-only, right vector operand of the matrix-vector product.
+        y: Mutable affine operand and result vector. If ``y`` is not provided, it will be allocated and treated as zero.
         alpha: Uniform scaling factor for ``x``. If zero, ``x`` will not be read and may be left uninitialized.
         beta: Uniform scaling factor for ``y``. If zero, ``y`` will not be read and may be left uninitialized.
         transpose: If ``True``, use the transpose of the matrix ``A``. In this case the result is **non-deterministic**.
@@ -1997,16 +2026,20 @@ def bsr_mv(
     beta = A.scalar_type(beta)
 
     if A.values.device != x.device or A.values.device != y.device:
-        raise ValueError("A, x, and y must reside on the same device")
+        raise ValueError(
+            f"A, x, and y must reside on the same device, got {A.values.device}, {x.device} and {y.device}"
+        )
 
     if x.ptr == y.ptr:
         # Aliasing case, need temporary storage
         if work_buffer is None:
             work_buffer = wp.empty_like(y)
         elif work_buffer.size < y.size:
-            raise ValueError(f"Work buffer size is insufficient, needs to be at least {y.size}")
+            raise ValueError(f"Work buffer size is insufficient, needs to be at least {y.size}, got {work_buffer.size}")
         elif not types_equal(work_buffer.dtype, y.dtype):
-            raise ValueError(f"Work buffer must have same data type as y, {type_repr(y.dtype)}")
+            raise ValueError(
+                f"Work buffer must have same data type as y, {type_repr(y.dtype)} vs {type_repr(work_buffer.dtype)}"
+            )
 
         # Save old y values before overwriting vector
         wp.copy(dest=work_buffer, src=y, count=y.size)

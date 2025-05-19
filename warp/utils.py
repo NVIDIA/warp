@@ -30,7 +30,7 @@ import warp as wp
 import warp.context
 import warp.types
 from warp.context import Devicelike
-from warp.types import Array, DType
+from warp.types import Array, DType, type_repr, types_equal
 
 warnings_seen = set()
 
@@ -98,14 +98,31 @@ def quat_between_vectors(a: wp.vec3, b: wp.vec3) -> wp.quat:
 
 
 def array_scan(in_array, out_array, inclusive=True):
+    """Perform a scan (prefix sum) operation on an array.
+
+    This function computes the inclusive or exclusive scan of the input array and stores the result in the output array.
+    The scan operation computes a running sum of elements in the array.
+
+    Args:
+        in_array (wp.array): Input array to scan. Must be of type int32 or float32.
+        out_array (wp.array): Output array to store scan results. Must match input array type and size.
+        inclusive (bool, optional): If True, performs an inclusive scan (includes current element in sum).
+                                  If False, performs an exclusive scan (excludes current element). Defaults to True.
+
+    Raises:
+        RuntimeError: If array storage devices don't match, if storage size is insufficient, or if data types are unsupported.
+    """
+
     if in_array.device != out_array.device:
-        raise RuntimeError("Array storage devices do not match")
+        raise RuntimeError(f"In and out array storage devices do not match ({in_array.device} vs {out_array.device})")
 
     if in_array.size != out_array.size:
-        raise RuntimeError("Array storage sizes do not match")
+        raise RuntimeError(f"In and out array storage sizes do not match ({in_array.size} vs {out_array.size})")
 
-    if in_array.dtype != out_array.dtype:
-        raise RuntimeError("Array data types do not match")
+    if not types_equal(in_array.dtype, out_array.dtype):
+        raise RuntimeError(
+            f"In and out array data types do not match ({type_repr(in_array.dtype)} vs {type_repr(out_array.dtype)})"
+        )
 
     if in_array.size == 0:
         return
@@ -118,25 +135,39 @@ def array_scan(in_array, out_array, inclusive=True):
         elif in_array.dtype == wp.float32:
             runtime.core.array_scan_float_host(in_array.ptr, out_array.ptr, in_array.size, inclusive)
         else:
-            raise RuntimeError("Unsupported data type")
+            raise RuntimeError(f"Unsupported data type: {type_repr(in_array.dtype)}")
     elif in_array.device.is_cuda:
         if in_array.dtype == wp.int32:
             runtime.core.array_scan_int_device(in_array.ptr, out_array.ptr, in_array.size, inclusive)
         elif in_array.dtype == wp.float32:
             runtime.core.array_scan_float_device(in_array.ptr, out_array.ptr, in_array.size, inclusive)
         else:
-            raise RuntimeError("Unsupported data type")
+            raise RuntimeError(f"Unsupported data type: {type_repr(in_array.dtype)}")
 
 
 def radix_sort_pairs(keys, values, count: int):
+    """Sort key-value pairs using radix sort.
+
+    This function sorts pairs of arrays based on the keys array, maintaining the key-value
+    relationship. The sort is stable and operates in linear time.
+    The `keys` and `values` arrays must be large enough to accomodate 2*`count` elements.
+
+    Args:
+        keys (wp.array): Array of keys to sort. Must be of type int32, float32, or int64.
+        values (wp.array): Array of values to sort along with keys. Must be of type int32.
+        count (int): Number of elements to sort.
+
+    Raises:
+        RuntimeError: If array storage devices don't match, if storage size is insufficient, or if data types are unsupported.
+    """
     if keys.device != values.device:
-        raise RuntimeError("Array storage devices do not match")
+        raise RuntimeError(f"Keys and values array storage devices do not match ({keys.device} vs {values.device})")
 
     if count == 0:
         return
 
     if keys.size < 2 * count or values.size < 2 * count:
-        raise RuntimeError("Array storage must be large enough to contain 2*count elements")
+        raise RuntimeError("Keys and values array storage must be large enough to contain 2*count elements")
 
     from warp.context import runtime
 
@@ -148,7 +179,9 @@ def radix_sort_pairs(keys, values, count: int):
         elif keys.dtype == wp.int64 and values.dtype == wp.int32:
             runtime.core.radix_sort_pairs_int64_host(keys.ptr, values.ptr, count)
         else:
-            raise RuntimeError("Unsupported data type")
+            raise RuntimeError(
+                f"Unsupported keys and values data types: {type_repr(keys.dtype)}, {type_repr(values.dtype)}"
+            )
     elif keys.device.is_cuda:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
             runtime.core.radix_sort_pairs_int_device(keys.ptr, values.ptr, count)
@@ -157,7 +190,9 @@ def radix_sort_pairs(keys, values, count: int):
         elif keys.dtype == wp.int64 and values.dtype == wp.int32:
             runtime.core.radix_sort_pairs_int64_device(keys.ptr, values.ptr, count)
         else:
-            raise RuntimeError("Unsupported data type")
+            raise RuntimeError(
+                f"Unsupported keys and values data types: {type_repr(keys.dtype)}, {type_repr(values.dtype)}"
+            )
 
 
 def segmented_sort_pairs(
@@ -171,6 +206,7 @@ def segmented_sort_pairs(
 
     This function performs a segmented sort of key-value pairs, where the sorting is done independently within each segment.
     The segments are defined by their start and optionally end indices.
+    The `keys` and `values` arrays must be large enough to accomodate 2*`count` elements.
 
     Args:
         keys: Array of keys to sort. Must be of type int32 or float32.
@@ -189,7 +225,7 @@ def segmented_sort_pairs(
                      if segment_start_indices is not of type int32, or if data types are unsupported.
     """
     if keys.device != values.device:
-        raise RuntimeError("Array storage devices do not match")
+        raise RuntimeError(f"Array storage devices do not match ({keys.device} vs {values.device})")
 
     if count == 0:
         return
@@ -238,7 +274,7 @@ def segmented_sort_pairs(
                 num_segments,
             )
         else:
-            raise RuntimeError("Unsupported data type")
+            raise RuntimeError(f"Unsupported data type: {type_repr(keys.dtype)}")
     elif keys.device.is_cuda:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
             runtime.core.segmented_sort_pairs_int_device(
@@ -259,21 +295,42 @@ def segmented_sort_pairs(
                 num_segments,
             )
         else:
-            raise RuntimeError("Unsupported data type")
+            raise RuntimeError(f"Unsupported data type: {type_repr(keys.dtype)}")
 
 
 def runlength_encode(values, run_values, run_lengths, run_count=None, value_count=None):
+    """Perform run-length encoding on an array.
+
+    This function compresses an array by replacing consecutive identical values with a single value
+    and its count. For example, [1,1,1,2,2,3] becomes values=[1,2,3] and lengths=[3,2,1].
+
+    Args:
+        values (wp.array): Input array to encode. Must be of type int32.
+        run_values (wp.array): Output array to store unique values. Must be at least value_count in size.
+        run_lengths (wp.array): Output array to store run lengths. Must be at least value_count in size.
+        run_count (wp.array, optional): Optional output array to store the number of runs.
+                                       If None, returns the count as an integer.
+        value_count (int, optional): Number of values to process. If None, processes entire array.
+
+    Returns:
+        int or wp.array: Number of runs if run_count is None, otherwise returns run_count array.
+
+    Raises:
+        RuntimeError: If array storage devices don't match, if storage size is insufficient, or if data types are unsupported.
+    """
     if run_values.device != values.device or run_lengths.device != values.device:
-        raise RuntimeError("Array storage devices do not match")
+        raise RuntimeError("run_values, run_lengths and values storage devices do not match")
 
     if value_count is None:
         value_count = values.size
 
     if run_values.size < value_count or run_lengths.size < value_count:
-        raise RuntimeError("Output array storage sizes must be at least equal to value_count")
+        raise RuntimeError(f"Output array storage sizes must be at least equal to value_count ({value_count})")
 
-    if values.dtype != run_values.dtype:
-        raise RuntimeError("values and run_values data types do not match")
+    if not types_equal(values.dtype, run_values.dtype):
+        raise RuntimeError(
+            f"values and run_values data types do not match ({type_repr(values.dtype)} vs {type_repr(run_values.dtype)})"
+        )
 
     if run_lengths.dtype != wp.int32:
         raise RuntimeError("run_lengths array must be of type int32")
@@ -292,7 +349,7 @@ def runlength_encode(values, run_values, run_lengths, run_count=None, value_coun
             raise RuntimeError("run_count array must be of type int32")
         if value_count == 0:
             run_count.zero_()
-            return 0
+            return run_count
         host_return = False
 
     from warp.context import runtime
@@ -303,20 +360,39 @@ def runlength_encode(values, run_values, run_lengths, run_count=None, value_coun
                 values.ptr, run_values.ptr, run_lengths.ptr, run_count.ptr, value_count
             )
         else:
-            raise RuntimeError("Unsupported data type")
+            raise RuntimeError(f"Unsupported data type: {type_repr(values.dtype)}")
     elif values.device.is_cuda:
         if values.dtype == wp.int32:
             runtime.core.runlength_encode_int_device(
                 values.ptr, run_values.ptr, run_lengths.ptr, run_count.ptr, value_count
             )
         else:
-            raise RuntimeError("Unsupported data type")
+            raise RuntimeError(f"Unsupported data type: {type_repr(values.dtype)}")
 
     if host_return:
         return int(run_count.numpy()[0])
+    return run_count
 
 
 def array_sum(values, out=None, value_count=None, axis=None):
+    """Compute the sum of array elements.
+
+    This function computes the sum of array elements, optionally along a specified axis.
+    The operation can be performed on the entire array or along a specific dimension.
+
+    Args:
+        values (wp.array): Input array to sum. Must be of type float32 or float64.
+        out (wp.array, optional): Output array to store results. If None, a new array is created.
+        value_count (int, optional): Number of elements to process. If None, processes entire array.
+        axis (int, optional): Axis along which to compute sum. If None, computes sum of all elements.
+
+    Returns:
+        wp.array or float: The sum result. Returns a float if axis is None and out is None,
+                           otherwise returns the output array.
+
+    Raises:
+        RuntimeError: If output array storage device or data type is incompatible with input array.
+    """
     if value_count is None:
         if axis is None:
             value_count = values.size
@@ -363,14 +439,14 @@ def array_sum(values, out=None, value_count=None, axis=None):
         elif scalar_type == wp.float64:
             native_func = runtime.core.array_sum_double_host
         else:
-            raise RuntimeError("Unsupported data type")
+            raise RuntimeError(f"Unsupported data type: {type_repr(values.dtype)}")
     elif values.device.is_cuda:
         if scalar_type == wp.float32:
             native_func = runtime.core.array_sum_float_device
         elif scalar_type == wp.float64:
             native_func = runtime.core.array_sum_double_device
         else:
-            raise RuntimeError("Unsupported data type")
+            raise RuntimeError(f"Unsupported data type: {type_repr(values.dtype)}")
 
     if axis is None:
         stride = wp.types.type_size_in_bytes(values.dtype)
@@ -378,33 +454,52 @@ def array_sum(values, out=None, value_count=None, axis=None):
 
         if host_return:
             return out.numpy()[0]
-    else:
-        stride = values.strides[axis]
-        for idx in np.ndindex(output_shape):
-            out_offset = sum(i * s for i, s in zip(idx, out.strides))
-            val_offset = sum(i * s for i, s in zip(idx, values.strides))
+        return out
 
-            native_func(
-                values.ptr + val_offset,
-                out.ptr + out_offset,
-                value_count,
-                stride,
-                type_size,
-            )
+    stride = values.strides[axis]
+    for idx in np.ndindex(output_shape):
+        out_offset = sum(i * s for i, s in zip(idx, out.strides))
+        val_offset = sum(i * s for i, s in zip(idx, values.strides))
 
-        if host_return:
-            return out
+        native_func(
+            values.ptr + val_offset,
+            out.ptr + out_offset,
+            value_count,
+            stride,
+            type_size,
+        )
+
+    return out
 
 
 def array_inner(a, b, out=None, count=None, axis=None):
+    """Compute the inner product of two arrays.
+
+    This function computes the dot product between two arrays, optionally along a specified axis.
+    The operation can be performed on the entire arrays or along a specific dimension.
+
+    Args:
+        a (wp.array): First input array.
+        b (wp.array): Second input array. Must match shape and type of a.
+        out (wp.array, optional): Output array to store results. If None, a new array is created.
+        count (int, optional): Number of elements to process. If None, processes entire arrays.
+        axis (int, optional): Axis along which to compute inner product. If None, computes on flattened arrays.
+
+    Returns:
+        wp.array or float: The inner product result. Returns a float if axis is None and out is None,
+                           otherwise returns the output array.
+
+    Raises:
+        RuntimeError: If array storage devices, sizes, or data types are incompatible.
+    """
     if a.size != b.size:
-        raise RuntimeError("Array storage sizes do not match")
+        raise RuntimeError(f"A and b array storage sizes do not match ({a.size} vs {b.size})")
 
     if a.device != b.device:
-        raise RuntimeError("Array storage devices do not match")
+        raise RuntimeError(f"A and b array storage devices do not match ({a.device} vs {b.device})")
 
-    if a.dtype != b.dtype:
-        raise RuntimeError("Array data types do not match")
+    if not types_equal(a.dtype, b.dtype):
+        raise RuntimeError(f"A and b array data types do not match ({type_repr(a.dtype)} vs {type_repr(b.dtype)})")
 
     if count is None:
         if axis is None:
@@ -452,14 +547,14 @@ def array_inner(a, b, out=None, count=None, axis=None):
         elif scalar_type == wp.float64:
             native_func = runtime.core.array_inner_double_host
         else:
-            raise RuntimeError("Unsupported data type")
+            raise RuntimeError(f"Unsupported data type: {type_repr(a.dtype)}")
     elif a.device.is_cuda:
         if scalar_type == wp.float32:
             native_func = runtime.core.array_inner_float_device
         elif scalar_type == wp.float64:
             native_func = runtime.core.array_inner_double_device
         else:
-            raise RuntimeError("Unsupported data type")
+            raise RuntimeError(f"Unsupported data type: {type_repr(a.dtype)}")
 
     if axis is None:
         stride_a = wp.types.type_size_in_bytes(a.dtype)
@@ -468,27 +563,27 @@ def array_inner(a, b, out=None, count=None, axis=None):
 
         if host_return:
             return out.numpy()[0]
-    else:
-        stride_a = a.strides[axis]
-        stride_b = b.strides[axis]
+        return out
 
-        for idx in np.ndindex(output_shape):
-            out_offset = sum(i * s for i, s in zip(idx, out.strides))
-            a_offset = sum(i * s for i, s in zip(idx, a.strides))
-            b_offset = sum(i * s for i, s in zip(idx, b.strides))
+    stride_a = a.strides[axis]
+    stride_b = b.strides[axis]
 
-            native_func(
-                a.ptr + a_offset,
-                b.ptr + b_offset,
-                out.ptr + out_offset,
-                count,
-                stride_a,
-                stride_b,
-                type_size,
-            )
+    for idx in np.ndindex(output_shape):
+        out_offset = sum(i * s for i, s in zip(idx, out.strides))
+        a_offset = sum(i * s for i, s in zip(idx, a.strides))
+        b_offset = sum(i * s for i, s in zip(idx, b.strides))
 
-        if host_return:
-            return out
+        native_func(
+            a.ptr + a_offset,
+            b.ptr + b_offset,
+            out.ptr + out_offset,
+            count,
+            stride_a,
+            stride_b,
+            type_size,
+        )
+
+    return out
 
 
 @wp.kernel
@@ -501,8 +596,28 @@ def _array_cast_kernel(
 
 
 def array_cast(in_array, out_array, count=None):
+    """Cast elements from one array to another array with a different data type.
+
+    This function performs element-wise casting from the input array to the output array.
+    The arrays must have the same number of dimensions and data type shapes. If they don't match,
+    the arrays will be flattened and casting will be performed at the scalar level.
+
+    Args:
+        in_array (wp.array): Input array to cast from.
+        out_array (wp.array): Output array to cast to. Must have the same device as in_array.
+        count (int, optional): Number of elements to process. If None, processes entire array.
+                             For multi-dimensional arrays, partial casting is not supported.
+
+    Raises:
+        RuntimeError: If arrays have different devices or if attempting partial casting
+                     on multi-dimensional arrays.
+
+    Note:
+        If the input and output arrays have the same data type, this function will
+        simply copy the data without any conversion.
+    """
     if in_array.device != out_array.device:
-        raise RuntimeError("Array storage devices do not match")
+        raise RuntimeError(f"Array storage devices do not match ({in_array.device} vs {out_array.device})")
 
     in_array_data_shape = getattr(in_array.dtype, "_shape_", ())
     out_array_data_shape = getattr(out_array.dtype, "_shape_", ())

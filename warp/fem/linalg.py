@@ -20,50 +20,58 @@ import warp.types
 
 
 @wp.func
-def generalized_outer(x: Any, y: Any):
-    """Generalized outer product allowing for the first argument to be a scalar"""
+def generalized_outer(x: wp.vec(Any, wp.Scalar), y: wp.vec(Any, wp.Scalar)):
+    """Generalized outer product allowing for vector or scalar arguments"""
     return wp.outer(x, y)
 
 
 @wp.func
-def generalized_outer(x: wp.float32, y: wp.vec2):
+def generalized_outer(x: wp.Scalar, y: wp.vec(Any, wp.Scalar)):
     return x * y
 
 
 @wp.func
-def generalized_outer(x: wp.float32, y: wp.vec3):
+def generalized_outer(x: wp.vec(Any, wp.Scalar), y: wp.Scalar):
     return x * y
 
 
 @wp.func
-def generalized_outer(x: wp.quatf, y: wp.vec3):
+def generalized_outer(x: wp.quatf, y: wp.vec(Any, wp.Scalar)):
     return generalized_outer(wp.vec4(x[0], x[1], x[2], x[3]), y)
 
 
 @wp.func
-def generalized_inner(x: Any, y: Any):
-    """Generalized inner product allowing for the first argument to be a tensor"""
+def generalized_inner(x: wp.vec(Any, wp.Scalar), y: wp.vec(Any, wp.Scalar)):
+    """Generalized inner product allowing for vector, tensor and scalar arguments"""
     return wp.dot(x, y)
 
 
 @wp.func
-def generalized_inner(x: float, y: float):
+def generalized_inner(x: wp.Scalar, y: wp.Scalar):
     return x * y
 
 
 @wp.func
-def generalized_inner(x: wp.mat22, y: wp.vec2):
-    return x[0] * y[0] + x[1] * y[1]
+def generalized_inner(x: wp.mat((Any, Any), wp.Scalar), y: wp.vec(Any, wp.Scalar)):
+    return y @ x
 
 
 @wp.func
-def generalized_inner(x: wp.mat33, y: wp.vec3):
-    return x[0] * y[0] + x[1] * y[1] + x[2] * y[2]
+def generalized_inner(x: wp.vec(Any, wp.Scalar), y: wp.mat((Any, Any), wp.Scalar)):
+    return y @ x
 
 
 @wp.func
-def basis_coefficient(val: wp.float32, i: int):
+def basis_coefficient(val: wp.Scalar, i: int):
     return val
+
+
+@wp.func
+def basis_coefficient(val: wp.mat((Any, Any), wp.Scalar), i: int):
+    cols = int(type(val[0]).length)
+    row = i // cols
+    col = i - row * cols
+    return val[row, col]
 
 
 @wp.func
@@ -72,19 +80,13 @@ def basis_coefficient(val: Any, i: int):
 
 
 @wp.func
-def basis_coefficient(val: wp.vec2, i: int, j: int):
+def basis_coefficient(val: wp.vec(Any, wp.Scalar), i: int, j: int):
     # treat as row vector
     return val[j]
 
 
 @wp.func
-def basis_coefficient(val: wp.vec3, i: int, j: int):
-    # treat as row vector
-    return val[j]
-
-
-@wp.func
-def basis_coefficient(val: Any, i: int, j: int):
+def basis_coefficient(val: wp.mat((Any, Any), wp.Scalar), i: int, j: int):
     return val[i, j]
 
 
