@@ -7,6 +7,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2025
 
+- **FOCI: Trajectory Optimization on Gaussian Splats**. *M. G. Andreu, M. Wilder-Smith, V. Klemm, V. Patil, J. Tordesillas, M. Hutter*. May 2025. [arXiv:2505.08510](https://arxiv.org/abs/2505.08510)
 - **Dynamic Robot Tool Use with Vision Language Models**. *N. Trupin, Z. Wang, A. H. Qureshi*. May 2025. [arXiv:2505.01399](https://arxiv.org/abs/2505.01399)
 - **AI-Enhanced Automatic Design of Efficient Underwater Gliders**. *P. Y. Chen, P. Ma, N. Hagemann, J. Romanishin, W. Wang, D. Rus, W. Matusik*. April 2025. [arXiv:2505.00222](https://arxiv.org/abs/2505.00222)
 - **Dexonomy: Synthesizing All Dexterous Grasp Types in a Grasp Taxonomy**. *J. Chen, Y. Ke, L. Peng, H. Wang*. April 2025. [arXiv:2504.18829](https://arxiv.org/abs/2504.18829)
