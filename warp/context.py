@@ -1481,6 +1481,24 @@ def register_api_function(
     """
     function.group = group
     function.hidden = hidden
+
+    # Update the docstring to mark these functions as being available from kernels and Python's runtime.
+    assert function.__doc__.startswith("\n")
+    leading_space_count = sum(1 for _ in itertools.takewhile(str.isspace, function.__doc__[1:]))
+    assert leading_space_count % 4 == 0
+    indent_level = leading_space_count // 4
+    indent = "    "
+    function.__doc__ = (
+        f"\n"
+        f"{indent * indent_level}.. hlist::\n"
+        f"{indent * (indent_level + 1)}:columns: 8\n"
+        f"\n"
+        f"{indent * (indent_level + 1)}* Kernel\n"
+        f"{indent * (indent_level + 1)}* Python\n"
+        f"{indent * (indent_level + 1)}* Differentiable\n"
+        f"{function.__doc__}"
+    )
+
     builtin_functions[function.key] = function
 
 
@@ -6918,12 +6936,46 @@ def type_str(t):
     return t.__name__
 
 
-def print_function(f, file, noentry=False):  # pragma: no cover
+def ctype_ret_str(t):
+    return get_builtin_type(t).__name__
+
+
+def resolve_exported_function_sig(f):
+    if not f.export or f.generic:
+        return None
+
+    # only export simple types that don't use arrays or templated types
+    if not f.is_simple():
+        return None
+
+    # Runtime arguments that are to be passed to the function, not its template signature.
+    if f.export_func is not None:
+        func_args = f.export_func(f.input_types)
+    else:
+        func_args = f.input_types
+
+    # todo: construct a default value for each of the functions args
+    # so we can generate the return type for overloaded functions
+    return_type = f.value_func(func_args, None)
+
+    if return_type is None or (isinstance(return_type, tuple) and len(return_type) > 1):
+        return (func_args, return_type)
+
+    try:
+        ctype_ret_str(return_type)
+    except Exception:
+        return None
+
+    return (func_args, return_type)
+
+
+def print_function(f, file, is_exported, noentry=False):  # pragma: no cover
     """Writes a function definition to a file for use in reST documentation
 
     Args:
         f: The function being written
         file: The file object for output
+        is_exported: Whether the function is available in Python's runtime
         noentry: If True, then the :noindex: and :nocontentsentry: directive
           options will be added
 
@@ -6951,11 +7003,21 @@ def print_function(f, file, noentry=False):  # pragma: no cover
         print("    :nocontentsentry:", file=file)
     print("", file=file)
 
+    print("    .. hlist::", file=file)
+    print("       :columns: 8", file=file)
+    print("", file=file)
+    print("       * Kernel", file=file)
+
+    if is_exported:
+        print("       * Python", file=file)
+
+    if not f.missing_grad:
+        print("       * Differentiable", file=file)
+
+    print("", file=file)
+
     if f.doc != "":
-        if not f.missing_grad:
-            print(f"    {f.doc}", file=file)
-        else:
-            print(f"    {f.doc} [1]_", file=file)
+        print(f"    {f.doc}", file=file)
         print("", file=file)
 
     print(file=file)
@@ -6971,8 +7033,10 @@ def export_functions_rst(file):  # pragma: no cover
         ".. functions:\n"
         ".. currentmodule:: warp\n"
         "\n"
-        "Kernel Reference\n"
-        "================"
+        "Built-Ins Reference\n"
+        "===================\n"
+        "This section lists the Warp types and functions available to use from Warp kernels and optionally also from the Warp Python runtime API.\n"
+        "For a listing of the API that is exclusively intended to be used at the *Python Scope* and run inside the CPython interpreter, see the :doc:`runtime` section.\n"
     )
 
     print(header, file=file)
@@ -7017,9 +7081,12 @@ def export_functions_rst(file):  # pragma: no cover
         if hasattr(f, "overloads"):
             # append all overloads to the group
             for o in f.overloads:
-                groups[f.group].append(o)
+                sig = resolve_exported_function_sig(f)
+                is_exported = sig is not None
+                groups[f.group].append((o, is_exported))
         else:
-            groups[f.group].append(f)
+            is_exported = False
+            groups[f.group].append((f, is_exported))
 
     # Keep track of what function and query types have been written
     written_functions = set()
@@ -7038,7 +7105,7 @@ def export_functions_rst(file):  # pragma: no cover
         print(k, file=file)
         print("---------------", file=file)
 
-        for f in g:
+        for f, is_exported in g:
             if not isinstance(f, Function) and callable(f):
                 # f is a plain Python function
                 print(f".. autofunction:: {f.__module__}.{f.__name__}", file=file)
@@ -7056,14 +7123,10 @@ def export_functions_rst(file):  # pragma: no cover
 
             if f.key in written_functions:
                 # Add :noindex: + :nocontentsentry: since Sphinx gets confused
-                print_function(f, file=file, noentry=True)
+                print_function(f, file, is_exported, noentry=True)
             else:
-                if print_function(f, file=file):
+                if print_function(f, file, is_exported):
                     written_functions.add(f.key)
-
-    # footnotes
-    print(".. rubric:: Footnotes", file=file)
-    print(".. [1] Function gradients have not been implemented for backpropagation.", file=file)
 
 
 def export_stubs(file):  # pragma: no cover
@@ -7166,9 +7229,6 @@ def export_builtins(file: io.TextIOBase):  # pragma: no cover
         else:
             return t.__name__
 
-    def ctype_ret_str(t):
-        return get_builtin_type(t).__name__
-
     file.write("namespace wp {\n\n")
     file.write('extern "C" {\n\n')
 
@@ -7176,23 +7236,11 @@ def export_builtins(file: io.TextIOBase):  # pragma: no cover
         if not hasattr(g, "overloads"):
             continue
         for f in g.overloads:
-            if not f.export or f.generic:
+            sig = resolve_exported_function_sig(f)
+            if sig is None:
                 continue
 
-            # only export simple types that don't use arrays
-            # or templated types
-            if not f.is_simple():
-                continue
-
-            # Runtime arguments that are to be passed to the function, not its template signature.
-            if f.export_func is not None:
-                func_args = f.export_func(f.input_types)
-            else:
-                func_args = f.input_types
-
-            # todo: construct a default value for each of the functions args
-            # so we can generate the return type for overloaded functions
-            return_type = f.value_func(func_args, None)
+            func_args, return_type = sig
 
             args = ", ".join(f"{ctype_arg_str(v)} {k}" for k, v in func_args.items())
             params = ", ".join(func_args.keys())
@@ -7214,11 +7262,7 @@ def export_builtins(file: io.TextIOBase):  # pragma: no cover
                     )
             else:
                 # single return value function
-                try:
-                    return_str = ctype_ret_str(return_type)
-                except Exception:
-                    continue
-
+                return_str = ctype_ret_str(return_type)
                 if args:
                     file.write(
                         f"WP_API void {f.mangled_name}({args}, {return_str}* ret) {{ *ret = wp::{f.key}({params}); }}\n"

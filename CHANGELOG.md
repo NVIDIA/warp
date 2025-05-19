@@ -55,6 +55,9 @@
 - Rename the internal function `wp.types.type_length()` to `type_size()`.
 - Lift the exact version requirement in `omni.warp` towards `omni.warp.core`
   ([GH-702](https://github.com/NVIDIA/warp/issues/702)).
+- Rename the “Kernel Reference” documentation page to “Built-Ins Reference”, with each built-in now having
+  annotations to denote whether they are accessible only from the kernel scope or also from the Python runtime scope
+  ([GH-532](https://github.com/NVIDIA/warp/issues/532)).
 
 ### Fixed
 
