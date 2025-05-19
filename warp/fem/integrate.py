@@ -2233,7 +2233,7 @@ def _launch_interpolate_kernel(
             f"'dest' matrix must have {quadrature.total_point_count()} rows and {trial.space_partition.node_count()} columns of blocks"
         )
     if dest.block_shape[1] != trial.node_dof_count:
-        raise f"'dest' matrix blocks must have {trial.node_dof_count} columns"
+        raise RuntimeError(f"'dest' matrix blocks must have {trial.node_dof_count} columns")
 
     triplet_rows_temp = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
     triplet_cols_temp = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)

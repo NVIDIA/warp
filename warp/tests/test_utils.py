@@ -19,6 +19,7 @@ import io
 import unittest
 
 from warp.tests.unittest_utils import *
+from warp.types import type_scalar_type
 
 
 def test_array_scan(test, device):
@@ -61,7 +62,7 @@ def test_array_scan_error_sizes_mismatch(test, device):
     result = wp.zeros(234, dtype=int, device=device)
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Array storage sizes do not match$",
+        r"In and out array storage sizes do not match \(123 vs 234\)$",
     ):
         wp.utils.array_scan(values, result, True)
 
@@ -71,7 +72,7 @@ def test_array_scan_error_dtypes_mismatch(test, device):
     result = wp.zeros(123, dtype=float, device=device)
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Array data types do not match$",
+        r"In and out array data types do not match \(int32 vs float32\)$",
     ):
         wp.utils.array_scan(values, result, True)
 
@@ -81,7 +82,7 @@ def test_array_scan_error_unsupported_dtype(test, device):
     result = wp.zeros(123, dtype=wp.vec3, device=device)
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Unsupported data type$",
+        r"Unsupported data type: vec3f$",
     ):
         wp.utils.array_scan(values, result, True)
 
@@ -142,7 +143,7 @@ def test_radix_sort_pairs_error_insufficient_storage(test, device):
         values = wp.array((1, 2, 3), dtype=int, device=device)
         with test.assertRaisesRegex(
             RuntimeError,
-            r"Array storage must be large enough to contain 2\*count elements$",
+            r"Keys and values array storage must be large enough to contain 2\*count elements$",
         ):
             wp.utils.radix_sort_pairs(keys, values, 3)
 
@@ -167,27 +168,27 @@ def test_segmented_sort_pairs_error_insufficient_storage(test, device):
 
 
 def test_radix_sort_pairs_error_unsupported_dtype(test, device):
-    keyTypes = [int, wp.float32, wp.int64]
+    keyTypes = [wp.int32, wp.float32, wp.int64]
 
     for keyType in keyTypes:
         keys = wp.array((1.0, 2.0, 3.0), dtype=keyType, device=device)
         values = wp.array((1.0, 2.0, 3.0), dtype=float, device=device)
         with test.assertRaisesRegex(
             RuntimeError,
-            r"Unsupported data type$",
+            rf"Unsupported keys and values data types: {keyType.__name__}, float32$",
         ):
             wp.utils.radix_sort_pairs(keys, values, 1)
 
 
 def test_segmented_sort_pairs_error_unsupported_dtype(test, device):
-    keyTypes = [int, wp.float32]
+    keyTypes = [wp.int32, wp.float32]
 
     for keyType in keyTypes:
         keys = wp.array((1.0, 2.0, 3.0), dtype=keyType, device=device)
         values = wp.array((1.0, 2.0, 3.0), dtype=float, device=device)
         with test.assertRaisesRegex(
             RuntimeError,
-            r"Unsupported data type$",
+            rf"Unsupported data type: {keyType.__name__}$",
         ):
             wp.utils.segmented_sort_pairs(
                 keys,
@@ -234,22 +235,27 @@ def test_array_sum_error_unsupported_dtype(test, device):
     values = wp.array((1, 2, 3), dtype=int, device=device)
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Unsupported data type$",
+        r"Unsupported data type: int32$",
     ):
         wp.utils.array_sum(values)
 
 
 def test_array_inner(test, device):
-    for dtype in (wp.float32, wp.float64):
+    for dtype in (wp.float32, wp.float64, wp.vec3):
         a = wp.array((1.0, 2.0, 3.0), dtype=dtype, device=device)
         b = wp.array((1.0, 2.0, 3.0), dtype=dtype, device=device)
         test.assertEqual(wp.utils.array_inner(a, b), 14.0)
 
         a = wp.array((1.0, 2.0, 3.0), dtype=dtype, device=device)
         b = wp.array((1.0, 2.0, 3.0), dtype=dtype, device=device)
-        result = wp.empty(shape=(1,), dtype=dtype, device=device)
+        result = wp.empty(shape=(1,), dtype=type_scalar_type(dtype), device=device)
         wp.utils.array_inner(a, b, out=result)
         test.assertEqual(result.numpy()[0], 14.0)
+
+    # test with different instances of same type
+    a = wp.array((1.0, 2.0, 3.0), dtype=wp.vec3, device=device)
+    b = wp.array((1.0, 2.0, 3.0), dtype=wp.vec(3, float), device=device)
+    test.assertEqual(wp.utils.array_inner(a, b), 14.0)
 
 
 def test_array_inner_error_sizes_mismatch(test, device):
@@ -257,7 +263,7 @@ def test_array_inner_error_sizes_mismatch(test, device):
     b = wp.array((1.0, 2.0, 3.0), dtype=wp.float32, device=device)
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Array storage sizes do not match$",
+        r"A and b array storage sizes do not match \(2 vs 3\)$",
     ):
         wp.utils.array_inner(a, b)
 
@@ -267,7 +273,7 @@ def test_array_inner_error_dtypes_mismatch(test, device):
     b = wp.array((1.0, 2.0, 3.0), dtype=wp.float64, device=device)
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Array data types do not match$",
+        r"A and b array data types do not match \(float32 vs float64\)$",
     ):
         wp.utils.array_inner(a, b)
 
@@ -299,7 +305,7 @@ def test_array_inner_error_unsupported_dtype(test, device):
     b = wp.array((1, 2, 3), dtype=int, device=device)
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Unsupported data type$",
+        r"Unsupported data type: int32$",
     ):
         wp.utils.array_inner(a, b)
 
@@ -411,7 +417,7 @@ class TestUtils(unittest.TestCase):
         result = wp.zeros_like(values, device="cuda:0")
         with self.assertRaisesRegex(
             RuntimeError,
-            r"Array storage devices do not match$",
+            r"In and out array storage devices do not match \(cpu vs cuda:0\)$",
         ):
             wp.utils.array_scan(values, result, True)
 
@@ -421,7 +427,7 @@ class TestUtils(unittest.TestCase):
         values = wp.array((1, 2, 3), dtype=int, device="cuda:0")
         with self.assertRaisesRegex(
             RuntimeError,
-            r"Array storage devices do not match$",
+            r"Keys and values array storage devices do not match \(cpu vs cuda:0\)$",
         ):
             wp.utils.radix_sort_pairs(keys, values, 1)
 
@@ -452,7 +458,7 @@ class TestUtils(unittest.TestCase):
         b = wp.array((1.0, 2.0, 3.0), dtype=wp.float32, device="cuda:0")
         with self.assertRaisesRegex(
             RuntimeError,
-            r"Array storage devices do not match$",
+            r"A and b array storage devices do not match \(cpu vs cuda:0\)$",
         ):
             wp.utils.array_inner(a, b)
 
@@ -462,7 +468,7 @@ class TestUtils(unittest.TestCase):
         result = wp.empty(3, dtype=float, device="cuda:0")
         with self.assertRaisesRegex(
             RuntimeError,
-            r"Array storage devices do not match$",
+            r"Array storage devices do not match \(cpu vs cuda:0\)$",
         ):
             wp.utils.array_cast(values, result)
 

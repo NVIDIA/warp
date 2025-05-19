@@ -48,7 +48,7 @@ def test_runlength_encode_error_insufficient_storage(test, device):
     run_lengths = wp.empty(123, dtype=int, device=device)
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Output array storage sizes must be at least equal to value_count$",
+        r"Output array storage sizes must be at least equal to value_count \(123\)$",
     ):
         runlength_encode(values, run_values, run_lengths)
 
@@ -57,7 +57,7 @@ def test_runlength_encode_error_insufficient_storage(test, device):
     run_lengths = wp.empty(1, dtype=int, device="cpu")
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Output array storage sizes must be at least equal to value_count$",
+        r"Output array storage sizes must be at least equal to value_count \(123\)$",
     ):
         runlength_encode(values, run_values, run_lengths)
 
@@ -68,7 +68,7 @@ def test_runlength_encode_error_dtypes_mismatch(test, device):
     run_lengths = wp.empty_like(values, device=device)
     with test.assertRaisesRegex(
         RuntimeError,
-        r"values and run_values data types do not match$",
+        r"values and run_values data types do not match \(int32 vs float32\)$",
     ):
         runlength_encode(values, run_values, run_lengths)
 
@@ -102,7 +102,7 @@ def test_runlength_encode_error_unsupported_dtype(test, device):
     run_lengths = wp.empty(123, dtype=int, device=device)
     with test.assertRaisesRegex(
         RuntimeError,
-        r"Unsupported data type$",
+        r"Unsupported data type: float32$",
     ):
         runlength_encode(values, run_values, run_lengths)
 
@@ -118,7 +118,7 @@ class TestRunlengthEncode(unittest.TestCase):
         run_lengths = wp.empty_like(values, device="cuda:0")
         with self.assertRaisesRegex(
             RuntimeError,
-            r"Array storage devices do not match$",
+            r"run_values, run_lengths and values storage devices do not match$",
         ):
             runlength_encode(values, run_values, run_lengths)
 
@@ -127,7 +127,7 @@ class TestRunlengthEncode(unittest.TestCase):
         run_lengths = wp.empty_like(values, device="cuda:0")
         with self.assertRaisesRegex(
             RuntimeError,
-            r"Array storage devices do not match$",
+            r"run_values, run_lengths and values storage devices do not match$",
         ):
             runlength_encode(values, run_values, run_lengths)
 
@@ -136,7 +136,7 @@ class TestRunlengthEncode(unittest.TestCase):
         run_lengths = wp.empty_like(values, device="cpu")
         with self.assertRaisesRegex(
             RuntimeError,
-            r"Array storage devices do not match$",
+            r"run_values, run_lengths and values storage devices do not match$",
         ):
             runlength_encode(values, run_values, run_lengths)
 

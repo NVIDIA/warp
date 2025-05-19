@@ -130,6 +130,15 @@ def test_bsr_from_triplets(test, device):
     )
     test.assertEqual(bsr.nnz, 0)
 
+    # test passing indices with wrong data ty[e]
+    rows = wp.array(rows.numpy().astype(float), dtype=float, device=device)
+    cols = wp.array(cols.numpy().astype(float), dtype=float, device=device)
+    with test.assertRaisesRegex(
+        TypeError,
+        r"Rows and columns arrays must be of type int32$",
+    ):
+        bsr_set_from_triplets(bsr, rows, cols, vals)
+
 
 def test_bsr_get_set_diag(test, device):
     rng = np.random.default_rng(123)
@@ -239,7 +248,7 @@ def test_bsr_split_merge(test, device):
 
     with test.assertRaisesRegex(
         ValueError,
-        "The requested block shape does not evenly divide the source matrix",
+        r"The requested block shape \(32, 32\) does not evenly divide the source matrix of total size \(16, 16\)",
     ):
         bsr_copy(bsr, block_shape=(32, 32))
 
