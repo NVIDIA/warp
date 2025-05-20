@@ -1,17 +1,21 @@
+<?xml version='1.0' encoding='UTF-8'?>
 <project toolsVersion="5.0">
   <dependency name="repo_man" linkPath="../_repo/deps/repo_man">
-    <package name="repo_man" version="1.72.0"/>
+    <package name="repo_man" version="1.85.0"/>
   </dependency>
   <dependency name="repo_build" linkPath="../_repo/deps/repo_build">
-    <package name="repo_build" version="1.3.1"/>
+    <package name="repo_build" version="1.11.0"/>
   </dependency>
   <dependency name="repo_changelog" linkPath="../_repo/deps/repo_changelog">
-    <package name="repo_changelog" version="0.9.4" />
+    <package name="repo_changelog" version="0.9.4"/>
   </dependency>
   <dependency name="repo_codesign" linkPath="../_repo/deps/repo_codesign">
-    <package name="repo_codesign" version="7.2.3" />
+    <package name="repo_codesign" version="7.2.3"/>
   </dependency>
   <dependency name="repo_kit_tools" linkPath="../_repo/deps/repo_kit_tools">
-    <package name="repo_kit_tools" version="1.0.8" />
+    <package name="repo_kit_tools" version="1.5.0"/>
+  </dependency>
+  <dependency name="repo_nv" linkPath="../_repo/deps/repo_nv">
+    <package name="repo_nv" version="0.1.1"/>
   </dependency>
 </project>

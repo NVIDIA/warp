@@ -189,73 +189,73 @@ def test_mat_mat_args_support(test, device, dtype):
         else:
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'ddot' compatible with " r"the arguments 'mat_t, tuple'$",
+                r"Couldn't find a function 'ddot' compatible with the arguments 'mat_t, tuple'$",
             ):
                 wp.ddot(mat_cls(*a_values), b_values)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'ddot' compatible with " r"the arguments 'tuple, tuple'$",
+                r"Couldn't find a function 'ddot' compatible with the arguments 'tuple, tuple'$",
             ):
                 wp.ddot(wpv(dtype, a_values), b_values)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'ddot' compatible with " r"the arguments 'tuple, tuple'$",
+                r"Couldn't find a function 'ddot' compatible with the arguments 'tuple, tuple'$",
             ):
                 wp.ddot(wpm(dtype, 3, a_values), b_values)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'ddot' compatible with " r"the arguments 'tuple, tuple'$",
+                r"Couldn't find a function 'ddot' compatible with the arguments 'tuple, tuple'$",
             ):
                 wp.ddot(npv(np_type, a_values), b_values)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'ddot' compatible with " r"the arguments 'tuple, tuple'$",
+                r"Couldn't find a function 'ddot' compatible with the arguments 'tuple, tuple'$",
             ):
                 wp.ddot(npm(np_type, 3, a_values), b_values)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'ddot' compatible with " r"the arguments 'ndarray, tuple'$",
+                r"Couldn't find a function 'ddot' compatible with the arguments 'ndarray, tuple'$",
             ):
                 wp.ddot(np.array(npv(np_type, a_values)), b_values)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'ddot' compatible with " r"the arguments 'tuple, mat_t'$",
+                r"Couldn't find a function 'ddot' compatible with the arguments 'tuple, mat_t'$",
             ):
                 wp.ddot(a_values, mat_cls(*b_values))
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'ddot' compatible with " r"the arguments 'tuple, tuple'$",
+                r"Couldn't find a function 'ddot' compatible with the arguments 'tuple, tuple'$",
             ):
                 wp.ddot(a_values, wpv(dtype, b_values))
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'ddot' compatible with " r"the arguments 'tuple, tuple'$",
+                r"Couldn't find a function 'ddot' compatible with the arguments 'tuple, tuple'$",
             ):
                 wp.ddot(a_values, wpm(dtype, 3, b_values))
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'ddot' compatible with " r"the arguments 'tuple, tuple'$",
+                r"Couldn't find a function 'ddot' compatible with the arguments 'tuple, tuple'$",
             ):
                 wp.ddot(a_values, npv(np_type, b_values))
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'ddot' compatible with " r"the arguments 'tuple, tuple'$",
+                r"Couldn't find a function 'ddot' compatible with the arguments 'tuple, tuple'$",
             ):
                 wp.ddot(a_values, npm(np_type, 3, b_values))
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'ddot' compatible with " r"the arguments 'tuple, ndarray'$",
+                r"Couldn't find a function 'ddot' compatible with the arguments 'tuple, ndarray'$",
             ):
                 wp.ddot(a_values, np.array(npv(np_type, b_values)))
 
@@ -300,37 +300,37 @@ def test_mat_float_args_support(test, device, dtype):
         else:
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'mul' compatible with " r"the arguments 'mat_t, float'$",
+                r"Couldn't find a function 'mul' compatible with the arguments 'mat_t, float'$",
             ):
                 wp.mul(mat_cls(*a_values), b_value)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'mul' compatible with " r"the arguments 'tuple, float'$",
+                r"Couldn't find a function 'mul' compatible with the arguments 'tuple, float'$",
             ):
                 wp.mul(wpv(dtype, a_values), b_value)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'mul' compatible with " r"the arguments 'tuple, float'$",
+                r"Couldn't find a function 'mul' compatible with the arguments 'tuple, float'$",
             ):
                 wp.mul(wpm(dtype, 3, a_values), b_value)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'mul' compatible with " r"the arguments 'tuple, float'$",
+                r"Couldn't find a function 'mul' compatible with the arguments 'tuple, float'$",
             ):
                 wp.mul(npv(np_type, a_values), b_value)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'mul' compatible with " r"the arguments 'tuple, float'$",
+                r"Couldn't find a function 'mul' compatible with the arguments 'tuple, float'$",
             ):
                 wp.mul(npm(np_type, 3, a_values), b_value)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'mul' compatible with " r"the arguments 'ndarray, float'$",
+                r"Couldn't find a function 'mul' compatible with the arguments 'ndarray, float'$",
             ):
                 wp.mul(np.array(npv(np_type, a_values)), b_value)
 
@@ -401,49 +401,49 @@ def test_vec_vec_args_support(test, device, dtype):
         else:
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'dot' compatible with " r"the arguments 'vec_t, tuple'$",
+                r"Couldn't find a function 'dot' compatible with the arguments 'vec_t, tuple'$",
             ):
                 wp.dot(vec_cls(*a_values), b_values)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'dot' compatible with " r"the arguments 'tuple, tuple'$",
+                r"Couldn't find a function 'dot' compatible with the arguments 'tuple, tuple'$",
             ):
                 wp.dot(wpv(dtype, a_values), b_values)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'dot' compatible with " r"the arguments 'tuple, tuple'$",
+                r"Couldn't find a function 'dot' compatible with the arguments 'tuple, tuple'$",
             ):
                 wp.dot(npv(np_type, a_values), b_values)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'dot' compatible with " r"the arguments 'ndarray, tuple'$",
+                r"Couldn't find a function 'dot' compatible with the arguments 'ndarray, tuple'$",
             ):
                 wp.dot(np.array(npv(np_type, a_values)), b_values)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'dot' compatible with " r"the arguments 'tuple, vec_t'$",
+                r"Couldn't find a function 'dot' compatible with the arguments 'tuple, vec_t'$",
             ):
                 wp.dot(a_values, vec_cls(*b_values))
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'dot' compatible with " r"the arguments 'tuple, tuple'$",
+                r"Couldn't find a function 'dot' compatible with the arguments 'tuple, tuple'$",
             ):
                 wp.dot(a_values, wpv(dtype, b_values))
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'dot' compatible with " r"the arguments 'tuple, tuple'$",
+                r"Couldn't find a function 'dot' compatible with the arguments 'tuple, tuple'$",
             ):
                 wp.dot(a_values, npv(np_type, b_values))
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'dot' compatible with " r"the arguments 'tuple, ndarray'$",
+                r"Couldn't find a function 'dot' compatible with the arguments 'tuple, ndarray'$",
             ):
                 wp.dot(a_values, np.array(npv(np_type, b_values)))
 
@@ -480,25 +480,25 @@ def test_vec_float_args_support(test, device, dtype):
         else:
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'mul' compatible with " r"the arguments 'vec_t, float'$",
+                r"Couldn't find a function 'mul' compatible with the arguments 'vec_t, float'$",
             ):
                 wp.mul(vec_cls(*a_values), b_value)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'mul' compatible with " r"the arguments 'tuple, float'$",
+                r"Couldn't find a function 'mul' compatible with the arguments 'tuple, float'$",
             ):
                 wp.mul(wpv(dtype, a_values), b_value)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'mul' compatible with " r"the arguments 'tuple, float'$",
+                r"Couldn't find a function 'mul' compatible with the arguments 'tuple, float'$",
             ):
                 wp.mul(npv(np_type, a_values), b_value)
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                r"Couldn't find a function 'mul' compatible with " r"the arguments 'ndarray, float'$",
+                r"Couldn't find a function 'mul' compatible with the arguments 'ndarray, float'$",
             ):
                 wp.mul(np.array(npv(np_type, a_values)), b_value)
 

@@ -807,8 +807,8 @@ class UsdRenderer:
         instancer_capsule = UsdGeom.Capsule.Get(self.stage, instancer.GetPath().AppendChild("capsule"))
         instancer_capsule.GetDisplayColorAttr().Set([Gf.Vec3f(color)], self.time)
 
-    def render_points(self, name: str, points, radius, colors=None):
-        from pxr import Gf, UsdGeom
+    def render_points(self, name: str, points, radius, colors=None, as_spheres: bool = True, visible: bool = True):
+        from pxr import Gf, UsdGeom, Vt
 
         instancer_path = self.root.GetPath().AppendChild(name)
         instancer = UsdGeom.PointInstancer.Get(self.stage, instancer_path)
@@ -827,7 +827,7 @@ class UsdRenderer:
                     instancer_sphere.GetDisplayColorAttr().Set([Gf.Vec3f(colors)], self.time)
 
                 instancer.CreatePrototypesRel().SetTargets([instancer_sphere.GetPath()])
-                instancer.CreateProtoIndicesAttr().Set([0] * len(points))
+                instancer.CreateProtoIndicesAttr().Set(Vt.IntArray((0,) * len(points)))
 
                 # set identity rotations
                 quats = [Gf.Quath(1.0, 0.0, 0.0, 0.0)] * len(points)

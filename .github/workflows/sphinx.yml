@@ -32,18 +32,25 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: true
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.7.5"
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version-file: '.python-version'
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install --no-cache-dir -r docs/requirements.txt
+          uv venv
+          uv pip install -r docs/requirements.txt
       - name: Build Warp without CUDA Support
-        run: python build_lib.py
+        run: |
+          source .venv/bin/activate
+          python build_lib.py
       - name: Build Sphinx documentation
-        run: python build_docs.py --quick
+        run: |
+          uv run build_docs.py --quick
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

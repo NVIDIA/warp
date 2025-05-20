@@ -32,6 +32,8 @@ individual threads.
 What are some examples of projects that use Warp?
 -------------------------------------------------
 
+Some examples are:
+
 * `MuJoCo Warp <https://github.com/google-deepmind/mujoco_warp>`__: A GPU-optimized version of the MuJoCo physics simulator,
   designed for NVIDIA hardware. Maintained by Google DeepMind and NVIDIA.
 * `Rewarped <https://github.com/rewarped/rewarped>`__: A platform for reinforcement learning in parallel differentiable multi-physics simulation.
@@ -40,6 +42,8 @@ What are some examples of projects that use Warp?
 * `warp-mpm <https://github.com/zeshunzong/warp-mpm>`__: An MPM simulator used in projects like
   `Neural Stress Fields for Reduced-order Elastoplasticity and Fracture <https://zeshunzong.github.io/reduced-order-mpm/>`__
   and `PhysGaussian: Physics-Integrated 3D Gaussians for Generative Dynamics <https://xpandora.github.io/PhysGaussian/>`__.
+
+See :doc:`publications` for a list of academic and research publications that have used Warp.
 
 Does Warp support all of the Python language?
 ---------------------------------------------

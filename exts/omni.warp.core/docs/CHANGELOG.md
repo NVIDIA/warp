@@ -1,5 +1,43 @@
 # CHANGELOG
 
+## [1.7.2-rc.1] - 2025-06-01
+
+### Added
+
+- Add a [publications list](https://github.com/NVIDIA/warp/blob/main/PUBLICATIONS.md) of academic and research projects
+  leveraging Warp ([GH-686](https://github.com/NVIDIA/warp/issues/686)).
+- Add missing adjoint method for tile `assign` operations ([GH-680](https://github.com/NVIDIA/warp/issues/680)).
+
+### Changed
+
+- Inform about class inheritance not being supported for `wp.struct`
+  ([GH-656](https://github.com/NVIDIA/warp/issues/656)).
+- Warn when an incompatible data type conversion is detected when constructing an array using the
+  `__cuda_array_interface__` ([GH-624](https://github.com/NVIDIA/warp/issues/624),
+  [GH-670](https://github.com/NVIDIA/warp/issues/670)).
+- Lift the exact version requirement in `omni.warp` towards `omni.warp.core`
+  ([GH-702](https://github.com/NVIDIA/warp/issues/702)).
+
+### Fixed
+
+- Fix preserving base class of nested struct attributes ([GH-574](https://github.com/NVIDIA/warp/issues/574)).
+- Allow recovering from out-of-memory errors during `wp.Volume` allocation
+  ([GH-611](https://github.com/NVIDIA/warp/issues/611)).
+- Fix 2D tile load when source array and tile have incompatible strides
+  ([GH-688](https://github.com/NVIDIA/warp/issues/688)).
+- Address `wp.tile_atomic_add()` compiler errors ([GH-681](https://github.com/NVIDIA/warp/issues/681)).
+- Fixed `wp.svd2()` with duplicate singular values and improved accuracy
+  ([GH-679](https://github.com/NVIDIA/warp/issues/679)).
+- Fix `OpenGLRenderer.update_shape_instance()` not having color buffers created for the shape instances.
+- Fix text rendering in `wp.render.OpenGLRenderer` ([GH-704](https://github.com/NVIDIA/warp/issues/704)).
+- Fix assembly of rigid body inertia in `ModelBuilder.collapse_fixed_joints()`
+  ([GH-631](https://github.com/NVIDIA/warp/issues/631)).
+- Fixed inconsistency in orientation of 2D geometry side normals ([GH-629](https://github.com/NVIDIA/warp/issues/629)).
+- Fixed `wp.svd2()` with duplicate singular values and improved accuracy ([GH-679](https://github.com/NVIDIA/warp/issues/679)).
+- Fix text rendering in OpenGLRenderer ([GH-704](https://github.com/NVIDIA/warp/issues/629)).
+- Fix `UsdRenderer.render_points()` erroring out when passed 4 points or less
+  ([GH-708](https://github.com/NVIDIA/warp/issues/708)).
+
 ## [1.7.1] - 2025-04-30
 
 ### Added

@@ -54,12 +54,12 @@ Changelog = "https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md"
 docs = [
     'nvidia-sphinx-theme; python_version >= "3.9"',
     "sphinx-copybutton",
-    "ruff == 0.11.5",
+    "ruff == 0.11.10",
     "myst_parser",
 ]
 dev = [
     "pre-commit",
-    "ruff == 0.11.5",
+    "ruff == 0.11.10",
     "nvtx",
     'nvidia-sphinx-theme; python_version >= "3.9"',
     "sphinx-copybutton",

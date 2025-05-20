@@ -60,16 +60,16 @@ struct _svd_config<double> {
     static constexpr int JACOBI_ITERATIONS = 8;
 };
 
-
-
-// TODO: replace sqrt with rsqrt
-
-template<typename Type>
-inline CUDA_CALLABLE
-Type accurateSqrt(Type x)
+template <typename Type> inline CUDA_CALLABLE Type recipSqrt(Type x)
 {
-  return x / sqrt(x);
+#if defined(__CUDA_ARCH__)
+    return ::rsqrt(x);
+#else
+    return Type(1) / sqrt(x);
+#endif
 }
+
+template <> inline CUDA_CALLABLE wp::half recipSqrt(wp::half x) { return wp::half(1) / sqrt(x); }
 
 template<typename Type>
 inline CUDA_CALLABLE
@@ -175,7 +175,7 @@ void approximateGivensQuaternion(Type a11, Type a12, Type a22, Type &ch, Type &s
     ch = Type(2)*(a11-a22);
     sh = a12;
     bool b = Type(_gamma)*sh*sh < ch*ch;
-    Type w = Type(1) / sqrt(ch*ch+sh*sh);
+    Type w = recipSqrt(ch*ch+sh*sh);
     ch=b?w*ch:Type(_cstar);
     sh=b?w*sh:Type(_sstar);
 }
@@ -304,13 +304,13 @@ void QRGivensQuaternion(Type a1, Type a2, Type &ch, Type &sh)
     // a1 = pivot point on diagonal
     // a2 = lower triangular entry we want to annihilate
     const Type epsilon = _svd_config<Type>::QR_GIVENS_EPSILON;
-    Type rho = accurateSqrt(a1*a1 + a2*a2);
+    Type rho = sqrt(a1*a1 + a2*a2);
 
     sh = rho > epsilon ? a2 : Type(0);
     ch = abs(a1) + max(rho,epsilon);
     bool b = a1 < Type(0);
     condSwap(b,sh,ch);
-    Type w = Type(1) / sqrt(ch*ch+sh*sh);
+    Type w = recipSqrt(ch*ch+sh*sh);
     ch *= w;
     sh *= w;
 }
@@ -432,21 +432,15 @@ void _svd(// input A
     );
 }
 
-
-template<typename Type>
-inline CUDA_CALLABLE
-void _svd_2(// input A
-        Type a11, Type a12,
-        Type a21, Type a22,
-        // output U
-        Type &u11, Type &u12,
-        Type &u21, Type &u22,
-        // output S
-        Type &s11, Type &s12,
-        Type &s21, Type &s22,
-        // output V
-        Type &v11, Type &v12,
-        Type &v21, Type &v22)
+template <typename Type>
+inline CUDA_CALLABLE void _svd_2( // input A
+    Type a11, Type a12, Type a21, Type a22,
+    // output U
+    Type& u11, Type& u12, Type& u21, Type& u22,
+    // output S
+    Type& s1, Type& s2,
+    // output V
+    Type& v11, Type& v12, Type& v21, Type& v22)
 {
     // Step 1: Compute ATA
     Type ATA11 = a11 * a11 + a21 * a21;
@@ -455,38 +449,55 @@ void _svd_2(// input A
 
     // Step 2: Eigenanalysis
     Type trace = ATA11 + ATA22;
-    Type det = ATA11 * ATA22 - ATA12 * ATA12;
-    Type sqrt_term = sqrt(trace * trace - Type(4.0) * det);
-    Type lambda1 = (trace + sqrt_term) * Type(0.5);
-    Type lambda2 = (trace - sqrt_term) * Type(0.5);
+    Type diff = ATA11 - ATA22;
+    Type discriminant = diff * diff + Type(4) * ATA12 * ATA12;
 
     // Step 3: Singular values
-    Type sigma1 = sqrt(lambda1);
+    if (discriminant == Type(0))
+    {
+        // Duplicate eigenvalue, A ~ s Id
+        s1 = s2 = sqrt(Type(0.5) * trace);
+        u11 = v11 = Type(1);
+        u12 = v12 = Type(0);
+        u21 = v21 = Type(0);
+        u22 = v22 = Type(1);
+        return;
+    }
+
+    // General case
+    Type sqrt_term = sqrt(discriminant);
+    Type lambda1 = (trace + sqrt_term) * Type(0.5);
+    Type lambda2 = (trace - sqrt_term) * Type(0.5);
+    Type inv_sigma1 = recipSqrt(lambda1);
+    Type sigma1 = Type(1) / inv_sigma1;
     Type sigma2 = sqrt(lambda2);
 
     // Step 4: Eigenvectors (find V)
-    Type v1x = ATA12, v1y = lambda1 - ATA11; // For first eigenvector
-    Type v2x = ATA12, v2y = lambda2 - ATA11; // For second eigenvector
-    Type norm1 = sqrt(v1x * v1x + v1y * v1y);
-    Type norm2 = sqrt(v2x * v2x + v2y * v2y);
-
-    v11 = v1x / norm1; v12 = v2x / norm2;
-    v21 = v1y / norm1; v22 = v2y / norm2;
+    Type v1y = diff - sqrt_term + Type(2) * ATA12, v1x = diff + sqrt_term - Type(2) * ATA12;
+    Type len1_sq = v1x * v1x + v1y * v1y;
+    if (len1_sq == Type(0)) {
+        v11 = Type(0.707106781186547524401); // M_SQRT1_2
+        v21 = v11;
+    } else {
+        Type inv_len1 = recipSqrt(len1_sq);
+        v11 = v1x * inv_len1;
+        v21 = v1y * inv_len1;
+    }
+    v12 = -v21;
+    v22 = v11;
 
     // Step 5: Compute U
-    Type inv_sigma1 = (sigma1 > Type(1e-6)) ? Type(1.0) / sigma1 : Type(0.0);
-    Type inv_sigma2 = (sigma2 > Type(1e-6)) ? Type(1.0) / sigma2 : Type(0.0);
-
     u11 = (a11 * v11 + a12 * v21) * inv_sigma1;
-    u12 = (a11 * v12 + a12 * v22) * inv_sigma2;
     u21 = (a21 * v11 + a22 * v21) * inv_sigma1;
-    u22 = (a21 * v12 + a22 * v22) * inv_sigma2;
+    // sigma2 may be zero, but we can complete U orthogonally up to determinant's sign
+    Type det_sign = wp::sign(a11 * a22 - a12 * a21);
+    u12 = -u21 * det_sign;
+    u22 = u11 * det_sign;
 
     // Step 6: Set S
-    s11 = sigma1; s12 = Type(0.0);
-    s21 = Type(0.0); s22 = sigma2;
+    s1 = sigma1;
+    s2 = sigma2;
 }
-
 
 template<typename Type>
 inline CUDA_CALLABLE void svd3(const mat_t<3,3,Type>& A, mat_t<3,3,Type>& U, vec_t<3,Type>& sigma, mat_t<3,3,Type>& V) {
@@ -550,15 +561,14 @@ inline CUDA_CALLABLE void adj_svd3(const mat_t<3,3,Type>& A,
 
 template<typename Type>
 inline CUDA_CALLABLE void svd2(const mat_t<2,2,Type>& A, mat_t<2,2,Type>& U, vec_t<2,Type>& sigma, mat_t<2,2,Type>& V) {
-  Type s12, s21;
   _svd_2(A.data[0][0], A.data[0][1],
        A.data[1][0], A.data[1][1],
 
        U.data[0][0], U.data[0][1],
        U.data[1][0], U.data[1][1],
 
-       sigma[0], s12,
-       s21, sigma[1],
+       sigma[0],
+       sigma[1],
 
        V.data[0][0], V.data[0][1],
        V.data[1][0], V.data[1][1]);

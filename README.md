@@ -16,7 +16,8 @@ and comes with a rich set of primitives that make it easy to write
 programs for physics simulation, perception, robotics, and geometry processing. In addition, Warp kernels
 are differentiable and can be used as part of machine-learning pipelines with frameworks such as PyTorch, JAX and Paddle.
 
-Please refer to the project [Documentation](https://nvidia.github.io/warp/) for API and language reference and [CHANGELOG.md](./CHANGELOG.md) for release history.
+Please refer to the project [Documentation](https://nvidia.github.io/warp/) for API and language reference and
+[CHANGELOG.md](https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md) for release history.
 
 <div align="center">
     <img src="https://github.com/NVIDIA/warp/raw/main/docs/img/header.jpg">
@@ -46,9 +47,9 @@ the `pip install` command, e.g.
 
 | Platform        | Install Command                                                                                                               |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.7.1/warp_lang-1.7.1+cu11-py3-none-manylinux2014_aarch64.whl` |
-| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.7.1/warp_lang-1.7.1+cu11-py3-none-manylinux2014_x86_64.whl`  |
-| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.7.1/warp_lang-1.7.1+cu11-py3-none-win_amd64.whl`             |
+| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.7.2/warp_lang-1.7.2+cu11-py3-none-manylinux2014_aarch64.whl` |
+| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.7.2/warp_lang-1.7.2+cu11-py3-none-manylinux2014_x86_64.whl`  |
+| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.7.2/warp_lang-1.7.2+cu11-py3-none-win_amd64.whl`             |
 
 The `--force-reinstall` option may need to be used to overwrite a previous installation.
 
@@ -455,7 +456,8 @@ Note that prior to 0.11.0, this schema was not strictly adhered to.
 
 ## License
 
-Warp is provided under the Apache License, Version 2.0. Please see [LICENSE.md](./LICENSE.md) for full license text.
+Warp is provided under the Apache License, Version 2.0.
+Please see [LICENSE.md](https://github.com/NVIDIA/warp/blob/main/LICENSE.md) for full license text.
 
 ## Contributing
 
@@ -463,17 +465,25 @@ Contributions and pull requests from the community are welcome.
 Please see the [Contribution Guide](https://nvidia.github.io/warp/modules/contribution_guide.html) for more
 information on contributing to the development of Warp.
 
-## Citing
+## Publications & Citation
 
-If you use Warp in your research, please use the following citation:
+### Research Using Warp
+
+Our [PUBLICATIONS.md](https://github.com/NVIDIA/warp/blob/main/PUBLICATIONS.md) file lists academic and research
+publications that leverage the capabilities of Warp.
+We encourage you to add your own published work using Warp to this list.
+
+### Citing Warp
+
+To cite Warp itself in your own publications, please use the following BibTeX entry:
 
 ```bibtex
 @misc{warp2022,
-title= {Warp: A High-performance Python Framework for GPU Simulation and Graphics},
-author = {Miles Macklin},
-month = {March},
-year = {2022},
-note= {NVIDIA GPU Technology Conference (GTC)},
-howpublished = {\url{https://github.com/nvidia/warp}}
+  title        = {Warp: A High-performance Python Framework for GPU Simulation and Graphics},
+  author       = {Miles Macklin},
+  month        = {March},
+  year         = {2022},
+  note         = {NVIDIA GPU Technology Conference (GTC)},
+  howpublished = {\url{https://github.com/nvidia/warp}}
 }
 ```
