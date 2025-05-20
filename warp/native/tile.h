@@ -2374,7 +2374,8 @@ inline CUDA_CALLABLE void scalar_cholesky_forward_substitution(TileL& L, TileX& 
             for (int j=0; j < i; ++j)
                 s -= L.data(tile_coord(i,j)) * X.data(tile_coord(j));
 
-            X.data(tile_coord(i)) = s / L.data(tile_coord(i, i));
+            T diag = L.data(tile_coord(i, i));
+            X.data(tile_coord(i)) = (diag != T(0.0f)) ? s / diag : s;
         }   
     }
     else if constexpr (TileY::Layout::Shape::N == 2)
@@ -2391,7 +2392,8 @@ inline CUDA_CALLABLE void scalar_cholesky_forward_substitution(TileL& L, TileX& 
                 for (int j=0; j < i; ++j)
                     s -= L.data(tile_coord(i,j)) * X.data(tile_coord(j,k));
 
-                X.data(tile_coord(i,k)) = s / L.data(tile_coord(i, i));
+                T diag = L.data(tile_coord(i, i));
+                X.data(tile_coord(i,k)) = (diag != T(0.0f)) ? s / diag : s;
             }
         }
     }
@@ -2414,7 +2416,8 @@ inline CUDA_CALLABLE void scalar_cholesky_back_substitution(TileL& L, TileX& X)
             for (int j=i+1; j < n; ++j)
                 s -= L.data(tile_coord(j, i)) * X.data(tile_coord(j));
 
-            X.data(tile_coord(i)) = s / L.data(tile_coord(i, i));
+            T diag = L.data(tile_coord(i, i));
+            X.data(tile_coord(i)) = (diag != T(0.0f)) ? s / diag : s;
         }
     }
     else if constexpr (TileX::Layout::Shape::N == 2)
@@ -2431,7 +2434,8 @@ inline CUDA_CALLABLE void scalar_cholesky_back_substitution(TileL& L, TileX& X)
                 for (int j=i+1; j < n; ++j)
                     s -= L.data(tile_coord(j, i)) * X.data(tile_coord(j,k));
 
-                X.data(tile_coord(i,k)) = s / L.data(tile_coord(i, i));
+                T diag = L.data(tile_coord(i, i));
+                X.data(tile_coord(i,k)) = (diag != T(0.0f)) ? s / diag : s;
             }
         }
     }
@@ -2713,7 +2717,9 @@ TileZ& tile_lower_solve(TileL& L, TileY& y, TileZ& z)
             // Divide the diagonal element (only one batch)
             if (WP_TILE_THREAD_IDX == 0)
             {
-                z.data(tile_coord(i)) /= L.data(tile_coord(i, i));
+                T diag = L.data(tile_coord(i, i));
+                if (diag != T(0.0f))
+                    z.data(tile_coord(i)) /= diag;
             }
             WP_TILE_SYNC();
 
@@ -2753,7 +2759,9 @@ TileZ& tile_lower_solve(TileL& L, TileY& y, TileZ& z)
             // Divide the diagonal element for all batches in parallel
             for (int batchId = WP_TILE_THREAD_IDX; batchId < m; batchId += num_threads)
             {
-                z.data(tile_coord(i, batchId)) /= L.data(tile_coord(i, i));
+                T diag = L.data(tile_coord(i, i));
+                if (diag != T(0.0f))
+                    z.data(tile_coord(i, batchId)) /= diag;
             }
             WP_TILE_SYNC();
 
@@ -2851,7 +2859,9 @@ TileX& tile_upper_solve(TileU& U, TileZ& z, TileX& x)
             // Divide the diagonal element for all batches in parallel (only one batch)
             if (WP_TILE_THREAD_IDX == 0)
             {
-                x.data(tile_coord(i)) /= U.data(tile_coord(i, i));
+                T diag = U.data(tile_coord(i, i));
+                if (diag != T(0.0f))
+                    x.data(tile_coord(i)) /= diag;
             }
             WP_TILE_SYNC();
 
@@ -2891,7 +2901,9 @@ TileX& tile_upper_solve(TileU& U, TileZ& z, TileX& x)
             // Divide the diagonal element for all batches in parallel
             for (int batchId = WP_TILE_THREAD_IDX; batchId < m; batchId += num_threads)
             {
-                x.data(tile_coord(i, batchId)) /= U.data(tile_coord(i, i));
+                T diag = U.data(tile_coord(i, i));
+                if (diag != T(0.0f))
+                    x.data(tile_coord(i, batchId)) /= diag;
             }
             WP_TILE_SYNC();
 
