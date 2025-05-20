@@ -153,6 +153,10 @@ copybutton_prompt_is_regexp = True
 html_theme = "nvidia_sphinx_theme"
 html_title = f"Warp {version}"
 html_show_sphinx = False
+html_static_path = ["_static"]
+html_css_files = [
+    "custom.css",
+]
 html_theme_options = {
     "copyright_override": {"start": 2022},
     "pygments_light_style": "tango",
