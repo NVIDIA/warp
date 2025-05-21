@@ -85,6 +85,7 @@
   ([GH-674](https://github.com/NVIDIA/warp/issues/674)).
 - Fix `UsdRenderer.render_points()` erroring out when passed 4 points or less
   ([GH-708](https://github.com/NVIDIA/warp/issues/708)).
+- Fix garbage collection issues with JAX FFI callbacks ([GH-711](https://github.com/NVIDIA/warp/pull/711)).
 
 ## [1.7.1] - 2025-04-30
 
