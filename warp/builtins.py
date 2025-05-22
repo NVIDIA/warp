@@ -5499,46 +5499,78 @@ add_builtin(
 )
 
 
+SUPPORTED_ATOMIC_TYPES = (
+    warp.int32,
+    warp.int64,
+    warp.uint32,
+    warp.uint64,
+    warp.float32,
+    warp.float64,
+)
+
+
 def atomic_op_constraint(arg_types: Mapping[str, Any]):
     idx_types = tuple(arg_types[x] for x in "ijkl" if arg_types.get(x, None) is not None)
     return all(types_equal(idx_types[0], t) for t in idx_types[1:]) and arg_types["arr"].ndim == len(idx_types)
 
 
-def atomic_op_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
-    if arg_types is None:
-        return Any
+def create_atomic_op_value_func(op: str):
+    def fn(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+        if arg_types is None:
+            return Any
 
-    arr_type = arg_types["arr"]
-    value_type = arg_types["value"]
-    idx_types = tuple(arg_types[x] for x in "ijkl" if arg_types.get(x, None) is not None)
+        arr_type = arg_types["arr"]
+        value_type = arg_types["value"]
+        idx_types = tuple(arg_types[x] for x in "ijkl" if arg_types.get(x, None) is not None)
 
-    if not is_array(arr_type):
-        raise RuntimeError("atomic() first argument must be an array")
+        if not is_array(arr_type):
+            raise RuntimeError(f"atomic_{op}() first argument must be an array")
 
-    idx_count = len(idx_types)
+        idx_count = len(idx_types)
 
-    if idx_count < arr_type.ndim:
-        raise RuntimeError(
-            "Num indices < num dimensions for atomic, this is a codegen error, should have generated a view instead"
-        )
+        if idx_count < arr_type.ndim:
+            raise RuntimeError(
+                f"Num indices < num dimensions for atomic_{op}(), this is a codegen error, should have generated a view instead"
+            )
 
-    if idx_count > arr_type.ndim:
-        raise RuntimeError(
-            f"Num indices > num dimensions for atomic, received {idx_count}, but array only has {arr_type.ndim}"
-        )
+        if idx_count > arr_type.ndim:
+            raise RuntimeError(
+                f"Num indices > num dimensions for atomic_{op}(), received {idx_count}, but array only has {arr_type.ndim}"
+            )
 
-    # check index types
-    for t in idx_types:
-        if not type_is_int(t):
-            raise RuntimeError(f"atomic() index arguments must be of integer type, got index of type {type_repr(t)}")
+        # check index types
+        for t in idx_types:
+            if not type_is_int(t):
+                raise RuntimeError(
+                    f"atomic_{op}() index arguments must be of integer type, got index of type {type_repr(t)}"
+                )
 
-    # check value type
-    if not types_equal(arr_type.dtype, value_type):
-        raise RuntimeError(
-            f"atomic() value argument type ({type_repr(value_type)}) must be of the same type as the array ({type_repr(arr_type.dtype)})"
-        )
+        # check value type
+        if not types_equal(arr_type.dtype, value_type):
+            raise RuntimeError(
+                f"atomic_{op}() value argument type ({type_repr(value_type)}) must be of the same type as the array ({type_repr(arr_type.dtype)})"
+            )
 
-    return arr_type.dtype
+        scalar_type = getattr(arr_type.dtype, "_wp_scalar_type_", arr_type.dtype)
+        if op in ("add", "sub"):
+            supported_atomic_types = (*SUPPORTED_ATOMIC_TYPES, warp.float16)
+            if not any(types_equal(scalar_type, x, match_generic=True) for x in supported_atomic_types):
+                raise RuntimeError(
+                    f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float16, float32, or float64 "
+                    f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
+                )
+        elif op in ("min", "max"):
+            if not any(types_equal(scalar_type, x, match_generic=True) for x in SUPPORTED_ATOMIC_TYPES):
+                raise RuntimeError(
+                    f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float32, or float64 "
+                    f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
+                )
+        else:
+            raise NotImplementedError
+
+        return arr_type.dtype
+
+    return fn
 
 
 def atomic_op_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
@@ -5563,7 +5595,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("add"),
         dispatch_func=atomic_op_dispatch_func,
         doc="Atomically add ``value`` onto ``arr[i]`` and return the old value.",
         group="Utility",
@@ -5574,7 +5606,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("add"),
         dispatch_func=atomic_op_dispatch_func,
         doc="Atomically add ``value`` onto ``arr[i,j]`` and return the old value.",
         group="Utility",
@@ -5585,7 +5617,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("add"),
         dispatch_func=atomic_op_dispatch_func,
         doc="Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value.",
         group="Utility",
@@ -5596,7 +5628,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("add"),
         dispatch_func=atomic_op_dispatch_func,
         doc="Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value.",
         group="Utility",
@@ -5608,7 +5640,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("sub"),
         dispatch_func=atomic_op_dispatch_func,
         doc="Atomically subtract ``value`` onto ``arr[i]`` and return the old value.",
         group="Utility",
@@ -5619,7 +5651,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("sub"),
         dispatch_func=atomic_op_dispatch_func,
         doc="Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value.",
         group="Utility",
@@ -5630,7 +5662,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("sub"),
         dispatch_func=atomic_op_dispatch_func,
         doc="Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value.",
         group="Utility",
@@ -5641,7 +5673,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("sub"),
         dispatch_func=atomic_op_dispatch_func,
         doc="Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value.",
         group="Utility",
@@ -5653,7 +5685,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("min"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
@@ -5666,7 +5698,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("min"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
@@ -5679,7 +5711,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("min"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
@@ -5692,7 +5724,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("min"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
@@ -5706,7 +5738,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("max"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
@@ -5719,7 +5751,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("max"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
@@ -5732,7 +5764,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("max"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
@@ -5745,7 +5777,7 @@ for array_type in array_types:
         hidden=hidden,
         input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
         constraint=atomic_op_constraint,
-        value_func=atomic_op_value_func,
+        value_func=create_atomic_op_value_func("max"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
