@@ -2973,7 +2973,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically add ``value`` onto ``arr[i]`` and return the old value.
+    Atomically adds ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+        This function is automatically invoked when using the syntax ``arr[i] += value``.
 
 
 .. py:function:: atomic_add(arr: Array[Any], i: Int, j: Int, value: Any) -> Any
@@ -2986,7 +2987,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically add ``value`` onto ``arr[i,j]`` and return the old value.
+    Atomically adds ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+        This function is automatically invoked when using the syntax ``arr[i,j] += value``.
 
 
 .. py:function:: atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any
@@ -2999,7 +3001,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value.
+    Atomically adds ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] += value``.
 
 
 .. py:function:: atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
@@ -3012,7 +3015,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value.
+    Atomically adds ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.
 
 
 .. py:function:: atomic_add(arr: FabricArray[Any], i: Int, value: Any) -> Any
@@ -3025,7 +3029,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically add ``value`` onto ``arr[i]`` and return the old value.
+    Atomically adds ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+        This function is automatically invoked when using the syntax ``arr[i] += value``.
 
 
 .. py:function:: atomic_add(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any
@@ -3038,7 +3043,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically add ``value`` onto ``arr[i,j]`` and return the old value.
+    Atomically adds ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+        This function is automatically invoked when using the syntax ``arr[i,j] += value``.
 
 
 .. py:function:: atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
@@ -3051,7 +3057,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value.
+    Atomically adds ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] += value``.
 
 
 .. py:function:: atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
@@ -3064,7 +3071,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value.
+    Atomically adds ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.
 
 
 .. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any
@@ -3077,7 +3085,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically add ``value`` onto ``arr[i]`` and return the old value.
+    Atomically adds ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+        This function is automatically invoked when using the syntax ``arr[i] += value``.
 
 
 .. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any
@@ -3090,7 +3099,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically add ``value`` onto ``arr[i,j]`` and return the old value.
+    Atomically adds ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+        This function is automatically invoked when using the syntax ``arr[i,j] += value``.
 
 
 .. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
@@ -3103,7 +3113,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value.
+    Atomically adds ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] += value``.
 
 
 .. py:function:: atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
@@ -3116,7 +3127,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value.
+    Atomically adds ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.
 
 
 .. py:function:: atomic_sub(arr: Array[Any], i: Int, value: Any) -> Any
@@ -3127,7 +3139,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically subtract ``value`` onto ``arr[i]`` and return the old value.
+    Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+        This function is automatically invoked when using the syntax ``arr[i] -= value``.
 
 
 .. py:function:: atomic_sub(arr: Array[Any], i: Int, j: Int, value: Any) -> Any
@@ -3140,7 +3153,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value.
+    Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+        This function is automatically invoked when using the syntax ``arr[i,j] -= value``.
 
 
 .. py:function:: atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any
@@ -3153,7 +3167,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value.
+    Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``.
 
 
 .. py:function:: atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
@@ -3166,7 +3181,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value.
+    Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.
 
 
 .. py:function:: atomic_sub(arr: FabricArray[Any], i: Int, value: Any) -> Any
@@ -3179,7 +3195,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically subtract ``value`` onto ``arr[i]`` and return the old value.
+    Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+        This function is automatically invoked when using the syntax ``arr[i] -= value``.
 
 
 .. py:function:: atomic_sub(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any
@@ -3192,7 +3209,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value.
+    Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+        This function is automatically invoked when using the syntax ``arr[i,j] -= value``.
 
 
 .. py:function:: atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
@@ -3205,7 +3223,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value.
+    Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``.
 
 
 .. py:function:: atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
@@ -3218,7 +3237,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value.
+    Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.
 
 
 .. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any
@@ -3231,7 +3251,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically subtract ``value`` onto ``arr[i]`` and return the old value.
+    Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+        This function is automatically invoked when using the syntax ``arr[i] -= value``.
 
 
 .. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any
@@ -3244,7 +3265,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value.
+    Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+        This function is automatically invoked when using the syntax ``arr[i,j] -= value``.
 
 
 .. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
@@ -3257,7 +3279,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value.
+    Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``.
 
 
 .. py:function:: atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
@@ -3270,7 +3293,8 @@ Utility
        * Kernel
        * Differentiable
 
-    Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value.
+    Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.
 
 
 .. py:function:: atomic_min(arr: Array[Any], i: Int, value: Any) -> Any
