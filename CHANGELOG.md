@@ -41,6 +41,7 @@
 
 - Remove `wp.mlp()` (deprecated in v1.6.0). Use tile primitives instead.
 - Remove `wp.autograd.plot_kernel_jacobians()` (deprecated in v1.4.0). Use `wp.autograd.jacobian_plot()` instead.
+- Document the fact that `+=` and `-=` invoke `wp.atomic_add()` and `wp.atomic_sub()`, respectively ([GH-505](https://github.com/NVIDIA/warp/issues/505)).
 
 ### Changed
 
