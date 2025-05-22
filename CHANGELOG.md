@@ -7,6 +7,8 @@
 - Add a [publications list](https://github.com/NVIDIA/warp/blob/main/PUBLICATIONS.md) of academic and research projects
   leveraging Warp ([GH-686](https://github.com/NVIDIA/warp/issues/686)).
 - Add missing adjoint method for tile `assign` operations ([GH-680](https://github.com/NVIDIA/warp/issues/680)).
+- Add `wp.map()` function to map a function over arrays, add math operators for Warp arrays ([GH-694](https://github.com/NVIDIA/warp/issues/694)).
+- Document the fact that `+=` and `-=` invoke `wp.atomic_add()` and `wp.atomic_sub()`, respectively ([GH-505](https://github.com/NVIDIA/warp/issues/505)).
 
 ### Changed
 
