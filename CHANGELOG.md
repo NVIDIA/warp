@@ -4,47 +4,42 @@
 
 ### Added
 
+- Add missing adjoint method for tile `assign` operations ([GH-680](https://github.com/NVIDIA/warp/issues/680)).
+- Add documentation for the fact that `+=` and `-=` invoke `wp.atomic_add()` and `wp.atomic_sub()`, respectively
+  ([GH-505](https://github.com/NVIDIA/warp/issues/505)).
 - Add a [publications list](https://github.com/NVIDIA/warp/blob/main/PUBLICATIONS.md) of academic and research projects
   leveraging Warp ([GH-686](https://github.com/NVIDIA/warp/issues/686)).
-- Add missing adjoint method for tile `assign` operations ([GH-680](https://github.com/NVIDIA/warp/issues/680)).
-- Add `wp.map()` function to map a function over arrays, add math operators for Warp arrays ([GH-694](https://github.com/NVIDIA/warp/issues/694)).
-- Document the fact that `+=` and `-=` invoke `wp.atomic_add()` and `wp.atomic_sub()`, respectively ([GH-505](https://github.com/NVIDIA/warp/issues/505)).
 
 ### Changed
 
-- Inform about class inheritance not being supported for `wp.struct`
+- Prevent and document that class inheritance is not supported for `wp.struct` (now throws `RuntimeError`)
   ([GH-656](https://github.com/NVIDIA/warp/issues/656)).
 - Warn when an incompatible data type conversion is detected when constructing an array using the
   `__cuda_array_interface__` ([GH-624](https://github.com/NVIDIA/warp/issues/624),
   [GH-670](https://github.com/NVIDIA/warp/issues/670)).
-- Lift the exact version requirement in `omni.warp` towards `omni.warp.core`
+- Relax the exact version requirement in `omni.warp` towards `omni.warp.core`
   ([GH-702](https://github.com/NVIDIA/warp/issues/702)).
-- Rename the “Kernel Reference” documentation page to “Built-Ins Reference”, with each built-in now having
+- Rename the "Kernel Reference" documentation page to "Built-Ins Reference", with each built-in now having
   annotations to denote whether they are accessible only from the kernel scope or also from the Python runtime scope
   ([GH-532](https://github.com/NVIDIA/warp/issues/532)).
 
 ### Fixed
 
-- Fix preserving base class of nested struct attributes ([GH-574](https://github.com/NVIDIA/warp/issues/574)).
+- Fix an issue where arrays stored in structs could be garbage collected without updating the struct ctype
+  ([GH-720](https://github.com/NVIDIA/warp/issues/720)).
+- Fix an issue with preserving the base class of nested struct attributes
+  ([GH-574](https://github.com/NVIDIA/warp/issues/574)).
 - Allow recovering from out-of-memory errors during `wp.Volume` allocation
   ([GH-611](https://github.com/NVIDIA/warp/issues/611)).
 - Fix 2D tile load when source array and tile have incompatible strides
   ([GH-688](https://github.com/NVIDIA/warp/issues/688)).
-- Address `wp.tile_atomic_add()` compiler errors ([GH-681](https://github.com/NVIDIA/warp/issues/681)).
-- Fixed `wp.svd2()` with duplicate singular values and improved accuracy
+- Fix compilation errors with `wp.tile_atomic_add()` ([GH-681](https://github.com/NVIDIA/warp/issues/681)).
+- Fix `wp.svd2()` with duplicate singular values and improved accuracy
   ([GH-679](https://github.com/NVIDIA/warp/issues/679)).
 - Fix `OpenGLRenderer.update_shape_instance()` not having color buffers created for the shape instances.
 - Fix text rendering in `wp.render.OpenGLRenderer` ([GH-704](https://github.com/NVIDIA/warp/issues/704)).
 - Fix assembly of rigid body inertia in `ModelBuilder.collapse_fixed_joints()`
   ([GH-631](https://github.com/NVIDIA/warp/issues/631)).
-- Fixed inconsistency in orientation of 2D geometry side normals ([GH-629](https://github.com/NVIDIA/warp/issues/629)).
-- Fixed `wp.svd2()` with duplicate singular values and improved accuracy ([GH-679](https://github.com/NVIDIA/warp/issues/679)).
-- Fix text rendering in OpenGLRenderer ([GH-704](https://github.com/NVIDIA/warp/issues/629)).
-- Fixed tile type tool tips ([GH-714](https://github.com/NVIDIA/warp/issues/714))
-- Fix an issue with graph coloring on an empty graph ([GH-509](https://github.com/NVIDIA/warp/issues/509)).
-- Fix an integer overflow bug in the native graph coloring module ([GH-718](https://github.com/NVIDIA/warp/issues/718)).
-- Fix missing documentation for geometric structs ([GH-674](https://github.com/NVIDIA/warp/issues/674)).
-- Fix an issue where arrays stored in structs could be garbage collected without updating the struct ctype ([GH-720](https://github.com/NVIDIA/warp/issues/720)).
 - Fix `UsdRenderer.render_points()` erroring out when passed 4 points or less
   ([GH-708](https://github.com/NVIDIA/warp/issues/708)).
 - Fix `wp.atomic_*()` built-ins not working with some types ([GH-733](https://github.com/NVIDIA/warp/issues/733)).
