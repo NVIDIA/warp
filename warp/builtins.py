@@ -2424,7 +2424,11 @@ def tile_atomic_add_value_func(arg_types, arg_values):
             f"tile_atomic_add() 'a' and 't' arguments must have the same dtype, got {arg_types['a'].dtype} and {arg_types['t'].dtype}"
         )
 
-    return tile(dtype=arg_types["t"].dtype, shape=arg_types["t"].shape, storage=arg_types["t"].storage)
+    return tile(
+        dtype=arg_types["t"].dtype,
+        shape=arg_types["t"].shape,
+        storage=arg_types["t"].storage,
+    )
 
 
 def tile_atomic_add_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
@@ -6876,7 +6880,7 @@ def tile_diag_add_value_func(arg_types, arg_values):
         )
 
     # use first argument to define output type
-    return tile(dtype=a.dtype, shape=a.shape, storage="shared")
+    return tile(dtype=a.dtype, shape=a.shape, strides=a.strides, storage="shared")
 
 
 def tile_diag_add_lto_dispatch_func(
@@ -7559,7 +7563,7 @@ def tile_lower_solve_generic_value_func(arg_types, arg_values):
             f"got {y.shape[0]} elements in 'y' and {l.shape[0]} rows in 'L'"
         )
 
-    return tile(dtype=l.dtype, shape=y.shape, storage="shared")
+    return tile(dtype=l.dtype, shape=y.shape, strides=y.strides, storage="shared")
 
 
 add_builtin(
@@ -7656,7 +7660,7 @@ def tile_upper_solve_generic_value_func(arg_types, arg_values):
             f"got {z.shape[0]} elements in 'z' and {u.shape[0]} rows in 'U'"
         )
 
-    return tile(dtype=u.dtype, shape=z.shape, storage="shared")
+    return tile(dtype=u.dtype, shape=z.shape, strides=z.strides, storage="shared")
 
 
 add_builtin(

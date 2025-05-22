@@ -101,6 +101,7 @@
   ([GH-674](https://github.com/NVIDIA/warp/issues/674)).
 - Fix `UsdRenderer.render_points()` erroring out when passed 4 points or less
   ([GH-708](https://github.com/NVIDIA/warp/issues/708)).
+- Fix incorrect stride initialization in tiles returned from functions taking transposed tiles as input ([GH-722](https://github.com/NVIDIA/warp/issues/722)).
 - Fix garbage collection issues with JAX FFI callbacks ([GH-711](https://github.com/NVIDIA/warp/pull/711)).
 - Fix `wp.atomic_*()` built-ins not working with some types
   ([GH-733](https://github.com/NVIDIA/warp/issues/733)).

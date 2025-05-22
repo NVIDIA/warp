@@ -1497,10 +1497,10 @@ inline CUDA_CALLABLE void adj_print(const tile_shared_t<T, L, Owner>& t, const t
 
 
 // helpers to allocate shared tiles
-template <typename T, typename Shape, bool RequiresGrad>
+template <typename T, typename Shape, typename Strides, bool RequiresGrad>
 inline CUDA_CALLABLE auto tile_alloc_empty()
-
-{   constexpr int size = Shape::size();
+{
+    constexpr int size = Shape::size();
     T* data = (T*)tile_alloc_shared(size*sizeof(T));
     T* grad = nullptr;
 
@@ -1528,7 +1528,7 @@ inline CUDA_CALLABLE auto tile_alloc_empty()
         WP_TILE_SYNC();
     }
        
-    return tile_shared_t<T, tile_layout_strided_t<Shape>>(data, grad);
+    return tile_shared_t<T, tile_layout_strided_t<Shape, Strides>>(data, grad);
 }
 
 
@@ -2656,33 +2656,9 @@ template <typename TileL, typename TileY, typename TileZ>
 TileZ& tile_lower_solve(TileL& L, TileY& y, TileZ& z)
 {       
     // Copy y to z
-    //z = y;
+    z = y;
 	
 #if !defined(__CUDA_ARCH__)
-
-    // z = y; <- this contains a bug - the copied matrix might be transposed
-
-    // Copy values explicitly to work around the bug
-    if constexpr (TileY::Layout::Shape::N == 1) 
-    {
-        constexpr int n = TileY::Layout::Shape::dim(0);
-        for (int i = 0; i < n; ++i) 
-        {
-            z.data(tile_coord(i)) = y.data(tile_coord(i));
-        }
-    }
-    else if constexpr (TileY::Layout::Shape::N == 2) 
-    {
-        constexpr int n = TileY::Layout::Shape::dim(0);
-        constexpr int m = TileY::Layout::Shape::dim(1);
-        for (int i = 0; i < n; ++i) 
-        {
-            for (int j = 0; j < m; ++j) 
-            {
-                z.data(tile_coord(i,j)) = y.data(tile_coord(i,j));
-            }
-        }
-    }
     
     partitioned_gemm::scalar_cholesky_forward_substitution(L, z, y);
 
@@ -2798,33 +2774,10 @@ template <typename TileU, typename TileZ, typename TileX>
 TileX& tile_upper_solve(TileU& U, TileZ& z, TileX& x)
 {       
     // Copy z to x
-    //x = z;
+    x = z;
 	
 #if !defined(__CUDA_ARCH__)
 
-    // x = z; <- this contains a bug - the copied matrix might be transposed
-
-    // Copy values explicitly to work around the bug
-    if constexpr (TileZ::Layout::Shape::N == 1) 
-    {
-        constexpr int n = TileZ::Layout::Shape::dim(0);
-        for (int i = 0; i < n; ++i) 
-        {
-            x.data(tile_coord(i)) = z.data(tile_coord(i));
-        }
-    }
-    else if constexpr (TileZ::Layout::Shape::N == 2) 
-    {
-        constexpr int n = TileZ::Layout::Shape::dim(0);
-        constexpr int m = TileZ::Layout::Shape::dim(1);
-        for (int i = 0; i < n; ++i) 
-        {
-            for (int j = 0; j < m; ++j) 
-            {
-                x.data(tile_coord(i,j)) = z.data(tile_coord(i,j));
-            }
-        }
-    }
     auto L = tile_transpose(U);
     partitioned_gemm::scalar_cholesky_back_substitution(L, x);
 
