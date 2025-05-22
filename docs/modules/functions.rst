@@ -2521,31 +2521,6 @@ Tile Primitives
 
 Utility
 ---------------
-.. py:function:: mlp(weights: Array[float32], bias: Array[float32], activation: Callable, index: int32, x: Array[float32], out: Array[float32]) -> None
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Differentiable
-
-    Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``.
-
-    .. deprecated:: 1.6
-        Use :doc:`tile primitives </modules/tiles>` instead.
-
-    :param weights: A layer's network weights with dimensions ``(m, n)``.
-    :param bias: An array with dimensions ``(n)``.
-    :param activation: A ``wp.func`` function that takes a single scalar float as input and returns a scalar float as output
-    :param index: The batch item to process, typically each thread will process one item in the batch, in which case
-                  index should be ``wp.tid()``
-    :param x: The feature matrix with dimensions ``(n, b)``
-    :param out: The network output with dimensions ``(m, b)``
-
-    :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch.
-           All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).
-
-
 .. py:function:: reversed(range: range_t) -> range_t
 
     .. hlist::

@@ -3892,50 +3892,6 @@ add_builtin(
 )
 
 
-def mlp_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
-    warp.utils.warn(
-        "wp.mlp() is deprecated and will be removed in a future\nversion. Use tile primitives instead.",
-        category=DeprecationWarning,
-    )
-
-    func_args = tuple(args.values())
-    template_args = ()
-
-    return (func_args, template_args)
-
-
-add_builtin(
-    "mlp",
-    input_types={
-        "weights": array(dtype=float, ndim=2),
-        "bias": array(dtype=float, ndim=1),
-        "activation": Callable,
-        "index": int,
-        "x": array(dtype=float, ndim=2),
-        "out": array(dtype=float, ndim=2),
-    },
-    value_type=None,
-    dispatch_func=mlp_dispatch_func,
-    skip_replay=True,
-    doc="""Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``.
-
-    .. deprecated:: 1.6
-        Use :doc:`tile primitives </modules/tiles>` instead.
-
-    :param weights: A layer's network weights with dimensions ``(m, n)``.
-    :param bias: An array with dimensions ``(n)``.
-    :param activation: A ``wp.func`` function that takes a single scalar float as input and returns a scalar float as output
-    :param index: The batch item to process, typically each thread will process one item in the batch, in which case
-                  index should be ``wp.tid()``
-    :param x: The feature matrix with dimensions ``(n, b)``
-    :param out: The network output with dimensions ``(m, b)``
-
-    :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch.
-           All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).""",
-    group="Utility",
-)
-
-
 # ---------------------------------
 # Geometry
 

@@ -1862,13 +1862,11 @@ class array(Array[DType]):
         dtype: Any = Any,
         shape: int | tuple[int, ...] | list[int] | None = None,
         strides: tuple[int, ...] | None = None,
-        length: int | None = None,
         ptr: int | None = None,
         capacity: int | None = None,
         device=None,
         pinned: builtins.bool = False,
         copy: builtins.bool = True,
-        owner: builtins.bool = False,  # deprecated - pass deleter instead
         deleter: Callable[[int, int], None] | None = None,
         ndim: int | None = None,
         grad: array | None = None,
@@ -1885,7 +1883,7 @@ class array(Array[DType]):
         allocation should reside on the same device given by the device argument, and the user should set the length
         and dtype parameter appropriately.
 
-        If neither ``data`` nor ``ptr`` are specified, the ``shape`` or ``length`` arguments are checked next.
+        If neither ``data`` nor ``ptr`` are specified, the ``shape`` argument is checked next.
         This construction path can be used to create new uninitialized arrays, but users are encouraged to call
         ``wp.empty()``, ``wp.zeros()``, or ``wp.full()`` instead to create new arrays.
 
@@ -1898,14 +1896,11 @@ class array(Array[DType]):
             dtype: One of the available `data types <#data-types>`_, such as :class:`warp.float32`, :class:`warp.mat33`, or a custom `struct <#structs>`_. If dtype is ``Any`` and data is an ndarray, then it will be inferred from the array data type
             shape: Dimensions of the array
             strides: Number of bytes in each dimension between successive elements of the array
-            length: Number of elements of the data type (deprecated, users should use ``shape`` argument)
             ptr: Address of an external memory address to alias (``data`` should be ``None``)
             capacity: Maximum size in bytes of the ``ptr`` allocation (``data`` should be ``None``)
             device (Devicelike): Device the array lives on
             copy: Whether the incoming ``data`` will be copied or aliased. Aliasing requires that
                 the incoming ``data`` already lives on the ``device`` specified and the data types match.
-            owner: Whether the array will try to deallocate the underlying memory when it is deleted
-                (deprecated, pass ``deleter`` if you wish to transfer ownership to Warp)
             deleter: Function to be called when the array is deleted, taking two arguments: pointer and size
             requires_grad: Whether or not gradients will be tracked for this array, see :class:`warp.Tape` for details
             grad: The array in which to accumulate gradients in the backward pass. If ``None`` and ``requires_grad`` is ``True``,
@@ -1947,23 +1942,6 @@ class array(Array[DType]):
                     raise RuntimeError(
                         f"Failed to create array with shape {shape}, the maximum number of dimensions is {ARRAY_MAX_DIMS}"
                     )
-        elif length is not None:
-            # backward compatibility
-            warp.utils.warn(
-                "The 'length' keyword is deprecated and will be removed in a future version. Use 'shape' instead.",
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-            shape = (length,)
-
-        if owner:
-            warp.utils.warn(
-                "The 'owner' keyword in the array initializer is\n"
-                "deprecated and will be removed in a future version. It currently has no effect.\n"
-                "Pass a function to the 'deleter' keyword instead.",
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
 
         # determine the construction path from the given arguments
         if data is not None:
@@ -3880,7 +3858,7 @@ class Volume:
         buf = ctypes.c_void_p(0)
         size = ctypes.c_uint64(0)
         self.runtime.core.volume_get_buffer_info(self.id, ctypes.byref(buf), ctypes.byref(size))
-        return array(ptr=buf.value, dtype=uint8, shape=size.value, device=self.device, owner=False)
+        return array(ptr=buf.value, dtype=uint8, shape=size.value, device=self.device)
 
     def get_tile_count(self) -> int:
         """Return the number of tiles (NanoVDB leaf nodes) of the volume."""
@@ -4142,7 +4120,7 @@ class Volume:
         if type_size_in_bytes(dtype) != value_size:
             raise RuntimeError(f"Cannot cast feature data of size {value_size} to array dtype {type_repr(dtype)}")
 
-        return array(ptr=info.ptr, dtype=dtype, shape=value_count, device=self.device, owner=False)
+        return array(ptr=info.ptr, dtype=dtype, shape=value_count, device=self.device)
 
     @classmethod
     def load_from_nvdb(cls, file_or_buffer, device=None) -> Volume:
@@ -4374,7 +4352,7 @@ class Volume:
                 "A warp Volume has already been created for this grid, aliasing it more than once is not possible."
             )
 
-        data_array = array(ptr=grid_ptr, dtype=uint8, shape=buffer_size, owner=False, device=device)
+        data_array = array(ptr=grid_ptr, dtype=uint8, shape=buffer_size, device=device)
 
         return cls(data_array, copy=False)
 

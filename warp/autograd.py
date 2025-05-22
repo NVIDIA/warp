@@ -447,7 +447,6 @@ def jacobian_plot(
     jacobians: dict[tuple[int, int], wp.array],
     kernel: FunctionMetadata | wp.Kernel,
     inputs: Sequence | None = None,
-    outputs: Sequence | None = None,
     show_plot: bool = True,
     show_colorbar: bool = True,
     scale_colors_per_submatrix: bool = False,
@@ -463,7 +462,6 @@ def jacobian_plot(
         jacobians: A dictionary of Jacobians, where the keys are tuples of input and output indices, and the values are the Jacobian matrices.
         kernel: The Warp kernel function, decorated with the ``@wp.kernel`` decorator, or a :class:`FunctionMetadata` instance with the kernel/function attributes.
         inputs: List of input variables.
-        outputs: List of output variables. Deprecated and will be removed in a future Warp version.
         show_plot: If True, displays the plot via ``plt.show()``.
         show_colorbar: If True, displays a colorbar next to the plot (or a colorbar next to every submatrix if ).
         scale_colors_per_submatrix: If True, considers the minimum and maximum of each Jacobian submatrix separately for color scaling. Otherwise, uses the global minimum and maximum of all Jacobians.
@@ -486,12 +484,6 @@ def jacobian_plot(
         metadata = kernel
     else:
         raise ValueError("Invalid kernel argument: must be a Warp kernel or a FunctionMetadata object")
-    if outputs is not None:
-        wp.utils.warn(
-            "The `outputs` argument to `jacobian_plot` is no longer needed and will be removed in a future Warp version.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
 
     jacobians = sorted(jacobians.items(), key=lambda x: (x[0][1], x[0][0]))
     jacobians = dict(jacobians)
@@ -637,59 +629,6 @@ def jacobian_plot(
     return fig
 
 
-def plot_kernel_jacobians(
-    jacobians: dict[tuple[int, int], wp.array],
-    kernel: wp.Kernel,
-    inputs: Sequence,
-    outputs: Sequence,
-    show_plot: bool = True,
-    show_colorbar: bool = True,
-    scale_colors_per_submatrix: bool = False,
-    title: str | None = None,
-    colormap: str = "coolwarm",
-    log_scale: bool = False,
-):
-    """
-    Visualizes the Jacobians computed by :func:`jacobian` or :func:`jacobian_fd` in a combined image plot.
-    Requires the ``matplotlib`` package to be installed.
-
-    Note:
-        This function is deprecated and will be removed in a future Warp version. Please call :func:`jacobian_plot` instead.
-
-    Args:
-        jacobians: A dictionary of Jacobians, where the keys are tuples of input and output indices, and the values are the Jacobian matrices.
-        kernel: The Warp kernel function, decorated with the ``@wp.kernel`` decorator.
-        inputs: List of input variables.
-        outputs: List of output variables.
-        show_plot: If True, displays the plot via ``plt.show()``.
-        show_colorbar: If True, displays a colorbar next to the plot (or a colorbar next to every submatrix if ).
-        scale_colors_per_submatrix: If True, considers the minimum and maximum of each Jacobian submatrix separately for color scaling. Otherwise, uses the global minimum and maximum of all Jacobians.
-        title: The title of the plot (optional).
-        colormap: The colormap to use for the plot.
-        log_scale: If True, uses a logarithmic scale for the matrix values shown in the image plot.
-
-    Returns:
-        The created Matplotlib figure.
-    """
-    wp.utils.warn(
-        "The function `plot_kernel_jacobians` is deprecated and will be removed in a future Warp version. Please call `jacobian_plot` instead.",
-        DeprecationWarning,
-        stacklevel=3,
-    )
-    return jacobian_plot(
-        jacobians,
-        kernel,
-        inputs,
-        outputs,
-        show_plot=show_plot,
-        show_colorbar=show_colorbar,
-        scale_colors_per_submatrix=scale_colors_per_submatrix,
-        title=title,
-        colormap=colormap,
-        log_scale=log_scale,
-    )
-
-
 def scalarize_array_1d(arr):
     # convert array to 1D array with scalar dtype
     if arr.dtype in wp.types.scalar_types:
@@ -737,7 +676,6 @@ def jacobian(
     max_outputs_per_var=-1,
     plot_jacobians=False,
     metadata: FunctionMetadata | None = None,
-    kernel: wp.Kernel | None = None,
 ) -> dict[tuple[int, int], wp.array]:
     """
     Computes the Jacobians of a function or Warp kernel for the provided selection of differentiable inputs to differentiable outputs.
@@ -766,20 +704,12 @@ def jacobian(
         max_outputs_per_var: Maximum number of output dimensions over which to evaluate the Jacobians for the input-output pairs. Evaluates all output dimensions if value <= 0.
         plot_jacobians: If True, visualizes the computed Jacobians in a plot (requires ``matplotlib``).
         metadata: The metadata of the kernel function, containing the input and output labels, strides, and dtypes. If None or empty, the metadata is inferred from the kernel or function.
-        kernel: Deprecated argument. Use the ``function`` argument instead.
 
     Returns:
         A dictionary of Jacobians, where the keys are tuples of input and output indices, and the values are the Jacobian matrices.
     """
     if input_output_mask is None:
         input_output_mask = []
-    if kernel is not None:
-        wp.utils.warn(
-            "The argument `kernel` to the function `wp.autograd.jacobian` is deprecated in favor of the `function` argument and will be removed in a future Warp version.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        function = kernel
 
     if metadata is None:
         metadata = FunctionMetadata()
@@ -882,7 +812,6 @@ def jacobian_fd(
     eps: float = 1e-4,
     plot_jacobians=False,
     metadata: FunctionMetadata | None = None,
-    kernel: wp.Kernel | None = None,
 ) -> dict[tuple[int, int], wp.array]:
     """
     Computes the finite-difference Jacobian of a function or Warp kernel for the provided selection of differentiable inputs to differentiable outputs.
@@ -913,20 +842,12 @@ def jacobian_fd(
         eps: The finite-difference step size.
         plot_jacobians: If True, visualizes the computed Jacobians in a plot (requires ``matplotlib``).
         metadata: The metadata of the kernel function, containing the input and output labels, strides, and dtypes. If None or empty, the metadata is inferred from the kernel or function.
-        kernel: Deprecated argument. Use the ``function`` argument instead.
 
     Returns:
         A dictionary of Jacobians, where the keys are tuples of input and output indices, and the values are the Jacobian matrices.
     """
     if input_output_mask is None:
         input_output_mask = []
-    if kernel is not None:
-        wp.utils.warn(
-            "The argument `kernel` to the function `wp.autograd.jacobian` is deprecated in favor of the `function` argument and will be removed in a future Warp version.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        function = kernel
 
     if metadata is None:
         metadata = FunctionMetadata()

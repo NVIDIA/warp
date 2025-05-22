@@ -36,6 +36,11 @@
   leveraging Warp ([GH-686](https://github.com/NVIDIA/warp/issues/686)).
 - Add `wp.map()` function to map a function over arrays, add math operators for Warp arrays ([GH-694](https://github.com/NVIDIA/warp/issues/694)).
 
+### Removed
+
+- Remove `wp.mlp()` (deprecated in v1.6.0). Use tile primitives instead.
+- Remove `wp.autograd.plot_kernel_jacobians()` (deprecated in v1.4.0). Use `wp.autograd.jacobian_plot()` instead.
+
 ### Changed
 
 - Deprecate the `wp.matrix(pos, quat, scale)` built-in function. Use `wp.transform_compose()` instead
@@ -60,6 +65,13 @@
   ([GH-532](https://github.com/NVIDIA/warp/issues/532)).
 - Re-name `wp.tile_cholesky_solve` input parameters to align with docstring.
   ([GH-726](https://github.com/NVIDIA/warp/issues/726)).
+- Remove `length` and `owner` keywords from `wp.array()` constructor (deprecated in v1.6.0). Use the `deleter` and
+  `shape` keywords instead.
+- Remove `length` and `owner` keyword arguments from `wp.array()` constructor (deprecated in v1.6.0).
+  Use the `deleter` and `shape` keywords instead.
+- Remove `kernel` keyword argument from `wp.autograd.jacobian()` and `wp.autograd.jacobian_fd()` (deprecated in v1.6.0).
+  Use the `function` keyword argument instead.
+- Remove `outputs` keyword argument from `wp.autograd.jacobian_plot()` (deprecated in v1.6.0).
 
 ### Fixed
 
