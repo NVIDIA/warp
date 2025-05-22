@@ -348,9 +348,9 @@ If the test function is added to a test class using ``add_function_test()``, we 
 to the ``device`` parameter.
 
 The final common technique is to avoid calling ``add_function_test`` on a test function in order to skip it.
-Examples are `test_torch.py <https://github.com/NVIDIA/warp/blob/main/warp/tests/test_torch.py>`__,
-`test_jax.py <https://github.com/NVIDIA/warp/blob/main/warp/tests/test_jax.py>`__, and
-`test_dlpack.py <https://github.com/NVIDIA/warp/blob/main/warp/tests/test_dlpack.py>`__.
+Examples are `test_torch.py <https://github.com/NVIDIA/warp/blob/main/warp/tests/interop/test_torch.py>`__,
+`test_jax.py <https://github.com/NVIDIA/warp/blob/main/warp/tests/interop/test_jax.py>`__, and
+`test_dlpack.py <https://github.com/NVIDIA/warp/blob/main/warp/tests/interop/test_dlpack.py>`__.
 This technique is discouraged because the test is not marked as skipped in the ``unittest`` framework.
 Instead, the test is treated as if it does not exist.
 This can create a situation in which we are unaware that a test is being skipped because it does not show up under the
