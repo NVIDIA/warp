@@ -40,6 +40,11 @@
 - Fixed inconsistency in orientation of 2D geometry side normals ([GH-629](https://github.com/NVIDIA/warp/issues/629)).
 - Fixed `wp.svd2()` with duplicate singular values and improved accuracy ([GH-679](https://github.com/NVIDIA/warp/issues/679)).
 - Fix text rendering in OpenGLRenderer ([GH-704](https://github.com/NVIDIA/warp/issues/629)).
+- Fixed tile type tool tips ([GH-714](https://github.com/NVIDIA/warp/issues/714))
+- Fix an issue with graph coloring on an empty graph ([GH-509](https://github.com/NVIDIA/warp/issues/509)).
+- Fix an integer overflow bug in the native graph coloring module ([GH-718](https://github.com/NVIDIA/warp/issues/718)).
+- Fix missing documentation for geometric structs ([GH-674](https://github.com/NVIDIA/warp/issues/674)).
+- Fix an issue where arrays stored in structs could be garbage collected without updating the struct ctype ([GH-720](https://github.com/NVIDIA/warp/issues/720)).
 - Fix `UsdRenderer.render_points()` erroring out when passed 4 points or less
   ([GH-708](https://github.com/NVIDIA/warp/issues/708)).
 - Fix `wp.atomic_*()` built-ins not working with some types ([GH-733](https://github.com/NVIDIA/warp/issues/733)).
