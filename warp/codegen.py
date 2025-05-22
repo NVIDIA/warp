@@ -288,6 +288,11 @@ class StructInstance:
                 )
                 setattr(self._ctype, name, value.__ctype__())
 
+                # workaround to prevent gradient buffers being garbage collected
+                # since users can do struct.array.requires_grad = False the gradient array
+                # would be collected while the struct ctype still holds a reference to it
+                super().__setattr__("_" + name + "_grad", value.grad)
+
         elif isinstance(var.type, Struct):
             # assign structs by-value, otherwise we would have problematic cases transferring ownership
             # of the underlying ctypes data between shared Python struct instances
