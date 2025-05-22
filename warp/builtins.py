@@ -7038,36 +7038,41 @@ def tile_matmul_lto_dispatch_func(
             num_threads,
             builder,
         )
-        # adjA += adjC * B^T - Transpose ~= flipped layout
-        (fun_backward_A, lto_backward_A) = warp.build.build_lto_dot(
-            M,
-            K,
-            N,
-            out.type.dtype,
-            b.type.dtype,
-            a.type.dtype,
-            out.type.layout,
-            tile_flip_layout(b.type.layout),
-            a.type.layout,
-            arch,
-            num_threads,
-            builder,
-        )
-        # adjB += A^T * adjC - Transpose ~= flipped layout
-        (fun_backward_B, lto_backward_B) = warp.build.build_lto_dot(
-            K,
-            N,
-            M,
-            a.type.dtype,
-            out.type.dtype,
-            b.type.dtype,
-            tile_flip_layout(a.type.layout),
-            out.type.layout,
-            b.type.layout,
-            arch,
-            num_threads,
-            builder,
-        )
+        if warp.config.enable_backward:
+            # adjA += adjC * B^T - Transpose ~= flipped layout
+            (fun_backward_A, lto_backward_A) = warp.build.build_lto_dot(
+                M,
+                K,
+                N,
+                out.type.dtype,
+                b.type.dtype,
+                a.type.dtype,
+                out.type.layout,
+                tile_flip_layout(b.type.layout),
+                a.type.layout,
+                arch,
+                num_threads,
+                builder,
+            )
+            # adjB += A^T * adjC - Transpose ~= flipped layout
+            (fun_backward_B, lto_backward_B) = warp.build.build_lto_dot(
+                K,
+                N,
+                M,
+                a.type.dtype,
+                out.type.dtype,
+                b.type.dtype,
+                tile_flip_layout(a.type.layout),
+                out.type.layout,
+                b.type.layout,
+                arch,
+                num_threads,
+                builder,
+            )
+        else:
+            # adjoints aren't computed, so we reuse fun_forward as a dummy arg
+            (fun_backward_A, lto_backward_A) = (fun_forward, None)
+            (fun_backward_B, lto_backward_B) = (fun_forward, None)
 
         return (
             (

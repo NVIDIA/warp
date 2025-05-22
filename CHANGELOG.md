@@ -58,6 +58,8 @@
 - Rename the “Kernel Reference” documentation page to “Built-Ins Reference”, with each built-in now having
   annotations to denote whether they are accessible only from the kernel scope or also from the Python runtime scope
   ([GH-532](https://github.com/NVIDIA/warp/issues/532)).
+- Skip adjoint compilation for `wp.tile_matmul()` if `enable_backward` is disabled
+  ([GH-644](https://github.com/NVIDIA/warp/issues/644)).
 
 ### Fixed
 
