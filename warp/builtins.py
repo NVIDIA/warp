@@ -1658,6 +1658,48 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
     if arg_types is None:
         return transformation(dtype=Float)
 
+    dtype = arg_values.get("dtype", None)
+
+    variadic_arg_types = arg_types.get("args", ())
+    variadic_arg_count = len(variadic_arg_types)
+    if variadic_arg_count == 0:
+        # Zero-initialization, e.g.: `wp.transform()`, `wp.transformation(dtype=wp.float16)`.
+        if dtype is None:
+            dtype = float32
+    elif variadic_arg_count == 1:
+        # Initialization by filling a value, e.g.: `wp.transform(123)`,
+        # `wp.transformation(123)`.
+        value_type = strip_reference(variadic_arg_types[0])
+        if dtype is None:
+            dtype = value_type
+        elif not warp.types.scalars_equal(value_type, dtype):
+            raise RuntimeError(
+                f"the value used to fill this transform is expected to be of the type `{dtype.__name__}`"
+            )
+    elif variadic_arg_count == 7:
+        # Initializing by value, e.g.: `wp.transform(1, 2, 3, 4, 5, 6, 7)`.
+        try:
+            value_type = scalar_infer_type(variadic_arg_types)
+        except RuntimeError:
+            raise RuntimeError("all values given when constructing a transform must have the same type") from None
+
+        if dtype is None:
+            dtype = value_type
+        elif not warp.types.scalars_equal(value_type, dtype):
+            raise RuntimeError(
+                f"all values used to initialize this transform are expected to be of the type `{dtype.__name__}`"
+            )
+
+    if dtype is None:
+        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.transform()` function")
+
+    return transformation(dtype=dtype)
+
+
+def transformation_pq_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    if arg_types is None:
+        return transformation(dtype=Float)
+
     try:
         value_type = float_infer_type(arg_types)
     except RuntimeError:
@@ -1692,14 +1734,30 @@ def transformation_dispatch_func(input_types: Mapping[str, type], return_type: A
 
 add_builtin(
     "transformation",
-    input_types={"pos": vector(length=3, dtype=Float), "rot": quaternion(dtype=Float), "dtype": Float},
+    input_types={"p": vector(length=3, dtype=Float), "q": quaternion(dtype=Float), "dtype": Float},
     defaults={"dtype": None},
-    value_func=transformation_value_func,
+    value_func=transformation_pq_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
     dispatch_func=transformation_dispatch_func,
     native_func="transform_t",
     group="Transformations",
-    doc="Construct a rigid-body transformation with translation part ``pos`` and rotation ``rot``.",
+    doc="Construct a rigid-body transformation with translation part ``p`` and rotation ``q``.",
+    export=False,
+)
+
+
+add_builtin(
+    "transformation",
+    input_types={"*args": Float, "dtype": Float},
+    defaults={"dtype": None},
+    variadic=True,
+    initializer_list_func=lambda arg_types, arg_values: len(arg_types.get("args", ())) > 1,
+    value_func=transformation_value_func,
+    export_func=lambda input_types: {k: v for k, v in input_types.items() if k not in ("dtype")},
+    dispatch_func=transformation_dispatch_func,
+    native_func="transform_t",
+    doc="Construct a spatial transfom vector of given dtype.",
+    group="Spatial Math",
     export=False,
 )
 
@@ -1750,6 +1808,40 @@ add_builtin(
     value_func=lambda arg_types, arg_values: quaternion(dtype=float_infer_type(arg_types)),
     group="Transformations",
     doc="Return the rotational part of a transform ``xform``.",
+)
+add_builtin(
+    "transform_set_translation",
+    input_types={"xform": transformation(dtype=Float), "p": vector(length=3, dtype=Float)},
+    value_type=None,
+    group="Transformations",
+    doc="Set the translational part of a transform ``xform``.",
+)
+add_builtin(
+    "transform_set_rotation",
+    input_types={"xform": transformation(dtype=Float), "q": quaternion(dtype=Float)},
+    value_type=None,
+    group="Transformations",
+    doc="Set the rotational part of a transform ``xform``.",
+)
+# performs a copy internally if wp.config.enable_vector_component_overwrites is True
+add_builtin(
+    "transform_set_translation_copy",
+    input_types={"xform": transformation(dtype=Float), "p": vector(length=3, dtype=Float)},
+    value_type=transformation(dtype=Float),
+    group="Transformations",
+    doc="Set the translational part of a transform ``xform``.",
+    hidden=True,
+    export=False,
+)
+# performs a copy internally if wp.config.enable_vector_component_overwrites is True
+add_builtin(
+    "transform_set_rotation_copy",
+    input_types={"xform": transformation(dtype=Float), "q": quaternion(dtype=Float)},
+    value_type=transformation(dtype=Float),
+    group="Transformations",
+    doc="Set the rotational part of a transform ``xform``.",
+    hidden=True,
+    export=False,
 )
 add_builtin(
     "transform_multiply",
@@ -5880,6 +5972,16 @@ add_builtin(
     group="Utility",
     skip_replay=True,
 )
+# implements &transformation[index]
+add_builtin(
+    "index",
+    input_types={"a": transformation(dtype=Float), "i": int},
+    value_func=vector_index_value_func,
+    dispatch_func=vector_index_dispatch_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
 # implements &(*vector)[index]
 add_builtin(
     "indexref",
@@ -5894,6 +5996,16 @@ add_builtin(
 add_builtin(
     "indexref",
     input_types={"a": quaternion(dtype=Float), "i": int},
+    value_func=vector_index_value_func,
+    dispatch_func=vector_index_dispatch_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
+# implements &(*transformation)[index]
+add_builtin(
+    "indexref",
+    input_types={"a": transformation(dtype=Float), "i": int},
     value_func=vector_index_value_func,
     dispatch_func=vector_index_dispatch_func,
     hidden=True,
@@ -5916,6 +6028,15 @@ add_builtin(
 add_builtin(
     "assign_inplace",
     input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
+    value_type=None,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+# implements transformation[index] = value
+add_builtin(
+    "assign_inplace",
+    input_types={"a": transformation(dtype=Scalar), "i": int, "value": Scalar},
     value_type=None,
     hidden=True,
     export=False,
@@ -5946,6 +6067,15 @@ add_builtin(
     group="Utility",
 )
 
+# implements transformation[index] = value, performs a copy internally if wp.config.enable_vector_component_overwrites is True
+add_builtin(
+    "assign_copy",
+    input_types={"a": transformation(dtype=Scalar), "i": int, "value": Scalar},
+    value_func=vector_assign_value_func,
+    hidden=True,
+    group="Utility",
+)
+
 # implements vector[idx] += scalar
 add_builtin(
     "add_inplace",
@@ -5966,6 +6096,26 @@ add_builtin(
     group="Utility",
 )
 
+# implements transformation[idx] += scalar
+add_builtin(
+    "add_inplace",
+    input_types={"a": transformation(dtype=Float), "i": int, "value": Float},
+    value_type=None,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+# implements transformation.p += vec3
+add_builtin(
+    "transform_add_inplace",
+    input_types={"a": transformation(dtype=Float), "value": vector(length=3, dtype=Float)},
+    value_type=None,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
 # implements vector[idx] -= scalar
 add_builtin(
     "sub_inplace",
@@ -5980,6 +6130,26 @@ add_builtin(
 add_builtin(
     "sub_inplace",
     input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
+    value_type=None,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+# implements transformation[idx] -= scalar
+add_builtin(
+    "sub_inplace",
+    input_types={"a": transformation(dtype=Scalar), "i": int, "value": Scalar},
+    value_type=None,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+# implements transformation.p -= vec3
+add_builtin(
+    "transform_sub_inplace",
+    input_types={"a": transformation(dtype=Float), "value": vector(length=3, dtype=Float)},
     value_type=None,
     hidden=True,
     export=False,

@@ -848,8 +848,14 @@ def quat_to_matrix(quat: Quaternion[Float]) -> Matrix[3, 3, Float]:
 
 
 @over
-def transformation(pos: Vector[3, Float], rot: Quaternion[Float], dtype: Float) -> Transformation[Float]:
-    """Construct a rigid-body transformation with translation part ``pos`` and rotation ``rot``."""
+def transformation(p: Vector[3, Float], q: Quaternion[Float], dtype: Float) -> Transformation[Float]:
+    """Construct a rigid-body transformation with translation part ``p`` and rotation ``q``."""
+    ...
+
+
+@over
+def transformation(*args: Float, dtype: Float) -> Transformation[Float]:
+    """Construct a spatial transfom vector of given dtype."""
     ...
 
 
@@ -868,6 +874,18 @@ def transform_get_translation(xform: Transformation[Float]) -> Vector[3, Float]:
 @over
 def transform_get_rotation(xform: Transformation[Float]) -> Quaternion[Float]:
     """Return the rotational part of a transform ``xform``."""
+    ...
+
+
+@over
+def transform_set_translation(xform: Transformation[Float], p: Vector[3, Float]):
+    """Set the translational part of a transform ``xform``."""
+    ...
+
+
+@over
+def transform_set_rotation(xform: Transformation[Float], q: Quaternion[Float]):
+    """Set the rotational part of a transform ``xform``."""
     ...
 
 

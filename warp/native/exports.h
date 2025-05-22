@@ -1003,6 +1003,12 @@ WP_API void builtin_transform_get_translation_transformd(transformd& xform, vec3
 WP_API void builtin_transform_get_rotation_transformh(transformh& xform, quath* ret) { *ret = wp::transform_get_rotation(xform); }
 WP_API void builtin_transform_get_rotation_transformf(transformf& xform, quatf* ret) { *ret = wp::transform_get_rotation(xform); }
 WP_API void builtin_transform_get_rotation_transformd(transformd& xform, quatd* ret) { *ret = wp::transform_get_rotation(xform); }
+WP_API void builtin_transform_set_translation_transformh_vec3h(transformh& xform, vec3h& p) { wp::transform_set_translation(xform, p); }
+WP_API void builtin_transform_set_translation_transformf_vec3f(transformf& xform, vec3f& p) { wp::transform_set_translation(xform, p); }
+WP_API void builtin_transform_set_translation_transformd_vec3d(transformd& xform, vec3d& p) { wp::transform_set_translation(xform, p); }
+WP_API void builtin_transform_set_rotation_transformh_quath(transformh& xform, quath& q) { wp::transform_set_rotation(xform, q); }
+WP_API void builtin_transform_set_rotation_transformf_quatf(transformf& xform, quatf& q) { wp::transform_set_rotation(xform, q); }
+WP_API void builtin_transform_set_rotation_transformd_quatd(transformd& xform, quatd& q) { wp::transform_set_rotation(xform, q); }
 WP_API void builtin_transform_multiply_transformh_transformh(transformh& a, transformh& b, transformh* ret) { *ret = wp::transform_multiply(a, b); }
 WP_API void builtin_transform_multiply_transformf_transformf(transformf& a, transformf& b, transformf* ret) { *ret = wp::transform_multiply(a, b); }
 WP_API void builtin_transform_multiply_transformd_transformd(transformd& a, transformd& b, transformd* ret) { *ret = wp::transform_multiply(a, b); }
@@ -1185,6 +1191,9 @@ WP_API void builtin_assign_copy_vec4ub_int32_uint8(vec4ub& a, int32 i, uint8 val
 WP_API void builtin_assign_copy_quath_int32_float16(quath& a, int32 i, float16 value, quath* ret) { *ret = wp::assign_copy(a, i, value); }
 WP_API void builtin_assign_copy_quatf_int32_float32(quatf& a, int32 i, float32 value, quatf* ret) { *ret = wp::assign_copy(a, i, value); }
 WP_API void builtin_assign_copy_quatd_int32_float64(quatd& a, int32 i, float64 value, quatd* ret) { *ret = wp::assign_copy(a, i, value); }
+WP_API void builtin_assign_copy_transformh_int32_float16(transformh& a, int32 i, float16 value, transformh* ret) { *ret = wp::assign_copy(a, i, value); }
+WP_API void builtin_assign_copy_transformf_int32_float32(transformf& a, int32 i, float32 value, transformf* ret) { *ret = wp::assign_copy(a, i, value); }
+WP_API void builtin_assign_copy_transformd_int32_float64(transformd& a, int32 i, float64 value, transformd* ret) { *ret = wp::assign_copy(a, i, value); }
 WP_API void builtin_assign_copy_mat22h_int32_int32_float16(mat22h& a, int32 i, int32 j, float16 value, mat22h* ret) { *ret = wp::assign_copy(a, i, j, value); }
 WP_API void builtin_assign_copy_mat33h_int32_int32_float16(mat33h& a, int32 i, int32 j, float16 value, mat33h* ret) { *ret = wp::assign_copy(a, i, j, value); }
 WP_API void builtin_assign_copy_mat44h_int32_int32_float16(mat44h& a, int32 i, int32 j, float16 value, mat44h* ret) { *ret = wp::assign_copy(a, i, j, value); }
