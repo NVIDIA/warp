@@ -7383,30 +7383,30 @@ def tile_cholesky_solve_generic_value_func(arg_types, arg_values):
         raise TypeError("tile_cholesky_solve() requires exactly 2 positional args")
 
     l = arg_types["L"]
-    x = arg_types["x"]
+    y = arg_types["y"]
 
     if not is_tile(l):
         raise TypeError(f"tile_cholesky_solve() 'L' argument must be a tile, got {l!r}")
 
-    if not is_tile(x):
-        raise TypeError(f"tile_cholesky_solve() 'x' argument must be a tile, got {l!r}")
+    if not is_tile(y):
+        raise TypeError(f"tile_cholesky_solve() 'y' argument must be a tile, got {l!r}")
 
-    if not types_equal(l.dtype, x.dtype):
-        raise TypeError(f"tile_cholesky_solve() arguments must have the same dtype, got {l.dtype} and {x.dtype}")
+    if not types_equal(l.dtype, y.dtype):
+        raise TypeError(f"tile_cholesky_solve() arguments must have the same dtype, got {l.dtype} and {y.dtype}")
 
     if l.shape[0] != l.shape[1]:
         raise ValueError("tile_cholesky_solve() 'L' argument must be square")
 
-    if len(x.shape) != 1:
-        raise TypeError("tile_cholesky_solve() 'x' argument must be a 1D tile")
+    if len(y.shape) != 1:
+        raise TypeError("tile_cholesky_solve() 'y' argument must be a 1D tile")
 
-    if x.shape[0] != l.shape[0]:
+    if y.shape[0] != l.shape[0]:
         raise ValueError(
-            f"tile_cholesky_solve() 'x' argument must have the same number of elements as the number of rows in 'L', "
-            f"got {x.shape[0]} elements in 'x' and {l.shape[0]} rows in 'L'"
+            f"tile_cholesky_solve() 'y' argument must have the same number of elements as the number of rows in 'L', "
+            f"got {y.shape[0]} elements in 'x' and {l.shape[0]} rows in 'L'"
         )
 
-    return tile(dtype=l.dtype, shape=x.shape, storage="shared")
+    return tile(dtype=l.dtype, shape=y.shape, storage="shared")
 
 
 def tile_cholesky_solve_generic_lto_dispatch_func(
@@ -7418,29 +7418,29 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
     builder: warp.context.ModuleBuilder,
 ):
     L = arg_values["L"]
-    x = arg_values["x"]
+    y = arg_values["y"]
     # force the storage type of the input variables to shared memory
     L.type.storage = "shared"
-    x.type.storage = "shared"
+    y.type.storage = "shared"
 
     if len(return_values) != 1:
         raise TypeError(f"tile_cholesky_solve() must return exactly one value, got {len(return_values)}")
 
-    y = return_values[0]
+    x = return_values[0]
 
-    if any(T not in cusolver_type_map.keys() for T in [x.type.dtype, L.type.dtype]):
+    if any(T not in cusolver_type_map.keys() for T in [y.type.dtype, L.type.dtype]):
         raise TypeError("tile_cholesky_solve() arguments be tiles of float64 or float32")
 
     dtype, precision_enum = cusolver_type_map[L.type.dtype]
     M, N = L.type.shape[0], L.type.shape[1]
 
-    if len(y.type.shape) != 1:
+    if len(x.type.shape) != 1:
         raise TypeError("tile_cholesky_solve() output vector must be 1D")
 
-    if y.type.shape[0] != M:
+    if x.type.shape[0] != M:
         raise ValueError(
             "tile_cholesky_solve() output vector must have same number of elements as the number of rows in 'L' "
-            f"got {y.type.shape[0]} elements in output and {M} rows in 'L'"
+            f"got {x.type.shape[0]} elements in output and {M} rows in 'L'"
         )
 
     solver = "potrs"
@@ -7456,7 +7456,7 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
 
     if arch is None or not warp.context.runtime.core.is_mathdx_enabled():
         # CPU/no-MathDx dispatch
-        return ((0, L, x, y), [], [], 0)
+        return ((0, L, y, x), [], [], 0)
     else:
         # generate the LTO
         lto_symbol, lto_code_data = warp.build.build_lto_solver(
@@ -7472,12 +7472,12 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
             builder,
         )
 
-        return ((Var(lto_symbol, str, False, True, False), L, x, y), [], [lto_code_data], 0)
+        return ((Var(lto_symbol, str, False, True, False), L, y, x), [], [lto_code_data], 0)
 
 
 add_builtin(
     "tile_cholesky_solve",
-    input_types={"L": tile(dtype=Float, shape=Tuple[int, int]), "x": tile(dtype=Float, shape=Tuple[int])},
+    input_types={"L": tile(dtype=Float, shape=Tuple[int, int]), "y": tile(dtype=Float, shape=Tuple[int])},
     value_func=tile_cholesky_solve_generic_value_func,
     lto_dispatch_func=tile_cholesky_solve_generic_lto_dispatch_func,
     variadic=True,
@@ -7490,8 +7490,8 @@ add_builtin(
         * float64
 
     :param L: A square, lower triangular, matrix, such that LL^T = A
-    :param x: An 1D tile of length M
-    :returns y: An 1D tile of length M such that LL^T y = x""",
+    :param y: A 1D tile of length M
+    :returns x: A 1D tile of length M such that LL^T x = y""",
     group="Tile Primitives",
     export=False,
     namespace="",

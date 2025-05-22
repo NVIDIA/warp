@@ -3308,7 +3308,7 @@ def tile_cholesky(A: Tile[Float, Tuple[int, int]]) -> Tile[Float, Tuple[int, int
 
 
 @over
-def tile_cholesky_solve(L: Tile[Float, Tuple[int, int]], x: Tile[Float, Tuple[int]]):
+def tile_cholesky_solve(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[int]]):
     """With L such that LL^T = A, solve for x in Ax = y
 
     Note that computing the adjoint is not yet supported.
@@ -3318,8 +3318,8 @@ def tile_cholesky_solve(L: Tile[Float, Tuple[int, int]], x: Tile[Float, Tuple[in
         * float64
 
     :param L: A square, lower triangular, matrix, such that LL^T = A
-    :param x: An 1D tile of length M
-    :returns y: An 1D tile of length M such that LL^T y = x
+    :param y: A 1D tile of length M
+    :returns x: A 1D tile of length M such that LL^T x = y
     """
     ...
 

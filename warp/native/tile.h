@@ -2616,11 +2616,11 @@ TileL& tile_cholesky(Fwd fun_forward, TileA& A, TileL& L)
     } while (0)
 
 template <typename Fwd, typename TileL, typename TileX, typename TileY>
-TileY& tile_cholesky_solve(Fwd fun_forward, TileL& L, TileX& X, TileY& Y)
+TileY& tile_cholesky_solve(Fwd fun_forward, TileL& L, TileX& Y, TileY& X)
 {       
-    // Copy x to y
+    // Copy y to x
 
-    Y = X;
+    X = Y;
 
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
 
@@ -2628,21 +2628,21 @@ TileY& tile_cholesky_solve(Fwd fun_forward, TileL& L, TileX& X, TileY& Y)
 
 #else
 
-    // Call cholesky solve on L & y
+    // Call cholesky solve on L & x
 
     WP_TILE_SYNC();
     
-    fun_forward(L.data.ptr, Y.data.ptr); \
+    fun_forward(L.data.ptr, X.data.ptr); \
 
     WP_TILE_SYNC();
     
 #endif
 
-    return Y;
+    return X;
 }
 
-#define adj_tile_cholesky_solve(function_name, L, X, Y, \
-                                adj_function_name, adj_L, adj_X, adj_Y, adj_ret) \
+#define adj_tile_cholesky_solve(function_name, L, Y, X, \
+                                adj_function_name, adj_L, adj_Y, adj_X, adj_ret) \
     do { \
         assert(false); \
     } while (0)

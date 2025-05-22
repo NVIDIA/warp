@@ -2496,7 +2496,7 @@ Tile Primitives
     :returns L: A square, lower triangular, matrix, such that LL^T = A
 
 
-.. py:function:: tile_cholesky_solve(L: Tile[Float,Tuple[int, int]], x: Tile[Float,Tuple[int]]) -> None
+.. py:function:: tile_cholesky_solve(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]) -> None
 
     .. hlist::
        :columns: 8
@@ -2513,8 +2513,8 @@ Tile Primitives
         * float64
 
     :param L: A square, lower triangular, matrix, such that LL^T = A
-    :param x: An 1D tile of length M
-    :returns y: An 1D tile of length M such that LL^T y = x
+    :param y: A 1D tile of length M
+    :returns x: A 1D tile of length M such that LL^T x = y
 
 
 

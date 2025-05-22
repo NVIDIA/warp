@@ -58,6 +58,8 @@
 - Rename the “Kernel Reference” documentation page to “Built-Ins Reference”, with each built-in now having
   annotations to denote whether they are accessible only from the kernel scope or also from the Python runtime scope
   ([GH-532](https://github.com/NVIDIA/warp/issues/532)).
+- Re-name `wp.tile_cholesky_solve` input parameters to align with docstring.
+  ([GH-726](https://github.com/NVIDIA/warp/issues/726)).
 
 ### Fixed
 
