@@ -1496,7 +1496,7 @@ Quaternion Math
 
 Transformations
 ---------------
-.. py:function:: transformation(pos: Vector[3,Float], rot: Quaternion[Float], dtype: Float) -> Transformation[Float]
+.. py:function:: transformation(p: Vector[3,Float], q: Quaternion[Float], dtype: Float) -> Transformation[Float]
 
     .. hlist::
        :columns: 8
@@ -1504,7 +1504,20 @@ Transformations
        * Kernel
        * Differentiable
 
-    Construct a rigid-body transformation with translation part ``pos`` and rotation ``rot``.
+    Construct a rigid-body transformation with translation part ``p`` and rotation ``q``.
+
+
+.. py:function:: transformation(*args: Float, dtype: Float) -> Transformation[Float]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Construct a spatial transfom vector of given dtype.
 
 
 .. py:function:: transform_identity(dtype: Float) -> transformf
@@ -1541,6 +1554,30 @@ Transformations
        * Differentiable
 
     Return the rotational part of a transform ``xform``.
+
+
+.. py:function:: transform_set_translation(xform: Transformation[Float], p: Vector[3,Float]) -> None
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+    Set the translational part of a transform ``xform``.
+
+
+.. py:function:: transform_set_rotation(xform: Transformation[Float], q: Quaternion[Float]) -> None
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+    Set the rotational part of a transform ``xform``.
 
 
 .. py:function:: transform_multiply(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]

@@ -2090,6 +2090,426 @@ def test_transform_decompose(test, device, dtype, register_kernels=False):
     wp.launch(kernel, dim=1, device=device)
 
 
+def test_transform_getter_setter(test, device):
+    t = wp.transform()
+
+    a = wp.vec3(1.0, 2.0, 3.0)
+    b = wp.quat(0.0, 0.0, 0.0, 1.0)
+
+    t.p = a
+    t.q = b
+
+    c = t.p
+    d = t.q
+
+    test.assertEqual(c, a)
+    test.assertEqual(d, b)
+
+
+@wp.kernel
+def transform_extract_subscript(x: wp.array(dtype=wp.transform), y: wp.array(dtype=float)):
+    tid = wp.tid()
+
+    a = x[tid]
+    b = a[0] + 2.0 * a[1] + 3.0 * a[2] + 4.0 * a[3] + 5.0 * a[4] + 6.0 * a[5] + 7.0 * a[6]
+    y[tid] = b
+
+
+@wp.kernel
+def transform_extract_attribute(
+    x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.vec3), z: wp.array(dtype=wp.quat)
+):
+    tid = wp.tid()
+
+    a = x[tid]
+    p = a.p
+    q = a.q
+
+    y[tid] = p
+    z[tid] = q
+
+
+def test_transform_extract(test, device):
+    x = wp.ones(1, dtype=wp.transform, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_extract_subscript, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([28.0], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]], dtype=float))
+
+    x = wp.ones(1, dtype=wp.transform, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.vec3, requires_grad=True, device=device)
+    z = wp.zeros(1, dtype=wp.quat, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_extract_attribute, 1, inputs=[x], outputs=[y, z], device=device)
+
+    y.grad = wp.ones_like(y)
+    z.grad = wp.ones_like(z)
+
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[1.0, 1.0, 1.0]], dtype=float))
+    assert_np_equal(z.numpy(), np.array([[1.0, 1.0, 1.0, 1.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]], dtype=float))
+
+
+@wp.kernel
+def transform_assign_subscript(x: wp.array(dtype=float), y: wp.array(dtype=wp.transform)):
+    i = wp.tid()
+
+    a = wp.transform()
+    a[0] = 1.0 * x[i]
+    a[1] = 2.0 * x[i]
+    a[2] = 3.0 * x[i]
+    a[3] = 4.0 * x[i]
+    a[4] = 5.0 * x[i]
+    a[5] = 6.0 * x[i]
+    a[6] = 7.0 * x[i]
+    y[i] = a
+
+
+@wp.kernel
+def transform_assign_attribute(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.quat), z: wp.array(dtype=wp.transform)):
+    i = wp.tid()
+
+    a = wp.transform()
+    a.p = x[i]
+    a.q = y[i]
+    z[i] = a
+
+
+def test_transform_assign(test, device):
+    x = wp.ones(1, dtype=float, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.transform, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_assign_subscript, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([28.0], dtype=float))
+
+    x = wp.ones(1, dtype=wp.vec3, requires_grad=True, device=device)
+    y = wp.ones(1, dtype=wp.quat, requires_grad=True, device=device)
+    z = wp.zeros(1, dtype=wp.transform, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_assign_attribute, 1, inputs=[x, y], outputs=[z], device=device)
+
+    z.grad = wp.ones_like(z)
+    tape.backward()
+
+    assert_np_equal(z.numpy(), np.array([[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[1.0, 1.0, 1.0]], dtype=float))
+    assert_np_equal(y.grad.numpy(), np.array([[1.0, 1.0, 1.0, 1.0]], dtype=float))
+
+
+def test_transform_assign_copy(test, device):
+    saved_enable_vector_component_overwrites_setting = wp.config.enable_vector_component_overwrites
+    try:
+        wp.config.enable_vector_component_overwrites = True
+
+        @wp.kernel
+        def transform_assign_overwrite(x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.transform)):
+            tid = wp.tid()
+
+            a = wp.transform()
+            b = x[tid]
+            a = b
+            a[1] = 3.0
+
+            y[tid] = a
+
+        x = wp.ones(1, dtype=wp.transform, device=device, requires_grad=True)
+        y = wp.zeros(1, dtype=wp.transform, device=device, requires_grad=True)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(transform_assign_overwrite, dim=1, inputs=[x, y], device=device)
+
+        y.grad = wp.ones_like(y, requires_grad=False)
+        tape.backward()
+
+        assert_np_equal(y.numpy(), np.array([[1.0, 3.0, 1.0, 1.0, 1.0, 1.0, 1.0]], dtype=float))
+        assert_np_equal(x.grad.numpy(), np.array([[1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0]], dtype=float))
+
+    finally:
+        wp.config.enable_vector_component_overwrites = saved_enable_vector_component_overwrites_setting
+
+
+@wp.kernel
+def transform_array_extract_subscript(x: wp.array2d(dtype=wp.transform), y: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    a = x[i, j][0]
+    b = x[i, j][1]
+    c = x[i, j][2]
+    d = x[i, j][3]
+    e = x[i, j][4]
+    f = x[i, j][5]
+    g = x[i, j][6]
+    y[i, j] = 1.0 * a + 2.0 * b + 3.0 * c + 4.0 * d + 5.0 * e + 6.0 * f + 7.0 * g
+
+
+@wp.kernel
+def transform_array_extract_attribute(
+    x: wp.array2d(dtype=wp.transform), y: wp.array2d(dtype=wp.vec3), z: wp.array2d(dtype=wp.quat)
+):
+    i, j = wp.tid()
+    a = x[i, j].p
+    b = x[i, j].q
+    y[i, j] = a
+    z[i, j] = b
+
+
+def test_transform_array_extract(test, device):
+    x = wp.ones((1, 1), dtype=wp.transform, requires_grad=True, device=device)
+    y = wp.zeros((1, 1), dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_array_extract_subscript, (1, 1), inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[28.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]]], dtype=float))
+
+    x = wp.ones((1, 1), dtype=wp.transform, requires_grad=True, device=device)
+    y = wp.zeros((1, 1), dtype=wp.vec3, requires_grad=True, device=device)
+    z = wp.zeros((1, 1), dtype=wp.quat, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_array_extract_attribute, (1, 1), inputs=[x], outputs=[y, z], device=device)
+
+    y.grad = wp.ones_like(y)
+    z.grad = wp.ones_like(z)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[[1.0, 1.0, 1.0]]], dtype=float))
+    assert_np_equal(z.numpy(), np.array([[[1.0, 1.0, 1.0, 1.0]]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]], dtype=float))
+
+
+@wp.kernel
+def transform_array_assign_subscript(x: wp.array2d(dtype=float), y: wp.array2d(dtype=wp.transform)):
+    i, j = wp.tid()
+
+    y[i, j][0] = 1.0 * x[i, j]
+    y[i, j][1] = 2.0 * x[i, j]
+    y[i, j][2] = 3.0 * x[i, j]
+    y[i, j][3] = 4.0 * x[i, j]
+    y[i, j][4] = 5.0 * x[i, j]
+    y[i, j][5] = 6.0 * x[i, j]
+    y[i, j][6] = 7.0 * x[i, j]
+
+
+# @wp.kernel
+# def transform_array_assign_attribute(x: wp.array2d(dtype=wp.vec3), y: wp.array2d(dtype=wp.quat), z: wp.array2d(dtype=wp.transform)):
+#     i, j = wp.tid()
+
+#     z[i, j].p = x[i, j]
+#     z[i, j].q = y[i, j]
+
+
+def test_transform_array_assign(test, device):
+    x = wp.ones((1, 1), dtype=float, requires_grad=True, device=device)
+    y = wp.zeros((1, 1), dtype=wp.transform, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_array_assign_subscript, (1, 1), inputs=[x], outputs=[y], device=device)
+
+    assert_np_equal(y.numpy(), np.array([[[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]]], dtype=float))
+    # TODO: gradient propagation for in-place array assignment
+
+    x = wp.ones((1, 1), dtype=wp.vec3, requires_grad=True, device=device)
+    y = wp.ones((1, 1), dtype=wp.quat, requires_grad=True, device=device)
+    z = wp.zeros((1, 1), dtype=wp.transform, requires_grad=True, device=device)
+
+    # TODO: transform_array_assign_attribute
+    # tape = wp.Tape()
+    # with tape:
+    #     wp.launch(transform_array_assign_attribute, (1, 1), inputs=[x, y], outputs=[z], device=device)
+
+    # assert_np_equal(z.numpy(), np.array([[[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]], dtype=float))
+    # TODO: gradient propagation for in-place array assignment
+
+
+@wp.kernel
+def transform_add_inplace_subscript(x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.transform)):
+    i = wp.tid()
+
+    a = wp.transform()
+    b = x[i]
+
+    a[0] += 1.0 * b[0]
+    a[1] += 2.0 * b[1]
+    a[2] += 3.0 * b[2]
+    a[3] += 4.0 * b[3]
+    a[4] += 5.0 * b[4]
+    a[5] += 6.0 * b[5]
+    a[6] += 7.0 * b[6]
+
+    y[i] = a
+
+
+@wp.kernel
+def transform_add_inplace_attribute(x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.transform)):
+    i = wp.tid()
+
+    a = wp.transform()
+    b = x[i]
+
+    a.p += b.p
+
+    y[i] = a
+
+
+def test_transform_add_inplace(test, device):
+    x = wp.ones(1, dtype=wp.transform, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.transform, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_add_inplace_subscript, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]], dtype=float))
+
+    x = wp.ones(1, dtype=wp.transform, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.transform, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_add_inplace_attribute, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]], dtype=float))
+
+
+@wp.kernel
+def transform_sub_inplace_subscript(x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.transform)):
+    i = wp.tid()
+
+    a = wp.transform()
+    b = x[i]
+
+    a[0] -= 1.0 * b[0]
+    a[1] -= 2.0 * b[1]
+    a[2] -= 3.0 * b[2]
+    a[3] -= 4.0 * b[3]
+    a[4] -= 5.0 * b[4]
+    a[5] -= 6.0 * b[5]
+    a[6] -= 7.0 * b[6]
+
+    y[i] = a
+
+
+@wp.kernel
+def transform_sub_inplace_attribute(x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.transform)):
+    i = wp.tid()
+
+    a = wp.transform()
+    b = x[i]
+
+    a.p -= b.p
+
+    y[i] = a
+
+
+def test_transform_sub_inplace(test, device):
+    x = wp.ones(1, dtype=wp.transform, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.transform, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_sub_inplace_subscript, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[-1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[-1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0]], dtype=float))
+
+    x = wp.ones(1, dtype=wp.transform, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.transform, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_sub_inplace_attribute, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[-1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 0.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[-1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 0.0]], dtype=float))
+
+
+@wp.kernel
+def transform_array_add_inplace(x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.transform)):
+    i = wp.tid()
+
+    y[i] += x[i]
+
+
+def test_transform_array_add_inplace(test, device):
+    x = wp.ones(1, dtype=wp.transform, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.transform, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_array_add_inplace, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]], dtype=float))
+
+
+@wp.kernel
+def transform_array_sub_inplace(x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.transform)):
+    i = wp.tid()
+
+    y[i] -= x[i]
+
+
+def test_transform_array_sub_inplace(test, device):
+    x = wp.ones(1, dtype=wp.transform, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.transform, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_array_sub_inplace, 1, inputs=[x], outputs=[y], device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]], dtype=float))
+
+
 devices = get_test_devices()
 
 
@@ -2294,8 +2714,20 @@ for dtype in np_float_types:
         devices=devices,
         dtype=dtype,
     )
-
     # \TODO: test spatial_mass and spatial_jacobian
+
+add_function_test(
+    TestSpatial, "test_transform_getter_setter", test_transform_getter_setter, devices=wp.get_device("cpu")
+)
+add_function_test(TestSpatial, "test_transform_extract", test_transform_extract, devices=devices)
+add_function_test(TestSpatial, "test_transform_assign", test_transform_assign, devices=devices)
+add_function_test(TestSpatial, "test_transform_assign_copy", test_transform_assign_copy, devices=devices)
+add_function_test(TestSpatial, "test_transform_array_extract", test_transform_array_extract, devices=devices)
+add_function_test(TestSpatial, "test_transform_array_assign", test_transform_array_assign, devices=devices)
+add_function_test(TestSpatial, "test_transform_add_inplace", test_transform_add_inplace, devices=devices)
+add_function_test(TestSpatial, "test_transform_sub_inplace", test_transform_sub_inplace, devices=devices)
+add_function_test(TestSpatial, "test_transform_array_add_inplace", test_transform_array_add_inplace, devices=devices)
+add_function_test(TestSpatial, "test_transform_array_sub_inplace", test_transform_array_sub_inplace, devices=devices)
 
 
 if __name__ == "__main__":

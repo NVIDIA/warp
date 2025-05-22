@@ -35,6 +35,7 @@
 - Add a [publications list](https://github.com/NVIDIA/warp/blob/main/PUBLICATIONS.md) of academic and research projects
   leveraging Warp ([GH-686](https://github.com/NVIDIA/warp/issues/686)).
 - Add `wp.map()` function to map a function over arrays, add math operators for Warp arrays ([GH-694](https://github.com/NVIDIA/warp/issues/694)).
+- Add various `wp.transform` syntax operations for loading and storing ([GH-710](https://github.com/NVIDIA/warp/issues/710)).
 
 ### Removed
 

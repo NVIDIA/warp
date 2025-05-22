@@ -795,7 +795,7 @@ def transformation(dtype=Any):
 
         def __init__(self, *args, **kwargs):
             if len(args) == 1 and len(kwargs) == 0:
-                if is_float(args[0]):
+                if is_float(args[0]) or is_int(args[0]):
                     # Initialize from a single scalar.
                     super().__init__(args[0])
                     return
@@ -829,13 +829,26 @@ def transformation(dtype=Any):
             # Fallback to the vector's constructor.
             super().__init__(*args)
 
-        @property
-        def p(self):
-            return vec3(self[0:3])
+        def __getattr__(self, name):
+            if name == "p":
+                return vec3(self[0:3])
+            elif name == "q":
+                return quat(self[3:7])
+            else:
+                return self.__getattribute__(name)
 
-        @property
-        def q(self):
-            return quat(self[3:7])
+        def __setattr__(self, name, value):
+            if name == "p":
+                self[0:3] = vector(length=3, dtype=dtype)(*value)
+            elif name == "q":
+                self[3:7] = quaternion(dtype=dtype)(*value)
+            else:
+                # we don't permit vector xyzw indexing for transformations
+                idx = "xyzw".find(name)
+                if idx != -1:
+                    raise RuntimeError(f"Cannot set attribute {name} of transformation")
+                else:
+                    super().__setattr__(name, value)
 
     return transform_t
 

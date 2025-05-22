@@ -136,6 +136,13 @@ struct transform_t
     CUDA_CALLABLE inline transform_t(vec_t<3,Type> p=vec_t<3,Type>(), quat_t<Type> q=quat_t<Type>()) : p(p), q(q) {}
     CUDA_CALLABLE inline transform_t(Type)  {}  // helps uniform initialization
 
+    template<typename OtherType>
+    inline explicit CUDA_CALLABLE transform_t(const transform_t<OtherType>& other)
+    {
+        p = other.p;
+        q = other.q;
+    }
+
     CUDA_CALLABLE inline transform_t(const initializer_array<7, Type> &l)
     {
         p = vec_t<3,Type>(l[0], l[1], l[2]);
@@ -164,6 +171,35 @@ CUDA_CALLABLE inline transform_t<Type> transform_identity()
 }
 
 template<typename Type>
+inline CUDA_CALLABLE transform_t<Type> operator - (const transform_t<Type>& x)
+{
+    transform_t<Type> ret;
+
+    ret.p = -x.p;
+    ret.q = -x.q;
+
+    return ret;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline transform_t<Type> pos(const transform_t<Type>& x)
+{
+    return x;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline transform_t<Type> neg(const transform_t<Type>& x)
+{
+    return -x;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline void adj_neg(const transform_t<Type>& x, transform_t<Type>& adj_x, const transform_t<Type>& adj_ret)
+{
+    adj_x -= adj_ret;
+}
+
+template<typename Type>
 inline CUDA_CALLABLE bool operator==(const transform_t<Type>& a, const transform_t<Type>& b)
 {
     return a.p == b.p && a.q == b.q;
@@ -186,6 +222,96 @@ template<typename Type>
 CUDA_CALLABLE inline quat_t<Type> transform_get_rotation(const transform_t<Type>& t)
 {
     return t.q;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline void adj_transform_get_translation(const transform_t<Type>& t, transform_t<Type>& adj_t, const vec_t<3,Type>& adj_ret)
+{
+    adj_t.p += adj_ret;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline void adj_transform_get_rotation(const transform_t<Type>& t, transform_t<Type>& adj_t, const quat_t<Type>& adj_ret)
+{
+    adj_t.q += adj_ret;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline void transform_set_translation(transform_t<Type>& t, const vec_t<3, Type>& p)
+{
+    t.p = p;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline void transform_set_rotation(transform_t<Type>& t, const quat_t<Type>& q)
+{
+    t.q = q;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline transform_t<Type> transform_set_translation_copy(transform_t<Type>& t, const vec_t<3, Type>& p)
+{
+    transform_t<Type> ret(t);
+    ret.p = p;
+    return ret;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline transform_t<Type> transform_set_rotation_copy(transform_t<Type>& t, const quat_t<Type>& q)
+{
+    transform_t<Type> ret(t);
+    ret.q = q;
+    return ret;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline void adj_transform_set_translation(transform_t<Type>& t, const vec_t<3, Type>& p, const transform_t<Type>& adj_t, vec_t<3, Type>& adj_p)
+{
+    adj_p += adj_t.p;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline void adj_transform_set_rotation(transform_t<Type>& t, const quat_t<Type>& q, const transform_t<Type>& adj_t, quat_t<Type>& adj_q)
+{
+    adj_q += adj_t.q;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline void adj_transform_set_translation_copy(transform_t<Type>& t, const vec_t<3, Type>& p, transform_t<Type>& adj_t, vec_t<3, Type>& adj_p, const transform_t<Type>& adj_ret)
+{
+    adj_p += adj_ret.p;
+    adj_t.q += adj_ret.q;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline void adj_transform_set_rotation_copy(transform_t<Type>& t, const quat_t<Type>& q, transform_t<Type>& adj_t, quat_t<Type>& adj_q, const transform_t<Type>& adj_ret)
+{
+    adj_q += adj_ret.q;
+    adj_t.p += adj_ret.p;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void transform_add_inplace(transform_t<Type>& t, const vec_t<3, Type>& p)
+{
+    t.p += p;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void transform_sub_inplace(transform_t<Type>& t, const vec_t<3, Type>& p)
+{
+    t.p -= p;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_transform_add_inplace(transform_t<Type>& t, const vec_t<3, Type>& p, transform_t<Type>& adj_t, vec_t<3, Type>& adj_p)
+{
+    adj_p += adj_t.p;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_transform_sub_inplace(transform_t<Type>& t, const vec_t<3, Type>& p, transform_t<Type>& adj_t, vec_t<3, Type>& adj_p)
+{
+    adj_p -= adj_t.p;
 }
 
 template<typename Type>
@@ -271,7 +397,6 @@ CUDA_CALLABLE inline transform_t<Type> operator*(Type s, const transform_t<Type>
     return mul(a, s);
 }
 
-
 template<typename Type>
 inline CUDA_CALLABLE Type tensordot(const transform_t<Type>& a, const transform_t<Type>& b)
 {
@@ -280,17 +405,192 @@ inline CUDA_CALLABLE Type tensordot(const transform_t<Type>& a, const transform_
 }
 
 template<typename Type>
-inline CUDA_CALLABLE Type extract(const transform_t<Type>& t, int i)
+inline CUDA_CALLABLE Type extract(const transform_t<Type>& t, int idx)
 {
-    return t[i];
+#ifndef NDEBUG
+    if (idx < 0 || idx >= 7)
+    {
+        printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+    
+    return t[idx];
 }
 
 template<typename Type>
-inline void CUDA_CALLABLE adj_extract(const transform_t<Type>& t, int i, transform_t<Type>& adj_t, int& adj_i, Type adj_ret)
+inline CUDA_CALLABLE Type* index(transform_t<Type>& t, int idx)
 {
-    adj_t[i] += adj_ret;
+#ifndef NDEBUG
+    if (idx < 0 || idx >= 7)
+    {
+        printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    return &t[idx];
 }
 
+template<typename Type>
+inline CUDA_CALLABLE Type* indexref(transform_t<Type>* t, int idx)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= 7)
+    {
+        printf("transformation store %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    return &((*t)[idx]);
+}
+
+template<typename Type>
+inline void CUDA_CALLABLE adj_extract(const transform_t<Type>& t, int idx, transform_t<Type>& adj_t, int& adj_idx, Type adj_ret)
+{
+    adj_t[idx] += adj_ret;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_index(transform_t<Type>& t, int idx,
+                                       transform_t<Type>& adj_t, int adj_idx, const Type& adj_value)
+{
+    // nop
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_indexref(transform_t<Type>* t, int idx, 
+                                       transform_t<Type>& adj_t, int adj_idx, const Type& adj_value)
+{
+    // nop
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void add_inplace(transform_t<Type>& t, int idx, Type value)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= 7)
+    {
+        printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    t[idx] += value;
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_add_inplace(transform_t<Type>& t, int idx, Type value,
+                                        transform_t<Type>& adj_t, int adj_idx, Type& adj_value)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= 7)
+    {
+        printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    adj_value += adj_t[idx];
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void sub_inplace(transform_t<Type>& t, int idx, Type value)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= 7)
+    {
+        printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    t[idx] -= value;
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_sub_inplace(transform_t<Type>& t, int idx, Type value,
+                                        transform_t<Type>& adj_t, int adj_idx, Type& adj_value)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= 7)
+    {
+        printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    adj_value -= adj_t[idx];
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void assign_inplace(transform_t<Type>& t, int idx, Type value)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= 7)
+    {
+        printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    t[idx] = value;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_assign_inplace(transform_t<Type>& t, int idx, Type value, transform_t<Type>& adj_t, int& adj_idx, Type& adj_value)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= 7)
+    {
+        printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    adj_value += adj_t[idx];
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE transform_t<Type> assign_copy(transform_t<Type>& t, int idx, Type value)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= 7)
+    {
+        printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    transform_t<Type> ret(t);
+    ret[idx] = value;
+    return ret;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_assign_copy(transform_t<Type>& t, int idx, Type value, transform_t<Type>& adj_t, int& adj_idx, Type& adj_value, const transform_t<Type>& adj_ret)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= 7)
+    {
+        printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    adj_value += adj_ret[idx];
+    for(unsigned i=0; i < 7; ++i)
+    {
+        if (i != idx)
+            adj_t[i] += adj_ret[i];
+    }
+}
 
 // adjoint methods
 template<typename Type>
@@ -341,18 +641,6 @@ CUDA_CALLABLE inline void adj_transform_t(const vec_t<3,Type>& p, const quat_t<T
 {
     adj_p += adj_ret.p;
     adj_q += adj_ret.q;
-}
-
-template<typename Type>
-CUDA_CALLABLE inline void adj_transform_get_translation(const transform_t<Type>& t, transform_t<Type>& adj_t, const vec_t<3,Type>& adj_ret)
-{
-    adj_t.p += adj_ret;
-}
-
-template<typename Type>
-CUDA_CALLABLE inline void adj_transform_get_rotation(const transform_t<Type>& t, transform_t<Type>& adj_t, const quat_t<Type>& adj_ret)
-{
-    adj_t.q += adj_ret;
 }
 
 template<typename Type>

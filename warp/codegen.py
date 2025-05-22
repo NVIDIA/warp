@@ -1904,6 +1904,15 @@ class Adjoint:
         index = adj.add_constant(index)
         return index
 
+    def transform_component(adj, component):
+        if len(component) != 1:
+            raise WarpCodegenAttributeError(f"Transform attribute must be single character, got .{component}")
+
+        if component not in ("p", "q"):
+            raise WarpCodegenAttributeError(f"Attribute for transformation must be either 'p' or 'q', got {component}")
+
+        return component
+
     @staticmethod
     def is_differentiable_value_type(var_type):
         # checks that the argument type is a value type (i.e, not an array)
@@ -1939,6 +1948,14 @@ class Adjoint:
                 index = adj.vector_component_index(node.attr, aggregate_type)
 
                 return adj.add_builtin_call("extract", [aggregate, index])
+
+            elif type_is_transformation(aggregate_type):
+                component = adj.transform_component(node.attr)
+
+                if component == "p":
+                    return adj.add_builtin_call("transform_get_translation", [aggregate])
+                else:
+                    return adj.add_builtin_call("transform_get_rotation", [aggregate])
 
             else:
                 attr_type = Reference(aggregate_type.vars[node.attr].type)
@@ -2584,7 +2601,12 @@ class Adjoint:
             elif is_tile(target_type):
                 adj.add_builtin_call("assign", [target, *indices, rhs])
 
-            elif type_is_vector(target_type) or type_is_quaternion(target_type) or type_is_matrix(target_type):
+            elif (
+                type_is_vector(target_type)
+                or type_is_quaternion(target_type)
+                or type_is_matrix(target_type)
+                or type_is_transformation(target_type)
+            ):
                 # recursively unwind AST, stopping at penultimate node
                 node = lhs
                 while hasattr(node, "value"):
@@ -2624,7 +2646,7 @@ class Adjoint:
 
             else:
                 raise WarpCodegenError(
-                    f"Can only subscript assign array, vector, quaternion, and matrix types, got {target_type}"
+                    f"Can only subscript assign array, vector, quaternion, transformation, and matrix types, got {target_type}"
                 )
 
         elif isinstance(lhs, ast.Name):
@@ -2676,6 +2698,18 @@ class Adjoint:
                                 break
                     else:
                         adj.add_builtin_call("assign_inplace", [aggregate, index, rhs])
+
+            elif type_is_transformation(aggregate_type):
+                component = adj.transform_component(lhs.attr)
+
+                # TODO: x[i,j].p = rhs case
+                if is_reference(aggregate.type):
+                    raise WarpCodegenError(f"Error, assigning transform attribute {component} to an array element")
+
+                if component == "p":
+                    return adj.add_builtin_call("transform_set_translation", [aggregate, rhs])
+                else:
+                    return adj.add_builtin_call("transform_set_rotation", [aggregate, rhs])
 
             else:
                 attr = adj.emit_Attribute(lhs)
@@ -2754,6 +2788,7 @@ class Adjoint:
                     type_is_vector(target_type.dtype)
                     or type_is_quaternion(target_type.dtype)
                     or type_is_matrix(target_type.dtype)
+                    or type_is_transformation(target_type.dtype)
                 ):
                     dtype = getattr(target_type.dtype, "_wp_scalar_type_", None)
                     if dtype in warp.types.non_atomic_types:
@@ -2781,7 +2816,12 @@ class Adjoint:
                     make_new_assign_statement()
                     return
 
-            elif type_is_vector(target_type) or type_is_quaternion(target_type) or type_is_matrix(target_type):
+            elif (
+                type_is_vector(target_type)
+                or type_is_quaternion(target_type)
+                or type_is_matrix(target_type)
+                or type_is_transformation(target_type)
+            ):
                 if isinstance(node.op, ast.Add):
                     adj.add_builtin_call("add_inplace", [target, *indices, rhs])
                 elif isinstance(node.op, ast.Sub):
