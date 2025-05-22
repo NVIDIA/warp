@@ -61,7 +61,6 @@ TEST_DESCS = (
     ("test_lvalue", "TestLValue"),
     ("test_mat_lite", "TestMatLite"),
     ("test_math", "TestMath"),
-    ("test_mlp", "TestMLP"),
     ("test_module_hashing", "TestModuleHashing"),
     ("test_modules_lite", "TestModuleLite"),
     ("test_noise", "TestNoise"),
