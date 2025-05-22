@@ -176,3 +176,25 @@ However, consider a slightly modified example:
 In standard Python, if `cond` is `False`, the call to `print(out)` would raise an `UnboundLocalError` because `out` is only defined inside the `if` block.
 
 In Warp, the behavior is different. The call to `print(out)` *will not* raise an error, even if `cond` is `False`. Warp effectively makes `out` accessible outside the `if` block. However, if `cond` is `False`, `out` will be uninitialized, leading to undefined behavior.
+
+Arrays in Structs
+-----------------
+
+Modifying flags on arrays stored in structs may not trigger an update to the underlying struct memory, e.g.:
+
+.. code-block:: python
+
+    @wp.struct
+    class MyStruct:
+        arr: wp.array(dtype=float)
+
+    a = wp.zeros(10, dtype=float)
+
+    s = MyStruct()        
+    s.arr = a
+
+    # modify original array
+    a.requires_grad = True
+
+
+In this case the array stored in the struct will not have the `requires_grad=True` value propagated to it which could lead to gradients not being computed during backward kernel launches.
