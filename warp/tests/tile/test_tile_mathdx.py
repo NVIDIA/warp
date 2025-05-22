@@ -128,47 +128,49 @@ def tile_math_cholesky(
     gA: wp.array2d(dtype=wp.float64),
     gD: wp.array1d(dtype=wp.float64),
     gL: wp.array2d(dtype=wp.float64),
-    gx: wp.array1d(dtype=wp.float64),
     gy: wp.array1d(dtype=wp.float64),
+    gx: wp.array1d(dtype=wp.float64),
 ):
     i, j = wp.tid()
-    # Load A, D & x
+    # Load A, D & y
     a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
     d = wp.tile_load(gD, shape=TILE_M, storage="shared")
-    x = wp.tile_load(gx, shape=TILE_M, storage="shared")
+    y = wp.tile_load(gy, shape=TILE_M, storage="shared")
+    # Ensure tile_diag_add() and tile_cholesky_solve() work with transposed matrices
+    a_t = wp.tile_transpose(a)
     # Compute L st LL^T = A + diag(D)
-    b = wp.tile_diag_add(a, d)
+    b = wp.tile_diag_add(a_t, d)
     l = wp.tile_cholesky(b)
-    # Solve for y in LL^T y = x
-    y = wp.tile_cholesky_solve(l, x)
+    # Solve for y in LL^T x = y
+    x = wp.tile_cholesky_solve(l, y)
     # Store L & y
     wp.tile_store(gL, l)
-    wp.tile_store(gy, y)
+    wp.tile_store(gx, x)
 
 
 def test_tile_math_cholesky(test, device):
     A_h = np.ones((TILE_M, TILE_M), dtype=np.float64)
     D_h = 8.0 * np.ones(TILE_M, dtype=np.float64)
     L_h = np.zeros_like(A_h)
-    X_h = np.arange(TILE_M, dtype=np.float64)
-    Y_h = np.zeros_like(X_h)
+    Y_h = np.arange(TILE_M, dtype=np.float64)
+    X_h = np.zeros_like(Y_h)
 
     A_np = A_h + np.diag(D_h)
     L_np = np.linalg.cholesky(A_np)
-    Y_np = np.linalg.solve(A_np, X_h)
+    X_np = np.linalg.solve(A_np, Y_h)
 
     A_wp = wp.array2d(A_h, requires_grad=True, dtype=wp.float64, device=device)
     D_wp = wp.array2d(D_h, requires_grad=True, dtype=wp.float64, device=device)
     L_wp = wp.array2d(L_h, requires_grad=True, dtype=wp.float64, device=device)
-    X_wp = wp.array2d(X_h, requires_grad=True, dtype=wp.float64, device=device)
     Y_wp = wp.array2d(Y_h, requires_grad=True, dtype=wp.float64, device=device)
+    X_wp = wp.array2d(X_h, requires_grad=True, dtype=wp.float64, device=device)
 
     wp.launch_tiled(
-        tile_math_cholesky, dim=[1, 1], inputs=[A_wp, D_wp, L_wp, X_wp, Y_wp], block_dim=TILE_DIM, device=device
+        tile_math_cholesky, dim=[1, 1], inputs=[A_wp, D_wp, L_wp, Y_wp, X_wp], block_dim=TILE_DIM, device=device
     )
     wp.synchronize_device(device)
 
-    np.testing.assert_allclose(Y_wp.numpy(), Y_np)
+    np.testing.assert_allclose(X_wp.numpy(), X_np)
     np.testing.assert_allclose(L_wp.numpy(), L_np)
 
     # TODO: implement and test backward pass
@@ -183,7 +185,8 @@ def tile_math_forward_substitution(
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=TILE_M, storage="shared")
     # Solve for z in Lz = x
-    z = wp.tile_lower_solve(L, x)
+    # Transpose because we loaded an upper triangular matrix
+    z = wp.tile_lower_solve(wp.tile_transpose(L), x)
     # Store z
     wp.tile_store(gz, z)
 
@@ -191,12 +194,12 @@ def tile_math_forward_substitution(
 def test_tile_math_forward_substitution(test, device):
     # Create test data
     rng = np.random.default_rng()
-    L_h = np.tril(rng.random((TILE_M, TILE_M)))  # Lower triangular matrix
+    L_h = np.triu(rng.random((TILE_M, TILE_M)))  # Upper triangular matrix
     x_h = rng.random(TILE_M)
     z_h = np.zeros_like(x_h)
 
     # Compute reference solution using numpy
-    z_np = np.linalg.solve(L_h, x_h)
+    z_np = np.linalg.solve(L_h.T, x_h)
 
     # Create Warp arrays
     L_wp = wp.array2d(L_h, requires_grad=True, dtype=wp.float64, device=device)
@@ -224,6 +227,7 @@ def tile_math_back_substitution(
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=TILE_M, storage="shared")
     # Solve for z in L^T z = x
+    # Transpose because we loaded a lower triangular matrix
     z = wp.tile_upper_solve(wp.tile_transpose(L), x)
     # Store z
     wp.tile_store(gz, z)

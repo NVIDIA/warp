@@ -238,6 +238,7 @@ dtype, shape, and storage parameters to match the tile type intended to be used 
     def tile_sum_func(a: wp.tile(dtype=float, shape=(TILE_M, TILE_N), storage="shared")):
         return wp.tile_sum(a) * 0.5
 
+If the tile is non-contiguous (e.g. if the tile is transposed), the tile strides parameter should also be provided.
 For convenience, it is recommended that users rely on `typing.Any` to let the compiler automatically
 determine the tile argument type:
 
