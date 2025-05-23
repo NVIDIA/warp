@@ -4990,7 +4990,8 @@ for array_type in array_types:
         constraint=atomic_op_constraint,
         value_func=create_atomic_op_value_func("add"),
         dispatch_func=atomic_op_dispatch_func,
-        doc="Atomically add ``value`` onto ``arr[i]`` and return the old value.",
+        doc="""Atomically adds ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+        This function is automatically invoked when using the syntax ``arr[i] += value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -5001,7 +5002,8 @@ for array_type in array_types:
         constraint=atomic_op_constraint,
         value_func=create_atomic_op_value_func("add"),
         dispatch_func=atomic_op_dispatch_func,
-        doc="Atomically add ``value`` onto ``arr[i,j]`` and return the old value.",
+        doc="""Atomically adds ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+        This function is automatically invoked when using the syntax ``arr[i,j] += value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -5012,7 +5014,8 @@ for array_type in array_types:
         constraint=atomic_op_constraint,
         value_func=create_atomic_op_value_func("add"),
         dispatch_func=atomic_op_dispatch_func,
-        doc="Atomically add ``value`` onto ``arr[i,j,k]`` and return the old value.",
+        doc="""Atomically adds ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] += value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -5023,7 +5026,8 @@ for array_type in array_types:
         constraint=atomic_op_constraint,
         value_func=create_atomic_op_value_func("add"),
         dispatch_func=atomic_op_dispatch_func,
-        doc="Atomically add ``value`` onto ``arr[i,j,k,l]`` and return the old value.",
+        doc="""Atomically adds ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -5035,7 +5039,8 @@ for array_type in array_types:
         constraint=atomic_op_constraint,
         value_func=create_atomic_op_value_func("sub"),
         dispatch_func=atomic_op_dispatch_func,
-        doc="Atomically subtract ``value`` onto ``arr[i]`` and return the old value.",
+        doc="""Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+        This function is automatically invoked when using the syntax ``arr[i] -= value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -5046,7 +5051,8 @@ for array_type in array_types:
         constraint=atomic_op_constraint,
         value_func=create_atomic_op_value_func("sub"),
         dispatch_func=atomic_op_dispatch_func,
-        doc="Atomically subtract ``value`` onto ``arr[i,j]`` and return the old value.",
+        doc="""Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+        This function is automatically invoked when using the syntax ``arr[i,j] -= value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -5057,7 +5063,8 @@ for array_type in array_types:
         constraint=atomic_op_constraint,
         value_func=create_atomic_op_value_func("sub"),
         dispatch_func=atomic_op_dispatch_func,
-        doc="Atomically subtract ``value`` onto ``arr[i,j,k]`` and return the old value.",
+        doc="""Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -5068,7 +5075,8 @@ for array_type in array_types:
         constraint=atomic_op_constraint,
         value_func=create_atomic_op_value_func("sub"),
         dispatch_func=atomic_op_dispatch_func,
-        doc="Atomically subtract ``value`` onto ``arr[i,j,k,l]`` and return the old value.",
+        doc="""Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.""",
         group="Utility",
         skip_replay=True,
     )

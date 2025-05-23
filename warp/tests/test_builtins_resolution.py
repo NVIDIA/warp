@@ -84,25 +84,25 @@ def test_int_int_args_support(test, device, dtype):
     else:
         with test.assertRaisesRegex(
             RuntimeError,
-            rf"Couldn't find a function 'mul' compatible with " rf"the arguments '{dtype.__name__}, int'$",
+            rf"Couldn't find a function 'mul' compatible with the arguments '{dtype.__name__}, int'$",
         ):
             wp.mul(dtype(value), value)
 
         with test.assertRaisesRegex(
             RuntimeError,
-            rf"Couldn't find a function 'mul' compatible with " rf"the arguments '{np_type.__name__}, int'$",
+            rf"Couldn't find a function 'mul' compatible with the arguments '{np_type.__name__}, int'$",
         ):
             wp.mul(nps(np_type, value), value)
 
         with test.assertRaisesRegex(
             RuntimeError,
-            rf"Couldn't find a function 'mul' compatible with " rf"the arguments 'int, {dtype.__name__}'$",
+            rf"Couldn't find a function 'mul' compatible with the arguments 'int, {dtype.__name__}'$",
         ):
             wp.mul(value, dtype(value))
 
         with test.assertRaisesRegex(
             RuntimeError,
-            rf"Couldn't find a function 'mul' compatible with " rf"the arguments 'int, {np_type.__name__}'$",
+            rf"Couldn't find a function 'mul' compatible with the arguments 'int, {np_type.__name__}'$",
         ):
             wp.mul(value, nps(np_type, value))
 
@@ -336,13 +336,13 @@ def test_mat_float_args_support(test, device, dtype):
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                rf"Couldn't find a function 'mul' compatible with " rf"the arguments 'tuple, {dtype.__name__}'$",
+                rf"Couldn't find a function 'mul' compatible with the arguments 'tuple, {dtype.__name__}'$",
             ):
                 wp.mul(a_values, dtype(b_value))
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                rf"Couldn't find a function 'mul' compatible with " rf"the arguments 'tuple, {np_type.__name__}'$",
+                rf"Couldn't find a function 'mul' compatible with the arguments 'tuple, {np_type.__name__}'$",
             ):
                 wp.mul(a_values, nps(np_type, b_value))
 
@@ -504,13 +504,13 @@ def test_vec_float_args_support(test, device, dtype):
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                rf"Couldn't find a function 'mul' compatible with " rf"the arguments 'tuple, {dtype.__name__}'$",
+                rf"Couldn't find a function 'mul' compatible with the arguments 'tuple, {dtype.__name__}'$",
             ):
                 wp.mul(a_values, dtype(b_value))
 
             with test.assertRaisesRegex(
                 RuntimeError,
-                rf"Couldn't find a function 'mul' compatible with " rf"the arguments 'tuple, {np_type.__name__}'$",
+                rf"Couldn't find a function 'mul' compatible with the arguments 'tuple, {np_type.__name__}'$",
             ):
                 wp.mul(a_values, nps(np_type, b_value))
 
