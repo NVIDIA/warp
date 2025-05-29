@@ -31,6 +31,7 @@ from warp.types import (
     type_repr,
     type_scalar_type,
     type_size,
+    type_size_in_bytes,
     type_to_warp,
     types_equal,
 )
@@ -105,22 +106,14 @@ class BsrMatrix(Generic[_BlockType]):
         return self.values.device
 
     @property
+    def requires_grad(self) -> bool:
+        """Read-only property indicating whether the matrix participates in adjoint computations."""
+        return self.values.requires_grad
+
+    @property
     def scalar_values(self) -> wp.array:
         """Accesses the ``values`` array as a 3d scalar array."""
-        if self.block_shape == (1, 1):
-            return self.values.reshape((self.nnz, 1, 1))
-
-        def _as_3d_array(arr):
-            return wp.array(
-                ptr=arr.ptr,
-                capacity=arr.capacity,
-                device=arr.device,
-                dtype=self.scalar_type,
-                shape=(self.nnz, *self.block_shape),
-                grad=None if arr.grad is None else _as_3d_array(arr.grad),
-            )
-
-        values_view = _as_3d_array(self.values)
+        values_view = _as_3d_array(self.values, self.block_shape)
         values_view._ref = self.values  # keep ref in case we're garbage collected
         return values_view
 
@@ -144,13 +137,14 @@ class BsrMatrix(Generic[_BlockType]):
         See also :meth:`copy_nnz_async`.
         """
 
-        if self._is_nnz_transfer_setup():
-            if self.device.is_cuda:
-                wp.synchronize_event(self._nnz_event)
-            self.nnz = int(self._nnz_buf.numpy()[0])
+        buf, event = self._nnz_transfer_if_any()
+        if buf is not None:
+            if event is not None:
+                wp.synchronize_event(event)
+            self.nnz = int(buf.numpy()[0])
         return self.nnz
 
-    def copy_nnz_async(self, known_nnz: Optional[int] = None) -> None:
+    def copy_nnz_async(self) -> None:
         """
         Start the asynchronous transfer of the exact nnz from the device offsets array to host and records an event for completion.
 
@@ -158,37 +152,25 @@ class BsrMatrix(Generic[_BlockType]):
 
         See also :meth:`nnz_sync`.
         """
-        if known_nnz is not None:
-            self.nnz = int(known_nnz)
-        else:
-            self._setup_nnz_transfer()
 
-        # If a transfer is already ongoing, or if the actual nnz is unknown, schedule a new transfer
-        if self._is_nnz_transfer_setup():
-            stream = wp.get_stream(self.device) if self.device.is_cuda else None
-            wp.copy(src=self.offsets, dest=self._nnz_buf, src_offset=self.nrow, count=1, stream=stream)
-            if self.device.is_cuda:
-                stream.record_event(self._nnz_event)
+        buf, event = self._setup_nnz_transfer()
+        stream = wp.get_stream(self.device) if self.device.is_cuda else None
+        wp.copy(src=self.offsets, dest=buf, src_offset=self.nrow, count=1, stream=stream)
+        if event is not None:
+            stream.record_event(event)
 
     def _setup_nnz_transfer(self):
-        if self._is_nnz_transfer_setup():
-            return
+        buf, event = self._nnz_transfer_if_any()
+        if buf is not None or self.device.is_capturing:
+            return buf, event
 
-        BsrMatrix.__setattr__(
-            self, "_nnz_buf", wp.empty(dtype=int, shape=(1,), device="cpu", pinned=self.device.is_cuda)
-        )
-        if self.device.is_cuda:
-            BsrMatrix.__setattr__(self, "_nnz_event", wp.Event(self.device))
+        buf = wp.empty(dtype=int, shape=(1,), device="cpu", pinned=self.device.is_cuda)
+        event = wp.Event(self.device) if self.device.is_cuda else None
+        BsrMatrix.__setattr__(self, "_nnz_transfer", (buf, event))
+        return buf, event
 
-    def _is_nnz_transfer_setup(self):
-        return hasattr(self, "_nnz_buf")
-
-    def _nnz_transfer_buf_and_event(self):
-        self._setup_nnz_transfer()
-
-        if not self.device.is_cuda:
-            return self._nnz_buf, ctypes.c_void_p(None)
-        return self._nnz_buf, self._nnz_event.cuda_event
+    def _nnz_transfer_if_any(self):
+        return getattr(self, "_nnz_transfer", (None, None))
 
     # Overloaded math operators
     def __add__(self, y):
@@ -325,7 +307,9 @@ def _bsr_ensure_fits(bsr: BsrMatrix, nrow: Optional[int] = None, nnz: Optional[i
     if bsr.columns.size < nnz:
         bsr.columns = wp.empty(shape=(nnz,), dtype=int, device=bsr.columns.device)
     if bsr.values.size < nnz:
-        bsr.values = wp.empty(shape=(nnz,), dtype=bsr.values.dtype, device=bsr.values.device)
+        bsr.values = wp.empty(
+            shape=(nnz,), dtype=bsr.values.dtype, device=bsr.values.device, requires_grad=bsr.values.requires_grad
+        )
 
 
 def bsr_set_zero(
@@ -348,7 +332,64 @@ def bsr_set_zero(
 
     _bsr_ensure_fits(bsr, nnz=0)
     bsr.offsets.zero_()
-    bsr.copy_nnz_async(known_nnz=0)
+    bsr.copy_nnz_async()
+
+
+def _as_3d_array(arr, block_shape):
+    return wp.array(
+        ptr=arr.ptr,
+        capacity=arr.capacity,
+        device=arr.device,
+        dtype=type_scalar_type(arr.dtype),
+        shape=(arr.shape[0], *block_shape),
+        grad=None if arr.grad is None else _as_3d_array(arr.grad, block_shape),
+    )
+
+
+def _optional_ctypes_pointer(array: Optional[wp.array], ctype):
+    return None if array is None else ctypes.cast(array.ptr, ctypes.POINTER(ctype))
+
+
+def _optional_ctypes_event(event: Optional[wp.Event]):
+    return None if event is None else event.cuda_event
+
+
+_zero_value_masks = {
+    wp.float16: 0x7FFF,
+    wp.float32: 0x7FFFFFFF,
+    wp.float64: 0x7FFFFFFFFFFFFFFF,
+    wp.int8: 0xFF,
+    wp.int16: 0xFFFF,
+    wp.int32: 0xFFFFFFFF,
+    wp.int64: 0xFFFFFFFFFFFFFFFF,
+}
+
+
+@wp.kernel
+def _bsr_accumulate_triplet_values(
+    row_count: int,
+    tpl_summed_offsets: wp.array(dtype=int),
+    tpl_summed_indices: wp.array(dtype=int),
+    tpl_values: wp.array3d(dtype=Any),
+    bsr_offsets: wp.array(dtype=int),
+    bsr_values: wp.array3d(dtype=Any),
+):
+    block, i, j = wp.tid()
+
+    if block >= bsr_offsets[row_count]:
+        return
+
+    if block == 0:
+        beg = 0
+    else:
+        beg = tpl_summed_offsets[block - 1]
+    end = tpl_summed_offsets[block]
+
+    val = tpl_values[tpl_summed_indices[beg], i, j]
+    for k in range(beg + 1, end):
+        val += tpl_values[tpl_summed_indices[k], i, j]
+
+    bsr_values[block, i, j] = val
 
 
 def bsr_set_from_triplets(
@@ -356,6 +397,7 @@ def bsr_set_from_triplets(
     rows: "Array[int]",
     columns: "Array[int]",
     values: Optional["Array[Union[Scalar, BlockType[Rows, Cols, Scalar]]]"] = None,
+    count: Optional["Array[int]"] = None,
     prune_numerical_zeros: bool = True,
     masked: bool = False,
 ):
@@ -370,6 +412,8 @@ def bsr_set_from_triplets(
         values: Block values for each non-zero. Must be either a one-dimensional array with data type identical
           to the ``dest`` matrix's block type, or a 3d array with data type equal to the ``dest`` matrix's scalar type.
           If ``None``, the values array of the resulting matrix will be allocated but uninitialized.
+        count: Single-element array indicating the number of triplets. If ``None``, the number of triplets is determined from the shape of
+          ``rows`` and ``columns`` arrays.
         prune_numerical_zeros: If ``True``, will ignore the zero-valued blocks.
         masked: If ``True``, ignore blocks that are not existing non-zeros of ``dest``.
     """
@@ -386,6 +430,16 @@ def bsr_set_from_triplets(
 
     if rows.dtype != wp.int32 or columns.dtype != wp.int32:
         raise TypeError("Rows and columns arrays must be of type int32")
+
+    if count is not None:
+        if count.device != rows.device:
+            raise ValueError(f"Count and rows must reside on the same device, got {count.device} and {rows.device}")
+
+        if count.shape != (1,):
+            raise ValueError(f"Count array must be a single-element array, got {count.shape}")
+
+        if count.dtype != wp.int32:
+            raise TypeError("Count array must be of type int32")
 
     # Accept either array1d(dtype) or contiguous array3d(scalar_type) as values
     if values is not None:
@@ -412,11 +466,11 @@ def bsr_set_from_triplets(
                 raise ValueError(
                     f"Scalar type of values array ({type_repr(values.dtype)}) should correspond to that of matrix ({type_repr(dest.scalar_type)})"
                 )
-
-            if not values.is_contiguous:
-                raise ValueError("Multi-dimensional values array should be contiguous")
         else:
             raise ValueError(f"Number of dimension for values array should be 1 or 3, got {values.ndim}")
+
+        if prune_numerical_zeros and not values.is_contiguous:
+            raise ValueError("Values array should be contiguous for numerical zero pruning")
 
     nnz = rows.shape[0]
     if nnz == 0:
@@ -429,40 +483,54 @@ def bsr_set_from_triplets(
 
     device = dest.values.device
     scalar_type = dest.scalar_type
+    zero_value_mask = _zero_value_masks.get(scalar_type, 0)
+
+    # compute the BSR topology
+
     from warp.context import runtime
 
     if device.is_cpu:
-        if scalar_type == wp.float32:
-            native_func = runtime.core.bsr_matrix_from_triplets_float_host
-        elif scalar_type == wp.float64:
-            native_func = runtime.core.bsr_matrix_from_triplets_double_host
+        native_func = runtime.core.bsr_matrix_from_triplets_host
     else:
-        if scalar_type == wp.float32:
-            native_func = runtime.core.bsr_matrix_from_triplets_float_device
-        elif scalar_type == wp.float64:
-            native_func = runtime.core.bsr_matrix_from_triplets_double_device
+        native_func = runtime.core.bsr_matrix_from_triplets_device
 
-    if not native_func:
-        raise NotImplementedError(f"bsr_from_triplets not implemented for scalar type {scalar_type}")
-
-    nnz_buf, nnz_event = dest._nnz_transfer_buf_and_event()
+    nnz_buf, nnz_event = dest._setup_nnz_transfer()
+    summed_triplet_offsets = wp.empty(shape=(nnz,), dtype=wp.int32, device=device)
+    summed_triplet_indices = wp.empty(shape=(nnz,), dtype=wp.int32, device=device)
 
     with wp.ScopedDevice(device):
         native_func(
-            dest.block_shape[0],
-            dest.block_shape[1],
+            dest.block_size,
+            type_size_in_bytes(scalar_type),
             dest.nrow,
+            dest.ncol,
             nnz,
+            _optional_ctypes_pointer(count, ctype=ctypes.c_int32),
             ctypes.cast(rows.ptr, ctypes.POINTER(ctypes.c_int32)),
             ctypes.cast(columns.ptr, ctypes.POINTER(ctypes.c_int32)),
-            None if values is None else ctypes.cast(values.ptr, ctypes.c_void_p),
-            prune_numerical_zeros,
+            _optional_ctypes_pointer(values, ctype=ctypes.c_int32),
+            zero_value_mask,
             masked,
+            ctypes.cast(summed_triplet_offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
+            ctypes.cast(summed_triplet_indices.ptr, ctypes.POINTER(ctypes.c_int32)),
             ctypes.cast(dest.offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
             ctypes.cast(dest.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
-            None if values is None else ctypes.cast(dest.values.ptr, ctypes.c_void_p),
-            ctypes.cast(nnz_buf.ptr, ctypes.POINTER(ctypes.c_int32)),
-            nnz_event,
+            _optional_ctypes_pointer(nnz_buf, ctype=ctypes.c_int32),
+            _optional_ctypes_event(nnz_event),
+        )
+
+        # now accumulate repeated blocks
+        wp.launch(
+            _bsr_accumulate_triplet_values,
+            dim=(nnz, *dest.block_shape),
+            inputs=[
+                dest.nrow,
+                summed_triplet_offsets,
+                summed_triplet_indices,
+                _as_3d_array(values, dest.block_shape),
+                dest.offsets,
+            ],
+            outputs=[dest.scalar_values],
         )
 
 
@@ -496,6 +564,7 @@ def bsr_from_triplets(
     A = bsr_zeros(
         rows_of_blocks=rows_of_blocks, cols_of_blocks=cols_of_blocks, block_type=block_type, device=values.device
     )
+    A.values.requires_grad = values.requires_grad
     bsr_set_from_triplets(A, rows, columns, values, prune_numerical_zeros=prune_numerical_zeros)
     return A
 
@@ -551,6 +620,10 @@ class _BsrScalingExpression(_BsrExpression):
     @property
     def dtype(self) -> type:
         return self.mat.dtype
+
+    @property
+    def requires_grad(self) -> bool:
+        return self.mat.requires_grad
 
     @property
     def device(self) -> wp.context.Device:
@@ -828,27 +901,30 @@ def bsr_assign(
         from warp.context import runtime
 
         if dest.device.is_cpu:
-            native_func = runtime.core.bsr_matrix_from_triplets_float_host
+            native_func = runtime.core.bsr_matrix_from_triplets_host
         else:
-            native_func = runtime.core.bsr_matrix_from_triplets_float_device
+            native_func = runtime.core.bsr_matrix_from_triplets_device
 
-        nnz_buf, nnz_event = dest._nnz_transfer_buf_and_event()
+        nnz_buf, nnz_event = dest._setup_nnz_transfer()
         with wp.ScopedDevice(dest.device):
             native_func(
-                dest.block_shape[0],
-                dest.block_shape[1],
+                dest.block_size,
+                0,  # scalar_size_in_bytes
                 dest.nrow,
+                dest.ncol,
                 nnz_alloc,
+                None,  # device nnz
                 ctypes.cast(dest_rows.ptr, ctypes.POINTER(ctypes.c_int32)),
                 ctypes.cast(dest_cols.ptr, ctypes.POINTER(ctypes.c_int32)),
-                0,
-                False,
+                None,  # triplet values
+                0,  # zero_value_mask
                 masked,
+                None,  # summed block offsets
+                None,  # summed block indices
                 ctypes.cast(dest.offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
                 ctypes.cast(dest.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
-                0,
-                ctypes.cast(nnz_buf.ptr, ctypes.POINTER(ctypes.c_int32)),
-                nnz_event,
+                _optional_ctypes_pointer(nnz_buf, ctype=ctypes.c_int32),
+                _optional_ctypes_event(nnz_event),
             )
 
         # merge block values
@@ -908,8 +984,26 @@ def bsr_copy(
         block_type=block_type,
         device=A.device,
     )
+    copy.values.requires_grad = A.requires_grad
     bsr_assign(dest=copy, src=A, structure_only=structure_only)
     return copy
+
+
+@wp.kernel
+def _bsr_transpose_values(
+    col_count: int,
+    scale: Any,
+    bsr_values: wp.array3d(dtype=Any),
+    block_index_map: wp.array(dtype=int),
+    transposed_bsr_offsets: wp.array(dtype=int),
+    transposed_bsr_values: wp.array3d(dtype=Any),
+):
+    block, i, j = wp.tid()
+
+    if block >= transposed_bsr_offsets[col_count]:
+        return
+
+    transposed_bsr_values[block, i, j] = bsr_values[block_index_map[block], j, i] * scale
 
 
 def bsr_set_transpose(
@@ -947,36 +1041,33 @@ def bsr_set_transpose(
     from warp.context import runtime
 
     if dest.values.device.is_cpu:
-        if dest.scalar_type == wp.float32:
-            native_func = runtime.core.bsr_transpose_float_host
-        elif dest.scalar_type == wp.float64:
-            native_func = runtime.core.bsr_transpose_double_host
+        native_func = runtime.core.bsr_transpose_host
     else:
-        if dest.scalar_type == wp.float32:
-            native_func = runtime.core.bsr_transpose_float_device
-        elif dest.scalar_type == wp.float64:
-            native_func = runtime.core.bsr_transpose_double_device
+        native_func = runtime.core.bsr_transpose_device
 
-    if not native_func:
-        raise NotImplementedError(f"bsr_set_transpose not implemented for scalar type {dest.scalar_type}")
+    block_index_map = wp.empty(shape=2 * nnz, dtype=int, device=src.device)
 
     with wp.ScopedDevice(dest.device):
         native_func(
-            src.block_shape[0],
-            src.block_shape[1],
             src.nrow,
             src.ncol,
             nnz,
             ctypes.cast(src.offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
             ctypes.cast(src.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
-            ctypes.cast(src.values.ptr, ctypes.c_void_p),
             ctypes.cast(dest.offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
             ctypes.cast(dest.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
-            ctypes.cast(dest.values.ptr, ctypes.c_void_p),
+            ctypes.cast(block_index_map.ptr, ctypes.POINTER(ctypes.c_int32)),
         )
 
-    dest.copy_nnz_async()
-    bsr_scale(dest, src_scale)
+        dest.copy_nnz_async()
+
+        wp.launch(
+            _bsr_transpose_values,
+            dim=(nnz, *dest.block_shape),
+            device=dest.device,
+            inputs=[src.ncol, dest.scalar_type(src_scale), src.scalar_values, block_index_map, dest.offsets],
+            outputs=[dest.scalar_values],
+        )
 
 
 def bsr_transposed(A: BsrMatrixOrExpression) -> BsrMatrix:
@@ -993,6 +1084,7 @@ def bsr_transposed(A: BsrMatrixOrExpression) -> BsrMatrix:
         block_type=block_type,
         device=A.device,
     )
+    transposed.values.requires_grad = A.requires_grad
     bsr_set_transpose(dest=transposed, src=A)
     return transposed
 
@@ -1112,7 +1204,7 @@ def bsr_set_diag(
     elif diag is not None:
         A.values.fill_(diag)
 
-    A.copy_nnz_async(known_nnz=nnz)
+    A.copy_nnz_async()
 
 
 def bsr_diag(
@@ -1168,6 +1260,8 @@ def bsr_diag(
             block_type = wp.mat(shape=diag.shape, dtype=diag.dtype)
 
     A = bsr_zeros(rows_of_blocks, cols_of_blocks, block_type=block_type, device=device)
+    if is_array(diag):
+        A.values.requires_grad = diag.requires_grad
     bsr_set_diag(A, diag)
     return A
 
@@ -1329,6 +1423,7 @@ def bsr_axpy(
 
         # If not output matrix is provided, allocate it for convenience
         y = bsr_zeros(x.nrow, x.ncol, block_type=x.values.dtype, device=x.values.device)
+        y.values.requires_grad = x.requires_grad
         beta = 0.0
 
     x_nnz = x.nnz
@@ -1389,29 +1484,32 @@ def bsr_axpy(
     from warp.context import runtime
 
     if device.is_cpu:
-        native_func = runtime.core.bsr_matrix_from_triplets_float_host
+        native_func = runtime.core.bsr_matrix_from_triplets_host
     else:
-        native_func = runtime.core.bsr_matrix_from_triplets_float_device
+        native_func = runtime.core.bsr_matrix_from_triplets_device
 
     old_y_nnz = y_nnz
-    nnz_buf, nnz_event = y._nnz_transfer_buf_and_event()
+    nnz_buf, nnz_event = y._setup_nnz_transfer()
 
     with wp.ScopedDevice(y.device):
         native_func(
-            y.block_shape[0],
-            y.block_shape[1],
+            y.block_size,
+            0,  # scalar_size_in_bytes
             y.nrow,
+            y.ncol,
             sum_nnz,
+            None,  # device nnz
             ctypes.cast(work_arrays._sum_rows.ptr, ctypes.POINTER(ctypes.c_int32)),
             ctypes.cast(work_arrays._sum_cols.ptr, ctypes.POINTER(ctypes.c_int32)),
-            0,
-            False,
+            None,  # triplet values
+            0,  # zero_value_mask
             masked,
+            None,  # summed block offsets
+            None,  # summed block indices
             ctypes.cast(y.offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
             ctypes.cast(y.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
-            0,
-            ctypes.cast(nnz_buf.ptr, ctypes.POINTER(ctypes.c_int32)),
-            nnz_event,
+            _optional_ctypes_pointer(nnz_buf, ctype=ctypes.c_int32),
+            _optional_ctypes_event(nnz_event),
         )
 
     y.values.zero_()
@@ -1670,6 +1768,7 @@ def bsr_mm(
         else:
             z_block_type = wp.mat(shape=z_block_shape, dtype=x.scalar_type)
         z = bsr_zeros(x.nrow, y.ncol, block_type=z_block_type, device=x.values.device)
+        z.values.requires_grad = x.requires_grad or y.requires_grad
         beta = 0.0
 
     if x.values.device != y.values.device or x.values.device != z.values.device:
@@ -1725,7 +1824,9 @@ def bsr_mm(
         mm_nnz = work_arrays._mm_nnz
     else:
         if device.is_capturing:
-            raise RuntimeError("`bsr_mm` requires `reuse_topology=True` for use in graph capture")
+            raise RuntimeError(
+                "`bsr_mm` requires either `reuse_topology=True` or `masked=True` for use in graph capture"
+            )
 
         if work_arrays is None:
             work_arrays = bsr_mm_work_arrays()
@@ -1754,7 +1855,7 @@ def bsr_mm(
 
         # Get back total counts on host -- we need a synchronization here
         # Use pinned buffer from z, we are going to need it later anyway
-        nnz_buf, _ = z._nnz_transfer_buf_and_event()
+        nnz_buf, _ = z._setup_nnz_transfer()
         stream = wp.get_stream(device) if device.is_cuda else None
         wp.copy(dest=nnz_buf, src=work_arrays._mm_block_counts, src_offset=x.nnz, count=1, stream=stream)
         if device.is_cuda:
@@ -1811,28 +1912,31 @@ def bsr_mm(
         from warp.context import runtime
 
         if device.is_cpu:
-            native_func = runtime.core.bsr_matrix_from_triplets_float_host
+            native_func = runtime.core.bsr_matrix_from_triplets_host
         else:
-            native_func = runtime.core.bsr_matrix_from_triplets_float_device
+            native_func = runtime.core.bsr_matrix_from_triplets_device
 
-        nnz_buf, nnz_event = z._nnz_transfer_buf_and_event()
+        nnz_buf, nnz_event = z._setup_nnz_transfer()
 
         with wp.ScopedDevice(z.device):
             native_func(
-                z.block_shape[0],
-                z.block_shape[1],
+                z.block_size,
+                0,  # scalar_size_in_bytes
                 z.nrow,
+                z.ncol,
                 mm_nnz,
+                None,  # device nnz
                 ctypes.cast(work_arrays._mm_rows.ptr, ctypes.POINTER(ctypes.c_int32)),
                 ctypes.cast(work_arrays._mm_cols.ptr, ctypes.POINTER(ctypes.c_int32)),
-                0,
-                False,
-                masked,
+                None,  # triplet values
+                0,  # zero_value_mask
+                False,  # masked_topology
+                None,  # summed block offsets
+                None,  # summed block indices
                 ctypes.cast(z.offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
                 ctypes.cast(z.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
-                0,
-                ctypes.cast(nnz_buf.ptr, ctypes.POINTER(ctypes.c_int32)),
-                nnz_event,
+                _optional_ctypes_pointer(nnz_buf, ctype=ctypes.c_int32),
+                _optional_ctypes_event(nnz_event),
             )
 
         # Resize z to fit mm result if necessary
@@ -2019,7 +2123,7 @@ def bsr_mv(
         # If no output array is provided, allocate one for convenience
         y_vec_len = block_shape[0]
         y_dtype = A.scalar_type if y_vec_len == 1 else wp.vec(length=y_vec_len, dtype=A.scalar_type)
-        y = wp.empty(shape=(nrow,), device=A.values.device, dtype=y_dtype)
+        y = wp.empty(shape=(nrow,), device=A.values.device, dtype=y_dtype, requires_grad=x.requires_grad)
         beta = 0.0
 
     alpha = A.scalar_type(alpha)
