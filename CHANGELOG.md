@@ -76,6 +76,7 @@
 - Remove `outputs` keyword argument from `wp.autograd.jacobian_plot()` (deprecated in v1.6.0).
 - Skip adjoint compilation for `wp.tile_matmul()` if `enable_backward` is disabled
   ([GH-644](https://github.com/NVIDIA/warp/issues/644)).
+- `warp.sparse.bsr_[set_]from_triplets` is now differentiable with respect to the input triplet values ([GH-760](https://github.com/NVIDIA/warp/issues/760)).
 
 ### Fixed
 

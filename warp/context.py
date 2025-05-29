@@ -32,20 +32,7 @@ import typing
 import weakref
 from copy import copy as shallowcopy
 from pathlib import Path
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Literal,
-    Mapping,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-    get_args,
-    get_origin,
-)
+from typing import Any, Callable, Dict, List, Literal, Mapping, Sequence, Tuple, TypeVar, Union, get_args, get_origin
 
 import numpy as np
 
@@ -3564,44 +3551,40 @@ class Runtime:
             self.core.volume_get_blind_data_info.restype = ctypes.c_char_p
 
             bsr_matrix_from_triplets_argtypes = [
-                ctypes.c_int,  # rows_per_bock
-                ctypes.c_int,  # cols_per_blocks
+                ctypes.c_int,  # block_size
+                ctypes.c_int,  # scalar size in bytes
                 ctypes.c_int,  # row_count
-                ctypes.c_int,  # tpl_nnz
+                ctypes.c_int,  # col_count
+                ctypes.c_int,  # nnz_upper_bound
+                ctypes.POINTER(ctypes.c_int),  # tpl_nnz
                 ctypes.POINTER(ctypes.c_int),  # tpl_rows
                 ctypes.POINTER(ctypes.c_int),  # tpl_cols
                 ctypes.c_void_p,  # tpl_values
-                ctypes.c_bool,  # prune_numerical_zeros
+                ctypes.c_uint64,  # zero_value_mask
                 ctypes.c_bool,  # masked
                 ctypes.POINTER(ctypes.c_int),  # bsr_offsets
                 ctypes.POINTER(ctypes.c_int),  # bsr_columns
-                ctypes.c_void_p,  # bsr_values
+                ctypes.POINTER(ctypes.c_int),  # prefix sum of block count to sum for each bsr block
+                ctypes.POINTER(ctypes.c_int),  # indices to ptriplet blocks to sum for each bsr block
                 ctypes.POINTER(ctypes.c_int),  # bsr_nnz
                 ctypes.c_void_p,  # bsr_nnz_event
             ]
 
-            self.core.bsr_matrix_from_triplets_float_host.argtypes = bsr_matrix_from_triplets_argtypes
-            self.core.bsr_matrix_from_triplets_double_host.argtypes = bsr_matrix_from_triplets_argtypes
-            self.core.bsr_matrix_from_triplets_float_device.argtypes = bsr_matrix_from_triplets_argtypes
-            self.core.bsr_matrix_from_triplets_double_device.argtypes = bsr_matrix_from_triplets_argtypes
+            self.core.bsr_matrix_from_triplets_host.argtypes = bsr_matrix_from_triplets_argtypes
+            self.core.bsr_matrix_from_triplets_device.argtypes = bsr_matrix_from_triplets_argtypes
 
             bsr_transpose_argtypes = [
-                ctypes.c_int,  # rows_per_bock
-                ctypes.c_int,  # cols_per_blocks
                 ctypes.c_int,  # row_count
                 ctypes.c_int,  # col count
                 ctypes.c_int,  # nnz
                 ctypes.POINTER(ctypes.c_int),  # transposed_bsr_offsets
                 ctypes.POINTER(ctypes.c_int),  # transposed_bsr_columns
-                ctypes.c_void_p,  # bsr_values
                 ctypes.POINTER(ctypes.c_int),  # transposed_bsr_offsets
                 ctypes.POINTER(ctypes.c_int),  # transposed_bsr_columns
-                ctypes.c_void_p,  # transposed_bsr_values
+                ctypes.POINTER(ctypes.c_int),  # src to dest block map
             ]
-            self.core.bsr_transpose_float_host.argtypes = bsr_transpose_argtypes
-            self.core.bsr_transpose_double_host.argtypes = bsr_transpose_argtypes
-            self.core.bsr_transpose_float_device.argtypes = bsr_transpose_argtypes
-            self.core.bsr_transpose_double_device.argtypes = bsr_transpose_argtypes
+            self.core.bsr_transpose_host.argtypes = bsr_transpose_argtypes
+            self.core.bsr_transpose_device.argtypes = bsr_transpose_argtypes
 
             self.core.is_cuda_enabled.argtypes = None
             self.core.is_cuda_enabled.restype = ctypes.c_int
