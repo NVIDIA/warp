@@ -55,6 +55,12 @@ class Quadrature:
         arg = Quadrature.Arg()
         return arg
 
+    def fill_arg(self, arg: Arg, device):
+        """
+        Fill the argument with the value of the argument to be passed to device
+        """
+        pass
+
     def total_point_count(self):
         """Number of unique quadrature points that can be indexed by this rule.
         Returns a number such that `point_index()` is always smaller than this number.
@@ -199,12 +205,16 @@ class _QuadratureWithRegularEvaluationPoints(Quadrature):
     """Helper subclass for quadrature formulas which use a uniform number of
     evaluations points per element. Avoids building explicit mapping"""
 
+    _dynamic_attribute_constructors: ClassVar = {
+        "point_evaluation_index": lambda obj: obj._make_regular_point_evaluation_index(),
+        "evaluation_point_element_index": lambda obj: obj._make_regular_evaluation_point_element_index(),
+    }
+
     def __init__(self, domain: GeometryDomain, N: int):
         super().__init__(domain)
         self._EVALUATION_POINTS_PER_ELEMENT = N
 
-        self.point_evaluation_index = self._make_regular_point_evaluation_index()
-        self.evaluation_point_element_index = self._make_regular_evaluation_point_element_index()
+        cache.setup_dynamic_attributes(self, cls=__class__)
 
     ElementIndexArg = Quadrature.Arg
     element_index_arg_value = Quadrature.arg_value
@@ -263,9 +273,12 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
         @cache.cached_arg_value
         def arg_value(self, device):
             arg = RegularQuadrature.Arg()
+            self.fill_arg(arg, device)
+            return arg
+
+        def fill_arg(self, arg: "RegularQuadrature.Arg", device):
             arg.points = wp.array(self.points, device=device, dtype=Coords)
             arg.weights = wp.array(self.weights, device=device, dtype=float)
-            return arg
 
         @staticmethod
         def get(element: Element, order: int, family: Polynomial):
@@ -276,6 +289,13 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
                 quadrature = RegularQuadrature.CachedFormula(element, order, family)
                 RegularQuadrature.CachedFormula._cache[key] = quadrature
                 return quadrature
+
+    _dynamic_attribute_constructors: ClassVar = {
+        "point_count": lambda obj: obj._make_point_count(),
+        "point_index": lambda obj: obj._make_point_index(),
+        "point_coords": lambda obj: obj._make_point_coords(),
+        "point_weight": lambda obj: obj._make_point_weight(),
+    }
 
     def __init__(
         self,
@@ -289,10 +309,7 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
 
         super().__init__(domain, self._formula.count)
 
-        self.point_count = self._make_point_count()
-        self.point_index = self._make_point_index()
-        self.point_coords = self._make_point_coords()
-        self.point_weight = self._make_point_weight()
+        cache.setup_dynamic_attributes(self)
 
     @property
     def name(self):
@@ -314,6 +331,9 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
 
     def arg_value(self, device):
         return self._formula.arg_value(device)
+
+    def fill_arg(self, arg: "RegularQuadrature.Arg", device):
+        self._formula.fill_arg(arg, device)
 
     def _make_point_count(self):
         N = self._formula.count
@@ -412,9 +432,12 @@ class NodalQuadrature(Quadrature):
     @cache.cached_arg_value
     def arg_value(self, device):
         arg = self.Arg()
-        arg.space_arg = self._space.space_arg_value(device)
-        arg.topo_arg = self._space.topology.topo_arg_value(device)
+        self.fill_arg(arg, device)
         return arg
+
+    def fill_arg(self, arg: "NodalQuadrature.Arg", device):
+        self._space.fill_space_arg(arg.space_arg, device)
+        self._space.topology.fill_topo_arg(arg.topo_arg, device)
 
     def _make_point_count(self):
         @cache.dynamic_func(suffix=self.name)
@@ -533,7 +556,7 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
 
     @property
     def name(self):
-        return f"{self.__class__.__name__}_{self._whole_geo}"
+        return f"{self.__class__.__name__}_{self._whole_geo}_{self._points_per_cell}"
 
     def total_point_count(self):
         return self._weights.size
@@ -541,14 +564,15 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
     def max_points_per_element(self):
         return self._points_per_cell
 
-    @cache.cached_arg_value
     def arg_value(self, device):
         arg = self.Arg()
+        self.fill_arg(arg, device)
+        return arg
+
+    def fill_arg(self, arg: "ExplicitQuadrature.Arg", device):
         arg.points_per_cell = self._points_per_cell
         arg.points = self._points.to(device)
         arg.weights = self._weights.to(device)
-
-        return arg
 
     @wp.func
     def point_count(elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex):

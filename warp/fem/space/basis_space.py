@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
+from typing import ClassVar, Optional
 
 import numpy as np
 
@@ -70,6 +70,9 @@ class BasisSpace:
     def basis_arg_value(self, device) -> "BasisArg":
         """Value for the argument structure to be passed to device functions"""
         return BasisSpace.BasisArg()
+
+    def fill_basis_arg(self, arg, device):
+        pass
 
     # Helpers for generating node positions
 
@@ -174,6 +177,7 @@ class ShapeBasisSpace(BasisSpace):
         if self.value is not ShapeFunction.Value.Scalar:
             self.BasisArg = self.topology.TopologyArg
             self.basis_arg_value = self.topology.topo_arg_value
+            self.fill_basis_arg = self.topology.fill_topo_arg
 
         self.ORDER = self._shape.ORDER
 
@@ -335,6 +339,7 @@ class TraceBasisSpace(BasisSpace):
         self._basis = basis
         self.BasisArg = self._basis.BasisArg
         self.basis_arg_value = self._basis.basis_arg_value
+        self.fill_basis_arg = self._basis.fill_basis_arg
 
     @property
     def name(self):
@@ -507,6 +512,12 @@ def make_discontinuous_basis_space(geometry: Geometry, shape: ShapeFunction):
 class UnstructuredPointTopology(SpaceTopology):
     """Topology for unstructured points defined from quadrature formula. See :class:`PointBasisSpace`"""
 
+    _dynamic_attribute_constructors: ClassVar = {
+        "element_node_index": lambda obj: obj._make_element_node_index(),
+        "element_node_count": lambda obj: obj._make_element_node_count(),
+        "side_neighbor_node_counts": lambda obj: obj._make_side_neighbor_node_counts(),
+    }
+
     def __init__(self, quadrature: Quadrature):
         if quadrature.max_points_per_element() is None:
             raise ValueError("Quadrature must define a maximum number of points per element")
@@ -516,12 +527,12 @@ class UnstructuredPointTopology(SpaceTopology):
 
         self._quadrature = quadrature
         self.TopologyArg = quadrature.Arg
+        self.topo_arg_value = quadrature.arg_value
+        self.fill_topo_arg = quadrature.fill_arg
 
         super().__init__(quadrature.domain.geometry, max_nodes_per_element=quadrature.max_points_per_element())
 
-        self.element_node_index = self._make_element_node_index()
-        self.element_node_count = self._make_element_node_count()
-        self.side_neighbor_node_counts = self._make_side_neighbor_node_counts()
+        cache.setup_dynamic_attributes(self, cls=__class__)
 
     def node_count(self):
         return self._quadrature.total_point_count()
@@ -582,6 +593,8 @@ class PointBasisSpace(BasisSpace):
 
         self.BasisArg = quadrature.Arg
         self.basis_arg_value = quadrature.arg_value
+        self.fill_basis_arg = quadrature.fill_arg
+
         self.ORDER = 0
 
         self.make_element_outer_weight = self.make_element_inner_weight

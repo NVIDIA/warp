@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any
+from typing import Any, ClassVar
 
 import warp as wp
 from warp.fem import cache
@@ -27,29 +27,29 @@ from .field import DiscreteField
 class NodalFieldBase(DiscreteField):
     """Base class for nodal field and nodal field traces. Does not hold values"""
 
+    _dynamic_attribute_constructors: ClassVar = {
+        "EvalArg": lambda obj: obj._make_eval_arg(),
+        "ElementEvalArg": lambda obj: obj._make_element_eval_arg(),
+        "eval_degree": lambda obj: DiscreteField._make_eval_degree(obj),
+        "_read_node_value": lambda obj: obj._make_read_node_value(),
+        "eval_inner": lambda obj: obj._make_eval_inner(),
+        "eval_outer": lambda obj: obj._make_eval_outer(),
+        "eval_grad_inner": lambda obj: obj._make_eval_grad_inner(world_space=True),
+        "eval_grad_outer": lambda obj: obj._make_eval_grad_outer(world_space=True),
+        "eval_reference_grad_inner": lambda obj: obj._make_eval_grad_inner(world_space=False),
+        "eval_reference_grad_outer": lambda obj: obj._make_eval_grad_outer(world_space=False),
+        "eval_div_inner": lambda obj: obj._make_eval_div_inner(),
+        "eval_div_outer": lambda obj: obj._make_eval_div_outer(),
+        "set_node_value": lambda obj: obj._make_set_node_value(),
+        "node_partition_index": lambda obj: obj._make_node_partition_index(),
+        "node_count": lambda obj: obj._make_node_count(),
+        "node_index": lambda obj: obj._make_node_index(),
+        "at_node": lambda obj: obj._make_at_node(),
+    }
+
     def __init__(self, space: CollocatedFunctionSpace, space_partition: SpacePartition):
         super().__init__(space, space_partition)
-
-        self.EvalArg = self._make_eval_arg()
-        self.ElementEvalArg = self._make_element_eval_arg()
-        self.eval_degree = DiscreteField._make_eval_degree(self)
-
-        self._read_node_value = self._make_read_node_value()
-
-        self.eval_inner = self._make_eval_inner()
-        self.eval_outer = self._make_eval_outer()
-        self.eval_grad_inner = self._make_eval_grad_inner(world_space=True)
-        self.eval_grad_outer = self._make_eval_grad_outer(world_space=True)
-        self.eval_reference_grad_inner = self._make_eval_grad_inner(world_space=False)
-        self.eval_reference_grad_outer = self._make_eval_grad_outer(world_space=False)
-        self.eval_div_inner = self._make_eval_div_inner()
-        self.eval_div_outer = self._make_eval_div_outer()
-
-        self.set_node_value = self._make_set_node_value()
-        self.node_partition_index = self._make_node_partition_index()
-        self.node_count = self._make_node_count()
-        self.node_index = self._make_node_index()
-        self.at_node = self._make_at_node()
+        cache.setup_dynamic_attributes(self)
 
     def _make_eval_arg(self):
         @cache.dynamic_struct(suffix=self.name)
@@ -338,12 +338,14 @@ class NodalField(NodalFieldBase):
 
     def eval_arg_value(self, device):
         arg = self.EvalArg()
-        arg.dof_values = self._dof_values.to(device)
-        arg.space_arg = self.space.space_arg_value(device)
-        arg.partition_arg = self.space_partition.partition_arg_value(device)
-        arg.topology_arg = self.space.topology.topo_arg_value(device)
-
+        self.fill_eval_arg(arg, device)
         return arg
+
+    def fill_eval_arg(self, arg, device):
+        arg.dof_values = self._dof_values.to(device)
+        self.space.fill_space_arg(arg.space_arg, device)
+        self.space_partition.fill_partition_arg(arg.partition_arg, device)
+        self.space.topology.fill_topo_arg(arg.topology_arg, device)
 
     @property
     def dof_values(self) -> wp.array:
@@ -370,12 +372,14 @@ class NodalField(NodalFieldBase):
 
         def eval_arg_value(self, device):
             arg = self.EvalArg()
-            arg.dof_values = self._field.dof_values.to(device)
-            arg.space_arg = self.space.space_arg_value(device)
-            arg.partition_arg = self.space_partition.partition_arg_value(device)
-            arg.topology_arg = self.space.topology.topo_arg_value(device)
-
+            self.fill_eval_arg(arg, device)
             return arg
+
+        def fill_eval_arg(self, arg, device):
+            arg.dof_values = self._field.dof_values.to(device)
+            self.space.fill_space_arg(arg.space_arg, device)
+            self.space_partition.fill_partition_arg(arg.partition_arg, device)
+            self.space.topology.fill_topo_arg(arg.topology_arg, device)
 
     def trace(self) -> Trace:
         trace_field = NodalField.Trace(self)

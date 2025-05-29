@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 from enum import Enum
 from typing import Optional
 
@@ -67,8 +68,9 @@ class ElementBasis(Enum):
     """Raviart-Thomas H(div) shape functions. Should be used with contravariant function space."""
 
 
+@functools.lru_cache(maxsize=None)
 def get_shape_function(
-    element: _element.Element,
+    element_class: type,
     space_dimension: int,
     degree: int,
     element_basis: ElementBasis,
@@ -78,7 +80,7 @@ def get_shape_function(
     Equips a reference element with a shape function basis.
 
     Args:
-        element: the reference element on which to build the shape function
+        element_class: the type of reference element on which to build the shape function
         space_dimension: the dimension of the embedding space
         degree: polynomial degree of the per-element shape functions
         element_basis: type of basis function for the individual elements
@@ -89,12 +91,12 @@ def get_shape_function(
     """
 
     if degree == 0:
-        return ConstantShapeFunction(element, space_dimension)
+        return ConstantShapeFunction(element_class(), space_dimension)
 
     if family is None:
         family = Polynomial.LOBATTO_GAUSS_LEGENDRE
 
-    if isinstance(element, _element.Square):
+    if issubclass(element_class, _element.Square):
         if element_basis == ElementBasis.NEDELEC_FIRST_KIND:
             return SquareNedelecFirstKindShapeFunctions(degree=degree)
         if element_basis == ElementBasis.RAVIART_THOMAS:
@@ -105,7 +107,7 @@ def get_shape_function(
             return SquareSerendipityShapeFunctions(degree=degree, family=family)
 
         return SquareBipolynomialShapeFunctions(degree=degree, family=family)
-    if isinstance(element, _element.Triangle):
+    if issubclass(element_class, _element.Triangle):
         if element_basis == ElementBasis.NEDELEC_FIRST_KIND:
             return TriangleNedelecFirstKindShapeFunctions(degree=degree)
         if element_basis == ElementBasis.RAVIART_THOMAS:
@@ -117,7 +119,7 @@ def get_shape_function(
 
         return TrianglePolynomialShapeFunctions(degree=degree)
 
-    if isinstance(element, _element.Cube):
+    if issubclass(element_class, _element.Cube):
         if element_basis == ElementBasis.NEDELEC_FIRST_KIND:
             return CubeNedelecFirstKindShapeFunctions(degree=degree)
         if element_basis == ElementBasis.RAVIART_THOMAS:
@@ -128,7 +130,7 @@ def get_shape_function(
             return CubeSerendipityShapeFunctions(degree=degree, family=family)
 
         return CubeTripolynomialShapeFunctions(degree=degree, family=family)
-    if isinstance(element, _element.Tetrahedron):
+    if issubclass(element_class, _element.Tetrahedron):
         if element_basis == ElementBasis.NEDELEC_FIRST_KIND:
             return TetrahedronNedelecFirstKindShapeFunctions(degree=degree)
         if element_basis == ElementBasis.RAVIART_THOMAS:
@@ -140,4 +142,4 @@ def get_shape_function(
 
         return TetrahedronPolynomialShapeFunctions(degree=degree)
 
-    return NotImplementedError("Unrecognized element type")
+    raise NotImplementedError(f"Unrecognized element type {element_class.__name__}")

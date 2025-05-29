@@ -87,11 +87,14 @@ class PicQuadrature(Quadrature):
     @cached_arg_value
     def arg_value(self, device) -> Arg:
         arg = PicQuadrature.Arg()
-        arg.cell_particle_offsets = self._cell_particle_offsets.array.to(device)
-        arg.cell_particle_indices = self._cell_particle_indices.array.to(device)
-        arg.particle_fraction = self._particle_fraction.to(device)
-        arg.particle_coords = self.particle_coords.to(device)
+        self.fill_arg(arg, device)
         return arg
+
+    def fill_arg(self, args: Arg, device):
+        args.cell_particle_offsets = self._cell_particle_offsets.array.to(device)
+        args.cell_particle_indices = self._cell_particle_indices.array.to(device)
+        args.particle_fraction = self._particle_fraction.to(device)
+        args.particle_coords = self.particle_coords.to(device)
 
     def total_point_count(self):
         return self.particle_coords.shape[0]

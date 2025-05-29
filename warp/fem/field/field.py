@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, Optional, Set
+from typing import Any, ClassVar, Dict, Optional, Set
 
 import warp as wp
 from warp.fem import cache
@@ -22,6 +22,7 @@ from warp.fem.geometry import DeformedGeometry, Geometry
 from warp.fem.operator import Operator, integrand
 from warp.fem.space import FunctionSpace, SpacePartition
 from warp.fem.types import NULL_ELEMENT_INDEX, ElementKind, Sample
+from warp.fem.utils import type_zero_element
 
 
 class FieldLike:
@@ -37,6 +38,10 @@ class FieldLike:
         """Value of the field-level arguments to be passed to device functions"""
         raise NotImplementedError
 
+    def fill_eval_arg(self, arg: "FieldLike.EvalArg", device):
+        """Fill the field-level arguments to be passed to device functions"""
+        raise NotImplementedError
+
     @property
     def degree(self) -> int:
         """Polynomial degree of the field, used to estimate necessary quadrature order"""
@@ -49,10 +54,6 @@ class FieldLike:
     @property
     def __str__(self) -> str:
         return self.name
-
-    def eval_arg_value(self, device):
-        """Value of arguments to be passed to device functions"""
-        raise NotImplementedError
 
     def gradient_valid(self) -> bool:
         """Whether the gradient operator is implemented for this field."""
@@ -139,6 +140,51 @@ class GeometryField(FieldLike):
         """
         return DeformedGeometry(self, relative=relative)
 
+    @property
+    def gradient_dtype(self):
+        """Return type of the (world space) gradient operator. Assumes self.gradient_valid()"""
+        if wp.types.type_is_matrix(self.dtype):
+            return None
+
+        if wp.types.type_is_vector(self.dtype):
+            return cache.cached_mat_type(
+                shape=(wp.types.type_size(self.dtype), self.geometry.dimension),
+                dtype=wp.types.type_scalar_type(self.dtype),
+            )
+        if wp.types.type_is_quaternion(self.dtype):
+            return cache.cached_mat_type(
+                shape=(4, self.geometry.dimension),
+                dtype=wp.types.type_scalar_type(self.dtype),
+            )
+        return cache.cached_vec_type(length=self.geometry.dimension, dtype=wp.types.type_scalar_type(self.dtype))
+
+    @property
+    def reference_gradient_dtype(self):
+        """Return type of the reference space gradient operator. Assumes self.gradient_valid()"""
+        if wp.types.type_is_matrix(self.dtype):
+            return None
+
+        if wp.types.type_is_vector(self.dtype):
+            return cache.cached_mat_type(
+                shape=(wp.types.type_size(self.dtype), self.geometry.cell_dimension),
+                dtype=wp.types.type_scalar_type(self.dtype),
+            )
+        if wp.types.type_is_quaternion(self.dtype):
+            return cache.cached_mat_type(
+                shape=(4, self.geometry.cell_dimension),
+                dtype=wp.types.type_scalar_type(self.dtype),
+            )
+        return cache.cached_vec_type(length=self.geometry.cell_dimension, dtype=wp.types.type_scalar_type(self.dtype))
+
+    @property
+    def divergence_dtype(self):
+        """Return type of the divergence operator. Assumes self.divergence_valid()"""
+        if wp.types.type_is_vector(self.dtype):
+            return wp.types.type_scalar_type(self.dtype)
+        if wp.types.type_is_matrix(self.dtype):
+            return cache.cached_vec_type(length=self.dtype._shape_[1], dtype=wp.types.type_scalar_type(self.dtype))
+        return None
+
 
 class SpaceField(GeometryField):
     """Base class for fields defined over a function space"""
@@ -177,43 +223,6 @@ class SpaceField(GeometryField):
     @property
     def dof_dtype(self) -> type:
         return self.space.dof_dtype
-
-    @property
-    def gradient_dtype(self):
-        """Return type of the (world space) gradient operator. Assumes self.gradient_valid()"""
-        if wp.types.type_is_vector(self.dtype):
-            return cache.cached_mat_type(
-                shape=(wp.types.type_size(self.dtype), self.geometry.dimension),
-                dtype=wp.types.type_scalar_type(self.dtype),
-            )
-        if wp.types.type_is_quaternion(self.dtype):
-            return cache.cached_mat_type(
-                shape=(4, self.geometry.dimension),
-                dtype=wp.types.type_scalar_type(self.dtype),
-            )
-        return cache.cached_vec_type(length=self.geometry.dimension, dtype=wp.types.type_scalar_type(self.dtype))
-
-    @property
-    def reference_gradient_dtype(self):
-        """Return type of the reference space gradient operator. Assumes self.gradient_valid()"""
-        if wp.types.type_is_vector(self.dtype):
-            return cache.cached_mat_type(
-                shape=(wp.types.type_size(self.dtype), self.geometry.cell_dimension),
-                dtype=wp.types.type_scalar_type(self.dtype),
-            )
-        if wp.types.type_is_quaternion(self.dtype):
-            return cache.cached_mat_type(
-                shape=(4, self.geometry.cell_dimension),
-                dtype=wp.types.type_scalar_type(self.dtype),
-            )
-        return cache.cached_vec_type(length=self.geometry.cell_dimension, dtype=wp.types.type_scalar_type(self.dtype))
-
-    @property
-    def divergence_dtype(self):
-        """Return type of the divergence operator. Assumes self.gradient_valid()"""
-        if wp.types.type_is_vector(self.dtype):
-            return wp.types.type_scalar_type(self.dtype)
-        return cache.cached_vec_type(length=self.dtype._shape_[1], dtype=wp.types.type_scalar_type(self.dtype))
 
     def _make_eval_degree(self):
         ORDER = self.space.ORDER
@@ -261,6 +270,19 @@ class ImplicitField(GeometryField):
         degree: Optional hint for automatic determination of quadrature orders when integrating this field
     """
 
+    _dynamic_attribute_constructors: ClassVar = {
+        "ElementEvalArg": lambda obj: obj._make_element_eval_arg(),
+        "eval_degree": lambda obj: obj._make_eval_degree(),
+        "eval_inner": lambda obj: obj._make_eval_func(obj._func),
+        "eval_grad_inner": lambda obj: obj._make_eval_func(obj._grad_func),
+        "eval_div_inner": lambda obj: obj._make_eval_func(obj._div_func),
+        "eval_reference_grad_inner": lambda obj: obj._make_eval_reference_grad(),
+        "eval_outer": lambda obj: obj.eval_inner,
+        "eval_grad_outer": lambda obj: obj.eval_grad_inner,
+        "eval_div_outer": lambda obj: obj.eval_div_inner,
+        "eval_reference_grad_outer": lambda obj: obj.eval_reference_grad_inner,
+    }
+
     def __init__(
         self,
         domain: GeometryDomain,
@@ -294,18 +316,7 @@ class ImplicitField(GeometryField):
         self.EvalArg = cache.get_argument_struct(arg_types)
         self.values = values
 
-        self.ElementEvalArg = self._make_element_eval_arg()
-        self.eval_degree = self._make_eval_degree()
-
-        self.eval_inner = self._make_eval_func(func)
-        self.eval_grad_inner = self._make_eval_func(grad_func)
-        self.eval_div_inner = self._make_eval_func(div_func)
-        self.eval_reference_grad_inner = self._make_eval_reference_grad()
-
-        self.eval_outer = self.eval_inner
-        self.eval_grad_outer = self.eval_grad_inner
-        self.eval_div_outer = self.eval_div_inner
-        self.eval_reference_grad_outer = self.eval_reference_grad_inner
+        cache.setup_dynamic_attributes(self)
 
     @property
     def values(self):
@@ -313,6 +324,7 @@ class ImplicitField(GeometryField):
 
     @values.setter
     def values(self, v):
+        self._values = v
         self._func_arg = cache.populate_argument_struct(self.EvalArg, v, self._func.func.__name__)
 
     @property
@@ -326,6 +338,9 @@ class ImplicitField(GeometryField):
     def eval_arg_value(self, device):
         return self._func_arg
 
+    def fill_eval_arg(self, arg, device):
+        cache.populate_argument_struct(self.EvalArg, self._values, self._func.func.__name__, arg)
+
     @property
     def degree(self) -> int:
         return self._degree
@@ -333,6 +348,12 @@ class ImplicitField(GeometryField):
     @property
     def name(self) -> str:
         return f"Implicit_{self.domain.name}_{self.degree}_{self.EvalArg.key}"
+
+    def gradient_valid(self) -> bool:
+        return self._grad_func is not None
+
+    def divergence_valid(self) -> bool:
+        return self._div_func is not None
 
     def _make_eval_func(self, func):
         if func is None:
@@ -397,6 +418,20 @@ class UniformField(GeometryField):
         value: Uniform value over the domain
     """
 
+    _dynamic_attribute_constructors: ClassVar = {
+        "EvalArg": lambda obj: obj._make_eval_arg(),
+        "ElementEvalArg": lambda obj: obj._make_element_eval_arg(),
+        "eval_degree": lambda obj: obj._make_eval_degree(),
+        "eval_inner": lambda obj: obj._make_eval_inner(),
+        "eval_grad_inner": lambda obj: obj._make_eval_zero(obj.gradient_dtype),
+        "eval_div_inner": lambda obj: obj._make_eval_zero(obj.divergence_dtype),
+        "eval_reference_grad_inner": lambda obj: obj._make_eval_zero(obj.reference_gradient_dtype),
+        "eval_outer": lambda obj: obj.eval_inner,
+        "eval_grad_outer": lambda obj: obj.eval_grad_inner,
+        "eval_div_outer": lambda obj: obj.eval_div_inner,
+        "eval_reference_grad_outer": lambda obj: obj.eval_reference_grad_inner,
+    }
+
     def __init__(self, domain: GeometryDomain, value: Any):
         self.domain = domain
 
@@ -406,30 +441,7 @@ class UniformField(GeometryField):
         self.dtype = wp.types.type_to_warp(type(value))
         self._value = self.dtype(value)
 
-        scalar_type = wp.types.type_scalar_type(self.dtype)
-        if wp.types.type_is_vector(self.dtype):
-            grad_type = wp.mat(shape=(wp.types.type_size(self.dtype), self.geometry.dimension), dtype=scalar_type)
-            div_type = scalar_type
-        elif wp.types.type_is_matrix(self.dtype):
-            grad_type = None
-            div_type = wp.vec(length=(wp.types.type_size(self.dtype) // self.geometry.dimension), dtype=scalar_type)
-        else:
-            div_type = None
-            grad_type = wp.vec(length=self.geometry.dimension, dtype=scalar_type)
-
-        self.EvalArg = self._make_eval_arg()
-        self.ElementEvalArg = self._make_element_eval_arg()
-        self.eval_degree = self._make_eval_degree()
-
-        self.eval_inner = self._make_eval_inner()
-        self.eval_grad_inner = self._make_eval_zero(grad_type)
-        self.eval_div_inner = self._make_eval_zero(div_type)
-        self.eval_reference_grad_inner = self.eval_grad_inner
-
-        self.eval_outer = self.eval_inner
-        self.eval_grad_outer = self.eval_grad_inner
-        self.eval_div_outer = self.eval_div_inner
-        self.eval_reference_grad_outer = self.eval_reference_grad_inner
+        cache.setup_dynamic_attributes(self)
 
     @property
     def value(self):
@@ -454,9 +466,18 @@ class UniformField(GeometryField):
         arg.value = self.value
         return arg
 
+    def fill_eval_arg(self, arg, device):
+        arg.value = self.value
+
     @property
     def degree(self) -> int:
         return 0
+
+    def gradient_valid(self) -> bool:
+        return self.gradient_dtype is not None
+
+    def divergence_valid(self) -> bool:
+        return self.divergence_dtype is not None
 
     @property
     def name(self) -> str:
@@ -473,11 +494,11 @@ class UniformField(GeometryField):
         if dtype is None:
             return None
 
-        scalar_type = wp.types.type_scalar_type(dtype)
+        zero_element = type_zero_element(dtype)
 
         @cache.dynamic_func(suffix=f"{self.name}_{wp.types.get_type_code(dtype)}")
         def eval_zero(args: self.ElementEvalArg, s: Sample):
-            return dtype(scalar_type(0.0))
+            return zero_element()
 
         return eval_zero
 
@@ -521,6 +542,20 @@ class NonconformingField(GeometryField):
 
     _LOOKUP_EPS = wp.constant(1.0e-6)
 
+    _dynamic_attribute_constructors: ClassVar = {
+        "EvalArg": lambda obj: obj._make_eval_arg(),
+        "ElementEvalArg": lambda obj: obj._make_element_eval_arg(),
+        "eval_degree": lambda obj: obj._make_eval_degree(),
+        "eval_inner": lambda obj: obj._make_nonconforming_eval("eval_inner"),
+        "eval_grad_inner": lambda obj: obj._make_nonconforming_eval("eval_grad_inner"),
+        "eval_div_inner": lambda obj: obj._make_nonconforming_eval("eval_div_inner"),
+        "eval_reference_grad_inner": lambda obj: obj._make_eval_reference_grad(),
+        "eval_outer": lambda obj: obj.eval_inner,
+        "eval_grad_outer": lambda obj: obj.eval_grad_inner,
+        "eval_div_outer": lambda obj: obj.eval_div_inner,
+        "eval_reference_grad_outer": lambda obj: obj.eval_reference_grad_inner,
+    }
+
     def __init__(self, domain: GeometryDomain, field: DiscreteField, background: Any = 0.0):
         self.domain = domain
 
@@ -533,20 +568,7 @@ class NonconformingField(GeometryField):
             raise ValueError("Background field must be conforming to the domain")
         self.background = background
 
-        self.EvalArg = self._make_eval_arg()
-        self.ElementEvalArg = self._make_element_eval_arg()
-        self.eval_degree = self._make_eval_degree()
-
-        self.eval_inner = self._make_nonconforming_eval("eval_inner")
-        self.eval_grad_inner = self._make_nonconforming_eval("eval_grad_inner")
-        self.eval_div_inner = self._make_nonconforming_eval("eval_div_inner")
-        self.eval_reference_grad_inner = self._make_eval_reference_grad()
-
-        # Nonconforming evaluation is position based, does not handle discontinuous fields
-        self.eval_outer = self.eval_inner
-        self.eval_grad_outer = self.eval_grad_inner
-        self.eval_div_outer = self.eval_div_inner
-        self.eval_reference_grad_outer = self.eval_reference_grad_inner
+        cache.setup_dynamic_attributes(self)
 
     @property
     def geometry(self) -> Geometry:
@@ -556,18 +578,25 @@ class NonconformingField(GeometryField):
     def element_kind(self) -> ElementKind:
         return self.domain.element_kind
 
-    @cache.cached_arg_value
     def eval_arg_value(self, device):
         arg = self.EvalArg()
-        arg.field_cell_eval_arg = self.field.ElementEvalArg()
-        arg.field_cell_eval_arg.elt_arg = self.field.geometry.cell_arg_value(device)
-        arg.field_cell_eval_arg.eval_arg = self.field.eval_arg_value(device)
-        arg.background_arg = self.background.eval_arg_value(device)
+        self.fill_eval_arg(arg, device)
         return arg
+
+    def fill_eval_arg(self, arg, device):
+        self.field.fill_eval_arg(arg.field_cell_eval_arg.eval_arg, device)
+        self.field.geometry.fill_cell_arg(arg.field_cell_eval_arg.elt_arg, device)
+        self.background.fill_eval_arg(arg.background_arg, device)
 
     @property
     def degree(self) -> int:
         return self.field.degree
+
+    def gradient_valid(self) -> bool:
+        return self.field.gradient_valid() and self.background.gradient_valid()
+
+    def divergence_valid(self) -> bool:
+        return self.field.divergence_valid() and self.background.divergence_valid()
 
     @property
     def name(self) -> str:

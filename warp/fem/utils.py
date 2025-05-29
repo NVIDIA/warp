@@ -178,14 +178,7 @@ def host_read_at_index(array: wp.array, index: int = -1, temporary_store: cache.
 
     if index < 0:
         index += array.shape[0]
-
-    if array.device.is_cuda:
-        temp = cache.borrow_temporary(temporary_store, shape=1, dtype=int, pinned=True, device="cpu")
-        wp.copy(dest=temp.array, src=array, src_offset=index, count=1)
-        wp.synchronize_stream(wp.get_stream(array.device))
-        return temp.array.numpy()[0]
-
-    return array.numpy()[index]
+    return array[index : index + 1].numpy()[0]
 
 
 def masked_indices(

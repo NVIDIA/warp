@@ -55,13 +55,16 @@ class QuadmeshSpaceTopology(SpaceTopology):
     @cache.cached_arg_value
     def topo_arg_value(self, device):
         arg = Quadmesh2DTopologyArg()
+        self.fill_topo_arg(arg, device)
+        return arg
+
+    def fill_topo_arg(self, arg: Quadmesh2DTopologyArg, device):
         arg.quad_edge_indices = self._quad_edge_indices.to(device)
         arg.edge_vertex_indices = self._mesh.edge_vertex_indices.to(device)
 
         arg.vertex_count = self._mesh.vertex_count()
         arg.edge_count = self._mesh.side_count()
         arg.cell_count = self._mesh.cell_count()
-        return arg
 
     def _compute_quad_edge_indices(self):
         self._quad_edge_indices = wp.empty(

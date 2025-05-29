@@ -50,6 +50,9 @@ class SpacePartition:
     def partition_arg_value(self, device):
         pass
 
+    def fill_partition_arg(self, arg, device):
+        pass
+
     @staticmethod
     def partition_node_index(args: "PartitionArg", space_node_index: int):
         """Returns the index in the partition of a function space node, or ``NULL_NODE_INDEX`` if it does not exist"""
@@ -93,12 +96,15 @@ class WholeSpacePartition(SpacePartition):
     def partition_arg_value(self, device):
         return WholeSpacePartition.PartitionArg()
 
+    def fill_partition_arg(self, arg, device):
+        pass
+
     @wp.func
     def partition_node_index(args: Any, space_node_index: int):
         return space_node_index
 
     def __eq__(self, other: SpacePartition) -> bool:
-        return isinstance(other, SpacePartition) and self.space_topology == other.space_topology
+        return isinstance(other, WholeSpacePartition) and self.space_topology == other.space_topology
 
     @property
     def name(self) -> str:
@@ -160,8 +166,11 @@ class NodePartition(SpacePartition):
     @cache.cached_arg_value
     def partition_arg_value(self, device):
         arg = NodePartition.PartitionArg()
-        arg.space_to_partition = self._space_to_partition.array.to(device)
+        self.fill_partition_arg(arg, device)
         return arg
+
+    def fill_partition_arg(self, arg, device):
+        arg.space_to_partition = self._space_to_partition.array.to(device)
 
     @wp.func
     def partition_node_index(args: PartitionArg, space_node_index: int):
