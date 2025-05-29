@@ -121,49 +121,41 @@ class Trimesh(Geometry):
     class SideIndexArg:
         boundary_edge_indices: wp.array(dtype=int)
 
-    @cached_arg_value
-    def _cell_topo_arg_value(self, device):
-        args = TrimeshCellArg()
-
+    def _fill_cell_topo_arg(self, args: TrimeshCellArg, device):
         args.tri_vertex_indices = self.tri_vertex_indices.to(device)
+        args.tri_bvh = self.bvh_id(device)
 
-        return args
-
-    @cached_arg_value
-    def _side_topo_arg_value(self, device):
-        args = TrimeshSideArg()
-
-        args.cell_arg = self._cell_topo_arg_value(device)
+    def _fill_side_topo_arg(self, args: TrimeshSideArg, device):
+        self._fill_cell_topo_arg(args.cell_arg, device)
         args.edge_vertex_indices = self._edge_vertex_indices.to(device)
         args.edge_tri_indices = self._edge_tri_indices.to(device)
 
-        return args
-
     def cell_arg_value(self, device):
         args = self.CellArg()
-
-        args.topology = self._cell_topo_arg_value(device)
-        args.positions = self.positions.to(device)
-        args.topology.tri_bvh = self.bvh_id(device)
-
+        self.fill_cell_arg(args, device)
         return args
+
+    def fill_cell_arg(self, args: TrimeshCellArg, device):
+        self._fill_cell_topo_arg(args.topology, device)
+        args.positions = self.positions.to(device)
 
     def side_arg_value(self, device):
         args = self.SideArg()
-
-        args.topology = self._side_topo_arg_value(device)
-        args.positions = self.positions.to(device)
-        args.topology.cell_arg.tri_bvh = self.bvh_id(device)
-
+        self.fill_side_arg(args, device)
         return args
+
+    def fill_side_arg(self, args: TrimeshSideArg, device):
+        self._fill_side_topo_arg(args.topology, device)
+        args.positions = self.positions.to(device)
 
     @cached_arg_value
     def side_index_arg_value(self, device) -> SideIndexArg:
         args = self.SideIndexArg()
-
-        args.boundary_edge_indices = self._boundary_edge_indices.to(device)
-
+        self.fill_side_index_arg(args, device)
         return args
+
+    def fill_side_index_arg(self, args: SideIndexArg, device):
+        args.boundary_edge_indices = self._boundary_edge_indices.to(device)
 
     @wp.func
     def boundary_side_index(args: SideIndexArg, boundary_side_index: int):

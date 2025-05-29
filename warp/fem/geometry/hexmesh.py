@@ -228,20 +228,15 @@ class Hexmesh(Geometry):
 
     # Geometry device interface
 
-    @cached_arg_value
-    def _cell_constant_arg_value(self, device) -> CellArg:
+    def cell_arg_value(self, device) -> CellArg:
         args = self.CellArg()
+        self.fill_cell_arg(args, device)
+        return args
 
+    def fill_cell_arg(self, args: CellArg, device):
         args.hex_vertex_indices = self.hex_vertex_indices.to(device)
         args.positions = self.positions.to(device)
-
-        return args
-
-    def cell_arg_value(self, device) -> CellArg:
-        args = self._cell_constant_arg_value(device)
         args.hex_bvh = self.bvh_id(device)
-
-        return args
 
     @wp.func
     def _cell_position_generic(args: CellArg, s: Sample):
@@ -313,10 +308,11 @@ class Hexmesh(Geometry):
     @cached_arg_value
     def side_index_arg_value(self, device) -> SideIndexArg:
         args = self.SideIndexArg()
-
-        args.boundary_face_indices = self._boundary_face_indices.to(device)
-
+        self.fill_side_index_arg(args, device)
         return args
+
+    def fill_side_index_arg(self, args: SideIndexArg, device):
+        args.boundary_face_indices = self._boundary_face_indices.to(device)
 
     @wp.func
     def boundary_side_index(args: SideIndexArg, boundary_side_index: int):
@@ -326,13 +322,14 @@ class Hexmesh(Geometry):
 
     def side_arg_value(self, device) -> CellArg:
         args = self.SideArg()
+        self.fill_side_arg(args, device)
+        return args
 
-        args.cell_arg = self.cell_arg_value(device)
+    def fill_side_arg(self, args: SideArg, device):
+        self.fill_cell_arg(args.cell_arg, device)
         args.face_vertex_indices = self._face_vertex_indices.to(device)
         args.face_hex_indices = self._face_hex_indices.to(device)
         args.face_hex_face_orientation = self._face_hex_face_orientation.to(device)
-
-        return args
 
     @wp.func
     def side_position(args: SideArg, s: Sample):

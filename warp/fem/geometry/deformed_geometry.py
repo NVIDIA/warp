@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import ClassVar
+
 import warp as wp
 from warp.fem import cache
 from warp.fem.polynomial import Polynomial
@@ -24,6 +26,30 @@ _mat32 = wp.mat(shape=(3, 2), dtype=float)
 
 
 class DeformedGeometry(Geometry):
+    _dynamic_attribute_constructors_phase_1: ClassVar = {
+        "CellArg": lambda obj: obj._make_cell_arg(),
+        "SideArg": lambda obj: obj._make_side_arg(),
+        "cell_position": lambda obj: obj._make_cell_position(),
+        "cell_deformation_gradient": lambda obj: obj._make_cell_deformation_gradient(),
+        "side_to_cell_arg": lambda obj: obj._make_side_to_cell_arg(),
+        "side_position": lambda obj: obj._make_side_position(),
+        "side_deformation_gradient": lambda obj: obj._make_side_deformation_gradient(),
+        "side_inner_cell_index": lambda obj: obj._make_side_inner_cell_index(),
+        "side_outer_cell_index": lambda obj: obj._make_side_outer_cell_index(),
+        "side_inner_cell_coords": lambda obj: obj._make_side_inner_cell_coords(),
+        "side_outer_cell_coords": lambda obj: obj._make_side_outer_cell_coords(),
+        "side_from_cell_coords": lambda obj: obj._make_side_from_cell_coords(),
+        "cell_bvh_id": lambda obj: obj._make_cell_bvh_id(),
+        "cell_bounds": lambda obj: obj._make_cell_bounds(),
+    }
+
+    _dynamic_attribute_constructors_phase_2: ClassVar = {
+        "cell_closest_point": lambda obj: obj._make_cell_closest_point(),
+        "side_closest_point": lambda obj: obj._make_side_closest_point(),
+        "cell_coordinates": lambda obj: obj._make_cell_coordinates(),
+        "side_coordinates": lambda obj: obj._make_side_coordinates(),
+    }
+
     def __init__(self, field: "wp.fem.field.GeometryField", relative: bool = True, build_bvh: bool = False):
         """Constructs a Deformed Geometry from a displacement or absolute position field defined over a base geometry.
         The deformation field does not need to be isoparameteric.
@@ -44,14 +70,10 @@ class DeformedGeometry(Geometry):
         self._relative = relative
 
         self.field: GeometryField = field
+        self.field_trace = field.trace()
         self.dimension = self.base.dimension
 
-        self.CellArg = self._make_cell_arg()
-
-        self.field_trace = field.trace()
-        self.SideArg = self._make_side_arg()
         self.SideIndexArg = self.base.SideIndexArg
-
         self.cell_count = self.base.cell_count
         self.vertex_count = self.base.vertex_count
         self.side_count = self.base.side_count
@@ -60,29 +82,14 @@ class DeformedGeometry(Geometry):
         self.reference_side = self.base.reference_side
 
         self.side_index_arg_value = self.base.side_index_arg_value
-
-        self.cell_position = self._make_cell_position()
-        self.cell_deformation_gradient = self._make_cell_deformation_gradient()
-
+        self.fill_side_index_arg = self.base.fill_side_index_arg
         self.boundary_side_index = self.base.boundary_side_index
 
-        self.side_to_cell_arg = self._make_side_to_cell_arg()
-        self.side_position = self._make_side_position()
-        self.side_deformation_gradient = self._make_side_deformation_gradient()
-        self.side_inner_cell_index = self._make_side_inner_cell_index()
-        self.side_outer_cell_index = self._make_side_outer_cell_index()
-        self.side_inner_cell_coords = self._make_side_inner_cell_coords()
-        self.side_outer_cell_coords = self._make_side_outer_cell_coords()
-        self.side_from_cell_coords = self._make_side_from_cell_coords()
-
-        self.cell_bvh_id = self._make_cell_bvh_id()
-        self.cell_bounds = self._make_cell_bounds()
+        cache.setup_dynamic_attributes(self, constructors=self._dynamic_attribute_constructors_phase_1)
 
         self._make_default_dependent_implementations()
-        self.cell_closest_point = self._make_cell_closest_point()
-        self.side_closest_point = self._make_side_closest_point()
-        self.cell_coordinates = self._make_cell_coordinates()
-        self.side_coordinates = self._make_side_coordinates()
+
+        cache.setup_dynamic_attributes(self, constructors=self._dynamic_attribute_constructors_phase_2)
 
         if build_bvh:
             self.build_bvh(self.field.dof_values.device)
@@ -108,12 +115,13 @@ class DeformedGeometry(Geometry):
 
     def cell_arg_value(self, device) -> "DeformedGeometry.CellArg":
         args = self.CellArg()
-
-        args.base_arg = self.base.cell_arg_value(device)
-        args.field_arg = self.field.eval_arg_value(device)
-        args.cell_bvh = self.bvh_id(device)
-
+        self.fill_cell_arg(args, device)
         return args
+
+    def fill_cell_arg(self, args: "DeformedGeometry.CellArg", device):
+        self.base.fill_cell_arg(args.base_arg, device)
+        self.field.fill_eval_arg(args.field_arg, device)
+        args.cell_bvh = self.bvh_id(device)
 
     def _make_cell_position(self):
         @cache.dynamic_func(suffix=self.name)
@@ -153,16 +161,16 @@ class DeformedGeometry(Geometry):
 
         return SideArg
 
-    @cache.cached_arg_value
     def side_arg_value(self, device) -> "DeformedGeometry.SideArg":
         args = self.SideArg()
-
-        args.base_arg = self.base.side_arg_value(device)
-        args.field_arg = self.field.eval_arg_value(device)
-        args.trace_arg = self.field_trace.eval_arg_value(device)
-        args.cell_bvh = self.bvh_id(device)
-
+        self.fill_side_arg(args, device)
         return args
+
+    def fill_side_arg(self, args: "DeformedGeometry.SideArg", device):
+        self.base.fill_side_arg(args.base_arg, device)
+        self.field.fill_eval_arg(args.field_arg, device)
+        self.field_trace.fill_eval_arg(args.trace_arg, device)
+        args.cell_bvh = self.bvh_id(device)
 
     def _make_side_position(self):
         @cache.dynamic_func(suffix=self.name)

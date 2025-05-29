@@ -110,6 +110,13 @@ class Nanogrid(Geometry):
         self._edge_grid = None
         self._edge_count = 0
 
+        transform = np.array(self._cell_grid_info.transform_matrix).reshape(3, 3)
+        self._inverse_transform = wp.mat33f(np.linalg.inv(transform))
+        self._cell_volume = abs(np.linalg.det(transform))
+        self._face_areas = wp.vec3(
+            tuple(np.linalg.norm(np.cross(transform[:, k - 2], transform[:, k - 1])) for k in range(3))
+        )
+
     @property
     def cell_grid(self) -> wp.Volume:
         return self._cell_grid
@@ -157,14 +164,15 @@ class Nanogrid(Geometry):
     @cache.cached_arg_value
     def cell_arg_value(self, device) -> CellArg:
         args = self.CellArg()
-        args.cell_grid = self._cell_grid.id
-        args.cell_ijk = self._cell_ijk
-
-        transform = np.array(self._cell_grid_info.transform_matrix).reshape(3, 3)
-        args.inverse_transform = wp.mat33f(np.linalg.inv(transform))
-        args.cell_volume = abs(np.linalg.det(transform))
-
+        self.fill_cell_arg(args, device)
         return args
+
+    def fill_cell_arg(self, arg, device):
+        arg.cell_grid = self._cell_grid.id
+        arg.cell_ijk = self._cell_ijk
+
+        arg.inverse_transform = self._inverse_transform
+        arg.cell_volume = self._cell_volume
 
     @wp.func
     def cell_position(args: CellArg, s: Sample):
@@ -212,7 +220,7 @@ class Nanogrid(Geometry):
 
     @staticmethod
     def _make_filtered_cell_lookup(grid_geo, filter_func: wp.Function = None):
-        suffix = f"{grid_geo.name}{filter_func.func.__qualname__ if filter_func is not None else ''}"
+        suffix = f"{grid_geo.name}{filter_func.key if filter_func is not None else ''}"
 
         @cache.dynamic_func(suffix=suffix)
         def cell_lookup(args: grid_geo.CellArg, pos: wp.vec3, max_dist: float, filter_data: Any, filter_target: Any):
@@ -292,18 +300,16 @@ class Nanogrid(Geometry):
 
     @cache.cached_arg_value
     def side_arg_value(self, device) -> SideArg:
-        self._ensure_face_grid()
-
         args = self.SideArg()
-        args.cell_arg = self.cell_arg_value(device)
-        args.face_ijk = self._face_ijk.to(device)
-        args.face_flags = self._face_flags.to(device)
-        transform = np.array(self._cell_grid_info.transform_matrix).reshape(3, 3)
-        args.face_areas = wp.vec3(
-            tuple(np.linalg.norm(np.cross(transform[:, k - 2], transform[:, k - 1])) for k in range(3))
-        )
-
+        self.fill_side_arg(args, device)
         return args
+
+    def fill_side_arg(self, arg: SideArg, device):
+        self._ensure_face_grid()
+        self.fill_cell_arg(arg.cell_arg, device)
+        arg.face_ijk = self._face_ijk.to(device)
+        arg.face_flags = self._face_flags.to(device)
+        arg.face_areas = self._face_areas
 
     @wp.struct
     class SideIndexArg:
@@ -311,11 +317,13 @@ class Nanogrid(Geometry):
 
     @cache.cached_arg_value
     def side_index_arg_value(self, device) -> SideIndexArg:
-        self._ensure_face_grid()
-
         args = self.SideIndexArg()
-        args.boundary_face_indices = self._boundary_face_indices.to(device)
+        self.fill_side_index_arg(args, device)
         return args
+
+    def fill_side_index_arg(self, arg: SideIndexArg, device):
+        self._ensure_face_grid()
+        arg.boundary_face_indices = self._boundary_face_indices.to(device)
 
     @wp.func
     def boundary_side_index(args: SideIndexArg, boundary_side_index: int):

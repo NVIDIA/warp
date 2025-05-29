@@ -1179,7 +1179,7 @@ def _launch_integrate_kernel(
     field_arg_values = FieldStruct()
     for k, v in fields.items():
         if not isinstance(v, GeometryDomain):
-            setattr(field_arg_values, k, v.eval_arg_value(device=device))
+            v.fill_eval_arg(getattr(field_arg_values, k), device=device)
 
     value_struct_values = cache.populate_argument_struct(ValueStruct, values, func_name=integrand.name)
 
@@ -1229,7 +1229,7 @@ def _launch_integrate_kernel(
             array_cast(in_array=accumulate_array, out_array=output)
         return output
 
-    test_arg = test.space_restriction.node_arg(device=device)
+    test_arg = test.space_restriction.node_arg_value(device=device)
     nodal = quadrature is None
 
     # Linear form
@@ -2183,12 +2183,12 @@ def _launch_interpolate_kernel(
     field_arg_values = FieldStruct()
     for k, v in fields.items():
         if not isinstance(v, GeometryDomain):
-            setattr(field_arg_values, k, v.eval_arg_value(device=device))
+            v.fill_eval_arg(getattr(field_arg_values, k), device=device)
 
     value_struct_values = cache.populate_argument_struct(ValueStruct, values, func_name=integrand.name)
 
     if isinstance(dest, FieldRestriction):
-        dest_node_arg = dest.space_restriction.node_arg(device=device)
+        dest_node_arg = dest.space_restriction.node_arg_value(device=device)
         dest_eval_arg = dest.field.eval_arg_value(device=device)
 
         wp.launch(

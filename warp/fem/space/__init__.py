@@ -120,7 +120,7 @@ def make_polynomial_basis_space(
         # Degree-1 serendipity is always equivalent to Lagrange
         element_basis = ElementBasis.LAGRANGE
 
-    shape = get_shape_function(geo.reference_cell(), geo.dimension, degree, element_basis, family)
+    shape = get_shape_function(geo.reference_cell().__class__, geo.dimension, degree, element_basis, family)
 
     if discontinuous or degree == 0 or element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
         return make_discontinuous_basis_space(geo, shape)

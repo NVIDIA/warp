@@ -31,25 +31,28 @@ from .field import SpaceField
 class AdjointField(SpaceField):
     """Adjoint of a discrete field with respect to its degrees of freedom"""
 
+    _dynamic_attribute_constructors: ClassVar = {
+        "EvalArg": lambda obj: obj._make_eval_arg(),
+        "ElementEvalArg": lambda obj: obj._make_element_eval_arg(),
+        "eval_degree": lambda obj: obj._make_eval_degree(),
+        "eval_inner": lambda obj: obj._make_eval_inner(),
+        "eval_grad_inner": lambda obj: obj._make_eval_grad_inner(),
+        "eval_div_inner": lambda obj: obj._make_eval_div_inner(),
+        "eval_outer": lambda obj: obj._make_eval_outer(),
+        "eval_grad_outer": lambda obj: obj._make_eval_grad_outer(),
+        "eval_div_outer": lambda obj: obj._make_eval_div_outer(),
+        "node_count": lambda obj: obj._make_node_count(),
+        "at_node": lambda obj: obj._make_at_node(),
+        "node_index": lambda obj: obj._make_node_index(),
+    }
+
     def __init__(self, space: FunctionSpace, space_partition: SpacePartition):
         super().__init__(space, space_partition=space_partition)
 
         self.node_dof_count = self.space.NODE_DOF_COUNT
         self.value_dof_count = self.space.VALUE_DOF_COUNT
 
-        self.EvalArg = self._make_eval_arg()
-        self.ElementEvalArg = self._make_element_eval_arg()
-
-        self.eval_degree = self._make_eval_degree()
-        self.eval_inner = self._make_eval_inner()
-        self.eval_grad_inner = self._make_eval_grad_inner()
-        self.eval_div_inner = self._make_eval_div_inner()
-        self.eval_outer = self._make_eval_outer()
-        self.eval_grad_outer = self._make_eval_grad_outer()
-        self.eval_div_outer = self._make_eval_div_outer()
-        self.node_count = self._make_node_count()
-        self.at_node = self._make_at_node()
-        self.node_index = self._make_node_index()
+        cache.setup_dynamic_attributes(self)
 
     @property
     def name(self) -> str:
@@ -58,9 +61,12 @@ class AdjointField(SpaceField):
     @cache.cached_arg_value
     def eval_arg_value(self, device):
         arg = self.EvalArg()
-        arg.space_arg = self.space.space_arg_value(device)
-        arg.topo_arg = self.space.topology.topo_arg_value(device)
+        self.fill_eval_arg(arg, device)
         return arg
+
+    def fill_eval_arg(self, arg, device):
+        self.space.fill_space_arg(arg.space_arg, device)
+        self.space.topology.fill_topo_arg(arg.topo_arg, device)
 
     def _make_eval_arg(self):
         @cache.dynamic_struct(suffix=self.name)
@@ -305,9 +311,9 @@ class LocalAdjointField(SpaceField):
         operator.inner: INNER_DOF,
         operator.outer: INNER_DOF,
         operator.grad: INNER_GRAD_DOF,
-        operator.grad_outer: INNER_GRAD_DOF,
+        operator.grad_outer: OUTER_GRAD_DOF,
         operator.div: INNER_GRAD_DOF,
-        operator.div_outer: INNER_GRAD_DOF,
+        operator.div_outer: OUTER_GRAD_DOF,
     }
 
     _OP_DOF_MAP_DISCONTINUOUS: ClassVar[Dict[operator.Operator, int]] = {
@@ -325,6 +331,18 @@ class LocalAdjointField(SpaceField):
     class EvalArg:
         pass
 
+    _dynamic_attribute_constructors: ClassVar = {
+        "ElementEvalArg": lambda obj: obj._make_element_eval_arg(),
+        "eval_degree": lambda obj: obj._make_eval_degree(),
+        "_split_dof": lambda obj: obj._make_split_dof(),
+        "eval_inner": lambda obj: obj._make_eval_inner(),
+        "eval_grad_inner": lambda obj: obj._make_eval_grad_inner(),
+        "eval_div_inner": lambda obj: obj._make_eval_div_inner(),
+        "eval_outer": lambda obj: obj._make_eval_outer(),
+        "eval_grad_outer": lambda obj: obj._make_eval_grad_outer(),
+        "eval_div_outer": lambda obj: obj._make_eval_div_outer(),
+    }
+
     def __init__(self, field: AdjointField):
         # if not isinstance(field.space, CollocatedFunctionSpace):
         #     raise NotImplementedError("Local assembly only implemented for collocated function spaces")
@@ -337,9 +355,6 @@ class LocalAdjointField(SpaceField):
         self.value_dof_count = self.space.VALUE_DOF_COUNT
 
         self._dof_suffix = ""
-
-        self.ElementEvalArg = self._make_element_eval_arg()
-        self.eval_degree = self._make_eval_degree()
         self.at_node = None
 
         self._is_discontinuous = (self.space.element_inner_weight != self.space.element_outer_weight) or (
@@ -378,21 +393,7 @@ class LocalAdjointField(SpaceField):
         self._TAYLOR_DOF_COUNTS = dof_counts
 
         self._dof_suffix = "".join(str(c) for c in dof_counts)
-
-        self._split_dof = self._make_split_dof()
-
-        self.eval_inner = self._make_eval_inner()
-        self.eval_grad_inner = self._make_eval_grad_inner()
-        self.eval_div_inner = self._make_eval_div_inner()
-
-        if self._is_discontinuous:
-            self.eval_outer = self._make_eval_outer()
-            self.eval_grad_outer = self._make_eval_grad_outer()
-            self.eval_div_outer = self._make_eval_div_outer()
-        else:
-            self.eval_outer = self.eval_inner
-            self.eval_grad_outer = self.eval_grad_inner
-            self.eval_div_outer = self.eval_div_inner
+        cache.setup_dynamic_attributes(self)
 
     @property
     def name(self) -> str:
@@ -400,6 +401,9 @@ class LocalAdjointField(SpaceField):
 
     def eval_arg_value(self, device):
         return LocalAdjointField.EvalArg()
+
+    def fill_eval_arg(self, arg, device):
+        pass
 
     def _make_element_eval_arg(self):
         from warp.fem import cache
@@ -481,6 +485,9 @@ class LocalAdjointField(SpaceField):
         return eval_div_test_inner
 
     def _make_eval_outer(self):
+        if not self._is_discontinuous:
+            return self.eval_inner
+
         DOF_BEGIN = wp.constant(self._TAYLOR_DOF_OFFSETS[LocalAdjointField.OUTER_DOF])
         zero_element = type_zero_element(self.dtype)
 

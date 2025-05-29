@@ -170,6 +170,9 @@ class Cells(GeometryDomain):
     def element_index_arg_value(self, device: warp.context.Devicelike) -> warp.codegen.StructInstance:
         return self.geometry_partition.cell_arg_value(device)
 
+    def fill_element_index_arg(self, arg: ElementIndexArg, device: warp.context.Devicelike):
+        self.geometry_partition.fill_cell_arg(arg, device)
+
     @property
     def element_index(self) -> wp.Function:
         return self.geometry_partition.cell_index
@@ -180,6 +183,9 @@ class Cells(GeometryDomain):
 
     def element_arg_value(self, device: warp.context.Devicelike) -> warp.codegen.StructInstance:
         return self.geometry.cell_arg_value(device)
+
+    def fill_element_arg(self, arg: "ElementArg", device: warp.context.Devicelike):
+        self.geometry.fill_cell_arg(arg, device)
 
     @property
     def ElementArg(self) -> warp.codegen.Struct:
@@ -221,7 +227,7 @@ class Cells(GeometryDomain):
     def element_partition_lookup(self) -> wp.Function:
         pos_type = cache.cached_vec_type(self.geometry.dimension, dtype=float)
 
-        @cache.dynamic_func(suffix=self.geometry.name)
+        @cache.dynamic_func(suffix=self.geometry_partition.name)
         def is_in_partition(args: self.ElementIndexArg, cell_index: int):
             return self.geometry_partition.partition_cell_index(args, cell_index) != NULL_ELEMENT_INDEX
 
@@ -295,6 +301,9 @@ class Sides(GeometryDomain):
     def element_index_arg_value(self, device: warp.context.Devicelike) -> warp.codegen.StructInstance:
         return self.geometry_partition.side_arg_value(device)
 
+    def fill_element_index_arg(self, arg: "ElementIndexArg", device: warp.context.Devicelike):
+        self.geometry_partition.fill_side_arg(arg, device)
+
     @property
     def element_index(self) -> wp.Function:
         return self.geometry_partition.side_index
@@ -305,6 +314,9 @@ class Sides(GeometryDomain):
 
     def element_arg_value(self, device: warp.context.Devicelike) -> warp.codegen.StructInstance:
         return self.geometry.side_arg_value(device)
+
+    def fill_element_arg(self, arg: "ElementArg", device: warp.context.Devicelike):
+        self.geometry.fill_side_arg(arg, device)
 
     @property
     def element_position(self) -> wp.Function:
@@ -446,6 +458,7 @@ class Subdomain(GeometryDomain):
         self.geometry_element_count = self._domain.geometry_element_count
         self.reference_element = self._domain.reference_element
         self.element_arg_value = self._domain.element_arg_value
+        self.fill_element_arg = self._domain.fill_element_arg
         self.element_measure = self._domain.element_measure
         self.element_measure_ratio = self._domain.element_measure_ratio
         self.element_position = self._domain.element_position
@@ -487,9 +500,12 @@ class Subdomain(GeometryDomain):
     @cache.cached_arg_value
     def element_index_arg_value(self, device: warp.context.Devicelike):
         arg = self.ElementIndexArg()
-        arg.domain_arg = self._domain.element_index_arg_value(device)
-        arg.element_indices = self._element_indices.to(device)
+        self.fill_element_index_arg(arg, device)
         return arg
+
+    def fill_element_index_arg(self, arg: "GeometryDomain.ElementIndexArg", device: warp.context.Devicelike):
+        self._domain.fill_element_index_arg(arg.domain_arg, device)
+        arg.element_indices = self._element_indices.to(device)
 
     def _make_element_index(self) -> wp.Function:
         @cache.dynamic_func(suffix=self.name)

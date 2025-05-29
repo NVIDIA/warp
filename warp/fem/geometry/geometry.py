@@ -14,7 +14,7 @@
 # limitations under the License.
 
 from functools import cached_property
-from typing import Any
+from typing import Any, ClassVar
 
 import warp as wp
 from warp.fem import cache
@@ -93,6 +93,10 @@ class Geometry:
         """Value of the arguments to be passed to cell-related device functions"""
         raise NotImplementedError
 
+    def fill_cell_arg(self, args: "Geometry.CellArg", device):
+        """Fill the arguments to be passed to cell-related device functions"""
+        raise NotImplementedError
+
     @staticmethod
     def cell_position(args: "Geometry.CellArg", s: "Sample"):
         """Device function returning the world position of a cell sample point"""
@@ -128,6 +132,10 @@ class Geometry:
 
     def side_arg_value(self, device) -> "Geometry.SideArg":
         """Value of the arguments to be passed to side-related device functions"""
+        raise NotImplementedError
+
+    def fill_side_arg(self, args: "Geometry.SideArg", device):
+        """Fill the arguments to be passed to side-related device functions"""
         raise NotImplementedError
 
     @staticmethod
@@ -212,19 +220,21 @@ class Geometry:
     # Default implementations for dependent quantities
     # Can be overridden in derived classes if more efficient implementations exist
 
+    _dynamic_attribute_constructors: ClassVar = {
+        "cell_inverse_deformation_gradient": lambda obj: obj._make_cell_inverse_deformation_gradient(),
+        "cell_measure": lambda obj: obj._make_cell_measure(),
+        "cell_normal": lambda obj: obj._make_cell_normal(),
+        "side_inverse_deformation_gradient": lambda obj: obj._make_side_inverse_deformation_gradient(),
+        "side_inner_inverse_deformation_gradient": lambda obj: obj._make_side_inner_inverse_deformation_gradient(),
+        "side_outer_inverse_deformation_gradient": lambda obj: obj._make_side_outer_inverse_deformation_gradient(),
+        "side_measure": lambda obj: obj._make_side_measure(),
+        "side_measure_ratio": lambda obj: obj._make_side_measure_ratio(),
+        "side_normal": lambda obj: obj._make_side_normal(),
+        "compute_cell_bounds": lambda obj: obj._make_compute_cell_bounds(),
+    }
+
     def _make_default_dependent_implementations(self):
-        self.cell_inverse_deformation_gradient = self._make_cell_inverse_deformation_gradient()
-        self.cell_measure = self._make_cell_measure()
-        self.cell_normal = self._make_cell_normal()
-
-        self.side_inverse_deformation_gradient = self._make_side_inverse_deformation_gradient()
-        self.side_inner_inverse_deformation_gradient = self._make_side_inner_inverse_deformation_gradient()
-        self.side_outer_inverse_deformation_gradient = self._make_side_outer_inverse_deformation_gradient()
-        self.side_measure = self._make_side_measure()
-        self.side_measure_ratio = self._make_side_measure_ratio()
-        self.side_normal = self._make_side_normal()
-
-        self.compute_cell_bounds = self._make_compute_cell_bounds()
+        cache.setup_dynamic_attributes(self, cls=__class__)
 
     @wp.func
     def _element_measure(F: wp.vec2):
@@ -484,7 +494,7 @@ class Geometry:
         return self._make_element_closest_point(element_kind=ElementKind.SIDE, assume_linear=assume_linear)
 
     def make_filtered_cell_lookup(self, filter_func: wp.Function = None):
-        suffix = f"{self.name}{filter_func.func.__qualname__ if filter_func is not None else ''}"
+        suffix = f"{self.name}{filter_func.key if filter_func is not None else ''}"
         pos_type = cache.cached_vec_type(self.dimension, dtype=float)
 
         @cache.dynamic_func(suffix=suffix)

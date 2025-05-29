@@ -186,10 +186,13 @@ class Grid2D(Geometry):
     @cached_arg_value
     def cell_arg_value(self, device) -> CellArg:
         args = self.CellArg()
+        self.fill_cell_arg(args, device)
+        return args
+
+    def fill_cell_arg(self, args: CellArg, device):
         args.res = self.res
         args.cell_size = self.cell_size
         args.origin = self.bounds_lo
-        return args
 
     @wp.func
     def cell_position(args: CellArg, s: Sample):
@@ -226,7 +229,7 @@ class Grid2D(Geometry):
         return True
 
     def make_filtered_cell_lookup(self, filter_func: wp.Function = None):
-        suffix = f"{self.name}{filter_func.func.__qualname__ if filter_func is not None else ''}"
+        suffix = f"{self.name}{filter_func.key if filter_func is not None else ''}"
 
         @dynamic_func(suffix=suffix)
         def cell_lookup(args: self.CellArg, pos: wp.vec2, max_dist: float, filter_data: Any, filter_target: Any):
@@ -300,17 +303,22 @@ class Grid2D(Geometry):
     @cached_arg_value
     def side_arg_value(self, device) -> SideArg:
         args = self.SideArg()
+        self.fill_side_arg(args, device)
+        return args
 
+    def fill_side_arg(self, args: SideArg, device):
         args.axis_offsets = wp.vec2i(
             0,
             self.res[1],
         )
         args.cell_count = self.cell_count()
         args.cell_arg = self.cell_arg_value(device)
-        return args
 
     def side_index_arg_value(self, device) -> SideIndexArg:
         return self.side_arg_value(device)
+
+    def fill_side_index_arg(self, args: SideIndexArg, device):
+        self.fill_side_arg(args, device)
 
     @wp.func
     def boundary_side_index(args: SideArg, boundary_side_index: int):

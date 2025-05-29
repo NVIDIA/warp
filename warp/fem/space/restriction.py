@@ -144,13 +144,16 @@ class SpaceRestriction:
         dof_indices_in_element: wp.array(dtype=int)
 
     @cached_arg_value
-    def node_arg(self, device):
+    def node_arg_value(self, device):
         arg = SpaceRestriction.NodeArg()
+        self.fill_node_arg(arg, device)
+        return arg
+
+    def fill_node_arg(self, arg: NodeArg, device):
         arg.dof_element_offsets = self._dof_partition_element_offsets.array.to(device)
         arg.dof_element_indices = self._dof_element_indices.array.to(device)
         arg.dof_partition_indices = self._dof_partition_indices.array.to(device)
         arg.dof_indices_in_element = self._dof_indices_in_element.array.to(device)
-        return arg
 
     @wp.func
     def node_partition_index(args: NodeArg, restriction_node_index: int):

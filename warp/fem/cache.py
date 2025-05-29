@@ -16,12 +16,12 @@
 import ast
 import bisect
 import hashlib
-import inspect
 import re
 import weakref
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import warp as wp
+from warp.codegen import get_annotations
 from warp.fem.operator import Integrand
 from warp.fem.types import Domain, Field
 
@@ -36,10 +36,17 @@ def _make_key(obj, suffix: str, options: Optional[Dict[str, Any]] = None):
     # human-readable part
     key = _key_re.sub("", f"{obj.__name__}_{suffix}")
 
-    opts_key = "".join([f"{k}:{v}" for k, v in sorted(options.items())]) if options is not None else ""
-    uid = hashlib.blake2b(
-        bytes(f"{obj.__module__}{obj.__qualname__}{suffix}{opts_key}", encoding="utf-8"), digest_size=4
-    ).hexdigest()
+    sorted_opts = sorted(options.items()) if options is not None else ()
+    opts_str = "".join(
+        (
+            obj.__module__,
+            obj.__qualname__,
+            suffix,
+            *(opt[0] for opt in sorted_opts),
+            *(str(opt[1]) for opt in sorted_opts),
+        )
+    )
+    uid = hashlib.blake2b(bytes(opts_str, encoding="utf-8"), digest_size=4).hexdigest()
 
     # avoid long keys, issues on win
     key = f"{key[:64]}_{uid}"
@@ -48,6 +55,8 @@ def _make_key(obj, suffix: str, options: Optional[Dict[str, Any]] = None):
 
 
 def _arg_type_name(arg_type):
+    if isinstance(arg_type, str):
+        return arg_type
     if arg_type in (Field, Domain):
         return ""
     return wp.types.get_type_code(wp.types.type_to_warp(arg_type))
@@ -55,10 +64,12 @@ def _arg_type_name(arg_type):
 
 def _make_cache_key(func, key, argspec=None):
     if argspec is None:
-        argspec = inspect.getfullargspec(func)
+        annotations = get_annotations(func)
+    else:
+        annotations = argspec.annotations
 
-    sig_key = "".join([f"{k}:{_arg_type_name(v)}" for k, v in argspec.annotations.items()])
-    return key + sig_key
+    sig_key = (key, tuple((k, _arg_type_name(v)) for k, v in annotations.items()))
+    return sig_key
 
 
 def _register_function(
@@ -180,22 +191,26 @@ def get_argument_struct(arg_types: Dict[str, type]):
     return get_struct(Args, suffix=suffix)
 
 
-def populate_argument_struct(Args: wp.codegen.Struct, values: Dict[str, Any], func_name: str):
+def populate_argument_struct(
+    Args: wp.codegen.Struct, values: Dict[str, Any], func_name: str, value_struct_values: Optional = None
+):
     if values is None:
         values = {}
 
-    value_struct_values = Args()
-    for k, v in values.items():
-        try:
+    if value_struct_values is None:
+        value_struct_values = Args()
+
+    try:
+        for k, v in values.items():
             setattr(value_struct_values, k, v)
-        except Exception as err:
-            if k not in Args.vars:
-                raise ValueError(
-                    f"Passed value argument '{k}' does not match any of the function '{func_name}' parameters"
-                ) from err
+    except Exception as err:
+        if k not in Args.vars:
             raise ValueError(
-                f"Passed value argument '{k}' of type '{wp.types.type_repr(v)}' is incompatible with the function '{func_name}' parameter of type '{wp.types.type_repr(Args.vars[k].type)}'"
+                f"Passed value argument '{k}' does not match any of the function '{func_name}' parameters"
             ) from err
+        raise ValueError(
+            f"Passed value argument '{k}' of type '{wp.types.type_repr(v)}' is incompatible with the function '{func_name}' parameter of type '{wp.types.type_repr(Args.vars[k].type)}'"
+        ) from err
 
     missing_values = Args.vars.keys() - values.keys()
     if missing_values:
@@ -312,6 +327,40 @@ def cached_arg_value(func: Callable):
         return cache[device.ordinal]
 
     return get_arg
+
+
+def setup_dynamic_attributes(
+    obj,
+    cls: Optional[type] = None,
+    constructors: Optional[Dict[str, Callable]] = None,
+    key: Optional[str] = None,
+):
+    if cls is None:
+        cls = type(obj)
+
+    if key is None:
+        key = obj.name
+
+    if constructors is None:
+        constructors = cls._dynamic_attribute_constructors
+
+    key = (key, frozenset(constructors.keys()))
+
+    if not hasattr(cls, "_cached_dynamic_attrs"):
+        cls._cached_dynamic_attrs = {}
+
+    attrs = cls._cached_dynamic_attrs.get(key)
+    if attrs is None:
+        attrs = {}
+        # create attributes one-by-one, as some may depend on previous ones
+        for k, v in constructors.items():
+            attr = v(obj)
+            attrs[k] = attr
+            setattr(obj, k, attr)
+        cls._cached_dynamic_attrs[key] = attrs
+    else:
+        for k, v in attrs.items():
+            setattr(obj, k, v)
 
 
 _cached_vec_types = {}

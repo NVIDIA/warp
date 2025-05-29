@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, Tuple, Type
+from typing import ClassVar, Optional, Tuple, Type
 
 import warp as wp
 from warp.fem import cache
@@ -39,6 +39,12 @@ class SpaceTopology:
     .. note:: This will change to be defined per-element in future versions
     """
 
+    _dynamic_attribute_constructors: ClassVar = {
+        "element_node_count": lambda obj: obj._make_constant_element_node_count(),
+        "element_node_sign": lambda obj: obj._make_constant_element_node_sign(),
+        "side_neighbor_node_counts": lambda obj: obj._make_constant_side_neighbor_node_counts(),
+    }
+
     @wp.struct
     class TopologyArg:
         """Structure containing arguments to be passed to device functions"""
@@ -51,8 +57,7 @@ class SpaceTopology:
         self.MAX_NODES_PER_ELEMENT = wp.constant(max_nodes_per_element)
         self.ElementArg = geometry.CellArg
 
-        self._make_constant_element_node_count()
-        self._make_constant_element_node_sign()
+        cache.setup_dynamic_attributes(self, cls=__class__)
 
     @property
     def geometry(self) -> Geometry:
@@ -66,6 +71,9 @@ class SpaceTopology:
     def topo_arg_value(self, device) -> "TopologyArg":
         """Value of the topology argument structure to be passed to device functions"""
         return SpaceTopology.TopologyArg()
+
+    def fill_topo_arg(self, arg, device):
+        pass
 
     @property
     def name(self):
@@ -182,6 +190,11 @@ class SpaceTopology:
         ):
             return NODES_PER_ELEMENT
 
+        return constant_element_node_count
+
+    def _make_constant_side_neighbor_node_counts(self):
+        NODES_PER_ELEMENT = wp.constant(self.MAX_NODES_PER_ELEMENT)
+
         @cache.dynamic_func(suffix=self.name)
         def constant_side_neighbor_node_counts(
             side_arg: self.geometry.SideArg,
@@ -189,8 +202,7 @@ class SpaceTopology:
         ):
             return NODES_PER_ELEMENT, NODES_PER_ELEMENT
 
-        self.element_node_count = constant_element_node_count
-        self.side_neighbor_node_counts = constant_side_neighbor_node_counts
+        return constant_side_neighbor_node_counts
 
     def _make_constant_element_node_sign(self):
         @cache.dynamic_func(suffix=self.name)
@@ -202,11 +214,20 @@ class SpaceTopology:
         ):
             return 1.0
 
-        self.element_node_sign = constant_element_node_sign
+        return constant_element_node_sign
 
 
 class TraceSpaceTopology(SpaceTopology):
     """Auto-generated trace topology defining the node indices associated to the geometry sides"""
+
+    _dynamic_attribute_constructors: ClassVar = {
+        "inner_cell_index": lambda obj: obj._make_inner_cell_index(),
+        "outer_cell_index": lambda obj: obj._make_outer_cell_index(),
+        "neighbor_cell_index": lambda obj: obj._make_neighbor_cell_index(),
+        "element_node_index": lambda obj: obj._make_element_node_index(),
+        "element_node_count": lambda obj: obj._make_element_node_count(),
+        "element_node_sign": lambda obj: obj._make_element_node_sign(),
+    }
 
     def __init__(self, topo: SpaceTopology):
         self._topo = topo
@@ -218,14 +239,10 @@ class TraceSpaceTopology(SpaceTopology):
 
         self.TopologyArg = topo.TopologyArg
         self.topo_arg_value = topo.topo_arg_value
+        self.fill_topo_arg = topo.fill_topo_arg
 
-        self.inner_cell_index = self._make_inner_cell_index()
-        self.outer_cell_index = self._make_outer_cell_index()
-        self.neighbor_cell_index = self._make_neighbor_cell_index()
-
-        self.element_node_index = self._make_element_node_index()
-        self.element_node_count = self._make_element_node_count()
         self.side_neighbor_node_counts = None
+        cache.setup_dynamic_attributes(self, cls=__class__)
 
     def node_count(self) -> int:
         return self._topo.node_count()
@@ -354,21 +371,29 @@ class RegularDiscontinuousSpaceTopology(RegularDiscontinuousSpaceTopologyMixin, 
 
 
 class DeformedGeometrySpaceTopology(SpaceTopology):
+    _dynamic_attribute_constructors: ClassVar = {
+        "element_node_index": lambda obj: obj._make_element_node_index(),
+        "element_node_count": lambda obj: obj._make_element_node_count(),
+        "element_node_sign": lambda obj: obj._make_element_node_sign(),
+        "side_neighbor_node_counts": lambda obj: obj._make_side_neighbor_node_counts(),
+    }
+
     def __init__(self, geometry: DeformedGeometry, base_topology: SpaceTopology):
         self.base = base_topology
         super().__init__(geometry, base_topology.MAX_NODES_PER_ELEMENT)
 
         self.node_count = self.base.node_count
         self.topo_arg_value = self.base.topo_arg_value
+        self.fill_topo_arg = self.base.fill_topo_arg
         self.TopologyArg = self.base.TopologyArg
 
-        self._make_passthrough_functions()
+        cache.setup_dynamic_attributes(self, cls=__class__)
 
     @property
     def name(self):
         return f"{self.base.name}_{self.geometry.field.name}"
 
-    def _make_passthrough_functions(self):
+    def _make_element_node_index(self):
         @cache.dynamic_func(suffix=self.name)
         def element_node_index(
             elt_arg: self.geometry.CellArg,
@@ -378,6 +403,9 @@ class DeformedGeometrySpaceTopology(SpaceTopology):
         ):
             return self.base.element_node_index(elt_arg.base_arg, topo_arg, element_index, node_index_in_elt)
 
+        return element_node_index
+
+    def _make_element_node_count(self):
         @cache.dynamic_func(suffix=self.name)
         def element_node_count(
             elt_arg: self.geometry.CellArg,
@@ -386,6 +414,9 @@ class DeformedGeometrySpaceTopology(SpaceTopology):
         ):
             return self.base.element_node_count(elt_arg.base_arg, topo_arg, element_count)
 
+        return element_node_count
+
+    def _make_side_neighbor_node_counts(self):
         @cache.dynamic_func(suffix=self.name)
         def side_neighbor_node_counts(
             side_arg: self.geometry.SideArg,
@@ -394,6 +425,9 @@ class DeformedGeometrySpaceTopology(SpaceTopology):
             inner_count, outer_count = self.base.side_neighbor_node_counts(side_arg.base_arg, element_index)
             return inner_count, outer_count
 
+        return side_neighbor_node_counts
+
+    def _make_element_node_sign(self):
         @cache.dynamic_func(suffix=self.name)
         def element_node_sign(
             elt_arg: self.geometry.CellArg,
@@ -403,10 +437,7 @@ class DeformedGeometrySpaceTopology(SpaceTopology):
         ):
             return self.base.element_node_sign(elt_arg.base_arg, topo_arg, element_index, node_index_in_elt)
 
-        self.element_node_index = element_node_index
-        self.element_node_count = element_node_count
-        self.element_node_sign = element_node_sign
-        self.side_neighbor_node_counts = side_neighbor_node_counts
+        return element_node_sign
 
 
 def forward_base_topology(topology_class: Type[SpaceTopology], geometry: Geometry, *args, **kwargs) -> SpaceTopology:

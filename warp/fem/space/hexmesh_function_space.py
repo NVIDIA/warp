@@ -85,13 +85,15 @@ class HexmeshSpaceTopology(SpaceTopology):
     @cache.cached_arg_value
     def topo_arg_value(self, device):
         arg = HexmeshTopologyArg()
+        self.fill_topo_arg(arg, device)
+        return arg
+
+    def fill_topo_arg(self, arg: HexmeshTopologyArg, device):
         arg.hex_edge_indices = self._hex_edge_indices.to(device)
         arg.hex_face_indices = self._hex_face_indices.to(device)
-
         arg.vertex_count = self._mesh.vertex_count()
         arg.face_count = self._mesh.side_count()
         arg.edge_count = self._edge_count
-        return arg
 
     def _compute_hex_face_indices(self):
         self._hex_face_indices = wp.empty(

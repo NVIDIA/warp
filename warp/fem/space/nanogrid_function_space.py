@@ -72,7 +72,10 @@ class NanogridSpaceTopology(SpaceTopology):
     @cache.cached_arg_value
     def topo_arg_value(self, device):
         arg = NanogridTopologyArg()
+        self.fill_topo_arg(arg, device)
+        return arg
 
+    def fill_topo_arg(self, arg, device):
         arg.vertex_grid = self._vertex_grid
         arg.face_grid = self._face_grid
         arg.edge_grid = self._edge_grid
@@ -80,7 +83,6 @@ class NanogridSpaceTopology(SpaceTopology):
         arg.vertex_count = self._grid.vertex_count()
         arg.face_count = self._face_count
         arg.edge_count = self._edge_count
-        return arg
 
     def _make_element_node_index(self):
         element_node_index_generic = self._make_element_node_index_generic()

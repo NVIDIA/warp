@@ -75,6 +75,10 @@ class TetmeshSpaceTopology(SpaceTopology):
     @cache.cached_arg_value
     def topo_arg_value(self, device):
         arg = TetmeshTopologyArg()
+        self.fill_topo_arg(arg, device)
+        return arg
+
+    def fill_topo_arg(self, arg: TetmeshTopologyArg, device):
         arg.tet_face_indices = self._tet_face_indices.to(device)
         arg.tet_edge_indices = self._tet_edge_indices.to(device)
         arg.face_vertex_indices = self._mesh.face_vertex_indices.to(device)
@@ -83,7 +87,6 @@ class TetmeshSpaceTopology(SpaceTopology):
         arg.vertex_count = self._mesh.vertex_count()
         arg.face_count = self._mesh.side_count()
         arg.edge_count = self._edge_count
-        return arg
 
     def _compute_tet_face_indices(self):
         self._tet_face_indices = wp.empty(

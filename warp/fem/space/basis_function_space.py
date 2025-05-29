@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 import warp as wp
 from warp.fem import cache
@@ -30,6 +30,21 @@ from .partition import SpacePartition, make_space_partition
 
 class CollocatedFunctionSpace(FunctionSpace):
     """Function space where values are collocated at nodes"""
+
+    _dynamic_attribute_constructors: ClassVar = {
+        "node_basis_element": lambda obj: obj._make_node_basis_element(),
+        "value_basis_element": lambda obj: obj._make_value_basis_element(),
+        "node_coords_in_element": lambda obj: obj._basis.make_node_coords_in_element(),
+        "node_quadrature_weight": lambda obj: obj._basis.make_node_quadrature_weight(),
+        "element_inner_weight": lambda obj: obj._basis.make_element_inner_weight(),
+        "element_inner_weight_gradient": lambda obj: obj._basis.make_element_inner_weight_gradient(),
+        "element_outer_weight": lambda obj: obj._basis.make_element_outer_weight(),
+        "element_outer_weight_gradient": lambda obj: obj._basis.make_element_outer_weight_gradient(),
+        "space_value": lambda obj: obj._make_space_value(),
+        "space_gradient": lambda obj: obj._make_space_gradient(),
+        "space_divergence": lambda obj: obj._make_space_divergence(),
+        "node_dof_value": lambda obj: obj._make_node_dof_value(),
+    }
 
     @wp.struct
     class LocalValueMap:
@@ -48,24 +63,11 @@ class CollocatedFunctionSpace(FunctionSpace):
 
         self.SpaceArg = self._basis.BasisArg
         self.space_arg_value = self._basis.basis_arg_value
+        self.fill_space_arg = self._basis.fill_basis_arg
 
         self.ORDER = self._basis.ORDER
 
-        self.node_basis_element = self._make_node_basis_element()
-        self.value_basis_element = self._make_value_basis_element()
-
-        self.node_coords_in_element = self._basis.make_node_coords_in_element()
-        self.node_quadrature_weight = self._basis.make_node_quadrature_weight()
-        self.element_inner_weight = self._basis.make_element_inner_weight()
-        self.element_inner_weight_gradient = self._basis.make_element_inner_weight_gradient()
-        self.element_outer_weight = self._basis.make_element_outer_weight()
-        self.element_outer_weight_gradient = self._basis.make_element_outer_weight_gradient()
-
-        self.space_value = self._make_space_value()
-        self.space_gradient = self._make_space_gradient()
-        self.space_divergence = self._make_space_divergence()
-
-        self.node_dof_value = self._make_node_dof_value()
+        cache.setup_dynamic_attributes(self)
 
         # For backward compatibility
         if hasattr(basis, "node_grid"):
@@ -194,6 +196,20 @@ class CollocatedFunctionSpaceTrace(CollocatedFunctionSpace):
 class VectorValuedFunctionSpace(FunctionSpace):
     """Function space whose values are vectors"""
 
+    _dynamic_attribute_constructors: ClassVar = {
+        "value_basis_element": lambda obj: obj._make_value_basis_element(),
+        "node_coords_in_element": lambda obj: obj._basis.make_node_coords_in_element(),
+        "node_quadrature_weight": lambda obj: obj._basis.make_node_quadrature_weight(),
+        "element_inner_weight": lambda obj: obj._basis.make_element_inner_weight(),
+        "element_inner_weight_gradient": lambda obj: obj._basis.make_element_inner_weight_gradient(),
+        "element_outer_weight": lambda obj: obj._basis.make_element_outer_weight(),
+        "element_outer_weight_gradient": lambda obj: obj._basis.make_element_outer_weight_gradient(),
+        "space_value": lambda obj: obj._make_space_value(),
+        "space_gradient": lambda obj: obj._make_space_gradient(),
+        "space_divergence": lambda obj: obj._make_space_divergence(),
+        "node_dof_value": lambda obj: obj._make_node_dof_value(),
+    }
+
     def __init__(self, basis: BasisSpace):
         self._basis = basis
 
@@ -207,6 +223,7 @@ class VectorValuedFunctionSpace(FunctionSpace):
 
         self.SpaceArg = self._basis.BasisArg
         self.space_arg_value = self._basis.basis_arg_value
+        self.fill_space_arg = self._basis.fill_basis_arg
 
         self.ORDER = self._basis.ORDER
 
@@ -214,20 +231,7 @@ class VectorValuedFunctionSpace(FunctionSpace):
             shape=(self.geometry.dimension, self.geometry.cell_dimension), dtype=float
         )
 
-        self.value_basis_element = self._make_value_basis_element()
-
-        self.node_coords_in_element = self._basis.make_node_coords_in_element()
-        self.node_quadrature_weight = self._basis.make_node_quadrature_weight()
-        self.element_inner_weight = self._basis.make_element_inner_weight()
-        self.element_inner_weight_gradient = self._basis.make_element_inner_weight_gradient()
-        self.element_outer_weight = self._basis.make_element_outer_weight()
-        self.element_outer_weight_gradient = self._basis.make_element_outer_weight_gradient()
-
-        self.space_value = self._make_space_value()
-        self.space_gradient = self._make_space_gradient()
-        self.space_divergence = self._make_space_divergence()
-
-        self.node_dof_value = self._make_node_dof_value()
+        cache.setup_dynamic_attributes(self, cls=__class__)
 
     @property
     def name(self):
@@ -319,11 +323,15 @@ class VectorValuedFunctionSpace(FunctionSpace):
 class CovariantFunctionSpace(VectorValuedFunctionSpace):
     """Function space whose values are covariant vectors"""
 
+    _dynamic_attribute_constructors: ClassVar = {
+        "local_value_map_inner": lambda obj: obj._make_local_value_map(),
+        "local_value_map_outer": lambda obj: obj.local_value_map_inner,
+    }
+
     def __init__(self, basis: BasisSpace):
         super().__init__(basis)
 
-        self.local_value_map_inner = self._make_local_value_map()
-        self.local_value_map_outer = self.local_value_map_inner
+        cache.setup_dynamic_attributes(self, cls=__class__)
 
     def trace(self) -> "CovariantFunctionSpaceTrace":
         return CovariantFunctionSpaceTrace(self)
@@ -348,12 +356,16 @@ class CovariantFunctionSpace(VectorValuedFunctionSpace):
 class CovariantFunctionSpaceTrace(VectorValuedFunctionSpace):
     """Trace of a :class:`CovariantFunctionSpace`"""
 
+    _dynamic_attribute_constructors: ClassVar = {
+        "local_value_map_inner": lambda obj: obj._make_local_value_map_inner(),
+        "local_value_map_outer": lambda obj: obj._make_local_value_map_outer(),
+    }
+
     def __init__(self, space: VectorValuedFunctionSpace):
         self._space = space
         super().__init__(space._basis.trace())
 
-        self.local_value_map_inner = self._make_local_value_map_inner()
-        self.local_value_map_outer = self._make_local_value_map_outer()
+        cache.setup_dynamic_attributes(self, cls=__class__)
 
     @property
     def name(self):
@@ -396,11 +408,15 @@ class CovariantFunctionSpaceTrace(VectorValuedFunctionSpace):
 class ContravariantFunctionSpace(VectorValuedFunctionSpace):
     """Function space whose values are contravariant vectors"""
 
+    _dynamic_attribute_constructors: ClassVar = {
+        "local_value_map_inner": lambda obj: obj._make_local_value_map(),
+        "local_value_map_outer": lambda obj: obj.local_value_map_inner,
+    }
+
     def __init__(self, basis: BasisSpace):
         super().__init__(basis)
 
-        self.local_value_map_inner = self._make_local_value_map()
-        self.local_value_map_outer = self.local_value_map_inner
+        cache.setup_dynamic_attributes(self, cls=__class__)
 
     def trace(self) -> "ContravariantFunctionSpaceTrace":
         return ContravariantFunctionSpaceTrace(self)
@@ -421,12 +437,16 @@ class ContravariantFunctionSpace(VectorValuedFunctionSpace):
 class ContravariantFunctionSpaceTrace(VectorValuedFunctionSpace):
     """Trace of a :class:`ContravariantFunctionSpace`"""
 
+    _dynamic_attribute_constructors: ClassVar = {
+        "local_value_map_inner": lambda obj: obj._make_local_value_map_inner(),
+        "local_value_map_outer": lambda obj: obj._make_local_value_map_outer(),
+    }
+
     def __init__(self, space: ContravariantFunctionSpace):
         self._space = space
         super().__init__(space._basis.trace())
 
-        self.local_value_map_inner = self._make_local_value_map_inner()
-        self.local_value_map_outer = self._make_local_value_map_outer()
+        cache.setup_dynamic_attributes(self, cls=__class__)
 
     @property
     def name(self):

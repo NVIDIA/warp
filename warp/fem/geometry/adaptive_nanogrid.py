@@ -107,6 +107,13 @@ class AdaptiveNanogrid(Geometry):
         self._stacked_face_grid = None
         self._stacked_face_count = 0
 
+        transform = self.transform
+        self._inverse_transform = wp.mat33f(np.linalg.inv(transform))
+        self._cell_volume = abs(np.linalg.det(transform))
+        self._face_areas = wp.vec3(
+            tuple(np.linalg.norm(np.cross(transform[:, k - 2], transform[:, k - 1])) for k in range(3))
+        )
+
     @property
     def cell_grid(self) -> wp.Volume:
         return self._cell_grid
@@ -167,16 +174,16 @@ class AdaptiveNanogrid(Geometry):
     @cache.cached_arg_value
     def cell_arg_value(self, device) -> CellArg:
         args = self.CellArg()
-        args.cell_grid = self._cell_grid.id
-        args.cell_ijk = self._cell_ijk
-        args.cell_level = self._cell_level
-
-        transform = self.transform
-        args.inverse_transform = wp.mat33f(np.linalg.inv(transform))
-        args.cell_volume = abs(np.linalg.det(transform))
-        args.level_count = self.level_count
-
+        self.fill_cell_arg(args, device)
         return args
+
+    def fill_cell_arg(self, arg: CellArg, device):
+        arg.cell_grid = self._cell_grid.id
+        arg.cell_ijk = self._cell_ijk
+        arg.cell_level = self._cell_level
+        arg.inverse_transform = self._inverse_transform
+        arg.cell_volume = self._cell_volume
+        arg.level_count = self.level_count
 
     @wp.func
     def _cell_scale(args: CellArg, cell_index: int):
@@ -249,6 +256,7 @@ class AdaptiveNanogrid(Geometry):
 
     SideIndexArg = Nanogrid.SideIndexArg
     side_index_arg_value = Nanogrid.side_index_arg_value
+    fill_side_index_arg = Nanogrid.fill_side_index_arg
 
     SideArg = AdaptiveNanogridSideArg
 
@@ -258,19 +266,19 @@ class AdaptiveNanogrid(Geometry):
 
     @cache.cached_arg_value
     def side_arg_value(self, device) -> SideArg:
-        self._ensure_face_grid()
-
         args = self.SideArg()
-        args.cell_arg = self.cell_arg_value(device)
-        args.face_ijk = self._face_ijk.to(device)
-        args.face_flags = self._face_flags.to(device)
-        args.face_cell_indices = self._face_cell_indices.to(device)
-        transform = self.transform
-        args.face_areas = wp.vec3(
-            tuple(np.linalg.norm(np.cross(transform[:, k - 2], transform[:, k - 1])) for k in range(3))
-        )
+        self.fill_side_arg(args, device)
 
         return args
+
+    def fill_side_arg(self, arg: SideArg, device):
+        self._ensure_face_grid()
+
+        self.fill_cell_arg(arg.cell_arg, device)
+        arg.face_ijk = self._face_ijk.to(device)
+        arg.face_flags = self._face_flags.to(device)
+        arg.face_cell_indices = self._face_cell_indices.to(device)
+        arg.face_areas = self._face_areas
 
     @wp.func
     def boundary_side_index(args: SideIndexArg, boundary_side_index: int):
