@@ -1687,44 +1687,46 @@ def seq_match_ellipsis(a, b, match_generic=False) -> bool:
 
 
 def types_equal(a, b, match_generic=False):
-    a_origin = get_origin(a)
-    b_origin = get_origin(b)
+    if match_generic:
+        a_is_seq = True
+        a_is_tuple = True
+        if is_tuple(a):
+            a = a.types
+        elif get_origin(a) is tuple:
+            a = get_args(a)
+        else:
+            a_is_tuple = False
+            a_is_seq = isinstance(a, Sequence)
 
-    a_is_tuple = True
-    if is_tuple(a):
-        a = a.types
-    elif a_origin is tuple:
-        a = get_args(a)
-    else:
-        a_is_tuple = False
+        b_is_seq = True
+        b_is_tuple = True
+        if is_tuple(b):
+            b = b.types
+        elif get_origin(b) is tuple:
+            b = get_args(b)
+        else:
+            b_is_tuple = False
+            b_is_seq = isinstance(b, Sequence)
 
-    b_is_tuple = True
-    if is_tuple(b):
-        b = b.types
-    elif b_origin is tuple:
-        b = get_args(b)
-    else:
-        b_is_tuple = False
+        if a_is_seq and b_is_seq:
+            if (not a and a_is_tuple) or (not b and b_is_tuple):
+                # We have a bare tuple definition like `Tuple`, which matches to anything.
+                return True
 
-    if isinstance(a, Sequence) and isinstance(b, Sequence):
-        if (not a and a_is_tuple) or (not b and b_is_tuple):
-            # We have a bare tuple definition like `Tuple`, which matches to anything.
-            return True
+            a_has_ellipsis = a and a[-1] is Ellipsis
+            b_has_ellipsis = b and b[-1] is Ellipsis
+            if a_has_ellipsis and b_has_ellipsis:
+                # Delegate to comparing all the elements using the standard approach.
+                pass
+            elif a_has_ellipsis:
+                return seq_match_ellipsis(a, b, match_generic=match_generic)
+            elif b_has_ellipsis:
+                return seq_match_ellipsis(b, a, match_generic=match_generic)
 
-        a_has_ellipsis = a and a[-1] is Ellipsis
-        b_has_ellipsis = b and b[-1] is Ellipsis
-        if a_has_ellipsis and b_has_ellipsis:
-            # Delegate to comparing all the elements using the standard approach.
-            pass
-        elif a_has_ellipsis:
-            return seq_match_ellipsis(a, b, match_generic=match_generic)
-        elif b_has_ellipsis:
-            return seq_match_ellipsis(b, a, match_generic=match_generic)
-
-        return len(a) == len(b) and all(types_equal(x, y, match_generic=match_generic) for x, y in zip(a, b))
-    elif isinstance(a, Sequence) or isinstance(b, Sequence):
-        # A sequence can only match to another sequence.
-        return False
+            return len(a) == len(b) and all(types_equal(x, y, match_generic=match_generic) for x, y in zip(a, b))
+        elif a_is_seq or b_is_seq:
+            # A sequence can only match to another sequence.
+            return False
 
     # convert to canonical types
     if a == float:
@@ -5232,6 +5234,9 @@ def type_is_generic(t):
 
     if is_array(t):
         return type_is_generic(t.dtype)
+
+    if get_origin(t) is tuple:
+        return True
 
     if hasattr(t, "_wp_scalar_type_"):
         # vector/matrix type, check if dtype is generic
