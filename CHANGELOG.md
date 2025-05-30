@@ -350,6 +350,7 @@
   `wp.sim.FeatherstoneIntegrator` ([GH-349](https://github.com/NVIDIA/warp/issues/349)).
 - Fix overload resolution of generic Warp functions with default arguments.
 - Fix rendering of arrows with different `up_axis`, `color` in `OpenGLRenderer` ([GH-448](https://github.com/NVIDIA/warp/issues/448)).
+- Fix bugs when converting `__cuda_array_interface__` arrays to Warp ([GH-763](https://github.com/NVIDIA/warp/issues/763)).
 
 ## [1.5.1] - 2025-01-02
 

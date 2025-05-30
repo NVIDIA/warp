@@ -18,6 +18,7 @@ from __future__ import annotations
 import builtins
 import ctypes
 import inspect
+import math
 import struct
 import zlib
 from typing import (
@@ -2008,65 +2009,131 @@ class array(Array[DType]):
             desc = data.__cuda_array_interface__
             data_shape = desc.get("shape")
             data_strides = desc.get("strides")
-            data_dtype = np.dtype(desc.get("typestr"))
+            data_dtype_np = np.dtype(desc.get("typestr"))
+            data_dtype = dtype_from_numpy(data_dtype_np)
             data_ptr = desc.get("data")[0]
 
             if dtype == Any:
-                dtype = np_dtype_to_warp_type[data_dtype]
+                dtype = data_dtype
             else:
                 # Warn if the data type is compatible with the requested dtype
-                if not np_dtype_is_compatible(data_dtype, dtype):
+                if not np_dtype_is_compatible(data_dtype_np, dtype):
                     warp.utils.warn(
-                        f"The input data type {data_dtype} does not appear to be "
+                        f"The input data type {data_dtype_np} does not appear to be "
                         f"compatible with the requested dtype {dtype}. If "
                         "data-type sizes do not match, then this may lead to memory-access violations."
                     )
 
             if data_strides is None:
-                data_strides = strides_from_shape(data_shape, dtype)
+                data_strides = strides_from_shape(data_shape, data_dtype)
 
             data_ndim = len(data_shape)
 
-            # determine whether the input needs reshaping
-            target_npshape = None
-            if shape is not None:
-                target_npshape = (*shape, *dtype_shape)
-            elif dtype_ndim > 0:
-                # prune inner dimensions of length 1
-                while data_ndim > 1 and data_shape[-1] == 1:
-                    data_shape = data_shape[:-1]
-                # if the inner dims don't match exactly, check if the innermost dim is a multiple of type length
-                if data_ndim < dtype_ndim or data_shape[-dtype_ndim:] != dtype_shape:
-                    if data_shape[-1] == dtype._length_:
-                        target_npshape = (*data_shape[:-1], *dtype_shape)
-                    elif data_shape[-1] % dtype._length_ == 0:
-                        target_npshape = (*data_shape[:-1], data_shape[-1] // dtype._length_, *dtype_shape)
-                    else:
-                        if dtype_ndim == 1:
+            # determine shape and strides
+            if shape is None:
+                if dtype_ndim == 0:
+                    # scalars
+                    shape = data_shape
+                    strides = data_strides
+                else:
+                    # vectors/matrices
+                    if data_ndim >= dtype_ndim and data_shape[-dtype_ndim:] == dtype_shape:
+                        # the inner shape matches exactly, check inner strides
+                        if data_strides[-dtype_ndim:] != strides_from_shape(dtype._shape_, dtype._wp_scalar_type_):
                             raise RuntimeError(
-                                f"The inner dimensions of the input data are not compatible with the requested vector type {warp.context.type_str(dtype)}: expected an inner dimension that is a multiple of {dtype._length_}"
+                                f"The inner strides of the input array {data_strides} are not compatible with the requested data type {warp.context.type_str(dtype)}"
                             )
+                        shape = data_shape[:-dtype_ndim] or (1,)
+                        strides = data_strides[:-dtype_ndim] or (type_size_in_bytes(dtype),)
+                    else:
+                        # ensure inner strides are contiguous
+                        if data_strides[-1] != type_size_in_bytes(data_dtype):
+                            raise RuntimeError(
+                                f"The inner strides of the input array {data_strides} are not compatible with the requested data type {warp.context.type_str(dtype)}"
+                            )
+                        # check if the innermost dim is a multiple of type length
+                        if data_shape[-1] == dtype._length_:
+                            shape = data_shape[:-1] or (1,)
+                            strides = data_strides[:-1] or (type_size_in_bytes(dtype),)
+                        elif data_shape[-1] % dtype._length_ == 0:
+                            shape = (*data_shape[:-1], data_shape[-1] // dtype._length_)
+                            strides = (*data_strides[:-1], data_strides[-1] * dtype._length_)
                         else:
                             raise RuntimeError(
-                                f"The inner dimensions of the input data are not compatible with the requested matrix type {warp.context.type_str(dtype)}: expected inner dimensions {dtype._shape_} or a multiple of {dtype._length_}"
+                                f"The shape of the input array {data_shape} is not compatible with the requested data type {warp.context.type_str(dtype)}"
                             )
-
-            if target_npshape is None:
-                target_npshape = data_shape if shape is None else shape
-
-            # determine final shape and strides
-            if dtype_ndim > 0:
-                # make sure the inner dims are contiguous for vector/matrix types
-                scalar_size = type_size_in_bytes(dtype._wp_scalar_type_)
-                inner_contiguous = data_strides[-1] == scalar_size
-                if inner_contiguous and dtype_ndim > 1:
-                    inner_contiguous = data_strides[-2] == scalar_size * dtype_shape[-1]
-
-                shape = target_npshape[:-dtype_ndim] or (1,)
-                strides = data_strides if shape == data_shape else strides_from_shape(shape, dtype)
             else:
-                shape = target_npshape or (1,)
-                strides = data_strides if shape == data_shape else strides_from_shape(shape, dtype)
+                # a shape was given, reshape if needed
+                if dtype_ndim == 0:
+                    # scalars
+                    if shape == data_shape:
+                        strides = data_strides
+                    else:
+                        # check if given shape is compatible
+                        if math.prod(shape) != math.prod(data_shape):
+                            raise RuntimeError(
+                                f"The shape of the input array {data_shape} is not compatible with the requested shape {shape}"
+                            )
+                        # check if data is contiguous
+                        if data_strides != strides_from_shape(data_shape, data_dtype):
+                            raise RuntimeError(
+                                f"The requested shape {shape} is not possible because the input array is not contiguous"
+                            )
+                        strides = strides_from_shape(shape, dtype)
+                else:
+                    # vectors/matrices
+                    if data_ndim >= dtype_ndim and data_shape[-dtype_ndim:] == dtype_shape:
+                        # the inner shape matches exactly, check outer shape
+                        if shape == data_shape[:-dtype_ndim]:
+                            strides = data_strides[:-dtype_ndim]
+                        else:
+                            # check if given shape is compatible
+                            if math.prod(shape) != math.prod(data_shape[:-dtype_ndim]):
+                                raise RuntimeError(
+                                    f"The shape of the input array {data_shape} is not compatible with the requested shape {shape} and data type {warp.context.type_str(dtype)}"
+                                )
+                            # check if data is contiguous
+                            if data_strides != strides_from_shape(data_shape, data_dtype):
+                                raise RuntimeError(
+                                    f"The requested shape {shape} is not possible because the input array is not contiguous"
+                                )
+                            strides = strides_from_shape(shape, dtype)
+                    else:
+                        # check if the innermost dim is a multiple of type length
+                        if data_shape[-1] == dtype._length_:
+                            if shape == data_shape[:-1]:
+                                strides = data_strides[:-1]
+                            else:
+                                # check if given shape is compatible
+                                if math.prod(shape) != math.prod(data_shape[:-1]):
+                                    raise RuntimeError(
+                                        f"The shape of the input array {data_shape} is not compatible with the requested shape {shape} and data type {warp.context.type_str(dtype)}"
+                                    )
+                                # check if data is contiguous
+                                if data_strides != strides_from_shape(data_shape, data_dtype):
+                                    raise RuntimeError(
+                                        f"The requested shape {shape} is not possible because the input array is not contiguous"
+                                    )
+                                strides = strides_from_shape(shape, dtype)
+                        elif data_shape[-1] % dtype._length_ == 0:
+                            if shape == (*data_shape[:-1], data_shape[-1] // dtype._length_):
+                                strides = (*data_strides[:-1], data_strides[-1] * dtype._length_)
+                            else:
+                                # check if given shape is compatible
+                                if math.prod(shape) != math.prod((*data_shape[:-1], data_shape[-1] // dtype._length_)):
+                                    raise RuntimeError(
+                                        f"The shape of the input array {data_shape} is not compatible with the requested shape {shape} and data type {warp.context.type_str(dtype)}"
+                                    )
+                                # check if data is contiguous
+                                if data_strides != strides_from_shape(data_shape, data_dtype):
+                                    raise RuntimeError(
+                                        f"The requested shape {shape} is not possible because the input array is not contiguous"
+                                    )
+                                strides = strides_from_shape(shape, dtype)
+                        else:
+                            raise RuntimeError(
+                                f"The shape of the input array {data_shape} is not compatible with the requested data type {warp.context.type_str(dtype)} and requested shape {shape}"
+                            )
 
             self._init_from_ptr(data_ptr, dtype, shape, strides, None, device, False, None)
 
