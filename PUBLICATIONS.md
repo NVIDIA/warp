@@ -7,6 +7,9 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2025
 
+- **Co-Design of Soft Gripper with Neural Physics**. *S. Yi, X. Bai, A. Singh, J. Ye, M. T. Tolley, X. Wang*. May 2025. [arXiv:2505.20404](https://arxiv.org/abs/2505.20404)
+- **MAGIC: Motion-Aware Generative Inference via Confidence-Guided LLM**. *S. Meng, Y. Luo, P. Liu*. May 2025. [arXiv:2505.16456](https://arxiv.org/abs/2505.16456)
+- **NavBench: A Unified Robotics Benchmark for Reinforcement Learning-Based Autonomous Navigation**. *M. El-Hariry, A. Richard, R. M. Castan, L. F. W. Batista, M. Geist, C. Pradalier, M. Olivares-Mendez*. May 2025. [arXiv:2505.14526](https://arxiv.org/abs/2505.14526)
 - **FOCI: Trajectory Optimization on Gaussian Splats**. *M. G. Andreu, M. Wilder-Smith, V. Klemm, V. Patil, J. Tordesillas, M. Hutter*. May 2025. [arXiv:2505.08510](https://arxiv.org/abs/2505.08510)
 - **Dynamic Robot Tool Use with Vision Language Models**. *N. Trupin, Z. Wang, A. H. Qureshi*. May 2025. [arXiv:2505.01399](https://arxiv.org/abs/2505.01399)
 - **AI-Enhanced Automatic Design of Efficient Underwater Gliders**. *P. Y. Chen, P. Ma, N. Hagemann, J. Romanishin, W. Wang, D. Rus, W. Matusik*. April 2025. [arXiv:2505.00222](https://arxiv.org/abs/2505.00222)
