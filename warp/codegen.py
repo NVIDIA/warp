@@ -3819,7 +3819,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None):
                     f"annotated as a tuple of {len(get_args(adj.arg_types['return']))} elements "
                     f"but the code returns {len(adj.return_var)} values."
                 )
-            elif not types_equal(adj.arg_types["return"], tuple(x.type for x in adj.return_var)):
+            elif not types_equal(adj.arg_types["return"], tuple(x.type for x in adj.return_var), match_generic=True):
                 raise WarpCodegenError(
                     f"The function `{adj.fun_name}` has its return type "
                     f"annotated as `{warp.context.type_str(adj.arg_types['return'])}` "

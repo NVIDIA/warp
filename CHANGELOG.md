@@ -108,6 +108,8 @@
 - Fix garbage collection issues with JAX FFI callbacks ([GH-711](https://github.com/NVIDIA/warp/pull/711)).
 - Fix `wp.atomic_*()` built-ins not working with some types
   ([GH-733](https://github.com/NVIDIA/warp/issues/733)).
+- Fix a performance regression related to kernel launches
+  ([GH-765](https://github.com/NVIDIA/warp/issues/765)).
 
 ## [1.7.1] - 2025-04-30
 
