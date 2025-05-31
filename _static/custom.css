@@ -1,0 +1,26 @@
+section#built-ins-reference dl.function table.hlist tbody
+{
+    display: table-cell;
+}
+
+section#built-ins-reference dl.function table.hlist td
+{
+    padding: 0;
+}
+
+section#built-ins-reference dl.function table.hlist ul
+{
+    list-style-type: none;
+    padding: 0;
+}
+
+section#built-ins-reference dl.function table.hlist li
+{
+    border-color: var(--pst-color-border);
+    border-radius: 1rem;
+    border-style: solid;
+    border-width: 2px;
+    font-size: 0.75rem;
+    margin: 0 0.25rem;
+    padding: 0 0.25rem;
+}
