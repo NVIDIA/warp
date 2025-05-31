@@ -855,7 +855,7 @@ def transformation(p: Vector[3, Float], q: Quaternion[Float], dtype: Float) -> T
 
 @over
 def transformation(*args: Float, dtype: Float) -> Transformation[Float]:
-    """Construct a spatial transfom vector of given dtype."""
+    """Construct a spatial transform vector of given dtype."""
     ...
 
 

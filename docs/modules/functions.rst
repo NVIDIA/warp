@@ -1517,7 +1517,7 @@ Transformations
        * Kernel
        * Differentiable
 
-    Construct a spatial transfom vector of given dtype.
+    Construct a spatial transform vector of given dtype.
 
 
 .. py:function:: transform_identity(dtype: Float) -> transformf

@@ -1756,7 +1756,7 @@ add_builtin(
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k not in ("dtype")},
     dispatch_func=transformation_dispatch_func,
     native_func="transform_t",
-    doc="Construct a spatial transfom vector of given dtype.",
+    doc="Construct a spatial transform vector of given dtype.",
     group="Spatial Math",
     export=False,
 )
