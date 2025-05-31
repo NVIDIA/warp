@@ -150,7 +150,7 @@ def radix_sort_pairs(keys, values, count: int):
 
     This function sorts pairs of arrays based on the keys array, maintaining the key-value
     relationship. The sort is stable and operates in linear time.
-    The `keys` and `values` arrays must be large enough to accomodate 2*`count` elements.
+    The `keys` and `values` arrays must be large enough to accommodate 2*`count` elements.
 
     Args:
         keys (wp.array): Array of keys to sort. Must be of type int32, float32, or int64.
@@ -206,7 +206,7 @@ def segmented_sort_pairs(
 
     This function performs a segmented sort of key-value pairs, where the sorting is done independently within each segment.
     The segments are defined by their start and optionally end indices.
-    The `keys` and `values` arrays must be large enough to accomodate 2*`count` elements.
+    The `keys` and `values` arrays must be large enough to accommodate 2*`count` elements.
 
     Args:
         keys: Array of keys to sort. Must be of type int32 or float32.
