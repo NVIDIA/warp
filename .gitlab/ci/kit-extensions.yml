@@ -147,12 +147,12 @@ create linux-aarch64 kit artifacts:
     - rm -r warp/bin/linux-aarch64/
   script:
     - !reference [.snippets, prepare-kit-artifacts]
-    - zip -r kit-extensions-linux-aarch64.zip exts/
+    - zip -r kit-extensions-linux-aarch64-$CI_COMMIT_SHORT_SHA.zip exts/
   artifacts:
     name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
     expose_as: "Kit Extensions linux-aarch64"
     paths:
-      - kit-extensions-linux-aarch64.zip
+      - kit-extensions-linux-aarch64-$CI_COMMIT_SHORT_SHA.zip
 
 create linux-x86_64 kit artifacts:
   stage: package
@@ -168,12 +168,12 @@ create linux-x86_64 kit artifacts:
     - rm -r warp/bin/linux-x86_64/
   script:
     - !reference [.snippets, prepare-kit-artifacts]
-    - zip -r kit-extensions-linux-x86_64.zip exts/
+    - zip -r kit-extensions-linux-x86_64-$CI_COMMIT_SHORT_SHA.zip exts/
   artifacts:
     name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
     expose_as: "Kit Extensions linux-x86_64"
     paths:
-      - kit-extensions-linux-x86_64.zip
+      - kit-extensions-linux-x86_64-$CI_COMMIT_SHORT_SHA.zip
 
 create windows-x86_64 kit artifacts:
   stage: package
@@ -186,12 +186,12 @@ create windows-x86_64 kit artifacts:
     - apt-get update && apt-get install zip --no-install-recommends -y
   script:
     - !reference [.snippets, prepare-kit-artifacts]
-    - zip -r kit-extensions-windows-x86_64.zip exts/
+    - zip -r kit-extensions-windows-x86_64-$CI_COMMIT_SHORT_SHA.zip exts/
   artifacts:
     name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
     expose_as: "Kit Extensions windows-x86_64"
     paths:
-      - kit-extensions-windows-x86_64.zip
+      - kit-extensions-windows-x86_64-$CI_COMMIT_SHORT_SHA.zip
 
 # ==============================================================================
 # Deployment Jobs
@@ -220,11 +220,11 @@ publish extensions to packman:
     deployment_tier: production
   before_script:
     - mkdir -p _build/linux-aarch64/release
-    - unzip kit-extensions-linux-aarch64.zip -d _build/linux-aarch64/release
+    - unzip kit-extensions-linux-aarch64-$CI_COMMIT_SHORT_SHA.zip -d _build/linux-aarch64/release
     - mkdir -p _build/linux-x86_64/release
-    - unzip kit-extensions-linux-x86_64.zip -d _build/linux-x86_64/release
+    - unzip kit-extensions-linux-x86_64-$CI_COMMIT_SHORT_SHA.zip -d _build/linux-x86_64/release
     - mkdir -p _build/windows-x86_64/release
-    - unzip kit-extensions-windows-x86_64.zip -d _build/windows-x86_64/release
+    - unzip kit-extensions-windows-x86_64-$CI_COMMIT_SHORT_SHA.zip -d _build/windows-x86_64/release
     - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
   script:
     - !reference [.osec:vault:v3:linux, codesign:perform_vault_requests]
@@ -254,21 +254,21 @@ publish to gitlab package registry:
     - apt-get update && apt-get install curl --no-install-recommends -y
   script:
     - |
-      if [ -f kit-extensions-linux-aarch64.zip ]; then
-        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions-linux-aarch64.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions-linux-aarch64.zip"
+      if [ -f kit-extensions-linux-aarch64-$CI_COMMIT_SHORT_SHA.zip ]; then
+        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions-linux-aarch64-$CI_COMMIT_SHORT_SHA.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions-linux-aarch64-${CI_COMMIT_SHORT_SHA}.zip"
       else
-        echo "kit-extensions-linux-aarch64.zip not found, skipping upload."
+        echo "kit-extensions-linux-aarch64-$CI_COMMIT_SHORT_SHA.zip not found, skipping upload."
       fi
     - |
-      if [ -f kit-extensions-linux-x86_64.zip ]; then
-        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions-linux-x86_64.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions-linux-x86_64.zip"
+      if [ -f kit-extensions-linux-x86_64-$CI_COMMIT_SHORT_SHA.zip ]; then
+        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions-linux-x86_64-$CI_COMMIT_SHORT_SHA.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions-linux-x86_64-${CI_COMMIT_SHORT_SHA}.zip"
       else
-        echo "kit-extensions-linux-x86_64.zip not found, skipping upload."
+        echo "kit-extensions-linux-x86_64-$CI_COMMIT_SHORT_SHA.zip not found, skipping upload."
       fi
     - |
-      if [ -f kit-extensions-windows-x86_64.zip ]; then
-        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions-windows-x86_64.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions-windows-x86_64.zip"
+      if [ -f kit-extensions-windows-x86_64-$CI_COMMIT_SHORT_SHA.zip ]; then
+        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file kit-extensions-windows-x86_64-$CI_COMMIT_SHORT_SHA.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/kit-extensions-windows-x86_64-${CI_COMMIT_SHORT_SHA}.zip"
       else
-        echo "kit-extensions-windows-x86_64.zip not found, skipping upload."
+        echo "kit-extensions-windows-x86_64-$CI_COMMIT_SHORT_SHA.zip not found, skipping upload."
       fi
     - echo "See the published files at $CI_PROJECT_URL/-/packages"
