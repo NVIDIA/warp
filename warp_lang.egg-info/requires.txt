@@ -1,0 +1,25 @@
+numpy
+
+[dev]
+pre-commit
+ruff==0.11.10
+nvtx
+sphinx-copybutton
+coverage[toml]
+
+[dev:python_version >= "3.9"]
+nvidia-sphinx-theme
+
+[docs]
+sphinx-copybutton
+ruff==0.11.10
+myst_parser
+
+[docs:python_version >= "3.9"]
+nvidia-sphinx-theme
+
+[extras]
+usd-core
+matplotlib
+pillow
+pyglet
