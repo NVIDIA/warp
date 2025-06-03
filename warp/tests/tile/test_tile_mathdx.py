@@ -219,7 +219,11 @@ def test_tile_math_cholesky_multiple_rhs(test, device):
     X_wp = wp.array2d(X_h, requires_grad=True, dtype=wp.float64, device=device)
 
     wp.launch_tiled(
-        tile_math_cholesky_multiple_rhs, dim=[1, 1], inputs=[A_wp, D_wp, L_wp, Y_wp, X_wp], block_dim=TILE_DIM, device=device
+        tile_math_cholesky_multiple_rhs,
+        dim=[1, 1],
+        inputs=[A_wp, D_wp, L_wp, Y_wp, X_wp],
+        block_dim=TILE_DIM,
+        device=device,
     )
     wp.synchronize_device(device)
 
