@@ -27,6 +27,9 @@
 #if WP_ENABLE_MATHDX
     #include <nvJitLink.h>
     #include <libmathdx.h>
+    #include <libcublasdx.h>
+    #include <libcufftdx.h>
+    #include <libcusolverdx.h>
 #endif
 
 #include <array>
@@ -3667,11 +3670,11 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
         CHECK_ANY(num_include_dirs == 0);
 
         bool res = true;
-        cufftdxHandle h;
-        CHECK_CUFFTDX(cufftdxCreate(&h));
+        cufftdxDescriptor h;
+        CHECK_CUFFTDX(cufftdxCreateDescriptor(&h));
 
-        // CUFFTDX_API_BLOCK_LMEM means each thread starts with a subset of the data
-        CHECK_CUFFTDX(cufftdxSetOperatorInt64(h, cufftdxOperatorType::CUFFTDX_OPERATOR_API, cufftdxApi::CUFFTDX_API_BLOCK_LMEM));
+        // CUFFTDX_API_LMEM means each thread starts with a subset of the data
+        CHECK_CUFFTDX(cufftdxSetOperatorInt64(h, cufftdxOperatorType::CUFFTDX_OPERATOR_API, cufftdxApi::CUFFTDX_API_LMEM));
         CHECK_CUFFTDX(cufftdxSetOperatorInt64(h, cufftdxOperatorType::CUFFTDX_OPERATOR_EXECUTION, commondxExecution::COMMONDX_EXECUTION_BLOCK));
         CHECK_CUFFTDX(cufftdxSetOperatorInt64(h, cufftdxOperatorType::CUFFTDX_OPERATOR_SIZE, (long long)size));
         CHECK_CUFFTDX(cufftdxSetOperatorInt64(h, cufftdxOperatorType::CUFFTDX_OPERATOR_DIRECTION, (cufftdxDirection)direction));
@@ -3696,7 +3699,7 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
             res = false;
         }
 
-        CHECK_CUFFTDX(cufftdxDestroy(h));
+        CHECK_CUFFTDX(cufftdxDestroyDescriptor(h));
 
         return res;
     }
@@ -3712,22 +3715,22 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
         CHECK_ANY(num_include_dirs == 0);
 
         bool res = true;
-        cublasdxHandle h;
-        CHECK_CUBLASDX(cublasdxCreate(&h));
+        cublasdxDescriptor h;
+        CHECK_CUBLASDX(cublasdxCreateDescriptor(&h));
 
         CHECK_CUBLASDX(cublasdxSetOperatorInt64(h, cublasdxOperatorType::CUBLASDX_OPERATOR_FUNCTION, cublasdxFunction::CUBLASDX_FUNCTION_MM));
         CHECK_CUBLASDX(cublasdxSetOperatorInt64(h, cublasdxOperatorType::CUBLASDX_OPERATOR_EXECUTION, commondxExecution::COMMONDX_EXECUTION_BLOCK));
-        CHECK_CUBLASDX(cublasdxSetOperatorInt64(h, cublasdxOperatorType::CUBLASDX_OPERATOR_API, cublasdxApi::CUBLASDX_API_BLOCK_SMEM));
+        CHECK_CUBLASDX(cublasdxSetOperatorInt64(h, cublasdxOperatorType::CUBLASDX_OPERATOR_API, cublasdxApi::CUBLASDX_API_SMEM));
         std::array<long long int, 3> precisions = {precision_A, precision_B, precision_C};
-        CHECK_CUBLASDX(cublasdxSetOperatorInt64Array(h, cublasdxOperatorType::CUBLASDX_OPERATOR_PRECISION, 3, precisions.data()));
+        CHECK_CUBLASDX(cublasdxSetOperatorInt64s(h, cublasdxOperatorType::CUBLASDX_OPERATOR_PRECISION, 3, precisions.data()));
         CHECK_CUBLASDX(cublasdxSetOperatorInt64(h, cublasdxOperatorType::CUBLASDX_OPERATOR_SM, (long long)(arch * 10)));
         CHECK_CUBLASDX(cublasdxSetOperatorInt64(h, cublasdxOperatorType::CUBLASDX_OPERATOR_TYPE, (cublasdxType)type));
         std::array<long long int, 3> block_dim = {num_threads, 1, 1};
-        CHECK_CUBLASDX(cublasdxSetOperatorInt64Array(h, cublasdxOperatorType::CUBLASDX_OPERATOR_BLOCK_DIM, block_dim.size(), block_dim.data()));
+        CHECK_CUBLASDX(cublasdxSetOperatorInt64s(h, cublasdxOperatorType::CUBLASDX_OPERATOR_BLOCK_DIM, block_dim.size(), block_dim.data()));
         std::array<long long int, 3> size = {M, N, K};
-        CHECK_CUBLASDX(cublasdxSetOperatorInt64Array(h, cublasdxOperatorType::CUBLASDX_OPERATOR_SIZE, size.size(), size.data()));
+        CHECK_CUBLASDX(cublasdxSetOperatorInt64s(h, cublasdxOperatorType::CUBLASDX_OPERATOR_SIZE, size.size(), size.data()));
         std::array<long long int, 3> arrangement = {arrangement_A, arrangement_B, arrangement_C};
-        CHECK_CUBLASDX(cublasdxSetOperatorInt64Array(h, cublasdxOperatorType::CUBLASDX_OPERATOR_ARRANGEMENT, arrangement.size(), arrangement.data()));
+        CHECK_CUBLASDX(cublasdxSetOperatorInt64s(h, cublasdxOperatorType::CUBLASDX_OPERATOR_ARRANGEMENT, arrangement.size(), arrangement.data()));
         
         CHECK_CUBLASDX(cublasdxSetOptionStr(h, commondxOption::COMMONDX_OPTION_SYMBOL_NAME, symbol_name));
 
@@ -3741,12 +3744,12 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
             res = false;
         }
 
-        CHECK_CUBLASDX(cublasdxDestroy(h));
+        CHECK_CUBLASDX(cublasdxDestroyDescriptor(h));
 
         return res;
     }
 
-    bool cuda_compile_solver(const char* fatbin_output_path, const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int M, int N, int function, int precision, int fill_mode, int num_threads)
+    bool cuda_compile_solver(const char* fatbin_output_path, const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int M, int N, int NRHS, int function, int side, int diag, int precision, int arrangement_A, int arrangement_B, int fill_mode, int num_threads)
     {
 
         CHECK_ANY(ltoir_output_path != nullptr);
@@ -3757,34 +3760,42 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
 
         bool res = true;
 
-        cusolverHandle h { 0 };
-        CHECK_CUSOLVER(cusolverCreate(&h));
-        long long int size[2] = {M, N};
-        long long int block_dim[3] = {num_threads, 1, 1};
-        CHECK_CUSOLVER(cusolverSetOperatorInt64Array(h, cusolverOperatorType::CUSOLVER_OPERATOR_SIZE, 2, size));
-        CHECK_CUSOLVER(cusolverSetOperatorInt64Array(h, cusolverOperatorType::CUSOLVER_OPERATOR_BLOCK_DIM, 3, block_dim));
-        CHECK_CUSOLVER(cusolverSetOperatorInt64(h, cusolverOperatorType::CUSOLVER_OPERATOR_TYPE, cusolverType::CUSOLVER_TYPE_REAL));
-        CHECK_CUSOLVER(cusolverSetOperatorInt64(h, cusolverOperatorType::CUSOLVER_OPERATOR_API, cusolverApi::CUSOLVER_API_BLOCK_SMEM));
-        CHECK_CUSOLVER(cusolverSetOperatorInt64(h, cusolverOperatorType::CUSOLVER_OPERATOR_FUNCTION, (cusolverFunction)function));
-        CHECK_CUSOLVER(cusolverSetOperatorInt64(h, cusolverOperatorType::CUSOLVER_OPERATOR_EXECUTION, commondxExecution::COMMONDX_EXECUTION_BLOCK));
-        CHECK_CUSOLVER(cusolverSetOperatorInt64(h, cusolverOperatorType::CUSOLVER_OPERATOR_PRECISION, (commondxPrecision)precision));
-        CHECK_CUSOLVER(cusolverSetOperatorInt64(h, cusolverOperatorType::CUSOLVER_OPERATOR_FILL_MODE, (cusolverFillMode)fill_mode));
-        CHECK_CUSOLVER(cusolverSetOperatorInt64(h, cusolverOperatorType::CUSOLVER_OPERATOR_SM, (long long)(arch * 10)));
+        cusolverdxDescriptor h { 0 };
+        CHECK_CUSOLVER(cusolverdxCreateDescriptor(&h));
+        std::array<long long int, 3> size = {M, N, NRHS};
+        CHECK_CUSOLVER(cusolverdxSetOperatorInt64s(h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_SIZE, size.size(), size.data()));
+        std::array<long long int, 3> block_dim = {num_threads, 1, 1};
+        CHECK_CUSOLVER(cusolverdxSetOperatorInt64s(h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_BLOCK_DIM, block_dim.size(), block_dim.data()));
+        CHECK_CUSOLVER(cusolverdxSetOperatorInt64(h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_TYPE, cusolverdxType::CUSOLVERDX_TYPE_REAL));
+        CHECK_CUSOLVER(cusolverdxSetOperatorInt64(h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_API, cusolverdxApi::CUSOLVERDX_API_SMEM));
+        CHECK_CUSOLVER(cusolverdxSetOperatorInt64(h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_FUNCTION, (cusolverdxFunction)function));
+        if (side >= 0) {
+            CHECK_CUSOLVER(cusolverdxSetOperatorInt64(h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_SIDE, (cusolverdxSide)side));
+        }
+        if (diag >= 0) {
+            CHECK_CUSOLVER(cusolverdxSetOperatorInt64(h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_DIAG, (cusolverdxDiag)diag));
+        }
+        CHECK_CUSOLVER(cusolverdxSetOperatorInt64(h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_EXECUTION, commondxExecution::COMMONDX_EXECUTION_BLOCK));
+        CHECK_CUSOLVER(cusolverdxSetOperatorInt64(h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_PRECISION, (commondxPrecision)precision));
+        std::array<long long int, 2> arrangement = {arrangement_A, arrangement_B};
+        CHECK_CUSOLVER(cusolverdxSetOperatorInt64s(h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_ARRANGEMENT, arrangement.size(), arrangement.data()));
+        CHECK_CUSOLVER(cusolverdxSetOperatorInt64(h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_FILL_MODE, (cusolverdxFillMode)fill_mode));
+        CHECK_CUSOLVER(cusolverdxSetOperatorInt64(h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_SM, (long long)(arch * 10)));
         
-        CHECK_CUSOLVER(cusolverSetOptionStr(h, commondxOption::COMMONDX_OPTION_SYMBOL_NAME, symbol_name));
+        CHECK_CUSOLVER(cusolverdxSetOptionStr(h, commondxOption::COMMONDX_OPTION_SYMBOL_NAME, symbol_name));
 
         size_t lto_size = 0;
-        CHECK_CUSOLVER(cusolverGetLTOIRSize(h, &lto_size));
+        CHECK_CUSOLVER(cusolverdxGetLTOIRSize(h, &lto_size));
 
         std::vector<char> lto(lto_size);
-        CHECK_CUSOLVER(cusolverGetLTOIR(h, lto.size(), lto.data()));   
+        CHECK_CUSOLVER(cusolverdxGetLTOIR(h, lto.size(), lto.data()));   
 
         // This fatbin is universal, ie it is the same for any instantiations of a cusolver device function
         size_t fatbin_size = 0;
-        CHECK_CUSOLVER(cusolverGetUniversalFATBINSize(h, &fatbin_size));
+        CHECK_CUSOLVER(cusolverdxGetUniversalFATBINSize(h, &fatbin_size));
 
         std::vector<char> fatbin(fatbin_size);
-        CHECK_CUSOLVER(cusolverGetUniversalFATBIN(h, fatbin.size(), fatbin.data()));     
+        CHECK_CUSOLVER(cusolverdxGetUniversalFATBIN(h, fatbin.size(), fatbin.data()));     
 
         if(!write_file(lto.data(), lto.size(), ltoir_output_path, "wb")) {
             res = false;
@@ -3794,7 +3805,7 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
             res = false;
         }
 
-        CHECK_CUSOLVER(cusolverDestroy(h));
+        CHECK_CUSOLVER(cusolverdxDestroyDescriptor(h));
 
         return res;
     }
