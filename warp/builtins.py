@@ -7467,11 +7467,15 @@ def tile_cholesky_generic_value_func(arg_types, arg_values):
     return tile(dtype=a.dtype, shape=a.shape, storage="shared")
 
 
-cusolver_function_map = {"getrf": 0, "getrf_no_pivot": 1, "potrf": 2, "potrs": 3}
+cusolver_function_map = {"getrf": 0, "getrf_no_pivot": 1, "potrf": 2, "potrs": 3, "trsm": 4}
 
 cusolver_type_map = {float32: ("wp::float32", 5), float64: ("wp::float64", 6)}
 
 cusolver_fill_mode_map = {"upper": 0, "lower": 1}
+
+cusolver_side_map = {"-": -1, "left": 0, "right": 1}
+
+cusolver_diag_map = {"-": -1, "unit": 0, "nounit": 1}
 
 
 def tile_cholesky_generic_lto_dispatch_func(
@@ -7503,13 +7507,13 @@ def tile_cholesky_generic_lto_dispatch_func(
     solver = "potrf"
     solver_enum = cusolver_function_map[solver]
 
-    # cuSOLVERDx only supports col-major input/outputs,
-    # so we use upper to mimic a row-major input
-    fill_mode = cusolver_fill_mode_map["upper"]
+    side_enum = cusolver_side_map["-"]
+    diag_enum = cusolver_diag_map["-"]
+    fill_mode = cusolver_fill_mode_map["lower"]
 
     arch = options["output_arch"]
     num_threads = options["block_dim"]
-    parameter_list = f"({dtype}*, unsigned)"
+    parameter_list = f"({dtype}*, int*)"
 
     if arch is None or not warp.context.runtime.core.is_mathdx_enabled():
         # CPU/no-MathDx dispatch
@@ -7519,8 +7523,13 @@ def tile_cholesky_generic_lto_dispatch_func(
         lto_symbol, lto_code_data = warp.build.build_lto_solver(
             M,
             N,
+            1,
             solver,
             solver_enum,
+            side_enum,
+            diag_enum,
+            a.type.layout,
+            out.type.layout,
             fill_mode,
             arch,
             precision_enum,
@@ -7577,8 +7586,8 @@ def tile_cholesky_solve_generic_value_func(arg_types, arg_values):
     if l.shape[0] != l.shape[1]:
         raise ValueError("tile_cholesky_solve() 'L' argument must be square")
 
-    if len(y.shape) != 1:
-        raise TypeError("tile_cholesky_solve() 'y' argument must be a 1D tile")
+    if len(y.shape) > 2 or len(y.shape) < 1:
+        raise TypeError("tile_cholesky_solve() 'y' argument must be a 1D or 2D tile")
 
     if y.shape[0] != l.shape[0]:
         raise ValueError(
@@ -7586,7 +7595,7 @@ def tile_cholesky_solve_generic_value_func(arg_types, arg_values):
             f"got {y.shape[0]} elements in 'x' and {l.shape[0]} rows in 'L'"
         )
 
-    return tile(dtype=l.dtype, shape=y.shape, storage="shared")
+    return tile(dtype=l.dtype, shape=y.shape, strides=y.strides, storage="shared")
 
 
 def tile_cholesky_solve_generic_lto_dispatch_func(
@@ -7613,9 +7622,10 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
 
     dtype, precision_enum = cusolver_type_map[L.type.dtype]
     M, N = L.type.shape[0], L.type.shape[1]
+    NRHS = x.type.shape[1] if len(x.type.shape) > 1 else 1
 
-    if len(x.type.shape) != 1:
-        raise TypeError("tile_cholesky_solve() output vector must be 1D")
+    if len(x.type.shape) > 2 or len(x.type.shape) < 1:
+        raise TypeError(f"tile_cholesky_solve() output vector must be 1D or 2D, got {len(x.type.shape)}-D")
 
     if x.type.shape[0] != M:
         raise ValueError(
@@ -7626,9 +7636,9 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
     solver = "potrs"
     solver_enum = cusolver_function_map[solver]
 
-    # cuSOLVERDx only supports col-major input/outputs,
-    # so we use upper to mimic a row-major input
-    fill_mode = cusolver_fill_mode_map["upper"]
+    side_enum = cusolver_side_map["-"]
+    diag_enum = cusolver_diag_map["-"]
+    fill_mode = cusolver_fill_mode_map["lower"]
 
     arch = options["output_arch"]
     num_threads = options["block_dim"]
@@ -7642,8 +7652,13 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
         lto_symbol, lto_code_data = warp.build.build_lto_solver(
             M,
             N,
+            NRHS,
             solver,
             solver_enum,
+            side_enum,
+            diag_enum,
+            L.type.layout,
+            y.type.layout,
             fill_mode,
             arch,
             precision_enum,
@@ -7670,8 +7685,8 @@ add_builtin(
         * float64
 
     :param L: A square, lower triangular, matrix, such that LL^T = A
-    :param y: A 1D tile of length M
-    :returns x: A 1D tile of length M such that LL^T x = y""",
+    :param y: A 1D or 2D tile of length M
+    :returns x: A tile of the same shape as y such that LL^T x = y""",
     group="Tile Primitives",
     export=False,
     namespace="",
@@ -7700,7 +7715,9 @@ def tile_lower_solve_generic_lto_dispatch_func(
     if any(T not in cusolver_type_map.keys() for T in [y.type.dtype, L.type.dtype]):
         raise TypeError("tile_lower_solve() arguments must be tiles of float64 or float32")
 
-    M = L.type.shape[0]
+    dtype, precision_enum = cusolver_type_map[L.type.dtype]
+    M, N = L.type.shape[0], L.type.shape[1]
+    NRHS = z.type.shape[1] if len(z.type.shape) > 1 else 1
 
     if len(z.type.shape) > 2 or len(z.type.shape) < 1:
         raise TypeError(f"tile_lower_solve() output vector must be 1D or 2D, got {len(z.type.shape)}-D")
@@ -7711,8 +7728,41 @@ def tile_lower_solve_generic_lto_dispatch_func(
             f"got {z.type.shape[0]} elements in output and {M} rows in 'L'"
         )
 
-    # CPU/no-MathDx dispatch
-    return ((L, y, z), [], [], 0)
+    solver = "trsm"
+    solver_enum = cusolver_function_map[solver]
+
+    side_enum = cusolver_side_map["left"]
+    diag_enum = cusolver_diag_map["nounit"]
+    fill_mode = cusolver_fill_mode_map["lower"]
+
+    arch = options["output_arch"]
+    num_threads = options["block_dim"]
+    parameter_list = f"({dtype}*, {dtype}*)"
+
+    if arch is None or not warp.context.runtime.core.is_mathdx_enabled():
+        # CPU/no-MathDx dispatch
+        return ((0, L, y, z), [], [], 0)
+    else:
+        # generate the LTO
+        lto_symbol, lto_code_data = warp.build.build_lto_solver(
+            M,
+            N,
+            NRHS,
+            solver,
+            solver_enum,
+            side_enum,
+            diag_enum,
+            L.type.layout,
+            y.type.layout,
+            fill_mode,
+            arch,
+            precision_enum,
+            num_threads,
+            parameter_list,
+            builder,
+        )
+
+        return ((Var(lto_symbol, str, False, True, False), L, y, z), [], [lto_code_data], 0)
 
 
 def tile_lower_solve_generic_value_func(arg_types, arg_values):
@@ -7797,7 +7847,9 @@ def tile_upper_solve_generic_lto_dispatch_func(
     if any(T not in cusolver_type_map.keys() for T in [z.type.dtype, U.type.dtype]):
         raise TypeError("tile_upper_solve() arguments must be tiles of float64 or float32")
 
-    M = U.type.shape[0]
+    dtype, precision_enum = cusolver_type_map[U.type.dtype]
+    M, N = U.type.shape[0], U.type.shape[1]
+    NRHS = x.type.shape[1] if len(x.type.shape) > 1 else 1
 
     if len(z.type.shape) > 2 or len(z.type.shape) < 1:
         raise TypeError(f"tile_upper_solve() output tile must be 1D or 2D, got {len(z.type.shape)}-D")
@@ -7808,8 +7860,41 @@ def tile_upper_solve_generic_lto_dispatch_func(
             f"got {z.type.shape[0]} elements in output and {M} rows in 'U'"
         )
 
-    # CPU/no-MathDx dispatch
-    return ((U, z, x), [], [], 0)
+    solver = "trsm"
+    solver_enum = cusolver_function_map[solver]
+
+    side_enum = cusolver_side_map["left"]
+    diag_enum = cusolver_diag_map["nounit"]
+    fill_mode = cusolver_fill_mode_map["upper"]
+
+    arch = options["output_arch"]
+    num_threads = options["block_dim"]
+    parameter_list = f"({dtype}*, {dtype}*)"
+
+    if arch is None or not warp.context.runtime.core.is_mathdx_enabled():
+        # CPU/no-MathDx dispatch
+        return ((0, U, z, x), [], [], 0)
+    else:
+        # generate the LTO
+        lto_symbol, lto_code_data = warp.build.build_lto_solver(
+            M,
+            N,
+            NRHS,
+            solver,
+            solver_enum,
+            side_enum,
+            diag_enum,
+            U.type.layout,
+            z.type.layout,
+            fill_mode,
+            arch,
+            precision_enum,
+            num_threads,
+            parameter_list,
+            builder,
+        )
+
+        return ((Var(lto_symbol, str, False, True, False), U, z, x), [], [lto_code_data], 0)
 
 
 def tile_upper_solve_generic_value_func(arg_types, arg_values):

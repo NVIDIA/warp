@@ -45,6 +45,7 @@ def tile_math_matmul_kernel(
     wp.tile_store(gc, c, offset=(i * TILE_M, j * TILE_N))
 
 
+@unittest.skipUnless(wp.context.runtime.core.cuda_toolkit_version() >= 12060, "CUDA toolkit version is less than 12.6")
 def test_tile_math_matmul(test, device):
     rng = np.random.default_rng(42)
 
@@ -148,6 +149,7 @@ def tile_math_cholesky(
     wp.tile_store(gx, x)
 
 
+@unittest.skipUnless(wp.context.runtime.core.cuda_toolkit_version() >= 12060, "CUDA toolkit version is less than 12.6")
 def test_tile_math_cholesky(test, device):
     A_h = np.ones((TILE_M, TILE_M), dtype=np.float64)
     D_h = 8.0 * np.ones(TILE_M, dtype=np.float64)
@@ -176,6 +178,64 @@ def test_tile_math_cholesky(test, device):
     # TODO: implement and test backward pass
 
 
+@wp.kernel()
+def tile_math_cholesky_multiple_rhs(
+    gA: wp.array2d(dtype=wp.float64),
+    gD: wp.array1d(dtype=wp.float64),
+    gL: wp.array2d(dtype=wp.float64),
+    gy: wp.array2d(dtype=wp.float64),
+    gx: wp.array2d(dtype=wp.float64),
+):
+    i, j = wp.tid()
+    # Load A, D & y
+    a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
+    d = wp.tile_load(gD, shape=TILE_M, storage="shared")
+    y = wp.tile_load(gy, shape=(TILE_M, TILE_M), storage="shared")
+    # Ensure tile_diag_add() and tile_cholesky_solve() work with transposed matrices
+    a_t = wp.tile_transpose(a)
+    # Compute L st LL^T = A + diag(D)
+    b = wp.tile_diag_add(a_t, d)
+    l = wp.tile_cholesky(b)
+    # Solve for y in LL^T x = y
+    x = wp.tile_cholesky_solve(l, y)
+    # Store L & y
+    wp.tile_store(gL, l)
+    wp.tile_store(gx, x)
+
+
+@unittest.skipUnless(wp.context.runtime.core.cuda_toolkit_version() >= 12060, "CUDA toolkit version is less than 12.6")
+def test_tile_math_cholesky_multiple_rhs(test, device):
+    A_h = np.ones((TILE_M, TILE_M), dtype=np.float64)
+    D_h = 8.0 * np.ones(TILE_M, dtype=np.float64)
+    L_h = np.zeros_like(A_h)
+    Y_h = np.arange((TILE_M, TILE_M), dtype=np.float64)
+    X_h = np.zeros_like(Y_h)
+
+    A_np = A_h + np.diag(D_h)
+    L_np = np.linalg.cholesky(A_np)
+    X_np = np.linalg.solve(A_np, Y_h)
+
+    A_wp = wp.array2d(A_h, requires_grad=True, dtype=wp.float64, device=device)
+    D_wp = wp.array2d(D_h, requires_grad=True, dtype=wp.float64, device=device)
+    L_wp = wp.array2d(L_h, requires_grad=True, dtype=wp.float64, device=device)
+    Y_wp = wp.array2d(Y_h, requires_grad=True, dtype=wp.float64, device=device)
+    X_wp = wp.array2d(X_h, requires_grad=True, dtype=wp.float64, device=device)
+
+    wp.launch_tiled(
+        tile_math_cholesky_multiple_rhs,
+        dim=[1, 1],
+        inputs=[A_wp, D_wp, L_wp, Y_wp, X_wp],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+    wp.synchronize_device(device)
+
+    np.testing.assert_allclose(X_wp.numpy(), X_np)
+    np.testing.assert_allclose(L_wp.numpy(), L_np)
+
+    # TODO: implement and test backward pass
+
+
 @wp.kernel
 def tile_math_forward_substitution(
     gL: wp.array2d(dtype=wp.float64), gx: wp.array1d(dtype=wp.float64), gz: wp.array1d(dtype=wp.float64)
@@ -191,6 +251,7 @@ def tile_math_forward_substitution(
     wp.tile_store(gz, z)
 
 
+@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_math_forward_substitution(test, device):
     # Create test data
     rng = np.random.default_rng()
@@ -233,6 +294,7 @@ def tile_math_back_substitution(
     wp.tile_store(gz, z)
 
 
+@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_math_back_substitution(test, device):
     # Create test data
     rng = np.random.default_rng()
@@ -274,6 +336,7 @@ def tile_math_forward_substitution_multiple_rhs(
     wp.tile_store(gz, z)
 
 
+@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_math_forward_substitution_multiple_rhs(test, device):
     # Create test data
     rng = np.random.default_rng()
@@ -319,6 +382,7 @@ def tile_math_back_substitution_multiple_rhs(
     wp.tile_store(gz, z)
 
 
+@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_math_back_substitution_multiple_rhs(test, device):
     # Create test data
     rng = np.random.default_rng()
@@ -364,6 +428,13 @@ add_function_test(
 )
 add_function_test(
     TestTileMathDx, "test_tile_math_cholesky", test_tile_math_cholesky, devices=all_devices, check_output=False
+)
+add_function_test(
+    TestTileMathDx,
+    "tile_math_cholesky_multiple_rhs",
+    tile_math_cholesky_multiple_rhs,
+    devices=all_devices,
+    check_output=False,
 )
 add_function_test(
     TestTileMathDx,

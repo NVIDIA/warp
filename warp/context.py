@@ -3869,7 +3869,13 @@ class Runtime:
                 ctypes.c_int,  # arch
                 ctypes.c_int,  # M
                 ctypes.c_int,  # N
+                ctypes.c_int,  # NRHS
+                ctypes.c_int,  # function
+                ctypes.c_int,  # side
+                ctypes.c_int,  # diag
                 ctypes.c_int,  # precision
+                ctypes.c_int,  # a_arrangement
+                ctypes.c_int,  # b_arrangement
                 ctypes.c_int,  # fill_mode
                 ctypes.c_int,  # num threads
             ]

@@ -187,7 +187,7 @@ def find_libmathdx():
             raise e
 
         # Success
-        return os.path.join(base_path, "_build", "target-deps", "libmathdx", "libmathdx")
+        return os.path.join(base_path, "_build", "target-deps", "libmathdx")
 
 
 # setup CUDA Toolkit path
