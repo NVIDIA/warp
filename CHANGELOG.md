@@ -70,7 +70,6 @@
 
 - Fix `wp.atomic_*()` built-ins not working with some types ([GH-733](https://github.com/NVIDIA/warp/issues/733)).
 - Fix missing documentation for geometric structs ([GH-674](https://github.com/NVIDIA/warp/issues/674)).
-- Fix a performance regression related to kernel launches ([GH-765](https://github.com/NVIDIA/warp/issues/765)).
 - Fix the type annotations in various tile functions ([GH-714](https://github.com/NVIDIA/warp/issues/714)).
 - Fix incorrect stride initialization in tiles returned from functions taking transposed tiles as input
   ([GH-722](https://github.com/NVIDIA/warp/issues/722)).
