@@ -7058,7 +7058,7 @@ def tile_diag_add_value_func(arg_types, arg_values):
         )
 
     # use first argument to define output type
-    return tile(dtype=a.dtype, shape=a.shape, strides=a.strides, storage="shared")
+    return tile(dtype=a.dtype, shape=a.shape, layout=a.layout, strides=a.strides, storage="shared")
 
 
 def tile_diag_add_lto_dispatch_func(
@@ -7459,7 +7459,7 @@ def tile_cholesky_generic_value_func(arg_types, arg_values):
     if a.shape[0] != a.shape[1]:
         raise ValueError("tile_cholesky() argument must be square")
 
-    return tile(dtype=a.dtype, shape=a.shape, storage="shared")
+    return tile(dtype=a.dtype, shape=a.shape, layout=a.layout, strides=a.strides, storage="shared")
 
 
 cusolver_function_map = {"getrf": 0, "getrf_no_pivot": 1, "potrf": 2, "potrs": 3, "trsm": 4}
@@ -7590,7 +7590,7 @@ def tile_cholesky_solve_generic_value_func(arg_types, arg_values):
             f"got {y.shape[0]} elements in 'x' and {l.shape[0]} rows in 'L'"
         )
 
-    return tile(dtype=l.dtype, shape=y.shape, strides=y.strides, storage="shared")
+    return tile(dtype=l.dtype, shape=y.shape, layout=y.layout, strides=y.strides, storage="shared")
 
 
 def tile_cholesky_solve_generic_lto_dispatch_func(
@@ -7791,7 +7791,7 @@ def tile_lower_solve_generic_value_func(arg_types, arg_values):
             f"got {y.shape[0]} elements in 'y' and {l.shape[0]} rows in 'L'"
         )
 
-    return tile(dtype=l.dtype, shape=y.shape, strides=y.strides, storage="shared")
+    return tile(dtype=l.dtype, shape=y.shape, layout=y.layout, strides=y.strides, storage="shared")
 
 
 add_builtin(
@@ -7923,7 +7923,7 @@ def tile_upper_solve_generic_value_func(arg_types, arg_values):
             f"got {z.shape[0]} elements in 'z' and {u.shape[0]} rows in 'U'"
         )
 
-    return tile(dtype=u.dtype, shape=z.shape, strides=z.strides, storage="shared")
+    return tile(dtype=u.dtype, shape=z.shape, layout=z.layout, strides=z.strides, storage="shared")
 
 
 add_builtin(
