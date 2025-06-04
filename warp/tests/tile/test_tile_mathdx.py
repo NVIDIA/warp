@@ -139,7 +139,7 @@ def tile_math_cholesky(
     y = wp.tile_load(gy, shape=TILE_M, storage="shared")
     # Ensure tile_diag_add() and tile_cholesky_solve() work with transposed matrices
     a_t = wp.tile_transpose(a)
-    # Compute L st LL^T = A + diag(D)
+    # Compute L st LL^T = A^T + diag(D)
     b = wp.tile_diag_add(a_t, d)
     l = wp.tile_cholesky(b)
     # Solve for y in LL^T x = y
@@ -157,7 +157,7 @@ def test_tile_math_cholesky(test, device):
     Y_h = np.arange(TILE_M, dtype=np.float64)
     X_h = np.zeros_like(Y_h)
 
-    A_np = A_h + np.diag(D_h)
+    A_np = A_h.T + np.diag(D_h)
     L_np = np.linalg.cholesky(A_np)
     X_np = np.linalg.solve(A_np, Y_h)
 
@@ -185,6 +185,7 @@ def tile_math_cholesky_multiple_rhs(
     gL: wp.array2d(dtype=wp.float64),
     gy: wp.array2d(dtype=wp.float64),
     gx: wp.array2d(dtype=wp.float64),
+    gz: wp.array2d(dtype=wp.float64),
 ):
     i, j = wp.tid()
     # Load A, D & y
@@ -193,14 +194,18 @@ def tile_math_cholesky_multiple_rhs(
     y = wp.tile_load(gy, shape=(TILE_M, TILE_M), storage="shared")
     # Ensure tile_diag_add() and tile_cholesky_solve() work with transposed matrices
     a_t = wp.tile_transpose(a)
-    # Compute L st LL^T = A + diag(D)
+    # Compute L st LL^T = A.T + diag(D)
     b = wp.tile_diag_add(a_t, d)
     l = wp.tile_cholesky(b)
-    # Solve for y in LL^T x = y
-    x = wp.tile_cholesky_solve(l, y)
+    # Solve for y in LL^T x = y.T
+    y_t = wp.tile_transpose(y)
+    x = wp.tile_cholesky_solve(l, y_t)
+    # Ensure matmul receives correct layout information
+    z = wp.tile_matmul(x, x)
     # Store L & y
     wp.tile_store(gL, l)
     wp.tile_store(gx, x)
+    wp.tile_store(gz, z)
 
 
 @unittest.skipUnless(wp.context.runtime.core.cuda_toolkit_version() >= 12060, "CUDA toolkit version is less than 12.6")
@@ -210,28 +215,32 @@ def test_tile_math_cholesky_multiple_rhs(test, device):
     L_h = np.zeros_like(A_h)
     Y_h = np.arange((TILE_M, TILE_M), dtype=np.float64)
     X_h = np.zeros_like(Y_h)
+    Z_h = np.zeros_like(Y_h)
 
-    A_np = A_h + np.diag(D_h)
+    A_np = A_h.T + np.diag(D_h)
     L_np = np.linalg.cholesky(A_np)
-    X_np = np.linalg.solve(A_np, Y_h)
+    X_np = np.linalg.solve(A_np, Y_h.T)
+    Z_np = X_np @ X_np
 
     A_wp = wp.array2d(A_h, requires_grad=True, dtype=wp.float64, device=device)
     D_wp = wp.array2d(D_h, requires_grad=True, dtype=wp.float64, device=device)
     L_wp = wp.array2d(L_h, requires_grad=True, dtype=wp.float64, device=device)
     Y_wp = wp.array2d(Y_h, requires_grad=True, dtype=wp.float64, device=device)
     X_wp = wp.array2d(X_h, requires_grad=True, dtype=wp.float64, device=device)
+    Z_wp = wp.array2d(Z_h, requires_grad=True, dtype=wp.float64, device=device)
 
     wp.launch_tiled(
         tile_math_cholesky_multiple_rhs,
         dim=[1, 1],
-        inputs=[A_wp, D_wp, L_wp, Y_wp, X_wp],
+        inputs=[A_wp, D_wp, L_wp, Y_wp, X_wp, Z_wp],
         block_dim=TILE_DIM,
         device=device,
     )
     wp.synchronize_device(device)
 
-    np.testing.assert_allclose(X_wp.numpy(), X_np)
     np.testing.assert_allclose(L_wp.numpy(), L_np)
+    np.testing.assert_allclose(X_wp.numpy(), X_np)
+    np.testing.assert_allclose(Z_wp.numpy(), Z_np)
 
     # TODO: implement and test backward pass
 
@@ -324,16 +333,23 @@ def test_tile_math_back_substitution(test, device):
 
 @wp.kernel
 def tile_math_forward_substitution_multiple_rhs(
-    gL: wp.array2d(dtype=wp.float64), gx: wp.array2d(dtype=wp.float64), gz: wp.array2d(dtype=wp.float64)
+    gL: wp.array2d(dtype=wp.float64),
+    gx: wp.array2d(dtype=wp.float64),
+    gz: wp.array2d(dtype=wp.float64),
+    gc: wp.array2d(dtype=wp.float64),
 ):
     i, j = wp.tid()
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=(TILE_M, TILE_M), storage="shared")
-    # Solve for z in Lz = x
-    z = wp.tile_lower_solve(L, x)
-    # Store z
+    # Solve for z in Lz = x.T
+    x_t = wp.tile_transpose(x)
+    z = wp.tile_lower_solve(L, x_t)
+    # Ensure matmul receives correct layout information
+    c = wp.tile_matmul(z, z)
+    # Store z and c
     wp.tile_store(gz, z)
+    wp.tile_store(gc, c)
 
 
 @unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
@@ -343,20 +359,23 @@ def test_tile_math_forward_substitution_multiple_rhs(test, device):
     L_h = np.tril(rng.random((TILE_M, TILE_M)))  # Lower triangular matrix
     x_h = rng.random((TILE_M, TILE_M))  # Multiple right-hand sides
     z_h = np.zeros_like(x_h)
+    c_h = np.zeros_like(x_h)
 
     # Compute reference solution using numpy
-    z_np = np.linalg.solve(L_h, x_h)
+    z_np = np.linalg.solve(L_h, x_h.T)
+    c_np = z_np @ z_np
 
     # Create Warp arrays
     L_wp = wp.array2d(L_h, requires_grad=True, dtype=wp.float64, device=device)
     x_wp = wp.array2d(x_h, requires_grad=True, dtype=wp.float64, device=device)
     z_wp = wp.array2d(z_h, requires_grad=True, dtype=wp.float64, device=device)
+    c_wp = wp.array2d(c_h, requires_grad=True, dtype=wp.float64, device=device)
 
     # Run kernel
     wp.launch_tiled(
         tile_math_forward_substitution_multiple_rhs,
         dim=[1, 1],
-        inputs=[L_wp, x_wp, z_wp],
+        inputs=[L_wp, x_wp, z_wp, c_wp],
         block_dim=TILE_DIM,
         device=device,
     )
@@ -364,22 +383,30 @@ def test_tile_math_forward_substitution_multiple_rhs(test, device):
 
     # Verify results
     assert np.allclose(z_wp.numpy(), z_np)
+    assert np.allclose(c_wp.numpy(), c_np)
 
     # TODO: implement and test backward pass
 
 
 @wp.kernel
 def tile_math_back_substitution_multiple_rhs(
-    gL: wp.array2d(dtype=wp.float64), gx: wp.array2d(dtype=wp.float64), gz: wp.array2d(dtype=wp.float64)
+    gL: wp.array2d(dtype=wp.float64),
+    gx: wp.array2d(dtype=wp.float64),
+    gz: wp.array2d(dtype=wp.float64),
+    gc: wp.array2d(dtype=wp.float64),
 ):
     i, j = wp.tid()
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=(TILE_M, TILE_M), storage="shared")
-    # Solve for z in L^T z = x
-    z = wp.tile_upper_solve(wp.tile_transpose(L), x)
-    # Store z
+    # Solve for z in L^T z = x.T
+    x_t = wp.tile_transpose(x)
+    z = wp.tile_upper_solve(wp.tile_transpose(L), x_t)
+    # Ensure matmul receives correct layout information
+    c = wp.tile_matmul(z, z)
+    # Store z and c
     wp.tile_store(gz, z)
+    wp.tile_store(gc, c)
 
 
 @unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
@@ -389,20 +416,23 @@ def test_tile_math_back_substitution_multiple_rhs(test, device):
     L_h = np.tril(rng.random((TILE_M, TILE_M)))  # Lower triangular matrix
     x_h = rng.random((TILE_M, TILE_M))  # Multiple right-hand sides
     z_h = np.zeros_like(x_h)
+    c_h = np.zeros_like(x_h)
 
     # Compute reference solution using numpy
-    z_np = np.linalg.solve(L_h.T, x_h)
+    z_np = np.linalg.solve(L_h.T, x_h.T)
+    c_np = z_np @ z_np
 
     # Create Warp arrays
     L_wp = wp.array2d(L_h, requires_grad=True, dtype=wp.float64, device=device)
     x_wp = wp.array2d(x_h, requires_grad=True, dtype=wp.float64, device=device)
     z_wp = wp.array2d(z_h, requires_grad=True, dtype=wp.float64, device=device)
+    c_wp = wp.array2d(c_h, requires_grad=True, dtype=wp.float64, device=device)
 
     # Run kernel
     wp.launch_tiled(
         tile_math_back_substitution_multiple_rhs,
         dim=[1, 1],
-        inputs=[L_wp, x_wp, z_wp],
+        inputs=[L_wp, x_wp, z_wp, c_wp],
         block_dim=TILE_DIM,
         device=device,
     )
@@ -410,6 +440,7 @@ def test_tile_math_back_substitution_multiple_rhs(test, device):
 
     # Verify results
     assert np.allclose(z_wp.numpy(), z_np)
+    assert np.allclose(c_wp.numpy(), c_np)
 
     # TODO: implement and test backward pass
 
