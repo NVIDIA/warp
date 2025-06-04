@@ -65,6 +65,7 @@
 - Exposed new `warp.fem` operators: `node_count`, `node_index`, `element_coordinates`, `element_closest_point`.
 - Change rigid-body-contact handling in `wp.sim.VBDIntegrator` to use only the shape's friction coefficient instead of
   averaging the shape's and the cloth's coefficients.
+- Set the `wp.assign_copy()` hidden built-ins as non-exportable.
 
 ### Fixed
 
