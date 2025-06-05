@@ -148,6 +148,7 @@ def tile_math_cholesky(
     wp.tile_store(gx, x)
 
 
+@unittest.skipUnless(wp.context.runtime.core.cuda_toolkit_version() >= 12600, "CUDA toolkit version is less than 12.6")
 def test_tile_math_cholesky(test, device):
     A_h = np.ones((TILE_M, TILE_M), dtype=np.float64)
     D_h = 8.0 * np.ones(TILE_M, dtype=np.float64)
@@ -206,6 +207,7 @@ def tile_math_cholesky_multiple_rhs(
     wp.tile_store(gz, z)
 
 
+@unittest.skipUnless(wp.context.runtime.core.cuda_toolkit_version() >= 12600, "CUDA toolkit version is less than 12.6")
 def test_tile_math_cholesky_multiple_rhs(test, device):
     A_h = np.ones((TILE_M, TILE_M), dtype=np.float64)
     D_h = 8.0 * np.ones(TILE_M, dtype=np.float64)
@@ -257,6 +259,7 @@ def tile_math_forward_substitution(
     wp.tile_store(gz, z)
 
 
+@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_math_forward_substitution(test, device):
     # Create test data
     rng = np.random.default_rng()
@@ -299,6 +302,7 @@ def tile_math_back_substitution(
     wp.tile_store(gz, z)
 
 
+@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_math_back_substitution(test, device):
     # Create test data
     rng = np.random.default_rng()
@@ -347,6 +351,7 @@ def tile_math_forward_substitution_multiple_rhs(
     wp.tile_store(gc, c)
 
 
+@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_math_forward_substitution_multiple_rhs(test, device):
     # Create test data
     rng = np.random.default_rng()
@@ -403,6 +408,7 @@ def tile_math_back_substitution_multiple_rhs(
     wp.tile_store(gc, c)
 
 
+@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_math_back_substitution_multiple_rhs(test, device):
     # Create test data
     rng = np.random.default_rng()
@@ -452,6 +458,13 @@ add_function_test(
 )
 add_function_test(
     TestTileMathDx, "test_tile_math_cholesky", test_tile_math_cholesky, devices=all_devices, check_output=False
+)
+add_function_test(
+    TestTileMathDx,
+    "tile_math_cholesky_multiple_rhs",
+    tile_math_cholesky_multiple_rhs,
+    devices=all_devices,
+    check_output=False,
 )
 add_function_test(
     TestTileMathDx,
