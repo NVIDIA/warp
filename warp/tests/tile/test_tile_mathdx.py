@@ -148,7 +148,7 @@ def tile_math_cholesky(
     wp.tile_store(gx, x)
 
 
-@unittest.skipUnless(wp.context.runtime.core.cuda_toolkit_version() >= 12600, "CUDA toolkit version is less than 12.6")
+@unittest.skipUnless(wp.context.runtime.core.cuda_toolkit_version() >= 12060, "CUDA toolkit version is less than 12.6")
 def test_tile_math_cholesky(test, device):
     A_h = np.ones((TILE_M, TILE_M), dtype=np.float64)
     D_h = 8.0 * np.ones(TILE_M, dtype=np.float64)
@@ -207,7 +207,7 @@ def tile_math_cholesky_multiple_rhs(
     wp.tile_store(gz, z)
 
 
-@unittest.skipUnless(wp.context.runtime.core.cuda_toolkit_version() >= 12600, "CUDA toolkit version is less than 12.6")
+@unittest.skipUnless(wp.context.runtime.core.cuda_toolkit_version() >= 12060, "CUDA toolkit version is less than 12.6")
 def test_tile_math_cholesky_multiple_rhs(test, device):
     A_h = np.ones((TILE_M, TILE_M), dtype=np.float64)
     D_h = 8.0 * np.ones(TILE_M, dtype=np.float64)
