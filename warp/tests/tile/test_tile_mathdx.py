@@ -45,6 +45,7 @@ def tile_math_matmul_kernel(
     wp.tile_store(gc, c, offset=(i * TILE_M, j * TILE_N))
 
 
+@unittest.skipUnless(wp.context.runtime.core.cuda_toolkit_version() >= 12060, "CUDA toolkit version is less than 12.6")
 def test_tile_math_matmul(test, device):
     rng = np.random.default_rng(42)
 
