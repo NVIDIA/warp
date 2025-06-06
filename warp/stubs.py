@@ -3356,8 +3356,8 @@ def tile_cholesky_solve(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[in
         * float64
 
     :param L: A square, lower triangular, matrix, such that LL^T = A
-    :param y: A 1D tile of length M
-    :returns x: A 1D tile of length M such that LL^T x = y
+    :param y: A 1D or 2D tile of length M
+    :returns x: A tile of the same shape as y such that LL^T x = y
     """
     ...
 
