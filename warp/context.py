@@ -5707,7 +5707,7 @@ class Launch:
 
             # If the stream is capturing, we retain the CUDA module so that it doesn't get unloaded
             # before the captured graph is released.
-            if runtime.core.cuda_stream_is_capturing(stream.cuda_stream):
+            if len(runtime.captures) > 0 and runtime.core.cuda_stream_is_capturing(stream.cuda_stream):
                 capture_id = runtime.core.cuda_stream_get_capture_id(stream.cuda_stream)
                 graph = runtime.captures.get(capture_id)
                 if graph is not None:
@@ -5897,7 +5897,7 @@ def launch(
 
             # If the stream is capturing, we retain the CUDA module so that it doesn't get unloaded
             # before the captured graph is released.
-            if runtime.core.cuda_stream_is_capturing(stream.cuda_stream):
+            if len(runtime.captures) > 0 and runtime.core.cuda_stream_is_capturing(stream.cuda_stream):
                 capture_id = runtime.core.cuda_stream_get_capture_id(stream.cuda_stream)
                 graph = runtime.captures.get(capture_id)
                 if graph is not None:
