@@ -24,11 +24,19 @@ The following example shows a simple kernel that adds two arrays together::
 
 Kernels are launched with the :func:`wp.launch() <launch>` function on a specific device (CPU/GPU)::
 
-    wp.launch(add_kernel, dim=1024, inputs=[a, b, c], device="cuda")
+    wp.launch(add_kernel, dim=1024, inputs=[a, b], outputs=[c], device="cuda")
 
-Note that all the kernel inputs must live on the target device or a runtime exception will be raised.
-Kernels may be launched with multi-dimensional grid bounds. In this case, threads are not assigned a single index,
-but a coordinate in an n-dimensional grid, e.g.::
+Note that all the kernel inputs and outputs must live on the target device or a runtime exception will be raised.
+
+Unless you are using the :ref:`Graph visualization tool<visualizing_computation_graphs>`, the ``outputs`` argument is optional -- all kernel 
+arguments may be passed as inputs, but for readability it is sometimes useful to distinguish between the 
+kernel arguments that are read from (``inputs``) and the kernel arguments that are written to (``outputs``). 
+So in the above example, it would be equally valid to write ``inputs=[a, b, c]`` but since we are writing to ``c``,
+we list it in the ``outputs`` argument. Note that the combined ``inputs`` followed by ``outputs`` list 
+should match the ordering of the kernel arguments.
+
+Kernels may be launched with multi-dimensional grid bounds.
+In this case, threads are not assigned a single index, but a coordinate in an n-dimensional grid, e.g.::
 
     wp.launch(complex_kernel, dim=(128, 128, 3), ...)
 

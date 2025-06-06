@@ -66,6 +66,7 @@
 - Change rigid-body-contact handling in `wp.sim.VBDIntegrator` to use only the shape's friction coefficient instead of
   averaging the shape's and the cloth's coefficients.
 - Set the `wp.assign_copy()` hidden built-ins as non-exportable.
+- Describe the distinction between `inputs` and `outputs` arguments in the Kernel documentation.
 
 ### Fixed
 
