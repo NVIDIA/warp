@@ -38,6 +38,8 @@
 - Add damping terms for collisions in `wp.sim.VBDIntegrator`, whose strength is controlled by `Model.soft_contact_kd`.
 - Improve consistency of the `wp.fem.lookup()` operator across geometries and add filtering parameters
   ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
+- Add `wp.capture_debug_dot_print()` to write a DOT file describing the structure of a captured CUDA graph
+  ([GH-746](https://github.com/NVIDIA/warp/issues/746)).
 
 ### Removed
 
@@ -67,6 +69,8 @@
   averaging the shape's and the cloth's coefficients.
 - Set the `wp.assign_copy()` hidden built-ins as non-exportable.
 - Describe the distinction between `inputs` and `outputs` arguments in the Kernel documentation.
+- Reduce the overhead of `wp.launch()` by avoiding costly native API calls
+  ([GH-774](https://github.com/NVIDIA/warp/pull/774)).
 
 ### Fixed
 
