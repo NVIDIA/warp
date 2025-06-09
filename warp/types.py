@@ -608,6 +608,60 @@ def matrix(shape, dtype):
     return mat_t
 
 
+def matrix_from_cols(*args: Sequence[Vector]):
+    if not all(type_is_vector(x) for x in args):
+        raise RuntimeError("all arguments are expected to be vectors")
+
+    length = args[0]._length_
+    if any(x._length_ != length for x in args):
+        raise RuntimeError("all vectors are expected to have the same length")
+
+    dtype = args[0]._wp_scalar_type_
+    if any(x._wp_scalar_type_ != dtype for x in args):
+        raise RuntimeError("all vectors are expected to have the same dtype")
+
+    row_count = length
+    col_count = len(args)
+    out = matrix(shape=(row_count, col_count), dtype=dtype)()
+    mat_t = type(out)
+
+    for col in range(col_count):
+        v = args[col]
+        for row in range(row_count):
+            idx = col_count * row + col
+            value = mat_t.scalar_import(v[row])
+            super(mat_t, out).__setitem__(idx, value)
+
+    return out
+
+
+def matrix_from_rows(*args: Sequence[Vector]):
+    if not all(type_is_vector(x) for x in args):
+        raise RuntimeError("all arguments are expected to be vectors")
+
+    length = args[0]._length_
+    if any(x._length_ != length for x in args):
+        raise RuntimeError("all vectors are expected to have the same length")
+
+    dtype = args[0]._wp_scalar_type_
+    if any(x._wp_scalar_type_ != dtype for x in args):
+        raise RuntimeError("all vectors are expected to have the same dtype")
+
+    row_count = len(args)
+    col_count = length
+    out = matrix(shape=(row_count, col_count), dtype=dtype)()
+    mat_t = type(out)
+
+    for row in range(row_count):
+        v = args[row]
+        for col in range(col_count):
+            idx = col_count * row + col
+            value = mat_t.scalar_import(v[col])
+            super(mat_t, out).__setitem__(idx, value)
+
+    return out
+
+
 class void:
     def __init__(self):
         pass

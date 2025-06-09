@@ -1727,6 +1727,60 @@ def test_matrix_from_vecs():
     wp.expect_eq(m4[1, 2], 6.0)
 
 
+def test_matrix_from_vecs_runtime(test, device):
+    m1 = wp.matrix_from_cols(
+        wp.vec3(1.0, 2.0, 3.0),
+        wp.vec3(4.0, 5.0, 6.0),
+        wp.vec3(7.0, 8.0, 9.0),
+    )
+    assert m1[0, 0] == 1.0
+    assert m1[0, 1] == 4.0
+    assert m1[0, 2] == 7.0
+    assert m1[1, 0] == 2.0
+    assert m1[1, 1] == 5.0
+    assert m1[1, 2] == 8.0
+    assert m1[2, 0] == 3.0
+    assert m1[2, 1] == 6.0
+    assert m1[2, 2] == 9.0
+
+    m2 = wp.matrix_from_rows(
+        wp.vec3(1.0, 2.0, 3.0),
+        wp.vec3(4.0, 5.0, 6.0),
+        wp.vec3(7.0, 8.0, 9.0),
+    )
+    assert m2[0, 0] == 1.0
+    assert m2[0, 1] == 2.0
+    assert m2[0, 2] == 3.0
+    assert m2[1, 0] == 4.0
+    assert m2[1, 1] == 5.0
+    assert m2[1, 2] == 6.0
+    assert m2[2, 0] == 7.0
+    assert m2[2, 1] == 8.0
+    assert m2[2, 2] == 9.0
+
+    m3 = wp.matrix_from_cols(
+        wp.vec3(1.0, 2.0, 3.0),
+        wp.vec3(4.0, 5.0, 6.0),
+    )
+    assert m3[0, 0] == 1.0
+    assert m3[0, 1] == 4.0
+    assert m3[1, 0] == 2.0
+    assert m3[1, 1] == 5.0
+    assert m3[2, 0] == 3.0
+    assert m3[2, 1] == 6.0
+
+    m4 = wp.matrix_from_rows(
+        wp.vec3(1.0, 2.0, 3.0),
+        wp.vec3(4.0, 5.0, 6.0),
+    )
+    assert m4[0, 0] == 1.0
+    assert m4[0, 1] == 2.0
+    assert m4[0, 2] == 3.0
+    assert m4[1, 0] == 4.0
+    assert m4[1, 1] == 5.0
+    assert m4[1, 2] == 6.0
+
+
 # Same as above but with a default (float/int) type
 # which tests some different code paths that
 # need to ensure types are correctly canonicalized
@@ -2239,6 +2293,7 @@ add_kernel_test(TestMat, test_constructors_default_precision, dim=1, devices=dev
 add_kernel_test(TestMat, test_constructors_constant_shape, dim=1, devices=devices)
 add_kernel_test(TestMat, test_matrix_constructor_value_func, dim=1, devices=devices)
 add_kernel_test(TestMat, test_matrix_from_vecs, dim=1, devices=devices)
+add_function_test(TestMat, "test_matrix_from_vecs_runtime", test_matrix_from_vecs_runtime, devices=devices)
 
 mat103 = wp.types.matrix(shape=(10, 3), dtype=float)
 add_kernel_test(

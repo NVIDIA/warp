@@ -63,6 +63,8 @@ from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul
 from warp.types import vector as vec
 from warp.types import matrix as mat
 
+from warp.types import matrix_from_cols, matrix_from_rows
+
 from warp.types import dtype_from_numpy, dtype_to_numpy
 
 from warp.types import from_ipc_handle
