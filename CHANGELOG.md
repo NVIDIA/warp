@@ -55,6 +55,10 @@
 
 ### Changed
 
+- Deprecate the `warp.sim` module (planned for removal in v1.10). It will be replaced by the upcoming Newton library,
+  which will be released as a separate package with a new API. Please note that migrating will require code changes.
+  A guide will be provided in the future. For more details, see the announcement on GitHub
+  ([GH-735](https://github.com/NVIDIA/warp/discussions/735)).
 - Deprecate the `wp.matrix(pos, quat, scale)` built-in function. Use `wp.transform_compose()` instead
   ([GH-576](https://github.com/NVIDIA/warp/issues/576)).
 - Improve support for tuples in kernels ([GH-506](https://github.com/NVIDIA/warp/issues/506)).

@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from warp.utils import warn
+
 from .articulation import eval_fk, eval_ik
 from .collide import collide
 from .import_mjcf import parse_mjcf
@@ -62,4 +64,11 @@ from .utils import (
     quat_from_euler,
     quat_to_euler,
     velocity_at_point,
+)
+
+warn(
+    "The `warp.sim` module is deprecated and will be removed in v1.10. "
+    "Please transition to using the forthcoming Newton library instead.",
+    DeprecationWarning,
+    stacklevel=2,
 )

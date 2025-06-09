@@ -5,6 +5,13 @@ warp.sim
 
 .. currentmodule:: warp.sim
 
+.. deprecated:: v1.8
+
+   ``warp.sim`` will be replaced by the upcoming `Newton library <https://github.com/newton-physics/newton>`__,
+   which will be released as a separate package with a new API.
+   Please note that migrating will require code changes. A guide will be provided in the future.
+   For more details, see the `announcement on GitHub <https://github.com/NVIDIA/warp/discussions/735>`__.
+
 Warp includes a simulation module ``warp.sim`` that includes many common physical simulation models and integrators
 for explicit and implicit time-stepping.
 
