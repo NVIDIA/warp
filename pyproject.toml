@@ -83,7 +83,7 @@ extend-exclude = [
     "warp/thirdparty/appdirs.py",
     "warp/thirdparty/dlpack.py",
     "tools",
-    "stubs.py",
+    "__init__.pyi",
 ]
 
 [tool.ruff.lint]
@@ -154,5 +154,5 @@ omit = [
     "render_opengl.py",
     "build_dll.py",
     "config.py",
-    "stubs.py",
+    "__init__.pyi",
 ]

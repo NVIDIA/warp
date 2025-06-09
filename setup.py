@@ -220,6 +220,7 @@ else:
 setuptools.setup(
     package_data={
         "": [
+            "py.typed",
             "native/*.cpp",
             "native/*.cu",
             "native/*.h",

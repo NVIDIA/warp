@@ -50,7 +50,7 @@ pyCoverageOmit = [
     "warp/jax.py",
     "warp/jax_experimental.py",
     "warp/paddle.py",
-    "warp/stubs.py",
+    "warp/__init__.pyi",
     "warp/torch.py",
 ]
 timeout = 900

@@ -29,11 +29,11 @@ args = parser.parse_args()
 base_path = os.path.dirname(os.path.realpath(__file__))
 
 # generate stubs for autocomplete
-with open(os.path.join(base_path, "warp", "stubs.py"), "w") as stub_file:
+with open(os.path.join(base_path, "warp", "__init__.pyi"), "w") as stub_file:
     export_stubs(stub_file)
 
-# code formatting of stubs.py
-subprocess.run(["ruff", "format", "--verbose", os.path.join(base_path, "warp", "stubs.py")], check=True)
+# code formatting of __init__.pyi
+subprocess.run(["ruff", "format", "--verbose", os.path.join(base_path, "warp", "__init__.pyi")], check=True)
 
 with open(os.path.join(base_path, "docs", "modules", "functions.rst"), "w") as function_ref:
     export_functions_rst(function_ref)
