@@ -2774,6 +2774,13 @@ bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
     return true;
 }
 
+bool capture_debug_dot_print(void* graph, const char *path, uint32_t flags)
+{
+    if (!check_cuda(cudaGraphDebugDotPrint((cudaGraph_t)graph, path, flags)))
+        return false;
+    return true;
+}
+
 bool cuda_graph_create_exec(void* context, void* graph, void** graph_exec_ret)
 {
     ContextGuard guard(context);

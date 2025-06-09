@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
 
 import numpy as np
@@ -951,6 +953,32 @@ def test_complex_with_subgraphs(test, device):
                     np.testing.assert_array_equal(array.numpy(), base)
 
 
+def test_graph_debug_dot_print(test, device):
+    # create a simple graph to test dot file output
+    array = wp.array([1.0, 2.0, 3.0, 4.0], dtype=wp.float32, device=device)
+
+    with wp.ScopedCapture() as capture:
+        wp.launch(multiply_by_two_kernel, dim=array.size, inputs=[array], device=device)
+        wp.launch(multiply_by_three_kernel, dim=array.size, inputs=[array], device=device)
+        wp.launch(multiply_by_five_kernel, dim=array.size, inputs=[array], device=device)
+        wp.launch(multiply_by_seven_kernel, dim=array.size, inputs=[array], device=device)
+
+    # create temporary file path
+
+    temp_dir = tempfile.gettempdir()
+    dot_file = os.path.join(temp_dir, "test_graph.dot")
+
+    # generate dot file
+    wp.capture_debug_dot_print(capture.graph, dot_file, verbose=True)
+
+    # verify file was created and has content
+    assert os.path.exists(dot_file)
+    assert os.path.getsize(dot_file) > 0
+
+    # cleanup
+    os.remove(dot_file)
+
+
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 
@@ -1005,6 +1033,11 @@ add_function_test(
     "test_complex_with_subgraphs",
     test_complex_with_subgraphs,
     devices=cuda_devices,
+)
+
+
+add_function_test(
+    TestConditionalCaptures, "test_graph_debug_dot_print", test_graph_debug_dot_print, devices=cuda_devices
 )
 
 
