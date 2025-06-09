@@ -39,7 +39,11 @@ class LinearOperator:
     .. code-block:: python
 
         def matvec(x: wp.array, y: wp.array, z: wp.array, alpha: Scalar, beta: Scalar):
-            '''Performs the operation z = alpha * x + beta * y'''
+            '''Perform a generalized matrix-vector product.
+
+            This function computes the operation z = alpha * (A @ x) + beta * y, where 'A'
+            is the linear operator represented by this class.
+            '''
             ...
 
     For performance reasons, by default the iterative linear solvers in this module will try to capture the calls
