@@ -3763,6 +3763,9 @@ class Runtime:
             ]
             self.core.cuda_graph_create_exec.restype = ctypes.c_bool
 
+            self.core.capture_debug_dot_print.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_uint32]
+            self.core.capture_debug_dot_print.restype = ctypes.c_bool
+
             self.core.cuda_graph_launch.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.cuda_graph_launch.restype = ctypes.c_bool
             self.core.cuda_graph_exec_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
@@ -6357,6 +6360,18 @@ def capture_end(device: Devicelike = None, stream: Stream | None = None) -> Grap
     graph.graph_exec = None  # Lazy initialization
 
     return graph
+
+
+def capture_debug_dot_print(graph: Graph, path: str, verbose: bool = False):
+    """Export a CUDA graph to a DOT file for visualization
+
+    Args:
+        graph: A :class:`Graph` as returned by :func:`~warp.capture_end()`
+        path: Path to save the DOT file
+        verbose: Whether to include additional debug information in the output
+    """
+    if not runtime.core.capture_debug_dot_print(graph.graph, path.encode(), 0 if verbose else 1):
+        raise RuntimeError(f"Graph debug dot print error: {runtime.get_error_string()}")
 
 
 def assert_conditional_graph_support():

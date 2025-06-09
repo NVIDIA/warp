@@ -1154,6 +1154,7 @@ Graph API Reference
 .. autofunction:: capture_launch
 .. autofunction:: capture_if
 .. autofunction:: capture_while
+.. autofunction:: capture_debug_dot_print
 
 .. autoclass:: ScopedCapture
     :members:

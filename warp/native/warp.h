@@ -350,6 +350,7 @@ extern "C"
     WP_API bool cuda_graph_launch(void* graph, void* stream);
     WP_API bool cuda_graph_destroy(void* context, void* graph);
     WP_API bool cuda_graph_exec_destroy(void* context, void* graph_exec);
+    WP_API bool capture_debug_dot_print(void* graph, const char *path, uint32_t flags);
 
     WP_API bool cuda_graph_insert_if_else(void* context, void* stream, int* condition, void** if_graph_ret, void** else_graph_ret);
     WP_API bool cuda_graph_insert_while(void* context, void* stream, int* condition, void** body_graph_ret, uint64_t* handle_ret);
