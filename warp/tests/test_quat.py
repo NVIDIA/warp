@@ -2360,6 +2360,36 @@ def test_scalar_quat_div(test, device):
     assert_np_equal(x.grad.numpy(), np.array(((-1.0, -0.25, -0.0625, -0.015625),), dtype=float))
 
 
+def test_quat_indexing_assign(test, device):
+    @wp.func
+    def fn():
+        q = wp.quat(1.0, 2.0, 3.0, 4.0)
+
+        q[0] = 123.0
+        q[1] *= 2.0
+
+        wp.expect_eq(q[0], 123.0)
+        wp.expect_eq(q[1], 4.0)
+        wp.expect_eq(q[2], 3.0)
+        wp.expect_eq(q[3], 4.0)
+
+        q[-1] = 123.0
+        q[-2] *= 2.0
+
+        wp.expect_eq(q[-1], 123.0)
+        wp.expect_eq(q[-2], 6.0)
+        wp.expect_eq(q[-3], 4.0)
+        wp.expect_eq(q[-4], 123.0)
+
+    @wp.kernel
+    def kernel():
+        fn()
+
+    wp.launch(kernel, 1, device=device)
+    wp.synchronize()
+    fn()
+
+
 devices = get_test_devices()
 
 
@@ -2471,6 +2501,7 @@ add_function_test(TestQuat, "test_quat_sub_inplace", test_quat_sub_inplace, devi
 add_function_test(TestQuat, "test_quat_array_add_inplace", test_quat_array_add_inplace, devices=devices)
 add_function_test(TestQuat, "test_quat_array_sub_inplace", test_quat_array_sub_inplace, devices=devices)
 add_function_test(TestQuat, "test_scalar_quat_div", test_scalar_quat_div, devices=devices)
+add_function_test(TestQuat, "test_quat_indexing_assign", test_quat_indexing_assign, devices=devices)
 
 
 if __name__ == "__main__":

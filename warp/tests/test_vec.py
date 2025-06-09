@@ -1156,6 +1156,36 @@ def test_scalar_vec_div(test, device):
     assert_np_equal(x.grad.numpy(), np.array(((-1.0, -0.25, -0.0625),), dtype=float))
 
 
+def test_vec_indexing_assign(test, device):
+    @wp.func
+    def fn():
+        v = wp.vec4(1.0, 2.0, 3.0, 4.0)
+
+        v[0] = 123.0
+        v[1] *= 2.0
+
+        wp.expect_eq(v[0], 123.0)
+        wp.expect_eq(v[1], 4.0)
+        wp.expect_eq(v[2], 3.0)
+        wp.expect_eq(v[3], 4.0)
+
+        v[-1] = 123.0
+        v[-2] *= 2.0
+
+        wp.expect_eq(v[-1], 123.0)
+        wp.expect_eq(v[-2], 6.0)
+        wp.expect_eq(v[-3], 4.0)
+        wp.expect_eq(v[-4], 123.0)
+
+    @wp.kernel
+    def kernel():
+        fn()
+
+    wp.launch(kernel, 1, device=device)
+    wp.synchronize()
+    fn()
+
+
 devices = get_test_devices()
 
 
@@ -1222,6 +1252,7 @@ add_function_test(TestVec, "test_vec_sub_inplace", test_vec_sub_inplace, devices
 add_function_test(TestVec, "test_vec_array_add_inplace", test_vec_array_add_inplace, devices=devices)
 add_function_test(TestVec, "test_vec_array_sub_inplace", test_vec_array_sub_inplace, devices=devices)
 add_function_test(TestVec, "test_scalar_vec_div", test_scalar_vec_div, devices=devices)
+add_function_test(TestVec, "test_vec_indexing_assign", test_vec_indexing_assign, devices=devices)
 
 
 if __name__ == "__main__":

@@ -460,12 +460,17 @@ template<typename Type>
 inline CUDA_CALLABLE Type extract(const quat_t<Type>& a, int idx)
 {
 #if FP_CHECK
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat_t index %d out of bounds at %s %d", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     /*
     * Because quat data is not stored in an array, we index the quaternion by checking all possible idx values.
@@ -482,12 +487,17 @@ template<typename Type>
 inline CUDA_CALLABLE Type* index(quat_t<Type>& q, int idx)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     return &q[idx];
 }
@@ -496,12 +506,17 @@ template<typename Type>
 inline CUDA_CALLABLE Type* indexref(quat_t<Type>* q, int idx)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat store %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     return &((*q)[idx]);
 }
@@ -526,12 +541,17 @@ template<typename Type>
 inline CUDA_CALLABLE void add_inplace(quat_t<Type>& q, int idx, Type value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     q[idx] += value;
 }
@@ -542,12 +562,17 @@ inline CUDA_CALLABLE void adj_add_inplace(quat_t<Type>& q, int idx, Type value,
                                         quat_t<Type>& adj_q, int adj_idx, Type& adj_value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     adj_value += adj_q[idx];
 }
@@ -557,12 +582,17 @@ template<typename Type>
 inline CUDA_CALLABLE void sub_inplace(quat_t<Type>& q, int idx, Type value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     q[idx] -= value;
 }
@@ -573,12 +603,17 @@ inline CUDA_CALLABLE void adj_sub_inplace(quat_t<Type>& q, int idx, Type value,
                                         quat_t<Type>& adj_q, int adj_idx, Type& adj_value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     adj_value -= adj_q[idx];
 }
@@ -588,12 +623,17 @@ template<typename Type>
 inline CUDA_CALLABLE void assign_inplace(quat_t<Type>& q, int idx, Type value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     q[idx] = value;
 }
@@ -602,12 +642,17 @@ template<typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(quat_t<Type>& q, int idx, Type value, quat_t<Type>& adj_q, int& adj_idx, Type& adj_value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     adj_value += adj_q[idx];
 }
@@ -617,12 +662,17 @@ template<typename Type>
 inline CUDA_CALLABLE quat_t<Type> assign_copy(quat_t<Type>& q, int idx, Type value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     quat_t<Type> ret(q);
     ret[idx] = value;
@@ -633,12 +683,17 @@ template<typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(quat_t<Type>& q, int idx, Type value, quat_t<Type>& adj_q, int& adj_idx, Type& adj_value, const quat_t<Type>& adj_ret)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     adj_value += adj_ret[idx];
     for(unsigned i=0; i < 4; ++i)
@@ -667,12 +722,17 @@ template<typename Type>
 inline CUDA_CALLABLE void adj_extract(const quat_t<Type>& a, int idx, quat_t<Type>& adj_a, int & adj_idx, Type & adj_ret)
 {
 #if FP_CHECK
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat_t index %d out of bounds at %s %d", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     // See wp::extract(const quat_t<Type>& a, int idx) note
     if (idx == 0)       {adj_a.x += adj_ret;}

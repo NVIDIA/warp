@@ -477,6 +477,20 @@ template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE vec_t<Cols,Type> extract(const mat_t<Rows,Cols,Type>& m, int row)
 {
     vec_t<Cols,Type> ret;
+
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+
     for(unsigned i=0; i < Cols; ++i)
     {
         ret.c[i] = m.data[row][i];
@@ -488,17 +502,27 @@ template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE Type extract(const mat_t<Rows,Cols,Type>& m, int row, int col)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
-    if (col < 0 || col >= Cols)
+    if (col < -(int)Cols || col >= (int)Cols)
     {
         printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+    if (col < 0)
+    {
+        col += Cols;
+    }
+
     return m.data[row][col];
 }
 
@@ -506,12 +530,17 @@ template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE vec_t<Cols, Type>* index(mat_t<Rows,Cols,Type>& m, int row)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
 
     return reinterpret_cast<vec_t<Cols, Type>*>(&m.data[row]);
 }
@@ -520,17 +549,26 @@ template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE Type* index(mat_t<Rows,Cols,Type>& m, int row, int col)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
-    if (col < 0 || col >= Cols)
+    if (col < -(int)Cols || col >= (int)Cols)
     {
         printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+    if (col < 0)
+    {
+        col += Cols;
+    }
 
     return &m.data[row][col];
 }
@@ -554,17 +592,26 @@ template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, int row, int col, Type value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
-    if (col < 0 || col >= Cols)
+    if (col < -(int)Cols || col >= (int)Cols)
     {
         printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+    if (col < 0)
+    {
+        col += Cols;
+    }
 
     m.data[row][col] += value;
 }
@@ -574,12 +621,17 @@ template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, int row, vec_t<Cols,Type>& value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
 
     for(unsigned i=0; i < Cols; ++i)
     {
@@ -593,17 +645,26 @@ inline CUDA_CALLABLE void adj_add_inplace(mat_t<Rows,Cols,Type>& m, int row, int
                                         mat_t<Rows,Cols,Type>& adj_m, int adj_row, int adj_col, Type& adj_value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
-    if (col < 0 || col >= Cols)
+    if (col < -(int)Cols || col >= (int)Cols)
     {
         printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+    if (col < 0)
+    {
+        col += Cols;
+    }
 
     adj_value += adj_m.data[row][col];
 }
@@ -614,12 +675,17 @@ inline CUDA_CALLABLE void adj_add_inplace(mat_t<Rows,Cols,Type>& m, int row, vec
                                         mat_t<Rows,Cols,Type>& adj_m, int adj_row, vec_t<Cols,Type>& adj_value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
 
     for(unsigned i=0; i < Cols; ++i)
     {
@@ -632,17 +698,26 @@ template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, int row, int col, Type value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
-    if (col < 0 || col >= Cols)
+    if (col < -(int)Cols || col >= (int)Cols)
     {
         printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+    if (col < 0)
+    {
+        col += Cols;
+    }
 
     m.data[row][col] -= value;
 }
@@ -652,12 +727,17 @@ template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, int row, vec_t<Cols,Type>& value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
 
     for(unsigned i=0; i < Cols; ++i)
     {
@@ -671,17 +751,26 @@ inline CUDA_CALLABLE void adj_sub_inplace(mat_t<Rows,Cols,Type>& m, int row, int
                                         mat_t<Rows,Cols,Type>& adj_m, int adj_row, int adj_col, Type& adj_value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
-    if (col < 0 || col >= Cols)
+    if (col < -(int)Cols || col >= (int)Cols)
     {
         printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+    if (col < 0)
+    {
+        col += Cols;
+    }
 
     adj_value -= adj_m.data[row][col];
 }
@@ -692,12 +781,17 @@ inline CUDA_CALLABLE void adj_sub_inplace(mat_t<Rows,Cols,Type>& m, int row, vec
                                         mat_t<Rows,Cols,Type>& adj_m, int adj_row, vec_t<Cols,Type>& adj_value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
 
     for(unsigned i=0; i < Cols; ++i)
     {
@@ -710,17 +804,26 @@ template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, int row, int col, Type value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
-    if (col < 0 || col >= Cols)
+    if (col < -(int)Cols || col >= (int)Cols)
     {
         printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+    if (col < 0)
+    {
+        col += Cols;
+    }
 
     m.data[row][col] = value;
 }
@@ -730,12 +833,17 @@ template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, int row, vec_t<Cols,Type>& value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
 
     for(unsigned i=0; i < Cols; ++i)
     {
@@ -749,17 +857,26 @@ inline CUDA_CALLABLE void adj_assign_inplace(mat_t<Rows,Cols,Type>& m, int row, 
                                         mat_t<Rows,Cols,Type>& adj_m, int& adj_row, int& adj_col, Type& adj_value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
-    if (col < 0 || col >= Cols)
+    if (col < -(int)Cols || col >= (int)Cols)
     {
         printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+    if (col < 0)
+    {
+        col += Cols;
+    }
 
     adj_value += adj_m.data[row][col];
 }
@@ -770,12 +887,17 @@ inline CUDA_CALLABLE void adj_assign_inplace(mat_t<Rows,Cols,Type>& m, int row, 
                                         mat_t<Rows,Cols,Type>& adj_m, int& adj_row, vec_t<Cols,Type>& adj_value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
 
     for(unsigned i=0; i < Cols; ++i)
     {
@@ -788,17 +910,26 @@ template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, int row, int col, Type value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
-    if (col < 0 || col >= Cols)
+    if (col < -(int)Cols || col >= (int)Cols)
     {
         printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+    if (col < 0)
+    {
+        col += Cols;
+    }
 
     mat_t<Rows,Cols,Type> ret(m);
     ret.data[row][col] = value;
@@ -810,12 +941,17 @@ template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, int row, vec_t<Cols,Type>& value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
 
     mat_t<Rows,Cols,Type> ret(m);
     for(unsigned i=0; i < Cols; ++i)
@@ -831,17 +967,26 @@ inline CUDA_CALLABLE void adj_assign_copy(mat_t<Rows,Cols,Type>& m, int row, int
                                         mat_t<Rows,Cols,Type>& adj_m, int& adj_row, int& adj_col, Type& adj_value, const mat_t<Rows,Cols,Type>& adj_ret)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
-    if (col < 0 || col >= Cols)
+    if (col < -(int)Cols || col >= (int)Cols)
     {
         printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+    if (col < 0)
+    {
+        col += Cols;
+    }
 
     adj_value += adj_ret.data[row][col];
     for(unsigned i=0; i < Rows; ++i)
@@ -860,12 +1005,17 @@ inline CUDA_CALLABLE void adj_assign_copy(mat_t<Rows,Cols,Type>& m, int row, vec
                                         mat_t<Rows,Cols,Type>& adj_m, int& adj_row, vec_t<Cols,Type>& adj_value, const mat_t<Rows,Cols,Type>& adj_ret)
 {
 #ifndef NDEBUG
-    if (row < 0 || row >= Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
 
     for(unsigned i=0; i < Rows; ++i)
     {
@@ -1469,17 +1619,27 @@ template<unsigned Rows, unsigned Cols, typename Type>
 inline void CUDA_CALLABLE adj_extract(const mat_t<Rows,Cols,Type>& m, int row, int col, mat_t<Rows,Cols,Type>& adj_m, int& adj_row, int& adj_col, Type adj_ret)
 {
 #ifndef NDEBUG
-    if (row < 0 || row > Rows)
+    if (row < -(int)Rows || row >= (int)Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
-    if (col < 0 || col > Cols)
+    if (col < -(int)Cols || col >= (int)Cols)
     {
         printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+    if (col < 0)
+    {
+        col += Cols;
+    }
+
     adj_m.data[row][col] += adj_ret;
 }
 

@@ -2477,6 +2477,42 @@ def test_transform_array_sub_inplace(test, device):
     assert_np_equal(x.grad.numpy(), np.array([[-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]], dtype=float))
 
 
+def test_transform_indexing_assign(test, device):
+    @wp.func
+    def fn():
+        t = wp.transform(p=wp.vec3(1.0, 2.0, 3.0), q=wp.quat(4.0, 5.0, 6.0, 7.0))
+
+        t[0] = 123.0
+        t[3] *= 2.0
+
+        wp.expect_eq(t[0], 123.0)
+        wp.expect_eq(t[1], 2.0)
+        wp.expect_eq(t[2], 3.0)
+        wp.expect_eq(t[3], 8.0)
+        wp.expect_eq(t[4], 5.0)
+        wp.expect_eq(t[5], 6.0)
+        wp.expect_eq(t[6], 7.0)
+
+        t[-1] = 123.0
+        t[-5] *= 2.0
+
+        wp.expect_eq(t[0], 123.0)
+        wp.expect_eq(t[1], 2.0)
+        wp.expect_eq(t[2], 6.0)
+        wp.expect_eq(t[3], 8.0)
+        wp.expect_eq(t[4], 5.0)
+        wp.expect_eq(t[5], 6.0)
+        wp.expect_eq(t[6], 123.0)
+
+    @wp.kernel
+    def kernel():
+        fn()
+
+    wp.launch(kernel, 1, device=device)
+    wp.synchronize()
+    fn()
+
+
 devices = get_test_devices()
 
 
@@ -2694,6 +2730,7 @@ add_function_test(TestSpatial, "test_transform_add_inplace", test_transform_add_
 add_function_test(TestSpatial, "test_transform_sub_inplace", test_transform_sub_inplace, devices=devices)
 add_function_test(TestSpatial, "test_transform_array_add_inplace", test_transform_array_add_inplace, devices=devices)
 add_function_test(TestSpatial, "test_transform_array_sub_inplace", test_transform_array_sub_inplace, devices=devices)
+add_function_test(TestSpatial, "test_transform_indexing_assign", test_transform_indexing_assign, devices=devices)
 
 
 if __name__ == "__main__":

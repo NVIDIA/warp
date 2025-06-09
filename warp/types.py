@@ -522,8 +522,10 @@ def matrix(shape, dtype):
             return True
 
         def get_row(self, r):
-            if r < 0 or r >= self._shape_[0]:
+            if r < -self._shape_[0] or r >= self._shape_[0]:
                 raise IndexError("Invalid row index")
+            if r < 0:
+                r += self._shape_[0]
             row_start = r * self._shape_[1]
             row_end = row_start + self._shape_[1]
             row_data = super().__getitem__(slice(row_start, row_end))
@@ -533,8 +535,10 @@ def matrix(shape, dtype):
                 return self._wp_row_type_(row_data)
 
         def set_row(self, r, v):
-            if r < 0 or r >= self._shape_[0]:
+            if r < -self._shape_[0] or r >= self._shape_[0]:
                 raise IndexError("Invalid row index")
+            if r < 0:
+                r += self._shape_[0]
             try:
                 iter(v)
             except TypeError:
@@ -565,7 +569,9 @@ def matrix(shape, dtype):
                     raise KeyError(f"Invalid key, expected one or two indices, got {len(key)}")
                 if any(isinstance(x, slice) for x in key):
                     raise KeyError("Slices are not supported when indexing matrices using the `m[i, j]` notation")
-                return mat_t.scalar_export(super().__getitem__(key[0] * self._shape_[1] + key[1]))
+                row = key[0] + self._shape_[0] if key[0] < 0 else key[0]
+                col = key[1] + self._shape_[1] if key[1] < 0 else key[1]
+                return mat_t.scalar_export(super().__getitem__(row * self._shape_[1] + col))
             elif isinstance(key, int):
                 # row vector indexing m[r]
                 return self.get_row(key)
@@ -580,7 +586,9 @@ def matrix(shape, dtype):
                 if any(isinstance(x, slice) for x in key):
                     raise KeyError("Slices are not supported when indexing matrices using the `m[i, j]` notation")
                 try:
-                    return super().__setitem__(key[0] * self._shape_[1] + key[1], mat_t.scalar_import(value))
+                    row = key[0] + self._shape_[0] if key[0] < 0 else key[0]
+                    col = key[1] + self._shape_[1] if key[1] < 0 else key[1]
+                    return super().__setitem__(row * self._shape_[1] + col, mat_t.scalar_import(value))
                 except (TypeError, ctypes.ArgumentError):
                     raise TypeError(
                         f"Expected to assign a `{self._wp_scalar_type_.__name__}` value "

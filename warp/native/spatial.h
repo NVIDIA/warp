@@ -408,13 +408,18 @@ template<typename Type>
 inline CUDA_CALLABLE Type extract(const transform_t<Type>& t, int idx)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx >= 7)
+    if (idx < -7 || idx >= 7)
     {
         printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
-    
+
+    if (idx < 0)
+    {
+        idx += 7;
+    }
+
     return t[idx];
 }
 
@@ -422,12 +427,17 @@ template<typename Type>
 inline CUDA_CALLABLE Type* index(transform_t<Type>& t, int idx)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx >= 7)
+    if (idx < -7 || idx >= 7)
     {
         printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 7;
+    }
 
     return &t[idx];
 }
@@ -436,12 +446,17 @@ template<typename Type>
 inline CUDA_CALLABLE Type* indexref(transform_t<Type>* t, int idx)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx >= 7)
+    if (idx < -7 || idx >= 7)
     {
-        printf("transformation store %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 7;
+    }
 
     return &((*t)[idx]);
 }
@@ -470,12 +485,17 @@ template<typename Type>
 inline CUDA_CALLABLE void add_inplace(transform_t<Type>& t, int idx, Type value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx >= 7)
+    if (idx < -7 || idx >= 7)
     {
         printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 7;
+    }
 
     t[idx] += value;
 }
@@ -486,12 +506,17 @@ inline CUDA_CALLABLE void adj_add_inplace(transform_t<Type>& t, int idx, Type va
                                         transform_t<Type>& adj_t, int adj_idx, Type& adj_value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx >= 7)
+    if (idx < -7 || idx >= 7)
     {
         printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 7;
+    }
 
     adj_value += adj_t[idx];
 }
@@ -501,12 +526,17 @@ template<typename Type>
 inline CUDA_CALLABLE void sub_inplace(transform_t<Type>& t, int idx, Type value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx >= 7)
+    if (idx < -7 || idx >= 7)
     {
         printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 7;
+    }
 
     t[idx] -= value;
 }
@@ -517,12 +547,17 @@ inline CUDA_CALLABLE void adj_sub_inplace(transform_t<Type>& t, int idx, Type va
                                         transform_t<Type>& adj_t, int adj_idx, Type& adj_value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx >= 7)
+    if (idx < -7 || idx >= 7)
     {
         printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 7;
+    }
 
     adj_value -= adj_t[idx];
 }
@@ -532,12 +567,17 @@ template<typename Type>
 inline CUDA_CALLABLE void assign_inplace(transform_t<Type>& t, int idx, Type value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx >= 7)
+    if (idx < -7 || idx >= 7)
     {
         printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 7;
+    }
 
     t[idx] = value;
 }
@@ -546,12 +586,17 @@ template<typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(transform_t<Type>& t, int idx, Type value, transform_t<Type>& adj_t, int& adj_idx, Type& adj_value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx >= 7)
+    if (idx < -7 || idx >= 7)
     {
         printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 7;
+    }
 
     adj_value += adj_t[idx];
 }
@@ -561,12 +606,17 @@ template<typename Type>
 inline CUDA_CALLABLE transform_t<Type> assign_copy(transform_t<Type>& t, int idx, Type value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx >= 7)
+    if (idx < -7 || idx >= 7)
     {
         printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 7;
+    }
 
     transform_t<Type> ret(t);
     ret[idx] = value;
@@ -577,12 +627,17 @@ template<typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(transform_t<Type>& t, int idx, Type value, transform_t<Type>& adj_t, int& adj_idx, Type& adj_value, const transform_t<Type>& adj_ret)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx >= 7)
+    if (idx < -7 || idx >= 7)
     {
         printf("transformation index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 7;
+    }
 
     adj_value += adj_ret[idx];
     for(unsigned i=0; i < 7; ++i)

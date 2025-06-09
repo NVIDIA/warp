@@ -2270,6 +2270,148 @@ def test_scalar_mat_div(test, device):
     assert_np_equal(x.grad.numpy(), np.array((((-1.0, -0.25), (-0.0625, -0.015625)),), dtype=float))
 
 
+def test_mat_from_rows_indexing_assign(test, device):
+    @wp.func
+    def fn():
+        m = wp.matrix_from_rows(
+            wp.vec2(1.0, 2.0),
+            wp.vec2(3.0, 4.0),
+            wp.vec2(5.0, 6.0),
+        )
+
+        m[0] = wp.vec2(123.0, 234.0)
+        m[1] *= 2.0
+
+        wp.expect_eq(m[0], wp.vec2(123.0, 234.0))
+        wp.expect_eq(m[1], wp.vec2(6.0, 8.0))
+        wp.expect_eq(m[2], wp.vec2(5.0, 6.0))
+
+        m[-1] = wp.vec2(123.0, 234.0)
+        m[-2] *= 2.0
+
+        wp.expect_eq(m[-1], wp.vec2(123.0, 234.0))
+        wp.expect_eq(m[-2], wp.vec2(12.0, 16.0))
+        wp.expect_eq(m[-3], wp.vec2(123.0, 234.0))
+
+        m[0, 0] = 345.0
+        m[1, 0] *= 2.0
+
+        wp.expect_eq(m[0, 0], 345.0)
+        wp.expect_eq(m[0, 1], 234.0)
+        wp.expect_eq(m[1, 0], 24.0)
+        wp.expect_eq(m[1, 1], 16.0)
+        wp.expect_eq(m[2, 0], 123.0)
+        wp.expect_eq(m[2, 1], 234.0)
+
+        m[-1, -1] = 345.0
+        m[-2, -1] *= 2.0
+
+        wp.expect_eq(m[-1, -1], 345.0)
+        wp.expect_eq(m[-1, -2], 123.0)
+        wp.expect_eq(m[-2, -1], 32.0)
+        wp.expect_eq(m[-2, -2], 24.0)
+        wp.expect_eq(m[-3, -1], 234.0)
+        wp.expect_eq(m[-3, -2], 345.0)
+
+        m[0, 1] = 456.0
+        m[1, 1] *= 2.0
+
+        wp.expect_eq(m[0][0], 345.0)
+        wp.expect_eq(m[0][1], 456.0)
+        wp.expect_eq(m[1][0], 24.0)
+        wp.expect_eq(m[1][1], 64.0)
+        wp.expect_eq(m[2][0], 123.0)
+        wp.expect_eq(m[2][1], 345.0)
+
+        m[-1, -2] = 456.0
+        m[-2, -2] *= 2.0
+
+        wp.expect_eq(m[-1][-1], 345.0)
+        wp.expect_eq(m[-1][-2], 456.0)
+        wp.expect_eq(m[-2][-1], 64.0)
+        wp.expect_eq(m[-2][-2], 48.0)
+        wp.expect_eq(m[-3][-1], 456.0)
+        wp.expect_eq(m[-3][-2], 345.0)
+
+    @wp.kernel
+    def kernel():
+        fn()
+
+    wp.launch(kernel, 1, device=device)
+    wp.synchronize()
+    fn()
+
+
+def test_mat_from_cols_indexing_assign(test, device):
+    @wp.func
+    def fn():
+        m = wp.matrix_from_cols(
+            wp.vec2(1.0, 2.0),
+            wp.vec2(3.0, 4.0),
+            wp.vec2(5.0, 6.0),
+        )
+
+        m[0] = wp.vec3(123.0, 234.0, 345.0)
+        m[1] *= 2.0
+
+        wp.expect_eq(m[0], wp.vec3(123.0, 234.0, 345.0))
+        wp.expect_eq(m[1], wp.vec3(4.0, 8.0, 12.0))
+
+        m[-1] = wp.vec3(123.0, 234.0, 345.0)
+        m[-2] *= 2.0
+
+        wp.expect_eq(m[-1], wp.vec3(123.0, 234.0, 345.0))
+        wp.expect_eq(m[-2], wp.vec3(246.0, 468.0, 690.0))
+
+        m[0, 0] = 456.0
+        m[1, 0] *= 2.0
+
+        wp.expect_eq(m[0, 0], 456.0)
+        wp.expect_eq(m[0, 1], 468.0)
+        wp.expect_eq(m[0, 2], 690.0)
+        wp.expect_eq(m[1, 0], 246.0)
+        wp.expect_eq(m[1, 1], 234.0)
+        wp.expect_eq(m[1, 2], 345.0)
+
+        m[-1, -1] = 456.0
+        m[-2, -1] *= 2.0
+
+        wp.expect_eq(m[-1, -1], 456.0)
+        wp.expect_eq(m[-1, -2], 234.0)
+        wp.expect_eq(m[-1, -3], 246.0)
+        wp.expect_eq(m[-2, -1], 1380.0)
+        wp.expect_eq(m[-2, -2], 468.0)
+        wp.expect_eq(m[-2, -3], 456.0)
+
+        m[0, 1] = 567.0
+        m[1, 1] *= 2.0
+
+        wp.expect_eq(m[0][0], 456.0)
+        wp.expect_eq(m[0][1], 567.0)
+        wp.expect_eq(m[0][2], 1380.0)
+        wp.expect_eq(m[1][0], 246.0)
+        wp.expect_eq(m[1][1], 468.0)
+        wp.expect_eq(m[1][2], 456.0)
+
+        m[-1, -2] = 567.0
+        m[-2, -2] *= 2.0
+
+        wp.expect_eq(m[-1][-1], 456.0)
+        wp.expect_eq(m[-1][-2], 567.0)
+        wp.expect_eq(m[-1][-3], 246.0)
+        wp.expect_eq(m[-2][-1], 1380.0)
+        wp.expect_eq(m[-2][-2], 1134.0)
+        wp.expect_eq(m[-2][-3], 456.0)
+
+    @wp.kernel
+    def kernel():
+        fn()
+
+    wp.launch(kernel, 1, device=device)
+    wp.synchronize()
+    fn()
+
+
 devices = get_test_devices()
 
 
@@ -2402,6 +2544,8 @@ add_function_test(TestMat, "test_mat_sub_inplace", test_mat_sub_inplace, devices
 add_function_test(TestMat, "test_mat_array_add_inplace", test_mat_array_add_inplace, devices=devices)
 add_function_test(TestMat, "test_mat_array_sub_inplace", test_mat_array_sub_inplace, devices=devices)
 add_function_test(TestMat, "test_scalar_mat_div", test_scalar_mat_div, devices=devices)
+add_function_test(TestMat, "test_mat_from_rows_indexing_assign", test_mat_from_rows_indexing_assign, devices=devices)
+add_function_test(TestMat, "test_mat_from_cols_indexing_assign", test_mat_from_cols_indexing_assign, devices=devices)
 
 
 if __name__ == "__main__":
