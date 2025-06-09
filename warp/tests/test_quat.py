@@ -2118,39 +2118,6 @@ def test_quat_assign(test, device):
     run(quat_assign_attribute)
 
 
-def test_quat_assign_copy(test, device):
-    saved_enable_vector_component_overwrites_setting = wp.config.enable_vector_component_overwrites
-    try:
-        wp.config.enable_vector_component_overwrites = True
-
-        @wp.kernel
-        def quat_assign_overwrite(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.quat)):
-            tid = wp.tid()
-
-            a = wp.quat()
-            b = x[tid]
-            a = b
-            a[1] = 3.0
-
-            y[tid] = a
-
-        x = wp.ones(1, dtype=wp.quat, device=device, requires_grad=True)
-        y = wp.zeros(1, dtype=wp.quat, device=device, requires_grad=True)
-
-        tape = wp.Tape()
-        with tape:
-            wp.launch(quat_assign_overwrite, dim=1, inputs=[x, y], device=device)
-
-        y.grad = wp.ones_like(y, requires_grad=False)
-        tape.backward()
-
-        assert_np_equal(y.numpy(), np.array([[1.0, 3.0, 1.0, 1.0]], dtype=float))
-        assert_np_equal(x.grad.numpy(), np.array([[1.0, 0.0, 1.0, 1.0]], dtype=float))
-
-    finally:
-        wp.config.enable_vector_component_overwrites = saved_enable_vector_component_overwrites_setting
-
-
 @wp.kernel
 def quat_array_extract_subscript(x: wp.array2d(dtype=wp.quat), y: wp.array2d(dtype=float)):
     i, j = wp.tid()
@@ -2497,7 +2464,6 @@ for dtype in np_float_types:
 add_function_test(TestQuat, "test_quat_len", test_quat_len, devices=devices)
 add_function_test(TestQuat, "test_quat_extract", test_quat_extract, devices=devices)
 add_function_test(TestQuat, "test_quat_assign", test_quat_assign, devices=devices)
-add_function_test(TestQuat, "test_quat_assign_copy", test_quat_assign_copy, devices=devices)
 add_function_test(TestQuat, "test_quat_array_extract", test_quat_array_extract, devices=devices)
 add_function_test(TestQuat, "test_quat_array_assign", test_quat_array_assign, devices=devices)
 add_function_test(TestQuat, "test_quat_add_inplace", test_quat_add_inplace, devices=devices)

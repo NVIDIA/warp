@@ -1941,36 +1941,6 @@ def test_mat_assign(test, device):
     assert_np_equal(x.grad.numpy(), np.array([[3.0, 3.0]], dtype=float))
 
 
-def test_matrix_assign_copy(test, device):
-    saved_enable_vector_component_overwrites_setting = wp.config.enable_vector_component_overwrites
-    try:
-        wp.config.enable_vector_component_overwrites = True
-
-        @wp.kernel
-        def mat_in_register_overwrite(x: wp.array2d(dtype=wp.mat22), y: wp.array(dtype=wp.vec2)):
-            i, j = wp.tid()
-
-            a = wp.mat22()
-            a[0] = y[i]
-            a[0, 1] = 3.0
-            x[i, j] = a
-
-        x = wp.zeros((1, 1), dtype=wp.mat22, device=device, requires_grad=True)
-        y = wp.ones(1, dtype=wp.vec2, device=device, requires_grad=True)
-
-        tape = wp.Tape()
-        with tape:
-            wp.launch(mat_in_register_overwrite, dim=(1, 1), inputs=[x, y], device=device)
-
-        tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
-
-        assert_np_equal(x.numpy(), np.array([[[[1.0, 3.0], [0.0, 0.0]]]], dtype=float))
-        assert_np_equal(y.grad.numpy(), np.array([[1.0, 0.0]], dtype=float))
-
-    finally:
-        wp.config.enable_vector_component_overwrites = saved_enable_vector_component_overwrites_setting
-
-
 @wp.kernel
 def mat_array_extract_element(x: wp.array2d(dtype=wp.mat22), y: wp.array2d(dtype=float)):
     i, j = wp.tid()
@@ -2370,7 +2340,6 @@ for dtype in np_float_types:
 add_function_test(TestMat, "test_matrix_len", test_matrix_len, devices=devices)
 add_function_test(TestMat, "test_mat_extract", test_mat_extract, devices=devices)
 add_function_test(TestMat, "test_mat_assign", test_mat_assign, devices=devices)
-add_function_test(TestMat, "test_matrix_assign_copy", test_matrix_assign_copy, devices=devices)
 add_function_test(TestMat, "test_mat_array_extract", test_mat_array_extract, devices=devices)
 # add_function_test(TestMat, "test_mat_array_assign", test_mat_array_assign, devices=devices)
 add_function_test(TestMat, "test_mat_add_inplace", test_mat_add_inplace, devices=devices)

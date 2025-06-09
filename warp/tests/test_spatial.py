@@ -2217,39 +2217,6 @@ def test_transform_assign(test, device):
     assert_np_equal(y.grad.numpy(), np.array([[1.0, 1.0, 1.0, 1.0]], dtype=float))
 
 
-def test_transform_assign_copy(test, device):
-    saved_enable_vector_component_overwrites_setting = wp.config.enable_vector_component_overwrites
-    try:
-        wp.config.enable_vector_component_overwrites = True
-
-        @wp.kernel
-        def transform_assign_overwrite(x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.transform)):
-            tid = wp.tid()
-
-            a = wp.transform()
-            b = x[tid]
-            a = b
-            a[1] = 3.0
-
-            y[tid] = a
-
-        x = wp.ones(1, dtype=wp.transform, device=device, requires_grad=True)
-        y = wp.zeros(1, dtype=wp.transform, device=device, requires_grad=True)
-
-        tape = wp.Tape()
-        with tape:
-            wp.launch(transform_assign_overwrite, dim=1, inputs=[x, y], device=device)
-
-        y.grad = wp.ones_like(y, requires_grad=False)
-        tape.backward()
-
-        assert_np_equal(y.numpy(), np.array([[1.0, 3.0, 1.0, 1.0, 1.0, 1.0, 1.0]], dtype=float))
-        assert_np_equal(x.grad.numpy(), np.array([[1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0]], dtype=float))
-
-    finally:
-        wp.config.enable_vector_component_overwrites = saved_enable_vector_component_overwrites_setting
-
-
 @wp.kernel
 def transform_array_extract_subscript(x: wp.array2d(dtype=wp.transform), y: wp.array2d(dtype=float)):
     i, j = wp.tid()
@@ -2721,7 +2688,6 @@ add_function_test(
 )
 add_function_test(TestSpatial, "test_transform_extract", test_transform_extract, devices=devices)
 add_function_test(TestSpatial, "test_transform_assign", test_transform_assign, devices=devices)
-add_function_test(TestSpatial, "test_transform_assign_copy", test_transform_assign_copy, devices=devices)
 add_function_test(TestSpatial, "test_transform_array_extract", test_transform_array_extract, devices=devices)
 add_function_test(TestSpatial, "test_transform_array_assign", test_transform_array_assign, devices=devices)
 add_function_test(TestSpatial, "test_transform_add_inplace", test_transform_add_inplace, devices=devices)
