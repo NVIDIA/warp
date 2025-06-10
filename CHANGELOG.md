@@ -60,6 +60,8 @@
   ([GH-726](https://github.com/NVIDIA/warp/issues/726)).
 - Skip adjoint compilation for `wp.tile_matmul()` if `enable_backward` is disabled
   ([GH-644](https://github.com/NVIDIA/warp/issues/644)).
+- Tile reductions work with non-scalar tile types ([GH-771](https://github.com/NVIDIA/warp/issues/771)).
+- Permit type preservation when tiling a value across the block ([GH-772](https://github.com/NVIDIA/warp/issues/772)).
 - `wp.sparse.bsr_[set_]from_triplets` is now differentiable with respect to the input triplet values
   ([GH-760](https://github.com/NVIDIA/warp/issues/760)).
 - Exposed new `warp.fem` operators: `node_count`, `node_index`, `element_coordinates`, `element_closest_point`.

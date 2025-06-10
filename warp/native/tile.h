@@ -1557,36 +1557,55 @@ inline CUDA_CALLABLE auto tile(const wp::vec_t<Length, T>& x)
     using Layout = typename decltype(result)::Layout;
     static_assert(Layout::NumRegs == Length, "Expected Layout::NumRegs == Length");
 
-    for (int i=0; i < Length; ++i)
+    for (unsigned i=0; i < Length; ++i)
         result.data[i] = x[i]; 
 
     return result;
 }
 
-// construct a tile from a local SIMT value (one per-thread)
+// overload for constructing a tile from a per-thread matrix
+template <unsigned Rows, unsigned Cols, typename T>
+inline CUDA_CALLABLE auto tile(const wp::mat_t<Rows, Cols, T>& x)
+{
+    tile_register_t<T, tile_layout_register_t<tile_shape_t<Rows, Cols, WP_TILE_BLOCK_DIM>>> result;
+    
+    using Layout = typename decltype(result)::Layout;
+    static_assert(Layout::NumRegs == Rows*Cols, "Expected Layout::NumRegs == Rows*Cols");
+
+    for (unsigned i=0; i < Rows; ++i)
+        for (unsigned j=0; j < Cols; ++j)
+            result.data[i*Cols + j] = x.data[i][j]; 
+
+    return result;
+}
+
+// it is sufficient to use a single adjoint for all tile overload funcs
+// it is also necessary, because we don't provide a dispatch_func for adjoint calls
+// so the compiler will default to choosing based on argument types
 template <typename T, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile(const T& x, T& adj_x, AdjTile& adj_ret)
 {
-    static_assert(AdjTile::Layout::Shape::N == 1, "Expected AdjTile::Layout::Shape::N == 1");
-    static_assert(AdjTile::Layout::Shape::dim(0) == WP_TILE_BLOCK_DIM, "Expected AdjTile::Layout::Shape::dim(0) == WP_TILE_BLOCK_DIM");
+    static_assert(AdjTile::Layout::Shape::dim(AdjTile::Layout::Shape::N - 1) == WP_TILE_BLOCK_DIM, "Expected AdjTile::Layout::Shape::dim(AdjTile::Layout::Shape::N - 1) == WP_TILE_BLOCK_DIM");
     
     auto adj_reg = adj_ret.copy_to_register();
 
-    adj_x += adj_reg.data[0];
+    if constexpr (AdjTile::Layout::Shape::N == 1)
+    {
+        adj_x += adj_reg.data[0];
+    }
+    else if constexpr (AdjTile::Layout::Shape::N == 2)
+    {
+        for (unsigned i=0; i < AdjTile::Layout::Shape::dim(0); ++i)
+            adj_x[i] += adj_reg.data[i];
+    }
+    else if constexpr (AdjTile::Layout::Shape::N == 3)
+    {
+        for (unsigned i=0; i < AdjTile::Layout::Shape::dim(0); ++i)
+            for (unsigned j=0; j < AdjTile::Layout::Shape::dim(1); ++j)
+                adj_x.data[i][j] += adj_reg.data[i*AdjTile::Layout::Shape::dim(1) + j];
+    }
 }
 
-template <typename T, unsigned Length, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile(const wp::vec_t<Length, T>& x, wp::vec_t<Length, T>& adj_x, AdjTile& adj_ret)
-{
-    static_assert(AdjTile::Layout::Shape::N == 2, "Expected AdjTile::Layout::Shape::N == 2");
-    static_assert(AdjTile::Layout::Shape::dim(0) == Length, "Expected AdjTile::Layout::Shape::dim(0) == Length");
-    static_assert(AdjTile::Layout::Shape::dim(1) == WP_TILE_BLOCK_DIM, "Expected AdjTile::Layout::Shape::dim(1) == WP_TILE_BLOCK_DIM");
-
-    auto adj_reg = adj_ret.copy_to_register();
-
-    for (int i=0; i < Length; ++i)
-        adj_x[i] += adj_reg.data[i];
-}
 
 template <typename Tile>
 inline CUDA_CALLABLE auto untile(Tile& tile)
@@ -1614,6 +1633,19 @@ inline CUDA_CALLABLE auto untile(Tile& tile)
 
         return v;
     }
+
+    // matrix case
+    if constexpr(N == 3)
+    {
+        constexpr int Rows = Tile::Layout::Shape::dim(0);
+        constexpr int Cols = Tile::Layout::Shape::dim(1);
+        wp::mat_t<Rows, Cols, typename Tile::Type> m;
+        for (int i=0; i < Rows; ++i)
+            for (int j=0; j < Cols; ++j)
+                m.data[i][j] = reg.data[i*Cols + j];
+
+        return m;
+    }
 }
 
 template <typename Tile, typename Value>
@@ -1635,6 +1667,16 @@ inline CUDA_CALLABLE void adj_untile(Tile& tile, Tile& adj_tile, Value& adj_ret)
         constexpr int Length = Tile::Layout::Shape::dim(0);
         for (int i=0; i < Length; ++i)
             adj.data[i] += adj_ret[i];
+    }
+
+    // matrix case
+    if constexpr(N == 3)
+    {
+        constexpr int Rows = Tile::Layout::Shape::dim(0);
+        constexpr int Cols = Tile::Layout::Shape::dim(1);
+        for (int i=0; i < Rows; ++i)
+            for (int j=0; j < Cols; ++j)
+                adj.data[i*Cols + j] += adj_ret.data[i][j];
     }
 
     adj_tile.assign(adj);

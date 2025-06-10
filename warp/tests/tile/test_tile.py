@@ -361,6 +361,196 @@ def test_tile_operators(test, device):
     assert_np_equal(input_wp.grad.numpy(), np.ones_like(input) * 0.75)
 
 
+@wp.kernel
+def test_tile_tile_preserve_type_kernel(x: wp.array(dtype=Any), y: wp.array(dtype=Any)):
+    a = x[0]
+    t = wp.tile(a, preserve_type=True)
+    wp.tile_store(y, t)
+
+
+@wp.kernel
+def test_tile_tile_scalar_expansion_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    a = x[0]
+    t = wp.tile(a)
+    wp.tile_store(y, t)
+
+
+@wp.kernel
+def test_tile_tile_vec_expansion_kernel(x: wp.array(dtype=wp.vec3), y: wp.array2d(dtype=float)):
+    a = x[0]
+    t = wp.tile(a)
+    wp.tile_store(y, t)
+
+
+@wp.kernel
+def test_tile_tile_mat_expansion_kernel(x: wp.array(dtype=wp.mat33), y: wp.array3d(dtype=float)):
+    a = x[0]
+    t = wp.tile(a)
+    wp.tile_store(y, t)
+
+
+def test_tile_tile(test, device):
+    # preserve type
+    def test_func_preserve_type(type: Any):
+        x = wp.ones(1, dtype=type, requires_grad=True, device=device)
+        y = wp.zeros((TILE_DIM), dtype=type, requires_grad=True, device=device)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(
+                test_tile_tile_preserve_type_kernel,
+                dim=[TILE_DIM],
+                inputs=[x],
+                outputs=[y],
+                block_dim=TILE_DIM,
+                device=device,
+            )
+
+        y.grad = wp.ones_like(y)
+
+        tape.backward()
+
+        assert_np_equal(y.numpy(), wp.full((TILE_DIM), type(1.0), dtype=type, device="cpu").numpy())
+        assert_np_equal(x.grad.numpy(), wp.full((1,), type(TILE_DIM), dtype=type, device="cpu").numpy())
+
+    test_func_preserve_type(float)
+    test_func_preserve_type(wp.vec3)
+    test_func_preserve_type(wp.quat)
+    test_func_preserve_type(wp.mat33)
+
+    # scalar expansion
+    x = wp.ones(1, dtype=float, requires_grad=True, device=device)
+    y = wp.zeros((TILE_DIM), dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            test_tile_tile_scalar_expansion_kernel,
+            dim=[TILE_DIM],
+            inputs=[x],
+            outputs=[y],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    y.grad = wp.ones_like(y)
+
+    tape.backward()
+
+    assert_np_equal(y.numpy(), wp.full((TILE_DIM), 1.0, dtype=float, device="cpu").numpy())
+    assert_np_equal(x.grad.numpy(), wp.full((1,), wp.float32(TILE_DIM), dtype=float, device="cpu").numpy())
+
+    # vec expansion
+    x = wp.ones(1, dtype=wp.vec3, requires_grad=True, device=device)
+    y = wp.zeros((3, TILE_DIM), dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            test_tile_tile_vec_expansion_kernel,
+            dim=[TILE_DIM],
+            inputs=[x],
+            outputs=[y],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    y.grad = wp.ones_like(y)
+
+    tape.backward()
+
+    assert_np_equal(y.numpy(), wp.full((3, TILE_DIM), 1.0, dtype=float, device="cpu").numpy())
+    assert_np_equal(x.grad.numpy(), wp.full((1,), wp.float32(TILE_DIM), dtype=wp.vec3, device="cpu").numpy())
+
+    # mat expansion
+    x = wp.ones(1, dtype=wp.mat33, requires_grad=True, device=device)
+    y = wp.zeros((3, 3, TILE_DIM), dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            test_tile_tile_mat_expansion_kernel,
+            dim=[TILE_DIM],
+            inputs=[x],
+            outputs=[y],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    y.grad = wp.ones_like(y)
+
+    tape.backward()
+
+    assert_np_equal(y.numpy(), wp.full((3, 3, TILE_DIM), 1.0, dtype=float, device="cpu").numpy())
+    assert_np_equal(x.grad.numpy(), wp.full((1,), wp.float32(TILE_DIM), dtype=wp.mat33, device="cpu").numpy())
+
+
+@wp.kernel
+def test_tile_untile_preserve_type_kernel(x: wp.array(dtype=Any), y: wp.array(dtype=Any)):
+    i = wp.tid()
+    a = x[i]
+    t = wp.tile(a, preserve_type=True)
+    b = wp.untile(t)
+    y[i] = b
+
+
+@wp.kernel
+def test_tile_untile_kernel(x: wp.array(dtype=Any), y: wp.array(dtype=Any)):
+    i = wp.tid()
+    a = x[i]
+    t = wp.tile(a)
+    b = wp.untile(t)
+    y[i] = b
+
+
+def test_tile_untile(test, device):
+    def test_func_preserve_type(type: Any):
+        x = wp.ones(TILE_DIM, dtype=type, requires_grad=True, device=device)
+        y = wp.zeros_like(x)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(
+                test_tile_untile_preserve_type_kernel,
+                dim=TILE_DIM,
+                inputs=[x],
+                outputs=[y],
+                block_dim=TILE_DIM,
+                device=device,
+            )
+
+        y.grad = wp.ones_like(y)
+
+        tape.backward()
+
+        assert_np_equal(y.numpy(), x.numpy())
+        assert_np_equal(x.grad.numpy(), y.grad.numpy())
+
+    test_func_preserve_type(float)
+    test_func_preserve_type(wp.vec3)
+    test_func_preserve_type(wp.quat)
+    test_func_preserve_type(wp.mat33)
+
+    def test_func(type: Any):
+        x = wp.ones(TILE_DIM, dtype=type, requires_grad=True, device=device)
+        y = wp.zeros_like(x)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(test_tile_untile_kernel, dim=TILE_DIM, inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device)
+
+        y.grad = wp.ones_like(y)
+
+        tape.backward()
+
+        assert_np_equal(y.numpy(), x.numpy())
+        assert_np_equal(x.grad.numpy(), y.grad.numpy())
+
+    test_func(float)
+    test_func(wp.vec3)
+    test_func(wp.mat33)
+
+
 @wp.func
 def tile_sum_func(a: wp.tile(dtype=float, shape=(TILE_M, TILE_N))):
     return wp.tile_sum(a) * 0.5
@@ -980,6 +1170,8 @@ add_function_test(TestTile, "test_tile_gemm_fp64", test_tile_gemm(wp.float64), d
 add_function_test(TestTile, "test_tile_transpose", test_tile_transpose, devices=devices)
 add_function_test(TestTile, "test_tile_transpose_matmul", test_tile_transpose_matmul, devices=devices)
 add_function_test(TestTile, "test_tile_operators", test_tile_operators, devices=devices)
+add_function_test(TestTile, "test_tile_tile", test_tile_tile, devices=get_cuda_test_devices())
+add_function_test(TestTile, "test_tile_untile", test_tile_untile, devices=devices)
 add_function_test(TestTile, "test_tile_sum", test_tile_sum, devices=devices, check_output=False)
 add_function_test(TestTile, "test_tile_sum_launch", test_tile_sum_launch, devices=devices)
 add_function_test(TestTile, "test_tile_extract", test_tile_extract, devices=devices)
