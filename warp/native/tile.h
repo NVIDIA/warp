@@ -2601,6 +2601,10 @@ TileL& tile_cholesky(Fwd fun_forward, TileA& A, TileL& L)
     
     WP_TILE_SYNC();
 
+    if (info != 0) {
+        printf("Non-zero status in Cholesky factorization\n");
+    }
+
     // Zero-out the upper triangular part of L
 
     WP_PRAGMA_UNROLL
@@ -2668,7 +2672,7 @@ TileZ& tile_lower_solve(Fwd fun_forward, TileL& L, TileY& y, TileZ& z)
     // Copy y to z
     z = y;
 	
-#if !defined(__CUDA_ARCH__)
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
     
     partitioned_gemm::scalar_cholesky_forward_substitution(L, z, y);
 
@@ -2701,7 +2705,7 @@ TileX& tile_upper_solve(Fwd fun_forward, TileU& U, TileZ& z, TileX& x)
     // Copy z to x
     x = z;
 	
-#if !defined(__CUDA_ARCH__)
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
 
     auto L = tile_transpose(U);
     partitioned_gemm::scalar_cholesky_back_substitution(L, x);

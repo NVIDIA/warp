@@ -260,7 +260,7 @@ def tile_math_forward_substitution(
     wp.tile_store(gz, z)
 
 
-@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
+@unittest.skipUnless(wp.context.runtime.core.cuda_toolkit_version() >= 12060, "CUDA toolkit version is less than 12.6")
 def test_tile_math_forward_substitution(test, device):
     # Create test data
     rng = np.random.default_rng()
@@ -303,7 +303,7 @@ def tile_math_back_substitution(
     wp.tile_store(gz, z)
 
 
-@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
+@unittest.skipUnless(wp.context.runtime.core.cuda_toolkit_version() >= 12060, "CUDA toolkit version is less than 12.6")
 def test_tile_math_back_substitution(test, device):
     # Create test data
     rng = np.random.default_rng()
@@ -352,7 +352,7 @@ def tile_math_forward_substitution_multiple_rhs(
     wp.tile_store(gc, c)
 
 
-@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
+@unittest.skipUnless(wp.context.runtime.core.cuda_toolkit_version() >= 12060, "CUDA toolkit version is less than 12.6")
 def test_tile_math_forward_substitution_multiple_rhs(test, device):
     # Create test data
     rng = np.random.default_rng()
@@ -409,7 +409,7 @@ def tile_math_back_substitution_multiple_rhs(
     wp.tile_store(gc, c)
 
 
-@unittest.skipUnless(wp.context.runtime.core.is_mathdx_enabled(), "Warp was not built with MathDx support")
+@unittest.skipUnless(wp.context.runtime.core.cuda_toolkit_version() >= 12060, "CUDA toolkit version is less than 12.6")
 def test_tile_math_back_substitution_multiple_rhs(test, device):
     # Create test data
     rng = np.random.default_rng()

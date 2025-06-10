@@ -332,8 +332,7 @@ def _build_lto_base(lto_symbol, compile_func, builder, extra_files=None):
 
 
 def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, arch, num_threads, builder):
-    # TODO: MathDx doesn't yet have heuristics for Blackwell
-    arch = min(arch, 90)
+    arch = 120 if arch > 121 else arch
 
     # Maps Python/Warp types to C++ types and enums
     def cublasdx_type_map(dtype):
@@ -431,8 +430,7 @@ def build_lto_solver(
     parameter_list,
     builder,
 ):
-    # TODO: MathDx doesn't yet have heuristics for Blackwell
-    arch = min(arch, 90)
+    arch = 120 if arch > 121 else arch
 
     def cusolverdx_arrangement_map(layout):
         if layout == "colmajor":
@@ -494,8 +492,7 @@ def build_lto_solver(
 
 
 def build_lto_fft(arch, size, ept, direction, dir, precision, builder):
-    # TODO: MathDx doesn't yet have heuristics for Blackwell
-    arch = min(arch, 90)
+    arch = 120 if arch > 121 else arch
 
     lto_symbol = f"fft_{size}_{ept}_{arch}_{direction}_{precision}"
 

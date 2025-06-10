@@ -7500,7 +7500,7 @@ def tile_cholesky_generic_lto_dispatch_func(
     dtype, precision_enum = cusolver_type_map[a.type.dtype]
 
     # We already ensured a is square in tile_cholesky_generic_value_func()
-    M, N = a.type.shape[0], a.type.shape[1]
+    M, N = a.type.shape
     if out.type.shape[0] != M or out.type.shape[1] != M:
         raise ValueError("tile_cholesky() output tile must be square")
 
@@ -7621,7 +7621,7 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
         raise TypeError("tile_cholesky_solve() arguments be tiles of float64 or float32")
 
     dtype, precision_enum = cusolver_type_map[L.type.dtype]
-    M, N = L.type.shape[0], L.type.shape[1]
+    M, N = L.type.shape
     NRHS = x.type.shape[1] if len(x.type.shape) > 1 else 1
 
     if len(x.type.shape) > 2 or len(x.type.shape) < 1:
@@ -7707,16 +7707,16 @@ def tile_lower_solve_generic_lto_dispatch_func(
     L.type.storage = "shared"
     y.type.storage = "shared"
 
+    if any(T not in cusolver_type_map.keys() for T in [y.type.dtype, L.type.dtype]):
+        raise TypeError("tile_lower_solve() arguments must be tiles of float64 or float32")
+
     if len(return_values) != 1:
         raise TypeError(f"tile_lower_solve() must return exactly one value, got {len(return_values)}")
 
     z = return_values[0]
 
-    if any(T not in cusolver_type_map.keys() for T in [y.type.dtype, L.type.dtype]):
-        raise TypeError("tile_lower_solve() arguments must be tiles of float64 or float32")
-
     dtype, precision_enum = cusolver_type_map[L.type.dtype]
-    M, N = L.type.shape[0], L.type.shape[1]
+    M, N = L.type.shape
     NRHS = z.type.shape[1] if len(z.type.shape) > 1 else 1
 
     if len(z.type.shape) > 2 or len(z.type.shape) < 1:
@@ -7839,16 +7839,16 @@ def tile_upper_solve_generic_lto_dispatch_func(
     U.type.storage = "shared"
     z.type.storage = "shared"
 
+    if any(T not in cusolver_type_map.keys() for T in [z.type.dtype, U.type.dtype]):
+        raise TypeError("tile_upper_solve() arguments must be tiles of float64 or float32")
+
     if len(return_values) != 1:
         raise TypeError(f"tile_upper_solve() must return exactly one value, got {len(return_values)}")
 
     x = return_values[0]
 
-    if any(T not in cusolver_type_map.keys() for T in [z.type.dtype, U.type.dtype]):
-        raise TypeError("tile_upper_solve() arguments must be tiles of float64 or float32")
-
     dtype, precision_enum = cusolver_type_map[U.type.dtype]
-    M, N = U.type.shape[0], U.type.shape[1]
+    M, N = U.type.shape
     NRHS = x.type.shape[1] if len(x.type.shape) > 1 else 1
 
     if len(z.type.shape) > 2 or len(z.type.shape) < 1:

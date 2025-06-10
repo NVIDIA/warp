@@ -3882,7 +3882,7 @@ class Runtime:
                 ctypes.c_int,  # fill_mode
                 ctypes.c_int,  # num threads
             ]
-            self.core.cuda_compile_fft.restype = ctypes.c_bool
+            self.core.cuda_compile_solver.restype = ctypes.c_bool
 
             self.core.cuda_load_module.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
             self.core.cuda_load_module.restype = ctypes.c_void_p
