@@ -364,4 +364,8 @@ from the `cuBLASDx Downloads Page <https://developer.nvidia.com/cublasdx-downloa
 A path to an existing ``libmathdx`` installation can also be specified using the ``--libmathdx_path`` option
 when running ``build_lib.py`` or by defining the path in the ``LIBMATHDX_HOME`` environment variable.
 
+Please note that CUDA Toolkit 12.6.3 or higher is required for full MathDx support when building Warp from source.
+Warp + MathDx will compile with earlier CUDA 12 versions, but matrix multiplication, triangular solves, Cholesky factorization,
+and the Cholesky solver will fail at runtime.
+
 .. [1] `Technical Blog: Introducing Tile-Based Programming in Warp 1.5.0 <https://developer.nvidia.com/blog/introducing-tile-based-programming-in-warp-1-5-0/>`_

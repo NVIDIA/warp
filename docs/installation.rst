@@ -102,6 +102,8 @@ To remedy the situation there are a few options:
 * Install a compatible pre-built Warp package.
 * Build Warp from source using a CUDA Toolkit that's compatible with the installed driver.
 
+Also note that full support for tile-based MathDx features requires CUDA version 12.6.3 or later. See :ref:`mathdx` for more information.
+
 Dependencies
 ------------
 

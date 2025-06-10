@@ -26,7 +26,8 @@ extern "C"
 WP_API
 bool cuda_compile_fft(
                       const char* ltoir_output_path,
-                      const char* symbol_name, int num_include_dirs,
+                      const char* symbol_name,
+                      int num_include_dirs,
                       const char** include_dirs,
                       const char* mathdx_include_dir,
                       int arch,

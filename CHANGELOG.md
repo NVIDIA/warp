@@ -42,6 +42,7 @@
   ([GH-746](https://github.com/NVIDIA/warp/issues/746)).
 - Add a `py.typed` marker file (per PEP 561) to the package to formally support static type checking by downstream users
   ([GH-780](https://github.com/NVIDIA/warp/issues/780)).
+- Add support for 2D solves using `wp.tile_cholesky_solve()` ([GH-773](https://github.com/NVIDIA/warp/pull/773)).
 
 ### Removed
 
@@ -75,6 +76,7 @@
 - Describe the distinction between `inputs` and `outputs` arguments in the Kernel documentation.
 - Reduce the overhead of `wp.launch()` by avoiding costly native API calls
   ([GH-774](https://github.com/NVIDIA/warp/pull/774)).
+- Change `wp.tile_upper_solve()` and `wp.tile_lower_solve()` to use libmathdx 0.2.1 TRSM solver ([GH-773](https://github.com/NVIDIA/warp/pull/773)).
 
 ### Fixed
 
@@ -93,6 +95,7 @@
 - Fix an inconsistency in the `wp.fem` module regarding the orientation of 2D geometry side normals
   ([GH-629](https://github.com/NVIDIA/warp/issues/629)).
 - Fix adjoint generation for user functions that return a tile ([GH-749](https://github.com/NVIDIA/warp/issues/749)).
+- Fix to enable tile-based solvers to accept and return transposed tiles ([GH-768](https://github.com/NVIDIA/warp/issues/768)).
 
 ## [1.7.2] - 2025-05-31
 
