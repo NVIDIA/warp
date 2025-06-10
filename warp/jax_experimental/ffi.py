@@ -306,7 +306,6 @@ class FfiCallable:
         self.graph_compatible = graph_compatible
         self.output_dims = output_dims
         self.first_array_arg = None
-        self.has_static_args = False
         self.call_id = 0
         self.call_descriptors = {}
 
@@ -335,8 +334,6 @@ class FfiCallable:
                 if arg.is_array:
                     if arg_idx < self.num_inputs and self.first_array_arg is None:
                         self.first_array_arg = arg_idx
-                else:
-                    self.has_static_args = True
                 self.args.append(arg)
             arg_idx += 1
 
@@ -425,14 +422,11 @@ class FfiCallable:
         module = wp.get_module(self.func.__module__)
         module.load(device)
 
-        if self.has_static_args:
-            # save call data to be retrieved by callback
-            call_id = self.call_id
-            self.call_descriptors[call_id] = FfiCallDesc(static_inputs)
-            self.call_id += 1
-            return call(*args, call_id=call_id)
-        else:
-            return call(*args)
+        # save call data to be retrieved by callback
+        call_id = self.call_id
+        self.call_descriptors[call_id] = FfiCallDesc(static_inputs)
+        self.call_id += 1
+        return call(*args, call_id=call_id)
 
     def ffi_callback(self, call_frame):
         try:
@@ -454,11 +448,10 @@ class FfiCallable:
                         )
                     return None
 
-            if self.has_static_args:
-                # retrieve call info
-                attrs = decode_attrs(call_frame.contents.attrs)
-                call_id = int(attrs["call_id"])
-                call_desc = self.call_descriptors[call_id]
+            # retrieve call info
+            attrs = decode_attrs(call_frame.contents.attrs)
+            call_id = int(attrs["call_id"])
+            call_desc = self.call_descriptors[call_id]
 
             num_inputs = call_frame.contents.args.size
             inputs = ctypes.cast(call_frame.contents.args.args, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
@@ -500,8 +493,10 @@ class FfiCallable:
             # call the Python function with reconstructed arguments
             with wp.ScopedStream(stream, sync_enter=False):
                 if stream.is_capturing:
-                    with wp.ScopedCapture(stream=stream, external=True):
+                    with wp.ScopedCapture(stream=stream, external=True) as capture:
                         self.func(*arg_list)
+                    # keep a reference to the capture object to prevent required modules getting unloaded
+                    call_desc.capture = capture
                 else:
                     self.func(*arg_list)
 
