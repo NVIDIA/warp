@@ -21,7 +21,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 import warp.build
 import warp.context
-from warp.codegen import Reference, Var, strip_reference
+from warp.codegen import Reference, Var, get_arg_value, strip_reference
 from warp.types import *
 
 from .context import add_builtin
@@ -2923,37 +2923,83 @@ def tile_value_func(arg_types, arg_values):
     if arg_types is None:
         return tile(dtype=Any, shape=Tuple)
 
-    if len(arg_types) != 1:
-        raise TypeError(f"tile() takes exactly 1 positional argument but {len(arg_types)} were given")
+    if len(arg_types) > 2:
+        raise TypeError(f"tile() takes 1 positional argument and 1 optional argument but {len(arg_types)} were given")
 
-    dtype = None
-    length = None
+    preserve_type = arg_values["preserve_type"]
 
-    if type_is_vector(arg_types["x"]):
-        dtype = arg_types["x"]._wp_scalar_type_
-        length = arg_types["x"]._shape_[0]
-        shape = (length, warp.codegen.options["block_dim"])
-    else:
+    if preserve_type:
         dtype = arg_types["x"]
         shape = (warp.codegen.options["block_dim"],)
 
-    return tile(dtype=dtype, shape=shape)
+        return tile(dtype=dtype, shape=shape)
+
+    else:
+        if type_is_vector(arg_types["x"]):
+            dtype = arg_types["x"]._wp_scalar_type_
+            length = arg_types["x"]._shape_[0]
+            shape = (length, warp.codegen.options["block_dim"])
+        elif type_is_quaternion(arg_types["x"]):
+            dtype = arg_types["x"]._wp_scalar_type_
+            shape = (4, warp.codegen.options["block_dim"])
+        elif type_is_matrix(arg_types["x"]):
+            dtype = arg_types["x"]._wp_scalar_type_
+            rows = arg_types["x"]._shape_[0]
+            cols = arg_types["x"]._shape_[1]
+            shape = (rows, cols, warp.codegen.options["block_dim"])
+        else:
+            dtype = arg_types["x"]
+            shape = (warp.codegen.options["block_dim"],)
+
+        return tile(dtype=dtype, shape=shape)
+
+
+def tile_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    x = arg_values["x"]
+    preserve_type = get_arg_value(arg_values["preserve_type"])
+
+    if preserve_type:
+        dtype = x.type
+        return ((x,), (dtype,))
+
+    else:
+        if type_is_vector(x.type):
+            dtype = x.type._wp_scalar_type_
+            length = x.type._shape_[0]
+            return ((x,), (dtype, length))
+        elif type_is_quaternion(x.type):
+            dtype = x.type._wp_scalar_type_
+            return ((x,), (dtype, 4))
+        elif type_is_matrix(x.type):
+            dtype = x.type._wp_scalar_type_
+            rows = x.type._shape_[0]
+            cols = x.type._shape_[1]
+            return ((x,), (rows, cols, dtype))
+        else:
+            dtype = x.type
+            return ((x,), (dtype,))
 
 
 add_builtin(
     "tile",
-    input_types={"x": Any},
+    input_types={"x": Any, "preserve_type": bool},
     value_func=tile_value_func,
+    dispatch_func=tile_dispatch_func,
     variadic=True,
+    defaults={"preserve_type": False},
     doc="""Construct a new tile from per-thread kernel values.
 
     This function converts values computed using scalar kernel code to a tile representation for input into collective operations.
 
     * If the input value is a scalar, then the resulting tile has ``shape=(block_dim,)``
     * If the input value is a vector, then the resulting tile has ``shape=(length(vector), block_dim)``
+    * If the input value is a vector, and ``preserve_type=True``, then the resulting tile has ``dtype=vector`` and ``shape=(block_dim,)``
+    * If the input value is a matrix, then the resulting tile has ``shape=(rows, cols, block_dim)``
+    * If the input value is a matrix, and ``preserve_type=True``, then the resulting tile has ``dtype=matrix`` and ``shape=(block_dim,)``
 
     :param x: A per-thread local value, e.g. scalar, vector, or matrix.
-    :returns: A tile with first dimension according to the value type length and a second dimension equal to ``block_dim``
+    :param preserve_type: If true, the tile will have the same data type as the input value.
+    :returns: If ``preserve_type=True``, a tile of type ``x.type`` of length ``block_dim``. Otherwise, an N-dimensional tile such that the first N-1 dimensions match the shape of ``x`` and the final dimension is of size ``block_dim``.
 
     This example shows how to create a linear sequence from thread variables:
 
@@ -3002,6 +3048,8 @@ def untile_value_func(arg_types, arg_values):
         return t.dtype
     elif len(t.shape) == 2:
         return warp.types.vector(t.shape[0], t.dtype)
+    elif len(t.shape) == 3:
+        return warp.types.matrix((t.shape[0], t.shape[1]), t.dtype)
     else:
         raise ValueError(f"untile() argument must have a positive size in dimension 0, but got {t.shape[0]}")
 

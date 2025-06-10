@@ -536,7 +536,28 @@ def test_tile_strided_loop(test, device):
     test.assertAlmostEqual(max_wp[0], max_np, places=4)
 
 
+@wp.kernel
+def test_tile_reduce_matrix_kernel(y: wp.array(dtype=wp.mat33)):
+    i = wp.tid()
+    I = wp.identity(3, dtype=wp.float32)
+    m = wp.float32(i) * I
+
+    t = wp.tile(m, preserve_type=True)
+    sum = wp.tile_reduce(wp.add, t)
+
+    wp.tile_store(y, sum)
+
+
+def test_tile_reduce_matrix(test, device):
+    y = wp.zeros(shape=1, dtype=wp.mat33, device=device)
+
+    wp.launch(test_tile_reduce_matrix_kernel, dim=TILE_DIM, inputs=[], outputs=[y], block_dim=TILE_DIM, device=device)
+
+    assert_np_equal(y.numpy().squeeze(), np.eye(3, dtype=np.float32) * 2016.0)
+
+
 devices = get_test_devices()
+cuda_devices = get_cuda_test_devices()
 
 
 class TestTileReduce(unittest.TestCase):
@@ -557,6 +578,7 @@ add_function_test(TestTileReduce, "test_tile_arange", test_tile_arange, devices=
 add_function_test(TestTileReduce, "test_tile_untile_scalar", test_tile_untile_scalar, devices=devices)
 add_function_test(TestTileReduce, "test_tile_untile_vector", test_tile_untile_vector, devices=devices)
 add_function_test(TestTileReduce, "test_tile_strided_loop", test_tile_strided_loop, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_matrix", test_tile_reduce_matrix, devices=cuda_devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
