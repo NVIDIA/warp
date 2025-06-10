@@ -814,6 +814,36 @@ def test_tile_astype(test, device):
     assert_np_equal(x.grad.numpy(), np.ones_like(x_np))
 
 
+@wp.func
+def test_tile_func_return_func(tile: Any):
+    return tile
+
+
+@wp.kernel
+def test_tile_func_return_kernel(x: wp.array2d(dtype=wp.float32), y: wp.array2d(dtype=wp.float32)):
+    a = wp.tile_load(x, shape=(TILE_M, 1))
+    b = wp.tile_broadcast(a, shape=(TILE_M, TILE_K))
+    c = test_tile_func_return_func(b)
+    wp.tile_store(y, c)
+
+
+def test_tile_func_return(test, device):
+    x = wp.ones(shape=(TILE_M, 1), dtype=wp.float32, requires_grad=True, device=device)
+    y = wp.zeros(shape=(TILE_M, TILE_K), dtype=wp.float32, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch_tiled(
+            test_tile_func_return_kernel, dim=[1, 1], inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device
+        )
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.ones((TILE_M, TILE_K), dtype=np.float32))
+    assert_np_equal(x.grad.numpy(), np.ones((TILE_M, 1), dtype=np.float32) * TILE_K)
+
+
 @wp.kernel
 def tile_len_kernel(
     a: wp.array(dtype=float, ndim=2),
@@ -996,6 +1026,8 @@ add_function_test(TestTile, "test_tile_len", test_tile_len, devices=devices)
 add_function_test(TestTile, "test_tile_print", test_tile_print, devices=devices, check_output=False)
 add_function_test(TestTile, "test_tile_inplace", test_tile_inplace, devices=devices)
 add_function_test(TestTile, "test_tile_astype", test_tile_astype, devices=devices)
+add_function_test(TestTile, "test_tile_func_return", test_tile_func_return, devices=devices)
+
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
