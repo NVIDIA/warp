@@ -269,6 +269,50 @@ Similarly, we can `untile` tile objects back to their per-thread scalar equivale
 
 .. Note:: All threads in a block must execute tile operations, but code surrounding tile operations may contain arbitrary conditional logic.
 
+Type Preservation
+^^^^^^^^^^^^^^^^^
+
+:func:`warp.tile` includes the optional parameter ``preserve_type``, which is ``False`` by default.
+When ``preserve_type`` is ``False``, this function expands non-scalar inputs into a multi-dimensional tile.
+Vectors are expanded into a 2D tile of scalar values with shape ``(length(vector), block_dim)``,
+while matrices are expanded into a 3D tile of scalar values with shape ``(rows, cols, block_dim)``.
+
+When ``preserve_type`` is ``True``, this function outputs a 1D tile of length ``block_dim`` with the same
+data type as the input value. So if you tile a vector across the block with ``preserve_type=True``, a 1D
+tile of vectors will be returned. This is useful for collective operations that operate on the entire
+vector or matrix rather than their individual components, as in the following example demonstrating
+a matrix tile reduction:
+
+.. testcode::
+    :skipif: wp.get_device() == "cpu" or wp.get_cuda_device_count() == 0
+
+    import warp as wp
+
+    TILE_DIM = 32
+
+    @wp.kernel
+    def matrix_reduction_kernel(y: wp.array(dtype=wp.mat33)):
+        i = wp.tid()
+        I = wp.identity(3, dtype=wp.float32)
+        m = wp.float32(i) * I
+
+        t = wp.tile(m, preserve_type=True)
+        sum = wp.tile_reduce(wp.add, t)
+
+        wp.tile_store(y, sum)
+
+    y = wp.zeros(shape=1, dtype=wp.mat33)
+
+    wp.launch(matrix_reduction_kernel, dim=TILE_DIM, inputs=[], outputs=[y], block_dim=TILE_DIM)
+
+    print(y.numpy()[0])
+
+.. testoutput::
+
+    [[496.   0.   0.]
+     [  0. 496.   0.]
+     [  0.   0. 496.]]
+
 Example: Using tiles to accelerate array-wide reductions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
