@@ -19,7 +19,7 @@
 # At present this is the only required approval. The rest are optional (^).
 [Public API] @mmacklin
 /warp/__init__.py
-/warp/stubs.py
+/warp/__init__.pyi
 /warp/constants.py
 
 ^[CI/CD] @ershi @ncapens

@@ -40,6 +40,8 @@
   ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
 - Add `wp.capture_debug_dot_print()` to write a DOT file describing the structure of a captured CUDA graph
   ([GH-746](https://github.com/NVIDIA/warp/issues/746)).
+- Add a `py.typed` marker file (per PEP 561) to the package to formally support static type checking by downstream users
+  ([GH-780](https://github.com/NVIDIA/warp/issues/780)).
 
 ### Removed
 

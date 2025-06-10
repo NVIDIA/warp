@@ -1028,7 +1028,7 @@ merge request docs:
     - .build-docs-common
   artifacts:
     paths:
-      - warp/stubs.py
+      - warp/__init__.pyi
       - docs/modules/functions.rst
       - public
   rules:
@@ -1040,7 +1040,7 @@ merge request docs:
   after_script:
     - echo "View the website at https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
 
-# Merge requests: Ensure that exports.h, stubs.py, functions.rst have been
+# Merge requests: Ensure that exports.h, __init__.pyi, functions.rst have been
 # manually added to the MR if they are changed
 check generated files:
   needs:
@@ -1053,7 +1053,7 @@ check generated files:
     expose_as: "Generated source files"
     paths:
       - warp/native/exports.h
-      - warp/stubs.py
+      - warp/__init__.pyi
       - docs/modules/functions.rst
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
@@ -1062,7 +1062,7 @@ check generated files:
     - .omni_nvks_micro_runner
   script:
     - >
-      git diff --exit-code warp/stubs.py docs/modules/functions.rst ||
+      git diff --exit-code warp/__init__.pyi docs/modules/functions.rst ||
       (echo "Please run build_docs.py (or download from $CI_JOB_URL/artifacts/browse) and add modified files to your merge request." && false)
     - >
       git diff --exit-code warp/native/exports.h ||

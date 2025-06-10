@@ -353,7 +353,7 @@ jobs:
         with:
           name: build-docs-output
           path: |
-            warp/stubs.py
+            warp/__init__.pyi
             docs/modules/functions.rst
 
   check-build-docs-output:
@@ -373,12 +373,12 @@ jobs:
         run: >
           git diff --exit-code docs/modules/functions.rst ||
           (echo "Please run build_docs.py (or download from $ARTIFACT_URL) and add docs/modules/functions.rst to your pull request." && false)
-      - name: Check stubs.py
+      - name: Check stubs
         env:
           ARTIFACT_URL: ${{ needs.pull-request-docs.outputs.artifact-url }}
         run: >
-          git diff --exit-code warp/stubs.py ||
-          (echo "Please run build_docs.py (or download from $ARTIFACT_URL) and add warp/stubs.py to your pull request." && false)
+          git diff --exit-code warp/__init__.pyi ||
+          (echo "Please run build_docs.py (or download from $ARTIFACT_URL) and add warp/__init__.pyi to your pull request." && false)
 
   check-exports-header:
     runs-on: ubuntu-latest
