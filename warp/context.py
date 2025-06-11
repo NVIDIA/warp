@@ -2413,7 +2413,7 @@ class CpuDefaultAllocator:
     def alloc(self, size_in_bytes):
         ptr = runtime.core.alloc_host(size_in_bytes)
         if not ptr:
-            raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device '{self.device}'")
+            raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device 'cpu'")
         return ptr
 
     def free(self, ptr, size_in_bytes):
