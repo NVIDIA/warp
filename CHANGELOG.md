@@ -356,6 +356,7 @@
 - Emit deprecation warnings for the use of the `owner` and `length` keywords in the `wp.array` initializer.
 - Emit deprecation warnings for the use of `wp.mlp()`, `wp.matmul()`, and `wp.batched_matmul()`.
   Use tile primitives instead.
+- Increase CPU array alignment for compatibility with other libraries like JAX/XLA ([GH-550](https://github.com/NVIDIA/warp/issues/550)).
 
 ### Fixed
 
