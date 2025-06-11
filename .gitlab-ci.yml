@@ -316,8 +316,7 @@ linux-x86_64 test:
     - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
 
 # A temporary job for testing on Blackwell until more runners are available
-# Disabled for now because OV broke the Blackwell runner
-.linux-x86_64-blackwell test:
+linux-x86_64-blackwell test:
   needs: [linux-x86_64 build]
   image: ubuntu:22.04
   extends:
@@ -450,8 +449,7 @@ linux-x86_64 test warp-init:
     - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --disable-process-pooling --disable-concurrent-futures --level test -p 'test_implicit_init.py'
 
 # Optional job to test MuJoCo Warp
-# Disabled for now because OV broke the Blackwell runner
-.linux-x86_64 test mujoco warp:
+linux-x86_64 test mujoco warp:
   stage: test
   needs: [linux-x86_64 build]
   image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
