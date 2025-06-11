@@ -81,6 +81,8 @@
 - Reduce the overhead of `wp.launch()` by avoiding costly native API calls
   ([GH-774](https://github.com/NVIDIA/warp/pull/774)).
 - Change `wp.tile_upper_solve()` and `wp.tile_lower_solve()` to use libmathdx 0.2.1 TRSM solver ([GH-773](https://github.com/NVIDIA/warp/pull/773)).
+- Improve error reporting when calling `@wp.func`-decorated functions from the Python scope
+  ([GH-521](https://github.com/NVIDIA/warp/issues/521)).
 
 ### Fixed
 

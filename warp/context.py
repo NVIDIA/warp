@@ -280,10 +280,11 @@ class Function:
             module.register_function(self, scope_locals, skip_adding_overload)
 
     def __call__(self, *args, **kwargs):
-        # handles calling a builtin (native) function
-        # as if it was a Python function, i.e.: from
-        # within the CPython interpreter rather than
-        # from within a kernel (experimental).
+        """Call this function from the CPython interpreter.
+
+        This is used to call built-in or user functions from the CPython
+        interpreter, rather than from within a kernel.
+        """
 
         if self.is_builtin() and self.mangled_name:
             # For each of this function's existing overloads, we attempt to pack
@@ -327,6 +328,9 @@ class Function:
 
             arguments = tuple(bound_args.arguments.values())
 
+            # Store the last runtime error we encountered from a function execution
+            last_execution_error = None
+
             # try and find a matching overload
             for overload in self.user_overloads.values():
                 if len(overload.input_types) != len(arguments):
@@ -337,10 +341,25 @@ class Function:
                     # attempt to unify argument types with function template types
                     warp.types.infer_argument_types(arguments, template_types, arg_names)
                     return overload.func(*arguments)
-                except Exception:
+                except Exception as e:
+                    # The function was callable but threw an error during its execution.
+                    # This might be the intended overload, but it failed, or it might be the wrong overload.
+                    # We save this specific error and continue, just in case another overload later in the
+                    # list is a better match and doesn't fail.
+                    last_execution_error = e
                     continue
 
-            raise RuntimeError(f"Error calling function '{self.key}', no overload found for arguments {args}")
+            if last_execution_error:
+                # Raise a new, more contextual RuntimeError, but link it to the
+                # original error that was caught. This preserves the original
+                # traceback and error type for easier debugging.
+                raise RuntimeError(
+                    f"Error calling function '{self.key}'. No version succeeded. "
+                    f"See above for the error from the last version that was tried."
+                ) from last_execution_error
+            else:
+                # We got here without ever calling an overload.func
+                raise RuntimeError(f"Error calling function '{self.key}', no overload found for arguments {args}")
 
         # user-defined function with no overloads
         if self.func is None:
