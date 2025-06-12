@@ -1841,5 +1841,6 @@ inline CUDA_CALLABLE void adj_expect_near(const vec3& actual, const vec3& expect
 #if !defined(WP_ENABLE_CUDA) // only include in kernels for now
 #include "tile.h"
 #include "tile_reduce.h"
+#include "tile_scan.h"
 #include "tile_radix_sort.h"
 #endif //!defined(WP_ENABLE_CUDA)

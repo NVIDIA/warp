@@ -369,7 +369,7 @@ auto tile_reduce_impl(Op f, Tile& t)
 template <typename Tile, typename Op, typename OpTrack>
 auto tile_arg_reduce_impl(Op f, OpTrack track, Tile& t)
 {
-   using T = typename Tile::Type;
+    using T = typename Tile::Type;
 
     auto input = t.copy_to_register();
     auto output = tile_register_t<int, tile_layout_register_t<tile_shape_t<1>>>();

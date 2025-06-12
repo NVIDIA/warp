@@ -1303,6 +1303,66 @@ def tile_reduce(op: Callable, a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, 
     ...
 
 @over
+def tile_scan_inclusive(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+    """Inclusive scan (prefix sum) across the tile.
+
+    This function cooperatively performs an inclusive scan (cumulative sum) across the tile.
+
+    :param a: The input tile. Must be a tile of type float32, int32, or uint32.
+    :returns: A new tile containing the inclusive scan result.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def scan_example():
+            t = wp.tile_arange(1, 5, dtype=int)
+            s = wp.tile_scan_inclusive(t)
+            print(s)
+
+        wp.launch_tiled(scan_example, dim=[1], inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        [1, 3, 6, 10] = tile(shape=(4), storage=register)
+
+    """
+    ...
+
+@over
+def tile_scan_exclusive(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+    """Exclusive scan (prefix sum) across the tile.
+
+    This function cooperatively performs an exclusive scan (cumulative sum) across the tile.
+
+    :param a: The input tile. Must be a tile of type float32, int32, or uint32.
+    :returns: A new tile containing the exclusive scan result.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def scan_example():
+            t = wp.tile_arange(1, 5, dtype=int)
+            s = wp.tile_scan_exclusive(t)
+            print(s)
+
+        wp.launch_tiled(scan_example, dim=[1], inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        [0, 1, 3, 6] = tile(shape=(4), storage=register)
+
+    """
+    ...
+
+@over
 def tile_map(op: Callable, a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
     """Apply a unary function onto the tile.
 

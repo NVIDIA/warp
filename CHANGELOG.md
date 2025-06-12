@@ -43,6 +43,8 @@
 - Add a `py.typed` marker file (per PEP 561) to the package to formally support static type checking by downstream users
   ([GH-780](https://github.com/NVIDIA/warp/issues/780)).
 - Add support for 2D solves using `wp.tile_cholesky_solve()` ([GH-773](https://github.com/NVIDIA/warp/pull/773)).
+- Add `wp.tile_scan_inclusive()` and `wp.tile_scan_exclusive()` for performing inclusive and exclusive scans over tiles
+  ([GH-731](https://github.com/NVIDIA/warp/issues/731)).
 
 ### Removed
 
