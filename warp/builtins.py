@@ -3794,6 +3794,133 @@ add_builtin(
     export=False,
 )
 
+
+def tile_scan_inclusive_value_func(arg_types, arg_values):
+    # Return type is the same as input type
+    if arg_types is None:
+        return tile(dtype=Scalar, shape=Tuple[int, ...])
+
+    if len(arg_types) != 1:
+        raise TypeError(f"tile_scan_inclusive() takes exactly 1 positional argument but {len(arg_types)} were given")
+
+    a = arg_types["a"]
+
+    if not is_tile(a):
+        raise TypeError(f"tile_scan_inclusive() argument must be a tile, got {a!r}")
+
+    # Only allow float32, int32, or uint32 for scan (like tile_sort)
+    if not (a.dtype is warp.float32 or a.dtype is warp.int32 or a.dtype is warp.uint32):
+        raise TypeError(
+            f"tile_scan_inclusive() argument must be a tile of type float32, int32, or uint32, got {a.dtype}"
+        )
+
+    return tile(dtype=a.dtype, shape=a.shape)
+
+
+def tile_scan_inclusive_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    func_args = (args["a"],)
+    template_args = ()
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_scan_inclusive",
+    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    value_func=tile_scan_inclusive_value_func,
+    native_func="tile_scan_inclusive",
+    doc="""Inclusive scan (prefix sum) across the tile.
+
+    This function cooperatively performs an inclusive scan (cumulative sum) across the tile.
+
+    :param a: The input tile. Must be a tile of type float32, int32, or uint32.
+    :returns: A new tile containing the inclusive scan result.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def scan_example():
+            t = wp.tile_arange(1, 5, dtype=int)
+            s = wp.tile_scan_inclusive(t)
+            print(s)
+
+        wp.launch_tiled(scan_example, dim=[1], inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        [1, 3, 6, 10] = tile(shape=(4), storage=register)
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_scan_exclusive_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return tile(dtype=Scalar, shape=Tuple[int, ...])
+
+    if len(arg_types) != 1:
+        raise TypeError(f"tile_scan_exclusive() takes exactly 1 positional argument but {len(arg_types)} were given")
+
+    a = arg_types["a"]
+
+    if not is_tile(a):
+        raise TypeError(f"tile_scan_exclusive() argument must be a tile, got {a!r}")
+
+    # Only allow float32, int32, or uint32 for scan (like tile_sort)
+    if not (a.dtype is warp.float32 or a.dtype is warp.int32 or a.dtype is warp.uint32):
+        raise TypeError(
+            f"tile_scan_exclusive() argument must be a tile of type float32, int32, or uint32, got {a.dtype}"
+        )
+
+    return tile(dtype=a.dtype, shape=a.shape)
+
+
+def tile_scan_exclusive_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    func_args = (args["a"],)
+    template_args = ()
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_scan_exclusive",
+    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    value_func=tile_scan_exclusive_value_func,
+    native_func="tile_scan_exclusive",
+    doc="""Exclusive scan (prefix sum) across the tile.
+
+    This function cooperatively performs an exclusive scan (cumulative sum) across the tile.
+
+    :param a: The input tile. Must be a tile of type float32, int32, or uint32.
+    :returns: A new tile containing the exclusive scan result.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def scan_example():
+            t = wp.tile_arange(1, 5, dtype=int)
+            s = wp.tile_scan_exclusive(t)
+            print(s)
+
+        wp.launch_tiled(scan_example, dim=[1], inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        [0, 1, 3, 6] = tile(shape=(4), storage=register)
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+
 # maps
 
 
