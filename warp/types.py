@@ -190,6 +190,43 @@ def safe_len(obj):
         return -1
 
 
+def flatten(value: Sequence) -> tuple[list, tuple[int, ...]]:
+    """Flatten an arbitrarily-nested, rectangular iterable."""
+    arr = []
+    shape = []
+
+    depth = 0
+    stack = [(depth, value)]
+
+    while stack:
+        depth, elem = stack.pop(0)
+
+        if isinstance(elem, (str, bytes, bytearray, memoryview)):
+            raise TypeError(f"Got an invalid element of type `{type(elem).__name__}`")
+
+        try:
+            # If `elem` is a sequence, then it should be possible
+            # to add its elements to the stack for later processing.
+            stack.extend((depth + 1, x) for x in elem)
+        except TypeError:
+            # Since `elem` doesn't seem to be a sequence, we must have
+            # a leaf value that we need to add to our resulting array.
+            if depth != len(shape):
+                raise ValueError("Ragged array: scalar found before deepest level.") from None
+
+            arr.append(elem)
+        else:
+            dim = len(elem)
+            if depth == len(shape):
+                # First sequence seen at this depth, record its length.
+                shape.append(dim)
+            elif shape[depth] != dim:
+                # Later sequences must have the same length.
+                raise ValueError(f"Ragged array: expected length {shape[depth]} at depth {depth}, got {dim}.") from None
+
+    return (arr, tuple(shape))
+
+
 # ----------------------
 # built-in types
 
@@ -463,6 +500,7 @@ def matrix(shape, dtype):
         _wp_constructor_ = "matrix"
 
         _wp_row_type_ = vector(0 if shape[1] == Any else shape[1], dtype)
+        _wp_col_type_ = vector(0 if shape[0] == Any else shape[0], dtype)
 
         # special handling for float16 type: in this case, data is stored
         # as uint16 but it's actually half precision floating point
@@ -575,11 +613,35 @@ def matrix(shape, dtype):
             else:
                 return self._wp_row_type_(row_data)
 
+        def get_col(self, c):
+            if c < -self._shape_[1] or c >= self._shape_[1]:
+                raise IndexError("Invalid column index")
+            if c < 0:
+                c += self._shape_[1]
+            col_start = c
+            col_end = col_start + self._shape_[0] * self._shape_[1]
+            col_step = self._shape_[1]
+            col_data = super().__getitem__(slice(col_start, col_end, col_step))
+            if self._wp_scalar_type_ == float16:
+                return self._wp_col_type_(*[mat_t.scalar_export(x) for x in col_data])
+            else:
+                return self._wp_col_type_(col_data)
+
         def set_row(self, r, v):
             if r < -self._shape_[0] or r >= self._shape_[0]:
                 raise IndexError("Invalid row index")
             if r < 0:
                 r += self._shape_[0]
+
+            row_start = r * self._shape_[1]
+            row_end = row_start + self._shape_[1]
+
+            if is_scalar(v):
+                for i in range(row_start, row_end):
+                    super().__setitem__(i, mat_t.scalar_import(v))
+
+                return
+
             try:
                 iter(v)
             except TypeError:
@@ -587,8 +649,6 @@ def matrix(shape, dtype):
                     f"Expected to assign a slice from a sequence of values but got `{type(v).__name__}` instead"
                 ) from None
 
-            row_start = r * self._shape_[1]
-            row_end = row_start + self._shape_[1]
             if self._wp_scalar_type_ == float16:
                 converted = []
                 try:
@@ -603,19 +663,86 @@ def matrix(shape, dtype):
                 v = converted
             super().__setitem__(slice(row_start, row_end), v)
 
+        def set_col(self, c, v):
+            if c < -self._shape_[1] or c >= self._shape_[1]:
+                raise IndexError("Invalid col index")
+            if c < 0:
+                c += self._shape_[1]
+
+            col_start = c
+            col_end = col_start + self._shape_[0] * self._shape_[1]
+            col_step = self._shape_[1]
+
+            if is_scalar(v):
+                for i in range(col_start, col_end, col_step):
+                    super().__setitem__(i, mat_t.scalar_import(v))
+
+                return
+
+            try:
+                iter(v)
+            except TypeError:
+                raise TypeError(
+                    f"Expected to assign a slice from a sequence of values but got `{type(v).__name__}` instead"
+                ) from None
+
+            if self._wp_scalar_type_ == float16:
+                converted = []
+                try:
+                    for x in v:
+                        converted.append(mat_t.scalar_import(x))
+                except ctypes.ArgumentError:
+                    raise TypeError(
+                        f"Expected to assign a slice from a sequence of `float16` values "
+                        f"but got `{type(x).__name__}` instead"
+                    ) from None
+
+                v = converted
+            super().__setitem__(slice(col_start, col_end, col_step), v)
+
         def __getitem__(self, key):
             if isinstance(key, Tuple):
                 # element indexing m[i,j]
                 if len(key) != 2:
                     raise KeyError(f"Invalid key, expected one or two indices, got {len(key)}")
-                if any(isinstance(x, slice) for x in key):
-                    raise KeyError("Slices are not supported when indexing matrices using the `m[i, j]` notation")
-                row = key[0] + self._shape_[0] if key[0] < 0 else key[0]
-                col = key[1] + self._shape_[1] if key[1] < 0 else key[1]
-                return mat_t.scalar_export(super().__getitem__(row * self._shape_[1] + col))
+
+                # Count how many dimensions the output value will have.
+                ndim = sum(1 for x in key if isinstance(x, slice))
+
+                if ndim == 0:
+                    row = key[0] + self._shape_[0] if key[0] < 0 else key[0]
+                    col = key[1] + self._shape_[1] if key[1] < 0 else key[1]
+                    return mat_t.scalar_export(super().__getitem__(row * self._shape_[1] + col))
+
+                if ndim == 1:
+                    if isinstance(key[1], slice):
+                        # Row vector.
+                        cols = range(*key[1].indices(self._shape_[0]))
+                        row_vec = self.get_row(key[0])
+                        values = tuple(row_vec[x] for x in cols)
+                        return vector(len(values), self._wp_scalar_type_)(*values)
+                    else:
+                        # Column vector.
+                        rows = range(*key[0].indices(self._shape_[1]))
+                        col_vec = self.get_col(key[1])
+                        values = tuple(col_vec[x] for x in rows)
+                        return vector(len(values), self._wp_scalar_type_)(*values)
+
+                assert ndim == 2
+                rows = range(*key[0].indices(self._shape_[1]))
+                cols = range(*key[1].indices(self._shape_[0]))
+                row_vecs = tuple(self.get_row(i) for i in rows)
+                values = tuple(x[j] for x in row_vecs for j in cols)
+                shape = (len(rows), len(cols))
+                return matrix(shape, self._wp_scalar_type_)(*values)
             elif isinstance(key, int):
                 # row vector indexing m[r]
                 return self.get_row(key)
+            elif isinstance(key, slice):
+                indices = range(*key.indices(self._shape_[0]))
+                row_vecs = tuple(self.get_row(x) for x in indices)
+                shape = (len(row_vecs), self._shape_[1])
+                return matrix(shape, self._wp_scalar_type_)(*row_vecs)
             else:
                 raise KeyError(f"Invalid key {key}, expected int or pair of ints")
 
@@ -624,22 +751,104 @@ def matrix(shape, dtype):
                 # element indexing m[i,j] = x
                 if len(key) != 2:
                     raise KeyError(f"Invalid key, expected one or two indices, got {len(key)}")
-                if any(isinstance(x, slice) for x in key):
-                    raise KeyError("Slices are not supported when indexing matrices using the `m[i, j]` notation")
-                try:
+
+                # Count how many dimensions the output value is expected to have.
+                ndim = sum(1 for x in key if isinstance(x, slice))
+
+                if ndim == 0:
+                    try:
+                        _, v_shape = flatten(value)
+                    except TypeError:
+                        raise TypeError(
+                            f"Expected to assign a `{type_repr(self._wp_scalar_type_)}` value but got `{type(value).__name__}` instead"
+                        ) from None
+
+                    if v_shape:
+                        raise RuntimeError(
+                            f"The provided value is expected to be a scalar but got an object of shape {v_shape} instead"
+                        )
+
                     row = key[0] + self._shape_[0] if key[0] < 0 else key[0]
                     col = key[1] + self._shape_[1] if key[1] < 0 else key[1]
-                    return super().__setitem__(row * self._shape_[1] + col, mat_t.scalar_import(value))
-                except (TypeError, ctypes.ArgumentError):
-                    raise TypeError(
-                        f"Expected to assign a `{self._wp_scalar_type_.__name__}` value "
-                        f"but got `{type(value).__name__}` instead"
-                    ) from None
+                    idx = row * self._shape_[1] + col
+                    super().__setitem__(idx, mat_t.scalar_import(value))
+                    return
+
+                if ndim == 1:
+                    _, v_shape = flatten(value)
+
+                    if v_shape and len(v_shape) != 1:
+                        raise RuntimeError(
+                            f"The provided value is expected to be a 1D vector but got an object of shape {v_shape} instead"
+                        )
+
+                    if isinstance(key[1], slice):
+                        # Row vector.
+                        cols = range(*key[1].indices(self._shape_[0]))
+                        if v_shape and v_shape[0] != len(cols):
+                            raise RuntimeError(
+                                f"The length of the provided vector ({v_shape[0]}) isn't compatible with the given slice (expected {len(cols)})"
+                            )
+
+                        row = key[0] + self._shape_[0] if key[0] < 0 else key[0]
+                        for i, col in enumerate(cols):
+                            idx = row * self._shape_[1] + col
+                            super().__setitem__(idx, mat_t.scalar_import(value[i] if v_shape else value))
+
+                        return
+                    else:
+                        # Column vector.
+                        rows = range(*key[0].indices(self._shape_[1]))
+                        if v_shape and v_shape[0] != len(rows):
+                            raise RuntimeError(
+                                f"The length of the provided vector ({v_shape[0]}) isn't compatible with the given slice (expected {len(rows)})"
+                            )
+
+                        col = key[1] + self._shape_[1] if key[1] < 0 else key[1]
+                        for i, row in enumerate(rows):
+                            idx = row * self._shape_[1] + col
+                            super().__setitem__(idx, mat_t.scalar_import(value[i] if v_shape else value))
+
+                        return
+
+                assert ndim == 2
+
+                _, v_shape = flatten(value)
+
+                if v_shape and len(v_shape) != 2:
+                    raise RuntimeError(
+                        f"The provided value is expected to be a 2D matrix but got an object of shape {v_shape} instead"
+                    )
+
+                rows = range(*key[0].indices(self._shape_[1]))
+                cols = range(*key[1].indices(self._shape_[0]))
+
+                if v_shape and v_shape != (len(rows), len(cols)):
+                    raise RuntimeError(
+                        f"The shape of the provided matrix ({v_shape}) isn't compatible with the given slice (expected ({len(rows)}, {len(cols)}))"
+                    )
+
+                for i, row in enumerate(rows):
+                    for j, col in enumerate(cols):
+                        idx = row * self._shape_[1] + col
+                        super().__setitem__(idx, mat_t.scalar_import(value[i, j] if v_shape else value))
             elif isinstance(key, int):
                 # row vector indexing m[r] = v
                 return self.set_row(key, value)
             elif isinstance(key, slice):
-                raise KeyError("Slices are not supported when indexing matrices using the `m[start:end]` notation")
+                v_arr, v_shape = flatten(value)
+                indices = range(*key.indices(self._shape_[0]))
+
+                if v_shape and (len(v_shape) != 2 or v_shape[0] != len(indices) or v_shape[1] != self._shape_[1]):
+                    raise RuntimeError(
+                        f"The shape of the provided matrix ({v_shape}) isn't compatible with the given slice (expected ({len(indices)}, {self._shape_[1]}))"
+                    )
+
+                for i, row in enumerate(indices):
+                    offset = i * self._shape_[1]
+                    self.set_row(
+                        row, v_arr[offset : offset + self._shape_[1]] if v_shape else (value,) * self._shape_[1]
+                    )
             else:
                 raise KeyError(f"Invalid key {key}, expected int or pair of ints")
 

@@ -1743,6 +1743,33 @@ def test_matrix_from_vecs_runtime(test, device):
     assert m1[2, 1] == 6.0
     assert m1[2, 2] == 9.0
 
+    assert m1.get_row(0) == wp.vec3(1.0, 4.0, 7.0)
+    assert m1.get_row(1) == wp.vec3(2.0, 5.0, 8.0)
+    assert m1.get_row(2) == wp.vec3(3.0, 6.0, 9.0)
+    assert m1.get_col(0) == wp.vec3(1.0, 2.0, 3.0)
+    assert m1.get_col(1) == wp.vec3(4.0, 5.0, 6.0)
+    assert m1.get_col(2) == wp.vec3(7.0, 8.0, 9.0)
+
+    m1.set_row(0, wp.vec3(8.0, 9.0, 10.0))
+    m1.set_row(1, wp.vec3(11.0, 12.0, 13.0))
+    m1.set_row(2, wp.vec3(14.0, 15.0, 16.0))
+
+    assert m1 == wp.matrix_from_rows(
+        wp.vec3(8.0, 9.0, 10.0),
+        wp.vec3(11.0, 12.0, 13.0),
+        wp.vec3(14.0, 15.0, 16.0),
+    )
+
+    m1.set_col(0, wp.vec3(8.0, 9.0, 10.0))
+    m1.set_col(1, wp.vec3(11.0, 12.0, 13.0))
+    m1.set_col(2, wp.vec3(14.0, 15.0, 16.0))
+
+    assert m1 == wp.matrix_from_cols(
+        wp.vec3(8.0, 9.0, 10.0),
+        wp.vec3(11.0, 12.0, 13.0),
+        wp.vec3(14.0, 15.0, 16.0),
+    )
+
     m2 = wp.matrix_from_rows(
         wp.vec3(1.0, 2.0, 3.0),
         wp.vec3(4.0, 5.0, 6.0),
@@ -1758,6 +1785,33 @@ def test_matrix_from_vecs_runtime(test, device):
     assert m2[2, 1] == 8.0
     assert m2[2, 2] == 9.0
 
+    assert m2.get_row(0) == wp.vec3(1.0, 2.0, 3.0)
+    assert m2.get_row(1) == wp.vec3(4.0, 5.0, 6.0)
+    assert m2.get_row(2) == wp.vec3(7.0, 8.0, 9.0)
+    assert m2.get_col(0) == wp.vec3(1.0, 4.0, 7.0)
+    assert m2.get_col(1) == wp.vec3(2.0, 5.0, 8.0)
+    assert m2.get_col(2) == wp.vec3(3.0, 6.0, 9.0)
+
+    m2.set_row(0, wp.vec3(8.0, 9.0, 10.0))
+    m2.set_row(1, wp.vec3(11.0, 12.0, 13.0))
+    m2.set_row(2, wp.vec3(14.0, 15.0, 16.0))
+
+    assert m2 == wp.matrix_from_rows(
+        wp.vec3(8.0, 9.0, 10.0),
+        wp.vec3(11.0, 12.0, 13.0),
+        wp.vec3(14.0, 15.0, 16.0),
+    )
+
+    m2.set_col(0, wp.vec3(8.0, 9.0, 10.0))
+    m2.set_col(1, wp.vec3(11.0, 12.0, 13.0))
+    m2.set_col(2, wp.vec3(14.0, 15.0, 16.0))
+
+    assert m2 == wp.matrix_from_cols(
+        wp.vec3(8.0, 9.0, 10.0),
+        wp.vec3(11.0, 12.0, 13.0),
+        wp.vec3(14.0, 15.0, 16.0),
+    )
+
     m3 = wp.matrix_from_cols(
         wp.vec3(1.0, 2.0, 3.0),
         wp.vec3(4.0, 5.0, 6.0),
@@ -1769,6 +1823,30 @@ def test_matrix_from_vecs_runtime(test, device):
     assert m3[2, 0] == 3.0
     assert m3[2, 1] == 6.0
 
+    assert m3.get_row(0) == wp.vec2(1.0, 4.0)
+    assert m3.get_row(1) == wp.vec2(2.0, 5.0)
+    assert m3.get_row(2) == wp.vec2(3.0, 6.0)
+    assert m3.get_col(0) == wp.vec3(1.0, 2.0, 3.0)
+    assert m3.get_col(1) == wp.vec3(4.0, 5.0, 6.0)
+
+    m3.set_row(0, wp.vec2(7.0, 8.0))
+    m3.set_row(1, wp.vec2(9.0, 10.0))
+    m3.set_row(2, wp.vec2(11.0, 12.0))
+
+    assert m3 == wp.matrix_from_rows(
+        wp.vec2(7.0, 8.0),
+        wp.vec2(9.0, 10.0),
+        wp.vec2(11.0, 12.0),
+    )
+
+    m3.set_col(0, wp.vec3(7.0, 8.0, 9.0))
+    m3.set_col(1, wp.vec3(10.0, 11.0, 12.0))
+
+    assert m3 == wp.matrix_from_cols(
+        wp.vec3(7.0, 8.0, 9.0),
+        wp.vec3(10.0, 11.0, 12.0),
+    )
+
     m4 = wp.matrix_from_rows(
         wp.vec3(1.0, 2.0, 3.0),
         wp.vec3(4.0, 5.0, 6.0),
@@ -1779,6 +1857,44 @@ def test_matrix_from_vecs_runtime(test, device):
     assert m4[1, 0] == 4.0
     assert m4[1, 1] == 5.0
     assert m4[1, 2] == 6.0
+
+    assert m4.get_row(0) == wp.vec3(1.0, 2.0, 3.0)
+    assert m4.get_row(1) == wp.vec3(4.0, 5.0, 6.0)
+    assert m4.get_col(0) == wp.vec2(1.0, 4.0)
+    assert m4.get_col(1) == wp.vec2(2.0, 5.0)
+    assert m4.get_col(2) == wp.vec2(3.0, 6.0)
+
+    m4.set_row(0, wp.vec3(7.0, 8.0, 9.0))
+    m4.set_row(1, wp.vec3(10.0, 11.0, 12.0))
+
+    assert m4 == wp.matrix_from_rows(
+        wp.vec3(7.0, 8.0, 9.0),
+        wp.vec3(10.0, 11.0, 12.0),
+    )
+
+    m4.set_col(0, wp.vec2(7.0, 8.0))
+    m4.set_col(1, wp.vec2(9.0, 10.0))
+    m4.set_col(2, wp.vec2(11.0, 12.0))
+
+    assert m4 == wp.matrix_from_cols(
+        wp.vec2(7.0, 8.0),
+        wp.vec2(9.0, 10.0),
+        wp.vec2(11.0, 12.0),
+    )
+
+    m4.set_row(0, 13.0)
+
+    assert m4 == wp.matrix_from_rows(
+        wp.vec3(13.0, 13.0, 13.0),
+        wp.vec3(8.0, 10.0, 12.0),
+    )
+
+    m4.set_col(2, 14.0)
+
+    assert m4 == wp.matrix_from_rows(
+        wp.vec3(13.0, 13.0, 14.0),
+        wp.vec3(8.0, 10.0, 14.0),
+    )
 
 
 # Same as above but with a default (float/int) type
