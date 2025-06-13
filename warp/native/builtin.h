@@ -1523,6 +1523,129 @@ CUDA_CALLABLE inline void adj_atomic_minmax(uint64* buf, uint64* adj_buf, const 
 CUDA_CALLABLE inline void adj_atomic_minmax(bool* buf, bool* adj_buf, const bool &value, bool &adj_value) { }
 
 
+template<typename T>
+inline CUDA_CALLABLE T atomic_cas(T* address, T compare, T val)
+{
+#if defined(__CUDA_ARCH__)
+    return atomicCAS(address, compare, val);
+#else
+    T old = *address;
+    if (old == compare) 
+    {
+        *address = val;
+    }
+    return old;
+#endif
+}
+
+template<>
+inline CUDA_CALLABLE float atomic_cas(float* address, float compare, float val)
+{
+#if defined(__CUDA_ARCH__)
+    auto result = atomicCAS(reinterpret_cast<unsigned int*>(address), 
+                    reinterpret_cast<unsigned int&>(compare), 
+                    reinterpret_cast<unsigned int&>(val));
+    return reinterpret_cast<float&>(result);
+#else
+    float old = *address;
+    if (old == compare) 
+    {
+        *address = val;
+    }
+    return old;
+#endif
+}
+
+template<>
+inline CUDA_CALLABLE double atomic_cas(double* address, double compare, double val)
+{
+#if defined(__CUDA_ARCH__)
+    auto result = atomicCAS(reinterpret_cast<unsigned long long int *>(address), 
+                    reinterpret_cast<unsigned long long int &>(compare), 
+                    reinterpret_cast<unsigned long long int &>(val));
+    return reinterpret_cast<double&>(result);
+#else
+    double old = *address;
+    if (old == compare) 
+    {
+        *address = val;
+    }
+    return old;
+#endif
+}
+
+template<>
+inline CUDA_CALLABLE int64 atomic_cas(int64* address, int64 compare, int64 val)
+{
+#if defined(__CUDA_ARCH__)
+    auto result = atomicCAS(reinterpret_cast<unsigned long long int *>(address), 
+                    reinterpret_cast<unsigned long long int &>(compare), 
+                    reinterpret_cast<unsigned long long int &>(val));
+    return reinterpret_cast<int64&>(result);
+#else
+    int64 old = *address;
+    if (old == compare) 
+    {
+        *address = val;
+    }
+    return old;
+#endif
+}
+
+template<typename T>
+inline CUDA_CALLABLE T atomic_exch(T* address, T val)
+{
+#if defined(__CUDA_ARCH__)
+    return atomicExch(address, val);
+#else
+    T old = *address;
+    *address = val;
+    return old;
+#endif
+}
+
+template<>
+inline CUDA_CALLABLE double atomic_exch(double* address, double val)
+{
+#if defined(__CUDA_ARCH__)
+    auto result = atomicExch(reinterpret_cast<unsigned long long int*>(address), 
+                     reinterpret_cast<unsigned long long int&>(val));
+    return reinterpret_cast<double&>(result);
+#else
+    double old = *address;
+    *address = val;
+    return old;
+#endif
+}
+
+template<>
+inline CUDA_CALLABLE int64 atomic_exch(int64* address, int64 val)
+{
+#if defined(__CUDA_ARCH__)
+    auto result = atomicExch(reinterpret_cast<unsigned long long int*>(address), 
+                     reinterpret_cast<unsigned long long int&>(val));
+    return reinterpret_cast<int64&>(result);
+#else
+    int64 old = *address;
+    *address = val;
+    return old;
+#endif
+}
+
+
+template<typename T>
+CUDA_CALLABLE inline void adj_atomic_cas(T* address, T compare, T val, T* adj_address, T& adj_compare, T& adj_val, T adj_ret)
+{
+    // Not implemented
+}
+
+template<typename T>
+CUDA_CALLABLE inline void adj_atomic_exch(T* address, T val, T* adj_address, T& adj_val, T adj_ret)
+{
+    // Not implemented
+}
+
+
 } // namespace wp
 
 

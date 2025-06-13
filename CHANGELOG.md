@@ -38,6 +38,8 @@
 - Add damping terms for collisions in `wp.sim.VBDIntegrator`, whose strength is controlled by `Model.soft_contact_kd`.
 - Improve consistency of the `wp.fem.lookup()` operator across geometries and add filtering parameters
   ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
+- Add `wp.atomic_cas()` and `wp.atomic_exch()` built-ins for atomic compare-and-swap and atomic exchange operations
+  ([GH-767](https://github.com/NVIDIA/warp/issues/767)).
 - Add `wp.capture_debug_dot_print()` to write a DOT file describing the structure of a captured CUDA graph
   ([GH-746](https://github.com/NVIDIA/warp/issues/746)).
 - Add a `py.typed` marker file (per PEP 561) to the package to formally support static type checking by downstream users

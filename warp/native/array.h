@@ -744,6 +744,24 @@ template<template<typename> class A, typename T>
 inline CUDA_CALLABLE T atomic_max(const A<T>& buf, int i, int j, int k, int l, T value) { return atomic_max(&index(buf, i, j, k, l), value); }
 
 template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_cas(const A<T>& buf, int i, T old_value, T new_value) { return atomic_cas(&index(buf, i), old_value, new_value); }
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_cas(const A<T>& buf, int i, int j, T old_value, T new_value) { return atomic_cas(&index(buf, i, j), old_value, new_value); }
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_cas(const A<T>& buf, int i, int j, int k, T old_value, T new_value) { return atomic_cas(&index(buf, i, j, k), old_value, new_value); }
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_cas(const A<T>& buf, int i, int j, int k, int l, T old_value, T new_value) { return atomic_cas(&index(buf, i, j, k, l), old_value, new_value); }
+
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_exch(const A<T>& buf, int i, T value) { return atomic_exch(&index(buf, i), value); }
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_exch(const A<T>& buf, int i, int j, T value) { return atomic_exch(&index(buf, i, j), value); }
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_exch(const A<T>& buf, int i, int j, int k, T value) { return atomic_exch(&index(buf, i, j, k), value); }
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_exch(const A<T>& buf, int i, int j, int k, int l, T value) { return atomic_exch(&index(buf, i, j, k, l), value); }
+
+template<template<typename> class A, typename T>
 inline CUDA_CALLABLE T* address(const A<T>& buf, int i) { return &index(buf, i); }
 template<template<typename> class A, typename T>
 inline CUDA_CALLABLE T* address(const A<T>& buf, int i, int j) { return &index(buf, i, j); }
@@ -1127,6 +1145,87 @@ inline CUDA_CALLABLE void adj_atomic_max(const A1<T>& buf, int i, int j, int k, 
 
     FP_VERIFY_ADJ_4(value, adj_value)
 }
+
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_cas(const A1<T>& buf, int i, T compare, T value, const A2<T>& adj_buf, int adj_i, T& adj_compare, T& adj_value, const T& adj_ret) {
+    if (adj_buf.data)
+        adj_atomic_cas(&index(buf, i), compare, value, &index(adj_buf, i), adj_compare, adj_value, adj_ret);
+    else if (buf.grad)
+        adj_atomic_cas(&index(buf, i), compare, value, &index_grad(buf, i), adj_compare, adj_value, adj_ret);
+
+    FP_VERIFY_ADJ_1(value, adj_value)
+}
+
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_cas(const A1<T>& buf, int i, int j, T compare, T value, const A2<T>& adj_buf, int adj_i, int adj_j, T& adj_compare, T& adj_value, const T& adj_ret) {
+    if (adj_buf.data)
+        adj_atomic_cas(&index(buf, i, j), compare, value, &index(adj_buf, i, j), adj_compare, adj_value, adj_ret);
+    else if (buf.grad)
+        adj_atomic_cas(&index(buf, i, j), compare, value, &index_grad(buf, i, j), adj_compare, adj_value, adj_ret);
+
+    FP_VERIFY_ADJ_2(value, adj_value)
+}
+
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_cas(const A1<T>& buf, int i, int j, int k, T compare, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, T& adj_compare, T& adj_value, const T& adj_ret) {
+    if (adj_buf.data)
+        adj_atomic_cas(&index(buf, i, j, k), compare, value, &index(adj_buf, i, j, k), adj_compare, adj_value, adj_ret);
+    else if (buf.grad)
+        adj_atomic_cas(&index(buf, i, j, k), compare, value, &index_grad(buf, i, j, k), adj_compare, adj_value, adj_ret);
+
+    FP_VERIFY_ADJ_3(value, adj_value)
+}
+
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_cas(const A1<T>& buf, int i, int j, int k, int l, T compare, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, int adj_l, T& adj_compare, T& adj_value, const T& adj_ret) {
+    if (adj_buf.data)
+        adj_atomic_cas(&index(buf, i, j, k, l), compare, value, &index(adj_buf, i, j, k, l), adj_compare, adj_value, adj_ret);
+    else if (buf.grad)
+        adj_atomic_cas(&index(buf, i, j, k, l), compare, value, &index_grad(buf, i, j, k, l), adj_compare, adj_value, adj_ret);
+
+    FP_VERIFY_ADJ_4(value, adj_value)
+}
+
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_exch(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int adj_i, T& adj_value, const T& adj_ret) {
+    if (adj_buf.data)
+        adj_atomic_exch(&index(buf, i), value, &index(adj_buf, i), adj_value, adj_ret);
+    else if (buf.grad)
+        adj_atomic_exch(&index(buf, i), value, &index_grad(buf, i), adj_value, adj_ret);
+
+    FP_VERIFY_ADJ_1(value, adj_value)
+}
+
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_exch(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int adj_i, int adj_j, T& adj_value, const T& adj_ret) {
+    if (adj_buf.data)
+        adj_atomic_exch(&index(buf, i, j), value, &index(adj_buf, i, j), adj_value, adj_ret);
+    else if (buf.grad)
+        adj_atomic_exch(&index(buf, i, j), value, &index_grad(buf, i, j), adj_value, adj_ret);
+
+    FP_VERIFY_ADJ_2(value, adj_value)
+}
+
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_exch(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, T& adj_value, const T& adj_ret) {
+    if (adj_buf.data)
+        adj_atomic_exch(&index(buf, i, j, k), value, &index(adj_buf, i, j, k), adj_value, adj_ret);
+    else if (buf.grad)
+        adj_atomic_exch(&index(buf, i, j, k), value, &index_grad(buf, i, j, k), adj_value, adj_ret);
+
+    FP_VERIFY_ADJ_3(value, adj_value)
+}
+
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_exch(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, int adj_l, T& adj_value, const T& adj_ret) {
+    if (adj_buf.data)
+        adj_atomic_exch(&index(buf, i, j, k, l), value, &index(adj_buf, i, j, k, l), adj_value, adj_ret);
+    else if (buf.grad)
+        adj_atomic_exch(&index(buf, i, j, k, l), value, &index_grad(buf, i, j, k, l), adj_value, adj_ret);
+
+    FP_VERIFY_ADJ_4(value, adj_value)
+}
+
 
 template<template<typename> class A, typename T>
 CUDA_CALLABLE inline int len(const A<T>& a)

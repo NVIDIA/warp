@@ -5836,6 +5836,12 @@ def create_atomic_op_value_func(op: str):
                     f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
+        elif op in ("cas", "exch"):
+            if not any(types_equal(scalar_type, x, match_generic=True) for x in SUPPORTED_ATOMIC_TYPES):
+                raise RuntimeError(
+                    f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float32, or float64 "
+                    f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
+                )
         else:
             raise NotImplementedError
 
@@ -6059,6 +6065,120 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("max"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
+        group="Utility",
+        skip_replay=True,
+    )
+
+    add_builtin(
+        "atomic_cas",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "compare": Any, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("cas"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_cas",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "compare": Any, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("cas"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_cas",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "compare": Any, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("cas"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_cas",
+        hidden=hidden,
+        input_types={
+            "arr": array_type(dtype=Any),
+            "i": Int,
+            "j": Int,
+            "k": Int,
+            "l": Int,
+            "compare": Any,
+            "value": Any,
+        },
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("cas"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
+        group="Utility",
+        skip_replay=True,
+    )
+
+    add_builtin(
+        "atomic_exch",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("exch"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically exchange ``value`` with ``arr[i]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_exch",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("exch"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_exch",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("exch"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically exchange ``value`` with ``arr[i,j,k]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_exch",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("exch"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
