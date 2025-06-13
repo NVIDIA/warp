@@ -3551,7 +3551,7 @@ class tile(Tile[DType, Shape]):
         elif self.storage == "shared":
             if self.owner:
                 # allocate new shared memory tile
-                return f"wp::tile_alloc_empty<{Var.type_to_ctype(self.dtype)},wp::tile_shape_t<{','.join(map(str, self.shape))}>,wp::tile_shape_t<{','.join(map(str, self.strides))}>,{'true' if requires_grad else 'false'}>()"
+                return f"wp::tile_alloc_empty<{Var.type_to_ctype(self.dtype)},wp::tile_shape_t<{','.join(map(str, self.shape))}>,wp::tile_stride_t<{','.join(map(str, self.strides))}>,{'true' if requires_grad else 'false'}>()"
             else:
                 # tile will be initialized by another call, e.g.: tile_transpose()
                 return "nullptr"
