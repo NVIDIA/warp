@@ -3735,6 +3735,362 @@ Utility
     The operation is only atomic on a per-component basis for vectors and matrices.
 
 
+.. py:function:: atomic_cas(arr: Array[Any], i: Int, compare: Any, value: Any) -> Any
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_cas(arr: Array[Any], i: Int, j: Int, compare: Any, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_cas(arr: Array[Any], i: Int, j: Int, k: Int, compare: Any, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_cas(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_cas(arr: FabricArray[Any], i: Int, compare: Any, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_cas(arr: FabricArray[Any], i: Int, j: Int, compare: Any, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_cas(arr: FabricArray[Any], i: Int, j: Int, k: Int, compare: Any, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_cas(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_cas(arr: IndexedFabricArray[Any], i: Int, compare: Any, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, compare: Any, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, compare: Any, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_exch(arr: Array[Any], i: Int, value: Any) -> Any
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically exchange ``value`` with ``arr[i]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_exch(arr: Array[Any], i: Int, j: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically exchange ``value`` with ``arr[i,j,k]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_exch(arr: FabricArray[Any], i: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically exchange ``value`` with ``arr[i]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_exch(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_exch(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically exchange ``value`` with ``arr[i,j,k]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_exch(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_exch(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically exchange ``value`` with ``arr[i]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically exchange ``value`` with ``arr[i,j,k]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
+.. py:function:: atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+
+
 .. py:function:: lerp(a: Float, b: Float, t: Float) -> Float
 
     .. hlist::

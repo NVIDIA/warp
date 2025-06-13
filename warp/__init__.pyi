@@ -2542,6 +2542,198 @@ def atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, val
     ...
 
 @over
+def atomic_cas(arr: Array[Any], i: Int, compare: Any, value: Any) -> Any:
+    """Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_cas(arr: Array[Any], i: Int, j: Int, compare: Any, value: Any) -> Any:
+    """Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_cas(arr: Array[Any], i: Int, j: Int, k: Int, compare: Any, value: Any) -> Any:
+    """Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_cas(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, value: Any) -> Any:
+    """Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_cas(arr: FabricArray[Any], i: Int, compare: Any, value: Any) -> Any:
+    """Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_cas(arr: FabricArray[Any], i: Int, j: Int, compare: Any, value: Any) -> Any:
+    """Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_cas(arr: FabricArray[Any], i: Int, j: Int, k: Int, compare: Any, value: Any) -> Any:
+    """Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_cas(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, value: Any) -> Any:
+    """Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_cas(arr: IndexedFabricArray[Any], i: Int, compare: Any, value: Any) -> Any:
+    """Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, compare: Any, value: Any) -> Any:
+    """Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, compare: Any, value: Any) -> Any:
+    """Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, value: Any) -> Any:
+    """Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_exch(arr: Array[Any], i: Int, value: Any) -> Any:
+    """Atomically exchange ``value`` with ``arr[i]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_exch(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
+    """Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
+    """Atomically exchange ``value`` with ``arr[i,j,k]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
+    """Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_exch(arr: FabricArray[Any], i: Int, value: Any) -> Any:
+    """Atomically exchange ``value`` with ``arr[i]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_exch(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
+    """Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_exch(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
+    """Atomically exchange ``value`` with ``arr[i,j,k]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_exch(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
+    """Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_exch(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
+    """Atomically exchange ``value`` with ``arr[i]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
+    """Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
+    """Atomically exchange ``value`` with ``arr[i,j,k]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
+def atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
+    """Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
+
+    The operation is only atomic on a per-component basis for vectors and matrices.
+    """
+    ...
+
+@over
 def lerp(a: Float, b: Float, t: Float) -> Float:
     """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``"""
     ...
