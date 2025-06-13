@@ -7990,11 +7990,10 @@ add_builtin(
         * float32
         * float64
 
-    :param L: A square, lower triangular, matrix
+    :param L: A square, non-singular, lower triangular matrix
     :param y: A 1D or 2D tile with compatible shape
     :returns z: A tile of the same shape as y such that Lz = y""",
     group="Tile Primitives",
-    hidden=True,
     export=False,
     namespace="",
 )
@@ -8122,11 +8121,10 @@ add_builtin(
         * float32
         * float64
 
-    :param U: A square, upper triangular matrix
+    :param U: A square, non-singular, upper triangular matrix
     :param z: A 1D or 2D tile with compatible shape
     :returns x: A tile of the same shape as z such that U x = z""",
     group="Tile Primitives",
-    hidden=True,
     export=False,
     namespace="",
 )

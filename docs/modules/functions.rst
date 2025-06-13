@@ -2624,6 +2624,52 @@ Tile Primitives
     :returns x: A tile of the same shape as y such that LL^T x = y
 
 
+.. py:function:: tile_lower_solve(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]) -> Tile[Float,Tuple[int]]
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Solve for z in Lz = y, where L is a lower triangular matrix.
+
+    This performs general forward substitution for a lower triangular system.
+
+    Note that computing the adjoint is not yet supported.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param L: A square, non-singular, lower triangular matrix
+    :param y: A 1D or 2D tile with compatible shape
+    :returns z: A tile of the same shape as y such that Lz = y
+
+
+.. py:function:: tile_upper_solve(U: Tile[Float,Tuple[int, int]], z: Tile[Float,Tuple[int]]) -> Tile[Float,Tuple[int]]
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Solve for x in U x = z, where U is an upper triangular matrix.
+
+    This performs general back substitution for upper triangular systems.
+
+    Note that computing the adjoint is not yet supported.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param U: A square, non-singular, upper triangular matrix
+    :param z: A 1D or 2D tile with compatible shape
+    :returns x: A tile of the same shape as z such that U x = z
+
+
 
 
 Utility
