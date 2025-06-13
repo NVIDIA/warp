@@ -2645,7 +2645,15 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
 
 template <typename Fwd, typename TileA, typename TileL>
 TileL& tile_cholesky(Fwd fun_forward, TileA& A, TileL& L)
-{       
+{
+    static_assert(TileA::Layout::Shape::N == 2, "Expected TileA::Layout::Shape::N == 2");
+    static_assert(TileL::Layout::Shape::N == 2, "Expected TileL::Layout::Shape::N == 2");
+
+    static_assert(TileA::Layout::Shape::dim(0) == TileA::Layout::Shape::dim(1), "Expected TileA to be square");
+    static_assert(TileL::Layout::Shape::dim(0) == TileL::Layout::Shape::dim(1), "Expected TileL to be square");
+    static_assert(TileA::Layout::Shape::dim(0) == TileL::Layout::Shape::dim(0), "Expected A and L to have the same number of rows");
+    static_assert(TileA::Layout::Shape::dim(1) == TileL::Layout::Shape::dim(1), "Expected A and L to have the same number of columns");
+
     // Copy to L
     L = A;
 
@@ -2655,17 +2663,23 @@ TileL& tile_cholesky(Fwd fun_forward, TileA& A, TileL& L)
 
 #else
 
+    // TODO: for batched Cholesky, need one info per batch
+    WP_TILE_SHARED int info[1];
+
+    if (WP_TILE_THREAD_IDX == 0) {
+        info[0] = 0;
+    }
 
     // Call cholesky on L
     WP_TILE_SYNC();
     
-    int info;
-    fun_forward(L.data.ptr, &info);
+    fun_forward(L.data.ptr, info);
     
     WP_TILE_SYNC();
 
-    if (info != 0) {
-        printf("Non-zero status in Cholesky factorization\n");
+    // TODO: for batched Cholesky, check all batches
+    if (WP_TILE_THREAD_IDX == 0 && info[0] != 0) {
+        printf("Non-zero status in Cholesky factorization, got %d\n", info[0]);
     }
 
     // Zero-out the upper triangular part of L
