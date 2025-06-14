@@ -342,8 +342,10 @@ class FfiCallable:
                 self.args.append(arg)
 
             if arg_idx >= self.num_inputs and arg.in_out:
-                error_str = (f"Expected an output-only argument for argument {arg_name}."
-                             " in_out arguments should be placed before output-only arguments.")
+                error_str = (
+                    f"Expected an output-only argument for argument {arg_name}."
+                    " in_out arguments should be placed before output-only arguments."
+                )
                 raise ValueError(error_str)
 
             arg_idx += 1
@@ -540,7 +542,9 @@ _FFI_KERNEL_REGISTRY: dict[str, FfiKernel] = {}
 _FFI_REGISTRY_LOCK = threading.Lock()
 
 
-def jax_kernel(kernel, num_outputs=1, vmap_method="broadcast_all", launch_dims=None, output_dims=None, in_out_argnames=None):
+def jax_kernel(
+    kernel, num_outputs=1, vmap_method="broadcast_all", launch_dims=None, output_dims=None, in_out_argnames=None
+):
     """Create a JAX callback from a Warp kernel.
 
     NOTE: This is an experimental feature under development.
@@ -566,7 +570,7 @@ def jax_kernel(kernel, num_outputs=1, vmap_method="broadcast_all", launch_dims=N
         - Only the CUDA backend is supported.
     """
     if in_out_argnames is not None:
-        raise NotImplementedError('in_out_argnames not implemented for jax_kernel.')
+        raise NotImplementedError("in_out_argnames not implemented for jax_kernel.")
     key = (
         kernel.func,
         num_outputs,
