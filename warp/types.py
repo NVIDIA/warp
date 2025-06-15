@@ -5307,8 +5307,18 @@ def type_matches_template(arg_type, template_type):
     return True
 
 
-def infer_argument_types(args, template_types, arg_names=None):
-    """Resolve argument types with the given list of template types."""
+def infer_argument_types(args: list[Any], template_types, arg_names: list[str] | None = None) -> list[type]:
+    """Resolve argument types with the given list of template types.
+
+    Args:
+        args: List of arguments to infer types for.
+        template_types: List of template types to match against.
+        arg_names: List of argument names to use for error messages.
+
+    Raises:
+        RuntimeError: Number of arguments must match number of template types.
+        TypeError: Unable to infer the type of an argument.
+    """
 
     if len(args) != len(template_types):
         raise RuntimeError("Number of arguments must match number of template types.")
