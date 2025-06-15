@@ -529,7 +529,7 @@ struct tile_register_t
 
     // define the += operator which is used during backward pass codegen
     // when returning a register tile from a user defined function
-    inline CUDA_CALLABLE auto& operator += (tile_register_t<T, Layout>& rhs) 
+    inline CUDA_CALLABLE auto& operator += (const tile_register_t<T, Layout>& rhs) 
     {
         grad_add(rhs);
         return *this;
@@ -645,7 +645,7 @@ struct tile_register_t
             data[i] += tile.data[i];
     }
 
-    CUDA_CALLABLE void grad_add(const tile_global_t<T, typename Layout::Shape>& global) 
+    inline CUDA_CALLABLE void grad_add(const tile_global_t<T, typename Layout::Shape>& global) 
     {
         apply([&](int reg, auto c) {data[reg] = global.load_grad(c);});
 
@@ -893,6 +893,11 @@ struct tile_shared_t
     {
     }
 
+    // we delete the copy constructor because in the case the shared tile is owning,
+    // this leads to a double deallocation. 
+    // this also forces one to handle copies explicitly
+    inline CUDA_CALLABLE tile_shared_t(const tile_shared_t&) = delete;
+
     // initialize from an existing tile's memory
     inline CUDA_CALLABLE tile_shared_t(T* data, T* grad=nullptr, bool initialized=true) : data(data), grad(grad), initialized(initialized)
     {
@@ -920,16 +925,26 @@ struct tile_shared_t
 
     // construct from another shared tile, this constructor
     // is invoked for reshape operations like `wp.tile_transpose()`
+    // or `wp::copy()`
     template <typename OtherT, typename OtherLayout, bool OtherOwner>
     inline CUDA_CALLABLE auto& operator=(const tile_shared_t<OtherT, OtherLayout, OtherOwner>& rhs) 
     {
         // check dimensions are compatible
         static_assert(Layout::Size == OtherLayout::Size, "Expected Size == OtherLayout::Size");
 
-        // alias tile directly
-        data.ptr = rhs.data.ptr;
-        grad.ptr = rhs.grad.ptr;
-        initialized = rhs.initialized;
+
+        if (Owner) 
+        {
+            // if the tile owns the data we need to copy
+            assign(rhs);
+        }
+        else
+        {
+            // alias tile directly
+            data.ptr = rhs.data.ptr;
+            grad.ptr = rhs.grad.ptr;
+            initialized = rhs.initialized;
+        }
 
         return *this;
     }    
@@ -955,6 +970,21 @@ struct tile_shared_t
 
         initialized = true;
         WP_TILE_SYNC();
+        return *this;
+    }
+
+    // define the += operator which is used during backward pass codegen
+    // when returning a register tile from a user defined function
+    template<typename OtherLayout>
+    inline CUDA_CALLABLE auto& operator += (const tile_register_t<T, OtherLayout>& rhs) 
+    {
+        grad_add(rhs);
+        return *this;
+    }
+
+    inline CUDA_CALLABLE auto& operator += (const tile_shared_t<T, Layout>& rhs) 
+    {
+        grad_add(rhs);
         return *this;
     }
 
@@ -1039,6 +1069,26 @@ struct tile_shared_t
         WP_TILE_SYNC();
     }
 
+    template <typename OtherT, typename OtherLayout, bool OtherOwner>
+    inline CUDA_CALLABLE void assign(const tile_shared_t<OtherT, OtherLayout, OtherOwner>& tile)
+    { 
+        // check dimensions are compatible
+        static_assert(Layout::Size == OtherLayout::Size, "Expected Size == OtherLayout::Size");
+
+        if (initialized)
+            WP_TILE_SYNC();
+
+        WP_PRAGMA_UNROLL
+        for (int i=WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM)
+        {
+            auto c = Layout::coord_from_linear(i);
+            data(c) = tile.data(c);
+        }
+
+        initialized = true;
+        WP_TILE_SYNC();
+    }
+
     // in-place gradient zero
     inline CUDA_CALLABLE void grad_zero()
     {
@@ -1078,8 +1128,21 @@ struct tile_shared_t
         WP_TILE_SYNC();
     }
 
+    // accumulate gradients onto this tile from another shared tile
+    inline CUDA_CALLABLE void grad_add(const tile_shared_t<T, Layout>& tile) 
+    { 
+        WP_PRAGMA_UNROLL
+        for (int i=WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM)
+        {
+            auto c = Layout::coord_from_linear(i);
+            grad(c) += tile.grad(c);
+        }
+
+        WP_TILE_SYNC();
+    }
+
     // accumulate gradient onto this tile from a global array
-    CUDA_CALLABLE void grad_add(const tile_global_t<T, typename Layout::Shape>& global) 
+    inline CUDA_CALLABLE void grad_add(const tile_global_t<T, typename Layout::Shape>& global) 
     {
         WP_PRAGMA_UNROLL
         for (int i=WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM)
@@ -1463,8 +1526,15 @@ void tile_register_t<T, L>::print() const
 // print entry points
 template <typename T, typename L>
 inline CUDA_CALLABLE void print(const tile_register_t<T, L>& t) { t.print(); }
+
+template <typename T, typename L>
+inline CUDA_CALLABLE void adj_print(const tile_register_t<T, L>& t, const tile_register_t<T, L>& a) { a.print(); }
+
 template <typename T, typename L, bool Owner>
 inline CUDA_CALLABLE void print(const tile_shared_t<T, L, Owner>& t) { t.print(); }
+
+template <typename T, typename L, bool Owner>
+inline CUDA_CALLABLE void adj_print(const tile_shared_t<T, L, Owner>& t, const tile_shared_t<T, L, Owner>& a) { a.print(true); }
 
 template <typename T, typename L, bool O>
 inline CUDA_CALLABLE int len(const tile_shared_t<T, L, O>& t)
@@ -1488,13 +1558,67 @@ inline CUDA_CALLABLE void adj_len(const tile_register_t<T,L>& t, const AdjTile& 
 {
 }
 
+// select specialization for shared tiles
+template <typename C, typename T, typename LRegister, typename LShared, bool Owner>
+inline CUDA_CALLABLE auto select(const C& cond, const tile_register_t<T, LRegister>& a, const tile_shared_t<T, LShared, Owner>& b)
+{
+    // The double NOT operator !! casts to bool without compiler warnings.
+    return (!!cond) ? b : a.copy_to_register();
+}
 
-template <typename T, typename L>
-inline CUDA_CALLABLE void adj_print(const tile_register_t<T, L>& t, const tile_register_t<T, L>& a) { a.print(); }
+template <typename C, typename T, typename LRegister, typename LShared, bool Owner>
+inline CUDA_CALLABLE auto select(const C& cond, const tile_shared_t<T, LShared, Owner>& a, const tile_register_t<T, LRegister>& b)
+{
+    // The double NOT operator !! casts to bool without compiler warnings.
+    return (!!cond) ? b.copy_to_register() : a;
+}
+
+template <typename C, typename T, typename L, bool Owner>
+inline CUDA_CALLABLE auto select(const C& cond, const tile_shared_t<T, L, Owner>& a, const tile_shared_t<T, L, Owner>& b)
+{
+    // The double NOT operator !! casts to bool without compiler warnings.
+    return (!!cond) ? tile_shared_t<T, L, false>(b.data.ptr, b.grad.ptr) : tile_shared_t<T, L, false>(a.data.ptr, a.grad.ptr);
+}
+
+// adj_select same as in builtin.h
+
+// where specialization for register/shared tiles
+template <typename C, typename T, typename LRegister, typename LShared, bool Owner>
+inline CUDA_CALLABLE auto where(const C& cond, const tile_register_t<T, LRegister>& a, const tile_shared_t<T, LShared, Owner>& b)
+{
+    // The double NOT operator !! casts to bool without compiler warnings.
+    return (!!cond) ? a : b.copy_to_register();
+}
+
+template <typename C, typename T, typename LRegister, typename LShared, bool Owner>
+inline CUDA_CALLABLE auto where(const C& cond, const tile_shared_t<T, LShared, Owner>& a, const tile_register_t<T, LRegister>& b)
+{
+    // The double NOT operator !! casts to bool without compiler warnings.
+    return (!!cond) ? a.copy_to_register() : b;
+}
+
+template <typename C, typename T, typename L, bool Owner>
+inline CUDA_CALLABLE auto where(const C& cond, const tile_shared_t<T, L, Owner>& a, const tile_shared_t<T, L, Owner>& b)
+{
+    // The double NOT operator !! casts to bool without compiler warnings.
+    return (!!cond) ? tile_shared_t<T, L, false>(a.data.ptr, a.grad.ptr) : tile_shared_t<T, L, false>(b.data.ptr, b.grad.ptr);
+}
+
+// adj_where same as in builtin.h
+
+// copy specialization for shared tiles
 template <typename T, typename L, bool Owner>
-inline CUDA_CALLABLE void adj_print(const tile_shared_t<T, L, Owner>& t, const tile_shared_t<T, L, Owner>& a) { a.print(true); }
+inline CUDA_CALLABLE auto copy(const tile_shared_t<T, L, Owner>& t)
+{
+    return tile_shared_t<T, L, false>(t.data.ptr, t.grad.ptr);
+}
 
-
+template <typename T, typename L, bool Owner>
+inline CUDA_CALLABLE void adj_copy(const tile_shared_t<T, L, Owner>& src, tile_shared_t<T, L, Owner>& adj_src, tile_shared_t<T, L, Owner>& adj_dest)
+{
+    adj_src += adj_dest;
+    adj_dest.grad_zero();
+}
 
 // helpers to allocate shared tiles
 template <typename T, typename Shape, typename Strides, bool RequiresGrad>
@@ -2832,7 +2956,7 @@ template <typename Tile, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_transpose(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {    
     auto a = tile_transpose(adj_ret);
-    auto b = adj_t;
+    auto& b = adj_t;
     
     adj_t.assign(tile_add(a,b));
 }
