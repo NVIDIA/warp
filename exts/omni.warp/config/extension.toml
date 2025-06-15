@@ -1,14 +1,14 @@
 [package]
 # Semantic Versioning is used: https://semver.org/
-version = "1.7.2"
+version = "1.8.0-rc.1"
 authors = ["NVIDIA"]
 title = "Warp"
-description="Warp OmniGraph Nodes and Sample Scenes"
-readme  = "docs/README.md"
-repository="https://github.com/nvidia/warp"
+description = "Warp OmniGraph Nodes and Sample Scenes"
+readme = "docs/README.md"
+repository = "https://github.com/nvidia/warp"
 category = "graph"
 keywords = ["kit", "omnigraph", "warp", "simulation"]
-changelog="docs/CHANGELOG.md"
+changelog = "docs/CHANGELOG.md"
 python.import_mode = "ParallelThread"
 
 preview_image = "data/preview.png"
@@ -24,17 +24,17 @@ exclude = ["Ogn*Database.py", "*/ogn*"]
 "omni.graph.action" = {}
 "omni.graph.core" = {}
 "omni.graph.nodes" = {}
-"omni.graph.ui" = {optional=true}
+"omni.graph.ui" = { optional = true }
 "omni.graph.ui_nodes" = {}
 "omni.kit.actions.core" = {}
-"omni.kit.browser.sample" = {optional = true}
-"omni.kit.menu.utils" = {optional = true}
-"omni.kit.property.usd" = {optional = true}
-"omni.kit.widget.searchfield" = {optional = true}
-"omni.kit.widget.text_editor" = {optional = true}
-"omni.kit.window.property" = {optional = true}
+"omni.kit.browser.sample" = { optional = true }
+"omni.kit.menu.utils" = { optional = true }
+"omni.kit.property.usd" = { optional = true }
+"omni.kit.widget.searchfield" = { optional = true }
+"omni.kit.widget.text_editor" = { optional = true }
+"omni.kit.window.property" = { optional = true }
 "omni.timeline" = {}
-"omni.ui" = {optional = true}
+"omni.ui" = { optional = true }
 "omni.usd" = {}
 "omni.warp.core" = {}
 "usdrt.scenegraph" = {}
@@ -63,11 +63,11 @@ dependencies = [
     "omni.kit.viewport.utility",
 
     # Additional dependencies that need to be enabled for the extensions above to work.
-    "omni.kit.commands", # Required by `omni.kit.material.library`, `omni.kit.viewport.utility`, and `omni.kit.viewport.window`.
+    "omni.kit.commands",              # Required by `omni.kit.material.library`, `omni.kit.viewport.utility`, and `omni.kit.viewport.window`.
     "omni.kit.manipulator.selection", # Required by `omni.kit.viewport.window`.
-    "omni.kit.material.library", # Required by `omni.kit.viewport.window`.
-    "omni.kit.renderer.capture", # Required by `omni.kit.viewport.utility`.
-    "omni.kit.viewport.window", # Required by `omni.kit.viewport.utility`.
+    "omni.kit.material.library",      # Required by `omni.kit.viewport.window`.
+    "omni.kit.renderer.capture",      # Required by `omni.kit.viewport.utility`.
+    "omni.kit.viewport.window",       # Required by `omni.kit.viewport.utility`.
     "omni.hydra.usdrt_delegate",
 ]
 
