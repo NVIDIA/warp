@@ -3186,13 +3186,16 @@ def tile_cholesky(A: Tile[Float, Tuple[int, int]]) -> Tile[Float, Tuple[int, int
     """Compute the Cholesky factorization L of a matrix A.
     L is lower triangular and satisfies LL^T = A.
 
+    Only the lower triangular portion of A is used for the decomposition;
+    the upper triangular part may be left unspecified.
+
     Note that computing the adjoint is not yet supported.
 
     Supported datatypes are:
         * float32
         * float64
 
-    :param A: A square, symmetric positive-definite, matrix.
+    :param A: A square, symmetric positive-definite, matrix. Only the lower triangular part of A is needed; the upper part is ignored.
     :returns L: A square, lower triangular, matrix, such that LL^T = A
     """
     ...
