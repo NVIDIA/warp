@@ -13,11 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib.util
 import os
 
 import numpy as np
+from asv_runner.benchmarks.mark import skip_benchmark_if
 
 import warp as wp
+
+pxr = importlib.util.find_spec("pxr")
+USD_AVAILABLE = pxr is not None
 
 wp.set_module_options({"enable_backward": False})
 
@@ -96,6 +101,7 @@ class MeshQuery:
         self.cmd.launch()
         wp.synchronize_device(self.device)
 
+    @skip_benchmark_if(USD_AVAILABLE is False)
     def time_mesh_query(self, asset):
         self.cmd.launch()
         wp.synchronize_device(self.device)
