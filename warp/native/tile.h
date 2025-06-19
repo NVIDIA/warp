@@ -746,6 +746,7 @@ inline CUDA_CALLABLE void* tile_alloc_shared(int num_bytes, bool init=false, boo
         
         // one entry per-thread so no need for synchronization
         smem_base[WP_TILE_THREAD_IDX] += tile_align(num_bytes);
+        assert(smem_base[WP_TILE_THREAD_IDX] >= 0);
 
 #ifdef __CUDA_ARCH__
         extern __shared__ char dynamic_smem_base[];
@@ -898,6 +899,13 @@ struct tile_shared_t
     // this also forces one to handle copies explicitly
     inline CUDA_CALLABLE tile_shared_t(const tile_shared_t&) = delete;
 
+    // move constructor
+    inline CUDA_CALLABLE tile_shared_t(tile_shared_t&& other) : data(other.data), grad(other.grad), initialized(other.initialized)
+    {
+        other.data.ptr = nullptr;
+        other.grad.ptr = nullptr;
+    }
+
     // initialize from an existing tile's memory
     inline CUDA_CALLABLE tile_shared_t(T* data, T* grad=nullptr, bool initialized=true) : data(data), grad(grad), initialized(initialized)
     {
@@ -947,7 +955,25 @@ struct tile_shared_t
         }
 
         return *this;
-    }    
+    }
+
+    inline CUDA_CALLABLE auto& operator=(const tile_shared_t& rhs)
+    {
+        if (Owner) 
+        {
+            // if the tile owns the data we need to copy
+            assign(rhs);
+        }
+        else
+        {
+            // alias tile directly
+            data.ptr = rhs.data.ptr;
+            grad.ptr = rhs.grad.ptr;
+            initialized = rhs.initialized;
+        }
+
+        return *this;
+    }
 
     // assign from a global tile (load)
     inline CUDA_CALLABLE auto& operator=(const tile_global_t<T, typename Layout::Shape>& t)
@@ -1235,7 +1261,7 @@ struct tile_shared_t
             {                               
                 // alias of shared tile with 128bit type
                 using SrcLayout = tile_layout_strided_t<tile_shape_t<M, N>>;
-                tile_shared_t<float4, SrcLayout> src128((float4*)data.ptr);
+                tile_shared_t<float4, SrcLayout, false> src128((float4*)data.ptr);
 
                 assert(((uint64_t)(data.ptr))%sizeof(float4) == 0);
                 assert(((uint64_t)(dest128))%sizeof(float4) == 0);
@@ -1325,7 +1351,7 @@ struct tile_shared_t
             {
                 // alias of shared tile with 128bit type
                 using DestLayout = tile_layout_strided_t<tile_shape_t<M, N>>;
-                tile_shared_t<float4, DestLayout> dest128((float4*)data.ptr);                
+                tile_shared_t<float4, DestLayout, false> dest128((float4*)data.ptr);                
 
                 assert(((uint64_t)(dest128.data.ptr))%sizeof(float4) == 0);
                 assert(((uint64_t)(src128))%sizeof(float4) == 0);
@@ -1580,6 +1606,13 @@ inline CUDA_CALLABLE auto select(const C& cond, const tile_shared_t<T, L, Owner>
     return (!!cond) ? tile_shared_t<T, L, false>(b.data.ptr, b.grad.ptr) : tile_shared_t<T, L, false>(a.data.ptr, a.grad.ptr);
 }
 
+template <typename C, typename T, typename L, bool LOwner, bool ROwner>
+inline CUDA_CALLABLE auto select(const C& cond, const tile_shared_t<T, L, LOwner>& a, const tile_shared_t<T, L, ROwner>& b)
+{
+    // The double NOT operator !! casts to bool without compiler warnings.
+    return (!!cond) ? tile_shared_t<T, L, false>(b.data.ptr, b.grad.ptr) : tile_shared_t<T, L, false>(a.data.ptr, a.grad.ptr);
+}
+
 // adj_select same as in builtin.h
 
 // where specialization for register/shared tiles
@@ -1599,6 +1632,13 @@ inline CUDA_CALLABLE auto where(const C& cond, const tile_shared_t<T, LShared, O
 
 template <typename C, typename T, typename L, bool Owner>
 inline CUDA_CALLABLE auto where(const C& cond, const tile_shared_t<T, L, Owner>& a, const tile_shared_t<T, L, Owner>& b)
+{
+    // The double NOT operator !! casts to bool without compiler warnings.
+    return (!!cond) ? tile_shared_t<T, L, false>(a.data.ptr, a.grad.ptr) : tile_shared_t<T, L, false>(b.data.ptr, b.grad.ptr);
+}
+
+template <typename C, typename T, typename L, bool LOwner, bool ROwner>
+inline CUDA_CALLABLE auto where(const C& cond, const tile_shared_t<T, L, LOwner>& a, const tile_shared_t<T, L, ROwner>& b)
 {
     // The double NOT operator !! casts to bool without compiler warnings.
     return (!!cond) ? tile_shared_t<T, L, false>(a.data.ptr, a.grad.ptr) : tile_shared_t<T, L, false>(b.data.ptr, b.grad.ptr);
