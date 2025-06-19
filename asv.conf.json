@@ -19,5 +19,6 @@
   "env_dir": "asv/env",
   "results_dir": "asv/results",
   "html_dir": "asv/html",
-  "build_cache_size": 20
+  "build_cache_size": 20,
+  "default_benchmark_timeout": 120
 }
