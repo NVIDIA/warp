@@ -131,6 +131,8 @@ Introductory Examples
  - ``example_mixed_elasticity.py``: 2D nonlinear elasticity using mixed continuous/discontinuous :math:`S_k/P_{(k-1)d}` elements
  - ``example_distortion_energy.py``: Parameterization of a 3D surface minimizing a 2D nonlinear distortion energy
  - ``example_magnetostatics.py``: 2D magnetostatics using a curl-curl formulation
+ - ``example_elastic_shape_optimization.py``: Shape optimization of a 2D elastic cantilever beam 
+ - ``example_darcy_ls_optimization.py``: Level-set-based optimization of a 2D Darcy flow
 
 Advanced Usages
 ---------------

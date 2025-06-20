@@ -154,18 +154,30 @@ warp/examples/fem
       - mixed elasticity
       - apic fluid
       - streamlines
-    * - .. image:: ./img/examples/fem_convection_diffusion.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_convection_diffusion.py
+    * - .. image:: ./img/examples/fem_distortion_energy.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_distortion_energy.py
       - .. image:: ./img/examples/fem_navier_stokes.png
            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_navier_stokes.py
       - .. image:: ./img/examples/fem_burgers.png
            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_burgers.py
       - .. image:: ./img/examples/fem_magnetostatics.png
            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_magnetostatics.py
-    * - convection diffusion
+    * - distortion energy
       - navier stokes
       - burgers
       - magnetostatics
+    * - .. image:: ./img/examples/fem_adaptive_grid.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_adaptive_grid.py
+      - .. image:: ./img/examples/fem_nonconforming_contact.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_nonconforming_contact.py
+      - .. image:: ./img/examples/fem_darcy_ls_optimization.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_darcy_ls_optimization.py
+      - .. image:: ./img/examples/fem_elastic_shape_optimization.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_elastic_shape_optimization.py
+    * - adaptive grid
+      - nonconforming contact
+      - darcy level-set optimization
+      - elastic shape optimization
 
 warp/examples/optim
 ^^^^^^^^^^^^^^^^^^^

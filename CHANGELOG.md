@@ -47,6 +47,7 @@
 - Add support for 2D solves using `wp.tile_cholesky_solve()` ([GH-773](https://github.com/NVIDIA/warp/pull/773)).
 - Add `wp.tile_scan_inclusive()` and `wp.tile_scan_exclusive()` for performing inclusive and exclusive scans over tiles
   ([GH-731](https://github.com/NVIDIA/warp/issues/731)).
+- Added two examples demonstrating shape optimization using `warp.fem`: `fem/example_elastic_shape_optimization.py` and `fem/example_darcy_ls_optimization.py` ([GH-698](https://github.com/NVIDIA/warp/issues/698)).
 
 ### Removed
 
