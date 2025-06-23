@@ -306,16 +306,20 @@ class FfiCallable:
         self.vmap_method = vmap_method
         self.graph_compatible = graph_compatible
         self.output_dims = output_dims
-        self.in_out_argnames = in_out_argnames or []
         self.first_array_arg = None
         self.call_id = 0
         self.call_descriptors = {}
+
+        in_out_argnames_list = in_out_argnames or []
+        in_out_argnames = set(in_out_argnames_list)
+        if len(in_out_argnames_list) != len(in_out_argnames):
+            raise AssertionError("in_out_argnames must not contain duplicate names")
 
         # get arguments and annotations
         argspec = get_full_arg_spec(func)
 
         num_args = len(argspec.args)
-        self.num_inputs = num_args - num_outputs + len(self.in_out_argnames)
+        self.num_inputs = num_args - num_outputs + len(in_out_argnames)
         if self.num_outputs < 1:
             raise ValueError("At least one output is required")
         if self.num_outputs > num_args:
@@ -327,15 +331,14 @@ class FfiCallable:
         # parse type annotations
         self.args = []
         arg_idx = 0
-        in_out_argnames_ = set(self.in_out_argnames)
         for arg_name, arg_type in argspec.annotations.items():
             if arg_name == "return":
                 if arg_type is not None:
                     raise TypeError("Function must not return a value")
             else:
-                arg = FfiArg(arg_name, arg_type, arg_name in in_out_argnames_)
-                if arg_name in in_out_argnames_:
-                    in_out_argnames_.remove(arg_name)
+                arg = FfiArg(arg_name, arg_type, arg_name in in_out_argnames)
+                if arg_name in in_out_argnames:
+                    in_out_argnames.remove(arg_name)
                 if arg.is_array:
                     if arg_idx < self.num_inputs and self.first_array_arg is None:
                         self.first_array_arg = arg_idx
@@ -350,8 +353,8 @@ class FfiCallable:
 
             arg_idx += 1
 
-        if in_out_argnames_:
-            raise ValueError(f"in_out_argnames: '{in_out_argnames_}' did not match any function argument names.")
+        if in_out_argnames:
+            raise ValueError(f"in_out_argnames: '{in_out_argnames}' did not match any function argument names.")
 
         self.input_args = self.args[: self.num_inputs]
         self.output_args = [a for a in self.args if a.in_out] + self.args[self.num_inputs :]
