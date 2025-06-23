@@ -327,39 +327,25 @@ class Function:
                 warp.codegen.apply_defaults(bound_args, self.defaults)
 
             arguments = tuple(bound_args.arguments.values())
-
-            # Store the last runtime error we encountered from a function execution
-            last_execution_error = None
+            arg_types = tuple(warp.codegen.get_arg_type(x) for x in arguments)
 
             # try and find a matching overload
             for overload in self.user_overloads.values():
                 if len(overload.input_types) != len(arguments):
                     continue
-                template_types = list(overload.input_types.values())
-                arg_names = list(overload.input_types.keys())
-                try:
-                    # attempt to unify argument types with function template types
-                    warp.types.infer_argument_types(arguments, template_types, arg_names)
-                    return overload.func(*arguments)
-                except Exception as e:
-                    # The function was callable but threw an error during its execution.
-                    # This might be the intended overload, but it failed, or it might be the wrong overload.
-                    # We save this specific error and continue, just in case another overload later in the
-                    # list is a better match and doesn't fail.
-                    last_execution_error = e
+
+                if not warp.codegen.func_match_args(overload, arg_types, {}):
                     continue
 
-            if last_execution_error:
-                # Raise a new, more contextual RuntimeError, but link it to the
-                # original error that was caught. This preserves the original
-                # traceback and error type for easier debugging.
-                raise RuntimeError(
-                    f"Error calling function '{self.key}'. No version succeeded. "
-                    f"See above for the error from the last version that was tried."
-                ) from last_execution_error
-            else:
-                # We got here without ever calling an overload.func
-                raise RuntimeError(f"Error calling function '{self.key}', no overload found for arguments {args}")
+                template_types = list(overload.input_types.values())
+                arg_names = list(overload.input_types.keys())
+
+                # attempt to unify argument types with function template types
+                warp.types.infer_argument_types(arguments, template_types, arg_names)
+                return overload.func(*arguments)
+
+            # We got here without ever calling an overload.func
+            raise RuntimeError(f"Error calling function '{self.key}', no overload found for arguments {args}")
 
         # user-defined function with no overloads
         if self.func is None:
