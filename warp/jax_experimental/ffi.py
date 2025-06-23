@@ -545,8 +545,7 @@ _FFI_KERNEL_REGISTRY: dict[str, FfiKernel] = {}
 _FFI_REGISTRY_LOCK = threading.Lock()
 
 
-def jax_kernel(
-    kernel, num_outputs=1, vmap_method="broadcast_all", launch_dims=None, output_dims=None):
+def jax_kernel(kernel, num_outputs=1, vmap_method="broadcast_all", launch_dims=None, output_dims=None):
     """Create a JAX callback from a Warp kernel.
 
     NOTE: This is an experimental feature under development.
