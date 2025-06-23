@@ -835,6 +835,9 @@ def get_arg_type(arg: Var | Any) -> type:
     if isinstance(arg, Sequence):
         return tuple(get_arg_type(x) for x in arg)
 
+    if is_array(arg):
+        return arg
+
     if get_origin(arg) is tuple:
         return tuple(get_arg_type(x) for x in get_args(arg))
 
