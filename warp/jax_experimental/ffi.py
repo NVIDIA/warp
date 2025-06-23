@@ -543,8 +543,7 @@ _FFI_REGISTRY_LOCK = threading.Lock()
 
 
 def jax_kernel(
-    kernel, num_outputs=1, vmap_method="broadcast_all", launch_dims=None, output_dims=None, in_out_argnames=None
-):
+    kernel, num_outputs=1, vmap_method="broadcast_all", launch_dims=None, output_dims=None):
     """Create a JAX callback from a Warp kernel.
 
     NOTE: This is an experimental feature under development.
@@ -560,7 +559,6 @@ def jax_kernel(
         output_dims: Optional. Specify the default dimensions of output arrays.  If None, output
                      dimensions are inferred from the launch dimensions.
                      This argument can also be specified for individual calls.
-        in_out_argnames: not implemented
 
     Limitations:
         - All kernel arguments must be contiguous arrays or scalars.
@@ -569,8 +567,6 @@ def jax_kernel(
         - There must be at least one output argument.
         - Only the CUDA backend is supported.
     """
-    if in_out_argnames is not None:
-        raise NotImplementedError("in_out_argnames not implemented for jax_kernel.")
     key = (
         kernel.func,
         num_outputs,
@@ -581,7 +577,7 @@ def jax_kernel(
 
     with _FFI_REGISTRY_LOCK:
         if key not in _FFI_KERNEL_REGISTRY:
-            new_kernel = FfiKernel(kernel, num_outputs, vmap_method, launch_dims, output_dims, in_out_argnames)
+            new_kernel = FfiKernel(kernel, num_outputs, vmap_method, launch_dims, output_dims)
             _FFI_KERNEL_REGISTRY[key] = new_kernel
 
     return _FFI_KERNEL_REGISTRY[key]
