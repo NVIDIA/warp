@@ -490,9 +490,9 @@ def bsr_set_from_triplets(
     from warp.context import runtime
 
     if device.is_cpu:
-        native_func = runtime.core.bsr_matrix_from_triplets_host
+        native_func = runtime.core.wp_bsr_matrix_from_triplets_host
     else:
-        native_func = runtime.core.bsr_matrix_from_triplets_device
+        native_func = runtime.core.wp_bsr_matrix_from_triplets_device
 
     nnz_buf, nnz_event = dest._setup_nnz_transfer()
     summed_triplet_offsets = wp.empty(shape=(nnz,), dtype=wp.int32, device=device)
@@ -901,9 +901,9 @@ def bsr_assign(
         from warp.context import runtime
 
         if dest.device.is_cpu:
-            native_func = runtime.core.bsr_matrix_from_triplets_host
+            native_func = runtime.core.wp_bsr_matrix_from_triplets_host
         else:
-            native_func = runtime.core.bsr_matrix_from_triplets_device
+            native_func = runtime.core.wp_bsr_matrix_from_triplets_device
 
         nnz_buf, nnz_event = dest._setup_nnz_transfer()
         with wp.ScopedDevice(dest.device):
@@ -1041,9 +1041,9 @@ def bsr_set_transpose(
     from warp.context import runtime
 
     if dest.values.device.is_cpu:
-        native_func = runtime.core.bsr_transpose_host
+        native_func = runtime.core.wp_bsr_transpose_host
     else:
-        native_func = runtime.core.bsr_transpose_device
+        native_func = runtime.core.wp_bsr_transpose_device
 
     block_index_map = wp.empty(shape=2 * nnz, dtype=int, device=src.device)
 
@@ -1484,9 +1484,9 @@ def bsr_axpy(
     from warp.context import runtime
 
     if device.is_cpu:
-        native_func = runtime.core.bsr_matrix_from_triplets_host
+        native_func = runtime.core.wp_bsr_matrix_from_triplets_host
     else:
-        native_func = runtime.core.bsr_matrix_from_triplets_device
+        native_func = runtime.core.wp_bsr_matrix_from_triplets_device
 
     old_y_nnz = y_nnz
     nnz_buf, nnz_event = y._setup_nnz_transfer()
@@ -1912,9 +1912,9 @@ def bsr_mm(
         from warp.context import runtime
 
         if device.is_cpu:
-            native_func = runtime.core.bsr_matrix_from_triplets_host
+            native_func = runtime.core.wp_bsr_matrix_from_triplets_host
         else:
-            native_func = runtime.core.bsr_matrix_from_triplets_device
+            native_func = runtime.core.wp_bsr_matrix_from_triplets_device
 
         nnz_buf, nnz_event = z._setup_nnz_transfer()
 

@@ -77,8 +77,8 @@ void hash_grid_rebuild_device(const wp::HashGrid& grid, const wp::array_t<wp::ve
 
     const int num_cells = grid.dim_x * grid.dim_y * grid.dim_z;
     
-    memset_device(WP_CURRENT_CONTEXT, grid.cell_starts, 0, sizeof(int) * num_cells);    
-    memset_device(WP_CURRENT_CONTEXT, grid.cell_ends, 0, sizeof(int) * num_cells);
+    wp_memset_device(WP_CURRENT_CONTEXT, grid.cell_starts, 0, sizeof(int) * num_cells);
+    wp_memset_device(WP_CURRENT_CONTEXT, grid.cell_ends, 0, sizeof(int) * num_cells);
 
     wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_cell_offsets, num_points, (grid.cell_starts, grid.cell_ends, grid.point_cells, num_points));
 }

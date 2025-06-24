@@ -197,19 +197,19 @@ CUDA_CALLABLE inline float half_to_float(half h)
 
 #else  // Native C++ for Warp builtins outside of kernels
 
-extern "C" WP_API uint16_t float_to_half_bits(float x);
-extern "C" WP_API float half_bits_to_float(uint16_t u);
+extern "C" WP_API uint16_t wp_float_to_half_bits(float x);
+extern "C" WP_API float wp_half_bits_to_float(uint16_t u);
 
 inline half float_to_half(float x)
 {
     half h;
-    h.u = float_to_half_bits(x);
+    h.u = wp_float_to_half_bits(x);
     return h;
 }
 
 inline float half_to_float(half h)
 {
-   return half_bits_to_float(h.u);
+   return wp_half_bits_to_float(h.u);
 }
 
 #endif

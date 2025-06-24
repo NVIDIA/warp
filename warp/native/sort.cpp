@@ -198,41 +198,41 @@ void segmented_sort_pairs_host(int* keys, int* values, int n, int* segment_start
 
 void radix_sort_reserve(void* context, int n, void** mem_out, size_t* size_out) {}
 
-void radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n) {}
+void wp_radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n) {}
 
-void radix_sort_pairs_int64_device(uint64_t keys, uint64_t values, int n) {}
+void wp_radix_sort_pairs_int64_device(uint64_t keys, uint64_t values, int n) {}
 
-void radix_sort_pairs_float_device(uint64_t keys, uint64_t values, int n) {}
+void wp_radix_sort_pairs_float_device(uint64_t keys, uint64_t values, int n) {}
 
-void segmented_sort_pairs_float_device(uint64_t keys, uint64_t values, int n, uint64_t segment_start_indices, uint64_t segment_end_indices, int num_segments) {}
+void wp_segmented_sort_pairs_float_device(uint64_t keys, uint64_t values, int n, uint64_t segment_start_indices, uint64_t segment_end_indices, int num_segments) {}
 
-void segmented_sort_pairs_int_device(uint64_t keys, uint64_t values, int n, uint64_t segment_start_indices, uint64_t segment_end_indices, int num_segments) {}
+void wp_segmented_sort_pairs_int_device(uint64_t keys, uint64_t values, int n, uint64_t segment_start_indices, uint64_t segment_end_indices, int num_segments) {}
 
 #endif // !WP_ENABLE_CUDA
 
 
-void radix_sort_pairs_int_host(uint64_t keys, uint64_t values, int n)
+void wp_radix_sort_pairs_int_host(uint64_t keys, uint64_t values, int n)
 {
     radix_sort_pairs_host(
         reinterpret_cast<int *>(keys),
         reinterpret_cast<int *>(values), n);
 }
 
-void radix_sort_pairs_int64_host(uint64_t keys, uint64_t values, int n)
+void wp_radix_sort_pairs_int64_host(uint64_t keys, uint64_t values, int n)
 {
     radix_sort_pairs_host(
         reinterpret_cast<int64_t *>(keys),
         reinterpret_cast<int *>(values), n);
 }
 
-void radix_sort_pairs_float_host(uint64_t keys, uint64_t values, int n)
+void wp_radix_sort_pairs_float_host(uint64_t keys, uint64_t values, int n)
 {
     radix_sort_pairs_host(
         reinterpret_cast<float *>(keys),
         reinterpret_cast<int *>(values), n);
 }
 
-void segmented_sort_pairs_float_host(uint64_t keys, uint64_t values, int n, uint64_t segment_start_indices, uint64_t segment_end_indices, int num_segments)
+void wp_segmented_sort_pairs_float_host(uint64_t keys, uint64_t values, int n, uint64_t segment_start_indices, uint64_t segment_end_indices, int num_segments)
 {
     segmented_sort_pairs_host(
         reinterpret_cast<float *>(keys),
@@ -241,7 +241,7 @@ void segmented_sort_pairs_float_host(uint64_t keys, uint64_t values, int n, uint
         reinterpret_cast<int *>(segment_end_indices), num_segments);
 }
 
-void segmented_sort_pairs_int_host(uint64_t keys, uint64_t values, int n, uint64_t segment_start_indices, uint64_t segment_end_indices, int num_segments)
+void wp_segmented_sort_pairs_int_host(uint64_t keys, uint64_t values, int n, uint64_t segment_start_indices, uint64_t segment_end_indices, int num_segments)
 {
     segmented_sort_pairs_host(
         reinterpret_cast<int *>(keys),

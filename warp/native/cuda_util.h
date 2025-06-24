@@ -38,19 +38,19 @@
     #define wp_launch_device(context, kernel, dim, args) { \
         if (dim) { \
         ContextGuard guard(context); \
-        cudaStream_t stream = (cudaStream_t)cuda_stream_get_current(); \
+        cudaStream_t stream = (cudaStream_t)wp_cuda_stream_get_current(); \
         const int num_threads = 256; \
         const int num_blocks = (dim+num_threads-1)/num_threads; \
         begin_cuda_range(WP_TIMING_KERNEL_BUILTIN, stream, context, #kernel); \
         kernel<<<num_blocks, 256, 0, stream>>>args; \
-        check_cuda(cuda_context_check(WP_CURRENT_CONTEXT)); \
+        check_cuda(wp_cuda_context_check(WP_CURRENT_CONTEXT)); \
         end_cuda_range(WP_TIMING_KERNEL_BUILTIN, stream); }}
 #else
     // helper for launching kernels (no error checking)
     #define wp_launch_device(context, kernel, dim, args) { \
         if (dim) { \
         ContextGuard guard(context); \
-        cudaStream_t stream = (cudaStream_t)cuda_stream_get_current(); \
+        cudaStream_t stream = (cudaStream_t)wp_cuda_stream_get_current(); \
         const int num_threads = 256; \
         const int num_blocks = (dim+num_threads-1)/num_threads; \
         begin_cuda_range(WP_TIMING_KERNEL_BUILTIN, stream, context, #kernel); \
@@ -255,7 +255,7 @@ constexpr int WP_TIMING_GRAPH = 16;  // graph launch
 #define begin_cuda_range(_flag, _stream, _context, _name) \
     CudaTimingRange _timing_range; \
     bool _timing_enabled; \
-    if ((g_cuda_timing_state->flags & _flag) && !cuda_stream_is_capturing(_stream)) { \
+    if ((g_cuda_timing_state->flags & _flag) && !wp_cuda_stream_is_capturing(_stream)) { \
         ContextGuard guard(_context, true); \
         _timing_enabled = true; \
         _timing_range.context = _context ? _context : get_current_context(); \

@@ -90,6 +90,8 @@
   ([GH-521](https://github.com/NVIDIA/warp/issues/521)).
 - Ensure that the arguments passed when calling user functions in the Python scope are strictly matched to the function's signature,
   as to match the behaviour with how built-ins are resolved.
+- Prefixed all Warp symbols exported to warp.so/warp.dll with the `wp_` namespace to avoid conflicts with other libraries
+  ([GH-792](https://github.com/NVIDIA/warp/issues/792)).
 
 ### Fixed
 

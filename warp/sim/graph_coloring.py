@@ -234,7 +234,7 @@ def color_graph(
             f"graph_edge_indices must be a 2 dimensional array! The provided one is {graph_edge_indices.ndim} dimensional."
         )
 
-    num_colors = wp.context.runtime.core.graph_coloring(
+    num_colors = wp.context.runtime.core.wp_graph_coloring(
         num_nodes,
         graph_edge_indices.__ctype__(),
         algorithm.value,
@@ -242,7 +242,7 @@ def color_graph(
     )
 
     if balance_colors:
-        max_min_ratio = wp.context.runtime.core.balance_coloring(
+        max_min_ratio = wp.context.runtime.core.wp_balance_coloring(
             num_nodes,
             graph_edge_indices.__ctype__(),
             num_colors,

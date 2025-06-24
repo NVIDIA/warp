@@ -36,7 +36,7 @@ template <typename T> bool bsr_block_is_zero(int block_idx, int block_size, cons
 } // namespace
 
 
-WP_API void bsr_matrix_from_triplets_host(
+WP_API void wp_bsr_matrix_from_triplets_host(
     int block_size,
     int scalar_size_in_bytes,
     int row_count,
@@ -64,8 +64,8 @@ WP_API void bsr_matrix_from_triplets_host(
     bool return_summed_blocks = tpl_block_offsets != nullptr && tpl_block_indices != nullptr;
     if (!return_summed_blocks)
     {
-        tpl_block_offsets = static_cast<int*>(alloc_host(size_t(nnz) * sizeof(int)));
-        tpl_block_indices = static_cast<int*>(alloc_host(size_t(nnz) * sizeof(int)));
+        tpl_block_offsets = static_cast<int*>(wp_alloc_host(size_t(nnz) * sizeof(int)));
+        tpl_block_indices = static_cast<int*>(wp_alloc_host(size_t(nnz) * sizeof(int)));
     }
 
     std::iota(tpl_block_indices, tpl_block_indices + nnz, 0);
@@ -156,8 +156,8 @@ WP_API void bsr_matrix_from_triplets_host(
     if(!return_summed_blocks)
     {
         // free our temporary buffers
-        free_host(tpl_block_offsets);
-        free_host(tpl_block_indices);
+        wp_free_host(tpl_block_offsets);
+        wp_free_host(tpl_block_indices);
     }
 
     if (bsr_nnz != nullptr)
@@ -166,7 +166,7 @@ WP_API void bsr_matrix_from_triplets_host(
     }
 }
 
-WP_API void bsr_transpose_host(
+WP_API void wp_bsr_transpose_host(
     int row_count, int col_count, int nnz,
     const int* bsr_offsets, const int* bsr_columns,
     int* transposed_bsr_offsets,
@@ -209,7 +209,7 @@ WP_API void bsr_transpose_host(
 }
 
 #if !WP_ENABLE_CUDA
-WP_API void bsr_matrix_from_triplets_device(
+WP_API void wp_bsr_matrix_from_triplets_device(
     int block_size,
     int scalar_size_in_bytes,
     int row_count,
@@ -229,7 +229,7 @@ WP_API void bsr_matrix_from_triplets_device(
     void* bsr_nnz_event) {}
 
 
-WP_API void bsr_transpose_device(
+WP_API void wp_bsr_transpose_device(
     int row_count, int col_count, int nnz,
     const int* bsr_offsets, const int* bsr_columns,
     int* transposed_bsr_offsets,

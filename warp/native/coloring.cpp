@@ -535,7 +535,7 @@ using namespace wp;
 
 extern "C"
 {
-    int graph_coloring(int num_nodes, wp::array_t<int> edges, int algorithm, wp::array_t<int> node_colors)
+    int wp_graph_coloring(int num_nodes, wp::array_t<int> edges, int algorithm, wp::array_t<int> node_colors)
     {
         if (node_colors.ndim != 1 || node_colors.shape[0] != num_nodes)
         {
@@ -590,7 +590,7 @@ extern "C"
         return num_colors;
     }
 
-    float balance_coloring(int num_nodes, wp::array_t<int> edges, int num_colors, 
+    float wp_balance_coloring(int num_nodes, wp::array_t<int> edges, int num_colors, 
         float target_max_min_ratio, wp::array_t<int> node_colors)
     {
         Graph graph(num_nodes, edges);

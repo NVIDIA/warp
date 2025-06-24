@@ -371,7 +371,7 @@ class Function:
     def mangle(self) -> str:
         """Build a mangled name for the C-exported function, e.g.: `builtin_normalize_vec3()`."""
 
-        name = "builtin_" + self.key
+        name = "wp_builtin_" + self.key
 
         # Runtime arguments that are to be passed to the function, not its template signature.
         if self.export_func is not None:
@@ -1884,7 +1884,7 @@ class ModuleExec:
             if self.device.is_cuda:
                 # use CUDA context guard to avoid side effects during garbage collection
                 with self.device.context_guard:
-                    runtime.core.cuda_unload_module(self.device.context, self.handle)
+                    runtime.core.wp_cuda_unload_module(self.device.context, self.handle)
             else:
                 runtime.llvm.unload_obj(self.handle.encode("utf-8"))
 
@@ -1904,13 +1904,13 @@ class ModuleExec:
 
         if self.device.is_cuda:
             forward_name = name + "_cuda_kernel_forward"
-            forward_kernel = runtime.core.cuda_get_kernel(
+            forward_kernel = runtime.core.wp_cuda_get_kernel(
                 self.device.context, self.handle, forward_name.encode("utf-8")
             )
 
             if options["enable_backward"]:
                 backward_name = name + "_cuda_kernel_backward"
-                backward_kernel = runtime.core.cuda_get_kernel(
+                backward_kernel = runtime.core.wp_cuda_get_kernel(
                     self.device.context, self.handle, backward_name.encode("utf-8")
                 )
             else:
@@ -1921,14 +1921,14 @@ class ModuleExec:
             backward_smem_bytes = self.meta[backward_name + "_smem_bytes"] if options["enable_backward"] else 0
 
             # configure kernels maximum shared memory size
-            max_smem_bytes = runtime.core.cuda_get_max_shared_memory(self.device.context)
+            max_smem_bytes = runtime.core.wp_cuda_get_max_shared_memory(self.device.context)
 
-            if not runtime.core.cuda_configure_kernel_shared_memory(forward_kernel, forward_smem_bytes):
+            if not runtime.core.wp_cuda_configure_kernel_shared_memory(forward_kernel, forward_smem_bytes):
                 print(
                     f"Warning: Failed to configure kernel dynamic shared memory for this device, tried to configure {forward_name} kernel for {forward_smem_bytes} bytes, but maximum available is {max_smem_bytes}"
                 )
 
-            if options["enable_backward"] and not runtime.core.cuda_configure_kernel_shared_memory(
+            if options["enable_backward"] and not runtime.core.wp_cuda_configure_kernel_shared_memory(
                 backward_kernel, backward_smem_bytes
             ):
                 print(
@@ -2416,13 +2416,13 @@ class CpuDefaultAllocator:
         self.deleter = lambda ptr, size: self.free(ptr, size)
 
     def alloc(self, size_in_bytes):
-        ptr = runtime.core.alloc_host(size_in_bytes)
+        ptr = runtime.core.wp_alloc_host(size_in_bytes)
         if not ptr:
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device 'cpu'")
         return ptr
 
     def free(self, ptr, size_in_bytes):
-        runtime.core.free_host(ptr)
+        runtime.core.wp_free_host(ptr)
 
 
 class CpuPinnedAllocator:
@@ -2431,13 +2431,13 @@ class CpuPinnedAllocator:
         self.deleter = lambda ptr, size: self.free(ptr, size)
 
     def alloc(self, size_in_bytes):
-        ptr = runtime.core.alloc_pinned(size_in_bytes)
+        ptr = runtime.core.wp_alloc_pinned(size_in_bytes)
         if not ptr:
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device '{self.device}'")
         return ptr
 
     def free(self, ptr, size_in_bytes):
-        runtime.core.free_pinned(ptr)
+        runtime.core.wp_free_pinned(ptr)
 
 
 class CudaDefaultAllocator:
@@ -2447,7 +2447,7 @@ class CudaDefaultAllocator:
         self.deleter = lambda ptr, size: self.free(ptr, size)
 
     def alloc(self, size_in_bytes):
-        ptr = runtime.core.alloc_device_default(self.device.context, size_in_bytes)
+        ptr = runtime.core.wp_alloc_device_default(self.device.context, size_in_bytes)
         # If the allocation fails, check if graph capture is active to raise an informative error.
         # We delay the capture check to avoid overhead.
         if not ptr:
@@ -2469,7 +2469,7 @@ class CudaDefaultAllocator:
         return ptr
 
     def free(self, ptr, size_in_bytes):
-        runtime.core.free_device_default(self.device.context, ptr)
+        runtime.core.wp_free_device_default(self.device.context, ptr)
 
 
 class CudaMempoolAllocator:
@@ -2480,13 +2480,13 @@ class CudaMempoolAllocator:
         self.deleter = lambda ptr, size: self.free(ptr, size)
 
     def alloc(self, size_in_bytes):
-        ptr = runtime.core.alloc_device_async(self.device.context, size_in_bytes)
+        ptr = runtime.core.wp_alloc_device_async(self.device.context, size_in_bytes)
         if not ptr:
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device '{self.device}'")
         return ptr
 
     def free(self, ptr, size_in_bytes):
-        runtime.core.free_device_async(self.device.context, ptr)
+        runtime.core.wp_free_device_async(self.device.context, ptr)
 
 
 class ContextGuard:
@@ -2495,15 +2495,15 @@ class ContextGuard:
 
     def __enter__(self):
         if self.device.is_cuda:
-            runtime.core.cuda_context_push_current(self.device.context)
+            runtime.core.wp_cuda_context_push_current(self.device.context)
         elif is_cuda_driver_initialized():
-            self.saved_context = runtime.core.cuda_context_get_current()
+            self.saved_context = runtime.core.wp_cuda_context_get_current()
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self.device.is_cuda:
-            runtime.core.cuda_context_pop_current()
+            runtime.core.wp_cuda_context_pop_current()
         elif is_cuda_driver_initialized():
-            runtime.core.cuda_context_set_current(self.saved_context)
+            runtime.core.wp_cuda_context_set_current(self.saved_context)
 
 
 class Event:
@@ -2566,7 +2566,7 @@ class Event:
                     raise ValueError("The combination of 'enable_timing=True' and 'interprocess=True' is not allowed.")
                 flags |= Event.Flags.INTERPROCESS
 
-            self.cuda_event = runtime.core.cuda_event_create(device.context, flags)
+            self.cuda_event = runtime.core.wp_cuda_event_create(device.context, flags)
             if not self.cuda_event:
                 raise RuntimeError(f"Failed to create event on device {device}")
             self.owner = True
@@ -2593,7 +2593,9 @@ class Event:
             # Allocate a buffer for the data (64-element char array)
             ipc_handle_buffer = (ctypes.c_char * 64)()
 
-            warp.context.runtime.core.cuda_ipc_get_event_handle(self.device.context, self.cuda_event, ipc_handle_buffer)
+            warp.context.runtime.core.wp_cuda_ipc_get_event_handle(
+                self.device.context, self.cuda_event, ipc_handle_buffer
+            )
 
             if ipc_handle_buffer.raw == bytes(64):
                 warp.utils.warn("IPC event handle appears to be invalid. Was interprocess=True used?")
@@ -2610,7 +2612,7 @@ class Event:
         This property may not be accessed during a graph capture on any stream.
         """
 
-        result_code = runtime.core.cuda_event_query(self.cuda_event)
+        result_code = runtime.core.wp_cuda_event_query(self.cuda_event)
 
         return result_code == 0
 
@@ -2618,7 +2620,7 @@ class Event:
         if not self.owner:
             return
 
-        runtime.core.cuda_event_destroy(self.cuda_event)
+        runtime.core.wp_cuda_event_destroy(self.cuda_event)
 
 
 class Stream:
@@ -2668,12 +2670,12 @@ class Stream:
         # we pass cuda_stream through kwargs because cuda_stream=None is actually a valid value (CUDA default stream)
         if "cuda_stream" in kwargs:
             self.cuda_stream = kwargs["cuda_stream"]
-            device.runtime.core.cuda_stream_register(device.context, self.cuda_stream)
+            device.runtime.core.wp_cuda_stream_register(device.context, self.cuda_stream)
         else:
             if not isinstance(priority, int):
                 raise TypeError("Stream priority must be an integer.")
             clamped_priority = max(-1, min(priority, 0))  # Only support two priority levels
-            self.cuda_stream = device.runtime.core.cuda_stream_create(device.context, clamped_priority)
+            self.cuda_stream = device.runtime.core.wp_cuda_stream_create(device.context, clamped_priority)
 
             if not self.cuda_stream:
                 raise RuntimeError(f"Failed to create stream on device {device}")
@@ -2684,9 +2686,9 @@ class Stream:
             return
 
         if self.owner:
-            runtime.core.cuda_stream_destroy(self.device.context, self.cuda_stream)
+            runtime.core.wp_cuda_stream_destroy(self.device.context, self.cuda_stream)
         else:
-            runtime.core.cuda_stream_unregister(self.device.context, self.cuda_stream)
+            runtime.core.wp_cuda_stream_unregister(self.device.context, self.cuda_stream)
 
     @property
     def cached_event(self) -> Event:
@@ -2712,7 +2714,7 @@ class Stream:
                 f"Event from device {event.device} cannot be recorded on stream from device {self.device}"
             )
 
-        runtime.core.cuda_event_record(event.cuda_event, self.cuda_stream, event.enable_timing)
+        runtime.core.wp_cuda_event_record(event.cuda_event, self.cuda_stream, event.enable_timing)
 
         return event
 
@@ -2721,7 +2723,7 @@ class Stream:
 
         This function does not block the host thread.
         """
-        runtime.core.cuda_stream_wait_event(self.cuda_stream, event.cuda_event)
+        runtime.core.wp_cuda_stream_wait_event(self.cuda_stream, event.cuda_event)
 
     def wait_stream(self, other_stream: Stream, event: Event | None = None):
         """Records an event on `other_stream` and makes this stream wait on it.
@@ -2744,7 +2746,7 @@ class Stream:
         if event is None:
             event = other_stream.cached_event
 
-        runtime.core.cuda_stream_wait_stream(self.cuda_stream, other_stream.cuda_stream, event.cuda_event)
+        runtime.core.wp_cuda_stream_wait_stream(self.cuda_stream, other_stream.cuda_stream, event.cuda_event)
 
     @property
     def is_complete(self) -> bool:
@@ -2753,19 +2755,19 @@ class Stream:
         This property may not be accessed during a graph capture on any stream.
         """
 
-        result_code = runtime.core.cuda_stream_query(self.cuda_stream)
+        result_code = runtime.core.wp_cuda_stream_query(self.cuda_stream)
 
         return result_code == 0
 
     @property
     def is_capturing(self) -> bool:
         """A boolean indicating whether a graph capture is currently ongoing on this stream."""
-        return bool(runtime.core.cuda_stream_is_capturing(self.cuda_stream))
+        return bool(runtime.core.wp_cuda_stream_is_capturing(self.cuda_stream))
 
     @property
     def priority(self) -> int:
         """An integer representing the priority of the stream."""
-        return runtime.core.cuda_stream_get_priority(self.cuda_stream)
+        return runtime.core.wp_cuda_stream_get_priority(self.cuda_stream)
 
 
 class Device:
@@ -2834,22 +2836,22 @@ class Device:
             self.pci_bus_id = None
 
             # TODO: add more device-specific dispatch functions
-            self.memset = runtime.core.memset_host
-            self.memtile = runtime.core.memtile_host
+            self.memset = runtime.core.wp_memset_host
+            self.memtile = runtime.core.wp_memtile_host
 
             self.default_allocator = CpuDefaultAllocator(self)
             self.pinned_allocator = CpuPinnedAllocator(self)
 
-        elif ordinal >= 0 and ordinal < runtime.core.cuda_device_get_count():
+        elif ordinal >= 0 and ordinal < runtime.core.wp_cuda_device_get_count():
             # CUDA device
-            self.name = runtime.core.cuda_device_get_name(ordinal).decode()
-            self.arch = runtime.core.cuda_device_get_arch(ordinal)
-            self.sm_count = runtime.core.cuda_device_get_sm_count(ordinal)
-            self.is_uva = runtime.core.cuda_device_is_uva(ordinal) > 0
-            self.is_mempool_supported = runtime.core.cuda_device_is_mempool_supported(ordinal) > 0
+            self.name = runtime.core.wp_cuda_device_get_name(ordinal).decode()
+            self.arch = runtime.core.wp_cuda_device_get_arch(ordinal)
+            self.sm_count = runtime.core.wp_cuda_device_get_sm_count(ordinal)
+            self.is_uva = runtime.core.wp_cuda_device_is_uva(ordinal) > 0
+            self.is_mempool_supported = runtime.core.wp_cuda_device_is_mempool_supported(ordinal) > 0
             if platform.system() == "Linux":
                 # Use None when IPC support cannot be determined
-                ipc_support_api_query = runtime.core.cuda_device_is_ipc_supported(ordinal)
+                ipc_support_api_query = runtime.core.wp_cuda_device_is_ipc_supported(ordinal)
                 self.is_ipc_supported = bool(ipc_support_api_query) if ipc_support_api_query >= 0 else None
             else:
                 self.is_ipc_supported = False
@@ -2861,13 +2863,13 @@ class Device:
                 self.is_mempool_enabled = False
 
             uuid_buffer = (ctypes.c_char * 16)()
-            runtime.core.cuda_device_get_uuid(ordinal, uuid_buffer)
+            runtime.core.wp_cuda_device_get_uuid(ordinal, uuid_buffer)
             uuid_byte_str = bytes(uuid_buffer).hex()
             self.uuid = f"GPU-{uuid_byte_str[0:8]}-{uuid_byte_str[8:12]}-{uuid_byte_str[12:16]}-{uuid_byte_str[16:20]}-{uuid_byte_str[20:]}"
 
-            pci_domain_id = runtime.core.cuda_device_get_pci_domain_id(ordinal)
-            pci_bus_id = runtime.core.cuda_device_get_pci_bus_id(ordinal)
-            pci_device_id = runtime.core.cuda_device_get_pci_device_id(ordinal)
+            pci_domain_id = runtime.core.wp_cuda_device_get_pci_domain_id(ordinal)
+            pci_bus_id = runtime.core.wp_cuda_device_get_pci_bus_id(ordinal)
+            pci_device_id = runtime.core.wp_cuda_device_get_pci_device_id(ordinal)
             # This is (mis)named to correspond to the naming of cudaDeviceGetPCIBusId
             self.pci_bus_id = f"{pci_domain_id:08X}:{pci_bus_id:02X}:{pci_device_id:02X}"
 
@@ -2891,8 +2893,8 @@ class Device:
                 self._init_streams()
 
             # TODO: add more device-specific dispatch functions
-            self.memset = lambda ptr, value, size: runtime.core.memset_device(self.context, ptr, value, size)
-            self.memtile = lambda ptr, src, srcsize, reps: runtime.core.memtile_device(
+            self.memset = lambda ptr, value, size: runtime.core.wp_memset_device(self.context, ptr, value, size)
+            self.memtile = lambda ptr, src, srcsize, reps: runtime.core.wp_memtile_device(
                 self.context, ptr, src, srcsize, reps
             )
 
@@ -2951,15 +2953,15 @@ class Device:
             return self._context
         elif self.is_primary:
             # acquire primary context on demand
-            prev_context = runtime.core.cuda_context_get_current()
-            self._context = self.runtime.core.cuda_device_get_primary_context(self.ordinal)
+            prev_context = runtime.core.wp_cuda_context_get_current()
+            self._context = self.runtime.core.wp_cuda_device_get_primary_context(self.ordinal)
             if self._context is None:
-                runtime.core.cuda_context_set_current(prev_context)
+                runtime.core.wp_cuda_context_set_current(prev_context)
                 raise RuntimeError(f"Failed to acquire primary context for device {self}")
             self.runtime.context_map[self._context] = self
             # initialize streams
             self._init_streams()
-            runtime.core.cuda_context_set_current(prev_context)
+            runtime.core.wp_cuda_context_set_current(prev_context)
         return self._context
 
     @property
@@ -3003,7 +3005,7 @@ class Device:
             if stream.device != self:
                 raise RuntimeError(f"Stream from device {stream.device} cannot be used on device {self}")
 
-            self.runtime.core.cuda_context_set_stream(self.context, stream.cuda_stream, int(sync))
+            self.runtime.core.wp_cuda_context_set_stream(self.context, stream.cuda_stream, int(sync))
             self._stream = stream
         else:
             raise RuntimeError(f"Device {self} is not a CUDA device")
@@ -3021,7 +3023,7 @@ class Device:
         """
         if self.is_cuda:
             total_mem = ctypes.c_size_t()
-            self.runtime.core.cuda_device_get_memory_info(self.ordinal, None, ctypes.byref(total_mem))
+            self.runtime.core.wp_cuda_device_get_memory_info(self.ordinal, None, ctypes.byref(total_mem))
             return total_mem.value
         else:
             # TODO: cpu
@@ -3035,7 +3037,7 @@ class Device:
         """
         if self.is_cuda:
             free_mem = ctypes.c_size_t()
-            self.runtime.core.cuda_device_get_memory_info(self.ordinal, ctypes.byref(free_mem), None)
+            self.runtime.core.wp_cuda_device_get_memory_info(self.ordinal, ctypes.byref(free_mem), None)
             return free_mem.value
         else:
             # TODO: cpu
@@ -3062,7 +3064,7 @@ class Device:
 
     def make_current(self):
         if self.context is not None:
-            self.runtime.core.cuda_context_set_current(self.context)
+            self.runtime.core.wp_cuda_context_set_current(self.context)
 
     def can_access(self, other):
         # TODO: this function should be redesigned in terms of (device, resource).
@@ -3100,9 +3102,9 @@ class Graph:
 
         # use CUDA context guard to avoid side effects during garbage collection
         with self.device.context_guard:
-            runtime.core.cuda_graph_destroy(self.device.context, self.graph)
+            runtime.core.wp_cuda_graph_destroy(self.device.context, self.graph)
             if hasattr(self, "graph_exec") and self.graph_exec is not None:
-                runtime.core.cuda_graph_exec_destroy(self.device.context, self.graph_exec)
+                runtime.core.wp_cuda_graph_exec_destroy(self.device.context, self.graph_exec)
 
     # retain executable CUDA modules used by this graph, which prevents them from being unloaded
     def retain_module_exec(self, module_exec: ModuleExec):
@@ -3145,83 +3147,83 @@ class Runtime:
 
         # setup c-types for warp.dll
         try:
-            self.core.get_error_string.argtypes = []
-            self.core.get_error_string.restype = ctypes.c_char_p
-            self.core.set_error_output_enabled.argtypes = [ctypes.c_int]
-            self.core.set_error_output_enabled.restype = None
-            self.core.is_error_output_enabled.argtypes = []
-            self.core.is_error_output_enabled.restype = ctypes.c_int
+            self.core.wp_get_error_string.argtypes = []
+            self.core.wp_get_error_string.restype = ctypes.c_char_p
+            self.core.wp_set_error_output_enabled.argtypes = [ctypes.c_int]
+            self.core.wp_set_error_output_enabled.restype = None
+            self.core.wp_is_error_output_enabled.argtypes = []
+            self.core.wp_is_error_output_enabled.restype = ctypes.c_int
 
-            self.core.alloc_host.argtypes = [ctypes.c_size_t]
-            self.core.alloc_host.restype = ctypes.c_void_p
-            self.core.alloc_pinned.argtypes = [ctypes.c_size_t]
-            self.core.alloc_pinned.restype = ctypes.c_void_p
-            self.core.alloc_device.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-            self.core.alloc_device.restype = ctypes.c_void_p
-            self.core.alloc_device_default.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-            self.core.alloc_device_default.restype = ctypes.c_void_p
-            self.core.alloc_device_async.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-            self.core.alloc_device_async.restype = ctypes.c_void_p
+            self.core.wp_alloc_host.argtypes = [ctypes.c_size_t]
+            self.core.wp_alloc_host.restype = ctypes.c_void_p
+            self.core.wp_alloc_pinned.argtypes = [ctypes.c_size_t]
+            self.core.wp_alloc_pinned.restype = ctypes.c_void_p
+            self.core.wp_alloc_device.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+            self.core.wp_alloc_device.restype = ctypes.c_void_p
+            self.core.wp_alloc_device_default.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+            self.core.wp_alloc_device_default.restype = ctypes.c_void_p
+            self.core.wp_alloc_device_async.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+            self.core.wp_alloc_device_async.restype = ctypes.c_void_p
 
-            self.core.float_to_half_bits.argtypes = [ctypes.c_float]
-            self.core.float_to_half_bits.restype = ctypes.c_uint16
-            self.core.half_bits_to_float.argtypes = [ctypes.c_uint16]
-            self.core.half_bits_to_float.restype = ctypes.c_float
+            self.core.wp_float_to_half_bits.argtypes = [ctypes.c_float]
+            self.core.wp_float_to_half_bits.restype = ctypes.c_uint16
+            self.core.wp_half_bits_to_float.argtypes = [ctypes.c_uint16]
+            self.core.wp_half_bits_to_float.restype = ctypes.c_float
 
-            self.core.free_host.argtypes = [ctypes.c_void_p]
-            self.core.free_host.restype = None
-            self.core.free_pinned.argtypes = [ctypes.c_void_p]
-            self.core.free_pinned.restype = None
-            self.core.free_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.free_device.restype = None
-            self.core.free_device_default.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.free_device_default.restype = None
-            self.core.free_device_async.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.free_device_async.restype = None
+            self.core.wp_free_host.argtypes = [ctypes.c_void_p]
+            self.core.wp_free_host.restype = None
+            self.core.wp_free_pinned.argtypes = [ctypes.c_void_p]
+            self.core.wp_free_pinned.restype = None
+            self.core.wp_free_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_free_device.restype = None
+            self.core.wp_free_device_default.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_free_device_default.restype = None
+            self.core.wp_free_device_async.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_free_device_async.restype = None
 
-            self.core.memset_host.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
-            self.core.memset_host.restype = None
-            self.core.memset_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
-            self.core.memset_device.restype = None
+            self.core.wp_memset_host.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
+            self.core.wp_memset_host.restype = None
+            self.core.wp_memset_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
+            self.core.wp_memset_device.restype = None
 
-            self.core.memtile_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
-            self.core.memtile_host.restype = None
-            self.core.memtile_device.argtypes = [
+            self.core.wp_memtile_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
+            self.core.wp_memtile_host.restype = None
+            self.core.wp_memtile_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_size_t,
                 ctypes.c_size_t,
             ]
-            self.core.memtile_device.restype = None
+            self.core.wp_memtile_device.restype = None
 
-            self.core.memcpy_h2h.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
-            self.core.memcpy_h2h.restype = ctypes.c_bool
-            self.core.memcpy_h2d.argtypes = [
+            self.core.wp_memcpy_h2h.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
+            self.core.wp_memcpy_h2h.restype = ctypes.c_bool
+            self.core.wp_memcpy_h2d.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_size_t,
                 ctypes.c_void_p,
             ]
-            self.core.memcpy_h2d.restype = ctypes.c_bool
-            self.core.memcpy_d2h.argtypes = [
+            self.core.wp_memcpy_h2d.restype = ctypes.c_bool
+            self.core.wp_memcpy_d2h.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_size_t,
                 ctypes.c_void_p,
             ]
-            self.core.memcpy_d2h.restype = ctypes.c_bool
-            self.core.memcpy_d2d.argtypes = [
+            self.core.wp_memcpy_d2h.restype = ctypes.c_bool
+            self.core.wp_memcpy_d2d.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_size_t,
                 ctypes.c_void_p,
             ]
-            self.core.memcpy_d2d.restype = ctypes.c_bool
-            self.core.memcpy_p2p.argtypes = [
+            self.core.wp_memcpy_d2d.restype = ctypes.c_bool
+            self.core.wp_memcpy_p2p.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_void_p,
@@ -3229,17 +3231,17 @@ class Runtime:
                 ctypes.c_size_t,
                 ctypes.c_void_p,
             ]
-            self.core.memcpy_p2p.restype = ctypes.c_bool
+            self.core.wp_memcpy_p2p.restype = ctypes.c_bool
 
-            self.core.array_copy_host.argtypes = [
+            self.core.wp_array_copy_host.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_int,
             ]
-            self.core.array_copy_host.restype = ctypes.c_bool
-            self.core.array_copy_device.argtypes = [
+            self.core.wp_array_copy_host.restype = ctypes.c_bool
+            self.core.wp_array_copy_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_void_p,
@@ -3247,100 +3249,115 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
             ]
-            self.core.array_copy_device.restype = ctypes.c_bool
+            self.core.wp_array_copy_device.restype = ctypes.c_bool
 
-            self.core.array_fill_host.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_int]
-            self.core.array_fill_host.restype = None
-            self.core.array_fill_device.argtypes = [
+            self.core.wp_array_fill_host.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_int]
+            self.core.wp_array_fill_host.restype = None
+            self.core.wp_array_fill_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
                 ctypes.c_void_p,
                 ctypes.c_int,
             ]
-            self.core.array_fill_device.restype = None
+            self.core.wp_array_fill_device.restype = None
 
-            self.core.array_sum_double_host.argtypes = [
+            self.core.wp_array_sum_double_host.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_int,
             ]
-            self.core.array_sum_float_host.argtypes = [
+            self.core.wp_array_sum_float_host.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_int,
             ]
-            self.core.array_sum_double_device.argtypes = [
+            self.core.wp_array_sum_double_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_int,
             ]
-            self.core.array_sum_float_device.argtypes = [
+            self.core.wp_array_sum_float_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-            ]
-
-            self.core.array_inner_double_host.argtypes = [
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-            ]
-            self.core.array_inner_float_host.argtypes = [
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-            ]
-            self.core.array_inner_double_device.argtypes = [
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-            ]
-            self.core.array_inner_float_device.argtypes = [
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_int,
             ]
 
-            self.core.array_scan_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
-            self.core.array_scan_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
-            self.core.array_scan_int_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
-            self.core.array_scan_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
+            self.core.wp_array_inner_double_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.wp_array_inner_float_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.wp_array_inner_double_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.wp_array_inner_float_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
 
-            self.core.radix_sort_pairs_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
-            self.core.radix_sort_pairs_int_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_array_scan_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
+            self.core.wp_array_scan_float_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_bool,
+            ]
+            self.core.wp_array_scan_int_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_bool,
+            ]
+            self.core.wp_array_scan_float_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_bool,
+            ]
 
-            self.core.radix_sort_pairs_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
-            self.core.radix_sort_pairs_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_radix_sort_pairs_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_radix_sort_pairs_int_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
 
-            self.core.radix_sort_pairs_int64_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
-            self.core.radix_sort_pairs_int64_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_radix_sort_pairs_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_radix_sort_pairs_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
 
-            self.core.segmented_sort_pairs_int_host.argtypes = [
+            self.core.wp_radix_sort_pairs_int64_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_radix_sort_pairs_int64_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+
+            self.core.wp_segmented_sort_pairs_int_host.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_int,
@@ -3348,24 +3365,7 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
-            self.core.segmented_sort_pairs_int_device.argtypes = [
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_int,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_int,
-            ]
-
-            self.core.segmented_sort_pairs_float_host.argtypes = [
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_int,
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_int,
-            ]
-            self.core.segmented_sort_pairs_float_device.argtypes = [
+            self.core.wp_segmented_sort_pairs_int_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_int,
@@ -3374,14 +3374,31 @@ class Runtime:
                 ctypes.c_int,
             ]
 
-            self.core.runlength_encode_int_host.argtypes = [
+            self.core.wp_segmented_sort_pairs_float_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+            ]
+            self.core.wp_segmented_sort_pairs_float_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+            ]
+
+            self.core.wp_runlength_encode_int_host.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
-            self.core.runlength_encode_int_device.argtypes = [
+            self.core.wp_runlength_encode_int_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -3389,11 +3406,11 @@ class Runtime:
                 ctypes.c_int,
             ]
 
-            self.core.bvh_create_host.restype = ctypes.c_uint64
-            self.core.bvh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+            self.core.wp_bvh_create_host.restype = ctypes.c_uint64
+            self.core.wp_bvh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 
-            self.core.bvh_create_device.restype = ctypes.c_uint64
-            self.core.bvh_create_device.argtypes = [
+            self.core.wp_bvh_create_device.restype = ctypes.c_uint64
+            self.core.wp_bvh_create_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_void_p,
@@ -3401,14 +3418,14 @@ class Runtime:
                 ctypes.c_int,
             ]
 
-            self.core.bvh_destroy_host.argtypes = [ctypes.c_uint64]
-            self.core.bvh_destroy_device.argtypes = [ctypes.c_uint64]
+            self.core.wp_bvh_destroy_host.argtypes = [ctypes.c_uint64]
+            self.core.wp_bvh_destroy_device.argtypes = [ctypes.c_uint64]
 
-            self.core.bvh_refit_host.argtypes = [ctypes.c_uint64]
-            self.core.bvh_refit_device.argtypes = [ctypes.c_uint64]
+            self.core.wp_bvh_refit_host.argtypes = [ctypes.c_uint64]
+            self.core.wp_bvh_refit_device.argtypes = [ctypes.c_uint64]
 
-            self.core.mesh_create_host.restype = ctypes.c_uint64
-            self.core.mesh_create_host.argtypes = [
+            self.core.wp_mesh_create_host.restype = ctypes.c_uint64
+            self.core.wp_mesh_create_host.argtypes = [
                 warp.types.array_t,
                 warp.types.array_t,
                 warp.types.array_t,
@@ -3418,8 +3435,8 @@ class Runtime:
                 ctypes.c_int,
             ]
 
-            self.core.mesh_create_device.restype = ctypes.c_uint64
-            self.core.mesh_create_device.argtypes = [
+            self.core.wp_mesh_create_device.restype = ctypes.c_uint64
+            self.core.wp_mesh_create_device.argtypes = [
                 ctypes.c_void_p,
                 warp.types.array_t,
                 warp.types.array_t,
@@ -3430,61 +3447,61 @@ class Runtime:
                 ctypes.c_int,
             ]
 
-            self.core.mesh_destroy_host.argtypes = [ctypes.c_uint64]
-            self.core.mesh_destroy_device.argtypes = [ctypes.c_uint64]
+            self.core.wp_mesh_destroy_host.argtypes = [ctypes.c_uint64]
+            self.core.wp_mesh_destroy_device.argtypes = [ctypes.c_uint64]
 
-            self.core.mesh_refit_host.argtypes = [ctypes.c_uint64]
-            self.core.mesh_refit_device.argtypes = [ctypes.c_uint64]
+            self.core.wp_mesh_refit_host.argtypes = [ctypes.c_uint64]
+            self.core.wp_mesh_refit_device.argtypes = [ctypes.c_uint64]
 
-            self.core.mesh_set_points_host.argtypes = [ctypes.c_uint64, warp.types.array_t]
-            self.core.mesh_set_points_device.argtypes = [ctypes.c_uint64, warp.types.array_t]
+            self.core.wp_mesh_set_points_host.argtypes = [ctypes.c_uint64, warp.types.array_t]
+            self.core.wp_mesh_set_points_device.argtypes = [ctypes.c_uint64, warp.types.array_t]
 
-            self.core.mesh_set_velocities_host.argtypes = [ctypes.c_uint64, warp.types.array_t]
-            self.core.mesh_set_velocities_device.argtypes = [ctypes.c_uint64, warp.types.array_t]
+            self.core.wp_mesh_set_velocities_host.argtypes = [ctypes.c_uint64, warp.types.array_t]
+            self.core.wp_mesh_set_velocities_device.argtypes = [ctypes.c_uint64, warp.types.array_t]
 
-            self.core.hash_grid_create_host.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
-            self.core.hash_grid_create_host.restype = ctypes.c_uint64
-            self.core.hash_grid_destroy_host.argtypes = [ctypes.c_uint64]
-            self.core.hash_grid_update_host.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p]
-            self.core.hash_grid_reserve_host.argtypes = [ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_hash_grid_create_host.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+            self.core.wp_hash_grid_create_host.restype = ctypes.c_uint64
+            self.core.wp_hash_grid_destroy_host.argtypes = [ctypes.c_uint64]
+            self.core.wp_hash_grid_update_host.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p]
+            self.core.wp_hash_grid_reserve_host.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
-            self.core.hash_grid_create_device.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-            self.core.hash_grid_create_device.restype = ctypes.c_uint64
-            self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
-            self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p]
-            self.core.hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_hash_grid_create_device.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+            self.core.wp_hash_grid_create_device.restype = ctypes.c_uint64
+            self.core.wp_hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
+            self.core.wp_hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p]
+            self.core.wp_hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
-            self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_bool, ctypes.c_bool]
-            self.core.volume_create_host.restype = ctypes.c_uint64
-            self.core.volume_get_tiles_host.argtypes = [
+            self.core.wp_volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_bool, ctypes.c_bool]
+            self.core.wp_volume_create_host.restype = ctypes.c_uint64
+            self.core.wp_volume_get_tiles_host.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_void_p,
             ]
-            self.core.volume_get_voxels_host.argtypes = [
+            self.core.wp_volume_get_voxels_host.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_void_p,
             ]
-            self.core.volume_destroy_host.argtypes = [ctypes.c_uint64]
+            self.core.wp_volume_destroy_host.argtypes = [ctypes.c_uint64]
 
-            self.core.volume_create_device.argtypes = [
+            self.core.wp_volume_create_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_uint64,
                 ctypes.c_bool,
                 ctypes.c_bool,
             ]
-            self.core.volume_create_device.restype = ctypes.c_uint64
-            self.core.volume_get_tiles_device.argtypes = [
+            self.core.wp_volume_create_device.restype = ctypes.c_uint64
+            self.core.wp_volume_get_tiles_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_void_p,
             ]
-            self.core.volume_get_voxels_device.argtypes = [
+            self.core.wp_volume_get_voxels_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_void_p,
             ]
-            self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
+            self.core.wp_volume_destroy_device.argtypes = [ctypes.c_uint64]
 
-            self.core.volume_from_tiles_device.argtypes = [
+            self.core.wp_volume_from_tiles_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
@@ -3495,8 +3512,8 @@ class Runtime:
                 ctypes.c_uint32,
                 ctypes.c_char_p,
             ]
-            self.core.volume_from_tiles_device.restype = ctypes.c_uint64
-            self.core.volume_index_from_tiles_device.argtypes = [
+            self.core.wp_volume_from_tiles_device.restype = ctypes.c_uint64
+            self.core.wp_volume_index_from_tiles_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
@@ -3504,8 +3521,8 @@ class Runtime:
                 ctypes.c_float * 3,
                 ctypes.c_bool,
             ]
-            self.core.volume_index_from_tiles_device.restype = ctypes.c_uint64
-            self.core.volume_from_active_voxels_device.argtypes = [
+            self.core.wp_volume_index_from_tiles_device.restype = ctypes.c_uint64
+            self.core.wp_volume_from_active_voxels_device.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
@@ -3513,25 +3530,25 @@ class Runtime:
                 ctypes.c_float * 3,
                 ctypes.c_bool,
             ]
-            self.core.volume_from_active_voxels_device.restype = ctypes.c_uint64
+            self.core.wp_volume_from_active_voxels_device.restype = ctypes.c_uint64
 
-            self.core.volume_get_buffer_info.argtypes = [
+            self.core.wp_volume_get_buffer_info.argtypes = [
                 ctypes.c_uint64,
                 ctypes.POINTER(ctypes.c_void_p),
                 ctypes.POINTER(ctypes.c_uint64),
             ]
-            self.core.volume_get_voxel_size.argtypes = [
+            self.core.wp_volume_get_voxel_size.argtypes = [
                 ctypes.c_uint64,
                 ctypes.POINTER(ctypes.c_float),
                 ctypes.POINTER(ctypes.c_float),
                 ctypes.POINTER(ctypes.c_float),
             ]
-            self.core.volume_get_tile_and_voxel_count.argtypes = [
+            self.core.wp_volume_get_tile_and_voxel_count.argtypes = [
                 ctypes.c_uint64,
                 ctypes.POINTER(ctypes.c_uint32),
                 ctypes.POINTER(ctypes.c_uint64),
             ]
-            self.core.volume_get_grid_info.argtypes = [
+            self.core.wp_volume_get_grid_info.argtypes = [
                 ctypes.c_uint64,
                 ctypes.POINTER(ctypes.c_uint64),
                 ctypes.POINTER(ctypes.c_uint32),
@@ -3540,12 +3557,12 @@ class Runtime:
                 ctypes.c_float * 9,
                 ctypes.c_char * 16,
             ]
-            self.core.volume_get_grid_info.restype = ctypes.c_char_p
-            self.core.volume_get_blind_data_count.argtypes = [
+            self.core.wp_volume_get_grid_info.restype = ctypes.c_char_p
+            self.core.wp_volume_get_blind_data_count.argtypes = [
                 ctypes.c_uint64,
             ]
-            self.core.volume_get_blind_data_count.restype = ctypes.c_uint64
-            self.core.volume_get_blind_data_info.argtypes = [
+            self.core.wp_volume_get_blind_data_count.restype = ctypes.c_uint64
+            self.core.wp_volume_get_blind_data_info.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint32,
                 ctypes.POINTER(ctypes.c_void_p),
@@ -3553,7 +3570,7 @@ class Runtime:
                 ctypes.POINTER(ctypes.c_uint32),
                 ctypes.c_char * 16,
             ]
-            self.core.volume_get_blind_data_info.restype = ctypes.c_char_p
+            self.core.wp_volume_get_blind_data_info.restype = ctypes.c_char_p
 
             bsr_matrix_from_triplets_argtypes = [
                 ctypes.c_int,  # block_size
@@ -3575,8 +3592,8 @@ class Runtime:
                 ctypes.c_void_p,  # bsr_nnz_event
             ]
 
-            self.core.bsr_matrix_from_triplets_host.argtypes = bsr_matrix_from_triplets_argtypes
-            self.core.bsr_matrix_from_triplets_device.argtypes = bsr_matrix_from_triplets_argtypes
+            self.core.wp_bsr_matrix_from_triplets_host.argtypes = bsr_matrix_from_triplets_argtypes
+            self.core.wp_bsr_matrix_from_triplets_device.argtypes = bsr_matrix_from_triplets_argtypes
 
             bsr_transpose_argtypes = [
                 ctypes.c_int,  # row_count
@@ -3588,228 +3605,228 @@ class Runtime:
                 ctypes.POINTER(ctypes.c_int),  # transposed_bsr_columns
                 ctypes.POINTER(ctypes.c_int),  # src to dest block map
             ]
-            self.core.bsr_transpose_host.argtypes = bsr_transpose_argtypes
-            self.core.bsr_transpose_device.argtypes = bsr_transpose_argtypes
+            self.core.wp_bsr_transpose_host.argtypes = bsr_transpose_argtypes
+            self.core.wp_bsr_transpose_device.argtypes = bsr_transpose_argtypes
 
-            self.core.is_cuda_enabled.argtypes = None
-            self.core.is_cuda_enabled.restype = ctypes.c_int
-            self.core.is_cuda_compatibility_enabled.argtypes = None
-            self.core.is_cuda_compatibility_enabled.restype = ctypes.c_int
-            self.core.is_mathdx_enabled.argtypes = None
-            self.core.is_mathdx_enabled.restype = ctypes.c_int
+            self.core.wp_is_cuda_enabled.argtypes = None
+            self.core.wp_is_cuda_enabled.restype = ctypes.c_int
+            self.core.wp_is_cuda_compatibility_enabled.argtypes = None
+            self.core.wp_is_cuda_compatibility_enabled.restype = ctypes.c_int
+            self.core.wp_is_mathdx_enabled.argtypes = None
+            self.core.wp_is_mathdx_enabled.restype = ctypes.c_int
 
-            self.core.cuda_driver_version.argtypes = None
-            self.core.cuda_driver_version.restype = ctypes.c_int
-            self.core.cuda_toolkit_version.argtypes = None
-            self.core.cuda_toolkit_version.restype = ctypes.c_int
-            self.core.cuda_driver_is_initialized.argtypes = None
-            self.core.cuda_driver_is_initialized.restype = ctypes.c_bool
+            self.core.wp_cuda_driver_version.argtypes = None
+            self.core.wp_cuda_driver_version.restype = ctypes.c_int
+            self.core.wp_cuda_toolkit_version.argtypes = None
+            self.core.wp_cuda_toolkit_version.restype = ctypes.c_int
+            self.core.wp_cuda_driver_is_initialized.argtypes = None
+            self.core.wp_cuda_driver_is_initialized.restype = ctypes.c_bool
 
-            self.core.nvrtc_supported_arch_count.argtypes = None
-            self.core.nvrtc_supported_arch_count.restype = ctypes.c_int
-            self.core.nvrtc_supported_archs.argtypes = [ctypes.POINTER(ctypes.c_int)]
-            self.core.nvrtc_supported_archs.restype = None
+            self.core.wp_nvrtc_supported_arch_count.argtypes = None
+            self.core.wp_nvrtc_supported_arch_count.restype = ctypes.c_int
+            self.core.wp_nvrtc_supported_archs.argtypes = [ctypes.POINTER(ctypes.c_int)]
+            self.core.wp_nvrtc_supported_archs.restype = None
 
-            self.core.cuda_device_get_count.argtypes = None
-            self.core.cuda_device_get_count.restype = ctypes.c_int
-            self.core.cuda_device_get_primary_context.argtypes = [ctypes.c_int]
-            self.core.cuda_device_get_primary_context.restype = ctypes.c_void_p
-            self.core.cuda_device_get_name.argtypes = [ctypes.c_int]
-            self.core.cuda_device_get_name.restype = ctypes.c_char_p
-            self.core.cuda_device_get_arch.argtypes = [ctypes.c_int]
-            self.core.cuda_device_get_arch.restype = ctypes.c_int
-            self.core.cuda_device_get_sm_count.argtypes = [ctypes.c_int]
-            self.core.cuda_device_get_sm_count.restype = ctypes.c_int
-            self.core.cuda_device_is_uva.argtypes = [ctypes.c_int]
-            self.core.cuda_device_is_uva.restype = ctypes.c_int
-            self.core.cuda_device_is_mempool_supported.argtypes = [ctypes.c_int]
-            self.core.cuda_device_is_mempool_supported.restype = ctypes.c_int
-            self.core.cuda_device_is_ipc_supported.argtypes = [ctypes.c_int]
-            self.core.cuda_device_is_ipc_supported.restype = ctypes.c_int
-            self.core.cuda_device_set_mempool_release_threshold.argtypes = [ctypes.c_int, ctypes.c_uint64]
-            self.core.cuda_device_set_mempool_release_threshold.restype = ctypes.c_int
-            self.core.cuda_device_get_mempool_release_threshold.argtypes = [ctypes.c_int]
-            self.core.cuda_device_get_mempool_release_threshold.restype = ctypes.c_uint64
-            self.core.cuda_device_get_mempool_used_mem_current.argtypes = [ctypes.c_int]
-            self.core.cuda_device_get_mempool_used_mem_current.restype = ctypes.c_uint64
-            self.core.cuda_device_get_mempool_used_mem_high.argtypes = [ctypes.c_int]
-            self.core.cuda_device_get_mempool_used_mem_high.restype = ctypes.c_uint64
-            self.core.cuda_device_get_memory_info.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
-            self.core.cuda_device_get_memory_info.restype = None
-            self.core.cuda_device_get_uuid.argtypes = [ctypes.c_int, ctypes.c_char * 16]
-            self.core.cuda_device_get_uuid.restype = None
-            self.core.cuda_device_get_pci_domain_id.argtypes = [ctypes.c_int]
-            self.core.cuda_device_get_pci_domain_id.restype = ctypes.c_int
-            self.core.cuda_device_get_pci_bus_id.argtypes = [ctypes.c_int]
-            self.core.cuda_device_get_pci_bus_id.restype = ctypes.c_int
-            self.core.cuda_device_get_pci_device_id.argtypes = [ctypes.c_int]
-            self.core.cuda_device_get_pci_device_id.restype = ctypes.c_int
+            self.core.wp_cuda_device_get_count.argtypes = None
+            self.core.wp_cuda_device_get_count.restype = ctypes.c_int
+            self.core.wp_cuda_device_get_primary_context.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_primary_context.restype = ctypes.c_void_p
+            self.core.wp_cuda_device_get_name.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_name.restype = ctypes.c_char_p
+            self.core.wp_cuda_device_get_arch.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_arch.restype = ctypes.c_int
+            self.core.wp_cuda_device_get_sm_count.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_sm_count.restype = ctypes.c_int
+            self.core.wp_cuda_device_is_uva.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_is_uva.restype = ctypes.c_int
+            self.core.wp_cuda_device_is_mempool_supported.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_is_mempool_supported.restype = ctypes.c_int
+            self.core.wp_cuda_device_is_ipc_supported.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_is_ipc_supported.restype = ctypes.c_int
+            self.core.wp_cuda_device_set_mempool_release_threshold.argtypes = [ctypes.c_int, ctypes.c_uint64]
+            self.core.wp_cuda_device_set_mempool_release_threshold.restype = ctypes.c_int
+            self.core.wp_cuda_device_get_mempool_release_threshold.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_mempool_release_threshold.restype = ctypes.c_uint64
+            self.core.wp_cuda_device_get_mempool_used_mem_current.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_mempool_used_mem_current.restype = ctypes.c_uint64
+            self.core.wp_cuda_device_get_mempool_used_mem_high.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_mempool_used_mem_high.restype = ctypes.c_uint64
+            self.core.wp_cuda_device_get_memory_info.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_device_get_memory_info.restype = None
+            self.core.wp_cuda_device_get_uuid.argtypes = [ctypes.c_int, ctypes.c_char * 16]
+            self.core.wp_cuda_device_get_uuid.restype = None
+            self.core.wp_cuda_device_get_pci_domain_id.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_pci_domain_id.restype = ctypes.c_int
+            self.core.wp_cuda_device_get_pci_bus_id.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_pci_bus_id.restype = ctypes.c_int
+            self.core.wp_cuda_device_get_pci_device_id.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_pci_device_id.restype = ctypes.c_int
 
-            self.core.cuda_context_get_current.argtypes = None
-            self.core.cuda_context_get_current.restype = ctypes.c_void_p
-            self.core.cuda_context_set_current.argtypes = [ctypes.c_void_p]
-            self.core.cuda_context_set_current.restype = None
-            self.core.cuda_context_push_current.argtypes = [ctypes.c_void_p]
-            self.core.cuda_context_push_current.restype = None
-            self.core.cuda_context_pop_current.argtypes = None
-            self.core.cuda_context_pop_current.restype = None
-            self.core.cuda_context_create.argtypes = [ctypes.c_int]
-            self.core.cuda_context_create.restype = ctypes.c_void_p
-            self.core.cuda_context_destroy.argtypes = [ctypes.c_void_p]
-            self.core.cuda_context_destroy.restype = None
-            self.core.cuda_context_synchronize.argtypes = [ctypes.c_void_p]
-            self.core.cuda_context_synchronize.restype = None
-            self.core.cuda_context_check.argtypes = [ctypes.c_void_p]
-            self.core.cuda_context_check.restype = ctypes.c_uint64
+            self.core.wp_cuda_context_get_current.argtypes = None
+            self.core.wp_cuda_context_get_current.restype = ctypes.c_void_p
+            self.core.wp_cuda_context_set_current.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_context_set_current.restype = None
+            self.core.wp_cuda_context_push_current.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_context_push_current.restype = None
+            self.core.wp_cuda_context_pop_current.argtypes = None
+            self.core.wp_cuda_context_pop_current.restype = None
+            self.core.wp_cuda_context_create.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_context_create.restype = ctypes.c_void_p
+            self.core.wp_cuda_context_destroy.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_context_destroy.restype = None
+            self.core.wp_cuda_context_synchronize.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_context_synchronize.restype = None
+            self.core.wp_cuda_context_check.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_context_check.restype = ctypes.c_uint64
 
-            self.core.cuda_context_get_device_ordinal.argtypes = [ctypes.c_void_p]
-            self.core.cuda_context_get_device_ordinal.restype = ctypes.c_int
-            self.core.cuda_context_is_primary.argtypes = [ctypes.c_void_p]
-            self.core.cuda_context_is_primary.restype = ctypes.c_int
-            self.core.cuda_context_get_stream.argtypes = [ctypes.c_void_p]
-            self.core.cuda_context_get_stream.restype = ctypes.c_void_p
-            self.core.cuda_context_set_stream.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
-            self.core.cuda_context_set_stream.restype = None
+            self.core.wp_cuda_context_get_device_ordinal.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_context_get_device_ordinal.restype = ctypes.c_int
+            self.core.wp_cuda_context_is_primary.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_context_is_primary.restype = ctypes.c_int
+            self.core.wp_cuda_context_get_stream.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_context_get_stream.restype = ctypes.c_void_p
+            self.core.wp_cuda_context_set_stream.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+            self.core.wp_cuda_context_set_stream.restype = None
 
             # peer access
-            self.core.cuda_is_peer_access_supported.argtypes = [ctypes.c_int, ctypes.c_int]
-            self.core.cuda_is_peer_access_supported.restype = ctypes.c_int
-            self.core.cuda_is_peer_access_enabled.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.cuda_is_peer_access_enabled.restype = ctypes.c_int
-            self.core.cuda_set_peer_access_enabled.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
-            self.core.cuda_set_peer_access_enabled.restype = ctypes.c_int
-            self.core.cuda_is_mempool_access_enabled.argtypes = [ctypes.c_int, ctypes.c_int]
-            self.core.cuda_is_mempool_access_enabled.restype = ctypes.c_int
-            self.core.cuda_set_mempool_access_enabled.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
-            self.core.cuda_set_mempool_access_enabled.restype = ctypes.c_int
+            self.core.wp_cuda_is_peer_access_supported.argtypes = [ctypes.c_int, ctypes.c_int]
+            self.core.wp_cuda_is_peer_access_supported.restype = ctypes.c_int
+            self.core.wp_cuda_is_peer_access_enabled.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_is_peer_access_enabled.restype = ctypes.c_int
+            self.core.wp_cuda_set_peer_access_enabled.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+            self.core.wp_cuda_set_peer_access_enabled.restype = ctypes.c_int
+            self.core.wp_cuda_is_mempool_access_enabled.argtypes = [ctypes.c_int, ctypes.c_int]
+            self.core.wp_cuda_is_mempool_access_enabled.restype = ctypes.c_int
+            self.core.wp_cuda_set_mempool_access_enabled.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+            self.core.wp_cuda_set_mempool_access_enabled.restype = ctypes.c_int
 
             # inter-process communication
-            self.core.cuda_ipc_get_mem_handle.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char)]
-            self.core.cuda_ipc_get_mem_handle.restype = None
-            self.core.cuda_ipc_open_mem_handle.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char)]
-            self.core.cuda_ipc_open_mem_handle.restype = ctypes.c_void_p
-            self.core.cuda_ipc_close_mem_handle.argtypes = [ctypes.c_void_p]
-            self.core.cuda_ipc_close_mem_handle.restype = None
-            self.core.cuda_ipc_get_event_handle.argtypes = [
+            self.core.wp_cuda_ipc_get_mem_handle.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char)]
+            self.core.wp_cuda_ipc_get_mem_handle.restype = None
+            self.core.wp_cuda_ipc_open_mem_handle.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char)]
+            self.core.wp_cuda_ipc_open_mem_handle.restype = ctypes.c_void_p
+            self.core.wp_cuda_ipc_close_mem_handle.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_ipc_close_mem_handle.restype = None
+            self.core.wp_cuda_ipc_get_event_handle.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.POINTER(ctypes.c_char),
             ]
-            self.core.cuda_ipc_get_event_handle.restype = None
-            self.core.cuda_ipc_open_event_handle.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char)]
-            self.core.cuda_ipc_open_event_handle.restype = ctypes.c_void_p
+            self.core.wp_cuda_ipc_get_event_handle.restype = None
+            self.core.wp_cuda_ipc_open_event_handle.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_char)]
+            self.core.wp_cuda_ipc_open_event_handle.restype = ctypes.c_void_p
 
-            self.core.cuda_stream_create.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            self.core.cuda_stream_create.restype = ctypes.c_void_p
-            self.core.cuda_stream_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.cuda_stream_destroy.restype = None
-            self.core.cuda_stream_query.argtypes = [ctypes.c_void_p]
-            self.core.cuda_stream_query.restype = ctypes.c_int
-            self.core.cuda_stream_register.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.cuda_stream_register.restype = None
-            self.core.cuda_stream_unregister.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.cuda_stream_unregister.restype = None
-            self.core.cuda_stream_synchronize.argtypes = [ctypes.c_void_p]
-            self.core.cuda_stream_synchronize.restype = None
-            self.core.cuda_stream_wait_event.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.cuda_stream_wait_event.restype = None
-            self.core.cuda_stream_wait_stream.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
-            self.core.cuda_stream_wait_stream.restype = None
-            self.core.cuda_stream_is_capturing.argtypes = [ctypes.c_void_p]
-            self.core.cuda_stream_is_capturing.restype = ctypes.c_int
-            self.core.cuda_stream_get_capture_id.argtypes = [ctypes.c_void_p]
-            self.core.cuda_stream_get_capture_id.restype = ctypes.c_uint64
-            self.core.cuda_stream_get_priority.argtypes = [ctypes.c_void_p]
-            self.core.cuda_stream_get_priority.restype = ctypes.c_int
+            self.core.wp_cuda_stream_create.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            self.core.wp_cuda_stream_create.restype = ctypes.c_void_p
+            self.core.wp_cuda_stream_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_stream_destroy.restype = None
+            self.core.wp_cuda_stream_query.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_stream_query.restype = ctypes.c_int
+            self.core.wp_cuda_stream_register.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_stream_register.restype = None
+            self.core.wp_cuda_stream_unregister.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_stream_unregister.restype = None
+            self.core.wp_cuda_stream_synchronize.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_stream_synchronize.restype = None
+            self.core.wp_cuda_stream_wait_event.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_stream_wait_event.restype = None
+            self.core.wp_cuda_stream_wait_stream.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_stream_wait_stream.restype = None
+            self.core.wp_cuda_stream_is_capturing.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_stream_is_capturing.restype = ctypes.c_int
+            self.core.wp_cuda_stream_get_capture_id.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_stream_get_capture_id.restype = ctypes.c_uint64
+            self.core.wp_cuda_stream_get_priority.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_stream_get_priority.restype = ctypes.c_int
 
-            self.core.cuda_event_create.argtypes = [ctypes.c_void_p, ctypes.c_uint]
-            self.core.cuda_event_create.restype = ctypes.c_void_p
-            self.core.cuda_event_destroy.argtypes = [ctypes.c_void_p]
-            self.core.cuda_event_destroy.restype = None
-            self.core.cuda_event_query.argtypes = [ctypes.c_void_p]
-            self.core.cuda_event_query.restype = ctypes.c_int
-            self.core.cuda_event_record.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool]
-            self.core.cuda_event_record.restype = None
-            self.core.cuda_event_synchronize.argtypes = [ctypes.c_void_p]
-            self.core.cuda_event_synchronize.restype = None
-            self.core.cuda_event_elapsed_time.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.cuda_event_elapsed_time.restype = ctypes.c_float
+            self.core.wp_cuda_event_create.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+            self.core.wp_cuda_event_create.restype = ctypes.c_void_p
+            self.core.wp_cuda_event_destroy.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_event_destroy.restype = None
+            self.core.wp_cuda_event_query.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_event_query.restype = ctypes.c_int
+            self.core.wp_cuda_event_record.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool]
+            self.core.wp_cuda_event_record.restype = None
+            self.core.wp_cuda_event_synchronize.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_event_synchronize.restype = None
+            self.core.wp_cuda_event_elapsed_time.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_event_elapsed_time.restype = ctypes.c_float
 
-            self.core.cuda_graph_begin_capture.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
-            self.core.cuda_graph_begin_capture.restype = ctypes.c_bool
-            self.core.cuda_graph_end_capture.argtypes = [
+            self.core.wp_cuda_graph_begin_capture.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+            self.core.wp_cuda_graph_begin_capture.restype = ctypes.c_bool
+            self.core.wp_cuda_graph_end_capture.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.POINTER(ctypes.c_void_p),
             ]
-            self.core.cuda_graph_end_capture.restype = ctypes.c_bool
+            self.core.wp_cuda_graph_end_capture.restype = ctypes.c_bool
 
-            self.core.cuda_graph_create_exec.argtypes = [
+            self.core.wp_cuda_graph_create_exec.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.POINTER(ctypes.c_void_p),
             ]
-            self.core.cuda_graph_create_exec.restype = ctypes.c_bool
+            self.core.wp_cuda_graph_create_exec.restype = ctypes.c_bool
 
-            self.core.capture_debug_dot_print.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_uint32]
-            self.core.capture_debug_dot_print.restype = ctypes.c_bool
+            self.core.wp_capture_debug_dot_print.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_uint32]
+            self.core.wp_capture_debug_dot_print.restype = ctypes.c_bool
 
-            self.core.cuda_graph_launch.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.cuda_graph_launch.restype = ctypes.c_bool
-            self.core.cuda_graph_exec_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.cuda_graph_exec_destroy.restype = ctypes.c_bool
+            self.core.wp_cuda_graph_launch.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_graph_launch.restype = ctypes.c_bool
+            self.core.wp_cuda_graph_exec_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_graph_exec_destroy.restype = ctypes.c_bool
 
-            self.core.cuda_graph_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.cuda_graph_destroy.restype = ctypes.c_bool
+            self.core.wp_cuda_graph_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_graph_destroy.restype = ctypes.c_bool
 
-            self.core.cuda_graph_insert_if_else.argtypes = [
+            self.core.wp_cuda_graph_insert_if_else.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.POINTER(ctypes.c_int),
                 ctypes.POINTER(ctypes.c_void_p),
                 ctypes.POINTER(ctypes.c_void_p),
             ]
-            self.core.cuda_graph_insert_if_else.restype = ctypes.c_bool
+            self.core.wp_cuda_graph_insert_if_else.restype = ctypes.c_bool
 
-            self.core.cuda_graph_insert_while.argtypes = [
+            self.core.wp_cuda_graph_insert_while.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.POINTER(ctypes.c_int),
                 ctypes.POINTER(ctypes.c_void_p),
                 ctypes.POINTER(ctypes.c_uint64),
             ]
-            self.core.cuda_graph_insert_while.restype = ctypes.c_bool
+            self.core.wp_cuda_graph_insert_while.restype = ctypes.c_bool
 
-            self.core.cuda_graph_set_condition.argtypes = [
+            self.core.wp_cuda_graph_set_condition.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.POINTER(ctypes.c_int),
                 ctypes.c_uint64,
             ]
-            self.core.cuda_graph_set_condition.restype = ctypes.c_bool
+            self.core.wp_cuda_graph_set_condition.restype = ctypes.c_bool
 
-            self.core.cuda_graph_pause_capture.argtypes = [
+            self.core.wp_cuda_graph_pause_capture.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.POINTER(ctypes.c_void_p),
             ]
-            self.core.cuda_graph_pause_capture.restype = ctypes.c_bool
+            self.core.wp_cuda_graph_pause_capture.restype = ctypes.c_bool
 
-            self.core.cuda_graph_resume_capture.argtypes = [
+            self.core.wp_cuda_graph_resume_capture.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_void_p,
             ]
-            self.core.cuda_graph_resume_capture.restype = ctypes.c_bool
+            self.core.wp_cuda_graph_resume_capture.restype = ctypes.c_bool
 
-            self.core.cuda_graph_insert_child_graph.argtypes = [
+            self.core.wp_cuda_graph_insert_child_graph.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_void_p,
             ]
-            self.core.cuda_graph_insert_child_graph.restype = ctypes.c_bool
+            self.core.wp_cuda_graph_insert_child_graph.restype = ctypes.c_bool
 
-            self.core.cuda_compile_program.argtypes = [
+            self.core.wp_cuda_compile_program.argtypes = [
                 ctypes.c_char_p,  # cuda_src
                 ctypes.c_char_p,  # program name
                 ctypes.c_int,  # arch
@@ -3829,9 +3846,9 @@ class Runtime:
                 ctypes.POINTER(ctypes.c_size_t),  # ltoir_sizes
                 ctypes.POINTER(ctypes.c_int),  # ltoir_input_types, each of type nvJitLinkInputType
             ]
-            self.core.cuda_compile_program.restype = ctypes.c_size_t
+            self.core.wp_cuda_compile_program.restype = ctypes.c_size_t
 
-            self.core.cuda_compile_fft.argtypes = [
+            self.core.wp_cuda_compile_fft.argtypes = [
                 ctypes.c_char_p,  # lto
                 ctypes.c_char_p,  # function name
                 ctypes.c_int,  # num include dirs
@@ -3844,9 +3861,9 @@ class Runtime:
                 ctypes.c_int,  # precision
                 ctypes.POINTER(ctypes.c_int),  # smem (out)
             ]
-            self.core.cuda_compile_fft.restype = ctypes.c_bool
+            self.core.wp_cuda_compile_fft.restype = ctypes.c_bool
 
-            self.core.cuda_compile_dot.argtypes = [
+            self.core.wp_cuda_compile_dot.argtypes = [
                 ctypes.c_char_p,  # lto
                 ctypes.c_char_p,  # function name
                 ctypes.c_int,  # num include dirs
@@ -3865,9 +3882,9 @@ class Runtime:
                 ctypes.c_int,  # c_arrangement
                 ctypes.c_int,  # num threads
             ]
-            self.core.cuda_compile_dot.restype = ctypes.c_bool
+            self.core.wp_cuda_compile_dot.restype = ctypes.c_bool
 
-            self.core.cuda_compile_solver.argtypes = [
+            self.core.wp_cuda_compile_solver.argtypes = [
                 ctypes.c_char_p,  # universal fatbin
                 ctypes.c_char_p,  # lto
                 ctypes.c_char_p,  # function name
@@ -3887,24 +3904,24 @@ class Runtime:
                 ctypes.c_int,  # fill_mode
                 ctypes.c_int,  # num threads
             ]
-            self.core.cuda_compile_solver.restype = ctypes.c_bool
+            self.core.wp_cuda_compile_solver.restype = ctypes.c_bool
 
-            self.core.cuda_load_module.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-            self.core.cuda_load_module.restype = ctypes.c_void_p
+            self.core.wp_cuda_load_module.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+            self.core.wp_cuda_load_module.restype = ctypes.c_void_p
 
-            self.core.cuda_unload_module.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.cuda_unload_module.restype = None
+            self.core.wp_cuda_unload_module.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_unload_module.restype = None
 
-            self.core.cuda_get_kernel.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p]
-            self.core.cuda_get_kernel.restype = ctypes.c_void_p
+            self.core.wp_cuda_get_kernel.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p]
+            self.core.wp_cuda_get_kernel.restype = ctypes.c_void_p
 
-            self.core.cuda_get_max_shared_memory.argtypes = [ctypes.c_void_p]
-            self.core.cuda_get_max_shared_memory.restype = ctypes.c_int
+            self.core.wp_cuda_get_max_shared_memory.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_get_max_shared_memory.restype = ctypes.c_int
 
-            self.core.cuda_configure_kernel_shared_memory.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            self.core.cuda_configure_kernel_shared_memory.restype = ctypes.c_bool
+            self.core.wp_cuda_configure_kernel_shared_memory.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            self.core.wp_cuda_configure_kernel_shared_memory.restype = ctypes.c_bool
 
-            self.core.cuda_launch_kernel.argtypes = [
+            self.core.wp_cuda_launch_kernel.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_size_t,
@@ -3914,54 +3931,54 @@ class Runtime:
                 ctypes.POINTER(ctypes.c_void_p),
                 ctypes.c_void_p,
             ]
-            self.core.cuda_launch_kernel.restype = ctypes.c_size_t
+            self.core.wp_cuda_launch_kernel.restype = ctypes.c_size_t
 
-            self.core.cuda_graphics_map.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.cuda_graphics_map.restype = None
-            self.core.cuda_graphics_unmap.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.cuda_graphics_unmap.restype = None
-            self.core.cuda_graphics_device_ptr_and_size.argtypes = [
+            self.core.wp_cuda_graphics_map.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_graphics_map.restype = None
+            self.core.wp_cuda_graphics_unmap.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_graphics_unmap.restype = None
+            self.core.wp_cuda_graphics_device_ptr_and_size.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.POINTER(ctypes.c_uint64),
                 ctypes.POINTER(ctypes.c_size_t),
             ]
-            self.core.cuda_graphics_device_ptr_and_size.restype = None
-            self.core.cuda_graphics_register_gl_buffer.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint]
-            self.core.cuda_graphics_register_gl_buffer.restype = ctypes.c_void_p
-            self.core.cuda_graphics_unregister_resource.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.cuda_graphics_unregister_resource.restype = None
+            self.core.wp_cuda_graphics_device_ptr_and_size.restype = None
+            self.core.wp_cuda_graphics_register_gl_buffer.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint]
+            self.core.wp_cuda_graphics_register_gl_buffer.restype = ctypes.c_void_p
+            self.core.wp_cuda_graphics_unregister_resource.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_graphics_unregister_resource.restype = None
 
-            self.core.cuda_timing_begin.argtypes = [ctypes.c_int]
-            self.core.cuda_timing_begin.restype = None
-            self.core.cuda_timing_get_result_count.argtypes = []
-            self.core.cuda_timing_get_result_count.restype = int
-            self.core.cuda_timing_end.argtypes = []
-            self.core.cuda_timing_end.restype = None
+            self.core.wp_cuda_timing_begin.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_timing_begin.restype = None
+            self.core.wp_cuda_timing_get_result_count.argtypes = []
+            self.core.wp_cuda_timing_get_result_count.restype = int
+            self.core.wp_cuda_timing_end.argtypes = []
+            self.core.wp_cuda_timing_end.restype = None
 
-            self.core.graph_coloring.argtypes = [
+            self.core.wp_graph_coloring.argtypes = [
                 ctypes.c_int,
                 warp.types.array_t,
                 ctypes.c_int,
                 warp.types.array_t,
             ]
-            self.core.graph_coloring.restype = ctypes.c_int
+            self.core.wp_graph_coloring.restype = ctypes.c_int
 
-            self.core.balance_coloring.argtypes = [
+            self.core.wp_balance_coloring.argtypes = [
                 ctypes.c_int,
                 warp.types.array_t,
                 ctypes.c_int,
                 ctypes.c_float,
                 warp.types.array_t,
             ]
-            self.core.balance_coloring.restype = ctypes.c_float
+            self.core.wp_balance_coloring.restype = ctypes.c_float
 
-            self.core.init.restype = ctypes.c_int
+            self.core.wp_init.restype = ctypes.c_int
 
         except AttributeError as e:
             raise RuntimeError(f"Setting C-types for {warp_lib} failed. It may need rebuilding.") from e
 
-        error = self.core.init()
+        error = self.core.wp_init()
 
         if error != 0:
             raise Exception("Warp initialization failed")
@@ -3977,8 +3994,8 @@ class Runtime:
         self.device_map["cpu"] = self.cpu_device
         self.context_map[None] = self.cpu_device
 
-        self.is_cuda_enabled = bool(self.core.is_cuda_enabled())
-        self.is_cuda_compatibility_enabled = bool(self.core.is_cuda_compatibility_enabled())
+        self.is_cuda_enabled = bool(self.core.wp_is_cuda_enabled())
+        self.is_cuda_compatibility_enabled = bool(self.core.wp_is_cuda_compatibility_enabled())
 
         self.toolkit_version = None  # CTK version used to build the core lib
         self.driver_version = None  # installed driver version
@@ -3991,8 +4008,8 @@ class Runtime:
 
         if self.is_cuda_enabled:
             # get CUDA Toolkit and driver versions
-            toolkit_version = self.core.cuda_toolkit_version()
-            driver_version = self.core.cuda_driver_version()
+            toolkit_version = self.core.wp_cuda_toolkit_version()
+            driver_version = self.core.wp_cuda_driver_version()
 
             # save versions as tuples, e.g., (12, 4)
             self.toolkit_version = (toolkit_version // 1000, (toolkit_version % 1000) // 10)
@@ -4012,16 +4029,16 @@ class Runtime:
             # determine if the installed driver is sufficient
             if self.driver_version >= self.min_driver_version:
                 # get all architectures supported by NVRTC
-                num_archs = self.core.nvrtc_supported_arch_count()
+                num_archs = self.core.wp_nvrtc_supported_arch_count()
                 if num_archs > 0:
                     archs = (ctypes.c_int * num_archs)()
-                    self.core.nvrtc_supported_archs(archs)
+                    self.core.wp_nvrtc_supported_archs(archs)
                     self.nvrtc_supported_archs = set(archs)
                 else:
                     self.nvrtc_supported_archs = set()
 
                 # get CUDA device count
-                cuda_device_count = self.core.cuda_device_get_count()
+                cuda_device_count = self.core.wp_cuda_device_get_count()
 
                 # register primary CUDA devices
                 for i in range(cuda_device_count):
@@ -4038,7 +4055,7 @@ class Runtime:
         # set default device
         if cuda_device_count > 0:
             # stick with the current cuda context, if one is bound
-            initial_context = self.core.cuda_context_get_current()
+            initial_context = self.core.wp_cuda_context_get_current()
             if initial_context is not None:
                 self.set_default_device("cuda")
                 # if this is a non-primary context that was just registered, update the device count
@@ -4129,7 +4146,7 @@ class Runtime:
                             access_vector.append(1)
                         else:
                             peer_device = self.cuda_devices[j]
-                            can_access = self.core.cuda_is_peer_access_supported(
+                            can_access = self.core.wp_cuda_is_peer_access_supported(
                                 target_device.ordinal, peer_device.ordinal
                             )
                             access_vector.append(can_access)
@@ -4154,7 +4171,7 @@ class Runtime:
 
         if cuda_device_count > 0:
             # ensure initialization did not change the initial context (e.g. querying available memory)
-            self.core.cuda_context_set_current(initial_context)
+            self.core.wp_cuda_context_set_current(initial_context)
 
             # detect possible misconfiguration of the system
             devices_without_uva = []
@@ -4193,7 +4210,7 @@ class Runtime:
                 warp.utils.warn("\n   ".join(msg))
 
     def get_error_string(self):
-        return self.core.get_error_string().decode("utf-8")
+        return self.core.wp_get_error_string().decode("utf-8")
 
     def load_dll(self, dll_path):
         try:
@@ -4229,21 +4246,21 @@ class Runtime:
         self.default_device = self.get_device(ident)
 
     def get_current_cuda_device(self) -> Device:
-        current_context = self.core.cuda_context_get_current()
+        current_context = self.core.wp_cuda_context_get_current()
         if current_context is not None:
             current_device = self.context_map.get(current_context)
             if current_device is not None:
                 # this is a known device
                 return current_device
-            elif self.core.cuda_context_is_primary(current_context):
+            elif self.core.wp_cuda_context_is_primary(current_context):
                 # this is a primary context that we haven't used yet
-                ordinal = self.core.cuda_context_get_device_ordinal(current_context)
+                ordinal = self.core.wp_cuda_context_get_device_ordinal(current_context)
                 device = self.cuda_devices[ordinal]
                 self.context_map[current_context] = device
                 return device
             else:
                 # this is an unseen non-primary context, register it as a new device with a unique alias
-                ordinal = self.core.cuda_context_get_device_ordinal(current_context)
+                ordinal = self.core.wp_cuda_context_get_device_ordinal(current_context)
                 alias = f"cuda:{ordinal}.{self.cuda_custom_context_count[ordinal]}"
                 self.cuda_custom_context_count[ordinal] += 1
                 return self.map_cuda_device(alias, current_context)
@@ -4266,7 +4283,7 @@ class Runtime:
 
     def map_cuda_device(self, alias, context=None) -> Device:
         if context is None:
-            context = self.core.cuda_context_get_current()
+            context = self.core.wp_cuda_context_get_current()
             if context is None:
                 raise RuntimeError(f"Unable to determine CUDA context for device alias '{alias}'")
 
@@ -4288,10 +4305,10 @@ class Runtime:
             # it's an unmapped context
 
             # get the device ordinal
-            ordinal = self.core.cuda_context_get_device_ordinal(context)
+            ordinal = self.core.wp_cuda_context_get_device_ordinal(context)
 
             # check if this is a primary context (we could get here if it's a device that hasn't been used yet)
-            if self.core.cuda_context_is_primary(context):
+            if self.core.wp_cuda_context_is_primary(context):
                 # rename the device
                 device = self.cuda_primary_devices[ordinal]
                 return self.rename_device(device, alias)
@@ -4322,7 +4339,7 @@ class Runtime:
             if not device.is_cuda:
                 return
 
-            err = self.core.cuda_context_check(device.context)
+            err = self.core.wp_cuda_context_check(device.context)
             if err != 0:
                 raise RuntimeError(f"CUDA error detected: {err}")
 
@@ -4354,7 +4371,7 @@ def is_cuda_driver_initialized() -> bool:
     """
     init()
 
-    return runtime.core.cuda_driver_is_initialized()
+    return runtime.core.wp_cuda_driver_is_initialized()
 
 
 def get_devices() -> list[Device]:
@@ -4562,7 +4579,7 @@ def set_mempool_release_threshold(device: Devicelike, threshold: int | float) ->
     elif threshold > 0 and threshold <= 1:
         threshold = int(threshold * device.total_memory)
 
-    if not runtime.core.cuda_device_set_mempool_release_threshold(device.ordinal, threshold):
+    if not runtime.core.wp_cuda_device_set_mempool_release_threshold(device.ordinal, threshold):
         raise RuntimeError(f"Failed to set memory pool release threshold for device {device}")
 
 
@@ -4592,7 +4609,7 @@ def get_mempool_release_threshold(device: Devicelike = None) -> int:
     if not device.is_mempool_supported:
         raise RuntimeError(f"Device {device} does not support memory pools")
 
-    return runtime.core.cuda_device_get_mempool_release_threshold(device.ordinal)
+    return runtime.core.wp_cuda_device_get_mempool_release_threshold(device.ordinal)
 
 
 def get_mempool_used_mem_current(device: Devicelike = None) -> int:
@@ -4621,7 +4638,7 @@ def get_mempool_used_mem_current(device: Devicelike = None) -> int:
     if not device.is_mempool_supported:
         raise RuntimeError(f"Device {device} does not support memory pools")
 
-    return runtime.core.cuda_device_get_mempool_used_mem_current(device.ordinal)
+    return runtime.core.wp_cuda_device_get_mempool_used_mem_current(device.ordinal)
 
 
 def get_mempool_used_mem_high(device: Devicelike = None) -> int:
@@ -4650,7 +4667,7 @@ def get_mempool_used_mem_high(device: Devicelike = None) -> int:
     if not device.is_mempool_supported:
         raise RuntimeError(f"Device {device} does not support memory pools")
 
-    return runtime.core.cuda_device_get_mempool_used_mem_high(device.ordinal)
+    return runtime.core.wp_cuda_device_get_mempool_used_mem_high(device.ordinal)
 
 
 def is_peer_access_supported(target_device: Devicelike, peer_device: Devicelike) -> bool:
@@ -4671,7 +4688,7 @@ def is_peer_access_supported(target_device: Devicelike, peer_device: Devicelike)
     if not target_device.is_cuda or not peer_device.is_cuda:
         return False
 
-    return bool(runtime.core.cuda_is_peer_access_supported(target_device.ordinal, peer_device.ordinal))
+    return bool(runtime.core.wp_cuda_is_peer_access_supported(target_device.ordinal, peer_device.ordinal))
 
 
 def is_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike) -> bool:
@@ -4692,7 +4709,7 @@ def is_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike) -
     if not target_device.is_cuda or not peer_device.is_cuda:
         return False
 
-    return bool(runtime.core.cuda_is_peer_access_enabled(target_device.context, peer_device.context))
+    return bool(runtime.core.wp_cuda_is_peer_access_enabled(target_device.context, peer_device.context))
 
 
 def set_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike, enable: bool) -> None:
@@ -4722,7 +4739,7 @@ def set_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike, 
         else:
             return
 
-    if not runtime.core.cuda_set_peer_access_enabled(target_device.context, peer_device.context, int(enable)):
+    if not runtime.core.wp_cuda_set_peer_access_enabled(target_device.context, peer_device.context, int(enable)):
         action = "enable" if enable else "disable"
         raise RuntimeError(f"Failed to {action} peer access from device {peer_device} to device {target_device}")
 
@@ -4763,7 +4780,7 @@ def is_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike
     if not peer_device.is_cuda or not target_device.is_cuda or not target_device.is_mempool_supported:
         return False
 
-    return bool(runtime.core.cuda_is_mempool_access_enabled(target_device.ordinal, peer_device.ordinal))
+    return bool(runtime.core.wp_cuda_is_mempool_access_enabled(target_device.ordinal, peer_device.ordinal))
 
 
 def set_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike, enable: bool) -> None:
@@ -4796,7 +4813,7 @@ def set_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelik
         else:
             return
 
-    if not runtime.core.cuda_set_mempool_access_enabled(target_device.ordinal, peer_device.ordinal, int(enable)):
+    if not runtime.core.wp_cuda_set_mempool_access_enabled(target_device.ordinal, peer_device.ordinal, int(enable)):
         action = "enable" if enable else "disable"
         raise RuntimeError(f"Failed to {action} memory pool access from device {peer_device} to device {target_device}")
 
@@ -4877,7 +4894,7 @@ def get_event_elapsed_time(start_event: Event, end_event: Event, synchronize: bo
     if synchronize:
         synchronize_event(end_event)
 
-    return runtime.core.cuda_event_elapsed_time(start_event.cuda_event, end_event.cuda_event)
+    return runtime.core.wp_cuda_event_elapsed_time(start_event.cuda_event, end_event.cuda_event)
 
 
 def wait_stream(other_stream: Stream, event: Event | None = None):
@@ -4971,7 +4988,7 @@ class RegisteredGLBuffer:
         self.context = self.device.context
         self.flags = flags
         self.fallback_to_copy = fallback_to_copy
-        self.resource = runtime.core.cuda_graphics_register_gl_buffer(self.context, gl_buffer_id, flags)
+        self.resource = runtime.core.wp_cuda_graphics_register_gl_buffer(self.context, gl_buffer_id, flags)
         if self.resource is None:
             if self.fallback_to_copy:
                 self.warp_buffer = None
@@ -4990,7 +5007,7 @@ class RegisteredGLBuffer:
 
         # use CUDA context guard to avoid side effects during garbage collection
         with self.device.context_guard:
-            runtime.core.cuda_graphics_unregister_resource(self.context, self.resource)
+            runtime.core.wp_cuda_graphics_unregister_resource(self.context, self.resource)
 
     def map(self, dtype, shape) -> warp.array:
         """Map the OpenGL buffer to a Warp array.
@@ -5003,10 +5020,10 @@ class RegisteredGLBuffer:
             A Warp array object representing the mapped OpenGL buffer.
         """
         if self.resource is not None:
-            runtime.core.cuda_graphics_map(self.context, self.resource)
+            runtime.core.wp_cuda_graphics_map(self.context, self.resource)
             ptr = ctypes.c_uint64(0)
             size = ctypes.c_size_t(0)
-            runtime.core.cuda_graphics_device_ptr_and_size(
+            runtime.core.wp_cuda_graphics_device_ptr_and_size(
                 self.context, self.resource, ctypes.byref(ptr), ctypes.byref(size)
             )
             return warp.array(ptr=ptr.value, dtype=dtype, shape=shape, device=self.device)
@@ -5031,7 +5048,7 @@ class RegisteredGLBuffer:
     def unmap(self):
         """Unmap the OpenGL buffer."""
         if self.resource is not None:
-            runtime.core.cuda_graphics_unmap(self.context, self.resource)
+            runtime.core.wp_cuda_graphics_unmap(self.context, self.resource)
         elif self.fallback_to_copy:
             if self.warp_buffer is None:
                 raise RuntimeError("RegisteredGLBuffer first has to be mapped")
@@ -5387,7 +5404,7 @@ def event_from_ipc_handle(handle, device: Devicelike = None) -> Event:
         raise RuntimeError(f"IPC is not supported on device {device}.")
 
     event = Event(
-        device=device, cuda_event=warp.context.runtime.core.cuda_ipc_open_event_handle(device.context, handle)
+        device=device, cuda_event=warp.context.runtime.core.wp_cuda_ipc_open_event_handle(device.context, handle)
     )
     # Events created from IPC handles must be freed with cuEventDestroy
     event.owner = True
@@ -5721,14 +5738,14 @@ class Launch:
 
             # If the stream is capturing, we retain the CUDA module so that it doesn't get unloaded
             # before the captured graph is released.
-            if len(runtime.captures) > 0 and runtime.core.cuda_stream_is_capturing(stream.cuda_stream):
-                capture_id = runtime.core.cuda_stream_get_capture_id(stream.cuda_stream)
+            if len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream):
+                capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
                 graph = runtime.captures.get(capture_id)
                 if graph is not None:
                     graph.retain_module_exec(self.module_exec)
 
             if self.adjoint:
-                runtime.core.cuda_launch_kernel(
+                runtime.core.wp_cuda_launch_kernel(
                     self.device.context,
                     self.hooks.backward,
                     self.bounds.size,
@@ -5739,7 +5756,7 @@ class Launch:
                     stream.cuda_stream,
                 )
             else:
-                runtime.core.cuda_launch_kernel(
+                runtime.core.wp_cuda_launch_kernel(
                     self.device.context,
                     self.hooks.forward,
                     self.bounds.size,
@@ -5911,8 +5928,8 @@ def launch(
 
             # If the stream is capturing, we retain the CUDA module so that it doesn't get unloaded
             # before the captured graph is released.
-            if len(runtime.captures) > 0 and runtime.core.cuda_stream_is_capturing(stream.cuda_stream):
-                capture_id = runtime.core.cuda_stream_get_capture_id(stream.cuda_stream)
+            if len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream):
+                capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
                 graph = runtime.captures.get(capture_id)
                 if graph is not None:
                     graph.retain_module_exec(module_exec)
@@ -5937,7 +5954,7 @@ def launch(
                     )
                     return launch
                 else:
-                    runtime.core.cuda_launch_kernel(
+                    runtime.core.wp_cuda_launch_kernel(
                         device.context,
                         hooks.backward,
                         bounds.size,
@@ -5968,7 +5985,7 @@ def launch(
                     return launch
                 else:
                     # launch
-                    runtime.core.cuda_launch_kernel(
+                    runtime.core.wp_cuda_launch_kernel(
                         device.context,
                         hooks.forward,
                         bounds.size,
@@ -6070,7 +6087,7 @@ def synchronize():
 
     if is_cuda_driver_initialized():
         # save the original context to avoid side effects
-        saved_context = runtime.core.cuda_context_get_current()
+        saved_context = runtime.core.wp_cuda_context_get_current()
 
         # TODO: only synchronize devices that have outstanding work
         for device in runtime.cuda_devices:
@@ -6079,10 +6096,10 @@ def synchronize():
                 if device.is_capturing:
                     raise RuntimeError(f"Cannot synchronize device {device} while graph capture is active")
 
-                runtime.core.cuda_context_synchronize(device.context)
+                runtime.core.wp_cuda_context_synchronize(device.context)
 
         # restore the original context to avoid side effects
-        runtime.core.cuda_context_set_current(saved_context)
+        runtime.core.wp_cuda_context_set_current(saved_context)
 
 
 def synchronize_device(device: Devicelike = None):
@@ -6100,7 +6117,7 @@ def synchronize_device(device: Devicelike = None):
         if device.is_capturing:
             raise RuntimeError(f"Cannot synchronize device {device} while graph capture is active")
 
-        runtime.core.cuda_context_synchronize(device.context)
+        runtime.core.wp_cuda_context_synchronize(device.context)
 
 
 def synchronize_stream(stream_or_device: Stream | Devicelike | None = None):
@@ -6118,7 +6135,7 @@ def synchronize_stream(stream_or_device: Stream | Devicelike | None = None):
     else:
         stream = runtime.get_device(stream_or_device).stream
 
-    runtime.core.cuda_stream_synchronize(stream.cuda_stream)
+    runtime.core.wp_cuda_stream_synchronize(stream.cuda_stream)
 
 
 def synchronize_event(event: Event):
@@ -6130,7 +6147,7 @@ def synchronize_event(event: Event):
         event: Event to wait for.
     """
 
-    runtime.core.cuda_event_synchronize(event.cuda_event)
+    runtime.core.wp_cuda_event_synchronize(event.cuda_event)
 
 
 def force_load(device: Device | str | list[Device] | list[str] | None = None, modules: list[Module] | None = None):
@@ -6143,7 +6160,7 @@ def force_load(device: Device | str | list[Device] | list[str] | None = None, mo
 
     if is_cuda_driver_initialized():
         # save original context to avoid side effects
-        saved_context = runtime.core.cuda_context_get_current()
+        saved_context = runtime.core.wp_cuda_context_get_current()
 
     if device is None:
         devices = get_devices()
@@ -6161,7 +6178,7 @@ def force_load(device: Device | str | list[Device] | list[str] | None = None, mo
 
     if is_cuda_available():
         # restore original context to avoid side effects
-        runtime.core.cuda_context_set_current(saved_context)
+        runtime.core.wp_cuda_context_set_current(saved_context)
 
 
 def load_module(
@@ -6300,10 +6317,10 @@ def capture_begin(
         if force_module_load:
             force_load(device)
 
-    if not runtime.core.cuda_graph_begin_capture(device.context, stream.cuda_stream, int(external)):
+    if not runtime.core.wp_cuda_graph_begin_capture(device.context, stream.cuda_stream, int(external)):
         raise RuntimeError(runtime.get_error_string())
 
-    capture_id = runtime.core.cuda_stream_get_capture_id(stream.cuda_stream)
+    capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
     graph = Graph(device, capture_id)
 
     # add to ongoing captures on the device
@@ -6343,7 +6360,7 @@ def capture_end(device: Devicelike = None, stream: Stream | None = None) -> Grap
 
     # get the graph executable
     g = ctypes.c_void_p()
-    result = runtime.core.cuda_graph_end_capture(device.context, stream.cuda_stream, ctypes.byref(g))
+    result = runtime.core.wp_cuda_graph_end_capture(device.context, stream.cuda_stream, ctypes.byref(g))
 
     if not result:
         # A concrete error should've already been reported, so we don't need to go into details here
@@ -6364,7 +6381,7 @@ def capture_debug_dot_print(graph: Graph, path: str, verbose: bool = False):
         path: Path to save the DOT file
         verbose: Whether to include additional debug information in the output
     """
-    if not runtime.core.capture_debug_dot_print(graph.graph, path.encode(), 0 if verbose else 1):
+    if not runtime.core.wp_capture_debug_dot_print(graph.graph, path.encode(), 0 if verbose else 1):
         raise RuntimeError(f"Graph debug dot print error: {runtime.get_error_string()}")
 
 
@@ -6389,7 +6406,7 @@ def capture_pause(device: Devicelike = None, stream: Stream | None = None) -> ct
         stream = device.stream
 
     graph = ctypes.c_void_p()
-    if not runtime.core.cuda_graph_pause_capture(device.context, stream.cuda_stream, ctypes.byref(graph)):
+    if not runtime.core.wp_cuda_graph_pause_capture(device.context, stream.cuda_stream, ctypes.byref(graph)):
         raise RuntimeError(runtime.get_error_string())
 
     return graph
@@ -6404,7 +6421,7 @@ def capture_resume(graph: ctypes.c_void_p, device: Devicelike = None, stream: St
             raise RuntimeError("Must be a CUDA device")
         stream = device.stream
 
-    if not runtime.core.cuda_graph_resume_capture(device.context, stream.cuda_stream, graph):
+    if not runtime.core.wp_cuda_graph_resume_capture(device.context, stream.cuda_stream, graph):
         raise RuntimeError(runtime.get_error_string())
 
 
@@ -6493,7 +6510,7 @@ def capture_if(
     # insert conditional node
     graph_on_true = ctypes.c_void_p()
     graph_on_false = ctypes.c_void_p()
-    if not runtime.core.cuda_graph_insert_if_else(
+    if not runtime.core.wp_cuda_graph_insert_if_else(
         device.context,
         stream.cuda_stream,
         ctypes.cast(condition.ptr, ctypes.POINTER(ctypes.c_int32)),
@@ -6515,7 +6532,7 @@ def capture_if(
                 raise RuntimeError(
                     "The on_true graph contains conditional nodes, which are not allowed in child graphs"
                 )
-            if not runtime.core.cuda_graph_insert_child_graph(
+            if not runtime.core.wp_cuda_graph_insert_child_graph(
                 device.context,
                 stream.cuda_stream,
                 on_true.graph,
@@ -6535,7 +6552,7 @@ def capture_if(
                 raise RuntimeError(
                     "The on_false graph contains conditional nodes, which are not allowed in child graphs"
                 )
-            if not runtime.core.cuda_graph_insert_child_graph(
+            if not runtime.core.wp_cuda_graph_insert_child_graph(
                 device.context,
                 stream.cuda_stream,
                 on_false.graph,
@@ -6616,7 +6633,7 @@ def capture_while(condition: warp.array(dtype=int), while_body: Callable | Graph
     # insert conditional while-node
     body_graph = ctypes.c_void_p()
     cond_handle = ctypes.c_uint64()
-    if not runtime.core.cuda_graph_insert_while(
+    if not runtime.core.wp_cuda_graph_insert_while(
         device.context,
         stream.cuda_stream,
         ctypes.cast(condition.ptr, ctypes.POINTER(ctypes.c_int32)),
@@ -6636,7 +6653,7 @@ def capture_while(condition: warp.array(dtype=int), while_body: Callable | Graph
         if while_body.has_conditional:
             raise RuntimeError("The body graph contains conditional nodes, which are not allowed in child graphs")
 
-        if not runtime.core.cuda_graph_insert_child_graph(
+        if not runtime.core.wp_cuda_graph_insert_child_graph(
             device.context,
             stream.cuda_stream,
             while_body.graph,
@@ -6646,7 +6663,7 @@ def capture_while(condition: warp.array(dtype=int), while_body: Callable | Graph
         raise RuntimeError(runtime.get_error_string())
 
     # update condition
-    if not runtime.core.cuda_graph_set_condition(
+    if not runtime.core.wp_cuda_graph_set_condition(
         device.context,
         stream.cuda_stream,
         ctypes.cast(condition.ptr, ctypes.POINTER(ctypes.c_int32)),
@@ -6677,12 +6694,12 @@ def capture_launch(graph: Graph, stream: Stream | None = None):
 
     if graph.graph_exec is None:
         g = ctypes.c_void_p()
-        result = runtime.core.cuda_graph_create_exec(graph.device.context, graph.graph, ctypes.byref(g))
+        result = runtime.core.wp_cuda_graph_create_exec(graph.device.context, graph.graph, ctypes.byref(g))
         if not result:
             raise RuntimeError(f"Graph creation error: {runtime.get_error_string()}")
         graph.graph_exec = g
 
-    if not runtime.core.cuda_graph_launch(graph.graph_exec, stream.cuda_stream):
+    if not runtime.core.wp_cuda_graph_launch(graph.graph_exec, stream.cuda_stream):
         raise RuntimeError(f"Graph launch error: {runtime.get_error_string()}")
 
 
@@ -6793,24 +6810,24 @@ def copy(
         if dest.device.is_cuda:
             if src.device.is_cuda:
                 if src.device == dest.device:
-                    result = runtime.core.memcpy_d2d(
+                    result = runtime.core.wp_memcpy_d2d(
                         dest.device.context, dst_ptr, src_ptr, bytes_to_copy, stream.cuda_stream
                     )
                 else:
-                    result = runtime.core.memcpy_p2p(
+                    result = runtime.core.wp_memcpy_p2p(
                         dest.device.context, dst_ptr, src.device.context, src_ptr, bytes_to_copy, stream.cuda_stream
                     )
             else:
-                result = runtime.core.memcpy_h2d(
+                result = runtime.core.wp_memcpy_h2d(
                     dest.device.context, dst_ptr, src_ptr, bytes_to_copy, stream.cuda_stream
                 )
         else:
             if src.device.is_cuda:
-                result = runtime.core.memcpy_d2h(
+                result = runtime.core.wp_memcpy_d2h(
                     src.device.context, dst_ptr, src_ptr, bytes_to_copy, stream.cuda_stream
                 )
             else:
-                result = runtime.core.memcpy_h2h(dst_ptr, src_ptr, bytes_to_copy)
+                result = runtime.core.wp_memcpy_h2h(dst_ptr, src_ptr, bytes_to_copy)
 
         if not result:
             raise RuntimeError(f"Warp copy error: {runtime.get_error_string()}")
@@ -6845,17 +6862,17 @@ def copy(
             # This work involves a kernel launch, so it must run on the destination device.
             # If the copy stream is different, we need to synchronize it.
             if stream == dest.device.stream:
-                result = runtime.core.array_copy_device(
+                result = runtime.core.wp_array_copy_device(
                     dest.device.context, dst_ptr, src_ptr, dst_type, src_type, src_elem_size
                 )
             else:
                 dest.device.stream.wait_stream(stream)
-                result = runtime.core.array_copy_device(
+                result = runtime.core.wp_array_copy_device(
                     dest.device.context, dst_ptr, src_ptr, dst_type, src_type, src_elem_size
                 )
                 stream.wait_stream(dest.device.stream)
         else:
-            result = runtime.core.array_copy_host(dst_ptr, src_ptr, dst_type, src_type, src_elem_size)
+            result = runtime.core.wp_array_copy_host(dst_ptr, src_ptr, dst_type, src_type, src_elem_size)
 
         if not result:
             raise RuntimeError(f"Warp copy error: {runtime.get_error_string()}")
