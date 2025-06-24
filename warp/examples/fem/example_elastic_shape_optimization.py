@@ -205,7 +205,7 @@ class Example:
         self._left = fem.Subdomain(boundary, element_mask=left_mask)
         self._right = fem.Subdomain(boundary, element_mask=right_mask)
 
-        # Build projectors for the left-side homogenous Dirichlet condition
+        # Build projectors for the left-side homogeneous Dirichlet condition
         u_left_bd_test = fem.make_test(space=self._u_space, domain=self._left)
         u_left_bd_trial = fem.make_trial(space=self._u_space, domain=self._left)
         u_left_bd_matrix = fem.integrate(
