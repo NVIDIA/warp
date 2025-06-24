@@ -24,9 +24,9 @@
 # Div. B = 0
 #
 # solved over field A such that B = Curl A,
-# and Direchlet homogeneous essential boundary conditions
+# and Dirichlet homogeneous essential boundary conditions
 #
-# This example also illustrates using an ImplictField to warp a grid mesh
+# This example also illustrates using an ImplicitField to warp a grid mesh
 # to a cylindrical domain
 ###########################################################################
 

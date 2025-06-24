@@ -246,7 +246,7 @@ class Example:
         self._inflow = fem.Subdomain(boundary, element_mask=inflow_mask)
         self._dirichlet = fem.Subdomain(boundary, element_mask=dirichlet_mask)
 
-        # Build projector for the inflow and outflow homogenous Dirichlet condition
+        # Build projector for the inflow and outflow homogeneous Dirichlet condition
         p_dirichlet_bd_test = fem.make_test(space=self._p_space, domain=self._dirichlet)
         p_dirichlet_bd_trial = fem.make_trial(space=self._p_space, domain=self._dirichlet)
         p_dirichlet_bd_matrix = fem.integrate(
@@ -296,7 +296,7 @@ class Example:
                 dt=1.0,
             )
 
-            # Left-hand-side of imp1icit solve (zero if p=0, but required for adjoint computation through implict function theorem)
+            # Left-hand-side of implicit solve (zero if p=0, but required for adjoint computation through implicit function theorem)
             fem.integrate(
                 diffusion_form,
                 fields={
