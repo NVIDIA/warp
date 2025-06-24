@@ -52,7 +52,7 @@ from warp.tests.unittest_utils import (
 )
 from warp.utils import check_p2p
 
-wp.init()  # For wp.context.runtime.core.is_debug_enabled()
+wp.init()  # For wp.context.runtime.core.wp_is_debug_enabled()
 
 
 def _build_command_line_options(test_options: Dict[str, Any]) -> list:
@@ -331,7 +331,7 @@ add_example_test(
     name="optim.example_softbody_properties",
     devices=test_devices,
     test_options_cuda={
-        "train_iters": 1 if warp.context.runtime.core.is_debug_enabled() else 3,
+        "train_iters": 1 if warp.context.runtime.core.wp_is_debug_enabled() else 3,
     },
     test_options_cpu={"train_iters": 1},
 )

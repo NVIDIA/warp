@@ -107,7 +107,7 @@ def _warp_custom_callback(stream, buffers, opaque, opaque_len):
     assert hooks.forward, "Failed to find kernel entry point"
 
     # Launch the kernel.
-    wp.context.runtime.core.cuda_launch_kernel(
+    wp.context.runtime.core.wp_cuda_launch_kernel(
         device.context, hooks.forward, bounds.size, 0, 256, hooks.forward_smem_bytes, kernel_params, stream
     )
 

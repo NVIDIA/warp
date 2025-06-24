@@ -274,7 +274,7 @@ class FfiKernel:
             assert hooks.forward, "Failed to find kernel entry point"
 
             # launch the kernel
-            wp.context.runtime.core.cuda_launch_kernel(
+            wp.context.runtime.core.wp_cuda_launch_kernel(
                 device.context,
                 hooks.forward,
                 launch_bounds.size,

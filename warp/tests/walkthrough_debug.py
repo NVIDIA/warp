@@ -68,7 +68,7 @@ wp.init()
 wp.config.mode = "debug"
 
 # Make sure Warp was built with `build_lib.py --mode=debug`
-assert wp.context.runtime.core.is_debug_enabled(), "Warp must be built in debug mode to enable debugging kernels"
+assert wp.context.runtime.core.wp_is_debug_enabled(), "Warp must be built in debug mode to enable debugging kernels"
 
 
 @wp.kernel

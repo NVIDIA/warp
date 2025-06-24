@@ -28,24 +28,24 @@ void runlength_encode_device(int n,
                              int *run_lengths,
                              int *run_count)
 {
-    ContextGuard guard(cuda_context_get_current());
-    cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
+    ContextGuard guard(wp_cuda_context_get_current());
+    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
 
     size_t buff_size = 0;
     check_cuda(cub::DeviceRunLengthEncode::Encode(
         nullptr, buff_size, values, run_values, run_lengths, run_count,
         n, stream));
 
-    void* temp_buffer = alloc_device(WP_CURRENT_CONTEXT, buff_size);
+    void* temp_buffer = wp_alloc_device(WP_CURRENT_CONTEXT, buff_size);
 
     check_cuda(cub::DeviceRunLengthEncode::Encode(
         temp_buffer, buff_size, values, run_values, run_lengths, run_count,
         n, stream));
 
-    free_device(WP_CURRENT_CONTEXT, temp_buffer);
+    wp_free_device(WP_CURRENT_CONTEXT, temp_buffer);
 }
 
-void runlength_encode_int_device(
+void wp_runlength_encode_int_device(
     uint64_t values,
     uint64_t run_values,
     uint64_t run_lengths,

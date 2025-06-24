@@ -42,14 +42,14 @@ struct Allocator
                                cudaStream_t active_stream) ///< [in] The stream to be associated with this allocation
     {
         // in PointsToGrid stream argument always coincide with current stream, ignore
-        *d_ptr = alloc_device(WP_CURRENT_CONTEXT, bytes);
+        *d_ptr = wp_alloc_device(WP_CURRENT_CONTEXT, bytes);
         cudaCheckError();
         return cudaSuccess;
     }
 
     cudaError_t DeviceFree(void *d_ptr)
     {
-        free_device(WP_CURRENT_CONTEXT, d_ptr);
+        wp_free_device(WP_CURRENT_CONTEXT, d_ptr);
         return cudaSuccess;
     }
 
@@ -155,11 +155,11 @@ class DeviceBuffer
         if (host)
         {
             mCpuData =
-                alloc_pinned(size); // un-managed pinned memory on the host (can be slow to access!). Always 32B aligned
+                wp_alloc_pinned(size); // un-managed pinned memory on the host (can be slow to access!). Always 32B aligned
         }
         else
         {
-            mGpuData = alloc_device(WP_CURRENT_CONTEXT, size);
+            mGpuData = wp_alloc_device(WP_CURRENT_CONTEXT, size);
         }
         cudaCheckError();
         mSize = size;
@@ -212,9 +212,9 @@ class DeviceBuffer
     void clear(void *stream = nullptr)
     {
         if (mManaged && mGpuData)
-            free_device(WP_CURRENT_CONTEXT, mGpuData);
+            wp_free_device(WP_CURRENT_CONTEXT, mGpuData);
         if (mManaged && mCpuData)
-            free_pinned(mCpuData);
+            wp_free_pinned(mCpuData);
         mCpuData = mGpuData = nullptr;
         mSize = 0;
         mManaged = false;
@@ -367,11 +367,11 @@ void finalize_grid(nanovdb::Grid<nanovdb::NanoTree<BuildT>> &out_grid, const Bui
     Tree *tree = &out_grid.tree();
 
     int node_counts[3];
-    memcpy_d2h(WP_CURRENT_CONTEXT, node_counts, tree->mNodeCount, sizeof(node_counts));
+    wp_memcpy_d2h(WP_CURRENT_CONTEXT, node_counts, tree->mNodeCount, sizeof(node_counts));
     // synchronization below is unnecessary as node_counts is in pageable memory.
     // keep it for clarity
-    cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
-    cuda_stream_synchronize(stream);
+    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
+    wp_cuda_stream_synchronize(stream);
 
     const unsigned int leaf_count = node_counts[0];
     const unsigned int lower_count = node_counts[1];
@@ -387,7 +387,7 @@ void finalize_grid(nanovdb::Grid<nanovdb::NanoTree<BuildT>> &out_grid, const Bui
         <<<upper_count, NUM_THREADS, 0, stream>>>(tree, params.background_value);
     setRootBBoxAndBackgroundValue<Tree><<<1, NUM_THREADS, 0, stream>>>(&out_grid, params.background_value);
 
-    check_cuda(cuda_context_check(WP_CURRENT_CONTEXT));
+    check_cuda(wp_cuda_context_check(WP_CURRENT_CONTEXT));
 }
 
 template <>
@@ -437,7 +437,7 @@ void build_grid_from_points(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
     try
     {
 
-        cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
+        cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
         nanovdb::tools::cuda::PointsToGrid<BuildT, Allocator> p2g(params.map, stream);
 
         // p2g.setVerbose(2);

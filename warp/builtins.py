@@ -7481,7 +7481,7 @@ def tile_matmul_lto_dispatch_func(
     num_threads = options["block_dim"]
     arch = options["output_arch"]
 
-    if arch is None or not warp.context.runtime.core.is_mathdx_enabled():
+    if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ((0, 0, 0, a, b, out), template_args, [], 0)
     else:
@@ -7671,7 +7671,7 @@ def tile_fft_generic_lto_dispatch_func(
     arch = options["output_arch"]
     ept = size // num_threads
 
-    if arch is None or not warp.context.runtime.core.is_mathdx_enabled():
+    if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ([], [], [], 0)
     else:
@@ -7810,7 +7810,7 @@ def tile_cholesky_generic_lto_dispatch_func(
     num_threads = options["block_dim"]
     parameter_list = f"({dtype}*, int*)"
 
-    if arch is None or not warp.context.runtime.core.is_mathdx_enabled():
+    if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ((0, a, out), [], [], 0)
     else:
@@ -7942,7 +7942,7 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
     num_threads = options["block_dim"]
     parameter_list = f"({dtype}*, {dtype}*)"
 
-    if arch is None or not warp.context.runtime.core.is_mathdx_enabled():
+    if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ((0, L, y, x), [], [], 0)
     else:
@@ -8037,7 +8037,7 @@ def tile_lower_solve_generic_lto_dispatch_func(
     num_threads = options["block_dim"]
     parameter_list = f"({dtype}*, {dtype}*)"
 
-    if arch is None or not warp.context.runtime.core.is_mathdx_enabled():
+    if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ((0, L, y, z), [], [], 0)
     else:
@@ -8168,7 +8168,7 @@ def tile_upper_solve_generic_lto_dispatch_func(
     num_threads = options["block_dim"]
     parameter_list = f"({dtype}*, {dtype}*)"
 
-    if arch is None or not warp.context.runtime.core.is_mathdx_enabled():
+    if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ((0, U, z, x), [], [], 0)
     else:

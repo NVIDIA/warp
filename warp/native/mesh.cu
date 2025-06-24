@@ -237,7 +237,7 @@ void bvh_refit_with_solid_angle_device(BVH& bvh, Mesh& mesh)
     ContextGuard guard(bvh.context);
 
     // clear child counters
-    memset_device(WP_CURRENT_CONTEXT, bvh.node_counts, 0, sizeof(int) * bvh.max_nodes);
+    wp_memset_device(WP_CURRENT_CONTEXT, bvh.node_counts, 0, sizeof(int) * bvh.max_nodes);
     wp_launch_device(WP_CURRENT_CONTEXT, bvh_refit_with_solid_angle_kernel, bvh.num_leaf_nodes, 
         (bvh.num_leaf_nodes, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, mesh.points, mesh.indices, bvh.primitive_indices, mesh.solid_angle_props));
 }
@@ -245,26 +245,26 @@ void bvh_refit_with_solid_angle_device(BVH& bvh, Mesh& mesh)
 } // namespace wp
 
 
-uint64_t mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> indices, int num_points, int num_tris, int support_winding_number, int constructor_type)
+uint64_t wp_mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> indices, int num_points, int num_tris, int support_winding_number, int constructor_type)
 {
     ContextGuard guard(context);
 
     wp::Mesh mesh(points, velocities, indices, num_points, num_tris);
 
-    mesh.context = context ? context : cuda_context_get_current();
+    mesh.context = context ? context : wp_cuda_context_get_current();
 
     // create lower upper arrays expected by GPU BVH builder
-    mesh.lowers = (wp::vec3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3)*num_tris);
-    mesh.uppers = (wp::vec3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3)*num_tris);
+    mesh.lowers = (wp::vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3)*num_tris);
+    mesh.uppers = (wp::vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3)*num_tris);
 
     if (support_winding_number)
     {
         int num_bvh_nodes = 2 * num_tris;
-        mesh.solid_angle_props = (wp::SolidAngleProps*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::SolidAngleProps) * num_bvh_nodes);
+        mesh.solid_angle_props = (wp::SolidAngleProps*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::SolidAngleProps) * num_bvh_nodes);
     }
 
-    wp::Mesh* mesh_device = (wp::Mesh*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::Mesh));
-    memcpy_h2d(WP_CURRENT_CONTEXT, mesh_device, &mesh, sizeof(wp::Mesh));
+    wp::Mesh* mesh_device = (wp::Mesh*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::Mesh));
+    wp_memcpy_h2d(WP_CURRENT_CONTEXT, mesh_device, &mesh, sizeof(wp::Mesh));
 
     // save descriptor
     uint64_t mesh_id = (uint64_t)mesh_device;
@@ -283,17 +283,17 @@ uint64_t mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::arr
     wp::bvh_create_device(mesh.context, mesh.lowers, mesh.uppers, num_tris, constructor_type, mesh.bvh);
 
     // we need to overwrite mesh.bvh because it is not initialized when we construct it on device
-    memcpy_h2d(WP_CURRENT_CONTEXT, &(mesh_device->bvh), &mesh.bvh, sizeof(wp::BVH));
+    wp_memcpy_h2d(WP_CURRENT_CONTEXT, &(mesh_device->bvh), &mesh.bvh, sizeof(wp::BVH));
 
     mesh_add_descriptor(mesh_id, mesh);
 
     if (support_winding_number) 
-        mesh_refit_device(mesh_id);
+        wp_mesh_refit_device(mesh_id);
 
     return mesh_id;
 }
 
-void mesh_destroy_device(uint64_t id)
+void wp_mesh_destroy_device(uint64_t id)
 {
     wp::Mesh mesh;
     if (wp::mesh_get_descriptor(id, mesh))
@@ -302,12 +302,12 @@ void mesh_destroy_device(uint64_t id)
 
         wp::bvh_destroy_device(mesh.bvh);
 
-        free_device(WP_CURRENT_CONTEXT, mesh.lowers);
-        free_device(WP_CURRENT_CONTEXT, mesh.uppers);
-        free_device(WP_CURRENT_CONTEXT, (wp::Mesh*)id);
+        wp_free_device(WP_CURRENT_CONTEXT, mesh.lowers);
+        wp_free_device(WP_CURRENT_CONTEXT, mesh.uppers);
+        wp_free_device(WP_CURRENT_CONTEXT, (wp::Mesh*)id);
 
         if (mesh.solid_angle_props) {
-            free_device(WP_CURRENT_CONTEXT, mesh.solid_angle_props);
+            wp_free_device(WP_CURRENT_CONTEXT, mesh.solid_angle_props);
         }
         wp::mesh_rem_descriptor(id);
     }
@@ -318,7 +318,7 @@ void mesh_update_stats(uint64_t id)
     
 }
 
-void mesh_refit_device(uint64_t id)
+void wp_mesh_refit_device(uint64_t id)
 {
     // recompute triangle bounds
     wp::Mesh m;
@@ -346,59 +346,59 @@ void mesh_refit_device(uint64_t id)
         }
         else 
         {
-            bvh_refit_device(m.bvh);
+            wp::bvh_refit_device(m.bvh);
         }
     }
 }
 
-void mesh_set_points_device(uint64_t id, wp::array_t<wp::vec3> points)
+void wp_mesh_set_points_device(uint64_t id, wp::array_t<wp::vec3> points)
 {
     wp::Mesh m;
     if (mesh_get_descriptor(id, m))
     {
         if (points.ndim != 1 || points.shape[0] != m.points.shape[0])
         {
-            fprintf(stderr, "The new points input for mesh_set_points_device does not match the shape of the original points!\n");
+            fprintf(stderr, "The new points input for wp_mesh_set_points_device does not match the shape of the original points!\n");
             return;
         }
 
         m.points = points;
 
         wp::Mesh* mesh_device = (wp::Mesh*)id;
-        memcpy_h2d(WP_CURRENT_CONTEXT, mesh_device, &m, sizeof(wp::Mesh));
+        wp_memcpy_h2d(WP_CURRENT_CONTEXT, mesh_device, &m, sizeof(wp::Mesh));
 
         // update the cpu copy as well
         mesh_set_descriptor(id, m);
 
-        mesh_refit_device(id);
+        wp_mesh_refit_device(id);
     }
     else 
     {
-        fprintf(stderr, "The mesh id provided to mesh_set_points_device is not valid!\n");
+        fprintf(stderr, "The mesh id provided to wp_mesh_set_points_device is not valid!\n");
         return;
     }
 }
 
-void mesh_set_velocities_device(uint64_t id, wp::array_t<wp::vec3> velocities)
+void wp_mesh_set_velocities_device(uint64_t id, wp::array_t<wp::vec3> velocities)
 {
     wp::Mesh m;
     if (mesh_get_descriptor(id, m))
     {
         if (velocities.ndim != 1 || velocities.shape[0] != m.velocities.shape[0])
         {
-            fprintf(stderr, "The new velocities input for mesh_set_velocities_device does not match the shape of the original velocities\n");
+            fprintf(stderr, "The new velocities input for wp_mesh_set_velocities_device does not match the shape of the original velocities\n");
             return;
         }
 
         m.velocities = velocities;
 
         wp::Mesh* mesh_device = (wp::Mesh*)id;
-        memcpy_h2d(WP_CURRENT_CONTEXT, mesh_device, &m, sizeof(wp::Mesh));
+        wp_memcpy_h2d(WP_CURRENT_CONTEXT, mesh_device, &m, sizeof(wp::Mesh));
         mesh_set_descriptor(id, m);
     }
     else 
     {
-        fprintf(stderr, "The mesh id provided to mesh_set_velocities_device is not valid!\n");
+        fprintf(stderr, "The mesh id provided to wp_mesh_set_velocities_device is not valid!\n");
         return;
     }
 }

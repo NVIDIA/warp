@@ -460,7 +460,7 @@ void bvh_destroy_host(BVH& bvh)
 
 } // namespace wp
 
-uint64_t bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type)
+uint64_t wp_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type)
 {
     BVH* bvh = new BVH();
     wp::bvh_create_host(lowers, uppers, num_items, constructor_type, *bvh);
@@ -468,16 +468,16 @@ uint64_t bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int construc
     return (uint64_t)bvh;
 }
 
-void bvh_refit_host(uint64_t id)
+void wp_bvh_refit_host(uint64_t id)
 {
     BVH* bvh = (BVH*)(id);
-    bvh_refit_host(*bvh);
+    wp::bvh_refit_host(*bvh);
 }
 
-void bvh_destroy_host(uint64_t id)
+void wp_bvh_destroy_host(uint64_t id)
 {
     BVH* bvh = (BVH*)(id);
-    bvh_destroy_host(*bvh);
+    wp::bvh_destroy_host(*bvh);
     delete bvh;
 }
 
@@ -485,8 +485,8 @@ void bvh_destroy_host(uint64_t id)
 // stubs for non-CUDA platforms
 #if !WP_ENABLE_CUDA
 
-uint64_t bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type) { return 0; }
-void bvh_refit_device(uint64_t id) {}
-void bvh_destroy_device(uint64_t id) {}
+uint64_t wp_bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type) { return 0; }
+void wp_bvh_refit_device(uint64_t id) {}
+void wp_bvh_destroy_device(uint64_t id) {}
 
 #endif // !WP_ENABLE_CUDA

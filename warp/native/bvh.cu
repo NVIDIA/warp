@@ -155,7 +155,7 @@ void bvh_refit_device(BVH& bvh)
     ContextGuard guard(bvh.context);
 
     // clear child counters
-    memset_device(WP_CURRENT_CONTEXT, bvh.node_counts, 0, sizeof(int) * bvh.max_nodes);
+    wp_memset_device(WP_CURRENT_CONTEXT, bvh.node_counts, 0, sizeof(int) * bvh.max_nodes);
     wp_launch_device(WP_CURRENT_CONTEXT, bvh_refit_kernel, bvh.num_leaf_nodes, (bvh.num_leaf_nodes, bvh.node_parents, bvh.node_counts, bvh.primitive_indices, bvh.node_lowers, bvh.node_uppers, bvh.item_lowers, bvh.item_uppers));
 }
 
@@ -474,16 +474,16 @@ LinearBVHBuilderGPU::LinearBVHBuilderGPU()
     , total_upper(NULL)
     , total_inv_edges(NULL)
 {
-    total_lower = (vec3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3));
-    total_upper = (vec3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3));
-    total_inv_edges = (vec3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3));
+    total_lower = (vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3));
+    total_upper = (vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3));
+    total_inv_edges = (vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3));
 }
 
 LinearBVHBuilderGPU::~LinearBVHBuilderGPU()
 {
-    free_device(WP_CURRENT_CONTEXT, total_lower);
-    free_device(WP_CURRENT_CONTEXT, total_upper);
-    free_device(WP_CURRENT_CONTEXT, total_inv_edges);
+    wp_free_device(WP_CURRENT_CONTEXT, total_lower);
+    wp_free_device(WP_CURRENT_CONTEXT, total_upper);
+    wp_free_device(WP_CURRENT_CONTEXT, total_inv_edges);
 }
 
 
@@ -491,12 +491,12 @@ LinearBVHBuilderGPU::~LinearBVHBuilderGPU()
 void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* item_uppers, int num_items, bounds3* total_bounds)
 {
     // allocate temporary memory used during  building
-    indices = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items*2); 	// *2 for radix sort
-    keys = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items*2);	    // *2 for radix sort
-    deltas = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items);    	// highest differentiating bit between keys for item i and i+1
-    range_lefts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
-    range_rights = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
-    num_children = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
+    indices = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items*2); 	// *2 for radix sort
+    keys = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items*2);	    // *2 for radix sort
+    deltas = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*num_items);    	// highest differentiating bit between keys for item i and i+1
+    range_lefts = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
+    range_rights = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
+    num_children = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh.max_nodes);
 
     // if total bounds supplied by the host then we just 
     // compute our edge length and upload it to the GPU directly
@@ -508,17 +508,17 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
 
         vec3 inv_edges = vec3(1.0f/edges[0], 1.0f/edges[1], 1.0f/edges[2]);
         
-        memcpy_h2d(WP_CURRENT_CONTEXT, total_lower, &total_bounds->lower[0], sizeof(vec3));
-        memcpy_h2d(WP_CURRENT_CONTEXT, total_upper, &total_bounds->upper[0], sizeof(vec3));
-        memcpy_h2d(WP_CURRENT_CONTEXT, total_inv_edges, &inv_edges[0], sizeof(vec3));
+        wp_memcpy_h2d(WP_CURRENT_CONTEXT, total_lower, &total_bounds->lower[0], sizeof(vec3));
+        wp_memcpy_h2d(WP_CURRENT_CONTEXT, total_upper, &total_bounds->upper[0], sizeof(vec3));
+        wp_memcpy_h2d(WP_CURRENT_CONTEXT, total_inv_edges, &inv_edges[0], sizeof(vec3));
     }
     else
     {
         static vec3 upper(-FLT_MAX);
         static vec3 lower(FLT_MAX);
 
-        memcpy_h2d(WP_CURRENT_CONTEXT, total_lower, &lower, sizeof(lower));
-        memcpy_h2d(WP_CURRENT_CONTEXT, total_upper, &upper, sizeof(upper));
+        wp_memcpy_h2d(WP_CURRENT_CONTEXT, total_lower, &lower, sizeof(lower));
+        wp_memcpy_h2d(WP_CURRENT_CONTEXT, total_upper, &upper, sizeof(upper));
 
         // compute the total bounds on the GPU
         wp_launch_device(WP_CURRENT_CONTEXT, compute_total_bounds, num_items, (item_lowers, item_uppers, total_lower, total_upper, num_items));
@@ -532,7 +532,7 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
     
     // sort items based on Morton key (note the 32-bit sort key corresponds to the template parameter to morton3, i.e. 3x9 bit keys combined)
     radix_sort_pairs_device(WP_CURRENT_CONTEXT, keys, indices, num_items);
-    memcpy_d2d(WP_CURRENT_CONTEXT, bvh.primitive_indices, indices, sizeof(int) * num_items);
+    wp_memcpy_d2d(WP_CURRENT_CONTEXT, bvh.primitive_indices, indices, sizeof(int) * num_items);
 
     // calculate deltas between adjacent keys
     wp_launch_device(WP_CURRENT_CONTEXT, compute_key_deltas, num_items, (keys, deltas, num_items-1));
@@ -541,20 +541,20 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
     wp_launch_device(WP_CURRENT_CONTEXT, build_leaves, num_items, (item_lowers, item_uppers, num_items, indices, range_lefts, range_rights, bvh.node_lowers, bvh.node_uppers));
     
     // reset children count, this is our atomic counter so we know when an internal node is complete, only used during building
-    memset_device(WP_CURRENT_CONTEXT, num_children, 0, sizeof(int)*bvh.max_nodes);
+    wp_memset_device(WP_CURRENT_CONTEXT, num_children, 0, sizeof(int)*bvh.max_nodes);
 
     // build the tree and internal node bounds
     wp_launch_device(WP_CURRENT_CONTEXT, build_hierarchy, num_items, (num_items, bvh.root, deltas, num_children, bvh.primitive_indices, range_lefts, range_rights, bvh.node_parents, bvh.node_lowers, bvh.node_uppers));
     wp_launch_device(WP_CURRENT_CONTEXT, mark_packed_leaf_nodes, bvh.max_nodes, (bvh.max_nodes, range_lefts, range_rights, bvh.node_parents, bvh.node_lowers, bvh.node_uppers));
 
     // free temporary memory
-    free_device(WP_CURRENT_CONTEXT, indices);
-    free_device(WP_CURRENT_CONTEXT, keys);
-    free_device(WP_CURRENT_CONTEXT, deltas);
+    wp_free_device(WP_CURRENT_CONTEXT, indices);
+    wp_free_device(WP_CURRENT_CONTEXT, keys);
+    wp_free_device(WP_CURRENT_CONTEXT, deltas);
 
-    free_device(WP_CURRENT_CONTEXT, range_lefts);
-    free_device(WP_CURRENT_CONTEXT, range_rights);
-    free_device(WP_CURRENT_CONTEXT, num_children);
+    wp_free_device(WP_CURRENT_CONTEXT, range_lefts);
+    wp_free_device(WP_CURRENT_CONTEXT, range_rights);
+    wp_free_device(WP_CURRENT_CONTEXT, num_children);
 
 }
 
@@ -562,8 +562,8 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
 template<typename T>
 T* make_device_buffer_of(void* context, T* host_buffer, size_t buffer_size)
 {
-    T* device_buffer = (T*)alloc_device(context, sizeof(T) * buffer_size);;
-    memcpy_h2d(context, device_buffer, host_buffer, sizeof(T) * buffer_size);
+    T* device_buffer = (T*)wp_alloc_device(context, sizeof(T) * buffer_size);;
+    wp_memcpy_h2d(context, device_buffer, host_buffer, sizeof(T) * buffer_size);
 
     return device_buffer;
 }
@@ -662,8 +662,8 @@ void copy_host_tree_to_device(void* context, BVH& bvh_host, BVH& bvh_device_on_h
     bvh_device_on_host.num_items = bvh_host.num_items;
     bvh_device_on_host.max_depth = bvh_host.max_depth;
 
-    bvh_device_on_host.root = (int*)alloc_device(context, sizeof(int));
-    memcpy_h2d(context, bvh_device_on_host.root, bvh_host.root, sizeof(int));
+    bvh_device_on_host.root = (int*)wp_alloc_device(context, sizeof(int));
+    wp_memcpy_h2d(context, bvh_device_on_host.root, bvh_host.root, sizeof(int));
     bvh_device_on_host.context = context;
 
     bvh_device_on_host.node_lowers = make_device_buffer_of(context, bvh_host.node_lowers, bvh_host.max_nodes);
@@ -682,12 +682,12 @@ void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items,
         // copy bounds back to CPU
         std::vector<vec3> lowers_host(num_items);
         std::vector<vec3> uppers_host(num_items);
-        memcpy_d2h(WP_CURRENT_CONTEXT, lowers_host.data(), lowers, sizeof(vec3) * num_items);
-        memcpy_d2h(WP_CURRENT_CONTEXT, uppers_host.data(), uppers, sizeof(vec3) * num_items);
+        wp_memcpy_d2h(WP_CURRENT_CONTEXT, lowers_host.data(), lowers, sizeof(vec3) * num_items);
+        wp_memcpy_d2h(WP_CURRENT_CONTEXT, uppers_host.data(), uppers, sizeof(vec3) * num_items);
 
         // run CPU based constructor
         wp::BVH bvh_host;
-        bvh_create_host(lowers_host.data(), uppers_host.data(), num_items, constructor_type, bvh_host);
+        wp::bvh_create_host(lowers_host.data(), uppers_host.data(), num_items, constructor_type, bvh_host);
 
         // copy host tree to device
         wp::copy_host_tree_to_device(WP_CURRENT_CONTEXT, bvh_host, bvh_device_on_host);
@@ -695,26 +695,26 @@ void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items,
         bvh_device_on_host.item_lowers = lowers;
         bvh_device_on_host.item_uppers = uppers;
         // node_counts is not allocated for host tree
-        bvh_device_on_host.node_counts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh_device_on_host.max_nodes);
-        bvh_destroy_host(bvh_host);
+        bvh_device_on_host.node_counts = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh_device_on_host.max_nodes);
+        wp::bvh_destroy_host(bvh_host);
     }
     else if (constructor_type == BVH_CONSTRUCTOR_LBVH)
     {
         bvh_device_on_host.num_items = num_items;
         bvh_device_on_host.max_nodes = 2 * num_items - 1;
         bvh_device_on_host.num_leaf_nodes = num_items;
-        bvh_device_on_host.node_lowers = (BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes);
-        memset_device(WP_CURRENT_CONTEXT, bvh_device_on_host.node_lowers, 0, sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes);
-        bvh_device_on_host.node_uppers = (BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes);
-        memset_device(WP_CURRENT_CONTEXT, bvh_device_on_host.node_uppers, 0, sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes);
-        bvh_device_on_host.node_parents = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh_device_on_host.max_nodes);
-        bvh_device_on_host.node_counts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh_device_on_host.max_nodes);
-        bvh_device_on_host.root = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int));
-        bvh_device_on_host.primitive_indices = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_items);
+        bvh_device_on_host.node_lowers = (BVHPackedNodeHalf*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes);
+        wp_memset_device(WP_CURRENT_CONTEXT, bvh_device_on_host.node_lowers, 0, sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes);
+        bvh_device_on_host.node_uppers = (BVHPackedNodeHalf*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes);
+        wp_memset_device(WP_CURRENT_CONTEXT, bvh_device_on_host.node_uppers, 0, sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes);
+        bvh_device_on_host.node_parents = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh_device_on_host.max_nodes);
+        bvh_device_on_host.node_counts = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh_device_on_host.max_nodes);
+        bvh_device_on_host.root = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int));
+        bvh_device_on_host.primitive_indices = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_items);
         bvh_device_on_host.item_lowers = lowers;
         bvh_device_on_host.item_uppers = uppers;
 
-        bvh_device_on_host.context = context ? context : cuda_context_get_current();
+        bvh_device_on_host.context = context ? context : wp_cuda_context_get_current();
 
         LinearBVHBuilderGPU builder;
         builder.build(bvh_device_on_host, lowers, uppers, num_items, NULL);
@@ -729,26 +729,26 @@ void bvh_destroy_device(BVH& bvh)
 {
     ContextGuard guard(bvh.context);
 
-    free_device(WP_CURRENT_CONTEXT, bvh.node_lowers); bvh.node_lowers = NULL;
-    free_device(WP_CURRENT_CONTEXT, bvh.node_uppers); bvh.node_uppers = NULL;
-    free_device(WP_CURRENT_CONTEXT, bvh.node_parents); bvh.node_parents = NULL;
-    free_device(WP_CURRENT_CONTEXT, bvh.node_counts); bvh.node_counts = NULL;
-    free_device(WP_CURRENT_CONTEXT, bvh.primitive_indices); bvh.primitive_indices = NULL;
-    free_device(WP_CURRENT_CONTEXT, bvh.root); bvh.root = NULL;
+    wp_free_device(WP_CURRENT_CONTEXT, bvh.node_lowers); bvh.node_lowers = NULL;
+    wp_free_device(WP_CURRENT_CONTEXT, bvh.node_uppers); bvh.node_uppers = NULL;
+    wp_free_device(WP_CURRENT_CONTEXT, bvh.node_parents); bvh.node_parents = NULL;
+    wp_free_device(WP_CURRENT_CONTEXT, bvh.node_counts); bvh.node_counts = NULL;
+    wp_free_device(WP_CURRENT_CONTEXT, bvh.primitive_indices); bvh.primitive_indices = NULL;
+    wp_free_device(WP_CURRENT_CONTEXT, bvh.root); bvh.root = NULL;
 }
 
 
 } // namespace wp
 
 
-void bvh_refit_device(uint64_t id)
+void wp_bvh_refit_device(uint64_t id)
 {
     wp::BVH bvh;
     if (bvh_get_descriptor(id, bvh))
     {
         ContextGuard guard(bvh.context);
 
-        bvh_refit_device(bvh);
+        wp::bvh_refit_device(bvh);
     }
 }
 
@@ -759,17 +759,17 @@ void bvh_refit_device(uint64_t id)
 * muted. However, the muted leaf nodes will still have the pointer to their parents, thus the up-tracing
 * can still work. We will only compute the bounding box of a leaf node if its parent is not a leaf node.
 */
-uint64_t bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type)
+uint64_t wp_bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type)
 {
     ContextGuard guard(context);
     wp::BVH bvh_device_on_host;
     wp::BVH* bvh_device_ptr = nullptr;
     
-    bvh_create_device(WP_CURRENT_CONTEXT, lowers, uppers, num_items, constructor_type, bvh_device_on_host);
+    wp::bvh_create_device(WP_CURRENT_CONTEXT, lowers, uppers, num_items, constructor_type, bvh_device_on_host);
 
     // create device-side BVH descriptor
-    bvh_device_ptr = (wp::BVH*)alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVH));
-    memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device_ptr, &bvh_device_on_host, sizeof(wp::BVH));
+    bvh_device_ptr = (wp::BVH*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVH));
+    wp_memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device_ptr, &bvh_device_on_host, sizeof(wp::BVH));
 
     uint64_t bvh_id = (uint64_t)bvh_device_ptr;
     wp::bvh_add_descriptor(bvh_id, bvh_device_on_host);
@@ -777,7 +777,7 @@ uint64_t bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, in
 }
 
 
-void bvh_destroy_device(uint64_t id)
+void wp_bvh_destroy_device(uint64_t id)
 {
     wp::BVH bvh;
     if (wp::bvh_get_descriptor(id, bvh))
@@ -786,6 +786,6 @@ void bvh_destroy_device(uint64_t id)
         wp::bvh_rem_descriptor(id);
 
         // free descriptor
-        free_device(WP_CURRENT_CONTEXT, (void*)id);
+        wp_free_device(WP_CURRENT_CONTEXT, (void*)id);
     }
 }
