@@ -18,6 +18,7 @@
 import traceback
 from math import inf
 
+import carb
 import numpy as np
 import omni.graph.core as og
 import omni.timeline
@@ -171,6 +172,11 @@ class InternalState:
         device: wp.context.Device,
     ) -> bool:
         """Initializes the internal state."""
+        carb.log_warn(
+            "Following the deprecation of the `warp.sim` module in favour of the Newton library, "
+            "the `OgnParticlesSimulate` sample node is also deprecated and will be removed in v1.10"
+        )
+
         # Lazy load warp.sim here to not slow down extension loading.
         import warp.sim
 

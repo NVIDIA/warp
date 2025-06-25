@@ -5,7 +5,10 @@
         "description": "Simulates cloth.",
         "categories": ["warp"],
         "language": "Python",
-        "uiName": "Cloth Simulate",
+        "uiName": "Cloth Simulate (Deprecated)",
+        "metadata": {
+            "hidden": "true"
+        },
         "cudaPointers": "cpu",
         "exclude": ["tests"],
         "inputs": {
