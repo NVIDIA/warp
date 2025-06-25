@@ -5,7 +5,10 @@
         "description": "Simulates particles.",
         "categories": ["warp"],
         "language": "Python",
-        "uiName": "Particles Simulate",
+        "uiName": "Particles Simulate (Deprecated)",
+        "metadata": {
+            "hidden": "true"
+        },
         "cudaPointers": "cpu",
         "exclude": ["tests"],
         "inputs": {
