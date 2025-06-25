@@ -256,7 +256,7 @@ __global__ void bsr_transpose_fill_row_col(const int nnz_upper_bound, const int 
 } // namespace
 
 
-WP_API void bsr_matrix_from_triplets_device(
+WP_API void wp_bsr_matrix_from_triplets_device(
     const int block_size, 
     int scalar_size,
     const int row_count,
@@ -274,13 +274,13 @@ WP_API void bsr_matrix_from_triplets_device(
     int* bsr_columns,
     int* bsr_nnz, void* bsr_nnz_event)
 {
-    void* context = cuda_context_get_current();
+    void* context = wp_cuda_context_get_current();
     ContextGuard guard(context);
 
     // Per-context cached temporary buffers
     // BsrFromTripletsTemp& bsr_temp = g_bsr_from_triplets_temp_map[context];
 
-    cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
+    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
 
     ScopedTemporary<BsrRowCol> combined_row_col(context, 2 * size_t(nnz));
     ScopedTemporary<int> unique_triplet_count(context, 1);
@@ -289,8 +289,8 @@ WP_API void bsr_matrix_from_triplets_device(
     if(!return_summed_blocks)
     {
         // if not provided, allocate temporary offset and indices buffers
-        tpl_block_offsets = static_cast<int*>(alloc_device(context, size_t(nnz) * sizeof(int)));
-        tpl_block_indices = static_cast<int*>(alloc_device(context,  size_t(nnz) * sizeof(int)));
+        tpl_block_offsets = static_cast<int*>(wp_alloc_device(context, size_t(nnz) * sizeof(int)));
+        tpl_block_indices = static_cast<int*>(wp_alloc_device(context,  size_t(nnz) * sizeof(int)));
     }
 
 
@@ -357,11 +357,11 @@ WP_API void bsr_matrix_from_triplets_device(
     {
         // Copy nnz to host, and record an event for the completed transfer if desired
 
-        memcpy_d2h(WP_CURRENT_CONTEXT, bsr_nnz, bsr_offsets + row_count, sizeof(int), stream);
+        wp_memcpy_d2h(WP_CURRENT_CONTEXT, bsr_nnz, bsr_offsets + row_count, sizeof(int), stream);
 
         if (bsr_nnz_event)
         {
-            cuda_event_record(bsr_nnz_event, stream);
+            wp_cuda_event_record(bsr_nnz_event, stream);
         }
     }
 
@@ -381,21 +381,21 @@ WP_API void bsr_matrix_from_triplets_device(
                                                  stream));
     } else {
         // free our temporary buffers
-        free_device(context, tpl_block_offsets);
-        free_device(context, tpl_block_indices);
+        wp_free_device(context, tpl_block_offsets);
+        wp_free_device(context, tpl_block_indices);
      }
 }
 
 
-WP_API void bsr_transpose_device(int row_count, int col_count, int nnz,
+WP_API void wp_bsr_transpose_device(int row_count, int col_count, int nnz,
                           const int* bsr_offsets, const int* bsr_columns, 
                           int* transposed_bsr_offsets, int* transposed_bsr_columns,
                           int* src_block_indices)
 {
-    void* context = cuda_context_get_current();
+    void* context = wp_cuda_context_get_current();
     ContextGuard guard(context);
 
-    cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
+    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
 
     ScopedTemporary<BsrRowCol> combined_row_col(context, 2 * nnz);
 

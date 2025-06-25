@@ -64,7 +64,7 @@ void hash_grid_rebuild_device(const HashGrid& grid, const wp::array_t<wp::vec3>&
 
 
 // host methods
-uint64_t hash_grid_create_host(int dim_x, int dim_y, int dim_z)
+uint64_t wp_hash_grid_create_host(int dim_x, int dim_y, int dim_z)
 {
     HashGrid* grid = new HashGrid();
     memset(grid, 0, sizeof(HashGrid));
@@ -74,36 +74,36 @@ uint64_t hash_grid_create_host(int dim_x, int dim_y, int dim_z)
     grid->dim_z = dim_z;
 
     const int num_cells = dim_x*dim_y*dim_z;   
-    grid->cell_starts = (int*)alloc_host(num_cells*sizeof(int));
-    grid->cell_ends = (int*)alloc_host(num_cells*sizeof(int));
+    grid->cell_starts = (int*)wp_alloc_host(num_cells*sizeof(int));
+    grid->cell_ends = (int*)wp_alloc_host(num_cells*sizeof(int));
 
     return (uint64_t)(grid);
 }
 
-void hash_grid_destroy_host(uint64_t id)
+void wp_hash_grid_destroy_host(uint64_t id)
 {
     HashGrid* grid = (HashGrid*)(id);
 
-    free_host(grid->point_ids);
-    free_host(grid->point_cells);
-    free_host(grid->cell_starts);
-    free_host(grid->cell_ends);
+    wp_free_host(grid->point_ids);
+    wp_free_host(grid->point_cells);
+    wp_free_host(grid->cell_starts);
+    wp_free_host(grid->cell_ends);
 
     delete grid;
 }
 
-void hash_grid_reserve_host(uint64_t id, int num_points)
+void wp_hash_grid_reserve_host(uint64_t id, int num_points)
 {
     HashGrid* grid = (HashGrid*)(id);
 
     if (num_points > grid->max_points)
     {
-        free_host(grid->point_cells);
-        free_host(grid->point_ids);
+        wp_free_host(grid->point_cells);
+        wp_free_host(grid->point_ids);
         
         const int num_to_alloc = num_points*3/2;
-        grid->point_cells = (int*)alloc_host(2*num_to_alloc*sizeof(int));  // *2 for auxiliary radix buffers
-        grid->point_ids = (int*)alloc_host(2*num_to_alloc*sizeof(int));    // *2 for auxiliary radix buffers
+        grid->point_cells = (int*)wp_alloc_host(2*num_to_alloc*sizeof(int));  // *2 for auxiliary radix buffers
+        grid->point_ids = (int*)wp_alloc_host(2*num_to_alloc*sizeof(int));    // *2 for auxiliary radix buffers
 
         grid->max_points = num_to_alloc;
     }
@@ -111,7 +111,7 @@ void hash_grid_reserve_host(uint64_t id, int num_points)
     grid->num_points = num_points;
 }
 
-void hash_grid_update_host(uint64_t id, float cell_width, const wp::array_t<wp::vec3>* points)
+void wp_hash_grid_update_host(uint64_t id, float cell_width, const wp::array_t<wp::vec3>* points)
 {
     // Python enforces this, but let's be defensive anyways
     if (!points || points->ndim != 1)
@@ -129,7 +129,7 @@ void hash_grid_update_host(uint64_t id, float cell_width, const wp::array_t<wp::
     HashGrid* grid = (HashGrid*)(id);
     int num_points = points->shape[0];
 
-    hash_grid_reserve_host(id, num_points);
+    wp_hash_grid_reserve_host(id, num_points);
 
     grid->cell_width = cell_width;
     grid->cell_width_inv = 1.0f / cell_width;
@@ -176,26 +176,26 @@ void hash_grid_update_host(uint64_t id, float cell_width, const wp::array_t<wp::
 }
 
 // device methods
-uint64_t hash_grid_create_device(void* context, int dim_x, int dim_y, int dim_z)
+uint64_t wp_hash_grid_create_device(void* context, int dim_x, int dim_y, int dim_z)
 {
     ContextGuard guard(context);
 
     HashGrid grid;
     memset(&grid, 0, sizeof(HashGrid));
 
-    grid.context = context ? context : cuda_context_get_current();
+    grid.context = context ? context : wp_cuda_context_get_current();
 
     grid.dim_x = dim_x;
     grid.dim_y = dim_y;
     grid.dim_z = dim_z;
 
     const int num_cells = dim_x*dim_y*dim_z;   
-    grid.cell_starts = (int*)alloc_device(WP_CURRENT_CONTEXT, num_cells*sizeof(int));
-    grid.cell_ends = (int*)alloc_device(WP_CURRENT_CONTEXT, num_cells*sizeof(int));
+    grid.cell_starts = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, num_cells*sizeof(int));
+    grid.cell_ends = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, num_cells*sizeof(int));
 
     // upload to device
-    HashGrid* grid_device = (HashGrid*)(alloc_device(WP_CURRENT_CONTEXT, sizeof(HashGrid)));
-    memcpy_h2d(WP_CURRENT_CONTEXT, grid_device, &grid, sizeof(HashGrid));
+    HashGrid* grid_device = (HashGrid*)(wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(HashGrid)));
+    wp_memcpy_h2d(WP_CURRENT_CONTEXT, grid_device, &grid, sizeof(HashGrid));
 
     uint64_t grid_id = (uint64_t)(grid_device);
     hash_grid_add_descriptor(grid_id, grid);
@@ -203,26 +203,26 @@ uint64_t hash_grid_create_device(void* context, int dim_x, int dim_y, int dim_z)
     return grid_id;
 }
 
-void hash_grid_destroy_device(uint64_t id)
+void wp_hash_grid_destroy_device(uint64_t id)
 {
     HashGrid grid;
     if (hash_grid_get_descriptor(id, grid))
     {
         ContextGuard guard(grid.context);
 
-        free_device(WP_CURRENT_CONTEXT, grid.point_ids);
-        free_device(WP_CURRENT_CONTEXT, grid.point_cells);
-        free_device(WP_CURRENT_CONTEXT, grid.cell_starts);
-        free_device(WP_CURRENT_CONTEXT, grid.cell_ends);
+        wp_free_device(WP_CURRENT_CONTEXT, grid.point_ids);
+        wp_free_device(WP_CURRENT_CONTEXT, grid.point_cells);
+        wp_free_device(WP_CURRENT_CONTEXT, grid.cell_starts);
+        wp_free_device(WP_CURRENT_CONTEXT, grid.cell_ends);
 
-        free_device(WP_CURRENT_CONTEXT, (HashGrid*)id);
+        wp_free_device(WP_CURRENT_CONTEXT, (HashGrid*)id);
         
         hash_grid_rem_descriptor(id);
     }
 }
 
 
-void hash_grid_reserve_device(uint64_t id, int num_points)
+void wp_hash_grid_reserve_device(uint64_t id, int num_points)
 {
     HashGrid grid;
 
@@ -232,12 +232,12 @@ void hash_grid_reserve_device(uint64_t id, int num_points)
         {
             ContextGuard guard(grid.context);
 
-            free_device(WP_CURRENT_CONTEXT, grid.point_cells);
-            free_device(WP_CURRENT_CONTEXT, grid.point_ids);
+            wp_free_device(WP_CURRENT_CONTEXT, grid.point_cells);
+            wp_free_device(WP_CURRENT_CONTEXT, grid.point_ids);
             
             const int num_to_alloc = num_points*3/2;
-            grid.point_cells = (int*)alloc_device(WP_CURRENT_CONTEXT, 2*num_to_alloc*sizeof(int));  // *2 for auxiliary radix buffers
-            grid.point_ids = (int*)alloc_device(WP_CURRENT_CONTEXT, 2*num_to_alloc*sizeof(int));    // *2 for auxiliary radix buffers
+            grid.point_cells = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, 2*num_to_alloc*sizeof(int));  // *2 for auxiliary radix buffers
+            grid.point_ids = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, 2*num_to_alloc*sizeof(int));    // *2 for auxiliary radix buffers
             grid.max_points = num_to_alloc;
 
             // ensure we pre-size our sort routine to avoid
@@ -246,10 +246,10 @@ void hash_grid_reserve_device(uint64_t id, int num_points)
 
             // update device side grid descriptor, todo: this is
             // slightly redundant since it is performed again
-            // inside hash_grid_update_device(), but since
+            // inside wp_hash_grid_update_device(), but since
             // reserve can be called from Python we need to make 
             // sure it is consistent
-            memcpy_h2d(WP_CURRENT_CONTEXT, (HashGrid*)id, &grid, sizeof(HashGrid));
+            wp_memcpy_h2d(WP_CURRENT_CONTEXT, (HashGrid*)id, &grid, sizeof(HashGrid));
 
             // update host side grid descriptor
             hash_grid_add_descriptor(id, grid);
@@ -257,7 +257,7 @@ void hash_grid_reserve_device(uint64_t id, int num_points)
     }
 }
 
-void hash_grid_update_device(uint64_t id, float cell_width, const wp::array_t<wp::vec3>* points)
+void wp_hash_grid_update_device(uint64_t id, float cell_width, const wp::array_t<wp::vec3>* points)
 {
     // Python enforces this, but let's be defensive anyways
     if (!points || points->ndim != 1)
@@ -271,7 +271,7 @@ void hash_grid_update_device(uint64_t id, float cell_width, const wp::array_t<wp
     // ensure we have enough memory reserved for update
     // this must be done before retrieving the descriptor
     // below since it may update it
-    hash_grid_reserve_device(id, num_points);
+    wp_hash_grid_reserve_device(id, num_points);
 
     // host grid must be static so that we can
     // perform host->device memcpy from this variable
@@ -289,7 +289,7 @@ void hash_grid_update_device(uint64_t id, float cell_width, const wp::array_t<wp
         hash_grid_rebuild_device(grid, *points);
 
         // update device side grid descriptor
-        memcpy_h2d(WP_CURRENT_CONTEXT, (HashGrid*)id, &grid, sizeof(HashGrid));
+        wp_memcpy_h2d(WP_CURRENT_CONTEXT, (HashGrid*)id, &grid, sizeof(HashGrid));
 
         // update host side grid descriptor
         hash_grid_add_descriptor(id, grid);

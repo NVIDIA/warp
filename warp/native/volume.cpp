@@ -85,7 +85,7 @@ void volume_set_map(nanovdb::Map& map, const float transform[9], const float tra
 } // anonymous namespace
 
 // NB: buf must be a host pointer
-uint64_t volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
+uint64_t wp_volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
 {
     if (buf == nullptr || (size > 0 && size < sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t)))
         return 0; // This cannot be a valid NanoVDB grid with data
@@ -99,8 +99,8 @@ uint64_t volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
     VolumeDesc volume;
     volume.context = NULL;
 
-    memcpy_h2h(&volume.grid_data, buf, sizeof(pnanovdb_grid_t));
-    memcpy_h2h(&volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
+    wp_memcpy_h2h(&volume.grid_data, buf, sizeof(pnanovdb_grid_t));
+    wp_memcpy_h2h(&volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
 
     if (volume.grid_data.magic != PNANOVDB_MAGIC_NUMBER && volume.grid_data.magic != PNANOVDB_MAGIC_GRID)
         return 0;
@@ -114,8 +114,8 @@ uint64_t volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
     volume.size_in_bytes = size;
     if (copy)
     {
-        volume.buffer = alloc_host(size);
-        memcpy_h2h(volume.buffer, buf, size);
+        volume.buffer = wp_alloc_host(size);
+        wp_memcpy_h2h(volume.buffer, buf, size);
         volume.owner = true;
     }
     else
@@ -136,7 +136,7 @@ uint64_t volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
 }
 
 // NB: buf must be a pointer on the same device
-uint64_t volume_create_device(void* context, void* buf, uint64_t size, bool copy, bool owner)
+uint64_t wp_volume_create_device(void* context, void* buf, uint64_t size, bool copy, bool owner)
 {
     if (buf == nullptr || (size > 0 && size < sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t)))
         return 0; // This cannot be a valid NanoVDB grid with data
@@ -150,10 +150,10 @@ uint64_t volume_create_device(void* context, void* buf, uint64_t size, bool copy
     ContextGuard guard(context);
 
     VolumeDesc volume;
-    volume.context = context ? context : cuda_context_get_current();
+    volume.context = context ? context : wp_cuda_context_get_current();
 
-    memcpy_d2h(WP_CURRENT_CONTEXT, &volume.grid_data, buf, sizeof(pnanovdb_grid_t));
-    memcpy_d2h(WP_CURRENT_CONTEXT, &volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
+    wp_memcpy_d2h(WP_CURRENT_CONTEXT, &volume.grid_data, buf, sizeof(pnanovdb_grid_t));
+    wp_memcpy_d2h(WP_CURRENT_CONTEXT, &volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
     // no sync needed since the above copies are to pageable memory
 
     if (volume.grid_data.magic != PNANOVDB_MAGIC_NUMBER && volume.grid_data.magic != PNANOVDB_MAGIC_GRID)
@@ -168,8 +168,8 @@ uint64_t volume_create_device(void* context, void* buf, uint64_t size, bool copy
     volume.size_in_bytes = size;
     if (copy)
     {
-        volume.buffer = alloc_device(WP_CURRENT_CONTEXT, size);
-        memcpy_d2d(WP_CURRENT_CONTEXT, volume.buffer, buf, size);
+        volume.buffer = wp_alloc_device(WP_CURRENT_CONTEXT, size);
+        wp_memcpy_d2d(WP_CURRENT_CONTEXT, volume.buffer, buf, size);
         volume.owner = true;
     }
     else
@@ -180,9 +180,9 @@ uint64_t volume_create_device(void* context, void* buf, uint64_t size, bool copy
 
     // Make blind metadata accessible on host
     const uint64_t blindmetadata_size = volume.grid_data.blind_metadata_count * sizeof(pnanovdb_gridblindmetadata_t);
-    volume.blind_metadata = static_cast<pnanovdb_gridblindmetadata_t*>(alloc_pinned(blindmetadata_size));
-    memcpy_d2h(WP_CURRENT_CONTEXT, volume.blind_metadata,
-               static_cast<uint8_t*>(volume.buffer) + volume.grid_data.blind_metadata_offset, blindmetadata_size);
+    volume.blind_metadata = static_cast<pnanovdb_gridblindmetadata_t*>(wp_alloc_pinned(blindmetadata_size));
+    wp_memcpy_d2h(WP_CURRENT_CONTEXT, volume.blind_metadata,
+                  static_cast<uint8_t*>(volume.buffer) + volume.grid_data.blind_metadata_offset, blindmetadata_size);
 
     uint64_t id = (uint64_t)volume.buffer;
     volume_add_descriptor(id, std::move(volume));
@@ -190,7 +190,7 @@ uint64_t volume_create_device(void* context, void* buf, uint64_t size, bool copy
     return id;
 }
 
-void volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size)
+void wp_volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size)
 {
     *buf = 0;
     *size = 0;
@@ -203,7 +203,7 @@ void volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size)
     }
 }
 
-void volume_get_voxel_size(uint64_t id, float* dx, float* dy, float* dz)
+void wp_volume_get_voxel_size(uint64_t id, float* dx, float* dy, float* dz)
 {
     *dx = *dx = *dz = 0.0f;
 
@@ -216,7 +216,7 @@ void volume_get_voxel_size(uint64_t id, float* dx, float* dy, float* dz)
     }
 }
 
-void volume_get_tile_and_voxel_count(uint64_t id, uint32_t& tile_count, uint64_t& voxel_count)
+void wp_volume_get_tile_and_voxel_count(uint64_t id, uint32_t& tile_count, uint64_t& voxel_count)
 {
     tile_count = 0;
     voxel_count = 0;
@@ -242,8 +242,8 @@ void volume_get_tile_and_voxel_count(uint64_t id, uint32_t& tile_count, uint64_t
     }
 }
 
-const char* volume_get_grid_info(uint64_t id, uint64_t* grid_size, uint32_t* grid_index, uint32_t* grid_count,
-                                 float translation[3], float transform[9], char type_str[16])
+const char* wp_volume_get_grid_info(uint64_t id, uint64_t* grid_size, uint32_t* grid_index, uint32_t* grid_count,
+                                    float translation[3], float transform[9], char type_str[16])
 {
     const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
@@ -268,7 +268,7 @@ const char* volume_get_grid_info(uint64_t id, uint64_t* grid_size, uint32_t* gri
     return nullptr;
 }
 
-uint32_t volume_get_blind_data_count(uint64_t id)
+uint32_t wp_volume_get_blind_data_count(uint64_t id)
 {
     const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
@@ -278,8 +278,8 @@ uint32_t volume_get_blind_data_count(uint64_t id)
     return 0;
 }
 
-const char* volume_get_blind_data_info(uint64_t id, uint32_t data_index, void** buf, uint64_t* value_count,
-                                       uint32_t* value_size, char type_str[16])
+const char* wp_volume_get_blind_data_info(uint64_t id, uint32_t data_index, void** buf, uint64_t* value_count,
+                                          uint32_t* value_size, char type_str[16])
 {
     const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume) && data_index < volume->grid_data.blind_metadata_count)
@@ -300,7 +300,7 @@ const char* volume_get_blind_data_info(uint64_t id, uint32_t data_index, void** 
     return nullptr;
 }
 
-void volume_get_tiles_host(uint64_t id, void* buf)
+void wp_volume_get_tiles_host(uint64_t id, void* buf)
 {
     static constexpr uint32_t MASK = (1u << 3u) - 1u; // mask for bit operations
 
@@ -325,14 +325,14 @@ void volume_get_tiles_host(uint64_t id, void* buf)
     }
 }
 
-void volume_get_voxels_host(uint64_t id, void* buf)
+void wp_volume_get_voxels_host(uint64_t id, void* buf)
 {
     const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
     {
         uint32_t leaf_count;
         uint64_t voxel_count;
-        volume_get_tile_and_voxel_count(id, leaf_count, voxel_count);
+        wp_volume_get_tile_and_voxel_count(id, leaf_count, voxel_count);
 
         pnanovdb_coord_t* voxel_coords = static_cast<pnanovdb_coord_t*>(buf);
 
@@ -361,20 +361,20 @@ void volume_get_voxels_host(uint64_t id, void* buf)
     }
 }
 
-void volume_destroy_host(uint64_t id)
+void wp_volume_destroy_host(uint64_t id)
 {
     const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
     {
         if (volume->owner)
         {
-            free_host(volume->buffer);
+            wp_free_host(volume->buffer);
         }
         volume_rem_descriptor(id);
     }
 }
 
-void volume_destroy_device(uint64_t id)
+void wp_volume_destroy_device(uint64_t id)
 {
     const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
@@ -382,18 +382,18 @@ void volume_destroy_device(uint64_t id)
         ContextGuard guard(volume->context);
         if (volume->owner)
         {
-            free_device(WP_CURRENT_CONTEXT, volume->buffer);
+            wp_free_device(WP_CURRENT_CONTEXT, volume->buffer);
         }
-        free_pinned(volume->blind_metadata);
+        wp_free_pinned(volume->blind_metadata);
         volume_rem_descriptor(id);
     }
 }
 
 #if WP_ENABLE_CUDA
 
-uint64_t volume_from_tiles_device(void* context, void* points, int num_points, float transform[9], float translation[3],
-                                  bool points_in_world_space, const void* value_ptr, uint32_t value_size,
-                                  const char* value_type)
+uint64_t wp_volume_from_tiles_device(void* context, void* points, int num_points, float transform[9], float translation[3],
+                                     bool points_in_world_space, const void* value_ptr, uint32_t value_size,
+                                     const char* value_type)
 {
     char gridTypeStr[12];
 
@@ -407,7 +407,7 @@ uint64_t volume_from_tiles_device(void* context, void* points, int num_points, f
         size_t gridSize;                                                                                               \
         nanovdb::Grid<nanovdb::NanoTree<type>>* grid;                                                                  \
         build_grid_from_points(grid, gridSize, points, num_points, points_in_world_space, params);                     \
-        return volume_create_device(context, grid, gridSize, false, true);                                             \
+        return wp_volume_create_device(context, grid, gridSize, false, true);                                             \
     }
 
     WP_VOLUME_BUILDER_INSTANTIATE_TYPES
@@ -416,8 +416,8 @@ uint64_t volume_from_tiles_device(void* context, void* points, int num_points, f
     return 0;
 }
 
-uint64_t volume_index_from_tiles_device(void* context, void* points, int num_points, float transform[9],
-                                        float translation[3], bool points_in_world_space)
+uint64_t wp_volume_index_from_tiles_device(void* context, void* points, int num_points, float transform[9],
+                                           float translation[3], bool points_in_world_space)
 {
     nanovdb::IndexGrid* grid;
     size_t gridSize;
@@ -426,11 +426,11 @@ uint64_t volume_index_from_tiles_device(void* context, void* points, int num_poi
 
     build_grid_from_points(grid, gridSize, points, num_points, points_in_world_space, params);
 
-    return volume_create_device(context, grid, gridSize, false, true);
+    return wp_volume_create_device(context, grid, gridSize, false, true);
 }
 
-uint64_t volume_from_active_voxels_device(void* context, void* points, int num_points, float transform[9],
-                                          float translation[3], bool points_in_world_space)
+uint64_t wp_volume_from_active_voxels_device(void* context, void* points, int num_points, float transform[9],
+                                             float translation[3], bool points_in_world_space)
 {
     nanovdb::OnIndexGrid* grid;
     size_t gridSize;
@@ -439,7 +439,7 @@ uint64_t volume_from_active_voxels_device(void* context, void* points, int num_p
 
     build_grid_from_points(grid, gridSize, points, num_points, points_in_world_space, params);
 
-    return volume_create_device(context, grid, gridSize, false, true);
+    return wp_volume_create_device(context, grid, gridSize, false, true);
 }
 
 void launch_get_leaf_coords(void* context, const uint32_t leaf_count, pnanovdb_coord_t* leaf_coords,
@@ -447,7 +447,7 @@ void launch_get_leaf_coords(void* context, const uint32_t leaf_count, pnanovdb_c
 void launch_get_voxel_coords(void* context, const uint32_t leaf_count, const uint32_t voxel_count,
                              pnanovdb_coord_t* voxel_coords, pnanovdb_buf_t buf);
 
-void volume_get_tiles_device(uint64_t id, void* buf)
+void wp_volume_get_tiles_device(uint64_t id, void* buf)
 {
     const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
@@ -459,14 +459,14 @@ void volume_get_tiles_device(uint64_t id, void* buf)
     }
 }
 
-void volume_get_voxels_device(uint64_t id, void* buf)
+void wp_volume_get_voxels_device(uint64_t id, void* buf)
 {
     const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
     {
         uint32_t leaf_count;
         uint64_t voxel_count;
-        volume_get_tile_and_voxel_count(id, leaf_count, voxel_count);
+        wp_volume_get_tile_and_voxel_count(id, leaf_count, voxel_count);
 
         pnanovdb_coord_t* voxel_coords = static_cast<pnanovdb_coord_t*>(buf);
         launch_get_voxel_coords(volume->context, leaf_count, voxel_count, voxel_coords, volume->as_pnano());
@@ -475,27 +475,27 @@ void volume_get_voxels_device(uint64_t id, void* buf)
 
 #else
 // stubs for non-CUDA platforms
-uint64_t volume_from_tiles_device(void* context, void* points, int num_points, float transform[9],
-                                  float translation[3], bool points_in_world_space, const void* value_ptr, uint32_t value_size,
-                                  const char* value_type)
+uint64_t wp_volume_from_tiles_device(void* context, void* points, int num_points, float transform[9],
+                                     float translation[3], bool points_in_world_space, const void* value_ptr, uint32_t value_size,
+                                     const char* value_type)
 {
     return 0;
 }
 
-uint64_t volume_index_from_tiles_device(void* context, void* points, int num_points, float transform[9],
-                                        float translation[3], bool points_in_world_space)
+uint64_t wp_volume_index_from_tiles_device(void* context, void* points, int num_points, float transform[9],
+                                           float translation[3], bool points_in_world_space)
 {
     return 0;
 }
 
-uint64_t volume_from_active_voxels_device(void* context, void* points, int num_points, float transform[9],
-                                          float translation[3], bool points_in_world_space)
+uint64_t wp_volume_from_active_voxels_device(void* context, void* points, int num_points, float transform[9],
+                                             float translation[3], bool points_in_world_space)
 {
     return 0;
 }
 
-void volume_get_tiles_device(uint64_t id, void* buf) {}
+void wp_volume_get_tiles_device(uint64_t id, void* buf) {}
 
-void volume_get_voxels_device(uint64_t id, void* buf) {}
+void wp_volume_get_voxels_device(uint64_t id, void* buf) {}
 
 #endif

@@ -835,6 +835,9 @@ def get_arg_type(arg: Var | Any) -> type:
     if isinstance(arg, Sequence):
         return tuple(get_arg_type(x) for x in arg)
 
+    if is_array(arg):
+        return arg
+
     if get_origin(arg) is tuple:
         return tuple(get_arg_type(x) for x in get_args(arg))
 
@@ -3563,7 +3566,7 @@ def constant_str(value):
             # special case for float16, which is stored as uint16 in the ctypes.Array
             from warp.context import runtime
 
-            scalar_value = runtime.core.half_bits_to_float
+            scalar_value = runtime.core.wp_half_bits_to_float
         else:
 
             def scalar_value(x):

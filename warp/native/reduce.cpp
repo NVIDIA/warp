@@ -119,7 +119,7 @@ template <typename T> void array_sum_host(const T *ptr_a, T *ptr_out, int count,
         accumulate_func(ptr_a + i * stride, ptr_out, type_length);
 }
 
-void array_inner_float_host(uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b,
+void wp_array_inner_float_host(uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b,
                             int type_length)
 {
     const float *ptr_a = (const float *)(a);
@@ -129,7 +129,7 @@ void array_inner_float_host(uint64_t a, uint64_t b, uint64_t out, int count, int
     array_inner_host(ptr_a, ptr_b, ptr_out, count, byte_stride_a, byte_stride_b, type_length);
 }
 
-void array_inner_double_host(uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b,
+void wp_array_inner_double_host(uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b,
                              int type_length)
 {
     const double *ptr_a = (const double *)(a);
@@ -139,14 +139,14 @@ void array_inner_double_host(uint64_t a, uint64_t b, uint64_t out, int count, in
     array_inner_host(ptr_a, ptr_b, ptr_out, count, byte_stride_a, byte_stride_b, type_length);
 }
 
-void array_sum_float_host(uint64_t a, uint64_t out, int count, int byte_stride_a, int type_length)
+void wp_array_sum_float_host(uint64_t a, uint64_t out, int count, int byte_stride_a, int type_length)
 {
     const float *ptr_a = (const float *)(a);
     float *ptr_out = (float *)(out);
     array_sum_host(ptr_a, ptr_out, count, byte_stride_a, type_length);
 }
 
-void array_sum_double_host(uint64_t a, uint64_t out, int count, int byte_stride_a, int type_length)
+void wp_array_sum_double_host(uint64_t a, uint64_t out, int count, int byte_stride_a, int type_length)
 {
     const double *ptr_a = (const double *)(a);
     double *ptr_out = (double *)(out);
@@ -154,21 +154,21 @@ void array_sum_double_host(uint64_t a, uint64_t out, int count, int byte_stride_
 }
 
 #if !WP_ENABLE_CUDA
-void array_inner_float_device(uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b,
-                              int type_length)
+void wp_array_inner_float_device(uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b,
+                                 int type_length)
 {
 }
 
-void array_inner_double_device(uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b,
-                               int type_length)
+void wp_array_inner_double_device(uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b,
+                                  int type_length)
 {
 }
 
-void array_sum_float_device(uint64_t a, uint64_t out, int count, int byte_stride_a, int type_length)
+void wp_array_sum_float_device(uint64_t a, uint64_t out, int count, int byte_stride_a, int type_length)
 {
 }
 
-void array_sum_double_device(uint64_t a, uint64_t out, int count, int byte_stride_a, int type_length)
+void wp_array_sum_double_device(uint64_t a, uint64_t out, int count, int byte_stride_a, int type_length)
 {
 }
 #endif

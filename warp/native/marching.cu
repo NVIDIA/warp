@@ -379,13 +379,13 @@ namespace wp {
 
             const int num_to_alloc = mc.num_cells*3/2;
 
-            free_device(WP_CURRENT_CONTEXT, mc.first_cell_vert);
-            free_device(WP_CURRENT_CONTEXT, mc.first_cell_tri);
-            free_device(WP_CURRENT_CONTEXT, mc.cell_verts);
+            wp_free_device(WP_CURRENT_CONTEXT, mc.first_cell_vert);
+            wp_free_device(WP_CURRENT_CONTEXT, mc.first_cell_tri);
+            wp_free_device(WP_CURRENT_CONTEXT, mc.cell_verts);
 
-            mc.first_cell_vert = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_to_alloc);
-            mc.first_cell_tri = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_to_alloc);
-            mc.cell_verts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * 3 * num_to_alloc);
+            mc.first_cell_vert = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_to_alloc);
+            mc.first_cell_tri = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_to_alloc);
+            mc.cell_verts = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * 3 * num_to_alloc);
 
             mc.max_cells = num_to_alloc;
         }
@@ -396,25 +396,25 @@ namespace wp {
     {
         ContextGuard guard(mc.context);
 
-        free_device(WP_CURRENT_CONTEXT, mc.first_cell_vert);
-        free_device(WP_CURRENT_CONTEXT, mc.first_cell_tri);
-        free_device(WP_CURRENT_CONTEXT, mc.cell_verts);
+        wp_free_device(WP_CURRENT_CONTEXT, mc.first_cell_vert);
+        wp_free_device(WP_CURRENT_CONTEXT, mc.first_cell_tri);
+        wp_free_device(WP_CURRENT_CONTEXT, mc.cell_verts);
     }
 
 } // namespace wp
 
-uint64_t marching_cubes_create_device(void* context)
+uint64_t wp_marching_cubes_create_device(void* context)
 {
     ContextGuard guard(context);
 
     wp::MarchingCubes* mc = new wp::MarchingCubes();
 
-    mc->context = context ? context : cuda_context_get_current();
+    mc->context = context ? context : wp_cuda_context_get_current();
 
     return (uint64_t)(mc);
 }
 
-void marching_cubes_destroy_device(uint64_t id)
+void wp_marching_cubes_destroy_device(uint64_t id)
 {   
     if (!id)
         return;
@@ -425,7 +425,7 @@ void marching_cubes_destroy_device(uint64_t id)
 }
 
 
-WP_API int marching_cubes_surface_device(
+WP_API int wp_marching_cubes_surface_device(
     uint64_t id,
     const float* field, 
     int nx, 
@@ -461,13 +461,13 @@ WP_API int marching_cubes_surface_device(
     wp_launch_device(WP_CURRENT_CONTEXT, wp::count_cell_verts, mc.num_cells, (mc, field, threshold) );
 
     int num_last;		
-    memcpy_d2h(WP_CURRENT_CONTEXT, &num_last, &mc.first_cell_vert[mc.num_cells - 1], sizeof(int));
+    wp_memcpy_d2h(WP_CURRENT_CONTEXT, &num_last, &mc.first_cell_vert[mc.num_cells - 1], sizeof(int));
 
     scan_device(mc.first_cell_vert, mc.first_cell_vert, mc.num_cells, false);
 
     int num_verts;
-    memcpy_d2h(WP_CURRENT_CONTEXT, &num_verts, &mc.first_cell_vert[mc.num_cells - 1], sizeof(int));
-    cuda_context_synchronize(WP_CURRENT_CONTEXT);
+    wp_memcpy_d2h(WP_CURRENT_CONTEXT, &num_verts, &mc.first_cell_vert[mc.num_cells - 1], sizeof(int));
+    wp_cuda_context_synchronize(WP_CURRENT_CONTEXT);
     
     num_verts += num_last;
 
@@ -486,14 +486,14 @@ WP_API int marching_cubes_surface_device(
     wp_launch_device(WP_CURRENT_CONTEXT, wp::count_cell_tris, mc.num_cells, (mc, field, threshold));
 
     
-    memcpy_d2h(WP_CURRENT_CONTEXT, &num_last, &mc.first_cell_tri[mc.num_cells - 1], sizeof(int));
+    wp_memcpy_d2h(WP_CURRENT_CONTEXT, &num_last, &mc.first_cell_tri[mc.num_cells - 1], sizeof(int));
 
     scan_device(mc.first_cell_tri, mc.first_cell_tri, mc.num_cells, false);
 
 
     int num_indices;
-    memcpy_d2h(WP_CURRENT_CONTEXT, &num_indices, &mc.first_cell_tri[mc.num_cells - 1], sizeof(int));
-    cuda_context_synchronize(WP_CURRENT_CONTEXT);
+    wp_memcpy_d2h(WP_CURRENT_CONTEXT, &num_indices, &mc.first_cell_tri[mc.num_cells - 1], sizeof(int));
+    wp_cuda_context_synchronize(WP_CURRENT_CONTEXT);
 
     num_indices += num_last;
 

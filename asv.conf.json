@@ -1,25 +1,24 @@
 {
-    "version": 1,
-    "project": "warp-lang",
-    "project_url": "https://github.com/NVIDIA/warp",
-    "repo": ".",
-    "build_command": [
-         "python -mpip install numpy",
-         "python build_lib.py",
-         "python -m build --wheel -o {build_cache_dir}"
-    ],
-    "branches": ["main"],
-    "dvcs": "git",
-    "environment_type": "virtualenv",
-    "show_commit_url": "https://github.com/NVIDIA/warp/commit/",
-    "matrix": {
-        "req": {
-            "usd-core": [""]
-        }
-    },
-    "benchmark_dir": "asv/benchmarks",
-    "env_dir": "asv/env",
-    "results_dir": "asv/results",
-    "html_dir": "asv/html",
-    "build_cache_size": 20
+  "version": 1,
+  "project": "warp-lang",
+  "project_url": "https://github.com/NVIDIA/warp",
+  "repo": ".",
+  "build_command": [
+    "python -mpip install numpy",
+    "python build_lib.py",
+    "python -m build --wheel -o {build_cache_dir}"
+  ],
+  "install_command": [
+    "in-dir={env_dir} python -m pip install {wheel_file}[benchmark]"
+  ],
+  "branches": ["main"],
+  "dvcs": "git",
+  "environment_type": "virtualenv",
+  "show_commit_url": "https://github.com/NVIDIA/warp/commit/",
+  "benchmark_dir": "asv/benchmarks",
+  "env_dir": "asv/env",
+  "results_dir": "asv/results",
+  "html_dir": "asv/html",
+  "build_cache_size": 20,
+  "default_benchmark_timeout": 120
 }

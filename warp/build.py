@@ -67,7 +67,7 @@ def build_cuda(
                 fatbins
             )
             arr_link_input_types = (ctypes.c_int * num_link)(*link_input_types)
-            err = warp.context.runtime.core.cuda_compile_program(
+            err = warp.context.runtime.core.wp_cuda_compile_program(
                 src,
                 program_name_bytes,
                 arch,
@@ -96,7 +96,7 @@ def load_cuda(input_path, device):
     if not device.is_cuda:
         raise RuntimeError("Not a CUDA device")
 
-    return warp.context.runtime.core.cuda_load_module(device.context, input_path.encode("utf-8"))
+    return warp.context.runtime.core.wp_cuda_load_module(device.context, input_path.encode("utf-8"))
 
 
 def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=False, fuse_fp=True):
@@ -372,7 +372,7 @@ def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, ar
     lto_symbol = f"dot_{M}_{N}_{K}_{arch}_{num_threads}_{a_arrangement}_{b_arrangement}_{c_arrangement}_{a_prec}_{b_prec}_{c_prec}_{element_type}"
 
     def compile_lto_dot(temp_paths):
-        result = warp.context.runtime.core.cuda_compile_dot(
+        result = warp.context.runtime.core.wp_cuda_compile_dot(
             temp_paths[".lto"].encode("utf-8"),
             lto_symbol.encode("utf-8"),
             0,
@@ -446,7 +446,7 @@ def build_lto_solver(
 
     def compile_lto_solver(temp_paths):
         # compile LTO
-        result = warp.context.runtime.core.cuda_compile_solver(
+        result = warp.context.runtime.core.wp_cuda_compile_solver(
             temp_paths["_fatbin.lto"].encode("utf-8"),
             temp_paths[".lto"].encode("utf-8"),
             lto_symbol.encode("utf-8"),
@@ -499,7 +499,7 @@ def build_lto_fft(arch, size, ept, direction, dir, precision, builder):
     def compile_lto_fft(temp_paths):
         shared_memory_size = ctypes.c_int(0)
 
-        result = warp.context.runtime.core.cuda_compile_fft(
+        result = warp.context.runtime.core.wp_cuda_compile_fft(
             temp_paths[".lto"].encode("utf-8"),
             lto_symbol.encode("utf-8"),
             0,

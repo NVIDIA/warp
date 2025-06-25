@@ -62,6 +62,6 @@ void launch_get_voxel_coords(void *context, const uint32_t leaf_count, const uin
                              pnanovdb_coord_t *voxel_coords, pnanovdb_buf_t buf)
 {
     ContextGuard guard(context);
-    cudaStream_t stream = (cudaStream_t)cuda_stream_get_current();
+    cudaStream_t stream = (cudaStream_t)wp_cuda_stream_get_current();
     volume_get_voxel_coords<<<leaf_count, dim3(8, 8, 8), 0, stream>>>(voxel_count, voxel_coords, buf);
 }

@@ -53,7 +53,7 @@ void runlength_encode_host(int n,
     }
 }
 
-void runlength_encode_int_host(
+void wp_runlength_encode_int_host(
     uint64_t values,
     uint64_t run_values,
     uint64_t run_lengths,
@@ -68,7 +68,7 @@ void runlength_encode_int_host(
 }
 
 #if !WP_ENABLE_CUDA
-void runlength_encode_int_device(
+void wp_runlength_encode_int_device(
     uint64_t values,
     uint64_t run_values,
     uint64_t run_lengths,

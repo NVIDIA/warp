@@ -65,6 +65,7 @@ dev = [
     "sphinx-copybutton",
     "coverage[toml]",
 ]
+benchmark = ["usd-core ; platform_machine != 'aarch64'"]
 extras = ['usd-core', 'matplotlib', 'pillow', 'pyglet']
 
 [tool.setuptools.packages.find]

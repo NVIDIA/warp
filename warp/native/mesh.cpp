@@ -135,7 +135,7 @@ void bvh_refit_with_solid_angle_host(BVH& bvh, Mesh& mesh)
     bvh_refit_with_solid_angle_recursive_host(bvh, 0, mesh);
 }
 
-uint64_t mesh_create_host(array_t<wp::vec3> points, array_t<wp::vec3> velocities, array_t<int> indices, int num_points, int num_tris, int support_winding_number, int constructor_type)
+uint64_t wp_mesh_create_host(array_t<wp::vec3> points, array_t<wp::vec3> velocities, array_t<int> indices, int num_points, int num_tris, int support_winding_number, int constructor_type)
 {
     Mesh* m = new Mesh(points, velocities, indices, num_points, num_tris);
 
@@ -177,7 +177,7 @@ uint64_t mesh_create_host(array_t<wp::vec3> points, array_t<wp::vec3> velocities
 }
 
 
-void mesh_destroy_host(uint64_t id)
+void wp_mesh_destroy_host(uint64_t id)
 {
     Mesh* m = (Mesh*)(id);
 
@@ -187,12 +187,12 @@ void mesh_destroy_host(uint64_t id)
     if (m->solid_angle_props) {
         delete [] m->solid_angle_props;
     }
-    bvh_destroy_host(m->bvh);
+    wp::bvh_destroy_host(m->bvh);
 
     delete m;
 }
 
-void mesh_refit_host(uint64_t id)
+void wp_mesh_refit_host(uint64_t id)
 {
     Mesh* m = (Mesh*)(id);
 
@@ -223,30 +223,30 @@ void mesh_refit_host(uint64_t id)
     }
     else
     {
-        bvh_refit_host(m->bvh);
+        wp::bvh_refit_host(m->bvh);
     }
 }
 
-void mesh_set_points_host(uint64_t id, wp::array_t<wp::vec3> points)
+void wp_mesh_set_points_host(uint64_t id, wp::array_t<wp::vec3> points)
 {
     Mesh* m = (Mesh*)(id);
     if (points.ndim != 1 || points.shape[0] != m->points.shape[0])
     {
-        fprintf(stderr, "The new points input for mesh_set_points_host does not match the shape of the original points!\n");
+        fprintf(stderr, "The new points input for wp_mesh_set_points_host does not match the shape of the original points!\n");
         return;
     }
 
     m->points = points;
 
-    mesh_refit_host(id);
+    wp_mesh_refit_host(id);
 }
 
-void mesh_set_velocities_host(uint64_t id, wp::array_t<wp::vec3> velocities)
+void wp_mesh_set_velocities_host(uint64_t id, wp::array_t<wp::vec3> velocities)
 {
     Mesh* m = (Mesh*)(id);
     if (velocities.ndim != 1 || velocities.shape[0] != m->velocities.shape[0])
     {
-        fprintf(stderr, "The new velocities input for mesh_set_velocities_host does not match the shape of the original velocities!\n");
+        fprintf(stderr, "The new velocities input for wp_mesh_set_velocities_host does not match the shape of the original velocities!\n");
         return;
     }
     m->velocities = velocities;
@@ -256,11 +256,11 @@ void mesh_set_velocities_host(uint64_t id, wp::array_t<wp::vec3> velocities)
 #if !WP_ENABLE_CUDA
 
 
-WP_API uint64_t mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> tris, int num_points, int num_tris, int support_winding_number, int constructor_type) { return 0; }
-WP_API void mesh_destroy_device(uint64_t id) {}
-WP_API void mesh_refit_device(uint64_t id) {}
-WP_API void mesh_set_points_device(uint64_t id, wp::array_t<wp::vec3> points) {};
-WP_API void mesh_set_velocities_device(uint64_t id, wp::array_t<wp::vec3> points) {};
+WP_API uint64_t wp_mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> tris, int num_points, int num_tris, int support_winding_number, int constructor_type) { return 0; }
+WP_API void wp_mesh_destroy_device(uint64_t id) {}
+WP_API void wp_mesh_refit_device(uint64_t id) {}
+WP_API void wp_mesh_set_points_device(uint64_t id, wp::array_t<wp::vec3> points) {};
+WP_API void wp_mesh_set_velocities_device(uint64_t id, wp::array_t<wp::vec3> points) {};
 
 
 #endif // !WP_ENABLE_CUDA

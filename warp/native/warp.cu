@@ -168,7 +168,7 @@ struct ContextInfo
 {
     DeviceInfo* device_info = NULL;
 
-    // the current stream, managed from Python (see cuda_context_set_stream() and cuda_context_get_stream())
+    // the current stream, managed from Python (see wp_cuda_context_set_stream() and wp_cuda_context_get_stream())
     CUstream stream = NULL;
 
     // conditional graph node support, loaded on demand if the driver supports it (CUDA 12.4+)
@@ -237,11 +237,11 @@ static std::unordered_map<CUstream, StreamInfo> g_streams;
 
 // Ongoing graph captures registered using wp.capture_begin().
 // This maps the capture id to the stream where capture was started.
-// See cuda_graph_begin_capture(), cuda_graph_end_capture(), and free_device_async().
+// See wp_cuda_graph_begin_capture(), wp_cuda_graph_end_capture(), and wp_free_device_async().
 static std::unordered_map<uint64_t, CaptureInfo*> g_captures;
 
 // Memory allocated during graph capture requires special handling.
-// See alloc_device_async() and free_device_async().
+// See wp_alloc_device_async() and wp_free_device_async().
 static std::unordered_map<void*, GraphAllocInfo> g_graph_allocs;
 
 // Memory that cannot be freed immediately gets queued here.
@@ -252,12 +252,12 @@ static std::vector<FreeInfo> g_deferred_free_list;
 // Call unload_deferred_modules() to release.
 static std::vector<ModuleInfo> g_deferred_module_list;
 
-void cuda_set_context_restore_policy(bool always_restore)
+void wp_cuda_set_context_restore_policy(bool always_restore)
 {
     ContextGuard::always_restore = always_restore;
 }
 
-int cuda_get_context_restore_policy()
+int wp_cuda_get_context_restore_policy()
 {
     return int(ContextGuard::always_restore);
 }
@@ -342,7 +342,7 @@ static inline CUcontext get_current_context()
 
 static inline CUstream get_current_stream(void* context=NULL)
 {
-    return static_cast<CUstream>(cuda_context_get_stream(context));
+    return static_cast<CUstream>(wp_cuda_context_get_stream(context));
 }
 
 static ContextInfo* get_context_info(CUcontext ctx)
@@ -475,7 +475,7 @@ static int unload_deferred_modules(void* context = NULL)
         const ModuleInfo& module_info = *it;
         if (module_info.context == context || !context)
         {
-            cuda_unload_module(module_info.context, module_info.module);
+            wp_cuda_unload_module(module_info.context, module_info.module);
             ++num_unloaded_modules;
             it = g_deferred_module_list.erase(it);
         }
@@ -529,41 +529,41 @@ static inline const char* get_cuda_kernel_name(void* kernel)
 }
 
 
-void* alloc_pinned(size_t s)
+void* wp_alloc_pinned(size_t s)
 {
     void* ptr = NULL;
     check_cuda(cudaMallocHost(&ptr, s));
     return ptr;
 }
 
-void free_pinned(void* ptr)
+void wp_free_pinned(void* ptr)
 {
     cudaFreeHost(ptr);
 }
 
-void* alloc_device(void* context, size_t s)
+void* wp_alloc_device(void* context, size_t s)
 {
-    int ordinal = cuda_context_get_device_ordinal(context);
+    int ordinal = wp_cuda_context_get_device_ordinal(context);
 
     // use stream-ordered allocator if available
-    if (cuda_device_is_mempool_supported(ordinal))
-        return alloc_device_async(context, s);
+    if (wp_cuda_device_is_mempool_supported(ordinal))
+        return wp_alloc_device_async(context, s);
     else
-        return alloc_device_default(context, s);
+        return wp_alloc_device_default(context, s);
 }
 
-void free_device(void* context, void* ptr)
+void wp_free_device(void* context, void* ptr)
 {
-    int ordinal = cuda_context_get_device_ordinal(context);
+    int ordinal = wp_cuda_context_get_device_ordinal(context);
 
     // use stream-ordered allocator if available
-    if (cuda_device_is_mempool_supported(ordinal))
-        free_device_async(context, ptr);
+    if (wp_cuda_device_is_mempool_supported(ordinal))
+        wp_free_device_async(context, ptr);
     else
-        free_device_default(context, ptr);
+        wp_free_device_default(context, ptr);
 }
 
-void* alloc_device_default(void* context, size_t s)
+void* wp_alloc_device_default(void* context, size_t s)
 {
     ContextGuard guard(context);
 
@@ -573,7 +573,7 @@ void* alloc_device_default(void* context, size_t s)
     return ptr;
 }
 
-void free_device_default(void* context, void* ptr)
+void wp_free_device_default(void* context, void* ptr)
 {
     ContextGuard guard(context);
 
@@ -589,7 +589,7 @@ void free_device_default(void* context, void* ptr)
     }
 }
 
-void* alloc_device_async(void* context, size_t s)
+void* wp_alloc_device_async(void* context, size_t s)
 {
     // stream-ordered allocations don't rely on the current context,
     // but we set the context here for consistent behaviour
@@ -607,7 +607,7 @@ void* alloc_device_async(void* context, size_t s)
     if (ptr)
     {
         // if the stream is capturing, the allocation requires special handling
-        if (cuda_stream_is_capturing(stream))
+        if (wp_cuda_stream_is_capturing(stream))
         {
             // check if this is a known capture
             uint64_t capture_id = get_capture_id(stream);
@@ -628,7 +628,7 @@ void* alloc_device_async(void* context, size_t s)
     return ptr;
 }
 
-void free_device_async(void* context, void* ptr)
+void wp_free_device_async(void* context, void* ptr)
 {
     // stream-ordered allocators generally don't rely on the current context,
     // but we set the context here for consistent behaviour
@@ -726,7 +726,7 @@ void free_device_async(void* context, void* ptr)
     }
 }
 
-bool memcpy_h2d(void* context, void* dest, void* src, size_t n, void* stream)
+bool wp_memcpy_h2d(void* context, void* dest, void* src, size_t n, void* stream)
 {
     ContextGuard guard(context);
 
@@ -745,7 +745,7 @@ bool memcpy_h2d(void* context, void* dest, void* src, size_t n, void* stream)
     return result;
 }
 
-bool memcpy_d2h(void* context, void* dest, void* src, size_t n, void* stream)
+bool wp_memcpy_d2h(void* context, void* dest, void* src, size_t n, void* stream)
 {
     ContextGuard guard(context);
 
@@ -764,7 +764,7 @@ bool memcpy_d2h(void* context, void* dest, void* src, size_t n, void* stream)
     return result;
 }
 
-bool memcpy_d2d(void* context, void* dest, void* src, size_t n, void* stream)
+bool wp_memcpy_d2d(void* context, void* dest, void* src, size_t n, void* stream)
 {
     ContextGuard guard(context);
 
@@ -783,7 +783,7 @@ bool memcpy_d2d(void* context, void* dest, void* src, size_t n, void* stream)
     return result;
 }
 
-bool memcpy_p2p(void* dst_context, void* dst, void* src_context, void* src, size_t n, void* stream)
+bool wp_memcpy_p2p(void* dst_context, void* dst, void* src_context, void* src, size_t n, void* stream)
 {
     // ContextGuard guard(context);
 
@@ -803,7 +803,7 @@ bool memcpy_p2p(void* dst_context, void* dst, void* src_context, void* src, size
     //   because cudaMemPoolGetAccess() cannot be called during graph capture.
     // - CUDA will report error 1 (invalid argument) if cudaMemcpyAsync() is called but mempool access is not enabled.
 
-    if (!cuda_stream_is_capturing(stream))
+    if (!wp_cuda_stream_is_capturing(stream))
     {
         begin_cuda_range(WP_TIMING_MEMCPY, cuda_stream, get_stream_context(stream), "memcpy PtoP");
 
@@ -890,7 +890,7 @@ __global__ void memset_kernel(int* dest, int value, size_t n)
     }
 }
 
-void memset_device(void* context, void* dest, int value, size_t n)
+void wp_memset_device(void* context, void* dest, int value, size_t n)
 {
     ContextGuard guard(context);
 
@@ -934,7 +934,7 @@ __global__ void memtile_value_kernel(T* dst, T value, size_t n)
     }
 }
 
-void memtile_device(void* context, void* dst, const void* src, size_t srcsize, size_t n)
+void wp_memtile_device(void* context, void* dst, const void* src, size_t srcsize, size_t n)
 {
     ContextGuard guard(context);
 
@@ -970,12 +970,12 @@ void memtile_device(void* context, void* dst, const void* src, size_t srcsize, s
 
         // copy value to device memory
         // TODO: use a persistent stream-local staging buffer to avoid allocs?
-        void* src_devptr = alloc_device(WP_CURRENT_CONTEXT, srcsize);
+        void* src_devptr = wp_alloc_device(WP_CURRENT_CONTEXT, srcsize);
         check_cuda(cudaMemcpyAsync(src_devptr, src, srcsize, cudaMemcpyHostToDevice, get_current_stream()));
 
         wp_launch_device(WP_CURRENT_CONTEXT, memtile_kernel, n, (dst, src_devptr, srcsize, n));
 
-        free_device(WP_CURRENT_CONTEXT, src_devptr);
+        wp_free_device(WP_CURRENT_CONTEXT, src_devptr);
 
     }
 }
@@ -1202,7 +1202,7 @@ static __global__ void array_copy_fabric_indexed_to_fabric_indexed_kernel(wp::in
 }
 
 
-WP_API bool array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size)
+WP_API bool wp_array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size)
 {
     if (!src || !dst)
         return false;
@@ -1594,7 +1594,7 @@ static __global__ void array_fill_fabric_indexed_kernel(wp::indexedfabricarray_t
 }
 
 
-WP_API void array_fill_device(void* context, void* arr_ptr, int arr_type, const void* value_ptr, int value_size)
+WP_API void wp_array_fill_device(void* context, void* arr_ptr, int arr_type, const void* value_ptr, int value_size)
 {
     if (!arr_ptr || !value_ptr)
         return;
@@ -1650,7 +1650,7 @@ WP_API void array_fill_device(void* context, void* arr_ptr, int arr_type, const 
 
     // copy value to device memory
     // TODO: use a persistent stream-local staging buffer to avoid allocs?
-    void* value_devptr = alloc_device(WP_CURRENT_CONTEXT, value_size);
+    void* value_devptr = wp_alloc_device(WP_CURRENT_CONTEXT, value_size);
     check_cuda(cudaMemcpyAsync(value_devptr, value_ptr, value_size, cudaMemcpyHostToDevice, get_current_stream()));
 
     // handle fabric arrays
@@ -1708,20 +1708,20 @@ WP_API void array_fill_device(void* context, void* arr_ptr, int arr_type, const 
         return;
     }
 
-    free_device(WP_CURRENT_CONTEXT, value_devptr);
+    wp_free_device(WP_CURRENT_CONTEXT, value_devptr);
 }
 
-void array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive)
+void wp_array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive)
 {
     scan_device((const int*)in, (int*)out, len, inclusive);
 }
 
-void array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive)
+void wp_array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive)
 {
     scan_device((const float*)in, (float*)out, len, inclusive);
 }
 
-int cuda_driver_version()
+int wp_cuda_driver_version()
 {
     int version;
     if (check_cu(cuDriverGetVersion_f(&version)))
@@ -1730,17 +1730,17 @@ int cuda_driver_version()
         return 0;
 }
 
-int cuda_toolkit_version()
+int wp_cuda_toolkit_version()
 {
     return CUDA_VERSION;
 }
 
-bool cuda_driver_is_initialized()
+bool wp_cuda_driver_is_initialized()
 {
     return is_cuda_driver_initialized();
 }
 
-int nvrtc_supported_arch_count()
+int wp_nvrtc_supported_arch_count()
 {
     int count;
     if (check_nvrtc(nvrtcGetNumSupportedArchs(&count)))
@@ -1749,7 +1749,7 @@ int nvrtc_supported_arch_count()
         return 0;
 }
 
-void nvrtc_supported_archs(int* archs)
+void wp_nvrtc_supported_archs(int* archs)
 {
     if (archs)
     {
@@ -1757,14 +1757,14 @@ void nvrtc_supported_archs(int* archs)
     }
 }
 
-int cuda_device_get_count()
+int wp_cuda_device_get_count()
 {
     int count = 0;
     check_cu(cuDeviceGetCount_f(&count));
     return count;
 }
 
-void* cuda_device_get_primary_context(int ordinal)
+void* wp_cuda_device_get_primary_context(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
     {
@@ -1780,75 +1780,75 @@ void* cuda_device_get_primary_context(int ordinal)
     return NULL;
 }
 
-const char* cuda_device_get_name(int ordinal)
+const char* wp_cuda_device_get_name(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
         return g_devices[ordinal].name;
     return NULL;
 }
 
-int cuda_device_get_arch(int ordinal)
+int wp_cuda_device_get_arch(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
         return g_devices[ordinal].arch;
     return 0;
 }
 
-int cuda_device_get_sm_count(int ordinal)
+int wp_cuda_device_get_sm_count(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
         return g_devices[ordinal].sm_count;
     return 0;
 }
 
-void cuda_device_get_uuid(int ordinal, char uuid[16])
+void wp_cuda_device_get_uuid(int ordinal, char uuid[16])
 {
     memcpy(uuid, g_devices[ordinal].uuid.bytes, sizeof(char)*16);
 }
 
-int cuda_device_get_pci_domain_id(int ordinal)
+int wp_cuda_device_get_pci_domain_id(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
         return g_devices[ordinal].pci_domain_id;
     return -1;
 }
 
-int cuda_device_get_pci_bus_id(int ordinal)
+int wp_cuda_device_get_pci_bus_id(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
         return g_devices[ordinal].pci_bus_id;
     return -1;
 }
 
-int cuda_device_get_pci_device_id(int ordinal)
+int wp_cuda_device_get_pci_device_id(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
         return g_devices[ordinal].pci_device_id;
     return -1;
 }
 
-int cuda_device_is_uva(int ordinal)
+int wp_cuda_device_is_uva(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
         return g_devices[ordinal].is_uva;
     return 0;
 }
 
-int cuda_device_is_mempool_supported(int ordinal)
+int wp_cuda_device_is_mempool_supported(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
         return g_devices[ordinal].is_mempool_supported;
     return 0;
 }
 
-int cuda_device_is_ipc_supported(int ordinal)
+int wp_cuda_device_is_ipc_supported(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
         return g_devices[ordinal].is_ipc_supported;
     return 0;
 }
 
-int cuda_device_set_mempool_release_threshold(int ordinal, uint64_t threshold)
+int wp_cuda_device_set_mempool_release_threshold(int ordinal, uint64_t threshold)
 {
     if (ordinal < 0 || ordinal > int(g_devices.size()))
     {
@@ -1875,7 +1875,7 @@ int cuda_device_set_mempool_release_threshold(int ordinal, uint64_t threshold)
     return 1;  // success
 }
 
-uint64_t cuda_device_get_mempool_release_threshold(int ordinal)
+uint64_t wp_cuda_device_get_mempool_release_threshold(int ordinal)
 {
     if (ordinal < 0 || ordinal > int(g_devices.size()))
     {
@@ -1903,7 +1903,7 @@ uint64_t cuda_device_get_mempool_release_threshold(int ordinal)
     return threshold;
 }
 
-uint64_t cuda_device_get_mempool_used_mem_current(int ordinal)
+uint64_t wp_cuda_device_get_mempool_used_mem_current(int ordinal)
 {
     if (ordinal < 0 || ordinal > int(g_devices.size()))
     {
@@ -1931,7 +1931,7 @@ uint64_t cuda_device_get_mempool_used_mem_current(int ordinal)
     return mem_used;
 }
 
-uint64_t cuda_device_get_mempool_used_mem_high(int ordinal)
+uint64_t wp_cuda_device_get_mempool_used_mem_high(int ordinal)
 {
     if (ordinal < 0 || ordinal > int(g_devices.size()))
     {
@@ -1959,7 +1959,7 @@ uint64_t cuda_device_get_mempool_used_mem_high(int ordinal)
     return mem_high_water_mark;
 }
 
-void cuda_device_get_memory_info(int ordinal, size_t* free_mem, size_t* total_mem)
+void wp_cuda_device_get_memory_info(int ordinal, size_t* free_mem, size_t* total_mem)
 {
     // use temporary storage if user didn't specify pointers
     size_t tmp_free_mem, tmp_total_mem;
@@ -1996,12 +1996,12 @@ void cuda_device_get_memory_info(int ordinal, size_t* free_mem, size_t* total_me
 }
 
 
-void* cuda_context_get_current()
+void* wp_cuda_context_get_current()
 {
     return get_current_context();
 }
 
-void cuda_context_set_current(void* context)
+void wp_cuda_context_set_current(void* context)
 {
     CUcontext ctx = static_cast<CUcontext>(context);
     CUcontext prev_ctx = NULL;
@@ -2012,18 +2012,18 @@ void cuda_context_set_current(void* context)
     }
 }
 
-void cuda_context_push_current(void* context)
+void wp_cuda_context_push_current(void* context)
 {
     check_cu(cuCtxPushCurrent_f(static_cast<CUcontext>(context)));
 }
 
-void cuda_context_pop_current()
+void wp_cuda_context_pop_current()
 {
     CUcontext context;
     check_cu(cuCtxPopCurrent_f(&context));
 }
 
-void* cuda_context_create(int device_ordinal)
+void* wp_cuda_context_create(int device_ordinal)
 {
     CUcontext ctx = NULL;
     CUdevice device;
@@ -2032,15 +2032,15 @@ void* cuda_context_create(int device_ordinal)
     return ctx;
 }
 
-void cuda_context_destroy(void* context)
+void wp_cuda_context_destroy(void* context)
 {
     if (context)
     {
         CUcontext ctx = static_cast<CUcontext>(context);
 
         // ensure this is not the current context
-        if (ctx == cuda_context_get_current())
-            cuda_context_set_current(NULL);
+        if (ctx == wp_cuda_context_get_current())
+            wp_cuda_context_set_current(NULL);
 
         // release the cached info about this context
         ContextInfo* info = get_context_info(ctx);
@@ -2059,7 +2059,7 @@ void cuda_context_destroy(void* context)
     }
 }
 
-void cuda_context_synchronize(void* context)
+void wp_cuda_context_synchronize(void* context)
 {
     ContextGuard guard(context);
 
@@ -2073,10 +2073,10 @@ void cuda_context_synchronize(void* context)
 
     unload_deferred_modules(context);
 
-    // check_cuda(cudaDeviceGraphMemTrim(cuda_context_get_device_ordinal(context)));
+    // check_cuda(cudaDeviceGraphMemTrim(wp_cuda_context_get_device_ordinal(context)));
 }
 
-uint64_t cuda_context_check(void* context)
+uint64_t wp_cuda_context_check(void* context)
 {
     ContextGuard guard(context);
 
@@ -2098,13 +2098,13 @@ uint64_t cuda_context_check(void* context)
 }
 
 
-int cuda_context_get_device_ordinal(void* context)
+int wp_cuda_context_get_device_ordinal(void* context)
 {
     ContextInfo* info = get_context_info(static_cast<CUcontext>(context));
     return info && info->device_info ? info->device_info->ordinal : -1;
 }
 
-int cuda_context_is_primary(void* context)
+int wp_cuda_context_is_primary(void* context)
 {
     CUcontext ctx = static_cast<CUcontext>(context);
     ContextInfo* context_info = get_context_info(ctx);
@@ -2131,7 +2131,7 @@ int cuda_context_is_primary(void* context)
     return 0;
 }
 
-void* cuda_context_get_stream(void* context)
+void* wp_cuda_context_get_stream(void* context)
 {
     ContextInfo* info = get_context_info(static_cast<CUcontext>(context));
     if (info)
@@ -2141,7 +2141,7 @@ void* cuda_context_get_stream(void* context)
     return NULL;
 }
 
-void cuda_context_set_stream(void* context, void* stream, int sync)
+void wp_cuda_context_set_stream(void* context, void* stream, int sync)
 {
     ContextInfo* context_info = get_context_info(static_cast<CUcontext>(context));
     if (context_info)
@@ -2165,7 +2165,7 @@ void cuda_context_set_stream(void* context, void* stream, int sync)
     }
 }
 
-int cuda_is_peer_access_supported(int target_ordinal, int peer_ordinal)
+int wp_cuda_is_peer_access_supported(int target_ordinal, int peer_ordinal)
 {
     int num_devices = int(g_devices.size());
 
@@ -2190,7 +2190,7 @@ int cuda_is_peer_access_supported(int target_ordinal, int peer_ordinal)
     return can_access;
 }
 
-int cuda_is_peer_access_enabled(void* target_context, void* peer_context)
+int wp_cuda_is_peer_access_enabled(void* target_context, void* peer_context)
 {
     if (!target_context || !peer_context)
     {
@@ -2201,8 +2201,8 @@ int cuda_is_peer_access_enabled(void* target_context, void* peer_context)
     if (target_context == peer_context)
         return 1;
 
-    int target_ordinal = cuda_context_get_device_ordinal(target_context);
-    int peer_ordinal = cuda_context_get_device_ordinal(peer_context);
+    int target_ordinal = wp_cuda_context_get_device_ordinal(target_context);
+    int peer_ordinal = wp_cuda_context_get_device_ordinal(peer_context);
 
     // check if peer access is supported
     int can_access = 0;
@@ -2235,7 +2235,7 @@ int cuda_is_peer_access_enabled(void* target_context, void* peer_context)
     }
 }
 
-int cuda_set_peer_access_enabled(void* target_context, void* peer_context, int enable)
+int wp_cuda_set_peer_access_enabled(void* target_context, void* peer_context, int enable)
 {
     if (!target_context || !peer_context)
     {
@@ -2246,8 +2246,8 @@ int cuda_set_peer_access_enabled(void* target_context, void* peer_context, int e
     if (target_context == peer_context)
         return 1;  // no-op
         
-    int target_ordinal = cuda_context_get_device_ordinal(target_context);
-    int peer_ordinal = cuda_context_get_device_ordinal(peer_context);
+    int target_ordinal = wp_cuda_context_get_device_ordinal(target_context);
+    int peer_ordinal = wp_cuda_context_get_device_ordinal(peer_context);
 
     // check if peer access is supported
     int can_access = 0;
@@ -2292,7 +2292,7 @@ int cuda_set_peer_access_enabled(void* target_context, void* peer_context, int e
     return 1;  // success
 }
 
-int cuda_is_mempool_access_enabled(int target_ordinal, int peer_ordinal)
+int wp_cuda_is_mempool_access_enabled(int target_ordinal, int peer_ordinal)
 {
     int num_devices = int(g_devices.size());
 
@@ -2328,7 +2328,7 @@ int cuda_is_mempool_access_enabled(int target_ordinal, int peer_ordinal)
     return 0;
 }
 
-int cuda_set_mempool_access_enabled(int target_ordinal, int peer_ordinal, int enable)
+int wp_cuda_set_mempool_access_enabled(int target_ordinal, int peer_ordinal, int enable)
 {
     int num_devices = int(g_devices.size());
 
@@ -2374,13 +2374,13 @@ int cuda_set_mempool_access_enabled(int target_ordinal, int peer_ordinal, int en
     return 1;  // success
 }
 
-void cuda_ipc_get_mem_handle(void* ptr, char* out_buffer) {
+void wp_cuda_ipc_get_mem_handle(void* ptr, char* out_buffer) {
     CUipcMemHandle memHandle;
     check_cu(cuIpcGetMemHandle_f(&memHandle, (CUdeviceptr)ptr));
     memcpy(out_buffer, memHandle.reserved, CU_IPC_HANDLE_SIZE);
 }
 
-void* cuda_ipc_open_mem_handle(void* context, char* handle) {
+void* wp_cuda_ipc_open_mem_handle(void* context, char* handle) {
     ContextGuard guard(context);
 
     CUipcMemHandle memHandle;
@@ -2395,11 +2395,11 @@ void* cuda_ipc_open_mem_handle(void* context, char* handle) {
         return NULL;
 }
 
-void cuda_ipc_close_mem_handle(void* ptr) {
+void wp_cuda_ipc_close_mem_handle(void* ptr) {
     check_cu(cuIpcCloseMemHandle_f((CUdeviceptr) ptr));
 }
 
-void cuda_ipc_get_event_handle(void* context, void* event, char* out_buffer) {
+void wp_cuda_ipc_get_event_handle(void* context, void* event, char* out_buffer) {
     ContextGuard guard(context);
 
     CUipcEventHandle eventHandle;
@@ -2407,7 +2407,7 @@ void cuda_ipc_get_event_handle(void* context, void* event, char* out_buffer) {
     memcpy(out_buffer, eventHandle.reserved, CU_IPC_HANDLE_SIZE);
 }
 
-void* cuda_ipc_open_event_handle(void* context, char* handle) {
+void* wp_cuda_ipc_open_event_handle(void* context, char* handle) {
     ContextGuard guard(context);
 
     CUipcEventHandle eventHandle;
@@ -2421,31 +2421,31 @@ void* cuda_ipc_open_event_handle(void* context, char* handle) {
         return NULL;
 }
 
-void* cuda_stream_create(void* context, int priority)
+void* wp_cuda_stream_create(void* context, int priority)
 {
     ContextGuard guard(context, true);
 
     CUstream stream;
     if (check_cu(cuStreamCreateWithPriority_f(&stream, CU_STREAM_DEFAULT, priority)))
     {
-        cuda_stream_register(WP_CURRENT_CONTEXT, stream);
+        wp_cuda_stream_register(WP_CURRENT_CONTEXT, stream);
         return stream;
     }
     else
         return NULL;
 }
 
-void cuda_stream_destroy(void* context, void* stream)
+void wp_cuda_stream_destroy(void* context, void* stream)
 {
     if (!stream)
         return;
 
-    cuda_stream_unregister(context, stream);
+    wp_cuda_stream_unregister(context, stream);
 
     check_cu(cuStreamDestroy_f(static_cast<CUstream>(stream)));
 }
 
-int cuda_stream_query(void* stream)
+int wp_cuda_stream_query(void* stream)
 {
     CUresult res =  cuStreamQuery_f(static_cast<CUstream>(stream));
 
@@ -2458,7 +2458,7 @@ int cuda_stream_query(void* stream)
     return res;
 }
 
-void cuda_stream_register(void* context, void* stream)
+void wp_cuda_stream_register(void* context, void* stream)
 {
     if (!stream)
         return;
@@ -2470,7 +2470,7 @@ void cuda_stream_register(void* context, void* stream)
     check_cu(cuEventCreate_f(&stream_info.cached_event, CU_EVENT_DISABLE_TIMING));
 }
 
-void cuda_stream_unregister(void* context, void* stream)
+void wp_cuda_stream_unregister(void* context, void* stream)
 {
     if (!stream)
         return;
@@ -2494,28 +2494,28 @@ void cuda_stream_unregister(void* context, void* stream)
     }
 }
 
-void* cuda_stream_get_current()
+void* wp_cuda_stream_get_current()
 {
     return get_current_stream();
 }
 
-void cuda_stream_synchronize(void* stream)
+void wp_cuda_stream_synchronize(void* stream)
 {
     check_cu(cuStreamSynchronize_f(static_cast<CUstream>(stream)));
 }
 
-void cuda_stream_wait_event(void* stream, void* event)
+void wp_cuda_stream_wait_event(void* stream, void* event)
 {
     check_cu(cuStreamWaitEvent_f(static_cast<CUstream>(stream), static_cast<CUevent>(event), 0));
 }
 
-void cuda_stream_wait_stream(void* stream, void* other_stream, void* event)
+void wp_cuda_stream_wait_stream(void* stream, void* other_stream, void* event)
 {
     check_cu(cuEventRecord_f(static_cast<CUevent>(event), static_cast<CUstream>(other_stream)));
     check_cu(cuStreamWaitEvent_f(static_cast<CUstream>(stream), static_cast<CUevent>(event), 0));
 }
 
-int cuda_stream_is_capturing(void* stream)
+int wp_cuda_stream_is_capturing(void* stream)
 {
     cudaStreamCaptureStatus status = cudaStreamCaptureStatusNone;
     check_cuda(cudaStreamIsCapturing(static_cast<cudaStream_t>(stream), &status));
@@ -2523,12 +2523,12 @@ int cuda_stream_is_capturing(void* stream)
     return int(status != cudaStreamCaptureStatusNone);
 }
 
-uint64_t cuda_stream_get_capture_id(void* stream)
+uint64_t wp_cuda_stream_get_capture_id(void* stream)
 {
     return get_capture_id(static_cast<CUstream>(stream));
 }
 
-int cuda_stream_get_priority(void* stream)
+int wp_cuda_stream_get_priority(void* stream)
 {
     int priority = 0;
     check_cuda(cuStreamGetPriority_f(static_cast<CUstream>(stream), &priority));
@@ -2536,7 +2536,7 @@ int cuda_stream_get_priority(void* stream)
     return priority;
 }
 
-void* cuda_event_create(void* context, unsigned flags)
+void* wp_cuda_event_create(void* context, unsigned flags)
 {
     ContextGuard guard(context, true);
 
@@ -2547,12 +2547,12 @@ void* cuda_event_create(void* context, unsigned flags)
         return NULL;
 }
 
-void cuda_event_destroy(void* event)
+void wp_cuda_event_destroy(void* event)
 {
     check_cu(cuEventDestroy_f(static_cast<CUevent>(event)));
 }
 
-int cuda_event_query(void* event)
+int wp_cuda_event_query(void* event)
 {
     CUresult res = cuEventQuery_f(static_cast<CUevent>(event));
 
@@ -2565,9 +2565,9 @@ int cuda_event_query(void* event)
     return res;
 }
 
-void cuda_event_record(void* event, void* stream, bool timing)
+void wp_cuda_event_record(void* event, void* stream, bool timing)
 {
-    if (timing && !g_captures.empty() && cuda_stream_is_capturing(stream))
+    if (timing && !g_captures.empty() && wp_cuda_stream_is_capturing(stream))
     {
         // record timing event during graph capture
         check_cu(cuEventRecordWithFlags_f(static_cast<CUevent>(event), static_cast<CUstream>(stream), CU_EVENT_RECORD_EXTERNAL));
@@ -2578,12 +2578,12 @@ void cuda_event_record(void* event, void* stream, bool timing)
     }
 }
 
-void cuda_event_synchronize(void* event)
+void wp_cuda_event_synchronize(void* event)
 {
     check_cu(cuEventSynchronize_f(static_cast<CUevent>(event)));
 }
 
-float cuda_event_elapsed_time(void* start_event, void* end_event)
+float wp_cuda_event_elapsed_time(void* start_event, void* end_event)
 {
     float elapsed = 0.0f;
     cudaEvent_t start = static_cast<cudaEvent_t>(start_event);
@@ -2592,7 +2592,7 @@ float cuda_event_elapsed_time(void* start_event, void* end_event)
     return elapsed;
 }
 
-bool cuda_graph_begin_capture(void* context, void* stream, int external)
+bool wp_cuda_graph_begin_capture(void* context, void* stream, int external)
 {
     ContextGuard guard(context);
 
@@ -2639,7 +2639,7 @@ bool cuda_graph_begin_capture(void* context, void* stream, int external)
     return true;
 }
 
-bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
+bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
 {
     ContextGuard guard(context);
 
@@ -2774,14 +2774,14 @@ bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
     return true;
 }
 
-bool capture_debug_dot_print(void* graph, const char *path, uint32_t flags)
+bool wp_capture_debug_dot_print(void* graph, const char *path, uint32_t flags)
 {
     if (!check_cuda(cudaGraphDebugDotPrint((cudaGraph_t)graph, path, flags)))
         return false;
     return true;
 }
 
-bool cuda_graph_create_exec(void* context, void* graph, void** graph_exec_ret)
+bool wp_cuda_graph_create_exec(void* context, void* graph, void** graph_exec_ret)
 {
     ContextGuard guard(context);
 
@@ -2927,7 +2927,7 @@ static CUfunction get_conditional_kernel(void* context, const char* name)
     return kernel;
 }
 
-bool cuda_graph_pause_capture(void* context, void* stream, void** graph_ret)
+bool wp_cuda_graph_pause_capture(void* context, void* stream, void** graph_ret)
 {
     ContextGuard guard(context);
 
@@ -2937,7 +2937,7 @@ bool cuda_graph_pause_capture(void* context, void* stream, void** graph_ret)
     return true;
 }
 
-bool cuda_graph_resume_capture(void* context, void* stream, void* graph)
+bool wp_cuda_graph_resume_capture(void* context, void* stream, void* graph)
 {
     ContextGuard guard(context);
 
@@ -2963,7 +2963,7 @@ bool cuda_graph_resume_capture(void* context, void* stream, void* graph)
 // https://developer.nvidia.com/blog/dynamic-control-flow-in-cuda-graphs-with-conditional-nodes/
 // condition is a gpu pointer
 // if_graph_ret and else_graph_ret should be NULL if not needed
-bool cuda_graph_insert_if_else(void* context, void* stream, int* condition, void** if_graph_ret, void** else_graph_ret)
+bool wp_cuda_graph_insert_if_else(void* context, void* stream, int* condition, void** if_graph_ret, void** else_graph_ret)
 {
     bool has_if = if_graph_ret != NULL;
     bool has_else = else_graph_ret != NULL;
@@ -2992,7 +2992,7 @@ bool cuda_graph_insert_if_else(void* context, void* stream, int* condition, void
         return false;
     }
 
-    //int driver_version = cuda_driver_version();
+    //int driver_version = wp_cuda_driver_version();
 
     // IF-ELSE nodes are only supported with CUDA 12.8+
     // Somehow child graphs produce wrong results when an else branch is used
@@ -3102,7 +3102,7 @@ bool cuda_graph_insert_if_else(void* context, void* stream, int* condition, void
     return true;
 }
 
-bool cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph)
+bool wp_cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph)
 {
     ContextGuard guard(context);
 
@@ -3116,7 +3116,7 @@ bool cuda_graph_insert_child_graph(void* context, void* stream, void* child_grap
     if (!check_cuda(cudaStreamGetCaptureInfo(cuda_stream, &capture_status, nullptr, (cudaGraph_t*)&cuda_graph, &capture_deps, &dep_count)))
         return false;
 
-    if (!cuda_graph_pause_capture(context, cuda_stream, &cuda_graph))
+    if (!wp_cuda_graph_pause_capture(context, cuda_stream, &cuda_graph))
         return false;
 
     cudaGraphNode_t body_node;
@@ -3126,7 +3126,7 @@ bool cuda_graph_insert_child_graph(void* context, void* stream, void* child_grap
                                                 static_cast<cudaGraph_t>(child_graph))))
         return false;
 
-    if (!cuda_graph_resume_capture(context, cuda_stream, cuda_graph))
+    if (!wp_cuda_graph_resume_capture(context, cuda_stream, cuda_graph))
         return false;
 
     if (!check_cuda(cudaStreamUpdateCaptureDependencies(cuda_stream, &body_node, 1, cudaStreamSetCaptureDependencies)))
@@ -3135,7 +3135,7 @@ bool cuda_graph_insert_child_graph(void* context, void* stream, void* child_grap
     return true;
 }
 
-bool cuda_graph_insert_while(void* context, void* stream, int* condition, void** body_graph_ret, uint64_t* handle_ret)
+bool wp_cuda_graph_insert_while(void* context, void* stream, int* condition, void** body_graph_ret, uint64_t* handle_ret)
 {
     // if there's no body, it's a no-op
     if (!body_graph_ret)
@@ -3200,7 +3200,7 @@ bool cuda_graph_insert_while(void* context, void* stream, int* condition, void**
     return true;
 }
 
-bool cuda_graph_set_condition(void* context, void* stream, int* condition, uint64_t handle)
+bool wp_cuda_graph_set_condition(void* context, void* stream, int* condition, uint64_t handle)
 {
     ContextGuard guard(context);
 
@@ -3227,37 +3227,37 @@ bool cuda_graph_set_condition(void* context, void* stream, int* condition, uint6
 #else
 // stubs for conditional graph node API if CUDA toolkit is too old.
 
-bool cuda_graph_pause_capture(void* context, void* stream, void** graph_ret)
+bool wp_cuda_graph_pause_capture(void* context, void* stream, void** graph_ret)
 {
     wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
     return false;
 }
 
-bool cuda_graph_resume_capture(void* context, void* stream, void* graph)
+bool wp_cuda_graph_resume_capture(void* context, void* stream, void* graph)
 {
     wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
     return false;
 }
 
-bool cuda_graph_insert_if_else(void* context, void* stream, int* condition, void** if_graph_ret, void** else_graph_ret)
+bool wp_cuda_graph_insert_if_else(void* context, void* stream, int* condition, void** if_graph_ret, void** else_graph_ret)
 {
     wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
     return false;
 }
 
-bool cuda_graph_insert_while(void* context, void* stream, int* condition, void** body_graph_ret, uint64_t* handle_ret)
+bool wp_cuda_graph_insert_while(void* context, void* stream, int* condition, void** body_graph_ret, uint64_t* handle_ret)
 {
     wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
     return false;
 }
 
-bool cuda_graph_set_condition(void* context, void* stream, int* condition, uint64_t handle)
+bool wp_cuda_graph_set_condition(void* context, void* stream, int* condition, uint64_t handle)
 {
     wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
     return false;
 }
 
-bool cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph)
+bool wp_cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph)
 {
     wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
     return false;
@@ -3266,7 +3266,7 @@ bool cuda_graph_insert_child_graph(void* context, void* stream, void* child_grap
 #endif // support for conditional graph nodes
 
 
-bool cuda_graph_launch(void* graph_exec, void* stream)
+bool wp_cuda_graph_launch(void* graph_exec, void* stream)
 {
     // TODO: allow naming graphs?
     begin_cuda_range(WP_TIMING_GRAPH, stream, get_stream_context(stream), "graph");
@@ -3278,14 +3278,14 @@ bool cuda_graph_launch(void* graph_exec, void* stream)
     return result;
 }
 
-bool cuda_graph_destroy(void* context, void* graph)
+bool wp_cuda_graph_destroy(void* context, void* graph)
 {
     ContextGuard guard(context);
 
     return check_cuda(cudaGraphDestroy((cudaGraph_t)graph));
 }
 
-bool cuda_graph_exec_destroy(void* context, void* graph_exec)
+bool wp_cuda_graph_exec_destroy(void* context, void* graph_exec)
 {
     ContextGuard guard(context);
 
@@ -3337,7 +3337,7 @@ bool write_file(const char* data, size_t size, std::string filename, const char*
     }
 #endif
 
-size_t cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, bool compile_time_trace, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types)
+size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, bool compile_time_trace, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types)
 {
     // use file extension to determine whether to output PTX or CUBIN
     const char* output_ext = strrchr(output_path, '.');
@@ -3665,7 +3665,7 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
         }
     }
 
-    bool cuda_compile_fft(const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int size, int elements_per_thread, int direction, int precision, int* shared_memory_size)
+    bool wp_cuda_compile_fft(const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int size, int elements_per_thread, int direction, int precision, int* shared_memory_size)
     {
 
         CHECK_ANY(ltoir_output_path != nullptr);
@@ -3711,7 +3711,7 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
         return res;
     }
 
-    bool cuda_compile_dot(const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int M, int N, int K, int precision_A, int precision_B, int precision_C, int type, int arrangement_A, int arrangement_B, int arrangement_C, int num_threads)
+    bool wp_cuda_compile_dot(const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int M, int N, int K, int precision_A, int precision_B, int precision_C, int type, int arrangement_A, int arrangement_B, int arrangement_C, int num_threads)
     {
 
         CHECK_ANY(ltoir_output_path != nullptr);
@@ -3756,7 +3756,7 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
         return res;
     }
 
-    bool cuda_compile_solver(const char* fatbin_output_path, const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int M, int N, int NRHS, int function, int side, int diag, int precision, int arrangement_A, int arrangement_B, int fill_mode, int num_threads)
+    bool wp_cuda_compile_solver(const char* fatbin_output_path, const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int M, int N, int NRHS, int function, int side, int diag, int precision, int arrangement_A, int arrangement_B, int fill_mode, int num_threads)
     {
 
         CHECK_ANY(ltoir_output_path != nullptr);
@@ -3819,7 +3819,7 @@ size_t cuda_compile_program(const char* cuda_src, const char* program_name, int 
 
 #endif
 
-void* cuda_load_module(void* context, const char* path)
+void* wp_cuda_load_module(void* context, const char* path)
 {
     ContextGuard guard(context);
 
@@ -3938,7 +3938,7 @@ void* cuda_load_module(void* context, const char* path)
     return module;
 }
 
-void cuda_unload_module(void* context, void* module)
+void wp_cuda_unload_module(void* context, void* module)
 {
     // ensure there are no graph captures in progress
     if (g_captures.empty())
@@ -3957,7 +3957,7 @@ void cuda_unload_module(void* context, void* module)
 }
 
 
-int cuda_get_max_shared_memory(void* context)
+int wp_cuda_get_max_shared_memory(void* context)
 {
     ContextInfo* info = get_context_info(context);
     if (!info)
@@ -3967,7 +3967,7 @@ int cuda_get_max_shared_memory(void* context)
     return max_smem_bytes;
 }
 
-bool cuda_configure_kernel_shared_memory(void* kernel, int size)
+bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size)
 {
     int requested_smem_bytes = size;
 
@@ -3979,7 +3979,7 @@ bool cuda_configure_kernel_shared_memory(void* kernel, int size)
     return true;
 }
 
-void* cuda_get_kernel(void* context, void* module, const char* name)
+void* wp_cuda_get_kernel(void* context, void* module, const char* name)
 {
     ContextGuard guard(context);
 
@@ -3994,7 +3994,7 @@ void* cuda_get_kernel(void* context, void* module, const char* name)
     return kernel;
 }
 
-size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_blocks, int block_dim, int shared_memory_bytes, void** args, void* stream)
+size_t wp_cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_blocks, int block_dim, int shared_memory_bytes, void** args, void* stream)
 {
     ContextGuard guard(context);
 
@@ -4048,21 +4048,21 @@ size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_block
     return res;
 }
 
-void cuda_graphics_map(void* context, void* resource)
+void wp_cuda_graphics_map(void* context, void* resource)
 {
     ContextGuard guard(context);
 
     check_cu(cuGraphicsMapResources_f(1, (CUgraphicsResource*)resource, get_current_stream()));
 }
 
-void cuda_graphics_unmap(void* context, void* resource)
+void wp_cuda_graphics_unmap(void* context, void* resource)
 {
     ContextGuard guard(context);
 
     check_cu(cuGraphicsUnmapResources_f(1, (CUgraphicsResource*)resource, get_current_stream()));
 }
 
-void cuda_graphics_device_ptr_and_size(void* context, void* resource, uint64_t* ptr, size_t* size)
+void wp_cuda_graphics_device_ptr_and_size(void* context, void* resource, uint64_t* ptr, size_t* size)
 {
     ContextGuard guard(context);
 
@@ -4074,7 +4074,7 @@ void cuda_graphics_device_ptr_and_size(void* context, void* resource, uint64_t* 
     *size = bytes;
 }
 
-void* cuda_graphics_register_gl_buffer(void* context, uint32_t gl_buffer, unsigned int flags)
+void* wp_cuda_graphics_register_gl_buffer(void* context, uint32_t gl_buffer, unsigned int flags)
 {
     ContextGuard guard(context);
 
@@ -4089,7 +4089,7 @@ void* cuda_graphics_register_gl_buffer(void* context, uint32_t gl_buffer, unsign
     return resource;
 }
 
-void cuda_graphics_unregister_resource(void* context, void* resource)
+void wp_cuda_graphics_unregister_resource(void* context, void* resource)
 {
     ContextGuard guard(context);
 
@@ -4098,25 +4098,25 @@ void cuda_graphics_unregister_resource(void* context, void* resource)
     delete res;
 }
 
-void cuda_timing_begin(int flags)
+void wp_cuda_timing_begin(int flags)
 {
     g_cuda_timing_state = new CudaTimingState(flags, g_cuda_timing_state);
 }
 
-int cuda_timing_get_result_count()
+int wp_cuda_timing_get_result_count()
 {
     if (g_cuda_timing_state)
         return int(g_cuda_timing_state->ranges.size());
     return 0;
 }
 
-void cuda_timing_end(timing_result_t* results, int size)
+void wp_cuda_timing_end(timing_result_t* results, int size)
 {
     if (!g_cuda_timing_state)
         return;
 
     // number of results to write to the user buffer
-    int count = std::min(cuda_timing_get_result_count(), size);
+    int count = std::min(wp_cuda_timing_get_result_count(), size);
 
     // compute timings and write results
     for (int i = 0; i < count; i++)

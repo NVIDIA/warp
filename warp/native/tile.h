@@ -2678,9 +2678,11 @@ TileL& tile_cholesky(Fwd fun_forward, TileA& A, TileL& L)
     WP_TILE_SYNC();
 
     // TODO: for batched Cholesky, check all batches
+#if defined(_DEBUG)    
     if (WP_TILE_THREAD_IDX == 0 && info[0] != 0) {
         printf("Non-zero status in Cholesky factorization, got %d\n", info[0]);
     }
+#endif
 
     // Zero-out the upper triangular part of L
 

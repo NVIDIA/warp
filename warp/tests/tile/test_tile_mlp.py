@@ -43,7 +43,7 @@ def create_array(rng, dim_in, dim_hid, dtype=float):
 def test_multi_layer_nn(test, device):
     import torch as tc
 
-    if device.is_cuda and not wp.context.runtime.core.is_mathdx_enabled():
+    if device.is_cuda and not wp.context.runtime.core.wp_is_mathdx_enabled():
         test.skipTest("Skipping test on CUDA device without MathDx (tolerance)")
 
     NUM_FREQ = wp.constant(8)

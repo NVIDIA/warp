@@ -119,14 +119,14 @@ template <typename T> void array_sum_device(const T *ptr_a, T *ptr_out, int coun
     assert((byte_stride % sizeof(T)) == 0);
     const int stride = byte_stride / sizeof(T);
 
-    ContextGuard guard(cuda_context_get_current());
-    cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
+    ContextGuard guard(wp_cuda_context_get_current());
+    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
 
     cub_strided_iterator<const T> ptr_strided{ptr_a, stride};
 
     size_t buff_size = 0;
     check_cuda(cub::DeviceReduce::Sum(nullptr, buff_size, ptr_strided, ptr_out, count, stream));
-    void* temp_buffer = alloc_device(WP_CURRENT_CONTEXT, buff_size);
+    void* temp_buffer = wp_alloc_device(WP_CURRENT_CONTEXT, buff_size);
 
     for (int k = 0; k < type_length; ++k)
     {
@@ -134,7 +134,7 @@ template <typename T> void array_sum_device(const T *ptr_a, T *ptr_out, int coun
         check_cuda(cub::DeviceReduce::Sum(temp_buffer, buff_size, ptr_strided, ptr_out + k, count, stream));
     }
 
-    free_device(WP_CURRENT_CONTEXT, temp_buffer);
+    wp_free_device(WP_CURRENT_CONTEXT, temp_buffer);
 }
 
 template <typename T>
@@ -280,18 +280,18 @@ void array_inner_device(const ElemT *ptr_a, const ElemT *ptr_b, ScalarT *ptr_out
     const int stride_a = byte_stride_a / sizeof(ElemT);
     const int stride_b = byte_stride_b / sizeof(ElemT);
 
-    ContextGuard guard(cuda_context_get_current());
-    cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
+    ContextGuard guard(wp_cuda_context_get_current());
+    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
 
     cub_inner_product_iterator<ElemT, ScalarT> inner_iterator{ptr_a, ptr_b, stride_a, stride_b, type_length};
 
     size_t buff_size = 0;
     check_cuda(cub::DeviceReduce::Sum(nullptr, buff_size, inner_iterator, ptr_out, count, stream));
-    void* temp_buffer = alloc_device(WP_CURRENT_CONTEXT, buff_size);
+    void* temp_buffer = wp_alloc_device(WP_CURRENT_CONTEXT, buff_size);
 
     check_cuda(cub::DeviceReduce::Sum(temp_buffer, buff_size, inner_iterator, ptr_out, count, stream));
 
-    free_device(WP_CURRENT_CONTEXT, temp_buffer);
+    wp_free_device(WP_CURRENT_CONTEXT, temp_buffer);
 }
 
 template <typename T>
@@ -327,10 +327,10 @@ void array_inner_device_dispatch(const T *ptr_a, const T *ptr_b, T *ptr_out, int
 
 } // anonymous namespace
 
-void array_inner_float_device(uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b,
+void wp_array_inner_float_device(uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b,
                               int type_len)
 {
-    void *context = cuda_context_get_current();
+    void *context = wp_cuda_context_get_current();
 
     const float *ptr_a = (const float *)(a);
     const float *ptr_b = (const float *)(b);
@@ -339,7 +339,7 @@ void array_inner_float_device(uint64_t a, uint64_t b, uint64_t out, int count, i
     array_inner_device_dispatch(ptr_a, ptr_b, ptr_out, count, byte_stride_a, byte_stride_b, type_len);
 }
 
-void array_inner_double_device(uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b,
+void wp_array_inner_double_device(uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b,
                                int type_len)
 {
     const double *ptr_a = (const double *)(a);
@@ -349,14 +349,14 @@ void array_inner_double_device(uint64_t a, uint64_t b, uint64_t out, int count, 
     array_inner_device_dispatch(ptr_a, ptr_b, ptr_out, count, byte_stride_a, byte_stride_b, type_len);
 }
 
-void array_sum_float_device(uint64_t a, uint64_t out, int count, int byte_stride, int type_length)
+void wp_array_sum_float_device(uint64_t a, uint64_t out, int count, int byte_stride, int type_length)
 {
     const float *ptr_a = (const float *)(a);
     float *ptr_out = (float *)(out);
     array_sum_device_dispatch(ptr_a, ptr_out, count, byte_stride, type_length);
 }
 
-void array_sum_double_device(uint64_t a, uint64_t out, int count, int byte_stride, int type_length)
+void wp_array_sum_double_device(uint64_t a, uint64_t out, int count, int byte_stride, int type_length)
 {
     const double *ptr_a = (const double *)(a);
     double *ptr_out = (double *)(out);

@@ -176,11 +176,11 @@ def constant(x):
 
 
 def float_to_half_bits(value):
-    return warp.context.runtime.core.float_to_half_bits(value)
+    return warp.context.runtime.core.wp_float_to_half_bits(value)
 
 
 def half_bits_to_float(value):
-    return warp.context.runtime.core.half_bits_to_float(value)
+    return warp.context.runtime.core.wp_half_bits_to_float(value)
 
 
 def safe_len(obj):
@@ -2483,7 +2483,7 @@ class array(Array[DType]):
 
                 # Performance note: avoid wrapping the external stream in a temporary Stream object
                 if stream != array_stream.cuda_stream:
-                    warp.context.runtime.core.cuda_stream_wait_stream(
+                    warp.context.runtime.core.wp_cuda_stream_wait_stream(
                         stream, array_stream.cuda_stream, array_stream.cached_event.cuda_event
                     )
             elif self.device.is_cpu:
@@ -2830,11 +2830,11 @@ class array(Array[DType]):
             carr_ptr = ctypes.pointer(carr)
 
             if self.device.is_cuda:
-                warp.context.runtime.core.array_fill_device(
+                warp.context.runtime.core.wp_array_fill_device(
                     self.device.context, carr_ptr, ARRAY_TYPE_REGULAR, cvalue_ptr, cvalue_size
                 )
             else:
-                warp.context.runtime.core.array_fill_host(carr_ptr, ARRAY_TYPE_REGULAR, cvalue_ptr, cvalue_size)
+                warp.context.runtime.core.wp_array_fill_host(carr_ptr, ARRAY_TYPE_REGULAR, cvalue_ptr, cvalue_size)
 
         self.mark_init()
 
@@ -3138,7 +3138,7 @@ class array(Array[DType]):
         # Allocate a buffer for the data (64-element char array)
         ipc_handle_buffer = (ctypes.c_char * 64)()
 
-        warp.context.runtime.core.cuda_ipc_get_mem_handle(self.ptr, ipc_handle_buffer)
+        warp.context.runtime.core.wp_cuda_ipc_get_mem_handle(self.ptr, ipc_handle_buffer)
 
         return ipc_handle_buffer.raw
 
@@ -3191,7 +3191,7 @@ def from_ptr(ptr, length, dtype=None, shape=None, device=None):
 
 
 def _close_cuda_ipc_handle(ptr, size):
-    warp.context.runtime.core.cuda_ipc_close_mem_handle(ptr)
+    warp.context.runtime.core.wp_cuda_ipc_close_mem_handle(ptr)
 
 
 def from_ipc_handle(
@@ -3230,7 +3230,7 @@ def from_ipc_handle(
     if device.is_ipc_supported is False:
         raise RuntimeError(f"IPC is not supported on device {device}.")
 
-    ptr = warp.context.runtime.core.cuda_ipc_open_mem_handle(device.context, handle)
+    ptr = warp.context.runtime.core.wp_cuda_ipc_open_mem_handle(device.context, handle)
 
     return array(ptr=ptr, dtype=dtype, shape=shape, strides=strides, device=device, deleter=_close_cuda_ipc_handle)
 
@@ -3315,11 +3315,11 @@ class noncontiguous_array_base(Array[T]):
         ctype_ptr = ctypes.pointer(ctype)
 
         if self.device.is_cuda:
-            warp.context.runtime.core.array_fill_device(
+            warp.context.runtime.core.wp_array_fill_device(
                 self.device.context, ctype_ptr, self.type_id, cvalue_ptr, cvalue_size
             )
         else:
-            warp.context.runtime.core.array_fill_host(ctype_ptr, self.type_id, cvalue_ptr, cvalue_size)
+            warp.context.runtime.core.wp_array_fill_host(ctype_ptr, self.type_id, cvalue_ptr, cvalue_size)
 
 
 # helper to check index array properties
@@ -3663,11 +3663,11 @@ class Bvh:
                 )
                 constructor = "sah"
 
-            self.id = self.runtime.core.bvh_create_host(
+            self.id = self.runtime.core.wp_bvh_create_host(
                 get_data(lowers), get_data(uppers), len(lowers), bvh_constructor_values[constructor]
             )
         else:
-            self.id = self.runtime.core.bvh_create_device(
+            self.id = self.runtime.core.wp_bvh_create_device(
                 self.device.context,
                 get_data(lowers),
                 get_data(uppers),
@@ -3680,11 +3680,11 @@ class Bvh:
             return
 
         if self.device.is_cpu:
-            self.runtime.core.bvh_destroy_host(self.id)
+            self.runtime.core.wp_bvh_destroy_host(self.id)
         else:
             # use CUDA context guard to avoid side effects during garbage collection
             with self.device.context_guard:
-                self.runtime.core.bvh_destroy_device(self.id)
+                self.runtime.core.wp_bvh_destroy_device(self.id)
 
     def refit(self):
         """Refit the BVH.
@@ -3693,9 +3693,9 @@ class Bvh:
         """
 
         if self.device.is_cpu:
-            self.runtime.core.bvh_refit_host(self.id)
+            self.runtime.core.wp_bvh_refit_host(self.id)
         else:
-            self.runtime.core.bvh_refit_device(self.id)
+            self.runtime.core.wp_bvh_refit_device(self.id)
             self.runtime.verify_cuda_device(self.device)
 
 
@@ -3777,7 +3777,7 @@ class Mesh:
                 )
                 bvh_constructor = "sah"
 
-            self.id = self.runtime.core.mesh_create_host(
+            self.id = self.runtime.core.wp_mesh_create_host(
                 points.__ctype__(),
                 velocities.__ctype__() if velocities else array().__ctype__(),
                 indices.__ctype__(),
@@ -3787,7 +3787,7 @@ class Mesh:
                 bvh_constructor_values[bvh_constructor],
             )
         else:
-            self.id = self.runtime.core.mesh_create_device(
+            self.id = self.runtime.core.wp_mesh_create_device(
                 self.device.context,
                 points.__ctype__(),
                 velocities.__ctype__() if velocities else array().__ctype__(),
@@ -3803,11 +3803,11 @@ class Mesh:
             return
 
         if self.device.is_cpu:
-            self.runtime.core.mesh_destroy_host(self.id)
+            self.runtime.core.wp_mesh_destroy_host(self.id)
         else:
             # use CUDA context guard to avoid side effects during garbage collection
             with self.device.context_guard:
-                self.runtime.core.mesh_destroy_device(self.id)
+                self.runtime.core.wp_mesh_destroy_device(self.id)
 
     def refit(self):
         """Refit the BVH to points.
@@ -3816,9 +3816,9 @@ class Mesh:
         """
 
         if self.device.is_cpu:
-            self.runtime.core.mesh_refit_host(self.id)
+            self.runtime.core.wp_mesh_refit_host(self.id)
         else:
-            self.runtime.core.mesh_refit_device(self.id)
+            self.runtime.core.wp_mesh_refit_device(self.id)
             self.runtime.verify_cuda_device(self.device)
 
     @property
@@ -3848,9 +3848,9 @@ class Mesh:
 
         self._points = points_new
         if self.device.is_cpu:
-            self.runtime.core.mesh_set_points_host(self.id, points_new.__ctype__())
+            self.runtime.core.wp_mesh_set_points_host(self.id, points_new.__ctype__())
         else:
-            self.runtime.core.mesh_set_points_device(self.id, points_new.__ctype__())
+            self.runtime.core.wp_mesh_set_points_device(self.id, points_new.__ctype__())
             self.runtime.verify_cuda_device(self.device)
 
     @property
@@ -3878,9 +3878,9 @@ class Mesh:
 
         self._velocities = velocities_new
         if self.device.is_cpu:
-            self.runtime.core.mesh_set_velocities_host(self.id, velocities_new.__ctype__())
+            self.runtime.core.wp_mesh_set_velocities_host(self.id, velocities_new.__ctype__())
         else:
-            self.runtime.core.mesh_set_velocities_device(self.id, velocities_new.__ctype__())
+            self.runtime.core.wp_mesh_set_velocities_device(self.id, velocities_new.__ctype__())
             self.runtime.verify_cuda_device(self.device)
 
 
@@ -3912,11 +3912,11 @@ class Volume:
 
         owner = False
         if self.device.is_cpu:
-            self.id = self.runtime.core.volume_create_host(
+            self.id = self.runtime.core.wp_volume_create_host(
                 ctypes.cast(data.ptr, ctypes.c_void_p), data.size, copy, owner
             )
         else:
-            self.id = self.runtime.core.volume_create_device(
+            self.id = self.runtime.core.wp_volume_create_device(
                 self.device.context, ctypes.cast(data.ptr, ctypes.c_void_p), data.size, copy, owner
             )
 
@@ -3928,18 +3928,18 @@ class Volume:
             return
 
         if self.device.is_cpu:
-            self.runtime.core.volume_destroy_host(self.id)
+            self.runtime.core.wp_volume_destroy_host(self.id)
         else:
             # use CUDA context guard to avoid side effects during garbage collection
             with self.device.context_guard:
-                self.runtime.core.volume_destroy_device(self.id)
+                self.runtime.core.wp_volume_destroy_device(self.id)
 
     def array(self) -> array:
         """Return the raw memory buffer of the :class:`Volume` as an array."""
 
         buf = ctypes.c_void_p(0)
         size = ctypes.c_uint64(0)
-        self.runtime.core.volume_get_buffer_info(self.id, ctypes.byref(buf), ctypes.byref(size))
+        self.runtime.core.wp_volume_get_buffer_info(self.id, ctypes.byref(buf), ctypes.byref(size))
         return array(ptr=buf.value, dtype=uint8, shape=size.value, device=self.device)
 
     def get_tile_count(self) -> int:
@@ -3949,7 +3949,9 @@ class Volume:
             ctypes.c_uint64(0),
             ctypes.c_uint32(0),
         )
-        self.runtime.core.volume_get_tile_and_voxel_count(self.id, ctypes.byref(tile_count), ctypes.byref(voxel_count))
+        self.runtime.core.wp_volume_get_tile_and_voxel_count(
+            self.id, ctypes.byref(tile_count), ctypes.byref(voxel_count)
+        )
         return tile_count.value
 
     def get_tiles(self, out: array | None = None) -> array:
@@ -3976,9 +3978,9 @@ class Volume:
             )
 
         if self.device.is_cpu:
-            self.runtime.core.volume_get_tiles_host(self.id, out.ptr)
+            self.runtime.core.wp_volume_get_tiles_host(self.id, out.ptr)
         else:
-            self.runtime.core.volume_get_tiles_device(self.id, out.ptr)
+            self.runtime.core.wp_volume_get_tiles_device(self.id, out.ptr)
 
         return out
 
@@ -3989,7 +3991,9 @@ class Volume:
             ctypes.c_uint64(0),
             ctypes.c_uint32(0),
         )
-        self.runtime.core.volume_get_tile_and_voxel_count(self.id, ctypes.byref(tile_count), ctypes.byref(voxel_count))
+        self.runtime.core.wp_volume_get_tile_and_voxel_count(
+            self.id, ctypes.byref(tile_count), ctypes.byref(voxel_count)
+        )
         return voxel_count.value
 
     def get_voxels(self, out: array | None = None) -> array:
@@ -4015,9 +4019,9 @@ class Volume:
             )
 
         if self.device.is_cpu:
-            self.runtime.core.volume_get_voxels_host(self.id, out.ptr)
+            self.runtime.core.wp_volume_get_voxels_host(self.id, out.ptr)
         else:
-            self.runtime.core.volume_get_voxels_device(self.id, out.ptr)
+            self.runtime.core.wp_volume_get_voxels_device(self.id, out.ptr)
 
         return out
 
@@ -4028,7 +4032,7 @@ class Volume:
             raise RuntimeError("Invalid Volume")
 
         dx, dy, dz = ctypes.c_float(0), ctypes.c_float(0), ctypes.c_float(0)
-        self.runtime.core.volume_get_voxel_size(self.id, ctypes.byref(dx), ctypes.byref(dy), ctypes.byref(dz))
+        self.runtime.core.wp_volume_get_voxel_size(self.id, ctypes.byref(dx), ctypes.byref(dy), ctypes.byref(dz))
         return (dx.value, dy.value, dz.value)
 
     class GridInfo(NamedTuple):
@@ -4061,7 +4065,7 @@ class Volume:
         transform_buffer = (ctypes.c_float * 9)()
         type_str_buffer = (ctypes.c_char * 16)()
 
-        name = self.runtime.core.volume_get_grid_info(
+        name = self.runtime.core.wp_volume_get_grid_info(
             self.id,
             ctypes.byref(grid_size),
             ctypes.byref(grid_index),
@@ -4124,7 +4128,7 @@ class Volume:
     def get_feature_array_count(self) -> int:
         """Return the number of supplemental data arrays stored alongside the grid"""
 
-        return self.runtime.core.volume_get_blind_data_count(self.id)
+        return self.runtime.core.wp_volume_get_blind_data_count(self.id)
 
     class FeatureArrayInfo(NamedTuple):
         """Metadata for a supplemental data array"""
@@ -4149,7 +4153,7 @@ class Volume:
         value_size = ctypes.c_uint32(0)
         type_str_buffer = (ctypes.c_char * 16)()
 
-        name = self.runtime.core.volume_get_blind_data_info(
+        name = self.runtime.core.wp_volume_get_blind_data_info(
             self.id,
             feature_index,
             ctypes.byref(buf),
@@ -4425,7 +4429,7 @@ class Volume:
         # (to allow this we would need to ref-count the volume descriptor)
         existing_buf = ctypes.c_void_p(0)
         existing_size = ctypes.c_uint64(0)
-        warp.context.runtime.core.volume_get_buffer_info(
+        warp.context.runtime.core.wp_volume_get_buffer_info(
             grid_ptr, ctypes.byref(existing_buf), ctypes.byref(existing_size)
         )
 
@@ -4678,7 +4682,7 @@ class Volume:
         transform_buf, translation_buf = Volume._fill_transform_buffers(voxel_size, translation, transform)
 
         if bg_value is None:
-            volume.id = volume.runtime.core.volume_index_from_tiles_device(
+            volume.id = volume.runtime.core.wp_volume_index_from_tiles_device(
                 volume.device.context,
                 ctypes.c_void_p(tile_points.ptr),
                 tile_points.shape[0],
@@ -4717,7 +4721,7 @@ class Volume:
             cvalue_size = ctypes.sizeof(cvalue)
             cvalue_type = nvdb_type.encode("ascii")
 
-            volume.id = volume.runtime.core.volume_from_tiles_device(
+            volume.id = volume.runtime.core.wp_volume_from_tiles_device(
                 volume.device.context,
                 ctypes.c_void_p(tile_points.ptr),
                 tile_points.shape[0],
@@ -4779,7 +4783,7 @@ class Volume:
 
         transform_buf, translation_buf = Volume._fill_transform_buffers(voxel_size, translation, transform)
 
-        volume.id = volume.runtime.core.volume_from_active_voxels_device(
+        volume.id = volume.runtime.core.wp_volume_from_active_voxels_device(
             volume.device.context,
             ctypes.c_void_p(voxel_points.ptr),
             voxel_points.shape[0],
@@ -5019,9 +5023,9 @@ class HashGrid:
         self.device = self.runtime.get_device(device)
 
         if self.device.is_cpu:
-            self.id = self.runtime.core.hash_grid_create_host(dim_x, dim_y, dim_z)
+            self.id = self.runtime.core.wp_hash_grid_create_host(dim_x, dim_y, dim_z)
         else:
-            self.id = self.runtime.core.hash_grid_create_device(self.device.context, dim_x, dim_y, dim_z)
+            self.id = self.runtime.core.wp_hash_grid_create_device(self.device.context, dim_x, dim_y, dim_z)
 
         # indicates whether the grid data has been reserved for use by a kernel
         self.reserved = False
@@ -5046,16 +5050,16 @@ class HashGrid:
             points = points.contiguous().flatten()
 
         if self.device.is_cpu:
-            self.runtime.core.hash_grid_update_host(self.id, radius, ctypes.byref(points.__ctype__()))
+            self.runtime.core.wp_hash_grid_update_host(self.id, radius, ctypes.byref(points.__ctype__()))
         else:
-            self.runtime.core.hash_grid_update_device(self.id, radius, ctypes.byref(points.__ctype__()))
+            self.runtime.core.wp_hash_grid_update_device(self.id, radius, ctypes.byref(points.__ctype__()))
         self.reserved = True
 
     def reserve(self, num_points):
         if self.device.is_cpu:
-            self.runtime.core.hash_grid_reserve_host(self.id, num_points)
+            self.runtime.core.wp_hash_grid_reserve_host(self.id, num_points)
         else:
-            self.runtime.core.hash_grid_reserve_device(self.id, num_points)
+            self.runtime.core.wp_hash_grid_reserve_device(self.id, num_points)
         self.reserved = True
 
     def __del__(self):
@@ -5063,11 +5067,11 @@ class HashGrid:
             return
 
         if self.device.is_cpu:
-            self.runtime.core.hash_grid_destroy_host(self.id)
+            self.runtime.core.wp_hash_grid_destroy_host(self.id)
         else:
             # use CUDA context guard to avoid side effects during garbage collection
             with self.device.context_guard:
-                self.runtime.core.hash_grid_destroy_device(self.id)
+                self.runtime.core.wp_hash_grid_destroy_device(self.id)
 
 
 class MarchingCubes:
@@ -5124,10 +5128,10 @@ class MarchingCubes:
         self.max_tris = max_tris
 
         # bindings to warp.so
-        self.alloc = self.runtime.core.marching_cubes_create_device
+        self.alloc = self.runtime.core.wp_marching_cubes_create_device
         self.alloc.argtypes = [ctypes.c_void_p]
         self.alloc.restype = ctypes.c_uint64
-        self.free = self.runtime.core.marching_cubes_destroy_device
+        self.free = self.runtime.core.wp_marching_cubes_destroy_device
 
         from warp.context import zeros
 
@@ -5186,7 +5190,7 @@ class MarchingCubes:
         num_verts = ctypes.c_int(0)
         num_tris = ctypes.c_int(0)
 
-        self.runtime.core.marching_cubes_surface_device.restype = ctypes.c_int
+        self.runtime.core.wp_marching_cubes_surface_device.restype = ctypes.c_int
 
         # For now we require that input field shape matches nx, ny, nz
         if field.ndim != 3:
@@ -5197,7 +5201,7 @@ class MarchingCubes:
                 f"input array shape {field.shape}."
             )
 
-        error = self.runtime.core.marching_cubes_surface_device(
+        error = self.runtime.core.wp_marching_cubes_surface_device(
             self.id,
             ctypes.cast(field.ptr, ctypes.c_void_p),
             self.nx,

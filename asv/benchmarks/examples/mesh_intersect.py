@@ -13,9 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib.util
 import os
 
+from asv_runner.benchmarks.mark import skip_benchmark_if
+
 import warp as wp
+
+pxr = importlib.util.find_spec("pxr")
+USD_AVAILABLE = pxr is not None
 
 
 def get_asset_directory():
@@ -146,6 +152,7 @@ class MeshIntersect:
 
         return mesh
 
+    @skip_benchmark_if(USD_AVAILABLE is False)
     def time_intersect(self):
         self.cmd.launch()
         wp.synchronize_device(self.device)

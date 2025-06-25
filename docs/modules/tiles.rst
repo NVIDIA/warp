@@ -115,8 +115,12 @@ Shared Memory Tiles
 
 Some operations like matrix multiplication require access to an entire tile of values.
 In this case, the tile data may be stored in shared memory, which allows efficient random access.
-Warp will automatically migrate tiles to shared memory as necessary for specific operations.
-Shared memory is a limited resource, and so the tile size must be set appropriately to avoid exceeding the hardware limitations.
+Warp will automatically migrate tiles to shared memory as necessary for specific operations, some of which
+require thread synchronization. For instance, when writing to a tile element, (e.g. ``tile[row, col] = val``),
+Warp does not a priori know if the current thread is assigned to ``(row, col)``, so the tile is stored in shared
+memory to allow random accessing. A thread synchronization must also follow, to prevent downstream race conditions.
+
+Note that shared memory is a limited resource, and so the tile size must be set appropriately to avoid exceeding the hardware limitations.
 Otherwise, kernel compilation may fail.
 
 Example: General Matrix Multiply (GEMM)
