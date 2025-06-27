@@ -56,7 +56,7 @@ from warp.fem.types import (
 )
 from warp.fem.utils import type_zero_element
 from warp.sparse import BsrMatrix, bsr_set_from_triplets, bsr_zeros
-from warp.types import type_size
+from warp.types import is_array, type_size
 from warp.utils import array_cast
 
 
@@ -1328,21 +1328,28 @@ def _launch_integrate_kernel(
                 device=device,
             )
 
-            dispatch_kernel = make_linear_dispatch_kernel(test, quadrature, accumulate_dtype)
-            wp.launch(
-                kernel=dispatch_kernel,
-                dim=(test.space_restriction.node_count(), test.node_dof_count),
-                inputs=[
-                    qp_arg,
-                    domain_elt_arg,
-                    domain_elt_index_arg,
-                    test_arg,
-                    test.space.space_arg_value(device),
-                    local_result.array,
-                    output_view,
-                ],
-                device=device,
-            )
+            if test.TAYLOR_DOF_COUNT == 0:
+                wp.utils.warn(
+                    f"Test field is never evaluated in integrand '{integrand.name}', result will be zero",
+                    category=UserWarning,
+                    stacklevel=2,
+                )
+            else:
+                dispatch_kernel = make_linear_dispatch_kernel(test, quadrature, accumulate_dtype)
+                wp.launch(
+                    kernel=dispatch_kernel,
+                    dim=(test.space_restriction.node_count(), test.node_dof_count),
+                    inputs=[
+                        qp_arg,
+                        domain_elt_arg,
+                        domain_elt_index_arg,
+                        test_arg,
+                        test.space.space_arg_value(device),
+                        local_result.array,
+                        output_view,
+                    ],
+                    device=device,
+                )
 
             local_result.release()
 
@@ -1459,34 +1466,42 @@ def _launch_integrate_kernel(
             dtype=vec_array_dtype,
         )
 
-        dispatch_kernel = make_bilinear_dispatch_kernel(test, trial, quadrature, accumulate_dtype)
+        if test.TAYLOR_DOF_COUNT * trial.TAYLOR_DOF_COUNT == 0:
+            wp.utils.warn(
+                f"Test and/or trial fields are never evaluated in integrand '{integrand.name}', result will be zero",
+                category=UserWarning,
+                stacklevel=2,
+            )
+            triplet_rows.fill_(-1)
+        else:
+            dispatch_kernel = make_bilinear_dispatch_kernel(test, trial, quadrature, accumulate_dtype)
 
-        trial_partition_arg = trial.space_partition.partition_arg_value(device)
-        trial_topology_arg = trial.space_partition.space_topology.topo_arg_value(device)
-        wp.launch(
-            kernel=dispatch_kernel,
-            dim=(
-                test.space_restriction.node_count(),
-                test.node_dof_count,
-                trial.node_dof_count,
-                trial.space.topology.MAX_NODES_PER_ELEMENT,
-            ),
-            inputs=[
-                qp_arg,
-                domain_elt_arg,
-                domain_elt_index_arg,
-                test_arg,
-                test.space.space_arg_value(device),
-                trial_partition_arg,
-                trial_topology_arg,
-                trial.space.space_arg_value(device),
-                local_result_as_vec,
-                triplet_rows,
-                triplet_cols,
-                triplet_values,
-            ],
-            device=device,
-        )
+            trial_partition_arg = trial.space_partition.partition_arg_value(device)
+            trial_topology_arg = trial.space_partition.space_topology.topo_arg_value(device)
+            wp.launch(
+                kernel=dispatch_kernel,
+                dim=(
+                    test.space_restriction.node_count(),
+                    test.node_dof_count,
+                    trial.node_dof_count,
+                    trial.space.topology.MAX_NODES_PER_ELEMENT,
+                ),
+                inputs=[
+                    qp_arg,
+                    domain_elt_arg,
+                    domain_elt_index_arg,
+                    test_arg,
+                    test.space.space_arg_value(device),
+                    trial_partition_arg,
+                    trial_topology_arg,
+                    trial.space.space_arg_value(device),
+                    local_result_as_vec,
+                    triplet_rows,
+                    triplet_cols,
+                    triplet_values,
+                ],
+                device=device,
+            )
 
         local_result.release()
 
@@ -2207,6 +2222,9 @@ def _launch_interpolate_kernel(
         return
 
     if quadrature is None:
+        if dest is not None and (not is_array(dest) or dest.shape[0] != dim):
+            raise ValueError(f"dest must be a warp array with {dim} rows")
+
         wp.launch(
             kernel=kernel,
             dim=dim,
@@ -2216,21 +2234,34 @@ def _launch_interpolate_kernel(
         return
 
     qp_arg = quadrature.arg_value(device)
+    qp_eval_count = quadrature.evaluation_point_count()
+    qp_index_count = quadrature.total_point_count()
+
+    if qp_eval_count != qp_index_count:
+        wp.utils.warn(
+            f"Quadrature used for interpolation of {integrand.name} has different number of evaluation and indexed points, this may lead to incorrect results",
+            category=UserWarning,
+            stacklevel=2,
+        )
+
     qp_element_index_arg = quadrature.element_index_arg_value(device)
     if trial is None:
+        if dest is not None and (not is_array(dest) or dest.shape[0] != qp_index_count):
+            raise ValueError(f"dest must be a warp array with {qp_index_count} rows")
+
         wp.launch(
             kernel=kernel,
-            dim=quadrature.evaluation_point_count(),
+            dim=qp_eval_count,
             inputs=[qp_arg, qp_element_index_arg, elt_arg, elt_index_arg, field_arg_values, value_struct_values, dest],
             device=device,
         )
         return
 
-    nnz = quadrature.total_point_count() * trial.space.topology.MAX_NODES_PER_ELEMENT
+    nnz = qp_eval_count * trial.space.topology.MAX_NODES_PER_ELEMENT
 
-    if dest.nrow != quadrature.total_point_count() or dest.ncol != trial.space_partition.node_count():
+    if dest.nrow != qp_index_count or dest.ncol != trial.space_partition.node_count():
         raise RuntimeError(
-            f"'dest' matrix must have {quadrature.total_point_count()} rows and {trial.space_partition.node_count()} columns of blocks"
+            f"'dest' matrix must have {qp_index_count} rows and {trial.space_partition.node_count()} columns of blocks"
         )
     if dest.block_shape[1] != trial.node_dof_count:
         raise RuntimeError(f"'dest' matrix blocks must have {trial.node_dof_count} columns")

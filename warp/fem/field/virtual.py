@@ -365,6 +365,8 @@ class LocalAdjointField(SpaceField):
         self._TAYLOR_DOF_COUNTS = LocalAdjointField.DofOffsets(0)
         self.TAYLOR_DOF_COUNT = 0
 
+        cache.setup_dynamic_attributes(self)
+
     def notify_operator_usage(self, ops: Set[operator.Operator]):
         # Rebuild degrees-of-freedom offsets based on used operators
 
