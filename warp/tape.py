@@ -251,6 +251,8 @@ class Tape:
                     else:
                         grad = None
                     setattr(adj, name, grad)
+                elif isinstance(a._cls.vars[name].type, wp.codegen.Struct):
+                    setattr(adj, name, self.get_adjoint(getattr(a, name)))
                 else:
                     setattr(adj, name, getattr(a, name))
 

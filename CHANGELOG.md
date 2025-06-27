@@ -113,6 +113,7 @@
 - Fix to enable tile-based solvers to accept and return transposed tiles ([GH-768](https://github.com/NVIDIA/warp/issues/768)).
 - Fix premature unloading of CUDA modules used in JAX FFI graph captures ([GH-782](https://github.com/NVIDIA/warp/issues/782)).
 - Fix calling user functions from Python scope not working with array parameters.
+- Fix `tape.zero()` not resetting gradient arrays in nested structs ([GH-807](https://github.com/NVIDIA/warp/issues/807)).
 
 ## [1.7.2] - 2025-05-31
 
