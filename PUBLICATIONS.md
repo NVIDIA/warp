@@ -28,6 +28,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 - **Factorized Implicit Global Convolution for Automotive Computational Fluid Dynamics Prediction**. *C. Choy, A. Kamenev, J. Kossaifi, M. Rietmann, J. Kautz, K. Azizzadenesheli*. February 2025. [arXiv:2502.04317](https://arxiv.org/abs/2502.04317)
 - **Dress-1-to-3: Single Image to Simulation-Ready 3D Outfit with Diffusion Prior and Differentiable Physics**. *X. Li, C. Yu, W. Du, Y. Jiang, T. Xie, Y. Chen, Y. Yang, C. Jiang*. February 2025. [arXiv:2502.03449](https://arxiv.org/abs/2502.03449)
 - **OmniPhysGS: 3D Constitutive Gaussians for General Physics-Based Dynamics Generation**. *Y. Lin, C. Lin, J. Xu, Y. Mu*. January 2025. [arXiv:2501.18982](https://arxiv.org/abs/2501.18982)
+- **Learning Fast, Tool-Aware Collision Avoidance for Collaborative Robots**. *J. Lee, Y. Kim, S. Kim, Q. Nguyen, Y. Heo*. June 2025. [DOI:10.1109/lra.2025.3579207](https://doi.org/10.1109/lra.2025.3579207)
 
 ## 2024
 
