@@ -418,7 +418,7 @@ def test_cholesky_solver_graph_capture():
     max_equations = 1000
 
     # Create random SPD matrix A and random RHS b
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(42)
     A_np = rng.standard_normal((max_equations, max_equations))
     A_np = A_np @ A_np.T + np.eye(max_equations) * max_equations  # Make SPD
     b_np = rng.standard_normal((max_equations, 1))

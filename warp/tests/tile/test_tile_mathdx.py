@@ -271,7 +271,7 @@ def tile_math_forward_substitution(
 )
 def test_tile_math_forward_substitution(test, device):
     # Create test data
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(42)
     L_h = np.triu(rng.random((TILE_M, TILE_M)))  # Upper triangular matrix
     x_h = rng.random(TILE_M)
     z_h = np.zeros_like(x_h)
@@ -316,7 +316,7 @@ def tile_math_back_substitution(
 )
 def test_tile_math_back_substitution(test, device):
     # Create test data
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(42)
     L_h = np.tril(rng.random((TILE_M, TILE_M)))  # Lower triangular matrix
     x_h = rng.random(TILE_M)
     z_h = np.zeros_like(x_h)
@@ -367,7 +367,7 @@ def tile_math_forward_substitution_multiple_rhs(
 )
 def test_tile_math_forward_substitution_multiple_rhs(test, device):
     # Create test data
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(42)
     L_h = np.tril(rng.random((TILE_M, TILE_M)))  # Lower triangular matrix
     x_h = rng.random((TILE_M, TILE_M))  # Multiple right-hand sides
     z_h = np.zeros_like(x_h)
@@ -426,7 +426,7 @@ def tile_math_back_substitution_multiple_rhs(
 )
 def test_tile_math_back_substitution_multiple_rhs(test, device):
     # Create test data
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(42)
     L_h = np.tril(rng.random((TILE_M, TILE_M)))  # Lower triangular matrix
     x_h = rng.random((TILE_M, TILE_M))  # Multiple right-hand sides
     z_h = np.zeros_like(x_h)
@@ -610,7 +610,7 @@ def test_tile_upper_solve(L: wp.array2d(dtype=float), y: wp.array(dtype=float), 
     wp.context.runtime.core.wp_cuda_toolkit_version() >= 12060, "CUDA toolkit version is less than 12.6"
 )
 def test_tile_math_singular_matrices(test, device):
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(42)
     L_np = np.tril(rng.random((TILE_M, TILE_M)))  # Lower triangular matrix
     L_np[-1, -1] = 0.0  # Make it singular
     y_np = rng.random(TILE_M)
