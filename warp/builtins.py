@@ -8413,3 +8413,22 @@ add_builtin(
     group="Utility",
     export=False,
 )
+
+# ---------------------------------
+# Slicing
+
+
+def slice_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    return slice_t(**arg_values)
+
+
+add_builtin(
+    "slice",
+    input_types={"start": int, "stop": int, "step": int},
+    value_func=slice_value_func,
+    native_func="slice_t",
+    export=False,
+    group="Utility",
+    hidden=True,
+    missing_grad=True,
+)

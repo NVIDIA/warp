@@ -25,7 +25,7 @@ namespace wp {
 template<unsigned Length, typename Type>
 struct initializer_array
 {
-    const Type storage[Length];
+    const Type storage[Length < 1 ? 1 : Length];
 
     CUDA_CALLABLE const Type operator[](unsigned i)
     {

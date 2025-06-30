@@ -1370,6 +1370,49 @@ class launch_bounds_t(ctypes.Structure):
             self.shape[i] = 1
 
 
+INT_WIDTH = ctypes.sizeof(ctypes.c_int) * 8
+SLICE_BEGIN = (1 << (INT_WIDTH - 1)) - 1
+SLICE_END = -(1 << (INT_WIDTH - 1))
+
+
+class slice_t:
+    _wp_native_name_ = "slice_t"
+
+    def __init__(self, start, stop, step):
+        self.start = start
+        self.stop = stop
+        self.step = step
+
+    def get_length(self, parent_length, wrap=False):
+        if any(isinstance(x, warp.codegen.Var) for x in (self.start, self.stop, self.step)):
+            raise RuntimeError("Vector slice indices must be constant values.")
+
+        if self.step == 0:
+            raise RuntimeError(f"Vector slice step {self.step} is invalid.")
+
+        if self.start == SLICE_BEGIN:
+            start = parent_length - 1 if self.step < 0 else 0
+        else:
+            start = min(max(self.start, -parent_length), parent_length)
+            if wrap:
+                start = start + parent_length if start < 0 else start
+
+        if self.stop == SLICE_END:
+            stop = -1 if self.step < 0 else parent_length
+        else:
+            stop = min(max(self.stop, -parent_length), parent_length)
+            if wrap:
+                stop = stop + parent_length if stop < 0 else stop
+
+        if self.step > 0 and start < stop:
+            return 1 + (stop - start - 1) // self.step
+
+        if self.step < 0 and start > stop:
+            return 1 + (start - stop - 1) // (-self.step)
+
+        return 0
+
+
 class shape_t(ctypes.Structure):
     _fields_ = (("dims", ctypes.c_int32 * ARRAY_MAX_DIMS),)
 

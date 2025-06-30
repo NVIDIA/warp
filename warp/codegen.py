@@ -2471,21 +2471,58 @@ class Adjoint:
         if not array or (count > array.type.ndim):
             count = 1
 
-        indices = []
+        nodes = ()
         root = node
-        while len(indices) < count:
+        while len(nodes) < count:
             if isinstance(root.slice, ast.Tuple):
-                ij = [adj.eval(arg) for arg in root.slice.elts]
+                ij = tuple(arg for arg in root.slice.elts)
             elif isinstance(root.slice, ast.Index) and isinstance(root.slice.value, ast.Tuple):
-                ij = [adj.eval(arg) for arg in root.slice.value.elts]
+                # The node `ast.Index` is deprecated in Python 3.9.
+                ij = tuple(arg for arg in root.slice.value.elts)
+            elif isinstance(root.slice, ast.ExtSlice):
+                # The node `ast.ExtSlice` is deprecated in Python 3.9.
+                ij = tuple(arg for arg in root.slice.dims)
             else:
-                ij = [adj.eval(root.slice)]
+                ij = (root.slice,)
 
-            indices = ij + indices  # prepend
+            nodes = ij + nodes  # prepend
 
             root = root.value
 
         target = adj.eval(root)
+
+        if hasattr(target.type, "_wp_generic_type_hint_"):
+            indices = []
+            for dim, node in enumerate(nodes):
+                if isinstance(node, ast.Slice):
+                    # In the context of slicing a vec/mat type, indices are expected
+                    # to be compile-time constants, hence we can infer the actual slice
+                    # bounds also at compile-time.
+                    length = target.type._shape_[dim]
+                    step = 1 if node.step is None else adj.eval(node.step).constant
+
+                    if node.lower is None:
+                        start = length - 1 if step < 0 else 0
+                    else:
+                        start = adj.eval(node.lower).constant
+                        start = min(max(start, -length), length)
+                        start = start + length if start < 0 else start
+
+                    if node.upper is None:
+                        stop = -1 if step < 0 else length
+                    else:
+                        stop = adj.eval(node.upper).constant
+                        stop = min(max(stop, -length), length)
+                        stop = stop + length if stop < 0 else stop
+
+                    slice = adj.add_builtin_call("slice", (start, stop, step))
+                    indices.append(slice)
+                else:
+                    indices.append(adj.eval(node))
+
+            indices = tuple(indices)
+        else:
+            indices = tuple(adj.eval(x) for x in nodes)
 
         return target, indices
 

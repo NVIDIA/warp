@@ -1277,6 +1277,83 @@ inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l, size_t inde
     l = c.l;
 }
 
+// should match types.py
+constexpr int SLICE_BEGIN = (1U << (sizeof(int) - 1)) - 1; // std::numeric_limits<int>::max()
+constexpr int SLICE_END = -(1U << (sizeof(int) - 1)); // std::numeric_limits<int>::min()
+
+struct slice_t
+{
+    int start;
+    int stop;
+    int step;
+
+    CUDA_CALLABLE inline slice_t()
+        : start(SLICE_BEGIN), stop(SLICE_END), step(1)
+    {}
+
+    CUDA_CALLABLE inline slice_t(int start, int stop, int step)
+        : start(start), stop(stop), step(step)
+    {}
+};
+
+CUDA_CALLABLE inline slice_t slice_adjust_indices(const slice_t& slice, int length)
+{
+#ifndef NDEBUG
+    if (slice.step == 0)
+    {
+        printf("%s:%d slice step cannot be 0\n", __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    int start, stop;
+
+    if (slice.start == SLICE_BEGIN)
+    {
+        start = slice.step < 0 ? length - 1 : 0;
+    }
+    else
+    {
+        start = min(max(slice.start, -length), length);
+        start = start < 0 ? start + length : start;
+    }
+
+    if (slice.stop == SLICE_END)
+    {
+        stop = slice.step < 0 ? -1 : length;
+    }
+    else
+    {
+        stop = min(max(slice.stop, -length), length);
+        stop = stop < 0 ? stop + length : stop;
+    }
+
+    return {start, stop, slice.step};
+}
+
+CUDA_CALLABLE inline int slice_get_length(const slice_t& slice)
+{
+#ifndef NDEBUG
+    if (slice.step == 0)
+    {
+        printf("%s:%d slice step cannot be 0\n", __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    if (slice.step > 0 && slice.start < slice.stop)
+    {
+        return 1 + (slice.stop - slice.start - 1) / slice.step;
+    }
+
+    if (slice.step < 0 && slice.start > slice.stop)
+    {
+        return 1 + (slice.start - slice.stop - 1) / (-slice.step);
+    }
+
+    return 0;
+}
+
 template<typename T>
 inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 {
