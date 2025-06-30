@@ -318,10 +318,6 @@ try:
 
         build_llvm.build_warp_clang(args, lib_name("warp-clang"))
 
-    # Clear kernel cache (also initializes Warp)
-    clear_kernel_cache()
-    clear_lto_cache()
-
 
 except Exception as e:
     # output build error
@@ -329,3 +325,15 @@ except Exception as e:
 
     # report error
     sys.exit(1)
+
+try:
+    is_gitlab_ci = os.getenv("GITLAB_CI") is not None
+
+    if not (is_gitlab_ci and platform.system() == "Windows"):
+        # Clear kernel cache (also initializes Warp)
+        clear_kernel_cache()
+        clear_lto_cache()
+    else:
+        print("Skipping kernel cache clearing in GitLab CI on Windows")
+except Exception as e:
+    print(f"Unable to clear kernel cache: {e}")
