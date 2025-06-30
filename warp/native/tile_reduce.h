@@ -83,19 +83,7 @@ inline CUDA_CALLABLE wp::vec_t<Length, T> warp_shuffle_down(wp::vec_t<Length, T>
     wp::vec_t<Length, T> result;
 
     for (unsigned i=0; i < Length; ++i)
-        result.data[i] = __shfl_down_sync(mask, val.data[i], offset, WP_TILE_WARP_SIZE);
-    
-    return result;
-}
-
-// Quaternion overload
-template <typename T>
-inline CUDA_CALLABLE wp::quat_t<T> warp_shuffle_down(wp::quat_t<T> val, int offset, int mask)
-{
-    wp::quat_t<T> result;
-
-    for (unsigned i=0; i < 4; ++i)
-        result.data[i] = __shfl_down_sync(mask, val.data[i], offset, WP_TILE_WARP_SIZE);
+        result[i] = __shfl_down_sync(mask, val[i], offset, WP_TILE_WARP_SIZE);
     
     return result;
 }

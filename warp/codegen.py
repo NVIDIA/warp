@@ -616,6 +616,8 @@ def compute_type_str(base_name, template_params):
     def param2str(p):
         if isinstance(p, int):
             return str(p)
+        elif hasattr(p, "_wp_generic_type_str_"):
+            return compute_type_str(f"wp::{p._wp_generic_type_str_}", p._wp_type_params_)
         elif hasattr(p, "_type_"):
             if p.__name__ == "bool":
                 return "bool"
