@@ -157,6 +157,43 @@ def test_tape_zero_multiple_outputs(test, device):
     assert_np_equal(x.grad.numpy(), np.ones(3, dtype=float))
 
 
+@wp.struct
+class NestedStruct:
+    arr: wp.array(dtype=float)
+
+
+@wp.struct
+class WrapperStruct:
+    nested: NestedStruct
+
+
+@wp.kernel
+def nested_loss_kernel(wrapper: WrapperStruct, loss: wp.array(dtype=float)):
+    i = wp.tid()
+    wp.atomic_add(loss, 0, wrapper.nested.arr[i])
+
+
+def test_tape_nested_struct(test, device):
+    wrapper = WrapperStruct()
+    wrapper.nested = NestedStruct()
+    wrapper.nested.arr = wp.ones(shape=(1,), dtype=float, requires_grad=True, device=device)
+
+    loss = wp.zeros(shape=(1,), dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(nested_loss_kernel, dim=1, inputs=(wrapper, loss), device=device)
+
+    assert_np_equal(loss.numpy(), [1.0])
+
+    tape.backward(loss)
+    assert_np_equal(wrapper.nested.arr.grad.numpy(), [1.0])
+
+    tape.zero()
+
+    assert_np_equal(wrapper.nested.arr.grad.numpy(), [0.0])
+
+
 def test_tape_visualize(test, device):
     dim = 8
     tape = wp.Tape()
@@ -196,6 +233,7 @@ add_function_test(TestTape, "test_tape_mul_constant", test_tape_mul_constant, de
 add_function_test(TestTape, "test_tape_mul_variable", test_tape_mul_variable, devices=devices)
 add_function_test(TestTape, "test_tape_dot_product", test_tape_dot_product, devices=devices)
 add_function_test(TestTape, "test_tape_zero_multiple_outputs", test_tape_zero_multiple_outputs, devices=devices)
+add_function_test(TestTape, "test_tape_nested_struct", test_tape_nested_struct, devices=devices)
 add_function_test(TestTape, "test_tape_visualize", test_tape_visualize, devices=devices)
 
 
