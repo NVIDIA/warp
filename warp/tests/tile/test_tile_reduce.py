@@ -618,7 +618,7 @@ def test_tile_reduce_matrix_kernel(y: wp.array(dtype=wp.mat33)):
     t = wp.tile(m, preserve_type=True)
     sum = wp.tile_reduce(wp.add, t)
 
-    wp.tile_store(y, sum)
+    wp.tile_atomic_add(y, sum)
 
 
 def test_tile_reduce_matrix(test, device):
@@ -629,8 +629,25 @@ def test_tile_reduce_matrix(test, device):
     assert_np_equal(y.numpy().squeeze(), np.eye(3, dtype=np.float32) * 2016.0)
 
 
+@wp.kernel
+def test_tile_reduce_vector_kernel(out: wp.array(dtype=wp.vec3)):
+    v = wp.vec3f(1.0)
+    v_tile = wp.tile(v, preserve_type=True)
+
+    sum = wp.tile_reduce(wp.add, v_tile)
+
+    wp.tile_atomic_add(out, sum)
+
+
+def test_tile_reduce_vector(test, device):
+    out = wp.zeros(1, dtype=wp.vec3, device=device)
+
+    wp.launch(kernel=test_tile_reduce_vector_kernel, dim=8, inputs=[], outputs=[out], block_dim=TILE_DIM, device=device)
+
+    assert_np_equal(out.numpy(), np.array([[8.0, 8.0, 8.0]]))
+
+
 devices = get_test_devices()
-cuda_devices = get_cuda_test_devices()
 
 
 class TestTileReduce(unittest.TestCase):
@@ -653,7 +670,8 @@ add_function_test(TestTileReduce, "test_tile_untile_vector", test_tile_untile_ve
 add_function_test(TestTileReduce, "test_tile_strided_loop", test_tile_strided_loop, devices=devices)
 add_function_test(TestTileReduce, "test_tile_scan_inclusive", test_tile_scan_inclusive, devices=devices)
 add_function_test(TestTileReduce, "test_tile_scan_exclusive", test_tile_scan_exclusive, devices=devices)
-add_function_test(TestTileReduce, "test_tile_reduce_matrix", test_tile_reduce_matrix, devices=cuda_devices)
+add_function_test(TestTileReduce, "test_tile_reduce_matrix", test_tile_reduce_matrix, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_vector", test_tile_reduce_vector, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
