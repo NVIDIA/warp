@@ -34,8 +34,6 @@ __all__ = [
     "bundle_get_world_xform",
     "bundle_has_changed",
     "bundle_have_attrs_changed",
-    "bundle_set_prim_type",
-    "bundle_set_world_xform",
     "device_get_cuda_compute",
     "from_omni_graph",
     "from_omni_graph_ptr",
