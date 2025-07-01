@@ -735,14 +735,40 @@ inline CUDA_CALLABLE Type* index(mat_t<Rows,Cols,Type>& m, int row, int col)
 
 template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_index(const mat_t<Rows,Cols,Type>& m, int row,
-                                       const mat_t<Rows,Cols,Type>& adj_m, int adj_row, const vec_t<Cols, Type>& adj_value)
+                                    const mat_t<Rows,Cols,Type>& adj_m, int adj_row, const vec_t<Cols, Type>& adj_value)
 {
     // nop
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_index(const mat_t<Rows,Cols,Type>& m, int row, int col,
-                                       const mat_t<Rows,Cols,Type>& adj_m, int adj_row, int adj_col, Type adj_value)
+                                    const mat_t<Rows,Cols,Type>& adj_m, int adj_row, int adj_col, Type adj_value)
+{
+    // nop
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE Type* indexref(mat_t<Rows,Cols,Type>* m, int row, int col)
+{
+#ifndef NDEBUG
+    if (row < 0 || row >= Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+    if (col < 0 || col >= Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    return &(m->data)[row][col];
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_indexref(mat_t<Rows,Cols,Type>* m, int row, int col, 
+                                       mat_t<Rows,Cols,Type>& adj_m, int adj_row, int adj_col, const Type& adj_value)
 {
     // nop
 }

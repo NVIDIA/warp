@@ -235,6 +235,30 @@ def test_nested_struct(test, device):
     )
 
 
+@wp.struct
+class MatStruct:
+    m: wp.mat44
+
+
+@wp.kernel
+def kernel_nested_mat(out: wp.array(dtype=wp.mat44)):
+    s = MatStruct()
+    m = wp.mat44()
+
+    s.m[1, 2] = 3.0
+
+    out[0] = s.m
+
+
+def test_nested_mat(test, device):
+    m = wp.array([wp.mat44()], dtype=wp.mat44, device=device)
+    wp.launch(kernel_nested_mat, dim=1, outputs=[m], device=device)
+    wp.synchronize()
+
+    out = m.numpy()
+    assert_np_equal(out[0][1, 2], 3.0)
+
+
 def test_struct_attribute_error(test, device):
     @wp.kernel
     def kernel(foo: Foo):
@@ -751,9 +775,6 @@ def test_struct_array_gc_requires_grad_toggle(test, device):
     tape.backward(loss=loss_wp)
 
 
-devices = get_test_devices()
-
-
 class TestStruct(unittest.TestCase):
     # check structs default initialized in Python correctly
     def test_struct_default_attributes_python(self):
@@ -772,6 +793,9 @@ class TestStruct(unittest.TestCase):
         np.testing.assert_equal(arr.numpy().tolist(), expected)
 
 
+devices = get_test_devices()
+
+
 add_function_test(TestStruct, "test_step", test_step, devices=devices)
 add_function_test(TestStruct, "test_step_grad", test_step_grad, devices=devices)
 add_kernel_test(TestStruct, kernel=test_empty, name="test_empty", dim=1, inputs=[Empty()], devices=devices)
@@ -785,6 +809,7 @@ add_kernel_test(
 )
 add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
 add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
+add_function_test(TestStruct, "test_nested_mat", test_nested_mat, devices=devices)
 add_function_test(TestStruct, "test_struct_attribute_error", test_struct_attribute_error, devices=devices)
 add_function_test(TestStruct, "test_struct_inheritance_error", test_struct_inheritance_error, devices=devices)
 add_function_test(TestStruct, "test_nested_array_struct", test_nested_array_struct, devices=devices)
