@@ -47,19 +47,17 @@
 - Add damping terms `wp.sim.VBDIntegrator` collisions, with strength is controlled by `Model.soft_contact_kd`.
 - Improve consistency of the `wp.fem.lookup()` operator across geometries and add filtering parameters
   ([GH-618](https://github.com/NVIDIA/warp/issues/618)).
+- Add two examples demonstrating shape optimization using `warp.fem`: `fem/example_elastic_shape_optimization.py` and
+  `fem/example_darcy_ls_optimization.py` ([GH-698](https://github.com/NVIDIA/warp/issues/698)).
 - Add a `py.typed` marker file (per PEP 561) to the package to formally support static type checking by downstream users
   ([GH-780](https://github.com/NVIDIA/warp/issues/780)).
-- Add support for 2D solves using `wp.tile_cholesky_solve()` ([GH-773](https://github.com/NVIDIA/warp/pull/773)).
-- Add `wp.tile_scan_inclusive()` and `wp.tile_scan_exclusive()` for performing inclusive and exclusive scans over tiles
-  ([GH-731](https://github.com/NVIDIA/warp/issues/731)).
-- Added two examples demonstrating shape optimization using `warp.fem`: `fem/example_elastic_shape_optimization.py` and `fem/example_darcy_ls_optimization.py` ([GH-698](https://github.com/NVIDIA/warp/issues/698)).
 
 ### Removed
 
 - Remove `wp.mlp()` (deprecated in v1.6.0). Use tile primitives instead.
 - Remove `wp.autograd.plot_kernel_jacobians()` (deprecated in v1.4.0). Use `wp.autograd.jacobian_plot()` instead.
 - Remove the `length` and `owner` keyword arguments from `wp.array()` constructor (deprecated in v1.6.0).
-  Use the `deleter` and `shape` keywords instead.
+  Use the `shape` and `deleter` keywords instead.
 - Remove the `kernel` keyword argument from `wp.autograd.jacobian()` and `wp.autograd.jacobian_fd()` (deprecated in v1.6.0).
   Use the `function` keyword argument instead.
 - Remove the `outputs` keyword argument from `wp.autograd.jacobian_plot()` (deprecated in v1.6.0).
@@ -99,11 +97,13 @@
 
 ### Fixed
 
-- Fix `wp.atomic_*()` built-ins not working with some types ([GH-733](https://github.com/NVIDIA/warp/issues/733)).
 - Fix missing documentation for geometric structs ([GH-674](https://github.com/NVIDIA/warp/issues/674)).
 - Fix the type annotations in various tile functions ([GH-714](https://github.com/NVIDIA/warp/issues/714)).
 - Fix incorrect stride initialization in tiles returned from functions taking transposed tiles as input
   ([GH-722](https://github.com/NVIDIA/warp/issues/722)).
+- Fix adjoint generation for user functions that return a tile ([GH-749](https://github.com/NVIDIA/warp/issues/749)).
+- Fix tile-based solvers failing to accept and return transposed tiles
+  ([GH-768](https://github.com/NVIDIA/warp/issues/768)).
 - Fix the `Formal parameter space overflowed` error during `wp.sim.VBDIntegrator` kernel compilation for the backward
   pass in CUDA 11 Warp builds. This was resolved by decoupling collision and elasticity evaluations into
   separate kernels, increasing parallelism and speeding up the solver
@@ -114,9 +114,6 @@
   ([GH-634](https://github.com/NVIDIA/warp/issues/634)).
 - Fix an inconsistency in the `wp.fem` module regarding the orientation of 2D geometry side normals
   ([GH-629](https://github.com/NVIDIA/warp/issues/629)).
-- Fix adjoint generation for user functions that return a tile ([GH-749](https://github.com/NVIDIA/warp/issues/749)).
-- Fix tile-based solvers failing to accept and return transposed tiles
-  ([GH-768](https://github.com/NVIDIA/warp/issues/768)).
 - Fix premature unloading of CUDA modules used in JAX FFI graph captures
   ([GH-782](https://github.com/NVIDIA/warp/issues/782)).
 
