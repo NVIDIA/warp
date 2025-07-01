@@ -319,12 +319,13 @@ class FfiCallable:
         argspec = get_full_arg_spec(func)
 
         num_args = len(argspec.args)
-        self.num_inputs = num_args - num_outputs + len(in_out_argnames)
+        self.num_in_out = len(in_out_argnames)
+        self.num_inputs = num_args - num_outputs + self.num_in_out
         if self.num_outputs < 1:
             raise ValueError("At least one output is required")
         if self.num_outputs > num_args:
             raise ValueError("Number of outputs cannot be greater than the number of kernel arguments")
-        if self.num_outputs < len(in_out_argnames):
+        if self.num_outputs < self.num_in_out:
             raise ValueError("Number of outputs cannot be smaller than the number of in_out_argnames")
 
         if len(argspec.annotations) < num_args:
@@ -358,8 +359,8 @@ class FfiCallable:
         if in_out_argnames:
             raise ValueError(f"in_out_argnames: '{in_out_argnames}' did not match any function argument names.")
 
-        self.input_args = self.args[: self.num_inputs]
-        self.output_args = [a for a in self.args if a.in_out] + self.args[self.num_inputs :]
+        self.input_args = self.args[: self.num_inputs]  # includes in-out args
+        self.output_args = self.args[self.num_inputs :]  # pure output args
 
         # Build input output aliases.
         out_id = 0
@@ -391,7 +392,8 @@ class FfiCallable:
         if output_dims is None:
             output_dims = self.output_dims
 
-        in_out_dims = {}
+        # output types
+        out_types = []
 
         # process inputs
         static_inputs = {}
@@ -424,12 +426,11 @@ class FfiCallable:
                 # stash the value to be retrieved by callback
                 static_inputs[input_arg.name] = input_arg.type(input_value)
 
-        if output_dims is None and self.first_array_arg is not None:
-            # use the shape of the first input array
-            output_dims = get_warp_shape(self.input_args[self.first_array_arg], args[self.first_array_arg].shape)
+            # append in-out arg to output types
+            if input_arg.in_out:
+                out_types.append(get_jax_output_type(input_arg, input_value.shape))
 
-        # output types
-        out_types = []
+        # output shapes
         if isinstance(output_dims, dict):
             # assume a dictionary of shapes keyed on argument name
             for output_arg in self.output_args:
@@ -438,8 +439,10 @@ class FfiCallable:
                     raise ValueError(f"Missing output dimensions for argument '{output_arg.name}'")
                 out_types.append(get_jax_output_type(output_arg, dims))
         else:
-            if output_dims is None and not all(o.in_out for o in self.output_args):
-                raise ValueError("Unable to determine output dimensions")
+            if output_dims is None:
+                if self.first_array_arg is None:
+                    raise ValueError("Unable to determine output dimensions")
+                output_dims = get_warp_shape(self.input_args[self.first_array_arg], args[self.first_array_arg].shape)
             elif isinstance(output_dims, int):
                 output_dims = (output_dims,)
             # assume same dimensions for all outputs
@@ -508,9 +511,8 @@ class FfiCallable:
             # reconstruct the argument list
             arg_list = []
 
-            # inputs
-            for i in range(num_inputs):
-                arg = self.input_args[i]
+            # input and in-out args
+            for i, arg in enumerate(self.input_args):
                 if arg.is_array:
                     buffer = inputs[i].contents
                     shape = buffer.dims[: buffer.rank - arg.dtype_ndim]
@@ -521,10 +523,9 @@ class FfiCallable:
                     value = call_desc.static_inputs[arg.name]
                     arg_list.append(value)
 
-            # outputs
-            for i in range(len(self.input_output_aliases), num_outputs):
-                arg = self.output_args[i]
-                buffer = outputs[i].contents
+            # pure output args (skip in-out FFI buffers)
+            for i, arg in enumerate(self.output_args):
+                buffer = outputs[i + self.num_in_out].contents
                 shape = buffer.dims[: buffer.rank - arg.dtype_ndim]
                 arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=shape, device=device)
                 arg_list.append(arr)
@@ -618,14 +619,12 @@ def jax_callable(
         output_dims: Optional. Specify the default dimensions of output arrays.
             If ``None``, output dimensions are inferred from the launch dimensions.
             This argument can also be specified for individual calls.
-        in_out_argnames: arg names that indicate which output arrays alias input arrays.
 
     Limitations:
         - All kernel arguments must be contiguous arrays or scalars.
         - Scalars must be static arguments in JAX.
-        - Input arguments are followed by output arguments in the Warp kernel definition.
-        - There must be at least one output argument.
-        - Input-output arguments must precede output arguments.
+        - Input and input-output arguments must precede the output arguments in the ``func`` definition.
+        - There must be at least one output or input-output argument.
         - Only the CUDA backend is supported.
     """
     key = (
