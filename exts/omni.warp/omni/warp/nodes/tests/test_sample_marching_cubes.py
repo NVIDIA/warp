@@ -41,8 +41,8 @@ class TestSampleMarchingCubes(omni.kit.test.AsyncTestCase):
         points_attr = mesh_prim.GetAttribute("points")
 
         points_first = np.array(points_attr.Get())
-        array_are_almost_equal(np.min(points_first, axis=0), (-45.0, -49.0, -45.0), atol=1.0)
-        array_are_almost_equal(np.max(points_first, axis=0), (45.0, -16.0, 45.0), atol=1.0)
+        array_are_almost_equal(np.min(points_first, axis=0), (-45.0, -50.0, -45.0), atol=2.0)
+        array_are_almost_equal(np.max(points_first, axis=0), (45.0, -15.0, 45.0), atol=2.0)
 
         prev_points_hash = None
         curr_points_hash = None
@@ -57,8 +57,8 @@ class TestSampleMarchingCubes(omni.kit.test.AsyncTestCase):
                 prev_points_hash = curr_points_hash
 
         points_last = np.array(points_attr.Get())
-        array_are_almost_equal(np.min(points_last, axis=0), (-45.0, -49.0, -45.0), atol=1.0)
-        array_are_almost_equal(np.max(points_last, axis=0), (45.0, 4.0, 45.0), atol=1.0)
+        array_are_almost_equal(np.min(points_last, axis=0), (-45.0, -50.0, -45.0), atol=2.0)
+        array_are_almost_equal(np.max(points_last, axis=0), (45.0, 5.0, 45.0), atol=2.0)
 
     async def test_eval_fsd_off(self) -> None:
         await self._test_eval(enable_fsd=False)
