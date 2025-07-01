@@ -48,6 +48,8 @@
 - Add `wp.tile_scan_inclusive()` and `wp.tile_scan_exclusive()` for performing inclusive and exclusive scans over tiles
   ([GH-731](https://github.com/NVIDIA/warp/issues/731)).
 - Added two examples demonstrating shape optimization using `warp.fem`: `fem/example_elastic_shape_optimization.py` and `fem/example_darcy_ls_optimization.py` ([GH-698](https://github.com/NVIDIA/warp/issues/698)).
+- Add the static method `wp.MarchingCubes.extract_surface_marching_cubes()` to extract a triangular mesh from a
+  3D scalar field sampled to a regular grid ([GH-788](https://github.com/NVIDIA/warp/issues/788)).
 
 ### Removed
 
@@ -92,6 +94,8 @@
   as to match the behaviour with how built-ins are resolved.
 - Prefixed all Warp symbols exported to warp.so/warp.dll with the `wp_` namespace to avoid conflicts with other libraries
   ([GH-792](https://github.com/NVIDIA/warp/issues/792)).
+- Update `wp.MarchingCubes` to a pure-Warp implementation, allowing cross-platform support and differentiability.
+  ([GH-788](https://github.com/NVIDIA/warp/issues/788)).
 
 ### Fixed
 
@@ -115,6 +119,7 @@
 - Fix calling user functions from Python scope not working with array parameters.
 - Fix `tape.zero()` not resetting gradient arrays in nested structs ([GH-807](https://github.com/NVIDIA/warp/issues/807)).
 - Fix code generation when `preserve_type` is `True` in `wp.tile()` and tiled value is non-scalar ([GH-805](https://github.com/NVIDIA/warp/issues/805)).
+- Fix a bug with the marching-cubes output geometry ([GH-324](https://github.com/NVIDIA/warp/issues/324)).
 
 ## [1.7.2] - 2025-05-31
 

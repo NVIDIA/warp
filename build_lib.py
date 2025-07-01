@@ -290,7 +290,6 @@ try:
         "native/sort.cpp",
         "native/sparse.cpp",
         "native/volume.cpp",
-        "native/marching.cpp",
         "native/mathdx.cpp",
         "native/coloring.cpp",
     ]
