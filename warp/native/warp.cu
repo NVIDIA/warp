@@ -4150,7 +4150,6 @@ void wp_cuda_timing_end(timing_result_t* results, int size)
 #include "reduce.cu"
 #include "runlength_encode.cu"
 #include "scan.cu"
-#include "marching.cu"
 #include "sparse.cu"
 #include "volume.cu"
 #include "volume_builder.cu"

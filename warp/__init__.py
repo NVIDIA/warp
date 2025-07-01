@@ -39,7 +39,7 @@ from warp.types import spatial_matrix, spatial_matrixh, spatial_matrixf, spatial
 from warp.types import Int, Float, Scalar
 
 # geometry types
-from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
+from warp.types import Bvh, Mesh, HashGrid, Volume
 from warp.types import BvhQuery, HashGridQuery, MeshQueryAABB, MeshQueryPoint, MeshQueryRay
 
 # device-wide gemms
@@ -109,6 +109,8 @@ from warp.utils import (
     TIMING_ALL,
 )
 from warp.utils import map
+
+from warp.marching_cubes import MarchingCubes
 
 from warp.torch import from_torch, to_torch
 from warp.torch import dtype_from_torch, dtype_to_torch
