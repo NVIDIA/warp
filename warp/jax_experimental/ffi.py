@@ -324,6 +324,8 @@ class FfiCallable:
             raise ValueError("At least one output is required")
         if self.num_outputs > num_args:
             raise ValueError("Number of outputs cannot be greater than the number of kernel arguments")
+        if self.num_outputs < len(in_out_argnames):
+            raise ValueError("Number of outputs cannot be smaller than the number of in_out_argnames")
 
         if len(argspec.annotations) < num_args:
             raise RuntimeError(f"Incomplete argument annotations on function {self.name}")
@@ -379,7 +381,9 @@ class FfiCallable:
     def __call__(self, *args, output_dims=None, vmap_method=None):
         num_inputs = len(args)
         if num_inputs != self.num_inputs:
-            raise ValueError(f"Expected {self.num_inputs} inputs, but got {num_inputs}")
+            input_names = ", ".join(arg.name for arg in self.input_args)
+            s = "" if self.num_inputs == 1 else "s"
+            raise ValueError(f"Expected {self.num_inputs} input{s} ({input_names}), but got {num_inputs}")
 
         # default argument fallback
         if vmap_method is None:
@@ -607,6 +611,7 @@ def jax_callable(
     Args:
         func: The Python function to call.
         num_outputs: Optional. Specify the number of output arguments if greater than 1.
+                     This must include the number of ``in_out_arguments``.
         graph_compatible: Optional. Whether the function can be called during CUDA graph capture.
         vmap_method: Optional. String specifying how the callback transforms under ``vmap()``.
             This argument can also be specified for individual calls.
