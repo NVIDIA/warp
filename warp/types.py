@@ -546,22 +546,22 @@ def matrix(shape, dtype):
             return self._shape_[0]
 
         def __add__(self, y):
-            return warp.add(self, y)
+            return _binary_op(self, warp.add, y, mat_t)
 
         def __radd__(self, y):
-            return warp.add(y, self)
+            return _rbinary_op(self, warp.add, y, mat_t)
 
         def __sub__(self, y):
-            return warp.sub(self, y)
+            return _binary_op(self, warp.sub, y, mat_t)
 
         def __rsub__(self, y):
-            return warp.sub(y, self)
+            return _rbinary_op(self, warp.sub, y, mat_t)
 
         def __mul__(self, y):
-            return warp.mul(self, y)
+            return _binary_op(self, warp.mul, y, mat_t, cw=False)
 
         def __rmul__(self, x):
-            return warp.mul(x, self)
+            return _rbinary_op(self, warp.mul, x, mat_t, cw=False)
 
         def __matmul__(self, y):
             return warp.mul(self, y)
@@ -570,16 +570,22 @@ def matrix(shape, dtype):
             return warp.mul(x, self)
 
         def __truediv__(self, y):
-            return warp.div(self, y)
+            return _binary_op(self, warp.div, y, mat_t, cw=False)
 
         def __rtruediv__(self, x):
-            return warp.div(x, self)
+            return _rbinary_op(self, warp.div, x, mat_t, cw=False)
+
+        def __mod__(self, x):
+            return _binary_op(self, warp.mod, x, mat_t)
+
+        def __rmod__(self, x):
+            return _rbinary_op(self, warp.mod, x, mat_t)
 
         def __pos__(self):
-            return warp.pos(self)
+            return _unary_op(self, warp.pos, mat_t)
 
         def __neg__(self):
-            return warp.neg(self)
+            return _unary_op(self, warp.neg, mat_t)
 
         def __str__(self):
             row_str = []

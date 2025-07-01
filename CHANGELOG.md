@@ -112,7 +112,7 @@
   ([GH-780](https://github.com/NVIDIA/warp/issues/780)).
 - Add support for negative indexing in the `wp.matrix()`/`wp.vector()`/`wp.quaternion()` types
   ([GH-278](https://github.com/NVIDIA/warp/issues/278)).
-- Add support for slice indexing with the `wp.vector()`/`wp.quaternion()` types
+- Add support for slice indexing with the `wp.matrix()`/`wp.vector()`/`wp.quaternion()` types
   ([GH-783](https://github.com/NVIDIA/warp/issues/783)).
 
 ### Removed

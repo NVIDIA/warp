@@ -2825,6 +2825,11 @@ def add(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any,
     ...
 
 @over
+def add(a: Matrix[Any, Any, Scalar], b: Scalar) -> Matrix[Any, Any, Scalar]:
+    """ """
+    ...
+
+@over
 def add(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]:
     """ """
     ...
@@ -2851,6 +2856,11 @@ def sub(a: Vector[Any, Scalar], b: Scalar) -> Vector[Any, Scalar]:
 
 @over
 def sub(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """ """
+    ...
+
+@over
+def sub(a: Matrix[Any, Any, Scalar], b: Scalar) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
@@ -2991,6 +3001,11 @@ def mod(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Scalar:
 
 @over
 def mod(a: Vector[Any, Scalar], b: Scalar) -> Vector[Any, Scalar]:
+    """ """
+    ...
+
+@over
+def mod(a: Matrix[Any, Any, Scalar], b: Scalar) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 

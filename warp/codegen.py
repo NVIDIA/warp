@@ -2490,15 +2490,16 @@ class Adjoint:
             root = root.value
 
         target = adj.eval(root)
+        target_type = strip_reference(target.type)
 
-        if hasattr(target.type, "_wp_generic_type_hint_"):
+        if hasattr(target_type, "_wp_generic_type_hint_"):
             indices = []
             for dim, node in enumerate(nodes):
                 if isinstance(node, ast.Slice):
                     # In the context of slicing a vec/mat type, indices are expected
                     # to be compile-time constants, hence we can infer the actual slice
                     # bounds also at compile-time.
-                    length = target.type._shape_[dim]
+                    length = target_type._shape_[dim]
                     step = 1 if node.step is None else adj.eval(node.step).constant
 
                     if node.lower is None:

@@ -204,7 +204,7 @@ struct mat_t
     }
 
     // row major storage assumed to be compatible with PyTorch
-    Type data[Rows][Cols];
+    Type data[Rows < 1 ? 1 : Rows][Cols < 1 ? 1 : Cols];
 };
 
 template<typename Type>
@@ -526,6 +526,226 @@ inline CUDA_CALLABLE Type extract(const mat_t<Rows,Cols,Type>& m, int row, int c
     return m.data[row][col];
 }
 
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<RowSliceLength, ColSliceLength, Type> extract(const mat_t<Rows,Cols,Type>& m, slice_t row_slice)
+{
+    static_assert(
+        RowSliceLength == 0 ? ColSliceLength == 0 : ColSliceLength == Cols,
+        "Expected RowSliceLength == 0 ? ColSliceLength == 0 : ColSliceLength == Cols"
+    );
+
+    mat_t<RowSliceLength, ColSliceLength, Type> ret;
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    if (row_slice.step < 0)
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        {
+            for (int j = 0; j < Cols; ++j)
+            {
+                ret.data[ii][j] = m.data[i][j];
+            }
+
+            ++ii;
+        }
+    }
+    else
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        {
+            for (int j = 0; j < Cols; ++j)
+            {
+                ret.data[ii][j] = m.data[i][j];
+            }
+
+            ++ii;
+        }
+    }
+
+    return ret;
+}
+
+template<unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE vec_t<RowSliceLength, Type> extract(const mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col)
+{
+#ifndef NDEBUG
+    if (col < -(int)Cols || col >= (int)Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    vec_t<RowSliceLength, Type> ret;
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    if (col < 0)
+    {
+        col += Cols;
+    }
+
+    if (row_slice.step < 0)
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        {
+            ret.c[ii] = m.data[i][col];
+            ++ii;
+        }
+    }
+    else
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        {
+            ret.c[ii] = m.data[i][col];
+            ++ii;
+        }
+    }
+
+    return ret;
+}
+
+template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE vec_t<ColSliceLength, Type> extract(const mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    vec_t<ColSliceLength, Type> ret;
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+    assert(slice_get_length(col_slice) == ColSliceLength);
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+
+    if (col_slice.step < 0)
+    {
+        int ii = 0;
+        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
+        {
+            ret.c[ii] = m.data[row][i];
+            ++ii;
+        }
+    }
+    else
+    {
+        int ii = 0;
+        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
+        {
+            ret.c[ii] = m.data[row][i];
+            ++ii;
+        }
+    }
+
+    return ret;
+}
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<RowSliceLength, ColSliceLength, Type> extract(const mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice)
+{
+    mat_t<RowSliceLength, ColSliceLength, Type> ret;
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+    assert(slice_get_length(col_slice) == ColSliceLength);
+
+    if (row_slice.step < 0)
+    {
+        if (col_slice.step < 0)
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
+                {
+                    ret.data[ii][jj] = m.data[i][j];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
+        else
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
+                {
+                    ret.data[ii][jj] = m.data[i][j];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
+    }
+    else
+    {
+        if (col_slice.step < 0)
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
+                {
+                    ret.data[ii][jj] = m.data[i][j];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
+        else
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
+                {
+                    ret.data[ii][jj] = m.data[i][j];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
+    }
+
+    return ret;
+}
+
 template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE vec_t<Cols, Type>* index(mat_t<Rows,Cols,Type>& m, int row)
 {
@@ -641,6 +861,378 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, int row, vec_t<C
 
 
 template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, Type value)
+{
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+
+    if (row_slice.step < 0)
+    {
+        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        {
+            for (int j = 0; j < Cols; ++j)
+            {
+                m.data[i][j] += value;
+            }
+        }
+    }
+    else
+    {
+        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        {
+            for (int j = 0; j < Cols; ++j)
+            {
+                m.data[i][j] += value;
+            }
+        }
+    }
+}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
+{
+    static_assert(
+        RowSliceLength == 0 ? ColSliceLength == 0 : ColSliceLength == Cols,
+        "Expected RowSliceLength == 0 ? ColSliceLength == 0 : ColSliceLength == Cols"
+    );
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    if (row_slice.step < 0)
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        {
+            for (int j = 0; j < Cols; ++j)
+            {
+                m.data[i][j] += value.data[ii][j];
+            }
+
+            ++ii;
+        }
+    }
+    else
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        {
+            for (int j = 0; j < Cols; ++j)
+            {
+                m.data[i][j] += value.data[ii][j];
+            }
+
+            ++ii;
+        }
+    }
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, Type value)
+{
+#ifndef NDEBUG
+    if (col < -(int)Cols || col >= (int)Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+
+    if (col < 0)
+    {
+        col += Cols;
+    }
+
+    if (row_slice.step < 0)
+    {
+        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        {
+            m.data[i][col] += value;
+        }
+    }
+    else
+    {
+        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        {
+            m.data[i][col] += value;
+        }
+    }
+}
+
+
+template<unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, vec_t<RowSliceLength, Type>& value)
+{
+#ifndef NDEBUG
+    if (col < -(int)Cols || col >= (int)Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    if (col < 0)
+    {
+        col += Cols;
+    }
+
+    if (row_slice.step < 0)
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        {
+            m.data[i][col] += value.c[ii];
+            ++ii;
+        }
+    }
+    else
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        {
+            m.data[i][col] += value.c[ii];
+            ++ii;
+        }
+    }
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, Type value)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+
+    if (col_slice.step < 0)
+    {
+        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
+        {
+            m.data[row][i] += value;
+        }
+    }
+    else
+    {
+        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
+        {
+            m.data[row][i] += value;
+        }
+    }
+}
+
+
+template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+    assert(slice_get_length(col_slice) == ColSliceLength);
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+
+    if (col_slice.step < 0)
+    {
+        int ii = 0;
+        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
+        {
+            m.data[row][i] += value.c[ii];
+            ++ii;
+        }
+    }
+    else
+    {
+        int ii = 0;
+        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
+        {
+            m.data[row][i] += value.c[ii];
+            ++ii;
+        }
+    }
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, Type value)
+{
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+
+    if (row_slice.step < 0)
+    {
+        if (col_slice.step < 0)
+        {
+            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+            {
+                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] += value;
+                }
+            }
+        }
+        else
+        {
+            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+            {
+                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] += value;
+                }
+            }
+        }
+    }
+    else
+    {
+        if (col_slice.step < 0)
+        {
+            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+            {
+                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] += value;
+                }
+            }
+        }
+        else
+        {
+            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+            {
+                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] += value;
+                }
+            }
+        }
+    }
+}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
+{
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+    assert(slice_get_length(col_slice) == ColSliceLength);
+
+    if (row_slice.step < 0)
+    {
+        if (col_slice.step < 0)
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] += value.data[ii][jj];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
+        else
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] += value.data[ii][jj];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
+    }
+    else
+    {
+        if (col_slice.step < 0)
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] += value.data[ii][jj];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
+        else
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] += value.data[ii][jj];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
+    }
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_add_inplace(mat_t<Rows,Cols,Type>& m, int row, int col, Type value,
                                         mat_t<Rows,Cols,Type>& adj_m, int adj_row, int adj_col, Type& adj_value)
 {
@@ -742,6 +1334,378 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, int row, vec_t<C
     for(unsigned i=0; i < Cols; ++i)
     {
         m.data[row][i] -= value[i];
+    }
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, Type value)
+{
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+
+    if (row_slice.step < 0)
+    {
+        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        {
+            for (int j = 0; j < Cols; ++j)
+            {
+                m.data[i][j] -= value;
+            }
+        }
+    }
+    else
+    {
+        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        {
+            for (int j = 0; j < Cols; ++j)
+            {
+                m.data[i][j] -= value;
+            }
+        }
+    }
+}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
+{
+    static_assert(
+        RowSliceLength == 0 ? ColSliceLength == 0 : ColSliceLength == Cols,
+        "Expected RowSliceLength == 0 ? ColSliceLength == 0 : ColSliceLength == Cols"
+    );
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    if (row_slice.step < 0)
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        {
+            for (int j = 0; j < Cols; ++j)
+            {
+                m.data[i][j] -= value.data[ii][j];
+            }
+
+            ++ii;
+        }
+    }
+    else
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        {
+            for (int j = 0; j < Cols; ++j)
+            {
+                m.data[i][j] -= value.data[ii][j];
+            }
+
+            ++ii;
+        }
+    }
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, Type value)
+{
+#ifndef NDEBUG
+    if (col < -(int)Cols || col >= (int)Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+
+    if (col < 0)
+    {
+        col += Cols;
+    }
+
+    if (row_slice.step < 0)
+    {
+        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        {
+            m.data[i][col] -= value;
+        }
+    }
+    else
+    {
+        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        {
+            m.data[i][col] -= value;
+        }
+    }
+}
+
+
+template<unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, vec_t<RowSliceLength, Type>& value)
+{
+#ifndef NDEBUG
+    if (col < -(int)Cols || col >= (int)Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    if (col < 0)
+    {
+        col += Cols;
+    }
+
+    if (row_slice.step < 0)
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        {
+            m.data[i][col] -= value.c[ii];
+            ++ii;
+        }
+    }
+    else
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        {
+            m.data[i][col] -= value.c[ii];
+            ++ii;
+        }
+    }
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, Type value)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+
+    if (col_slice.step < 0)
+    {
+        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
+        {
+            m.data[row][i] -= value;
+        }
+    }
+    else
+    {
+        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
+        {
+            m.data[row][i] -= value;
+        }
+    }
+}
+
+
+template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+    assert(slice_get_length(col_slice) == ColSliceLength);
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+
+    if (col_slice.step < 0)
+    {
+        int ii = 0;
+        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
+        {
+            m.data[row][i] -= value.c[ii];
+            ++ii;
+        }
+    }
+    else
+    {
+        int ii = 0;
+        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
+        {
+            m.data[row][i] -= value.c[ii];
+            ++ii;
+        }
+    }
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, Type value)
+{
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+
+    if (row_slice.step < 0)
+    {
+        if (col_slice.step < 0)
+        {
+            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+            {
+                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] -= value;
+                }
+            }
+        }
+        else
+        {
+            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+            {
+                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] -= value;
+                }
+            }
+        }
+    }
+    else
+    {
+        if (col_slice.step < 0)
+        {
+            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+            {
+                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] -= value;
+                }
+            }
+        }
+        else
+        {
+            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+            {
+                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] -= value;
+                }
+            }
+        }
+    }
+}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
+{
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+    assert(slice_get_length(col_slice) == ColSliceLength);
+
+    if (row_slice.step < 0)
+    {
+        if (col_slice.step < 0)
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] -= value.data[ii][jj];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
+        else
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] -= value.data[ii][jj];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
+    }
+    else
+    {
+        if (col_slice.step < 0)
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] -= value.data[ii][jj];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
+        else
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] -= value.data[ii][jj];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
     }
 }
 
@@ -853,6 +1817,378 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, int row, vec_
 
 
 template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, Type value)
+{
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+
+    if (row_slice.step < 0)
+    {
+        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        {
+            for (int j = 0; j < Cols; ++j)
+            {
+                m.data[i][j] = value;
+            }
+        }
+    }
+    else
+    {
+        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        {
+            for (int j = 0; j < Cols; ++j)
+            {
+                m.data[i][j] = value;
+            }
+        }
+    }
+}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
+{
+    static_assert(
+        RowSliceLength == 0 ? ColSliceLength == 0 : ColSliceLength == Cols,
+        "Expected RowSliceLength == 0 ? ColSliceLength == 0 : ColSliceLength == Cols"
+    );
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    if (row_slice.step < 0)
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        {
+            for (int j = 0; j < Cols; ++j)
+            {
+                m.data[i][j] = value.data[ii][j];
+            }
+
+            ++ii;
+        }
+    }
+    else
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        {
+            for (int j = 0; j < Cols; ++j)
+            {
+                m.data[i][j] = value.data[ii][j];
+            }
+
+            ++ii;
+        }
+    }
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, Type value)
+{
+#ifndef NDEBUG
+    if (col < -(int)Cols || col >= (int)Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+
+    if (col < 0)
+    {
+        col += Cols;
+    }
+
+    if (row_slice.step < 0)
+    {
+        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        {
+            m.data[i][col] = value;
+        }
+    }
+    else
+    {
+        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        {
+            m.data[i][col] = value;
+        }
+    }
+}
+
+
+template<unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, vec_t<RowSliceLength, Type>& value)
+{
+#ifndef NDEBUG
+    if (col < -(int)Cols || col >= (int)Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    if (col < 0)
+    {
+        col += Cols;
+    }
+
+    if (row_slice.step < 0)
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        {
+            m.data[i][col] = value.c[ii];
+            ++ii;
+        }
+    }
+    else
+    {
+        int ii = 0;
+        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        {
+            m.data[i][col] = value.c[ii];
+            ++ii;
+        }
+    }
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, Type value)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+
+    if (col_slice.step < 0)
+    {
+        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
+        {
+            m.data[row][i] = value;
+        }
+    }
+    else
+    {
+        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
+        {
+            m.data[row][i] = value;
+        }
+    }
+}
+
+
+template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+    assert(slice_get_length(col_slice) == ColSliceLength);
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+
+    if (col_slice.step < 0)
+    {
+        int ii = 0;
+        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
+        {
+            m.data[row][i] = value.c[ii];
+            ++ii;
+        }
+    }
+    else
+    {
+        int ii = 0;
+        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
+        {
+            m.data[row][i] = value.c[ii];
+            ++ii;
+        }
+    }
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, Type value)
+{
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+
+    if (row_slice.step < 0)
+    {
+        if (col_slice.step < 0)
+        {
+            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+            {
+                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] = value;
+                }
+            }
+        }
+        else
+        {
+            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+            {
+                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] = value;
+                }
+            }
+        }
+    }
+    else
+    {
+        if (col_slice.step < 0)
+        {
+            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+            {
+                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] = value;
+                }
+            }
+        }
+        else
+        {
+            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+            {
+                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] = value;
+                }
+            }
+        }
+    }
+}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
+{
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+    assert(slice_get_length(col_slice) == ColSliceLength);
+
+    if (row_slice.step < 0)
+    {
+        if (col_slice.step < 0)
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] = value.data[ii][jj];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
+        else
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] = value.data[ii][jj];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
+    }
+    else
+    {
+        if (col_slice.step < 0)
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] = value.data[ii][jj];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
+        else
+        {
+            int ii = 0;
+            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+            {
+                int jj = 0;
+                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
+                {
+                    m.data[i][j] = value.data[ii][jj];
+                    ++jj;
+                }
+
+                ++ii;
+            }
+        }
+    }
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(mat_t<Rows,Cols,Type>& m, int row, int col, Type value,
                                         mat_t<Rows,Cols,Type>& adj_m, int& adj_row, int& adj_col, Type& adj_value)
 {
@@ -958,6 +2294,78 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m,
     {
         ret.data[row][i] = value[i];
     }
+    return ret;
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, slice_t row_slice, Type value)
+{
+    mat_t<Rows, Cols, Type> ret(m);
+    assign_inplace(ret, row_slice, value);
+    return ret;
+}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
+{
+    mat_t<Rows, Cols, Type> ret(m);
+    assign_inplace(ret, row_slice, value);
+    return ret;
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, Type value)
+{
+    mat_t<Rows, Cols, Type> ret(m);
+    assign_inplace(ret, row_slice, col, value);
+    return ret;
+}
+
+
+template<unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, vec_t<RowSliceLength, Type>& value)
+{
+    mat_t<Rows, Cols, Type> ret(m);
+    assign_inplace(ret, row_slice, col, value);
+    return ret;
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, Type value)
+{
+    mat_t<Rows, Cols, Type> ret(m);
+    assign_inplace(ret, row, col_slice, value);
+    return ret;
+}
+
+
+template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value)
+{
+    mat_t<Rows, Cols, Type> ret(m);
+    assign_inplace(ret, row, col_slice, value);
+    return ret;
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, Type value)
+{
+    mat_t<Rows, Cols, Type> ret(m);
+    assign_inplace(ret, row_slice, col_slice, value);
+    return ret;
+}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
+{
+    mat_t<Rows, Cols, Type> ret(m);
+    assign_inplace(ret, row_slice, col_slice, value);
     return ret;
 }
 
@@ -1091,6 +2499,21 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> add(const mat_t<Rows,Cols,Type>& a, c
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> add(const mat_t<Rows,Cols,Type>& a, Type b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a.data[i][j] + b;
+        }
+    }
+
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE mat_t<Rows,Cols,Type> sub(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b)
 {
     mat_t<Rows,Cols,Type> t;
@@ -1099,6 +2522,21 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> sub(const mat_t<Rows,Cols,Type>& a, c
         for (unsigned j=0; j < Cols; ++j)
         {
             t.data[i][j] = a.data[i][j] - b.data[i][j];
+        }
+    }
+
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> sub(const mat_t<Rows,Cols,Type>& a, Type b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a.data[i][j] - b;
         }
     }
 
@@ -1224,6 +2662,21 @@ inline CUDA_CALLABLE mat_t<Rows,ColsOut,Type> mul(const mat_t<Rows,Cols,Type>& a
         }
     }
     
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> mod(const mat_t<Rows,Cols,Type>& a, Type b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = mod(a.data[i][j], b);
+        }
+    }
+
     return t;
 }
 
