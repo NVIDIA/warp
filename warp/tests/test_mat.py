@@ -4058,6 +4058,59 @@ def test_mat_from_cols_slicing_assign(test, device):
     fn()
 
 
+def test_mat_slicing_assign_backward(test, device):
+    mat23 = wp.mat((2, 3), float)
+
+    @wp.kernel(module="unique")
+    def kernel(
+        arr_x: wp.array(dtype=wp.vec2),
+        arr_y: wp.array(dtype=mat23),
+        arr_z: wp.array(dtype=wp.mat44),
+    ):
+        i = wp.tid()
+
+        z = arr_z[i]
+
+        z[0, :2] = arr_x[i]
+        z[:2, 1:] = arr_y[i]
+
+        z[:2, 3] += arr_x[i][:2]
+        z[1:-1, :2] += arr_y[i][::-1, :-1]
+
+        z[2:, 3] -= arr_x[i][0:]
+        z[3:, -1:] -= arr_y[i][:1, :1]
+
+        arr_z[i] = z
+
+    x = wp.ones(1, dtype=wp.vec2, requires_grad=True, device=device)
+    y = wp.ones(1, dtype=mat23, requires_grad=True, device=device)
+    z = wp.zeros(1, dtype=wp.mat44, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel, 1, inputs=(x, y), outputs=(z,), device=device)
+
+    z.grad = wp.ones_like(z)
+    tape.backward()
+
+    assert_np_equal(
+        z.numpy(),
+        np.array(
+            (
+                (
+                    (1.0, 1.0, 1.0, 2.0),
+                    (1.0, 2.0, 1.0, 2.0),
+                    (1.0, 1.0, 0.0, -1.0),
+                    (0.0, 0.0, 0.0, -2.0),
+                ),
+            ),
+            dtype=float,
+        ),
+    )
+    assert_np_equal(x.grad.numpy(), np.array(((1.0, 1.0),), dtype=float))
+    assert_np_equal(y.grad.numpy(), np.array((((1.0, 2.0, 1.0), (2.0, 2.0, 1.0)),), dtype=float))
+
+
 devices = get_test_devices()
 
 
@@ -4194,6 +4247,7 @@ add_function_test(TestMat, "test_mat_from_rows_indexing_assign", test_mat_from_r
 add_function_test(TestMat, "test_mat_from_cols_indexing_assign", test_mat_from_cols_indexing_assign, devices=devices)
 add_function_test(TestMat, "test_mat_from_rows_slicing_assign", test_mat_from_rows_slicing_assign, devices=devices)
 add_function_test(TestMat, "test_mat_from_cols_slicing_assign", test_mat_from_cols_slicing_assign, devices=devices)
+add_function_test(TestMat, "test_mat_slicing_assign_backward", test_mat_slicing_assign_backward, devices=devices)
 
 
 if __name__ == "__main__":

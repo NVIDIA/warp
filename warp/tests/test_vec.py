@@ -1322,6 +1322,33 @@ def test_vec_assign_inplace_errors(test, device):
         wp.launch(kernel_4, dim=1, device=device)
 
 
+def test_vec_slicing_assign_backward(test, device):
+    @wp.kernel(module="unique")
+    def kernel(arr_x: wp.array(dtype=wp.vec2), arr_y: wp.array(dtype=wp.vec4)):
+        i = wp.tid()
+
+        y = arr_y[i]
+
+        y[:2] = arr_x[i]
+        y[1:-1] += arr_x[i][:2]
+        y[3:1:-1] -= arr_x[i][0:]
+
+        arr_y[i] = y
+
+    x = wp.ones(1, dtype=wp.vec2, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.vec4, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel, 1, inputs=(x,), outputs=(y,), device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array(((1.0, 2.0, 0.0, -1.0),), dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array(((1.0, 1.0),), dtype=float))
+
+
 devices = get_test_devices()
 
 
@@ -1391,6 +1418,7 @@ add_function_test(TestVec, "test_scalar_vec_div", test_scalar_vec_div, devices=d
 add_function_test(TestVec, "test_vec_indexing_assign", test_vec_indexing_assign, devices=devices)
 add_function_test(TestVec, "test_vec_slicing_assign", test_vec_slicing_assign, devices=devices)
 add_function_test(TestVec, "test_vec_assign_inplace_errors", test_vec_assign_inplace_errors, devices=devices)
+add_function_test(TestVec, "test_vec_slicing_assign_backward", test_vec_slicing_assign_backward, devices=devices)
 
 
 if __name__ == "__main__":

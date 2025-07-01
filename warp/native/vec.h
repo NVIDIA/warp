@@ -668,6 +668,64 @@ inline CUDA_CALLABLE void adj_add_inplace(vec_t<Length, Type>& v, int idx, Type 
 
 
 template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_add_inplace(
+    const vec_t<Length, Type>& v, slice_t slice, Type value,
+    vec_t<Length, Type>& adj_v, slice_t& adj_slice, Type& adj_value
+)
+{
+    assert(slice.start >= 0 && slice.start <= (int)Length);
+    assert(slice.stop >= -1 && slice.stop <= (int)Length);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+
+    if (slice.step < 0)
+    {
+        for (int i = slice.start; i > slice.stop; i += slice.step)
+        {
+            adj_value += adj_v[i];
+        }
+    }
+    else
+    {
+        for (int i = slice.start; i < slice.stop; i += slice.step)
+        {
+            adj_value += adj_v[i];
+        }
+    }
+}
+
+
+template<unsigned SliceLength, unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_add_inplace(
+    const vec_t<Length, Type>& v, slice_t slice, const vec_t<SliceLength, Type> &a,
+    vec_t<Length, Type>& adj_v, slice_t& adj_slice, vec_t<SliceLength, Type>& adj_a
+)
+{
+    assert(slice.start >= 0 && slice.start <= (int)Length);
+    assert(slice.stop >= -1 && slice.stop <= (int)Length);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    int ii = 0;
+    if (slice.step < 0)
+    {
+        for (int i = slice.start; i > slice.stop; i += slice.step)
+        {
+            adj_a[ii] += adj_v[i];
+            ++ii;
+        }
+    }
+    else
+    {
+        for (int i = slice.start; i < slice.stop; i += slice.step)
+        {
+            adj_a[ii] += adj_v[i];
+            ++ii;
+        }
+    }
+}
+
+
+template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void sub_inplace(vec_t<Length, Type>& v, int idx, Type value)
 {
 #ifndef NDEBUG
@@ -761,6 +819,64 @@ inline CUDA_CALLABLE void adj_sub_inplace(vec_t<Length, Type>& v, int idx, Type 
 
 
 template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_sub_inplace(
+    const vec_t<Length, Type>& v, slice_t slice, Type value,
+    vec_t<Length, Type>& adj_v, slice_t& adj_slice, Type& adj_value
+)
+{
+    assert(slice.start >= 0 && slice.start <= (int)Length);
+    assert(slice.stop >= -1 && slice.stop <= (int)Length);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+
+    if (slice.step < 0)
+    {
+        for (int i = slice.start; i > slice.stop; i += slice.step)
+        {
+            adj_value -= adj_v[i];
+        }
+    }
+    else
+    {
+        for (int i = slice.start; i < slice.stop; i += slice.step)
+        {
+            adj_value -= adj_v[i];
+        }
+    }
+}
+
+
+template<unsigned SliceLength, unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_sub_inplace(
+    const vec_t<Length, Type>& v, slice_t slice, const vec_t<SliceLength, Type> &a,
+    vec_t<Length, Type>& adj_v, slice_t& adj_slice, vec_t<SliceLength, Type>& adj_a
+)
+{
+    assert(slice.start >= 0 && slice.start <= (int)Length);
+    assert(slice.stop >= -1 && slice.stop <= (int)Length);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    int ii = 0;
+    if (slice.step < 0)
+    {
+        for (int i = slice.start; i > slice.stop; i += slice.step)
+        {
+            adj_a[ii] -= adj_v[i];
+            ++ii;
+        }
+    }
+    else
+    {
+        for (int i = slice.start; i < slice.stop; i += slice.step)
+        {
+            adj_a[ii] -= adj_v[i];
+            ++ii;
+        }
+    }
+}
+
+
+template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void assign_inplace(vec_t<Length, Type>& v, int idx, Type value)
 {
 #ifndef NDEBUG
@@ -850,6 +966,63 @@ inline CUDA_CALLABLE void adj_assign_inplace(vec_t<Length, Type>& v, int idx, Ty
 
 
 template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_assign_inplace(
+    const vec_t<Length, Type>& v, slice_t slice, Type value,
+    vec_t<Length, Type>& adj_v, slice_t& adj_slice, Type& adj_value
+)
+{
+    assert(slice.start >= 0 && slice.start <= (int)Length);
+    assert(slice.stop >= -1 && slice.stop <= (int)Length);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+
+    if (slice.step < 0)
+    {
+        for (int i = slice.start; i > slice.stop; i += slice.step)
+        {
+            adj_value += adj_v[i];
+        }
+    }
+    else
+    {
+        for (int i = slice.start; i < slice.stop; i += slice.step)
+        {
+            adj_value += adj_v[i];
+        }
+    }
+}
+
+template<unsigned SliceLength, unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_assign_inplace(
+    const vec_t<Length, Type>& v, slice_t slice, const vec_t<SliceLength, Type> &a,
+    vec_t<Length, Type>& adj_v, slice_t& adj_slice, vec_t<SliceLength, Type>& adj_a
+)
+{
+    assert(slice.start >= 0 && slice.start <= (int)Length);
+    assert(slice.stop >= -1 && slice.stop <= (int)Length);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    int ii = 0;
+    if (slice.step < 0)
+    {
+        for (int i = slice.start; i > slice.stop; i += slice.step)
+        {
+            adj_a[ii] += adj_v[i];
+            ++ii;
+        }
+    }
+    else
+    {
+        for (int i = slice.start; i < slice.stop; i += slice.step)
+        {
+            adj_a[ii] += adj_v[i];
+            ++ii;
+        }
+    }
+}
+
+
+template<unsigned Length, typename Type>
 inline CUDA_CALLABLE vec_t<Length, Type> assign_copy(vec_t<Length, Type>& v, int idx, Type value)
 {
 #ifndef NDEBUG
@@ -907,6 +1080,106 @@ inline CUDA_CALLABLE void adj_assign_copy(vec_t<Length, Type>& v, int idx, Type 
     {
         if (i != idx)
             adj_v[i] += adj_ret[i];
+    }
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_assign_copy(
+    vec_t<Length, Type>& v, slice_t slice, Type value,
+    vec_t<Length, Type>& adj_v, slice_t& adj_slice, Type& adj_value,
+    const vec_t<Length, Type>& adj_ret)
+{
+    assert(slice.start >= 0 && slice.start <= (int)Length);
+    assert(slice.stop >= -1 && slice.stop <= (int)Length);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+
+    if (slice.step < 0)
+    {
+        for (int i = 0; i < Length; ++i)
+        {
+            bool in_slice = (
+                i > slice.start || i <= slice.stop || (slice.start - i) % (-slice.step) != 0
+            );
+
+            if (!in_slice)
+            {
+                adj_v[i] += adj_ret[i];
+            }
+            else
+            {
+                adj_value += adj_ret[i];
+            }
+        }
+    }
+    else
+    {
+        for (int i = 0; i < Length; ++i)
+        {
+            bool in_slice = (
+                i < slice.start || i >= slice.stop || (i - slice.start) % slice.step != 0
+            );
+
+            if (!in_slice)
+            {
+                adj_v[i] += adj_ret[i];
+            }
+            else
+            {
+                adj_value += adj_ret[i];
+            }
+        }
+    }
+}
+
+template<unsigned SliceLength, unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_assign_copy(
+    vec_t<Length, Type>& v, slice_t slice, const vec_t<SliceLength, Type> &a,
+    vec_t<Length, Type>& adj_v, slice_t& adj_slice, vec_t<SliceLength, Type>& adj_a,
+    const vec_t<Length, Type>& adj_ret)
+{
+    assert(slice.start >= 0 && slice.start <= (int)Length);
+    assert(slice.stop >= -1 && slice.stop <= (int)Length);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    int ii = 0;
+    if (slice.step < 0)
+    {
+        for (int i = 0; i < Length; ++i)
+        {
+            bool in_slice = (
+                i > slice.start || i <= slice.stop || (slice.start - i) % (-slice.step) != 0
+            );
+
+            if (!in_slice)
+            {
+                adj_v[i] += adj_ret[i];
+            }
+            else
+            {
+                adj_a[ii] += adj_ret[i];
+                ++ii;
+            }
+        }
+    }
+    else
+    {
+        for (int i = 0; i < Length; ++i)
+        {
+            bool in_slice = (
+                i < slice.start || i >= slice.stop || (i - slice.start) % slice.step != 0
+            );
+
+            if (!in_slice)
+            {
+                adj_v[i] += adj_ret[i];
+            }
+            else
+            {
+                adj_a[ii] += adj_ret[i];
+                ++ii;
+            }
+        }
     }
 }
 
@@ -1289,6 +1562,21 @@ inline CUDA_CALLABLE void adj_add(vec_t<Length, Type> a, vec_t<Length, Type> b, 
     adj_b += adj_ret;
 }
 
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_add(
+    vec_t<Length, Type> a, Type b,
+    vec_t<Length, Type>& adj_a, Type& adj_b,
+    const vec_t<Length, Type>& adj_ret
+)
+{
+    adj_a += adj_ret;
+
+    for (unsigned i = 0; i < Length; ++i)
+    {
+        adj_b += adj_ret.c[i];
+    }
+}
+
 template<typename Type>
 inline CUDA_CALLABLE void adj_add(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type>& adj_a, vec_t<2, Type>& adj_b, const vec_t<2, Type>& adj_ret)
 {
@@ -1316,6 +1604,21 @@ inline CUDA_CALLABLE void adj_sub(vec_t<Length, Type> a, vec_t<Length, Type> b, 
     adj_b -= adj_ret;
 }
 
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_sub(
+    vec_t<Length, Type> a, Type b,
+    vec_t<Length, Type>& adj_a, Type& adj_b,
+    const vec_t<Length, Type>& adj_ret
+)
+{
+    adj_a += adj_ret;
+
+    for (unsigned i = 0; i < Length; ++i)
+    {
+        adj_b -= adj_ret.c[i];
+    }
+}
+
 template<typename Type>
 inline CUDA_CALLABLE void adj_sub(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type>& adj_a, vec_t<2, Type>& adj_b, const vec_t<2, Type>& adj_ret)
 {
@@ -1338,6 +1641,11 @@ inline CUDA_CALLABLE void adj_sub(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, T
 
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_mod(vec_t<Length, Type> a, vec_t<Length, Type> b, vec_t<Length, Type>& adj_a, vec_t<Length, Type>& adj_b, const vec_t<Length, Type>& adj_ret)
+{
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_mod(vec_t<Length, Type> a, Type b, vec_t<Length, Type>& adj_a, Type& adj_b, const vec_t<Length, Type>& adj_ret)
 {
 }
 
@@ -1409,6 +1717,37 @@ inline CUDA_CALLABLE void adj_extract(const vec_t<Length, Type> & a, int idx, ve
     }
 
     adj_a[idx] += adj_ret;
+}
+
+template<unsigned SliceLength, unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_extract(
+    const vec_t<Length, Type>& a, slice_t slice,
+    vec_t<Length, Type>& adj_a, slice_t& adj_slice,
+    const vec_t<SliceLength, Type>& adj_ret
+)
+{
+    assert(slice.start >= 0 && slice.start <= (int)Length);
+    assert(slice.stop >= -1 && slice.stop <= (int)Length);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    int ii = 0;
+    if (slice.step < 0)
+    {
+        for (int i = slice.start; i > slice.stop; i += slice.step)
+        {
+            adj_a[i] += adj_ret[ii];
+            ++ii;
+        }
+    }
+    else
+    {
+        for (int i = slice.start; i < slice.stop; i += slice.step)
+        {
+            adj_a[i] += adj_ret[ii];
+            ++ii;
+        }
+    }
 }
 
 template<unsigned Length, typename Type>
