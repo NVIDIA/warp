@@ -6191,17 +6191,47 @@ def extract_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, A
     return arg_types["a"]._wp_scalar_type_
 
 
+def vector_extract_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    vec_type = arg_types["a"]
+    idx_type = arg_types["i"]
+
+    if isinstance(idx_type, slice_t):
+        length = idx_type.get_length(vec_type._length_)
+        return vector(length=length, dtype=vec_type._wp_scalar_type_)
+
+    return vec_type._wp_scalar_type_
+
+
+def vector_extract_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    func_args = tuple(args.values())
+    template_args = getattr(return_type, "_shape_", ())
+    return (func_args, template_args)
+
+
 add_builtin(
     "extract",
-    input_types={"a": vector(length=Any, dtype=Scalar), "i": int},
-    value_func=extract_value_func,
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": Any},
+    value_func=vector_extract_value_func,
+    dispatch_func=vector_extract_dispatch_func,
+    export=False,
     hidden=True,
     group="Utility",
 )
 add_builtin(
     "extract",
-    input_types={"a": quaternion(dtype=Scalar), "i": int},
-    value_func=extract_value_func,
+    input_types={"a": quaternion(dtype=Scalar), "i": Any},
+    value_func=vector_extract_value_func,
+    dispatch_func=vector_extract_dispatch_func,
+    export=False,
+    hidden=True,
+    group="Utility",
+)
+add_builtin(
+    "extract",
+    input_types={"a": transformation(dtype=Scalar), "i": Any},
+    value_func=vector_extract_value_func,
+    dispatch_func=vector_extract_dispatch_func,
+    export=False,
     hidden=True,
     group="Utility",
 )
@@ -6218,14 +6248,6 @@ add_builtin(
 add_builtin(
     "extract",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int},
-    value_func=extract_value_func,
-    hidden=True,
-    group="Utility",
-)
-
-add_builtin(
-    "extract",
-    input_types={"a": transformation(dtype=Scalar), "i": int},
     value_func=extract_value_func,
     hidden=True,
     group="Utility",
@@ -6309,11 +6331,47 @@ add_builtin(
 )
 
 
+def vector_assign_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    vec = args["a"].type
+    idx = args["i"].type
+    value_type = strip_reference(args["value"].type)
+
+    if isinstance(idx, slice_t):
+        length = idx.get_length(vec._length_)
+
+        if type_is_vector(value_type):
+            if not types_equal(value_type._wp_scalar_type_, vec._wp_scalar_type_):
+                raise ValueError(
+                    f"The provided vector is expected to be of length {length} with dtype {type_repr(vec._wp_scalar_type_)}."
+                )
+            if value_type._length_ != length:
+                raise ValueError(
+                    f"The length of the provided vector ({args['value'].type._length_}) isn't compatible with the given slice (expected {length})."
+                )
+            template_args = (length,)
+        else:
+            if not types_equal(value_type, vec._wp_scalar_type_):
+                raise ValueError(
+                    f"The provided value is expected to be a scalar, or a vector of length {length}, with dtype {type_repr(vec._wp_scalar_type_)}."
+                )
+            template_args = ()
+    else:
+        if not types_equal(value_type, vec._wp_scalar_type_):
+            raise ValueError(
+                f"The provided value is expected to be a scalar of type {type_repr(vec._wp_scalar_type_)}."
+            )
+        template_args = ()
+
+    func_args = tuple(args.values())
+    return (func_args, template_args)
+
+
 # implements vector[index] = value
 add_builtin(
     "assign_inplace",
-    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6322,8 +6380,9 @@ add_builtin(
 # implements quaternion[index] = value
 add_builtin(
     "assign_inplace",
-    input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": quaternion(dtype=Scalar), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6331,15 +6390,16 @@ add_builtin(
 # implements transformation[index] = value
 add_builtin(
     "assign_inplace",
-    input_types={"a": transformation(dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": transformation(dtype=Scalar), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
 )
 
 
-def vector_assign_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+def vector_assign_copy_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     vec_type = arg_types["a"]
     return vec_type
 
@@ -6347,8 +6407,9 @@ def vector_assign_value_func(arg_types: Mapping[str, type], arg_values: Mapping[
 # implements vector[index] = value, performs a copy internally if wp.config.enable_vector_component_overwrites is True
 add_builtin(
     "assign_copy",
-    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
-    value_func=vector_assign_value_func,
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": Any, "value": Any},
+    value_func=vector_assign_copy_value_func,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6357,8 +6418,9 @@ add_builtin(
 # implements quaternion[index] = value, performs a copy internally if wp.config.enable_vector_component_overwrites is True
 add_builtin(
     "assign_copy",
-    input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
-    value_func=vector_assign_value_func,
+    input_types={"a": quaternion(dtype=Scalar), "i": Any, "value": Any},
+    value_func=vector_assign_copy_value_func,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6367,8 +6429,9 @@ add_builtin(
 # implements transformation[index] = value, performs a copy internally if wp.config.enable_vector_component_overwrites is True
 add_builtin(
     "assign_copy",
-    input_types={"a": transformation(dtype=Scalar), "i": int, "value": Scalar},
-    value_func=vector_assign_value_func,
+    input_types={"a": transformation(dtype=Scalar), "i": Any, "value": Any},
+    value_func=vector_assign_copy_value_func,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6377,8 +6440,9 @@ add_builtin(
 # implements vector[idx] += scalar
 add_builtin(
     "add_inplace",
-    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6387,8 +6451,9 @@ add_builtin(
 # implements quaternion[idx] += scalar
 add_builtin(
     "add_inplace",
-    input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": quaternion(dtype=Scalar), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6397,8 +6462,9 @@ add_builtin(
 # implements transformation[idx] += scalar
 add_builtin(
     "add_inplace",
-    input_types={"a": transformation(dtype=Float), "i": int, "value": Float},
+    input_types={"a": transformation(dtype=Float), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6417,8 +6483,9 @@ add_builtin(
 # implements vector[idx] -= scalar
 add_builtin(
     "sub_inplace",
-    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6427,8 +6494,9 @@ add_builtin(
 # implements quaternion[idx] -= scalar
 add_builtin(
     "sub_inplace",
-    input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": quaternion(dtype=Scalar), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6437,8 +6505,9 @@ add_builtin(
 # implements transformation[idx] -= scalar
 add_builtin(
     "sub_inplace",
-    input_types={"a": transformation(dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": transformation(dtype=Float), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6807,6 +6876,24 @@ add_builtin(
 # ---------------------------------
 # Operators
 
+
+def op_scalar_constraint(arg_types: Mapping[str, type]):
+    return types_equal(arg_types["a"]._wp_scalar_type_, arg_types["b"])
+
+
+def op_scalar_create_value_func(default):
+    def fn(arg_types, arg_values):
+        if arg_types is None:
+            return default
+
+        if arg_types["a"]._wp_scalar_type_ != arg_types["b"]:
+            raise RuntimeError("'b' parameter must have the same scalar type as the modified object")
+
+        return arg_types["a"]
+
+    return fn
+
+
 add_builtin(
     "add", input_types={"a": Scalar, "b": Scalar}, value_func=sametypes_create_value_func(Scalar), group="Operators"
 )
@@ -6815,6 +6902,14 @@ add_builtin(
     input_types={"a": vector(length=Any, dtype=Scalar), "b": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "add",
+    input_types={"a": vector(length=Any, dtype=Scalar), "b": Scalar},
+    constraint=op_scalar_constraint,
+    value_func=op_scalar_create_value_func(vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -6849,6 +6944,14 @@ add_builtin(
     input_types={"a": vector(length=Any, dtype=Scalar), "b": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "sub",
+    input_types={"a": vector(length=Any, dtype=Scalar), "b": Scalar},
+    constraint=op_scalar_constraint,
+    value_func=op_scalar_create_value_func(vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -7081,6 +7184,14 @@ add_builtin(
     constraint=sametypes,
     value_func=sametypes_create_value_func(Scalar),
     doc="Modulo operation using truncated division.",
+    group="Operators",
+)
+add_builtin(
+    "mod",
+    input_types={"a": vector(length=Any, dtype=Scalar), "b": Scalar},
+    constraint=op_scalar_constraint,
+    value_func=op_scalar_create_value_func(vector(length=Any, dtype=Scalar)),
+    doc="",
     group="Operators",
 )
 

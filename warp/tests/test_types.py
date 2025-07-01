@@ -268,11 +268,6 @@ class TestTypes(unittest.TestCase):
             v1[0] = "123.0"
 
         with self.assertRaisesRegex(
-            TypeError, r"Expected to assign a slice from a sequence of values but got `int` instead"
-        ):
-            v1[:] = 123
-
-        with self.assertRaisesRegex(
             TypeError, r"Expected to assign a slice from a sequence of `int32` values but got `vec3i` instead"
         ):
             v1[:1] = (v1,)

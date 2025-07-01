@@ -2504,7 +2504,88 @@ def test_transform_indexing_assign(test, device):
         wp.expect_eq(t[5], 6.0)
         wp.expect_eq(t[6], 123.0)
 
-    @wp.kernel
+    @wp.kernel(module="unique")
+    def kernel():
+        fn()
+
+    wp.launch(kernel, 1, device=device)
+    wp.synchronize()
+    fn()
+
+
+def test_transform_slicing_assign(test, device):
+    vec0 = wp.vec(0, float)
+    vec1 = wp.vec(1, float)
+    vec2 = wp.vec(2, float)
+    vec3 = wp.vec(3, float)
+    vec4 = wp.vec(4, float)
+    vec5 = wp.vec(5, float)
+    vec6 = wp.vec(6, float)
+    vec7 = wp.vec(7, float)
+
+    @wp.func
+    def fn():
+        t = wp.transform(p=wp.vec3(1.0, 2.0, 3.0), q=wp.quat(4.0, 5.0, 6.0, 7.0))
+
+        wp.expect_eq(t[:] == vec7(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0), True)
+        wp.expect_eq(t[-123:123] == vec7(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0), True)
+        wp.expect_eq(t[123:] == vec0(), True)
+        wp.expect_eq(t[:-123] == vec0(), True)
+        wp.expect_eq(t[::123] == vec1(1.0), True)
+
+        wp.expect_eq(t[1:] == vec6(2.0, 3.0, 4.0, 5.0, 6.0, 7.0), True)
+        wp.expect_eq(t[-2:] == vec2(6.0, 7.0), True)
+        wp.expect_eq(t[:2] == vec2(1.0, 2.0), True)
+        wp.expect_eq(t[:-1] == vec6(1.0, 2.0, 3.0, 4.0, 5.0, 6.0), True)
+        wp.expect_eq(t[::2] == vec4(1.0, 3.0, 5.0, 7.0), True)
+        wp.expect_eq(t[1::2] == vec3(2.0, 4.0, 6.0), True)
+        wp.expect_eq(t[::-1] == vec7(7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0), True)
+        wp.expect_eq(t[::-2] == vec4(7.0, 5.0, 3.0, 1.0), True)
+        wp.expect_eq(t[1::-2] == vec1(2.0), True)
+
+        t[1:] = vec6(8.0, 9.0, 10.0, 11.0, 12.0, 13.0)
+        wp.expect_eq(t == wp.transform(p=wp.vec3(1.0, 8.0, 9.0), q=wp.quat(10.0, 11.0, 12.0, 13.0)), True)
+
+        t[-2:] = vec2(14.0, 15.0)
+        wp.expect_eq(t == wp.transform(p=wp.vec3(1.0, 8.0, 9.0), q=wp.quat(10.0, 11.0, 14.0, 15.0)), True)
+
+        t[:2] = vec2(16.0, 17.0)
+        wp.expect_eq(t == wp.transform(p=wp.vec3(16.0, 17.0, 9.0), q=wp.quat(10.0, 11.0, 14.0, 15.0)), True)
+
+        t[:-1] = vec6(18.0, 19.0, 20.0, 21.0, 22.0, 23.0)
+        wp.expect_eq(t == wp.transform(p=wp.vec3(18.0, 19.0, 20.0), q=wp.quat(21.0, 22.0, 23.0, 15.0)), True)
+
+        t[::2] = vec4(24.0, 25.0, 26.0, 27.0)
+        wp.expect_eq(t == wp.transform(p=wp.vec3(24.0, 19.0, 25.0), q=wp.quat(21.0, 26.0, 23.0, 27.0)), True)
+
+        t[1::2] = vec3(28.0, 29.0, 30.0)
+        wp.expect_eq(t == wp.transform(p=wp.vec3(24.0, 28.0, 25.0), q=wp.quat(29.0, 26.0, 30.0, 27.0)), True)
+
+        t[::-1] = vec7(31.0, 32.0, 33.0, 34.0, 35.0, 36.0, 37.0)
+        wp.expect_eq(t == wp.transform(p=wp.vec3(37.0, 36.0, 35.0), q=wp.quat(34.0, 33.0, 32.0, 31.0)), True)
+
+        t[::-2] = vec4(38.0, 39.0, 40.0, 41.0)
+        wp.expect_eq(t == wp.transform(p=wp.vec3(41.0, 36.0, 40.0), q=wp.quat(34.0, 39.0, 32.0, 38.0)), True)
+
+        t[1::-2] = vec1(42.0)
+        wp.expect_eq(t == wp.transform(p=wp.vec3(41.0, 42.0, 40.0), q=wp.quat(34.0, 39.0, 32.0, 38.0)), True)
+
+        t[:2] = 43.0
+        wp.expect_eq(t == wp.transform(p=wp.vec3(43.0, 43.0, 40.0), q=wp.quat(34.0, 39.0, 32.0, 38.0)), True)
+
+        t[1:] += vec6(44.0, 45.0, 46.0, 47.0, 48.0, 49.0)
+        wp.expect_eq(t == wp.transform(p=wp.vec3(43.0, 87.0, 85.0), q=wp.quat(80.0, 86.0, 80.0, 87.0)), True)
+
+        t[:2] += 50.0
+        wp.expect_eq(t == wp.transform(p=wp.vec3(93.0, 137.0, 85.0), q=wp.quat(80.0, 86.0, 80.0, 87.0)), True)
+
+        t[:-1] -= vec6(51.0, 52.0, 53.0, 54.0, 55.0, 56.0)
+        wp.expect_eq(t == wp.transform(p=wp.vec3(42.0, 85.0, 32.0), q=wp.quat(26.0, 31.0, 24.0, 87.0)), True)
+
+        t[-2:] -= 34.0
+        wp.expect_eq(t == wp.transform(p=wp.vec3(42.0, 85.0, 32.0), q=wp.quat(26.0, 31.0, -10.0, 53.0)), True)
+
+    @wp.kernel(module="unique")
     def kernel():
         fn()
 
@@ -2731,6 +2812,7 @@ add_function_test(TestSpatial, "test_transform_sub_inplace", test_transform_sub_
 add_function_test(TestSpatial, "test_transform_array_add_inplace", test_transform_array_add_inplace, devices=devices)
 add_function_test(TestSpatial, "test_transform_array_sub_inplace", test_transform_array_sub_inplace, devices=devices)
 add_function_test(TestSpatial, "test_transform_indexing_assign", test_transform_indexing_assign, devices=devices)
+add_function_test(TestSpatial, "test_transform_slicing_assign", test_transform_slicing_assign, devices=devices)
 
 
 if __name__ == "__main__":

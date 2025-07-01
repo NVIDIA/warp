@@ -5512,6 +5512,18 @@ Operators
        * Differentiable
 
 
+.. py:function:: add(a: Vector[Any,Scalar], b: Scalar) -> Vector[Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
 .. py:function:: add(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]
     :noindex:
     :nocontentsentry:
@@ -5573,6 +5585,18 @@ Operators
 
 
 .. py:function:: sub(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: sub(a: Vector[Any,Scalar], b: Scalar) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
@@ -5852,6 +5876,18 @@ Operators
        * Differentiable
 
     Modulo operation using truncated division.
+
+
+.. py:function:: mod(a: Vector[Any,Scalar], b: Scalar) -> Vector[Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
 
 
 .. py:function:: div(a: Scalar, b: Scalar) -> Scalar

@@ -1177,13 +1177,149 @@ def test_vec_indexing_assign(test, device):
         wp.expect_eq(v[-3], 4.0)
         wp.expect_eq(v[-4], 123.0)
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         fn()
 
     wp.launch(kernel, 1, device=device)
     wp.synchronize()
     fn()
+
+
+def test_vec_slicing_assign(test, device):
+    vec0 = wp.vec(0, float)
+    vec1 = wp.vec(1, float)
+    vec2 = wp.vec(2, float)
+    vec3 = wp.vec(3, float)
+    vec4 = wp.vec(4, float)
+
+    @wp.func
+    def fn():
+        v = wp.vec4(1.0, 2.0, 3.0, 4.0)
+
+        wp.expect_eq(v[:] == vec4(1.0, 2.0, 3.0, 4.0), True)
+        wp.expect_eq(v[-123:123] == vec4(1.0, 2.0, 3.0, 4.0), True)
+        wp.expect_eq(v[123:] == vec0(), True)
+        wp.expect_eq(v[:-123] == vec0(), True)
+        wp.expect_eq(v[::123] == vec1(1.0), True)
+
+        wp.expect_eq(v[1:] == vec3(2.0, 3.0, 4.0), True)
+        wp.expect_eq(v[-2:] == vec2(3.0, 4.0), True)
+        wp.expect_eq(v[:2] == vec2(1.0, 2.0), True)
+        wp.expect_eq(v[:-1] == vec3(1.0, 2.0, 3.0), True)
+        wp.expect_eq(v[::2] == vec2(1.0, 3.0), True)
+        wp.expect_eq(v[1::2] == vec2(2.0, 4.0), True)
+        wp.expect_eq(v[::-1] == vec4(4.0, 3.0, 2.0, 1.0), True)
+        wp.expect_eq(v[::-2] == vec2(4.0, 2.0), True)
+        wp.expect_eq(v[1::-2] == vec1(2.0), True)
+
+        v[1:] = vec3(5.0, 6.0, 7.0)
+        wp.expect_eq(v == wp.vec4(1.0, 5.0, 6.0, 7.0), True)
+
+        v[-2:] = vec2(8.0, 9.0)
+        wp.expect_eq(v == wp.vec4(1.0, 5.0, 8.0, 9.0), True)
+
+        v[:2] = vec2(10.0, 11.0)
+        wp.expect_eq(v == wp.vec4(10.0, 11.0, 8.0, 9.0), True)
+
+        v[:-1] = vec3(12.0, 13.0, 14.0)
+        wp.expect_eq(v == wp.vec4(12.0, 13.0, 14.0, 9.0), True)
+
+        v[::2] = vec2(15.0, 16.0)
+        wp.expect_eq(v == wp.vec4(15.0, 13.0, 16.0, 9.0), True)
+
+        v[1::2] = vec2(17.0, 18.0)
+        wp.expect_eq(v == wp.vec4(15.0, 17.0, 16.0, 18.0), True)
+
+        v[::-1] = vec4(19.0, 20.0, 21.0, 22.0)
+        wp.expect_eq(v == wp.vec4(22.0, 21.0, 20.0, 19.0), True)
+
+        v[::-2] = vec2(23.0, 24.0)
+        wp.expect_eq(v == wp.vec4(22.0, 24.0, 20.0, 23.0), True)
+
+        v[1::-2] = vec1(25.0)
+        wp.expect_eq(v == wp.vec4(22.0, 25.0, 20.0, 23.0), True)
+
+        v[:2] = 26.0
+        wp.expect_eq(v == wp.vec4(26.0, 26.0, 20.0, 23.0), True)
+
+        v[1:] += vec3(27.0, 28.0, 29.0)
+        wp.expect_eq(v == wp.vec4(26.0, 53.0, 48.0, 52.0), True)
+
+        v[:2] += 30.0
+        wp.expect_eq(v == wp.vec4(56.0, 83.0, 48.0, 52.0), True)
+
+        v[:-1] -= vec3(31.0, 32.0, 33.0)
+        wp.expect_eq(v == wp.vec4(25.0, 51.0, 15.0, 52.0), True)
+
+        v[-2:] -= 34.0
+        wp.expect_eq(v == wp.vec4(25.0, 51.0, -19.0, 18.0), True)
+
+        v[1::2] *= 5.0
+        wp.expect_eq(v == wp.vec4(25.0, 255.0, -19.0, 90.0), True)
+
+        v[-3:2] /= 3.0
+        wp.expect_eq(v == wp.vec4(25.0, 85.0, -19.0, 90.0), True)
+
+        v[:] %= vec4(35.0, 36.0, 37.0, 38.0)
+        wp.expect_eq(v == wp.vec4(25.0, 13.0, -19.0, 14.0), True)
+
+        v[:2] %= 3.0
+        wp.expect_eq(v == wp.vec4(1.0, 1.0, -19.0, 14.0), True)
+
+    @wp.kernel(module="unique")
+    def kernel():
+        fn()
+
+    wp.launch(kernel, 1, device=device)
+    wp.synchronize()
+    fn()
+
+
+def test_vec_assign_inplace_errors(test, device):
+    @wp.kernel
+    def kernel_1():
+        v = wp.vec4(1.0, 2.0, 3.0, 4.0)
+        v[1:] = wp.vec3d(wp.float64(5.0), wp.float64(6.0), wp.float64(7.0))
+
+    with test.assertRaisesRegex(
+        ValueError,
+        r"The provided vector is expected to be of length 3 with dtype float32.$",
+    ):
+        wp.launch(kernel_1, dim=1, device=device)
+
+    @wp.kernel
+    def kernel_2():
+        v = wp.vec4(1.0, 2.0, 3.0, 4.0)
+        v[1:] = wp.float64(5.0)
+
+    with test.assertRaisesRegex(
+        ValueError,
+        r"The provided value is expected to be a scalar, or a vector of length 3, with dtype float32.$",
+    ):
+        wp.launch(kernel_2, dim=1, device=device)
+
+    @wp.kernel
+    def kernel_3():
+        v = wp.vec4(1.0, 2.0, 3.0, 4.0)
+        v[1:] = wp.mat22(5.0, 6.0, 7.0, 8.0)
+
+    with test.assertRaisesRegex(
+        ValueError,
+        r"The provided value is expected to be a scalar, or a vector of length 3, with dtype float32.$",
+    ):
+        wp.launch(kernel_3, dim=1, device=device)
+
+    @wp.kernel
+    def kernel_4():
+        v = wp.vec4(1.0, 2.0, 3.0, 4.0)
+        v[1:] = wp.vec2(5.0, 6.0)
+
+    with test.assertRaisesRegex(
+        ValueError,
+        r"The length of the provided vector \(2\) isn't compatible with the given slice \(expected 3\).$",
+    ):
+        wp.launch(kernel_4, dim=1, device=device)
 
 
 devices = get_test_devices()
@@ -1253,6 +1389,8 @@ add_function_test(TestVec, "test_vec_array_add_inplace", test_vec_array_add_inpl
 add_function_test(TestVec, "test_vec_array_sub_inplace", test_vec_array_sub_inplace, devices=devices)
 add_function_test(TestVec, "test_scalar_vec_div", test_scalar_vec_div, devices=devices)
 add_function_test(TestVec, "test_vec_indexing_assign", test_vec_indexing_assign, devices=devices)
+add_function_test(TestVec, "test_vec_slicing_assign", test_vec_slicing_assign, devices=devices)
+add_function_test(TestVec, "test_vec_assign_inplace_errors", test_vec_assign_inplace_errors, devices=devices)
 
 
 if __name__ == "__main__":

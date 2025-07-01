@@ -483,6 +483,37 @@ inline CUDA_CALLABLE Type extract(const quat_t<Type>& a, int idx)
     else                {return a.w;}
 }
 
+template<unsigned SliceLength, typename Type>
+inline CUDA_CALLABLE vec_t<SliceLength, Type> extract(const quat_t<Type> & a, slice_t slice)
+{
+    vec_t<SliceLength, Type> ret;
+
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    int idx = 0;
+    if (slice.step < 0)
+    {
+        for (int i = slice.start; i > slice.stop; i += slice.step)
+        {
+            ret[idx] = a[i];
+            ++idx;
+        }
+    }
+    else
+    {
+        for (int i = slice.start; i < slice.stop; i += slice.step)
+        {
+            ret[idx] = a[i];
+            ++idx;
+        }
+    }
+
+    return ret;
+}
+
 template<typename Type>
 inline CUDA_CALLABLE Type* index(quat_t<Type>& q, int idx)
 {
@@ -558,6 +589,58 @@ inline CUDA_CALLABLE void add_inplace(quat_t<Type>& q, int idx, Type value)
 
 
 template<typename Type>
+inline CUDA_CALLABLE void add_inplace(quat_t<Type>& q, slice_t slice, Type value)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+
+    if (slice.step < 0)
+    {
+        for (int i = slice.start; i > slice.stop; i += slice.step)
+        {
+            q[i] += value;
+        }
+    }
+    else
+    {
+        for (int i = slice.start; i < slice.stop; i += slice.step)
+        {
+            q[i] += value;
+        }
+    }
+}
+
+
+template<unsigned SliceLength, typename Type>
+inline CUDA_CALLABLE void add_inplace(quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    int ii = 0;
+    if (slice.step < 0)
+    {
+        for (int i = slice.start; i > slice.stop; i += slice.step)
+        {
+            q[i] += a[ii];
+            ++ii;
+        }
+    }
+    else
+    {
+        for (int i = slice.start; i < slice.stop; i += slice.step)
+        {
+            q[i] += a[ii];
+            ++ii;
+        }
+    }
+}
+
+
+template<typename Type>
 inline CUDA_CALLABLE void adj_add_inplace(quat_t<Type>& q, int idx, Type value,
                                         quat_t<Type>& adj_q, int adj_idx, Type& adj_value)
 {
@@ -595,6 +678,58 @@ inline CUDA_CALLABLE void sub_inplace(quat_t<Type>& q, int idx, Type value)
     }
 
     q[idx] -= value;
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void sub_inplace(quat_t<Type>& q, slice_t slice, Type value)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+
+    if (slice.step < 0)
+    {
+        for (int i = slice.start; i > slice.stop; i += slice.step)
+        {
+            q[i] -= value;
+        }
+    }
+    else
+    {
+        for (int i = slice.start; i < slice.stop; i += slice.step)
+        {
+            q[i] -= value;
+        }
+    }
+}
+
+
+template<unsigned SliceLength, typename Type>
+inline CUDA_CALLABLE void sub_inplace(quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    int ii = 0;
+    if (slice.step < 0)
+    {
+        for (int i = slice.start; i > slice.stop; i += slice.step)
+        {
+            q[i] -= a[ii];
+            ++ii;
+        }
+    }
+    else
+    {
+        for (int i = slice.start; i < slice.stop; i += slice.step)
+        {
+            q[i] -= a[ii];
+            ++ii;
+        }
+    }
 }
 
 
@@ -638,6 +773,59 @@ inline CUDA_CALLABLE void assign_inplace(quat_t<Type>& q, int idx, Type value)
     q[idx] = value;
 }
 
+
+template<typename Type>
+inline CUDA_CALLABLE void assign_inplace(quat_t<Type>& q, slice_t slice, Type value)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+
+    if (slice.step < 0)
+    {
+        for (int i = slice.start; i > slice.stop; i += slice.step)
+        {
+            q[i] = value;
+        }
+    }
+    else
+    {
+        for (int i = slice.start; i < slice.stop; i += slice.step)
+        {
+            q[i] = value;
+        }
+    }
+}
+
+
+template<unsigned SliceLength, typename Type>
+inline CUDA_CALLABLE void assign_inplace(quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    int ii = 0;
+    if (slice.step < 0)
+    {
+        for (int i = slice.start; i > slice.stop; i += slice.step)
+        {
+            q[i] = a[ii];
+            ++ii;
+        }
+    }
+    else
+    {
+        for (int i = slice.start; i < slice.stop; i += slice.step)
+        {
+            q[i] = a[ii];
+            ++ii;
+        }
+    }
+}
+
+
 template<typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(quat_t<Type>& q, int idx, Type value, quat_t<Type>& adj_q, int& adj_idx, Type& adj_value)
 {
@@ -676,6 +864,22 @@ inline CUDA_CALLABLE quat_t<Type> assign_copy(quat_t<Type>& q, int idx, Type val
 
     quat_t<Type> ret(q);
     ret[idx] = value;
+    return ret;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE quat_t<Type> assign_copy(quat_t<Type>& q, slice_t slice, Type value)
+{
+    quat_t<Type> ret(q);
+    assign_inplace(ret, slice, value);
+    return ret;
+}
+
+template<unsigned SliceLength, typename Type>
+inline CUDA_CALLABLE quat_t<Type> assign_copy(quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a)
+{
+    quat_t<Type> ret(q);
+    assign_inplace<SliceLength>(ret, slice, a);
     return ret;
 }
 

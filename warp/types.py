@@ -194,6 +194,39 @@ def safe_len(obj):
 # built-in types
 
 
+def _unary_op(self, op, t):
+    try:
+        return op(self)
+    except RuntimeError:
+        return t(*(op(a) for a in self))
+
+
+def _binary_op(self, op, x, t, cw=True):
+    try:
+        return op(self, x)
+    except RuntimeError:
+        if is_scalar(x):
+            return t(*(op(a, x) for a in self))
+
+        if cw and types_equal(x, t):
+            return t(*(op(a, b) for a, b in zip(self, x)))
+
+        raise
+
+
+def _rbinary_op(self, op, x, t, cw=True):
+    try:
+        return op(x, self)
+    except RuntimeError:
+        if is_scalar(x):
+            return t(*(op(x, a) for a in self))
+
+        if cw and types_equal(x, t):
+            return t(*(op(b, a) for a, b in zip(self, x)))
+
+        raise
+
+
 def vector(length, dtype):
     # canonicalize dtype
     if dtype == int:
@@ -260,9 +293,10 @@ def vector(length, dtype):
                 return vec_t.scalar_export(super().__getitem__(key))
             elif isinstance(key, slice):
                 if self._wp_scalar_type_ == float16:
-                    return [vec_t.scalar_export(x) for x in super().__getitem__(key)]
+                    values = tuple(vec_t.scalar_export(x) for x in super().__getitem__(key))
                 else:
-                    return super().__getitem__(key)
+                    values = super().__getitem__(key)
+                return vector(len(values), self._wp_scalar_type_)(*values)
             else:
                 raise KeyError(f"Invalid key {key}, expected int or slice")
 
@@ -276,6 +310,13 @@ def vector(length, dtype):
                         f"but got `{type(value).__name__}` instead"
                     ) from None
             elif isinstance(key, slice):
+                if is_scalar(value):
+                    indices = range(*key.indices(self._length_))
+                    for idx in indices:
+                        super().__setitem__(idx, vec_t.scalar_import(value))
+
+                    return
+
                 try:
                     iter(value)
                 except TypeError:
@@ -325,40 +366,40 @@ def vector(length, dtype):
             return super().__setattr__(name, value)
 
         def __add__(self, y):
-            return warp.add(self, y)
+            return _binary_op(self, warp.add, y, vec_t)
 
         def __radd__(self, y):
-            return warp.add(y, self)
+            return _rbinary_op(self, warp.add, y, vec_t)
 
         def __sub__(self, y):
-            return warp.sub(self, y)
+            return _binary_op(self, warp.sub, y, vec_t)
 
         def __rsub__(self, y):
-            return warp.sub(y, self)
+            return _rbinary_op(self, warp.sub, y, vec_t)
 
         def __mul__(self, y):
-            return warp.mul(self, y)
+            return _binary_op(self, warp.mul, y, vec_t, cw=False)
 
         def __rmul__(self, x):
-            return warp.mul(x, self)
+            return _rbinary_op(self, warp.mul, x, vec_t, cw=False)
 
         def __truediv__(self, y):
-            return warp.div(self, y)
+            return _binary_op(self, warp.div, y, vec_t, cw=False)
 
         def __rtruediv__(self, x):
-            return warp.div(x, self)
+            return _rbinary_op(self, warp.div, x, vec_t, cw=False)
 
         def __mod__(self, x):
-            return warp.mod(self, x)
+            return _binary_op(self, warp.mod, x, vec_t)
 
         def __rmod__(self, x):
-            return warp.mod(x, self)
+            return _rbinary_op(self, warp.mod, x, vec_t)
 
         def __pos__(self):
-            return warp.pos(self)
+            return _unary_op(self, warp.pos, vec_t)
 
         def __neg__(self):
-            return warp.neg(self)
+            return _unary_op(self, warp.neg, vec_t)
 
         def __str__(self):
             return f"[{', '.join(map(str, self))}]"
@@ -1696,6 +1737,10 @@ def type_is_float(t):
     return t in float_types
 
 
+def type_is_scalar(t):
+    return type_is_int(t) or type_is_float(t)
+
+
 # returns True if the passed *type* is a vector
 def type_is_vector(t):
     return getattr(t, "_wp_generic_type_hint_", None) is Vector
@@ -1731,6 +1776,10 @@ def is_int(x: Any) -> builtins.bool:
 
 def is_float(x: Any) -> builtins.bool:
     return type_is_float(type(x))
+
+
+def is_scalar(x: Any) -> builtins.bool:
+    return type_is_scalar(type(x))
 
 
 def is_value(x: Any) -> builtins.bool:

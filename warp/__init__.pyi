@@ -2810,6 +2810,11 @@ def add(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     ...
 
 @over
+def add(a: Vector[Any, Scalar], b: Scalar) -> Vector[Any, Scalar]:
+    """ """
+    ...
+
+@over
 def add(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]:
     """ """
     ...
@@ -2836,6 +2841,11 @@ def sub(a: Scalar, b: Scalar) -> Scalar:
 
 @over
 def sub(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """ """
+    ...
+
+@over
+def sub(a: Vector[Any, Scalar], b: Scalar) -> Vector[Any, Scalar]:
     """ """
     ...
 
@@ -2977,6 +2987,11 @@ def mod(a: Scalar, b: Scalar) -> Scalar:
 @over
 def mod(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Scalar:
     """Modulo operation using truncated division."""
+    ...
+
+@over
+def mod(a: Vector[Any, Scalar], b: Scalar) -> Vector[Any, Scalar]:
+    """ """
     ...
 
 @over

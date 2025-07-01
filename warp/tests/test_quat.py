@@ -2381,7 +2381,79 @@ def test_quat_indexing_assign(test, device):
         wp.expect_eq(q[-3], 4.0)
         wp.expect_eq(q[-4], 123.0)
 
-    @wp.kernel
+    @wp.kernel(module="unique")
+    def kernel():
+        fn()
+
+    wp.launch(kernel, 1, device=device)
+    wp.synchronize()
+    fn()
+
+
+def test_quat_slicing_assign(test, device):
+    vec0 = wp.vec(0, float)
+    vec1 = wp.vec(1, float)
+    vec2 = wp.vec(2, float)
+    vec3 = wp.vec(3, float)
+    vec4 = wp.vec(4, float)
+
+    @wp.func
+    def fn():
+        q = wp.quat(1.0, 2.0, 3.0, 4.0)
+
+        wp.expect_eq(q[:] == vec4(1.0, 2.0, 3.0, 4.0), True)
+        wp.expect_eq(q[-123:123] == vec4(1.0, 2.0, 3.0, 4.0), True)
+        wp.expect_eq(q[123:] == vec0(), True)
+        wp.expect_eq(q[:-123] == vec0(), True)
+        wp.expect_eq(q[::123] == vec1(1.0), True)
+
+        wp.expect_eq(q[1:] == vec3(2.0, 3.0, 4.0), True)
+        wp.expect_eq(q[-2:] == vec2(3.0, 4.0), True)
+        wp.expect_eq(q[:2] == vec2(1.0, 2.0), True)
+        wp.expect_eq(q[:-1] == vec3(1.0, 2.0, 3.0), True)
+        wp.expect_eq(q[::2] == vec2(1.0, 3.0), True)
+        wp.expect_eq(q[1::2] == vec2(2.0, 4.0), True)
+        wp.expect_eq(q[::-1] == vec4(4.0, 3.0, 2.0, 1.0), True)
+        wp.expect_eq(q[::-2] == vec2(4.0, 2.0), True)
+        wp.expect_eq(q[1::-2] == vec1(2.0), True)
+
+        q[1:] = vec3(5.0, 6.0, 7.0)
+        wp.expect_eq(q == wp.quat(1.0, 5.0, 6.0, 7.0), True)
+
+        q[-2:] = vec2(8.0, 9.0)
+        wp.expect_eq(q == wp.quat(1.0, 5.0, 8.0, 9.0), True)
+
+        q[:2] = vec2(10.0, 11.0)
+        wp.expect_eq(q == wp.quat(10.0, 11.0, 8.0, 9.0), True)
+
+        q[:-1] = vec3(12.0, 13.0, 14.0)
+        wp.expect_eq(q == wp.quat(12.0, 13.0, 14.0, 9.0), True)
+
+        q[::2] = vec2(15.0, 16.0)
+        wp.expect_eq(q == wp.quat(15.0, 13.0, 16.0, 9.0), True)
+
+        q[1::2] = vec2(17.0, 18.0)
+        wp.expect_eq(q == wp.quat(15.0, 17.0, 16.0, 18.0), True)
+
+        q[1::-2] = vec1(19.0)
+        wp.expect_eq(q == wp.quat(15.0, 19.0, 16.0, 18.0), True)
+
+        q[:2] = 20.0
+        wp.expect_eq(q == wp.quat(20.0, 20.0, 16.0, 18.0), True)
+
+        q[1:] += vec3(21.0, 22.0, 23.0)
+        wp.expect_eq(q == wp.quat(20.0, 41.0, 38.0, 41.0), True)
+
+        q[:2] += 24.0
+        wp.expect_eq(q == wp.quat(44.0, 65.0, 38.0, 41.0), True)
+
+        q[:-1] -= vec3(25.0, 26.0, 27.0)
+        wp.expect_eq(q == wp.quat(19.0, 39.0, 11.0, 41.0), True)
+
+        q[-2:] -= 34.0
+        wp.expect_eq(q == wp.quat(19.0, 39.0, -23.0, 7.0), True)
+
+    @wp.kernel(module="unique")
     def kernel():
         fn()
 
@@ -2502,6 +2574,7 @@ add_function_test(TestQuat, "test_quat_array_add_inplace", test_quat_array_add_i
 add_function_test(TestQuat, "test_quat_array_sub_inplace", test_quat_array_sub_inplace, devices=devices)
 add_function_test(TestQuat, "test_scalar_quat_div", test_scalar_quat_div, devices=devices)
 add_function_test(TestQuat, "test_quat_indexing_assign", test_quat_indexing_assign, devices=devices)
+add_function_test(TestQuat, "test_quat_slicing_assign", test_quat_slicing_assign, devices=devices)
 
 
 if __name__ == "__main__":
