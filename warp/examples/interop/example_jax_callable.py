@@ -62,9 +62,9 @@ def accum_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
 
 
 def in_out_func(
-        a: wp.array(dtype=float),  # input only
-        b: wp.array(dtype=float),  # input and output
-        c: wp.array(dtype=float),  # output only
+    a: wp.array(dtype=float),  # input only
+    b: wp.array(dtype=float),  # input and output
+    c: wp.array(dtype=float),  # output only
 ):
     wp.launch(scale_kernel, dim=a.size, inputs=[a, 2.0], outputs=[c])
     wp.launch(accum_kernel, dim=a.size, inputs=[a, b])  # modifies `b`
