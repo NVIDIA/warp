@@ -16,7 +16,7 @@
 import ctypes
 import threading
 import traceback
-from typing import Callable
+from typing import Callable, Optional
 
 import jax
 
@@ -29,9 +29,10 @@ from .xla_ffi import *
 
 
 class FfiArg:
-    def __init__(self, name, type):
+    def __init__(self, name, type, in_out=False):
         self.name = name
         self.type = type
+        self.in_out = in_out
         self.is_array = isinstance(type, wp.array)
 
         if self.is_array:
@@ -86,7 +87,7 @@ class FfiKernel:
         # process input args
         self.input_args = []
         for i in range(self.num_inputs):
-            arg = FfiArg(kernel.adj.args[i].label, kernel.adj.args[i].type)
+            arg = FfiArg(kernel.adj.args[i].label, kernel.adj.args[i].type, False)
             if arg.is_array:
                 # keep track of the first input array argument
                 if self.first_array_arg is None:
@@ -96,7 +97,7 @@ class FfiKernel:
         # process output args
         self.output_args = []
         for i in range(self.num_inputs, self.num_kernel_args):
-            arg = FfiArg(kernel.adj.args[i].label, kernel.adj.args[i].type)
+            arg = FfiArg(kernel.adj.args[i].label, kernel.adj.args[i].type, False)
             if not arg.is_array:
                 raise TypeError("All output arguments must be arrays")
             self.output_args.append(arg)
@@ -298,7 +299,7 @@ class FfiCallDesc:
 
 
 class FfiCallable:
-    def __init__(self, func, num_outputs, graph_compatible, vmap_method, output_dims):
+    def __init__(self, func, num_outputs, graph_compatible, vmap_method, output_dims, in_out_argnames):
         self.func = func
         self.name = generate_unique_name(func)
         self.num_outputs = num_outputs
@@ -309,11 +310,16 @@ class FfiCallable:
         self.call_id = 0
         self.call_descriptors = {}
 
+        in_out_argnames_list = in_out_argnames or []
+        in_out_argnames = set(in_out_argnames_list)
+        if len(in_out_argnames_list) != len(in_out_argnames):
+            raise AssertionError("in_out_argnames must not contain duplicate names")
+
         # get arguments and annotations
         argspec = get_full_arg_spec(func)
 
         num_args = len(argspec.args)
-        self.num_inputs = num_args - num_outputs
+        self.num_inputs = num_args - num_outputs + len(in_out_argnames)
         if self.num_outputs < 1:
             raise ValueError("At least one output is required")
         if self.num_outputs > num_args:
@@ -330,15 +336,38 @@ class FfiCallable:
                 if arg_type is not None:
                     raise TypeError("Function must not return a value")
             else:
-                arg = FfiArg(arg_name, arg_type)
+                arg = FfiArg(arg_name, arg_type, arg_name in in_out_argnames)
+                if arg_name in in_out_argnames:
+                    in_out_argnames.remove(arg_name)
                 if arg.is_array:
                     if arg_idx < self.num_inputs and self.first_array_arg is None:
                         self.first_array_arg = arg_idx
                 self.args.append(arg)
+
+            if arg_idx >= self.num_inputs:
+                error_str = (
+                    f"Expected an output-only argument for argument {arg_name}."
+                    " in_out arguments should be placed before output-only arguments."
+                )
+                assert not arg.in_out, error_str
+
             arg_idx += 1
 
+        if in_out_argnames:
+            raise ValueError(f"in_out_argnames: '{in_out_argnames}' did not match any function argument names.")
+
         self.input_args = self.args[: self.num_inputs]
-        self.output_args = self.args[self.num_inputs :]
+        self.output_args = [a for a in self.args if a.in_out] + self.args[self.num_inputs :]
+
+        # Build input output aliases.
+        out_id = 0
+        input_output_aliases = {}
+        for in_id, arg in enumerate(self.input_args):
+            if not arg.in_out:
+                continue
+            input_output_aliases[in_id] = out_id
+            out_id += 1
+        self.input_output_aliases = input_output_aliases
 
         # register the callback
         FFI_CCALLFUNC = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(XLA_FFI_CallFrame))
@@ -358,11 +387,15 @@ class FfiCallable:
         if output_dims is None:
             output_dims = self.output_dims
 
+        in_out_dims = {}
+
         # process inputs
         static_inputs = {}
         for i in range(num_inputs):
             input_arg = self.input_args[i]
             input_value = args[i]
+            if input_arg.in_out:
+                in_out_dims[input_arg.name] = input_value.shape
             if input_arg.is_array:
                 # check dtype
                 if input_value.dtype != input_arg.jax_scalar_type:
@@ -396,23 +429,25 @@ class FfiCallable:
         if isinstance(output_dims, dict):
             # assume a dictionary of shapes keyed on argument name
             for output_arg in self.output_args:
-                dims = output_dims.get(output_arg.name)
+                dims = output_dims.get(output_arg.name, in_out_dims.get(output_arg.name))
                 if dims is None:
                     raise ValueError(f"Missing output dimensions for argument '{output_arg.name}'")
                 out_types.append(get_jax_output_type(output_arg, dims))
         else:
-            if output_dims is None:
+            if output_dims is None and not all(o.in_out for o in self.output_args):
                 raise ValueError("Unable to determine output dimensions")
             elif isinstance(output_dims, int):
                 output_dims = (output_dims,)
             # assume same dimensions for all outputs
             for output_arg in self.output_args:
+                output_dims = output_dims or in_out_dims.get(output_arg.name)
                 out_types.append(get_jax_output_type(output_arg, output_dims))
 
         call = jax.ffi.ffi_call(
             self.name,
             out_types,
             vmap_method=vmap_method,
+            input_output_aliases=self.input_output_aliases,
             # has_side_effect=True,  # force this function to execute even if outputs aren't used
         )
 
@@ -483,7 +518,7 @@ class FfiCallable:
                     arg_list.append(value)
 
             # outputs
-            for i in range(num_outputs):
+            for i in range(len(self.input_output_aliases), num_outputs):
                 arg = self.output_args[i]
                 buffer = outputs[i].contents
                 shape = buffer.dims[: buffer.rank - arg.dtype_ndim]
@@ -559,8 +594,9 @@ def jax_callable(
     func: Callable,
     num_outputs: int = 1,
     graph_compatible: bool = True,
-    vmap_method: str = "broadcast_all",
+    vmap_method: Optional[str] = "broadcast_all",
     output_dims=None,
+    in_out_argnames=None,
 ):
     """Create a JAX callback from an annotated Python function.
 
@@ -577,12 +613,14 @@ def jax_callable(
         output_dims: Optional. Specify the default dimensions of output arrays.
             If ``None``, output dimensions are inferred from the launch dimensions.
             This argument can also be specified for individual calls.
+        in_out_argnames: arg names that indicate which output arrays alias input arrays.
 
     Limitations:
         - All kernel arguments must be contiguous arrays or scalars.
         - Scalars must be static arguments in JAX.
         - Input arguments are followed by output arguments in the Warp kernel definition.
         - There must be at least one output argument.
+        - Input-output arguments must precede output arguments.
         - Only the CUDA backend is supported.
     """
     key = (
@@ -595,7 +633,7 @@ def jax_callable(
 
     with _FFI_REGISTRY_LOCK:
         if key not in _FFI_CALLABLE_REGISTRY:
-            new_callable = FfiCallable(func, num_outputs, graph_compatible, vmap_method, output_dims)
+            new_callable = FfiCallable(func, num_outputs, graph_compatible, vmap_method, output_dims, in_out_argnames)
             _FFI_CALLABLE_REGISTRY[key] = new_callable
 
     return _FFI_CALLABLE_REGISTRY[key]
