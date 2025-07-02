@@ -72,6 +72,17 @@ def scale_vec_kernel(a: wp.array(dtype=wp.vec2), s: float, output: wp.array(dtyp
     output[tid] = a[tid] * s
 
 
+@wp.kernel
+def in_out_kernel(
+    a: wp.array(dtype=float),  # input only
+    b: wp.array(dtype=float),  # input and output
+    c: wp.array(dtype=float),  # output only
+):
+    tid = wp.tid()
+    b[tid] += a[tid]
+    c[tid] = 2.0 * a[tid]
+
+
 def example1():
     # two inputs and one output
     jax_add = jax_kernel(add_kernel)
@@ -189,11 +200,26 @@ def example7():
     print(f())
 
 
+def example8():
+    # Using input-output arguments
+
+    jax_func = jax_kernel(in_out_kernel, num_outputs=2, in_out_argnames=["b"])
+
+    f = jax.jit(jax_func)
+
+    a = jnp.ones(10, dtype=jnp.float32)
+    b = jnp.arange(10, dtype=jnp.float32)
+
+    b, c = f(a, b)
+    print(b)
+    print(c)
+
+
 def main():
     wp.init()
     wp.load_module(device=wp.get_device())
 
-    examples = [example1, example2, example3, example4, example5, example6, example7]
+    examples = [example1, example2, example3, example4, example5, example6, example7, example8]
 
     for example in examples:
         print("\n===========================================================================")
