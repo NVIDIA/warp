@@ -6,6 +6,7 @@
 
 - Add the static method `wp.MarchingCubes.extract_surface_marching_cubes()` to extract a triangular mesh from a
   3D scalar field sampled to a regular grid ([GH-788](https://github.com/NVIDIA/warp/issues/788)).
+- Support input-output aliasing in JAX FFI ([GH-815](https://github.com/NVIDIA/warp/issues/815)).
 
 ### Changed
 
