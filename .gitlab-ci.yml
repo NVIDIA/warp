@@ -493,9 +493,10 @@ linux-x86_64 test mujoco warp:
     - pytest -n 4 --pyargs mujoco_warp --junit-xml=rspec.xml
   tags:
     - arch/x86_64
-    - gpu/B40
+    - gpu/A40
     - os/linux
     - platform/horde
+    - warp
 
 # Ensure minimum Python version is supported
 linux-x86_64 python 3.8 test:
