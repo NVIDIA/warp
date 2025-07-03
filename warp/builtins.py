@@ -5544,7 +5544,7 @@ def array_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any
         return array(dtype=Scalar)
 
     dtype = arg_values["dtype"]
-    shape = extract_tuple(arg_values["shape"], as_constant=True)
+    shape = extract_tuple(arg_values["shape"], as_constant=False)
     return array(dtype=dtype, ndim=len(shape))
 
 
@@ -5554,7 +5554,7 @@ def array_dispatch_func(input_types: Mapping[str, type], return_type: Any, args:
     # to the underlying C++ function's runtime and template params.
 
     dtype = return_type.dtype
-    shape = extract_tuple(args["shape"], as_constant=True)
+    shape = extract_tuple(args["shape"], as_constant=False)
 
     func_args = (args["ptr"], *shape)
     template_args = (dtype,)

@@ -16,6 +16,7 @@
   libraries ([GH-792](https://github.com/NVIDIA/warp/issues/792)).
 - Update `wp.MarchingCubes` to a pure-Warp implementation, allowing cross-platform support and differentiability.
   ([GH-788](https://github.com/NVIDIA/warp/issues/788)).
+- Constructing wp.array objects from a pointer inside Warp kernels (e.g., wp.array(ptr=..., shape=...)) no longer requires the shape to be a compile-time constant, allowing for greater flexibility.
 
 ### Fixed
 
