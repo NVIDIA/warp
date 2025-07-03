@@ -2605,17 +2605,7 @@ class Adjoint:
 
         lhs = node.targets[0]
 
-        if not isinstance(lhs, ast.Tuple):
-            # Check if the rhs corresponds to an unsupported construct.
-            # Tuples are supported in the context of assigning multiple variables
-            # at once, but not for simple assignments like `x = (1, 2, 3)`.
-            # Therefore, we need to catch this specific case here instead of
-            # more generally in `adj.eval()`.
-            if isinstance(node.value, ast.List):
-                raise WarpCodegenError(
-                    "List constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
-                )
-
+        # evaluate rhs
         # handle the case where we are assigning multiple output variables
         if isinstance(lhs, ast.Tuple):
             # record the expected number of outputs on the node
@@ -2626,18 +2616,33 @@ class Adjoint:
 
             # evaluate values
             if isinstance(node.value, ast.Tuple):
-                out = [adj.eval(v) for v in node.value.elts]
+                rhs = [adj.eval(v) for v in node.value.elts]
             else:
-                out = adj.eval(node.value)
+                rhs = adj.eval(node.value)
+        else:
+            # Check if the rhs corresponds to an unsupported construct.
+            # Tuples are supported in the context of assigning multiple variables
+            # at once, but not for simple assignments like `x = (1, 2, 3)`.
+            # Therefore, we need to catch this specific case here instead of
+            # more generally in `adj.eval()`.
+            if isinstance(node.value, ast.List):
+                raise WarpCodegenError(
+                    "List constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
+                )
 
-            subtype = getattr(out, "type", None)
+            rhs = adj.eval(node.value)
+
+        # handle the case where we are assigning multiple output variables
+        if isinstance(lhs, ast.Tuple):
+            subtype = getattr(rhs, "type", None)
+
             if isinstance(subtype, warp.types.tuple_t):
-                if len(out.type.types) != len(lhs.elts):
+                if len(rhs.type.types) != len(lhs.elts):
                     raise WarpCodegenError(
-                        f"Invalid number of values to unpack (expected {len(lhs.elts)}, got {len(out.type.types)})."
+                        f"Invalid number of values to unpack (expected {len(lhs.elts)}, got {len(rhs.type.types)})."
                     )
-                target = out
-                out = tuple(
+                target = rhs
+                rhs = tuple(
                     adj.add_builtin_call("extract", (target, adj.add_constant(i))) for i in range(len(lhs.elts))
                 )
 
@@ -2650,11 +2655,12 @@ class Adjoint:
                         "Multiple return functions can only assign to simple variables, e.g.: x, y = func()"
                     )
 
-            if len(names) != len(out):
+            if len(names) != len(rhs):
                 raise WarpCodegenError(
-                    f"Multiple return functions need to receive all their output values, incorrect number of values to unpack (expected {len(out)}, got {len(names)})"
+                    f"Multiple return functions need to receive all their output values, incorrect number of values to unpack (expected {len(rhs)}, got {len(names)})"
                 )
 
+            out = rhs
             for name, rhs in zip(names, out):
                 if name in adj.symbols:
                     if not types_equal(rhs.type, adj.symbols[name].type):
@@ -2666,8 +2672,6 @@ class Adjoint:
 
         # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
         elif isinstance(lhs, ast.Subscript):
-            rhs = adj.eval(node.value)
-
             if hasattr(lhs.value, "attr") and lhs.value.attr == "adjoint":
                 # handle adjoint of a variable, i.e. wp.adjoint[var]
                 lhs.slice.is_adjoint = True
@@ -2742,9 +2746,6 @@ class Adjoint:
             # symbol name
             name = lhs.id
 
-            # evaluate rhs
-            rhs = adj.eval(node.value)
-
             # check type matches if symbol already defined
             if name in adj.symbols:
                 if not types_equal(strip_reference(rhs.type), adj.symbols[name].type):
@@ -2765,7 +2766,6 @@ class Adjoint:
             adj.symbols[name] = out
 
         elif isinstance(lhs, ast.Attribute):
-            rhs = adj.eval(node.value)
             aggregate = adj.eval(lhs.value)
             aggregate_type = strip_reference(aggregate.type)
 
@@ -2853,9 +2853,9 @@ class Adjoint:
             new_node = ast.Assign(targets=[lhs], value=ast.BinOp(lhs, node.op, node.value))
             adj.eval(new_node)
 
-        if isinstance(lhs, ast.Subscript):
-            rhs = adj.eval(node.value)
+        rhs = adj.eval(node.value)
 
+        if isinstance(lhs, ast.Subscript):
             # wp.adjoint[var] appears in custom grad functions, and does not require
             # special consideration in the AugAssign case
             if hasattr(lhs.value, "attr") and lhs.value.attr == "adjoint":
@@ -2937,7 +2937,6 @@ class Adjoint:
 
         elif isinstance(lhs, ast.Name):
             target = adj.eval(node.target)
-            rhs = adj.eval(node.value)
 
             if is_tile(target.type) and is_tile(rhs.type):
                 if isinstance(node.op, ast.Add):
