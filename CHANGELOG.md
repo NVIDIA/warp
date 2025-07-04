@@ -23,6 +23,7 @@
 - Fix calling user functions from Python scope not working with array parameters.
 - Fix `tape.zero()` not resetting gradient arrays in nested structs ([GH-807](https://github.com/NVIDIA/warp/issues/807)).
 - Fix a bug with the marching-cubes output geometry ([GH-324](https://github.com/NVIDIA/warp/issues/324)).
+- Fix a bug where cuda modules could get unloaded while they are still required when conditional graph nodes are used because the destructor of the python Graph object could get called too early
 
 ## [1.8.0] - 2025-07-01
 
