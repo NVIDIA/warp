@@ -3788,6 +3788,7 @@ class Runtime:
             self.core.cuda_graph_create_exec.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
+                ctypes.c_void_p,
                 ctypes.POINTER(ctypes.c_void_p),
             ]
             self.core.cuda_graph_create_exec.restype = ctypes.c_bool
@@ -6287,6 +6288,40 @@ def get_module_options(module: Any = None) -> dict[str, Any]:
     return get_module(m.__name__).options
 
 
+def _unregister_capture(device: Device, stream: Stream, graph: Graph):
+    """Unregister a graph capture from the device and runtime.
+
+    This should be called when a graph capture is no longer active, either because it completed or was paused.
+    The graph should only be registered while it is actively capturing.
+
+    Args:
+        device: The CUDA device the graph was being captured on
+        stream: The CUDA stream the graph was being captured on
+        graph: The Graph object that was being captured
+    """
+    del device.captures[stream]
+    del runtime.captures[graph.capture_id]
+
+
+def _register_capture(device: Device, stream: Stream, graph: Graph, capture_id: int):
+    """Register a graph capture with the device and runtime.
+
+    Makes the graph discoverable through its capture_id so that retain_module_exec() can be called
+    when launching kernels during graph capture. This ensures modules are retained until graph execution completes.
+
+    Args:
+        device: The CUDA device the graph is being captured on
+        stream: The CUDA stream the graph is being captured on
+        graph: The Graph object being captured
+        capture_id: Unique identifier for this graph capture
+    """
+    # add to ongoing captures on the device
+    device.captures[stream] = graph
+
+    # add to lookup table by globally unique capture id
+    runtime.captures[capture_id] = graph
+
+
 def capture_begin(
     device: Devicelike = None,
     stream: Stream | None = None,
@@ -6352,11 +6387,7 @@ def capture_begin(
     capture_id = runtime.core.cuda_stream_get_capture_id(stream.cuda_stream)
     graph = Graph(device, capture_id)
 
-    # add to ongoing captures on the device
-    device.captures[stream] = graph
-
-    # add to lookup table by globally unique capture id
-    runtime.captures[capture_id] = graph
+    _register_capture(device, stream, graph, capture_id)
 
 
 def capture_end(device: Devicelike = None, stream: Stream | None = None) -> Graph:
@@ -6384,8 +6415,7 @@ def capture_end(device: Devicelike = None, stream: Stream | None = None) -> Grap
     if graph is None:
         raise RuntimeError("Graph capture is not active on this stream")
 
-    del device.captures[stream]
-    del runtime.captures[graph.capture_id]
+    _unregister_capture(device, stream, graph)
 
     # get the graph executable
     g = ctypes.c_void_p()
@@ -6425,7 +6455,7 @@ def assert_conditional_graph_support():
         raise RuntimeError("Conditional graph nodes require CUDA driver 12.4+")
 
 
-def capture_pause(device: Devicelike = None, stream: Stream | None = None) -> ctypes.c_void_p:
+def capture_pause(device: Devicelike = None, stream: Stream | None = None) -> Graph:
     if stream is not None:
         device = stream.device
     else:
@@ -6434,14 +6464,24 @@ def capture_pause(device: Devicelike = None, stream: Stream | None = None) -> ct
             raise RuntimeError("Must be a CUDA device")
         stream = device.stream
 
-    graph = ctypes.c_void_p()
-    if not runtime.core.cuda_graph_pause_capture(device.context, stream.cuda_stream, ctypes.byref(graph)):
+    # get the graph being captured
+    graph = device.captures.get(stream)
+
+    if graph is None:
+        raise RuntimeError("Graph capture is not active on this stream")
+
+    _unregister_capture(device, stream, graph)
+
+    g = ctypes.c_void_p()
+    if not runtime.core.cuda_graph_pause_capture(device.context, stream.cuda_stream, ctypes.byref(g)):
         raise RuntimeError(runtime.get_error_string())
+
+    graph.graph = g
 
     return graph
 
 
-def capture_resume(graph: ctypes.c_void_p, device: Devicelike = None, stream: Stream | None = None):
+def capture_resume(graph: Graph, device: Devicelike = None, stream: Stream | None = None):
     if stream is not None:
         device = stream.device
     else:
@@ -6450,8 +6490,13 @@ def capture_resume(graph: ctypes.c_void_p, device: Devicelike = None, stream: St
             raise RuntimeError("Must be a CUDA device")
         stream = device.stream
 
-    if not runtime.core.cuda_graph_resume_capture(device.context, stream.cuda_stream, graph):
+    if not runtime.core.cuda_graph_resume_capture(device.context, stream.cuda_stream, graph.graph):
         raise RuntimeError(runtime.get_error_string())
+
+    capture_id = runtime.core.cuda_stream_get_capture_id(stream.cuda_stream)
+    graph.capture_id = capture_id
+
+    _register_capture(device, stream, graph, capture_id)
 
 
 # reusable pinned readback buffer for conditions
@@ -6550,10 +6595,15 @@ def capture_if(
 
     # pause capturing parent graph
     main_graph = capture_pause(stream=stream)
+    # store the pointer to the cuda graph to restore it later
+    main_graph_ptr = main_graph.graph
 
     # capture if-graph
     if on_true is not None:
-        capture_resume(graph_on_true, stream=stream)
+        # temporarily repurpose the main_graph python object such that all dependencies
+        # added through retain_module_exec() end up in the correct python graph object
+        main_graph.graph = graph_on_true
+        capture_resume(main_graph, stream=stream)
         if isinstance(on_true, Callable):
             on_true(**kwargs)
         elif isinstance(on_true, Graph):
@@ -6573,7 +6623,10 @@ def capture_if(
 
     # capture else-graph
     if on_false is not None:
-        capture_resume(graph_on_false, stream=stream)
+        # temporarily repurpose the main_graph python object such that all dependencies
+        # added through retain_module_exec() end up in the correct python graph object
+        main_graph.graph = graph_on_false
+        capture_resume(main_graph, stream=stream)
         if isinstance(on_false, Callable):
             on_false(**kwargs)
         elif isinstance(on_false, Graph):
@@ -6590,6 +6643,9 @@ def capture_if(
         else:
             raise TypeError("on_false must be a Callable or a Graph")
         capture_pause(stream=stream)
+
+    # restore the main graph to its original state
+    main_graph.graph = main_graph_ptr
 
     # resume capturing parent graph
     capture_resume(main_graph, stream=stream)
@@ -6673,7 +6729,13 @@ def capture_while(condition: warp.array(dtype=int), while_body: Callable | Graph
 
     # pause capturing parent graph and start capturing child graph
     main_graph = capture_pause(stream=stream)
-    capture_resume(body_graph, stream=stream)
+    # store the pointer to the cuda graph to restore it later
+    main_graph_ptr = main_graph.graph
+
+    # temporarily repurpose the main_graph python object such that all dependencies
+    # added through retain_module_exec() end up in the correct python graph object
+    main_graph.graph = body_graph
+    capture_resume(main_graph, stream=stream)
 
     # capture while-body
     if isinstance(while_body, Callable):
@@ -6702,6 +6764,8 @@ def capture_while(condition: warp.array(dtype=int), while_body: Callable | Graph
 
     # stop capturing child graph and resume capturing parent graph
     capture_pause(stream=stream)
+    # restore the main graph to its original state
+    main_graph.graph = main_graph_ptr
     capture_resume(main_graph, stream=stream)
 
 
@@ -6723,7 +6787,9 @@ def capture_launch(graph: Graph, stream: Stream | None = None):
 
     if graph.graph_exec is None:
         g = ctypes.c_void_p()
-        result = runtime.core.cuda_graph_create_exec(graph.device.context, graph.graph, ctypes.byref(g))
+        result = runtime.core.cuda_graph_create_exec(
+            graph.device.context, stream.cuda_stream, graph.graph, ctypes.byref(g)
+        )
         if not result:
             raise RuntimeError(f"Graph creation error: {runtime.get_error_string()}")
         graph.graph_exec = g

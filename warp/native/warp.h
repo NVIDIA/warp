@@ -308,7 +308,7 @@ extern "C"
 
     WP_API bool cuda_graph_begin_capture(void* context, void* stream, int external);
     WP_API bool cuda_graph_end_capture(void* context, void* stream, void** graph_ret);
-    WP_API bool cuda_graph_create_exec(void* context, void* graph, void** graph_exec_ret);
+    WP_API bool cuda_graph_create_exec(void* context, void* stream, void* graph, void** graph_exec_ret);
     WP_API bool cuda_graph_launch(void* graph, void* stream);
     WP_API bool cuda_graph_destroy(void* context, void* graph);
     WP_API bool cuda_graph_exec_destroy(void* context, void* graph_exec);
