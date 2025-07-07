@@ -789,11 +789,10 @@ def apply_defaults(
     arguments = bound_args.arguments
     new_arguments = []
     for name in bound_args._signature.parameters.keys():
-        try:
+        if name in arguments:
             new_arguments.append((name, arguments[name]))
-        except KeyError:
-            if name in values:
-                new_arguments.append((name, values[name]))
+        elif name in values:
+            new_arguments.append((name, values[name]))
 
     bound_args.arguments = dict(new_arguments)
 
@@ -3345,11 +3344,11 @@ class Adjoint:
         return None, path
 
     def resolve_external_reference(adj, name: str):
-        try:
+        if name in adj.func.__code__.co_freevars:
             # look up in closure variables
             idx = adj.func.__code__.co_freevars.index(name)
             obj = adj.func.__closure__[idx].cell_contents
-        except ValueError:
+        else:
             # look up in global variables
             obj = adj.func.__globals__.get(name)
         return obj
