@@ -2701,11 +2701,8 @@ class Adjoint:
             ):
                 # recursively unwind AST, stopping at penultimate node
                 node = lhs
-                while hasattr(node, "value"):
-                    if hasattr(node.value, "value"):
-                        node = node.value
-                    else:
-                        break
+                while hasattr(node.value, "value"):
+                    node = node.value
                 # lhs is updating a variable adjoint (i.e. wp.adjoint[var])
                 if hasattr(node, "attr") and node.attr == "adjoint":
                     attr = adj.add_builtin_call("index", [target, *indices])
