@@ -2603,33 +2603,28 @@ class Adjoint:
         if len(node.targets) != 1:
             raise WarpCodegenError("Assigning the same value to multiple variables is not supported")
 
+        # Check if the rhs corresponds to an unsupported construct.
+        # Tuples are supported in the context of assigning multiple variables
+        # at once, but not for simple assignments like `x = (1, 2, 3)`.
+        # Therefore, we need to catch this specific case here instead of
+        # more generally in `adj.eval()`.
+        if isinstance(node.value, ast.List):
+            raise WarpCodegenError(
+                "List constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
+            )
+
         lhs = node.targets[0]
 
-        # evaluate rhs
-        # handle the case where we are assigning multiple output variables
-        if isinstance(lhs, ast.Tuple):
+        if isinstance(lhs, ast.Tuple) and isinstance(node.value, ast.Call):
             # record the expected number of outputs on the node
             # we do this so we can decide which function to
             # call based on the number of expected outputs
-            if isinstance(node.value, ast.Call):
-                node.value.expects = len(lhs.elts)
+            node.value.expects = len(lhs.elts)
 
-            # evaluate values
-            if isinstance(node.value, ast.Tuple):
-                rhs = [adj.eval(v) for v in node.value.elts]
-            else:
-                rhs = adj.eval(node.value)
+        # evaluate rhs
+        if isinstance(lhs, ast.Tuple) and isinstance(node.value, ast.Tuple):
+            rhs = [adj.eval(v) for v in node.value.elts]
         else:
-            # Check if the rhs corresponds to an unsupported construct.
-            # Tuples are supported in the context of assigning multiple variables
-            # at once, but not for simple assignments like `x = (1, 2, 3)`.
-            # Therefore, we need to catch this specific case here instead of
-            # more generally in `adj.eval()`.
-            if isinstance(node.value, ast.List):
-                raise WarpCodegenError(
-                    "List constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
-                )
-
             rhs = adj.eval(node.value)
 
         # handle the case where we are assigning multiple output variables
@@ -2641,10 +2636,7 @@ class Adjoint:
                     raise WarpCodegenError(
                         f"Invalid number of values to unpack (expected {len(lhs.elts)}, got {len(rhs.type.types)})."
                     )
-                target = rhs
-                rhs = tuple(
-                    adj.add_builtin_call("extract", (target, adj.add_constant(i))) for i in range(len(lhs.elts))
-                )
+                rhs = tuple(adj.add_builtin_call("extract", (rhs, adj.add_constant(i))) for i in range(len(lhs.elts)))
 
             names = []
             for v in lhs.elts:
