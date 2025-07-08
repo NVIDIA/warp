@@ -486,11 +486,11 @@ linux-x86_64 test mujoco warp:
     - uv pip install -e .
     - uv pip install --pre mujoco -f https://py.mujoco.org/
     - uv pip install "git+https://github.com/google-deepmind/mujoco_warp@main"
-    - uv pip install pytest pytest-xdist "jax[cuda12]"
+    - uv pip install pytest "jax[cuda12]"
     - source .venv/bin/activate
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - pytest -n 4 --pyargs mujoco_warp --junit-xml=rspec.xml
+    - pytest --pyargs mujoco_warp --junit-xml=rspec.xml
   tags:
     - arch/x86_64
     - gpu/A40
