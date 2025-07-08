@@ -7014,19 +7014,22 @@ add_builtin(
 # Operators
 
 
-def op_scalar_constraint(arg_types: Mapping[str, type]):
-    return types_equal(arg_types["a"]._wp_scalar_type_, arg_types["b"])
+def op_scalar_create_constraint_func(type, scalar):
+    def fn(arg_types: Mapping[str, type]):
+        return types_equal(arg_types[type]._wp_scalar_type_, arg_types[scalar])
+
+    return fn
 
 
-def op_scalar_create_value_func(default):
+def op_scalar_create_value_func(type, scalar, default):
     def fn(arg_types, arg_values):
         if arg_types is None:
             return default
 
-        if arg_types["a"]._wp_scalar_type_ != arg_types["b"]:
-            raise RuntimeError("'b' parameter must have the same scalar type as the modified object")
+        if arg_types[type]._wp_scalar_type_ != arg_types[scalar]:
+            raise RuntimeError(f"'{scalar}' parameter must have the same scalar type as the modified object")
 
-        return arg_types["a"]
+        return arg_types[type]
 
     return fn
 
@@ -7045,8 +7048,16 @@ add_builtin(
 add_builtin(
     "add",
     input_types={"a": vector(length=Any, dtype=Scalar), "b": Scalar},
-    constraint=op_scalar_constraint,
-    value_func=op_scalar_create_value_func(vector(length=Any, dtype=Scalar)),
+    constraint=op_scalar_create_constraint_func("a", "b"),
+    value_func=op_scalar_create_value_func("a", "b", vector(length=Any, dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "add",
+    input_types={"a": Scalar, "b": vector(length=Any, dtype=Scalar)},
+    constraint=op_scalar_create_constraint_func("b", "a"),
+    value_func=op_scalar_create_value_func("b", "a", vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -7068,8 +7079,16 @@ add_builtin(
 add_builtin(
     "add",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "b": Scalar},
-    constraint=op_scalar_constraint,
-    value_func=op_scalar_create_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
+    constraint=op_scalar_create_constraint_func("a", "b"),
+    value_func=op_scalar_create_value_func("a", "b", matrix(shape=(Any, Any), dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "add",
+    input_types={"a": Scalar, "b": matrix(shape=(Any, Any), dtype=Scalar)},
+    constraint=op_scalar_create_constraint_func("b", "a"),
+    value_func=op_scalar_create_value_func("b", "a", matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -7095,8 +7114,16 @@ add_builtin(
 add_builtin(
     "sub",
     input_types={"a": vector(length=Any, dtype=Scalar), "b": Scalar},
-    constraint=op_scalar_constraint,
-    value_func=op_scalar_create_value_func(vector(length=Any, dtype=Scalar)),
+    constraint=op_scalar_create_constraint_func("a", "b"),
+    value_func=op_scalar_create_value_func("a", "b", vector(length=Any, dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "sub",
+    input_types={"a": Scalar, "b": vector(length=Any, dtype=Scalar)},
+    constraint=op_scalar_create_constraint_func("b", "a"),
+    value_func=op_scalar_create_value_func("b", "a", vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -7111,8 +7138,16 @@ add_builtin(
 add_builtin(
     "sub",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "b": Scalar},
-    constraint=op_scalar_constraint,
-    value_func=op_scalar_create_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
+    constraint=op_scalar_create_constraint_func("a", "b"),
+    value_func=op_scalar_create_value_func("a", "b", matrix(shape=(Any, Any), dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "sub",
+    input_types={"a": Scalar, "b": matrix(shape=(Any, Any), dtype=Scalar)},
+    constraint=op_scalar_create_constraint_func("b", "a"),
+    value_func=op_scalar_create_value_func("b", "a", matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -7342,16 +7377,16 @@ add_builtin(
 add_builtin(
     "mod",
     input_types={"a": vector(length=Any, dtype=Scalar), "b": Scalar},
-    constraint=op_scalar_constraint,
-    value_func=op_scalar_create_value_func(vector(length=Any, dtype=Scalar)),
+    constraint=op_scalar_create_constraint_func("a", "b"),
+    value_func=op_scalar_create_value_func("a", "b", vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "mod",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "b": Scalar},
-    constraint=op_scalar_constraint,
-    value_func=op_scalar_create_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
+    constraint=op_scalar_create_constraint_func("a", "b"),
+    value_func=op_scalar_create_value_func("a", "b", matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )

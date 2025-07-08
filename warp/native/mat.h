@@ -4165,6 +4165,21 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> add(const mat_t<Rows,Cols,Type>& a, T
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> add(Type a, const mat_t<Rows,Cols,Type>& b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a + b.data[i][j];
+        }
+    }
+
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE mat_t<Rows,Cols,Type> sub(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b)
 {
     mat_t<Rows,Cols,Type> t;
@@ -4188,6 +4203,21 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> sub(const mat_t<Rows,Cols,Type>& a, T
         for (unsigned j=0; j < Cols; ++j)
         {
             t.data[i][j] = a.data[i][j] - b;
+        }
+    }
+
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> sub(Type a, const mat_t<Rows,Cols,Type>& b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a - b.data[i][j];
         }
     }
 
@@ -5005,6 +5035,23 @@ inline CUDA_CALLABLE void adj_add(
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_add(
+    Type a, const mat_t<Rows,Cols,Type>& b,
+    Type& adj_a, mat_t<Rows,Cols,Type>& adj_b,
+    const mat_t<Rows,Cols,Type>& adj_ret
+)
+{
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            adj_a += adj_ret.data[i][j];
+            adj_b.data[i][j] += adj_ret.data[i][j];
+        }
+    }
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_sub(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b, mat_t<Rows,Cols,Type>& adj_a, mat_t<Rows,Cols,Type>& adj_b, const mat_t<Rows,Cols,Type>& adj_ret)
 {
     for (unsigned i=0; i < Rows; ++i)
@@ -5030,6 +5077,23 @@ inline CUDA_CALLABLE void adj_sub(
         {
             adj_a.data[i][j] += adj_ret.data[i][j];
             adj_b -= adj_ret.data[i][j];
+        }
+    }
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_sub(
+    Type a, const mat_t<Rows,Cols,Type>& b,
+    Type& adj_a, mat_t<Rows,Cols,Type>& adj_b,
+    const mat_t<Rows,Cols,Type>& adj_ret
+)
+{
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            adj_a += adj_ret.data[i][j];
+            adj_b.data[i][j] -= adj_ret.data[i][j];
         }
     }
 }
