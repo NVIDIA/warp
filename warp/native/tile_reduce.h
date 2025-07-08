@@ -410,25 +410,26 @@ void adj_tile_sum(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {
     using T = typename Tile::Type;
 
+    auto adj_reg = adj_ret.grad_to_register();
+
 #if !defined(__CUDA_ARCH__)
-
-    for (int i=0; i < Tile::Layout::Size; ++i)
-    {
-        adj_t(i) += adj_ret.data[0];
-
-    }
+    T scratch = adj_reg.data[0];
 #else
     // broadcast incoming adjoint to block
     WP_TILE_SHARED T scratch;
     if (WP_TILE_THREAD_IDX == 0)
-        scratch = adj_ret.data[0];
+        scratch = adj_reg.data[0];
 
     WP_TILE_SYNC();
+#endif
 
-    // broadcast scalar across input dimensions (note zero strides)
-    auto adj_ret_reg = tile_shared_t<T, tile_layout_strided_t<typename Tile::Layout::Shape, tile_stride_t<0, 0>>, false>(&scratch, nullptr).copy_to_register();
+    auto adj_ret_reg = tile_register_like<Tile>();
+    using Layout = typename decltype(adj_ret_reg)::Layout;
+    for (int i=0; i < Layout::NumRegs; ++i)
+    {
+        adj_ret_reg.data[i] += scratch;
+    }
     adj_t.grad_add(adj_ret_reg);
-#endif 
 }
 
 template <typename Tile>
