@@ -3015,7 +3015,7 @@ def mod(a: Scalar, b: Scalar) -> Scalar:
     ...
 
 @over
-def mod(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Scalar:
+def mod(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """Modulo operation using truncated division."""
     ...
 

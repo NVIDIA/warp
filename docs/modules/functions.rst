@@ -5936,7 +5936,7 @@ Operators
     Modulo operation using truncated division.
 
 
-.. py:function:: mod(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Scalar
+.. py:function:: mod(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
