@@ -74,6 +74,46 @@ def test_tile_reduce_sum(test, device):
 
 
 @wp.kernel
+def tile_sum_to_shared_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=float)):
+    i, lane = wp.tid()
+
+    a = wp.tile_load(input[i], shape=TILE_DIM)
+    s = wp.tile_sum(a)
+    v = s[0]  # force shared storage for s
+    wp.tile_store(output, s * 0.5, offset=i)
+
+
+def test_tile_sum_to_shared(test, device):
+    batch_count = 1
+
+    rng = np.random.default_rng(42)
+    input = rng.random((batch_count, TILE_DIM), dtype=np.float32)
+
+    input_wp = wp.array(input, requires_grad=True, device=device, dtype=float)
+    output_wp = wp.zeros(batch_count, requires_grad=True, device=device, dtype=float)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_sum_to_shared_kernel,
+            dim=[batch_count],
+            inputs=[input_wp, output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    sum_wp = output_wp.numpy()
+    for i in range(batch_count):
+        sum_np = np.sum(input[i], axis=0) * 0.5
+        assert_np_equal(sum_wp[i], sum_np, tol=0.0001)
+
+    output_wp.grad.fill_(1.0)
+
+    tape.backward()
+
+    assert_np_equal(input_wp.grad.numpy(), np.ones_like(input) * 0.5, tol=1.0e-4)
+
+
+@wp.kernel
 def tile_min_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=float)):
     # output tile index
     i = wp.tid()
@@ -398,7 +438,7 @@ def test_tile_reduce_grouped_sum(test, device):
 
     with wp.Tape() as tape:
         wp.launch_tiled(
-            tile_sum_kernel, dim=[batch_count], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device
+            tile_grouped_sum_kernel, dim=[batch_count], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device
         )
 
     sum_wp = output_wp.numpy()
@@ -655,13 +695,14 @@ class TestTileReduce(unittest.TestCase):
 
 
 add_function_test(TestTileReduce, "test_tile_reduce_sum", test_tile_reduce_sum, devices=devices)
+add_function_test(TestTileReduce, "test_tile_sum_to_shared", test_tile_sum_to_shared, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_min", test_tile_reduce_min, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_max", test_tile_reduce_max, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_argmin", test_tile_reduce_argmin, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_argmax", test_tile_reduce_argmax, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_custom", test_tile_reduce_custom, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_custom_struct", test_tile_reduce_custom_struct, devices=devices)
-add_function_test(TestTileReduce, "test_tile_reduce_grouped_sum", test_tile_reduce_sum, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_grouped_sum", test_tile_reduce_grouped_sum, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_simt", test_tile_reduce_simt, devices=devices)
 add_function_test(TestTileReduce, "test_tile_ones", test_tile_ones, devices=devices)
 add_function_test(TestTileReduce, "test_tile_arange", test_tile_arange, devices=devices)
