@@ -2372,6 +2372,27 @@ def test_quat_array_sub_inplace(test, device):
     assert_np_equal(x.grad.numpy(), np.array([[-1.0, -1.0, -1.0, -1.0]], dtype=float))
 
 
+@wp.kernel
+def scalar_quat_div(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.quat)):
+    i = wp.tid()
+    y[i] = 1.0 / x[i]
+
+
+def test_scalar_quat_div(test, device):
+    x = wp.array((wp.quat(1.0, 2.0, 4.0, 8.0),), dtype=wp.quat, requires_grad=True, device=device)
+    y = wp.ones(1, dtype=wp.quat, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(scalar_quat_div, 1, inputs=(x,), outputs=(y,), device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array(((1.0, 0.5, 0.25, 0.125),), dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array(((-1.0, -0.25, -0.0625, -0.015625),), dtype=float))
+
+
 devices = get_test_devices()
 
 
@@ -2483,6 +2504,7 @@ add_function_test(TestQuat, "test_quat_add_inplace", test_quat_add_inplace, devi
 add_function_test(TestQuat, "test_quat_sub_inplace", test_quat_sub_inplace, devices=devices)
 add_function_test(TestQuat, "test_quat_array_add_inplace", test_quat_array_add_inplace, devices=devices)
 add_function_test(TestQuat, "test_quat_array_sub_inplace", test_quat_array_sub_inplace, devices=devices)
+add_function_test(TestQuat, "test_scalar_quat_div", test_scalar_quat_div, devices=devices)
 
 
 if __name__ == "__main__":

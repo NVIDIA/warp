@@ -1502,6 +1502,27 @@ def test_vec_array_sub_inplace(test, device):
     assert_np_equal(x.grad.numpy(), np.array([[-1.0, -1.0, -1.0]], dtype=float))
 
 
+@wp.kernel
+def scalar_vec_div(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+    i = wp.tid()
+    y[i] = 1.0 / x[i]
+
+
+def test_scalar_vec_div(test, device):
+    x = wp.array((wp.vec3(1.0, 2.0, 4.0),), dtype=wp.vec3, requires_grad=True, device=device)
+    y = wp.ones(1, dtype=wp.vec3, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(scalar_vec_div, 1, inputs=(x,), outputs=(y,), device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array(((1.0, 0.5, 0.25),), dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array(((-1.0, -0.25, -0.0625),), dtype=float))
+
+
 devices = get_test_devices()
 
 
@@ -1626,6 +1647,7 @@ add_function_test(TestVec, "test_vec_add_inplace", test_vec_add_inplace, devices
 add_function_test(TestVec, "test_vec_sub_inplace", test_vec_sub_inplace, devices=devices)
 add_function_test(TestVec, "test_vec_array_add_inplace", test_vec_array_add_inplace, devices=devices)
 add_function_test(TestVec, "test_vec_array_sub_inplace", test_vec_array_sub_inplace, devices=devices)
+add_function_test(TestVec, "test_scalar_vec_div", test_scalar_vec_div, devices=devices)
 
 
 if __name__ == "__main__":

@@ -1533,13 +1533,13 @@ inline CUDA_CALLABLE void adj_div(const mat_t<Rows,Cols,Type>& a, Type s, mat_t<
 template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_div(Type s, const mat_t<Rows,Cols,Type>& a, Type& adj_s, mat_t<Rows,Cols,Type>& adj_a, const mat_t<Rows,Cols,Type>& adj_ret)
 {
-    adj_s -= tensordot(a , adj_ret)/ (s * s); // - a / s^2
-
     for (unsigned i=0; i < Rows; ++i)
     {
         for (unsigned j=0; j < Cols; ++j)
         {
-            adj_a.data[i][j] += s / adj_ret.data[i][j];
+            Type inv = Type(1) / a.data[i][j];
+            adj_a.data[i][j] -= s * adj_ret.data[i][j] * inv * inv;
+            adj_s += adj_ret.data[i][j] * inv;
         }
     }
 }
