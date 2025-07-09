@@ -904,8 +904,12 @@ inline CUDA_CALLABLE void adj_div(quat_t<Type> a, Type s, quat_t<Type>& adj_a, T
 template<typename Type>
 inline CUDA_CALLABLE void adj_div(Type s, quat_t<Type> a, Type& adj_s, quat_t<Type>& adj_a, const quat_t<Type>& adj_ret)
 {
-    adj_s -= dot(a, adj_ret)/ (s * s); // - a / s^2
-    adj_a += s / adj_ret;
+    for (unsigned i=0; i < 4; ++i)
+    {
+        Type inv = Type(1) / a[i];
+        adj_a[i] -= s * adj_ret[i] * inv * inv;
+        adj_s += adj_ret[i] * inv;
+    }
 }
 
 template<typename Type>

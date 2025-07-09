@@ -609,10 +609,14 @@ inline CUDA_CALLABLE void adj_svd2(const mat_t<2,2,Type>& A,
     mat_t<2,2,Type> sigma_term = mul(U, mul(adj_sigma_mat, VT));
 
     // Compute the adjoint contributions for U (left singular vectors)
-    mat_t<2,2,Type> u_term = mul(mul(U, mul(cw_mul(F, (mul(UT, adj_U) - mul(transpose(adj_U), U))), s_mat)), VT);
+    mat_t<2,2,Type> skew_u = cw_mul(F, mul(UT, adj_U) - mul(transpose(adj_U), U));
+    mat_t<2,2,Type> block_u = mul(skew_u, s_mat);
+    mat_t<2,2,Type> u_term = mul(mul(U, block_u), VT);
 
     // Compute the adjoint contributions for V (right singular vectors)
-    mat_t<2,2,Type> v_term = mul(U, mul(s_mat, mul(cw_mul(F, (mul(VT, adj_V) - mul(transpose(adj_V), V))), VT)));
+    mat_t<2,2,Type> skew_v = cw_mul(F, mul(VT, adj_V) - mul(transpose(adj_V), V));
+    mat_t<2,2,Type> block_v = mul(skew_v, VT);
+    mat_t<2,2,Type> v_term = mul(U, mul(s_mat, block_v));
 
     // Combine the terms to compute the adjoint of A
     adj_A = adj_A + (u_term + v_term + sigma_term);
