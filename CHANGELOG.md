@@ -46,6 +46,7 @@
   ([GH-858](https://github.com/NVIDIA/warp/issues/858)).
 - Fix the OpenGL renderer not correctly displaying colors for box shapes
   ([GH-810](https://github.com/NVIDIA/warp/issues/810)).
+- Fix a bug where meshes with different `scale` attributes were rendered by the same instance in OpenGLRenderer ([GH-828](https://github.com/NVIDIA/warp/issues/828)).
 
 ## [1.8.0] - 2025-07-01
 
