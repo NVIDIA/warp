@@ -320,15 +320,14 @@ def update_vbo_transforms(
 @wp.kernel
 def update_vbo_vertices(
     points: wp.array(dtype=wp.vec3),
-    scale: wp.vec3,
     # outputs
     vbo_vertices: wp.array(dtype=float, ndim=2),
 ):
     tid = wp.tid()
     p = points[tid]
-    vbo_vertices[tid, 0] = p[0] * scale[0]
-    vbo_vertices[tid, 1] = p[1] * scale[1]
-    vbo_vertices[tid, 2] = p[2] * scale[2]
+    vbo_vertices[tid, 0] = p[0]
+    vbo_vertices[tid, 1] = p[1]
+    vbo_vertices[tid, 2] = p[2]
 
 
 @wp.kernel
@@ -422,7 +421,6 @@ def compute_gfx_vertices(
 def compute_average_normals(
     indices: wp.array(dtype=int, ndim=2),
     vertices: wp.array(dtype=wp.vec3),
-    scale: wp.vec3,
     # outputs
     normals: wp.array(dtype=wp.vec3),
     faces_per_vertex: wp.array(dtype=int),
@@ -431,9 +429,9 @@ def compute_average_normals(
     i = indices[tid, 0]
     j = indices[tid, 1]
     k = indices[tid, 2]
-    v0 = vertices[i] * scale[0]
-    v1 = vertices[j] * scale[1]
-    v2 = vertices[k] * scale[2]
+    v0 = vertices[i]
+    v1 = vertices[j]
+    v2 = vertices[k]
     n = wp.normalize(wp.cross(v1 - v0, v2 - v0))
     wp.atomic_add(normals, i, n)
     wp.atomic_add(faces_per_vertex, i, 1)
@@ -448,16 +446,15 @@ def assemble_gfx_vertices(
     vertices: wp.array(dtype=wp.vec3, ndim=1),
     normals: wp.array(dtype=wp.vec3),
     faces_per_vertex: wp.array(dtype=int),
-    scale: wp.vec3,
     # outputs
     gfx_vertices: wp.array(dtype=float, ndim=2),
 ):
     tid = wp.tid()
     v = vertices[tid]
     n = normals[tid] / float(faces_per_vertex[tid])
-    gfx_vertices[tid, 0] = v[0] * scale[0]
-    gfx_vertices[tid, 1] = v[1] * scale[1]
-    gfx_vertices[tid, 2] = v[2] * scale[2]
+    gfx_vertices[tid, 0] = v[0]
+    gfx_vertices[tid, 1] = v[1]
+    gfx_vertices[tid, 2] = v[2]
     gfx_vertices[tid, 3] = n[0]
     gfx_vertices[tid, 4] = n[1]
     gfx_vertices[tid, 5] = n[2]
@@ -2445,7 +2442,7 @@ Instances: {len(self._instances)}"""
 
         gl.glBindVertexArray(0)
 
-    def update_shape_instance(self, name, pos=None, rot=None, color1=None, color2=None, visible=None):
+    def update_shape_instance(self, name, pos=None, rot=None, color1=None, color2=None, scale=None, visible=None):
         """Update the instance properties of the shape
 
         Args:
@@ -2461,7 +2458,7 @@ Instances: {len(self._instances)}"""
         self._switch_context()
 
         if name in self._instances:
-            i, body, shape, tf, scale, old_color1, old_color2, v = self._instances[name]
+            i, body, shape, tf, old_scale, old_color1, old_color2, v = self._instances[name]
             if visible is None:
                 visible = v
             new_tf = np.copy(tf)
@@ -2474,7 +2471,7 @@ Instances: {len(self._instances)}"""
                 body,
                 shape,
                 new_tf,
-                scale,
+                old_scale if scale is None else scale,
                 old_color1 if color1 is None else color1,
                 old_color2 if color2 is None else color2,
                 visible,
@@ -3031,50 +3028,54 @@ Instances: {len(self._instances)}"""
         if not update_topology:
             if name in self._instances:
                 # Update the instance's transform.
-                self.update_shape_instance(name, pos, rot, color1=colors)
+                self.update_shape_instance(name, pos, rot, color1=colors, color2=colors, scale=scale, visible=visible)
 
             if shape is not None:
                 # Update the shape's point positions.
-                self.update_shape_vertices(shape, points, scale)
+                self.update_shape_vertices(shape, points)
 
                 if not is_template and name not in self._instances:
                     # Create a new instance.
                     body = self._resolve_body_id(parent_body)
-                    self.add_shape_instance(name, shape, body, pos, rot, color1=colors)
+                    self.add_shape_instance(name, shape, body, pos, rot, color1=colors, scale=scale)
 
                 return shape
 
         # No existing shape for the given mesh was found, or its topology may have changed,
         # so we need to define a new one either way.
-        if smooth_shading:
-            normals = wp.zeros(point_count, dtype=wp.vec3)
-            vertices = wp.array(points, dtype=wp.vec3)
-            faces_per_vertex = wp.zeros(point_count, dtype=int)
-            wp.launch(
-                compute_average_normals,
-                dim=idx_count,
-                inputs=[wp.array(indices, dtype=int), vertices, scale],
-                outputs=[normals, faces_per_vertex],
-            )
-            gfx_vertices = wp.zeros((point_count, 8), dtype=float)
-            wp.launch(
-                assemble_gfx_vertices,
-                dim=point_count,
-                inputs=[vertices, normals, faces_per_vertex, scale],
-                outputs=[gfx_vertices],
-            )
-            gfx_vertices = gfx_vertices.numpy()
-            gfx_indices = indices.flatten()
-        else:
-            gfx_vertices = wp.zeros((idx_count * 3, 8), dtype=float)
-            wp.launch(
-                compute_gfx_vertices,
-                dim=idx_count,
-                inputs=[wp.array(indices, dtype=int), wp.array(points, dtype=wp.vec3), scale],
-                outputs=[gfx_vertices],
-            )
-            gfx_vertices = gfx_vertices.numpy()
-            gfx_indices = np.arange(idx_count * 3)
+        with wp.ScopedDevice(self._device):
+            if smooth_shading:
+                normals = wp.zeros(point_count, dtype=wp.vec3)
+                vertices = wp.array(points, dtype=wp.vec3)
+                faces_per_vertex = wp.zeros(point_count, dtype=int)
+                wp.launch(
+                    compute_average_normals,
+                    dim=idx_count,
+                    inputs=[wp.array(indices, dtype=int), vertices],
+                    outputs=[normals, faces_per_vertex],
+                    record_tape=False,
+                )
+                gfx_vertices = wp.zeros((point_count, 8), dtype=float)
+                wp.launch(
+                    assemble_gfx_vertices,
+                    dim=point_count,
+                    inputs=[vertices, normals, faces_per_vertex],
+                    outputs=[gfx_vertices],
+                    record_tape=False,
+                )
+                gfx_vertices = gfx_vertices.numpy()
+                gfx_indices = indices.flatten()
+            else:
+                gfx_vertices = wp.zeros((idx_count * 3, 8), dtype=float)
+                wp.launch(
+                    compute_gfx_vertices,
+                    dim=idx_count,
+                    inputs=[wp.array(indices, dtype=int), wp.array(points, dtype=wp.vec3)],
+                    outputs=[gfx_vertices],
+                    record_tape=False,
+                )
+                gfx_vertices = gfx_vertices.numpy()
+                gfx_indices = np.arange(idx_count * 3)
 
         # If there was a shape for the given mesh, clean it up.
         if shape is not None:
@@ -3090,7 +3091,7 @@ Instances: {len(self._instances)}"""
         if not is_template:
             # Create a new instance if necessary.
             body = self._resolve_body_id(parent_body)
-            self.add_shape_instance(name, shape, body, pos, rot, color1=colors)
+            self.add_shape_instance(name, shape, body, pos, rot, color1=colors, scale=scale)
 
         return shape
 
@@ -3278,7 +3279,7 @@ Instances: {len(self._instances)}"""
         lines = np.array(lines)
         self._render_lines(name, lines, color, radius)
 
-    def update_shape_vertices(self, shape, points, scale):
+    def update_shape_vertices(self, shape, points):
         if isinstance(points, wp.array):
             wp_points = points.to(self._device)
         else:
@@ -3291,7 +3292,7 @@ Instances: {len(self._instances)}"""
         wp.launch(
             update_vbo_vertices,
             dim=vertices_shape[0],
-            inputs=[wp_points, scale],
+            inputs=[wp_points],
             outputs=[vbo_vertices],
             device=self._device,
         )
