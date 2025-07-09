@@ -3015,21 +3015,41 @@ inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, int k, int l, const 
 template <typename TileA, typename AdjTileA, typename Scalar>
 inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, const Scalar& src, AdjTileA& adj_dest, int adj_i, Scalar& adj_src)
 {
+    if (dest.grad.ptr == nullptr)
+    {
+        return;
+    }
+
     adj_src += dest.grad(tile_coord(i));
 }
 template <typename TileA, typename AdjTileA, typename Scalar>
 inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, int j, const Scalar& src, AdjTileA& adj_dest, int adj_i, int adj_j, Scalar& adj_src)
 {
+    if (dest.grad.ptr == nullptr)
+    {
+        return;
+    }
+
     adj_src += dest.grad(tile_coord(i, j));
 }
 template <typename TileA, typename AdjTileA, typename Scalar>
 inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, int j, int k, const Scalar& src, AdjTileA& adj_dest, int adj_i, int adj_j, int adj_k, Scalar& adj_src)
 {
+    if (dest.grad.ptr == nullptr)
+    {
+        return;
+    }
+
     adj_src += dest.grad(tile_coord(i, j, k));
 }
 template <typename TileA, typename AdjTileA, typename Scalar>
 inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, int j, int k, int l, const Scalar& src, AdjTileA& adj_dest, int adj_i, int adj_j, int adj_k, int adj_l, Scalar& adj_src)
 {
+    if (dest.grad.ptr == nullptr)
+    {
+        return;
+    }
+
     adj_src += dest.grad(tile_coord(i, j, k, l));
 }
 
@@ -3112,7 +3132,6 @@ inline CUDA_CALLABLE TileC& tile_diag_add(TileA& a, TileB& b, TileC& c)
 template <typename TileA, typename TileB, typename TileC, typename AdjTileA, typename AdjTileB, typename AdjTileC>
 inline CUDA_CALLABLE void adj_tile_diag_add(TileA& a, TileB& b, TileC& c, AdjTileA& adj_a, AdjTileB& adj_b, AdjTileC& adj_c, AdjTileC& adj_ret)
 {   
-    assert(false);
 }
 
 

@@ -268,16 +268,20 @@ inline CUDA_CALLABLE half operator / (half a,half b)
 
 
 template <typename T>
-CUDA_CALLABLE float cast_float(T x) { return (float)(x); }
+CUDA_CALLABLE inline float cast_float(T x) { return (float)(x); }
 
 template <typename T>
-CUDA_CALLABLE int cast_int(T x) { return (int)(x); }
+CUDA_CALLABLE inline int cast_int(T x) { return (int)(x); }
 
 template <typename T>
-CUDA_CALLABLE void adj_cast_float(T x, T& adj_x, float adj_ret) { adj_x += T(adj_ret); }
+CUDA_CALLABLE inline void adj_cast_float(T x, T& adj_x, float adj_ret) {}
+
+CUDA_CALLABLE inline void adj_cast_float(float16 x, float16& adj_x, float adj_ret) { adj_x += float16(adj_ret); }
+CUDA_CALLABLE inline void adj_cast_float(float32 x, float32& adj_x, float adj_ret) { adj_x += float32(adj_ret); }
+CUDA_CALLABLE inline void adj_cast_float(float64 x, float64& adj_x, float adj_ret) { adj_x += float64(adj_ret); }
 
 template <typename T>
-CUDA_CALLABLE void adj_cast_int(T x, T& adj_x, int adj_ret) { adj_x += adj_ret; }
+CUDA_CALLABLE inline void adj_cast_int(T x, T& adj_x, int adj_ret) {}
 
 template <typename T>
 CUDA_CALLABLE inline void adj_int8(T, T&, int8) {}

@@ -71,14 +71,14 @@ inline CUDA_CALLABLE float randf(uint32& state, float min, float max) { return (
 // Box-Muller method
 inline CUDA_CALLABLE float randn(uint32& state) { return sqrt(-2.f * log(randf(state) + RANDN_EPSILON)) * cos(2.f * M_PI_F * randf(state)); }
 
-inline CUDA_CALLABLE void adj_rand_init(int seed, int& adj_seed, float adj_ret) {}
-inline CUDA_CALLABLE void adj_rand_init(int seed, int offset, int& adj_seed, int& adj_offset, float adj_ret) {}
+inline CUDA_CALLABLE void adj_rand_init(int seed, int& adj_seed, uint32 adj_ret) {}
+inline CUDA_CALLABLE void adj_rand_init(int seed, int offset, int& adj_seed, int& adj_offset, uint32 adj_ret) {}
 
-inline CUDA_CALLABLE void adj_randi(uint32& state, uint32& adj_state, float adj_ret) {}
-inline CUDA_CALLABLE void adj_randi(uint32& state, int min, int max, uint32& adj_state, int& adj_min, int& adj_max, float adj_ret) {}
+inline CUDA_CALLABLE void adj_randi(uint32& state, uint32& adj_state, int adj_ret) {}
+inline CUDA_CALLABLE void adj_randi(uint32& state, int min, int max, uint32& adj_state, int& adj_min, int& adj_max, int adj_ret) {}
 
-inline CUDA_CALLABLE void adj_randu(uint32& state, uint32& adj_state, float adj_ret) {}
-inline CUDA_CALLABLE void adj_randu(uint32& state, uint32 min, uint32 max, uint32& adj_state, uint32& adj_min, uint32& adj_max, float adj_ret) {}
+inline CUDA_CALLABLE void adj_randu(uint32& state, uint32& adj_state, uint32 adj_ret) {}
+inline CUDA_CALLABLE void adj_randu(uint32& state, uint32 min, uint32 max, uint32& adj_state, uint32& adj_min, uint32& adj_max, uint32 adj_ret) {}
 
 inline CUDA_CALLABLE void adj_randf(uint32& state, uint32& adj_state, float adj_ret) {}
 inline CUDA_CALLABLE void adj_randf(uint32& state, float min, float max, uint32& adj_state, float& adj_min, float& adj_max, float adj_ret) {}
@@ -195,7 +195,7 @@ inline CUDA_CALLABLE void adj_sample_unit_hemisphere_surface(uint32& state, uint
 inline CUDA_CALLABLE void adj_sample_unit_hemisphere(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_unit_square(uint32& state, uint32& adj_state, const vec2& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_unit_cube(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
-inline CUDA_CALLABLE void adj_sample_unit_hypercube(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
+inline CUDA_CALLABLE void adj_sample_unit_hypercube(uint32& state, uint32& adj_state, const vec4& adj_ret) {}
 
 /*
  * log-gamma function to support some of these distributions. The
