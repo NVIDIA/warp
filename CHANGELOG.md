@@ -44,6 +44,8 @@
   ([GH-831](https://github.com/NVIDIA/warp/issues/831)).
 - Fix an issue that caused Warp to request PTX generation from NVRTC for architectures unsupported by the compiler
   ([GH-858](https://github.com/NVIDIA/warp/issues/858)).
+- Fix the OpenGL renderer not correctly displaying colors for box shapes
+  ([GH-810](https://github.com/NVIDIA/warp/issues/810)).
 
 ## [1.8.0] - 2025-07-01
 
