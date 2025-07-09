@@ -2968,7 +2968,7 @@ Instances: {len(self._instances)}"""
         geo_hash = hash(("box", tuple(extents)))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
-            if self.update_shape_instance(name, pos, rot):
+            if self.update_shape_instance(name, pos, rot, color1=color, color2=color):
                 return shape
         else:
             vertices, indices = self._create_box_mesh(extents)
