@@ -794,6 +794,48 @@ Example: Defining Operator Overloads
     wp.launch(kernel, dim=(1,))
     wp.synchronize()
 
+
+Indexing and Slicing
+####################
+
+Indexing and slicing for vectors, matrices, quaternions, and transforms, follow NumPy-like semantics for element access: ::
+
+    @wp.kernel
+    def compute( ... ):
+        v = wp.vec3(1.0, 2.0, 3.0)
+        wp.expect_eq(v[-1], 3.0) # negative indices wrap
+        wp.expect_eq(v[1:], wp.vec2(2.0, 3.0)) # slice returns a new vector
+
+        v[::2] = 0.0 # slice assignment
+        wp.expect_eq(v, wp.vec3(0.0, 2.0, 0.0))
+
+        m = wp.matrix_from_rows(
+            wp.vec3(1.0, 2.0, 3.0),
+            wp.vec3(4.0, 5.0, 6.0),
+            wp.vec3(7.0, 8.0, 9.0),
+        )
+        wp.expect_eq(m[:, 1], wp.vec3(2.0, 5.0, 8.0)) # column vector
+        wp.expect_eq(
+            m[:2, 1:], # 2x2 sub-matrix
+            wp.matrix_from_rows(wp.vec2(2.0, 3.0), wp.vec2(5.0, 6.0))
+        )
+
+        m[:, 0] = wp.vec3(10.0, 11.0, 12.0) # column vector assignment
+        wp.expect_eq(
+            m,
+            wp.matrix_from_rows(
+                wp.vec3(10.0, 2.0, 3.0),
+                wp.vec3(11.0, 5.0, 6.0),
+                wp.vec3(12.0, 8.0, 9.0),
+            )
+        )
+
+Negative indices are wrapped around, such that ``-1`` refers to the last element. Slices always create new copies.
+
+Inside kernels, the ``start / stop / step`` values of a slice must be **compile-time constants**.  Simple element indexing (``v[i]``, ``m[i, j]``) may use run-time
+expressions.
+
+
 Type Conversions
 ################
 
