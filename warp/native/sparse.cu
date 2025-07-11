@@ -334,7 +334,7 @@ WP_API void wp_bsr_matrix_from_triplets_device(
         // Ensures the sorted keys are available in summed_block_indices if needed
         if(return_summed_blocks && d_keys.Current() != tpl_block_indices)
         {
-            check_cuda(cudaMemcpy(tpl_block_indices, d_keys.Current(), nnz * sizeof(int), cudaMemcpyDeviceToDevice));
+            check_cuda(cudaMemcpyAsync(tpl_block_indices, d_keys.Current(), nnz * sizeof(int), cudaMemcpyDeviceToDevice, stream));
         }
     }
 

@@ -483,7 +483,7 @@ def bsr_set_from_triplets(
 
     device = dest.values.device
     scalar_type = dest.scalar_type
-    zero_value_mask = _zero_value_masks.get(scalar_type, 0)
+    zero_value_mask = _zero_value_masks.get(scalar_type, 0) if prune_numerical_zeros else 0
 
     # compute the BSR topology
 
