@@ -1692,7 +1692,7 @@ class ModuleHasher:
             ch.update(bytes(name, "utf-8"))
             ch.update(self.get_constant_bytes(value))
 
-        # hash wp.static() expressions that were evaluated at declaration time
+        # hash wp.static() expressions
         for k, v in adj.static_expressions.items():
             ch.update(bytes(k, "utf-8"))
             if isinstance(v, Function):
@@ -2011,6 +2011,9 @@ class Module:
         # is retained and later reloaded with the same hash.
         self.cpu_exec_id = 0
 
+        # Indicates whether the module has functions or kernels with unresolved static expressions.
+        self.has_unresolved_static_expressions = False
+
         self.options = {
             "max_unroll": warp.config.max_unroll,
             "enable_backward": warp.config.enable_backward,
@@ -2046,6 +2049,10 @@ class Module:
 
         # track all kernel objects, even if they are duplicates
         self._live_kernels.add(kernel)
+
+        # Check for unresolved static expressions in the kernel.
+        if kernel.adj.has_unresolved_static_expressions:
+            self.has_unresolved_static_expressions = True
 
         self.find_references(kernel.adj)
 
@@ -2106,6 +2113,10 @@ class Module:
                                 del func_existing.user_overloads[k]
                 func_existing.add_overload(func)
 
+        # Check for unresolved static expressions in the function.
+        if func.adj.has_unresolved_static_expressions:
+            self.has_unresolved_static_expressions = True
+
         self.find_references(func.adj)
 
         # for a reload of module on next launch
@@ -2165,7 +2176,7 @@ class Module:
         self.hashers[block_dim] = ModuleHasher(self)
         return self.hashers[block_dim].get_module_hash()
 
-    def load(self, device, block_dim=None) -> ModuleExec:
+    def load(self, device, block_dim=None) -> ModuleExec | None:
         device = runtime.get_device(device)
 
         # update module options if launching with a new block dim
@@ -2173,6 +2184,20 @@ class Module:
             self.options["block_dim"] = block_dim
 
         active_block_dim = self.options["block_dim"]
+
+        if self.has_unresolved_static_expressions:
+            # The module hash currently does not account for unresolved static expressions
+            # (only static expressions evaluated at declaration time so far).
+            # We need to generate the code for the functions and kernels that have
+            # unresolved static expressions and then compute the module hash again.
+            builder_options = {
+                **self.options,
+                "output_arch": None,
+            }
+            # build functions, kernels to resolve static expressions
+            _ = ModuleBuilder(self, builder_options)
+
+            self.has_unresolved_static_expressions = False
 
         # compute the hash if needed
         if active_block_dim not in self.hashers:

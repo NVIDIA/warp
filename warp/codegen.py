@@ -969,6 +969,11 @@ class Adjoint:
             # this is to avoid registering false references to overshadowed modules
             adj.symbols[name] = arg
 
+        # Indicates whether there are unresolved static expressions in the function.
+        # These stem from wp.static() expressions that could not be evaluated at declaration time.
+        # This will signal to the module builder that this module needs to be rebuilt even if the module hash is unchanged.
+        adj.has_unresolved_static_expressions = False
+
         # try to replace static expressions by their constant result if the
         # expression can be evaluated at declaration time
         adj.static_expressions: dict[str, Any] = {}
@@ -2324,8 +2329,9 @@ class Adjoint:
 
         if adj.is_static_expression(func):
             # try to evaluate wp.static() expressions
-            obj, _ = adj.evaluate_static_expression(node)
+            obj, code = adj.evaluate_static_expression(node)
             if obj is not None:
+                adj.static_expressions[code] = obj
                 if isinstance(obj, warp.context.Function):
                     # special handling for wp.static() evaluating to a function
                     return obj
@@ -3111,6 +3117,7 @@ class Adjoint:
 
         # Since this is an expression, we can enforce it to be defined on a single line.
         static_code = static_code.replace("\n", "")
+        code_to_eval = static_code  # code to be evaluated
 
         vars_dict = adj.get_static_evaluation_context()
         # add constant variables to the static call context
@@ -3152,10 +3159,10 @@ class Adjoint:
                     loc = end
 
                 new_static_code += static_code[len_value_locs[-1][2] :]
-                static_code = new_static_code
+                code_to_eval = new_static_code
 
         try:
-            value = eval(static_code, vars_dict)
+            value = eval(code_to_eval, vars_dict)
             if warp.config.verbose:
                 print(f"Evaluated static command: {static_code} = {value}")
         except NameError as e:
@@ -3208,6 +3215,9 @@ class Adjoint:
                         #      (and is therefore not executable and raises this exception), in which
                         #      case changing the constant, or the code affecting this constant, would lead to
                         #      a different module hash anyway.
+                        # In any case, we mark this Adjoint to have unresolvable static expressions.
+                        # This will trigger a code generation step even if the module hash is unchanged.
+                        adj.has_unresolved_static_expressions = True
                         pass
 
                 return self.generic_visit(node)
