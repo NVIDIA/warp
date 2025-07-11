@@ -140,6 +140,32 @@ def test_bsr_from_triplets(test, device):
         bsr_set_from_triplets(bsr, rows, cols, vals)
 
 
+def test_bsr_from_triplets_prune_numerical_zeros(test, device):
+    rows = wp.array([1, 0, 2, 3], dtype=int)
+    cols = wp.array([0, 1, 2, 3], dtype=int)
+    vals = wp.zeros(len(rows), dtype=float)
+
+    A = bsr_from_triplets(
+        rows_of_blocks=12,  # Number of rows of blocks
+        cols_of_blocks=12,  # Number of columns of blocks
+        rows=rows,  # Row indices
+        columns=cols,  # Column indices
+        values=vals,  # Block values
+        prune_numerical_zeros=False,
+    )
+    assert A.nnz_sync() == 4
+
+    A = bsr_from_triplets(
+        rows_of_blocks=12,  # Number of rows of blocks
+        cols_of_blocks=12,  # Number of columns of blocks
+        rows=rows,  # Row indices
+        columns=cols,  # Column indices
+        values=vals,  # Block values
+        prune_numerical_zeros=True,
+    )
+    assert A.nnz_sync() == 0
+
+
 def test_bsr_from_triplets_gradient(test, device):
     rng = np.random.default_rng(123)
 
@@ -604,6 +630,12 @@ class TestSparse(unittest.TestCase):
 
 add_function_test(TestSparse, "test_csr_from_triplets", test_csr_from_triplets, devices=devices)
 add_function_test(TestSparse, "test_bsr_from_triplets", test_bsr_from_triplets, devices=devices)
+add_function_test(
+    TestSparse,
+    "test_bsr_from_triplets_prune_numerical_zeros",
+    test_bsr_from_triplets_prune_numerical_zeros,
+    devices=devices,
+)
 add_function_test(TestSparse, "test_bsr_get_diag", test_bsr_get_set_diag, devices=devices)
 add_function_test(TestSparse, "test_bsr_split_merge", test_bsr_split_merge, devices=devices)
 add_function_test(TestSparse, "test_bsr_assign_masked", test_bsr_assign_masked, devices=devices)
