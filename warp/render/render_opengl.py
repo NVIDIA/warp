@@ -998,6 +998,7 @@ class OpenGLRenderer:
         enable_mouse_interaction=True,
         enable_keyboard_interaction=True,
         device=None,
+        use_legacy_opengl: bool | None = None,
     ):
         """
         Args:
@@ -1028,6 +1029,7 @@ class OpenGLRenderer:
             enable_mouse_interaction (bool): Whether to enable mouse interaction.
             enable_keyboard_interaction (bool): Whether to enable keyboard interaction.
             device (Devicelike): Where to store the internal data.
+            use_legacy_opengl (bool | None): Whether to use a legacy OpenGL implementation that is more compatible with macOS. If ``None``, it will be automatically detected based on the operating system.
 
         Note:
 
@@ -1072,6 +1074,11 @@ class OpenGLRenderer:
         self.render_wireframe = render_wireframe
         self.render_depth = render_depth
         self.enable_backface_culling = enable_backface_culling
+
+        if use_legacy_opengl is None:
+            self.use_legacy_opengl = sys.platform == "darwin"
+        else:
+            self.use_legacy_opengl = use_legacy_opengl
 
         if device is None:
             self._device = wp.get_preferred_device()
@@ -1162,6 +1169,8 @@ class OpenGLRenderer:
         self._wp_instance_bodies = None
         self._update_shape_instances = False
         self._add_shape_instances = False
+        self.instance_matrix_size = 0
+        self.instance_color_size = 0
 
         # additional shape instancer used for points and line rendering
         self._shape_instancers = {}
@@ -2051,9 +2060,43 @@ Instances: {len(self._instances)}"""
             num_instances = len(self._shape_instances[shape])
 
             gl.glBindVertexArray(vao)
-            gl.glDrawElementsInstancedBaseInstance(
-                gl.GL_TRIANGLES, tri_count, gl.GL_UNSIGNED_INT, None, num_instances, start_instance_idx
-            )
+            if self.use_legacy_opengl:
+                if self.instance_matrix_size > 0 and self.instance_color_size:
+                    # update attribute pointers
+                    matrix_size = self.instance_matrix_size
+                    color_size = self.instance_color_size
+
+                    # update transforms
+                    gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_transform_gl_buffer)
+                    for i in range(4):
+                        gl.glVertexAttribPointer(
+                            3 + i,
+                            4,
+                            gl.GL_FLOAT,
+                            gl.GL_FALSE,
+                            matrix_size,
+                            ctypes.c_void_p(start_instance_idx * matrix_size + i * matrix_size // 4),
+                        )
+                        gl.glVertexAttribDivisor(3 + i, 1)
+
+                    # update colors
+                    gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_color1_buffer)
+                    gl.glVertexAttribPointer(
+                        7, 3, gl.GL_FLOAT, gl.GL_FALSE, color_size, ctypes.c_void_p(start_instance_idx * color_size)
+                    )
+                    gl.glVertexAttribDivisor(7, 1)
+
+                    gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_color2_buffer)
+                    gl.glVertexAttribPointer(
+                        8, 3, gl.GL_FLOAT, gl.GL_FALSE, color_size, ctypes.c_void_p(start_instance_idx * color_size)
+                    )
+                    gl.glVertexAttribDivisor(8, 1)
+
+                    gl.glDrawElementsInstanced(gl.GL_TRIANGLES, tri_count, gl.GL_UNSIGNED_INT, None, num_instances)
+            else:
+                gl.glDrawElementsInstancedBaseInstance(
+                    gl.GL_TRIANGLES, tri_count, gl.GL_UNSIGNED_INT, None, num_instances, start_instance_idx
+                )
 
             start_instance_idx += num_instances
 
@@ -2103,9 +2146,43 @@ Instances: {len(self._instances)}"""
                 start_instance_idx = self._inverse_instance_ids[instance]
 
                 gl.glBindVertexArray(vao)
-                gl.glDrawElementsInstancedBaseInstance(
-                    gl.GL_TRIANGLES, tri_count, gl.GL_UNSIGNED_INT, None, 1, start_instance_idx
-                )
+                if self.use_legacy_opengl:
+                    if self.instance_matrix_size > 0 and self.instance_color_size:
+                        # update attribute pointers
+                        matrix_size = self.instance_matrix_size
+                        color_size = self.instance_color_size
+
+                        # update transforms
+                        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_transform_gl_buffer)
+                        for j in range(4):
+                            gl.glVertexAttribPointer(
+                                3 + j,
+                                4,
+                                gl.GL_FLOAT,
+                                gl.GL_FALSE,
+                                matrix_size,
+                                ctypes.c_void_p(start_instance_idx * matrix_size + j * matrix_size // 4),
+                            )
+                            gl.glVertexAttribDivisor(3 + j, 1)
+
+                        # update colors
+                        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_color1_buffer)
+                        gl.glVertexAttribPointer(
+                            7, 3, gl.GL_FLOAT, gl.GL_FALSE, color_size, ctypes.c_void_p(start_instance_idx * color_size)
+                        )
+                        gl.glVertexAttribDivisor(7, 1)
+
+                        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._instance_color2_buffer)
+                        gl.glVertexAttribPointer(
+                            8, 3, gl.GL_FLOAT, gl.GL_FALSE, color_size, ctypes.c_void_p(start_instance_idx * color_size)
+                        )
+                        gl.glVertexAttribDivisor(8, 1)
+
+                        gl.glDrawElementsInstanced(gl.GL_TRIANGLES, tri_count, gl.GL_UNSIGNED_INT, None, 1)
+                else:
+                    gl.glDrawElementsInstancedBaseInstance(
+                        gl.GL_TRIANGLES, tri_count, gl.GL_UNSIGNED_INT, None, 1, start_instance_idx
+                    )
 
             if self.draw_axis:
                 self._axis_instancer.render()
@@ -2393,6 +2470,7 @@ Instances: {len(self._instances)}"""
 
         # set up instance attribute pointers
         matrix_size = transforms[0].nbytes
+        self.instance_matrix_size = matrix_size
 
         instance_ids = []
         instance_custom_ids = []
@@ -2401,6 +2479,7 @@ Instances: {len(self._instances)}"""
         inverse_instance_ids = {}
         instance_count = 0
         colors_size = np.zeros(3, dtype=np.float32).nbytes
+        self.instance_color_size = colors_size
         for shape, (vao, _vbo, _ebo, _tri_count, _vertex_cuda_buffer) in self._shape_gl_buffers.items():
             gl.glBindVertexArray(vao)
 
