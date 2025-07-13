@@ -1237,7 +1237,6 @@ def handle_contact_pairs(
         p_b_world = wp.transform_point(X_ws_b, p_b_body)
         diff = p_a_world - p_b_world
 
-        query_b = wp.transform_point(X_sw_b, p_a_world)
         normal = wp.transform_vector(X_ws_b, box_sdf_grad(geo_scale_b, query_b))
         distance = wp.dot(diff, normal)
 
