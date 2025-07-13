@@ -18,6 +18,7 @@
 #
 # Demonstrates how to set up tiled rendering and retrieves the pixels from
 # OpenGLRenderer as a Warp array while keeping all memory on the GPU.
+# It also shows how to add an ImGui UI to the renderer.
 #
 ###########################################################################
 
@@ -25,14 +26,60 @@ import numpy as np
 
 import warp as wp
 import warp.render
+from warp.render.imgui_manager import ImGuiManager
+
+
+class ExampleImGuiManager(ImGuiManager):
+    """An example ImGui manager that displays a few float values."""
+
+    def __init__(self, renderer, window_pos=(10, 10), window_size=(300, 200)):
+        super().__init__(renderer)
+        if not self.is_available:
+            return
+
+        # UI properties
+        self.window_pos = window_pos
+        self.window_size = window_size
+
+        # Values to display in the UI
+        self.some_float = 123.456
+        self.editable_float1 = 10.0
+        self.editable_float2 = 20.0
+        self.editable_float3 = 30.0
+
+    def draw_ui(self):
+        # set window position and size once
+        self.imgui.set_next_window_size(self.window_size[0], self.window_size[1], self.imgui.ONCE)
+        self.imgui.set_next_window_position(self.window_pos[0], self.window_pos[1], self.imgui.ONCE)
+
+        self.imgui.begin("Warp Float Values")
+
+        self.imgui.text(f"A read-only float: {self.some_float}")
+        self.imgui.separator()
+
+        self.imgui.text("Editable floats:")
+        changed1, self.editable_float1 = self.imgui.slider_float("Slider", self.editable_float1, 0.0, 100.0)
+        changed2, self.editable_float2 = self.imgui.drag_float("Drag", self.editable_float2, 0.1, 0.0, 100.0)
+        changed3, self.editable_float3 = self.imgui.input_float("Input", self.editable_float3)
+
+        self.imgui.end()
 
 
 class Example:
-    def __init__(self, num_tiles=4, custom_tile_arrangement=False):
+    def __init__(self, num_tiles=4, custom_tile_arrangement=False, use_imgui=True):
         if num_tiles < 1:
             raise ValueError("num_tiles must be greater than or equal to 1.")
 
         self.renderer = wp.render.OpenGLRenderer(vsync=False)
+        self.use_imgui = use_imgui
+
+        if self.use_imgui:
+            self.imgui_manager = ExampleImGuiManager(self.renderer)
+            if self.imgui_manager.is_available:
+                self.renderer.render_2d_callbacks.append(self.imgui_manager.render_frame)
+            else:
+                self.use_imgui = False
+
         instance_ids = []
 
         if custom_tile_arrangement:
@@ -81,6 +128,11 @@ class Example:
         )
         self.renderer.end_frame()
 
+    def clear(self):
+        if self.use_imgui:
+            self.imgui_manager.shutdown()
+        self.renderer.clear()
+
 
 if __name__ == "__main__":
     import argparse
@@ -103,11 +155,21 @@ if __name__ == "__main__":
         help="Whether to split tiles into subplots when --show_plot is True.",
     )
     parser.add_argument("--custom_tile_arrangement", action="store_true", help="Apply custom tile arrangement.")
+    parser.add_argument(
+        "--use_imgui",
+        type=lambda x: bool(distutils.util.strtobool(x.strip())),
+        default=True,
+        help="Enable or disable the ImGui window.",
+    )
 
     args = parser.parse_known_args()[0]
 
     with wp.ScopedDevice(args.device):
-        example = Example(num_tiles=args.num_tiles, custom_tile_arrangement=args.custom_tile_arrangement)
+        example = Example(
+            num_tiles=args.num_tiles,
+            custom_tile_arrangement=args.custom_tile_arrangement,
+            use_imgui=args.use_imgui,
+        )
 
         channels = 1 if args.render_mode == "depth" else 3
 
@@ -190,4 +252,4 @@ if __name__ == "__main__":
                 fig.canvas.draw()
                 fig.canvas.flush_events()
 
-        example.renderer.clear()
+        example.clear()

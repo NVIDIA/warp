@@ -7,6 +7,7 @@
 - Add the static method `wp.MarchingCubes.extract_surface_marching_cubes()` to extract a triangular mesh from a
   3D scalar field sampled to a regular grid ([GH-788](https://github.com/NVIDIA/warp/issues/788)).
 - Support input-output aliasing in JAX FFI ([GH-815](https://github.com/NVIDIA/warp/issues/815)).
+- Add additional OpenGL rendering example code that shows how to use ImGui ([GH-833](https://github.com/NVIDIA/warp/issues/833))
 
 ### Changed
 
@@ -27,6 +28,8 @@
 - Fix the OpenGL renderer not correctly displaying colors for box shapes
   ([GH-810](https://github.com/NVIDIA/warp/issues/810)).
 - Fix a bug where meshes with different `scale` attributes were rendered by the same instance in OpenGLRenderer ([GH-828](https://github.com/NVIDIA/warp/issues/828)).
+- The OpenGL renderer should not run properly on Mac OS ([GH-834](https://github.com/NVIDIA/warp/issues/834))
+- Fix hashing of modules in which functions or kernels use static expressions that cannot be resolved at the time of declaration ([GH-830](https://github.com/NVIDIA/warp/issues/830)).
 
 ## [1.8.0] - 2025-07-01
 
