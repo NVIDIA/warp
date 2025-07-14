@@ -25,6 +25,8 @@
 - Fix `tape.zero()` not resetting gradient arrays in nested structs ([GH-807](https://github.com/NVIDIA/warp/issues/807)).
 - Fix a bug with the marching-cubes output geometry ([GH-324](https://github.com/NVIDIA/warp/issues/324)).
 - Fix a bug where cuda modules could get unloaded while they are still required when conditional graph nodes are used because the destructor of the python Graph object could get called too early
+- Fix increased compile times for kernels using matmul, Cholesky, and FFT solvers by upgrading to libmathdx 0.2.2 ([GH-809](https://github.com/NVIDIA/warp/issues/809)).
+- Fix codegen errors associated with adjoint of `wp.tile_sum()` when using shared tiles ([GH-822](https://github.com/NVIDIA/warp/issues/822)).
 - Fix the OpenGL renderer not correctly displaying colors for box shapes
   ([GH-810](https://github.com/NVIDIA/warp/issues/810)).
 - Fix a bug where meshes with different `scale` attributes were rendered by the same instance in OpenGLRenderer ([GH-828](https://github.com/NVIDIA/warp/issues/828)).
