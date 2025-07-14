@@ -522,22 +522,17 @@ inline CUDA_CALLABLE vec_t<SliceLength, Type> extract(const vec_t<Length, Type> 
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
     assert(slice_get_length(slice) == SliceLength);
 
+    bool is_reversed = slice.step < 0;
+
     int ii = 0;
-    if (slice.step < 0)
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
     {
-        for (int i = slice.start; i > slice.stop; i += slice.step)
-        {
-            ret[ii] = a[i];
-            ++ii;
-        }
-    }
-    else
-    {
-        for (int i = slice.start; i < slice.stop; i += slice.step)
-        {
-            ret[ii] = a[i];
-            ++ii;
-        }
+        ret[ii] = a[i];
+        ++ii;
     }
 
     return ret;
@@ -624,19 +619,15 @@ inline CUDA_CALLABLE void add_inplace(vec_t<Length, Type>& v, slice_t slice, Typ
     assert(slice.stop >= -1 && slice.stop <= (int)Length);
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
 
-    if (slice.step < 0)
+    bool is_reversed = slice.step < 0;
+
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
     {
-        for (int i = slice.start; i > slice.stop; i += slice.step)
-        {
-            v[i] += value;
-        }
-    }
-    else
-    {
-        for (int i = slice.start; i < slice.stop; i += slice.step)
-        {
-            v[i] += value;
-        }
+        v[i] += value;
     }
 }
 
@@ -649,22 +640,17 @@ inline CUDA_CALLABLE void add_inplace(vec_t<Length, Type>& v, slice_t slice, con
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
     assert(slice_get_length(slice) == SliceLength);
 
+    bool is_reversed = slice.step < 0;
+
     int ii = 0;
-    if (slice.step < 0)
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
     {
-        for (int i = slice.start; i > slice.stop; i += slice.step)
-        {
-            v[i] += a[ii];
-            ++ii;
-        }
-    }
-    else
-    {
-        for (int i = slice.start; i < slice.stop; i += slice.step)
-        {
-            v[i] += a[ii];
-            ++ii;
-        }
+        v[i] += a[ii];
+        ++ii;
     }
 }
 
@@ -700,19 +686,15 @@ inline CUDA_CALLABLE void adj_add_inplace(
     assert(slice.stop >= -1 && slice.stop <= (int)Length);
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
 
-    if (slice.step < 0)
+    bool is_reversed = slice.step < 0;
+
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
     {
-        for (int i = slice.start; i > slice.stop; i += slice.step)
-        {
-            adj_value += adj_v[i];
-        }
-    }
-    else
-    {
-        for (int i = slice.start; i < slice.stop; i += slice.step)
-        {
-            adj_value += adj_v[i];
-        }
+        adj_value += adj_v[i];
     }
 }
 
@@ -728,22 +710,17 @@ inline CUDA_CALLABLE void adj_add_inplace(
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
     assert(slice_get_length(slice) == SliceLength);
 
+    bool is_reversed = slice.step < 0;
+
     int ii = 0;
-    if (slice.step < 0)
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
     {
-        for (int i = slice.start; i > slice.stop; i += slice.step)
-        {
-            adj_a[ii] += adj_v[i];
-            ++ii;
-        }
-    }
-    else
-    {
-        for (int i = slice.start; i < slice.stop; i += slice.step)
-        {
-            adj_a[ii] += adj_v[i];
-            ++ii;
-        }
+        adj_a[ii] += adj_v[i];
+        ++ii;
     }
 }
 
@@ -775,19 +752,15 @@ inline CUDA_CALLABLE void sub_inplace(vec_t<Length, Type>& v, slice_t slice, Typ
     assert(slice.stop >= -1 && slice.stop <= (int)Length);
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
 
-    if (slice.step < 0)
+    bool is_reversed = slice.step < 0;
+
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
     {
-        for (int i = slice.start; i > slice.stop; i += slice.step)
-        {
-            v[i] -= value;
-        }
-    }
-    else
-    {
-        for (int i = slice.start; i < slice.stop; i += slice.step)
-        {
-            v[i] -= value;
-        }
+        v[i] -= value;
     }
 }
 
@@ -800,22 +773,17 @@ inline CUDA_CALLABLE void sub_inplace(vec_t<Length, Type>& v, slice_t slice, con
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
     assert(slice_get_length(slice) == SliceLength);
 
+    bool is_reversed = slice.step < 0;
+
     int ii = 0;
-    if (slice.step < 0)
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
     {
-        for (int i = slice.start; i > slice.stop; i += slice.step)
-        {
-            v[i] -= a[ii];
-            ++ii;
-        }
-    }
-    else
-    {
-        for (int i = slice.start; i < slice.stop; i += slice.step)
-        {
-            v[i] -= a[ii];
-            ++ii;
-        }
+        v[i] -= a[ii];
+        ++ii;
     }
 }
 
@@ -851,19 +819,15 @@ inline CUDA_CALLABLE void adj_sub_inplace(
     assert(slice.stop >= -1 && slice.stop <= (int)Length);
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
 
-    if (slice.step < 0)
+    bool is_reversed = slice.step < 0;
+
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
     {
-        for (int i = slice.start; i > slice.stop; i += slice.step)
-        {
-            adj_value -= adj_v[i];
-        }
-    }
-    else
-    {
-        for (int i = slice.start; i < slice.stop; i += slice.step)
-        {
-            adj_value -= adj_v[i];
-        }
+        adj_value -= adj_v[i];
     }
 }
 
@@ -879,22 +843,17 @@ inline CUDA_CALLABLE void adj_sub_inplace(
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
     assert(slice_get_length(slice) == SliceLength);
 
+    bool is_reversed = slice.step < 0;
+
     int ii = 0;
-    if (slice.step < 0)
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
     {
-        for (int i = slice.start; i > slice.stop; i += slice.step)
-        {
-            adj_a[ii] -= adj_v[i];
-            ++ii;
-        }
-    }
-    else
-    {
-        for (int i = slice.start; i < slice.stop; i += slice.step)
-        {
-            adj_a[ii] -= adj_v[i];
-            ++ii;
-        }
+        adj_a[ii] -= adj_v[i];
+        ++ii;
     }
 }
 
@@ -925,19 +884,15 @@ inline CUDA_CALLABLE void assign_inplace(vec_t<Length, Type>& v, slice_t slice, 
     assert(slice.stop >= -1 && slice.stop <= (int)Length);
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
 
-    if (slice.step < 0)
+    bool is_reversed = slice.step < 0;
+
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
     {
-        for (int i = slice.start; i > slice.stop; i += slice.step)
-        {
-            v[i] = value;
-        }
-    }
-    else
-    {
-        for (int i = slice.start; i < slice.stop; i += slice.step)
-        {
-            v[i] = value;
-        }
+        v[i] = value;
     }
 }
 
@@ -949,22 +904,17 @@ inline CUDA_CALLABLE void assign_inplace(vec_t<Length, Type>& v, slice_t slice, 
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
     assert(slice_get_length(slice) == SliceLength);
 
+    bool is_reversed = slice.step < 0;
+
     int ii = 0;
-    if (slice.step < 0)
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
     {
-        for (int i = slice.start; i > slice.stop; i += slice.step)
-        {
-            v[i] = a[ii];
-            ++ii;
-        }
-    }
-    else
-    {
-        for (int i = slice.start; i < slice.stop; i += slice.step)
-        {
-            v[i] = a[ii];
-            ++ii;
-        }
+        v[i] = a[ii];
+        ++ii;
     }
 }
 
@@ -998,19 +948,15 @@ inline CUDA_CALLABLE void adj_assign_inplace(
     assert(slice.stop >= -1 && slice.stop <= (int)Length);
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
 
-    if (slice.step < 0)
+    bool is_reversed = slice.step < 0;
+
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
     {
-        for (int i = slice.start; i > slice.stop; i += slice.step)
-        {
-            adj_value += adj_v[i];
-        }
-    }
-    else
-    {
-        for (int i = slice.start; i < slice.stop; i += slice.step)
-        {
-            adj_value += adj_v[i];
-        }
+        adj_value += adj_v[i];
     }
 }
 
@@ -1025,22 +971,17 @@ inline CUDA_CALLABLE void adj_assign_inplace(
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
     assert(slice_get_length(slice) == SliceLength);
 
+    bool is_reversed = slice.step < 0;
+
     int ii = 0;
-    if (slice.step < 0)
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
     {
-        for (int i = slice.start; i > slice.stop; i += slice.step)
-        {
-            adj_a[ii] += adj_v[i];
-            ++ii;
-        }
-    }
-    else
-    {
-        for (int i = slice.start; i < slice.stop; i += slice.step)
-        {
-            adj_a[ii] += adj_v[i];
-            ++ii;
-        }
+        adj_a[ii] += adj_v[i];
+        ++ii;
     }
 }
 
@@ -1116,40 +1057,21 @@ inline CUDA_CALLABLE void adj_assign_copy(
     assert(slice.stop >= -1 && slice.stop <= (int)Length);
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
 
-    if (slice.step < 0)
-    {
-        for (int i = 0; i < Length; ++i)
-        {
-            bool in_slice = (
-                i > slice.start || i <= slice.stop || (slice.start - i) % (-slice.step) != 0
-            );
+    bool is_reversed = slice.step < 0;
 
-            if (!in_slice)
-            {
-                adj_v[i] += adj_ret[i];
-            }
-            else
-            {
-                adj_value += adj_ret[i];
-            }
+    for (int i = 0; i < Length; ++i)
+    {
+        bool in_slice = is_reversed
+            ? (i <= slice.start && i > slice.stop && (slice.start - i) % (-slice.step) == 0)
+            : (i >= slice.start && i < slice.stop && (i - slice.start) % slice.step == 0);
+
+        if (!in_slice)
+        {
+            adj_v[i] += adj_ret[i];
         }
-    }
-    else
-    {
-        for (int i = 0; i < Length; ++i)
+        else
         {
-            bool in_slice = (
-                i < slice.start || i >= slice.stop || (i - slice.start) % slice.step != 0
-            );
-
-            if (!in_slice)
-            {
-                adj_v[i] += adj_ret[i];
-            }
-            else
-            {
-                adj_value += adj_ret[i];
-            }
+            adj_value += adj_ret[i];
         }
     }
 }
@@ -1165,43 +1087,23 @@ inline CUDA_CALLABLE void adj_assign_copy(
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
     assert(slice_get_length(slice) == SliceLength);
 
+    bool is_reversed = slice.step < 0;
+
     int ii = 0;
-    if (slice.step < 0)
+    for (int i = 0; i < Length; ++i)
     {
-        for (int i = 0; i < Length; ++i)
-        {
-            bool in_slice = (
-                i > slice.start || i <= slice.stop || (slice.start - i) % (-slice.step) != 0
-            );
+        bool in_slice = is_reversed
+            ? (i <= slice.start && i > slice.stop && (slice.start - i) % (-slice.step) == 0)
+            : (i >= slice.start && i < slice.stop && (i - slice.start) % slice.step == 0);
 
-            if (!in_slice)
-            {
-                adj_v[i] += adj_ret[i];
-            }
-            else
-            {
-                adj_a[ii] += adj_ret[i];
-                ++ii;
-            }
+        if (!in_slice)
+        {
+            adj_v[i] += adj_ret[i];
         }
-    }
-    else
-    {
-        for (int i = 0; i < Length; ++i)
+        else
         {
-            bool in_slice = (
-                i < slice.start || i >= slice.stop || (i - slice.start) % slice.step != 0
-            );
-
-            if (!in_slice)
-            {
-                adj_v[i] += adj_ret[i];
-            }
-            else
-            {
-                adj_a[ii] += adj_ret[i];
-                ++ii;
-            }
+            adj_a[ii] += adj_ret[i];
+            ++ii;
         }
     }
 }
@@ -1784,22 +1686,17 @@ inline CUDA_CALLABLE void adj_extract(
     assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
     assert(slice_get_length(slice) == SliceLength);
 
+    bool is_reversed = slice.step < 0;
+
     int ii = 0;
-    if (slice.step < 0)
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
     {
-        for (int i = slice.start; i > slice.stop; i += slice.step)
-        {
-            adj_a[i] += adj_ret[ii];
-            ++ii;
-        }
-    }
-    else
-    {
-        for (int i = slice.start; i < slice.stop; i += slice.step)
-        {
-            adj_a[i] += adj_ret[ii];
-            ++ii;
-        }
+        adj_a[i] += adj_ret[ii];
+        ++ii;
     }
 }
 

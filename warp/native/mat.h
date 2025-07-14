@@ -541,31 +541,21 @@ inline CUDA_CALLABLE mat_t<RowSliceLength, ColSliceLength, Type> extract(const m
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
     assert(slice_get_length(row_slice) == RowSliceLength);
 
-    if (row_slice.step < 0)
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                ret.data[ii][j] = m.data[i][j];
-            }
+    bool is_row_reversed = row_slice.step < 0;
 
-            ++ii;
-        }
-    }
-    else
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        for (int j = 0; j < Cols; ++j)
         {
-            for (int j = 0; j < Cols; ++j)
-            {
-                ret.data[ii][j] = m.data[i][j];
-            }
-
-            ++ii;
+            ret.data[ii][j] = m.data[i][j];
         }
+
+        ++ii;
     }
 
     return ret;
@@ -594,23 +584,17 @@ inline CUDA_CALLABLE vec_t<RowSliceLength, Type> extract(const mat_t<Rows,Cols,T
         col += Cols;
     }
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            ret.c[ii] = m.data[i][col];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            ret.c[ii] = m.data[i][col];
-            ++ii;
-        }
+        ret.c[ii] = m.data[i][col];
+        ++ii;
     }
 
     return ret;
@@ -639,23 +623,17 @@ inline CUDA_CALLABLE vec_t<ColSliceLength, Type> extract(const mat_t<Rows,Cols,T
         row += Rows;
     }
 
-    if (col_slice.step < 0)
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
-        {
-            ret.c[ii] = m.data[row][i];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
-        {
-            ret.c[ii] = m.data[row][i];
-            ++ii;
-        }
+        ret.c[ii] = m.data[row][i];
+        ++ii;
     }
 
     return ret;
@@ -676,71 +654,28 @@ inline CUDA_CALLABLE mat_t<RowSliceLength, ColSliceLength, Type> extract(const m
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
     assert(slice_get_length(col_slice) == ColSliceLength);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        if (col_slice.step < 0)
+        int jj = 0;
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
         {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    ret.data[ii][jj] = m.data[i][j];
-                    ++jj;
-                }
-
-                ++ii;
-            }
+            ret.data[ii][jj] = m.data[i][j];
+            ++jj;
         }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    ret.data[ii][jj] = m.data[i][j];
-                    ++jj;
-                }
 
-                ++ii;
-            }
-        }
-    }
-    else
-    {
-        if (col_slice.step < 0)
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    ret.data[ii][jj] = m.data[i][j];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    ret.data[ii][jj] = m.data[i][j];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
+        ++ii;
     }
 
     return ret;
@@ -867,24 +802,17 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
     assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        for (int j = 0; j < Cols; ++j)
         {
-            for (int j = 0; j < Cols; ++j)
-            {
-                m.data[i][j] += value;
-            }
-        }
-    }
-    else
-    {
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                m.data[i][j] += value;
-            }
+            m.data[i][j] += value;
         }
     }
 }
@@ -903,31 +831,21 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
     assert(slice_get_length(row_slice) == RowSliceLength);
 
-    if (row_slice.step < 0)
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                m.data[i][j] += value.data[ii][j];
-            }
+    bool is_row_reversed = row_slice.step < 0;
 
-            ++ii;
-        }
-    }
-    else
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        for (int j = 0; j < Cols; ++j)
         {
-            for (int j = 0; j < Cols; ++j)
-            {
-                m.data[i][j] += value.data[ii][j];
-            }
-
-            ++ii;
+            m.data[i][j] += value.data[ii][j];
         }
+
+        ++ii;
     }
 }
 
@@ -952,19 +870,15 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
         col += Cols;
     }
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            m.data[i][col] += value;
-        }
-    }
-    else
-    {
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            m.data[i][col] += value;
-        }
+        m.data[i][col] += value;
     }
 }
 
@@ -990,23 +904,17 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
         col += Cols;
     }
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            m.data[i][col] += value.c[ii];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            m.data[i][col] += value.c[ii];
-            ++ii;
-        }
+        m.data[i][col] += value.c[ii];
+        ++ii;
     }
 }
 
@@ -1031,19 +939,15 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t
         row += Rows;
     }
 
-    if (col_slice.step < 0)
+    bool is_col_reversed = col_slice.step < 0;
+
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
     {
-        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
-        {
-            m.data[row][i] += value;
-        }
-    }
-    else
-    {
-        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
-        {
-            m.data[row][i] += value;
-        }
+        m.data[row][i] += value;
     }
 }
 
@@ -1069,23 +973,17 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t
         row += Rows;
     }
 
-    if (col_slice.step < 0)
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
-        {
-            m.data[row][i] += value.c[ii];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
-        {
-            m.data[row][i] += value.c[ii];
-            ++ii;
-        }
+        m.data[row][i] += value.c[ii];
+        ++ii;
     }
 }
 
@@ -1101,50 +999,22 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
     assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        if (col_slice.step < 0)
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
         {
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] += value;
-                }
-            }
-        }
-        else
-        {
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] += value;
-                }
-            }
-        }
-    }
-    else
-    {
-        if (col_slice.step < 0)
-        {
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] += value;
-                }
-            }
-        }
-        else
-        {
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] += value;
-                }
-            }
+            m.data[i][j] += value;
         }
     }
 }
@@ -1163,71 +1033,28 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
     assert(slice_get_length(col_slice) == ColSliceLength);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        if (col_slice.step < 0)
+        int jj = 0;
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
         {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] += value.data[ii][jj];
-                    ++jj;
-                }
-
-                ++ii;
-            }
+            m.data[i][j] += value.data[ii][jj];
+            ++jj;
         }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] += value.data[ii][jj];
-                    ++jj;
-                }
 
-                ++ii;
-            }
-        }
-    }
-    else
-    {
-        if (col_slice.step < 0)
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] += value.data[ii][jj];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] += value.data[ii][jj];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
+        ++ii;
     }
 }
 
@@ -1296,24 +1123,17 @@ inline CUDA_CALLABLE void adj_add_inplace(
     assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        for (int j = 0; j < Cols; ++j)
         {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_value += adj_m.data[i][j];
-            }
-        }
-    }
-    else
-    {
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_value += adj_m.data[i][j];
-            }
+            adj_value += adj_m.data[i][j];
         }
     }
 }
@@ -1335,31 +1155,21 @@ inline CUDA_CALLABLE void adj_add_inplace(
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
     assert(slice_get_length(row_slice) == RowSliceLength);
 
-    if (row_slice.step < 0)
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_value.data[ii][j] += adj_m.data[i][j];
-            }
+    bool is_row_reversed = row_slice.step < 0;
 
-            ++ii;
-        }
-    }
-    else
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        for (int j = 0; j < Cols; ++j)
         {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_value.data[ii][j] += adj_m.data[i][j];
-            }
-
-            ++ii;
+            adj_value.data[ii][j] += adj_m.data[i][j];
         }
+
+        ++ii;
     }
 }
 
@@ -1387,19 +1197,15 @@ inline CUDA_CALLABLE void adj_add_inplace(
         col += Cols;
     }
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            adj_value += adj_m.data[i][col];
-        }
-    }
-    else
-    {
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            adj_value += adj_m.data[i][col];
-        }
+        adj_value += adj_m.data[i][col];
     }
 }
 
@@ -1428,23 +1234,17 @@ inline CUDA_CALLABLE void adj_add_inplace(
         col += Cols;
     }
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            adj_value.c[ii] += adj_m.data[i][col];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            adj_value.c[ii] += adj_m.data[i][col];
-            ++ii;
-        }
+        adj_value.c[ii] += adj_m.data[i][col];
+        ++ii;
     }
 }
 
@@ -1472,19 +1272,15 @@ inline CUDA_CALLABLE void adj_add_inplace(
         row += Rows;
     }
 
-    if (col_slice.step < 0)
+    bool is_col_reversed = col_slice.step < 0;
+
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
     {
-        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
-        {
-            adj_value += adj_m.data[row][i];
-        }
-    }
-    else
-    {
-        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
-        {
-            adj_value += adj_m.data[row][i];
-        }
+        adj_value += adj_m.data[row][i];
     }
 }
 
@@ -1513,23 +1309,17 @@ inline CUDA_CALLABLE void adj_add_inplace(
         row += Rows;
     }
 
-    if (col_slice.step < 0)
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
-        {
-            adj_value.c[ii] += adj_m.data[row][i];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
-        {
-            adj_value.c[ii] += adj_m.data[row][i];
-            ++ii;
-        }
+        adj_value.c[ii] += adj_m.data[row][i];
+        ++ii;
     }
 }
 
@@ -1548,50 +1338,22 @@ inline CUDA_CALLABLE void adj_add_inplace(
     assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        if (col_slice.step < 0)
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
         {
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    adj_value += adj_m.data[i][j];
-                }
-            }
-        }
-        else
-        {
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    adj_value += adj_m.data[i][j];
-                }
-            }
-        }
-    }
-    else
-    {
-        if (col_slice.step < 0)
-        {
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    adj_value += adj_m.data[i][j];
-                }
-            }
-        }
-        else
-        {
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    adj_value += adj_m.data[i][j];
-                }
-            }
+            adj_value += adj_m.data[i][j];
         }
     }
 }
@@ -1613,71 +1375,28 @@ inline CUDA_CALLABLE void adj_add_inplace(
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
     assert(slice_get_length(col_slice) == ColSliceLength);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        if (col_slice.step < 0)
+        int jj = 0;
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
         {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    adj_value.data[ii][jj] += adj_m.data[i][j];
-                    ++jj;
-                }
-
-                ++ii;
-            }
+            adj_value.data[ii][jj] += adj_m.data[i][j];
+            ++jj;
         }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    adj_value.data[ii][jj] += adj_m.data[i][j];
-                    ++jj;
-                }
 
-                ++ii;
-            }
-        }
-    }
-    else
-    {
-        if (col_slice.step < 0)
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    adj_value.data[ii][jj] += adj_m.data[i][j];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    adj_value.data[ii][jj] += adj_m.data[i][j];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
+        ++ii;
     }
 }
 
@@ -1741,24 +1460,17 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
     assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        for (int j = 0; j < Cols; ++j)
         {
-            for (int j = 0; j < Cols; ++j)
-            {
-                m.data[i][j] -= value;
-            }
-        }
-    }
-    else
-    {
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                m.data[i][j] -= value;
-            }
+            m.data[i][j] -= value;
         }
     }
 }
@@ -1777,31 +1489,21 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
     assert(slice_get_length(row_slice) == RowSliceLength);
 
-    if (row_slice.step < 0)
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                m.data[i][j] -= value.data[ii][j];
-            }
+    bool is_row_reversed = row_slice.step < 0;
 
-            ++ii;
-        }
-    }
-    else
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        for (int j = 0; j < Cols; ++j)
         {
-            for (int j = 0; j < Cols; ++j)
-            {
-                m.data[i][j] -= value.data[ii][j];
-            }
-
-            ++ii;
+            m.data[i][j] -= value.data[ii][j];
         }
+
+        ++ii;
     }
 }
 
@@ -1826,19 +1528,15 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
         col += Cols;
     }
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            m.data[i][col] -= value;
-        }
-    }
-    else
-    {
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            m.data[i][col] -= value;
-        }
+        m.data[i][col] -= value;
     }
 }
 
@@ -1864,23 +1562,17 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
         col += Cols;
     }
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            m.data[i][col] -= value.c[ii];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            m.data[i][col] -= value.c[ii];
-            ++ii;
-        }
+        m.data[i][col] -= value.c[ii];
+        ++ii;
     }
 }
 
@@ -1905,19 +1597,15 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t
         row += Rows;
     }
 
-    if (col_slice.step < 0)
+    bool is_col_reversed = col_slice.step < 0;
+
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
     {
-        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
-        {
-            m.data[row][i] -= value;
-        }
-    }
-    else
-    {
-        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
-        {
-            m.data[row][i] -= value;
-        }
+        m.data[row][i] -= value;
     }
 }
 
@@ -1943,23 +1631,17 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t
         row += Rows;
     }
 
-    if (col_slice.step < 0)
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
-        {
-            m.data[row][i] -= value.c[ii];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
-        {
-            m.data[row][i] -= value.c[ii];
-            ++ii;
-        }
+        m.data[row][i] -= value.c[ii];
+        ++ii;
     }
 }
 
@@ -1975,50 +1657,22 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
     assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        if (col_slice.step < 0)
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
         {
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] -= value;
-                }
-            }
-        }
-        else
-        {
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] -= value;
-                }
-            }
-        }
-    }
-    else
-    {
-        if (col_slice.step < 0)
-        {
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] -= value;
-                }
-            }
-        }
-        else
-        {
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] -= value;
-                }
-            }
+            m.data[i][j] -= value;
         }
     }
 }
@@ -2037,71 +1691,28 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
     assert(slice_get_length(col_slice) == ColSliceLength);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        if (col_slice.step < 0)
+        int jj = 0;
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
         {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] -= value.data[ii][jj];
-                    ++jj;
-                }
-
-                ++ii;
-            }
+            m.data[i][j] -= value.data[ii][jj];
+            ++jj;
         }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] -= value.data[ii][jj];
-                    ++jj;
-                }
 
-                ++ii;
-            }
-        }
-    }
-    else
-    {
-        if (col_slice.step < 0)
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] -= value.data[ii][jj];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] -= value.data[ii][jj];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
+        ++ii;
     }
 }
 
@@ -2170,24 +1781,17 @@ inline CUDA_CALLABLE void adj_sub_inplace(
     assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        for (int j = 0; j < Cols; ++j)
         {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_value -= adj_m.data[i][j];
-            }
-        }
-    }
-    else
-    {
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_value -= adj_m.data[i][j];
-            }
+            adj_value -= adj_m.data[i][j];
         }
     }
 }
@@ -2209,31 +1813,21 @@ inline CUDA_CALLABLE void adj_sub_inplace(
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
     assert(slice_get_length(row_slice) == RowSliceLength);
 
-    if (row_slice.step < 0)
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_value.data[ii][j] -= adj_m.data[i][j];
-            }
+    bool is_row_reversed = row_slice.step < 0;
 
-            ++ii;
-        }
-    }
-    else
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        for (int j = 0; j < Cols; ++j)
         {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_value.data[ii][j] -= adj_m.data[i][j];
-            }
-
-            ++ii;
+            adj_value.data[ii][j] -= adj_m.data[i][j];
         }
+
+        ++ii;
     }
 }
 
@@ -2261,19 +1855,15 @@ inline CUDA_CALLABLE void adj_sub_inplace(
         col += Cols;
     }
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            adj_value -= adj_m.data[i][col];
-        }
-    }
-    else
-    {
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            adj_value -= adj_m.data[i][col];
-        }
+        adj_value -= adj_m.data[i][col];
     }
 }
 
@@ -2302,23 +1892,17 @@ inline CUDA_CALLABLE void adj_sub_inplace(
         col += Cols;
     }
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            adj_value.c[ii] -= adj_m.data[i][col];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            adj_value.c[ii] -= adj_m.data[i][col];
-            ++ii;
-        }
+        adj_value.c[ii] -= adj_m.data[i][col];
+        ++ii;
     }
 }
 
@@ -2346,19 +1930,15 @@ inline CUDA_CALLABLE void adj_sub_inplace(
         row += Rows;
     }
 
-    if (col_slice.step < 0)
+    bool is_col_reversed = col_slice.step < 0;
+
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
     {
-        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
-        {
-            adj_value -= adj_m.data[row][i];
-        }
-    }
-    else
-    {
-        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
-        {
-            adj_value -= adj_m.data[row][i];
-        }
+        adj_value -= adj_m.data[row][i];
     }
 }
 
@@ -2387,23 +1967,17 @@ inline CUDA_CALLABLE void adj_sub_inplace(
         row += Rows;
     }
 
-    if (col_slice.step < 0)
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
-        {
-            adj_value.c[ii] -= adj_m.data[row][i];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
-        {
-            adj_value.c[ii] -= adj_m.data[row][i];
-            ++ii;
-        }
+        adj_value.c[ii] -= adj_m.data[row][i];
+        ++ii;
     }
 }
 
@@ -2422,50 +1996,22 @@ inline CUDA_CALLABLE void adj_sub_inplace(
     assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        if (col_slice.step < 0)
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
         {
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    adj_value -= adj_m.data[i][j];
-                }
-            }
-        }
-        else
-        {
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    adj_value -= adj_m.data[i][j];
-                }
-            }
-        }
-    }
-    else
-    {
-        if (col_slice.step < 0)
-        {
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    adj_value -= adj_m.data[i][j];
-                }
-            }
-        }
-        else
-        {
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    adj_value -= adj_m.data[i][j];
-                }
-            }
+            adj_value -= adj_m.data[i][j];
         }
     }
 }
@@ -2487,71 +2033,28 @@ inline CUDA_CALLABLE void adj_sub_inplace(
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
     assert(slice_get_length(col_slice) == ColSliceLength);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        if (col_slice.step < 0)
+        int jj = 0;
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
         {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    adj_value.data[ii][jj] -= adj_m.data[i][j];
-                    ++jj;
-                }
-
-                ++ii;
-            }
+            adj_value.data[ii][jj] -= adj_m.data[i][j];
+            ++jj;
         }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    adj_value.data[ii][jj] -= adj_m.data[i][j];
-                    ++jj;
-                }
 
-                ++ii;
-            }
-        }
-    }
-    else
-    {
-        if (col_slice.step < 0)
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    adj_value.data[ii][jj] -= adj_m.data[i][j];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    adj_value.data[ii][jj] -= adj_m.data[i][j];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
+        ++ii;
     }
 }
 
@@ -2615,24 +2118,17 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_s
     assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        for (int j = 0; j < Cols; ++j)
         {
-            for (int j = 0; j < Cols; ++j)
-            {
-                m.data[i][j] = value;
-            }
-        }
-    }
-    else
-    {
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                m.data[i][j] = value;
-            }
+            m.data[i][j] = value;
         }
     }
 }
@@ -2651,31 +2147,21 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_s
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
     assert(slice_get_length(row_slice) == RowSliceLength);
 
-    if (row_slice.step < 0)
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                m.data[i][j] = value.data[ii][j];
-            }
+    bool is_row_reversed = row_slice.step < 0;
 
-            ++ii;
-        }
-    }
-    else
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        for (int j = 0; j < Cols; ++j)
         {
-            for (int j = 0; j < Cols; ++j)
-            {
-                m.data[i][j] = value.data[ii][j];
-            }
-
-            ++ii;
+            m.data[i][j] = value.data[ii][j];
         }
+
+        ++ii;
     }
 }
 
@@ -2700,19 +2186,15 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_s
         col += Cols;
     }
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            m.data[i][col] = value;
-        }
-    }
-    else
-    {
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            m.data[i][col] = value;
-        }
+        m.data[i][col] = value;
     }
 }
 
@@ -2738,23 +2220,17 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_s
         col += Cols;
     }
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            m.data[i][col] = value.c[ii];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            m.data[i][col] = value.c[ii];
-            ++ii;
-        }
+        m.data[i][col] = value.c[ii];
+        ++ii;
     }
 }
 
@@ -2779,19 +2255,15 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, int row, slic
         row += Rows;
     }
 
-    if (col_slice.step < 0)
+    bool is_col_reversed = col_slice.step < 0;
+
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
     {
-        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
-        {
-            m.data[row][i] = value;
-        }
-    }
-    else
-    {
-        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
-        {
-            m.data[row][i] = value;
-        }
+        m.data[row][i] = value;
     }
 }
 
@@ -2817,23 +2289,17 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, int row, slic
         row += Rows;
     }
 
-    if (col_slice.step < 0)
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
-        {
-            m.data[row][i] = value.c[ii];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
-        {
-            m.data[row][i] = value.c[ii];
-            ++ii;
-        }
+        m.data[row][i] = value.c[ii];
+        ++ii;
     }
 }
 
@@ -2849,50 +2315,22 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_s
     assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        if (col_slice.step < 0)
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
         {
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] = value;
-                }
-            }
-        }
-        else
-        {
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] = value;
-                }
-            }
-        }
-    }
-    else
-    {
-        if (col_slice.step < 0)
-        {
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] = value;
-                }
-            }
-        }
-        else
-        {
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] = value;
-                }
-            }
+            m.data[i][j] = value;
         }
     }
 }
@@ -2911,71 +2349,28 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_s
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
     assert(slice_get_length(col_slice) == ColSliceLength);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        if (col_slice.step < 0)
+        int jj = 0;
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
         {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] = value.data[ii][jj];
-                    ++jj;
-                }
-
-                ++ii;
-            }
+            m.data[i][j] = value.data[ii][jj];
+            ++jj;
         }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] = value.data[ii][jj];
-                    ++jj;
-                }
 
-                ++ii;
-            }
-        }
-    }
-    else
-    {
-        if (col_slice.step < 0)
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] = value.data[ii][jj];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    m.data[i][j] = value.data[ii][jj];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
+        ++ii;
     }
 }
 
@@ -3044,24 +2439,17 @@ inline CUDA_CALLABLE void adj_assign_inplace(
     assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
+        for (int j = 0; j < Cols; ++j)
         {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_value += adj_m.data[i][j];
-            }
-        }
-    }
-    else
-    {
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_value += adj_m.data[i][j];
-            }
+            adj_value += adj_m.data[i][j];
         }
     }
 }
@@ -3083,31 +2471,21 @@ inline CUDA_CALLABLE void adj_assign_inplace(
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
     assert(slice_get_length(row_slice) == RowSliceLength);
 
-    if (row_slice.step < 0)
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_value.data[ii][j] += adj_m.data[i][j];
-            }
+    bool is_row_reversed = row_slice.step < 0;
 
-            ++ii;
-        }
-    }
-    else
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        for (int j = 0; j < Cols; ++j)
         {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_value.data[ii][j] += adj_m.data[i][j];
-            }
-
-            ++ii;
+            adj_value.data[ii][j] += adj_m.data[i][j];
         }
+
+        ++ii;
     }
 }
 
@@ -3135,19 +2513,15 @@ inline CUDA_CALLABLE void adj_assign_inplace(
         col += Cols;
     }
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            adj_value += adj_m.data[i][col];
-        }
-    }
-    else
-    {
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            adj_value += adj_m.data[i][col];
-        }
+        adj_value += adj_m.data[i][col];
     }
 }
 
@@ -3176,23 +2550,17 @@ inline CUDA_CALLABLE void adj_assign_inplace(
         col += Cols;
     }
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            adj_value.c[ii] += adj_m.data[i][col];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            adj_value.c[ii] += adj_m.data[i][col];
-            ++ii;
-        }
+        adj_value.c[ii] += adj_m.data[i][col];
+        ++ii;
     }
 }
 
@@ -3220,19 +2588,15 @@ inline CUDA_CALLABLE void adj_assign_inplace(
         row += Rows;
     }
 
-    if (col_slice.step < 0)
+    bool is_col_reversed = col_slice.step < 0;
+
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
     {
-        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
-        {
-            adj_value += adj_m.data[row][i];
-        }
-    }
-    else
-    {
-        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
-        {
-            adj_value += adj_m.data[row][i];
-        }
+        adj_value += adj_m.data[row][i];
     }
 }
 
@@ -3261,23 +2625,17 @@ inline CUDA_CALLABLE void adj_assign_inplace(
         row += Rows;
     }
 
-    if (col_slice.step < 0)
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
-        {
-            adj_value.c[ii] += adj_m.data[row][i];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
-        {
-            adj_value.c[ii] += adj_m.data[row][i];
-            ++ii;
-        }
+        adj_value.c[ii] += adj_m.data[row][i];
+        ++ii;
     }
 }
 
@@ -3296,50 +2654,22 @@ inline CUDA_CALLABLE void adj_assign_inplace(
     assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        if (col_slice.step < 0)
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
         {
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    adj_value += adj_m.data[i][j];
-                }
-            }
-        }
-        else
-        {
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    adj_value += adj_m.data[i][j];
-                }
-            }
-        }
-    }
-    else
-    {
-        if (col_slice.step < 0)
-        {
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    adj_value += adj_m.data[i][j];
-                }
-            }
-        }
-        else
-        {
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    adj_value += adj_m.data[i][j];
-                }
-            }
+            adj_value += adj_m.data[i][j];
         }
     }
 }
@@ -3361,71 +2691,28 @@ inline CUDA_CALLABLE void adj_assign_inplace(
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
     assert(slice_get_length(col_slice) == ColSliceLength);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        if (col_slice.step < 0)
+        int jj = 0;
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
         {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    adj_value.data[ii][jj] += adj_m.data[i][j];
-                    ++jj;
-                }
-
-                ++ii;
-            }
+            adj_value.data[ii][jj] += adj_m.data[i][j];
+            ++jj;
         }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    adj_value.data[ii][jj] += adj_m.data[i][j];
-                    ++jj;
-                }
 
-                ++ii;
-            }
-        }
-    }
-    else
-    {
-        if (col_slice.step < 0)
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    adj_value.data[ii][jj] += adj_m.data[i][j];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    adj_value.data[ii][jj] += adj_m.data[i][j];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
+        ++ii;
     }
 }
 
@@ -3637,16 +2924,13 @@ inline CUDA_CALLABLE void adj_assign_copy(
     assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
 
-    int row_dir = row_slice.step < 0 ? -1 : 1;
-    int row_step = abs(row_slice.step);
+    bool is_row_reversed = row_slice.step < 0;
 
     for (int i = 0; i < Rows; ++i)
     {
-        bool in_row_slice = (
-               ((i - row_slice.start) * row_dir  >= 0)
-            && ((row_slice.stop - i ) * row_dir  >  0)
-            && ((i - row_slice.start) % row_step == 0)
-        );
+        bool in_row_slice = is_row_reversed
+            ? (i <= row_slice.start && i > row_slice.stop && (row_slice.start - i) % (-row_slice.step) == 0)
+            : (i >= row_slice.start && i < row_slice.stop && (i - row_slice.start) % row_slice.step == 0);
 
         if (!in_row_slice)
         {
@@ -3683,17 +2967,14 @@ inline CUDA_CALLABLE void adj_assign_copy(
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
     assert(slice_get_length(row_slice) == RowSliceLength);
 
-    int row_dir = row_slice.step < 0 ? -1 : 1;
-    int row_step = abs(row_slice.step);
+    bool is_row_reversed = row_slice.step < 0;
 
     int ii = 0;
     for (int i = 0; i < Rows; ++i)
     {
-        bool in_row_slice = (
-               ((i - row_slice.start) * row_dir  >= 0)
-            && ((row_slice.stop - i ) * row_dir  >  0)
-            && ((i - row_slice.start) % row_step == 0)
-        );
+        bool in_row_slice = is_row_reversed
+            ? (i <= row_slice.start && i > row_slice.stop && (row_slice.start - i) % (-row_slice.step) == 0)
+            : (i >= row_slice.start && i < row_slice.stop && (i - row_slice.start) % row_slice.step == 0);
 
         if (!in_row_slice)
         {
@@ -3739,16 +3020,13 @@ inline CUDA_CALLABLE void adj_assign_copy(
         col += Cols;
     }
 
-    int row_dir = row_slice.step < 0 ? -1 : 1;
-    int row_step = abs(row_slice.step);
+    bool is_row_reversed = row_slice.step < 0;
 
     for (int i = 0; i < Rows; ++i)
     {
-        bool in_row_slice = (
-               ((i - row_slice.start) * row_dir  >= 0)
-            && ((row_slice.stop - i ) * row_dir  >  0)
-            && ((i - row_slice.start) % row_step == 0)
-        );
+        bool in_row_slice = is_row_reversed
+            ? (i <= row_slice.start && i > row_slice.stop && (row_slice.start - i) % (-row_slice.step) == 0)
+            : (i >= row_slice.start && i < row_slice.stop && (i - row_slice.start) % row_slice.step == 0);
 
         if (!in_row_slice)
         {
@@ -3800,17 +3078,14 @@ inline CUDA_CALLABLE void adj_assign_copy(
         col += Cols;
     }
 
-    int row_dir = row_slice.step < 0 ? -1 : 1;
-    int row_step = abs(row_slice.step);
+    bool is_row_reversed = row_slice.step < 0;
 
     int ii = 0;
     for (int i = 0; i < Rows; ++i)
     {
-        bool in_row_slice = (
-               ((i - row_slice.start) * row_dir  >= 0)
-            && ((row_slice.stop - i ) * row_dir  >  0)
-            && ((i - row_slice.start) % row_step == 0)
-        );
+        bool in_row_slice = is_row_reversed
+            ? (i <= row_slice.start && i > row_slice.stop && (row_slice.start - i) % (-row_slice.step) == 0)
+            : (i >= row_slice.start && i < row_slice.stop && (i - row_slice.start) % row_slice.step == 0);
 
         if (!in_row_slice)
         {
@@ -3863,6 +3138,8 @@ inline CUDA_CALLABLE void adj_assign_copy(
     assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
 
+    bool is_col_reversed = col_slice.step < 0;
+
     for (int i = 0; i < Rows; ++i)
     {
         if (i != row)
@@ -3874,16 +3151,11 @@ inline CUDA_CALLABLE void adj_assign_copy(
         }
         else
         {
-            int col_dir = col_slice.step < 0 ? -1 : 1;
-            int col_step = abs(col_slice.step);
-
             for (int j = 0; j < Cols; ++j)
             {
-                bool in_col_slice = (
-                       ((j - col_slice.start) * col_dir  >= 0)
-                    && ((col_slice.stop - j ) * col_dir  >  0)
-                    && ((j - col_slice.start) % col_step == 0)
-                );
+                bool in_col_slice = is_col_reversed
+                    ? (j <= col_slice.start && j > col_slice.stop && (col_slice.start - j) % (-col_slice.step) == 0)
+                    : (j >= col_slice.start && j < col_slice.stop && (j - col_slice.start) % col_slice.step == 0);
 
                 if (!in_col_slice)
                 {
@@ -3924,6 +3196,8 @@ inline CUDA_CALLABLE void adj_assign_copy(
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
     assert(slice_get_length(col_slice) == ColSliceLength);
 
+    bool is_col_reversed = col_slice.step < 0;
+
     int ii = 0;
     for (int i = 0; i < Rows; ++i)
     {
@@ -3936,16 +3210,11 @@ inline CUDA_CALLABLE void adj_assign_copy(
         }
         else
         {
-            int col_dir = col_slice.step < 0 ? -1 : 1;
-            int col_step = abs(col_slice.step);
-
             for (int j = 0; j < Cols; ++j)
             {
-                bool in_col_slice = (
-                       ((j - col_slice.start) * col_dir  >= 0)
-                    && ((col_slice.stop - j ) * col_dir  >  0)
-                    && ((j - col_slice.start) % col_step == 0)
-                );
+                bool in_col_slice = is_col_reversed
+                    ? (j <= col_slice.start && j > col_slice.stop && (col_slice.start - j) % (-col_slice.step) == 0)
+                    : (j >= col_slice.start && j < col_slice.stop && (j - col_slice.start) % col_slice.step == 0);
 
                 if (!in_col_slice)
                 {
@@ -3973,16 +3242,14 @@ inline CUDA_CALLABLE void adj_assign_copy(
     assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
 
-    int row_dir = row_slice.step < 0 ? -1 : 1;
-    int row_step = abs(row_slice.step);
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
 
     for (int i = 0; i < Rows; ++i)
     {
-        bool in_row_slice = (
-               ((i - row_slice.start) * row_dir  >= 0)
-            && ((row_slice.stop - i ) * row_dir  >  0)
-            && ((i - row_slice.start) % row_step == 0)
-        );
+        bool in_row_slice = is_row_reversed
+            ? (i <= row_slice.start && i > row_slice.stop && (row_slice.start - i) % (-row_slice.step) == 0)
+            : (i >= row_slice.start && i < row_slice.stop && (i - row_slice.start) % row_slice.step == 0);
 
         if (!in_row_slice)
         {
@@ -3997,16 +3264,11 @@ inline CUDA_CALLABLE void adj_assign_copy(
             assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
             assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
 
-            int col_dir = col_slice.step < 0 ? -1 : 1;
-            int col_step = abs(col_slice.step);
-
             for (int j = 0; j < Cols; ++j)
             {
-                bool in_col_slice = (
-                       ((j - col_slice.start) * col_dir  >= 0)
-                    && ((col_slice.stop - j ) * col_dir  >  0)
-                    && ((j - col_slice.start) % col_step == 0)
-                );
+                bool in_col_slice = is_col_reversed
+                    ? (j <= col_slice.start && j > col_slice.stop && (col_slice.start - j) % (-col_slice.step) == 0)
+                    : (j >= col_slice.start && j < col_slice.stop && (j - col_slice.start) % col_slice.step == 0);
 
                 if (!in_col_slice)
                 {
@@ -4034,17 +3296,15 @@ inline CUDA_CALLABLE void adj_assign_copy(
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
     assert(slice_get_length(row_slice) == RowSliceLength);
 
-    int row_dir = row_slice.step < 0 ? -1 : 1;
-    int row_step = abs(row_slice.step);
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
 
     int ii = 0;
     for (int i = 0; i < Rows; ++i)
     {
-        bool in_row_slice = (
-               ((i - row_slice.start) * row_dir  >= 0)
-            && ((row_slice.stop - i ) * row_dir  >  0)
-            && ((i - row_slice.start) % row_step == 0)
-        );
+        bool in_row_slice = is_row_reversed
+            ? (i <= row_slice.start && i > row_slice.stop && (row_slice.start - i) % (-row_slice.step) == 0)
+            : (i >= row_slice.start && i < row_slice.stop && (i - row_slice.start) % row_slice.step == 0);
 
         if (!in_row_slice)
         {
@@ -4060,17 +3320,12 @@ inline CUDA_CALLABLE void adj_assign_copy(
             assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
             assert(slice_get_length(col_slice) == ColSliceLength);
 
-            int col_dir = col_slice.step < 0 ? -1 : 1;
-            int col_step = abs(col_slice.step);
-
             int jj = 0;
             for (int j = 0; j < Cols; ++j)
             {
-                bool in_col_slice = (
-                       ((j - col_slice.start) * col_dir  >= 0)
-                    && ((col_slice.stop - j ) * col_dir  >  0)
-                    && ((j - col_slice.start) % col_step == 0)
-                );
+                bool in_col_slice = is_col_reversed
+                    ? (j <= col_slice.start && j > col_slice.stop && (col_slice.start - j) % (-col_slice.step) == 0)
+                    : (j >= col_slice.start && j < col_slice.stop && (j - col_slice.start) % col_slice.step == 0);
 
                 if (!in_col_slice)
                 {
@@ -4794,31 +4049,21 @@ inline CUDA_CALLABLE void adj_extract(
     assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
     assert(slice_get_length(row_slice) == RowSliceLength);
 
-    if (row_slice.step < 0)
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_m.data[i][j] += adj_ret.data[ii][j];
-            }
+    bool is_row_reversed = row_slice.step < 0;
 
-            ++ii;
-        }
-    }
-    else
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
+        for (int j = 0; j < Cols; ++j)
         {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_m.data[i][j] += adj_ret.data[ii][j];
-            }
-
-            ++ii;
+            adj_m.data[i][j] += adj_ret.data[ii][j];
         }
+
+        ++ii;
     }
 }
 
@@ -4847,23 +4092,17 @@ inline CUDA_CALLABLE void adj_extract(
         col += Cols;
     }
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-        {
-            adj_m.data[i][col] += adj_ret.c[ii];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-        {
-            adj_m.data[i][col] += adj_ret.c[ii];
-            ++ii;
-        }
+        adj_m.data[i][col] += adj_ret.c[ii];
+        ++ii;
     }
 }
 
@@ -4892,23 +4131,17 @@ inline CUDA_CALLABLE void adj_extract(
         row += Rows;
     }
 
-    if (col_slice.step < 0)
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
     {
-        int ii = 0;
-        for (int i = col_slice.start; i > col_slice.stop; i += col_slice.step)
-        {
-            adj_m.data[row][i] += adj_ret.c[ii];
-            ++ii;
-        }
-    }
-    else
-    {
-        int ii = 0;
-        for (int i = col_slice.start; i < col_slice.stop; i += col_slice.step)
-        {
-            adj_m.data[row][i] += adj_ret.c[ii];
-            ++ii;
-        }
+        adj_m.data[row][i] += adj_ret.c[ii];
+        ++ii;
     }
 }
 
@@ -4929,71 +4162,28 @@ inline CUDA_CALLABLE void adj_extract(
     assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
     assert(slice_get_length(col_slice) == ColSliceLength);
 
-    if (row_slice.step < 0)
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
     {
-        if (col_slice.step < 0)
+        int jj = 0;
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
         {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    adj_m.data[i][j] += adj_ret.data[ii][jj];
-                    ++jj;
-                }
-
-                ++ii;
-            }
+            adj_m.data[i][j] += adj_ret.data[ii][jj];
+            ++jj;
         }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i > row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    adj_m.data[i][j] += adj_ret.data[ii][jj];
-                    ++jj;
-                }
 
-                ++ii;
-            }
-        }
-    }
-    else
-    {
-        if (col_slice.step < 0)
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j > col_slice.stop; j += col_slice.step)
-                {
-                    adj_m.data[i][j] += adj_ret.data[ii][jj];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
-        else
-        {
-            int ii = 0;
-            for (int i = row_slice.start; i < row_slice.stop; i += row_slice.step)
-            {
-                int jj = 0;
-                for (int j = col_slice.start; j < col_slice.stop; j += col_slice.step)
-                {
-                    adj_m.data[i][j] += adj_ret.data[ii][jj];
-                    ++jj;
-                }
-
-                ++ii;
-            }
-        }
+        ++ii;
     }
 }
 
