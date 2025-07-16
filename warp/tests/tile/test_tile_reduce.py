@@ -124,6 +124,13 @@ def tile_min_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=float
     wp.tile_store(output, m, offset=i)
 
 
+@wp.kernel
+def tile_min_kernel_edge_case(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
+    t = wp.tile_load(x, shape=(3, 3))
+    min = wp.tile_min(t)
+    wp.tile_store(y, min)
+
+
 def test_tile_reduce_min(test, device):
     batch_count = 56
 
@@ -145,6 +152,14 @@ def test_tile_reduce_min(test, device):
         min_np = np.min(input[i])
         test.assertAlmostEqual(min_wp[i], min_np, places=4)
 
+    # test edge case: tile is multiple warps in size but at least one is empty
+    x = wp.array(np.array([[2.0, 2.0, 3.0], [4.0, 1.0, 6.0], [7.0, 3.0, 9.0]]), dtype=float, device=device)
+    y = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch_tiled(tile_min_kernel_edge_case, dim=1, inputs=[x, y], block_dim=64, device=device)
+
+    assert_np_equal(y.numpy(), np.array([1.0]))
+
 
 @wp.kernel
 def tile_argmin_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=int)):
@@ -155,6 +170,13 @@ def tile_argmin_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=in
     m = wp.tile_argmin(a)
 
     wp.tile_store(output, m, offset=i)
+
+
+@wp.kernel
+def tile_argmin_kernel_edge_case(x: wp.array2d(dtype=float), y: wp.array(dtype=int)):
+    t = wp.tile_load(x, shape=(3, 3))
+    min = wp.tile_argmin(t)
+    wp.tile_store(y, min)
 
 
 def test_tile_reduce_argmin(test, device):
@@ -177,6 +199,14 @@ def test_tile_reduce_argmin(test, device):
     for i in range(batch_count):
         argmin_np = np.argmin(input[i])
         test.assertAlmostEqual(argmin_wp[i], argmin_np, places=4)
+
+    # test edge case: tile is multiple warps in size but at least one is empty
+    x = wp.array(np.array([[2.0, 2.0, 3.0], [4.0, 1.0, 6.0], [7.0, 3.0, 9.0]]), dtype=float, device=device)
+    y = wp.zeros(1, dtype=int, device=device)
+
+    wp.launch_tiled(tile_argmin_kernel_edge_case, dim=1, inputs=[x, y], block_dim=64, device=device)
+
+    assert_np_equal(y.numpy(), np.array([4]))
 
 
 @wp.kernel
