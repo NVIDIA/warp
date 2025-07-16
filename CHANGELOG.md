@@ -48,6 +48,7 @@
   ([GH-810](https://github.com/NVIDIA/warp/issues/810)).
 - Fix a bug where meshes with different `scale` attributes were rendered by the same instance in OpenGLRenderer ([GH-828](https://github.com/NVIDIA/warp/issues/828)).
 - Fix hashing of modules in which functions or kernels use static expressions that cannot be resolved at the time of declaration ([GH-830](https://github.com/NVIDIA/warp/issues/830)).
+- Fix `wp.tile_min()` and `wp.tile_argmin()` for large tiles with low occupancy ([GH-725](https://github.com/NVIDIA/warp/issues/725)).
 
 ## [1.8.0] - 2025-07-01
 
