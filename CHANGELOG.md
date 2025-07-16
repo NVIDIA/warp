@@ -34,6 +34,7 @@
 - Fix hashing of modules in which functions or kernels use static expressions that cannot be resolved at the time of declaration ([GH-830](https://github.com/NVIDIA/warp/issues/830)).
 - Fix box-box collision by computing the contact normal at the closest point of approach instead of at the center of
   the source box ([GH-839](https://github.com/NVIDIA/warp/pull/839)).
+- Fix potential uninitialized memory issues in `wp.tile_sort()` when an array of `NaN` values were provided ([GH-836](https://github.com/NVIDIA/warp/issues/836).
 
 ## [1.8.0] - 2025-07-01
 
