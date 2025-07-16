@@ -37,7 +37,7 @@ linux-x86_64 test:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 build
   extends:
-    - .omni_nvks_gpu_2x
+    - .omni_nvks_gpu_2x_570_test
     - .save_test_report_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -68,7 +68,6 @@ windows-x86_64 test:
       job: windows-x86_64 build
   timeout: 30m
   extends:
-    - .runner-test-windows-x86_64-gpu
     - .save_test_report_artifact
   before_script:
     - !reference [.snippets, define-powershell-GetTime]
@@ -85,6 +84,8 @@ windows-x86_64 test:
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+  tags:
+    - win-x86_64-gpu-1x-573.42
 
 linux-aarch64 test:
   stage: test
