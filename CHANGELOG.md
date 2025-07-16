@@ -34,6 +34,7 @@
 - Fix hashing of modules in which functions or kernels use static expressions that cannot be resolved at the time of declaration ([GH-830](https://github.com/NVIDIA/warp/issues/830)).
 - Fix box-box collision by computing the contact normal at the closest point of approach instead of at the center of
   the source box ([GH-839](https://github.com/NVIDIA/warp/pull/839)).
+- Fix `wp.tile_min()` and `wp.tile_argmin()` for large tiles with low occupancy ([GH-725](https://github.com/NVIDIA/warp/issues/725)).
 
 ## [1.8.0] - 2025-07-01
 

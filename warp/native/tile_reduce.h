@@ -206,6 +206,7 @@ auto tile_reduce_impl(Op f, Tile& t)
 
     // ensure that only threads with at least one valid item participate in the reduction
     unsigned int mask = __ballot_sync(__activemask(), Layout::valid(Layout::linear_from_register(0)));
+    bool warp_is_active = mask != 0;
 
     // warp reduction
     T warp_sum = warp_reduce(thread_sum, f, mask);
@@ -221,7 +222,7 @@ auto tile_reduce_impl(Op f, Tile& t)
     // ensure active_warps is initialized
     WP_TILE_SYNC();
 
-    if (lane_index == 0)
+    if (lane_index == 0 && warp_is_active)
     {
         partials[warp_index] = warp_sum;
         atomicAdd(&active_warps, 1);
@@ -279,6 +280,7 @@ auto tile_arg_reduce_impl(Op f, OpTrack track, Tile& t)
 
     // ensure that only threads with at least one valid item participate in the reduction
     unsigned int mask = __ballot_sync(__activemask(), Layout::valid(Layout::linear_from_register(0)));
+    bool warp_is_active = mask != 0;
 
     // warp reduction
     ValueAndIndex<T> warp_sum = warp_reduce_tracked(thread_sum, champion_index, f, track, mask);
@@ -295,7 +297,7 @@ auto tile_arg_reduce_impl(Op f, OpTrack track, Tile& t)
     // ensure active_warps is initialized
     WP_TILE_SYNC();
 
-    if (lane_index == 0)
+    if (lane_index == 0 && warp_is_active)
     {
         partials[warp_index] = warp_sum.value;
         partials_idx[warp_index] = warp_sum.index;
