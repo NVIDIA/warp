@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import builtins
 import functools
+import math
 from typing import Any, Callable, Mapping, Sequence
 
 import warp.build
@@ -5575,6 +5576,48 @@ add_builtin(
 )
 
 
+def zeros_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    if arg_types is None:
+        return fixedarray(dtype=Scalar)
+
+    dtype = arg_values["dtype"]
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise RuntimeError("the `shape` argument must be specified as a constant when zero-initializing an array")
+
+    return fixedarray(dtype=dtype, shape=shape)
+
+
+def zeros_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    # We're in the codegen stage where we emit the code calling the built-in.
+    # Further validate the given argument values if needed and map them
+    # to the underlying C++ function's runtime and template params.
+
+    dtype = return_type.dtype
+    shape = extract_tuple(args["shape"], as_constant=True)
+
+    size = math.prod(shape)
+
+    func_args = shape
+    template_args = (size, dtype)
+    return (func_args, template_args)
+
+
+add_builtin(
+    "zeros",
+    input_types={"shape": Tuple[int, ...], "dtype": Any},
+    value_func=zeros_value_func,
+    export_func=lambda input_types: {},
+    dispatch_func=zeros_dispatch_func,
+    native_func="fixedarray_t",
+    group="Utility",
+    export=False,
+    missing_grad=True,
+    hidden=True,  # Unhide once we can document both a built-in and a Python scope function sharing the same name.
+)
+
+
 # does argument checking and type propagation for address()
 def address_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     arr_type = arg_types["arr"]
@@ -5864,8 +5907,8 @@ def atomic_op_dispatch_func(input_types: Mapping[str, type], return_type: Any, a
 
 
 for array_type in array_types:
-    # don't list indexed array operations explicitly in docs
-    hidden = array_type == indexedarray
+    # don't list fixed or indexed array operations explicitly in docs
+    hidden = array_type in (indexedarray, fixedarray)
 
     add_builtin(
         "atomic_add",

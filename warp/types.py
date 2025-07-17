@@ -1532,10 +1532,10 @@ def scalar_short_name(t):
 # converts any known type to a human readable string, good for error messages, reporting etc
 def type_repr(t) -> str:
     if is_array(t):
-        if t.device is None:
+        if hasattr(t, "device") and t.device is None:
             # array is used as a type annotation - display ndim instead of shape
-            return f"array(ndim={t.ndim}, dtype={type_repr(t.dtype)})"
-        return f"array(shape={t.shape}, dtype={type_repr(t.dtype)})"
+            return f"{type(t).__name__}(ndim={t.ndim}, dtype={type_repr(t.dtype)})"
+        return f"{type(t).__name__}(shape={t.shape}, dtype={type_repr(t.dtype)})"
     if is_tuple(t):
         return f"tuple({', '.join(type_repr(x) for x in t.types)})"
     if is_tile(t):
@@ -1757,7 +1757,11 @@ def types_equal(a, b, match_generic=False):
 
         return True
 
-    if is_array(a) and type(a) is type(b) and types_equal(a.dtype, b.dtype, match_generic=match_generic):
+    if (
+        is_array(a)
+        and (issubclass(type(a), type(b)) or issubclass(type(b), type(a)))
+        and types_equal(a.dtype, b.dtype, match_generic=match_generic)
+    ):
         return True
 
     # match NewStructInstance and Struct dtype
@@ -3238,6 +3242,54 @@ def from_ipc_handle(
     return array(ptr=ptr, dtype=dtype, shape=shape, strides=strides, device=device, deleter=_close_cuda_ipc_handle)
 
 
+class fixedarray(array):
+    """A fixed-size, stack allocated, array containing values of the same type.
+
+    Only used during codegen, and for type hints, but otherwise not intended to be used
+    at the Python scope.
+
+    Attributes:
+        dtype (DType): The data type of the array.
+        shape (tuple[int]): Dimensions of the array.
+    """
+
+    def __init__(
+        self,
+        dtype: Any = Any,
+        shape: int | tuple[int, ...] | list[int] | None = None,
+    ):
+        # canonicalize dtype
+        if dtype == int:
+            dtype = int32
+        elif dtype == float:
+            dtype = float32
+        elif dtype == builtins.bool:
+            dtype = bool
+
+        if shape is None:
+            self.dtype = dtype
+            self.ndim = 1
+            self.size = 0
+            self.shape = (0,)
+            self.strides = (0,)
+        else:
+            if isinstance(shape, int):
+                shape = (shape,)
+
+            check_array_shape(shape)
+
+            self.dtype = dtype
+            self.ndim = len(shape)
+            self.size = math.prod(shape)
+            self.shape = shape
+            self.strides = strides_from_shape(shape, dtype)
+
+    @property
+    def vars(self):
+        # member attributes available during code-gen (e.g.: d = array.shape[0])
+        return {"shape": warp.codegen.Var("shape", shape_t)}
+
+
 # A base class for non-contiguous arrays, providing the implementation of common methods like
 # contiguous(), to(), numpy(), list(), assign(), zero_(), and fill_().
 class noncontiguous_array_base(Array[T]):
@@ -3465,7 +3517,7 @@ def indexedarray4d(*args, **kwargs):
 
 from warp.fabric import fabricarray, indexedfabricarray  # noqa: E402
 
-array_types = (array, indexedarray, fabricarray, indexedfabricarray)
+array_types = (array, indexedarray, fabricarray, indexedfabricarray, fixedarray)
 
 
 def array_type_id(a):

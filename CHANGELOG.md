@@ -13,6 +13,8 @@
 - Add support for using struct types in `wp.array()` constructor inside kernels ([GH-853](https://github.com/NVIDIA/warp/issues/853)).
 - Add documentation for creating and manipulating Warp structured arrays using NumPy ([GH-852](https://github.com/NVIDIA/warp/issues/852)).
 
+- Add support for initializing fixed-size arrays inside Warp kernels using `wp.zeros()`
+  ([GH-794](https://github.com/NVIDIA/warp/issues/794)).
 
 ### Changed
 

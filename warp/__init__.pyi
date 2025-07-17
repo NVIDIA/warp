@@ -37,6 +37,7 @@ IndexedFabricArray = Generic[DType]
 Tile = Generic[DType, Shape]
 
 from warp.types import array, array1d, array2d, array3d, array4d, constant, from_ptr
+from warp.types import fixedarray
 from warp.types import indexedarray, indexedarray1d, indexedarray2d, indexedarray3d, indexedarray4d
 from warp.fabric import fabricarray, fabricarrayarray, indexedfabricarray, indexedfabricarrayarray
 from warp.types import tile
