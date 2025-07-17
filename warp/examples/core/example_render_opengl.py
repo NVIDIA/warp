@@ -32,7 +32,7 @@ from warp.render.imgui_manager import ImGuiManager
 class ExampleImGuiManager(ImGuiManager):
     """An example ImGui manager that displays a few float values."""
 
-    def __init__(self, renderer, window_pos=(10, 10), window_size=(300, 200)):
+    def __init__(self, renderer, window_pos=(10, 10), window_size=(300, 400)):
         super().__init__(renderer)
         if not self.is_available:
             return
@@ -46,6 +46,15 @@ class ExampleImGuiManager(ImGuiManager):
         self.editable_float1 = 10.0
         self.editable_float2 = 20.0
         self.editable_float3 = 30.0
+        self.editable_vec2 = wp.vec2(0.5, 1.2)
+        self.editable_vec3 = wp.vec3(2.1, 3.4, 4.7)
+        self.editable_vec4 = wp.vec4(1.5, 3.2, 4.8, 6.1)
+        self.warp_array_float = wp.array([0.7, 1.4, 2.8], dtype=float)
+        self.warp_array_vec2 = wp.array([wp.vec2(1.1, 2.3), wp.vec2(3.4, 4.2), wp.vec2(5.6, 6.9)], dtype=wp.vec2)
+        self.warp_array_vec3 = wp.array(
+            [wp.vec3(0.5, 1.7, 2.9), wp.vec3(3.2, 4.8, 5.1), wp.vec3(6.4, 7.6, 8.3)], dtype=wp.vec3
+        )
+        self.warp_array_vec4 = wp.array([wp.vec4(1.2, 2.4, 3.6, 4.8), wp.vec4(5.1, 6.3, 7.5, 8.7)], dtype=wp.vec4)
 
     def draw_ui(self):
         # set window position and size once
@@ -61,6 +70,32 @@ class ExampleImGuiManager(ImGuiManager):
         changed1, self.editable_float1 = self.imgui.slider_float("Slider", self.editable_float1, 0.0, 100.0)
         changed2, self.editable_float2 = self.imgui.drag_float("Drag", self.editable_float2, 0.1, 0.0, 100.0)
         changed3, self.editable_float3 = self.imgui.input_float("Input", self.editable_float3)
+
+        changed, self.editable_vec2 = self.drag_vec2("Vec2", self.editable_vec2)
+        changed, self.editable_vec3 = self.drag_vec3("Vec3", self.editable_vec3)
+        changed, self.editable_vec4 = self.drag_vec4("Vec4", self.editable_vec4)
+
+        changed, self.warp_array_float = self.drag_float_list("Float", self.warp_array_float)
+        changed, self.warp_array_vec2 = self.drag_vec2_list("Vec2", self.warp_array_vec2)
+        changed, self.warp_array_vec3 = self.drag_vec3_list("Vec3", self.warp_array_vec3)
+        changed, self.warp_array_vec4 = self.drag_vec4_list("Vec4", self.warp_array_vec4)
+
+        self.imgui.separator()
+        self.imgui.text("File Dialog Examples:")
+
+        if self.imgui.button("Open File"):
+            file_path = self.open_load_file_dialog(
+                title="Select a File", filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
+            )
+            if file_path:
+                print(f"Selected file to open: {file_path}")
+
+        if self.imgui.button("Save File"):
+            file_path = self.open_save_file_dialog(
+                title="Save As", defaultextension=".txt", filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
+            )
+            if file_path:
+                print(f"Selected file to save: {file_path}")
 
         self.imgui.end()
 
