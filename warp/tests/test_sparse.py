@@ -568,6 +568,7 @@ def make_test_bsr_mv(block_shape, scalar_type):
         work_buffer = wp.empty_like(y)
         for alpha, beta in zip(alphas, betas):
             ref = alpha * _bsr_to_dense(A) @ x.numpy().flatten() + beta * y.numpy().flatten()
+
             if beta == 0.0:
                 y = A @ x
             else:
@@ -604,7 +605,67 @@ def make_test_bsr_mv(block_shape, scalar_type):
     return test_bsr_mv
 
 
+def make_test_bsr_multiply_deep(block_shape, scalar_type):
+    def test_bsr_multiply_deep(test, device):
+        """Test BSR matrix multiplication with deep matrices (many columns > 256)"""
+        rng = np.random.default_rng(123)
+
+        # Generate a dense matrix with few rows and many columns (> 256)
+        nrow = (4 + block_shape[0] - 1) // block_shape[0]
+        ncol = (600 + block_shape[1] - 1) // block_shape[1]
+
+        # Create a dense "sparse" matrix
+        values = rng.random(size=(nrow * ncol, block_shape[0], block_shape[1]))
+        rows, cols = np.meshgrid(np.arange(nrow), np.arange(ncol))
+
+        # Convert to warp arrays
+        rows = wp.array(rows.flatten(), dtype=int, device=device)
+        cols = wp.array(cols.flatten(), dtype=int, device=device)
+        vals = wp.array(values, dtype=scalar_type, device=device)
+
+        # Convert to BSR using bsr_from_triplets
+        A = bsr_from_triplets(nrow, ncol, rows, cols, vals)
+
+        # Get dense representation for numpy reference
+        A_dense = _bsr_to_dense(A)
+
+        # Multiply with itself transpose using bsr_mm
+        # A @ A.T should result in a nrow x nrow matrix
+        At = bsr_transposed(A)
+
+        result = bsr_mm(A, At)
+
+        # Check that the result is correct against numpy reference
+        result_dense = _bsr_to_dense(result)
+        ref_dense = A_dense @ A_dense.T
+
+        assert_np_equal(result_dense, ref_dense, 0.0001)
+
+        # Additional test: multiply A.T @ A (should be ncol x ncol)
+        result2 = bsr_mm(At, A)
+        result2_dense = _bsr_to_dense(result2)
+        ref2_dense = A_dense.T @ A_dense
+
+        assert_np_equal(result2_dense, ref2_dense, 0.0001)
+
+        # Test matrix vector products
+        x = wp.array(rng.random(size=A.shape[1]), dtype=A.scalar_type, device=device)
+        y = wp.array(rng.random(size=A.shape[0]), dtype=A.scalar_type, device=device)
+        bsr_mv(A, x, y)
+        res = y.numpy().flatten()
+        ref = A_dense @ x.numpy().flatten()
+        assert_np_equal(res, ref, 0.0001 * block_shape[1])
+
+        bsr_mv(A, y, x, transpose=True)
+        res = x.numpy().flatten()
+        ref = A_dense.T @ y.numpy().flatten()
+        assert_np_equal(res, ref, 0.0001 * block_shape[1])
+
+    return test_bsr_multiply_deep
+
+
 devices = get_test_devices()
+cuda_test_devices = get_selected_cuda_test_devices()
 
 
 class TestSparse(unittest.TestCase):
@@ -652,6 +713,16 @@ add_function_test(TestSparse, "test_bsr_axpy_3_3", make_test_bsr_axpy((3, 3), wp
 add_function_test(TestSparse, "test_csr_mm", make_test_bsr_mm((1, 1), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_mm_1_3", make_test_bsr_mm((1, 3), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_mm_3_3", make_test_bsr_mm((3, 3), wp.float64), devices=devices)
+
+add_function_test(
+    TestSparse, "test_bsr_multiply_deep_2_2", make_test_bsr_multiply_deep((2, 2), wp.float64), devices=devices
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_multiply_deep_30_30",
+    make_test_bsr_multiply_deep((30, 30), wp.float32),
+    devices=cuda_test_devices,
+)
 
 add_function_test(TestSparse, "test_csr_mv", make_test_bsr_mv((1, 1), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_1_3", make_test_bsr_mv((1, 3), wp.float32), devices=devices)
