@@ -167,6 +167,42 @@ def test_capture_if(test, device):
     wp.capture_launch(capture.graph)
 
 
+@wp.struct
+class test_func_struct_MyStruct:
+    offset: int
+    dist: float
+
+
+@wp.func
+def test_func_struct_func():
+    arr = wp.zeros(shape=(2, 3), dtype=test_func_struct_MyStruct)
+    count = float(arr.shape[0] * arr.shape[1] - 1)
+    for i in range(arr.shape[0]):
+        for j in range(arr.shape[1]):
+            arr[i][j].offset = i * arr.shape[1] + j
+            arr[i][j].dist = float(arr[i][j].offset) / count
+
+    return arr
+
+
+@wp.kernel
+def test_func_struct():
+    arr = test_func_struct_func()
+
+    wp.expect_eq(arr[0][0].offset, 0)
+    wp.expect_near(arr[0][0].dist, 0.0)
+    wp.expect_eq(arr[0][1].offset, 1)
+    wp.expect_near(arr[0][1].dist, 0.2)
+    wp.expect_eq(arr[0][2].offset, 2)
+    wp.expect_near(arr[0][2].dist, 0.4)
+    wp.expect_eq(arr[1][0].offset, 3)
+    wp.expect_near(arr[1][0].dist, 0.6)
+    wp.expect_eq(arr[1][1].offset, 4)
+    wp.expect_near(arr[1][1].dist, 0.8)
+    wp.expect_eq(arr[1][2].offset, 5)
+    wp.expect_near(arr[1][2].dist, 1.0)
+
+
 class TestFixedArray(unittest.TestCase):
     pass
 
@@ -185,6 +221,7 @@ add_function_test(
 )
 add_function_test(TestFixedArray, "test_error_runtime_shape", test_error_runtime_shape, devices=devices)
 add_function_test(TestFixedArray, "test_capture_if", test_capture_if, devices=devices)
+add_kernel_test(TestFixedArray, kernel=test_func_struct, name="test_func_struct", dim=1, devices=devices)
 
 
 if __name__ == "__main__":

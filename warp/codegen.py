@@ -3434,6 +3434,12 @@ static CUDA_CALLABLE void adj_{name}({reverse_args})
 {{
 {reverse_body}}}
 
+// Required when compiling adjoints.
+CUDA_CALLABLE {name} add(const {name}& a, const {name}& b)
+{{
+    return {name}();
+}}
+
 CUDA_CALLABLE void adj_atomic_add({name}* p, {name} t)
 {{
 {atomic_add_body}}}
