@@ -8,6 +8,7 @@
   3D scalar field sampled to a regular grid ([GH-788](https://github.com/NVIDIA/warp/issues/788)).
 - Support input-output aliasing in JAX FFI ([GH-815](https://github.com/NVIDIA/warp/issues/815)).
 - Add additional OpenGL rendering example code that shows how to use ImGui ([GH-833](https://github.com/NVIDIA/warp/issues/833))
+- Add support for displaying and editing Warp vector and array types in ImGui ([GH-844](https://github.com/NVIDIA/warp/issues/844))
 
 ### Changed
 
