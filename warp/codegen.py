@@ -21,6 +21,7 @@ import ctypes
 import functools
 import hashlib
 import inspect
+import itertools
 import math
 import re
 import sys
@@ -1358,7 +1359,7 @@ class Adjoint:
         # unresolved function, report error
         arg_type_reprs = []
 
-        for x in arg_types:
+        for x in itertools.chain(arg_types, kwarg_types.values()):
             if isinstance(x, warp.context.Function):
                 arg_type_reprs.append("function")
             else:
