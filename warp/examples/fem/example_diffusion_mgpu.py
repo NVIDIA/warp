@@ -77,8 +77,7 @@ class DistributedSystem:
         stream = wp.get_stream()
 
         for mat_i, x_i, y_i, idx in zip(*self.rank_data):
-            # WAR copy with indexed array requiring matching shape
-            tmp_i = wp.array(ptr=tmp.ptr, device=tmp.device, capacity=tmp.capacity, dtype=tmp.dtype, shape=idx.shape)
+            tmp_i = tmp[: idx.size]
 
             # Compress rhs on rank 0
             x_idx = wp.indexedarray(x, idx)
@@ -161,7 +160,13 @@ class Example:
 
         with wp.ScopedDevice(main_device):
             fem_example_utils.bsr_cg(
-                A, x=global_res, b=glob_rhs, use_diag_precond=False, quiet=self._quiet, mv_routine=A.mv_routine
+                A,
+                x=global_res,
+                b=glob_rhs,
+                use_diag_precond=False,
+                quiet=self._quiet,
+                mv_routine=A.mv_routine,
+                mv_routine_uses_multiple_cuda_contexts=True,
             )
 
         array_cast(in_array=global_res, out_array=self._scalar_field.dof_values)

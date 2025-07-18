@@ -14,12 +14,14 @@
 # limitations under the License.
 
 
+import gc
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
 import warp as wp
 import warp.fem as fem
+from warp.context import assert_conditional_graph_support
 from warp.optim.linear import LinearOperator, aslinearoperator, preconditioner
 from warp.sparse import BsrMatrix, bsr_get_diag, bsr_mv, bsr_transposed
 
@@ -230,6 +232,7 @@ def bsr_cg(
     quiet=False,
     method: str = "cg",
     M: BsrMatrix = None,
+    mv_routine_uses_multiple_cuda_contexts: bool = False,
 ) -> Tuple[float, int]:
     """Solves the linear system A x = b using an iterative solver, optionally with diagonal preconditioning
 
@@ -244,6 +247,8 @@ def bsr_cg(
         mv_routine: Matrix-vector multiplication routine to use for multiplications with ``A``
         quiet: if True, do not print iteration residuals
         method: Iterative solver method to use, defaults to Conjugate Gradient
+        mv_routine_uses_multiple_cuda_contexts: Whether the matrix-vector multiplication routine uses multiple CUDA contexts,
+          which prevents the use of conditional CUDA graphs.
 
     Returns:
         Tuple (residual norm, iteration count)
@@ -260,10 +265,53 @@ def bsr_cg(
 
     func = _get_linear_solver_func(method_name=method)
 
-    def print_callback(i, err, tol):
-        print(f"{func.__name__}: at iteration {i} error = \t {err}  \t tol: {tol}")
+    callback = None
 
-    callback = None if quiet else print_callback
+    use_cuda_graph = A.device.is_cuda and not wp.config.verify_cuda
+    capturable = use_cuda_graph and not mv_routine_uses_multiple_cuda_contexts
+
+    if capturable:
+        try:
+            assert_conditional_graph_support()
+        except RuntimeError:
+            capturable = False
+
+    if not quiet:
+        if capturable:
+
+            @wp.func_native(snippet=f'printf("%s: ", "{func.__name__}");')
+            def print_method_name():
+                pass
+
+            @fem.cache.dynamic_kernel(suffix=f"{check_every}{func.__name__}")
+            def device_cg_callback(
+                cur_iter: wp.array(dtype=int),
+                err_sq: wp.array(dtype=Any),
+                atol_sq: wp.array(dtype=Any),
+            ):
+                if cur_iter[0] % check_every == 0:
+                    print_method_name()
+                    wp.printf(
+                        "at iteration %d error = \t %f  \t tol: %f\n",
+                        cur_iter[0],
+                        wp.sqrt(err_sq[0]),
+                        wp.sqrt(atol_sq[0]),
+                    )
+
+            if check_every > 0:
+                callback = device_cg_callback
+        else:
+
+            def print_callback(i, err, tol):
+                print(f"{func.__name__}: at iteration {i} error = \t {err}  \t tol: {tol}")
+
+            callback = print_callback
+
+    if use_cuda_graph:
+        # Temporarily disable garbage collection
+        # Garbage collection of externally-allocated objects during graph capture may lead to
+        # invalid operations or memory access errors.
+        gc.disable()
 
     end_iter, err, atol = func(
         A=A,
@@ -271,11 +319,19 @@ def bsr_cg(
         x=x,
         maxiter=max_iters,
         tol=tol,
-        check_every=check_every,
+        check_every=0 if capturable else check_every,
         M=M,
         callback=callback,
-        use_cuda_graph=not wp.config.verify_cuda,
+        use_cuda_graph=use_cuda_graph,
     )
+
+    if use_cuda_graph:
+        gc.enable()
+
+    if isinstance(end_iter, wp.array):
+        end_iter = end_iter.numpy()[0]
+        err = np.sqrt(err.numpy()[0])
+        atol = np.sqrt(atol.numpy()[0])
 
     if not quiet:
         res_str = "OK" if err <= atol else "TRUNCATED"
@@ -437,27 +493,17 @@ def bsr_solve_saddle(
     wp.copy(src=b_u, dest=saddle_system.u_slice(b))
     wp.copy(src=b_p, dest=saddle_system.p_slice(b))
 
-    func = _get_linear_solver_func(method_name=method)
-
-    def print_callback(i, err, tol):
-        print(f"{func.__name__}: at iteration {i} error = \t {err}  \t tol: {tol}")
-
-    callback = None if quiet else print_callback
-
-    end_iter, err, atol = func(
-        A=saddle_system,
-        b=b,
-        x=x,
-        maxiter=max_iters,
+    err, end_iter = bsr_cg(
+        saddle_system,
+        x,
+        b,
+        max_iters=max_iters,
         tol=tol,
         check_every=check_every,
+        quiet=quiet,
+        method=method,
         M=saddle_system.preconditioner,
-        callback=callback,
     )
-
-    if not quiet:
-        res_str = "OK" if err <= atol else "TRUNCATED"
-        print(f"{func.__name__}: terminated after {end_iter} iterations with absolute error = \t {err} ({res_str})")
 
     wp.copy(dest=x_u, src=saddle_system.u_slice(x))
     wp.copy(dest=x_p, src=saddle_system.p_slice(x))
