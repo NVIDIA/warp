@@ -18,8 +18,17 @@ import unittest
 import numpy as np
 
 import warp as wp
+from warp.context import assert_conditional_graph_support
 from warp.optim.linear import bicgstab, cg, cr, gmres, preconditioner
 from warp.tests.unittest_utils import *
+
+
+def check_conditional_graph_support():
+    try:
+        assert_conditional_graph_support()
+    except RuntimeError:
+        return False
+    return True
 
 
 def _check_linear_solve(test, A, b, func, *args, **kwargs):
@@ -30,9 +39,29 @@ def _check_linear_solve(test, A, b, func, *args, **kwargs):
 
     test.assertLessEqual(err, atol)
 
+    # Test with capturable graph
+    if A.device.is_cuda and check_conditional_graph_support():
+        x.zero_()
+        with wp.ScopedDevice(A.device):
+            with wp.ScopedCapture() as capture:
+                niter, err, atol = func(A, b, x, *args, use_cuda_graph=True, check_every=0, **kwargs)
+
+            wp.capture_launch(capture.graph)
+
+        niter = niter.numpy()[0]
+        err = np.sqrt(err.numpy()[0])
+        atol = np.sqrt(atol.numpy()[0])
+
+        test.assertLessEqual(err, atol)
+
     # test with warm start
     with wp.ScopedDevice(A.device):
         niter_warm, err, atol = func(A, b, x, *args, use_cuda_graph=False, **kwargs)
+
+    if isinstance(niter_warm, wp.array):
+        niter_warm = niter_warm.numpy()[0]
+        err = np.sqrt(err.numpy()[0])
+        atol = np.sqrt(atol.numpy()[0])
 
     test.assertLessEqual(err, atol)
 
@@ -45,6 +74,7 @@ def _check_linear_solve(test, A, b, func, *args, **kwargs):
     # This can lead to accumulated inaccuracies over iterations, esp in float32
     residual = A.numpy() @ x.numpy() - b.numpy()
     err_np = np.linalg.norm(residual)
+
     if A.dtype == wp.float64:
         test.assertLessEqual(err_np, 2.0 * atol)
     else:
@@ -189,5 +219,5 @@ add_function_test(TestLinearSolvers, "test_bicgstab", test_bicgstab, devices=dev
 add_function_test(TestLinearSolvers, "test_gmres", test_gmres, devices=devices)
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
+    # wp.clear_kernel_cache()
     unittest.main(verbosity=2)
