@@ -133,6 +133,14 @@ include:
   tags:
     - pkg/xcode/13 # Avoid AWS-MAC-0
 
+.omni_nvks_gpu_570_test:
+  tags:
+    - lnx-x86_64-gpu-1x-570.158.01
+
+.omni_nvks_gpu_2x_570_test:
+  tags:
+    - lnx-x86_64-gpu-2x-570.158.01
+
 # Basic rules to avoid triggering a test job unless certain files have changed to save CI resources
 .basic_test_changes_rules:
   rules:
