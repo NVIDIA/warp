@@ -2902,10 +2902,8 @@ def test_direct_from_numpy(test, device):
 
 
 @wp.kernel
-def kernel_array_from_ptr(
-    ptr: wp.uint64,
-):
-    arr = wp.array(ptr=ptr, shape=(2, 3), dtype=wp.float32)
+def kernel_array_from_ptr(arr_orig: wp.array2d(dtype=wp.float32)):
+    arr = wp.array(ptr=arr_orig.ptr, shape=(2, 3), dtype=wp.float32)
     arr[0, 0] = 1.0
     arr[0, 1] = 2.0
     arr[0, 2] = 3.0
@@ -2913,7 +2911,7 @@ def kernel_array_from_ptr(
 
 def test_kernel_array_from_ptr(test, device):
     arr = wp.zeros(shape=(2, 3), dtype=wp.float32, device=device)
-    wp.launch(kernel_array_from_ptr, dim=(1,), inputs=(arr.ptr,), device=device)
+    wp.launch(kernel_array_from_ptr, dim=(1,), inputs=(arr,), device=device)
     assert_np_equal(arr.numpy(), np.array(((1.0, 2.0, 3.0), (0.0, 0.0, 0.0))))
 
 

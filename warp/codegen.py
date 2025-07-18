@@ -1968,18 +1968,29 @@ class Adjoint:
                     return adj.add_builtin_call("transform_get_rotation", [aggregate])
 
             else:
-                attr_type = Reference(aggregate_type.vars[node.attr].type)
+                attr_var = aggregate_type.vars[node.attr]
+
+                # represent pointer types as uint64
+                if isinstance(attr_var.type, pointer_t):
+                    cast = f"({Var.dtype_to_ctype(uint64)}*)"
+                    adj_cast = f"({Var.dtype_to_ctype(attr_var.type.dtype)}*)"
+                    attr_type = Reference(uint64)
+                else:
+                    cast = ""
+                    adj_cast = ""
+                    attr_type = Reference(attr_var.type)
+
                 attr = adj.add_var(attr_type)
 
                 if is_reference(aggregate.type):
-                    adj.add_forward(f"{attr.emit()} = &({aggregate.emit()}->{node.attr});")
+                    adj.add_forward(f"{attr.emit()} = {cast}&({aggregate.emit()}->{attr_var.label});")
                 else:
-                    adj.add_forward(f"{attr.emit()} = &({aggregate.emit()}.{node.attr});")
+                    adj.add_forward(f"{attr.emit()} = {cast}&({aggregate.emit()}.{attr_var.label});")
 
                 if adj.is_differentiable_value_type(strip_reference(attr_type)):
-                    adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} += {attr.emit_adj()};")
+                    adj.add_reverse(f"{aggregate.emit_adj()}.{attr_var.label} += {adj_cast}{attr.emit_adj()};")
                 else:
-                    adj.add_reverse(f"{aggregate.emit_adj()}.{node.attr} = {attr.emit_adj()};")
+                    adj.add_reverse(f"{aggregate.emit_adj()}.{attr_var.label} = {adj_cast}{attr.emit_adj()};")
 
                 return attr
 

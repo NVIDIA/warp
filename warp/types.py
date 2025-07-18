@@ -1388,6 +1388,13 @@ class tuple_t:
         self.values = values
 
 
+class pointer_t:
+    """Used during codegen to represent pointer types."""
+
+    def __init__(self, dtype):
+        self.dtype = dtype
+
+
 def type_ctype(dtype):
     if dtype == float:
         return ctypes.c_float
@@ -1862,10 +1869,6 @@ class array(Array[DType]):
         deleter (Callable[[int, int], None]): A function to be called when the array is deleted,
             taking two arguments: pointer and size. If ``None``, then no function is called.
     """
-
-    # member attributes available during code-gen (e.g.: d = array.shape[0])
-    # (initialized when needed)
-    _vars = None
 
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
@@ -2722,10 +2725,10 @@ class array(Array[DType]):
     @property
     def vars(self):
         # member attributes available during code-gen (e.g.: d = array.shape[0])
-        # Note: we use a shared dict for all array instances
-        if array._vars is None:
-            array._vars = {"shape": warp.codegen.Var("shape", shape_t)}
-        return array._vars
+        return {
+            "shape": warp.codegen.Var("shape", shape_t),
+            "ptr": warp.codegen.Var("data", pointer_t(self.dtype)),
+        }
 
     def mark_init(self):
         """Resets this array's read flag"""
