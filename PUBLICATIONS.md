@@ -7,6 +7,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2025
 
+- **GeoWarp: An automatically differentiable and GPU-accelerated implicit MPM framework for geomechanics based on NVIDIA Warp**. *Y. Zhao, X. Li, C. Jiang, J. Choo*. July 2025. [arXiv:2507.09435](https://arxiv.org/abs/2507.09435)
 - **Dex1B: Learning with 1B Demonstrations for Dexterous Manipulation**. *J. Ye, K. Wang, C. Yuan, R. Yang, Y. Li, J. Zhu, Y. Qin, X. Zou, X. Wang*. June 2025. [arXiv:2506.17198](https://arxiv.org/abs/2506.17198)
 - **Learning Fast, Tool-Aware Collision Avoidance for Collaborative Robots**. *J. Lee, Y. Kim, S. Kim, Q. Nguyen, Y. Heo*. June 2025. [DOI:10.1109/lra.2025.3579207](https://doi.org/10.1109/lra.2025.3579207)
 - **Co-Design of Soft Gripper with Neural Physics**. *S. Yi, X. Bai, A. Singh, J. Ye, M. T. Tolley, X. Wang*. May 2025. [arXiv:2505.20404](https://arxiv.org/abs/2505.20404)
