@@ -9,6 +9,8 @@
 - Support input-output aliasing in JAX FFI ([GH-815](https://github.com/NVIDIA/warp/issues/815)).
 - Add additional OpenGL rendering example code that shows how to use ImGui ([GH-833](https://github.com/NVIDIA/warp/issues/833))
 - Add support for displaying and editing Warp vector and array types in ImGui ([GH-844](https://github.com/NVIDIA/warp/issues/844))
+- Memory address of warp arrays can now be retrieved in kernels as `array.ptr` ([GH-819](https://github.com/NVIDIA/warp/issues/819)).
+
 
 ### Changed
 
