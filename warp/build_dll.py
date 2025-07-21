@@ -227,6 +227,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: Optional[
                 "-gencode=arch=compute_61,code=sm_61",
                 "-gencode=arch=compute_70,code=sm_70",  # Volta
                 "-gencode=arch=compute_75,code=sm_75",  # Turing
+                "-gencode=arch=compute_75,code=compute_75",  # Turing (PTX)
                 "-gencode=arch=compute_80,code=sm_80",  # Ampere
                 "-gencode=arch=compute_86,code=sm_86",
             ]
@@ -259,6 +260,10 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: Optional[
                     "--cuda-gpu-arch=sm_72",  # Xavier
                     "--cuda-gpu-arch=sm_87",  # Orin
                 ]
+
+                if ctk_version >= (12, 8):
+                    gencode_opts += ["-gencode=arch=compute_101,code=sm_101"]  # Thor (CUDA 12 numbering)
+                    clang_arch_flags += ["--cuda-gpu-arch=sm_101"]
 
             if ctk_version >= (12, 8):
                 # Support for Blackwell is available with CUDA Toolkit 12.8+
