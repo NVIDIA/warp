@@ -625,6 +625,8 @@ def compute_type_str(base_name, template_params):
                 return f"wp::{p.__name__}"
         elif is_tile(p):
             return p.ctype()
+        elif isinstance(p, Struct):
+            return p.native_name
 
         return p.__name__
 
@@ -1381,7 +1383,7 @@ class Adjoint:
         # in order to process them as Python does it.
         bound_args: inspect.BoundArguments = func.signature.bind(*args, **kwargs)
 
-        # Type args are the “compile time” argument values we get from codegen.
+        # Type args are the "compile time" argument values we get from codegen.
         # For example, when calling `wp.vec3f(...)` from within a kernel,
         # this translates in fact to calling the `vector()` built-in augmented
         # with the type args `length=3, dtype=float`.
@@ -1889,6 +1891,9 @@ class Adjoint:
             return obj
         if isinstance(obj, type):
             return obj
+        if isinstance(obj, Struct):
+            adj.builder.build_struct_recursive(obj)
+            return obj
         if isinstance(obj, types.ModuleType):
             return obj
 
@@ -2323,7 +2328,7 @@ class Adjoint:
 
             return var
 
-        if isinstance(expr, (type, Var, warp.context.Function)):
+        if isinstance(expr, (type, Struct, Var, warp.context.Function)):
             return expr
 
         return adj.add_constant(expr)
