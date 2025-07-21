@@ -47,6 +47,8 @@
   ([GH-832](https://github.com/NVIDIA/warp/issues/832)).
 - Fix incorrect adjoints for `div(scalar, vec)`, `div(scalar, mat)`, and `div(scalar, quat)`, and other miscellaneous issues with adjoints
   ([GH-831](https://github.com/NVIDIA/warp/issues/831)).
+- Fix an issue that caused Warp to request PTX generation from NVRTC for architectures unsupported by the compiler
+  ([GH-858](https://github.com/NVIDIA/warp/issues/858)).
 
 ## [1.8.0] - 2025-07-01
 
