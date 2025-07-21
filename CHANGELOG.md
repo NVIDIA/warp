@@ -1,5 +1,50 @@
 # Changelog
 
+## [Unreleased] - 2025-??
+
+### Added
+
+- Add the static method `wp.MarchingCubes.extract_surface_marching_cubes()` to extract a triangular mesh from a
+  3D scalar field sampled to a regular grid ([GH-788](https://github.com/NVIDIA/warp/issues/788)).
+- Support input-output aliasing in JAX FFI ([GH-815](https://github.com/NVIDIA/warp/issues/815)).
+
+### Changed
+
+- Ensure that the arguments passed when calling user functions in the Python scope are strictly matched to the
+  function's signature, as to match the behavior with how built-ins are resolved.
+- Prefix all Warp symbols exported to `warp.so`/`warp.dll` with the `wp_` namespace to avoid conflicts with other
+  libraries ([GH-792](https://github.com/NVIDIA/warp/issues/792)).
+- Update `wp.MarchingCubes` to a pure-Warp implementation, allowing cross-platform support and differentiability.
+  ([GH-788](https://github.com/NVIDIA/warp/issues/788)).
+- Constructing wp.array objects from a pointer inside Warp kernels (e.g., wp.array(ptr=..., shape=...)) no longer requires the shape to be a compile-time constant, allowing for greater flexibility.
+
+### Fixed
+
+- Fix calling user functions from Python scope not working with array parameters.
+- Fix `tape.zero()` not resetting gradient arrays in nested structs ([GH-807](https://github.com/NVIDIA/warp/issues/807)).
+- Fix a bug with the marching-cubes output geometry ([GH-324](https://github.com/NVIDIA/warp/issues/324)).
+- Fix a bug where cuda modules could get unloaded while they are still required when conditional graph nodes are used because the destructor of the python Graph object could get called too early
+- Fix increased compile times for kernels using matmul, Cholesky, and FFT solvers by upgrading to libmathdx 0.2.2 ([GH-809](https://github.com/NVIDIA/warp/issues/809)).
+- Fix codegen errors associated with adjoint of `wp.tile_sum()` when using shared tiles ([GH-822](https://github.com/NVIDIA/warp/issues/822)).
+- Fix the OpenGL renderer not correctly displaying colors for box shapes
+  ([GH-810](https://github.com/NVIDIA/warp/issues/810)).
+- Fix a bug where meshes with different `scale` attributes were rendered by the same instance in OpenGLRenderer ([GH-828](https://github.com/NVIDIA/warp/issues/828)).
+- The OpenGL renderer should not run properly on Mac OS ([GH-834](https://github.com/NVIDIA/warp/issues/834))
+- Fix hashing of modules in which functions or kernels use static expressions that cannot be resolved at the time of declaration ([GH-830](https://github.com/NVIDIA/warp/issues/830)).
+- Fix box-box collision by computing the contact normal at the closest point of approach instead of at the center of
+  the source box ([GH-839](https://github.com/NVIDIA/warp/pull/839)).
+- Fix potential uninitialized memory issues in `wp.tile_sort()` when an array of `NaN` values were provided ([GH-836](https://github.com/NVIDIA/warp/issues/836).
+- Fix `wp.tile_min()` and `wp.tile_argmin()` for large tiles with low occupancy ([GH-725](https://github.com/NVIDIA/warp/issues/725)).
+- Fix a bug causing potential dead loops in `wp_balance_coloring` ([GH-816](https://github.com/NVIDIA/warp/issues/816)).
+- Fix driver entry point error for `cuDeviceGetUuid` caused by using an incorrect version
+  ([GH-851](https://github.com/NVIDIA/warp/issues/851)).
+- Fix behavior of `bsr_from_triplets` with `prune_numerical_zeros=False`
+  ([GH-832](https://github.com/NVIDIA/warp/issues/832)).
+- Fix incorrect adjoints for `div(scalar, vec)`, `div(scalar, mat)`, and `div(scalar, quat)`, and other miscellaneous issues with adjoints
+  ([GH-831](https://github.com/NVIDIA/warp/issues/831)).
+- Fix an issue that caused Warp to request PTX generation from NVRTC for architectures unsupported by the compiler
+  ([GH-858](https://github.com/NVIDIA/warp/issues/858)).
+
 ## [1.8.0] - 2025-07-01
 
 ### Added
