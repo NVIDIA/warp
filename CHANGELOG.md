@@ -45,6 +45,9 @@
   underlying CUDA-GDB debugger only supports Linux targets ([GH-795](https://github.com/NVIDIA/warp/issues/795)).
 - Arguments for CPU kernels are now passed as a pointer to a structure to avoid a bug in the ARM64 calling convention
   implementation of the libffi library ([GH-356](https://github.com/NVIDIA/warp/issues/356)).
+- Define and re-export Warp's public Python-scope API in `__init__.py` using typing re-export conventions
+  (e.g. `from Y import X as X`) to improve static type checker support
+  ([GH-864](https://github.com/NVIDIA/warp/issues/864)).
 
 ### Fixed
 
