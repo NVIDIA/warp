@@ -309,7 +309,13 @@ int cuda_init()
                 check_cu(cuDeviceGetAttribute_f(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device));
                 check_cu(cuDeviceGetAttribute_f(&minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, device));
                 g_devices[i].arch = 10 * major + minor;
-
+#ifdef CUDA_VERSION
+#if CUDA_VERSION  < 13000
+                if (g_devices[i].arch == 110) {
+                    g_devices[i].arch = 101;  // Thor SM change
+                }
+#endif
+#endif
                 g_device_map[device] = &g_devices[i];
             }
             else
