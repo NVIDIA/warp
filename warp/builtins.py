@@ -5563,7 +5563,7 @@ def array_dispatch_func(input_types: Mapping[str, type], return_type: Any, args:
 
 add_builtin(
     "array",
-    input_types={"ptr": warp.uint64, "shape": Tuple[int, ...], "dtype": Scalar},
+    input_types={"ptr": warp.uint64, "shape": Tuple[int, ...], "dtype": Any},
     value_func=array_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
     dispatch_func=array_dispatch_func,
