@@ -43,6 +43,8 @@
 - Fix a bug causing potential dead loops in `wp_balance_coloring` ([GH-816](https://github.com/NVIDIA/warp/issues/816)).
 - Fix driver entry point error for `cuDeviceGetUuid` caused by using an incorrect version
   ([GH-851](https://github.com/NVIDIA/warp/issues/851)).
+- Fix behavior of `bsr_from_triplets` with `prune_numerical_zeros=False`
+  ([GH-832](https://github.com/NVIDIA/warp/issues/832)).
 
 ## [1.8.0] - 2025-07-01
 
@@ -160,8 +162,6 @@
   ([GH-629](https://github.com/NVIDIA/warp/issues/629)).
 - Fix premature unloading of CUDA modules used in JAX FFI graph captures
   ([GH-782](https://github.com/NVIDIA/warp/issues/782)).
-- Fix behavior of `bsr_from_triplets` with `prune_numerical_zeros=False`
-  ([GH-832](https://github.com/NVIDIA/warp/issues/832)).
 
 ## [1.7.2] - 2025-05-31
 
