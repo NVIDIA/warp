@@ -45,6 +45,8 @@
   ([GH-851](https://github.com/NVIDIA/warp/issues/851)).
 - Fix behavior of `bsr_from_triplets` with `prune_numerical_zeros=False`
   ([GH-832](https://github.com/NVIDIA/warp/issues/832)).
+- Fix incorrect adjoints for `div(scalar, vec)`, `div(scalar, mat)`, and `div(scalar, quat)`, and other miscellaneous issues with adjoints
+  ([GH-831](https://github.com/NVIDIA/warp/issues/831)).
 
 ## [1.8.0] - 2025-07-01
 

@@ -316,7 +316,7 @@ CUDA_CALLABLE inline bool intersect_ray_tri_woop(const vec3& p, const vec3& dir,
 
 	if (dir[kz] < 0.0f)
 	{
-		float tmp = kx;
+		int tmp = kx;
 		kx = ky;
 		ky = tmp;
 	}
@@ -410,7 +410,7 @@ CUDA_CALLABLE inline void adj_intersect_ray_tri_woop(
 
 	if (dir[kz] < 0.0f)
 	{
-		float tmp = kx;
+		int tmp = kx;
 		kx = ky;
 		ky = tmp;
 	}

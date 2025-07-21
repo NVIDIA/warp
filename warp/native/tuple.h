@@ -182,8 +182,8 @@ adj_add(
     const tuple_t<Head, Tail...>& adj_ret
 )
 {
-    adj_add(a.head, b.head, adj_ret.head);
-    adj_add(a.tail, b.tail, adj_ret.tail);
+    adj_add(a.head, b.head, adj_a.head, adj_b.head, adj_ret.head);
+    adj_add(a.tail, b.tail, adj_a.tail, adj_b.tail, adj_ret.tail);
 }
 
 } // namespace wp
