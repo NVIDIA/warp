@@ -4095,9 +4095,14 @@ class Runtime:
             # Update the default PTX architecture based on devices present in the system.
             # Use the lowest architecture among devices that meet the minimum architecture requirement.
             # Devices below the required minimum will use the highest architecture they support.
-            eligible_archs = [d.arch for d in self.cuda_devices if d.arch >= self.default_ptx_arch]
-            if eligible_archs:
-                self.default_ptx_arch = min(eligible_archs)
+            try:
+                self.default_ptx_arch = min(
+                    d.arch
+                    for d in self.cuda_devices
+                    if d.arch >= self.default_ptx_arch and d.arch in self.nvrtc_supported_archs
+                )
+            except ValueError:
+                pass  # no eligible NVRTC-supported arch ≥ default, retain existing
         else:
             # CUDA not available
             self.set_default_device("cpu")
