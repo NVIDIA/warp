@@ -2695,11 +2695,11 @@ class Adjoint:
                 or type_is_transformation(target_type)
             ):
                 # recursively unwind AST, stopping at penultimate node
-                node = lhs
-                while hasattr(node.value, "value"):
-                    node = node.value
+                root = lhs
+                while hasattr(root.value, "value"):
+                    root = root.value
                 # lhs is updating a variable adjoint (i.e. wp.adjoint[var])
-                if hasattr(node, "attr") and node.attr == "adjoint":
+                if hasattr(root, "attr") and root.attr == "adjoint":
                     attr = adj.add_builtin_call("index", [target, *indices])
                     adj.add_builtin_call("store", [attr, rhs])
                     return
