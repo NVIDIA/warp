@@ -204,6 +204,114 @@ The following construction methods are provided for allocating zero-initialized 
 .. autofunction:: copy
 .. autofunction:: clone
 
+Structured Arrays
+#################
+
+Structured arrays in Warp allow you to work with arrays of user-defined structs,
+enabling efficient, named access to heterogeneous data fields across the CPU and GPU.
+
+Creating and Viewing Struct Arrays
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When you define a Warp struct, you can allocate a Warp array of that type on the CPU and convert it to a NumPy structured array view (zero-copy):
+
+.. testcode::
+
+    import warp as wp
+    import numpy as np
+
+    @wp.struct
+    class Foo:
+        i: int
+        f: float
+
+    # allocate a Warp array on the CPU
+    a = wp.zeros(5, dtype=Foo, device="cpu")
+
+    # view it in NumPy without copying
+    na = a.numpy()
+
+    # modify via NumPy
+    na["i"][0] = 42
+    na["f"][2] = 13.37
+
+    print(a)
+    
+.. testoutput::
+
+    [(42,  0.  ) ( 0,  0.  ) ( 0, 13.37) ( 0,  0.  ) ( 0,  0.  )]
+
+Initializing via NumPy and Converting to a Warp Array
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can also create a NumPy structured array first, then convert it to a Warp array, which works well for batch initialization: ::
+
+    import warp as wp
+    import numpy as np
+    import math
+
+    rng = np.random.default_rng()
+
+    @wp.struct
+    class Boid:
+        vel: wp.vec3f
+        wander_angles: wp.vec2f
+        mass: float
+        group: int
+
+    num_boids = 3
+    npboids = np.zeros(num_boids, dtype=Boid.numpy_dtype())
+
+    angles = math.pi - 2 * math.pi * rng.random(num_boids)
+    npboids["vel"][:, 0] = 20 * np.sin(angles)
+    npboids["vel"][:, 2] = 20 * np.cos(angles)
+
+    npboids["wander_angles"][:, 0] = math.pi * rng.random(num_boids)
+    npboids["wander_angles"][:, 1] = 2 * math.pi * rng.random(num_boids)
+
+    npboids["mass"][:] = 0.5 + 0.5 * rng.random(num_boids)
+
+    # create Warp array from prepared NumPy array
+    boids = wp.array(npboids, dtype=Boid)
+
+This approach leverages NumPy's vectorized operations to initialize all array elements efficiently, avoiding Python loops.
+
+Nested Structs and Vector Types
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Structured arrays fully support nested structs and Warp vector (and matrix) types:
+
+.. testcode::
+
+    import warp as wp
+    import numpy as np
+
+    @wp.struct
+    class Bar:
+        x: wp.vec3
+
+    @wp.struct
+    class Foo:
+        i: int
+        f: float
+        bar: Bar
+
+    na = np.zeros(5, dtype=Foo.numpy_dtype())
+
+    na["i"][0] = 42
+    na["f"][2] = 13.37
+    na["bar"]["x"][4] = wp.vec3(1.0)
+
+    a = wp.array(na, dtype=Foo, device="cuda:0")
+
+    print(a.numpy())
+
+.. testoutput::
+
+    [(42,  0.  , ([0., 0., 0.],)) ( 0,  0.  , ([0., 0., 0.],))
+     ( 0, 13.37, ([0., 0., 0.],)) ( 0,  0.  , ([0., 0., 0.],))
+     ( 0,  0.  , ([1., 1., 1.],))]
+
 .. _Data_Types:
 
 Data Types
