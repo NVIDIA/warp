@@ -11,6 +11,7 @@
 - Add support for displaying and editing Warp vector and array types in ImGui ([GH-844](https://github.com/NVIDIA/warp/issues/844))
 - Memory address of warp arrays can now be retrieved in kernels as `array.ptr` ([GH-819](https://github.com/NVIDIA/warp/issues/819)).
 - Add support for using struct types in `wp.array()` constructor inside kernels ([GH-853](https://github.com/NVIDIA/warp/issues/853)).
+- Add documentation for creating and manipulating Warp structured arrays using NumPy ([GH-852](https://github.com/NVIDIA/warp/issues/852)).
 
 
 ### Changed
