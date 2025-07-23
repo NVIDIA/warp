@@ -313,7 +313,7 @@ def test_tile_reduce_custom(test, device):
 
 
 def create_tile_scan_inclusive_kernel(tile_dim: int):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def tile_scan_inclusive_kernel(input: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
         i = wp.tid()
         t = wp.tile_load(input[i], shape=tile_dim)
@@ -349,7 +349,7 @@ def test_tile_scan_inclusive(test, device):
 
 
 def create_tile_scan_exclusive_kernel(tile_dim: int):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def tile_scan_exclusive_kernel(input: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
         i = wp.tid()
         t = wp.tile_load(input[i], shape=tile_dim)
@@ -568,17 +568,17 @@ def test_untile_vector_kernel(input: wp.array(dtype=wp.vec3), output: wp.array(d
 
 
 def test_tile_untile_vector(test, device):
-    input = wp.full(16, wp.vec3(1.0, 2.0, 3.0), requires_grad=True, device=device)
+    input = wp.full(TILE_DIM, wp.vec3(1.0, 2.0, 3.0), requires_grad=True, device=device)
     output = wp.zeros_like(input, device=device)
 
     with wp.Tape() as tape:
-        wp.launch(test_untile_vector_kernel, dim=16, inputs=[input, output], block_dim=16, device=device)
+        wp.launch(test_untile_vector_kernel, dim=TILE_DIM, inputs=[input, output], block_dim=TILE_DIM, device=device)
 
     output.grad = wp.ones_like(output, device=device)
     tape.backward()
 
     assert_np_equal(output.numpy(), input.numpy())
-    assert_np_equal(input.grad.numpy(), np.ones((16, 3)))
+    assert_np_equal(input.grad.numpy(), np.ones((TILE_DIM, 3)))
 
 
 @wp.kernel
@@ -632,7 +632,7 @@ def test_tile_arange(test, device):
     assert_np_equal(output.numpy()[4], np.arange(17, 0, -1))
 
 
-@wp.kernel
+@wp.kernel(module="unique")
 def tile_strided_loop_kernel(arr: wp.array(dtype=float), max_val: wp.array(dtype=float)):
     tid, lane = wp.tid()
 

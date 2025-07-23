@@ -193,13 +193,18 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_types import TestTypes
     from warp.tests.test_utils import TestUtils
     from warp.tests.test_vec import TestVec
+    from warp.tests.test_vec_constructors import TestVecConstructors
     from warp.tests.test_vec_lite import TestVecLite
     from warp.tests.test_vec_scalar_ops import TestVecScalarOps
     from warp.tests.test_verify_fp import TestVerifyFP
     from warp.tests.tile.test_tile import TestTile
+    from warp.tests.tile.test_tile_load import TestTileLoad
     from warp.tests.tile.test_tile_mathdx import TestTileMathDx
+    from warp.tests.tile.test_tile_matmul import TestTileMatmul
     from warp.tests.tile.test_tile_reduce import TestTileReduce
     from warp.tests.tile.test_tile_shared_memory import TestTileSharedMemory
+    from warp.tests.tile.test_tile_sort import TestTileSort
+    from warp.tests.tile.test_tile_view import TestTileView
 
     test_classes = [
         TestAdam,
@@ -293,15 +298,20 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestStruct,
         TestTape,
         TestTile,
+        TestTileLoad,
         TestTileMathDx,
+        TestTileMatmul,
         TestTileReduce,
         TestTileSharedMemory,
+        TestTileSort,
+        TestTileView,
         TestTorch,
         TestTransientModule,
         TestTriangleClosestPoint,
         TestTypes,
         TestUtils,
         TestVec,
+        TestVecConstructors,
         TestVecLite,
         TestVecScalarOps,
         TestVerifyFP,
