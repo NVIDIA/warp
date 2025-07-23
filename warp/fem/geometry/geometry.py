@@ -542,17 +542,17 @@ class Geometry:
 
         pos_type = cache.cached_vec_type(self.dimension, dtype=float)
 
-        @cache.dynamic_func(suffix=self.name)
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
         def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: float):
             return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
 
-        @cache.dynamic_func(suffix=self.name)
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
         def cell_lookup(args: self.CellArg, pos: pos_type, guess: Sample):
             guess_pos = self.cell_position(args, guess)
             max_dist = wp.length(guess_pos - pos)
             return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
 
-        @cache.dynamic_func(suffix=self.name)
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
         def cell_lookup(args: self.CellArg, pos: pos_type):
             max_dist = 0.0
             return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
@@ -561,13 +561,13 @@ class Geometry:
         filtered_cell_lookup = self.make_filtered_cell_lookup(filter_func=_array_load)
         pos_type = cache.cached_vec_type(self.dimension, dtype=float)
 
-        @cache.dynamic_func(suffix=self.name)
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
         def cell_lookup(
             args: self.CellArg, pos: pos_type, max_dist: float, filter_array: wp.array(dtype=Any), filter_target: Any
         ):
             return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target)
 
-        @cache.dynamic_func(suffix=self.name)
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
         def cell_lookup(args: self.CellArg, pos: pos_type, filter_array: wp.array(dtype=Any), filter_target: Any):
             max_dist = 0.0
             return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target)

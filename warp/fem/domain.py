@@ -237,11 +237,11 @@ class Cells(GeometryDomain):
         filter_target = True
         pos_type = cache.cached_vec_type(self.geometry.dimension, dtype=float)
 
-        @cache.dynamic_func(suffix=self.name)
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
         def cell_partition_lookup(args: self.DomainArg, pos: pos_type, max_dist: float):
             return filtered_cell_lookup(args.geo, pos, max_dist, args.index, filter_target)
 
-        @cache.dynamic_func(suffix=self.name)
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
         def cell_partition_lookup(args: self.DomainArg, pos: pos_type):
             max_dist = 0.0
             return filtered_cell_lookup(args.geo, pos, max_dist, args.index, filter_target)

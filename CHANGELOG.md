@@ -23,6 +23,8 @@
   ([GH-788](https://github.com/NVIDIA/warp/issues/788)).
 - Constructing wp.array objects from a pointer inside Warp kernels (e.g., wp.array(ptr=..., shape=...)) no longer requires the shape to be a compile-time constant, allowing for greater flexibility.
  - warp.sparse can now operate efficiently on sparse matrices with arbitrarily-sized blocks, and leverage tiled computations when relevant ([GH-838](https://github.com/NVIDIA/warp/issues/838)).
+ - `warp.fem.integrate` may now leverage tile-based computations for accumulating over quadrature points ([GH-854](https://github.com/NVIDIA/warp/issues/854)).
+
 
 ### Fixed
 

@@ -34,7 +34,7 @@ _key_re = re.compile("[^0-9a-zA-Z_]+")
 
 def _make_key(obj, suffix: str, options: Optional[Dict[str, Any]] = None):
     # human-readable part
-    key = _key_re.sub("", f"{obj.__name__}_{suffix}")
+    suffix = str(suffix)
 
     sorted_opts = sorted(options.items()) if options is not None else ()
     opts_str = "".join(
@@ -49,7 +49,7 @@ def _make_key(obj, suffix: str, options: Optional[Dict[str, Any]] = None):
     uid = hashlib.blake2b(bytes(opts_str, encoding="utf-8"), digest_size=4).hexdigest()
 
     # avoid long keys, issues on win
-    key = f"{key[:64]}_{uid}"
+    key = f"{obj.__name__}_{suffix[:32]}_{uid}"
 
     return key
 
@@ -62,7 +62,10 @@ def _arg_type_name(arg_type):
     return wp.types.get_type_code(wp.types.type_to_warp(arg_type))
 
 
-def _make_cache_key(func, key, argspec=None):
+def _make_cache_key(func, key, argspec=None, allow_overloads: bool = True):
+    if not allow_overloads:
+        return key
+
     if argspec is None:
         annotations = get_annotations(func)
     else:
@@ -80,6 +83,7 @@ def _register_function(
 ):
     # wp.Function will override existing func for a given key...
     # manually add back our overloads
+    key = _key_re.sub("", key)
     existing = module.functions.get(key)
     new_fn = wp.Function(
         func=func,
@@ -95,9 +99,9 @@ def _register_function(
     return module.functions[key]
 
 
-def get_func(func, suffix: str, code_transformers=None):
+def get_func(func, suffix: str, code_transformers=None, allow_overloads=False):
     key = _make_key(func, suffix)
-    cache_key = _make_cache_key(func, key)
+    cache_key = _make_cache_key(func, key, allow_overloads=allow_overloads)
 
     if cache_key not in _func_cache:
         module = wp.get_module(func.__module__)
@@ -111,9 +115,9 @@ def get_func(func, suffix: str, code_transformers=None):
     return _func_cache[cache_key]
 
 
-def dynamic_func(suffix: str, code_transformers=None):
+def dynamic_func(suffix: str, code_transformers=None, allow_overloads=False):
     def wrap_func(func: Callable):
-        return get_func(func, suffix=suffix, code_transformers=code_transformers)
+        return get_func(func, suffix=suffix, code_transformers=code_transformers, allow_overloads=allow_overloads)
 
     return wrap_func
 
@@ -122,46 +126,49 @@ def get_kernel(
     func,
     suffix: str,
     kernel_options: Optional[Dict[str, Any]] = None,
+    allow_overloads=False,
 ):
     if kernel_options is None:
         kernel_options = {}
 
     key = _make_key(func, suffix, kernel_options)
-    cache_key = _make_cache_key(func, key)
+    cache_key = _make_cache_key(func, key, allow_overloads=allow_overloads)
 
     if cache_key not in _kernel_cache:
-        module_name = f"{func.__module__}.dyn.{key}"
+        kernel_key = _key_re.sub("", key)
+        module_name = f"{func.__module__}.dyn.{kernel_key}"
         module = wp.get_module(module_name)
         module.options = dict(wp.get_module(func.__module__).options)
         module.options.update(kernel_options)
-        _kernel_cache[cache_key] = wp.Kernel(func=func, key=key, module=module, options=kernel_options)
+        _kernel_cache[cache_key] = wp.Kernel(func=func, key=kernel_key, module=module, options=kernel_options)
     return _kernel_cache[cache_key]
 
 
-def dynamic_kernel(suffix: str, kernel_options: Optional[Dict[str, Any]] = None):
+def dynamic_kernel(suffix: str, kernel_options: Optional[Dict[str, Any]] = None, allow_overloads=False):
     if kernel_options is None:
         kernel_options = {}
 
     def wrap_kernel(func: Callable):
-        return get_kernel(func, suffix=suffix, kernel_options=kernel_options)
+        return get_kernel(func, suffix=suffix, kernel_options=kernel_options, allow_overloads=allow_overloads)
 
     return wrap_kernel
 
 
 def get_struct(struct: type, suffix: str):
     key = _make_key(struct, suffix)
-    # used in codegen
-    struct.__qualname__ = key
+    cache_key = key
 
-    if key not in _struct_cache:
+    if cache_key not in _struct_cache:
+        # used in codegen
+        struct.__qualname__ = _key_re.sub("", key)
         module = wp.get_module(struct.__module__)
-        _struct_cache[key] = wp.codegen.Struct(
-            key=key,
+        _struct_cache[cache_key] = wp.codegen.Struct(
+            key=struct.__qualname__,
             cls=struct,
             module=module,
         )
 
-    return _struct_cache[key]
+    return _struct_cache[cache_key]
 
 
 def dynamic_struct(suffix: str):
@@ -293,12 +300,13 @@ def get_integrand_kernel(
         options.update(kernel_options)
 
     kernel_key = _make_key(integrand.func, suffix, options=options)
-    cache_key = _make_cache_key(integrand, kernel_key, integrand.argspec)
+    cache_key = _make_cache_key(integrand, kernel_key, integrand.argspec, allow_overloads=True)
 
     if cache_key not in _kernel_cache:
         if kernel_fn is None:
             return None
 
+        kernel_key = _key_re.sub("", kernel_key)
         module = wp.get_module(f"{integrand.module.name}.{kernel_key}")
         module.options = options
         _kernel_cache[cache_key] = wp.Kernel(
