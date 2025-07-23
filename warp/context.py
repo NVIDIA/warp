@@ -2007,7 +2007,7 @@ class Module:
             "fuse_fp": True,
             "lineinfo": warp.config.lineinfo,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
-            "mode": warp.config.mode,
+            "mode": None,
             "block_dim": 256,
             "compile_time_trace": warp.config.compile_time_trace,
         }
@@ -2273,6 +2273,8 @@ class Module:
 
                 module_load_timer.extra_msg = " (compiled)"  # For wp.ScopedTimer informational purposes
 
+                mode = self.options["mode"] if self.options["mode"] is not None else warp.config.mode
+
                 # build CPU
                 if device.is_cpu:
                     # build
@@ -2292,7 +2294,7 @@ class Module:
                             warp.build.build_cpu(
                                 output_path,
                                 source_code_path,
-                                mode=self.options["mode"],
+                                mode=mode,
                                 fast_math=self.options["fast_math"],
                                 verify_fp=warp.config.verify_fp,
                                 fuse_fp=self.options["fuse_fp"],
@@ -2322,7 +2324,7 @@ class Module:
                                 source_code_path,
                                 output_arch,
                                 output_path,
-                                config=self.options["mode"],
+                                config=mode,
                                 verify_fp=warp.config.verify_fp,
                                 fast_math=self.options["fast_math"],
                                 fuse_fp=self.options["fuse_fp"],
