@@ -160,6 +160,10 @@ class SpaceRestriction:
         return args.dof_partition_indices[restriction_node_index]
 
     @wp.func
+    def node_partition_index_from_element_offset(args: NodeArg, element_offset: int):
+        return wp.lower_bound(args.dof_element_offsets, element_offset + 1) - 1
+
+    @wp.func
     def node_element_range(args: NodeArg, partition_node_index: int):
         return args.dof_element_offsets[partition_node_index], args.dof_element_offsets[partition_node_index + 1]
 

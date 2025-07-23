@@ -20,6 +20,7 @@
 # grid and the PicQuadrature class.
 ###########################################################################
 
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -27,9 +28,8 @@ import numpy as np
 import warp as wp
 import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
-import warp.sim.render
+import warp.render
 from warp.fem import Domain, Field, Sample, at_node, div, grad, integrand
-from warp.sim import Model, State
 from warp.sparse import BsrMatrix, bsr_mm, bsr_mv, bsr_transposed
 
 
@@ -186,76 +186,83 @@ def solve_incompressibility(
 
 
 class Example:
-    def __init__(self, quiet=False, stage_path="example_apic_fluid.usd", voxel_size=1.0):
+    @dataclass
+    class State:
+        particle_q: wp.array(dtype=wp.vec3)
+        particle_qd: wp.array(dtype=wp.vec3)
+        particle_qd_grad: wp.array(dtype=wp.mat33)
+
+    def __init__(self, quiet=False, stage_path="example_apic_fluid.usd", voxel_size=1.0, opengl=False):
+        self.gravity = wp.vec3(0.0, -10.0, 0.0)
+
         fps = 60
+        self.sim_substeps = 1
         self.frame_dt = 1.0 / fps
         self.current_frame = 0
-
-        self.sim_substeps = 1
         self.sim_dt = self.frame_dt / self.sim_substeps
         self.voxel_size = voxel_size
 
         self._quiet = quiet
 
         # particle emission
-        particle_grid_lo = wp.vec3(-5)
-        particle_grid_hi = wp.vec3(5)
-
-        grid_cell_size = voxel_size
-        grid_cell_volume = np.prod(grid_cell_size)
-
         PARTICLES_PER_CELL_DIM = 2
-        self.radius = float(np.max(grid_cell_size) / (2 * PARTICLES_PER_CELL_DIM))
+        self.radius = float(np.max(voxel_size) / (2 * PARTICLES_PER_CELL_DIM))
 
+        particle_grid_lo = np.full(3, -5)
+        particle_grid_hi = np.full(3, 5)
         particle_grid_res = (
             np.array((particle_grid_hi - particle_grid_lo) / voxel_size, dtype=int) * PARTICLES_PER_CELL_DIM
         )
-        particle_grid_offset = wp.vec3(self.radius, self.radius, self.radius)
 
-        # Initialize warp.sim model, spawn particles
-        builder = wp.sim.ModelBuilder()
-        builder.add_particle_grid(
-            dim_x=particle_grid_res[0],
-            dim_y=particle_grid_res[1],
-            dim_z=particle_grid_res[2],
-            cell_x=self.radius * 2.0,
-            cell_y=self.radius * 2.0,
-            cell_z=self.radius * 2.0,
-            pos=particle_grid_lo + particle_grid_offset,
-            rot=wp.quat_identity(),
-            vel=wp.vec3(0.0, 0.0, 0.0),
-            mass=grid_cell_volume / PARTICLES_PER_CELL_DIM**3,
-            jitter=self.radius * 1.0,
+        self.particle_volumes, particle_q = self._spawn_particles(
+            particle_grid_res, particle_grid_lo, particle_grid_hi, packing_fraction=1.0
         )
-        self.model: Model = builder.finalize()
-        self.model.ground = False
+        particle_qd = wp.zeros_like(particle_q)
+
+        particle_count = particle_q.shape[0]
+        if not self._quiet:
+            print("Particle count:", particle_count)
+
+        # Allocate states
+        self.state_0 = self.State(
+            wp.clone(particle_q),
+            wp.clone(particle_qd),
+            particle_qd_grad=wp.zeros(shape=(particle_count), dtype=wp.mat33),
+        )
+        self.state_1 = self.State(
+            wp.clone(particle_q),
+            wp.clone(particle_qd),
+            particle_qd_grad=wp.zeros(shape=(particle_count), dtype=wp.mat33),
+        )
 
         # Storage for temporary variables
         self.temporary_store = fem.TemporaryStore()
 
-        if not self._quiet:
-            print("Particle count:", self.model.particle_count)
+        # initialze renderers
+        self.opengl_renderer = None
+        self.usd_renderer = None
 
-        self.state_0: State = self.model.state()
-        self.state_0.particle_qd_grad = wp.zeros(shape=(self.model.particle_count), dtype=wp.mat33)
-
-        self.state_1: State = self.model.state()
-        self.state_1.particle_qd_grad = wp.zeros(shape=(self.model.particle_count), dtype=wp.mat33)
+        try:
+            if opengl:
+                self.opengl_renderer = warp.render.OpenGLRenderer(
+                    screen_width=1024,
+                    screen_height=1024,
+                )
+        except Exception as err:
+            wp.utils.warn(f"Could not initialize OpenGL renderer: {err}.")
 
         try:
             if stage_path:
-                self.renderer = warp.sim.render.SimRenderer(self.model, stage_path, scaling=20.0)
-            else:
-                self.renderer = None
+                self.usd_renderer = warp.render.UsdRenderer(stage_path)
         except Exception as err:
-            print(f"Could not initialize SimRenderer for stage '{stage_path}': {err}.")
+            print(f"Could not initialize Usd renderer '{stage_path}': {err}.")
 
     def step(self):
         fem.set_default_temporary_store(self.temporary_store)
 
         self.current_frame = self.current_frame + 1
 
-        with wp.ScopedTimer(f"simulate frame {self.current_frame}", active=True):
+        with wp.ScopedTimer(f"simulate frame {self.current_frame}", synchronize=True):
             for _s in range(self.sim_substeps):
                 # Allocate the voxels and create the warp.fem geometry
                 volume = wp.Volume.allocate_by_voxels(
@@ -297,7 +304,7 @@ class Example:
 
                 # Bin particles to grid cells
                 pic = fem.PicQuadrature(
-                    domain=domain, positions=self.state_0.particle_q, measures=self.model.particle_mass
+                    domain=domain, positions=self.state_0.particle_q, measures=self.particle_volumes
                 )
 
                 # Compute inverse particle volume for each grid node
@@ -318,7 +325,7 @@ class Example:
                         "velocities": self.state_0.particle_qd,
                         "velocity_gradients": self.state_0.particle_qd_grad,
                         "dt": self.sim_dt,
-                        "gravity": self.model.gravity,
+                        "gravity": self.gravity,
                     },
                     output_dtype=wp.vec3,
                 )
@@ -377,16 +384,54 @@ class Example:
 
         fem.set_default_temporary_store(None)
 
+    @staticmethod
+    def _spawn_particles(res, bounds_lo, bounds_hi, packing_fraction):
+        Nx = res[0]
+        Ny = res[1]
+        Nz = res[2]
+
+        px = np.linspace(bounds_lo[0], bounds_hi[0], Nx + 1)
+        py = np.linspace(bounds_lo[1], bounds_hi[1], Ny + 1)
+        pz = np.linspace(bounds_lo[2], bounds_hi[2], Nz + 1)
+
+        points = np.stack(np.meshgrid(px, py, pz)).reshape(3, -1).T
+
+        cell_size = (bounds_hi - bounds_lo) / res
+        cell_volume = np.prod(cell_size)
+
+        radius = np.max(cell_size) * 0.5
+        volume = np.prod(cell_volume) * packing_fraction
+
+        rng = np.random.default_rng()
+        points += 2.0 * radius * (rng.random(points.shape) - 0.5)
+
+        volumes = wp.full(points.shape[0], volume, dtype=float)
+        points = wp.array(np.ascontiguousarray(points), dtype=wp.vec3)
+        return volumes, points
+
     def render(self, is_live=False):
-        if self.renderer is None:
+        if self.usd_renderer is None and self.opengl_renderer is None:
             return
 
-        with wp.ScopedTimer("render", active=True):
+        with wp.ScopedTimer("render", synchronize=True):
             time = self.current_frame * self.frame_dt
 
-            self.renderer.begin_frame(time)
-            self.renderer.render(self.state_0)
-            self.renderer.end_frame()
+            if self.usd_renderer is not None:
+                self.usd_renderer.begin_frame(time)
+                self.usd_renderer.render_points(
+                    "particles",
+                    self.state_0.particle_q.numpy(),
+                    radius=self.radius,
+                )
+                self.usd_renderer.end_frame()
+            if self.opengl_renderer is not None:
+                self.opengl_renderer.begin_frame(time)
+                self.opengl_renderer.render_points(
+                    "particles",
+                    self.state_0.particle_q,
+                    radius=self.radius,
+                )
+                self.opengl_renderer.end_frame()
 
 
 if __name__ == "__main__":
@@ -404,6 +449,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--num_frames", type=int, default=250, help="Total number of frames.")
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument("--opengl", action="store_true")
     parser.add_argument(
         "--voxel_size",
         type=float,
@@ -413,11 +459,11 @@ if __name__ == "__main__":
     args = parser.parse_known_args()[0]
 
     with wp.ScopedDevice(args.device):
-        example = Example(quiet=args.quiet, stage_path=args.stage_path, voxel_size=args.voxel_size)
+        example = Example(quiet=args.quiet, stage_path=args.stage_path, voxel_size=args.voxel_size, opengl=args.opengl)
 
         for _ in range(args.num_frames):
             example.step()
             example.render()
 
-        if example.renderer:
-            example.renderer.save()
+        if example.usd_renderer is not None:
+            example.usd_renderer.save()

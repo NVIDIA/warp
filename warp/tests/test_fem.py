@@ -47,6 +47,11 @@ def linear_form(s: Sample, u: Field):
 
 
 @integrand
+def bilinear_form(s: Sample, u: Field, v: Field):
+    return u(s) * v(s)
+
+
+@integrand
 def scaled_linear_form(s: Sample, u: Field, scale: wp.array(dtype=float)):
     return u(s) * scale[0]
 
@@ -1868,8 +1873,6 @@ def test_vector_spaces(test, device):
             fields={"field": div_field.trace()},
         )
 
-    return
-
     with wp.ScopedDevice(device):
         positions, tri_vidx = _gen_trimesh(3, 5)
 
@@ -2055,6 +2058,45 @@ def test_array_axpy(test, device):
     assert_np_equal(y.grad.numpy(), beta * np.ones(N))
 
 
+def test_integrate_high_order(test_field, device):
+    with wp.ScopedDevice(device):
+        geo = fem.Grid3D(res=(1, 1, 1))
+        space = fem.make_polynomial_space(geo, degree=4)
+        test_field = fem.make_test(space)
+        trial_field = fem.make_trial(space)
+
+        # compare consistency of tile-based "dispatch" assembly and generic
+        v0 = fem.integrate(
+            linear_form, fields={"u": test_field}, assembly="dispatch", kernel_options={"enable_backward": False}
+        )
+        v1 = fem.integrate(
+            linear_form, fields={"u": test_field}, assembly="generic", kernel_options={"enable_backward": False}
+        )
+
+        assert_np_equal(v0.numpy(), v1.numpy(), tol=1.0e-6)
+
+        h0 = fem.integrate(
+            bilinear_form,
+            fields={"v": test_field, "u": trial_field},
+            assembly="dispatch",
+            kernel_options={"enable_backward": False},
+        )
+        h1 = fem.integrate(
+            bilinear_form,
+            fields={"v": test_field, "u": trial_field},
+            assembly="generic",
+            kernel_options={"enable_backward": False},
+        )
+
+        h0_nnz = h0.nnz_sync()
+        h1_nnz = h1.nnz_sync()
+        assert h0.shape == h1.shape
+        assert h0_nnz == h1_nnz
+        assert_array_equal(h0.offsets[: h0.nrow + 1], h1.offsets[: h1.nrow + 1])
+        assert_array_equal(h0.columns[:h0_nnz], h1.columns[:h1_nnz])
+        assert_np_equal(h0.values[:h0_nnz].numpy(), h1.values[:h1_nnz].numpy(), tol=1.0e-6)
+
+
 devices = get_test_devices()
 cuda_devices = get_selected_cuda_test_devices()
 
@@ -2088,6 +2130,7 @@ add_function_test(TestFem, "test_point_basis", test_point_basis)
 add_function_test(TestFem, "test_particle_quadratures", test_particle_quadratures)
 add_function_test(TestFem, "test_nodal_quadrature", test_nodal_quadrature)
 add_function_test(TestFem, "test_implicit_fields", test_implicit_fields)
+add_function_test(TestFem, "test_integrate_high_order", test_integrate_high_order, devices=cuda_devices)
 
 
 class TestFemUtilities(unittest.TestCase):
