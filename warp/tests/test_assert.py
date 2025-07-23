@@ -245,6 +245,59 @@ class TestAssertDebug(unittest.TestCase):
                 self.assertRegex(output, r"Assertion failed: .*assert value == 1.*Array element must be 1")
 
 
+class TestAssertModeSwitch(unittest.TestCase):
+    """Test that switching from release mode to debug mode rebuilds the module with assertions enabled."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._saved_mode = wp.config.mode
+        cls._saved_mode_module = wp.get_module_options()["mode"]
+        cls._saved_cache_kernels = wp.config.cache_kernels
+
+        # Don't set any mode initially - use whatever the default is
+        wp.config.cache_kernels = False
+
+    @classmethod
+    def tearDownClass(cls):
+        wp.config.mode = cls._saved_mode
+        wp.set_module_options({"mode": cls._saved_mode_module})
+        wp.config.cache_kernels = cls._saved_cache_kernels
+
+    def test_switch_to_debug_mode(self):
+        """Test that switching from release mode to debug mode rebuilds the module with assertions enabled."""
+        with wp.ScopedDevice("cpu"):
+            # Create an array that will trigger an assertion
+            input_array = wp.zeros(1, dtype=int)
+
+            # In default mode, this should not assert
+            capture = StdErrCapture()
+            capture.begin()
+            wp.launch(expect_ones, input_array.shape, inputs=[input_array])
+            output = capture.end()
+
+            # Should not have any assertion output in release mode
+            self.assertEqual(output, "", f"Kernel should not print anything to stderr in release mode, got {output}")
+
+            # Now switch to debug mode and have it compile a new kernel
+            wp.config.mode = "debug"
+
+            @wp.kernel
+            def expect_ones_debug(a: wp.array(dtype=int)):
+                i = wp.tid()
+                assert a[i] == 1
+
+            # In debug mode, this should assert
+            capture = StdErrCapture()
+            capture.begin()
+            wp.launch(expect_ones_debug, input_array.shape, inputs=[input_array])
+            output = capture.end()
+
+            # Should have assertion output in debug mode
+            # Older Windows C runtimes have a bug where stdout sometimes does not get properly flushed.
+            if output != "" or sys.platform != "win32":
+                self.assertRegex(output, r"Assertion failed: .*assert a\[i\] == 1")
+
+
 if __name__ == "__main__":
     wp.clear_kernel_cache()
     unittest.main(verbosity=2)
