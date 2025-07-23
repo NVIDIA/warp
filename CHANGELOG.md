@@ -43,6 +43,7 @@
   the source box ([GH-839](https://github.com/NVIDIA/warp/pull/839)).
 - Fix potential uninitialized memory issues in `wp.tile_sort()` when an array of `NaN` values were provided ([GH-836](https://github.com/NVIDIA/warp/issues/836).
 - Fix `wp.tile_min()` and `wp.tile_argmin()` for large tiles with low occupancy ([GH-725](https://github.com/NVIDIA/warp/issues/725)).
+- Fix global switch to debug mode after module initialization not being picked up ([GH-856](https://github.com/NVIDIA/warp/issues/856)).
 - Fix a bug causing potential dead loops in `wp_balance_coloring` ([GH-816](https://github.com/NVIDIA/warp/issues/816)).
 - Fix driver entry point error for `cuDeviceGetUuid` caused by using an incorrect version
   ([GH-851](https://github.com/NVIDIA/warp/issues/851)).
