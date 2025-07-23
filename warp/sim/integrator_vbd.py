@@ -1379,6 +1379,8 @@ def VBD_solve_trimesh_no_self_contact(
     edge_rest_length: wp.array(dtype=float),
     edge_bending_properties: wp.array(dtype=float, ndim=2),
     adjacency: ForceElementAdjacencyInfo,
+    particle_forces: wp.array(dtype=wp.vec3),
+    particle_hessians: wp.array(dtype=wp.mat33),
     # contact info
     soft_contact_ke: float,
     soft_contact_kd: float,
@@ -1493,9 +1495,11 @@ def VBD_solve_trimesh_no_self_contact(
             dt,
         )
 
-        f = f + ground_contact_force
-        h = h + ground_contact_hessian
+        f += ground_contact_force
+        h += ground_contact_hessian
 
+    f += particle_forces[particle_index]
+    h += particle_hessians[particle_index]
     if abs(wp.determinant(h)) > 1e-5:
         hInv = wp.inverse(h)
         pos_new[particle_index] = particle_pos + hInv * f
@@ -2138,6 +2142,8 @@ class VBDIntegrator(Integrator):
         )
 
         for _iter in range(self.iterations):
+            self.particle_forces.zero_()
+            self.particle_hessians.zero_()
             for color in range(len(self.model.particle_color_groups)):
                 wp.launch(
                     kernel=VBD_accumulate_contact_force_and_hessian_no_self_contact,
@@ -2191,6 +2197,8 @@ class VBDIntegrator(Integrator):
                         self.model.edge_rest_length,
                         self.model.edge_bending_properties,
                         self.adjacency,
+                        self.particle_forces,
+                        self.particle_hessians,
                         self.model.soft_contact_ke,
                         self.model.soft_contact_kd,
                         self.model.soft_contact_mu,

@@ -52,6 +52,8 @@
 - Fix incorrect adjoints for `div(scalar, vec)`, `div(scalar, mat)`, and `div(scalar, quat)`
 - Fix incorrect adjoints for `div(scalar, vec)`, `div(scalar, mat)`, and `div(scalar, quat)`, and other miscellaneous issues with adjoints
   ([GH-831](https://github.com/NVIDIA/warp/issues/831)).
+- Fix missing cloth-body contact in `VBDIntegrator` with `handle_self_contact=False`, and add unit test for verification
+  ([GH-862](https://github.com/NVIDIA/warp/issues/862)).
 
 ## [1.8.0] - 2025-07-01
 

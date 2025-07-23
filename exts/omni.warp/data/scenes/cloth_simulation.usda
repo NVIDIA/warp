@@ -177,7 +177,7 @@ def Xform "World"
             prepend rel inputs:collider = </World/ActionGraph/read_collider/outputs_primsBundle>
             custom float inputs:colliderContactDistance = 2.5
             custom float inputs:colliderContactQueryRange = 1
-            custom float inputs:contactDampingStiffness = 10000
+            custom float inputs:contactDampingStiffness = 1e-5
             custom float inputs:contactElasticStiffness = 100000000
             custom float inputs:contactFrictionCoeff = 0.75
             custom float inputs:contactFrictionStiffness = 10000
