@@ -243,11 +243,17 @@ class MatStruct:
 @wp.kernel
 def kernel_nested_mat(out: wp.array(dtype=wp.mat44)):
     s = MatStruct()
-    m = wp.mat44()
 
+    s.m[0, 0] = 2.0
     s.m[1, 2] = 3.0
+    s.m[2][1] = 5.0
 
     out[0] = s.m
+
+    out[0][2, 2] = 6.0
+    out[0][1][1] = 7.0
+
+    out[0][3, 3] = out[0][0][0]
 
 
 def test_nested_mat(test, device):
@@ -256,7 +262,12 @@ def test_nested_mat(test, device):
     wp.synchronize()
 
     out = m.numpy()
+    assert_np_equal(out[0][0, 0], 2.0)
     assert_np_equal(out[0][1, 2], 3.0)
+    assert_np_equal(out[0][2][1], 5.0)
+    assert_np_equal(out[0][2, 2], 6.0)
+    assert_np_equal(out[0][1][1], 7.0)
+    assert_np_equal(out[0][3, 3], 2.0)
 
 
 def test_assign_view(test, device):
