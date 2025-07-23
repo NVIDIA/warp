@@ -2460,6 +2460,46 @@ class Adjoint:
 
         return adj.eval(node.value)
 
+    def emit_indexing(adj, target, indices):
+        target_type = strip_reference(target.type)
+        if is_array(target_type):
+            if len(indices) == target_type.ndim:
+                # handles array loads (where each dimension has an index specified)
+                out = adj.add_builtin_call("address", [target, *indices])
+
+                if warp.config.verify_autograd_array_access:
+                    target.mark_read()
+
+            else:
+                # handles array views (fewer indices than dimensions)
+                out = adj.add_builtin_call("view", [target, *indices])
+
+                if warp.config.verify_autograd_array_access:
+                    # store reference to target Var to propagate downstream read/write state back to root arg Var
+                    out.parent = target
+
+                    # view arg inherits target Var's read/write states
+                    out.is_read = target.is_read
+                    out.is_write = target.is_write
+
+        elif is_tile(target_type):
+            if len(indices) == len(target_type.shape):
+                # handles extracting a single element from a tile
+                out = adj.add_builtin_call("tile_extract", [target, *indices])
+            elif len(indices) < len(target_type.shape):
+                # handles tile views
+                out = adj.add_builtin_call("tile_view", [target, indices])
+            else:
+                raise RuntimeError(
+                    f"Incorrect number of indices specified for a tile view/extract, got {len(indices)} indices for a {len(target_type.shape)} dimensional tile."
+                )
+
+        else:
+            # handles non-array type indexing, e.g: vec3, mat33, etc
+            out = adj.add_builtin_call("extract", [target, *indices])
+
+        return out
+
     # returns the object being indexed, and the list of indices
     def eval_subscript(adj, node):
         # We want to coalesce multi-dimensional array indexing into a single operation. This needs to deal with expressions like `a[i][j][x][y]` where `a` is a 2D array of matrices,
@@ -2559,44 +2599,7 @@ class Adjoint:
 
         target, indices = adj.eval_subscript(node)
 
-        target_type = strip_reference(target.type)
-        if is_array(target_type):
-            if len(indices) == target_type.ndim:
-                # handles array loads (where each dimension has an index specified)
-                out = adj.add_builtin_call("address", [target, *indices])
-
-                if warp.config.verify_autograd_array_access:
-                    target.mark_read()
-
-            else:
-                # handles array views (fewer indices than dimensions)
-                out = adj.add_builtin_call("view", [target, *indices])
-
-                if warp.config.verify_autograd_array_access:
-                    # store reference to target Var to propagate downstream read/write state back to root arg Var
-                    out.parent = target
-
-                    # view arg inherits target Var's read/write states
-                    out.is_read = target.is_read
-                    out.is_write = target.is_write
-
-        elif is_tile(target_type):
-            if len(indices) == len(target_type.shape):
-                # handles extracting a single element from a tile
-                out = adj.add_builtin_call("tile_extract", [target, *indices])
-            elif len(indices) < len(target_type.shape):
-                # handles tile views
-                out = adj.add_builtin_call("tile_view", [target, indices])
-            else:
-                raise RuntimeError(
-                    f"Incorrect number of indices specified for a tile view/extract, got {len(indices)} indices for a {len(target_type.shape)} dimensional tile."
-                )
-
-        else:
-            # handles non-array type indexing, e.g: vec3, mat33, etc
-            out = adj.add_builtin_call("extract", [target, *indices])
-
-        return out
+        return adj.emit_indexing(target, indices)
 
     def emit_Assign(adj, node):
         if len(node.targets) != 1:
