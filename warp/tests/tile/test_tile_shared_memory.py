@@ -28,7 +28,7 @@ def test_tile_shared_mem_size(test, device):
 
     BLOCK_DIM = 256
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def compute(out: wp.array2d(dtype=float)):
         a = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared")
         b = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared") * 2.0
@@ -64,7 +64,7 @@ def test_tile_shared_mem_large(test, device):
     BLOCK_DIM = 256
 
     # we disable backward kernel gen since 128k is not supported on most architectures
-    @wp.kernel(enable_backward=False)
+    @wp.kernel(enable_backward=False, module="unique")
     def compute(out: wp.array2d(dtype=float)):
         a = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared")
         b = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared") * 2.0
@@ -100,7 +100,7 @@ def test_tile_shared_mem_graph(test, device):
 
     BLOCK_DIM = 256
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def compute(out: wp.array2d(dtype=float)):
         a = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared")
         b = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared") * 2.0
@@ -157,7 +157,7 @@ def test_tile_shared_mem_func(test, device):
 
         return a + b
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def compute(out: wp.array2d(dtype=float)):
         s = add_tile_small()
         b = add_tile_big()
@@ -197,7 +197,7 @@ def test_tile_shared_non_aligned(test, device):
         b = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared") * 3.0
         return a + b
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def compute(out: wp.array2d(dtype=float)):
         # This test the logic in the stack allocator, which should increment and
         # decrement the stack pointer each time foo() is called
@@ -225,9 +225,9 @@ def test_tile_shared_non_aligned(test, device):
 
 
 def test_tile_shared_vec_accumulation(test, device):
-    BLOCK_DIM = 64
+    BLOCK_DIM = 256
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def compute(indices: wp.array(dtype=int), vecs: wp.array(dtype=wp.vec3), output: wp.array2d(dtype=float)):
         i, j = wp.tid()
 
@@ -286,9 +286,9 @@ def test_tile_shared_vec_accumulation(test, device):
 
 
 def test_tile_shared_simple_reduction_add(test, device):
-    BLOCK_DIM = 64
+    BLOCK_DIM = 256
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def compute(x: wp.array(dtype=float), y: wp.array(dtype=float)):
         i, j = wp.tid()
 
@@ -313,9 +313,9 @@ def test_tile_shared_simple_reduction_add(test, device):
 
 
 def test_tile_shared_simple_reduction_sub(test, device):
-    BLOCK_DIM = 64
+    BLOCK_DIM = 256
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def compute(x: wp.array(dtype=float), y: wp.array(dtype=float)):
         i, j = wp.tid()
 

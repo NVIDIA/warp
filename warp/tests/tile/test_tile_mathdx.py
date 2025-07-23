@@ -466,7 +466,7 @@ def test_tile_math_back_substitution_multiple_rhs(test, device):
 def test_tile_math_block_cholesky(test, device):
     BLOCK_SIZE = wp.constant(TILE_M // 2)
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def block_cholesky_kernel(
         A: wp.array2d(dtype=float),
         L: wp.array2d(dtype=float),
@@ -512,7 +512,7 @@ def test_tile_math_block_cholesky(test, device):
 
                 wp.tile_store(L, sol_tile, offset=(i, k))
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def block_cholesky_solve_kernel(
         L: wp.array2d(dtype=float),
         b: wp.array2d(dtype=float),
