@@ -50,6 +50,8 @@
   ([GH-831](https://github.com/NVIDIA/warp/issues/831)).
 - Fix an issue that caused Warp to request PTX generation from NVRTC for architectures unsupported by the compiler
   ([GH-858](https://github.com/NVIDIA/warp/issues/858)).
+- Fix missing cloth-body contact in `VBDIntegrator` with `handle_self_contact=False`, and add unit test for verification
+  ([GH-862](https://github.com/NVIDIA/warp/issues/862)).
 
 ## [1.8.0] - 2025-07-01
 
