@@ -50,12 +50,14 @@ namespace wp
 
 template<typename Type>
 struct _svd_config {
+    static constexpr float SVD_EPSILON = 1.e-6f;
     static constexpr float QR_GIVENS_EPSILON = 1.e-6f;
     static constexpr int JACOBI_ITERATIONS = 4;
 };
 
 template<>
 struct _svd_config<double> {
+    static constexpr double SVD_EPSILON = 1.e-12;
     static constexpr double QR_GIVENS_EPSILON = 1.e-12;
     static constexpr int JACOBI_ITERATIONS = 8;
 };
@@ -528,13 +530,15 @@ inline CUDA_CALLABLE void adj_svd3(const mat_t<3,3,Type>& A,
                                   const mat_t<3,3,Type>& adj_U,
                                   const vec_t<3,Type>& adj_sigma,
                                   const mat_t<3,3,Type>& adj_V) {
+  const Type epsilon = _svd_config<Type>::SVD_EPSILON;
+
   Type sx2 = sigma[0] * sigma[0];
   Type sy2 = sigma[1] * sigma[1];
   Type sz2 = sigma[2] * sigma[2];
 
-  Type F01 = Type(1) / min(sy2 - sx2, Type(-1e-6f));
-  Type F02 = Type(1) / min(sz2 - sx2, Type(-1e-6f));
-  Type F12 = Type(1) / min(sz2 - sy2, Type(-1e-6f));
+  Type F01 = Type(1) / min(sy2 - sx2, Type(-epsilon));
+  Type F02 = Type(1) / min(sz2 - sx2, Type(-epsilon));
+  Type F12 = Type(1) / min(sz2 - sy2, Type(-epsilon));
 
   mat_t<3,3,Type> F = mat_t<3,3,Type>(0, F01, F02,
                   -F01, 0, F12,
@@ -553,8 +557,13 @@ inline CUDA_CALLABLE void adj_svd3(const mat_t<3,3,Type>& A,
 
   mat_t<3,3,Type> sigma_term = mul(U, mul(adj_sigma_mat, VT));
 
-  mat_t<3,3,Type> u_term = mul(mul(U, mul(cw_mul(F, (mul(UT, adj_U) - mul(transpose(adj_U), U))), s_mat)), VT);
-  mat_t<3,3,Type> v_term = mul(U, mul(s_mat, mul(cw_mul(F, (mul(VT, adj_V) - mul(transpose(adj_V), V))), VT)));
+  mat_t<3,3,Type> skew_u = cw_mul(F, mul(UT, adj_U) - mul(transpose(adj_U), U));
+  mat_t<3,3,Type> block_u = mul(skew_u, s_mat);
+  mat_t<3,3,Type> u_term = mul(mul(U, block_u), VT);
+
+  mat_t<3,3,Type> skew_v = cw_mul(F, mul(VT, adj_V) - mul(transpose(adj_V), V));
+  mat_t<3,3,Type> block_v = mul(skew_v, VT);
+  mat_t<3,3,Type> v_term = mul(U, mul(s_mat, block_v));
 
   adj_A = adj_A + (u_term + v_term + sigma_term);
 }
@@ -583,11 +592,13 @@ inline CUDA_CALLABLE void adj_svd2(const mat_t<2,2,Type>& A,
                                    const mat_t<2,2,Type>& adj_U,
                                    const vec_t<2,Type>& adj_sigma,
                                    const mat_t<2,2,Type>& adj_V) {
+    const Type epsilon = _svd_config<Type>::SVD_EPSILON;
+
     Type s1_squared = sigma[0] * sigma[0];
     Type s2_squared = sigma[1] * sigma[1];
 
     // Compute inverse of (s1^2 - s2^2) if possible, use small epsilon to prevent division by zero
-    Type F01 = Type(1) / min(s2_squared - s1_squared, Type(-1e-6f));
+    Type F01 = Type(1) / min(s2_squared - s1_squared, Type(-epsilon));
 
     // Construct the matrix F for the adjoint
     mat_t<2,2,Type> F = mat_t<2,2,Type>(0.0, F01,
@@ -609,10 +620,14 @@ inline CUDA_CALLABLE void adj_svd2(const mat_t<2,2,Type>& A,
     mat_t<2,2,Type> sigma_term = mul(U, mul(adj_sigma_mat, VT));
 
     // Compute the adjoint contributions for U (left singular vectors)
-    mat_t<2,2,Type> u_term = mul(mul(U, mul(cw_mul(F, (mul(UT, adj_U) - mul(transpose(adj_U), U))), s_mat)), VT);
+    mat_t<2,2,Type> skew_u = cw_mul(F, mul(UT, adj_U) - mul(transpose(adj_U), U));
+    mat_t<2,2,Type> block_u = mul(skew_u, s_mat);
+    mat_t<2,2,Type> u_term = mul(mul(U, block_u), VT);
 
     // Compute the adjoint contributions for V (right singular vectors)
-    mat_t<2,2,Type> v_term = mul(U, mul(s_mat, mul(cw_mul(F, (mul(VT, adj_V) - mul(transpose(adj_V), V))), VT)));
+    mat_t<2,2,Type> skew_v = cw_mul(F, mul(VT, adj_V) - mul(transpose(adj_V), V));
+    mat_t<2,2,Type> block_v = mul(skew_v, VT);
+    mat_t<2,2,Type> v_term = mul(U, mul(s_mat, block_v));
 
     // Combine the terms to compute the adjoint of A
     adj_A = adj_A + (u_term + v_term + sigma_term);

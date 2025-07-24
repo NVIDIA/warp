@@ -74,111 +74,6 @@ def test_length_mismatch(test, device):
         wp.launch(kernel, dim=1, inputs=[], device=device)
 
 
-def test_anon_constructor_error_length_mismatch(test, device):
-    @wp.kernel
-    def kernel():
-        wp.vector(
-            wp.vector(length=2, dtype=float),
-            length=3,
-            dtype=float,
-        )
-
-    with test.assertRaisesRegex(
-        RuntimeError,
-        r"incompatible vector of length 3 given when copy constructing a vector of length 2$",
-    ):
-        wp.launch(
-            kernel,
-            dim=1,
-            inputs=[],
-            device=device,
-        )
-
-
-def test_anon_constructor_error_numeric_arg_missing(test, device):
-    @wp.kernel
-    def kernel():
-        wp.vector(1.0, 2.0, length=12345)
-
-    with test.assertRaisesRegex(
-        RuntimeError,
-        r"incompatible number of values given \(2\) when constructing a vector of length 12345$",
-    ):
-        wp.launch(
-            kernel,
-            dim=1,
-            inputs=[],
-            device=device,
-        )
-
-
-def test_anon_constructor_error_length_arg_missing(test, device):
-    @wp.kernel
-    def kernel():
-        wp.vector()
-
-    with test.assertRaisesRegex(
-        RuntimeError,
-        r"the `length` argument must be specified when zero-initializing a vector$",
-    ):
-        wp.launch(
-            kernel,
-            dim=1,
-            inputs=[],
-            device=device,
-        )
-
-
-def test_anon_constructor_error_numeric_args_mismatch(test, device):
-    @wp.kernel
-    def kernel():
-        wp.vector(1.0, 2)
-
-    with test.assertRaisesRegex(
-        RuntimeError,
-        r"all values given when constructing a vector must have the same type$",
-    ):
-        wp.launch(
-            kernel,
-            dim=1,
-            inputs=[],
-            device=device,
-        )
-
-
-def test_tpl_constructor_error_incompatible_sizes(test, device):
-    @wp.kernel
-    def kernel():
-        wp.vec3(wp.vec2(1.0, 2.0))
-
-    with test.assertRaisesRegex(
-        RuntimeError, "incompatible vector of length 3 given when copy constructing a vector of length 2"
-    ):
-        wp.launch(
-            kernel,
-            dim=1,
-            inputs=[],
-            device=device,
-        )
-
-
-def test_tpl_constructor_error_numeric_args_mismatch(test, device):
-    @wp.kernel
-    def kernel():
-        wp.vec2(1.0, 2)
-
-    with test.assertRaisesRegex(
-        RuntimeError,
-        r"all values given when constructing a vector must have the same type$",
-    ):
-        wp.launch(
-            kernel,
-            dim=1,
-            inputs=[],
-            device=device,
-        )
-
-
 def test_negation(test, device, dtype, register_kernels=False):
     rng = np.random.default_rng(123)
 
@@ -312,32 +207,15 @@ def test_subtraction_unsigned(test, device, dtype, register_kernels=False):
     def check_subtraction_unsigned():
         wp.expect_eq(vec2(wptype(3), wptype(4)) - vec2(wptype(1), wptype(2)), vec2(wptype(2), wptype(2)))
         wp.expect_eq(
-            vec3(
-                wptype(3),
-                wptype(4),
-                wptype(4),
-            )
-            - vec3(wptype(1), wptype(2), wptype(3)),
+            vec3(wptype(3), wptype(4), wptype(4)) - vec3(wptype(1), wptype(2), wptype(3)),
             vec3(wptype(2), wptype(2), wptype(1)),
         )
         wp.expect_eq(
-            vec4(
-                wptype(3),
-                wptype(4),
-                wptype(4),
-                wptype(5),
-            )
-            - vec4(wptype(1), wptype(2), wptype(3), wptype(4)),
+            vec4(wptype(3), wptype(4), wptype(4), wptype(5)) - vec4(wptype(1), wptype(2), wptype(3), wptype(4)),
             vec4(wptype(2), wptype(2), wptype(1), wptype(1)),
         )
         wp.expect_eq(
-            vec5(
-                wptype(3),
-                wptype(4),
-                wptype(4),
-                wptype(5),
-                wptype(4),
-            )
+            vec5(wptype(3), wptype(4), wptype(4), wptype(5), wptype(4))
             - vec5(wptype(1), wptype(2), wptype(3), wptype(4), wptype(4)),
             vec5(wptype(2), wptype(2), wptype(1), wptype(1), wptype(0)),
         )
@@ -445,16 +323,7 @@ def test_subtraction(test, device, dtype, register_kernels=False):
         wp.launch(
             kernel,
             dim=1,
-            inputs=[
-                s2,
-                s3,
-                s4,
-                s5,
-                v2,
-                v3,
-                v4,
-                v5,
-            ],
+            inputs=[s2, s3, s4, s5, v2, v3, v4, v5],
             outputs=[v20, v21, v30, v31, v32, v40, v41, v42, v43, v50, v51, v52, v53, v54],
             device=device,
         )
@@ -557,18 +426,7 @@ def test_length(test, device, dtype, register_kernels=False):
 
     tape = wp.Tape()
     with tape:
-        wp.launch(
-            kernel,
-            dim=1,
-            inputs=[
-                v2,
-                v3,
-                v4,
-                v5,
-            ],
-            outputs=[l2, l3, l4, l5, l22, l23, l24, l25],
-            device=device,
-        )
+        wp.launch(kernel, dim=1, inputs=[v2, v3, v4, v5], outputs=[l2, l3, l4, l5, l22, l23, l24, l25], device=device)
 
     assert_np_equal(l2.numpy()[0], 2 * np.linalg.norm(v2.numpy()), tol=10 * tol)
     assert_np_equal(l3.numpy()[0], 2 * np.linalg.norm(v3.numpy()), tol=10 * tol)
@@ -791,18 +649,7 @@ def test_normalize(test, device, dtype, register_kernels=False):
     ]
     tape0 = wp.Tape()
     with tape0:
-        wp.launch(
-            normalize_kernel,
-            dim=1,
-            inputs=[
-                v2,
-                v3,
-                v4,
-                v5,
-            ],
-            outputs=outputs0,
-            device=device,
-        )
+        wp.launch(normalize_kernel, dim=1, inputs=[v2, v3, v4, v5], outputs=outputs0, device=device)
 
     outputs1 = [
         n20_alt,
@@ -838,22 +685,7 @@ def test_normalize(test, device, dtype, register_kernels=False):
     for ncmp, ncmpalt in zip(outputs0, outputs1):
         assert_np_equal(ncmp.numpy()[0], ncmpalt.numpy()[0], tol=10 * tol)
 
-    invecs = [
-        v2,
-        v2,
-        v3,
-        v3,
-        v3,
-        v4,
-        v4,
-        v4,
-        v4,
-        v5,
-        v5,
-        v5,
-        v5,
-        v5,
-    ]
+    invecs = [v2, v2, v3, v3, v3, v4, v4, v4, v4, v5, v5, v5, v5, v5]
     for ncmp, ncmpalt, v in zip(outputs0, outputs1, invecs):
         tape0.backward(loss=ncmp)
         tape1.backward(loss=ncmpalt)
@@ -957,154 +789,7 @@ def test_crossproduct(test, device, dtype, register_kernels=False):
         tape.zero()
 
 
-def test_casting_constructors(test, device, dtype, register_kernels=False):
-    np_type = np.dtype(dtype)
-    wp_type = wp.types.np_dtype_to_warp_type[np_type]
-    vec3 = wp.types.vector(length=3, dtype=wp_type)
-
-    np16 = np.dtype(np.float16)
-    wp16 = wp.types.np_dtype_to_warp_type[np16]
-
-    np32 = np.dtype(np.float32)
-    wp32 = wp.types.np_dtype_to_warp_type[np32]
-
-    np64 = np.dtype(np.float64)
-    wp64 = wp.types.np_dtype_to_warp_type[np64]
-
-    def cast_float16(a: wp.array(dtype=wp_type, ndim=2), b: wp.array(dtype=wp16, ndim=2)):
-        tid = wp.tid()
-
-        v1 = vec3(a[tid, 0], a[tid, 1], a[tid, 2])
-        v2 = wp.vector(v1, dtype=wp16)
-
-        b[tid, 0] = v2[0]
-        b[tid, 1] = v2[1]
-        b[tid, 2] = v2[2]
-
-    def cast_float32(a: wp.array(dtype=wp_type, ndim=2), b: wp.array(dtype=wp32, ndim=2)):
-        tid = wp.tid()
-
-        v1 = vec3(a[tid, 0], a[tid, 1], a[tid, 2])
-        v2 = wp.vector(v1, dtype=wp32)
-
-        b[tid, 0] = v2[0]
-        b[tid, 1] = v2[1]
-        b[tid, 2] = v2[2]
-
-    def cast_float64(a: wp.array(dtype=wp_type, ndim=2), b: wp.array(dtype=wp64, ndim=2)):
-        tid = wp.tid()
-
-        v1 = vec3(a[tid, 0], a[tid, 1], a[tid, 2])
-        v2 = wp.vector(v1, dtype=wp64)
-
-        b[tid, 0] = v2[0]
-        b[tid, 1] = v2[1]
-        b[tid, 2] = v2[2]
-
-    kernel_16 = getkernel(cast_float16, suffix=dtype.__name__)
-    kernel_32 = getkernel(cast_float32, suffix=dtype.__name__)
-    kernel_64 = getkernel(cast_float64, suffix=dtype.__name__)
-
-    if register_kernels:
-        return
-
-    # check casting to float 16
-    a = wp.array(np.ones((1, 3), dtype=np_type), dtype=wp_type, requires_grad=True, device=device)
-    b = wp.array(np.zeros((1, 3), dtype=np16), dtype=wp16, requires_grad=True, device=device)
-    b_result = np.ones((1, 3), dtype=np16)
-    b_grad = wp.array(np.ones((1, 3), dtype=np16), dtype=wp16, device=device)
-    a_grad = wp.array(np.ones((1, 3), dtype=np_type), dtype=wp_type, device=device)
-
-    tape = wp.Tape()
-    with tape:
-        wp.launch(kernel=kernel_16, dim=1, inputs=[a, b], device=device)
-
-    tape.backward(grads={b: b_grad})
-    out = tape.gradients[a].numpy()
-
-    assert_np_equal(b.numpy(), b_result)
-    assert_np_equal(out, a_grad.numpy())
-
-    # check casting to float 32
-    a = wp.array(np.ones((1, 3), dtype=np_type), dtype=wp_type, requires_grad=True, device=device)
-    b = wp.array(np.zeros((1, 3), dtype=np32), dtype=wp32, requires_grad=True, device=device)
-    b_result = np.ones((1, 3), dtype=np32)
-    b_grad = wp.array(np.ones((1, 3), dtype=np32), dtype=wp32, device=device)
-    a_grad = wp.array(np.ones((1, 3), dtype=np_type), dtype=wp_type, device=device)
-
-    tape = wp.Tape()
-    with tape:
-        wp.launch(kernel=kernel_32, dim=1, inputs=[a, b], device=device)
-
-    tape.backward(grads={b: b_grad})
-    out = tape.gradients[a].numpy()
-
-    assert_np_equal(b.numpy(), b_result)
-    assert_np_equal(out, a_grad.numpy())
-
-    # check casting to float 64
-    a = wp.array(np.ones((1, 3), dtype=np_type), dtype=wp_type, requires_grad=True, device=device)
-    b = wp.array(np.zeros((1, 3), dtype=np64), dtype=wp64, requires_grad=True, device=device)
-    b_result = np.ones((1, 3), dtype=np64)
-    b_grad = wp.array(np.ones((1, 3), dtype=np64), dtype=wp64, device=device)
-    a_grad = wp.array(np.ones((1, 3), dtype=np_type), dtype=wp_type, device=device)
-
-    tape = wp.Tape()
-    with tape:
-        wp.launch(kernel=kernel_64, dim=1, inputs=[a, b], device=device)
-
-    tape.backward(grads={b: b_grad})
-    out = tape.gradients[a].numpy()
-
-    assert_np_equal(b.numpy(), b_result)
-    assert_np_equal(out, a_grad.numpy())
-
-
-@wp.kernel
-def test_vector_constructor_value_func():
-    a = wp.vec2()
-    b = wp.vector(a, dtype=wp.float16)
-    c = wp.vector(a)
-    d = wp.vector(a, length=2)
-    e = wp.vector(1.0, 2.0, 3.0, dtype=float)
-
-
-# Test matrix constructors using explicit type (float16)
-# note that these tests are specifically not using generics / closure
-# args to create kernels dynamically (like the rest of this file)
-# as those use different code paths to resolve arg types which
-# has lead to regressions.
-@wp.kernel
-def test_constructors_explicit_precision():
-    # construction for custom matrix types
-    ones = wp.vector(wp.float16(1.0), length=2)
-    zeros = wp.vector(length=2, dtype=wp.float16)
-    custom = wp.vector(wp.float16(0.0), wp.float16(1.0))
-
-    for i in range(2):
-        wp.expect_eq(ones[i], wp.float16(1.0))
-        wp.expect_eq(zeros[i], wp.float16(0.0))
-        wp.expect_eq(custom[i], wp.float16(i))
-
-
-# Same as above but with a default (float/int) type
-# which tests some different code paths that
-# need to ensure types are correctly canonicalized
-# during codegen
-@wp.kernel
-def test_constructors_default_precision():
-    # construction for custom matrix types
-    ones = wp.vector(1.0, length=2)
-    zeros = wp.vector(length=2, dtype=float)
-    custom = wp.vector(0.0, 1.0)
-
-    for i in range(2):
-        wp.expect_eq(ones[i], 1.0)
-        wp.expect_eq(zeros[i], 0.0)
-        wp.expect_eq(custom[i], float(i))
-
-
-@wp.kernel
+@wp.kernel(module="unique")
 def test_vector_mutation(expected: wp.types.vector(length=10, dtype=float)):
     v = wp.vector(length=10, dtype=float)
 
@@ -1117,30 +802,11 @@ def test_vector_mutation(expected: wp.types.vector(length=10, dtype=float)):
     wp.expect_eq(v, expected)
 
 
-CONSTANT_LENGTH = wp.constant(10)
-
-
-# tests that we can use global constants in length keyword argument
-# for vector constructor
-@wp.kernel
-def test_constructors_constant_length():
-    v = wp.vector(length=(CONSTANT_LENGTH), dtype=float)
-
-    for i in range(CONSTANT_LENGTH):
-        v[i] = float(i)
-
-
 Vec123 = wp.vec(123, dtype=wp.float16)
 
 
-@wp.kernel
-def vector_len_kernel(
-    v1: wp.vec2,
-    v2: wp.vec(3, float),
-    v3: wp.vec(Any, float),
-    v4: Vec123,
-    out: wp.array(dtype=int),
-):
+@wp.kernel(module="unique")
+def vector_len_kernel(v1: wp.vec2, v2: wp.vec(3, float), v3: wp.vec(Any, float), v4: Vec123, out: wp.array(dtype=int)):
     length = wp.static(len(v1))
     wp.expect_eq(len(v1), 2)
     out[0] = len(v1)
@@ -1261,7 +927,7 @@ def test_vec_assign_copy(test, device):
     try:
         wp.config.enable_vector_component_overwrites = True
 
-        @wp.kernel
+        @wp.kernel(module="unique")
         def vec_assign_overwrite(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
             tid = wp.tid()
 
@@ -1364,7 +1030,7 @@ def test_vec_array_assign(test, device):
     run(vec_array_assign_attribute)
 
 
-@wp.kernel
+@wp.kernel(module="unique")
 def vec_add_inplace_subscript(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
     i = wp.tid()
 
@@ -1378,7 +1044,7 @@ def vec_add_inplace_subscript(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.v
     y[i] = a
 
 
-@wp.kernel
+@wp.kernel(module="unique")
 def vec_add_inplace_attribute(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
     i = wp.tid()
 
@@ -1458,7 +1124,7 @@ def test_vec_sub_inplace(test, device):
     run(vec_sub_inplace_attribute)
 
 
-@wp.kernel
+@wp.kernel(module="unique")
 def vec_array_add_inplace(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
     i = wp.tid()
 
@@ -1502,6 +1168,27 @@ def test_vec_array_sub_inplace(test, device):
     assert_np_equal(x.grad.numpy(), np.array([[-1.0, -1.0, -1.0]], dtype=float))
 
 
+@wp.kernel
+def scalar_vec_div(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+    i = wp.tid()
+    y[i] = 1.0 / x[i]
+
+
+def test_scalar_vec_div(test, device):
+    x = wp.array((wp.vec3(1.0, 2.0, 4.0),), dtype=wp.vec3, requires_grad=True, device=device)
+    y = wp.ones(1, dtype=wp.vec3, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(scalar_vec_div, 1, inputs=(x,), outputs=(y,), device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array(((1.0, 0.5, 0.25),), dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array(((-1.0, -0.25, -0.0625),), dtype=float))
+
+
 devices = get_test_devices()
 
 
@@ -1519,11 +1206,6 @@ class TestVec(unittest.TestCase):
         v -= wp.vec3i(3, 4, 5)
         self.assertSequenceEqual(v, (0, 1, 2))
 
-
-add_kernel_test(TestVec, test_vector_constructor_value_func, dim=1, devices=devices)
-add_kernel_test(TestVec, test_constructors_explicit_precision, dim=1, devices=devices)
-add_kernel_test(TestVec, test_constructors_default_precision, dim=1, devices=devices)
-add_kernel_test(TestVec, test_constructors_constant_length, dim=1, devices=devices)
 
 vec10 = wp.types.vector(length=10, dtype=float)
 add_kernel_test(
@@ -1561,62 +1243,9 @@ for dtype in np_float_types:
     add_function_test_register_kernel(
         TestVec, f"test_normalize_{dtype.__name__}", test_normalize, devices=devices, dtype=dtype
     )
-    add_function_test_register_kernel(
-        TestVec,
-        f"test_casting_constructors_{dtype.__name__}",
-        test_casting_constructors,
-        devices=devices,
-        dtype=dtype,
-    )
 
-add_function_test(
-    TestVec,
-    "test_length_mismatch",
-    test_length_mismatch,
-    devices=devices,
-)
-add_function_test(
-    TestVec,
-    "test_anon_constructor_error_length_mismatch",
-    test_anon_constructor_error_length_mismatch,
-    devices=devices,
-)
-add_function_test(
-    TestVec,
-    "test_anon_constructor_error_numeric_arg_missing",
-    test_anon_constructor_error_numeric_arg_missing,
-    devices=devices,
-)
-add_function_test(
-    TestVec,
-    "test_anon_constructor_error_length_arg_missing",
-    test_anon_constructor_error_length_arg_missing,
-    devices=devices,
-)
-add_function_test(
-    TestVec,
-    "test_anon_constructor_error_numeric_args_mismatch",
-    test_anon_constructor_error_numeric_args_mismatch,
-    devices=devices,
-)
-add_function_test(
-    TestVec,
-    "test_tpl_constructor_error_incompatible_sizes",
-    test_tpl_constructor_error_incompatible_sizes,
-    devices=devices,
-)
-add_function_test(
-    TestVec,
-    "test_tpl_constructor_error_numeric_args_mismatch",
-    test_tpl_constructor_error_numeric_args_mismatch,
-    devices=devices,
-)
-add_function_test(
-    TestVec,
-    "test_vector_len",
-    test_vector_len,
-    devices=devices,
-)
+add_function_test(TestVec, "test_length_mismatch", test_length_mismatch, devices=devices)
+add_function_test(TestVec, "test_vector_len", test_vector_len, devices=devices)
 add_function_test(TestVec, "test_vec_extract", test_vec_extract, devices=devices)
 add_function_test(TestVec, "test_vec_assign", test_vec_assign, devices=devices)
 add_function_test(TestVec, "test_vec_assign_copy", test_vec_assign_copy, devices=devices)
@@ -1626,6 +1255,7 @@ add_function_test(TestVec, "test_vec_add_inplace", test_vec_add_inplace, devices
 add_function_test(TestVec, "test_vec_sub_inplace", test_vec_sub_inplace, devices=devices)
 add_function_test(TestVec, "test_vec_array_add_inplace", test_vec_array_add_inplace, devices=devices)
 add_function_test(TestVec, "test_vec_array_sub_inplace", test_vec_array_sub_inplace, devices=devices)
+add_function_test(TestVec, "test_scalar_vec_div", test_scalar_vec_div, devices=devices)
 
 
 if __name__ == "__main__":

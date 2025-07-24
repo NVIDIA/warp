@@ -1,5 +1,52 @@
 # Changelog
 
+## [1.8.1] - 2025-08-01
+
+### Deprecated
+
+- This is the final release that will provide builds for or support the CUDA 11.x Toolkit and driver.
+  Starting with v1.9.0, Warp will require CUDA 12.x or newer.
+
+### Added
+
+- Add documentation for creating and manipulating Warp structured arrays using NumPy
+  ([GH-852](https://github.com/NVIDIA/warp/issues/852)).
+
+### Fixed
+
+- Fix `tape.zero()` to correctly reset gradient arrays in nested structs
+  ([GH-807](https://github.com/NVIDIA/warp/issues/807)).
+- Fix incorrect adjoints for `div(scalar, vec)`, `div(scalar, mat)`, and `div(scalar, quat)`, and other miscellaneous
+  issues with adjoints ([GH-831](https://github.com/NVIDIA/warp/issues/831)).
+- Fix a module-hashing issue for functions or kernels using static expressions that cannot be resolved at the time of
+  declaration ([GH-830](https://github.com/NVIDIA/warp/issues/830)).
+- Fix a bug in which changes to `wp.config.mode` were not being picked up after module initialization
+  ([GH-856](https://github.com/NVIDIA/warp/issues/856)).
+- Fix a bug where CUDA modules could get prematurely unloaded when conditional graph nodes are used.
+- Fix compile time regression for kernels using matmul, Cholesky, and FFT solvers by upgrading to libmathdx 0.2.2
+  ([GH-809](https://github.com/NVIDIA/warp/issues/809)).
+- Fix potential uninitialized memory issues in `wp.tile_sort()` ([GH-836](https://github.com/NVIDIA/warp/issues/836)).
+- Fix `wp.tile_min()` and `wp.tile_argmin()` to return correct values for large tiles with low occupancy
+  ([GH-725](https://github.com/NVIDIA/warp/issues/725)).
+- Fix codegen errors associated with adjoint of `wp.tile_sum()` when using shared tiles
+  ([GH-822](https://github.com/NVIDIA/warp/issues/822)).
+- Fix driver entry point error for `cuDeviceGetUuid` caused by using an incorrect version
+  ([GH-851](https://github.com/NVIDIA/warp/issues/851)).
+- Fix an issue that caused Warp to request PTX generation from NVRTC for architectures unsupported by the compiler
+  ([GH-858](https://github.com/NVIDIA/warp/issues/858)).
+- Fix a regression where `wp.sparse.bsr_from_triplets()` ignored the `prune_numerical_zeros=False` setting
+  ([GH-832](https://github.com/NVIDIA/warp/issues/832)).
+- Fix missing cloth-body contact in `wp.sim.VBDIntegrator` with `handle_self_contact=False`
+  ([GH-862](https://github.com/NVIDIA/warp/issues/862)).
+- Fix a bug causing potential infinite loops in the color balancing calculation
+  ([GH-816](https://github.com/NVIDIA/warp/issues/816)).
+- Fix box-box collision by computing the contact normal at the closest point of approach instead of at the center of
+  the source box ([GH-839](https://github.com/NVIDIA/warp/pull/839)).
+- Fix the OpenGL renderer not correctly displaying colors for box shapes
+  ([GH-810](https://github.com/NVIDIA/warp/issues/810)).
+- Fix a bug in `OpenGLRenderer` where meshes with different `scale` attributes were incorrectly instanced, causing
+  them all to be rendered with the same scale `OpenGLRenderer` ([GH-828](https://github.com/NVIDIA/warp/issues/828)).
+
 ## [1.8.0] - 2025-07-01
 
 ### Added

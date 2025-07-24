@@ -25,6 +25,7 @@ import warp.sim.integrator_euler
 import warp.sim.integrator_vbd
 import warp.sim.integrator_xpbd
 import warp.sim.particles
+import warp.sim.render
 from warp.sim.model import PARTICLE_FLAG_ACTIVE
 from warp.tests.unittest_utils import *
 
@@ -299,14 +300,16 @@ CLOTH_FACES = [
 
 # fmt: on
 class ClothSim:
-    def __init__(self, device, solver, use_cuda_graph=False):
+    def __init__(self, device, solver, use_cuda_graph=False, do_rendering=False):
         self.frame_dt = 1 / 60
         self.num_test_frames = 50
         self.iterations = 5
+        self.do_rendering = do_rendering
         self.device = device
         self.use_cuda_graph = self.device.is_cuda and use_cuda_graph
         self.builder = wp.sim.ModelBuilder()
         self.solver = solver
+        self.renderer_scale_factor = 1.0
 
         if solver != "semi_implicit":
             self.num_substeps = 10
@@ -434,7 +437,7 @@ class ClothSim:
 
         self.finalize()
 
-    def set_collision_experiment(self):
+    def set_self_collision_experiment(self):
         elasticity_ke = 1e4
         elasticity_kd = 1e-6
 
@@ -479,6 +482,44 @@ class ClothSim:
         self.fixed_particles = range(0, 4)
 
         self.finalize(handle_self_contact=True, ground=False)
+        self.model.soft_contact_radius = 0.1
+        self.model.soft_contact_margin = 0.1
+        self.model.soft_contact_ke = 1e4
+        self.model.soft_contact_kd = 1e-3
+        self.model.soft_contact_mu = 0.2
+        self.model.gravity = wp.vec3(0.0, -1000.0, 0)
+        self.num_test_frames = 30
+
+    def set_body_collision_experiment(self, handle_self_contact=False):
+        self.renderer_scale_factor = 1.0
+        elasticity_ke = 1e4
+        elasticity_kd = 1e-6
+
+        vs1 = [wp.vec3(v) for v in [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]]]
+        fs1 = [0, 1, 2, 0, 2, 3]
+
+        self.builder.add_cloth_mesh(
+            pos=wp.vec3(0.0, 0.0, 0.0),
+            rot=wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.0),
+            scale=1.0,
+            vertices=vs1,
+            indices=fs1,
+            vel=wp.vec3(0.0, 0.0, 0.0),
+            density=0.02,
+            tri_ke=elasticity_ke,
+            tri_ka=elasticity_ke,
+            tri_kd=elasticity_kd,
+            add_springs=self.solver == "xpbd",
+            spring_ke=1.0e3,
+            spring_kd=0.0,
+            particle_radius=0.1,
+        )
+
+        self.builder.add_shape_box(-1, pos=wp.vec3(0, -3.3, 0), hx=3, hy=3, hz=3)
+
+        self.fixed_particles = []
+
+        self.finalize(handle_self_contact=handle_self_contact, ground=False)
         self.model.soft_contact_radius = 0.1
         self.model.soft_contact_margin = 0.1
         self.model.soft_contact_ke = 1e4
@@ -629,6 +670,9 @@ class ClothSim:
                 wp.load_module(warp.sim.integrator_euler, device=self.device)
             wp.load_module(warp.sim.particles, device=self.device)
             wp.load_module(warp.sim.integrator, device=self.device)
+            collide_module = importlib.import_module("warp.sim.collide")
+            wp.set_module_options({"block_dim": 256}, collide_module)
+            wp.load_module(collide_module, device=self.device)
             wp.load_module(device=self.device)
             with wp.ScopedCapture(device=self.device, force_module_load=False) as capture:
                 self.simulate()
@@ -637,17 +681,30 @@ class ClothSim:
     def simulate(self):
         for _step in range(self.num_substeps):
             self.state0.clear_forces()
+            wp.sim.collide(self.model, self.state0)
 
             self.integrator.simulate(self.model, self.state0, self.state1, self.dt, None)
             (self.state0, self.state1) = (self.state1, self.state0)
 
     def run(self):
         self.sim_time = 0.0
+
+        if self.do_rendering:
+            self.renderer = wp.sim.render.SimRendererOpenGL(self.model, "cloth_sim", scaling=self.renderer_scale_factor)
+        else:
+            self.renderer = None
+
         for _frame in range(self.num_test_frames):
             if self.graph:
                 wp.capture_launch(self.graph)
             else:
                 self.simulate()
+
+                if self.renderer is not None:
+                    self.renderer.begin_frame()
+                    self.renderer.render(self.state0)
+                    self.renderer.end_frame()
+
             self.sim_time = self.sim_time + self.frame_dt
 
     def set_points_fixed(self, model, fixed_particles):
@@ -702,16 +759,41 @@ def test_cloth_bending_non_zero_rest_angle_bending(test, device, solver):
     test.assertTrue((example.init_pos != final_pos).any())
 
 
-def test_cloth_collision(test, device, solver):
+def test_cloth_body_collision(test, device, solver):
     example = ClothSim(device, solver, use_cuda_graph=True)
-    example.set_collision_experiment()
+    example.set_body_collision_experiment(handle_self_contact=False)
 
     example.run()
 
     # examine that the velocity has died out
     final_vel = example.state0.particle_qd.numpy()
     final_pos = example.state0.particle_q.numpy()
-    test.assertTrue((np.linalg.norm(final_vel, axis=0) < 1.0).all())
+    test.assertTrue((np.linalg.norm(final_vel, axis=1) < 1.0).all())
+    # examine that the simulation has moved
+    test.assertTrue((example.init_pos[:, 1] != final_pos[:, 1]).any())
+
+    # run again with handle_self_contact=True
+    example = ClothSim(device, solver, use_cuda_graph=True)
+    example.set_body_collision_experiment(handle_self_contact=True)
+    example.run()
+    # examine that the velocity has died out
+    final_vel = example.state0.particle_qd.numpy()
+    final_pos = example.state0.particle_q.numpy()
+    test.assertTrue((np.linalg.norm(final_vel, axis=1) < 1.0).all())
+    # examine that the simulation has moved
+    test.assertTrue((example.init_pos[:, 1] != final_pos[:, 1]).any())
+
+
+def test_cloth_self_collision(test, device, solver):
+    example = ClothSim(device, solver, use_cuda_graph=True)
+    example.set_self_collision_experiment()
+
+    example.run()
+
+    # examine that the velocity has died out
+    final_vel = example.state0.particle_qd.numpy()
+    final_pos = example.state0.particle_q.numpy()
+    test.assertTrue((np.linalg.norm(final_vel, axis=1) < 1.0).all())
     # examine that the simulation has moved
     test.assertTrue((example.init_pos != final_pos).any())
 
@@ -763,7 +845,8 @@ tests_to_run = {
         test_cloth_free_fall,
         test_cloth_sagging,
         test_cloth_bending,
-        test_cloth_collision,
+        test_cloth_self_collision,
+        test_cloth_body_collision,
         test_cloth_bending_non_zero_rest_angle_bending,
     ],
 }

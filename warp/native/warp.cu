@@ -309,7 +309,13 @@ int cuda_init()
                 check_cu(cuDeviceGetAttribute_f(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device));
                 check_cu(cuDeviceGetAttribute_f(&minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, device));
                 g_devices[i].arch = 10 * major + minor;
-
+#ifdef CUDA_VERSION
+#if CUDA_VERSION  < 13000
+                if (g_devices[i].arch == 110) {
+                    g_devices[i].arch = 101;  // Thor SM change
+                }
+#endif
+#endif
                 g_device_map[device] = &g_devices[i];
             }
             else
@@ -2781,13 +2787,20 @@ bool capture_debug_dot_print(void* graph, const char *path, uint32_t flags)
     return true;
 }
 
-bool cuda_graph_create_exec(void* context, void* graph, void** graph_exec_ret)
+bool cuda_graph_create_exec(void* context, void* stream, void* graph, void** graph_exec_ret)
 {
     ContextGuard guard(context);
 
     cudaGraphExec_t graph_exec = NULL;
     if (!check_cuda(cudaGraphInstantiateWithFlags(&graph_exec, (cudaGraph_t)graph, cudaGraphInstantiateFlagAutoFreeOnLaunch)))
         return false;
+
+    // Usually uploading the graph explicitly is optional, but when updating graph nodes (e.g., indirect dispatch)
+    // then the upload is required because otherwise the graph nodes that get updated might not yet be uploaded, which
+    // results in undefined behavior.
+    CUstream cuda_stream = static_cast<CUstream>(stream);
+    if (!check_cuda(cudaGraphUpload(graph_exec, cuda_stream)))
+         return false;
 
     if (graph_exec_ret)
         *graph_exec_ret = graph_exec;

@@ -969,11 +969,11 @@ template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_div(Type s, vec_t<Length, Type> a, Type& adj_s, vec_t<Length, Type>& adj_a, const vec_t<Length, Type>& adj_ret)
 {
 
-    adj_s -= dot(a , adj_ret)/ (s * s); // - a / s^2
-
-    for( unsigned i=0; i < Length; ++i )
+    for (unsigned i=0; i < Length; ++i)
     {
-        adj_a[i] += s / adj_ret[i];
+        Type inv = Type(1) / a[i];
+        adj_a[i] -= s * adj_ret[i] * inv * inv;
+        adj_s += adj_ret[i] * inv;
     }
 
 #if FP_CHECK

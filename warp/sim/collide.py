@@ -1236,8 +1236,7 @@ def handle_contact_pairs(
         p_b_body = closest_point_box(geo_scale_b, query_b)
         p_b_world = wp.transform_point(X_ws_b, p_b_body)
         diff = p_a_world - p_b_world
-        # use center of box A to query normal to make sure we are not inside B
-        query_b = wp.transform_point(X_sw_b, wp.transform_get_translation(X_ws_a))
+
         normal = wp.transform_vector(X_ws_b, box_sdf_grad(geo_scale_b, query_b))
         distance = wp.dot(diff, normal)
 

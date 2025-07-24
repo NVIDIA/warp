@@ -83,19 +83,7 @@ inline CUDA_CALLABLE wp::vec_t<Length, T> warp_shuffle_down(wp::vec_t<Length, T>
     wp::vec_t<Length, T> result;
 
     for (unsigned i=0; i < Length; ++i)
-        result.data[i] = __shfl_down_sync(mask, val.data[i], offset, WP_TILE_WARP_SIZE);
-    
-    return result;
-}
-
-// Quaternion overload
-template <typename T>
-inline CUDA_CALLABLE wp::quat_t<T> warp_shuffle_down(wp::quat_t<T> val, int offset, int mask)
-{
-    wp::quat_t<T> result;
-
-    for (unsigned i=0; i < 4; ++i)
-        result.data[i] = __shfl_down_sync(mask, val.data[i], offset, WP_TILE_WARP_SIZE);
+        result[i] = __shfl_down_sync(mask, val[i], offset, WP_TILE_WARP_SIZE);
     
     return result;
 }
@@ -218,6 +206,7 @@ auto tile_reduce_impl(Op f, Tile& t)
 
     // ensure that only threads with at least one valid item participate in the reduction
     unsigned int mask = __ballot_sync(__activemask(), Layout::valid(Layout::linear_from_register(0)));
+    bool warp_is_active = mask != 0;
 
     // warp reduction
     T warp_sum = warp_reduce(thread_sum, f, mask);
@@ -233,7 +222,7 @@ auto tile_reduce_impl(Op f, Tile& t)
     // ensure active_warps is initialized
     WP_TILE_SYNC();
 
-    if (lane_index == 0)
+    if (lane_index == 0 && warp_is_active)
     {
         partials[warp_index] = warp_sum;
         atomicAdd(&active_warps, 1);
@@ -291,6 +280,7 @@ auto tile_arg_reduce_impl(Op f, OpTrack track, Tile& t)
 
     // ensure that only threads with at least one valid item participate in the reduction
     unsigned int mask = __ballot_sync(__activemask(), Layout::valid(Layout::linear_from_register(0)));
+    bool warp_is_active = mask != 0;
 
     // warp reduction
     ValueAndIndex<T> warp_sum = warp_reduce_tracked(thread_sum, champion_index, f, track, mask);
@@ -307,7 +297,7 @@ auto tile_arg_reduce_impl(Op f, OpTrack track, Tile& t)
     // ensure active_warps is initialized
     WP_TILE_SYNC();
 
-    if (lane_index == 0)
+    if (lane_index == 0 && warp_is_active)
     {
         partials[warp_index] = warp_sum.value;
         partials_idx[warp_index] = warp_sum.index;
@@ -422,25 +412,26 @@ void adj_tile_sum(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {
     using T = typename Tile::Type;
 
+    auto adj_reg = adj_ret.grad_to_register();
+
 #if !defined(__CUDA_ARCH__)
-
-    for (int i=0; i < Tile::Layout::Size; ++i)
-    {
-        adj_t(i) += adj_ret.data[0];
-
-    }
+    T scratch = adj_reg.data[0];
 #else
     // broadcast incoming adjoint to block
     WP_TILE_SHARED T scratch;
     if (WP_TILE_THREAD_IDX == 0)
-        scratch = adj_ret.data[0];
+        scratch = adj_reg.data[0];
 
     WP_TILE_SYNC();
+#endif
 
-    // broadcast scalar across input dimensions (note zero strides)
-    auto adj_ret_reg = tile_shared_t<T, tile_layout_strided_t<typename Tile::Layout::Shape, tile_stride_t<0, 0>>, false>(&scratch, nullptr).copy_to_register();
+    auto adj_ret_reg = tile_register_like<Tile>();
+    using Layout = typename decltype(adj_ret_reg)::Layout;
+    for (int i=0; i < Layout::NumRegs; ++i)
+    {
+        adj_ret_reg.data[i] += scratch;
+    }
     adj_t.grad_add(adj_ret_reg);
-#endif 
 }
 
 template <typename Tile>

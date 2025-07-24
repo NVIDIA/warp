@@ -186,7 +186,7 @@ doctest:
   image: python:3.11-slim
   needs: [linux-x86_64 build]
   extends:
-    - .omni_nvks_gpu
+    - .omni_nvks_gpu_570_test
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KSet up docs environment"
     - df -h
@@ -275,7 +275,6 @@ linux-aarch64 test jetson:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
-    - python -m pip install -U "jax[cuda12]"
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
@@ -286,7 +285,7 @@ linux-x86_64 test:
   needs: [linux-x86_64 build]
   image: ubuntu:22.04
   extends:
-    - .omni_nvks_gpu_2x
+    - .omni_nvks_gpu_2x_570_test
     - .test_common_with_coverage
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -367,7 +366,6 @@ windows-x86_64 test:
   needs: [windows-x86_64 build]
   timeout: 30m
   extends:
-    - .runner-test-windows-x86_64-gpu
     - .test_common_with_coverage
   before_script:
     - !reference [.snippets, define-powershell-GetTime]
@@ -389,6 +387,8 @@ windows-x86_64 test:
     - python -m pip install codecov-cli
     - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --plugin pycoverage -F unittests -f coverage.xml
     - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
+  tags:
+    - win-x86_64-gpu-1x-573.42
 
 # Optional multi-GPU Windows job (likely longer queue time)
 windows-x86_64 test mgpu:
@@ -419,8 +419,7 @@ windows-x86_64 test mgpu:
   script:
     - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
-    - os/windows
-    - gpu/2x-A5000
+    - win-x86_64-gpu-2x-573.42
 
 # Note: This will no longer be needed once Warp auto-initializes upon import
 linux-x86_64 test warp-init:
@@ -428,7 +427,7 @@ linux-x86_64 test warp-init:
   image: ubuntu:22.04
   needs: [linux-x86_64 build]
   extends:
-    - .omni_nvks_gpu
+    - .omni_nvks_gpu_570_test
     - .save_test_report_artifact
     - .basic_test_changes_rules
   timeout: 10m
@@ -455,6 +454,7 @@ linux-x86_64 test mujoco warp:
   image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   extends:
     - .save_test_report_artifact
+    - .omni_nvks_gpu_570_test
   variables:
     UV_PYTHON: "3.12"
   rules:
@@ -490,12 +490,7 @@ linux-x86_64 test mujoco warp:
     - source .venv/bin/activate
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - pytest -n 4 --pyargs mujoco_warp --junit-xml=rspec.xml
-  tags:
-    - arch/x86_64
-    - gpu/B40
-    - os/linux
-    - platform/horde
+    - pytest --pyargs mujoco_warp --junit-xml=rspec.xml
 
 # Ensure minimum Python version is supported
 linux-x86_64 python 3.8 test:
@@ -503,9 +498,9 @@ linux-x86_64 python 3.8 test:
   image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: [linux-x86_64 build]
   extends:
-    - .omni_nvks_gpu
     - .save_test_report_artifact
     - .basic_test_changes_rules
+    - .omni_nvks_gpu_570_test
   variables:
     UV_PYTHON: "3.8"
   before_script:
@@ -528,9 +523,9 @@ linux-x86_64 cuda 11 test:
   image: ubuntu:22.04
   needs: [linux-x86_64 cuda 11 build]
   extends:
-    - .omni_nvks_gpu_2x 
     - .save_test_report_artifact
     - .basic_test_changes_rules
+    - .omni_nvks_gpu_570_test
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - apt-get update && apt-get install curl --no-install-recommends -y
@@ -558,7 +553,7 @@ linux-x86_64 asv:
   needs: []
   image: ubuntu:22.04
   extends:
-    - .omni_nvks_gpu
+    - .omni_nvks_gpu_570_test
   variables:
     GIT_DEPTH: "50"
   rules:
@@ -707,6 +702,8 @@ trigger kit extensions pipeline:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - changes:
+        - exts/**/*
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
   variables:

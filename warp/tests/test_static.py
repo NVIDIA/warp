@@ -559,6 +559,54 @@ def test_static_len_query(test, _):
     wp.launch(static_len_query_kernel, 1, inputs=(v1,))
 
 
+@wp.func
+def func_1() -> int:
+    return 1
+
+
+@wp.func
+def func_2() -> int:
+    return 2
+
+
+funcs = [func_1, func_2]
+
+
+def unresolved_builder(funcids):
+    _funcs = [funcs[id] for id in funcids]
+
+    @wp.kernel
+    def eval(input: wp.array(dtype=int), output: wp.array(dtype=int)):
+        for i in range(wp.static(len(_funcs))):
+            output[0] = wp.static(_funcs[i])()
+
+    return eval
+
+
+def test_unresolved_static_expression(test, device):
+    # The module hash will need to be updated from the static expressions
+    # resolved at code generation time, since some of them cannot be evaluated
+    # at declaration time.
+    with wp.ScopedDevice(device):
+        output1 = wp.array((1,), dtype=int)
+        wp.launch(
+            unresolved_builder([0]),
+            dim=(1,),
+            inputs=[wp.array(np.array([0]), dtype=int)],
+            outputs=[output1],
+        )
+        test.assertEqual(output1.numpy()[0], 1)
+
+        output2 = wp.array((1,), dtype=int)
+        wp.launch(
+            unresolved_builder([1]),
+            dim=(1,),
+            inputs=[wp.array(np.array([1]), dtype=int)],
+            outputs=[output2],
+        )
+        test.assertEqual(output2.numpy()[0], 2)
+
+
 devices = get_test_devices()
 
 

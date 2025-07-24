@@ -33,6 +33,12 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import warp as wp
 
+# Determine the Git version/tag from CI environment variables.
+# 1. Check for GitHub Actions' variable.
+# 2. Check for GitLab CI's variable.
+# 3. Fallback to 'main' for local builds.
+github_version = os.environ.get("GITHUB_REF_NAME") or os.environ.get("CI_COMMIT_REF_NAME") or "main"
+
 # -- Project information -----------------------------------------------------
 
 project = "Warp"
@@ -82,12 +88,12 @@ autodoc_mock_imports = ["jax", "torch", "paddle", "pxr"]
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable", None),
-    "jax": ("https://jax.readthedocs.io/en/latest", None),
-    "pytorch": ("https://pytorch.org/docs/stable", None),
+    "jax": ("https://docs.jax.dev/en/latest", None),
+    "pytorch": ("https://docs.pytorch.org/docs/stable", None),
 }
 
 extlinks = {
-    "github": ("https://github.com/NVIDIA/warp/blob/main/%s", "%s"),
+    "github": (f"https://github.com/NVIDIA/warp/blob/{github_version}/%s", "%s"),
 }
 
 source_suffix = {
@@ -134,7 +140,7 @@ def linkcode_resolve(domain, info):
     filename = os.path.relpath(filename, start=os.path.dirname(wp.__file__))
     lines = f"#L{linenum}-L{linenum + len(source)}" if linenum else ""
 
-    return f"https://github.com/NVIDIA/warp/blob/v{version}/warp/{filename}{lines}"
+    return f"https://github.com/NVIDIA/warp/blob/{github_version}/warp/{filename}{lines}"
 
 
 # List of patterns, relative to source directory, that match files and
@@ -157,7 +163,15 @@ html_static_path = ["_static"]
 html_css_files = [
     "custom.css",
 ]
+html_context = {
+    "github_user": "NVIDIA",
+    "github_repo": "warp",
+    "github_version": github_version,
+    "doc_path": "docs",
+}
 html_theme_options = {
+    "secondary_sidebar_items": ["page-toc", "edit-this-page"],
+    "use_edit_page_button": True,
     "copyright_override": {"start": 2022},
     "pygments_light_style": "tango",
     "pygments_dark_style": "monokai",

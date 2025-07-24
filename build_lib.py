@@ -25,6 +25,7 @@ import shutil
 import subprocess
 import sys
 
+from warp.build import clear_kernel_cache, clear_lto_cache
 from warp.build_dll import build_dll, find_host_compiler, machine_architecture, set_msvc_env, verbose_cmd
 from warp.context import export_builtins
 
@@ -317,9 +318,22 @@ try:
 
         build_llvm.build_warp_clang(args, lib_name("warp-clang"))
 
+
 except Exception as e:
     # output build error
     print(f"Warp build error: {e}")
 
     # report error
     sys.exit(1)
+
+try:
+    is_gitlab_ci = os.getenv("GITLAB_CI") is not None
+
+    if not (is_gitlab_ci and platform.system() == "Windows"):
+        # Clear kernel cache (also initializes Warp)
+        clear_kernel_cache()
+        clear_lto_cache()
+    else:
+        print("Skipping kernel cache clearing in GitLab CI on Windows")
+except Exception as e:
+    print(f"Unable to clear kernel cache: {e}")

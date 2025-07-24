@@ -44,63 +44,67 @@ def create_sort_kernel(KEY_TYPE, MAX_SORT_LENGTH):
 
 
 def test_tile_sort(test, device):
-    for dtype in [int, float]:  # Loop over int and float keys
+    # Forward-declare kernels for more efficient compilation
+    kernels = {}
+    for dtype in [int, float]:
+        for i in range(0, 11):
+            length = 2**i + 1
+            kernels[(dtype, length)] = create_sort_kernel(dtype, length)
+
+    for (dtype, length), kernel in kernels.items():
         for j in range(5, 10):
             TILE_DIM = 2**j
-            for i in range(0, 11):  # Start from 1 to avoid zero-length cases
-                length = 2**i + 1
 
-                rng = np.random.default_rng(42)  # Create a random generator instance
+            rng = np.random.default_rng(42)  # Create a random generator instance
 
-                if dtype == int:
-                    np_keys = rng.choice(1000000000, size=length, replace=False)
-                else:  # dtype == float
-                    np_keys = rng.uniform(0, 1000000000, size=length)
+            if dtype == int:
+                np_keys = rng.choice(1000000000, size=length, replace=False)
+            else:  # dtype == float
+                np_keys = rng.uniform(0, 1000000000, size=length).astype(dtype)
 
-                np_values = np.arange(length)
+            np_values = np.arange(length)
 
-                # Generate random keys and iota indexer
-                input_keys = wp.array(np_keys, dtype=dtype, device=device)
-                input_values = wp.array(np_values, dtype=int, device=device)
-                output_keys = wp.zeros_like(input_keys, device=device)
-                output_values = wp.zeros_like(input_values, device=device)
+            # Generate random keys and iota indexer
+            input_keys = wp.array(np_keys, dtype=dtype, device=device)
+            input_values = wp.array(np_values, dtype=int, device=device)
+            output_keys = wp.zeros_like(input_keys, device=device)
+            output_values = wp.zeros_like(input_values, device=device)
 
-                # Execute sorting kernel
-                kernel = create_sort_kernel(dtype, length)
-                wp.launch_tiled(
-                    kernel,
-                    dim=1,
-                    inputs=[input_keys, input_values, output_keys, output_values],
-                    block_dim=TILE_DIM,
-                    device=device,
-                )
-                wp.synchronize()
+            # Execute sorting kernel
+            wp.launch_tiled(
+                kernel,
+                dim=1,
+                inputs=[input_keys, input_values, output_keys, output_values],
+                block_dim=TILE_DIM,
+                device=device,
+            )
+            wp.synchronize()
 
-                # Sort using NumPy for validation
-                sorted_indices = np.argsort(np_keys)
-                np_sorted_keys = np_keys[sorted_indices]
-                np_sorted_values = np_values[sorted_indices]
+            # Sort using NumPy for validation
+            sorted_indices = np.argsort(np_keys)
+            np_sorted_keys = np_keys[sorted_indices]
+            np_sorted_values = np_values[sorted_indices]
 
-                if dtype == int:
-                    keys_match = np.array_equal(output_keys.numpy(), np_sorted_keys)
-                else:  # dtype == float
-                    keys_match = np.allclose(output_keys.numpy(), np_sorted_keys, atol=1e-6)  # Use tolerance for floats
+            if dtype == int:
+                keys_match = np.array_equal(output_keys.numpy(), np_sorted_keys)
+            else:  # dtype == float
+                keys_match = np.allclose(output_keys.numpy(), np_sorted_keys, atol=1e-6)  # Use tolerance for floats
 
-                values_match = np.array_equal(output_values.numpy(), np_sorted_values)
+            values_match = np.array_equal(output_values.numpy(), np_sorted_values)
 
-                if not keys_match or not values_match:
-                    print(f"Test failed for dtype={dtype}, TILE_DIM={TILE_DIM}, length={length}")
-                    print("")
-                    print(output_keys.numpy())
-                    print(np_sorted_keys)
-                    print("")
-                    print(output_values.numpy())
-                    print(np_sorted_values)
-                    print("")
+            if not keys_match or not values_match:
+                print(f"Test failed for dtype={dtype}, TILE_DIM={TILE_DIM}, length={length}")
+                print("")
+                print(output_keys.numpy())
+                print(np_sorted_keys)
+                print("")
+                print(output_values.numpy())
+                print(np_sorted_values)
+                print("")
 
-                # Validate results
-                assert keys_match, f"Key sorting mismatch for dtype={dtype}!"
-                assert values_match, f"Value sorting mismatch for dtype={dtype}!"
+            # Validate results
+            test.assertTrue(keys_match, f"Key sorting mismatch for dtype={dtype}!")
+            test.assertTrue(values_match, f"Value sorting mismatch for dtype={dtype}!")
 
 
 devices = get_test_devices()

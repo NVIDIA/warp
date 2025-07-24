@@ -1692,7 +1692,7 @@ class ModuleHasher:
             ch.update(bytes(name, "utf-8"))
             ch.update(self.get_constant_bytes(value))
 
-        # hash wp.static() expressions that were evaluated at declaration time
+        # hash wp.static() expressions
         for k, v in adj.static_expressions.items():
             ch.update(bytes(k, "utf-8"))
             if isinstance(v, Function):
@@ -2011,6 +2011,9 @@ class Module:
         # is retained and later reloaded with the same hash.
         self.cpu_exec_id = 0
 
+        # Indicates whether the module has functions or kernels with unresolved static expressions.
+        self.has_unresolved_static_expressions = False
+
         self.options = {
             "max_unroll": warp.config.max_unroll,
             "enable_backward": warp.config.enable_backward,
@@ -2018,7 +2021,7 @@ class Module:
             "fuse_fp": True,
             "lineinfo": warp.config.lineinfo,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
-            "mode": warp.config.mode,
+            "mode": None,
             "block_dim": 256,
             "compile_time_trace": warp.config.compile_time_trace,
         }
@@ -2046,6 +2049,10 @@ class Module:
 
         # track all kernel objects, even if they are duplicates
         self._live_kernels.add(kernel)
+
+        # Check for unresolved static expressions in the kernel.
+        if kernel.adj.has_unresolved_static_expressions:
+            self.has_unresolved_static_expressions = True
 
         self.find_references(kernel.adj)
 
@@ -2106,6 +2113,10 @@ class Module:
                                 del func_existing.user_overloads[k]
                 func_existing.add_overload(func)
 
+        # Check for unresolved static expressions in the function.
+        if func.adj.has_unresolved_static_expressions:
+            self.has_unresolved_static_expressions = True
+
         self.find_references(func.adj)
 
         # for a reload of module on next launch
@@ -2165,7 +2176,7 @@ class Module:
         self.hashers[block_dim] = ModuleHasher(self)
         return self.hashers[block_dim].get_module_hash()
 
-    def load(self, device, block_dim=None) -> ModuleExec:
+    def load(self, device, block_dim=None) -> ModuleExec | None:
         device = runtime.get_device(device)
 
         # update module options if launching with a new block dim
@@ -2173,6 +2184,20 @@ class Module:
             self.options["block_dim"] = block_dim
 
         active_block_dim = self.options["block_dim"]
+
+        if self.has_unresolved_static_expressions:
+            # The module hash currently does not account for unresolved static expressions
+            # (only static expressions evaluated at declaration time so far).
+            # We need to generate the code for the functions and kernels that have
+            # unresolved static expressions and then compute the module hash again.
+            builder_options = {
+                **self.options,
+                "output_arch": None,
+            }
+            # build functions, kernels to resolve static expressions
+            _ = ModuleBuilder(self, builder_options)
+
+            self.has_unresolved_static_expressions = False
 
         # compute the hash if needed
         if active_block_dim not in self.hashers:
@@ -2262,6 +2287,8 @@ class Module:
 
                 module_load_timer.extra_msg = " (compiled)"  # For wp.ScopedTimer informational purposes
 
+                mode = self.options["mode"] if self.options["mode"] is not None else warp.config.mode
+
                 # build CPU
                 if device.is_cpu:
                     # build
@@ -2281,7 +2308,7 @@ class Module:
                             warp.build.build_cpu(
                                 output_path,
                                 source_code_path,
-                                mode=self.options["mode"],
+                                mode=mode,
                                 fast_math=self.options["fast_math"],
                                 verify_fp=warp.config.verify_fp,
                                 fuse_fp=self.options["fuse_fp"],
@@ -2311,7 +2338,7 @@ class Module:
                                 source_code_path,
                                 output_arch,
                                 output_path,
-                                config=self.options["mode"],
+                                config=mode,
                                 verify_fp=warp.config.verify_fp,
                                 fast_math=self.options["fast_math"],
                                 fuse_fp=self.options["fuse_fp"],
@@ -3761,6 +3788,7 @@ class Runtime:
             self.core.cuda_graph_create_exec.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
+                ctypes.c_void_p,
                 ctypes.POINTER(ctypes.c_void_p),
             ]
             self.core.cuda_graph_create_exec.restype = ctypes.c_bool
@@ -4066,9 +4094,14 @@ class Runtime:
             # Update the default PTX architecture based on devices present in the system.
             # Use the lowest architecture among devices that meet the minimum architecture requirement.
             # Devices below the required minimum will use the highest architecture they support.
-            eligible_archs = [d.arch for d in self.cuda_devices if d.arch >= self.default_ptx_arch]
-            if eligible_archs:
-                self.default_ptx_arch = min(eligible_archs)
+            try:
+                self.default_ptx_arch = min(
+                    d.arch
+                    for d in self.cuda_devices
+                    if d.arch >= self.default_ptx_arch and d.arch in self.nvrtc_supported_archs
+                )
+            except ValueError:
+                pass  # no eligible NVRTC-supported arch ≥ default, retain existing
         else:
             # CUDA not available
             self.set_default_device("cpu")
@@ -6255,6 +6288,40 @@ def get_module_options(module: Any = None) -> dict[str, Any]:
     return get_module(m.__name__).options
 
 
+def _unregister_capture(device: Device, stream: Stream, graph: Graph):
+    """Unregister a graph capture from the device and runtime.
+
+    This should be called when a graph capture is no longer active, either because it completed or was paused.
+    The graph should only be registered while it is actively capturing.
+
+    Args:
+        device: The CUDA device the graph was being captured on
+        stream: The CUDA stream the graph was being captured on
+        graph: The Graph object that was being captured
+    """
+    del device.captures[stream]
+    del runtime.captures[graph.capture_id]
+
+
+def _register_capture(device: Device, stream: Stream, graph: Graph, capture_id: int):
+    """Register a graph capture with the device and runtime.
+
+    Makes the graph discoverable through its capture_id so that retain_module_exec() can be called
+    when launching kernels during graph capture. This ensures modules are retained until graph execution completes.
+
+    Args:
+        device: The CUDA device the graph is being captured on
+        stream: The CUDA stream the graph is being captured on
+        graph: The Graph object being captured
+        capture_id: Unique identifier for this graph capture
+    """
+    # add to ongoing captures on the device
+    device.captures[stream] = graph
+
+    # add to lookup table by globally unique capture id
+    runtime.captures[capture_id] = graph
+
+
 def capture_begin(
     device: Devicelike = None,
     stream: Stream | None = None,
@@ -6320,11 +6387,7 @@ def capture_begin(
     capture_id = runtime.core.cuda_stream_get_capture_id(stream.cuda_stream)
     graph = Graph(device, capture_id)
 
-    # add to ongoing captures on the device
-    device.captures[stream] = graph
-
-    # add to lookup table by globally unique capture id
-    runtime.captures[capture_id] = graph
+    _register_capture(device, stream, graph, capture_id)
 
 
 def capture_end(device: Devicelike = None, stream: Stream | None = None) -> Graph:
@@ -6352,8 +6415,7 @@ def capture_end(device: Devicelike = None, stream: Stream | None = None) -> Grap
     if graph is None:
         raise RuntimeError("Graph capture is not active on this stream")
 
-    del device.captures[stream]
-    del runtime.captures[graph.capture_id]
+    _unregister_capture(device, stream, graph)
 
     # get the graph executable
     g = ctypes.c_void_p()
@@ -6393,7 +6455,7 @@ def assert_conditional_graph_support():
         raise RuntimeError("Conditional graph nodes require CUDA driver 12.4+")
 
 
-def capture_pause(device: Devicelike = None, stream: Stream | None = None) -> ctypes.c_void_p:
+def capture_pause(device: Devicelike = None, stream: Stream | None = None) -> Graph:
     if stream is not None:
         device = stream.device
     else:
@@ -6402,14 +6464,24 @@ def capture_pause(device: Devicelike = None, stream: Stream | None = None) -> ct
             raise RuntimeError("Must be a CUDA device")
         stream = device.stream
 
-    graph = ctypes.c_void_p()
-    if not runtime.core.cuda_graph_pause_capture(device.context, stream.cuda_stream, ctypes.byref(graph)):
+    # get the graph being captured
+    graph = device.captures.get(stream)
+
+    if graph is None:
+        raise RuntimeError("Graph capture is not active on this stream")
+
+    _unregister_capture(device, stream, graph)
+
+    g = ctypes.c_void_p()
+    if not runtime.core.cuda_graph_pause_capture(device.context, stream.cuda_stream, ctypes.byref(g)):
         raise RuntimeError(runtime.get_error_string())
+
+    graph.graph = g
 
     return graph
 
 
-def capture_resume(graph: ctypes.c_void_p, device: Devicelike = None, stream: Stream | None = None):
+def capture_resume(graph: Graph, device: Devicelike = None, stream: Stream | None = None):
     if stream is not None:
         device = stream.device
     else:
@@ -6418,8 +6490,13 @@ def capture_resume(graph: ctypes.c_void_p, device: Devicelike = None, stream: St
             raise RuntimeError("Must be a CUDA device")
         stream = device.stream
 
-    if not runtime.core.cuda_graph_resume_capture(device.context, stream.cuda_stream, graph):
+    if not runtime.core.cuda_graph_resume_capture(device.context, stream.cuda_stream, graph.graph):
         raise RuntimeError(runtime.get_error_string())
+
+    capture_id = runtime.core.cuda_stream_get_capture_id(stream.cuda_stream)
+    graph.capture_id = capture_id
+
+    _register_capture(device, stream, graph, capture_id)
 
 
 # reusable pinned readback buffer for conditions
@@ -6518,10 +6595,15 @@ def capture_if(
 
     # pause capturing parent graph
     main_graph = capture_pause(stream=stream)
+    # store the pointer to the cuda graph to restore it later
+    main_graph_ptr = main_graph.graph
 
     # capture if-graph
     if on_true is not None:
-        capture_resume(graph_on_true, stream=stream)
+        # temporarily repurpose the main_graph python object such that all dependencies
+        # added through retain_module_exec() end up in the correct python graph object
+        main_graph.graph = graph_on_true
+        capture_resume(main_graph, stream=stream)
         if isinstance(on_true, Callable):
             on_true(**kwargs)
         elif isinstance(on_true, Graph):
@@ -6541,7 +6623,10 @@ def capture_if(
 
     # capture else-graph
     if on_false is not None:
-        capture_resume(graph_on_false, stream=stream)
+        # temporarily repurpose the main_graph python object such that all dependencies
+        # added through retain_module_exec() end up in the correct python graph object
+        main_graph.graph = graph_on_false
+        capture_resume(main_graph, stream=stream)
         if isinstance(on_false, Callable):
             on_false(**kwargs)
         elif isinstance(on_false, Graph):
@@ -6558,6 +6643,9 @@ def capture_if(
         else:
             raise TypeError("on_false must be a Callable or a Graph")
         capture_pause(stream=stream)
+
+    # restore the main graph to its original state
+    main_graph.graph = main_graph_ptr
 
     # resume capturing parent graph
     capture_resume(main_graph, stream=stream)
@@ -6641,7 +6729,13 @@ def capture_while(condition: warp.array(dtype=int), while_body: Callable | Graph
 
     # pause capturing parent graph and start capturing child graph
     main_graph = capture_pause(stream=stream)
-    capture_resume(body_graph, stream=stream)
+    # store the pointer to the cuda graph to restore it later
+    main_graph_ptr = main_graph.graph
+
+    # temporarily repurpose the main_graph python object such that all dependencies
+    # added through retain_module_exec() end up in the correct python graph object
+    main_graph.graph = body_graph
+    capture_resume(main_graph, stream=stream)
 
     # capture while-body
     if isinstance(while_body, Callable):
@@ -6670,6 +6764,8 @@ def capture_while(condition: warp.array(dtype=int), while_body: Callable | Graph
 
     # stop capturing child graph and resume capturing parent graph
     capture_pause(stream=stream)
+    # restore the main graph to its original state
+    main_graph.graph = main_graph_ptr
     capture_resume(main_graph, stream=stream)
 
 
@@ -6691,7 +6787,9 @@ def capture_launch(graph: Graph, stream: Stream | None = None):
 
     if graph.graph_exec is None:
         g = ctypes.c_void_p()
-        result = runtime.core.cuda_graph_create_exec(graph.device.context, graph.graph, ctypes.byref(g))
+        result = runtime.core.cuda_graph_create_exec(
+            graph.device.context, stream.cuda_stream, graph.graph, ctypes.byref(g)
+        )
         if not result:
             raise RuntimeError(f"Graph creation error: {runtime.get_error_string()}")
         graph.graph_exec = g

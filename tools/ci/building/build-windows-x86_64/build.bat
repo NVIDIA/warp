@@ -36,7 +36,7 @@ call %PYTHON% -m pip install cmake
 call %PYTHON% -m pip install ninja
 
 :: Build
-call %PYTHON% "%~dp0..\..\..\..\build_lib.py" ^
+call %PYTHON% -u "%~dp0..\..\..\..\build_lib.py" ^
     --msvc_path="%~dp0..\..\..\..\_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133" ^
     --sdk_path="%~dp0..\..\..\..\_build\host-deps\winsdk" ^
     --cuda_path="%~dp0..\..\..\..\_build\target-deps\cuda" ^

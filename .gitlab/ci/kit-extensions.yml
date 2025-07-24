@@ -55,8 +55,11 @@ linux-x86_64 extension omni.warp.core test:
   needs:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 build
+  image: 
+    name: gitlab-master.nvidia.com:5005/omniverse/devplat/terraform/nvks/runners/gpu/nvks-gstreamer:2.1.5
+    entrypoint: [""]
   extends:
-    - .runner-test-linux-x86_64-gpu
+    - .omni_nvks_gpu_570_test
   before_script:
     - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
     - export TEST_KIT_EXT="omni.warp.core"
@@ -75,8 +78,6 @@ windows-x86_64 extension omni.warp.core test:
   needs:
     - pipeline: $PARENT_PIPELINE_ID
       job: windows-x86_64 build
-  extends:
-    - .runner-test-windows-x86_64-gpu
   before_script:
     - tools\packman\packman.cmd pull -p windows-x86_64 deps/kit-deps.packman.xml
     - $env:TEST_KIT_EXT = "omni.warp.core"
@@ -88,14 +89,19 @@ windows-x86_64 extension omni.warp.core test:
       - "./_testoutput"
     expire_in: 1 week
     when: always
+  tags:
+    - win-x86_64-gpu-1x-573.42
 
 linux-x86_64 extension omni.warp test:
   stage: test
   needs:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 build
+  image: 
+    name: gitlab-master.nvidia.com:5005/omniverse/devplat/terraform/nvks/runners/gpu/nvks-gstreamer:2.1.5
+    entrypoint: [""]
   extends:
-    - .runner-test-linux-x86_64-gpu
+    - .omni_nvks_gpu_570_test
   before_script:
     - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
     - export TEST_KIT_EXT="omni.warp"
@@ -114,8 +120,6 @@ windows-x86_64 extension omni.warp test:
   needs:
     - pipeline: $PARENT_PIPELINE_ID
       job: windows-x86_64 build
-  extends:
-    - .runner-test-windows-x86_64-gpu
   before_script:
     - tools\packman\packman.cmd pull -p windows-x86_64 deps/kit-deps.packman.xml
     - $env:TEST_KIT_EXT = "omni.warp"
@@ -127,6 +131,8 @@ windows-x86_64 extension omni.warp test:
       - "./_testoutput"
     expire_in: 1 week
     when: always
+  tags:
+    - win-x86_64-gpu-1x-573.42
 
 # ==============================================================================
 # Packaging Jobs

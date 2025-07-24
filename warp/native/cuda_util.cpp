@@ -212,7 +212,7 @@ bool init_cuda_driver()
     get_driver_entry_point("cuDeviceGetCount", 2000, &(void*&)pfn_cuDeviceGetCount);
     get_driver_entry_point("cuDeviceGetName", 2000, &(void*&)pfn_cuDeviceGetName);
     get_driver_entry_point("cuDeviceGetAttribute", 2000, &(void*&)pfn_cuDeviceGetAttribute);
-    get_driver_entry_point("cuDeviceGetUuid", 110400, &(void*&)pfn_cuDeviceGetUuid);
+    get_driver_entry_point("cuDeviceGetUuid", 11040, &(void*&)pfn_cuDeviceGetUuid);
     get_driver_entry_point("cuDevicePrimaryCtxRetain", 7000, &(void*&)pfn_cuDevicePrimaryCtxRetain);
     get_driver_entry_point("cuDevicePrimaryCtxRelease", 11000, &(void*&)pfn_cuDevicePrimaryCtxRelease);
     get_driver_entry_point("cuDeviceCanAccessPeer", 4000, &(void*&)pfn_cuDeviceCanAccessPeer);

@@ -209,8 +209,12 @@ float balance_color_groups(float target_max_min_ratio,
     do
     {
         int biggest_group = -1, smallest_group = -1;
-
+        float prev_max_min_ratio = max_min_ratio;
         max_min_ratio = find_largest_smallest_groups(color_groups, biggest_group, smallest_group);
+
+        if (prev_max_min_ratio > 0 && prev_max_min_ratio < max_min_ratio) {
+            return max_min_ratio;
+        }
 
         // graph is not optimizable anymore or target ratio reached
         if (color_groups[biggest_group].size() - color_groups[smallest_group].size() <= 2 
