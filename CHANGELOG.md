@@ -108,6 +108,7 @@
   ([GH-810](https://github.com/NVIDIA/warp/issues/810)).
 - Fix a bug in `OpenGLRenderer` where meshes with different `scale` attributes were incorrectly instanced, causing
   them all to be rendered with the same scale `OpenGLRenderer` ([GH-828](https://github.com/NVIDIA/warp/issues/828)).
+- Fix support for write operations on nested matrices ([GH-793](https://github.com/NVIDIA/warp/issues/793)).
 
 ## [1.8.0] - 2025-07-01
 
