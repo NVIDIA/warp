@@ -116,11 +116,11 @@ class Example:
             values={"ang_vel": ang_vel},
         )
 
-        side_test = fem.make_test(space=scalar_space, domain=sides)
+        self._side_test = fem.make_test(space=scalar_space, domain=sides)
         side_trial = fem.make_trial(space=scalar_space, domain=sides)
         fem.integrate(
             upwind_transport_form,
-            fields={"phi": side_trial, "psi": side_test},
+            fields={"phi": side_trial, "psi": self._side_test},
             values={"ang_vel": ang_vel},
             output=matrix_transport,
             add=True,
@@ -132,7 +132,7 @@ class Example:
         )
         matrix_diffusion += fem.integrate(
             sip_diffusion_form,
-            fields={"phi": side_trial, "psi": side_test},
+            fields={"phi": side_trial, "psi": self._side_test},
         )
         self._matrix = matrix_inertia + matrix_transport + viscosity * matrix_diffusion
 
@@ -140,8 +140,12 @@ class Example:
         self._phi_field = scalar_space.make_field()
         fem.interpolate(initial_condition, dest=self._phi_field)
 
+        self._phi_curvature_field = scalar_space.make_field()
+        self._compute_phi_curvature()
+
         self.renderer = fem_example_utils.Plot()
         self.renderer.add_field("phi", self._phi_field)
+        self.renderer.add_field("phi_curvature", self._phi_curvature_field)
 
     def step(self):
         self.current_frame += 1
@@ -154,12 +158,29 @@ class Example:
 
         phi = wp.zeros_like(rhs)
         fem_example_utils.bsr_cg(self._matrix, b=rhs, x=phi, method="bicgstab", quiet=self._quiet)
-
         wp.utils.array_cast(in_array=phi, out_array=self._phi_field.dof_values)
+
+        # for visualization purposes only
+        self._compute_phi_curvature()
+
+    def _compute_phi_curvature(self):
+        fem.integrate(
+            diffusion_form,
+            fields={"u": self._phi_field, "v": self._test},
+            output=self._phi_curvature_field.dof_values,
+        )
+        fem.integrate(
+            sip_diffusion_form,
+            fields={"phi": self._phi_field.trace(), "psi": self._side_test},
+            output=self._phi_curvature_field.dof_values,
+            add=True,
+        )
 
     def render(self):
         self.renderer.begin_frame(time=self.current_frame * self.sim_dt)
         self.renderer.add_field("phi", self._phi_field)
+        self.renderer.add_field("phi_curvature", self._phi_curvature_field)
+
         self.renderer.end_frame()
 
 

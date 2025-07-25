@@ -232,7 +232,7 @@ class NodalFieldBase(DiscreteField):
             @cache.dynamic_func(suffix=self.name)
             def eval_grad_outer_world_space(args: self.ElementEvalArg, s: Sample):
                 grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
-                return eval_grad_outer_ref_space(args, s, grad_transform)
+                return eval_grad_outer(args, s, grad_transform)
 
             return eval_grad_outer_world_space
         else:
@@ -240,7 +240,7 @@ class NodalFieldBase(DiscreteField):
             @cache.dynamic_func(suffix=self.name)
             def eval_grad_outer_ref_space(args: self.ElementEvalArg, s: Sample):
                 grad_transform = 1.0
-                return eval_grad_outer_ref_space(args, s, grad_transform)
+                return eval_grad_outer(args, s, grad_transform)
 
             return eval_grad_outer_ref_space
 
