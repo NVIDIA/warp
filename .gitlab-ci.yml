@@ -490,7 +490,7 @@ linux-x86_64 test mujoco warp:
     - source .venv/bin/activate
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - pytest --pyargs mujoco_warp --junit-xml=rspec.xml
+    - pytest -n 4 --pyargs mujoco_warp --junit-xml=rspec.xml
 
 # Ensure minimum Python version is supported
 linux-x86_64 python 3.8 test:
