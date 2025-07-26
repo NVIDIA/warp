@@ -315,7 +315,8 @@ linux-x86_64 test:
     - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
 
 # A temporary job for testing on Blackwell until more runners are available
-linux-x86_64-blackwell test:
+# TODO: Reenable once outage is resolved
+.linux-x86_64-blackwell test:
   needs: [linux-x86_64 build]
   image: ubuntu:22.04
   extends:
