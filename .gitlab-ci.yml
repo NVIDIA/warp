@@ -315,7 +315,8 @@ linux-x86_64 test:
     - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
 
 # A temporary job for testing on Blackwell until more runners are available
-linux-x86_64-blackwell test:
+# TODO: Reenable once outage is resolved
+.linux-x86_64-blackwell test:
   needs: [linux-x86_64 build]
   image: ubuntu:22.04
   extends:
@@ -486,11 +487,11 @@ linux-x86_64 test mujoco warp:
     - uv pip install -e .
     - uv pip install --pre mujoco -f https://py.mujoco.org/
     - uv pip install "git+https://github.com/google-deepmind/mujoco_warp@main"
-    - uv pip install pytest "jax[cuda12]"
+    - uv pip install pytest pytest-xdist "jax[cuda12]"
     - source .venv/bin/activate
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - pytest --pyargs mujoco_warp --junit-xml=rspec.xml
+    - pytest -n 4 --pyargs mujoco_warp --junit-xml=rspec.xml
 
 # Ensure minimum Python version is supported
 linux-x86_64 python 3.8 test:
