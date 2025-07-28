@@ -558,6 +558,7 @@ inline CUDA_CALLABLE mat_t<RowSliceLength, ColSliceLength, Type> extract(const m
         ++ii;
     }
 
+    assert(ii == RowSliceLength);
     return ret;
 }
 
@@ -597,6 +598,7 @@ inline CUDA_CALLABLE vec_t<RowSliceLength, Type> extract(const mat_t<Rows,Cols,T
         ++ii;
     }
 
+    assert(ii == RowSliceLength);
     return ret;
 }
 
@@ -636,6 +638,7 @@ inline CUDA_CALLABLE vec_t<ColSliceLength, Type> extract(const mat_t<Rows,Cols,T
         ++ii;
     }
 
+    assert(ii == ColSliceLength);
     return ret;
 }
 
@@ -675,9 +678,11 @@ inline CUDA_CALLABLE mat_t<RowSliceLength, ColSliceLength, Type> extract(const m
             ++jj;
         }
 
+        assert(jj == ColSliceLength);
         ++ii;
     }
 
+    assert(ii == RowSliceLength);
     return ret;
 }
 
@@ -847,6 +852,8 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
 
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -916,6 +923,8 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
         m.data[i][col] += value.c[ii];
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -985,6 +994,8 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t
         m.data[row][i] += value.c[ii];
         ++ii;
     }
+
+    assert(ii == ColSliceLength);
 }
 
 
@@ -1054,8 +1065,11 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
             ++jj;
         }
 
+        assert(jj == ColSliceLength);
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -1171,6 +1185,8 @@ inline CUDA_CALLABLE void adj_add_inplace(
 
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -1246,6 +1262,8 @@ inline CUDA_CALLABLE void adj_add_inplace(
         adj_value.c[ii] += adj_m.data[i][col];
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -1321,6 +1339,8 @@ inline CUDA_CALLABLE void adj_add_inplace(
         adj_value.c[ii] += adj_m.data[row][i];
         ++ii;
     }
+
+    assert(ii == ColSliceLength);
 }
 
 
@@ -1396,8 +1416,11 @@ inline CUDA_CALLABLE void adj_add_inplace(
             ++jj;
         }
 
+        assert(jj == ColSliceLength);
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -1505,6 +1528,8 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
 
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -1574,6 +1599,8 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
         m.data[i][col] -= value.c[ii];
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -1643,6 +1670,8 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t
         m.data[row][i] -= value.c[ii];
         ++ii;
     }
+
+    assert(ii == ColSliceLength);
 }
 
 
@@ -1712,8 +1741,11 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
             ++jj;
         }
 
+        assert(jj == ColSliceLength);
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -1829,6 +1861,8 @@ inline CUDA_CALLABLE void adj_sub_inplace(
 
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -1904,6 +1938,8 @@ inline CUDA_CALLABLE void adj_sub_inplace(
         adj_value.c[ii] -= adj_m.data[i][col];
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -1979,6 +2015,8 @@ inline CUDA_CALLABLE void adj_sub_inplace(
         adj_value.c[ii] -= adj_m.data[row][i];
         ++ii;
     }
+
+    assert(ii == ColSliceLength);
 }
 
 
@@ -2054,8 +2092,11 @@ inline CUDA_CALLABLE void adj_sub_inplace(
             ++jj;
         }
 
+        assert(jj == ColSliceLength);
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -2163,6 +2204,8 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_s
 
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -2232,6 +2275,8 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_s
         m.data[i][col] = value.c[ii];
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -2301,6 +2346,8 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, int row, slic
         m.data[row][i] = value.c[ii];
         ++ii;
     }
+
+    assert(ii == ColSliceLength);
 }
 
 
@@ -2370,8 +2417,11 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_s
             ++jj;
         }
 
+        assert(jj == ColSliceLength);
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -2487,6 +2537,8 @@ inline CUDA_CALLABLE void adj_assign_inplace(
 
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -2562,6 +2614,8 @@ inline CUDA_CALLABLE void adj_assign_inplace(
         adj_value.c[ii] += adj_m.data[i][col];
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -2637,6 +2691,8 @@ inline CUDA_CALLABLE void adj_assign_inplace(
         adj_value.c[ii] += adj_m.data[row][i];
         ++ii;
     }
+
+    assert(ii == ColSliceLength);
 }
 
 
@@ -2712,8 +2768,11 @@ inline CUDA_CALLABLE void adj_assign_inplace(
             ++jj;
         }
 
+        assert(jj == ColSliceLength);
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -2993,6 +3052,8 @@ inline CUDA_CALLABLE void adj_assign_copy(
             ++ii;
         }
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -3111,6 +3172,8 @@ inline CUDA_CALLABLE void adj_assign_copy(
             ++ii;
         }
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -3228,6 +3291,8 @@ inline CUDA_CALLABLE void adj_assign_copy(
             }
         }
     }
+
+    assert(ii == ColSliceLength);
 }
 
 
@@ -3338,9 +3403,12 @@ inline CUDA_CALLABLE void adj_assign_copy(
                 }
             }
 
+            assert(jj == ColSliceLength);
             ++ii;
         }
     }
+
+    assert(ii == RowSliceLength);
 }
 
 
@@ -4065,6 +4133,8 @@ inline CUDA_CALLABLE void adj_extract(
 
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 template<unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
@@ -4104,6 +4174,8 @@ inline CUDA_CALLABLE void adj_extract(
         adj_m.data[i][col] += adj_ret.c[ii];
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
@@ -4143,6 +4215,8 @@ inline CUDA_CALLABLE void adj_extract(
         adj_m.data[row][i] += adj_ret.c[ii];
         ++ii;
     }
+
+    assert(ii == ColSliceLength);
 }
 
 template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
@@ -4183,8 +4257,11 @@ inline CUDA_CALLABLE void adj_extract(
             ++jj;
         }
 
+        assert(jj == ColSliceLength);
         ++ii;
     }
+
+    assert(ii == RowSliceLength);
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>

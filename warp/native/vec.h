@@ -535,6 +535,7 @@ inline CUDA_CALLABLE vec_t<SliceLength, Type> extract(const vec_t<Length, Type> 
         ++ii;
     }
 
+    assert(ii == SliceLength);
     return ret;
 }
 
@@ -652,6 +653,8 @@ inline CUDA_CALLABLE void add_inplace(vec_t<Length, Type>& v, slice_t slice, con
         v[i] += a[ii];
         ++ii;
     }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -722,6 +725,8 @@ inline CUDA_CALLABLE void adj_add_inplace(
         adj_a[ii] += adj_v[i];
         ++ii;
     }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -785,6 +790,8 @@ inline CUDA_CALLABLE void sub_inplace(vec_t<Length, Type>& v, slice_t slice, con
         v[i] -= a[ii];
         ++ii;
     }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -855,6 +862,8 @@ inline CUDA_CALLABLE void adj_sub_inplace(
         adj_a[ii] -= adj_v[i];
         ++ii;
     }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -916,6 +925,8 @@ inline CUDA_CALLABLE void assign_inplace(vec_t<Length, Type>& v, slice_t slice, 
         v[i] = a[ii];
         ++ii;
     }
+
+    assert(ii == SliceLength);
 }
 
 template<unsigned Length, typename Type>
@@ -983,6 +994,8 @@ inline CUDA_CALLABLE void adj_assign_inplace(
         adj_a[ii] += adj_v[i];
         ++ii;
     }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -1106,6 +1119,8 @@ inline CUDA_CALLABLE void adj_assign_copy(
             ++ii;
         }
     }
+
+    assert(ii == SliceLength);
 }
 
 template<unsigned Length, typename Type>
@@ -1698,6 +1713,8 @@ inline CUDA_CALLABLE void adj_extract(
         adj_a[i] += adj_ret[ii];
         ++ii;
     }
+
+    assert(ii == SliceLength);
 }
 
 template<unsigned Length, typename Type>

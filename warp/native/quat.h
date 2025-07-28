@@ -623,6 +623,8 @@ inline CUDA_CALLABLE void add_inplace(quat_t<Type>& q, slice_t slice, const vec_
         q[i] += a[ii];
         ++ii;
     }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -693,6 +695,8 @@ inline CUDA_CALLABLE void adj_add_inplace(
         adj_a[ii] += adj_q[i];
         ++ii;
     }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -756,6 +760,8 @@ inline CUDA_CALLABLE void sub_inplace(quat_t<Type>& q, slice_t slice, const vec_
         q[i] -= a[ii];
         ++ii;
     }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -826,6 +832,8 @@ inline CUDA_CALLABLE void adj_sub_inplace(
         adj_a[ii] -= adj_q[i];
         ++ii;
     }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -889,6 +897,8 @@ inline CUDA_CALLABLE void assign_inplace(quat_t<Type>& q, slice_t slice, const v
         q[i] = a[ii];
         ++ii;
     }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -958,6 +968,8 @@ inline CUDA_CALLABLE void adj_assign_inplace(
         adj_a[ii] += adj_q[i];
         ++ii;
     }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -1084,6 +1096,8 @@ inline CUDA_CALLABLE void adj_assign_copy(
             ++ii;
         }
     }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -1148,6 +1162,8 @@ inline CUDA_CALLABLE void adj_extract(
         adj_a[i] += adj_ret[ii];
         ++ii;
     }
+
+    assert(ii == SliceLength);
 }
 
 
