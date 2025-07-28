@@ -1016,12 +1016,11 @@ just focus on the differences:
 
 - :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` does not take a ``launch_dims`` argument,
   since the target function is responsible for launching kernels using appropriate dimensions.
-- :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` takes an optional Boolean
-  ``graph_compatible`` argument, which defaults to ``True``.
-  This argument determines whether JAX can capture the function in a CUDA graph.
-  It is generally desirable, since CUDA graphs can greatly improve the application performance.
-  However, if the target function performs operations that are not allowed during graph capture, it may lead to errors.
-  This includes any operations that require synchronization with the host. In such cases, pass ``graph_compatible=False``.
+- :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` takes an optional ``graph_mode`` argument, which determines how the callable can be captured in a CUDA graph.
+  Graphs are generally desirable, since they can greatly improve the application performance.
+  ``GraphMode.JAX`` (default) lets JAX capture the graph, which may be used as a subgraph in an enclosing capture for maximal benefit.
+  ``GraphMode.WARP`` lets Warp capture the graph. Use this mode when the callable cannot be used as a subgraph, such as when the callable uses conditional graph nodes.
+  ``GraphMode.NONE`` disables graph capture. Use this mode if the callable performs operations that are not allowed during graph capture, such as host synchronization.
 
 See `example_jax_callable.py <https://github.com/NVIDIA/warp/tree/main/warp/examples/interop/example_jax_callable.py>`_ for examples.
 
