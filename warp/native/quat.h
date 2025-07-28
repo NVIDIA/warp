@@ -459,7 +459,7 @@ inline CUDA_CALLABLE quat_t<Type> quat_from_matrix(const mat_t<Rows,Cols,Type>& 
 template<typename Type>
 inline CUDA_CALLABLE Type extract(const quat_t<Type>& a, int idx)
 {
-#if FP_CHECK
+#ifndef NDEBUG
     if (idx < -4 || idx >= 4)
     {
         printf("quat_t index %d out of bounds at %s %d", idx, __FILE__, __LINE__);
@@ -1104,7 +1104,7 @@ CUDA_CALLABLE inline void adj_lerp(const quat_t<Type>& a, const quat_t<Type>& b,
 template<typename Type>
 inline CUDA_CALLABLE void adj_extract(const quat_t<Type>& a, int idx, quat_t<Type>& adj_a, int & adj_idx, Type & adj_ret)
 {
-#if FP_CHECK
+#ifndef NDEBUG
     if (idx < -4 || idx >= 4)
     {
         printf("quat_t index %d out of bounds at %s %d", idx, __FILE__, __LINE__);
