@@ -12,6 +12,7 @@
 - Memory address of warp arrays can now be retrieved in kernels as `array.ptr` ([GH-819](https://github.com/NVIDIA/warp/issues/819)).
 - Add support for using struct types in `wp.array()` constructor inside kernels ([GH-853](https://github.com/NVIDIA/warp/issues/853)).
 - Add documentation for creating and manipulating Warp structured arrays using NumPy ([GH-852](https://github.com/NVIDIA/warp/issues/852)).
+- Support capturing `jax_callable()` using Warp via the new `graph_mode` parameter (`GraphMode.WARP`), enabling capture of graphs with conditional nodes that cannot be used as subgraphs in a JAX capture ([GH-848](https://github.com/NVIDIA/warp/issues/848)).
 
 
 ### Changed
@@ -25,7 +26,7 @@
 - Constructing wp.array objects from a pointer inside Warp kernels (e.g., wp.array(ptr=..., shape=...)) no longer requires the shape to be a compile-time constant, allowing for greater flexibility.
  - warp.sparse can now operate efficiently on sparse matrices with arbitrarily-sized blocks, and leverage tiled computations when relevant ([GH-838](https://github.com/NVIDIA/warp/issues/838)).
  - `warp.fem.integrate` may now leverage tile-based computations for accumulating over quadrature points ([GH-854](https://github.com/NVIDIA/warp/issues/854)).
-
+- Deprecate the `graph_compatible` boolean flag in `jax_callable()` in favor of the new `graph_mode` argument with `GraphMode` enum (e.g., `GraphMode.JAX`, `GraphMode.WARP`, `GraphMode.NONE`) ([GH-848](https://github.com/NVIDIA/warp/issues/848)).
 
 ### Fixed
 
