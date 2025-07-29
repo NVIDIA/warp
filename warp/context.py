@@ -461,6 +461,25 @@ class Function:
         # failed  to find overload
         return None
 
+    def build(self, builder: ModuleBuilder | None):
+        self.adj.build(builder)
+
+        # complete the function return type after we have analyzed it (inferred from return statement in ast)
+        if not self.value_func:
+
+            def wrap(adj):
+                def value_type(arg_types, arg_values):
+                    if adj.return_var is None or len(adj.return_var) == 0:
+                        return None
+                    if len(adj.return_var) == 1:
+                        return adj.return_var[0].type
+                    else:
+                        return [v.type for v in adj.return_var]
+
+                return value_type
+
+            self.value_func = wrap(self.adj)
+
     def __repr__(self):
         inputs_str = ", ".join([f"{k}: {warp.types.type_repr(v)}" for k, v in self.input_types.items()])
         return f"<Function {self.key}({inputs_str})>"
@@ -1783,23 +1802,7 @@ class ModuleBuilder:
         if func in self.functions:
             return
         else:
-            func.adj.build(self)
-
-            # complete the function return type after we have analyzed it (inferred from return statement in ast)
-            if not func.value_func:
-
-                def wrap(adj):
-                    def value_type(arg_types, arg_values):
-                        if adj.return_var is None or len(adj.return_var) == 0:
-                            return None
-                        if len(adj.return_var) == 1:
-                            return adj.return_var[0].type
-                        else:
-                            return [v.type for v in adj.return_var]
-
-                    return value_type
-
-                func.value_func = wrap(func.adj)
+            func.build(self)
 
             # use dict to preserve import order
             self.functions[func] = None

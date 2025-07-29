@@ -1427,20 +1427,25 @@ class Adjoint:
         bound_args = bound_args.arguments
 
         # if it is a user-function then build it recursively
-        if not func.is_builtin() and func not in adj.builder.functions:
-            adj.builder.build_function(func)
-            # add custom grad, replay functions to the list of functions
-            # to be built later (invalid code could be generated if we built them now)
-            # so that they are not missed when only the forward function is imported
-            # from another module
-            if func.custom_grad_func:
-                adj.builder.deferred_functions.append(func.custom_grad_func)
-            if func.custom_replay_func:
-                adj.builder.deferred_functions.append(func.custom_replay_func)
+        if not func.is_builtin():
+            if adj.builder is None:
+                func.build(None)
+
+            elif func not in adj.builder.functions:
+                adj.builder.build_function(func)
+                # add custom grad, replay functions to the list of functions
+                # to be built later (invalid code could be generated if we built them now)
+                # so that they are not missed when only the forward function is imported
+                # from another module
+                if func.custom_grad_func:
+                    adj.builder.deferred_functions.append(func.custom_grad_func)
+                if func.custom_replay_func:
+                    adj.builder.deferred_functions.append(func.custom_replay_func)
 
         # Resolve the return value based on the types and values of the given arguments.
         bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.items()}
         bound_arg_values = {k: get_arg_value(v) for k, v in bound_args.items()}
+
         return_type = func.value_func(
             {k: strip_reference(v) for k, v in bound_arg_types.items()},
             bound_arg_values,
@@ -2385,7 +2390,8 @@ class Adjoint:
 
             # struct constructor
             if func is None and isinstance(caller, Struct):
-                adj.builder.build_struct_recursive(caller)
+                if adj.builder is not None:
+                    adj.builder.build_struct_recursive(caller)
                 if node.args or node.keywords:
                     func = caller.value_constructor
                 else:

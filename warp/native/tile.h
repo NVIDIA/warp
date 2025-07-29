@@ -1841,11 +1841,17 @@ inline CUDA_CALLABLE void adj_tile_atomic_add(array_t<T>& dest, int x, int y, in
 
 
 // unary map
-template <typename Tile, typename Fwd>
-inline CUDA_CALLABLE auto tile_map(Fwd op,
-                                   Tile &a)
+template <typename Tile, typename Fwd, typename ReturnTile>
+inline CUDA_CALLABLE auto tile_map(Fwd op, Tile &a, ReturnTile &r)
 {
-    auto out = tile_register_like<Tile>();
+    // verify shapes and sizes are compatible
+    using ShapeIn = typename Tile::Layout::Shape;
+    using ShapeOut = typename ReturnTile::Layout::Shape;
+
+    static_assert(ShapeIn::N == ShapeOut::N, "Number of tile dimensions must match for unary map");
+    static_assert(ShapeIn::size() == ShapeOut::size(), "Tile sizes must match for unary map");
+
+    auto out = tile_register_like<ReturnTile>();
     auto a_reg = a.copy_to_register();
 
     using Layout = typename decltype(out)::Layout;
@@ -1884,12 +1890,24 @@ inline CUDA_CALLABLE void adj_tile_map(Fwd op,
 }
 
 // binary map
-template <typename TileA, typename TileB, typename Fwd>
+template <typename TileA, typename TileB, typename Fwd, typename ReturnTile>
 inline CUDA_CALLABLE auto tile_map(Fwd op,
                                    TileA& a,
-                                   TileB& b)
+                                   TileB& b,
+                                   ReturnTile& r)
 {
-    auto out = tile_register_like<TileA>();
+    // verify shapes and sizes are compatible
+    using ShapeA = typename TileA::Layout::Shape;
+    using ShapeB = typename TileB::Layout::Shape;
+    using ShapeOut = typename ReturnTile::Layout::Shape;
+
+    static_assert(ShapeA::N == ShapeOut::N, "Number of tile dimensions must match for binary map");
+    static_assert(ShapeB::N == ShapeOut::N, "Number of tile dimensions must match for binary map");
+
+    static_assert(ShapeA::size() == ShapeOut::size(), "Tile sizes must match for binary map");
+    static_assert(ShapeB::size() == ShapeOut::size(), "Tile sizes must match for binary map");
+
+    auto out = tile_register_like<ReturnTile>();
 
     auto a_reg = a.copy_to_register();
     auto b_reg = b.copy_to_register();
@@ -1904,7 +1922,6 @@ inline CUDA_CALLABLE auto tile_map(Fwd op,
 
     return out;
 }
-
 
 template <typename TileA, typename TileB, typename Fwd, typename Adj, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_map(Fwd op,
@@ -1936,28 +1953,32 @@ inline CUDA_CALLABLE void adj_tile_map(Fwd op,
     adj_b.grad_add(adj_b_reg);
 }
 
-// wrap the operator in a lambda so that we don't have to do overload resolution for things like e.g.: wp.sin()
+// We wrap the operator in a lambda so that we don't have to do overload resolution for things like e.g.: wp.sin()
 // this is important because many of the builtin operators don't follow particular conventions on references for 
 // the `adj_ret` parameter, which means it's not possible to figure out the overload we need using simple casting
-#define tile_unary_map(op, a) tile_map([](auto x) { return op(x);}, a)
-#define adj_tile_unary_map(op, a, adj_op, adj_a, adj_ret) adj_tile_map([](auto x) { return op(x);}, a, [](auto x, auto& adj_x, auto adj_ret) { adj_op(x, adj_x, adj_ret);}, adj_a, adj_ret)
+// The r argument is a dummy return tile argument, because we can't template on the return tile type in a macro definition. 
+// So if we want users to be able to define functions that return a tile type that is different from the input type,
+// we must pass an extra dummy return tile argument that is used define the return type of tile_map.
 
-#define tile_binary_map(op, a, b) tile_map([](auto x, auto y) { return op(x, y);}, a, b)
-#define adj_tile_binary_map(op, a, b, adj_op, adj_a, adj_b, adj_ret) adj_tile_map([](auto x, auto y) { return op(x, y);}, a, b, [](auto x, auto y, auto& adj_x, auto& adj_y, auto adj_ret) { adj_op(x, y, adj_x, adj_y, adj_ret);}, adj_a, adj_b, adj_ret)
+#define tile_unary_map(op, a, r) tile_map([](auto x) { return op(x);}, a, r)
+#define adj_tile_unary_map(op, a, r, adj_op, adj_a, adj_r, adj_ret) adj_tile_map([](auto x) { return op(x);}, a, [](auto x, auto& adj_x, auto adj_ret) { adj_op(x, adj_x, adj_ret);}, adj_a, adj_ret)
+
+#define tile_binary_map(op, a, b, r) tile_map([](auto x, auto y) { return op(x, y);}, a, b, r)
+#define adj_tile_binary_map(op, a, b, r, adj_op, adj_a, adj_b, adj_r, adj_ret) adj_tile_map([](auto x, auto y) { return op(x, y);}, a, b, [](auto x, auto y, auto& adj_x, auto& adj_y, auto adj_ret) { adj_op(x, y, adj_x, adj_y, adj_ret);}, adj_a, adj_b, adj_ret)
 
 // -tile (unary neg)
 template <typename Tile>
-inline CUDA_CALLABLE auto tile_neg(Tile& a) { return tile_unary_map(wp::neg, a); }
+inline CUDA_CALLABLE auto tile_neg(Tile& a) { return tile_unary_map(wp::neg, a, a); }
 
 template <typename Tile, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_neg(Tile& a, Tile& adj_a, AdjTile& adj_ret) { adj_tile_unary_map(wp::neg, a, wp::adj_neg, adj_a, adj_ret); }
+inline CUDA_CALLABLE void adj_tile_neg(Tile& a, Tile& adj_a, AdjTile& adj_ret) { adj_tile_unary_map(wp::neg, a, a, wp::adj_neg, adj_a, adj_a, adj_ret); }
 
 
 // tile + tile
 template <typename TileA, typename TileB>
 inline CUDA_CALLABLE auto tile_add(TileA& a, TileB& b)
 {
-    return tile_binary_map(add, a, b);
+    return tile_binary_map(add, a, b, a);
 }
 
 // add overloads get called in user function adjoints generated by codegen (adj_tile += adj_ret)
@@ -1984,20 +2005,20 @@ inline CUDA_CALLABLE auto add(tile_shared_t<T, L, Owner>& a, const tile_register
 template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_add(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b, AdjTile& adj_c)
 {   
-    adj_tile_binary_map(add, a, b, adj_add, adj_a, adj_b, adj_c);
+    adj_tile_binary_map(add, a, b, a, adj_add, adj_a, adj_b, adj_a, adj_c);
 }
 
 // tile - tile
 template <typename TileA, typename TileB>
 inline CUDA_CALLABLE auto tile_sub(TileA& a, TileB& b)
 {
-    return tile_binary_map(sub, a, b);
+    return tile_binary_map(sub, a, b, a);
 }
 
 template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_sub(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b, AdjTile& adj_c)
 {   
-    adj_tile_binary_map(sub, a, b, adj_sub, adj_a, adj_b, adj_c);
+    adj_tile_binary_map(sub, a, b, a, adj_sub, adj_a, adj_b, adj_a, adj_c);
 }
 
 
@@ -2008,7 +2029,7 @@ inline CUDA_CALLABLE auto tile_mul(Tile& a, const typename Tile::Type& s)
     // promote scalar to a constant tile
     auto s_tile = tile_register_t<typename Tile::Type, tile_layout_register_t<typename Tile::Layout::Shape>>(s);
 
-    return tile_binary_map(mul, a, s_tile);
+    return tile_binary_map(mul, a, s_tile, a);
 }
 
 template <typename Tile, typename AdjTile>
@@ -2024,7 +2045,7 @@ inline CUDA_CALLABLE void adj_tile_mul(Tile& a, const typename Tile::Type& s,
     // initialize to constant
     s_tile = s;
 
-    adj_tile_binary_map(mul, a, s_tile, adj_mul, adj_a, adj_s_tile, adj_c);
+    adj_tile_binary_map(mul, a, s_tile, a, adj_mul, adj_a, adj_s_tile, adj_a, adj_c);
 
     for (int i=0; i < Layout::NumRegs; ++i)
     {

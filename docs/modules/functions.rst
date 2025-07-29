@@ -2416,7 +2416,7 @@ Tile Primitives
 
     :param op: A callable function that accepts one argument and returns one argument, may be a user function or builtin
     :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's data type
-    :returns: A tile with the same dimensions and data type as the input tile.
+    :returns: A tile with the same dimensions as the input tile. Its datatype is specified by the return type of op
 
     Example:
 
@@ -2453,12 +2453,12 @@ Tile Primitives
     Apply a binary function onto the tile.
 
     This function cooperatively applies a binary function to each element of the tiles using all threads in the block.
-    Both input tiles must have the same dimensions and datatype.
+    Both input tiles must have the same dimensions, and if using a builtin op, the same datatypes.
 
     :param op: A callable function that accepts two arguments and returns one argument, all of the same type, may be a user function or builtin
     :param a: The first input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
     :param b: The second input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
-    :returns: A tile with the same dimensions and datatype as the input tiles.
+    :returns: A tile with the same dimensions as the input tiles. Its datatype is specified by the return type of op
 
     Example:
 

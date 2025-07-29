@@ -318,7 +318,7 @@ def test_input_validity(test, device):
 
     with test.assertRaisesRegex(
         TypeError,
-        'Incorrect input provided for argument "i": received array of dtype float32, expected int$',
+        "Function test_input_validity__locals__int_function does not support the provided argument types float32",
     ):
         wp.map(int_function, a1)
 

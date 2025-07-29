@@ -26,6 +26,8 @@
 - Update `wp.MarchingCubes` to a pure-Warp implementation, allowing cross-platform support and differentiability.
   ([GH-788](https://github.com/NVIDIA/warp/issues/788)).
 - Constructing wp.array objects from a pointer inside Warp kernels (e.g., wp.array(ptr=..., shape=...)) no longer requires the shape to be a compile-time constant, allowing for greater flexibility.
+- Functions passed to `wp.tile_map()` can return a different type than the input arguments ([GH-732](https://github.com/NVIDIA/warp/issues/732)).
+- Use codegen instead of function evaluation to infer return types for `wp.map()` ([GH-732](https://github.com/NVIDIA/warp/issues/732))
  - warp.sparse can now operate efficiently on sparse matrices with arbitrarily-sized blocks, and leverage tiled computations when relevant ([GH-838](https://github.com/NVIDIA/warp/issues/838)).
  - `warp.fem.integrate` may now leverage tile-based computations for accumulating over quadrature points ([GH-854](https://github.com/NVIDIA/warp/issues/854)).
 - Deprecate the `graph_compatible` boolean flag in `jax_callable()` in favor of the new `graph_mode` argument with `GraphMode` enum (e.g., `GraphMode.JAX`, `GraphMode.WARP`, `GraphMode.NONE`) ([GH-848](https://github.com/NVIDIA/warp/issues/848)).

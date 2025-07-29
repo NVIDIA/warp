@@ -914,7 +914,6 @@ def map(
 
     module = None
     out_dtypes = None
-    skip_arg_type_checks = False
     if isinstance(func, wp.Function):
         func_name = func.key
         wp_func = func
@@ -924,72 +923,50 @@ def map(
             raise TypeError("func must be a callable function or a warp.Function")
         wp_func, module = create_warp_function(func)
         func_name = wp_func.key
-        # we created a generic function here (arg types are all Any)
-        skip_arg_type_checks = True
     if module is None:
         module = warp.context.get_module(f"map_{func_name}")
 
     arg_names = list(wp_func.input_types.keys())
-    # determine output dtype
-    if wp_func.value_func is not None or wp_func.value_type is not None:
-        arg_types = {}
-        arg_values = {}
-        for i, arg_name in enumerate(arg_names):
-            if is_array(inputs[i]):
-                # we will pass an element of the array to the function
-                arg_types[arg_name] = inputs[i].dtype
-                if device is None:
-                    device = inputs[i].device
-            else:
-                # we pass the input value directly to the function
-                arg_types[arg_name] = get_warp_type(inputs[i])
-        func_or_none = wp_func.get_overload(list(arg_types.values()), {})
-        if func_or_none is None:
-            raise TypeError(
-                f"Function {func_name} does not support the provided argument types {', '.join(type_repr(t) for t in arg_types.values())}"
-            )
-        func = func_or_none
-        if func.value_func is not None:
-            out_dtype = func.value_func(arg_types, arg_values)
-        else:
-            out_dtype = func.value_type
-        if isinstance(out_dtype, tuple) or isinstance(out_dtype, list):
-            out_dtypes = out_dtype
-        else:
-            out_dtypes = (out_dtype,)
-    else:
-        # try to evaluate the function to determine the output type
-        args = []
-        arg_types = wp_func.input_types
-        if len(inputs) != len(arg_types):
-            raise TypeError(
-                f"Number of input arguments ({len(inputs)}) does not match expected number of function arguments ({len(arg_types)})"
-            )
-        for (arg_name, arg_type), input in zip(arg_types.items(), inputs):
-            if is_array(input):
-                if not skip_arg_type_checks and not types_equal(input.dtype, arg_type):
-                    raise TypeError(
-                        f'Incorrect input provided for argument "{arg_name}": received array of dtype {type_repr(input.dtype)}, expected {type_repr(arg_type)}'
-                    )
-                args.append(input.dtype())
-                if device is None:
-                    device = input.device
-            else:
-                if not skip_arg_type_checks and not types_equal(type(input), arg_type):
-                    raise TypeError(
-                        f'Incorrect input provided for argument "{arg_name}": received {type_repr(type(input))}, expected {type_repr(arg_type)}'
-                    )
-                args.append(input)
-        result = wp_func(*args)
-        if result is None:
-            raise TypeError("The provided function must return a value")
-        if isinstance(result, tuple) or isinstance(result, list):
-            out_dtypes = tuple(get_warp_type(r) for r in result)
-        else:
-            out_dtypes = (get_warp_type(result),)
 
-    if out_dtypes is None:
-        raise TypeError("Could not determine the output type of the function, make sure it returns a value")
+    if len(inputs) != len(arg_names):
+        raise TypeError(
+            f"Number of input arguments ({len(inputs)}) does not match expected number of function arguments ({len(arg_names)})"
+        )
+
+    # determine output dtype
+    arg_types = {}
+    arg_values = {}
+    for i, arg_name in enumerate(arg_names):
+        if is_array(inputs[i]):
+            # we will pass an element of the array to the function
+            arg_types[arg_name] = inputs[i].dtype
+            if device is None:
+                device = inputs[i].device
+        else:
+            # we pass the input value directly to the function
+            arg_types[arg_name] = get_warp_type(inputs[i])
+    func_or_none = wp_func.get_overload(list(arg_types.values()), {})
+    if func_or_none is None:
+        raise TypeError(
+            f"Function {func_name} does not support the provided argument types {', '.join(type_repr(t) for t in arg_types.values())}"
+        )
+    func = func_or_none
+
+    if func.value_type is not None:
+        out_dtype = func.value_type
+    elif func.value_func is not None:
+        out_dtype = func.value_func(arg_types, arg_values)
+    else:
+        func.build(None)
+        out_dtype = func.value_func(arg_types, arg_values)
+
+    if out_dtype is None:
+        raise TypeError("The provided function must return a value")
+
+    if isinstance(out_dtype, tuple) or isinstance(out_dtype, list):
+        out_dtypes = out_dtype
+    else:
+        out_dtypes = (out_dtype,)
 
     if out is None:
         requires_grad = any(getattr(a, "requires_grad", False) for a in inputs if is_array(a))
