@@ -1952,6 +1952,7 @@ def type_is_float(t):
     return t in float_types
 
 
+# returns True if the passed *type* is a scalar
 def type_is_scalar(t):
     return type_is_int(t) or type_is_float(t)
 

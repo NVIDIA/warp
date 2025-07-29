@@ -3935,14 +3935,45 @@ def tile_unary_map_value_func(arg_types, arg_values):
     if not is_tile(a):
         raise TypeError(f"tile_map() 'a' argument must be a tile, got {a!r}")
 
-    return tile(dtype=a.dtype, shape=a.shape)
+    if "op" in arg_values:
+        op = arg_values["op"]
+        try:
+            overload = op.get_overload([a.dtype], {})
+        except KeyError as exc:
+            raise RuntimeError(f"No overload of {op} found for tile element type {type_repr(a.dtype)}") from exc
+
+        # build the right overload on demand
+        if overload.value_func is None:
+            overload.build(None)
+
+        value_type = overload.value_func(None, None)
+
+        if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
+            raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
+
+        return tile(dtype=value_type, shape=a.shape)
+
+    else:
+        return tile(dtype=a.dtype, shape=a.shape)
+
+
+def tile_unary_map_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    op = arg_values["op"]
+    tile_a = arg_values["a"]
+
+    overload = op.get_overload([tile_a.type.dtype], {})
+
+    # necessary, in case return type is different from input tile types
+    tile_r = Var(label=None, type=return_type)
+
+    return ((overload, tile_a, tile_r), ())
 
 
 add_builtin(
     "tile_map",
     input_types={"op": Callable, "a": tile(dtype=Scalar, shape=Tuple[int, ...])},
     value_func=tile_unary_map_value_func,
-    # dispatch_func=tile_map_dispatch_func,
+    dispatch_func=tile_unary_map_dispatch_func,
     # variadic=True,
     native_func="tile_unary_map",
     doc="""Apply a unary function onto the tile.
@@ -3951,7 +3982,7 @@ add_builtin(
 
     :param op: A callable function that accepts one argument and returns one argument, may be a user function or builtin
     :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's data type
-    :returns: A tile with the same dimensions and data type as the input tile.
+    :returns: A tile with the same dimensions as the input tile. Its datatype is specified by the return type of op
 
     Example:
 
@@ -3992,10 +4023,6 @@ def tile_binary_map_value_func(arg_types, arg_values):
     if not is_tile(b):
         raise TypeError(f"tile_map() 'b' argument must be a tile, got {b!r}")
 
-    # ensure types equal
-    if not types_equal(a.dtype, b.dtype):
-        raise TypeError(f"tile_map() arguments must have the same dtype, got {a.dtype} and {b.dtype}")
-
     if len(a.shape) != len(b.shape):
         raise ValueError(
             f"tile_map() shapes must have the same number of dimensions, got {len(a.shape)} and {len(b.shape)}"
@@ -4005,7 +4032,47 @@ def tile_binary_map_value_func(arg_types, arg_values):
         if a.shape[i] != b.shape[i]:
             raise ValueError(f"tile_map() shapes do not match on dimension {i}, got {a.shape} and {b.shape}")
 
-    return tile(dtype=a.dtype, shape=a.shape)
+    if "op" in arg_values:
+        op = arg_values["op"]
+        try:
+            overload = op.get_overload([a.dtype, b.dtype], {})
+        except KeyError as exc:
+            raise RuntimeError(
+                f"No overload of {op} found for tile element types {type_repr(a.dtype)}, {type_repr(b.dtype)}"
+            ) from exc
+
+        # build the right overload on demand
+        if overload.value_func is None:
+            overload.build(None)
+
+        value_type = overload.value_func(None, None)
+
+        if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
+            raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
+
+        return tile(dtype=value_type, shape=a.shape)
+
+    else:
+        # ensure types equal
+        if not types_equal(a.dtype, b.dtype):
+            raise TypeError(
+                f"tile_map() arguments must have the same dtype for this operation, got {a.dtype} and {b.dtype}"
+            )
+
+        return tile(dtype=a.dtype, shape=a.shape)
+
+
+def tile_binary_map_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    op = arg_values["op"]
+    tile_a = arg_values["a"]
+    tile_b = arg_values["b"]
+
+    overload = op.get_overload([tile_a.type.dtype, tile_b.type.dtype], {})
+
+    # necessary, in case return type is different from input tile types
+    tile_r = Var(label=None, type=return_type)
+
+    return ((overload, tile_a, tile_b, tile_r), ())
 
 
 add_builtin(
@@ -4016,18 +4083,18 @@ add_builtin(
         "b": tile(dtype=Scalar, shape=Tuple[int, ...]),
     },
     value_func=tile_binary_map_value_func,
-    # dispatch_func=tile_map_dispatch_func,
+    dispatch_func=tile_binary_map_dispatch_func,
     # variadic=True,
     native_func="tile_binary_map",
     doc="""Apply a binary function onto the tile.
 
     This function cooperatively applies a binary function to each element of the tiles using all threads in the block.
-    Both input tiles must have the same dimensions and datatype.
+    Both input tiles must have the same dimensions, and if using a builtin op, the same datatypes.
 
     :param op: A callable function that accepts two arguments and returns one argument, all of the same type, may be a user function or builtin
     :param a: The first input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
     :param b: The second input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
-    :returns: A tile with the same dimensions and datatype as the input tiles.
+    :returns: A tile with the same dimensions as the input tiles. Its datatype is specified by the return type of op
 
     Example:
 
