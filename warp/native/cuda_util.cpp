@@ -163,7 +163,7 @@ bool init_cuda_driver()
 #if defined(_WIN32)
     static HMODULE hCudaDriver = LoadLibraryA("nvcuda.dll");
     if (hCudaDriver == NULL) {
-        fprintf(stderr, "Warp CUDA error: Could not open nvcuda.dll.\n");
+        fprintf(stderr, "Warp CUDA warning: Could not find or load the NVIDIA CUDA driver. Proceeding in CPU-only mode.\n");
         return false;
     }
     pfn_cuGetProcAddress = (PFN_cuGetProcAddress)GetProcAddress(hCudaDriver, "cuGetProcAddress");
@@ -173,7 +173,7 @@ bool init_cuda_driver()
         // WSL and possibly other systems might require the .1 suffix
         hCudaDriver = dlopen("libcuda.so.1", RTLD_NOW);
         if (hCudaDriver == NULL) {
-            fprintf(stderr, "Warp CUDA error: Could not open libcuda.so.\n");
+            fprintf(stderr, "Warp CUDA warning: Could not find or load the NVIDIA CUDA driver. Proceeding in CPU-only mode.\n");
             return false;
         }
     }

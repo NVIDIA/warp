@@ -4068,11 +4068,14 @@ class Runtime:
         if self.is_cuda_enabled:
             # get CUDA Toolkit and driver versions
             toolkit_version = self.core.wp_cuda_toolkit_version()
-            driver_version = self.core.wp_cuda_driver_version()
-
-            # save versions as tuples, e.g., (12, 4)
             self.toolkit_version = (toolkit_version // 1000, (toolkit_version % 1000) // 10)
-            self.driver_version = (driver_version // 1000, (driver_version % 1000) // 10)
+
+            if self.core.wp_cuda_driver_is_initialized():
+                # save versions as tuples, e.g., (12, 4)
+                driver_version = self.core.wp_cuda_driver_version()
+                self.driver_version = (driver_version // 1000, (driver_version % 1000) // 10)
+            else:
+                self.driver_version = None
 
             # determine minimum required driver version
             if self.is_cuda_compatibility_enabled:
@@ -4086,7 +4089,7 @@ class Runtime:
                 self.min_driver_version = self.toolkit_version
 
             # determine if the installed driver is sufficient
-            if self.driver_version >= self.min_driver_version:
+            if self.driver_version is not None and self.driver_version >= self.min_driver_version:
                 # get all architectures supported by NVRTC
                 num_archs = self.core.wp_nvrtc_supported_arch_count()
                 if num_archs > 0:
@@ -4167,6 +4170,8 @@ class Runtime:
                 if not self.is_cuda_enabled:
                     # Warp was compiled without CUDA support
                     greeting.append("   CUDA not enabled in this build")
+                elif self.driver_version is None:
+                    greeting.append("   CUDA driver not found or failed to initialize")
                 elif self.driver_version < self.min_driver_version:
                     # insufficient CUDA driver version
                     greeting.append(
@@ -4263,7 +4268,7 @@ class Runtime:
         elif self.is_cuda_enabled:
             # Report a warning about insufficient driver version.  The warning should appear even in quiet mode
             # when the greeting message is suppressed.  Also try to provide guidance for resolving the situation.
-            if self.driver_version < self.min_driver_version:
+            if self.driver_version is not None and self.driver_version < self.min_driver_version:
                 msg = []
                 msg.append("\n   Insufficient CUDA driver version.")
                 msg.append(
