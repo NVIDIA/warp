@@ -60,6 +60,7 @@
 - Fix missing cloth-body contact in `VBDIntegrator` with `handle_self_contact=False`, and add unit test for verification
   ([GH-862](https://github.com/NVIDIA/warp/issues/862)).
 - Fix evaluation of Discontinuous Galerkin gradients for warp.fem discrete fields
+- Work around issue ([GH-637](https://github.com/NVIDIA/warp/issues/637)) with operator evaluation in `warp.fem` integrands
 
 ## [1.8.0] - 2025-07-01
 

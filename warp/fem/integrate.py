@@ -104,7 +104,8 @@ class IntegrandVisitor(ast.NodeTransformer):
         field: FieldLike
         abstract_type: type
         concrete_type: type
-        root_arg_name: type
+        root_arg_name: str
+        local_arg_name: str
 
     def __init__(
         self,
@@ -114,6 +115,7 @@ class IntegrandVisitor(ast.NodeTransformer):
         self._integrand = integrand
         self._field_symbols = field_info.copy()
         self._field_nodes = {}
+        self._field_arg_annotation_nodes = {}
 
     @staticmethod
     def _build_field_info(integrand: Integrand, field_args: Dict[str, FieldLike]):
@@ -130,6 +132,7 @@ class IntegrandVisitor(ast.NodeTransformer):
                 abstract_type=integrand.argspec.annotations[name],
                 concrete_type=get_concrete_type(field),
                 root_arg_name=name,
+                local_arg_name=name,
             )
             for name, field in field_args.items()
         }
@@ -170,6 +173,7 @@ class IntegrandVisitor(ast.NodeTransformer):
                         field=res[0],
                         abstract_type=res[1],
                         concrete_type=res[2],
+                        local_arg_name=field_info.local_arg_name,
                         root_arg_name=f"{field_info.root_arg_name}.{func.name}",
                     )
 
@@ -194,6 +198,13 @@ class IntegrandVisitor(ast.NodeTransformer):
 
         return node
 
+    def visit_FunctionDef(self, node: ast.FunctionDef):
+        # record field arg annotation nodes
+        for arg in node.args.args:
+            self._field_arg_annotation_nodes[arg.arg] = arg.annotation
+
+        return self.generic_visit(node)
+
     def _get_callee_field_args(self, callee: Integrand, args: List[ast.AST]):
         # Get field types for call site arguments
         call_site_field_args: List[IntegrandVisitor.FieldInfo] = []
@@ -214,7 +225,13 @@ class IntegrandVisitor(ast.NodeTransformer):
                     raise TypeError(
                         f"Attempting to pass a {passed_field_info.abstract_type.__name__} to argument '{arg}' of '{callee.name}' expecting a {arg_type.__name__}"
                     )
-                callee_field_args[arg] = passed_field_info
+                callee_field_args[arg] = IntegrandVisitor.FieldInfo(
+                    field=passed_field_info.field,
+                    abstract_type=passed_field_info.abstract_type,
+                    concrete_type=passed_field_info.concrete_type,
+                    local_arg_name=arg,
+                    root_arg_name=passed_field_info.root_arg_name,
+                )
 
         return callee_field_args
 
@@ -266,18 +283,14 @@ class IntegrandTransformer(IntegrandVisitor):
                 f"Operator {operator.func.__name__} is not defined for {field_info.abstract_type.__name__} {field.name}"
             ) from e
 
-        # Update the ast Call node to use the new function pointer
-        call.func = ast.Attribute(value=call.func, attr=pointer.key, ctx=ast.Load())
-
         # Save the pointer as an attribute than can be accessed from the calling scope
-        # For usual operator call syntax, we can use the operator itself, but for the
-        # shortcut default operator syntax, we store it on the callee's concrete type
-        if isinstance(callee, Operator):
-            setattr(callee, pointer.key, pointer)
-        else:
-            setattr(field_info.concrete_type, pointer.key, pointer)
+        # (use the annotation node of the argument this field is constructed from)
+        callee_node = self._field_arg_annotation_nodes[field_info.local_arg_name]
+        setattr(self._field_symbols[field_info.local_arg_name].abstract_type, pointer.key, pointer)
+        call.func = ast.Attribute(value=callee_node, attr=pointer.key, ctx=ast.Load())
 
-            # also insert callee as first argument
+        # For shortcut default operator syntax, insert callee as first argument
+        if not isinstance(callee, Operator):
             call.args = [ast.Name(id=callee, ctx=ast.Load()), *call.args]
 
         # replace first argument with selected attribute
