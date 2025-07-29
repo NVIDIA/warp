@@ -21,6 +21,7 @@ import ctypes
 import functools
 import hashlib
 import inspect
+import itertools
 import math
 import re
 import sys
@@ -686,7 +687,12 @@ class Var:
 
     @staticmethod
     def type_to_ctype(t: type, value_type: builtins.bool = False) -> str:
-        if is_array(t):
+        if isinstance(t, fixedarray):
+            template_args = (str(t.size), Var.dtype_to_ctype(t.dtype))
+            dtypestr = ", ".join(template_args)
+            classstr = f"wp::{type(t).__name__}"
+            return f"{classstr}_t<{dtypestr}>"
+        elif is_array(t):
             dtypestr = Var.dtype_to_ctype(t.dtype)
             classstr = f"wp::{type(t).__name__}"
             return f"{classstr}_t<{dtypestr}>"
@@ -1353,7 +1359,7 @@ class Adjoint:
         # unresolved function, report error
         arg_type_reprs = []
 
-        for x in arg_types:
+        for x in itertools.chain(arg_types, kwarg_types.values()):
             if isinstance(x, warp.context.Function):
                 arg_type_reprs.append("function")
             else:
@@ -3429,6 +3435,12 @@ static CUDA_CALLABLE void adj_{name}({reverse_args})
 {{
 {reverse_body}}}
 
+// Required when compiling adjoints.
+CUDA_CALLABLE {name} add(const {name}& a, const {name}& b)
+{{
+    return {name}();
+}}
+
 CUDA_CALLABLE void adj_atomic_add({name}* p, {name} t)
 {{
 {atomic_add_body}}}
@@ -3867,6 +3879,19 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None):
                 f"The function `{adj.fun_name}` has its return type "
                 f"annotated as `{warp.context.type_str(adj.arg_types['return'])}` "
                 f"but the code returns a value of type `{warp.context.type_str(adj.return_var[0].type)}`."
+            )
+        elif (
+            isinstance(adj.return_var[0].type, warp.types.fixedarray)
+            and type(adj.arg_types["return"]) is warp.types.array
+        ):
+            # If the return statement yields a `fixedarray` while the function is annotated
+            # to return a standard `array`, then raise an error since the `fixedarray` storage
+            # allocated on the stack will be freed once the function exits, meaning that the
+            # resulting `array` instance will point to an invalid data.
+            raise WarpCodegenError(
+                f"The function `{adj.fun_name}` returns a fixed-size array "
+                f"whereas it has its return type annotated as "
+                f"`{warp.context.type_str(adj.arg_types['return'])}`."
             )
 
     # Build line directive for function definition (subtract 1 to account for 1-indexing of AST line numbers)
