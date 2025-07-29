@@ -16,6 +16,7 @@
 
 - Add support for initializing fixed-size arrays inside Warp kernels using `wp.zeros()`
   ([GH-794](https://github.com/NVIDIA/warp/issues/794)).
+- Add documentation for `wp.indexedarray()` ([GH-468](https://github.com/NVIDIA/warp/issues/468)).
 
 ### Changed
 
