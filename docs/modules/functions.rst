@@ -5512,6 +5512,30 @@ Operators
        * Differentiable
 
 
+.. py:function:: add(a: Vector[Any,Scalar], b: Scalar) -> Vector[Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: add(a: Scalar, b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
 .. py:function:: add(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]
     :noindex:
     :nocontentsentry:
@@ -5525,6 +5549,30 @@ Operators
 
 
 .. py:function:: add(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: add(a: Matrix[Any,Any,Scalar], b: Scalar) -> Matrix[Any,Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: add(a: Scalar, b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
 
@@ -5584,7 +5632,55 @@ Operators
        * Differentiable
 
 
+.. py:function:: sub(a: Vector[Any,Scalar], b: Scalar) -> Vector[Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: sub(a: Scalar, b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
 .. py:function:: sub(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: sub(a: Matrix[Any,Any,Scalar], b: Scalar) -> Matrix[Any,Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: sub(a: Scalar, b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
 
@@ -5840,7 +5936,7 @@ Operators
     Modulo operation using truncated division.
 
 
-.. py:function:: mod(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Scalar
+.. py:function:: mod(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
     :noindex:
     :nocontentsentry:
 
@@ -5852,6 +5948,30 @@ Operators
        * Differentiable
 
     Modulo operation using truncated division.
+
+
+.. py:function:: mod(a: Vector[Any,Scalar], b: Scalar) -> Vector[Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: mod(a: Matrix[Any,Any,Scalar], b: Scalar) -> Matrix[Any,Any,Scalar]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
 
 
 .. py:function:: div(a: Scalar, b: Scalar) -> Scalar

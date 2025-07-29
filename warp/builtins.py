@@ -6230,46 +6230,110 @@ for array_type in array_types:
 
 
 # used to index into builtin types, i.e.: y = vec3[1]
-def extract_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
-    return arg_types["a"]._wp_scalar_type_
+def vector_extract_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    vec_type = arg_types["a"]
+    idx_type = arg_types["i"]
+
+    if isinstance(idx_type, slice_t):
+        length = idx_type.get_length(vec_type._length_)
+        return vector(length=length, dtype=vec_type._wp_scalar_type_)
+
+    return vec_type._wp_scalar_type_
+
+
+def vector_extract_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    func_args = tuple(args.values())
+    template_args = getattr(return_type, "_shape_", ())
+    return (func_args, template_args)
 
 
 add_builtin(
     "extract",
-    input_types={"a": vector(length=Any, dtype=Scalar), "i": int},
-    value_func=extract_value_func,
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": Any},
+    value_func=vector_extract_value_func,
+    dispatch_func=vector_extract_dispatch_func,
+    export=False,
     hidden=True,
     group="Utility",
 )
 add_builtin(
     "extract",
-    input_types={"a": quaternion(dtype=Scalar), "i": int},
-    value_func=extract_value_func,
+    input_types={"a": quaternion(dtype=Scalar), "i": Any},
+    value_func=vector_extract_value_func,
+    dispatch_func=vector_extract_dispatch_func,
+    export=False,
+    hidden=True,
+    group="Utility",
+)
+add_builtin(
+    "extract",
+    input_types={"a": transformation(dtype=Scalar), "i": Any},
+    value_func=vector_extract_value_func,
+    dispatch_func=vector_extract_dispatch_func,
+    export=False,
     hidden=True,
     group="Utility",
 )
 
-add_builtin(
-    "extract",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int},
-    value_func=lambda arg_types, arg_values: vector(
-        length=arg_types["a"]._shape_[1], dtype=arg_types["a"]._wp_scalar_type_
-    ),
-    hidden=True,
-    group="Utility",
-)
-add_builtin(
-    "extract",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int},
-    value_func=extract_value_func,
-    hidden=True,
-    group="Utility",
-)
+
+def matrix_extract_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    mat_type = arg_types["a"]
+    idx_types = tuple(arg_types[x] for x in "ij" if arg_types.get(x, None) is not None)
+
+    # Compute the resulting shape from the slicing, with -1 being simple indexing.
+    shape = tuple(
+        idx.get_length(mat_type._shape_[i]) if isinstance(idx, slice_t) else -1 for i, idx in enumerate(idx_types)
+    )
+
+    # Append any non indexed slice.
+    for i in range(len(idx_types), len(mat_type._shape_)):
+        shape += (mat_type._shape_[i],)
+
+    # Count how many dimensions the output value will have.
+    ndim = sum(1 for x in shape if x >= 0)
+
+    if ndim == 0:
+        return mat_type._wp_scalar_type_
+
+    assert shape[0] != -1 or shape[1] != -1
+
+    if ndim == 1:
+        length = shape[0] if shape[0] != -1 else shape[1]
+        return vector(length=length, dtype=mat_type._wp_scalar_type_)
+
+    assert ndim == 2
+
+    # When a matrix dimension is 0, all other dimensions are also expected to be 0.
+    if any(x == 0 for x in shape):
+        shape = (0,) * len(shape)
+
+    return matrix(shape=shape, dtype=mat_type._wp_scalar_type_)
+
+
+def matrix_extract_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    idx_types = tuple(args[x].type for x in "ij" if args.get(x, None) is not None)
+    has_slice = any(isinstance(x, slice_t) for x in idx_types)
+
+    func_args = tuple(args.values())
+    template_args = getattr(return_type, "_shape_", ()) if has_slice else ()
+    return (func_args, template_args)
+
 
 add_builtin(
     "extract",
-    input_types={"a": transformation(dtype=Scalar), "i": int},
-    value_func=extract_value_func,
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any},
+    value_func=matrix_extract_value_func,
+    dispatch_func=matrix_extract_dispatch_func,
+    export=False,
+    hidden=True,
+    group="Utility",
+)
+add_builtin(
+    "extract",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "j": Any},
+    value_func=matrix_extract_value_func,
+    dispatch_func=matrix_extract_dispatch_func,
+    export=False,
     hidden=True,
     group="Utility",
 )
@@ -6352,11 +6416,47 @@ add_builtin(
 )
 
 
+def vector_assign_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    vec = args["a"].type
+    idx = args["i"].type
+    value_type = strip_reference(args["value"].type)
+
+    if isinstance(idx, slice_t):
+        length = idx.get_length(vec._length_)
+
+        if type_is_vector(value_type):
+            if not types_equal(value_type._wp_scalar_type_, vec._wp_scalar_type_):
+                raise ValueError(
+                    f"The provided vector is expected to be of length {length} with dtype {type_repr(vec._wp_scalar_type_)}."
+                )
+            if value_type._length_ != length:
+                raise ValueError(
+                    f"The length of the provided vector ({args['value'].type._length_}) isn't compatible with the given slice (expected {length})."
+                )
+            template_args = (length,)
+        else:
+            if not types_equal(value_type, vec._wp_scalar_type_):
+                raise ValueError(
+                    f"The provided value is expected to be a scalar, or a vector of length {length}, with dtype {type_repr(vec._wp_scalar_type_)}."
+                )
+            template_args = ()
+    else:
+        if not types_equal(value_type, vec._wp_scalar_type_):
+            raise ValueError(
+                f"The provided value is expected to be a scalar of type {type_repr(vec._wp_scalar_type_)}."
+            )
+        template_args = ()
+
+    func_args = tuple(args.values())
+    return (func_args, template_args)
+
+
 # implements vector[index] = value
 add_builtin(
     "assign_inplace",
-    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6365,8 +6465,9 @@ add_builtin(
 # implements quaternion[index] = value
 add_builtin(
     "assign_inplace",
-    input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": quaternion(dtype=Scalar), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6374,15 +6475,16 @@ add_builtin(
 # implements transformation[index] = value
 add_builtin(
     "assign_inplace",
-    input_types={"a": transformation(dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": transformation(dtype=Scalar), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
 )
 
 
-def vector_assign_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+def vector_assign_copy_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     vec_type = arg_types["a"]
     return vec_type
 
@@ -6390,8 +6492,9 @@ def vector_assign_value_func(arg_types: Mapping[str, type], arg_values: Mapping[
 # implements vector[index] = value, performs a copy internally if wp.config.enable_vector_component_overwrites is True
 add_builtin(
     "assign_copy",
-    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
-    value_func=vector_assign_value_func,
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": Any, "value": Any},
+    value_func=vector_assign_copy_value_func,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6400,8 +6503,9 @@ add_builtin(
 # implements quaternion[index] = value, performs a copy internally if wp.config.enable_vector_component_overwrites is True
 add_builtin(
     "assign_copy",
-    input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
-    value_func=vector_assign_value_func,
+    input_types={"a": quaternion(dtype=Scalar), "i": Any, "value": Any},
+    value_func=vector_assign_copy_value_func,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6410,8 +6514,9 @@ add_builtin(
 # implements transformation[index] = value, performs a copy internally if wp.config.enable_vector_component_overwrites is True
 add_builtin(
     "assign_copy",
-    input_types={"a": transformation(dtype=Scalar), "i": int, "value": Scalar},
-    value_func=vector_assign_value_func,
+    input_types={"a": transformation(dtype=Scalar), "i": Any, "value": Any},
+    value_func=vector_assign_copy_value_func,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6420,8 +6525,9 @@ add_builtin(
 # implements vector[idx] += scalar
 add_builtin(
     "add_inplace",
-    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6430,8 +6536,9 @@ add_builtin(
 # implements quaternion[idx] += scalar
 add_builtin(
     "add_inplace",
-    input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": quaternion(dtype=Scalar), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6440,8 +6547,9 @@ add_builtin(
 # implements transformation[idx] += scalar
 add_builtin(
     "add_inplace",
-    input_types={"a": transformation(dtype=Float), "i": int, "value": Float},
+    input_types={"a": transformation(dtype=Float), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6460,8 +6568,9 @@ add_builtin(
 # implements vector[idx] -= scalar
 add_builtin(
     "sub_inplace",
-    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6470,8 +6579,9 @@ add_builtin(
 # implements quaternion[idx] -= scalar
 add_builtin(
     "sub_inplace",
-    input_types={"a": quaternion(dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": quaternion(dtype=Scalar), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6480,8 +6590,9 @@ add_builtin(
 # implements transformation[idx] -= scalar
 add_builtin(
     "sub_inplace",
-    input_types={"a": transformation(dtype=Scalar), "i": int, "value": Scalar},
+    input_types={"a": transformation(dtype=Float), "i": Any, "value": Any},
     value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
@@ -6542,72 +6653,156 @@ def matrix_vector_sametype(arg_types: Mapping[str, Any]):
     return mat_size == vec_size and mat_type == vec_type
 
 
-# implements matrix[i,j] = scalar
-add_builtin(
-    "assign_inplace",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
-    value_type=None,
-    hidden=True,
-    export=False,
-    group="Utility",
-)
+def matrix_assign_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    mat = args["a"].type
+    value_type = strip_reference(args["value"].type)
+
+    idxs = tuple(args[x].type for x in "ij" if args.get(x, None) is not None)
+    has_slice = any(isinstance(x, slice_t) for x in idxs)
+
+    if has_slice:
+        # Compute the resulting shape from the slicing, with -1 being simple indexing.
+        shape = tuple(idx.get_length(mat._shape_[i]) if isinstance(idx, slice_t) else -1 for i, idx in enumerate(idxs))
+
+        # Append any non indexed slice.
+        for i in range(len(idxs), len(mat._shape_)):
+            shape += (mat._shape_[i],)
+
+        # Count how many dimensions the output value will have.
+        ndim = sum(1 for x in shape if x >= 0)
+        assert ndim > 0
+
+        if ndim == 1:
+            length = shape[0] if shape[0] != -1 else shape[1]
+
+            if type_is_vector(value_type):
+                if not types_equal(value_type._wp_scalar_type_, mat._wp_scalar_type_):
+                    raise ValueError(
+                        f"The provided vector is expected to be of length {length} with dtype {type_repr(mat._wp_scalar_type_)}."
+                    )
+
+                if value_type._length_ != length:
+                    raise ValueError(
+                        f"The length of the provided vector ({value_type._length_}) isn't compatible with the given slice (expected {length})."
+                    )
+
+                template_args = (length,)
+            else:
+                if not types_equal(value_type, mat._wp_scalar_type_):
+                    raise ValueError(
+                        f"The provided value is expected to be a scalar, or a vector of length {length}, with dtype {type_repr(mat._wp_scalar_type_)}."
+                    )
+
+                template_args = ()
+        else:
+            assert ndim == 2
+
+            # When a matrix dimension is 0, all other dimensions are also expected to be 0.
+            if any(x == 0 for x in shape):
+                shape = (0,) * len(shape)
+
+            if type_is_matrix(value_type):
+                if not types_equal(value_type._wp_scalar_type_, mat._wp_scalar_type_):
+                    raise ValueError(
+                        f"The provided matrix is expected to be of shape {shape} with dtype {type_repr(mat._wp_scalar_type_)}."
+                    )
+
+                if value_type._shape_ != shape:
+                    raise ValueError(
+                        f"The shape of the provided matrix ({value_type._shape_}) isn't compatible with the given slice (expected {shape})."
+                    )
+
+                template_args = shape
+            else:
+                if not types_equal(value_type, mat._wp_scalar_type_):
+                    raise ValueError(
+                        f"The provided value is expected to be a scalar, or a matrix of shape {shape}, with dtype {type_repr(mat._wp_scalar_type_)}."
+                    )
+                template_args = ()
+    elif len(idxs) == 1:
+        if not type_is_vector(value_type) or not types_equal(value_type._wp_scalar_type_, mat._wp_scalar_type_):
+            raise ValueError(
+                f"The provided value is expected to be a vector of length {mat._shape_[1]}, with dtype {type_repr(mat._wp_scalar_type_)}."
+            )
+
+        if value_type._length_ != mat._shape_[1]:
+            raise ValueError(
+                f"The length of the provided vector ({value_type._length_}) isn't compatible with the given slice (expected {mat._shape_[1]})."
+            )
+
+        template_args = ()
+    elif len(idxs) == 2:
+        if not types_equal(value_type, mat._wp_scalar_type_):
+            raise ValueError(
+                f"The provided value is expected to be a scalar of type {type_repr(mat._wp_scalar_type_)}."
+            )
+
+        template_args = ()
+    else:
+        raise AssertionError
+
+    func_args = tuple(args.values())
+    return (func_args, template_args)
 
 
-# implements matrix[i] = vector
+# implements matrix[i] = value
 add_builtin(
     "assign_inplace",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "value": Any},
     constraint=matrix_vector_sametype,
     value_type=None,
+    dispatch_func=matrix_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
 )
 
 
-def matrix_assign_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+# implements matrix[i,j] = value
+add_builtin(
+    "assign_inplace",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "j": Any, "value": Any},
+    value_type=None,
+    dispatch_func=matrix_assign_dispatch_func,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+
+def matrix_assign_copy_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     mat_type = arg_types["a"]
     return mat_type
 
 
-# implements matrix[i,j] = scalar
+# implements matrix[i] = value
 add_builtin(
     "assign_copy",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
-    value_func=matrix_assign_value_func,
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "value": Any},
+    value_func=matrix_assign_copy_value_func,
+    dispatch_func=matrix_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
 )
 
 
-# implements matrix[i] = vector
+# implements matrix[i,j] = value
 add_builtin(
     "assign_copy",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
-    constraint=matrix_vector_sametype,
-    value_func=matrix_assign_value_func,
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "j": Any, "value": Any},
+    value_func=matrix_assign_copy_value_func,
+    dispatch_func=matrix_assign_dispatch_func,
     hidden=True,
     export=False,
     group="Utility",
 )
 
 
-# implements matrix[i,j] += scalar
+# implements matrix[i] += value
 add_builtin(
     "add_inplace",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
-    value_type=None,
-    hidden=True,
-    export=False,
-    group="Utility",
-)
-
-
-# implements matrix[i] += vector
-add_builtin(
-    "add_inplace",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "value": Any},
     constraint=matrix_vector_sametype,
     value_type=None,
     hidden=True,
@@ -6616,10 +6811,10 @@ add_builtin(
 )
 
 
-# implements matrix[i,j] -= scalar
+# implements matrix[i,j] += value
 add_builtin(
-    "sub_inplace",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
+    "add_inplace",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "j": Any, "value": Any},
     value_type=None,
     hidden=True,
     export=False,
@@ -6627,10 +6822,21 @@ add_builtin(
 )
 
 
-# implements matrix[i] -= vector
+# implements matrix[i] -= value
 add_builtin(
     "sub_inplace",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "value": Any},
+    value_type=None,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+
+# implements matrix[i,j] -= value
+add_builtin(
+    "sub_inplace",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "j": Any, "value": Any},
     value_type=None,
     hidden=True,
     export=False,
@@ -6850,6 +7056,27 @@ add_builtin(
 # ---------------------------------
 # Operators
 
+
+def op_scalar_create_constraint_func(type, scalar):
+    def fn(arg_types: Mapping[str, type]):
+        return types_equal(arg_types[type]._wp_scalar_type_, arg_types[scalar])
+
+    return fn
+
+
+def op_scalar_create_value_func(type, scalar, default):
+    def fn(arg_types, arg_values):
+        if arg_types is None:
+            return default
+
+        if arg_types[type]._wp_scalar_type_ != arg_types[scalar]:
+            raise RuntimeError(f"'{scalar}' parameter must have the same scalar type as the modified object")
+
+        return arg_types[type]
+
+    return fn
+
+
 add_builtin(
     "add", input_types={"a": Scalar, "b": Scalar}, value_func=sametypes_create_value_func(Scalar), group="Operators"
 )
@@ -6858,6 +7085,22 @@ add_builtin(
     input_types={"a": vector(length=Any, dtype=Scalar), "b": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "add",
+    input_types={"a": vector(length=Any, dtype=Scalar), "b": Scalar},
+    constraint=op_scalar_create_constraint_func("a", "b"),
+    value_func=op_scalar_create_value_func("a", "b", vector(length=Any, dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "add",
+    input_types={"a": Scalar, "b": vector(length=Any, dtype=Scalar)},
+    constraint=op_scalar_create_constraint_func("b", "a"),
+    value_func=op_scalar_create_value_func("b", "a", vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -6873,6 +7116,22 @@ add_builtin(
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "b": matrix(shape=(Any, Any), dtype=Scalar)},
     constraint=sametypes,
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "add",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "b": Scalar},
+    constraint=op_scalar_create_constraint_func("a", "b"),
+    value_func=op_scalar_create_value_func("a", "b", matrix(shape=(Any, Any), dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "add",
+    input_types={"a": Scalar, "b": matrix(shape=(Any, Any), dtype=Scalar)},
+    constraint=op_scalar_create_constraint_func("b", "a"),
+    value_func=op_scalar_create_value_func("b", "a", matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -6897,9 +7156,41 @@ add_builtin(
 )
 add_builtin(
     "sub",
+    input_types={"a": vector(length=Any, dtype=Scalar), "b": Scalar},
+    constraint=op_scalar_create_constraint_func("a", "b"),
+    value_func=op_scalar_create_value_func("a", "b", vector(length=Any, dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "sub",
+    input_types={"a": Scalar, "b": vector(length=Any, dtype=Scalar)},
+    constraint=op_scalar_create_constraint_func("b", "a"),
+    value_func=op_scalar_create_value_func("b", "a", vector(length=Any, dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "sub",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "b": matrix(shape=(Any, Any), dtype=Scalar)},
     constraint=sametypes,
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "sub",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "b": Scalar},
+    constraint=op_scalar_create_constraint_func("a", "b"),
+    value_func=op_scalar_create_value_func("a", "b", matrix(shape=(Any, Any), dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "sub",
+    input_types={"a": Scalar, "b": matrix(shape=(Any, Any), dtype=Scalar)},
+    constraint=op_scalar_create_constraint_func("b", "a"),
+    value_func=op_scalar_create_value_func("b", "a", matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -7122,8 +7413,24 @@ add_builtin(
     "mod",
     input_types={"a": vector(length=Any, dtype=Scalar), "b": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
-    value_func=sametypes_create_value_func(Scalar),
+    value_func=sametypes_create_value_func(vector(length=Any, dtype=Scalar)),
     doc="Modulo operation using truncated division.",
+    group="Operators",
+)
+add_builtin(
+    "mod",
+    input_types={"a": vector(length=Any, dtype=Scalar), "b": Scalar},
+    constraint=op_scalar_create_constraint_func("a", "b"),
+    value_func=op_scalar_create_value_func("a", "b", vector(length=Any, dtype=Scalar)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "mod",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "b": Scalar},
+    constraint=op_scalar_create_constraint_func("a", "b"),
+    value_func=op_scalar_create_value_func("a", "b", matrix(shape=(Any, Any), dtype=Scalar)),
+    doc="",
     group="Operators",
 )
 
@@ -8455,4 +8762,23 @@ add_builtin(
     doc="Return the number of elements in a tuple.",
     group="Utility",
     export=False,
+)
+
+# ---------------------------------
+# Slicing
+
+
+def slice_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    return slice_t(**arg_values)
+
+
+add_builtin(
+    "slice",
+    input_types={"start": int, "stop": int, "step": int},
+    value_func=slice_value_func,
+    native_func="slice_t",
+    export=False,
+    group="Utility",
+    hidden=True,
+    missing_grad=True,
 )

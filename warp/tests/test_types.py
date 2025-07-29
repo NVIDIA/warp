@@ -268,11 +268,6 @@ class TestTypes(unittest.TestCase):
             v1[0] = "123.0"
 
         with self.assertRaisesRegex(
-            TypeError, r"Expected to assign a slice from a sequence of values but got `int` instead"
-        ):
-            v1[:] = 123
-
-        with self.assertRaisesRegex(
             TypeError, r"Expected to assign a slice from a sequence of `int32` values but got `vec3i` instead"
         ):
             v1[:1] = (v1,)
@@ -484,24 +479,9 @@ class TestTypes(unittest.TestCase):
             m[0][0] = "123.0"
 
         with self.assertRaisesRegex(
-            TypeError, r"Expected to assign a slice from a sequence of values but got `int` instead"
-        ):
-            m[0] = 123
-
-        with self.assertRaisesRegex(
             TypeError, r"Expected to assign a slice from a sequence of `float16` values but got `mat22h` instead"
         ):
             m[0] = (m,)
-
-        with self.assertRaisesRegex(
-            KeyError, r"Slices are not supported when indexing matrices using the `m\[start:end\]` notation"
-        ):
-            m[:] = 123
-
-        with self.assertRaisesRegex(
-            KeyError, r"Slices are not supported when indexing matrices using the `m\[i, j\]` notation"
-        ):
-            m[0, :1] = (123,)
 
         with self.assertRaisesRegex(ValueError, r"Can only assign sequence of same size"):
             m[0][:1] = (1, 2)

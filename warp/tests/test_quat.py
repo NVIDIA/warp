@@ -2118,39 +2118,6 @@ def test_quat_assign(test, device):
     run(quat_assign_attribute)
 
 
-def test_quat_assign_copy(test, device):
-    saved_enable_vector_component_overwrites_setting = wp.config.enable_vector_component_overwrites
-    try:
-        wp.config.enable_vector_component_overwrites = True
-
-        @wp.kernel
-        def quat_assign_overwrite(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.quat)):
-            tid = wp.tid()
-
-            a = wp.quat()
-            b = x[tid]
-            a = b
-            a[1] = 3.0
-
-            y[tid] = a
-
-        x = wp.ones(1, dtype=wp.quat, device=device, requires_grad=True)
-        y = wp.zeros(1, dtype=wp.quat, device=device, requires_grad=True)
-
-        tape = wp.Tape()
-        with tape:
-            wp.launch(quat_assign_overwrite, dim=1, inputs=[x, y], device=device)
-
-        y.grad = wp.ones_like(y, requires_grad=False)
-        tape.backward()
-
-        assert_np_equal(y.numpy(), np.array([[1.0, 3.0, 1.0, 1.0]], dtype=float))
-        assert_np_equal(x.grad.numpy(), np.array([[1.0, 0.0, 1.0, 1.0]], dtype=float))
-
-    finally:
-        wp.config.enable_vector_component_overwrites = saved_enable_vector_component_overwrites_setting
-
-
 @wp.kernel
 def quat_array_extract_subscript(x: wp.array2d(dtype=wp.quat), y: wp.array2d(dtype=float)):
     i, j = wp.tid()
@@ -2393,6 +2360,135 @@ def test_scalar_quat_div(test, device):
     assert_np_equal(x.grad.numpy(), np.array(((-1.0, -0.25, -0.0625, -0.015625),), dtype=float))
 
 
+def test_quat_indexing_assign(test, device):
+    @wp.func
+    def fn():
+        q = wp.quat(1.0, 2.0, 3.0, 4.0)
+
+        q[0] = 123.0
+        q[1] *= 2.0
+
+        wp.expect_eq(q[0], 123.0)
+        wp.expect_eq(q[1], 4.0)
+        wp.expect_eq(q[2], 3.0)
+        wp.expect_eq(q[3], 4.0)
+
+        q[-1] = 123.0
+        q[-2] *= 2.0
+
+        wp.expect_eq(q[-1], 123.0)
+        wp.expect_eq(q[-2], 6.0)
+        wp.expect_eq(q[-3], 4.0)
+        wp.expect_eq(q[-4], 123.0)
+
+    @wp.kernel(module="unique")
+    def kernel():
+        fn()
+
+    wp.launch(kernel, 1, device=device)
+    wp.synchronize()
+    fn()
+
+
+def test_quat_slicing_assign(test, device):
+    vec0 = wp.vec(0, float)
+    vec1 = wp.vec(1, float)
+    vec2 = wp.vec(2, float)
+    vec3 = wp.vec(3, float)
+    vec4 = wp.vec(4, float)
+
+    @wp.func
+    def fn():
+        q = wp.quat(1.0, 2.0, 3.0, 4.0)
+
+        wp.expect_eq(q[:] == vec4(1.0, 2.0, 3.0, 4.0), True)
+        wp.expect_eq(q[-123:123] == vec4(1.0, 2.0, 3.0, 4.0), True)
+        wp.expect_eq(q[123:] == vec0(), True)
+        wp.expect_eq(q[:-123] == vec0(), True)
+        wp.expect_eq(q[::123] == vec1(1.0), True)
+
+        wp.expect_eq(q[1:] == vec3(2.0, 3.0, 4.0), True)
+        wp.expect_eq(q[-2:] == vec2(3.0, 4.0), True)
+        wp.expect_eq(q[:2] == vec2(1.0, 2.0), True)
+        wp.expect_eq(q[:-1] == vec3(1.0, 2.0, 3.0), True)
+        wp.expect_eq(q[::2] == vec2(1.0, 3.0), True)
+        wp.expect_eq(q[1::2] == vec2(2.0, 4.0), True)
+        wp.expect_eq(q[::-1] == vec4(4.0, 3.0, 2.0, 1.0), True)
+        wp.expect_eq(q[::-2] == vec2(4.0, 2.0), True)
+        wp.expect_eq(q[1::-2] == vec1(2.0), True)
+
+        q[1:] = vec3(5.0, 6.0, 7.0)
+        wp.expect_eq(q == wp.quat(1.0, 5.0, 6.0, 7.0), True)
+
+        q[-2:] = vec2(8.0, 9.0)
+        wp.expect_eq(q == wp.quat(1.0, 5.0, 8.0, 9.0), True)
+
+        q[:2] = vec2(10.0, 11.0)
+        wp.expect_eq(q == wp.quat(10.0, 11.0, 8.0, 9.0), True)
+
+        q[:-1] = vec3(12.0, 13.0, 14.0)
+        wp.expect_eq(q == wp.quat(12.0, 13.0, 14.0, 9.0), True)
+
+        q[::2] = vec2(15.0, 16.0)
+        wp.expect_eq(q == wp.quat(15.0, 13.0, 16.0, 9.0), True)
+
+        q[1::2] = vec2(17.0, 18.0)
+        wp.expect_eq(q == wp.quat(15.0, 17.0, 16.0, 18.0), True)
+
+        q[1::-2] = vec1(19.0)
+        wp.expect_eq(q == wp.quat(15.0, 19.0, 16.0, 18.0), True)
+
+        q[:2] = 20.0
+        wp.expect_eq(q == wp.quat(20.0, 20.0, 16.0, 18.0), True)
+
+        q[1:] += vec3(21.0, 22.0, 23.0)
+        wp.expect_eq(q == wp.quat(20.0, 41.0, 38.0, 41.0), True)
+
+        q[:2] += 24.0
+        wp.expect_eq(q == wp.quat(44.0, 65.0, 38.0, 41.0), True)
+
+        q[:-1] -= vec3(25.0, 26.0, 27.0)
+        wp.expect_eq(q == wp.quat(19.0, 39.0, 11.0, 41.0), True)
+
+        q[-2:] -= 34.0
+        wp.expect_eq(q == wp.quat(19.0, 39.0, -23.0, 7.0), True)
+
+    @wp.kernel(module="unique")
+    def kernel():
+        fn()
+
+    wp.launch(kernel, 1, device=device)
+    wp.synchronize()
+    fn()
+
+
+def test_quat_slicing_assign_backward(test, device):
+    @wp.kernel(module="unique")
+    def kernel(arr_x: wp.array(dtype=wp.vec2), arr_y: wp.array(dtype=wp.quat)):
+        i = wp.tid()
+
+        y = arr_y[i]
+
+        y[:2] = arr_x[i]
+        y[1:-1] += arr_x[i][:2]
+        y[3:1:-1] -= arr_x[i][0:]
+
+        arr_y[i] = y
+
+    x = wp.ones(1, dtype=wp.vec2, requires_grad=True, device=device)
+    y = wp.zeros(1, dtype=wp.quat, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel, 1, inputs=(x,), outputs=(y,), device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array(((1.0, 2.0, 0.0, -1.0),), dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array(((1.0, 1.0),), dtype=float))
+
+
 devices = get_test_devices()
 
 
@@ -2497,7 +2593,6 @@ for dtype in np_float_types:
 add_function_test(TestQuat, "test_quat_len", test_quat_len, devices=devices)
 add_function_test(TestQuat, "test_quat_extract", test_quat_extract, devices=devices)
 add_function_test(TestQuat, "test_quat_assign", test_quat_assign, devices=devices)
-add_function_test(TestQuat, "test_quat_assign_copy", test_quat_assign_copy, devices=devices)
 add_function_test(TestQuat, "test_quat_array_extract", test_quat_array_extract, devices=devices)
 add_function_test(TestQuat, "test_quat_array_assign", test_quat_array_assign, devices=devices)
 add_function_test(TestQuat, "test_quat_add_inplace", test_quat_add_inplace, devices=devices)
@@ -2505,6 +2600,9 @@ add_function_test(TestQuat, "test_quat_sub_inplace", test_quat_sub_inplace, devi
 add_function_test(TestQuat, "test_quat_array_add_inplace", test_quat_array_add_inplace, devices=devices)
 add_function_test(TestQuat, "test_quat_array_sub_inplace", test_quat_array_sub_inplace, devices=devices)
 add_function_test(TestQuat, "test_scalar_quat_div", test_scalar_quat_div, devices=devices)
+add_function_test(TestQuat, "test_quat_indexing_assign", test_quat_indexing_assign, devices=devices)
+add_function_test(TestQuat, "test_quat_slicing_assign", test_quat_slicing_assign, devices=devices)
+add_function_test(TestQuat, "test_quat_slicing_assign_backward", test_quat_slicing_assign_backward, devices=devices)
 
 
 if __name__ == "__main__":

@@ -1727,6 +1727,176 @@ def test_matrix_from_vecs():
     wp.expect_eq(m4[1, 2], 6.0)
 
 
+def test_matrix_from_vecs_runtime(test, device):
+    m1 = wp.matrix_from_cols(
+        wp.vec3(1.0, 2.0, 3.0),
+        wp.vec3(4.0, 5.0, 6.0),
+        wp.vec3(7.0, 8.0, 9.0),
+    )
+    assert m1[0, 0] == 1.0
+    assert m1[0, 1] == 4.0
+    assert m1[0, 2] == 7.0
+    assert m1[1, 0] == 2.0
+    assert m1[1, 1] == 5.0
+    assert m1[1, 2] == 8.0
+    assert m1[2, 0] == 3.0
+    assert m1[2, 1] == 6.0
+    assert m1[2, 2] == 9.0
+
+    assert m1.get_row(0) == wp.vec3(1.0, 4.0, 7.0)
+    assert m1.get_row(1) == wp.vec3(2.0, 5.0, 8.0)
+    assert m1.get_row(2) == wp.vec3(3.0, 6.0, 9.0)
+    assert m1.get_col(0) == wp.vec3(1.0, 2.0, 3.0)
+    assert m1.get_col(1) == wp.vec3(4.0, 5.0, 6.0)
+    assert m1.get_col(2) == wp.vec3(7.0, 8.0, 9.0)
+
+    m1.set_row(0, wp.vec3(8.0, 9.0, 10.0))
+    m1.set_row(1, wp.vec3(11.0, 12.0, 13.0))
+    m1.set_row(2, wp.vec3(14.0, 15.0, 16.0))
+
+    assert m1 == wp.matrix_from_rows(
+        wp.vec3(8.0, 9.0, 10.0),
+        wp.vec3(11.0, 12.0, 13.0),
+        wp.vec3(14.0, 15.0, 16.0),
+    )
+
+    m1.set_col(0, wp.vec3(8.0, 9.0, 10.0))
+    m1.set_col(1, wp.vec3(11.0, 12.0, 13.0))
+    m1.set_col(2, wp.vec3(14.0, 15.0, 16.0))
+
+    assert m1 == wp.matrix_from_cols(
+        wp.vec3(8.0, 9.0, 10.0),
+        wp.vec3(11.0, 12.0, 13.0),
+        wp.vec3(14.0, 15.0, 16.0),
+    )
+
+    m2 = wp.matrix_from_rows(
+        wp.vec3(1.0, 2.0, 3.0),
+        wp.vec3(4.0, 5.0, 6.0),
+        wp.vec3(7.0, 8.0, 9.0),
+    )
+    assert m2[0, 0] == 1.0
+    assert m2[0, 1] == 2.0
+    assert m2[0, 2] == 3.0
+    assert m2[1, 0] == 4.0
+    assert m2[1, 1] == 5.0
+    assert m2[1, 2] == 6.0
+    assert m2[2, 0] == 7.0
+    assert m2[2, 1] == 8.0
+    assert m2[2, 2] == 9.0
+
+    assert m2.get_row(0) == wp.vec3(1.0, 2.0, 3.0)
+    assert m2.get_row(1) == wp.vec3(4.0, 5.0, 6.0)
+    assert m2.get_row(2) == wp.vec3(7.0, 8.0, 9.0)
+    assert m2.get_col(0) == wp.vec3(1.0, 4.0, 7.0)
+    assert m2.get_col(1) == wp.vec3(2.0, 5.0, 8.0)
+    assert m2.get_col(2) == wp.vec3(3.0, 6.0, 9.0)
+
+    m2.set_row(0, wp.vec3(8.0, 9.0, 10.0))
+    m2.set_row(1, wp.vec3(11.0, 12.0, 13.0))
+    m2.set_row(2, wp.vec3(14.0, 15.0, 16.0))
+
+    assert m2 == wp.matrix_from_rows(
+        wp.vec3(8.0, 9.0, 10.0),
+        wp.vec3(11.0, 12.0, 13.0),
+        wp.vec3(14.0, 15.0, 16.0),
+    )
+
+    m2.set_col(0, wp.vec3(8.0, 9.0, 10.0))
+    m2.set_col(1, wp.vec3(11.0, 12.0, 13.0))
+    m2.set_col(2, wp.vec3(14.0, 15.0, 16.0))
+
+    assert m2 == wp.matrix_from_cols(
+        wp.vec3(8.0, 9.0, 10.0),
+        wp.vec3(11.0, 12.0, 13.0),
+        wp.vec3(14.0, 15.0, 16.0),
+    )
+
+    m3 = wp.matrix_from_cols(
+        wp.vec3(1.0, 2.0, 3.0),
+        wp.vec3(4.0, 5.0, 6.0),
+    )
+    assert m3[0, 0] == 1.0
+    assert m3[0, 1] == 4.0
+    assert m3[1, 0] == 2.0
+    assert m3[1, 1] == 5.0
+    assert m3[2, 0] == 3.0
+    assert m3[2, 1] == 6.0
+
+    assert m3.get_row(0) == wp.vec2(1.0, 4.0)
+    assert m3.get_row(1) == wp.vec2(2.0, 5.0)
+    assert m3.get_row(2) == wp.vec2(3.0, 6.0)
+    assert m3.get_col(0) == wp.vec3(1.0, 2.0, 3.0)
+    assert m3.get_col(1) == wp.vec3(4.0, 5.0, 6.0)
+
+    m3.set_row(0, wp.vec2(7.0, 8.0))
+    m3.set_row(1, wp.vec2(9.0, 10.0))
+    m3.set_row(2, wp.vec2(11.0, 12.0))
+
+    assert m3 == wp.matrix_from_rows(
+        wp.vec2(7.0, 8.0),
+        wp.vec2(9.0, 10.0),
+        wp.vec2(11.0, 12.0),
+    )
+
+    m3.set_col(0, wp.vec3(7.0, 8.0, 9.0))
+    m3.set_col(1, wp.vec3(10.0, 11.0, 12.0))
+
+    assert m3 == wp.matrix_from_cols(
+        wp.vec3(7.0, 8.0, 9.0),
+        wp.vec3(10.0, 11.0, 12.0),
+    )
+
+    m4 = wp.matrix_from_rows(
+        wp.vec3(1.0, 2.0, 3.0),
+        wp.vec3(4.0, 5.0, 6.0),
+    )
+    assert m4[0, 0] == 1.0
+    assert m4[0, 1] == 2.0
+    assert m4[0, 2] == 3.0
+    assert m4[1, 0] == 4.0
+    assert m4[1, 1] == 5.0
+    assert m4[1, 2] == 6.0
+
+    assert m4.get_row(0) == wp.vec3(1.0, 2.0, 3.0)
+    assert m4.get_row(1) == wp.vec3(4.0, 5.0, 6.0)
+    assert m4.get_col(0) == wp.vec2(1.0, 4.0)
+    assert m4.get_col(1) == wp.vec2(2.0, 5.0)
+    assert m4.get_col(2) == wp.vec2(3.0, 6.0)
+
+    m4.set_row(0, wp.vec3(7.0, 8.0, 9.0))
+    m4.set_row(1, wp.vec3(10.0, 11.0, 12.0))
+
+    assert m4 == wp.matrix_from_rows(
+        wp.vec3(7.0, 8.0, 9.0),
+        wp.vec3(10.0, 11.0, 12.0),
+    )
+
+    m4.set_col(0, wp.vec2(7.0, 8.0))
+    m4.set_col(1, wp.vec2(9.0, 10.0))
+    m4.set_col(2, wp.vec2(11.0, 12.0))
+
+    assert m4 == wp.matrix_from_cols(
+        wp.vec2(7.0, 8.0),
+        wp.vec2(9.0, 10.0),
+        wp.vec2(11.0, 12.0),
+    )
+
+    m4.set_row(0, 13.0)
+
+    assert m4 == wp.matrix_from_rows(
+        wp.vec3(13.0, 13.0, 13.0),
+        wp.vec3(8.0, 10.0, 12.0),
+    )
+
+    m4.set_col(2, 14.0)
+
+    assert m4 == wp.matrix_from_rows(
+        wp.vec3(13.0, 13.0, 14.0),
+        wp.vec3(8.0, 10.0, 14.0),
+    )
+
+
 # Same as above but with a default (float/int) type
 # which tests some different code paths that
 # need to ensure types are correctly canonicalized
@@ -1939,36 +2109,6 @@ def test_mat_assign(test, device):
 
     assert_np_equal(y.numpy(), np.array([[[1.0, 1.0], [2.0, 2.0]]], dtype=float))
     assert_np_equal(x.grad.numpy(), np.array([[3.0, 3.0]], dtype=float))
-
-
-def test_matrix_assign_copy(test, device):
-    saved_enable_vector_component_overwrites_setting = wp.config.enable_vector_component_overwrites
-    try:
-        wp.config.enable_vector_component_overwrites = True
-
-        @wp.kernel
-        def mat_in_register_overwrite(x: wp.array2d(dtype=wp.mat22), y: wp.array(dtype=wp.vec2)):
-            i, j = wp.tid()
-
-            a = wp.mat22()
-            a[0] = y[i]
-            a[0, 1] = 3.0
-            x[i, j] = a
-
-        x = wp.zeros((1, 1), dtype=wp.mat22, device=device, requires_grad=True)
-        y = wp.ones(1, dtype=wp.vec2, device=device, requires_grad=True)
-
-        tape = wp.Tape()
-        with tape:
-            wp.launch(mat_in_register_overwrite, dim=(1, 1), inputs=[x, y], device=device)
-
-        tape.backward(grads={x: wp.ones_like(x, requires_grad=False)})
-
-        assert_np_equal(x.numpy(), np.array([[[[1.0, 3.0], [0.0, 0.0]]]], dtype=float))
-        assert_np_equal(y.grad.numpy(), np.array([[1.0, 0.0]], dtype=float))
-
-    finally:
-        wp.config.enable_vector_component_overwrites = saved_enable_vector_component_overwrites_setting
 
 
 @wp.kernel
@@ -2246,6 +2386,1731 @@ def test_scalar_mat_div(test, device):
     assert_np_equal(x.grad.numpy(), np.array((((-1.0, -0.25), (-0.0625, -0.015625)),), dtype=float))
 
 
+def test_mat_from_rows_indexing_assign(test, device):
+    @wp.func
+    def fn():
+        m = wp.matrix_from_rows(
+            wp.vec2(1.0, 2.0),
+            wp.vec2(3.0, 4.0),
+            wp.vec2(5.0, 6.0),
+        )
+
+        m[0] = wp.vec2(123.0, 234.0)
+        m[1] *= 2.0
+
+        wp.expect_eq(m[0], wp.vec2(123.0, 234.0))
+        wp.expect_eq(m[1], wp.vec2(6.0, 8.0))
+        wp.expect_eq(m[2], wp.vec2(5.0, 6.0))
+
+        m[-1] = wp.vec2(123.0, 234.0)
+        m[-2] *= 2.0
+
+        wp.expect_eq(m[-1], wp.vec2(123.0, 234.0))
+        wp.expect_eq(m[-2], wp.vec2(12.0, 16.0))
+        wp.expect_eq(m[-3], wp.vec2(123.0, 234.0))
+
+        m[0, 0] = 345.0
+        m[1, 0] *= 2.0
+
+        wp.expect_eq(m[0, 0], 345.0)
+        wp.expect_eq(m[0, 1], 234.0)
+        wp.expect_eq(m[1, 0], 24.0)
+        wp.expect_eq(m[1, 1], 16.0)
+        wp.expect_eq(m[2, 0], 123.0)
+        wp.expect_eq(m[2, 1], 234.0)
+
+        m[-1, -1] = 345.0
+        m[-2, -1] *= 2.0
+
+        wp.expect_eq(m[-1, -1], 345.0)
+        wp.expect_eq(m[-1, -2], 123.0)
+        wp.expect_eq(m[-2, -1], 32.0)
+        wp.expect_eq(m[-2, -2], 24.0)
+        wp.expect_eq(m[-3, -1], 234.0)
+        wp.expect_eq(m[-3, -2], 345.0)
+
+        m[0, 1] = 456.0
+        m[1, 1] *= 2.0
+
+        wp.expect_eq(m[0][0], 345.0)
+        wp.expect_eq(m[0][1], 456.0)
+        wp.expect_eq(m[1][0], 24.0)
+        wp.expect_eq(m[1][1], 64.0)
+        wp.expect_eq(m[2][0], 123.0)
+        wp.expect_eq(m[2][1], 345.0)
+
+        m[-1, -2] = 456.0
+        m[-2, -2] *= 2.0
+
+        wp.expect_eq(m[-1][-1], 345.0)
+        wp.expect_eq(m[-1][-2], 456.0)
+        wp.expect_eq(m[-2][-1], 64.0)
+        wp.expect_eq(m[-2][-2], 48.0)
+        wp.expect_eq(m[-3][-1], 456.0)
+        wp.expect_eq(m[-3][-2], 345.0)
+
+    @wp.kernel(module="unique")
+    def kernel():
+        fn()
+
+    wp.launch(kernel, 1, device=device)
+    wp.synchronize()
+    fn()
+
+
+def test_mat_from_cols_indexing_assign(test, device):
+    @wp.func
+    def fn():
+        m = wp.matrix_from_cols(
+            wp.vec2(1.0, 2.0),
+            wp.vec2(3.0, 4.0),
+            wp.vec2(5.0, 6.0),
+        )
+
+        m[0] = wp.vec3(123.0, 234.0, 345.0)
+        m[1] *= 2.0
+
+        wp.expect_eq(m[0], wp.vec3(123.0, 234.0, 345.0))
+        wp.expect_eq(m[1], wp.vec3(4.0, 8.0, 12.0))
+
+        m[-1] = wp.vec3(123.0, 234.0, 345.0)
+        m[-2] *= 2.0
+
+        wp.expect_eq(m[-1], wp.vec3(123.0, 234.0, 345.0))
+        wp.expect_eq(m[-2], wp.vec3(246.0, 468.0, 690.0))
+
+        m[0, 0] = 456.0
+        m[1, 0] *= 2.0
+
+        wp.expect_eq(m[0, 0], 456.0)
+        wp.expect_eq(m[0, 1], 468.0)
+        wp.expect_eq(m[0, 2], 690.0)
+        wp.expect_eq(m[1, 0], 246.0)
+        wp.expect_eq(m[1, 1], 234.0)
+        wp.expect_eq(m[1, 2], 345.0)
+
+        m[-1, -1] = 456.0
+        m[-2, -1] *= 2.0
+
+        wp.expect_eq(m[-1, -1], 456.0)
+        wp.expect_eq(m[-1, -2], 234.0)
+        wp.expect_eq(m[-1, -3], 246.0)
+        wp.expect_eq(m[-2, -1], 1380.0)
+        wp.expect_eq(m[-2, -2], 468.0)
+        wp.expect_eq(m[-2, -3], 456.0)
+
+        m[0, 1] = 567.0
+        m[1, 1] *= 2.0
+
+        wp.expect_eq(m[0][0], 456.0)
+        wp.expect_eq(m[0][1], 567.0)
+        wp.expect_eq(m[0][2], 1380.0)
+        wp.expect_eq(m[1][0], 246.0)
+        wp.expect_eq(m[1][1], 468.0)
+        wp.expect_eq(m[1][2], 456.0)
+
+        m[-1, -2] = 567.0
+        m[-2, -2] *= 2.0
+
+        wp.expect_eq(m[-1][-1], 456.0)
+        wp.expect_eq(m[-1][-2], 567.0)
+        wp.expect_eq(m[-1][-3], 246.0)
+        wp.expect_eq(m[-2][-1], 1380.0)
+        wp.expect_eq(m[-2][-2], 1134.0)
+        wp.expect_eq(m[-2][-3], 456.0)
+
+    @wp.kernel(module="unique")
+    def kernel():
+        fn()
+
+    wp.launch(kernel, 1, device=device)
+    wp.synchronize()
+    fn()
+
+
+def test_mat_from_rows_slicing_assign(test, device):
+    mat00 = wp.mat((0, 0), float)
+    vec1 = wp.vec(1, float)
+    vec2 = wp.vec(2, float)
+    vec3 = wp.vec(3, float)
+    vec4 = wp.vec(4, float)
+
+    @wp.func
+    def fn():
+        m = wp.matrix_from_rows(
+            vec4(1.0, 2.0, 3.0, 4.0),
+            vec4(5.0, 6.0, 7.0, 8.0),
+            vec4(9.0, 10.0, 11.0, 12.0),
+            vec4(13.0, 14.0, 15.0, 16.0),
+        )
+
+        wp.expect_eq(
+            m[:]
+            == wp.matrix_from_rows(
+                vec4(1.0, 2.0, 3.0, 4.0),
+                vec4(5.0, 6.0, 7.0, 8.0),
+                vec4(9.0, 10.0, 11.0, 12.0),
+                vec4(13.0, 14.0, 15.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[-123:123]
+            == wp.matrix_from_rows(
+                vec4(1.0, 2.0, 3.0, 4.0),
+                vec4(5.0, 6.0, 7.0, 8.0),
+                vec4(9.0, 10.0, 11.0, 12.0),
+                vec4(13.0, 14.0, 15.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(m[123:] == mat00(), True)
+        wp.expect_eq(m[:-123] == mat00(), True)
+        wp.expect_eq(
+            m[::123]
+            == wp.matrix_from_rows(
+                vec4(1.0, 2.0, 3.0, 4.0),
+            ),
+            True,
+        )
+
+        wp.expect_eq(
+            m[1:]
+            == wp.matrix_from_rows(
+                vec4(5.0, 6.0, 7.0, 8.0),
+                vec4(9.0, 10.0, 11.0, 12.0),
+                vec4(13.0, 14.0, 15.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[-2:]
+            == wp.matrix_from_rows(
+                vec4(9.0, 10.0, 11.0, 12.0),
+                vec4(13.0, 14.0, 15.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[:2]
+            == wp.matrix_from_rows(
+                vec4(1.0, 2.0, 3.0, 4.0),
+                vec4(5.0, 6.0, 7.0, 8.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[:-1]
+            == wp.matrix_from_rows(
+                vec4(1.0, 2.0, 3.0, 4.0),
+                vec4(5.0, 6.0, 7.0, 8.0),
+                vec4(9.0, 10.0, 11.0, 12.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[::2]
+            == wp.matrix_from_rows(
+                vec4(1.0, 2.0, 3.0, 4.0),
+                vec4(9.0, 10.0, 11.0, 12.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[1::2]
+            == wp.matrix_from_rows(
+                vec4(5.0, 6.0, 7.0, 8.0),
+                vec4(13.0, 14.0, 15.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[::-1]
+            == wp.matrix_from_rows(
+                vec4(13.0, 14.0, 15.0, 16.0),
+                vec4(9.0, 10.0, 11.0, 12.0),
+                vec4(5.0, 6.0, 7.0, 8.0),
+                vec4(1.0, 2.0, 3.0, 4.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[::-2]
+            == wp.matrix_from_rows(
+                vec4(13.0, 14.0, 15.0, 16.0),
+                vec4(5.0, 6.0, 7.0, 8.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[1::-2]
+            == wp.matrix_from_rows(
+                vec4(5.0, 6.0, 7.0, 8.0),
+            ),
+            True,
+        )
+
+        wp.expect_eq(
+            m[:, :]
+            == wp.matrix_from_rows(
+                vec4(1.0, 2.0, 3.0, 4.0),
+                vec4(5.0, 6.0, 7.0, 8.0),
+                vec4(9.0, 10.0, 11.0, 12.0),
+                vec4(13.0, 14.0, 15.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[:, 2:]
+            == wp.matrix_from_rows(
+                vec2(3.0, 4.0),
+                vec2(7.0, 8.0),
+                vec2(11.0, 12.0),
+                vec2(15.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[1:, 2:]
+            == wp.matrix_from_rows(
+                vec2(7.0, 8.0),
+                vec2(11.0, 12.0),
+                vec2(15.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[-2:, 2:]
+            == wp.matrix_from_rows(
+                vec2(11.0, 12.0),
+                vec2(15.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[2:, -2:]
+            == wp.matrix_from_rows(
+                vec2(11.0, 12.0),
+                vec2(15.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[1:, :2]
+            == wp.matrix_from_rows(
+                vec2(5.0, 6.0),
+                vec2(9.0, 10.0),
+                vec2(13.0, 14.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[:1, 2:]
+            == wp.matrix_from_rows(
+                vec2(3.0, 4.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[::-1, :1]
+            == wp.matrix_from_rows(
+                vec1(13.0),
+                vec1(9.0),
+                vec1(5.0),
+                vec1(1.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[:1, ::-1]
+            == wp.matrix_from_rows(
+                vec4(4.0, 3.0, 2.0, 1.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[:1:-1, 2::-1]
+            == wp.matrix_from_rows(
+                vec3(15.0, 14.0, 13.0),
+                vec3(11.0, 10.0, 9.0),
+            ),
+            True,
+        )
+
+        wp.expect_eq(m[:2, 0] == vec2(1.0, 5.0), True)
+        wp.expect_eq(m[2:, 1] == vec2(10.0, 14.0), True)
+        wp.expect_eq(m[0, :3] == vec3(1.0, 2.0, 3.0), True)
+        wp.expect_eq(m[1, 1:] == vec3(6.0, 7.0, 8.0), True)
+
+        m[1:] = wp.matrix_from_rows(
+            vec4(17.0, 18.0, 19.0, 20.0),
+            vec4(21.0, 22.0, 23.0, 24.0),
+            vec4(25.0, 26.0, 27.0, 28.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(1.0, 2.0, 3.0, 4.0),
+                vec4(17.0, 18.0, 19.0, 20.0),
+                vec4(21.0, 22.0, 23.0, 24.0),
+                vec4(25.0, 26.0, 27.0, 28.0),
+            ),
+            True,
+        )
+
+        m[-2:] = wp.matrix_from_rows(
+            vec4(29.0, 30.0, 31.0, 32.0),
+            vec4(33.0, 34.0, 35.0, 36.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(1.0, 2.0, 3.0, 4.0),
+                vec4(17.0, 18.0, 19.0, 20.0),
+                vec4(29.0, 30.0, 31.0, 32.0),
+                vec4(33.0, 34.0, 35.0, 36.0),
+            ),
+            True,
+        )
+
+        m[:2] = wp.matrix_from_rows(
+            vec4(37.0, 38.0, 39.0, 40.0),
+            vec4(41.0, 42.0, 43.0, 44.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(37.0, 38.0, 39.0, 40.0),
+                vec4(41.0, 42.0, 43.0, 44.0),
+                vec4(29.0, 30.0, 31.0, 32.0),
+                vec4(33.0, 34.0, 35.0, 36.0),
+            ),
+            True,
+        )
+
+        m[:-1] = wp.matrix_from_rows(
+            vec4(45.0, 46.0, 47.0, 48.0),
+            vec4(49.0, 50.0, 51.0, 52.0),
+            vec4(53.0, 54.0, 55.0, 56.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(45.0, 46.0, 47.0, 48.0),
+                vec4(49.0, 50.0, 51.0, 52.0),
+                vec4(53.0, 54.0, 55.0, 56.0),
+                vec4(33.0, 34.0, 35.0, 36.0),
+            ),
+            True,
+        )
+
+        m[::2] = wp.matrix_from_rows(
+            vec4(57.0, 58.0, 59.0, 60.0),
+            vec4(61.0, 62.0, 63.0, 64.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(57.0, 58.0, 59.0, 60.0),
+                vec4(49.0, 50.0, 51.0, 52.0),
+                vec4(61.0, 62.0, 63.0, 64.0),
+                vec4(33.0, 34.0, 35.0, 36.0),
+            ),
+            True,
+        )
+
+        m[1::2] = wp.matrix_from_rows(
+            vec4(65.0, 66.0, 67.0, 68.0),
+            vec4(69.0, 70.0, 71.0, 72.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(57.0, 58.0, 59.0, 60.0),
+                vec4(65.0, 66.0, 67.0, 68.0),
+                vec4(61.0, 62.0, 63.0, 64.0),
+                vec4(69.0, 70.0, 71.0, 72.0),
+            ),
+            True,
+        )
+
+        m[::-1] = wp.matrix_from_rows(
+            vec4(73.0, 74.0, 75.0, 76.0),
+            vec4(77.0, 78.0, 79.0, 80.0),
+            vec4(81.0, 82.0, 83.0, 84.0),
+            vec4(85.0, 86.0, 87.0, 88.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(85.0, 86.0, 87.0, 88.0),
+                vec4(81.0, 82.0, 83.0, 84.0),
+                vec4(77.0, 78.0, 79.0, 80.0),
+                vec4(73.0, 74.0, 75.0, 76.0),
+            ),
+            True,
+        )
+
+        m[::-2] = wp.matrix_from_rows(
+            vec4(89.0, 90.0, 91.0, 92.0),
+            vec4(93.0, 94.0, 95.0, 96.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(85.0, 86.0, 87.0, 88.0),
+                vec4(93.0, 94.0, 95.0, 96.0),
+                vec4(77.0, 78.0, 79.0, 80.0),
+                vec4(89.0, 90.0, 91.0, 92.0),
+            ),
+            True,
+        )
+
+        m[1::-2] = wp.matrix_from_rows(
+            vec4(97.0, 98.0, 99.0, 100.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(85.0, 86.0, 87.0, 88.0),
+                vec4(97.0, 98.0, 99.0, 100.0),
+                vec4(77.0, 78.0, 79.0, 80.0),
+                vec4(89.0, 90.0, 91.0, 92.0),
+            ),
+            True,
+        )
+
+        m[:, :] = wp.matrix_from_rows(
+            vec4(101.0, 102.0, 103.0, 104.0),
+            vec4(105.0, 106.0, 107.0, 108.0),
+            vec4(109.0, 110.0, 111.0, 112.0),
+            vec4(113.0, 114.0, 115.0, 116.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(101.0, 102.0, 103.0, 104.0),
+                vec4(105.0, 106.0, 107.0, 108.0),
+                vec4(109.0, 110.0, 111.0, 112.0),
+                vec4(113.0, 114.0, 115.0, 116.0),
+            ),
+            True,
+        )
+
+        m[:, 2:] = wp.matrix_from_rows(
+            vec2(117.0, 118.0),
+            vec2(119.0, 120.0),
+            vec2(121.0, 122.0),
+            vec2(123.0, 124.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(101.0, 102.0, 117.0, 118.0),
+                vec4(105.0, 106.0, 119.0, 120.0),
+                vec4(109.0, 110.0, 121.0, 122.0),
+                vec4(113.0, 114.0, 123.0, 124.0),
+            ),
+            True,
+        )
+
+        m[1:, 2:] = wp.matrix_from_rows(
+            vec2(125.0, 126.0),
+            vec2(127.0, 128.0),
+            vec2(129.0, 130.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(101.0, 102.0, 117.0, 118.0),
+                vec4(105.0, 106.0, 125.0, 126.0),
+                vec4(109.0, 110.0, 127.0, 128.0),
+                vec4(113.0, 114.0, 129.0, 130.0),
+            ),
+            True,
+        )
+
+        m[-2:, 2:] = wp.matrix_from_rows(
+            vec2(131.0, 132.0),
+            vec2(133.0, 134.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(101.0, 102.0, 117.0, 118.0),
+                vec4(105.0, 106.0, 125.0, 126.0),
+                vec4(109.0, 110.0, 131.0, 132.0),
+                vec4(113.0, 114.0, 133.0, 134.0),
+            ),
+            True,
+        )
+
+        m[2:, -2:] = wp.matrix_from_rows(
+            vec2(135.0, 136.0),
+            vec2(137.0, 138.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(101.0, 102.0, 117.0, 118.0),
+                vec4(105.0, 106.0, 125.0, 126.0),
+                vec4(109.0, 110.0, 135.0, 136.0),
+                vec4(113.0, 114.0, 137.0, 138.0),
+            ),
+            True,
+        )
+
+        m[1:, :2] = wp.matrix_from_rows(
+            vec2(139.0, 140.0),
+            vec2(141.0, 142.0),
+            vec2(143.0, 144.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(101.0, 102.0, 117.0, 118.0),
+                vec4(139.0, 140.0, 125.0, 126.0),
+                vec4(141.0, 142.0, 135.0, 136.0),
+                vec4(143.0, 144.0, 137.0, 138.0),
+            ),
+            True,
+        )
+
+        m[:1, 2:] = wp.matrix_from_rows(
+            vec2(145.0, 146.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(101.0, 102.0, 145.0, 146.0),
+                vec4(139.0, 140.0, 125.0, 126.0),
+                vec4(141.0, 142.0, 135.0, 136.0),
+                vec4(143.0, 144.0, 137.0, 138.0),
+            ),
+            True,
+        )
+
+        m[:2, 0] = vec2(147.0, 148.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(147.0, 102.0, 145.0, 146.0),
+                vec4(148.0, 140.0, 125.0, 126.0),
+                vec4(141.0, 142.0, 135.0, 136.0),
+                vec4(143.0, 144.0, 137.0, 138.0),
+            ),
+            True,
+        )
+
+        m[2:, 1] = vec2(149.0, 150.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(147.0, 102.0, 145.0, 146.0),
+                vec4(148.0, 140.0, 125.0, 126.0),
+                vec4(141.0, 149.0, 135.0, 136.0),
+                vec4(143.0, 150.0, 137.0, 138.0),
+            ),
+            True,
+        )
+
+        m[0, :3] = vec3(151.0, 152.0, 153.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(151.0, 152.0, 153.0, 146.0),
+                vec4(148.0, 140.0, 125.0, 126.0),
+                vec4(141.0, 149.0, 135.0, 136.0),
+                vec4(143.0, 150.0, 137.0, 138.0),
+            ),
+            True,
+        )
+
+        m[1, 1:] = vec3(154.0, 155.0, 156.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(151.0, 152.0, 153.0, 146.0),
+                vec4(148.0, 154.0, 155.0, 156.0),
+                vec4(141.0, 149.0, 135.0, 136.0),
+                vec4(143.0, 150.0, 137.0, 138.0),
+            ),
+            True,
+        )
+
+        m[0, 2] = 157.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(151.0, 152.0, 157.0, 146.0),
+                vec4(148.0, 154.0, 155.0, 156.0),
+                vec4(141.0, 149.0, 135.0, 136.0),
+                vec4(143.0, 150.0, 137.0, 138.0),
+            ),
+            True,
+        )
+
+        m[:2] = 158.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(158.0, 158.0, 158.0, 158.0),
+                vec4(158.0, 158.0, 158.0, 158.0),
+                vec4(141.0, 149.0, 135.0, 136.0),
+                vec4(143.0, 150.0, 137.0, 138.0),
+            ),
+            True,
+        )
+
+        m[:2, 0] = 159.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(159.0, 158.0, 158.0, 158.0),
+                vec4(159.0, 158.0, 158.0, 158.0),
+                vec4(141.0, 149.0, 135.0, 136.0),
+                vec4(143.0, 150.0, 137.0, 138.0),
+            ),
+            True,
+        )
+
+        m[0, :2] = 160.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, 158.0, 158.0),
+                vec4(159.0, 158.0, 158.0, 158.0),
+                vec4(141.0, 149.0, 135.0, 136.0),
+                vec4(143.0, 150.0, 137.0, 138.0),
+            ),
+            True,
+        )
+
+        m[2:, 1:] = 161.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, 158.0, 158.0),
+                vec4(159.0, 158.0, 158.0, 158.0),
+                vec4(141.0, 161.0, 161.0, 161.0),
+                vec4(143.0, 161.0, 161.0, 161.0),
+            ),
+            True,
+        )
+
+        m[1:] += 162.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, 158.0, 158.0),
+                vec4(321.0, 320.0, 320.0, 320.0),
+                vec4(303.0, 323.0, 323.0, 323.0),
+                vec4(305.0, 323.0, 323.0, 323.0),
+            ),
+            True,
+        )
+
+        m[3, 1:] += vec3(163.0, 164.0, 165.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, 158.0, 158.0),
+                vec4(321.0, 320.0, 320.0, 320.0),
+                vec4(303.0, 323.0, 323.0, 323.0),
+                vec4(305.0, 486.0, 487.0, 488.0),
+            ),
+            True,
+        )
+
+        m[2:, 1] += vec2(166.0, 167.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, 158.0, 158.0),
+                vec4(321.0, 320.0, 320.0, 320.0),
+                vec4(303.0, 489.0, 323.0, 323.0),
+                vec4(305.0, 653.0, 487.0, 488.0),
+            ),
+            True,
+        )
+
+        m[:, -2:] -= 168.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, -10.0, -10.0),
+                vec4(321.0, 320.0, 152.0, 152.0),
+                vec4(303.0, 489.0, 155.0, 155.0),
+                vec4(305.0, 653.0, 319.0, 320.0),
+            ),
+            True,
+        )
+
+        m[2:, 3] -= vec2(169.0, 170.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, -10.0, -10.0),
+                vec4(321.0, 320.0, 152.0, 152.0),
+                vec4(303.0, 489.0, 155.0, -14.0),
+                vec4(305.0, 653.0, 319.0, 150.0),
+            ),
+            True,
+        )
+
+        m[1, :3] -= vec3(171.0, 172.0, 173.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, -10.0, -10.0),
+                vec4(150.0, 148.0, -21.0, 152.0),
+                vec4(303.0, 489.0, 155.0, -14.0),
+                vec4(305.0, 653.0, 319.0, 150.0),
+            ),
+            True,
+        )
+
+        m[:-2, 2:] *= 3.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, -30.0, -30.0),
+                vec4(150.0, 148.0, -63.0, 456.0),
+                vec4(303.0, 489.0, 155.0, -14.0),
+                vec4(305.0, 653.0, 319.0, 150.0),
+            ),
+            True,
+        )
+
+        m[-2:, 1] *= 4.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, -30.0, -30.0),
+                vec4(150.0, 148.0, -63.0, 456.0),
+                vec4(303.0, 1956.0, 155.0, -14.0),
+                vec4(305.0, 2612.0, 319.0, 150.0),
+            ),
+            True,
+        )
+
+        m[3, :1] *= 5.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, -30.0, -30.0),
+                vec4(150.0, 148.0, -63.0, 456.0),
+                vec4(303.0, 1956.0, 155.0, -14.0),
+                vec4(1525.0, 2612.0, 319.0, 150.0),
+            ),
+            True,
+        )
+
+        m[:2, :2] /= 2.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(80.0, 80.0, -30.0, -30.0),
+                vec4(75.0, 74.0, -63.0, 456.0),
+                vec4(303.0, 1956.0, 155.0, -14.0),
+                vec4(1525.0, 2612.0, 319.0, 150.0),
+            ),
+            True,
+        )
+
+        m[3:, 3] /= 3.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(80.0, 80.0, -30.0, -30.0),
+                vec4(75.0, 74.0, -63.0, 456.0),
+                vec4(303.0, 1956.0, 155.0, -14.0),
+                vec4(1525.0, 2612.0, 319.0, 50.0),
+            ),
+            True,
+        )
+
+        m[0, :2] /= 4.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(20.0, 20.0, -30.0, -30.0),
+                vec4(75.0, 74.0, -63.0, 456.0),
+                vec4(303.0, 1956.0, 155.0, -14.0),
+                vec4(1525.0, 2612.0, 319.0, 50.0),
+            ),
+            True,
+        )
+
+        m[-3:, :2] %= 3.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(20.0, 20.0, -30.0, -30.0),
+                vec4(0.0, 2.0, -63.0, 456.0),
+                vec4(0.0, 0.0, 155.0, -14.0),
+                vec4(1.0, 2.0, 319.0, 50.0),
+            ),
+            True,
+        )
+
+        m[2:, -1] %= 4.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(20.0, 20.0, -30.0, -30.0),
+                vec4(0.0, 2.0, -63.0, 456.0),
+                vec4(0.0, 0.0, 155.0, -2.0),
+                vec4(1.0, 2.0, 319.0, 2.0),
+            ),
+            True,
+        )
+
+        m[-1, 1:] %= 5.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(20.0, 20.0, -30.0, -30.0),
+                vec4(0.0, 2.0, -63.0, 456.0),
+                vec4(0.0, 0.0, 155.0, -2.0),
+                vec4(1.0, 2.0, 4.0, 2.0),
+            ),
+            True,
+        )
+
+    @wp.kernel(module="unique")
+    def kernel():
+        fn()
+
+    wp.launch(kernel, 1, device=device)
+    wp.synchronize()
+    fn()
+
+
+def test_mat_from_cols_slicing_assign(test, device):
+    mat00 = wp.mat((0, 0), float)
+    vec1 = wp.vec(1, float)
+    vec2 = wp.vec(2, float)
+    vec3 = wp.vec(3, float)
+    vec4 = wp.vec(4, float)
+
+    @wp.func
+    def fn():
+        m = wp.matrix_from_cols(
+            vec4(1.0, 2.0, 3.0, 4.0),
+            vec4(5.0, 6.0, 7.0, 8.0),
+            vec4(9.0, 10.0, 11.0, 12.0),
+            vec4(13.0, 14.0, 15.0, 16.0),
+        )
+
+        wp.expect_eq(
+            m[:]
+            == wp.matrix_from_rows(
+                vec4(1.0, 5.0, 9.0, 13.0),
+                vec4(2.0, 6.0, 10.0, 14.0),
+                vec4(3.0, 7.0, 11.0, 15.0),
+                vec4(4.0, 8.0, 12.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[-123:123]
+            == wp.matrix_from_rows(
+                vec4(1.0, 5.0, 9.0, 13.0),
+                vec4(2.0, 6.0, 10.0, 14.0),
+                vec4(3.0, 7.0, 11.0, 15.0),
+                vec4(4.0, 8.0, 12.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(m[123:] == mat00(), True)
+        wp.expect_eq(m[:-123] == mat00(), True)
+        wp.expect_eq(
+            m[::123]
+            == wp.matrix_from_rows(
+                vec4(1.0, 5.0, 9.0, 13.0),
+            ),
+            True,
+        )
+
+        wp.expect_eq(
+            m[1:]
+            == wp.matrix_from_rows(
+                vec4(2.0, 6.0, 10.0, 14.0),
+                vec4(3.0, 7.0, 11.0, 15.0),
+                vec4(4.0, 8.0, 12.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[-2:]
+            == wp.matrix_from_rows(
+                vec4(3.0, 7.0, 11.0, 15.0),
+                vec4(4.0, 8.0, 12.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[:2]
+            == wp.matrix_from_rows(
+                vec4(1.0, 5.0, 9.0, 13.0),
+                vec4(2.0, 6.0, 10.0, 14.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[:-1]
+            == wp.matrix_from_rows(
+                vec4(1.0, 5.0, 9.0, 13.0),
+                vec4(2.0, 6.0, 10.0, 14.0),
+                vec4(3.0, 7.0, 11.0, 15.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[::2]
+            == wp.matrix_from_rows(
+                vec4(1.0, 5.0, 9.0, 13.0),
+                vec4(3.0, 7.0, 11.0, 15.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[1::2]
+            == wp.matrix_from_rows(
+                vec4(2.0, 6.0, 10.0, 14.0),
+                vec4(4.0, 8.0, 12.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[::-1]
+            == wp.matrix_from_rows(
+                vec4(4.0, 8.0, 12.0, 16.0),
+                vec4(3.0, 7.0, 11.0, 15.0),
+                vec4(2.0, 6.0, 10.0, 14.0),
+                vec4(1.0, 5.0, 9.0, 13.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[::-2]
+            == wp.matrix_from_rows(
+                vec4(4.0, 8.0, 12.0, 16.0),
+                vec4(2.0, 6.0, 10.0, 14.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[1::-2]
+            == wp.matrix_from_rows(
+                vec4(2.0, 6.0, 10.0, 14.0),
+            ),
+            True,
+        )
+
+        wp.expect_eq(
+            m[:, :]
+            == wp.matrix_from_rows(
+                vec4(1.0, 5.0, 9.0, 13.0),
+                vec4(2.0, 6.0, 10.0, 14.0),
+                vec4(3.0, 7.0, 11.0, 15.0),
+                vec4(4.0, 8.0, 12.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[:, 2:]
+            == wp.matrix_from_rows(
+                vec2(9.0, 13.0),
+                vec2(10.0, 14.0),
+                vec2(11.0, 15.0),
+                vec2(12.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[1:, 2:]
+            == wp.matrix_from_rows(
+                vec2(10.0, 14.0),
+                vec2(11.0, 15.0),
+                vec2(12.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[-2:, 2:]
+            == wp.matrix_from_rows(
+                vec2(11.0, 15.0),
+                vec2(12.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[2:, -2:]
+            == wp.matrix_from_rows(
+                vec2(11.0, 15.0),
+                vec2(12.0, 16.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[1:, :2]
+            == wp.matrix_from_rows(
+                vec2(2.0, 6.0),
+                vec2(3.0, 7.0),
+                vec2(4.0, 8.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[:1, 2:]
+            == wp.matrix_from_rows(
+                vec2(9.0, 13.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[::-1, :1]
+            == wp.matrix_from_rows(
+                vec1(4.0),
+                vec1(3.0),
+                vec1(2.0),
+                vec1(1.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[:1, ::-1]
+            == wp.matrix_from_rows(
+                vec4(13.0, 9.0, 5.0, 1.0),
+            ),
+            True,
+        )
+        wp.expect_eq(
+            m[:1:-1, 2::-1]
+            == wp.matrix_from_rows(
+                vec3(12.0, 8.0, 4.0),
+                vec3(11.0, 7.0, 3.0),
+            ),
+            True,
+        )
+
+        wp.expect_eq(m[:2, 0] == vec2(1.0, 2.0), True)
+        wp.expect_eq(m[2:, 1] == vec2(7.0, 8.0), True)
+        wp.expect_eq(m[0, :3] == vec3(1.0, 5.0, 9.0), True)
+        wp.expect_eq(m[1, 1:] == vec3(6.0, 10.0, 14.0), True)
+
+        m[1:] = wp.matrix_from_cols(
+            vec3(17.0, 18.0, 19.0),
+            vec3(20.0, 21.0, 22.0),
+            vec3(23.0, 24.0, 25.0),
+            vec3(26.0, 27.0, 28.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(1.0, 5.0, 9.0, 13.0),
+                vec4(17.0, 20.0, 23.0, 26.0),
+                vec4(18.0, 21.0, 24.0, 27.0),
+                vec4(19.0, 22.0, 25.0, 28.0),
+            ),
+            True,
+        )
+
+        m[-2:] = wp.matrix_from_cols(
+            vec2(29.0, 30.0),
+            vec2(31.0, 32.0),
+            vec2(33.0, 34.0),
+            vec2(35.0, 36.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(1.0, 5.0, 9.0, 13.0),
+                vec4(17.0, 20.0, 23.0, 26.0),
+                vec4(29.0, 31.0, 33.0, 35.0),
+                vec4(30.0, 32.0, 34.0, 36.0),
+            ),
+            True,
+        )
+
+        m[:2] = wp.matrix_from_cols(
+            vec2(37.0, 38.0),
+            vec2(39.0, 40.0),
+            vec2(41.0, 42.0),
+            vec2(43.0, 44.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(37.0, 39.0, 41.0, 43.0),
+                vec4(38.0, 40.0, 42.0, 44.0),
+                vec4(29.0, 31.0, 33.0, 35.0),
+                vec4(30.0, 32.0, 34.0, 36.0),
+            ),
+            True,
+        )
+
+        m[:-1] = wp.matrix_from_cols(
+            vec3(45.0, 46.0, 47.0),
+            vec3(48.0, 49.0, 50.0),
+            vec3(51.0, 52.0, 53.0),
+            vec3(54.0, 55.0, 56.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(45.0, 48.0, 51.0, 54.0),
+                vec4(46.0, 49.0, 52.0, 55.0),
+                vec4(47.0, 50.0, 53.0, 56.0),
+                vec4(30.0, 32.0, 34.0, 36.0),
+            ),
+            True,
+        )
+
+        m[::2] = wp.matrix_from_cols(
+            vec2(57.0, 58.0),
+            vec2(59.0, 60.0),
+            vec2(61.0, 62.0),
+            vec2(63.0, 64.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(57.0, 59.0, 61.0, 63.0),
+                vec4(46.0, 49.0, 52.0, 55.0),
+                vec4(58.0, 60.0, 62.0, 64.0),
+                vec4(30.0, 32.0, 34.0, 36.0),
+            ),
+            True,
+        )
+
+        m[1::2] = wp.matrix_from_cols(
+            vec2(65.0, 66.0),
+            vec2(67.0, 68.0),
+            vec2(69.0, 70.0),
+            vec2(71.0, 72.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(57.0, 59.0, 61.0, 63.0),
+                vec4(65.0, 67.0, 69.0, 71.0),
+                vec4(58.0, 60.0, 62.0, 64.0),
+                vec4(66.0, 68.0, 70.0, 72.0),
+            ),
+            True,
+        )
+
+        m[::-1] = wp.matrix_from_cols(
+            vec4(73.0, 74.0, 75.0, 76.0),
+            vec4(77.0, 78.0, 79.0, 80.0),
+            vec4(81.0, 82.0, 83.0, 84.0),
+            vec4(85.0, 86.0, 87.0, 88.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(76.0, 80.0, 84.0, 88.0),
+                vec4(75.0, 79.0, 83.0, 87.0),
+                vec4(74.0, 78.0, 82.0, 86.0),
+                vec4(73.0, 77.0, 81.0, 85.0),
+            ),
+            True,
+        )
+
+        m[::-2] = wp.matrix_from_cols(
+            vec2(89.0, 90.0),
+            vec2(91.0, 92.0),
+            vec2(93.0, 94.0),
+            vec2(95.0, 96.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(76.0, 80.0, 84.0, 88.0),
+                vec4(90.0, 92.0, 94.0, 96.0),
+                vec4(74.0, 78.0, 82.0, 86.0),
+                vec4(89.0, 91.0, 93.0, 95.0),
+            ),
+            True,
+        )
+
+        m[1::-2] = wp.matrix_from_cols(
+            vec1(97.0),
+            vec1(98.0),
+            vec1(99.0),
+            vec1(100.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(76.0, 80.0, 84.0, 88.0),
+                vec4(97.0, 98.0, 99.0, 100.0),
+                vec4(74.0, 78.0, 82.0, 86.0),
+                vec4(89.0, 91.0, 93.0, 95.0),
+            ),
+            True,
+        )
+
+        m[:, :] = wp.matrix_from_cols(
+            vec4(101.0, 102.0, 103.0, 104.0),
+            vec4(105.0, 106.0, 107.0, 108.0),
+            vec4(109.0, 110.0, 111.0, 112.0),
+            vec4(113.0, 114.0, 115.0, 116.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(101.0, 105.0, 109.0, 113.0),
+                vec4(102.0, 106.0, 110.0, 114.0),
+                vec4(103.0, 107.0, 111.0, 115.0),
+                vec4(104.0, 108.0, 112.0, 116.0),
+            ),
+            True,
+        )
+
+        m[:, 2:] = wp.matrix_from_cols(
+            vec4(117.0, 118.0, 119.0, 120.0),
+            vec4(121.0, 122.0, 123.0, 124.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(101.0, 105.0, 117.0, 121.0),
+                vec4(102.0, 106.0, 118.0, 122.0),
+                vec4(103.0, 107.0, 119.0, 123.0),
+                vec4(104.0, 108.0, 120.0, 124.0),
+            ),
+            True,
+        )
+
+        m[1:, 2:] = wp.matrix_from_cols(
+            vec3(125.0, 126.0, 127.0),
+            vec3(128.0, 129.0, 130.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(101.0, 105.0, 117.0, 121.0),
+                vec4(102.0, 106.0, 125.0, 128.0),
+                vec4(103.0, 107.0, 126.0, 129.0),
+                vec4(104.0, 108.0, 127.0, 130.0),
+            ),
+            True,
+        )
+
+        m[-2:, 2:] = wp.matrix_from_cols(
+            vec2(131.0, 132.0),
+            vec2(133.0, 134.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(101.0, 105.0, 117.0, 121.0),
+                vec4(102.0, 106.0, 125.0, 128.0),
+                vec4(103.0, 107.0, 131.0, 133.0),
+                vec4(104.0, 108.0, 132.0, 134.0),
+            ),
+            True,
+        )
+
+        m[2:, -2:] = wp.matrix_from_cols(
+            vec2(135.0, 136.0),
+            vec2(137.0, 138.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(101.0, 105.0, 117.0, 121.0),
+                vec4(102.0, 106.0, 125.0, 128.0),
+                vec4(103.0, 107.0, 135.0, 137.0),
+                vec4(104.0, 108.0, 136.0, 138.0),
+            ),
+            True,
+        )
+
+        m[1:, :2] = wp.matrix_from_cols(
+            vec3(139.0, 140.0, 141.0),
+            vec3(142.0, 143.0, 144.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(101.0, 105.0, 117.0, 121.0),
+                vec4(139.0, 142.0, 125.0, 128.0),
+                vec4(140.0, 143.0, 135.0, 137.0),
+                vec4(141.0, 144.0, 136.0, 138.0),
+            ),
+            True,
+        )
+
+        m[:1, 2:] = wp.matrix_from_cols(
+            vec1(145.0),
+            vec1(146.0),
+        )
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(101.0, 105.0, 145.0, 146.0),
+                vec4(139.0, 142.0, 125.0, 128.0),
+                vec4(140.0, 143.0, 135.0, 137.0),
+                vec4(141.0, 144.0, 136.0, 138.0),
+            ),
+            True,
+        )
+
+        m[:2, 0] = vec2(147.0, 148.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(147.0, 105.0, 145.0, 146.0),
+                vec4(148.0, 142.0, 125.0, 128.0),
+                vec4(140.0, 143.0, 135.0, 137.0),
+                vec4(141.0, 144.0, 136.0, 138.0),
+            ),
+            True,
+        )
+
+        m[2:, 1] = vec2(149.0, 150.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(147.0, 105.0, 145.0, 146.0),
+                vec4(148.0, 142.0, 125.0, 128.0),
+                vec4(140.0, 149.0, 135.0, 137.0),
+                vec4(141.0, 150.0, 136.0, 138.0),
+            ),
+            True,
+        )
+
+        m[0, :3] = vec3(151.0, 152.0, 153.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(151.0, 152.0, 153.0, 146.0),
+                vec4(148.0, 142.0, 125.0, 128.0),
+                vec4(140.0, 149.0, 135.0, 137.0),
+                vec4(141.0, 150.0, 136.0, 138.0),
+            ),
+            True,
+        )
+
+        m[1, 1:] = vec3(154.0, 155.0, 156.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(151.0, 152.0, 153.0, 146.0),
+                vec4(148.0, 154.0, 155.0, 156.0),
+                vec4(140.0, 149.0, 135.0, 137.0),
+                vec4(141.0, 150.0, 136.0, 138.0),
+            ),
+            True,
+        )
+
+        m[0, 2] = 157.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(151.0, 152.0, 157.0, 146.0),
+                vec4(148.0, 154.0, 155.0, 156.0),
+                vec4(140.0, 149.0, 135.0, 137.0),
+                vec4(141.0, 150.0, 136.0, 138.0),
+            ),
+            True,
+        )
+
+        m[:2] = 158.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(158.0, 158.0, 158.0, 158.0),
+                vec4(158.0, 158.0, 158.0, 158.0),
+                vec4(140.0, 149.0, 135.0, 137.0),
+                vec4(141.0, 150.0, 136.0, 138.0),
+            ),
+            True,
+        )
+
+        m[:2, 0] = 159.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(159.0, 158.0, 158.0, 158.0),
+                vec4(159.0, 158.0, 158.0, 158.0),
+                vec4(140.0, 149.0, 135.0, 137.0),
+                vec4(141.0, 150.0, 136.0, 138.0),
+            ),
+            True,
+        )
+
+        m[0, :2] = 160.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, 158.0, 158.0),
+                vec4(159.0, 158.0, 158.0, 158.0),
+                vec4(140.0, 149.0, 135.0, 137.0),
+                vec4(141.0, 150.0, 136.0, 138.0),
+            ),
+            True,
+        )
+
+        m[2:, 1:] = 161.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, 158.0, 158.0),
+                vec4(159.0, 158.0, 158.0, 158.0),
+                vec4(140.0, 161.0, 161.0, 161.0),
+                vec4(141.0, 161.0, 161.0, 161.0),
+            ),
+            True,
+        )
+
+        m[1:] += 162.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, 158.0, 158.0),
+                vec4(321.0, 320.0, 320.0, 320.0),
+                vec4(302.0, 323.0, 323.0, 323.0),
+                vec4(303.0, 323.0, 323.0, 323.0),
+            ),
+            True,
+        )
+
+        m[3, 1:] += vec3(163.0, 164.0, 165.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, 158.0, 158.0),
+                vec4(321.0, 320.0, 320.0, 320.0),
+                vec4(302.0, 323.0, 323.0, 323.0),
+                vec4(303.0, 486.0, 487.0, 488.0),
+            ),
+            True,
+        )
+
+        m[2:, 1] += vec2(166.0, 167.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, 158.0, 158.0),
+                vec4(321.0, 320.0, 320.0, 320.0),
+                vec4(302.0, 489.0, 323.0, 323.0),
+                vec4(303.0, 653.0, 487.0, 488.0),
+            ),
+            True,
+        )
+
+        m[:, -2:] -= 168.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, -10.0, -10.0),
+                vec4(321.0, 320.0, 152.0, 152.0),
+                vec4(302.0, 489.0, 155.0, 155.0),
+                vec4(303.0, 653.0, 319.0, 320.0),
+            ),
+            True,
+        )
+
+        m[2:, 3] -= vec2(169.0, 170.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, -10.0, -10.0),
+                vec4(321.0, 320.0, 152.0, 152.0),
+                vec4(302.0, 489.0, 155.0, -14.0),
+                vec4(303.0, 653.0, 319.0, 150.0),
+            ),
+            True,
+        )
+
+        m[1, :3] -= vec3(171.0, 172.0, 173.0)
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, -10.0, -10.0),
+                vec4(150.0, 148.0, -21.0, 152.0),
+                vec4(302.0, 489.0, 155.0, -14.0),
+                vec4(303.0, 653.0, 319.0, 150.0),
+            ),
+            True,
+        )
+
+        m[:-2, 2:] *= 3.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, -30.0, -30.0),
+                vec4(150.0, 148.0, -63.0, 456.0),
+                vec4(302.0, 489.0, 155.0, -14.0),
+                vec4(303.0, 653.0, 319.0, 150.0),
+            ),
+            True,
+        )
+
+        m[-2:, 1] *= 4.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, -30.0, -30.0),
+                vec4(150.0, 148.0, -63.0, 456.0),
+                vec4(302.0, 1956.0, 155.0, -14.0),
+                vec4(303.0, 2612.0, 319.0, 150.0),
+            ),
+            True,
+        )
+
+        m[3, :1] *= 5.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(160.0, 160.0, -30.0, -30.0),
+                vec4(150.0, 148.0, -63.0, 456.0),
+                vec4(302.0, 1956.0, 155.0, -14.0),
+                vec4(1515.0, 2612.0, 319.0, 150.0),
+            ),
+            True,
+        )
+
+        m[:2, :2] /= 2.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(80.0, 80.0, -30.0, -30.0),
+                vec4(75.0, 74.0, -63.0, 456.0),
+                vec4(302.0, 1956.0, 155.0, -14.0),
+                vec4(1515.0, 2612.0, 319.0, 150.0),
+            ),
+            True,
+        )
+
+        m[3:, 3] /= 3.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(80.0, 80.0, -30.0, -30.0),
+                vec4(75.0, 74.0, -63.0, 456.0),
+                vec4(302.0, 1956.0, 155.0, -14.0),
+                vec4(1515.0, 2612.0, 319.0, 50.0),
+            ),
+            True,
+        )
+
+        m[0, :2] /= 4.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(20.0, 20.0, -30.0, -30.0),
+                vec4(75.0, 74.0, -63.0, 456.0),
+                vec4(302.0, 1956.0, 155.0, -14.0),
+                vec4(1515.0, 2612.0, 319.0, 50.0),
+            ),
+            True,
+        )
+
+        m[-3:, :2] %= 3.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(20.0, 20.0, -30.0, -30.0),
+                vec4(0.0, 2.0, -63.0, 456.0),
+                vec4(2.0, 0.0, 155.0, -14.0),
+                vec4(0.0, 2.0, 319.0, 50.0),
+            ),
+            True,
+        )
+
+        m[2:, -1] %= 4.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(20.0, 20.0, -30.0, -30.0),
+                vec4(0.0, 2.0, -63.0, 456.0),
+                vec4(2.0, 0.0, 155.0, -2.0),
+                vec4(0.0, 2.0, 319.0, 2.0),
+            ),
+            True,
+        )
+
+        m[-1, 1:] %= 5.0
+        wp.expect_eq(
+            m
+            == wp.matrix_from_rows(
+                vec4(20.0, 20.0, -30.0, -30.0),
+                vec4(0.0, 2.0, -63.0, 456.0),
+                vec4(2.0, 0.0, 155.0, -2.0),
+                vec4(0.0, 2.0, 4.0, 2.0),
+            ),
+            True,
+        )
+
+    @wp.kernel(module="unique")
+    def kernel():
+        fn()
+
+    wp.launch(kernel, 1, device=device)
+    wp.synchronize()
+    fn()
+
+
+def test_mat_slicing_assign_backward(test, device):
+    mat23 = wp.mat((2, 3), float)
+
+    @wp.kernel(module="unique")
+    def kernel(
+        arr_x: wp.array(dtype=wp.vec2),
+        arr_y: wp.array(dtype=mat23),
+        arr_z: wp.array(dtype=wp.mat44),
+    ):
+        i = wp.tid()
+
+        z = arr_z[i]
+
+        z[0, :2] = arr_x[i]
+        z[:2, 1:] = arr_y[i]
+
+        z[:2, 3] += arr_x[i][:2]
+        z[1:-1, :2] += arr_y[i][::-1, :-1]
+
+        z[2:, 3] -= arr_x[i][0:]
+        z[3:, -1:] -= arr_y[i][:1, :1]
+
+        arr_z[i] = z
+
+    x = wp.ones(1, dtype=wp.vec2, requires_grad=True, device=device)
+    y = wp.ones(1, dtype=mat23, requires_grad=True, device=device)
+    z = wp.zeros(1, dtype=wp.mat44, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel, 1, inputs=(x, y), outputs=(z,), device=device)
+
+    z.grad = wp.ones_like(z)
+    tape.backward()
+
+    assert_np_equal(
+        z.numpy(),
+        np.array(
+            (
+                (
+                    (1.0, 1.0, 1.0, 2.0),
+                    (1.0, 2.0, 1.0, 2.0),
+                    (1.0, 1.0, 0.0, -1.0),
+                    (0.0, 0.0, 0.0, -2.0),
+                ),
+            ),
+            dtype=float,
+        ),
+    )
+    assert_np_equal(x.grad.numpy(), np.array(((1.0, 1.0),), dtype=float))
+    assert_np_equal(y.grad.numpy(), np.array((((1.0, 2.0, 1.0), (2.0, 2.0, 1.0)),), dtype=float))
+
+
 devices = get_test_devices()
 
 
@@ -2269,6 +4134,7 @@ add_kernel_test(TestMat, test_constructors_default_precision, dim=1, devices=dev
 add_kernel_test(TestMat, test_constructors_constant_shape, dim=1, devices=devices)
 add_kernel_test(TestMat, test_matrix_constructor_value_func, dim=1, devices=devices)
 add_kernel_test(TestMat, test_matrix_from_vecs, dim=1, devices=devices)
+add_function_test(TestMat, "test_matrix_from_vecs_runtime", test_matrix_from_vecs_runtime, devices=devices)
 
 mat103 = wp.types.matrix(shape=(10, 3), dtype=float)
 add_kernel_test(
@@ -2370,7 +4236,6 @@ for dtype in np_float_types:
 add_function_test(TestMat, "test_matrix_len", test_matrix_len, devices=devices)
 add_function_test(TestMat, "test_mat_extract", test_mat_extract, devices=devices)
 add_function_test(TestMat, "test_mat_assign", test_mat_assign, devices=devices)
-add_function_test(TestMat, "test_matrix_assign_copy", test_matrix_assign_copy, devices=devices)
 add_function_test(TestMat, "test_mat_array_extract", test_mat_array_extract, devices=devices)
 # add_function_test(TestMat, "test_mat_array_assign", test_mat_array_assign, devices=devices)
 add_function_test(TestMat, "test_mat_add_inplace", test_mat_add_inplace, devices=devices)
@@ -2378,6 +4243,11 @@ add_function_test(TestMat, "test_mat_sub_inplace", test_mat_sub_inplace, devices
 add_function_test(TestMat, "test_mat_array_add_inplace", test_mat_array_add_inplace, devices=devices)
 add_function_test(TestMat, "test_mat_array_sub_inplace", test_mat_array_sub_inplace, devices=devices)
 add_function_test(TestMat, "test_scalar_mat_div", test_scalar_mat_div, devices=devices)
+add_function_test(TestMat, "test_mat_from_rows_indexing_assign", test_mat_from_rows_indexing_assign, devices=devices)
+add_function_test(TestMat, "test_mat_from_cols_indexing_assign", test_mat_from_cols_indexing_assign, devices=devices)
+add_function_test(TestMat, "test_mat_from_rows_slicing_assign", test_mat_from_rows_slicing_assign, devices=devices)
+add_function_test(TestMat, "test_mat_from_cols_slicing_assign", test_mat_from_cols_slicing_assign, devices=devices)
+add_function_test(TestMat, "test_mat_slicing_assign_backward", test_mat_slicing_assign_backward, devices=devices)
 
 
 if __name__ == "__main__":

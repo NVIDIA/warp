@@ -459,13 +459,18 @@ inline CUDA_CALLABLE quat_t<Type> quat_from_matrix(const mat_t<Rows,Cols,Type>& 
 template<typename Type>
 inline CUDA_CALLABLE Type extract(const quat_t<Type>& a, int idx)
 {
-#if FP_CHECK
-    if (idx < 0 || idx > 3)
+#ifndef NDEBUG
+    if (idx < -4 || idx >= 4)
     {
         printf("quat_t index %d out of bounds at %s %d", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     /*
     * Because quat data is not stored in an array, we index the quaternion by checking all possible idx values.
@@ -478,16 +483,47 @@ inline CUDA_CALLABLE Type extract(const quat_t<Type>& a, int idx)
     else                {return a.w;}
 }
 
+template<unsigned SliceLength, typename Type>
+inline CUDA_CALLABLE vec_t<SliceLength, Type> extract(const quat_t<Type> & a, slice_t slice)
+{
+    vec_t<SliceLength, Type> ret;
+
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    bool is_reversed = slice.step < 0;
+
+    int idx = 0;
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
+    {
+        ret[idx] = a[i];
+        ++idx;
+    }
+
+    return ret;
+}
+
 template<typename Type>
 inline CUDA_CALLABLE Type* index(quat_t<Type>& q, int idx)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     return &q[idx];
 }
@@ -496,12 +532,17 @@ template<typename Type>
 inline CUDA_CALLABLE Type* indexref(quat_t<Type>* q, int idx)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat store %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     return &((*q)[idx]);
 }
@@ -526,14 +567,64 @@ template<typename Type>
 inline CUDA_CALLABLE void add_inplace(quat_t<Type>& q, int idx, Type value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
 
+    if (idx < 0)
+    {
+        idx += 4;
+    }
+
     q[idx] += value;
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void add_inplace(quat_t<Type>& q, slice_t slice, Type value)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+
+    bool is_reversed = slice.step < 0;
+
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
+    {
+        q[i] += value;
+    }
+}
+
+
+template<unsigned SliceLength, typename Type>
+inline CUDA_CALLABLE void add_inplace(quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    bool is_reversed = slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
+    {
+        q[i] += a[ii];
+        ++ii;
+    }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -542,14 +633,70 @@ inline CUDA_CALLABLE void adj_add_inplace(quat_t<Type>& q, int idx, Type value,
                                         quat_t<Type>& adj_q, int adj_idx, Type& adj_value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
 
+    if (idx < 0)
+    {
+        idx += 4;
+    }
+
     adj_value += adj_q[idx];
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_add_inplace(
+    const quat_t<Type>& q, slice_t slice, Type value,
+    quat_t<Type>& adj_q, slice_t& adj_slice, Type& adj_value
+)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+
+    bool is_reversed = slice.step < 0;
+
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
+    {
+        adj_value += adj_q[i];
+    }
+}
+
+
+template<unsigned SliceLength, typename Type>
+inline CUDA_CALLABLE void adj_add_inplace(
+    const quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a,
+    quat_t<Type>& adj_q, slice_t& adj_slice, vec_t<SliceLength, Type>& adj_a
+)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    bool is_reversed = slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
+    {
+        adj_a[ii] += adj_q[i];
+        ++ii;
+    }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -557,14 +704,64 @@ template<typename Type>
 inline CUDA_CALLABLE void sub_inplace(quat_t<Type>& q, int idx, Type value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
 
+    if (idx < 0)
+    {
+        idx += 4;
+    }
+
     q[idx] -= value;
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void sub_inplace(quat_t<Type>& q, slice_t slice, Type value)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+
+    bool is_reversed = slice.step < 0;
+
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
+    {
+        q[i] -= value;
+    }
+}
+
+
+template<unsigned SliceLength, typename Type>
+inline CUDA_CALLABLE void sub_inplace(quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    bool is_reversed = slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
+    {
+        q[i] -= a[ii];
+        ++ii;
+    }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -573,14 +770,70 @@ inline CUDA_CALLABLE void adj_sub_inplace(quat_t<Type>& q, int idx, Type value,
                                         quat_t<Type>& adj_q, int adj_idx, Type& adj_value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
 
+    if (idx < 0)
+    {
+        idx += 4;
+    }
+
     adj_value -= adj_q[idx];
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_sub_inplace(
+    const quat_t<Type>& q, slice_t slice, Type value,
+    quat_t<Type>& adj_q, slice_t& adj_slice, Type& adj_value
+)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+
+    bool is_reversed = slice.step < 0;
+
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
+    {
+        adj_value -= adj_q[i];
+    }
+}
+
+
+template<unsigned SliceLength, typename Type>
+inline CUDA_CALLABLE void adj_sub_inplace(
+    const quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a,
+    quat_t<Type>& adj_q, slice_t& adj_slice, vec_t<SliceLength, Type>& adj_a
+)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    bool is_reversed = slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
+    {
+        adj_a[ii] -= adj_q[i];
+        ++ii;
+    }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -588,28 +841,135 @@ template<typename Type>
 inline CUDA_CALLABLE void assign_inplace(quat_t<Type>& q, int idx, Type value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
 
+    if (idx < 0)
+    {
+        idx += 4;
+    }
+
     q[idx] = value;
 }
+
+
+template<typename Type>
+inline CUDA_CALLABLE void assign_inplace(quat_t<Type>& q, slice_t slice, Type value)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+
+    bool is_reversed = slice.step < 0;
+
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
+    {
+        q[i] = value;
+    }
+}
+
+
+template<unsigned SliceLength, typename Type>
+inline CUDA_CALLABLE void assign_inplace(quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    bool is_reversed = slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
+    {
+        q[i] = a[ii];
+        ++ii;
+    }
+
+    assert(ii == SliceLength);
+}
+
 
 template<typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(quat_t<Type>& q, int idx, Type value, quat_t<Type>& adj_q, int& adj_idx, Type& adj_value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
 
+    if (idx < 0)
+    {
+        idx += 4;
+    }
+
     adj_value += adj_q[idx];
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_assign_inplace(
+    const quat_t<Type>& q, slice_t slice, Type value,
+    quat_t<Type>& adj_q, slice_t& adj_slice, Type& adj_value
+)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+
+    bool is_reversed = slice.step < 0;
+
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
+    {
+        adj_value += adj_q[i];
+    }
+}
+
+
+template<unsigned SliceLength, typename Type>
+inline CUDA_CALLABLE void adj_assign_inplace(
+    const quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a,
+    quat_t<Type>& adj_q, slice_t& adj_slice, vec_t<SliceLength, Type>& adj_a
+)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    bool is_reversed = slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
+    {
+        adj_a[ii] += adj_q[i];
+        ++ii;
+    }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -617,12 +977,17 @@ template<typename Type>
 inline CUDA_CALLABLE quat_t<Type> assign_copy(quat_t<Type>& q, int idx, Type value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     quat_t<Type> ret(q);
     ret[idx] = value;
@@ -630,15 +995,36 @@ inline CUDA_CALLABLE quat_t<Type> assign_copy(quat_t<Type>& q, int idx, Type val
 }
 
 template<typename Type>
+inline CUDA_CALLABLE quat_t<Type> assign_copy(quat_t<Type>& q, slice_t slice, Type value)
+{
+    quat_t<Type> ret(q);
+    assign_inplace(ret, slice, value);
+    return ret;
+}
+
+template<unsigned SliceLength, typename Type>
+inline CUDA_CALLABLE quat_t<Type> assign_copy(quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a)
+{
+    quat_t<Type> ret(q);
+    assign_inplace<SliceLength>(ret, slice, a);
+    return ret;
+}
+
+template<typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(quat_t<Type>& q, int idx, Type value, quat_t<Type>& adj_q, int& adj_idx, Type& adj_value, const quat_t<Type>& adj_ret)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > 3)
+    if (idx < -4 || idx >= 4)
     {
         printf("quat index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
+
+    if (idx < 0)
+    {
+        idx += 4;
+    }
 
     adj_value += adj_ret[idx];
     for(unsigned i=0; i < 4; ++i)
@@ -646,6 +1032,72 @@ inline CUDA_CALLABLE void adj_assign_copy(quat_t<Type>& q, int idx, Type value, 
         if(i != idx)
             adj_q[i] += adj_ret[i];
     }
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_assign_copy(
+    quat_t<Type>& q, slice_t slice, Type value,
+    quat_t<Type>& adj_q, slice_t& adj_slice, Type& adj_value,
+    const quat_t<Type>& adj_ret
+)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+
+    bool is_reversed = slice.step < 0;
+
+    for (int i = 0; i < 4; ++i)
+    {
+        bool in_slice = is_reversed
+            ? (i <= slice.start && i > slice.stop && (slice.start - i) % (-slice.step) == 0)
+            : (i >= slice.start && i < slice.stop && (i - slice.start) % slice.step == 0);
+
+        if (!in_slice)
+        {
+            adj_q[i] += adj_ret[i];
+        }
+        else
+        {
+            adj_value += adj_ret[i];
+        }
+    }
+}
+
+template<unsigned SliceLength, typename Type>
+inline CUDA_CALLABLE void adj_assign_copy(
+    quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a,
+    quat_t<Type>& adj_q, slice_t& adj_slice, vec_t<SliceLength, Type>& adj_a,
+    const quat_t<Type>& adj_ret
+)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    bool is_reversed = slice.step < 0;
+
+    int ii = 0;
+    for (int i = 0; i < 4; ++i)
+    {
+        bool in_slice = is_reversed
+            ? (i <= slice.start && i > slice.stop && (slice.start - i) % (-slice.step) == 0)
+            : (i >= slice.start && i < slice.stop && (i - slice.start) % slice.step == 0);
+
+        if (!in_slice)
+        {
+            adj_q[i] += adj_ret[i];
+        }
+        else
+        {
+            adj_a[ii] += adj_ret[i];
+            ++ii;
+        }
+    }
+
+    assert(ii == SliceLength);
 }
 
 
@@ -666,19 +1118,52 @@ CUDA_CALLABLE inline void adj_lerp(const quat_t<Type>& a, const quat_t<Type>& b,
 template<typename Type>
 inline CUDA_CALLABLE void adj_extract(const quat_t<Type>& a, int idx, quat_t<Type>& adj_a, int & adj_idx, Type & adj_ret)
 {
-#if FP_CHECK
-    if (idx < 0 || idx > 3)
+#ifndef NDEBUG
+    if (idx < -4 || idx >= 4)
     {
         printf("quat_t index %d out of bounds at %s %d", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
 
+    if (idx < 0)
+    {
+        idx += 4;
+    }
+
     // See wp::extract(const quat_t<Type>& a, int idx) note
     if (idx == 0)       {adj_a.x += adj_ret;}
     else if (idx == 1)  {adj_a.y += adj_ret;}
     else if (idx == 2)  {adj_a.z += adj_ret;}
     else                {adj_a.w += adj_ret;}
+}
+
+template<unsigned SliceLength, typename Type>
+inline CUDA_CALLABLE void adj_extract(
+    const quat_t<Type>& a, slice_t slice,
+    quat_t<Type>& adj_a, slice_t& adj_slice,
+    const vec_t<SliceLength, Type>& adj_ret
+)
+{
+    assert(slice.start >= 0 && slice.start <= 4);
+    assert(slice.stop >= -1 && slice.stop <= 4);
+    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
+    assert(slice_get_length(slice) == SliceLength);
+
+    bool is_reversed = slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = slice.start;
+        is_reversed ? (i > slice.stop) : (i < slice.stop);
+        i += slice.step
+    )
+    {
+        adj_a[i] += adj_ret[ii];
+        ++ii;
+    }
+
+    assert(ii == SliceLength);
 }
 
 

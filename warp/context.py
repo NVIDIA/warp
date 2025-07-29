@@ -1583,6 +1583,9 @@ class ModuleHasher:
         # line directives, e.g. for Nsight Compute
         ch.update(bytes(ctypes.c_int(warp.config.line_directives)))
 
+        # whether to use `assign_copy` instead of `assign_inplace`
+        ch.update(bytes(ctypes.c_int(warp.config.enable_vector_component_overwrites)))
+
         # build config
         ch.update(bytes(warp.config.mode, "utf-8"))
 
