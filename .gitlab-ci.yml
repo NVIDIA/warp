@@ -797,6 +797,7 @@ create dev wheels:
     - linux-aarch64 build
     - linux-x86_64 build
     - windows-x86_64 build
+    - mac-x86_64 build
   extends:
     - .omni_nvks_micro_runner
   rules:
@@ -806,12 +807,16 @@ create dev wheels:
     - mkdir -p warp/bin/windows-x86_64
     - mv warp/bin/warp.dll warp/bin/windows-x86_64/
     - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
+    - mkdir -p warp/bin/macos-universal
+    - mv warp/bin/libwarp.dylib warp/bin/macos-universal/
+    - mv warp/bin/libwarp-clang.dylib warp/bin/macos-universal/
   script:
     - uv run tools/ci/publishing/update_git_hash.py # Modify config.py with git hash
     - uv run tools/ci/publishing/set_nightly_version.py # Modify VERSION.md with dev version
     - uv build --wheel -C--build-option=-Pwindows-x86_64
     - uv build --wheel -C--build-option=-Plinux-x86_64
     - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
+    - uv build --wheel -C--build-option=-Pmacos-universal
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
     - cp VERSION.md dist/
@@ -926,6 +931,10 @@ publish dev wheels to artifactory:
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
       sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-manylinux_2_28_x86_64.whl
       'arch=x86_64;os=linux'
+    - >
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-macosx_*_universal2.whl
+      'arch=any;os=macosx'
   environment:
     name: nightly
     url: https://pypi.nvidia.com/warp-lang/
@@ -963,7 +972,7 @@ publish tag wheels to artifactory:
     - >
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
       sw-warp-pypi-local/warp/$CI_COMMIT_REF_NAME/$VERSION/*-macosx_*_universal2.whl
-      'arch=universal;os=macosx'
+      'arch=any;os=macosx'
     # Set additional common properties on all artifacts
     - >
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
