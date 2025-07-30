@@ -42,7 +42,7 @@ def scale_vec_kernel(a: wp.array(dtype=wp.vec2), s: float, output: wp.array(dtyp
 
 # The Python function to call.
 # Note the argument annotations, just like Warp kernels.
-def example_func(
+def scale_func(
     # inputs
     a: wp.array(dtype=float),
     b: wp.array(dtype=wp.vec2),
@@ -55,8 +55,23 @@ def example_func(
     wp.launch(scale_vec_kernel, dim=b.shape, inputs=[b, s], outputs=[d])
 
 
+@wp.kernel
+def accum_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+    tid = wp.tid()
+    b[tid] += a[tid]
+
+
+def in_out_func(
+    a: wp.array(dtype=float),  # input only
+    b: wp.array(dtype=float),  # input and output
+    c: wp.array(dtype=float),  # output only
+):
+    wp.launch(scale_kernel, dim=a.size, inputs=[a, 2.0], outputs=[c])
+    wp.launch(accum_kernel, dim=a.size, inputs=[a, b])  # modifies `b`
+
+
 def example1():
-    jax_func = jax_callable(example_func, num_outputs=2, vmap_method="broadcast_all")
+    jax_func = jax_callable(scale_func, num_outputs=2)
 
     @jax.jit
     def f():
@@ -78,7 +93,7 @@ def example1():
 
 
 def example2():
-    jax_func = jax_callable(example_func, num_outputs=2, vmap_method="broadcast_all")
+    jax_func = jax_callable(scale_func, num_outputs=2)
 
     # NOTE: scalar arguments must be static compile-time constants
     @partial(jax.jit, static_argnames=["s"])
@@ -100,11 +115,26 @@ def example2():
     print(r2)
 
 
+def example3():
+    # Using input-output arguments
+
+    jax_func = jax_callable(in_out_func, num_outputs=2, in_out_argnames=["b"])
+
+    f = jax.jit(jax_func)
+
+    a = jnp.ones(10, dtype=jnp.float32)
+    b = jnp.arange(10, dtype=jnp.float32)
+
+    b, c = f(a, b)
+    print(b)
+    print(c)
+
+
 def main():
     wp.init()
     wp.load_module(device=wp.get_device())
 
-    examples = [example1, example2]
+    examples = [example1, example2, example3]
 
     for example in examples:
         print("\n===========================================================================")

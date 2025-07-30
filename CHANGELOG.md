@@ -11,6 +11,10 @@
 
 - Add documentation for creating and manipulating Warp structured arrays using NumPy
   ([GH-852](https://github.com/NVIDIA/warp/issues/852)).
+- Support input-output aliasing in JAX FFI ([GH-815](https://github.com/NVIDIA/warp/issues/815)).
+- Support capturing `jax_callable()` using Warp via the new `graph_mode` parameter (`GraphMode.WARP`), enabling capture
+  of graphs with conditional nodes that cannot be used as subgraphs in a JAX capture
+  ([GH-848](https://github.com/NVIDIA/warp/issues/848)).
 
 ### Fixed
 

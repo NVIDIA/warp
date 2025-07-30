@@ -1,16 +1,15 @@
 # CHANGELOG
 
-## [1.8.1-rc.1] - 2025-08-01
-
-### Deprecated
-
-- This is the final release that will provide builds for or support the CUDA 11.x Toolkit and driver.
-  Starting with v1.9.0, Warp will require CUDA 12.x or newer.
+## [1.8.1] - 2025-08-01
 
 ### Added
 
 - Add documentation for creating and manipulating Warp structured arrays using NumPy
   ([GH-852](https://github.com/NVIDIA/warp/issues/852)).
+- Support input-output aliasing in JAX FFI ([GH-815](https://github.com/NVIDIA/warp/issues/815)).
+- Support capturing `jax_callable()` using Warp via the new `graph_mode` parameter (`GraphMode.WARP`), enabling capture
+  of graphs with conditional nodes that cannot be used as subgraphs in a JAX capture
+  ([GH-848](https://github.com/NVIDIA/warp/issues/848)).
 
 ### Fixed
 
