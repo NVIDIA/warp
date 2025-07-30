@@ -1963,6 +1963,25 @@ class ModuleExec:
         return hooks
 
 
+def _check_and_raise_long_path_error(e: FileNotFoundError):
+    """Check if the error is due to a Windows long path and provide work-around instructions if it is.
+
+    ``FileNotFoundError.filename`` may legitimately be ``None`` when the originating
+    API does not supply a path.  Guard against that to avoid masking the original
+    error with a ``TypeError``.
+    """
+    filename = getattr(e, "filename", None)
+
+    # Fast-exit when this is clearly not a legacy-path limitation:
+    if filename is None or len(filename) < 260 or os.name != "nt" or filename.startswith("\\\\?\\"):
+        raise e
+
+    raise RuntimeError(
+        f"File path '{e.filename}' exceeds 259 characters, long-path support is required for this operation. "
+        "See https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation for more information."
+    ) from e
+
+
 # -----------------------------------------------------
 # stores all functions and kernels for a Python module
 # creates a hash of the function to use for checking
@@ -2307,6 +2326,9 @@ class Module:
                             )
 
                     except Exception as e:
+                        if isinstance(e, FileNotFoundError):
+                            _check_and_raise_long_path_error(e)
+
                         self.failed_builds.add(None)
                         module_load_timer.extra_msg = " (error)"
                         raise (e)
@@ -2341,6 +2363,9 @@ class Module:
                             )
 
                     except Exception as e:
+                        if isinstance(e, FileNotFoundError):
+                            _check_and_raise_long_path_error(e)
+
                         self.failed_builds.add(device.context)
                         module_load_timer.extra_msg = " (error)"
                         raise (e)

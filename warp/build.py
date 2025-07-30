@@ -129,6 +129,15 @@ def init_kernel_cache(path=None):
     else:
         cache_root_dir = appdirs.user_cache_dir(appname="warp", appauthor="NVIDIA", version=warp.config.version)
 
+        if os.name == "nt" and os.path.isabs(cache_root_dir) and not cache_root_dir.startswith("\\\\?\\"):
+            # Add Windows long-path prefix, accounting for UNC shares.
+            if cache_root_dir.startswith("\\\\"):
+                # UNC path  \\server\share\…  →  \\?\UNC\server\share\…
+                cache_root_dir = "\\\\?\\UNC\\" + cache_root_dir.lstrip("\\")
+            else:
+                # Drive-letter path  C:\…  →  \\?\C:\…
+                cache_root_dir = "\\\\?\\" + cache_root_dir
+
     warp.config.kernel_cache_dir = cache_root_dir
 
     os.makedirs(warp.config.kernel_cache_dir, exist_ok=True)
