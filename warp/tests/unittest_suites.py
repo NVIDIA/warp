@@ -164,6 +164,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_linear_solvers import TestLinearSolvers
     from warp.tests.test_lvalue import TestLValue
     from warp.tests.test_mat import TestMat
+    from warp.tests.test_mat_constructors import TestMatConstructors
     from warp.tests.test_mat_lite import TestMatLite
     from warp.tests.test_mat_scalar_ops import TestMatScalarOps
     from warp.tests.test_math import TestMath
@@ -261,6 +262,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestLValue,
         TestMarchingCubes,
         TestMat,
+        TestMatConstructors,
         TestMatLite,
         TestMatScalarOps,
         TestMath,
