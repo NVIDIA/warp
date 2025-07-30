@@ -2215,8 +2215,10 @@ def bsr_mm(
     else:
         # Heuristic for using tiled variant: few or very large blocks
         tile_size = 64
+        max_tiles_per_sm = 2048 // tile_size  # assume 64 resident warps per SM
         use_tiles = device.is_cuda and (
-            max(x.block_size, y.block_size, z.block_size) > max_subblock_dim**2 or mm_nnz < 1024 * device.sm_count
+            max(x.block_size, y.block_size, z.block_size) > max_subblock_dim**2
+            or mm_nnz < max_tiles_per_sm * device.sm_count
         )
 
     if use_tiles:
