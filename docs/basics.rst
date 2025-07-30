@@ -177,7 +177,7 @@ Please see the :ref:`Arrays Reference <Arrays>` for more details.
 User Functions
 --------------
 
-Users can write their own functions using the ``@wp.func`` decorator, for example::
+Users can write their own functions to be called from Warp kernels using the ``@wp.func`` decorator, for example::
 
     @wp.func
     def square(x: float):
@@ -185,6 +185,13 @@ Users can write their own functions using the ``@wp.func`` decorator, for exampl
 
 Kernels can call user functions defined in the same module or defined in a different module.
 As the example shows, return type hints for user functions are **optional**.
+
+While ``@wp.func`` is primarily for functions that are called from kernels, they can also be called directly
+from Python. This is an experimental feature with an important distinction: functions called from kernels are compiled by Warp,
+while functions called from Python are executed by the native Python interpreter.
+This means that any code inside a ``@wp.func`` that is intended to be called from Python must be
+compatible with the standard Python interpreter (e.g., it cannot use Warp's tile API).
+See :ref:`Python Scope vs. Kernel Scope API <python-scope-vs-kernel-scope-api>` for more details.
 
 Anything that can be done in a Warp kernel can also be done in a user function **with the exception**
 of :func:`wp.tid() <tid>`. The thread index can be passed in through the arguments of a user function if it is required.
@@ -271,6 +278,7 @@ As with kernel parameters, all attributes of a struct must have valid type hints
 Structs may be used as a ``dtype`` for ``wp.arrays`` and may be passed to kernels directly as arguments.
 See :ref:`Structs Reference <Structs>` for more details on structs.
 
+.. _python-scope-vs-kernel-scope-api:
 
 Python Scope vs. Kernel Scope API
 ---------------------------------
