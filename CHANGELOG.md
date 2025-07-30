@@ -31,6 +31,7 @@
  - warp.sparse can now operate efficiently on sparse matrices with arbitrarily-sized blocks, and leverage tiled computations when relevant ([GH-838](https://github.com/NVIDIA/warp/issues/838)).
  - `warp.fem.integrate` may now leverage tile-based computations for accumulating over quadrature points ([GH-854](https://github.com/NVIDIA/warp/issues/854)).
 - Deprecate the `graph_compatible` boolean flag in `jax_callable()` in favor of the new `graph_mode` argument with `GraphMode` enum (e.g., `GraphMode.JAX`, `GraphMode.WARP`, `GraphMode.NONE`) ([GH-848](https://github.com/NVIDIA/warp/issues/848)).
+- The default cache path in Windows is now explicitly marked as being extended-length. Compilation errors due to long file paths also provide a more informative error message. ([GH-870](https://github.com/NVIDIA/warp/issues/870))
 
 ### Fixed
 
