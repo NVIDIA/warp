@@ -168,18 +168,11 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
 
         self.VERTEX_NODE_COUNT = wp.constant(1)
         self.EDGE_NODE_COUNT = wp.constant(degree - 1)
+        self.FACE_NODE_COUNT = wp.constant(max(0, degree - 2) * max(0, degree - 1) // 2)
+        self.INTERIOR_NODE_COUNT = wp.constant(max(0, degree - 1) * max(0, degree - 2) * max(0, degree - 3) // 6)
+
         self.NODES_PER_ELEMENT = wp.constant((degree + 1) * (degree + 2) * (degree + 3) // 6)
         self.NODES_PER_SIDE = wp.constant((degree + 1) * (degree + 2) // 2)
-
-        self.SIDE_NODE_COUNT = wp.constant(self.NODES_PER_ELEMENT - 3 * (self.VERTEX_NODE_COUNT + self.EDGE_NODE_COUNT))
-        self.INTERIOR_NODE_COUNT = wp.constant(
-            self.NODES_PER_ELEMENT - 3 * (self.VERTEX_NODE_COUNT + self.EDGE_NODE_COUNT)
-        )
-
-        self.VERTEX_NODE_COUNT = wp.constant(1)
-        self.EDGE_NODE_COUNT = wp.constant(degree - 1)
-        self.FACE_NODE_COUNT = wp.constant(max(0, degree - 2) * max(0, degree - 1) // 2)
-        self.INERIOR_NODE_COUNT = wp.constant(max(0, degree - 1) * max(0, degree - 2) * max(0, degree - 3) // 6)
 
         tet_coords = np.empty((self.NODES_PER_ELEMENT, 3), dtype=int)
 
