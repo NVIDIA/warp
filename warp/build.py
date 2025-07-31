@@ -51,7 +51,7 @@ def build_cuda(
         output_path = output_path.encode("utf-8")
 
         if warp.config.llvm_cuda:
-            warp.context.runtime.llvm.compile_cuda(src, cu_path_bytes, inc_path, output_path, False)
+            warp.context.runtime.llvm.wp_compile_cuda(src, cu_path_bytes, inc_path, output_path, False)
 
         else:
             if ltoirs is None:
@@ -106,7 +106,7 @@ def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=Fal
         inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode("utf-8")
         obj_path = obj_path.encode("utf-8")
 
-        err = warp.context.runtime.llvm.compile_cpp(
+        err = warp.context.runtime.llvm.wp_compile_cpp(
             src, cpp_path, inc_path, obj_path, mode == "debug", verify_fp, fuse_fp
         )
         if err != 0:

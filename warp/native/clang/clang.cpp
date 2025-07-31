@@ -247,7 +247,7 @@ static std::unique_ptr<llvm::Module> cuda_to_llvm(const std::string& input_file,
 
 extern "C" {
 
-WP_API int compile_cpp(const char* cpp_src, const char *input_file, const char* include_dir, const char* output_file, bool debug, bool verify_fp, bool fuse_fp)
+WP_API int wp_compile_cpp(const char* cpp_src, const char *input_file, const char* include_dir, const char* output_file, bool debug, bool verify_fp, bool fuse_fp)
 {
     initialize_llvm();
 
@@ -294,7 +294,7 @@ WP_API int compile_cpp(const char* cpp_src, const char *input_file, const char* 
     return 0;
 }
 
-WP_API int compile_cuda(const char* cpp_src, const char *input_file, const char* include_dir, const char* output_file, bool debug)
+WP_API int wp_compile_cuda(const char* cpp_src, const char *input_file, const char* include_dir, const char* output_file, bool debug)
 {
     initialize_llvm();
 
@@ -355,7 +355,7 @@ WP_API int compile_cuda(const char* cpp_src, const char *input_file, const char*
 static llvm::orc::LLJIT* jit = nullptr;
 
 // Load an object file into an in-memory DLL named `module_name`
-WP_API int load_obj(const char* object_file, const char* module_name)
+WP_API int wp_load_obj(const char* object_file, const char* module_name)
 {
     if(!jit)
     {
@@ -497,7 +497,7 @@ WP_API int load_obj(const char* object_file, const char* module_name)
     return 0;
 }
 
-WP_API int unload_obj(const char* module_name)
+WP_API int wp_unload_obj(const char* module_name)
 {
     if(!jit)  // If there's no JIT instance there are no object files loaded
     {
@@ -516,7 +516,7 @@ WP_API int unload_obj(const char* module_name)
     return 0;
 }
 
-WP_API uint64_t lookup(const char* dll_name, const char* function_name)
+WP_API uint64_t wp_lookup(const char* dll_name, const char* function_name)
 {
     auto* dll = jit->getJITDylibByName(dll_name);
 

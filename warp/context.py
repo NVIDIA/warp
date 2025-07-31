@@ -1892,7 +1892,7 @@ class ModuleExec:
                 with self.device.context_guard:
                     runtime.core.wp_cuda_unload_module(self.device.context, self.handle)
             else:
-                runtime.llvm.unload_obj(self.handle.encode("utf-8"))
+                runtime.llvm.wp_unload_obj(self.handle.encode("utf-8"))
 
     # lookup and cache kernel entry points
     def get_kernel_hooks(self, kernel) -> KernelHooks:
@@ -1946,12 +1946,13 @@ class ModuleExec:
         else:
             func = ctypes.CFUNCTYPE(None)
             forward = (
-                func(runtime.llvm.lookup(self.handle.encode("utf-8"), (name + "_cpu_forward").encode("utf-8"))) or None
+                func(runtime.llvm.wp_lookup(self.handle.encode("utf-8"), (name + "_cpu_forward").encode("utf-8")))
+                or None
             )
 
             if options["enable_backward"]:
                 backward = (
-                    func(runtime.llvm.lookup(self.handle.encode("utf-8"), (name + "_cpu_backward").encode("utf-8")))
+                    func(runtime.llvm.wp_lookup(self.handle.encode("utf-8"), (name + "_cpu_backward").encode("utf-8")))
                     or None
                 )
             else:
@@ -2420,7 +2421,7 @@ class Module:
                 # LLVM modules are identified using strings, so we need to ensure uniqueness
                 module_handle = f"{module_name}_{self.cpu_exec_id}"
                 self.cpu_exec_id += 1
-                runtime.llvm.load_obj(binary_path.encode("utf-8"), module_handle.encode("utf-8"))
+                runtime.llvm.wp_load_obj(binary_path.encode("utf-8"), module_handle.encode("utf-8"))
                 module_exec = ModuleExec(module_handle, module_hash, device, meta)
                 self.execs[(None, active_block_dim)] = module_exec
 
@@ -3196,7 +3197,7 @@ class Runtime:
         if os.path.exists(llvm_lib):
             self.llvm = self.load_dll(llvm_lib)
             # setup c-types for warp-clang.dll
-            self.llvm.lookup.restype = ctypes.c_uint64
+            self.llvm.wp_lookup.restype = ctypes.c_uint64
         else:
             self.llvm = None
 
