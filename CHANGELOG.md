@@ -64,6 +64,8 @@
   ([GH-862](https://github.com/NVIDIA/warp/issues/862)).
 - Fix evaluation of Discontinuous Galerkin gradients for warp.fem discrete fields
 - Work around issue ([GH-637](https://github.com/NVIDIA/warp/issues/637)) with operator evaluation in `warp.fem` integrands
+- Fix adding superfluous inactive nodes to tetrahedron polynomial function spaces
+
 
 ## [1.8.0] - 2025-07-01
 
