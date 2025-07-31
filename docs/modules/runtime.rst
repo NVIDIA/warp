@@ -157,6 +157,25 @@ Additionally, data can be copied between arrays in different memory spaces using
     # copy from source CPU buffer to GPU
     wp.copy(dest_array, src_array)
 
+When indexing an array with an array of integers, the result is an :ref:`indexed array<Indexed_Arrays>`:
+
+.. testcode::
+
+    import warp as wp
+
+    arr = wp.array((1, 2, 3, 4, 5, 6))
+    sub = arr[wp.array((0, 2, 4), dtype=wp.int32)] # advanced indexing -> wp.indexedarray
+
+    print(type(arr), arr.shape)
+    print(type(sub), sub.shape)
+    print(sub)
+
+.. testoutput::
+
+    <class 'warp.types.array'> (6,)
+    <class 'warp.types.indexedarray'> (3,)
+    [1 3 5]
+
 .. autoclass:: array
     :members:
     :undoc-members:
@@ -203,6 +222,102 @@ The following construction methods are provided for allocating zero-initialized 
 .. autofunction:: empty_like
 .. autofunction:: copy
 .. autofunction:: clone
+
+
+.. _Indexed_Arrays:
+
+Indexed Arrays
+##############
+
+An indexed array is a lightweight view into an existing :class:`warp.array` instance that references elements
+through an explicit integer index list, thus allowing to run kernels on an arbitrary subset of data without any copy.
+
+.. autoclass:: indexedarray
+    :members:
+    :undoc-members:
+    :exclude-members: vars
+
+
+Creating an Indexed Array
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Pass the *data* array together with a list of ``wp.int32`` index arrays, one for each dimension:
+
+.. testcode::
+
+    import warp as wp
+
+    # Base data.
+    arr = wp.array((1.23, 2.34, 3.45, 4.56, 5.67, 6.78), device="cuda")
+
+    # Only view elements at odd indices.
+    idx = wp.array((1, 3, 5), dtype=wp.int32, device="cuda")
+    sub = wp.indexedarray(arr, [idx])  # Same as wp.indexedarray1d(...)
+    print(sub)
+
+.. testoutput::
+
+    [2.34 4.56 6.78]
+
+
+Additionally, ``None`` can be passed to select all elements for any given dimension.
+
+.. testcode::
+
+    import numpy as np
+    import warp as wp
+
+    mat = wp.array(np.arange(25, dtype=np.float32).reshape((5, 5)))
+    rows = wp.array((1, 3), dtype=wp.int32)
+
+    block = wp.indexedarray2d(mat, (rows, None))  # shape == (2, 5)
+    print(block)
+
+.. testoutput::
+
+    [[ 5.  6.  7.  8.  9.]
+     [15. 16. 17. 18. 19.]]
+
+
+The resulting view keeps the ``dtype`` of the source and has a shape given by the lengths of the supplied index arrays.
+
+Alternative constructors are available for convenience:
+
+.. autofunction:: indexedarray1d
+.. autofunction:: indexedarray2d
+.. autofunction:: indexedarray3d
+.. autofunction:: indexedarray4d
+
+
+Interoperability With Other Frameworks
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Frameworks such as PyTorch or JAX do not have a concept equivalent to
+Warp's indexed arrays. Converting an ``wp.indexedarray`` directly therefore
+raises an exception. Two common workarounds are:
+
+1. Make a contiguous copy and share that::
+
+    import warp as wp
+
+    arr = wp.array((1.0, 2.0, 3.0, 4.0), device="cuda")
+    idx = wp.array((0, 3), dtype=int, device="cuda")
+    sub = wp.indexedarray1d(arr, idx)
+    t = wp.to_torch(sub.contiguous())
+
+2. Share the underlying data and index buffers independently (zero-copy)::
+
+    import warp as wp
+
+    arr = wp.array((1.0, 2.0, 3.0, 4.0), device="cuda")
+    idx = wp.array((0, 3), dtype=int, device="cuda")
+    sub = wp.indexedarray1d(arr, idx)
+    t_data = wp.to_torch(sub.data)
+    t_ind = wp.to_torch(sub.indices[0])
+
+
+PyTorch can index with integer tensors, but doing so always copies the data.
+
 
 Structured Arrays
 #################
