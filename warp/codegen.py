@@ -18,6 +18,7 @@ from __future__ import annotations
 import ast
 import builtins
 import ctypes
+import enum
 import functools
 import hashlib
 import inspect
@@ -1957,11 +1958,17 @@ class Adjoint:
         aggregate = adj.eval(node.value)
 
         try:
+            if isinstance(aggregate, Var) and aggregate.constant is not None:
+                # this case may occur when the attribute is a constant, e.g.: `IntEnum.A.value`
+                return aggregate
+
             if isinstance(aggregate, types.ModuleType) or isinstance(aggregate, type):
                 out = getattr(aggregate, node.attr)
 
                 if warp.types.is_value(out):
                     return adj.add_constant(out)
+                if isinstance(out, (enum.IntEnum, enum.IntFlag)):
+                    return adj.add_constant(int(out))
 
                 return out
 
@@ -2341,6 +2348,9 @@ class Adjoint:
 
         if isinstance(expr, (type, Struct, Var, warp.context.Function)):
             return expr
+
+        if isinstance(expr, (enum.IntEnum, enum.IntFlag)):
+            return adj.add_constant(int(expr))
 
         return adj.add_constant(expr)
 
@@ -3232,6 +3242,8 @@ class Adjoint:
 
         try:
             value = eval(code_to_eval, vars_dict)
+            if isinstance(value, (enum.IntEnum, enum.IntFlag)):
+                value = int(value)
             if warp.config.verbose:
                 print(f"Evaluated static command: {static_code} = {value}")
         except NameError as e:
