@@ -228,6 +228,36 @@ windows-x86_64 docs:
   after_script:
     - echo "View the website at https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
 
+check un-namespaced symbols linux-x86_64:
+  stage: quality
+  image: python:3.12-bullseye
+  needs: [linux-x86_64 build]
+  extends:
+    - .omni_nvks_micro_runner
+  script:
+    - |
+      echo "Checking for un-namespaced symbols..."
+      LIBRARIES_TO_CHECK="warp/bin/linux-x86_64/warp.so warp/bin/linux-x86_64/warp-clang.so"
+      found_symbols=""
+
+      for lib in $LIBRARIES_TO_CHECK; do
+        echo "--> Checking $lib"
+        output=$(readelf -Ws "$lib" | awk '$7 ~ /^[0-9]+$/ && $8 !~ /^_?wp_/ {print $8}' | grep -Ev '^(_Z|__|\.)' || true)
+        
+        if [ -n "$output" ]; then
+          echo "ERROR: Found un-namespaced symbols in $lib:"
+          echo "$output"
+          found_symbols="true"
+        fi
+      done
+
+      if [ -n "$found_symbols" ]; then
+        echo "FAIL: Un-namespaced symbols detected. Please prefix them with 'wp_' or '_wp_'."
+        exit 1
+      fi
+
+      echo "SUCCESS: All symbols are correctly namespaced."
+
 # ==============================================================================
 # Main Unit Testing Jobs
 #
