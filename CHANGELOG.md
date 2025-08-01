@@ -52,6 +52,8 @@
 - Work around caching issue ([GH-637](https://github.com/NVIDIA/warp/issues/637)) with operator evaluation in
   `warp.fem` integrands.
 - Fix adding superfluous inactive nodes to tetrahedron polynomial function spaces in `warp.fem`.
+- Fix `str()` and `repr()` implementations missing for scalar types at the Python scope
+  ([GH-863](https://github.com/NVIDIA/warp/issues/863)).
 
 ## [1.8.1] - 2025-08-01
 
