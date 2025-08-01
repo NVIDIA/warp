@@ -2,6 +2,11 @@
 
 ## [1.8.1] - 2025-08-01
 
+### Deprecated
+
+- Deprecate the `graph_compatible` boolean flag in `jax_callable()` in favor of the new `graph_mode` argument with
+  `GraphMode` enum ([GH-848](https://github.com/NVIDIA/warp/issues/848)).
+
 ### Added
 
 - Add documentation for creating and manipulating Warp structured arrays using NumPy

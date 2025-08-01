@@ -6,6 +6,8 @@
 
 - This is the final release that will provide builds for or support the CUDA 11.x Toolkit and driver.
   Starting with v1.9.0, Warp will require CUDA 12.x or newer.
+- Deprecate the `graph_compatible` boolean flag in `jax_callable()` in favor of the new `graph_mode` argument with
+  `GraphMode` enum ([GH-848](https://github.com/NVIDIA/warp/issues/848)).
 
 ### Added
 
