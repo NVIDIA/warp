@@ -13,6 +13,7 @@
 - Add support for using struct types in `wp.array()` constructor inside kernels ([GH-853](https://github.com/NVIDIA/warp/issues/853)).
 - Add documentation for creating and manipulating Warp structured arrays using NumPy ([GH-852](https://github.com/NVIDIA/warp/issues/852)).
 - Support capturing `jax_callable()` using Warp via the new `graph_mode` parameter (`GraphMode.WARP`), enabling capture of graphs with conditional nodes that cannot be used as subgraphs in a JAX capture ([GH-848](https://github.com/NVIDIA/warp/issues/848)).
+- Add support for `IntEnum`, `IntFlag` inside Warp kernels ([GH-529](https://github.com/NVIDIA/warp/issues/529)).
 
 - Add support for initializing fixed-size arrays inside Warp kernels using `wp.zeros()`
   ([GH-794](https://github.com/NVIDIA/warp/issues/794)).
