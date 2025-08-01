@@ -376,7 +376,7 @@ windows-x86_64 test:
     - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
     - .\_venv\Scripts\Activate.ps1
     - python -m pip install --upgrade pip
-    - python -m pip install --upgrade usd-core coverage[toml] numpy blosc Pillow
+    - python -m pip install --upgrade usd-core==25.5.1 coverage[toml] numpy blosc Pillow
     - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
     - python -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
@@ -412,7 +412,7 @@ windows-x86_64 test mgpu:
     - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
     - .\_venv\Scripts\Activate.ps1
     - python -m pip install --upgrade pip
-    - python -m pip install --upgrade usd-core numpy blosc Pillow
+    - python -m pip install --upgrade usd-core==25.5.1 numpy blosc Pillow
     - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
     - python -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
