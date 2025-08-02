@@ -2902,6 +2902,24 @@ class Adjoint:
 
                     if warp.config.verify_autograd_array_access:
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+
+                elif isinstance(node.op, ast.BitAnd):
+                    adj.add_builtin_call("atomic_and", [target, *indices, rhs])
+
+                    if warp.config.verify_autograd_array_access:
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+
+                elif isinstance(node.op, ast.BitOr):
+                    adj.add_builtin_call("atomic_or", [target, *indices, rhs])
+
+                    if warp.config.verify_autograd_array_access:
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+
+                elif isinstance(node.op, ast.BitXor):
+                    adj.add_builtin_call("atomic_xor", [target, *indices, rhs])
+
+                    if warp.config.verify_autograd_array_access:
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
                 else:
                     if warp.config.verbose:
                         print(f"Warning: in-place op {node.op} is not differentiable")

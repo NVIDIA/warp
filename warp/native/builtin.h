@@ -1727,6 +1727,52 @@ CUDA_CALLABLE inline void adj_atomic_exch(T* address, T val, T* adj_address, T& 
 }
 
 
+template<typename T>
+inline CUDA_CALLABLE T atomic_and(T* buf, T value)
+{
+#if defined(__CUDA_ARCH__)
+    return atomicAnd(buf, value);
+#else
+    T old = buf[0];
+    buf[0] &= value;
+    return old;
+#endif
+}
+
+template<typename T>
+inline CUDA_CALLABLE T atomic_or(T* buf, T value)
+{
+#if defined(__CUDA_ARCH__)
+    return atomicOr(buf, value);
+#else
+    T old = buf[0];
+    buf[0] |= value;
+    return old;
+#endif
+}
+
+template<typename T>
+inline CUDA_CALLABLE T atomic_xor(T* buf, T value)
+{
+#if defined(__CUDA_ARCH__)
+    return atomicXor(buf, value);
+#else
+    T old = buf[0];
+    buf[0] ^= value;
+    return old;
+#endif
+}
+
+
+// for bitwise operations we do not accumulate gradients
+template<typename T>
+CUDA_CALLABLE inline void adj_atomic_and(T* buf, T* adj_buf, T &value, T &adj_value) { }
+template<typename T>
+CUDA_CALLABLE inline void adj_atomic_or(T* buf, T* adj_buf, T &value, T &adj_value) { }
+template<typename T>
+CUDA_CALLABLE inline void adj_atomic_xor(T* buf, T* adj_buf, T &value, T &adj_value) { }
+
+
 } // namespace wp
 
 
