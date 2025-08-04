@@ -5952,6 +5952,13 @@ def create_atomic_op_value_func(op: str):
                     f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
+        elif op in ("and", "or", "xor"):
+            supported_atomic_types = (warp.int32, warp.int64, warp.uint32, warp.uint64)
+            if not any(types_equal(scalar_type, x, match_generic=True) for x in supported_atomic_types):
+                raise RuntimeError(
+                    f"atomic_{op}() operations only work on arrays with [u]int32 or [u]int64 "
+                    f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
+                )
         else:
             raise NotImplementedError
 
@@ -6291,6 +6298,153 @@ for array_type in array_types:
         doc="""Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.""",
+        group="Utility",
+        skip_replay=True,
+    )
+
+    add_builtin(
+        "atomic_and",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("and"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise AND between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i] &= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_and",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("and"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise AND between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j] &= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_and",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("and"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] &= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_and",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("and"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+
+    add_builtin(
+        "atomic_or",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("or"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise OR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i] |= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_or",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("or"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise OR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j] |= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_or",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("or"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] |= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_or",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("or"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+
+    add_builtin(
+        "atomic_xor",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("xor"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise XOR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i] ^= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_xor",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("xor"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_xor",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("xor"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_xor",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("xor"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.""",
         group="Utility",
         skip_replay=True,
     )
