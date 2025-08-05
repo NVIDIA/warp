@@ -1,5 +1,5 @@
 // Copyright Contributors to the OpenVDB Project
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: Apache-2.0
 
 /*!
     \file nanovdb/util/cuda/Util.h
@@ -25,17 +25,17 @@
         if (code != cudaSuccess) {
             fprintf(stderr, "CUDA error %u: %s (%s:%d)\n", unsigned(code), cudaGetErrorString(code), file, line);
             //fprintf(stderr, "CUDA Runtime Error: %s %s %d\n", cudaGetErrorString(code), file, line);
-            if (abort) throw std::runtime_error(cudaGetErrorString(code));
+            if (abort) exit(code);
         }
     }
     static inline void ptrAssert(const void* ptr, const char* msg, const char* file, int line, bool abort = true)
     {
         if (ptr == nullptr) {
             fprintf(stderr, "NULL pointer error: %s %s %d\n", msg, file, line);
-            if (abort) throw std::runtime_error(msg);
+            if (abort) exit(1);
         } else if (uint64_t(ptr) % 32) {
             fprintf(stderr, "Pointer misalignment error: %s %s %d\n", msg, file, line);
-            if (abort) throw std::runtime_error(msg);
+            if (abort) exit(1);
         }
     }
 #else
@@ -67,7 +67,7 @@
 
 namespace nanovdb {// =========================================================
 
-namespace util{ namespace cuda {// ======================================================
+namespace util::cuda {// ======================================================
 
 //#define NANOVDB_USE_SYNC_CUDA_MALLOC
 // cudaMallocAsync and cudaFreeAsync were introduced in CUDA 11.2 so we introduce
@@ -108,6 +108,44 @@ inline cudaError_t mallocAsync(void** d_ptr, size_t size, cudaStream_t stream){r
 inline cudaError_t freeAsync(void* d_ptr, cudaStream_t stream){return cudaFreeAsync(d_ptr, stream);}
 
 #endif
+
+/// @brief Returns the device ID associated with the specified pointer
+/// @note  If @c ptr points to host memory (only) the return ID is either cudaInvalidDeviceId = -2 or cudaCpuDeviceId = -1
+inline int ptrToDevice(void *ptr)
+{
+    cudaPointerAttributes ptrAtt;
+    cudaCheck(cudaPointerGetAttributes(&ptrAtt, ptr));
+    return ptrAtt.device;
+}
+
+/// @brief Returns the ID of the current device
+inline int currentDevice()
+{
+    int current = 0;
+    cudaCheck(cudaGetDevice(&current));
+    return current;
+}
+
+/// @brief Returns the number of devices with compute capability greater or equal to 1.0 that are available for execution
+inline int deviceCount()
+{
+    int deviceCount = 0;
+    cudaCheck(cudaGetDeviceCount(&deviceCount));
+    return deviceCount;
+}
+
+/// @brief Print information about a specific device
+/// @param device device ID for which information will be printed
+/// @param preMsg optional message printed before the device information
+/// @param file   Optional file stream to print to, e.g. stderr or stdout
+inline void printDevInfo(int device, const char *preMsg = nullptr, std::FILE* file = stderr)
+{
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, device);
+    if (preMsg) fprintf(file, "%s ", preMsg);
+    fprintf(file,"GPU #%d, named \"%s\", compute capability %d.%d, %zu GB of VRAM\n",
+            device, prop.name, prop.major, prop.minor, prop.totalGlobalMem >> 30);
+}
 
 /// @brief Simple (naive) implementation of a unique device pointer
 ///        using stream ordered memory allocation and deallocation.
@@ -160,6 +198,43 @@ inline size_t blocksPerGrid(size_t numItems, size_t threadsPerBlock)
     return (numItems + threadsPerBlock - 1) / threadsPerBlock;
 }
 
+// CUDA 13.0 changes cudaMemPrefetchAsync and cudaMemPrefetch to use a cudaMemLocation as an argument as
+// opposed to an integer device id. This function provides compatibility by returning the corresponding
+// location in CUDA 13.0 and above while passing through the device in earlier versions.
+#if (CUDART_VERSION < 13000)
+/// @brief Compatbility wrapper for cudaMemAdvise/cudaMemAdvise
+inline cudaError_t memAdvise(const void* devPtr, size_t count, cudaMemoryAdvise advice, int device) {
+    return cudaMemAdvise(devPtr, count, advice, device);
+}
+
+/// @brief Compatbility wrapper for cudaMemPrefetchAsync/cudaMemPrefetchAsync
+inline cudaError_t memPrefetchAsync(const void* devPtr, size_t count, int dstDevice, cudaStream_t stream) {
+    return cudaMemPrefetchAsync(devPtr, count, dstDevice, stream);
+}
+#else
+/// @brief Helper function that converts a device id to a cudaMemLocation
+/// @param device Integer device id
+/// @return cudaMemLocation corresponding to the device id
+inline cudaMemLocation deviceToLocation(int device) {
+    if (device < cudaCpuDeviceId) {
+        return {cudaMemLocationTypeInvalid, device};
+    } else if (device == cudaCpuDeviceId) {
+        return {cudaMemLocationTypeHost, device};
+    } else {
+        return {cudaMemLocationTypeDevice, device};
+    }
+}
+
+/// @brief Compatbility wrapper for cudaMemAdvise/cudaMemAdvise
+inline cudaError_t memAdvise(const void* devPtr, size_t count, cudaMemoryAdvise advice, int device) {
+    return cudaMemAdvise(devPtr, count, advice, deviceToLocation(device));
+}
+
+/// @brief Compatbility wrapper for cudaMemPrefetchAsync/cudaMemPrefetchAsync
+inline cudaError_t memPrefetchAsync(const void* devPtr, size_t count, int dstDevice, cudaStream_t stream) {
+    return cudaMemPrefetchAsync(devPtr, count, deviceToLocation(dstDevice), 0u, stream);
+}
+#endif
 
 #if defined(__CUDACC__)// the following functions only run on the GPU!
 
@@ -173,9 +248,71 @@ __global__ void lambdaKernel(const size_t numItems, Func func, Args... args)
     func(tid, args...);
 }// util::cuda::lambdaKernel
 
+/// @brief Cuda kernel that launches device lambda functions with a tid offset
+/// @param numItems Problem size
+/// @param offset Offset for thread id
+template<typename Func, typename... Args>
+__global__ void offsetLambdaKernel(size_t numItems, unsigned int offset, Func func, Args... args)
+{
+    const unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= numItems) return;
+    func(tid + offset, args...);
+}// util::cuda::offsetLambdaKernel
+
+/// @brief Cuda kernel that launches device operator functors with arbitrary arguments
+template<class Operator, typename... Args>
+__global__
+__launch_bounds__(Operator::MaxThreadsPerBlock, Operator::MinBlocksPerMultiprocessor)
+void operatorKernel(
+    Args... args)
+{
+    Operator op;
+    op( args... );
+}
+
+/// @brief Cuda kernel that launches device operator functors with arbitrary arguments, using dynamic shared memory
+template<class Operator, typename... Args>
+__global__
+__launch_bounds__(Operator::MaxThreadsPerBlock, Operator::MinBlocksPerMultiprocessor)
+void operatorKernelDynamic(Args... args)
+{
+    extern __shared__ char smem_buf[];
+    Operator op;
+    op( args..., smem_buf );
+}
+
+/// @brief Wrapper for launching a device operator that leverages dynamic shared memory, with a specified size
+/// @code
+/// struct MyFunctor
+/// {
+///     // These are passed to __launch_bounds__
+///     static constexpr int MaxThreadsPerBlock = <nThreads>
+///     static constexpr int MinBlocksPerMultiprocessor = 1;
+///
+///     struct SharedStorage {
+///         // Include whatever is needed in smem
+///     };
+///
+///     __device__
+///     void operator()(Args ... myArgs, char smem_buf[])
+///     { ... }
+/// };
+///
+/// dynamicSharedMemoryLauncher<MyFunctor>(nBlocks, sizeof(typename MyFunctor::SharedStorage), myArgs...);
+/// // smem_buff of size sizeof(MyFunctor::SharedStorage) will be automatically passed along
+/// @endcode
+template<class Operator, typename... Args>
+void dynamicSharedMemoryLauncher(const size_t numItems, const size_t smem_size, cudaStream_t stream, Args... args)
+{
+    cudaCheck(cudaFuncSetAttribute(operatorKernelDynamic<Operator, Args...>,
+        cudaFuncAttributeMaxDynamicSharedMemorySize,smem_size));
+    operatorKernelDynamic<Operator>
+        <<<numItems, Operator::MaxThreadsPerBlock, smem_size, stream>>>( args ... );
+}
+
 #endif// __CUDACC__
 
-}}// namespace util::cuda ============================================================
+}// namespace util::cuda ============================================================
 
 }// namespace nanovdb ===============================================================
 

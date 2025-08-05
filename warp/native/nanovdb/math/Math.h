@@ -1,5 +1,5 @@
 // Copyright Contributors to the OpenVDB Project
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: Apache-2.0
 
 /*!
     \file   Math.h
@@ -728,9 +728,9 @@ public:
     /// @return Return an integer Coord
     __hostdev__ Coord round() const
     {
-        if (util::is_same<T, float>::value) {
+        if constexpr(util::is_same<T, float>::value) {
             return Coord(Floor(mVec[0] + 0.5f), Floor(mVec[1] + 0.5f), Floor(mVec[2] + 0.5f));
-        } else if (util::is_same<T, int>::value) {
+        } else if constexpr(util::is_same<T, int>::value) {
             return Coord(mVec[0], mVec[1], mVec[2]);
         } else {
             return Coord(Floor(mVec[0] + 0.5), Floor(mVec[1] + 0.5), Floor(mVec[2] + 0.5));
@@ -1042,10 +1042,10 @@ struct BaseBBox
         return *this;
     }
 
-    //__hostdev__ BaseBBox expandBy(typename Vec3T::ValueType padding) const
-    //{
-    //    return BaseBBox(mCoord[0].offsetBy(-padding),mCoord[1].offsetBy(padding));
-    //}
+//    __hostdev__ BaseBBox expandBy(typename Vec3T::ValueType padding) const
+//    {
+//        return BaseBBox(mCoord[0].offsetBy(-padding),mCoord[1].offsetBy(padding));
+//    }
     __hostdev__ bool isInside(const Vec3T& xyz)
     {
         if (xyz[0] < mCoord[0][0] || xyz[1] < mCoord[0][1] || xyz[2] < mCoord[0][2])

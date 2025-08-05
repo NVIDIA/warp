@@ -1,5 +1,5 @@
 // Copyright Contributors to the OpenVDB Project
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: Apache-2.0
 
 /*!
     \file   nanovdb/util/Util.h
@@ -154,7 +154,7 @@ __hostdev__ inline size_t strlen(const char *str)
 {
     NANOVDB_ASSERT(str != nullptr);
     const char *s = str;
-    while(*s) ++s;               ;
+    while(*s) ++s;
     return (s - str);
 }// util::strlen
 
