@@ -1,5 +1,5 @@
 // Copyright Contributors to the OpenVDB Project
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: Apache-2.0
 
 /*!
     \file nanovdb/GridHandle.h
@@ -22,6 +22,7 @@
 
 #include <nanovdb/NanoVDB.h>// for toGridType
 #include <nanovdb/HostBuffer.h>
+#include <nanovdb/tools/GridChecksum.h>// for updateGridCount
 
 namespace nanovdb {
 
@@ -44,13 +45,14 @@ class GridHandle
 public:
     using BufferType = BufferT;
 
-    /// @brief  Move constructor from a host buffer
+    /// @brief  Move constructor from a dual host-device buffer
     /// @param buffer buffer containing one or more NanoGrids that will be moved into this GridHandle
     /// @throw Will throw and error with the buffer does not contain a valid NanoGrid!
+    /// @note The implementation of this template specialization is in nanovdb/cuda/GridHandle.cuh since it requires CUDA
     template<typename T = BufferT, typename util::enable_if<BufferTraits<T>::hasDeviceDual, int>::type = 0>
     GridHandle(T&& buffer);
 
-    /// @brief  Move constructor from a dual host-device buffer
+    /// @brief  Move constructor from a host buffer
     /// @param buffer buffer containing one or more NanoGrids that will be moved into this GridHandle
     /// @throw Will throw and error with the buffer does not contain a valid NanoGrid!
     template<typename T = BufferT, typename util::disable_if<BufferTraits<T>::hasDeviceDual, int>::type = 0>
@@ -109,19 +111,28 @@ public:
     typename util::enable_if<BufferTraits<U>::hasDeviceDual, const void*>::type
     deviceData() const { return mBuffer.deviceData(); }
     template<typename U = BufferT>
+    typename util::enable_if<BufferTraits<U>::hasDeviceDual, const void*>::type
+    deviceData(int device) const { return mBuffer.deviceData(device); }
+    template<typename U = BufferT>
     typename util::enable_if<BufferTraits<U>::hasDeviceDual, void*>::type
     deviceData() { return mBuffer.deviceData(); }
+    template<typename U = BufferT>
+    typename util::enable_if<BufferTraits<U>::hasDeviceDual, void*>::type
+    deviceData(int device) { return mBuffer.deviceData(device); }
 
+    //@{
     /// @brief Returns the size in bytes of the raw memory buffer managed by this GridHandle.
-    uint64_t size() const { return mBuffer.size(); }
+    [[deprecated("Use GridHandle::bufferSize instead.")]] uint64_t size() const { return mBuffer.size(); }
+    uint64_t bufferSize() const { return mBuffer.size(); }
+    //@}
 
     //@{
     /// @brief Return true if this handle is empty, i.e. has no allocated memory
-    bool empty()   const { return this->size() == 0; }
-    bool isEmpty() const { return this->size() == 0; }
+    bool empty()   const { return mBuffer.size() == 0; }
+    bool isEmpty() const { return mBuffer.size() == 0; }
     //@}
 
-    /// @brief Return true if this handle contains any grids
+    /// @brief Return true if this handle is not empty, i.e. contains at least one grid
     operator bool() const { return !this->empty(); }
 
     /// @brief Returns a const host pointer to the @a n'th NanoVDB grid encoded in this GridHandle.
@@ -151,7 +162,7 @@ public:
 
     /// @brief Return a const pointer to the @a n'th grid encoded in this GridHandle on the device, e.g. GPU
     /// @tparam ValueT Value type of the grid point to be returned
-    /// @param n Index if of the grid pointer to be returned
+    /// @param n Index of the grid pointer to be returned
     /// @param verbose if non-zero error messages will be printed in case something failed
     /// @warning Note that the return pointer can be NULL if the GridHandle was not initialized, @a n is invalid,
     ///          or if the template parameter does not match the specified grid.
@@ -163,13 +174,25 @@ public:
     /// @note This method is only available if the buffer supports devices
     template<typename U = BufferT>
     typename util::enable_if<BufferTraits<U>::hasDeviceDual, void>::type
-    deviceUpload(void* stream = nullptr, bool sync = true) { mBuffer.deviceUpload(stream, sync); }
+    deviceUpload(void* stream, bool sync = true) { mBuffer.deviceUpload(stream, sync); }
+
+    /// @brief Upload the host buffer to a specific device buffer. It device buffer doesn't exist it's created first
+    /// @param device Device to upload host data to
+    /// @param stream cuda stream
+    /// @param sync if false the memory copy is asynchronous
+    template<typename U = BufferT>
+    typename util::enable_if<BufferTraits<U>::hasDeviceDual, void>::type
+    deviceUpload(int device = 0, void* stream = nullptr, bool sync = true) { mBuffer.deviceUpload(device, stream, sync); }
 
     /// @brief Download the grid to from the device, e.g. from GPU to CPU
     /// @note This method is only available if the buffer supports devices
     template<typename U = BufferT>
     typename util::enable_if<BufferTraits<U>::hasDeviceDual, void>::type
-    deviceDownload(void* stream = nullptr, bool sync = true) { mBuffer.deviceDownload(stream, sync); }
+    deviceDownload(void* stream, bool sync = true) { mBuffer.deviceDownload(stream, sync); }
+
+    template<typename U = BufferT>
+    typename util::enable_if<BufferTraits<U>::hasDeviceDual, void>::type
+    deviceDownload(int device = 0, void* stream = nullptr, bool sync = true) { mBuffer.deviceDownload(device, stream, sync); }
 
     /// @brief Check if the buffer is this handle has any padding, i.e. if the buffer is larger than the combined size of all its grids
     /// @return true is the combined size of all grid is smaller than the buffer size
@@ -182,6 +205,23 @@ public:
     /// @param n index of the grid (assumed to be less than gridCount())
     /// @return Return the byte size of the specified grid
     uint64_t gridSize(uint32_t n = 0) const {return mMetaData[n].size; }
+
+    /// @brief compute the total sum of memory footprints of all the grids in this buffer
+    /// @return the number of bytes occupied by all grids associated with this buffer
+    uint64_t totalGridSize() const {
+        uint64_t sum = 0;
+        for (auto &m : mMetaData) sum += m.size;
+        NANOVDB_ASSERT(sum <= mBuffer.size());
+        return sum;
+    }
+
+    /// @brief compute the size of unused storage in this buffer
+    /// @return the number of unused bytes in this buffer.
+    uint64_t freeSize() const {return mBuffer.size() - this->totalGridSize();}
+
+    /// @brief Test if this buffer has any unused storage left, i.e. memory not occupied by grids
+    /// @return true if there is no extra storage left in this buffer, i.e. empty or fully occupied with grids
+    bool isFull() const { return this->totalGridSize() == mBuffer.size(); }
 
     /// @brief Return the GridType of the @a n'th grid in this GridHandle
     /// @param n index of the grid (assumed to be less than gridCount())
@@ -249,12 +289,12 @@ public:
     /// @param is input stream containing a raw grid buffer
     /// @param gridName string name of the grid to be read
     /// @param pool optional pool from which to allocate the new grid buffer
-    /// @throw Will throw a std::logic_error if the stream does not contain a valid raw grid with the speficied name
+    /// @throw Will throw a std::logic_error if the stream does not contain a valid raw grid with the specified name
     void read(std::istream& is, const std::string &gridName, const BufferT& pool = BufferT());
 
     /// @brief Read a raw grid buffer from a file
     /// @param filename string name of the input file containing a raw grid buffer
-    /// @param pool optional pool from which to allocate the new grid buffe
+    /// @param pool optional pool from which to allocate the new grid buffer
     void read(const std::string &fileName, const BufferT& pool = BufferT()) {
         std::ifstream is(fileName, std::ios::in | std::ios::binary);
         if (!is.is_open()) throw std::ios_base::failure("Unable to open file named \"" + fileName + "\" for input");
@@ -314,6 +354,7 @@ inline __hostdev__ void cpyGridHandleMeta(const GridData *data, GridHandleMetaDa
     }
 }// void cpyGridHandleMeta(const GridData *data, GridHandleMetaData *meta)
 
+// template specialization of move constructor from a host buffer
 template<typename BufferT>
 template<typename T, typename util::disable_if<BufferTraits<T>::hasDeviceDual, int>::type>
 GridHandle<BufferT>::GridHandle(T&& buffer)
@@ -356,6 +397,132 @@ GridHandle<BufferT>::deviceGrid(uint32_t n) const
     return util::PtrAdd<NanoGrid<ValueT>>(data, mMetaData[n].offset);
 }// GridHandle<BufferT>::deviceGrid(uint32_t n) cons
 
+template<typename BufferT>
+void GridHandle<BufferT>::read(std::istream& is, const BufferT& pool)
+{
+    GridData data;
+    is.read((char*)&data, sizeof(GridData));
+    if (data.isValid()) {
+        uint64_t size = data.mGridSize, sum = 0u;
+        while(data.mGridIndex + 1u < data.mGridCount) {// loop over remaining raw grids in stream
+            is.seekg(data.mGridSize - sizeof(GridData), std::ios::cur);// skip grid
+            is.read((char*)&data, sizeof(GridData));
+            sum += data.mGridSize;
+        }
+        auto buffer = BufferT::create(size + sum, &pool);
+        is.seekg(-int64_t(sum + sizeof(GridData)), std::ios::cur);// rewind to start
+        is.read((char*)(buffer.data()), buffer.size());
+        *this = GridHandle(std::move(buffer));
+    } else {
+        is.seekg(-sizeof(GridData), std::ios::cur);// rewind
+        throw std::logic_error("This stream does not contain a valid raw grid buffer");
+    }
+}// void GridHandle<BufferT>::read(std::istream& is, const BufferT& pool)
+
+template<typename BufferT>
+void GridHandle<BufferT>::read(std::istream& is, uint32_t n, const BufferT& pool)
+{
+    GridData data;
+    is.read((char*)&data, sizeof(GridData));
+    if (data.isValid()) {
+        if (n>=data.mGridCount) throw std::runtime_error("stream does not contain a #" + std::to_string(n) + " grid");
+        while(data.mGridIndex != n) {
+            is.seekg(data.mGridSize - sizeof(GridData), std::ios::cur);// skip grid
+            is.read((char*)&data, sizeof(GridData));
+        }
+        auto buffer = BufferT::create(data.mGridSize, &pool);
+        is.seekg(-sizeof(GridData), std::ios::cur);// rewind
+        is.read((char*)(buffer.data()), data.mGridSize);
+        tools::updateGridCount((GridData*)buffer.data(), 0u, 1u);
+        *this = GridHandle(std::move(buffer));
+    } else {
+        is.seekg(-sizeof(GridData), std::ios::cur);// rewind sizeof(GridData) bytes to undo initial read
+        throw std::logic_error("This file does not contain a valid raw buffer");
+    }
+}// void GridHandle<BufferT>::read(std::istream& is, uint32_t n, const BufferT& pool)
+
+template<typename BufferT>
+void GridHandle<BufferT>::read(std::istream& is, const std::string &gridName, const BufferT& pool)
+{
+    static const std::streamsize byteSize = sizeof(GridData);
+    GridData data;
+    is.read((char*)&data, byteSize);
+    is.seekg(-byteSize, std::ios::cur);// rewind
+    if (data.isValid()) {
+        uint32_t n = 0;
+        while(data.mGridName != gridName && n++ < data.mGridCount) {
+            is.seekg(data.mGridSize, std::ios::cur);// skip grid
+            is.read((char*)&data, byteSize);// read sizeof(GridData) bytes
+            is.seekg(-byteSize, std::ios::cur);// rewind
+        }
+        if (n>data.mGridCount) throw std::runtime_error("No raw grid named \""+gridName+"\"");
+        auto buffer = BufferT::create(data.mGridSize, &pool);
+        is.read((char*)(buffer.data()), data.mGridSize);
+        tools::updateGridCount((GridData*)buffer.data(), 0u, 1u);
+        *this = GridHandle(std::move(buffer));
+    } else {
+        throw std::logic_error("This file does not contain a valid raw buffer");
+    }
+}// void GridHandle<BufferT>::read(std::istream& is, const std::string &gridName n, const BufferT& pool)
+
+// --------------------------> free-standing functions <------------------------------------
+
+/// @brief Split all grids in a single GridHandle into a vector of multiple GridHandles each with a single grid
+/// @tparam BufferT Type of the input and output grid buffers
+/// @param handle GridHandle with grids that will be slip into individual GridHandles
+/// @param pool optional pool used for allocation of output GridHandle
+/// @return Vector of GridHandles each containing a single grid
+template<typename BufferT, template <class, class...> class VectorT = std::vector>
+inline VectorT<GridHandle<BufferT>>
+splitGrids(const GridHandle<BufferT> &handle, const BufferT* other = nullptr)
+{
+    using HandleT = GridHandle<BufferT>;
+    const void *ptr = handle.data();
+    if (ptr == nullptr) return VectorT<HandleT>();
+    VectorT<HandleT> handles(handle.gridCount());
+    for (auto &h : handles) {
+        const GridData *src = reinterpret_cast<const GridData*>(ptr);
+        NANOVDB_ASSERT(src->isValid());
+        auto buffer = BufferT::create(src->mGridSize, other);
+        GridData *dst = reinterpret_cast<GridData*>(buffer.data());
+        std::memcpy(dst, src, src->mGridSize);
+        tools::updateGridCount(dst, 0u, 1u);
+        h = HandleT(std::move(buffer));
+        ptr = util::PtrAdd(ptr, src->mGridSize);
+    }
+    return std::move(handles);
+}// splitGrids
+
+/// @brief Combines (or merges) multiple GridHandles into a single GridHandle containing all grids
+/// @tparam BufferT Type of the input and output grid buffers
+/// @param handles Vector of GridHandles to be combined
+/// @param pool optional pool used for allocation of output GridHandle
+/// @return single GridHandle containing all input grids
+template<typename BufferT, template <class, class...> class VectorT>
+inline GridHandle<BufferT>
+mergeGrids(const VectorT<GridHandle<BufferT>> &handles, const BufferT* pool = nullptr)
+{
+    uint64_t size = 0u;
+    uint32_t counter = 0u, gridCount = 0u;
+    for (auto &h : handles) {
+        gridCount += h.gridCount();
+        for (uint32_t n=0; n<h.gridCount(); ++n) size += h.gridSize(n);
+    }
+    auto buffer = BufferT::create(size, pool);
+    void *dst = buffer.data();
+    for (auto &h : handles) {
+        const void *src = h.data();
+        for (uint32_t n=0; n<h.gridCount(); ++n) {
+            std::memcpy(dst, src, h.gridSize(n));
+            GridData *data = reinterpret_cast<GridData*>(dst);
+            NANOVDB_ASSERT(data->isValid());
+            tools::updateGridCount(data, counter++, gridCount);
+            dst = util::PtrAdd(dst, data->mGridSize);
+            src = util::PtrAdd(src, data->mGridSize);
+        }
+    }
+    return GridHandle<BufferT>(std::move(buffer));
+}// mergeGrids
 
 } // namespace nanovdb
 
