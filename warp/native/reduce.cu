@@ -22,7 +22,6 @@
 
 #define THRUST_IGNORE_CUB_VERSION_CHECK
 #include <cub/device/device_reduce.cuh>
-#include <cub/iterator/counting_input_iterator.cuh>
 
 namespace
 {

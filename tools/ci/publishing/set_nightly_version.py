@@ -62,8 +62,8 @@ def write_new_version_to_config(config_file_path: str, new_version: str, dry_run
         with open(config_file_path, "r") as file:
             content = file.read()
 
-        # Define the regex to match the version assignment
-        pattern = r'^version\s*:\s*str\s*=\s*"(\d+\.\d+\.\d+(?:\.\w+\d+)?)"$'
+        # Define the regex to match the version assignment, including optional local version identifiers
+        pattern = r'^version\s*:\s*str\s*=\s*"(\d+\.\d+\.\d+(?:\.\w+\d+)?(?:\+\S+)?)?"$'
 
         # Replace the old version with the new version
         updated_content = re.sub(pattern, f'version: str = "{new_version}"', content, flags=re.MULTILINE)
@@ -131,6 +131,11 @@ def parse_args() -> argparse.Namespace:
         type=str, 
         help="Date to use in version (YYYYMMDD format, defaults to today)"
     )
+    parser.add_argument(
+        "--tag",
+        type=str,
+        help="Optional local version tag (e.g., 'cu12')"
+    )
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -153,6 +158,8 @@ if __name__ == "__main__":
         dateint = args.date if args.date else datetime.date.today().strftime("%Y%m%d")
 
         dev_version_string = f"{base_version_incremented}.dev{dateint}"
+        if args.tag:
+            dev_version_string += f"+{args.tag}"
 
         print(f"Preparing to update version from {base_version} to {dev_version_string}...")
 

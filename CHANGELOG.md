@@ -16,6 +16,11 @@
 - Add support for initializing fixed-size arrays inside kernels using `wp.zeros()`
   ([GH-794](https://github.com/NVIDIA/warp/issues/794)).
 - Add support for `IntEnum` and `IntFlag` inside Warp kernels ([GH-529](https://github.com/NVIDIA/warp/issues/529)).
+- Add support for building Warp with CUDA 13.
+
+### Removed
+
+- Remove support for building Warp with CUDA 11.
 
 ### Changed
 

@@ -1,15 +1,15 @@
 <project toolsVersion="5.0">
 
-  <dependency name="cuda-11" linkPath="../_build/target-deps/cuda" tags="cuda-11">
-    <package name="warp-cuda" version="11.8.0-0-windows-x86_64-release" platforms="windows-x86_64"/>
-    <package name="warp-cuda" version="11.8.0-0-linux-x86_64-release" platforms="linux-x86_64"/>
-    <package name="warp-cuda" version="11.8.0-0-linux-aarch64-release" platforms="linux-aarch64"/>
-  </dependency>
-
   <dependency name="cuda-12" linkPath="../_build/target-deps/cuda" tags="cuda-12">
     <package name="warp-cuda" version="12.8.0-0-windows-x86_64-release" platforms="windows-x86_64"/>
     <package name="warp-cuda" version="12.8.0-0-linux-x86_64-release" platforms="linux-x86_64"/>
     <package name="warp-cuda" version="12.8.0-0-linux-aarch64-release" platforms="linux-aarch64"/>
+  </dependency>
+
+  <dependency name="cuda-13" linkPath="../_build/target-deps/cuda" tags="cuda-13">
+    <package name="warp-cuda" version="13.0.0-0-windows-x86_64-release" platforms="windows-x86_64"/>
+    <package name="warp-cuda" version="13.0.0-0-manylinux_2_35_x86_64-release" platforms="linux-x86_64"/>
+    <package name="warp-cuda" version="13.0.0-0-manylinux_2_35_aarch64-release" platforms="linux-aarch64"/>
   </dependency>
 
 </project>

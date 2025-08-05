@@ -43,9 +43,6 @@ Conda packages for Warp are also available on the `conda-forge <https://anaconda
     # Install warp-lang specifically built against CUDA Toolkit 12.6
     $ conda install conda-forge::warp-lang=*=*cuda126*
 
-    # Install warp-lang specifically built against CUDA Toolkit 11.8
-    $ conda install conda-forge::warp-lang=*=*cuda118*
-
 For more information, see the community-maintained feedstock for Warp
 `here <https://github.com/conda-forge/warp-lang-feedstock>`__.
 
@@ -53,8 +50,8 @@ Installing from GitHub Releases
 -------------------------------
 
 The binaries hosted on PyPI are currently built with the CUDA 12 runtime.
-We also provide binaries built with the CUDA 11.8 runtime on the `GitHub Releases <https://github.com/NVIDIA/warp/releases>`_ page.
-Copy the URL of the appropriate wheel file (``warp-lang-{ver}+cu11-py3-none-{platform}.whl``) and pass it to
+We also provide binaries built with the CUDA 13.0 runtime on the `GitHub Releases <https://github.com/NVIDIA/warp/releases>`_ page.
+Copy the URL of the appropriate wheel file (``warp-lang-{ver}+cu13-py3-none-{platform}.whl``) and pass it to
 the ``pip install`` command, e.g.
 
 .. list-table:: 
@@ -63,19 +60,19 @@ the ``pip install`` command, e.g.
    * - Platform
      - Install Command
    * - Linux aarch64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.8.1/warp_lang-1.8.1+cu11-py3-none-manylinux2014_aarch64.whl``
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.9.0/warp_lang-1.9.0+cu13-py3-none-manylinux2014_aarch64.whl``
    * - Linux x86-64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.8.1/warp_lang-1.8.1+cu11-py3-none-manylinux2014_x86_64.whl``
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.9.0/warp_lang-1.9.0+cu13-py3-none-manylinux2014_x86_64.whl``
    * - Windows x86-64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.8.1/warp_lang-1.8.1+cu11-py3-none-win_amd64.whl``
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.9.0/warp_lang-1.9.0+cu13-py3-none-win_amd64.whl``
 
 The ``--force-reinstall`` option may need to be used to overwrite a previous installation.
 
 CUDA Requirements
 -----------------
 
-* Warp packages built with CUDA Toolkit 11.x require NVIDIA driver 470 or newer.
 * Warp packages built with CUDA Toolkit 12.x require NVIDIA driver 525 or newer.
+* Warp packages built with CUDA Toolkit 13.x require NVIDIA driver 580 or newer.
 
 This applies to pre-built packages distributed on PyPI and GitHub and also when building Warp from source.
 
@@ -83,7 +80,7 @@ Note that building Warp with the ``--quick`` flag changes the driver requirement
 The quick build skips CUDA backward compatibility, so the minimum required driver is determined by the CUDA Toolkit version.
 Refer to the `latest CUDA Toolkit release notes <https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html>`_
 to find the minimum required driver for different CUDA Toolkit versions
-(e.g., `this table from CUDA Toolkit 12.6 <https://docs.nvidia.com/cuda/archive/12.6.0/cuda-toolkit-release-notes/index.html#id5>`_).
+(e.g., `this table from CUDA Toolkit 12.9 <https://docs.nvidia.com/cuda/archive/12.9.0/cuda-toolkit-release-notes/index.html#id7>`_).
 
 Warp checks the installed driver during initialization and will report a warning if the driver is not suitable, e.g.:
 
@@ -126,7 +123,7 @@ For developers who want to build the library themselves the following tools are 
 
 * Microsoft Visual Studio (Windows), minimum version 2019
 * GCC (Linux), minimum version 9.4
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_, minimum version 11.5
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_, minimum version 12.0
 * `Git Large File Storage <https://git-lfs.com>`_
 
 After cloning the repository, users should run:

@@ -33,14 +33,14 @@
 #include <stack>
 
 // the minimum CUDA version required from the driver
-#define WP_CUDA_DRIVER_VERSION 11040
+#define WP_CUDA_DRIVER_VERSION 12000
 
 // the minimum CUDA Toolkit version required to build Warp
-#define WP_CUDA_TOOLKIT_VERSION 11050
+#define WP_CUDA_TOOLKIT_VERSION 12000
 
 // check if the CUDA Toolkit is too old
 #if CUDA_VERSION < WP_CUDA_TOOLKIT_VERSION
-#error Building Warp requires CUDA Toolkit version 11.5 or higher
+#error Building Warp requires CUDA Toolkit version 12.0 or higher
 #endif
 
 // Avoid including <cudaGLTypedefs.h>, which requires OpenGL headers to be installed.
@@ -56,11 +56,12 @@ typedef CUresult (CUDAAPI *PFN_cuGraphicsGLRegisterBuffer_v3000)(CUgraphicsResou
 
 // function pointers to driver API entry points
 // these are explicitly versioned according to cudaTypedefs.h from CUDA Toolkit WP_CUDA_TOOLKIT_VERSION
-#if CUDA_VERSION < 12000
-static PFN_cuGetProcAddress_v11030 pfn_cuGetProcAddress;
-#else
-static PFN_cuGetProcAddress_v12000 pfn_cuGetProcAddress;
+
+#if CUDA_VERSION >= 13000
+#define PFN_cuGetProcAddress  PFN_cuGetProcAddress_v12000
 #endif
+
+static PFN_cuGetProcAddress_v12000 pfn_cuGetProcAddress;
 static PFN_cuDriverGetVersion_v2020 pfn_cuDriverGetVersion;
 static PFN_cuGetErrorName_v6000 pfn_cuGetErrorName;
 static PFN_cuGetErrorString_v6000 pfn_cuGetErrorString;
@@ -100,6 +101,8 @@ static PFN_cuEventQuery_v2000 pfn_cuEventQuery;
 static PFN_cuEventRecord_v2000 pfn_cuEventRecord;
 static PFN_cuEventRecordWithFlags_v11010 pfn_cuEventRecordWithFlags;
 static PFN_cuEventSynchronize_v2000 pfn_cuEventSynchronize;
+static PFN_cuGraphAddNode_v12030 pfn_cuGraphAddNode;
+static PFN_cuGraphNodeGetDependentNodes_v12030 pfn_cuGraphNodeGetDependentNodes;
 static PFN_cuModuleLoadDataEx_v2010 pfn_cuModuleLoadDataEx;
 static PFN_cuModuleUnload_v2000 pfn_cuModuleUnload;
 static PFN_cuModuleGetFunction_v2000 pfn_cuModuleGetFunction;
@@ -243,6 +246,8 @@ bool init_cuda_driver()
     get_driver_entry_point("cuEventRecord", 2000, &(void*&)pfn_cuEventRecord);
     get_driver_entry_point("cuEventRecordWithFlags", 11010, &(void*&)pfn_cuEventRecordWithFlags);
     get_driver_entry_point("cuEventSynchronize", 2000, &(void*&)pfn_cuEventSynchronize);
+    get_driver_entry_point("cuGraphAddNode", 12030, &(void*&)pfn_cuGraphAddNode);
+    get_driver_entry_point("cuGraphNodeGetDependentNodes", 12030, &(void*&)pfn_cuGraphNodeGetDependentNodes);
     get_driver_entry_point("cuModuleLoadDataEx", 2010, &(void*&)pfn_cuModuleLoadDataEx);
     get_driver_entry_point("cuModuleUnload", 2000, &(void*&)pfn_cuModuleUnload);
     get_driver_entry_point("cuModuleGetFunction", 2000, &(void*&)pfn_cuModuleGetFunction);
@@ -332,7 +337,8 @@ bool get_graph_leaf_nodes(cudaGraph_t graph, std::vector<cudaGraphNode_t>& leaf_
     for (cudaGraphNode_t node : nodes)
     {
         size_t dependent_count;
-        if (!check_cuda(cudaGraphNodeGetDependentNodes(node, NULL, &dependent_count)))
+
+        if (!check_cu(cuGraphNodeGetDependentNodes_f(node, NULL, NULL, &dependent_count)))
             return false;
 
         if (dependent_count == 0)
@@ -551,6 +557,16 @@ CUresult cuEventRecordWithFlags_f(CUevent event, CUstream stream, unsigned int f
 CUresult cuEventSynchronize_f(CUevent event)
 {
     return pfn_cuEventSynchronize ? pfn_cuEventSynchronize(event) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuGraphAddNode_f(CUgraphNode *phGraphNode, CUgraph hGraph, const CUgraphNode *dependencies, const CUgraphEdgeData *dependencyData, size_t numDependencies, CUgraphNodeParams *nodeParams)
+{
+    return pfn_cuGraphAddNode ? pfn_cuGraphAddNode(phGraphNode, hGraph, dependencies, dependencyData, numDependencies, nodeParams) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuGraphNodeGetDependentNodes_f(CUgraphNode hNode, CUgraphNode *dependentNodes, CUgraphEdgeData *edgeData, size_t *numDependentNodes)
+{
+    return pfn_cuGraphNodeGetDependentNodes ? pfn_cuGraphNodeGetDependentNodes(hNode, dependentNodes, edgeData, numDependentNodes) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuModuleLoadDataEx_f(CUmodule *module, const void *image, unsigned int numOptions, CUjit_option *options, void **optionValues)

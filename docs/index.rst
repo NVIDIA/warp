@@ -28,8 +28,8 @@ and USD-related features.
 The binaries hosted on PyPI are currently built with the CUDA 12 runtime and therefore
 require a minimum version of the CUDA driver of 525.60.13 (Linux x86-64) or 528.33 (Windows x86-64).
 
-If you require GPU support on a system with an older CUDA driver, you can build Warp from source or
-install wheels built with the CUDA 11.8 runtime as described in :ref:`GitHub Installation`.
+If you require a version of Warp built with the CUDA 13 runtime, you can build Warp from source or
+install wheels built with the CUDA 13.0 runtime as described in :ref:`GitHub Installation`.
 
 Basic Example
 -------------

@@ -50,7 +50,7 @@ template <typename T> struct BsrBlockIsNotZero
     T zero_mask;
 
     BsrBlockIsNotZero(int block_size, const void* values, const uint64_t zero_mask)
-        : block_size(block_size), values(static_cast<const T*>(values)), zero_mask(static_cast<const T>(zero_mask)) 
+        : block_size(block_size), values(static_cast<const T*>(values)), zero_mask(static_cast<T>(zero_mask)) 
         {}
 
     CUDA_CALLABLE_DEVICE bool operator()(int block) const
