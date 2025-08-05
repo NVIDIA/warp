@@ -2991,15 +2991,15 @@ bool wp_cuda_graph_insert_if_else(void* context, void* stream, int* condition, v
     CUstream cuda_stream = static_cast<CUstream>(stream);
 
     // Get the current stream capturing graph
-    cudaStreamCaptureStatus capture_status = cudaStreamCaptureStatusNone;
+    CUstreamCaptureStatus capture_status = CU_STREAM_CAPTURE_STATUS_NONE;
     cudaGraph_t cuda_graph = NULL;
     const cudaGraphNode_t* capture_deps = NULL;
     size_t dep_count = 0;
-    if (!check_cuda(cudaStreamGetCaptureInfo(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
+    if (!check_cu(cuStreamGetCaptureInfo_f(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
         return false;
 
     // abort if not capturing
-    if (!cuda_graph || capture_status != cudaStreamCaptureStatusActive)
+    if (!cuda_graph || capture_status != CU_STREAM_CAPTURE_STATUS_ACTIVE)
     {
         wp::set_error_string("Stream is not capturing");
         return false;
@@ -3036,19 +3036,20 @@ bool wp_cuda_graph_insert_if_else(void* context, void* stream, int* condition, v
         if (!check_cuda(cuLaunchKernel_f(kernel, 1, 1, 1, 1, 1, 1, 0, cuda_stream, kernel_args, NULL)))
             return false;
 
-        if (!check_cuda(cudaStreamGetCaptureInfo(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
+        if (!check_cu(cuStreamGetCaptureInfo_f(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
             return false;
         
         // create conditional node
-        cudaGraphNode_t condition_node;
-        cudaGraphNodeParams condition_params = { cudaGraphNodeTypeConditional };
+        CUgraphNode condition_node;
+        CUgraphNodeParams condition_params = { CU_GRAPH_NODE_TYPE_CONDITIONAL };
         condition_params.conditional.handle = handle;
-        condition_params.conditional.type   = cudaGraphCondTypeIf;
+        condition_params.conditional.type   = CU_GRAPH_COND_TYPE_IF;
         condition_params.conditional.size   = num_branches;
-        if (!check_cuda(cudaGraphAddNode(&condition_node, cuda_graph, capture_deps, dep_count, &condition_params)))
+        condition_params.conditional.ctx    = get_current_context();
+        if (!check_cu(cuGraphAddNode_f(&condition_node, cuda_graph, capture_deps, NULL, dep_count, &condition_params)))
             return false;
 
-        if (!check_cuda(cudaStreamUpdateCaptureDependencies(cuda_stream, &condition_node, 1, cudaStreamSetCaptureDependencies)))
+        if (!check_cu(cuStreamUpdateCaptureDependencies_f(cuda_stream, &condition_node, 1, cudaStreamSetCaptureDependencies)))
             return false;
 
         if (num_branches == 1)
@@ -3086,26 +3087,28 @@ bool wp_cuda_graph_insert_if_else(void* context, void* stream, int* condition, v
         if (!check_cu(cuLaunchKernel_f(kernel, 1, 1, 1, 1, 1, 1, 0, cuda_stream, kernel_args, NULL)))
             return false;
 
-        if (!check_cuda(cudaStreamGetCaptureInfo(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
+        if (!check_cu(cuStreamGetCaptureInfo_f(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
             return false;
 
-        cudaGraphNode_t if_node;
-        cudaGraphNodeParams if_params = { cudaGraphNodeTypeConditional };
+        CUgraphNode if_node;
+        CUgraphNodeParams if_params = { CU_GRAPH_NODE_TYPE_CONDITIONAL };
         if_params.conditional.handle = if_handle;
-        if_params.conditional.type   = cudaGraphCondTypeIf;
+        if_params.conditional.type   = CU_GRAPH_COND_TYPE_IF;
         if_params.conditional.size   = 1;
-        if (!check_cuda(cudaGraphAddNode(&if_node, cuda_graph, capture_deps, dep_count, &if_params)))
+        if_params.conditional.ctx    = get_current_context();
+        if (!check_cu(cuGraphAddNode_f(&if_node, cuda_graph, capture_deps, NULL, dep_count, &if_params)))
             return false;
 
-        cudaGraphNode_t else_node;
-        cudaGraphNodeParams else_params = { cudaGraphNodeTypeConditional };
+        CUgraphNode else_node;
+        CUgraphNodeParams else_params = { CU_GRAPH_NODE_TYPE_CONDITIONAL };
         else_params.conditional.handle = else_handle;
-        else_params.conditional.type   = cudaGraphCondTypeIf;
+        else_params.conditional.type   = CU_GRAPH_COND_TYPE_IF;
         else_params.conditional.size   = 1;
-        if (!check_cuda(cudaGraphAddNode(&else_node, cuda_graph, &if_node, 1, &else_params)))
+        else_params.conditional.ctx    = get_current_context();
+        if (!check_cu(cuGraphAddNode_f(&else_node, cuda_graph, &if_node, NULL, 1, &else_params)))
             return false;
         
-        if (!check_cuda(cudaStreamUpdateCaptureDependencies(cuda_stream, &else_node, 1, cudaStreamSetCaptureDependencies)))
+        if (!check_cu(cuStreamUpdateCaptureDependencies_f(cuda_stream, &else_node, 1, cudaStreamSetCaptureDependencies)))
             return false;
 
         *if_graph_ret = if_params.conditional.phGraph_out[0];
@@ -3122,11 +3125,11 @@ bool wp_cuda_graph_insert_child_graph(void* context, void* stream, void* child_g
     CUstream cuda_stream = static_cast<CUstream>(stream);
 
     // Get the current stream capturing graph
-    cudaStreamCaptureStatus capture_status = cudaStreamCaptureStatusNone;
+    CUstreamCaptureStatus capture_status = CU_STREAM_CAPTURE_STATUS_NONE;
     void* cuda_graph = NULL;
-    const cudaGraphNode_t* capture_deps = NULL;
+    const CUgraphNode* capture_deps = NULL;
     size_t dep_count = 0;
-    if (!check_cuda(cudaStreamGetCaptureInfo(cuda_stream, &capture_status, nullptr, (cudaGraph_t*)&cuda_graph, &capture_deps, &dep_count)))
+    if (!check_cu(cuStreamGetCaptureInfo_f(cuda_stream, &capture_status, nullptr, (cudaGraph_t*)&cuda_graph, &capture_deps, &dep_count)))
         return false;
 
     if (!wp_cuda_graph_pause_capture(context, cuda_stream, &cuda_graph))
@@ -3142,7 +3145,7 @@ bool wp_cuda_graph_insert_child_graph(void* context, void* stream, void* child_g
     if (!wp_cuda_graph_resume_capture(context, cuda_stream, cuda_graph))
         return false;
 
-    if (!check_cuda(cudaStreamUpdateCaptureDependencies(cuda_stream, &body_node, 1, cudaStreamSetCaptureDependencies)))
+    if (!check_cu(cuStreamUpdateCaptureDependencies_f(cuda_stream, &body_node, 1, cudaStreamSetCaptureDependencies)))
         return false;
 
     return true;
@@ -3159,15 +3162,15 @@ bool wp_cuda_graph_insert_while(void* context, void* stream, int* condition, voi
     CUstream cuda_stream = static_cast<CUstream>(stream);
 
     // Get the current stream capturing graph
-    cudaStreamCaptureStatus capture_status = cudaStreamCaptureStatusNone;
+    CUstreamCaptureStatus capture_status = CU_STREAM_CAPTURE_STATUS_NONE;
     cudaGraph_t cuda_graph = NULL;
     const cudaGraphNode_t* capture_deps = NULL;
     size_t dep_count = 0;
-    if (!check_cuda(cudaStreamGetCaptureInfo(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
+    if (!check_cu(cuStreamGetCaptureInfo_f(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
         return false;
 
     // abort if not capturing
-    if (!cuda_graph || capture_status != cudaStreamCaptureStatusActive)
+    if (!cuda_graph || capture_status != CU_STREAM_CAPTURE_STATUS_ACTIVE)
     {
         wp::set_error_string("Stream is not capturing");
         return false;
@@ -3192,19 +3195,20 @@ bool wp_cuda_graph_insert_while(void* context, void* stream, int* condition, voi
     if (!check_cu(cuLaunchKernel_f(kernel, 1, 1, 1, 1, 1, 1, 0, cuda_stream, kernel_args, NULL)))
         return false;
 
-    if (!check_cuda(cudaStreamGetCaptureInfo(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
+    if (!check_cu(cuStreamGetCaptureInfo_f(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
         return false;
 
     // insert conditional graph node
-    cudaGraphNode_t while_node;
-    cudaGraphNodeParams while_params = { cudaGraphNodeTypeConditional };
+    CUgraphNode while_node;
+    CUgraphNodeParams while_params = { CU_GRAPH_NODE_TYPE_CONDITIONAL };
     while_params.conditional.handle = handle;
-    while_params.conditional.type   = cudaGraphCondTypeWhile;
+    while_params.conditional.type   = CU_GRAPH_COND_TYPE_WHILE;
     while_params.conditional.size   = 1;
-    if (!check_cuda(cudaGraphAddNode(&while_node, cuda_graph, capture_deps, dep_count, &while_params)))
+    while_params.conditional.ctx    = get_current_context();
+    if (!check_cu(cuGraphAddNode_f(&while_node, cuda_graph, capture_deps, NULL, dep_count, &while_params)))
         return false;
 
-    if (!check_cuda(cudaStreamUpdateCaptureDependencies(cuda_stream, &while_node, 1, cudaStreamSetCaptureDependencies)))
+    if (!check_cu(cuStreamUpdateCaptureDependencies_f(cuda_stream, &while_node, 1, cudaStreamSetCaptureDependencies)))
         return false;
 
     *body_graph_ret = while_params.conditional.phGraph_out[0];

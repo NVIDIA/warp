@@ -14,10 +14,11 @@
 # limitations under the License.
 
 # ==============================================================================
-# Warp+CUDA 11 Build and Testing Child Pipeline
+# Warp+CUDA 13 Build and Testing Child Pipeline
 #
-# This child pipeline is used to build and test Warp when the library is built
-# with the CUDA 11 Toolkit (release mode).
+# This child pipeline is used to build Warp when the library is built with the
+# CUDA 13 Toolkit (release mode). No testing until GitLab runners have CUDA 13
+# drivers.
 #
 # This pipeline can be triggered from the main GitLab pipeline under specific
 # circumstances. See the child pipelines defined in /.gitlab-ci.yml for the
@@ -33,7 +34,7 @@ workflow:
 
 stages:
   - build
-  - test
+  - quality
   - package
   - deploy
 
@@ -43,7 +44,7 @@ stages:
 
 linux-aarch64 build:
   stage: build
-  image: quay.io/pypa/manylinux2014_aarch64:latest
+  image: quay.io/pypa/manylinux_2_34_aarch64:latest
   extends:
     - .omni_devplat_arm_compute
     - .save_warp_bin_artifact
@@ -51,14 +52,14 @@ linux-aarch64 build:
     PM_PYTHON_EXT: "python"
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - yum update && yum install curl wget -y
+    - yum update -y && yum install curl wget -y
     - wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
     - bash Miniforge3.sh -b -p "${CI_PROJECT_DIR}/conda"
     - source "${CI_PROJECT_DIR}/conda/etc/profile.d/conda.sh"
     - conda activate
     - python -m pip install --upgrade pip
     - python -m pip install --upgrade numpy
-    - tools/packman/packman pull --platform linux-aarch64 --include-tag cuda-11 deps/cuda-toolkit-deps.packman.xml
+    - tools/packman/packman pull --platform linux-aarch64 --include-tag cuda-13 deps/cuda-toolkit-deps.packman.xml
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - python build_lib.py --cuda_path $CUDA
@@ -74,52 +75,46 @@ windows-x86_64 build:
   before_script:
     - powershell -command "Get-Volume | Format-Table -AutoSize"
   script:
-    - ./tools/ci/building/build-windows-x86_64/build.bat --cuda 11
+    - ./tools/ci/building/build-windows-x86_64/build.bat --cuda 13
 
 # ==============================================================================
-# Unit Testing Jobs
+# Linting and Code Quality Jobs
 #
-# Unlike the main testing jobs defined in /.gitlab-ci.yml, the CUDA 11 jobs don't
-# generate code coverage reports.
+# The jobs here are meant to assist with code quality analysis.
+# They can run immediately without waiting for the build jobs to complete.
 # ==============================================================================
 
-linux-aarch64 test:
-  stage: test
-  image: ubuntu:22.04
-  needs: [linux-aarch64 build]
+check un-namespaced symbols linux-x86_64:
+  stage: quality
+  image: python:3.12-bullseye
+  needs:
+    - pipeline: $PARENT_PIPELINE_ID
+      job: linux-x86_64 cuda 13 build
   extends:
-    - .runner-test-linux-aarch64 # TODO: Change to .omni_devplat_arm_docker_gpu
-    - .save_test_report_artifact
-  before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - !reference [.snippets, install-python+warp-aarch64]
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+    - .omni_nvks_micro_runner
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - |
+      echo "Checking for un-namespaced symbols..."
+      LIBRARIES_TO_CHECK="warp/bin/linux-x86_64/warp.so warp/bin/linux-x86_64/warp-clang.so"
+      found_symbols=""
 
-windows-x86_64 test:
-  stage: test
-  needs: [windows-x86_64 build]
-  timeout: 30m
-  extends:
-    - .save_test_report_artifact
-  before_script:
-    - !reference [.snippets, define-powershell-GetTime]
-    - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
-    - powershell -command "Get-Volume | Format-Table -AutoSize"
-    - $python_name = $DEFAULT_PYTHON + "-windows-x86_64"
-    - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
-    - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
-    - .\_venv\Scripts\Activate.ps1
-    - python -m pip install --upgrade pip
-    - python -m pip install --upgrade usd-core==25.5.1 numpy Pillow
-    - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
-    - python -m pip install -e .
-    - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
-  script:
-    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
-  tags:
-    - win-x86_64-gpu-1x-573.42
+      for lib in $LIBRARIES_TO_CHECK; do
+        echo "--> Checking $lib"
+        output=$(readelf -Ws "$lib" | awk '$7 ~ /^[0-9]+$/ && $8 !~ /^_?wp_/ {print $8}' | grep -Ev '^(_Z|__|\.)' || true)
+        
+        if [ -n "$output" ]; then
+          echo "ERROR: Found un-namespaced symbols in $lib:"
+          echo "$output"
+          found_symbols="true"
+        fi
+      done
+
+      if [ -n "$found_symbols" ]; then
+        echo "FAIL: Un-namespaced symbols detected. Please prefix them with 'wp_' or '_wp_'."
+        exit 1
+      fi
+
+      echo "SUCCESS: All symbols are correctly namespaced."
 
 # ==============================================================================
 # Packaging Jobs
@@ -135,7 +130,7 @@ create pypi wheels:
     - linux-aarch64 build
     - windows-x86_64 build
     - pipeline: $PARENT_PIPELINE_ID
-      job: linux-x86_64 cuda 11 build
+      job: linux-x86_64 cuda 13 build
   extends:
     - .omni_nvks_micro_runner
   before_script:
@@ -144,7 +139,7 @@ create pypi wheels:
     - mv warp/bin/warp.dll warp/bin/windows-x86_64/
     - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
   script:
-    - sed -i "s/^\(.*\)$/\1+cu11/" VERSION.md # Modify VERSION.md with +cu11
+    - sed -i "s/^\(.*\)$/\1+cu13/" VERSION.md # Modify VERSION.md with +cu13
     - uv build --wheel -C--build-option=-Pwindows-x86_64
     - uv build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux2014
     - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux2014
@@ -156,6 +151,37 @@ create pypi wheels:
     paths:
       - "dist/"
     when: always
+
+create dev wheels:
+  stage: package
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  needs:
+    - linux-aarch64 build
+    - windows-x86_64 build
+    - pipeline: $PARENT_PIPELINE_ID
+      job: linux-x86_64 cuda 13 build
+  extends:
+    - .omni_nvks_micro_runner
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  before_script:
+    # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
+    - mkdir -p warp/bin/windows-x86_64
+    - mv warp/bin/warp.dll warp/bin/windows-x86_64/
+    - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
+  script:
+    - uv run tools/ci/publishing/update_git_hash.py # Modify config.py with git hash
+    - uv run tools/ci/publishing/set_nightly_version.py --tag cu13 # Modify VERSION.md with dev version
+    - uv build --wheel -C--build-option=-Pwindows-x86_64
+    - uv build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux_2_34
+    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
+    - find . -type f -exec chmod 664 {} +
+    - find . -type d -exec chmod 775 {} +
+    - cp VERSION.md dist/
+  artifacts:
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA-dev
+    paths:
+      - "dist/"
 
 # ==============================================================================
 # Deployment Jobs
@@ -219,3 +245,39 @@ publish wheels to github release:
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - gh release upload $PARENT_COMMIT_TAG ./dist/*.whl
+
+publish dev wheels to artifactory:
+  stage: deploy
+  image: releases-docker.jfrog.io/jfrog/jfrog-cli-v2-jf
+  needs:
+    - job: create dev wheels
+      optional: true
+  extends:
+    - .omni_nvks_micro_runner
+  rules: # Should be consistent with create dev wheels
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  allow_failure: true
+  before_script:
+    - export VERSION=$(head -n 1 dist/VERSION.md)
+  script:
+    - cd dist
+    - >
+      jf rt u --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
+      --target-props="component_name=warp-lang;release_approver=ershi;release_status=ready;version=$VERSION;branch=$CI_COMMIT_REF_SLUG;commit=$CI_COMMIT_SHA"
+      '*.whl' sw-warp-pypi-local/nightly/warp-lang/
+    # Set build-specific properties on individual artifacts
+    - >
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-win_amd64.whl
+      'arch=x86_64;os=windows'
+    - >
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-manylinux_2_34_aarch64.whl
+      'arch=aarch64;os=linux'
+    - >
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-manylinux_2_34_x86_64.whl
+      'arch=x86_64;os=linux'
+  environment:
+    name: nightly cu13
+    url: https://pypi.nvidia.com/warp-lang/

@@ -16,6 +16,7 @@
 #define NVIDIA_TOOLS_CUDA_POINTSTOGRID_CUH_HAS_BEEN_INCLUDED
 
 #include <cub/cub.cuh>
+#include <thrust/iterator/transform_iterator.h>
 #include <cub/util_allocator.cuh>
 #include <vector>
 #include <tuple>
@@ -545,18 +546,12 @@ PointsToGrid<BuildT, AllocT>::getHandle(const PtrT points,
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 // --- CUB helpers ---
-template<uint8_t BitCount, typename InT, typename OutT>
+template<uint8_t BitCount, typename InT = uint64_t, typename OutT = uint64_t>
 struct ShiftRight
 {
     __hostdev__ inline OutT operator()(const InT& v) const {return static_cast<OutT>(v >> BitCount);}
 };
 
-template<uint8_t BitCount, typename InT = uint64_t, typename OutT = uint64_t>
-struct ShiftRightIterator : public cub::TransformInputIterator<OutT, ShiftRight<BitCount, InT, OutT>, InT*>
-{
-    using BASE = cub::TransformInputIterator<OutT, ShiftRight<BitCount, InT, OutT>, InT*>;
-    __hostdev__ inline ShiftRightIterator(uint64_t* input_itr) : BASE(input_itr, ShiftRight<BitCount, InT, OutT>()) {}
-};
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -696,7 +691,7 @@ jump:// this marks the beginning of the actual algorithm
     CALL_CUBS(DeviceScan::ExclusiveSum, mData.pointsPerVoxel, mData.pointsPerVoxelPrefix, mData.voxelCount);
 
     mData.pointsPerLeaf = mMemPool.template alloc<uint32_t>(pointCount, mStream);
-    CALL_CUBS(DeviceRunLengthEncode::Encode, ShiftRightIterator<9>(mData.d_keys), d_keys, mData.pointsPerLeaf, d_node_count, pointCount);
+    CALL_CUBS(DeviceRunLengthEncode::Encode, thrust::make_transform_iterator(mData.d_keys, ShiftRight<9>()), d_keys, mData.pointsPerLeaf, d_node_count, pointCount);
     cudaCheck(cudaMemcpyAsync(mData.nodeCount, d_node_count, sizeof(uint32_t), cudaMemcpyDeviceToHost, mStream));
 
     if constexpr(util::is_same<BuildT, Point>::value) {
@@ -716,7 +711,7 @@ jump:// this marks the beginning of the actual algorithm
     mData.d_leaf_keys = mMemPool.template alloc<uint64_t>(mData.nodeCount[0], mStream);
     cudaCheck(cudaMemcpyAsync(mData.d_leaf_keys, d_keys, mData.nodeCount[0]*sizeof(uint64_t), cudaMemcpyDeviceToDevice, mStream));
 
-    CALL_CUBS(DeviceSelect::Unique, ShiftRightIterator<12>(mData.d_leaf_keys), d_keys, d_node_count+1, mData.nodeCount[0]);// count lower nodes
+    CALL_CUBS(DeviceSelect::Unique, thrust::make_transform_iterator(mData.d_leaf_keys, ShiftRight<12>()), d_keys, d_node_count+1, mData.nodeCount[0]);// count lower nodes
     cudaCheck(cudaMemcpyAsync(mData.nodeCount+1, d_node_count+1, sizeof(uint32_t), cudaMemcpyDeviceToHost, mStream));
     mData.d_lower_keys = mMemPool.template alloc<uint64_t>(mData.nodeCount[1], mStream);
     cudaCheck(cudaMemcpyAsync(mData.d_lower_keys, d_keys, mData.nodeCount[1]*sizeof(uint64_t), cudaMemcpyDeviceToDevice, mStream));

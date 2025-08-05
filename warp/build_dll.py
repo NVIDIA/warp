@@ -197,16 +197,12 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: Optional[
 
     if cu_path:
         # check CUDA Toolkit version
-        min_ctk_version = (11, 5)
+        min_ctk_version = (12, 0)
         ctk_version = get_cuda_toolkit_version(cuda_home) or min_ctk_version
         if ctk_version < min_ctk_version:
             raise Exception(
                 f"CUDA Toolkit version {min_ctk_version[0]}.{min_ctk_version[1]}+ is required (found {ctk_version[0]}.{ctk_version[1]} in {cuda_home})"
             )
-
-        if ctk_version[0] < 12 and args.libmathdx_path:
-            print("MathDx support requires at least CUDA 12, skipping")
-            args.libmathdx_path = None
 
         # NVCC gencode options
         gencode_opts = []
@@ -216,91 +212,71 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: Optional[
 
         if args.quick:
             # minimum supported architectures (PTX)
-            gencode_opts += ["-gencode=arch=compute_52,code=compute_52", "-gencode=arch=compute_75,code=compute_75"]
-            clang_arch_flags += ["--cuda-gpu-arch=sm_52", "--cuda-gpu-arch=sm_75"]
+            if ctk_version >= (13, 0):
+                gencode_opts += ["-gencode=arch=compute_75,code=compute_75"]
+                clang_arch_flags += ["--cuda-gpu-arch=sm_75"]
+            else:
+                gencode_opts += ["-gencode=arch=compute_52,code=compute_52", "-gencode=arch=compute_75,code=compute_75"]
+                clang_arch_flags += ["--cuda-gpu-arch=sm_52", "--cuda-gpu-arch=sm_75"]
         else:
             # generate code for all supported architectures
             gencode_opts += [
                 # SASS for supported desktop/datacenter architectures
-                "-gencode=arch=compute_52,code=sm_52",  # Maxwell
-                "-gencode=arch=compute_60,code=sm_60",  # Pascal
-                "-gencode=arch=compute_61,code=sm_61",
-                "-gencode=arch=compute_70,code=sm_70",  # Volta
                 "-gencode=arch=compute_75,code=sm_75",  # Turing
                 "-gencode=arch=compute_75,code=compute_75",  # Turing (PTX)
                 "-gencode=arch=compute_80,code=sm_80",  # Ampere
                 "-gencode=arch=compute_86,code=sm_86",
+                "-gencode=arch=compute_89,code=sm_89",  # Ada
+                "-gencode=arch=compute_90,code=sm_90",  # Hopper
             ]
 
-            # TODO: Get this working with sm_52, sm_60, sm_61
             clang_arch_flags += [
                 # SASS for supported desktop/datacenter architectures
-                "--cuda-gpu-arch=sm_52",
-                "--cuda-gpu-arch=sm_60",
-                "--cuda-gpu-arch=sm_61",
-                "--cuda-gpu-arch=sm_70",  # Volta
                 "--cuda-gpu-arch=sm_75",  # Turing
                 "--cuda-gpu-arch=sm_80",  # Ampere
                 "--cuda-gpu-arch=sm_86",
+                "--cuda-gpu-arch=sm_89",  # Ada
+                "--cuda-gpu-arch=sm_90",  # Hopper
             ]
 
             if arch == "aarch64" and sys.platform == "linux":
-                gencode_opts += [
-                    # SASS for supported mobile architectures (e.g. Tegra/Jetson)
-                    "-gencode=arch=compute_53,code=sm_53",  # X1
-                    "-gencode=arch=compute_62,code=sm_62",  # X2
-                    "-gencode=arch=compute_72,code=sm_72",  # Xavier
-                    "-gencode=arch=compute_87,code=sm_87",  # Orin
-                ]
+                # SASS for supported mobile architectures (e.g. Tegra/Jetson)
+                gencode_opts += ["-gencode=arch=compute_87,code=sm_87"]  # Orin
+                clang_arch_flags += ["--cuda-gpu-arch=sm_87"]
 
-                clang_arch_flags += [
-                    # SASS for supported mobile architectures
-                    "--cuda-gpu-arch=sm_53",  # X1
-                    "--cuda-gpu-arch=sm_62",  # X2
-                    "--cuda-gpu-arch=sm_72",  # Xavier
-                    "--cuda-gpu-arch=sm_87",  # Orin
-                ]
+                if ctk_version >= (13, 0):
+                    gencode_opts += ["-gencode=arch=compute_110,code=sm_110"]  # Thor
+                    clang_arch_flags += ["--cuda-gpu-arch=sm_110"]
+                else:
+                    gencode_opts += [
+                        "-gencode=arch=compute_53,code=sm_53",  # X1
+                        "-gencode=arch=compute_62,code=sm_62",  # X2
+                        "-gencode=arch=compute_72,code=sm_72",  # Xavier
+                    ]
+                    clang_arch_flags += [
+                        "--cuda-gpu-arch=sm_53",
+                        "--cuda-gpu-arch=sm_62",
+                        "--cuda-gpu-arch=sm_72",
+                    ]
 
-                if ctk_version >= (12, 8):
-                    gencode_opts += ["-gencode=arch=compute_101,code=sm_101"]  # Thor (CUDA 12 numbering)
-                    clang_arch_flags += ["--cuda-gpu-arch=sm_101"]
+                    if ctk_version >= (12, 8):
+                        gencode_opts += ["-gencode=arch=compute_101,code=sm_101"]  # Thor (CUDA 12 numbering)
+                        clang_arch_flags += ["--cuda-gpu-arch=sm_101"]
 
             if ctk_version >= (12, 8):
                 # Support for Blackwell is available with CUDA Toolkit 12.8+
                 gencode_opts += [
-                    "-gencode=arch=compute_89,code=sm_89",  # Ada
-                    "-gencode=arch=compute_90,code=sm_90",  # Hopper
                     "-gencode=arch=compute_100,code=sm_100",  # Blackwell
                     "-gencode=arch=compute_120,code=sm_120",  # Blackwell
                     "-gencode=arch=compute_120,code=compute_120",  # PTX for future hardware
                 ]
 
                 clang_arch_flags += [
-                    "--cuda-gpu-arch=sm_89",  # Ada
-                    "--cuda-gpu-arch=sm_90",  # Hopper
                     "--cuda-gpu-arch=sm_100",  # Blackwell
                     "--cuda-gpu-arch=sm_120",  # Blackwell
                 ]
-            elif ctk_version >= (11, 8):
-                # Support for Ada and Hopper is available with CUDA Toolkit 11.8+
-                gencode_opts += [
-                    "-gencode=arch=compute_89,code=sm_89",  # Ada
-                    "-gencode=arch=compute_90,code=sm_90",  # Hopper
-                    "-gencode=arch=compute_90,code=compute_90",  # PTX for future hardware
-                ]
-
-                clang_arch_flags += [
-                    "--cuda-gpu-arch=sm_89",  # Ada
-                    "--cuda-gpu-arch=sm_90",  # Hopper
-                ]
             else:
-                gencode_opts += [
-                    "-gencode=arch=compute_86,code=compute_86",  # PTX for future hardware
-                ]
-
-                clang_arch_flags += [
-                    "--cuda-gpu-arch=sm_86",  # PTX for future hardware
-                ]
+                gencode_opts += ["-gencode=arch=compute_90,code=compute_90"]  # PTX for future hardware
 
         nvcc_opts = [
             *gencode_opts,
