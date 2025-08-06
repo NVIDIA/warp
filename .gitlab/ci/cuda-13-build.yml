@@ -163,7 +163,7 @@ create dev wheels:
   extends:
     - .omni_nvks_micro_runner
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $PARENT_PIPELINE_SOURCE == "schedule" && $PARENT_COMMIT_BRANCH == $PARENT_DEFAULT_BRANCH
   before_script:
     # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
     - mkdir -p warp/bin/windows-x86_64
@@ -255,7 +255,7 @@ publish dev wheels to artifactory:
   extends:
     - .omni_nvks_micro_runner
   rules: # Should be consistent with create dev wheels
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $PARENT_PIPELINE_SOURCE == "schedule" && $PARENT_COMMIT_BRANCH == $PARENT_DEFAULT_BRANCH
   allow_failure: true
   before_script:
     - export VERSION=$(head -n 1 dist/VERSION.md)
@@ -263,7 +263,7 @@ publish dev wheels to artifactory:
     - cd dist
     - >
       jf rt u --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
-      --target-props="component_name=warp-lang;release_approver=ershi;release_status=ready;version=$VERSION;branch=$CI_COMMIT_REF_SLUG;commit=$CI_COMMIT_SHA"
+      --target-props="component_name=warp-lang;release_approver=ershi;release_status=ready;version=$VERSION;branch=$PARENT_COMMIT_REF_SLUG;commit=$PARENT_COMMIT_SHORT_SHA"
       '*.whl' sw-warp-pypi-local/nightly/warp-lang/
     # Set build-specific properties on individual artifacts
     - >
