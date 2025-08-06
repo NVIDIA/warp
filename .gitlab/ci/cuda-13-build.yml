@@ -152,37 +152,6 @@ create pypi wheels:
       - "dist/"
     when: always
 
-create dev wheels:
-  stage: package
-  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
-  needs:
-    - linux-aarch64 build
-    - windows-x86_64 build
-    - pipeline: $PARENT_PIPELINE_ID
-      job: linux-x86_64 cuda 13 build
-  extends:
-    - .omni_nvks_micro_runner
-  rules:
-    - if: $PARENT_PIPELINE_SOURCE == "schedule" && $PARENT_COMMIT_BRANCH == $PARENT_DEFAULT_BRANCH
-  before_script:
-    # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
-    - mkdir -p warp/bin/windows-x86_64
-    - mv warp/bin/warp.dll warp/bin/windows-x86_64/
-    - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
-  script:
-    - uv run tools/ci/publishing/update_git_hash.py # Modify config.py with git hash
-    - uv run tools/ci/publishing/set_nightly_version.py --tag cu13 # Modify VERSION.md with dev version
-    - uv build --wheel -C--build-option=-Pwindows-x86_64
-    - uv build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux_2_34
-    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
-    - find . -type f -exec chmod 664 {} +
-    - find . -type d -exec chmod 775 {} +
-    - cp VERSION.md dist/
-  artifacts:
-    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA-dev
-    paths:
-      - "dist/"
-
 # ==============================================================================
 # Deployment Jobs
 #
@@ -246,38 +215,42 @@ publish wheels to github release:
   script:
     - gh release upload $PARENT_COMMIT_TAG ./dist/*.whl
 
-publish dev wheels to artifactory:
+publish tag wheels to artifactory:
   stage: deploy
   image: releases-docker.jfrog.io/jfrog/jfrog-cli-v2-jf
-  needs:
-    - job: create dev wheels
-      optional: true
+  needs: ["create pypi wheels"]
   extends:
     - .omni_nvks_micro_runner
-  rules: # Should be consistent with create dev wheels
-    - if: $PARENT_PIPELINE_SOURCE == "schedule" && $PARENT_COMMIT_BRANCH == $PARENT_DEFAULT_BRANCH
+  rules:
+    - if: $PARENT_COMMIT_TAG
   allow_failure: true
   before_script:
     - export VERSION=$(head -n 1 dist/VERSION.md)
   script:
     - cd dist
     - >
-      jf rt u --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
-      --target-props="component_name=warp-lang;release_approver=ershi;release_status=ready;version=$VERSION;branch=$PARENT_COMMIT_REF_SLUG;commit=$PARENT_COMMIT_SHORT_SHA"
-      '*.whl' sw-warp-pypi-local/nightly/warp-lang/
+      jf rt u --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
+      --target-props 'component_name=warp-lang;release_approver=ershi;release_status=ready'
+      '*.whl' sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/$VERSION/
     # Set build-specific properties on individual artifacts
     - >
-      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-win_amd64.whl
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/$VERSION/*-win_amd64.whl
       'arch=x86_64;os=windows'
     - >
-      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-manylinux_2_34_aarch64.whl
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/$VERSION/*-manylinux_2_34_aarch64.whl
       'arch=aarch64;os=linux'
     - >
-      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token=$ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/nightly/warp-lang/*$VERSION*-manylinux_2_34_x86_64.whl
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/$VERSION/*-manylinux_2_34_x86_64.whl
       'arch=x86_64;os=linux'
-  environment:
-    name: nightly cu13
-    url: https://pypi.nvidia.com/warp-lang/
+    # Set additional common properties on all artifacts
+    - >
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/$VERSION/*.whl
+      version=$VERSION
+    - >
+      jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
+      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/$VERSION/*.whl
+      branch=$PARENT_COMMIT_REF_NAME
