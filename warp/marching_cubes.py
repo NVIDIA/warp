@@ -22,14 +22,11 @@ import warp as wp
 
 def marching_cubes_extract_vertices(
     field: wp.array3d(dtype=wp.float32),
-    threshold: wp.float32,
+    threshold: float,
     domain_bounds_lower_corner: wp.vec3,
     grid_pos_delta: wp.vec3,
 ):
-    """
-    Invokes kernels to extract vertices and indices to uniquely identify them.
-    """
-
+    """Invoke kernels to extract vertices and indices to uniquely identify them."""
     device = field.device
     nnode_x, nnode_y, nnode_z = field.shape[0], field.shape[1], field.shape[2]
 
@@ -87,11 +84,7 @@ def marching_cubes_extract_vertices(
         device=device,
     )
 
-    return (
-        verts_pos_out,
-        verts_is_boundary_out,
-        edge_generated_vert_ind,
-    )
+    return (verts_pos_out, verts_is_boundary_out, edge_generated_vert_ind)
 
 
 @wp.kernel
@@ -107,8 +100,7 @@ def extract_vertices_kernel(
     verts_is_boundary_out: wp.array(dtype=wp.bool),
     edge_generated_vert_ind: wp.array(dtype=wp.int32, ndim=4),
 ):
-    """
-    Kernel for vertex extraction
+    """Kernel for vertex extraction.
 
     This kernel runs in two different "modes", which share much of their logic.
     In a first pass when count_only==True, we just count the number of vertices that will be
@@ -116,7 +108,6 @@ def extract_vertices_kernel(
     second pass when count_only==False, we actually generate the vertices and write them to
     the appropriate output location.
     """
-
     ti, tj, tk, t_side = wp.tid()
     nnode_x, nnode_y, nnode_z = values.shape[0], values.shape[1], values.shape[2]
 
@@ -185,10 +176,7 @@ def marching_cubes_extract_faces(
     threshold: wp.float32,
     edge_generated_vert_ind: wp.array(dtype=wp.int32, ndim=4),
 ):
-    """
-    Invokes kernels to extract faces and index the appropriate vertices.
-    """
-
+    """Invoke kernels to extract faces and index the appropriate vertices."""
     device = values.device
     nnode_x, nnode_y, nnode_z = values.shape[0], values.shape[1], values.shape[2]
     ncell_x, ncell_y, ncell_z = nnode_x - 1, nnode_y - 1, nnode_z - 1
@@ -203,9 +191,9 @@ def marching_cubes_extract_faces(
             threshold,
             edge_generated_vert_ind,
             None,
-            get_mc_case_to_tri_range_table(device),
-            get_mc_tri_local_inds_table(device),
-            get_mc_edge_offset_table(device),
+            _get_mc_case_to_tri_range_table(device),
+            _get_mc_tri_local_inds_table(device),
+            _get_mc_edge_offset_table(device),
             True,
         ],
         outputs=[
@@ -234,9 +222,9 @@ def marching_cubes_extract_faces(
             threshold,
             edge_generated_vert_ind,
             face_result_ind,
-            get_mc_case_to_tri_range_table(device),
-            get_mc_tri_local_inds_table(device),
-            get_mc_edge_offset_table(device),
+            _get_mc_case_to_tri_range_table(device),
+            _get_mc_tri_local_inds_table(device),
+            _get_mc_edge_offset_table(device),
             False,
         ],
         outputs=[
@@ -273,7 +261,6 @@ def extract_faces_kernel(
     second pass when count_only==False, we actually generate the faces and write them to
     the appropriate output location.
     """
-
     ti, tj, tk = wp.tid()
     nnode_x, nnode_y, nnode_z = values.shape[0], values.shape[1], values.shape[2]
     _ncell_x, ncell_y, ncell_z = nnode_x - 1, nnode_y - 1, nnode_z - 1
@@ -339,10 +326,8 @@ mc_tri_local_inds_wpcache = {}
 mc_edge_offset_wpcache = {}
 
 
-def get_mc_case_to_tri_range_table(device):
-    """
-    Helper to get marching cubes tri range table
-    """
+def _get_mc_case_to_tri_range_table(device) -> wp.array:
+    """Lazily loads and caches the MC tri range table on the target device."""
     device = str(device)
     if device not in mc_case_to_tri_range_wpcache:
         mc_case_to_tri_range_wpcache[device] = wp.from_numpy(mc_case_to_tri_range_np, dtype=wp.int32, device=device)
@@ -350,10 +335,8 @@ def get_mc_case_to_tri_range_table(device):
     return mc_case_to_tri_range_wpcache[device]
 
 
-def get_mc_tri_local_inds_table(device):
-    """
-    Helper to get marching cubes tri local inds table
-    """
+def _get_mc_tri_local_inds_table(device) -> wp.array:
+    """Lazily loads and caches the MC tri local inds table on the target device."""
     device = str(device)
     if device not in mc_tri_local_inds_wpcache:
         mc_tri_local_inds_wpcache[device] = wp.from_numpy(mc_tri_local_inds, dtype=wp.int32, device=device)
@@ -361,10 +344,8 @@ def get_mc_tri_local_inds_table(device):
     return mc_tri_local_inds_wpcache[device]
 
 
-def get_mc_edge_offset_table(device):
-    """
-    Helper to get marching cubes edge offset table
-    """
+def _get_mc_edge_offset_table(device) -> wp.array:
+    """Lazily loads and caches the MC edge offset table on the target device."""
     device = str(device)
     if device not in mc_edge_offset_wpcache:
         mc_edge_offset_wpcache[device] = wp.from_numpy(mc_edge_offset_np, dtype=wp.int32, device=device)
@@ -501,6 +482,37 @@ mc_cube_corner_offsets = [[0,0,0], [1,0,0], [1,1,0], [0,1,0], [0,0,1], [1,0,1], 
 
 
 class MarchingCubes:
+    """A reusable context for marching cubes surface extraction.
+
+    This class provides a stateful interface for isosurface extraction. You
+    can initialize it with a specific grid configuration and then call the
+    :meth:`~.surface` method multiple times, which is efficient for processing
+    fields of the same size.
+
+    For a simpler, stateless operation, use the static method
+    :meth:`~.extract_surface_marching_cubes`.
+
+    Attributes:
+        nx (int): The number of grid nodes in the x-direction.
+        ny (int): The number of grid nodes in the y-direction.
+        nz (int): The number of grid nodes in the z-direction.
+        domain_bounds_lower_corner (wp.vec3 | tuple | None): The lower bound
+          for the mesh coordinate scaling. See the documentation in
+          :meth:`~.extract_surface_marching_cubes` for more details.
+        domain_bounds_upper_corner (wp.vec3 | tuple | None): The upper bound
+          for the mesh coordinate scaling. See the documentation in
+          :meth:`~.extract_surface_marching_cubes` for more details.
+        verts (warp.array | None): An array of vertex positions of type
+          :class:`warp.vec3f` for the output mesh.
+          This is populated by calling the :meth:`~.surface` method.
+        indices (warp.array | None): An array of triangle indices of type
+          :class:`warp.int32` for the output mesh.
+          This is populated by calling the :meth:`~.surface` method.
+        device (warp.Device): The device on which the context was created. This
+          attribute is for backward compatibility and is not used by the
+          class's methods.
+    """
+
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
         return instance
@@ -516,38 +528,22 @@ class MarchingCubes:
         domain_bounds_lower_corner=None,
         domain_bounds_upper_corner=None,
     ):
-        """Marching Cubes algorithm to extract a 2D surface mesh from a 3D volume.
-
-        Attributes:
-            id: Unique identifier for this object.
-            verts (:class:`warp.array`): Array of vertex positions of type :class:`warp.vec3f`
-              for the output surface mesh.
-              This is populated after running :func:`surface`.
-            indices (:class:`warp.array`): Array containing indices of type :class:`warp.int32`
-              defining triangles for the output surface mesh.
-              This is populated after running :func:`surface`.
-
-              Each set of three consecutive integers in the array represents a single triangle,
-              in which each integer is an index referring to a vertex in the :attr:`verts` array.
+        """Initialize the marching cubes context with a grid configuration.
 
         Args:
-            nx: Number of nodes in the x-direction.
-            ny: Number of nodes in the y-direction.
-            nz: Number of nodes in the z-direction.
-            max_verts: Maximum expected number of vertices (used for array preallocation). (deprecated)
-            max_tris: Maximum expected number of triangles (used for array preallocation). (deprecated)
-            device (Devicelike): CUDA device on which to run marching cubes and allocate memory.
-            domain_bounds_low: Tuple. Lower bound coordinate of the input geometry
-            domain_bounds_high: Tuple. Upper bound coordinate of the input geometry
-
-        Raises:
-            RuntimeError: ``device`` not a CUDA device.
-
-        .. note::
-            The shape of the marching cubes should match the shape of the scalar field being surfaced.
-
+            nx: Number of grid nodes in the x-direction.
+            ny: Number of grid nodes in the y-direction.
+            nz: Number of grid nodes in the z-direction.
+            max_verts: (Deprecated) This argument is ignored.
+            max_tris: (Deprecated) This argument is ignored.
+            device (Devicelike): (Deprecated) The value is assigned to
+              `self.device` for backward compatibility but is not used by the
+              class's methods. It may be removed in a future version.
+            domain_bounds_lower_corner: See the documentation in
+              :meth:`~.extract_surface_marching_cubes`.
+            domain_bounds_upper_corner: See the documentation in
+              :meth:`~.extract_surface_marching_cubes`.
         """
-
         # Input domain sizes, as number of nodes in the grid (note this is 1 more than the number of cubes)
         self.nx = nx
         self.ny = ny
@@ -572,19 +568,19 @@ class MarchingCubes:
         self.device = self.runtime.get_device(device)
 
     def resize(self, nx: int, ny: int, nz: int, max_verts: int = 0, max_tris: int = 0) -> None:
-        """Update the expected input and maximum output sizes for the marching cubes calculation.
+        """Update the grid dimensions for the context.
 
-        This function has no immediate effect on the underlying buffers.
-        The new values take effect on the next :func:`surface` call.
+        This allows the instance to be reused for scalar fields of a different
+        resolution. The new dimensions take effect on the next call to
+        :meth:`~.surface`.
 
         Args:
-          nx: Number of nodes in the x-direction.
-          ny: Number of nodes in the y-direction.
-          nz: Number of nodes in the z-direction.
-          max_verts: Deprecated unused argument
-          max_tris: Deprecated unused argument
+          nx: New number of nodes in the x-direction.
+          ny: New number of nodes in the y-direction.
+          nz: New number of nodes in the z-direction.
+          max_verts: (Deprecated) This argument is ignored.
+          max_tris: (Deprecated) This argument is ignored.
         """
-        # actual allocations will be resized on next call to surface()
         self.nx = nx
         self.ny = ny
         self.nz = nz
@@ -592,23 +588,24 @@ class MarchingCubes:
     def surface(self, field: wp.array(dtype=float, ndim=3), threshold: float) -> None:
         """Compute a 2D surface mesh of a given isosurface from a 3D scalar field.
 
-        The triangles and vertices defining the output mesh are written to the
-        :attr:`indices` and :attr:`verts` arrays.
+        This method is a convenience wrapper that calls the core static method
+        and stores the resulting mesh data in the :attr:`verts` and
+        :attr:`indices` attributes.
 
         Args:
-          field: Scalar field from which to generate a mesh.
-          threshold: Target isosurface value.
+          field: A 3D scalar field whose shape must match the grid dimensions
+            (nx, ny, nz) of the instance.
+          threshold: The field value defining the isosurface to extract.
 
         Raises:
-          ValueError: ``field`` is not a 3D array.
-          ValueError: Marching cubes shape does not match the shape of ``field``.
-          RuntimeError: :attr:`max_verts` and/or :attr:`max_tris` might be too small to hold the surface mesh.
+          ValueError: If the shape of ``field`` does not match the configured
+            grid dimensions of the instance.
         """
-
         # nx, ny, nz is the number of nodes, which should agree with the size of the field
-        assert field.shape[0] == (self.nx)
-        assert field.shape[1] == (self.ny)
-        assert field.shape[2] == (self.nz)
+        if field.shape != (self.nx, self.ny, self.nz):
+            raise ValueError(
+                f"Field shape {field.shape} does not match context grid dimensions {(self.nx, self.ny, self.nz)}."
+            )
 
         verts, faces = self.extract_surface_marching_cubes(
             field=field,
@@ -623,41 +620,55 @@ class MarchingCubes:
     @staticmethod
     def extract_surface_marching_cubes(
         field: wp.array3d(dtype=wp.float32),
-        threshold: wp.float32 = 0.0,
-        domain_bounds_lower_corner: wp.vec3 | None = None,
-        domain_bounds_upper_corner: wp.vec3 | None = None,
+        threshold: float = 0.0,
+        domain_bounds_lower_corner: wp.vec3 | tuple[float, float, float] | None = None,
+        domain_bounds_upper_corner: wp.vec3 | tuple[float, float, float] | None = None,
     ) -> tuple[wp.array(dtype=wp.vec3), wp.array(dtype=wp.int32)]:
-        """
-        Extract a triangular mesh from a 3d scalar field sampled to a regular grid.
+        """Extract a triangular mesh from a 3D scalar field.
 
-        The shape of the `field` array defines the grid resolution at which extraction
-        is performed, and the resolution may differ along each dimension.
+        This function generates an isosurface by processing the entire input ``field``.
+        The resolution of the output mesh is determined by the shape of the ``field``
+        array and may differ along each dimension.
 
-        By default, the mesh output coordinates correspond to a grid with integer coordinates 0,1,2,3...
-        Alternate, the domain bounds can be specified explicitly to define the output location. For
-        example, setting `domain_bounds_lower_corner=wp.vec3(0.0, 0.0, 0.0)` and
-        `domain_bounds_upper_corner=wp.vec3(1.0, 1.0, 1.0)` extracts a mesh with vertex coordinates
-        in the unit cube, corresponding to a grid with lower-most and upper-most nodes at (0,0,0)
-        and (1,1,1) respectively.
+        The coordinates of the mesh can be scaled to a specific bounding box
+        using the ``domain_bounds_lower_corner`` and
+        ``domain_bounds_upper_corner`` parameters. If a bound is not provided
+        (i.e., left as ``None``), it will be assigned a default value that
+        aligns the mesh with the integer indices of the input grid.
+
+        For example, setting the bounds to ``wp.vec3(0.0, 0.0, 0.0)`` and
+        ``wp.vec3(1.0, 1.0, 1.0)`` will scale the output mesh to fit
+        within the unit cube.
 
         Args:
-            field: A 3d array of scalar field field, per-node of a regular grid
-            threshold: The value of the isosurface to extract(default: 0.0)
-            domain_bounds_lower_corner: The lower corner of the domain to extract (default: None, for a grid with integer coordinates)
-            domain_bounds_upper_corner: The upper corner of the domain to extract (default: None, for a grid with integer coordinates)
+            field: A 3D array representing the scalar values on a regular grid.
+            threshold: The field value defining the isosurface to extract.
+            domain_bounds_lower_corner: The 3D coordinate that the grid's corner
+                at index (0,0,0) maps to. Defaults to ``(0.0, 0.0, 0.0)``
+                if ``None``.
+            domain_bounds_upper_corner: The 3D coordinate that the grid's corner
+                at index (nx-1, ny-1, nz-1) maps to. Defaults to align with the
+                grid's maximal indices if ``None``.
 
         Returns:
-            tuple[wp.array(dtype=wp.vec3), wp.array(dtype=wp.int32)]:
-                A (vertices,triangles) tuple giving the output mesh. The triangles are a flat array of 3*F indices.
+            A tuple ``(vertices, indices)`` containing the output mesh data. The
+            ``indices`` array is a flat list where each group of three consecutive
+            integers forms a single triangle by referencing vertices in the
+            ``vertices`` array.
 
         Raises:
-            ValueError: ``field`` is not a 3D array.
+            ValueError: If ``field`` is not a 3D array or is empty.
+            TypeError: If the ``field`` data type is not ``wp.float32``.
         """
-
         # Do some validation
-        assert len(field.shape) == 3, "field must be a 3D array"
-        assert field.size > 0, "field must be a non-empty array"
-        assert field.dtype == wp.float32, "field must be a float32 array"
+        if len(field.shape) != 3:
+            raise ValueError(f"Expected a 3D array for 'field', but got an array with shape {field.shape}.")
+
+        if field.size == 0:
+            raise ValueError("The 'field' array cannot be empty.")
+
+        if field.dtype != wp.float32:
+            raise TypeError(f"Expected a dtype of wp.float32 for 'field', but got {field.dtype}.")
 
         # Parse out dimensions, being careful to distinguish between nodes and cells
         nnode_x, nnode_y, nnode_z = field.shape[0], field.shape[1], field.shape[2]
@@ -695,6 +706,3 @@ class MarchingCubes:
 
     def __del__(self):
         return
-
-
-####################

@@ -1734,7 +1734,7 @@ Marching Cubes
 
 The :class:`wp.MarchingCubes <MarchingCubes>` class can be used to extract a 2-D mesh approximating an
 isosurface of a 3-D scalar field. The resulting triangle mesh can be saved to a USD
-file using the :class:`warp.renderer.UsdRenderer`.
+file using the :class:`warp.render.UsdRenderer`.
 
 See :github:`warp/examples/core/example_marching_cubes.py` for a usage example.
 
