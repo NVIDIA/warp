@@ -2537,6 +2537,23 @@ class Adjoint:
 
         return out
 
+    # from a list of lists of indices, strip the first `count` indices
+    @staticmethod
+    def strip_indices(indices, count):
+        dim = count
+        while count > 0:
+            ij = indices[0]
+            indices = indices[1:]
+            count -= len(ij)
+
+        # report straddling like in `arr2d[0][1,2]` as a syntax error
+        if count < 0:
+            raise WarpCodegenError(
+                f"Incorrect number of indices specified for array indexing, got {dim - count} indices for a {dim} dimensional array."
+            )
+
+        return indices
+
     def recurse_subscript(adj, node, indices):
         if isinstance(node, ast.Name):
             target = adj.eval(node)
@@ -2557,14 +2574,16 @@ class Adjoint:
             else:
                 ij = [node.slice]
 
-            indices = ij + indices  # prepend
+            indices = [ij, *indices]  # prepend
 
             target, indices = adj.recurse_subscript(node.value, indices)
 
             target_type = strip_reference(target.type)
-            if is_array(target_type) and len(indices) > target_type.ndim:
-                target = adj.emit_indexing(target, indices[: target_type.ndim])
-                indices = indices[len(ij) :]  # strip indices from this subscript node
+            if is_array(target_type):
+                flat_indices = [i for ij in indices for i in ij]
+                if len(flat_indices) > target_type.ndim:
+                    target = adj.emit_indexing(target, flat_indices[: target_type.ndim])
+                    indices = adj.strip_indices(indices, target_type.ndim)
 
             return target, indices
 
@@ -2573,7 +2592,9 @@ class Adjoint:
 
     # returns the object being indexed, and the list of indices
     def eval_subscript(adj, node):
-        return adj.recurse_subscript(node, [])
+        target, indices = adj.recurse_subscript(node, [])
+        flat_indices = [i for ij in indices for i in ij]
+        return target, flat_indices
 
     def emit_Subscript(adj, node):
         if hasattr(node.value, "attr") and node.value.attr == "adjoint":

@@ -259,6 +259,20 @@ def test_nested_mat(test, device):
     assert_np_equal(out[0][1, 2], 3.0)
 
 
+def test_assign_view(test, device):
+    @wp.kernel
+    def kernel_assign_view(out: wp.array2d(dtype=wp.mat44)):
+        out[0][2, 2] = 6.0
+
+    m = wp.array([[wp.mat44()]], dtype=wp.mat44, device=device)
+
+    with test.assertRaisesRegex(
+        wp.codegen.WarpCodegenError,
+        r"Incorrect number of indices specified for array indexing",
+    ):
+        wp.launch(kernel_assign_view, dim=[1, 1], outputs=[m], device=device)
+
+
 def test_struct_attribute_error(test, device):
     @wp.kernel
     def kernel(foo: Foo):
@@ -810,6 +824,7 @@ add_kernel_test(
 add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
 add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
 add_function_test(TestStruct, "test_nested_mat", test_nested_mat, devices=devices)
+add_function_test(TestStruct, "test_assign_view", test_assign_view, devices=devices)
 add_function_test(TestStruct, "test_struct_attribute_error", test_struct_attribute_error, devices=devices)
 add_function_test(TestStruct, "test_struct_inheritance_error", test_struct_inheritance_error, devices=devices)
 add_function_test(TestStruct, "test_nested_array_struct", test_nested_array_struct, devices=devices)
