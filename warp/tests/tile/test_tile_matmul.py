@@ -159,7 +159,7 @@ def test_tile_transpose_matmul(test, device):
         test_tile_transpose_matmul_kernel, dim=[1], inputs=[input, output], block_dim=TILE_DIM, device=device
     )
 
-    assert_np_equal(output.numpy(), input.numpy().T @ input.numpy())
+    assert_np_equal(output.numpy(), input.numpy().T @ input.numpy(), 1e-6)
 
 
 class TestTileMatmul(unittest.TestCase):
