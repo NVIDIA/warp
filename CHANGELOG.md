@@ -158,10 +158,8 @@
   `fem/example_darcy_ls_optimization.py` ([GH-698](https://github.com/NVIDIA/warp/issues/698)).
 - Add a `py.typed` marker file (per PEP 561) to the package to formally support static type checking by downstream users
   ([GH-780](https://github.com/NVIDIA/warp/issues/780)).
-- Add support for negative indexing in the `wp.matrix()`/`wp.vector()`/`wp.quaternion()` types
-  ([GH-278](https://github.com/NVIDIA/warp/issues/278)).
-- Add support for slice indexing with the `wp.matrix()`/`wp.vector()`/`wp.quaternion()` types
-  ([GH-783](https://github.com/NVIDIA/warp/issues/783)).
+- Add support for negative indexing and improve slicing for the `wp.matrix()`/`wp.vector()`/`wp.quaternion()` types
+  ([GH-899](https://github.com/NVIDIA/warp/issues/899)).
 
 ### Removed
 
