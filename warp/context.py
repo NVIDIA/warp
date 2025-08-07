@@ -3179,6 +3179,14 @@ class Runtime:
         if sys.version_info < (3, 9):
             warp.utils.warn(f"Python 3.9 or newer is recommended for running Warp, detected {sys.version_info}")
 
+        if platform.system() == "Darwin" and platform.machine() == "x86_64":
+            warp.utils.warn(
+                "Support for Warp on Intel-based macOS is deprecated and will be removed in the near future. "
+                "Apple Silicon-based Macs will continue to be supported.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+
         bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
 
         if os.name == "nt":

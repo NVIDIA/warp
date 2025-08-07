@@ -22,6 +22,12 @@
 
 - Remove support for building Warp with CUDA 11.
 
+### Deprecated
+
+- Deprecate support for Intel-based macOS (x86_64) with removal targeted in late 2025.
+  We will continue to support Apple Silicon-based Macs with the CPU backend.
+  Users on Intel-based hardware will now receive a `DeprecationWarning` with this information.
+
 ### Changed
 
 - Strictly match arguments for user-function calls from the Python scope to the function's signature, mirroring the
