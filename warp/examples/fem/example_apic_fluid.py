@@ -402,7 +402,7 @@ class Example:
         radius = np.max(cell_size) * 0.5
         volume = np.prod(cell_volume) * packing_fraction
 
-        rng = np.random.default_rng()
+        rng = np.random.default_rng(42)
         points += 2.0 * radius * (rng.random(points.shape) - 0.5)
 
         volumes = wp.full(points.shape[0], volume, dtype=float)
