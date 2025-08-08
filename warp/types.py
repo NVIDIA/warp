@@ -982,12 +982,22 @@ class scalar_base:
 
 
 class float_base(scalar_base):
-    pass
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self!s})"
 
 
 class int_base(scalar_base):
     def __index__(self) -> int:
-        return int(self.value)
+        return int(self._type_(self.value).value)
+
+    def __str__(self) -> str:
+        return str(self._type_(self.value).value)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self!s})"
 
 
 class bool:
@@ -1005,6 +1015,12 @@ class bool:
 
     def __int__(self) -> int:
         return int(self.value != 0)
+
+    def __str__(self) -> str:
+        return str(self.value != 0)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self!s})"
 
 
 class float16(float_base):

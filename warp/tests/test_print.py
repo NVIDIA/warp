@@ -43,6 +43,52 @@ def test_print_kernel():
     # fmt: on
 
 
+@wp.func
+def test_print_numeric_func(value: int):
+    b = wp.bool(value)
+    print(b)
+    assert repr(b) == "bool(True)"
+
+    # signed ints
+    i8 = wp.int8(value)
+    print(i8)
+    assert repr(i8) == "int8(-1)"
+    i16 = wp.int16(value)
+    print(i16)
+    assert repr(i16) == "int16(-1)"
+    i32 = wp.int32(value)
+    print(i32)
+    assert repr(i32) == "int32(-1)"
+    i64 = wp.int64(value)
+    print(i64)
+    assert repr(i64) == "int64(-1)"
+
+    # unsigned ints
+    ui8 = wp.uint8(value)
+    print(ui8)
+    assert repr(ui8) == "uint8(255)"
+    ui16 = wp.uint16(value)
+    print(ui16)
+    assert repr(ui16) == "uint16(65535)"
+    ui32 = wp.uint32(value)
+    print(ui32)
+    assert repr(ui32) == "uint32(4294967295)"
+    ui64 = wp.uint64(value)
+    print(ui64)
+    assert repr(ui64) == "uint64(18446744073709551615)"
+
+    # floats
+    f16 = wp.float16(value)
+    print(f16)
+    assert repr(f16) == "float16(-1)"
+    f32 = wp.float32(value)
+    print(f32)
+    assert repr(f32) == "float32(-1)"
+    f64 = wp.float64(value)
+    print(f64)
+    assert repr(f64) == "float64(-1)"
+
+
 @wp.kernel
 def test_print_numeric_kernel(value: int):
     # signed ints
@@ -127,6 +173,29 @@ def test_print_numeric(test, device):
     if sys.platform != "win32":
         test.assertRegex(
             s,
+            rf"-1{os.linesep}"
+            rf"-1{os.linesep}"
+            rf"-1{os.linesep}"
+            rf"-1{os.linesep}"
+            rf"255{os.linesep}"
+            rf"65535{os.linesep}"
+            rf"4294967295{os.linesep}"
+            rf"18446744073709551615{os.linesep}"
+            rf"-1{os.linesep}"
+            rf"-1{os.linesep}"
+            rf"-1{os.linesep}",
+        )
+
+    capture = StdOutCapture()
+    capture.begin()
+    test_print_numeric_func(-1)
+    s = capture.end()
+
+    # We skip the win32 comparison for now since the capture sometimes is an empty string
+    if sys.platform != "win32":
+        test.assertRegex(
+            s,
+            rf"True{os.linesep}"
             rf"-1{os.linesep}"
             rf"-1{os.linesep}"
             rf"-1{os.linesep}"
