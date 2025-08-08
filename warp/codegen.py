@@ -2460,6 +2460,41 @@ class Adjoint:
 
         return adj.eval(node.value)
 
+    def eval_indices(adj, target_type, indices):
+        nodes = indices
+        if hasattr(target_type, "_wp_generic_type_hint_"):
+            indices = []
+            for dim, node in enumerate(nodes):
+                if isinstance(node, ast.Slice):
+                    # In the context of slicing a vec/mat type, indices are expected
+                    # to be compile-time constants, hence we can infer the actual slice
+                    # bounds also at compile-time.
+                    length = target_type._shape_[dim]
+                    step = 1 if node.step is None else adj.eval(node.step).constant
+
+                    if node.lower is None:
+                        start = length - 1 if step < 0 else 0
+                    else:
+                        start = adj.eval(node.lower).constant
+                        start = min(max(start, -length), length)
+                        start = start + length if start < 0 else start
+
+                    if node.upper is None:
+                        stop = -1 if step < 0 else length
+                    else:
+                        stop = adj.eval(node.upper).constant
+                        stop = min(max(stop, -length), length)
+                        stop = stop + length if stop < 0 else stop
+
+                    slice = adj.add_builtin_call("slice", (start, stop, step))
+                    indices.append(slice)
+                else:
+                    indices.append(adj.eval(node))
+
+            return tuple(indices)
+        else:
+            return tuple(adj.eval(x) for x in nodes)
+
     def emit_indexing(adj, target, indices):
         target_type = strip_reference(target.type)
         if is_array(target_type):
@@ -2553,38 +2588,7 @@ class Adjoint:
         target = adj.eval(root)
         target_type = strip_reference(target.type)
 
-        if hasattr(target_type, "_wp_generic_type_hint_"):
-            indices = []
-            for dim, node in enumerate(nodes):
-                if isinstance(node, ast.Slice):
-                    # In the context of slicing a vec/mat type, indices are expected
-                    # to be compile-time constants, hence we can infer the actual slice
-                    # bounds also at compile-time.
-                    length = target_type._shape_[dim]
-                    step = 1 if node.step is None else adj.eval(node.step).constant
-
-                    if node.lower is None:
-                        start = length - 1 if step < 0 else 0
-                    else:
-                        start = adj.eval(node.lower).constant
-                        start = min(max(start, -length), length)
-                        start = start + length if start < 0 else start
-
-                    if node.upper is None:
-                        stop = -1 if step < 0 else length
-                    else:
-                        stop = adj.eval(node.upper).constant
-                        stop = min(max(stop, -length), length)
-                        stop = stop + length if stop < 0 else stop
-
-                    slice = adj.add_builtin_call("slice", (start, stop, step))
-                    indices.append(slice)
-                else:
-                    indices.append(adj.eval(node))
-
-            indices = tuple(indices)
-        else:
-            indices = tuple(adj.eval(x) for x in nodes)
+        indices = adj.eval_indices(target_type, nodes)
 
         return target, indices
 
