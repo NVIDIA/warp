@@ -44,6 +44,7 @@
 
 ### Fixed
 
+- Fix FfiCallable to skip 'return' argument in FFI callback registration ([GH-893](https://github.com/NVIDIA/warp/issues/893)).
 - Fix calling user functions from Python scope not working with array parameters.
 - Fix an off-by-one error in marching cubes output coordinates to align with the `scikit-image` convention
   ([GH-324](https://github.com/NVIDIA/warp/issues/324)).
