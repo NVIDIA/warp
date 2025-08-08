@@ -2497,6 +2497,8 @@ class Adjoint:
 
     def emit_indexing(adj, target, indices):
         target_type = strip_reference(target.type)
+        indices = adj.eval_indices(target_type, indices)
+
         if is_array(target_type):
             if len(indices) == target_type.ndim:
                 # handles array loads (where each dimension has an index specified)
@@ -2535,62 +2537,43 @@ class Adjoint:
 
         return out
 
+    def recurse_subscript(adj, node, indices):
+        if isinstance(node, ast.Name):
+            target = adj.eval(node)
+            return target, indices
+
+        if isinstance(node, ast.Subscript):
+            if hasattr(node.value, "attr") and node.value.attr == "adjoint":
+                return adj.eval(node), indices
+
+            if isinstance(node.slice, ast.Tuple):
+                ij = node.slice.elts
+            elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
+                # The node `ast.Index` is deprecated in Python 3.9.
+                ij = node.slice.value.elts
+            elif isinstance(node.slice, ast.ExtSlice):
+                # The node `ast.ExtSlice` is deprecated in Python 3.9.
+                ij = node.slice.dims
+            else:
+                ij = [node.slice]
+
+            indices = ij + indices  # prepend
+
+            target, indices = adj.recurse_subscript(node.value, indices)
+
+            target_type = strip_reference(target.type)
+            if is_array(target_type) and len(indices) > target_type.ndim:
+                target = adj.emit_indexing(target, indices[: target_type.ndim])
+                indices = indices[len(ij) :]  # strip indices from this subscript node
+
+            return target, indices
+
+        target = adj.eval(node)
+        return target, indices
+
     # returns the object being indexed, and the list of indices
     def eval_subscript(adj, node):
-        # We want to coalesce multi-dimensional array indexing into a single operation. This needs to deal with expressions like `a[i][j][x][y]` where `a` is a 2D array of matrices,
-        # and essentially rewrite it into `a[i, j][x][y]`. Since the AST observes the indexing right-to-left, and we don't want to evaluate the index expressions prematurely,
-        # this requires a first loop to check if this `node` only performs indexing on the array, and a second loop to evaluate and collect index variables.
-        root = node
-        count = 0
-        array = None
-        while isinstance(root, ast.Subscript):
-            if isinstance(root.slice, ast.Tuple):
-                # handles the x[i, j] case (Python 3.8.x upward)
-                count += len(root.slice.elts)
-            elif isinstance(root.slice, ast.Index) and isinstance(root.slice.value, ast.Tuple):
-                # handles the x[i, j] case (Python 3.7.x)
-                count += len(root.slice.value.elts)
-            else:
-                # simple expression, e.g.: x[i]
-                count += 1
-
-            if isinstance(root.value, ast.Name):
-                symbol = adj.emit_Name(root.value)
-                symbol_type = strip_reference(symbol.type)
-                if is_array(symbol_type):
-                    array = symbol
-                    break
-
-            root = root.value
-
-        # If not all indices index into the array, just evaluate the right-most indexing operation.
-        if not array or (count > array.type.ndim):
-            count = 1
-
-        nodes = ()
-        root = node
-        while len(nodes) < count:
-            if isinstance(root.slice, ast.Tuple):
-                ij = tuple(arg for arg in root.slice.elts)
-            elif isinstance(root.slice, ast.Index) and isinstance(root.slice.value, ast.Tuple):
-                # The node `ast.Index` is deprecated in Python 3.9.
-                ij = tuple(arg for arg in root.slice.value.elts)
-            elif isinstance(root.slice, ast.ExtSlice):
-                # The node `ast.ExtSlice` is deprecated in Python 3.9.
-                ij = tuple(arg for arg in root.slice.dims)
-            else:
-                ij = (root.slice,)
-
-            nodes = ij + nodes  # prepend
-
-            root = root.value
-
-        target = adj.eval(root)
-        target_type = strip_reference(target.type)
-
-        indices = adj.eval_indices(target_type, nodes)
-
-        return target, indices
+        return adj.recurse_subscript(node, [])
 
     def emit_Subscript(adj, node):
         if hasattr(node.value, "attr") and node.value.attr == "adjoint":
@@ -2681,6 +2664,7 @@ class Adjoint:
             target, indices = adj.eval_subscript(lhs)
 
             target_type = strip_reference(target.type)
+            indices = adj.eval_indices(target_type, indices)
 
             if is_array(target_type):
                 adj.add_builtin_call("array_store", [target, *indices, rhs])
@@ -2863,6 +2847,7 @@ class Adjoint:
             target, indices = adj.eval_subscript(lhs)
 
             target_type = strip_reference(target.type)
+            indices = adj.eval_indices(target_type, indices)
 
             if is_array(target_type):
                 # target_types int8, uint8, int16, uint16 are not suitable for atomic array accumulation
