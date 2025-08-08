@@ -365,7 +365,7 @@ You can also create a NumPy structured array first, then convert it to a Warp ar
     import numpy as np
     import math
 
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(123)
 
     @wp.struct
     class Boid:
