@@ -973,7 +973,7 @@ class Adjoint:
                 continue
 
             # add variable for argument
-            arg = Var(name, type, False)
+            arg = Var(name, type, requires_grad=False)
             adj.args.append(arg)
 
             # pre-populate symbol dictionary with function argument names
@@ -3577,7 +3577,8 @@ cuda_kernel_template_backward = """
 cpu_kernel_template_forward = """
 
 void {name}_cpu_kernel_forward(
-    {forward_args})
+    {forward_args},
+    wp_args_{name} *_wp_args)
 {{
 {forward_body}}}
 
@@ -3586,7 +3587,9 @@ void {name}_cpu_kernel_forward(
 cpu_kernel_template_backward = """
 
 void {name}_cpu_kernel_backward(
-    {reverse_args})
+    {reverse_args},
+    wp_args_{name} *_wp_args,
+    wp_args_{name} *_wp_adj_args)
 {{
 {reverse_body}}}
 
@@ -3598,15 +3601,15 @@ extern "C" {{
 
 // Python CPU entry points
 WP_API void {name}_cpu_forward(
-    {forward_args})
+    wp::launch_bounds_t dim,
+    wp_args_{name} *_wp_args)
 {{
 for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
         // init shared memory allocator
         wp::tile_alloc_shared(0, true);
 
-        {name}_cpu_kernel_forward(
-            {forward_params});
+        {name}_cpu_kernel_forward(dim, task_index, _wp_args);
 
         // check shared memory allocator
         wp::tile_alloc_shared(0, false, true);
@@ -3623,15 +3626,16 @@ cpu_module_template_backward = """
 extern "C" {{
 
 WP_API void {name}_cpu_backward(
-    {reverse_args})
+    wp::launch_bounds_t dim,
+    wp_args_{name} *_wp_args,
+    wp_args_{name} *_wp_adj_args)
 {{
     for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
         // initialize shared memory allocator
         wp::tile_alloc_shared(0, true);
 
-        {name}_cpu_kernel_backward(
-            {reverse_params});
+        {name}_cpu_kernel_backward(dim, task_index, _wp_args, _wp_adj_args);
 
         // check shared memory allocator
         wp::tile_alloc_shared(0, false, true);
@@ -3800,8 +3804,17 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
 
     indent_block = " " * indent
 
-    # primal vars
     lines = []
+
+    # argument vars
+    if device == "cpu" and func_type == "kernel":
+        lines += ["//---------\n"]
+        lines += ["// argument vars\n"]
+
+        for var in adj.args:
+            lines += [f"{var.ctype()} {var.emit()} = _wp_args->{var.label};\n"]
+
+    # primal vars
     lines += ["//---------\n"]
     lines += ["// primal vars\n"]
 
@@ -3844,6 +3857,17 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     indent_block = " " * indent
 
     lines = []
+
+    # argument vars
+    if device == "cpu" and func_type == "kernel":
+        lines += ["//---------\n"]
+        lines += ["// argument vars\n"]
+
+        for var in adj.args:
+            lines += [f"{var.ctype()} {var.emit()} = _wp_args->{var.label};\n"]
+
+        for var in adj.args:
+            lines += [f"{var.ctype()} {var.emit_adj()} = _wp_adj_args->{var.label};\n"]
 
     # primal vars
     lines += ["//---------\n"]
@@ -4122,6 +4146,13 @@ def codegen_kernel(kernel, device, options):
 
     adj = kernel.adj
 
+    args_struct = ""
+    if device == "cpu":
+        args_struct = f"struct wp_args_{kernel.get_mangled_name()} {{\n"
+        for i in adj.args:
+            args_struct += f"    {i.ctype()} {i.label};\n"
+        args_struct += "};\n"
+
     # Build line directive for function definition (subtract 1 to account for 1-indexing of AST line numbers)
     # This is used as a catch-all C-to-Python source line mapping for any code that does not have
     # a direct mapping to a Python source line.
@@ -4147,9 +4178,9 @@ def codegen_kernel(kernel, device, options):
     forward_args = ["wp::launch_bounds_t dim"]
     if device == "cpu":
         forward_args.append("size_t task_index")
-
-    for arg in adj.args:
-        forward_args.append(arg.ctype() + " var_" + arg.label)
+    else:
+        for arg in adj.args:
+            forward_args.append(arg.ctype() + " var_" + arg.label)
 
     forward_body = codegen_func_forward(adj, func_type="kernel", device=device)
     template_fmt_args.update(
@@ -4166,17 +4197,16 @@ def codegen_kernel(kernel, device, options):
         reverse_args = ["wp::launch_bounds_t dim"]
         if device == "cpu":
             reverse_args.append("size_t task_index")
-
-        for arg in adj.args:
-            reverse_args.append(arg.ctype() + " var_" + arg.label)
-
-        for arg in adj.args:
-            # indexed array gradients are regular arrays
-            if isinstance(arg.type, indexedarray):
-                _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
-                reverse_args.append(_arg.ctype() + " adj_" + arg.label)
-            else:
-                reverse_args.append(arg.ctype() + " adj_" + arg.label)
+        else:
+            for arg in adj.args:
+                reverse_args.append(arg.ctype() + " var_" + arg.label)
+            for arg in adj.args:
+                # indexed array gradients are regular arrays
+                if isinstance(arg.type, indexedarray):
+                    _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
+                    reverse_args.append(_arg.ctype() + " adj_" + arg.label)
+                else:
+                    reverse_args.append(arg.ctype() + " adj_" + arg.label)
 
         reverse_body = codegen_func_reverse(adj, func_type="kernel", device=device)
         template_fmt_args.update(
@@ -4188,7 +4218,7 @@ def codegen_kernel(kernel, device, options):
         template += template_backward
 
     s = template.format(**template_fmt_args)
-    return s
+    return args_struct + s
 
 
 def codegen_module(kernel, device, options):
@@ -4199,59 +4229,14 @@ def codegen_module(kernel, device, options):
     options = dict(options)
     options.update(kernel.options)
 
-    adj = kernel.adj
-
     template = ""
     template_fmt_args = {
         "name": kernel.get_mangled_name(),
     }
 
-    # build forward signature
-    forward_args = ["wp::launch_bounds_t dim"]
-    forward_params = ["dim", "task_index"]
-
-    for arg in adj.args:
-        if hasattr(arg.type, "_wp_generic_type_str_"):
-            # vectors and matrices are passed from Python by pointer
-            forward_args.append(f"const {arg.ctype()}* var_" + arg.label)
-            forward_params.append(f"*var_{arg.label}")
-        else:
-            forward_args.append(f"{arg.ctype()} var_{arg.label}")
-            forward_params.append("var_" + arg.label)
-
-    template_fmt_args.update(
-        {
-            "forward_args": indent(forward_args),
-            "forward_params": indent(forward_params, 3),
-        }
-    )
     template += cpu_module_template_forward
 
     if options["enable_backward"]:
-        # build reverse signature
-        reverse_args = [*forward_args]
-        reverse_params = [*forward_params]
-
-        for arg in adj.args:
-            if isinstance(arg.type, indexedarray):
-                # indexed array gradients are regular arrays
-                _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
-                reverse_args.append(f"const {_arg.ctype()} adj_{arg.label}")
-                reverse_params.append(f"adj_{_arg.label}")
-            elif hasattr(arg.type, "_wp_generic_type_str_"):
-                # vectors and matrices are passed from Python by pointer
-                reverse_args.append(f"const {arg.ctype()}* adj_{arg.label}")
-                reverse_params.append(f"*adj_{arg.label}")
-            else:
-                reverse_args.append(f"{arg.ctype()} adj_{arg.label}")
-                reverse_params.append(f"adj_{arg.label}")
-
-        template_fmt_args.update(
-            {
-                "reverse_args": indent(reverse_args),
-                "reverse_params": indent(reverse_params, 3),
-            }
-        )
         template += cpu_module_template_backward
 
     s = template.format(**template_fmt_args)

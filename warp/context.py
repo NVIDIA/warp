@@ -1822,10 +1822,11 @@ class ModuleBuilder:
         source = ""
 
         # code-gen LTO forward declarations
-        source += 'extern "C" {\n'
-        for fwd in self.ltoirs_decl.values():
-            source += fwd + "\n"
-        source += "}\n"
+        if len(self.ltoirs_decl) > 0:
+            source += 'extern "C" {\n'
+            for fwd in self.ltoirs_decl.values():
+                source += fwd + "\n"
+            source += "}\n"
 
         # code-gen structs
         visited_structs = set()
@@ -5606,6 +5607,35 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             ) from e
 
 
+# invoke a CPU kernel by passing the parameters as a ctypes structure
+def invoke(kernel, hooks, params: Sequence[Any], adjoint: bool):
+    fields = []
+
+    for i in range(0, len(kernel.adj.args)):
+        arg_name = kernel.adj.args[i].label
+        field = (arg_name, type(params[1 + i]))  # skip the first argument, which is the launch bounds
+        fields.append(field)
+
+    ArgsStruct = type("ArgsStruct", (ctypes.Structure,), {"_fields_": fields})
+
+    args = ArgsStruct()
+    for i, field in enumerate(fields):
+        name = field[0]
+        setattr(args, name, params[1 + i])
+
+    if not adjoint:
+        hooks.forward(params[0], ctypes.byref(args))
+
+    # for adjoint kernels the adjoint arguments are passed through a second struct
+    else:
+        adj_args = ArgsStruct()
+        for i, field in enumerate(fields):
+            name = field[0]
+            setattr(adj_args, name, params[1 + len(fields) + i])
+
+        hooks.backward(params[0], ctypes.byref(args), ctypes.byref(adj_args))
+
+
 class Launch:
     """Represents all data required for a kernel launch so that launches can be replayed quickly.
 
@@ -5798,10 +5828,7 @@ class Launch:
             stream: The stream to launch on.
         """
         if self.device.is_cpu:
-            if self.adjoint:
-                self.hooks.backward(*self.params)
-            else:
-                self.hooks.forward(*self.params)
+            invoke(self.kernel, self.hooks, self.params, self.adjoint)
         else:
             if stream is None:
                 stream = self.device.stream
@@ -5945,7 +5972,7 @@ def launch(
         # late bind
         hooks = module_exec.get_kernel_hooks(kernel)
 
-        pack_args(fwd_args, params)
+        pack_args(fwd_args, params, adjoint=False)
         pack_args(adj_args, params, adjoint=True)
 
         # run kernel
@@ -5956,38 +5983,25 @@ def launch(
                         f"Failed to find backward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
                     )
 
-                if record_cmd:
-                    launch = Launch(
-                        kernel=kernel,
-                        hooks=hooks,
-                        params=params,
-                        params_addr=None,
-                        bounds=bounds,
-                        device=device,
-                        adjoint=adjoint,
-                    )
-                    return launch
-                hooks.backward(*params)
-
             else:
                 if hooks.forward is None:
                     raise RuntimeError(
                         f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
                     )
 
-                if record_cmd:
-                    launch = Launch(
-                        kernel=kernel,
-                        hooks=hooks,
-                        params=params,
-                        params_addr=None,
-                        bounds=bounds,
-                        device=device,
-                        adjoint=adjoint,
-                    )
-                    return launch
-                else:
-                    hooks.forward(*params)
+            if record_cmd:
+                launch = Launch(
+                    kernel=kernel,
+                    hooks=hooks,
+                    params=params,
+                    params_addr=None,
+                    bounds=bounds,
+                    device=device,
+                    adjoint=adjoint,
+                )
+                return launch
+
+            invoke(kernel, hooks, params, adjoint)
 
         else:
             kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
