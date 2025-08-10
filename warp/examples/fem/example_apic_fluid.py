@@ -238,7 +238,7 @@ class Example:
         # Storage for temporary variables
         self.temporary_store = fem.TemporaryStore()
 
-        # initialze renderers
+        # initialize renderers
         self.opengl_renderer = None
         self.usd_renderer = None
 
