@@ -23,9 +23,7 @@ from warp.tests.unittest_utils import *
 
 @wp.kernel
 def make_field_sphere_sdf(field: wp.array3d(dtype=float), center: wp.vec3, radius: float):
-    """
-    Makes a sphere SDF for nodes on the integer domain with node coodinates 0,1,2,3,...
-    """
+    """Make a sphere SDF for nodes on the integer domain with node coordinates 0,1,2,3,..."""
 
     i, j, k = wp.tid()
 
@@ -40,10 +38,7 @@ def make_field_sphere_sdf(field: wp.array3d(dtype=float), center: wp.vec3, radiu
 def make_field_sphere_sdf_unit_domain(
     field: wp.array3d(dtype=float), center: wp.vec3, radius: wp.array(dtype=wp.float32)
 ):
-    """
-    Makes a sphere SDF for nodes on the unit domain [-1, 1]^3
-    """
-
+    """Makes a sphere SDF for nodes on the unit domain [-1, 1]^3."""
     i, j, k = wp.tid()
 
     nx, ny, nz = field.shape[0], field.shape[1], field.shape[2]
@@ -63,10 +58,6 @@ def make_field_sphere_sdf_unit_domain(
 def compute_surface_area(
     verts: wp.array(dtype=wp.vec3), faces: wp.array(dtype=wp.int32), out_area: wp.array(dtype=wp.float32)
 ):
-    """
-    Compute surface area
-    """
-
     tid = wp.tid()
     vi = faces[3 * tid + 0]
     vj = faces[3 * tid + 1]
@@ -108,10 +99,7 @@ def validate_marching_cubes_output(test, verts_np, faces_np, check_nonempty=True
 
 
 def test_marching_cubes(test, device):
-    """
-    Basic test of typical usage
-    """
-
+    """Basic test of typical usage."""
     node_dim = 64
     cell_dim = node_dim - 1
     field = wp.zeros(shape=(node_dim, node_dim, node_dim), dtype=float, device=device)
@@ -153,10 +141,7 @@ def test_marching_cubes(test, device):
 
 
 def test_marching_cubes_functional(test, device):
-    """
-    Ensure the single-function interface works as expected
-    """
-
+    """Ensure the single-function interface works as expected."""
     node_dim = 64
     cell_dim = node_dim - 1
     field = wp.zeros(shape=(node_dim, node_dim, node_dim), dtype=float, device=device)
@@ -187,9 +172,7 @@ def test_marching_cubes_functional(test, device):
 
 
 def test_marching_cubes_nonuniform(test, device):
-    """
-    Test the logic for when the dimensions of the grid are not uniform
-    """
+    """Test the logic for when the dimensions of the grid are not uniform."""
 
     dimX = 64
     dimY = 48
@@ -223,9 +206,7 @@ def test_marching_cubes_nonuniform(test, device):
 
 
 def test_marching_cubes_empty_output(test, device):
-    """
-    Make sure we handle the empty-output case correctly
-    """
+    """Make sure we handle the empty-output case correctly."""
 
     dim = 64
     field = wp.zeros(shape=(dim, dim, dim), dtype=float, device=device)
@@ -244,11 +225,12 @@ def test_marching_cubes_empty_output(test, device):
 
 
 def test_marching_cubes_differentiable(test, device):
-    """
-    Check that marching cubes has reasonable gradients by constructing an SDF of sphere, extracting a surface, computing its surface area,
-    and then differentiating the surface area with respect to the sphere's radius.
-    """
+    """Check that marching cubes has reasonable gradients.
 
+    This test constructs an SDF of sphere, extracts a surface, computes its
+    surface area, and then differentiates the surface area with respect to
+    the sphere's radius.
+    """
     node_dim = 64
     cell_dim = node_dim - 1
     bounds_low = wp.vec3(-1.0, -1.0, -1.0)
@@ -257,22 +239,12 @@ def test_marching_cubes_differentiable(test, device):
     radius = 0.5
     radius_wp = wp.full((1,), value=0.5, dtype=wp.float32, device=device, requires_grad=True)
 
-    tape = wp.Tape()
-
-    with tape:
+    with wp.Tape() as tape:
         field = wp.zeros(shape=(node_dim, node_dim, node_dim), dtype=float, device=device, requires_grad=True)
         wp.launch(
             make_field_sphere_sdf_unit_domain,
             dim=field.shape,
-            inputs=[
-                field,
-                wp.vec3(
-                    0.0,
-                    0.0,
-                    0.0,
-                ),
-                radius_wp,
-            ],
+            inputs=[field, wp.vec3(0.0, 0.0, 0.0), radius_wp],
             device=device,
         )
 
