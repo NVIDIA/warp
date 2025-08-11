@@ -789,11 +789,10 @@ def apply_defaults(
     arguments = bound_args.arguments
     new_arguments = []
     for name in bound_args._signature.parameters.keys():
-        try:
+        if name in arguments:
             new_arguments.append((name, arguments[name]))
-        except KeyError:
-            if name in values:
-                new_arguments.append((name, values[name]))
+        elif name in values:
+            new_arguments.append((name, values[name]))
 
     bound_args.arguments = dict(new_arguments)
 
@@ -2461,59 +2460,8 @@ class Adjoint:
 
         return adj.eval(node.value)
 
-    # returns the object being indexed, and the list of indices
-    def eval_subscript(adj, node):
-        # We want to coalesce multi-dimensional array indexing into a single operation. This needs to deal with expressions like `a[i][j][x][y]` where `a` is a 2D array of matrices,
-        # and essentially rewrite it into `a[i, j][x][y]`. Since the AST observes the indexing right-to-left, and we don't want to evaluate the index expressions prematurely,
-        # this requires a first loop to check if this `node` only performs indexing on the array, and a second loop to evaluate and collect index variables.
-        root = node
-        count = 0
-        array = None
-        while isinstance(root, ast.Subscript):
-            if isinstance(root.slice, ast.Tuple):
-                # handles the x[i, j] case (Python 3.8.x upward)
-                count += len(root.slice.elts)
-            elif isinstance(root.slice, ast.Index) and isinstance(root.slice.value, ast.Tuple):
-                # handles the x[i, j] case (Python 3.7.x)
-                count += len(root.slice.value.elts)
-            else:
-                # simple expression, e.g.: x[i]
-                count += 1
-
-            if isinstance(root.value, ast.Name):
-                symbol = adj.emit_Name(root.value)
-                symbol_type = strip_reference(symbol.type)
-                if is_array(symbol_type):
-                    array = symbol
-                    break
-
-            root = root.value
-
-        # If not all indices index into the array, just evaluate the right-most indexing operation.
-        if not array or (count > array.type.ndim):
-            count = 1
-
-        nodes = ()
-        root = node
-        while len(nodes) < count:
-            if isinstance(root.slice, ast.Tuple):
-                ij = tuple(arg for arg in root.slice.elts)
-            elif isinstance(root.slice, ast.Index) and isinstance(root.slice.value, ast.Tuple):
-                # The node `ast.Index` is deprecated in Python 3.9.
-                ij = tuple(arg for arg in root.slice.value.elts)
-            elif isinstance(root.slice, ast.ExtSlice):
-                # The node `ast.ExtSlice` is deprecated in Python 3.9.
-                ij = tuple(arg for arg in root.slice.dims)
-            else:
-                ij = (root.slice,)
-
-            nodes = ij + nodes  # prepend
-
-            root = root.value
-
-        target = adj.eval(root)
-        target_type = strip_reference(target.type)
-
+    def eval_indices(adj, target_type, indices):
+        nodes = indices
         if hasattr(target_type, "_wp_generic_type_hint_"):
             indices = []
             for dim, node in enumerate(nodes):
@@ -2543,24 +2491,14 @@ class Adjoint:
                 else:
                     indices.append(adj.eval(node))
 
-            indices = tuple(indices)
+            return tuple(indices)
         else:
-            indices = tuple(adj.eval(x) for x in nodes)
+            return tuple(adj.eval(x) for x in nodes)
 
-        return target, indices
-
-    def emit_Subscript(adj, node):
-        if hasattr(node.value, "attr") and node.value.attr == "adjoint":
-            # handle adjoint of a variable, i.e. wp.adjoint[var]
-            node.slice.is_adjoint = True
-            var = adj.eval(node.slice)
-            var_name = var.label
-            var = Var(f"adj_{var_name}", type=var.type, constant=None, prefix=False)
-            return var
-
-        target, indices = adj.eval_subscript(node)
-
+    def emit_indexing(adj, target, indices):
         target_type = strip_reference(target.type)
+        indices = adj.eval_indices(target_type, indices)
+
         if is_array(target_type):
             if len(indices) == target_type.ndim:
                 # handles array loads (where each dimension has an index specified)
@@ -2599,47 +2537,116 @@ class Adjoint:
 
         return out
 
+    # from a list of lists of indices, strip the first `count` indices
+    @staticmethod
+    def strip_indices(indices, count):
+        dim = count
+        while count > 0:
+            ij = indices[0]
+            indices = indices[1:]
+            count -= len(ij)
+
+        # report straddling like in `arr2d[0][1,2]` as a syntax error
+        if count < 0:
+            raise WarpCodegenError(
+                f"Incorrect number of indices specified for array indexing, got {dim - count} indices for a {dim} dimensional array."
+            )
+
+        return indices
+
+    def recurse_subscript(adj, node, indices):
+        if isinstance(node, ast.Name):
+            target = adj.eval(node)
+            return target, indices
+
+        if isinstance(node, ast.Subscript):
+            if hasattr(node.value, "attr") and node.value.attr == "adjoint":
+                return adj.eval(node), indices
+
+            if isinstance(node.slice, ast.Tuple):
+                ij = node.slice.elts
+            elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
+                # The node `ast.Index` is deprecated in Python 3.9.
+                ij = node.slice.value.elts
+            elif isinstance(node.slice, ast.ExtSlice):
+                # The node `ast.ExtSlice` is deprecated in Python 3.9.
+                ij = node.slice.dims
+            else:
+                ij = [node.slice]
+
+            indices = [ij, *indices]  # prepend
+
+            target, indices = adj.recurse_subscript(node.value, indices)
+
+            target_type = strip_reference(target.type)
+            if is_array(target_type):
+                flat_indices = [i for ij in indices for i in ij]
+                if len(flat_indices) > target_type.ndim:
+                    target = adj.emit_indexing(target, flat_indices[: target_type.ndim])
+                    indices = adj.strip_indices(indices, target_type.ndim)
+
+            return target, indices
+
+        target = adj.eval(node)
+        return target, indices
+
+    # returns the object being indexed, and the list of indices
+    def eval_subscript(adj, node):
+        target, indices = adj.recurse_subscript(node, [])
+        flat_indices = [i for ij in indices for i in ij]
+        return target, flat_indices
+
+    def emit_Subscript(adj, node):
+        if hasattr(node.value, "attr") and node.value.attr == "adjoint":
+            # handle adjoint of a variable, i.e. wp.adjoint[var]
+            node.slice.is_adjoint = True
+            var = adj.eval(node.slice)
+            var_name = var.label
+            var = Var(f"adj_{var_name}", type=var.type, constant=None, prefix=False)
+            return var
+
+        target, indices = adj.eval_subscript(node)
+
+        return adj.emit_indexing(target, indices)
+
     def emit_Assign(adj, node):
         if len(node.targets) != 1:
             raise WarpCodegenError("Assigning the same value to multiple variables is not supported")
 
+        # Check if the rhs corresponds to an unsupported construct.
+        # Tuples are supported in the context of assigning multiple variables
+        # at once, but not for simple assignments like `x = (1, 2, 3)`.
+        # Therefore, we need to catch this specific case here instead of
+        # more generally in `adj.eval()`.
+        if isinstance(node.value, ast.List):
+            raise WarpCodegenError(
+                "List constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
+            )
+
         lhs = node.targets[0]
 
-        if not isinstance(lhs, ast.Tuple):
-            # Check if the rhs corresponds to an unsupported construct.
-            # Tuples are supported in the context of assigning multiple variables
-            # at once, but not for simple assignments like `x = (1, 2, 3)`.
-            # Therefore, we need to catch this specific case here instead of
-            # more generally in `adj.eval()`.
-            if isinstance(node.value, ast.List):
-                raise WarpCodegenError(
-                    "List constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
-                )
-
-        # handle the case where we are assigning multiple output variables
-        if isinstance(lhs, ast.Tuple):
+        if isinstance(lhs, ast.Tuple) and isinstance(node.value, ast.Call):
             # record the expected number of outputs on the node
             # we do this so we can decide which function to
             # call based on the number of expected outputs
-            if isinstance(node.value, ast.Call):
-                node.value.expects = len(lhs.elts)
+            node.value.expects = len(lhs.elts)
 
-            # evaluate values
-            if isinstance(node.value, ast.Tuple):
-                out = [adj.eval(v) for v in node.value.elts]
-            else:
-                out = adj.eval(node.value)
+        # evaluate rhs
+        if isinstance(lhs, ast.Tuple) and isinstance(node.value, ast.Tuple):
+            rhs = [adj.eval(v) for v in node.value.elts]
+        else:
+            rhs = adj.eval(node.value)
 
-            subtype = getattr(out, "type", None)
+        # handle the case where we are assigning multiple output variables
+        if isinstance(lhs, ast.Tuple):
+            subtype = getattr(rhs, "type", None)
+
             if isinstance(subtype, warp.types.tuple_t):
-                if len(out.type.types) != len(lhs.elts):
+                if len(rhs.type.types) != len(lhs.elts):
                     raise WarpCodegenError(
-                        f"Invalid number of values to unpack (expected {len(lhs.elts)}, got {len(out.type.types)})."
+                        f"Invalid number of values to unpack (expected {len(lhs.elts)}, got {len(rhs.type.types)})."
                     )
-                target = out
-                out = tuple(
-                    adj.add_builtin_call("extract", (target, adj.add_constant(i))) for i in range(len(lhs.elts))
-                )
+                rhs = tuple(adj.add_builtin_call("extract", (rhs, adj.add_constant(i))) for i in range(len(lhs.elts)))
 
             names = []
             for v in lhs.elts:
@@ -2650,11 +2657,12 @@ class Adjoint:
                         "Multiple return functions can only assign to simple variables, e.g.: x, y = func()"
                     )
 
-            if len(names) != len(out):
+            if len(names) != len(rhs):
                 raise WarpCodegenError(
-                    f"Multiple return functions need to receive all their output values, incorrect number of values to unpack (expected {len(out)}, got {len(names)})"
+                    f"Multiple return functions need to receive all their output values, incorrect number of values to unpack (expected {len(rhs)}, got {len(names)})"
                 )
 
+            out = rhs
             for name, rhs in zip(names, out):
                 if name in adj.symbols:
                     if not types_equal(rhs.type, adj.symbols[name].type):
@@ -2666,8 +2674,6 @@ class Adjoint:
 
         # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
         elif isinstance(lhs, ast.Subscript):
-            rhs = adj.eval(node.value)
-
             if hasattr(lhs.value, "attr") and lhs.value.attr == "adjoint":
                 # handle adjoint of a variable, i.e. wp.adjoint[var]
                 lhs.slice.is_adjoint = True
@@ -2679,6 +2685,7 @@ class Adjoint:
             target, indices = adj.eval_subscript(lhs)
 
             target_type = strip_reference(target.type)
+            indices = adj.eval_indices(target_type, indices)
 
             if is_array(target_type):
                 adj.add_builtin_call("array_store", [target, *indices, rhs])
@@ -2700,14 +2707,11 @@ class Adjoint:
                 or type_is_transformation(target_type)
             ):
                 # recursively unwind AST, stopping at penultimate node
-                node = lhs
-                while hasattr(node, "value"):
-                    if hasattr(node.value, "value"):
-                        node = node.value
-                    else:
-                        break
+                root = lhs
+                while hasattr(root.value, "value"):
+                    root = root.value
                 # lhs is updating a variable adjoint (i.e. wp.adjoint[var])
-                if hasattr(node, "attr") and node.attr == "adjoint":
+                if hasattr(root, "attr") and root.attr == "adjoint":
                     attr = adj.add_builtin_call("index", [target, *indices])
                     adj.add_builtin_call("store", [attr, rhs])
                     return
@@ -2745,9 +2749,6 @@ class Adjoint:
             # symbol name
             name = lhs.id
 
-            # evaluate rhs
-            rhs = adj.eval(node.value)
-
             # check type matches if symbol already defined
             if name in adj.symbols:
                 if not types_equal(strip_reference(rhs.type), adj.symbols[name].type):
@@ -2768,7 +2769,6 @@ class Adjoint:
             adj.symbols[name] = out
 
         elif isinstance(lhs, ast.Attribute):
-            rhs = adj.eval(node.value)
             aggregate = adj.eval(lhs.value)
             aggregate_type = strip_reference(aggregate.type)
 
@@ -2856,9 +2856,9 @@ class Adjoint:
             new_node = ast.Assign(targets=[lhs], value=ast.BinOp(lhs, node.op, node.value))
             adj.eval(new_node)
 
-        if isinstance(lhs, ast.Subscript):
-            rhs = adj.eval(node.value)
+        rhs = adj.eval(node.value)
 
+        if isinstance(lhs, ast.Subscript):
             # wp.adjoint[var] appears in custom grad functions, and does not require
             # special consideration in the AugAssign case
             if hasattr(lhs.value, "attr") and lhs.value.attr == "adjoint":
@@ -2868,6 +2868,7 @@ class Adjoint:
             target, indices = adj.eval_subscript(lhs)
 
             target_type = strip_reference(target.type)
+            indices = adj.eval_indices(target_type, indices)
 
             if is_array(target_type):
                 # target_types int8, uint8, int16, uint16 are not suitable for atomic array accumulation
@@ -2940,7 +2941,6 @@ class Adjoint:
 
         elif isinstance(lhs, ast.Name):
             target = adj.eval(node.target)
-            rhs = adj.eval(node.value)
 
             if is_tile(target.type) and is_tile(rhs.type):
                 if isinstance(node.op, ast.Add):
@@ -3357,11 +3357,11 @@ class Adjoint:
         return None, path
 
     def resolve_external_reference(adj, name: str):
-        try:
+        if name in adj.func.__code__.co_freevars:
             # look up in closure variables
             idx = adj.func.__code__.co_freevars.index(name)
             obj = adj.func.__closure__[idx].cell_contents
-        except ValueError:
+        else:
             # look up in global variables
             obj = adj.func.__globals__.get(name)
         return obj

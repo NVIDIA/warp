@@ -6421,6 +6421,19 @@ def vector_index_dispatch_func(input_types: Mapping[str, type], return_type: Any
     return (func_args, template_args)
 
 
+def matrix_ij_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    mat_type = arg_types["a"]
+    value_type = mat_type._wp_scalar_type_
+
+    return Reference(value_type)
+
+
+def matrix_ij_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    func_args = (Reference(args["a"]), args["i"], args["j"])
+    template_args = ()
+    return (func_args, template_args)
+
+
 # implements &vector[index]
 add_builtin(
     "index",
@@ -6457,6 +6470,16 @@ add_builtin(
     input_types={"a": vector(length=Any, dtype=Scalar), "i": int},
     value_func=vector_index_value_func,
     dispatch_func=vector_index_dispatch_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
+# implements &(*matrix)[i, j]
+add_builtin(
+    "indexref",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int},
+    value_func=matrix_ij_value_func,
+    dispatch_func=matrix_ij_dispatch_func,
     hidden=True,
     group="Utility",
     skip_replay=True,
