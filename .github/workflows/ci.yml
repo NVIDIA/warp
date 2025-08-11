@@ -281,10 +281,10 @@ jobs:
         if: always()
 
   test-warp-macos:
-    runs-on: macos-13
+    runs-on: macos-latest
     needs: build-warp-macos
     env:
-      OS: macos-13
+      OS: macos-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
