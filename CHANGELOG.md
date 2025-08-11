@@ -56,6 +56,8 @@
 - Fix `str()` and `repr()` implementations missing for scalar types at the Python scope
   ([GH-863](https://github.com/NVIDIA/warp/issues/863)).
 - Fix support for write operations on nested matrices ([GH-793](https://github.com/NVIDIA/warp/issues/793)).
+- Fix `#line` directives for Python↔CUDA source correlation not being emitted by default when a module is compiled in
+  debug mode ([GH-901](https://github.com/NVIDIA/warp/issues/901)).
 
 ## [1.8.1] - 2025-08-01
 
