@@ -41,6 +41,8 @@
   ([GH-854](https://github.com/NVIDIA/warp/issues/854)).
 - Use an extended-length default cache path on Windows  to prevent build errors
   ([GH-870](https://github.com/NVIDIA/warp/issues/870)).
+- Arguments for CPU kernels are now passed as a pointer to a structure to avoid a bug in the ARM64 calling convention
+  implementation of the libffi library ([GH-356](https://github.com/NVIDIA/warp/issues/356)).
 
 ### Fixed
 
