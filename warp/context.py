@@ -1792,6 +1792,9 @@ class ModuleBuilder:
         self.structs[struct] = None
 
     def build_kernel(self, kernel):
+        if kernel.options.get("enable_backward", True):
+            kernel.adj.used_by_backward_kernel = True
+
         kernel.adj.build(self)
 
         if kernel.adj.return_var is not None:

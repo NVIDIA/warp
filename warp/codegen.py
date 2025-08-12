@@ -907,6 +907,8 @@ class Adjoint:
         adj.skip_forward_codegen = skip_forward_codegen
         # whether the generation of the adjoint code is skipped for this function
         adj.skip_reverse_codegen = skip_reverse_codegen
+        # Whether this function is used by a kernel that has has the backward pass enabled.
+        adj.used_by_backward_kernel = False
 
         # extract name of source file
         adj.filename = inspect.getsourcefile(func) or "unknown source file"
@@ -1428,6 +1430,11 @@ class Adjoint:
 
         # if it is a user-function then build it recursively
         if not func.is_builtin():
+            # If the function called is a user function,
+            # we need to ensure its adjoint is also being generated.
+            if adj.used_by_backward_kernel:
+                func.adj.used_by_backward_kernel = True
+
             if adj.builder is None:
                 func.build(None)
 
@@ -1509,6 +1516,9 @@ class Adjoint:
 
             # if the argument is a function (and not a builtin), then build it recursively
             if isinstance(func_arg_var, warp.context.Function) and not func_arg_var.is_builtin():
+                if adj.used_by_backward_kernel:
+                    func_arg_var.adj.used_by_backward_kernel = True
+
                 adj.builder.build_function(func_arg_var)
 
             fwd_args.append(strip_reference(func_arg_var))
@@ -4032,10 +4042,10 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None):
         if adj.custom_reverse_mode:
             reverse_body = "\t// user-defined adjoint code\n" + forward_body
         else:
-            if options.get("enable_backward", True):
+            if options.get("enable_backward", True) and adj.used_by_backward_kernel:
                 reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
             else:
-                reverse_body = '\t// reverse mode disabled (module option "enable_backward" is False)\n'
+                reverse_body = '\t// reverse mode disabled (module option "enable_backward" is False or no dependent kernel found with "enable_backward")\n'
         s += reverse_template.format(
             name=c_func_name,
             return_type=return_type,

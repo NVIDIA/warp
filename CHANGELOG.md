@@ -43,6 +43,8 @@
   ([GH-870](https://github.com/NVIDIA/warp/issues/870)).
 - Add support for `wp.breakpoint()` in CUDA kernels on Linux systems. This feature is not available on Windows, as the
   underlying CUDA-GDB debugger only supports Linux targets ([GH-795](https://github.com/NVIDIA/warp/issues/795)).
+- Skip generating code for adjoint functions not referenced by any backward kernel, reducing JIT compilation time
+  ([GH-841](https://github.com/NVIDIA/warp/issues/841)).
 
 ### Fixed
 
