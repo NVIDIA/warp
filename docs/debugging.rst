@@ -124,6 +124,30 @@ the debugger should be attached, and a breakpoint inserted into the generated co
 
 Also see :github:`warp/tests/walkthrough_debug.py` for an example of how to debug Warp kernel code running on the CPU.
 
+Breakpoints can also be inserted into Warp kernels running on GPU devices on Linux systems by using the
+:func:`wp.breakpoint() <breakpoint>` function and `CUDA-GDB <https://docs.nvidia.com/cuda/cuda-gdb/index.html>`__
+or the `NVIDIA Nsight Visual Studio Code Edition (VSCE) <https://developer.nvidia.com/nsight-visual-studio-code-edition>`__
+extension.
+
+An example `launch configuration <https://code.visualstudio.com/docs/debugtest/debugging#_launch-configurations>`__
+for Visual Studio Code is shown below:
+
+.. code-block:: json
+
+    {
+        "version": "0.2.0",
+        "configurations": [
+            {
+                "name": "CUDA-GDB + Python: Launch",
+                "type": "cuda-gdb",
+                "request": "launch",
+                "program": "${command:python.interpreterPath}",
+                "args": ["${file}"]
+            }
+        ]
+    }
+
+
 Generated Code
 --------------
 

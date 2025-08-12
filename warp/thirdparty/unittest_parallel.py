@@ -160,6 +160,7 @@ def main(argv=None):
     group_warp.add_argument(
         "--no-shared-cache", action="store_true", help="Use a separate kernel cache per test process."
     )
+    group_warp.add_argument("--warp-debug", action="store_true", help="Set warp.config.mode to 'debug'")
     args = parser.parse_args(args=argv)
 
     if args.coverage_branch:
@@ -258,6 +259,9 @@ def main(argv=None):
             print(f"Running {discover_suite.countTestCases()} total tests (serial fallback)", file=sys.stderr)
             if args.verbose > 1:
                 print(file=sys.stderr)
+
+            if args.warp_debug:
+                wp.config.mode = "debug"
 
             # Run the tests in serial
             start_time = time.perf_counter()
@@ -546,6 +550,9 @@ def initialize_test_process(lock, shared_index, args, temp_dir):
 
     with _coverage(args, temp_dir):
         import warp as wp
+
+        if args.warp_debug:
+            wp.config.mode = "debug"
 
         if args.no_shared_cache:
             from warp.thirdparty import appdirs
