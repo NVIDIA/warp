@@ -792,9 +792,9 @@ def test_multiple_return_values(test, device):
 
     test.assertAlmostEqual(V[0][0], expected_V[0][0], places=5)
     test.assertAlmostEqual(V[0][1], expected_V[0][1], places=5)
-    test.assertAlmostEqual(V[0][2], expected_V[0][2], places=5)
+    test.assertAlmostEqual(V[0][2], expected_V[0][2], places=4)  # precision issue on ARM64 (GH-905)
     test.assertAlmostEqual(V[1][0], expected_V[1][0], places=5)
-    test.assertAlmostEqual(V[1][1], expected_V[1][1], places=5)
+    test.assertAlmostEqual(V[1][1], expected_V[1][1], places=4)  # precision issue on ARM64 (GH-905)
     test.assertAlmostEqual(V[1][2], expected_V[1][2], places=5)
     test.assertAlmostEqual(V[2][0], expected_V[2][0], places=5)
     test.assertAlmostEqual(V[2][1], expected_V[2][1], places=5)
