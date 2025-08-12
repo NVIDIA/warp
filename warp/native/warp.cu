@@ -3410,9 +3410,9 @@ size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, i
     {
         opts.push_back("--define-macro=_DEBUG");
         opts.push_back("--generate-line-info");
-
-        // disabling since it causes issues with `Unresolved extern function 'cudaGetParameterBufferV2'
-        //opts.push_back("--device-debug");
+#ifndef _WIN32
+        opts.push_back("--device-debug"); // -G
+#endif
     }
     else
     {
