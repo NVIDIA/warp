@@ -756,6 +756,7 @@ def test_multiple_return_values(test, device):
         test_multiple_return_values_quat_to_axis_angle_kernel,
         dim=1,
         inputs=(q, expected_axis, expected_angle),
+        device=device,
     )
 
     # fmt: off
