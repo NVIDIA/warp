@@ -45,6 +45,8 @@
   underlying CUDA-GDB debugger only supports Linux targets ([GH-795](https://github.com/NVIDIA/warp/issues/795)).
 - Arguments for CPU kernels are now passed as a pointer to a structure to avoid a bug in the ARM64 calling convention
   implementation of the libffi library ([GH-356](https://github.com/NVIDIA/warp/issues/356)).
+- Skip generating code for adjoint functions not referenced by any backward kernel, reducing JIT compilation time
+  ([GH-841](https://github.com/NVIDIA/warp/issues/841)).
 
 ### Fixed
 
