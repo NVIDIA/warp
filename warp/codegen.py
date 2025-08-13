@@ -1084,17 +1084,21 @@ class Adjoint:
         # recursively evaluate function body
         try:
             adj.eval(adj.tree.body[0])
-        except Exception:
+        except Exception as original_exc:
             try:
                 lineno = adj.lineno + adj.fun_lineno
                 line = adj.source_lines[adj.lineno]
                 msg = f'Error while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
-                ex, data, traceback = sys.exc_info()
-                e = ex(";".join([msg] + [str(a) for a in data.args])).with_traceback(traceback)
+
+                # Combine the new message with the original exception's arguments
+                new_args = (";".join([msg] + [str(a) for a in original_exc.args]),)
+
+                # Enhance the original exception with parser context before re-raising.
+                # 'from None' is used to suppress Python's chained exceptions for a cleaner error output.
+                raise type(original_exc)(*new_args).with_traceback(original_exc.__traceback__) from None
             finally:
                 adj.skip_build = True
                 adj.builder = None
-                raise e
 
         if builder is not None:
             for a in adj.args:
