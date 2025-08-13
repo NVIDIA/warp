@@ -47,6 +47,8 @@
   implementation of the libffi library ([GH-356](https://github.com/NVIDIA/warp/issues/356)).
 - Skip generating code for adjoint functions not referenced by any backward kernel, reducing JIT compilation time
   ([GH-841](https://github.com/NVIDIA/warp/issues/841)).
+- Improve error messages when Warp is built with a CUDA Toolkit older than required for MathDx-backed features
+  ([GH-911](https://github.com/NVIDIA/warp/issues/911)).
 
 ### Fixed
 

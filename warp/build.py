@@ -255,7 +255,12 @@ def _build_lto_base(lto_symbol, compile_func, builder, extra_files=None):
             the cached file data.
 
     Returns:
-        Tuple containing lto_code_data followed by any extra data from extra_files
+        Tuple where the first element is a success flag (``bool``). The second
+        element is the LTO code as bytes (or ``None`` on failure).
+        If ``extra_files`` is provided, additional elements follow in the same
+        order as the keys in ``extra_files``:
+          - ``".meta"``: int (shared memory bytes).
+          - ``"_fatbin.lto"``: bytes (universal fatbin).
     """
     if extra_files is None:
         extra_files = {}
@@ -292,9 +297,9 @@ def _build_lto_base(lto_symbol, compile_func, builder, extra_files=None):
 
         if all_files_cached:
             if not extra_files:
-                return (lto_code_data,)
+                return (True, lto_code_data)
             else:
-                return (lto_code_data, *[extra_files[ext] for ext in extra_files.keys()])
+                return (True, lto_code_data, *[extra_files[ext] for ext in extra_files.keys()])
 
     # Create process-dependent temporary build directory
     build_dir = f"{lto_dir}_p{os.getpid()}"
@@ -312,21 +317,24 @@ def _build_lto_base(lto_symbol, compile_func, builder, extra_files=None):
         for path in temp_file_paths.values():
             if Path(path).exists():
                 Path(path).unlink()
-        raise RuntimeError(f"Failed to compile {lto_symbol}")
 
-    # Move outputs to cache
-    safe_rename(build_dir, lto_dir)
+        outputs[".lto"] = None
+        for ext in extra_files.keys():
+            outputs[ext] = None
+    else:
+        # Move outputs to cache
+        safe_rename(build_dir, lto_dir)
 
-    # If build_dir couldn't be moved by a rename, move the outputs one-by-one to lto_dir
-    if os.path.exists(lto_dir):
-        for ext, path in file_paths.items():
-            if not os.path.exists(path):
-                try:
-                    # copy output file to the destination lto dir
-                    os.rename(temp_file_paths[ext], path)
-                except (OSError, FileExistsError):
-                    # another process likely updated the lto dir first
-                    pass
+        # If build_dir couldn't be moved by a rename, move the outputs one-by-one to lto_dir
+        if os.path.exists(lto_dir):
+            for ext, path in file_paths.items():
+                if not os.path.exists(path):
+                    try:
+                        # copy output file to the destination lto dir
+                        os.rename(temp_file_paths[ext], path)
+                    except (OSError, FileExistsError):
+                        # another process likely updated the lto dir first
+                        pass
 
     # Clean up the temporary build directory
     if build_dir:
@@ -335,9 +343,9 @@ def _build_lto_base(lto_symbol, compile_func, builder, extra_files=None):
         shutil.rmtree(build_dir, ignore_errors=True)
 
     if not extra_files:
-        return (outputs[".lto"],)
+        return (result, outputs[".lto"])
     else:
-        return (outputs[".lto"], *[outputs[ext] for ext in extra_files.keys()])
+        return (result, outputs[".lto"], *[outputs[ext] for ext in extra_files.keys()])
 
 
 def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, arch, num_threads, builder):
@@ -411,7 +419,13 @@ def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, ar
     if lto_symbol in builder.ltoirs:
         lto_code_data = builder.ltoirs[lto_symbol]
     else:
-        (lto_code_data,) = _build_lto_base(lto_symbol, compile_lto_dot, builder, {})
+        (result, lto_code_data) = _build_lto_base(lto_symbol, compile_lto_dot, builder, {})
+
+        if not result:
+            raise RuntimeError(
+                f"Failed to compile LTO '{lto_symbol}'. "
+                "Set the environment variable LIBMATHDX_LOG_LEVEL=5 and rerun for more details."
+            )
 
         # Update builder
         builder.ltoirs[lto_symbol] = lto_code_data
@@ -488,9 +502,22 @@ def build_lto_solver(
     if lto_symbol in builder.ltoirs:
         lto_code_data = builder.ltoirs[lto_symbol]
     else:
-        lto_code_data, universal_fatbin_code_data = _build_lto_base(
+        (result, lto_code_data, universal_fatbin_code_data) = _build_lto_base(
             lto_symbol, compile_lto_solver, builder, {"_fatbin.lto": get_cached_lto}
         )
+
+        if not result:
+            if warp.context.runtime.toolkit_version < (12, 6):
+                raise RuntimeError(
+                    "cuSolverDx requires CUDA Toolkit 12.6.3 or later. This version of Warp was built against CUDA Toolkit "
+                    f"{warp.context.runtime.toolkit_version[0]}.{warp.context.runtime.toolkit_version[1]}. "
+                    "Upgrade your CUDA Toolkit and rebuild Warp, or install a Warp wheel built with CUDA >= 12.6.3."
+                )
+            else:
+                raise RuntimeError(
+                    f"Failed to compile LTO '{lto_symbol}'. "
+                    "Set the environment variable LIBMATHDX_LOG_LEVEL=5 and rerun for more details."
+                )
 
         # Update builder
         builder.ltoirs[lto_symbol] = lto_code_data
@@ -544,9 +571,15 @@ def build_lto_fft(arch, size, ept, direction, dir, precision, builder):
         lto_code_data = builder.ltoirs[lto_symbol]
         shared_memory_bytes = builder.shared_memory_bytes[lto_symbol]
     else:
-        lto_code_data, shared_memory_bytes = _build_lto_base(
+        (result, lto_code_data, shared_memory_bytes) = _build_lto_base(
             lto_symbol, compile_lto_fft, builder, {".meta": lambda path: get_cached_lto_meta(path, lto_symbol)}
         )
+
+        if not result:
+            raise RuntimeError(
+                f"Failed to compile LTO '{lto_symbol}'. "
+                "Set the environment variable LIBMATHDX_LOG_LEVEL=5 and rerun for more details."
+            )
 
         # Update builder
         builder.ltoirs[lto_symbol] = lto_code_data
