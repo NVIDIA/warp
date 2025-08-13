@@ -47,6 +47,9 @@
   implementation of the libffi library ([GH-356](https://github.com/NVIDIA/warp/issues/356)).
 - Skip generating code for adjoint functions not referenced by any backward kernel, reducing JIT compilation time
   ([GH-841](https://github.com/NVIDIA/warp/issues/841)).
+- Define and re-export Warp's public Python-scope API in `__init__.py` using typing re-export conventions
+  (e.g. `from Y import X as X`) to improve static type checker support
+  ([GH-864](https://github.com/NVIDIA/warp/issues/864)).
 
 ### Fixed
 
