@@ -1172,7 +1172,7 @@ struct tile_shared_t
             {                               
                 // alias of shared tile with 128bit type
                 using SrcLayout = tile_layout_strided_t<tile_shape_t<M, N>>;
-                tile_shared_t<float4, SrcLayout> src128((float4*)data.ptr);
+                tile_shared_t<float4, SrcLayout, false> src128((float4*)data.ptr);
 
                 assert(((uint64_t)(data.ptr))%sizeof(float4) == 0);
                 assert(((uint64_t)(dest128))%sizeof(float4) == 0);
@@ -1262,7 +1262,7 @@ struct tile_shared_t
             {
                 // alias of shared tile with 128bit type
                 using DestLayout = tile_layout_strided_t<tile_shape_t<M, N>>;
-                tile_shared_t<float4, DestLayout> dest128((float4*)data.ptr);                
+                tile_shared_t<float4, DestLayout, false> dest128((float4*)data.ptr);                
 
                 assert(((uint64_t)(dest128.data.ptr))%sizeof(float4) == 0);
                 assert(((uint64_t)(src128))%sizeof(float4) == 0);

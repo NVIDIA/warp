@@ -492,6 +492,31 @@ def test_tile_load_fortran(test, device):
     assert_array_equal(B_wp.grad, A_wp.grad)
 
 
+# ----------------------------------------------------------------------------------------
+
+
+@wp.func
+def test_tile_load_scoped_func(A: wp.array2d(dtype=float)):
+    A_tile = wp.tile_load(A, shape=(TILE_DIM, TILE_DIM), offset=(0, 0), storage="shared")
+
+
+@wp.kernel
+def test_tile_load_scoped_kernel(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float)):
+    test_tile_load_scoped_func(A)
+    B_tile = wp.tile_load(B, shape=(TILE_DIM, TILE_DIM), offset=(0, 0), storage="shared")
+
+
+def test_tile_load_scoped(test, device):
+    """Regression test for 2D shared tiles that are allocated in a function then deallocated when they go out of scope
+
+    Passes if it runs without errors
+    """
+    A = wp.ones((TILE_DIM, TILE_DIM), dtype=float, device=device)
+    B = wp.ones((TILE_DIM, TILE_DIM), dtype=float, device=device)
+
+    wp.launch_tiled(test_tile_load_scoped_kernel, dim=1, inputs=[A, B], block_dim=TILE_DIM, device=device)
+
+
 devices = get_test_devices()
 
 
@@ -524,6 +549,8 @@ add_function_test(TestTileLoad, "test_tile_assign_3d", test_tile_assign(tile_ass
 add_function_test(TestTileLoad, "test_tile_assign_4d", test_tile_assign(tile_assign_4d_kernel, 4), devices=devices)
 
 add_function_test(TestTileLoad, "test_tile_load_fortran", test_tile_load_fortran, devices=devices)
+
+add_function_test(TestTileLoad, "test_tile_load_scoped", test_tile_load_scoped, devices=devices)
 
 
 if __name__ == "__main__":
