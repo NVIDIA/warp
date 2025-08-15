@@ -75,6 +75,7 @@
 - Fix support for write operations on nested matrices ([GH-793](https://github.com/NVIDIA/warp/issues/793)).
 - Fix `#line` directives for Python↔CUDA source correlation not being emitted by default when a module is compiled in
   debug mode ([GH-901](https://github.com/NVIDIA/warp/issues/901)).
+- Fix 2D shared tile allocation/de-allocation bug inside Warp functions ([GH-877](https://github.com/NVIDIA/warp/issues/877)).
 
 ## [1.8.1] - 2025-08-01
 
