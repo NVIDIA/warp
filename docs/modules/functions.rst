@@ -4335,6 +4335,504 @@ Utility
     The operation is only atomic on a per-component basis for vectors and matrices.
 
 
+.. py:function:: atomic_and(arr: Array[Any], i: Int, value: Any) -> Any
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise AND between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i] &= value``.
+
+
+.. py:function:: atomic_and(arr: Array[Any], i: Int, j: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise AND between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j] &= value``.
+
+
+.. py:function:: atomic_and(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] &= value``.
+
+
+.. py:function:: atomic_and(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.
+
+
+.. py:function:: atomic_and(arr: FabricArray[Any], i: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise AND between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i] &= value``.
+
+
+.. py:function:: atomic_and(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise AND between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j] &= value``.
+
+
+.. py:function:: atomic_and(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] &= value``.
+
+
+.. py:function:: atomic_and(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.
+
+
+.. py:function:: atomic_and(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise AND between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i] &= value``.
+
+
+.. py:function:: atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise AND between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j] &= value``.
+
+
+.. py:function:: atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] &= value``.
+
+
+.. py:function:: atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.
+
+
+.. py:function:: atomic_or(arr: Array[Any], i: Int, value: Any) -> Any
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise OR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i] |= value``.
+
+
+.. py:function:: atomic_or(arr: Array[Any], i: Int, j: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise OR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j] |= value``.
+
+
+.. py:function:: atomic_or(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] |= value``.
+
+
+.. py:function:: atomic_or(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.
+
+
+.. py:function:: atomic_or(arr: FabricArray[Any], i: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise OR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i] |= value``.
+
+
+.. py:function:: atomic_or(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise OR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j] |= value``.
+
+
+.. py:function:: atomic_or(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] |= value``.
+
+
+.. py:function:: atomic_or(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.
+
+
+.. py:function:: atomic_or(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise OR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i] |= value``.
+
+
+.. py:function:: atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise OR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j] |= value``.
+
+
+.. py:function:: atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] |= value``.
+
+
+.. py:function:: atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.
+
+
+.. py:function:: atomic_xor(arr: Array[Any], i: Int, value: Any) -> Any
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise XOR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i] ^= value``.
+
+
+.. py:function:: atomic_xor(arr: Array[Any], i: Int, j: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.
+
+
+.. py:function:: atomic_xor(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.
+
+
+.. py:function:: atomic_xor(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.
+
+
+.. py:function:: atomic_xor(arr: FabricArray[Any], i: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise XOR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i] ^= value``.
+
+
+.. py:function:: atomic_xor(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.
+
+
+.. py:function:: atomic_xor(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.
+
+
+.. py:function:: atomic_xor(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.
+
+
+.. py:function:: atomic_xor(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise XOR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i] ^= value``.
+
+
+.. py:function:: atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.
+
+
+.. py:function:: atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.
+
+
+.. py:function:: atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.
+
+
 .. py:function:: lerp(a: Float, b: Float, t: Float) -> Float
 
     .. hlist::
@@ -5621,66 +6119,6 @@ Other
     Search a sorted array ``arr`` in the range [arr_begin, arr_end) for the closest element greater than or equal to ``value``.
 
 
-.. py:function:: bit_and(a: Int, b: Int) -> Int
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: bit_or(a: Int, b: Int) -> Int
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: bit_xor(a: Int, b: Int) -> Int
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: lshift(a: Int, b: Int) -> Int
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: rshift(a: Int, b: Int) -> Int
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: invert(a: Int) -> Int
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
 
 
 Operators
@@ -5827,6 +6265,252 @@ Operators
        * Differentiable
 
     Subtract each element b from a
+
+
+.. py:function:: bit_and(a: Int, b: Int) -> Int
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: bit_and(a: Vector[Any,Int], b: Vector[Any,Int]) -> Vector[Any,Int]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: bit_and(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: bit_and(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+    Bitwise AND each element of two tiles together
+
+
+.. py:function:: bit_or(a: Int, b: Int) -> Int
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: bit_or(a: Vector[Any,Int], b: Vector[Any,Int]) -> Vector[Any,Int]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: bit_or(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: bit_or(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+    Bitwise OR each element of two tiles together
+
+
+.. py:function:: bit_xor(a: Int, b: Int) -> Int
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: bit_xor(a: Vector[Any,Int], b: Vector[Any,Int]) -> Vector[Any,Int]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: bit_xor(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: bit_xor(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+    Bitwise XOR each element of two tiles together
+
+
+.. py:function:: lshift(a: Int, b: Int) -> Int
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: lshift(a: Vector[Any,Int], b: Vector[Any,Int]) -> Vector[Any,Int]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: lshift(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: rshift(a: Int, b: Int) -> Int
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: rshift(a: Vector[Any,Int], b: Vector[Any,Int]) -> Vector[Any,Int]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: rshift(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: invert(a: Int) -> Int
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: invert(a: Vector[Any,Int]) -> Vector[Any,Int]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: invert(a: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
 
 
 .. py:function:: mul(a: Scalar, b: Scalar) -> Scalar

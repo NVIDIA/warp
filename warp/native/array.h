@@ -845,6 +845,33 @@ template<template<typename> class A, typename T>
 inline CUDA_CALLABLE T atomic_exch(const A<T>& buf, int i, int j, int k, int l, T value) { return atomic_exch(&index(buf, i, j, k, l), value); }
 
 template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_and(const A<T>& buf, int i, T value) { return atomic_and(&index(buf, i), value); }
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_and(const A<T>& buf, int i, int j, T value) { return atomic_and(&index(buf, i, j), value); }
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_and(const A<T>& buf, int i, int j, int k, T value) { return atomic_and(&index(buf, i, j, k), value); }
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_and(const A<T>& buf, int i, int j, int k, int l, T value) { return atomic_and(&index(buf, i, j, k, l), value); }
+
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_or(const A<T>& buf, int i, T value) { return atomic_or(&index(buf, i), value); }
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_or(const A<T>& buf, int i, int j, T value) { return atomic_or(&index(buf, i, j), value); }
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_or(const A<T>& buf, int i, int j, int k, T value) { return atomic_or(&index(buf, i, j, k), value); }
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_or(const A<T>& buf, int i, int j, int k, int l, T value) { return atomic_or(&index(buf, i, j, k, l), value); }
+
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_xor(const A<T>& buf, int i, T value) { return atomic_xor(&index(buf, i), value); }
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_xor(const A<T>& buf, int i, int j, T value) { return atomic_xor(&index(buf, i, j), value); }
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_xor(const A<T>& buf, int i, int j, int k, T value) { return atomic_xor(&index(buf, i, j, k), value); }
+template<template<typename> class A, typename T>
+inline CUDA_CALLABLE T atomic_xor(const A<T>& buf, int i, int j, int k, int l, T value) { return atomic_xor(&index(buf, i, j, k, l), value); }
+
+template<template<typename> class A, typename T>
 inline CUDA_CALLABLE T* address(const A<T>& buf, int i) { return &index(buf, i); }
 template<template<typename> class A, typename T>
 inline CUDA_CALLABLE T* address(const A<T>& buf, int i, int j) { return &index(buf, i, j); }
@@ -1308,6 +1335,34 @@ inline CUDA_CALLABLE void adj_atomic_exch(const A1<T>& buf, int i, int j, int k,
 
     FP_VERIFY_ADJ_4(value, adj_value)
 }
+
+// for bitwise operations we do not accumulate gradients
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_and(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int adj_i, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_and(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int adj_i, int adj_j, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_and(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_and(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, int adj_l, T& adj_value, const T& adj_ret) {}
+
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_or(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int adj_i, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_or(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int adj_i, int adj_j, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_or(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_or(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, int adj_l, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+
+inline CUDA_CALLABLE void adj_atomic_xor(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int adj_i, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_xor(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int adj_i, int adj_j, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_xor(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_xor(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int adj_i, int adj_j, int adj_k, int adj_l, T& adj_value, const T& adj_ret) {}
 
 
 template<template<typename> class A, typename T>
