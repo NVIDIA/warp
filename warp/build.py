@@ -452,6 +452,7 @@ def build_lto_solver(
     num_threads,
     parameter_list,
     builder,
+    smem_estimate_bytes=None,
 ):
     arch = 120 if arch > 121 else arch
 
@@ -507,6 +508,26 @@ def build_lto_solver(
         )
 
         if not result:
+            hint = ""
+            if smem_estimate_bytes:
+                max_smem_bytes = 232448
+                max_smem_is_estimate = True
+                for d in warp.get_cuda_devices():
+                    if d.arch == arch:
+                        # We can directly query the max shared memory for this device
+                        queried_bytes = warp.context.runtime.core.wp_cuda_get_max_shared_memory(d.context)
+                        if queried_bytes > 0:
+                            max_smem_bytes = queried_bytes
+                            max_smem_is_estimate = False
+                            break
+                if smem_estimate_bytes > max_smem_bytes:
+                    source = "estimated limit" if max_smem_is_estimate else "device-reported limit"
+                    hint = (
+                        f"Estimated shared memory requirement is {smem_estimate_bytes}B, "
+                        f"but the {source} is {max_smem_bytes}B. "
+                        "The tile size(s) may be too large for this device."
+                    )
+
             if warp.context.runtime.toolkit_version < (12, 6):
                 raise RuntimeError(
                     "cuSolverDx requires CUDA Toolkit 12.6.3 or later. This version of Warp was built against CUDA Toolkit "
@@ -515,8 +536,8 @@ def build_lto_solver(
                 )
             else:
                 raise RuntimeError(
-                    f"Failed to compile LTO '{lto_symbol}'. "
-                    "Set the environment variable LIBMATHDX_LOG_LEVEL=5 and rerun for more details."
+                    f"Failed to compile LTO '{lto_symbol}'. {hint}"
+                    " Set the environment variable LIBMATHDX_LOG_LEVEL=5 and rerun for more details."
                 )
 
         # Update builder
@@ -577,7 +598,7 @@ def build_lto_fft(arch, size, ept, direction, dir, precision, builder):
 
         if not result:
             raise RuntimeError(
-                f"Failed to compile LTO '{lto_symbol}'. "
+                f"Failed to compile LTO '{lto_symbol}'."
                 "Set the environment variable LIBMATHDX_LOG_LEVEL=5 and rerun for more details."
             )
 

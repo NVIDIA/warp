@@ -22,6 +22,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 import warp.build
 import warp.context
+import warp.utils
 from warp.codegen import Reference, Var, get_arg_value, strip_reference
 from warp.types import *
 
@@ -8232,28 +8233,27 @@ def tile_cholesky_generic_lto_dispatch_func(
         raise TypeError("tile_cholesky() returns one output")
     out = return_values[0]
 
-    dtype, precision_enum = cusolver_type_map[a.type.dtype]
-
     # We already ensured a is square in tile_cholesky_generic_value_func()
     M, N = a.type.shape
     if out.type.shape[0] != M or out.type.shape[1] != M:
         raise ValueError("tile_cholesky() output tile must be square")
 
-    solver = "potrf"
-    solver_enum = cusolver_function_map[solver]
-
-    side_enum = cusolver_side_map["-"]
-    diag_enum = cusolver_diag_map["-"]
-    fill_mode = cusolver_fill_mode_map["lower"]
-
     arch = options["output_arch"]
-    num_threads = options["block_dim"]
-    parameter_list = f"({dtype}*, int*)"
 
     if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ((0, a, out), [], [], 0)
     else:
+        solver = "potrf"
+        solver_enum = cusolver_function_map[solver]
+        side_enum = cusolver_side_map["-"]
+        diag_enum = cusolver_diag_map["-"]
+        fill_mode = cusolver_fill_mode_map["lower"]
+        dtype, precision_enum = cusolver_type_map[a.type.dtype]
+        num_threads = options["block_dim"]
+        parameter_list = f"({dtype}*, int*)"
+        req_smem_bytes = a.type.size * type_size_in_bytes(a.type.dtype)
+
         # generate the LTO
         lto_symbol, lto_code_data = warp.build.build_lto_solver(
             M,
@@ -8271,6 +8271,7 @@ def tile_cholesky_generic_lto_dispatch_func(
             num_threads,
             parameter_list,
             builder,
+            smem_estimate_bytes=req_smem_bytes,
         )
 
         return ((Var(lto_symbol, str, False, True, False), a, out), [], [lto_code_data], 0)
@@ -8358,9 +8359,7 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
     if any(T not in cusolver_type_map.keys() for T in [y.type.dtype, L.type.dtype]):
         raise TypeError("tile_cholesky_solve() arguments be tiles of float64 or float32")
 
-    dtype, precision_enum = cusolver_type_map[L.type.dtype]
     M, N = L.type.shape
-    NRHS = x.type.shape[1] if len(x.type.shape) > 1 else 1
 
     if len(x.type.shape) > 2 or len(x.type.shape) < 1:
         raise TypeError(f"tile_cholesky_solve() output vector must be 1D or 2D, got {len(x.type.shape)}-D")
@@ -8371,21 +8370,23 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
             f"got {x.type.shape[0]} elements in output and {M} rows in 'L'"
         )
 
-    solver = "potrs"
-    solver_enum = cusolver_function_map[solver]
-
-    side_enum = cusolver_side_map["-"]
-    diag_enum = cusolver_diag_map["-"]
-    fill_mode = cusolver_fill_mode_map["lower"]
-
     arch = options["output_arch"]
-    num_threads = options["block_dim"]
-    parameter_list = f"({dtype}*, {dtype}*)"
 
     if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ((0, L, y, x), [], [], 0)
     else:
+        NRHS = x.type.shape[1] if len(x.type.shape) > 1 else 1
+        solver = "potrs"
+        solver_enum = cusolver_function_map[solver]
+        side_enum = cusolver_side_map["-"]
+        diag_enum = cusolver_diag_map["-"]
+        fill_mode = cusolver_fill_mode_map["lower"]
+        dtype, precision_enum = cusolver_type_map[L.type.dtype]
+        num_threads = options["block_dim"]
+        parameter_list = f"({dtype}*, {dtype}*)"
+        req_smem_bytes = (x.type.size + y.type.size + L.type.size) * type_size_in_bytes(L.type.dtype)
+
         # generate the LTO
         lto_symbol, lto_code_data = warp.build.build_lto_solver(
             M,
@@ -8403,6 +8404,7 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
             num_threads,
             parameter_list,
             builder,
+            smem_estimate_bytes=req_smem_bytes,
         )
 
         return ((Var(lto_symbol, str, False, True, False), L, y, x), [], [lto_code_data], 0)
@@ -8453,9 +8455,7 @@ def tile_lower_solve_generic_lto_dispatch_func(
 
     z = return_values[0]
 
-    dtype, precision_enum = cusolver_type_map[L.type.dtype]
     M, N = L.type.shape
-    NRHS = z.type.shape[1] if len(z.type.shape) > 1 else 1
 
     if len(z.type.shape) > 2 or len(z.type.shape) < 1:
         raise TypeError(f"tile_lower_solve() output vector must be 1D or 2D, got {len(z.type.shape)}-D")
@@ -8466,21 +8466,23 @@ def tile_lower_solve_generic_lto_dispatch_func(
             f"got {z.type.shape[0]} elements in output and {M} rows in 'L'"
         )
 
-    solver = "trsm"
-    solver_enum = cusolver_function_map[solver]
-
-    side_enum = cusolver_side_map["left"]
-    diag_enum = cusolver_diag_map["nounit"]
-    fill_mode = cusolver_fill_mode_map["lower"]
-
     arch = options["output_arch"]
-    num_threads = options["block_dim"]
-    parameter_list = f"({dtype}*, {dtype}*)"
 
     if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ((0, L, y, z), [], [], 0)
     else:
+        NRHS = z.type.shape[1] if len(z.type.shape) > 1 else 1
+        solver = "trsm"
+        solver_enum = cusolver_function_map[solver]
+        side_enum = cusolver_side_map["left"]
+        diag_enum = cusolver_diag_map["nounit"]
+        fill_mode = cusolver_fill_mode_map["lower"]
+        dtype, precision_enum = cusolver_type_map[L.type.dtype]
+        num_threads = options["block_dim"]
+        parameter_list = f"({dtype}*, {dtype}*)"
+        req_smem_bytes = (z.type.size + y.type.size + L.type.size) * type_size_in_bytes(L.type.dtype)
+
         # generate the LTO
         lto_symbol, lto_code_data = warp.build.build_lto_solver(
             M,
@@ -8498,6 +8500,7 @@ def tile_lower_solve_generic_lto_dispatch_func(
             num_threads,
             parameter_list,
             builder,
+            smem_estimate_bytes=req_smem_bytes,
         )
 
         return ((Var(lto_symbol, str, False, True, False), L, y, z), [], [lto_code_data], 0)
@@ -8584,9 +8587,7 @@ def tile_upper_solve_generic_lto_dispatch_func(
 
     x = return_values[0]
 
-    dtype, precision_enum = cusolver_type_map[U.type.dtype]
     M, N = U.type.shape
-    NRHS = x.type.shape[1] if len(x.type.shape) > 1 else 1
 
     if len(z.type.shape) > 2 or len(z.type.shape) < 1:
         raise TypeError(f"tile_upper_solve() output tile must be 1D or 2D, got {len(z.type.shape)}-D")
@@ -8597,21 +8598,23 @@ def tile_upper_solve_generic_lto_dispatch_func(
             f"got {z.type.shape[0]} elements in output and {M} rows in 'U'"
         )
 
-    solver = "trsm"
-    solver_enum = cusolver_function_map[solver]
-
-    side_enum = cusolver_side_map["left"]
-    diag_enum = cusolver_diag_map["nounit"]
-    fill_mode = cusolver_fill_mode_map["upper"]
-
     arch = options["output_arch"]
-    num_threads = options["block_dim"]
-    parameter_list = f"({dtype}*, {dtype}*)"
 
     if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ((0, U, z, x), [], [], 0)
     else:
+        NRHS = x.type.shape[1] if len(x.type.shape) > 1 else 1
+        solver = "trsm"
+        solver_enum = cusolver_function_map[solver]
+        side_enum = cusolver_side_map["left"]
+        diag_enum = cusolver_diag_map["nounit"]
+        fill_mode = cusolver_fill_mode_map["upper"]
+        dtype, precision_enum = cusolver_type_map[U.type.dtype]
+        num_threads = options["block_dim"]
+        parameter_list = f"({dtype}*, {dtype}*)"
+        req_smem_bytes = (x.type.size + z.type.size + U.type.size) * type_size_in_bytes(U.type.dtype)
+
         # generate the LTO
         lto_symbol, lto_code_data = warp.build.build_lto_solver(
             M,
@@ -8629,6 +8632,7 @@ def tile_upper_solve_generic_lto_dispatch_func(
             num_threads,
             parameter_list,
             builder,
+            smem_estimate_bytes=req_smem_bytes,
         )
 
         return ((Var(lto_symbol, str, False, True, False), U, z, x), [], [lto_code_data], 0)

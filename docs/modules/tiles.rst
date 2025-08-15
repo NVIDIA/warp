@@ -400,6 +400,20 @@ Please see the :ref:`differentiability` section for more details.
 
 .. _mathdx:
 
+``Failed to compile LTO`` Error Message
+---------------------------------------
+
+Some tile operations invoke MathDx APIs to generate and compile link-time objects (LTOs) at runtime.
+If the compilation fails, you may see an error message that mentions ``Failed to compile LTO``.
+A common cause of this error is that the tile sizes involved are too large for the current device, as shared memory
+is a limited resource.
+
+To get more information about the error, you can set the ``LIBMATHDX_LOG_LEVEL`` environment
+variable to 5 and rerun the program. Batching the problem into smaller tiles may be required to work around the shared
+memory limitations.
+In the case of FFT operations, using more threads per block may help (see the
+`cuFFTDx requirements <https://docs.nvidia.com/cuda/cufftdx/requirements_func.html>`__ for more details).
+
 Building with MathDx
 --------------------
 

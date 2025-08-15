@@ -56,8 +56,8 @@
 - Define and re-export Warp's public Python-scope API in `__init__.py` using typing re-export conventions
   (e.g. `from Y import X as X`) to improve static type checker support
   ([GH-864](https://github.com/NVIDIA/warp/issues/864)).
-- Improve error messages when Warp is built with a CUDA Toolkit older than required for MathDx-backed features
-  ([GH-911](https://github.com/NVIDIA/warp/issues/911)).
+- Improve error messages for MathDx-based tile operations that fail to compile (e.g., `Failed to compile LTO`)
+  ([GH-608](https://github.com/NVIDIA/warp/issues/608), [GH-911](https://github.com/NVIDIA/warp/issues/911)).
 
 ### Fixed
 
