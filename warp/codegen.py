@@ -3371,11 +3371,11 @@ class Adjoint:
         return None, path
 
     def resolve_external_reference(adj, name: str):
-        if name in adj.func.__code__.co_freevars:
+        try:
             # look up in closure variables
             idx = adj.func.__code__.co_freevars.index(name)
             obj = adj.func.__closure__[idx].cell_contents
-        else:
+        except ValueError:
             # look up in global variables
             obj = adj.func.__globals__.get(name)
         return obj
