@@ -438,6 +438,42 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> atomic_add(mat_t<Rows,Cols,Type> * ad
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> atomic_and(mat_t<Rows,Cols,Type> * addr, mat_t<Rows,Cols,Type> value) 
+{
+    mat_t<Rows,Cols,Type> m;
+    
+    for (unsigned i=0; i < Rows; ++i)
+        for (unsigned j=0; j < Cols; ++j)
+            m.data[i][j] = atomic_and(&addr->data[i][j], value.data[i][j]);
+
+    return m;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> atomic_or(mat_t<Rows,Cols,Type> * addr, mat_t<Rows,Cols,Type> value) 
+{
+    mat_t<Rows,Cols,Type> m;
+    
+    for (unsigned i=0; i < Rows; ++i)
+        for (unsigned j=0; j < Cols; ++j)
+            m.data[i][j] = atomic_or(&addr->data[i][j], value.data[i][j]);
+
+    return m;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> atomic_xor(mat_t<Rows,Cols,Type> * addr, mat_t<Rows,Cols,Type> value) 
+{
+    mat_t<Rows,Cols,Type> m;
+    
+    for (unsigned i=0; i < Rows; ++i)
+        for (unsigned j=0; j < Cols; ++j)
+            m.data[i][j] = atomic_xor(&addr->data[i][j], value.data[i][j]);
+
+    return m;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE mat_t<Rows,Cols,Type> atomic_min(mat_t<Rows,Cols,Type> * addr, mat_t<Rows,Cols,Type> value) 
 {
     mat_t<Rows,Cols,Type> m;
@@ -1619,6 +1655,746 @@ inline CUDA_CALLABLE void adj_sub_inplace(
 
 
 template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_and_inplace(mat_t<Rows,Cols,Type>& m, int row, int col, Type value)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+    if (col < -(int)Cols || col >= (int)Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+    if (col < 0)
+    {
+        col += Cols;
+    }
+
+    m.data[row][col] &= value;
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_and_inplace(mat_t<Rows,Cols,Type>& m, int row, vec_t<Cols,Type>& value)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+
+    for(unsigned i=0; i < Cols; ++i)
+    {
+        m.data[row][i] &= value[i];
+    }
+}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_and_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
+{
+    static_assert(
+        RowSliceLength == 0 ? ColSliceLength == 0 : ColSliceLength == Cols,
+        "Expected RowSliceLength == 0 ? ColSliceLength == 0 : ColSliceLength == Cols"
+    );
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    bool is_row_reversed = row_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
+    {
+        for (int j = 0; j < Cols; ++j)
+        {
+            m.data[i][j] &= value.data[ii][j];
+        }
+
+        ++ii;
+    }
+
+    assert(ii == RowSliceLength);
+}
+
+
+template<unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_and_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, vec_t<RowSliceLength, Type>& value)
+{
+#ifndef NDEBUG
+    if (col < -(int)Cols || col >= (int)Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    if (col < 0)
+    {
+        col += Cols;
+    }
+
+    bool is_row_reversed = row_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
+    {
+        m.data[i][col] &= value.c[ii];
+        ++ii;
+    }
+
+    assert(ii == RowSliceLength);
+}
+
+
+template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_and_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+    assert(slice_get_length(col_slice) == ColSliceLength);
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
+    {
+        m.data[row][i] &= value.c[ii];
+        ++ii;
+    }
+
+    assert(ii == ColSliceLength);
+}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_and_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
+{
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+    assert(slice_get_length(col_slice) == ColSliceLength);
+
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
+    {
+        int jj = 0;
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
+        {
+            m.data[i][j] &= value.data[ii][jj];
+            ++jj;
+        }
+
+        assert(jj == ColSliceLength);
+        ++ii;
+    }
+
+    assert(ii == RowSliceLength);
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_and_inplace(
+    mat_t<Rows,Cols,Type>& m, int row, int col, Type value,
+    mat_t<Rows,Cols,Type>& adj_m, int adj_row, int adj_col, Type& adj_value
+) {}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_and_inplace(
+    mat_t<Rows,Cols,Type>& m, int row, vec_t<Cols,Type>& value,
+    mat_t<Rows,Cols,Type>& adj_m, int adj_row, vec_t<Cols,Type>& adj_value
+) {}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_and_inplace(
+    mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value,
+    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& adj_value
+) {}
+
+
+template<unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_and_inplace(
+    mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, vec_t<RowSliceLength, Type>& value,
+    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, int& adj_col, vec_t<RowSliceLength, Type>& adj_value
+) {}
+
+
+template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_and_inplace(
+    mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value,
+    mat_t<Rows,Cols,Type>& adj_m, int& adj_row, slice_t& adj_col_slice, vec_t<ColSliceLength, Type>& adj_value
+) {}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_and_inplace(
+    mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value,
+    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, slice_t& adj_col_slice, mat_t<RowSliceLength, ColSliceLength, Type>& adj_value
+) {}
+
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_or_inplace(mat_t<Rows,Cols,Type>& m, int row, int col, Type value)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+    if (col < -(int)Cols || col >= (int)Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+    if (col < 0)
+    {
+        col += Cols;
+    }
+
+    m.data[row][col] |= value;
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_or_inplace(mat_t<Rows,Cols,Type>& m, int row, vec_t<Cols,Type>& value)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+
+    for(unsigned i=0; i < Cols; ++i)
+    {
+        m.data[row][i] |= value[i];
+    }
+}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_or_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
+{
+    static_assert(
+        RowSliceLength == 0 ? ColSliceLength == 0 : ColSliceLength == Cols,
+        "Expected RowSliceLength == 0 ? ColSliceLength == 0 : ColSliceLength == Cols"
+    );
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    bool is_row_reversed = row_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
+    {
+        for (int j = 0; j < Cols; ++j)
+        {
+            m.data[i][j] |= value.data[ii][j];
+        }
+
+        ++ii;
+    }
+
+    assert(ii == RowSliceLength);
+}
+
+
+template<unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_or_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, vec_t<RowSliceLength, Type>& value)
+{
+#ifndef NDEBUG
+    if (col < -(int)Cols || col >= (int)Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    if (col < 0)
+    {
+        col += Cols;
+    }
+
+    bool is_row_reversed = row_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
+    {
+        m.data[i][col] |= value.c[ii];
+        ++ii;
+    }
+
+    assert(ii == RowSliceLength);
+}
+
+
+template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_or_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+    assert(slice_get_length(col_slice) == ColSliceLength);
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
+    {
+        m.data[row][i] |= value.c[ii];
+        ++ii;
+    }
+
+    assert(ii == ColSliceLength);
+}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_or_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
+{
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+    assert(slice_get_length(col_slice) == ColSliceLength);
+
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
+    {
+        int jj = 0;
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
+        {
+            m.data[i][j] |= value.data[ii][jj];
+            ++jj;
+        }
+
+        assert(jj == ColSliceLength);
+        ++ii;
+    }
+
+    assert(ii == RowSliceLength);
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_or_inplace(
+    mat_t<Rows,Cols,Type>& m, int row, int col, Type value,
+    mat_t<Rows,Cols,Type>& adj_m, int adj_row, int adj_col, Type& adj_value
+) {}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_or_inplace(
+    mat_t<Rows,Cols,Type>& m, int row, vec_t<Cols,Type>& value,
+    mat_t<Rows,Cols,Type>& adj_m, int adj_row, vec_t<Cols,Type>& adj_value
+) {}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_or_inplace(
+    mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value,
+    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& adj_value
+) {}
+
+
+template<unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_or_inplace(
+    mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, vec_t<RowSliceLength, Type>& value,
+    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, int& adj_col, vec_t<RowSliceLength, Type>& adj_value
+) {}
+
+
+template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_or_inplace(
+    mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value,
+    mat_t<Rows,Cols,Type>& adj_m, int& adj_row, slice_t& adj_col_slice, vec_t<ColSliceLength, Type>& adj_value
+) {}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_or_inplace(
+    mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value,
+    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, slice_t& adj_col_slice, mat_t<RowSliceLength, ColSliceLength, Type>& adj_value
+) {}
+
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_xor_inplace(mat_t<Rows,Cols,Type>& m, int row, int col, Type value)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+    if (col < -(int)Cols || col >= (int)Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+    if (col < 0)
+    {
+        col += Cols;
+    }
+
+    m.data[row][col] ^= value;
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_xor_inplace(mat_t<Rows,Cols,Type>& m, int row, vec_t<Cols,Type>& value)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+
+    for(unsigned i=0; i < Cols; ++i)
+    {
+        m.data[row][i] ^= value[i];
+    }
+}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_xor_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
+{
+    static_assert(
+        RowSliceLength == 0 ? ColSliceLength == 0 : ColSliceLength == Cols,
+        "Expected RowSliceLength == 0 ? ColSliceLength == 0 : ColSliceLength == Cols"
+    );
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    bool is_row_reversed = row_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
+    {
+        for (int j = 0; j < Cols; ++j)
+        {
+            m.data[i][j] ^= value.data[ii][j];
+        }
+
+        ++ii;
+    }
+
+    assert(ii == RowSliceLength);
+}
+
+
+template<unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_xor_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, vec_t<RowSliceLength, Type>& value)
+{
+#ifndef NDEBUG
+    if (col < -(int)Cols || col >= (int)Cols)
+    {
+        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    if (col < 0)
+    {
+        col += Cols;
+    }
+
+    bool is_row_reversed = row_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
+    {
+        m.data[i][col] ^= value.c[ii];
+        ++ii;
+    }
+
+    assert(ii == RowSliceLength);
+}
+
+
+template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_xor_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value)
+{
+#ifndef NDEBUG
+    if (row < -(int)Rows || row >= (int)Rows)
+    {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+    assert(slice_get_length(col_slice) == ColSliceLength);
+
+    if (row < 0)
+    {
+        row += Rows;
+    }
+
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = col_slice.start;
+        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
+        i += col_slice.step
+    )
+    {
+        m.data[row][i] ^= value.c[ii];
+        ++ii;
+    }
+
+    assert(ii == ColSliceLength);
+}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void bit_xor_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
+{
+    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
+    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
+    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
+    assert(slice_get_length(row_slice) == RowSliceLength);
+
+    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
+    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
+    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
+    assert(slice_get_length(col_slice) == ColSliceLength);
+
+    bool is_row_reversed = row_slice.step < 0;
+    bool is_col_reversed = col_slice.step < 0;
+
+    int ii = 0;
+    for (
+        int i = row_slice.start;
+        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
+        i += row_slice.step
+    )
+    {
+        int jj = 0;
+        for (
+            int j = col_slice.start;
+            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
+            j += col_slice.step
+        )
+        {
+            m.data[i][j] ^= value.data[ii][jj];
+            ++jj;
+        }
+
+        assert(jj == ColSliceLength);
+        ++ii;
+    }
+
+    assert(ii == RowSliceLength);
+}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_xor_inplace(
+    mat_t<Rows,Cols,Type>& m, int row, int col, Type value,
+    mat_t<Rows,Cols,Type>& adj_m, int adj_row, int adj_col, Type& adj_value
+) {}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_xor_inplace(
+    mat_t<Rows,Cols,Type>& m, int row, vec_t<Cols,Type>& value,
+    mat_t<Rows,Cols,Type>& adj_m, int adj_row, vec_t<Cols,Type>& adj_value
+) {}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_xor_inplace(
+    mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value,
+    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& adj_value
+) {}
+
+
+template<unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_xor_inplace(
+    mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, vec_t<RowSliceLength, Type>& value,
+    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, int& adj_col, vec_t<RowSliceLength, Type>& adj_value
+) {}
+
+
+template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_xor_inplace(
+    mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value,
+    mat_t<Rows,Cols,Type>& adj_m, int& adj_row, slice_t& adj_col_slice, vec_t<ColSliceLength, Type>& adj_value
+) {}
+
+
+template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_xor_inplace(
+    mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value,
+    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, slice_t& adj_col_slice, mat_t<RowSliceLength, ColSliceLength, Type>& adj_value
+) {}
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, int row, int col, Type value)
 {
 #ifndef NDEBUG
@@ -2663,6 +3439,252 @@ inline CUDA_CALLABLE mat_t<Rows,ColsOut,Type> mul(const mat_t<Rows,Cols,Type>& a
     return t;
 }
 
+// bitwise AND
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> bit_and(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a.data[i][j] & b.data[i][j];
+        }
+    }
+
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> bit_and(const mat_t<Rows,Cols,Type>& a, Type b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a.data[i][j] & b;
+        }
+    }
+
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> bit_and(Type a, const mat_t<Rows,Cols,Type>& b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a & b.data[i][j];
+        }
+    }
+
+    return t;
+}
+
+// bitwise OR
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> bit_or(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a.data[i][j] | b.data[i][j];
+        }
+    }
+
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> bit_or(const mat_t<Rows,Cols,Type>& a, Type b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a.data[i][j] | b;
+        }
+    }
+
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> bit_or(Type a, const mat_t<Rows,Cols,Type>& b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a | b.data[i][j];
+        }
+    }
+
+    return t;
+}
+
+// bitwise XOR
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> bit_xor(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a.data[i][j] ^ b.data[i][j];
+        }
+    }
+
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> bit_xor(const mat_t<Rows,Cols,Type>& a, Type b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a.data[i][j] ^ b;
+        }
+    }
+
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> bit_xor(Type a, const mat_t<Rows,Cols,Type>& b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a ^ b.data[i][j];
+        }
+    }
+
+    return t;
+}
+
+// left shift
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> lshift(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a.data[i][j] << b.data[i][j];
+        }
+    }
+
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> lshift(const mat_t<Rows,Cols,Type>& a, Type b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a.data[i][j] << b;
+        }
+    }
+
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> lshift(Type a, const mat_t<Rows,Cols,Type>& b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a << b.data[i][j];
+        }
+    }
+
+    return t;
+}
+
+// right shift
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> rshift(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a.data[i][j] >> b.data[i][j];
+        }
+    }
+
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> rshift(const mat_t<Rows,Cols,Type>& a, Type b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a.data[i][j] >> b;
+        }
+    }
+
+    return t;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> rshift(Type a, const mat_t<Rows,Cols,Type>& b)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = a >> b.data[i][j];
+        }
+    }
+
+    return t;
+}
+
+// invert
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat_t<Rows,Cols,Type> invert(const mat_t<Rows,Cols,Type>& m)
+{
+    mat_t<Rows,Cols,Type> t;
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            t.data[i][j] = ~m.data[i][j];
+        }
+    }
+
+    return t;
+}
+
 template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE Type ddot(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b)
 {
@@ -3311,6 +4333,126 @@ inline CUDA_CALLABLE void adj_sub(
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_and(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b, mat_t<Rows,Cols,Type>& adj_a, mat_t<Rows,Cols,Type>& adj_b, const mat_t<Rows,Cols,Type>& adj_ret)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_and(
+    const mat_t<Rows,Cols,Type>& a, Type b,
+    mat_t<Rows,Cols,Type>& adj_a, Type& adj_b,
+    const mat_t<Rows,Cols,Type>& adj_ret
+)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_and(
+    Type a, const mat_t<Rows,Cols,Type>& b,
+    Type& adj_a, mat_t<Rows,Cols,Type>& adj_b,
+    const mat_t<Rows,Cols,Type>& adj_ret
+)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_or(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b, mat_t<Rows,Cols,Type>& adj_a, mat_t<Rows,Cols,Type>& adj_b, const mat_t<Rows,Cols,Type>& adj_ret)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_or(
+    const mat_t<Rows,Cols,Type>& a, Type b,
+    mat_t<Rows,Cols,Type>& adj_a, Type& adj_b,
+    const mat_t<Rows,Cols,Type>& adj_ret
+)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_or(
+    Type a, const mat_t<Rows,Cols,Type>& b,
+    Type& adj_a, mat_t<Rows,Cols,Type>& adj_b,
+    const mat_t<Rows,Cols,Type>& adj_ret
+)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_xor(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b, mat_t<Rows,Cols,Type>& adj_a, mat_t<Rows,Cols,Type>& adj_b, const mat_t<Rows,Cols,Type>& adj_ret)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_xor(
+    const mat_t<Rows,Cols,Type>& a, Type b,
+    mat_t<Rows,Cols,Type>& adj_a, Type& adj_b,
+    const mat_t<Rows,Cols,Type>& adj_ret
+)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_bit_xor(
+    Type a, const mat_t<Rows,Cols,Type>& b,
+    Type& adj_a, mat_t<Rows,Cols,Type>& adj_b,
+    const mat_t<Rows,Cols,Type>& adj_ret
+)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_lshift(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b, mat_t<Rows,Cols,Type>& adj_a, mat_t<Rows,Cols,Type>& adj_b, const mat_t<Rows,Cols,Type>& adj_ret)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_lshift(
+    const mat_t<Rows,Cols,Type>& a, Type b,
+    mat_t<Rows,Cols,Type>& adj_a, Type& adj_b,
+    const mat_t<Rows,Cols,Type>& adj_ret
+)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_lshift(
+    Type a, const mat_t<Rows,Cols,Type>& b,
+    Type& adj_a, mat_t<Rows,Cols,Type>& adj_b,
+    const mat_t<Rows,Cols,Type>& adj_ret
+)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_rshift(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b, mat_t<Rows,Cols,Type>& adj_a, mat_t<Rows,Cols,Type>& adj_b, const mat_t<Rows,Cols,Type>& adj_ret)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_rshift(
+    const mat_t<Rows,Cols,Type>& a, Type b,
+    mat_t<Rows,Cols,Type>& adj_a, Type& adj_b,
+    const mat_t<Rows,Cols,Type>& adj_ret
+)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_rshift(
+    Type a, const mat_t<Rows,Cols,Type>& b,
+    Type& adj_a, mat_t<Rows,Cols,Type>& adj_b,
+    const mat_t<Rows,Cols,Type>& adj_ret
+)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_invert(const mat_t<Rows,Cols,Type>& m, mat_t<Rows,Cols,Type>& adj_m, const mat_t<Rows,Cols,Type>& adj_ret)
+{
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_div(const mat_t<Rows,Cols,Type>& a, Type s, mat_t<Rows,Cols,Type>& adj_a, Type& adj_s, const mat_t<Rows,Cols,Type>& adj_ret)
 {
     adj_s -= tensordot(a , adj_ret)/ (s * s); // - a / s^2
@@ -3863,6 +5005,34 @@ template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_add(
 template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, uint32>* buf, const mat_t<Rows, Cols, uint32> &value) { }
 template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, int64>* buf, const mat_t<Rows, Cols, int64> &value) { }
 template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, uint64>* buf, const mat_t<Rows, Cols, uint64> &value) { }
+
+// for bitwise operations we do not accumulate gradients
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, int8>* buf, const mat_t<Rows, Cols, int8> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, uint8>* buf, const mat_t<Rows, Cols, uint8> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, int16>* buf, const mat_t<Rows, Cols, int16> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, uint16>* buf, const mat_t<Rows, Cols, uint16> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, int32>* buf, const mat_t<Rows, Cols, int32> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, uint32>* buf, const mat_t<Rows, Cols, uint32> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, int64>* buf, const mat_t<Rows, Cols, int64> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, uint64>* buf, const mat_t<Rows, Cols, uint64> &value) { }
+
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, int8>* buf, const mat_t<Rows, Cols, int8> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, uint8>* buf, const mat_t<Rows, Cols, uint8> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, int16>* buf, const mat_t<Rows, Cols, int16> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, uint16>* buf, const mat_t<Rows, Cols, uint16> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, int32>* buf, const mat_t<Rows, Cols, int32> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, uint32>* buf, const mat_t<Rows, Cols, uint32> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, int64>* buf, const mat_t<Rows, Cols, int64> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, uint64>* buf, const mat_t<Rows, Cols, uint64> &value) { }
+
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, int8>* buf, const mat_t<Rows, Cols, int8> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, uint8>* buf, const mat_t<Rows, Cols, uint8> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, int16>* buf, const mat_t<Rows, Cols, int16> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, uint16>* buf, const mat_t<Rows, Cols, uint16> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, int32>* buf, const mat_t<Rows, Cols, int32> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, uint32>* buf, const mat_t<Rows, Cols, uint32> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, int64>* buf, const mat_t<Rows, Cols, int64> &value) { }
+template<unsigned Rows, unsigned Cols> CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, uint64>* buf, const mat_t<Rows, Cols, uint64> &value) { }
 
 using mat22h = mat_t<2,2,half>;
 using mat33h = mat_t<3,3,half>;

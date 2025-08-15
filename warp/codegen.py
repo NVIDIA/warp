@@ -2919,6 +2919,24 @@ class Adjoint:
 
                     if warp.config.verify_autograd_array_access:
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+
+                elif isinstance(node.op, ast.BitAnd):
+                    adj.add_builtin_call("atomic_and", [target, *indices, rhs])
+
+                    if warp.config.verify_autograd_array_access:
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+
+                elif isinstance(node.op, ast.BitOr):
+                    adj.add_builtin_call("atomic_or", [target, *indices, rhs])
+
+                    if warp.config.verify_autograd_array_access:
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+
+                elif isinstance(node.op, ast.BitXor):
+                    adj.add_builtin_call("atomic_xor", [target, *indices, rhs])
+
+                    if warp.config.verify_autograd_array_access:
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
                 else:
                     if warp.config.verbose:
                         print(f"Warning: in-place op {node.op} is not differentiable")
@@ -2935,6 +2953,12 @@ class Adjoint:
                     adj.add_builtin_call("add_inplace", [target, *indices, rhs])
                 elif isinstance(node.op, ast.Sub):
                     adj.add_builtin_call("sub_inplace", [target, *indices, rhs])
+                elif isinstance(node.op, ast.BitAnd):
+                    adj.add_builtin_call("bit_and_inplace", [target, *indices, rhs])
+                elif isinstance(node.op, ast.BitOr):
+                    adj.add_builtin_call("bit_or_inplace", [target, *indices, rhs])
+                elif isinstance(node.op, ast.BitXor):
+                    adj.add_builtin_call("bit_xor_inplace", [target, *indices, rhs])
                 else:
                     if warp.config.verbose:
                         print(f"Warning: in-place op {node.op} is not differentiable")
@@ -2946,6 +2970,12 @@ class Adjoint:
                     adj.add_builtin_call("tile_add_inplace", [target, *indices, rhs])
                 elif isinstance(node.op, ast.Sub):
                     adj.add_builtin_call("tile_sub_inplace", [target, *indices, rhs])
+                elif isinstance(node.op, ast.BitAnd):
+                    adj.add_builtin_call("tile_bit_and_inplace", [target, *indices, rhs])
+                elif isinstance(node.op, ast.BitOr):
+                    adj.add_builtin_call("tile_bit_or_inplace", [target, *indices, rhs])
+                elif isinstance(node.op, ast.BitXor):
+                    adj.add_builtin_call("tile_bit_xor_inplace", [target, *indices, rhs])
                 else:
                     if warp.config.verbose:
                         print(f"Warning: in-place op {node.op} is not differentiable")
@@ -2963,6 +2993,12 @@ class Adjoint:
                     adj.add_builtin_call("add_inplace", [target, rhs])
                 elif isinstance(node.op, ast.Sub):
                     adj.add_builtin_call("sub_inplace", [target, rhs])
+                elif isinstance(node.op, ast.BitAnd):
+                    adj.add_builtin_call("bit_and_inplace", [target, rhs])
+                elif isinstance(node.op, ast.BitOr):
+                    adj.add_builtin_call("bit_or_inplace", [target, rhs])
+                elif isinstance(node.op, ast.BitXor):
+                    adj.add_builtin_call("bit_xor_inplace", [target, rhs])
                 else:
                     make_new_assign_statement()
                     return
