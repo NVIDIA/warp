@@ -826,29 +826,6 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, int row, vec_t<C
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, Type value)
-{
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    bool is_row_reversed = row_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        for (int j = 0; j < Cols; ++j)
-        {
-            m.data[i][j] += value;
-        }
-    }
-}
-
-
 template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
 {
@@ -880,39 +857,6 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
     }
 
     assert(ii == RowSliceLength);
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, Type value)
-{
-#ifndef NDEBUG
-    if (col < -(int)Cols || col >= (int)Cols)
-    {
-        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    if (col < 0)
-    {
-        col += Cols;
-    }
-
-    bool is_row_reversed = row_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        m.data[i][col] += value;
-    }
 }
 
 
@@ -954,39 +898,6 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, Type value)
-{
-#ifndef NDEBUG
-    if (row < -(int)Rows || row >= (int)Rows)
-    {
-        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
-    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
-    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
-    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
-
-    if (row < 0)
-    {
-        row += Rows;
-    }
-
-    bool is_col_reversed = col_slice.step < 0;
-
-    for (
-        int i = col_slice.start;
-        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
-        i += col_slice.step
-    )
-    {
-        m.data[row][i] += value;
-    }
-}
-
-
 template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value)
 {
@@ -1022,38 +933,6 @@ inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t
     }
 
     assert(ii == ColSliceLength);
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void add_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, Type value)
-{
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
-    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
-    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
-
-    bool is_row_reversed = row_slice.step < 0;
-    bool is_col_reversed = col_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        for (
-            int j = col_slice.start;
-            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
-            j += col_slice.step
-        )
-        {
-            m.data[i][j] += value;
-        }
-    }
 }
 
 
@@ -1153,32 +1032,6 @@ inline CUDA_CALLABLE void adj_add_inplace(mat_t<Rows,Cols,Type>& m, int row, vec
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_add_inplace(
-    mat_t<Rows,Cols,Type>& m, slice_t row_slice, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, Type& adj_value
-)
-{
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    bool is_row_reversed = row_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        for (int j = 0; j < Cols; ++j)
-        {
-            adj_value += adj_m.data[i][j];
-        }
-    }
-}
-
-
 template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_add_inplace(
     mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value,
@@ -1213,42 +1066,6 @@ inline CUDA_CALLABLE void adj_add_inplace(
     }
 
     assert(ii == RowSliceLength);
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_add_inplace(
-    mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, int& adj_col, Type& adj_value
-)
-{
-#ifndef NDEBUG
-    if (col < -(int)Cols || col >= (int)Cols)
-    {
-        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    if (col < 0)
-    {
-        col += Cols;
-    }
-
-    bool is_row_reversed = row_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        adj_value += adj_m.data[i][col];
-    }
 }
 
 
@@ -1293,42 +1110,6 @@ inline CUDA_CALLABLE void adj_add_inplace(
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_add_inplace(
-    mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, int& adj_row, slice_t& adj_col_slice, Type& adj_value
-)
-{
-#ifndef NDEBUG
-    if (row < -(int)Rows || row >= (int)Rows)
-    {
-        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
-    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
-    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
-    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
-
-    if (row < 0)
-    {
-        row += Rows;
-    }
-
-    bool is_col_reversed = col_slice.step < 0;
-
-    for (
-        int i = col_slice.start;
-        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
-        i += col_slice.step
-    )
-    {
-        adj_value += adj_m.data[row][i];
-    }
-}
-
-
 template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_add_inplace(
     mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value,
@@ -1367,41 +1148,6 @@ inline CUDA_CALLABLE void adj_add_inplace(
     }
 
     assert(ii == ColSliceLength);
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_add_inplace(
-    mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, slice_t& adj_col_slice, Type& adj_value
-)
-{
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
-    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
-    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
-
-    bool is_row_reversed = row_slice.step < 0;
-    bool is_col_reversed = col_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        for (
-            int j = col_slice.start;
-            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
-            j += col_slice.step
-        )
-        {
-            adj_value += adj_m.data[i][j];
-        }
-    }
 }
 
 
@@ -1502,29 +1248,6 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, int row, vec_t<C
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, Type value)
-{
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    bool is_row_reversed = row_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        for (int j = 0; j < Cols; ++j)
-        {
-            m.data[i][j] -= value;
-        }
-    }
-}
-
-
 template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
 {
@@ -1556,39 +1279,6 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
     }
 
     assert(ii == RowSliceLength);
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, Type value)
-{
-#ifndef NDEBUG
-    if (col < -(int)Cols || col >= (int)Cols)
-    {
-        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    if (col < 0)
-    {
-        col += Cols;
-    }
-
-    bool is_row_reversed = row_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        m.data[i][col] -= value;
-    }
 }
 
 
@@ -1630,39 +1320,6 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slic
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, Type value)
-{
-#ifndef NDEBUG
-    if (row < -(int)Rows || row >= (int)Rows)
-    {
-        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
-    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
-    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
-    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
-
-    if (row < 0)
-    {
-        row += Rows;
-    }
-
-    bool is_col_reversed = col_slice.step < 0;
-
-    for (
-        int i = col_slice.start;
-        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
-        i += col_slice.step
-    )
-    {
-        m.data[row][i] -= value;
-    }
-}
-
-
 template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value)
 {
@@ -1698,38 +1355,6 @@ inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t
     }
 
     assert(ii == ColSliceLength);
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void sub_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, Type value)
-{
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
-    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
-    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
-
-    bool is_row_reversed = row_slice.step < 0;
-    bool is_col_reversed = col_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        for (
-            int j = col_slice.start;
-            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
-            j += col_slice.step
-        )
-        {
-            m.data[i][j] -= value;
-        }
-    }
 }
 
 
@@ -1829,32 +1454,6 @@ inline CUDA_CALLABLE void adj_sub_inplace(mat_t<Rows,Cols,Type>& m, int row, vec
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_sub_inplace(
-    mat_t<Rows,Cols,Type>& m, slice_t row_slice, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, Type& adj_value
-)
-{
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    bool is_row_reversed = row_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        for (int j = 0; j < Cols; ++j)
-        {
-            adj_value -= adj_m.data[i][j];
-        }
-    }
-}
-
-
 template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_sub_inplace(
     mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value,
@@ -1889,42 +1488,6 @@ inline CUDA_CALLABLE void adj_sub_inplace(
     }
 
     assert(ii == RowSliceLength);
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_sub_inplace(
-    mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, int& adj_col, Type& adj_value
-)
-{
-#ifndef NDEBUG
-    if (col < -(int)Cols || col >= (int)Cols)
-    {
-        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    if (col < 0)
-    {
-        col += Cols;
-    }
-
-    bool is_row_reversed = row_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        adj_value -= adj_m.data[i][col];
-    }
 }
 
 
@@ -1969,42 +1532,6 @@ inline CUDA_CALLABLE void adj_sub_inplace(
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_sub_inplace(
-    mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, int& adj_row, slice_t& adj_col_slice, Type& adj_value
-)
-{
-#ifndef NDEBUG
-    if (row < -(int)Rows || row >= (int)Rows)
-    {
-        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
-    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
-    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
-    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
-
-    if (row < 0)
-    {
-        row += Rows;
-    }
-
-    bool is_col_reversed = col_slice.step < 0;
-
-    for (
-        int i = col_slice.start;
-        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
-        i += col_slice.step
-    )
-    {
-        adj_value -= adj_m.data[row][i];
-    }
-}
-
-
 template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_sub_inplace(
     mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value,
@@ -2043,41 +1570,6 @@ inline CUDA_CALLABLE void adj_sub_inplace(
     }
 
     assert(ii == ColSliceLength);
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_sub_inplace(
-    mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, slice_t& adj_col_slice, Type& adj_value
-)
-{
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
-    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
-    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
-
-    bool is_row_reversed = row_slice.step < 0;
-    bool is_col_reversed = col_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        for (
-            int j = col_slice.start;
-            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
-            j += col_slice.step
-        )
-        {
-            adj_value -= adj_m.data[i][j];
-        }
-    }
 }
 
 
@@ -2178,29 +1670,6 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, int row, vec_
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, Type value)
-{
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    bool is_row_reversed = row_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        for (int j = 0; j < Cols; ++j)
-        {
-            m.data[i][j] = value;
-        }
-    }
-}
-
-
 template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
 {
@@ -2232,39 +1701,6 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_s
     }
 
     assert(ii == RowSliceLength);
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, Type value)
-{
-#ifndef NDEBUG
-    if (col < -(int)Cols || col >= (int)Cols)
-    {
-        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    if (col < 0)
-    {
-        col += Cols;
-    }
-
-    bool is_row_reversed = row_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        m.data[i][col] = value;
-    }
 }
 
 
@@ -2306,39 +1742,6 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_s
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, Type value)
-{
-#ifndef NDEBUG
-    if (row < -(int)Rows || row >= (int)Rows)
-    {
-        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
-    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
-    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
-    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
-
-    if (row < 0)
-    {
-        row += Rows;
-    }
-
-    bool is_col_reversed = col_slice.step < 0;
-
-    for (
-        int i = col_slice.start;
-        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
-        i += col_slice.step
-    )
-    {
-        m.data[row][i] = value;
-    }
-}
-
-
 template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value)
 {
@@ -2374,38 +1777,6 @@ inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, int row, slic
     }
 
     assert(ii == ColSliceLength);
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void assign_inplace(mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, Type value)
-{
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
-    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
-    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
-
-    bool is_row_reversed = row_slice.step < 0;
-    bool is_col_reversed = col_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        for (
-            int j = col_slice.start;
-            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
-            j += col_slice.step
-        )
-        {
-            m.data[i][j] = value;
-        }
-    }
 }
 
 
@@ -2505,32 +1876,6 @@ inline CUDA_CALLABLE void adj_assign_inplace(mat_t<Rows,Cols,Type>& m, int row, 
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_assign_inplace(
-    mat_t<Rows,Cols,Type>& m, slice_t row_slice, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, Type& adj_value
-)
-{
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    bool is_row_reversed = row_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        for (int j = 0; j < Cols; ++j)
-        {
-            adj_value += adj_m.data[i][j];
-        }
-    }
-}
-
-
 template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(
     mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value,
@@ -2565,42 +1910,6 @@ inline CUDA_CALLABLE void adj_assign_inplace(
     }
 
     assert(ii == RowSliceLength);
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_assign_inplace(
-    mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, int& adj_col, Type& adj_value
-)
-{
-#ifndef NDEBUG
-    if (col < -(int)Cols || col >= (int)Cols)
-    {
-        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    if (col < 0)
-    {
-        col += Cols;
-    }
-
-    bool is_row_reversed = row_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        adj_value += adj_m.data[i][col];
-    }
 }
 
 
@@ -2645,42 +1954,6 @@ inline CUDA_CALLABLE void adj_assign_inplace(
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_assign_inplace(
-    mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, int& adj_row, slice_t& adj_col_slice, Type& adj_value
-)
-{
-#ifndef NDEBUG
-    if (row < -(int)Rows || row >= (int)Rows)
-    {
-        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
-    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
-    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
-    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
-
-    if (row < 0)
-    {
-        row += Rows;
-    }
-
-    bool is_col_reversed = col_slice.step < 0;
-
-    for (
-        int i = col_slice.start;
-        is_col_reversed ? (i > col_slice.stop) : (i < col_slice.stop);
-        i += col_slice.step
-    )
-    {
-        adj_value += adj_m.data[row][i];
-    }
-}
-
-
 template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(
     mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value,
@@ -2719,41 +1992,6 @@ inline CUDA_CALLABLE void adj_assign_inplace(
     }
 
     assert(ii == ColSliceLength);
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_assign_inplace(
-    mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, slice_t& adj_col_slice, Type& adj_value
-)
-{
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
-    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
-    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
-
-    bool is_row_reversed = row_slice.step < 0;
-    bool is_col_reversed = col_slice.step < 0;
-
-    for (
-        int i = row_slice.start;
-        is_row_reversed ? (i > row_slice.stop) : (i < row_slice.stop);
-        i += row_slice.step
-    )
-    {
-        for (
-            int j = col_slice.start;
-            is_col_reversed ? (j > col_slice.stop) : (j < col_slice.stop);
-            j += col_slice.step
-        )
-        {
-            adj_value += adj_m.data[i][j];
-        }
-    }
 }
 
 
@@ -2858,29 +2096,11 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m,
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, slice_t row_slice, Type value)
-{
-    mat_t<Rows, Cols, Type> ret(m);
-    assign_inplace(ret, row_slice, value);
-    return ret;
-}
-
-
 template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value)
 {
     mat_t<Rows, Cols, Type> ret(m);
     assign_inplace(ret, row_slice, value);
-    return ret;
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, Type value)
-{
-    mat_t<Rows, Cols, Type> ret(m);
-    assign_inplace(ret, row_slice, col, value);
     return ret;
 }
 
@@ -2894,29 +2114,11 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m,
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, Type value)
-{
-    mat_t<Rows, Cols, Type> ret(m);
-    assign_inplace(ret, row, col_slice, value);
-    return ret;
-}
-
-
 template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value)
 {
     mat_t<Rows, Cols, Type> ret(m);
     assign_inplace(ret, row, col_slice, value);
-    return ret;
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE mat_t<Rows,Cols,Type> assign_copy(mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, Type value)
-{
-    mat_t<Rows, Cols, Type> ret(m);
-    assign_inplace(ret, row_slice, col_slice, value);
     return ret;
 }
 
@@ -2998,43 +2200,6 @@ inline CUDA_CALLABLE void adj_assign_copy(mat_t<Rows,Cols,Type>& m, int row, vec
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_assign_copy(
-    mat_t<Rows,Cols,Type>& m, slice_t row_slice, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, Type& adj_value,
-    mat_t<Rows,Cols,Type>& adj_ret
-)
-{
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    bool is_row_reversed = row_slice.step < 0;
-
-    for (int i = 0; i < Rows; ++i)
-    {
-        bool in_row_slice = is_row_reversed
-            ? (i <= row_slice.start && i > row_slice.stop && (row_slice.start - i) % (-row_slice.step) == 0)
-            : (i >= row_slice.start && i < row_slice.stop && (i - row_slice.start) % row_slice.step == 0);
-
-        if (!in_row_slice)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_m.data[i][j] += adj_ret.data[i][j];
-            }
-        }
-        else
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_value += adj_ret.data[i][j];
-            }
-        }
-    }
-}
-
-
 template<unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(
     mat_t<Rows,Cols,Type>& m, slice_t row_slice, mat_t<RowSliceLength, ColSliceLength, Type>& value,
@@ -3080,63 +2245,6 @@ inline CUDA_CALLABLE void adj_assign_copy(
     }
 
     assert(ii == RowSliceLength);
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_assign_copy(
-    mat_t<Rows,Cols,Type>& m, slice_t row_slice, int col, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, int& adj_col, Type& adj_value,
-    mat_t<Rows,Cols,Type>& adj_ret
-)
-{
-#ifndef NDEBUG
-    if (col < -(int)Cols || col >= (int)Cols)
-    {
-        printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    if (col < 0)
-    {
-        col += Cols;
-    }
-
-    bool is_row_reversed = row_slice.step < 0;
-
-    for (int i = 0; i < Rows; ++i)
-    {
-        bool in_row_slice = is_row_reversed
-            ? (i <= row_slice.start && i > row_slice.stop && (row_slice.start - i) % (-row_slice.step) == 0)
-            : (i >= row_slice.start && i < row_slice.stop && (i - row_slice.start) % row_slice.step == 0);
-
-        if (!in_row_slice)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_m.data[i][j] += adj_ret.data[i][j];
-            }
-        }
-        else
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                if (j != col)
-                {
-                    adj_m.data[i][j] += adj_ret.data[i][j];
-                }
-                else
-                {
-                    adj_value += adj_ret.data[i][j];
-                }
-            }
-        }
-    }
 }
 
 
@@ -3203,63 +2311,6 @@ inline CUDA_CALLABLE void adj_assign_copy(
 }
 
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_assign_copy(
-    mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, int& adj_row, slice_t& adj_col_slice, Type& adj_value,
-    mat_t<Rows,Cols,Type>& adj_ret
-)
-{
-#ifndef NDEBUG
-    if (row < -(int)Rows || row >= (int)Rows)
-    {
-        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
-    if (row < 0)
-    {
-        row += Rows;
-    }
-
-    assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
-    assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
-    assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
-
-    bool is_col_reversed = col_slice.step < 0;
-
-    for (int i = 0; i < Rows; ++i)
-    {
-        if (i != row)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_m.data[i][j] += adj_ret.data[i][j];
-            }
-        }
-        else
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                bool in_col_slice = is_col_reversed
-                    ? (j <= col_slice.start && j > col_slice.stop && (col_slice.start - j) % (-col_slice.step) == 0)
-                    : (j >= col_slice.start && j < col_slice.stop && (j - col_slice.start) % col_slice.step == 0);
-
-                if (!in_col_slice)
-                {
-                    adj_m.data[i][j] += adj_ret.data[i][j];
-                }
-                else
-                {
-                    adj_value += adj_ret.data[i][j];
-                }
-            }
-        }
-    }
-}
-
-
 template<unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(
     mat_t<Rows,Cols,Type>& m, int row, slice_t col_slice, vec_t<ColSliceLength, Type>& value,
@@ -3319,59 +2370,6 @@ inline CUDA_CALLABLE void adj_assign_copy(
     }
 
     assert(ii == ColSliceLength);
-}
-
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_assign_copy(
-    mat_t<Rows,Cols,Type>& m, slice_t row_slice, slice_t col_slice, Type value,
-    mat_t<Rows,Cols,Type>& adj_m, slice_t& adj_row_slice, slice_t& adj_col_slice, Type& adj_value,
-    mat_t<Rows,Cols,Type>& adj_ret
-)
-{
-    assert(row_slice.start >= 0 && row_slice.start <= (int)Rows);
-    assert(row_slice.stop >= -1 && row_slice.stop <= (int)Rows);
-    assert(row_slice.step != 0 && row_slice.step < 0 ? row_slice.start >= row_slice.stop : row_slice.start <= row_slice.stop);
-
-    bool is_row_reversed = row_slice.step < 0;
-    bool is_col_reversed = col_slice.step < 0;
-
-    for (int i = 0; i < Rows; ++i)
-    {
-        bool in_row_slice = is_row_reversed
-            ? (i <= row_slice.start && i > row_slice.stop && (row_slice.start - i) % (-row_slice.step) == 0)
-            : (i >= row_slice.start && i < row_slice.stop && (i - row_slice.start) % row_slice.step == 0);
-
-        if (!in_row_slice)
-        {
-            for (int j = 0; j < Cols; ++j)
-            {
-                adj_m.data[i][j] += adj_ret.data[i][j];
-            }
-        }
-        else
-        {
-            assert(col_slice.start >= 0 && col_slice.start <= (int)Cols);
-            assert(col_slice.stop >= -1 && col_slice.stop <= (int)Cols);
-            assert(col_slice.step != 0 && col_slice.step < 0 ? col_slice.start >= col_slice.stop : col_slice.start <= col_slice.stop);
-
-            for (int j = 0; j < Cols; ++j)
-            {
-                bool in_col_slice = is_col_reversed
-                    ? (j <= col_slice.start && j > col_slice.stop && (col_slice.start - j) % (-col_slice.step) == 0)
-                    : (j >= col_slice.start && j < col_slice.stop && (j - col_slice.start) % col_slice.step == 0);
-
-                if (!in_col_slice)
-                {
-                    adj_m.data[i][j] += adj_ret.data[i][j];
-                }
-                else
-                {
-                    adj_value += adj_ret.data[i][j];
-                }
-            }
-        }
-    }
 }
 
 
@@ -3499,21 +2497,6 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> add(const mat_t<Rows,Cols,Type>& a, c
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE mat_t<Rows,Cols,Type> add(const mat_t<Rows,Cols,Type>& a, Type b)
-{
-    mat_t<Rows,Cols,Type> t;
-    for (unsigned i=0; i < Rows; ++i)
-    {
-        for (unsigned j=0; j < Cols; ++j)
-        {
-            t.data[i][j] = a.data[i][j] + b;
-        }
-    }
-
-    return t;
-}
-
-template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE mat_t<Rows,Cols,Type> add(Type a, const mat_t<Rows,Cols,Type>& b)
 {
     mat_t<Rows,Cols,Type> t;
@@ -3537,21 +2520,6 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> sub(const mat_t<Rows,Cols,Type>& a, c
         for (unsigned j=0; j < Cols; ++j)
         {
             t.data[i][j] = a.data[i][j] - b.data[i][j];
-        }
-    }
-
-    return t;
-}
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE mat_t<Rows,Cols,Type> sub(const mat_t<Rows,Cols,Type>& a, Type b)
-{
-    mat_t<Rows,Cols,Type> t;
-    for (unsigned i=0; i < Rows; ++i)
-    {
-        for (unsigned j=0; j < Cols; ++j)
-        {
-            t.data[i][j] = a.data[i][j] - b;
         }
     }
 
@@ -3692,21 +2660,6 @@ inline CUDA_CALLABLE mat_t<Rows,ColsOut,Type> mul(const mat_t<Rows,Cols,Type>& a
         }
     }
     
-    return t;
-}
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE mat_t<Rows,Cols,Type> mod(const mat_t<Rows,Cols,Type>& a, Type b)
-{
-    mat_t<Rows,Cols,Type> t;
-    for (unsigned i=0; i < Rows; ++i)
-    {
-        for (unsigned j=0; j < Cols; ++j)
-        {
-            t.data[i][j] = mod(a.data[i][j], b);
-        }
-    }
-
     return t;
 }
 
@@ -4312,23 +3265,6 @@ inline CUDA_CALLABLE void adj_add(const mat_t<Rows,Cols,Type>& a, const mat_t<Ro
 
 template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_add(
-    const mat_t<Rows,Cols,Type>& a, Type b,
-    mat_t<Rows,Cols,Type>& adj_a, Type& adj_b,
-    const mat_t<Rows,Cols,Type>& adj_ret
-)
-{
-    for (unsigned i=0; i < Rows; ++i)
-    {
-        for (unsigned j=0; j < Cols; ++j)
-        {
-            adj_a.data[i][j] += adj_ret.data[i][j];
-            adj_b += adj_ret.data[i][j];
-        }
-    }
-}
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_add(
     Type a, const mat_t<Rows,Cols,Type>& b,
     Type& adj_a, mat_t<Rows,Cols,Type>& adj_b,
     const mat_t<Rows,Cols,Type>& adj_ret
@@ -4353,23 +3289,6 @@ inline CUDA_CALLABLE void adj_sub(const mat_t<Rows,Cols,Type>& a, const mat_t<Ro
         {
             adj_a.data[i][j] += adj_ret.data[i][j];
             adj_b.data[i][j] -= adj_ret.data[i][j];
-        }
-    }
-}
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_sub(
-    const mat_t<Rows,Cols,Type>& a, Type b,
-    mat_t<Rows,Cols,Type>& adj_a, Type& adj_b,
-    const mat_t<Rows,Cols,Type>& adj_ret
-)
-{
-    for (unsigned i=0; i < Rows; ++i)
-    {
-        for (unsigned j=0; j < Cols; ++j)
-        {
-            adj_a.data[i][j] += adj_ret.data[i][j];
-            adj_b -= adj_ret.data[i][j];
         }
     }
 }
@@ -4464,15 +3383,6 @@ inline CUDA_CALLABLE void adj_mul(const mat_t<Rows,Cols,Type>& a, const mat_t<Co
 {
     adj_a += mul(adj_ret, transpose(b));
     adj_b += mul(transpose(a), adj_ret);
-}
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_mod(
-    const mat_t<Rows,Cols,Type>& a, Type b,
-    mat_t<Rows,Cols,Type>& adj_a, Type& adj_b,
-    const mat_t<Rows,Cols,Type>& adj_ret
-)
-{
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>

@@ -6525,11 +6525,10 @@ def vector_assign_dispatch_func(input_types: Mapping[str, type], return_type: An
                 )
             template_args = (length,)
         else:
-            if not types_equal(value_type, vec._wp_scalar_type_):
-                raise ValueError(
-                    f"The provided value is expected to be a scalar, or a vector of length {length}, with dtype {type_repr(vec._wp_scalar_type_)}."
-                )
-            template_args = ()
+            # Disallow broadcasting.
+            raise ValueError(
+                f"The provided value is expected to be a vector of length {length}, with dtype {type_repr(vec._wp_scalar_type_)}."
+            )
     else:
         if not types_equal(value_type, vec._wp_scalar_type_):
             raise ValueError(
@@ -6778,12 +6777,10 @@ def matrix_assign_dispatch_func(input_types: Mapping[str, type], return_type: An
 
                 template_args = (length,)
             else:
-                if not types_equal(value_type, mat._wp_scalar_type_):
-                    raise ValueError(
-                        f"The provided value is expected to be a scalar, or a vector of length {length}, with dtype {type_repr(mat._wp_scalar_type_)}."
-                    )
-
-                template_args = ()
+                # Disallow broadcasting.
+                raise ValueError(
+                    f"The provided value is expected to be a vector of length {length}, with dtype {type_repr(mat._wp_scalar_type_)}."
+                )
         else:
             assert ndim == 2
 
@@ -6804,11 +6801,10 @@ def matrix_assign_dispatch_func(input_types: Mapping[str, type], return_type: An
 
                 template_args = shape
             else:
-                if not types_equal(value_type, mat._wp_scalar_type_):
-                    raise ValueError(
-                        f"The provided value is expected to be a scalar, or a matrix of shape {shape}, with dtype {type_repr(mat._wp_scalar_type_)}."
-                    )
-                template_args = ()
+                # Disallow broadcasting.
+                raise ValueError(
+                    f"The provided value is expected to be a matrix of shape {shape}, with dtype {type_repr(mat._wp_scalar_type_)}."
+                )
     elif len(idxs) == 1:
         if not type_is_vector(value_type) or not types_equal(value_type._wp_scalar_type_, mat._wp_scalar_type_):
             raise ValueError(
@@ -7147,26 +7143,6 @@ add_builtin(
 # Operators
 
 
-def op_scalar_create_constraint_func(type, scalar):
-    def fn(arg_types: Mapping[str, type]):
-        return types_equal(arg_types[type]._wp_scalar_type_, arg_types[scalar])
-
-    return fn
-
-
-def op_scalar_create_value_func(type, scalar, default):
-    def fn(arg_types, arg_values):
-        if arg_types is None:
-            return default
-
-        if arg_types[type]._wp_scalar_type_ != arg_types[scalar]:
-            raise RuntimeError(f"'{scalar}' parameter must have the same scalar type as the modified object")
-
-        return arg_types[type]
-
-    return fn
-
-
 add_builtin(
     "add", input_types={"a": Scalar, "b": Scalar}, value_func=sametypes_create_value_func(Scalar), group="Operators"
 )
@@ -7175,22 +7151,6 @@ add_builtin(
     input_types={"a": vector(length=Any, dtype=Scalar), "b": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Scalar)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "add",
-    input_types={"a": vector(length=Any, dtype=Scalar), "b": Scalar},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", vector(length=Any, dtype=Scalar)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "add",
-    input_types={"a": Scalar, "b": vector(length=Any, dtype=Scalar)},
-    constraint=op_scalar_create_constraint_func("b", "a"),
-    value_func=op_scalar_create_value_func("b", "a", vector(length=Any, dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -7206,22 +7166,6 @@ add_builtin(
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "b": matrix(shape=(Any, Any), dtype=Scalar)},
     constraint=sametypes,
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "add",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "b": Scalar},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", matrix(shape=(Any, Any), dtype=Scalar)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "add",
-    input_types={"a": Scalar, "b": matrix(shape=(Any, Any), dtype=Scalar)},
-    constraint=op_scalar_create_constraint_func("b", "a"),
-    value_func=op_scalar_create_value_func("b", "a", matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -7246,41 +7190,9 @@ add_builtin(
 )
 add_builtin(
     "sub",
-    input_types={"a": vector(length=Any, dtype=Scalar), "b": Scalar},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", vector(length=Any, dtype=Scalar)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "sub",
-    input_types={"a": Scalar, "b": vector(length=Any, dtype=Scalar)},
-    constraint=op_scalar_create_constraint_func("b", "a"),
-    value_func=op_scalar_create_value_func("b", "a", vector(length=Any, dtype=Scalar)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "sub",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "b": matrix(shape=(Any, Any), dtype=Scalar)},
     constraint=sametypes,
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Scalar)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "sub",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "b": Scalar},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", matrix(shape=(Any, Any), dtype=Scalar)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "sub",
-    input_types={"a": Scalar, "b": matrix(shape=(Any, Any), dtype=Scalar)},
-    constraint=op_scalar_create_constraint_func("b", "a"),
-    value_func=op_scalar_create_value_func("b", "a", matrix(shape=(Any, Any), dtype=Scalar)),
     doc="",
     group="Operators",
 )
@@ -7505,22 +7417,6 @@ add_builtin(
     constraint=sametypes,
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Scalar)),
     doc="Modulo operation using truncated division.",
-    group="Operators",
-)
-add_builtin(
-    "mod",
-    input_types={"a": vector(length=Any, dtype=Scalar), "b": Scalar},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", vector(length=Any, dtype=Scalar)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "mod",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "b": Scalar},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", matrix(shape=(Any, Any), dtype=Scalar)),
-    doc="",
     group="Operators",
 )
 

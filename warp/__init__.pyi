@@ -2983,32 +2983,12 @@ def add(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     ...
 
 @over
-def add(a: Vector[Any, Scalar], b: Scalar) -> Vector[Any, Scalar]:
-    """ """
-    ...
-
-@over
-def add(a: Scalar, b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
-    """ """
-    ...
-
-@over
 def add(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]:
     """ """
     ...
 
 @over
 def add(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
-    """ """
-    ...
-
-@over
-def add(a: Matrix[Any, Any, Scalar], b: Scalar) -> Matrix[Any, Any, Scalar]:
-    """ """
-    ...
-
-@over
-def add(a: Scalar, b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
@@ -3033,27 +3013,7 @@ def sub(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     ...
 
 @over
-def sub(a: Vector[Any, Scalar], b: Scalar) -> Vector[Any, Scalar]:
-    """ """
-    ...
-
-@over
-def sub(a: Scalar, b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
-    """ """
-    ...
-
-@over
 def sub(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
-    """ """
-    ...
-
-@over
-def sub(a: Matrix[Any, Any, Scalar], b: Scalar) -> Matrix[Any, Any, Scalar]:
-    """ """
-    ...
-
-@over
-def sub(a: Scalar, b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """ """
     ...
 
@@ -3190,16 +3150,6 @@ def mod(a: Scalar, b: Scalar) -> Scalar:
 @over
 def mod(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """Modulo operation using truncated division."""
-    ...
-
-@over
-def mod(a: Vector[Any, Scalar], b: Scalar) -> Vector[Any, Scalar]:
-    """ """
-    ...
-
-@over
-def mod(a: Matrix[Any, Any, Scalar], b: Scalar) -> Matrix[Any, Any, Scalar]:
-    """ """
     ...
 
 @over
