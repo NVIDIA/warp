@@ -1,13 +1,24 @@
 <project toolsVersion="5.0">
-  <remote2 name="cublasdx-linux">
-    <transport actions="download" protocol="https" packageLocation="developer.nvidia.com/downloads/compute/cublasdx/redist/cublasdx/${name}-${version}.tar.gz" />
+  <remote2 name="cublasdx-linux-cu12">
+    <transport actions="download" protocol="https" packageLocation="developer.nvidia.com/downloads/compute/cublasdx/redist/cublasdx/cuda12/${name}-${version}-cuda12.0.tar.gz" />
   </remote2>
-  <remote2 name="cublasdx-windows">
-    <transport actions="download" protocol="https" packageLocation="developer.nvidia.com/downloads/compute/cublasdx/redist/cublasdx/${name}-${version}.zip" />
+  <remote2 name="cublasdx-windows-cu12">
+    <transport actions="download" protocol="https" packageLocation="developer.nvidia.com/downloads/compute/cublasdx/redist/cublasdx/cuda12/${name}-${version}-cuda12.0.zip" />
   </remote2>
-  <dependency name="libmathdx" linkPath="../_build/target-deps/libmathdx">
-    <package name="libmathdx-win32-x86_64" version="0.2.2" platforms="windows-x86_64" remotes="cublasdx-windows"/>
-    <package name="libmathdx-Linux-x86_64" version="0.2.2" platforms="linux-x86_64" remotes="cublasdx-linux"/>
-    <package name="libmathdx-Linux-aarch64" version="0.2.2" platforms="linux-aarch64" remotes="cublasdx-linux"/>
+  <remote2 name="cublasdx-linux-cu13">
+    <transport actions="download" protocol="https" packageLocation="developer.nvidia.com/downloads/compute/cublasdx/redist/cublasdx/cuda13/${name}-${version}-cuda13.0.tar.gz" />
+  </remote2>
+  <remote2 name="cublasdx-windows-cu13">
+    <transport actions="download" protocol="https" packageLocation="developer.nvidia.com/downloads/compute/cublasdx/redist/cublasdx/cuda13/${name}-${version}-cuda13.0.zip" />
+  </remote2>
+  <dependency name="libmathdx-cu12" linkPath="../_build/target-deps/libmathdx" tags="cu12">
+    <package name="libmathdx-win32-x86_64" version="0.2.3" platforms="windows-x86_64" remotes="cublasdx-windows-cu12"/>
+    <package name="libmathdx-Linux-x86_64" version="0.2.3" platforms="linux-x86_64" remotes="cublasdx-linux-cu12"/>
+    <package name="libmathdx-Linux-aarch64" version="0.2.3" platforms="linux-aarch64" remotes="cublasdx-linux-cu12"/>
+  </dependency>
+  <dependency name="libmathdx-cu13" linkPath="../_build/target-deps/libmathdx" tags="cu13">
+    <package name="libmathdx-win32-x86_64" version="0.2.3" platforms="windows-x86_64" remotes="cublasdx-windows-cu13"/>
+    <package name="libmathdx-Linux-x86_64" version="0.2.3" platforms="linux-x86_64" remotes="cublasdx-linux-cu13"/>
+    <package name="libmathdx-Linux-aarch64" version="0.2.3" platforms="linux-aarch64" remotes="cublasdx-linux-cu13"/>
   </dependency>
 </project>
