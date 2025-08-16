@@ -320,6 +320,7 @@ extern "C"
     WP_API bool wp_cuda_graph_pause_capture(void* context, void* stream, void** graph_ret);
     WP_API bool wp_cuda_graph_resume_capture(void* context, void* stream, void* graph);
     WP_API bool wp_cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph);
+    WP_API bool wp_cuda_graph_check_conditional_body(void* body_graph);
 
     WP_API size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, bool compile_time_trace, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types);
     WP_API bool wp_cuda_compile_fft(const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int size, int elements_per_thread, int direction, int precision, int* shared_memory_size);

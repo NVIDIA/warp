@@ -103,6 +103,7 @@ static PFN_cuEventRecordWithFlags_v11010 pfn_cuEventRecordWithFlags;
 static PFN_cuEventSynchronize_v2000 pfn_cuEventSynchronize;
 static PFN_cuGraphAddNode_v12030 pfn_cuGraphAddNode;
 static PFN_cuGraphNodeGetDependentNodes_v12030 pfn_cuGraphNodeGetDependentNodes;
+static PFN_cuGraphNodeGetType_v10000 pfn_cuGraphNodeGetType;
 static PFN_cuModuleLoadDataEx_v2010 pfn_cuModuleLoadDataEx;
 static PFN_cuModuleUnload_v2000 pfn_cuModuleUnload;
 static PFN_cuModuleGetFunction_v2000 pfn_cuModuleGetFunction;
@@ -248,6 +249,7 @@ bool init_cuda_driver()
     get_driver_entry_point("cuEventSynchronize", 2000, &(void*&)pfn_cuEventSynchronize);
     get_driver_entry_point("cuGraphAddNode", 12030, &(void*&)pfn_cuGraphAddNode);
     get_driver_entry_point("cuGraphNodeGetDependentNodes", 12030, &(void*&)pfn_cuGraphNodeGetDependentNodes);
+    get_driver_entry_point("cuGraphNodeGetType", 10000, &(void*&)pfn_cuGraphNodeGetType);
     get_driver_entry_point("cuModuleLoadDataEx", 2010, &(void*&)pfn_cuModuleLoadDataEx);
     get_driver_entry_point("cuModuleUnload", 2000, &(void*&)pfn_cuModuleUnload);
     get_driver_entry_point("cuModuleGetFunction", 2000, &(void*&)pfn_cuModuleGetFunction);
@@ -567,6 +569,11 @@ CUresult cuGraphAddNode_f(CUgraphNode *phGraphNode, CUgraph hGraph, const CUgrap
 CUresult cuGraphNodeGetDependentNodes_f(CUgraphNode hNode, CUgraphNode *dependentNodes, CUgraphEdgeData *edgeData, size_t *numDependentNodes)
 {
     return pfn_cuGraphNodeGetDependentNodes ? pfn_cuGraphNodeGetDependentNodes(hNode, dependentNodes, edgeData, numDependentNodes) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuGraphNodeGetType_f(CUgraphNode hNode, CUgraphNodeType* type)
+{
+    return pfn_cuGraphNodeGetType ? pfn_cuGraphNodeGetType(hNode, type) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuModuleLoadDataEx_f(CUmodule *module, const void *image, unsigned int numOptions, CUjit_option *options, void **optionValues)
