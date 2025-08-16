@@ -1084,6 +1084,7 @@ WP_API bool wp_cuda_graph_set_condition(void* context, void* stream, int* condit
 WP_API bool wp_cuda_graph_pause_capture(void* context, void* stream, void** graph_ret) { return false; }
 WP_API bool wp_cuda_graph_resume_capture(void* context, void* stream, void* graph) { return false; }
 WP_API bool wp_cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph) { return false; }
+WP_API bool wp_cuda_graph_check_conditional_body(void* body_graph) { return false; }
 
 WP_API size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, bool compile_time_trace, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types) { return 0; }
 

@@ -979,6 +979,94 @@ def test_graph_debug_dot_print(test, device):
     os.remove(dot_file)
 
 
+# ================================================================================================================
+# test exceptions
+# ================================================================================================================
+
+
+# body graphs with allocations are not supported
+def body_with_alloc():
+    wp.zeros(10)
+
+
+@unittest.skipUnless(check_conditional_graph_support(), "Conditional graph nodes not supported")
+def test_error_alloc_if(test, device):
+    with wp.ScopedDevice(device):
+        cond = wp.ones(1, dtype=wp.int32)
+        with test.assertRaisesRegex(
+            RuntimeError, r"Conditional body graph contains an unsupported operation \(memory allocation\)"
+        ):
+            with wp.ScopedCapture():
+                wp.capture_if(condition=cond, on_true=body_with_alloc)
+
+
+@unittest.skipUnless(check_conditional_graph_support(), "Conditional graph nodes not supported")
+def test_error_alloc_else(test, device):
+    with wp.ScopedDevice(device):
+        cond = wp.ones(1, dtype=wp.int32)
+        with test.assertRaisesRegex(
+            RuntimeError, r"Conditional body graph contains an unsupported operation \(memory allocation\)"
+        ):
+            with wp.ScopedCapture():
+                wp.capture_if(condition=cond, on_false=body_with_alloc)
+
+
+@unittest.skipUnless(check_conditional_graph_support(), "Conditional graph nodes not supported")
+def test_error_alloc_while(test, device):
+    with wp.ScopedDevice(device):
+        cond = wp.ones(1, dtype=wp.int32)
+        with test.assertRaisesRegex(
+            RuntimeError, r"Conditional body graph contains an unsupported operation \(memory allocation\)"
+        ):
+            with wp.ScopedCapture():
+                wp.capture_while(condition=cond, while_body=body_with_alloc)
+
+
+@unittest.skipUnless(check_conditional_graph_support(), "Conditional graph nodes not supported")
+def test_error_alloc_if_subgraph(test, device):
+    with wp.ScopedDevice(device):
+        # capture body subgraph
+        with wp.ScopedCapture() as body_capture:
+            body_with_alloc()
+
+        cond = wp.ones(1, dtype=wp.int32)
+        with test.assertRaisesRegex(
+            RuntimeError, r"Child graph contains an unsupported operation \(memory allocation\)"
+        ):
+            with wp.ScopedCapture():
+                wp.capture_if(condition=cond, on_true=body_capture.graph)
+
+
+@unittest.skipUnless(check_conditional_graph_support(), "Conditional graph nodes not supported")
+def test_error_alloc_else_subgraph(test, device):
+    with wp.ScopedDevice(device):
+        # capture body subgraph
+        with wp.ScopedCapture() as body_capture:
+            body_with_alloc()
+
+        cond = wp.ones(1, dtype=wp.int32)
+        with test.assertRaisesRegex(
+            RuntimeError, r"Child graph contains an unsupported operation \(memory allocation\)"
+        ):
+            with wp.ScopedCapture():
+                wp.capture_if(condition=cond, on_false=body_capture.graph)
+
+
+@unittest.skipUnless(check_conditional_graph_support(), "Conditional graph nodes not supported")
+def test_error_alloc_while_subgraph(test, device):
+    with wp.ScopedDevice(device):
+        # capture body subgraph
+        with wp.ScopedCapture() as body_capture:
+            body_with_alloc()
+
+        cond = wp.ones(1, dtype=wp.int32)
+        with test.assertRaisesRegex(
+            RuntimeError, r"Child graph contains an unsupported operation \(memory allocation\)"
+        ):
+            with wp.ScopedCapture():
+                wp.capture_while(condition=cond, while_body=body_capture.graph)
+
+
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 
@@ -1038,6 +1126,19 @@ add_function_test(
 
 add_function_test(
     TestConditionalCaptures, "test_graph_debug_dot_print", test_graph_debug_dot_print, devices=cuda_devices
+)
+
+add_function_test(TestConditionalCaptures, "test_error_alloc_if", test_error_alloc_if, devices=cuda_devices)
+add_function_test(TestConditionalCaptures, "test_error_alloc_else", test_error_alloc_else, devices=cuda_devices)
+add_function_test(TestConditionalCaptures, "test_error_alloc_while", test_error_alloc_while, devices=cuda_devices)
+add_function_test(
+    TestConditionalCaptures, "test_error_alloc_if_subgraph", test_error_alloc_if_subgraph, devices=cuda_devices
+)
+add_function_test(
+    TestConditionalCaptures, "test_error_alloc_else_subgraph", test_error_alloc_else_subgraph, devices=cuda_devices
+)
+add_function_test(
+    TestConditionalCaptures, "test_error_alloc_while_subgraph", test_error_alloc_while_subgraph, devices=cuda_devices
 )
 
 

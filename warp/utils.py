@@ -1491,6 +1491,11 @@ class ScopedCapture:
         if self.active:
             try:
                 self.graph = wp.capture_end(device=self.device, stream=self.stream)
+            except Exception:
+                # Only report this exception if __exit__() was reached without an exception,
+                # otherwise re-raise the original exception.
+                if exc_type is None:
+                    raise
             finally:
                 self.active = False
 

@@ -3013,7 +3013,7 @@ bool wp_cuda_graph_insert_if_else(void* context, void* stream, int* condition, v
     if (num_branches == 1 /*|| driver_version >= 12080*/)
     {
         cudaGraphConditionalHandle handle;
-        cudaGraphConditionalHandleCreate(&handle, cuda_graph);
+        check_cuda(cudaGraphConditionalHandleCreate(&handle, cuda_graph));
         
         // run a kernel to set the condition handle from the condition pointer
         // (need to negate the condition if only the else branch is used)
@@ -3033,7 +3033,7 @@ bool wp_cuda_graph_insert_if_else(void* context, void* stream, int* condition, v
         kernel_args[0] = &handle;
         kernel_args[1] = &condition;
 
-        if (!check_cuda(cuLaunchKernel_f(kernel, 1, 1, 1, 1, 1, 1, 0, cuda_stream, kernel_args, NULL)))
+        if (!check_cu(cuLaunchKernel_f(kernel, 1, 1, 1, 1, 1, 1, 0, cuda_stream, kernel_args, NULL)))
             return false;
 
         if (!check_cu(cuStreamGetCaptureInfo_f(cuda_stream, &capture_status, nullptr, &cuda_graph, &capture_deps, &dep_count)))
@@ -3069,8 +3069,8 @@ bool wp_cuda_graph_insert_if_else(void* context, void* stream, int* condition, v
     {
         // Create IF node followed by an additional IF node with negated condition
         cudaGraphConditionalHandle if_handle, else_handle;
-        cudaGraphConditionalHandleCreate(&if_handle, cuda_graph);
-        cudaGraphConditionalHandleCreate(&else_handle, cuda_graph);
+        check_cuda(cudaGraphConditionalHandleCreate(&if_handle, cuda_graph));
+        check_cuda(cudaGraphConditionalHandleCreate(&else_handle, cuda_graph));
         
         CUfunction kernel = get_conditional_kernel(context, "set_conditional_if_else_handles_kernel");
         if (!kernel)
@@ -3118,8 +3118,130 @@ bool wp_cuda_graph_insert_if_else(void* context, void* stream, int* condition, v
     return true;
 }
 
+// graph node type names for intelligible error reporting
+static const char* get_graph_node_type_name(CUgraphNodeType type)
+{
+    static const std::unordered_map<CUgraphNodeType, const char*> names
+    {
+        {CU_GRAPH_NODE_TYPE_KERNEL, "kernel launch"},
+        {CU_GRAPH_NODE_TYPE_MEMCPY, "memcpy"},
+        {CU_GRAPH_NODE_TYPE_MEMSET, "memset"},
+        {CU_GRAPH_NODE_TYPE_HOST, "host execution"},
+        {CU_GRAPH_NODE_TYPE_GRAPH, "graph launch"},
+        {CU_GRAPH_NODE_TYPE_EMPTY, "empty node"},
+        {CU_GRAPH_NODE_TYPE_WAIT_EVENT, "event wait"},
+        {CU_GRAPH_NODE_TYPE_EVENT_RECORD, "event record"},
+        {CU_GRAPH_NODE_TYPE_EXT_SEMAS_SIGNAL, "semaphore signal"},
+        {CU_GRAPH_NODE_TYPE_EXT_SEMAS_WAIT, "semaphore wait"},
+        {CU_GRAPH_NODE_TYPE_MEM_ALLOC, "memory allocation"},
+        {CU_GRAPH_NODE_TYPE_MEM_FREE, "memory deallocation"},
+        {CU_GRAPH_NODE_TYPE_BATCH_MEM_OP, "batched mem op"},
+        {CU_GRAPH_NODE_TYPE_CONDITIONAL, "conditional node"},
+    };
+
+    auto it = names.find(type);
+    if (it != names.end())
+        return it->second;
+    else
+        return "unknown node";
+}
+
+// check if a graph can be launched as a child graph
+static bool is_valid_child_graph(void* child_graph)
+{
+    // disallowed child graph nodes according to the documentation of cuGraphAddChildGraphNode()
+    static const std::unordered_set<CUgraphNodeType> disallowed_nodes
+    {
+        CU_GRAPH_NODE_TYPE_MEM_ALLOC,
+        CU_GRAPH_NODE_TYPE_MEM_FREE,
+        CU_GRAPH_NODE_TYPE_CONDITIONAL,
+    };
+
+    if (!child_graph)
+    {
+        wp::set_error_string("Child graph is null");
+        return false;
+    }
+
+    size_t num_nodes = 0;
+    if (!check_cuda(cudaGraphGetNodes((cudaGraph_t)child_graph, NULL, &num_nodes)))
+        return false;
+    std::vector<cudaGraphNode_t> nodes(num_nodes);
+    if (!check_cuda(cudaGraphGetNodes((cudaGraph_t)child_graph, nodes.data(), &num_nodes)))
+        return false;
+
+    for (size_t i = 0; i < num_nodes; i++)
+    {
+        // note: we use the driver API to get the node type, otherwise some nodes are not recognized correctly
+        CUgraphNodeType node_type;
+        check_cu(cuGraphNodeGetType_f(nodes[i], &node_type));
+        auto it = disallowed_nodes.find(node_type);
+        if (it != disallowed_nodes.end())
+        {
+            wp::set_error_string("Child graph contains an unsupported operation (%s)", get_graph_node_type_name(node_type));
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// check if a graph can be used as a conditional body graph
+// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#condtional-node-body-graph-requirements
+bool wp_cuda_graph_check_conditional_body(void* body_graph)
+{
+    static const std::unordered_set<CUgraphNodeType> allowed_nodes
+    {
+        CU_GRAPH_NODE_TYPE_MEMCPY,
+        CU_GRAPH_NODE_TYPE_MEMSET,
+        CU_GRAPH_NODE_TYPE_KERNEL,
+        CU_GRAPH_NODE_TYPE_GRAPH,
+        CU_GRAPH_NODE_TYPE_EMPTY,
+        CU_GRAPH_NODE_TYPE_CONDITIONAL,
+    };
+
+    if (!body_graph)
+    {
+        wp::set_error_string("Conditional body graph is null");
+        return false;
+    }
+
+    size_t num_nodes = 0;
+    if (!check_cuda(cudaGraphGetNodes((cudaGraph_t)body_graph, NULL, &num_nodes)))
+        return false;
+    std::vector<cudaGraphNode_t> nodes(num_nodes);
+    if (!check_cuda(cudaGraphGetNodes((cudaGraph_t)body_graph, nodes.data(), &num_nodes)))
+        return false;
+
+    for (size_t i = 0; i < num_nodes; i++)
+    {
+        // note: we use the driver API to get the node type, otherwise some nodes are not recognized correctly
+        CUgraphNodeType node_type;
+        check_cu(cuGraphNodeGetType_f(nodes[i], &node_type));
+        if (allowed_nodes.find(node_type) == allowed_nodes.end())
+        {
+            wp::set_error_string("Conditional body graph contains an unsupported operation (%s)", get_graph_node_type_name(node_type));
+            return false;
+        }
+        else if (node_type == CU_GRAPH_NODE_TYPE_GRAPH)
+        {
+            // check nested child graphs recursively
+            cudaGraph_t child_graph = NULL;
+            if (!check_cuda(cudaGraphChildGraphNodeGetGraph(nodes[i], &child_graph)))
+                return false;
+            if (!wp_cuda_graph_check_conditional_body(child_graph))
+                return false;
+        }
+    }
+
+    return true;
+}
+
 bool wp_cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph)
 {
+    if (!is_valid_child_graph(child_graph))
+        return false;
+
     ContextGuard guard(context);
 
     CUstream cuda_stream = static_cast<CUstream>(stream);
@@ -3275,6 +3397,12 @@ bool wp_cuda_graph_set_condition(void* context, void* stream, int* condition, ui
 }
 
 bool wp_cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph)
+{
+    wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
+    return false;
+}
+
+bool wp_cuda_graph_check_conditional_body(void* body_graph)
 {
     wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
     return false;

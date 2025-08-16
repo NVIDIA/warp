@@ -58,6 +58,7 @@
   ([GH-864](https://github.com/NVIDIA/warp/issues/864)).
 - Improve error messages for MathDx-based tile operations that fail to compile (e.g., `Failed to compile LTO`)
   ([GH-608](https://github.com/NVIDIA/warp/issues/608), [GH-911](https://github.com/NVIDIA/warp/issues/911)).
+- Improve error detection and reporting in conditional graphs ([GH-866](https://github.com/NVIDIA/warp/issues/866)).
 
 ### Fixed
 

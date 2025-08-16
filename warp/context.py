@@ -3153,11 +3153,7 @@ class Graph:
         self.capture_id = capture_id
         self.module_execs: set[ModuleExec] = set()
         self.graph_exec: ctypes.c_void_p | None = None
-
         self.graph: ctypes.c_void_p | None = None
-        self.has_conditional = (
-            False  # Track if there are conditional nodes in the graph since they are not allowed in child graphs
-        )
 
     def __del__(self):
         if not hasattr(self, "graph") or not hasattr(self, "device") or not self.graph:
@@ -3897,6 +3893,9 @@ class Runtime:
                 ctypes.c_void_p,
             ]
             self.core.wp_cuda_graph_insert_child_graph.restype = ctypes.c_bool
+
+            self.core.wp_cuda_graph_check_conditional_body.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_graph_check_conditional_body.restype = ctypes.c_bool
 
             self.core.wp_cuda_compile_program.argtypes = [
                 ctypes.c_char_p,  # cuda_src
@@ -6641,8 +6640,6 @@ def capture_if(
 
         return
 
-    graph.has_conditional = True
-
     # ensure conditional graph nodes are supported
     assert_conditional_graph_support()
 
@@ -6672,10 +6669,6 @@ def capture_if(
         if isinstance(on_true, Callable):
             on_true(**kwargs)
         elif isinstance(on_true, Graph):
-            if on_true.has_conditional:
-                raise RuntimeError(
-                    "The on_true graph contains conditional nodes, which are not allowed in child graphs"
-                )
             if not runtime.core.wp_cuda_graph_insert_child_graph(
                 device.context,
                 stream.cuda_stream,
@@ -6686,6 +6679,10 @@ def capture_if(
             raise TypeError("on_true must be a Callable or a Graph")
         capture_pause(stream=stream)
 
+        # check the if-body graph
+        if not runtime.core.wp_cuda_graph_check_conditional_body(graph_on_true):
+            raise RuntimeError(runtime.get_error_string())
+
     # capture else-graph
     if on_false is not None:
         # temporarily repurpose the main_graph python object such that all dependencies
@@ -6695,10 +6692,6 @@ def capture_if(
         if isinstance(on_false, Callable):
             on_false(**kwargs)
         elif isinstance(on_false, Graph):
-            if on_false.has_conditional:
-                raise RuntimeError(
-                    "The on_false graph contains conditional nodes, which are not allowed in child graphs"
-                )
             if not runtime.core.wp_cuda_graph_insert_child_graph(
                 device.context,
                 stream.cuda_stream,
@@ -6708,6 +6701,10 @@ def capture_if(
         else:
             raise TypeError("on_false must be a Callable or a Graph")
         capture_pause(stream=stream)
+
+        # check the else-body graph
+        if not runtime.core.wp_cuda_graph_check_conditional_body(graph_on_false):
+            raise RuntimeError(runtime.get_error_string())
 
     # restore the main graph to its original state
     main_graph.graph = main_graph_ptr
@@ -6775,8 +6772,6 @@ def capture_while(condition: warp.array(dtype=int), while_body: Callable | Graph
 
         return
 
-    graph.has_conditional = True
-
     # ensure conditional graph nodes are supported
     assert_conditional_graph_support()
 
@@ -6806,9 +6801,6 @@ def capture_while(condition: warp.array(dtype=int), while_body: Callable | Graph
     if isinstance(while_body, Callable):
         while_body(**kwargs)
     elif isinstance(while_body, Graph):
-        if while_body.has_conditional:
-            raise RuntimeError("The body graph contains conditional nodes, which are not allowed in child graphs")
-
         if not runtime.core.wp_cuda_graph_insert_child_graph(
             device.context,
             stream.cuda_stream,
@@ -6816,7 +6808,7 @@ def capture_while(condition: warp.array(dtype=int), while_body: Callable | Graph
         ):
             raise RuntimeError(runtime.get_error_string())
     else:
-        raise RuntimeError(runtime.get_error_string())
+        raise TypeError("while_body must be a callable or a graph")
 
     # update condition
     if not runtime.core.wp_cuda_graph_set_condition(
@@ -6827,8 +6819,13 @@ def capture_while(condition: warp.array(dtype=int), while_body: Callable | Graph
     ):
         raise RuntimeError(runtime.get_error_string())
 
-    # stop capturing child graph and resume capturing parent graph
+    # stop capturing while-body
     capture_pause(stream=stream)
+
+    # check the while-body graph
+    if not runtime.core.wp_cuda_graph_check_conditional_body(body_graph):
+        raise RuntimeError(runtime.get_error_string())
+
     # restore the main graph to its original state
     main_graph.graph = main_graph_ptr
     capture_resume(main_graph, stream=stream)
