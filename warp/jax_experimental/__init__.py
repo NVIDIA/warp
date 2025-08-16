@@ -14,3 +14,4 @@
 # limitations under the License.
 
 from .custom_call import jax_kernel
+from .ffi import jax_ad_kernel
