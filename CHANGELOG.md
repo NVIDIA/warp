@@ -27,6 +27,8 @@
 - Deprecate support for Intel-based macOS (x86_64) with removal targeted in late 2025.
   We will continue to support Apple Silicon-based Macs with the CPU backend.
   Users on Intel-based hardware will now receive a `DeprecationWarning` with this information.
+- Add `wp.atomic_and()` (`&=`), `wp.atomic_or()` (`|=`), and `wp.atomic_xor()` (`^=`) built-ins for atomic bitwise operations, along with bitwise operations for vector, matrix, and tile types.
+  ([GH-886](https://github.com/NVIDIA/warp/issues/886)).
 
 ### Changed
 
