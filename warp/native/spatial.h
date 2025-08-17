@@ -556,26 +556,6 @@ inline CUDA_CALLABLE void add_inplace(transform_t<Type>& t, int idx, Type value)
 }
 
 
-template<typename Type>
-inline CUDA_CALLABLE void add_inplace(transform_t<Type>& t, slice_t slice, Type value)
-{
-    assert(slice.start >= 0 && slice.start <= 7);
-    assert(slice.stop >= -1 && slice.stop <= 7);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (
-        int i = slice.start;
-        is_reversed ? (i > slice.stop) : (i < slice.stop);
-        i += slice.step
-    )
-    {
-        t[i] += value;
-    }
-}
-
-
 template<unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void add_inplace(transform_t<Type>& t, slice_t slice, const vec_t<SliceLength, Type> &a)
 {
@@ -619,29 +599,6 @@ inline CUDA_CALLABLE void adj_add_inplace(transform_t<Type>& t, int idx, Type va
     }
 
     adj_value += adj_t[idx];
-}
-
-
-template<typename Type>
-inline CUDA_CALLABLE void adj_add_inplace(
-    const transform_t<Type>& t, slice_t slice, Type value,
-    transform_t<Type>& adj_t, slice_t& adj_slice, Type& adj_value
-)
-{
-    assert(slice.start >= 0 && slice.start <= 7);
-    assert(slice.stop >= -1 && slice.stop <= 7);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (
-        int i = slice.start;
-        is_reversed ? (i > slice.stop) : (i < slice.stop);
-        i += slice.step
-    )
-    {
-        adj_value += adj_t[i];
-    }
 }
 
 
@@ -693,26 +650,6 @@ inline CUDA_CALLABLE void sub_inplace(transform_t<Type>& t, int idx, Type value)
 }
 
 
-template<typename Type>
-inline CUDA_CALLABLE void sub_inplace(transform_t<Type>& t, slice_t slice, Type value)
-{
-    assert(slice.start >= 0 && slice.start <= 7);
-    assert(slice.stop >= -1 && slice.stop <= 7);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (
-        int i = slice.start;
-        is_reversed ? (i > slice.stop) : (i < slice.stop);
-        i += slice.step
-    )
-    {
-        t[i] -= value;
-    }
-}
-
-
 template<unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void sub_inplace(transform_t<Type>& t, slice_t slice, const vec_t<SliceLength, Type> &a)
 {
@@ -756,28 +693,6 @@ inline CUDA_CALLABLE void adj_sub_inplace(transform_t<Type>& t, int idx, Type va
     }
 
     adj_value -= adj_t[idx];
-}
-
-
-template<typename Type>
-inline CUDA_CALLABLE void adj_sub_inplace(
-    const transform_t<Type>& t, slice_t slice, Type value,
-    transform_t<Type>& adj_t, slice_t& adj_slice, Type& adj_value
-)
-{
-    assert(slice.start >= 0 && slice.start <= 7);
-    assert(slice.stop >= -1 && slice.stop <= 7);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-    for (
-        int i = slice.start;
-        is_reversed ? (i > slice.stop) : (i < slice.stop);
-        i += slice.step
-    )
-    {
-        adj_value -= adj_t[i];
-    }
 }
 
 
@@ -828,25 +743,6 @@ inline CUDA_CALLABLE void assign_inplace(transform_t<Type>& t, int idx, Type val
     t[idx] = value;
 }
 
-template<typename Type>
-inline CUDA_CALLABLE void assign_inplace(transform_t<Type>& t, slice_t slice, Type value)
-{
-    assert(slice.start >= 0 && slice.start <= 7);
-    assert(slice.stop >= -1 && slice.stop <= 7);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (
-        int i = slice.start;
-        is_reversed ? (i > slice.stop) : (i < slice.stop);
-        i += slice.step
-    )
-    {
-        t[i] = value;
-    }
-}
-
 template<unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void assign_inplace(transform_t<Type>& t, slice_t slice, const vec_t<SliceLength, Type> &a)
 {
@@ -888,29 +784,6 @@ inline CUDA_CALLABLE void adj_assign_inplace(transform_t<Type>& t, int idx, Type
     }
 
     adj_value += adj_t[idx];
-}
-
-
-template<typename Type>
-inline CUDA_CALLABLE void adj_assign_inplace(
-    const transform_t<Type>& t, slice_t slice, Type value,
-    transform_t<Type>& adj_t, slice_t& adj_slice, Type& adj_value
-)
-{
-    assert(slice.start >= 0 && slice.start <= 7);
-    assert(slice.stop >= -1 && slice.stop <= 7);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (
-        int i = slice.start;
-        is_reversed ? (i > slice.stop) : (i < slice.stop);
-        i += slice.step
-    )
-    {
-        adj_value += adj_t[i];
-    }
 }
 
 template<unsigned SliceLength, typename Type>
@@ -962,14 +835,6 @@ inline CUDA_CALLABLE transform_t<Type> assign_copy(transform_t<Type>& t, int idx
     return ret;
 }
 
-template<typename Type>
-inline CUDA_CALLABLE transform_t<Type> assign_copy(transform_t<Type>& t, slice_t slice, Type value)
-{
-    transform_t<Type> ret(t);
-    assign_inplace(ret, slice, value);
-    return ret;
-}
-
 template<unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE transform_t<Type> assign_copy(transform_t<Type>& t, slice_t slice, const vec_t<SliceLength, Type> &a)
 {
@@ -999,36 +864,6 @@ inline CUDA_CALLABLE void adj_assign_copy(transform_t<Type>& t, int idx, Type va
     {
         if (i != idx)
             adj_t[i] += adj_ret[i];
-    }
-}
-
-template<typename Type>
-inline CUDA_CALLABLE void adj_assign_copy(
-    transform_t<Type>& t, slice_t slice, Type value,
-    transform_t<Type>& adj_t, slice_t& adj_slice, Type& adj_value,
-    const transform_t<Type>& adj_ret
-)
-{
-    assert(slice.start >= 0 && slice.start <= 7);
-    assert(slice.stop >= -1 && slice.stop <= 7);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (int i = 0; i < 7; ++i)
-    {
-        bool in_slice = is_reversed
-            ? (i <= slice.start && i > slice.stop && (slice.start - i) % (-slice.step) == 0)
-            : (i >= slice.start && i < slice.stop && (i - slice.start) % slice.step == 0);
-
-        if (!in_slice)
-        {
-            adj_t[i] += adj_ret[i];
-        }
-        else
-        {
-            adj_value += adj_ret[i];
-        }
     }
 }
 

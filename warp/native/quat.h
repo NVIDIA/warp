@@ -583,26 +583,6 @@ inline CUDA_CALLABLE void add_inplace(quat_t<Type>& q, int idx, Type value)
 }
 
 
-template<typename Type>
-inline CUDA_CALLABLE void add_inplace(quat_t<Type>& q, slice_t slice, Type value)
-{
-    assert(slice.start >= 0 && slice.start <= 4);
-    assert(slice.stop >= -1 && slice.stop <= 4);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (
-        int i = slice.start;
-        is_reversed ? (i > slice.stop) : (i < slice.stop);
-        i += slice.step
-    )
-    {
-        q[i] += value;
-    }
-}
-
-
 template<unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void add_inplace(quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a)
 {
@@ -646,29 +626,6 @@ inline CUDA_CALLABLE void adj_add_inplace(quat_t<Type>& q, int idx, Type value,
     }
 
     adj_value += adj_q[idx];
-}
-
-
-template<typename Type>
-inline CUDA_CALLABLE void adj_add_inplace(
-    const quat_t<Type>& q, slice_t slice, Type value,
-    quat_t<Type>& adj_q, slice_t& adj_slice, Type& adj_value
-)
-{
-    assert(slice.start >= 0 && slice.start <= 4);
-    assert(slice.stop >= -1 && slice.stop <= 4);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (
-        int i = slice.start;
-        is_reversed ? (i > slice.stop) : (i < slice.stop);
-        i += slice.step
-    )
-    {
-        adj_value += adj_q[i];
-    }
 }
 
 
@@ -720,26 +677,6 @@ inline CUDA_CALLABLE void sub_inplace(quat_t<Type>& q, int idx, Type value)
 }
 
 
-template<typename Type>
-inline CUDA_CALLABLE void sub_inplace(quat_t<Type>& q, slice_t slice, Type value)
-{
-    assert(slice.start >= 0 && slice.start <= 4);
-    assert(slice.stop >= -1 && slice.stop <= 4);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (
-        int i = slice.start;
-        is_reversed ? (i > slice.stop) : (i < slice.stop);
-        i += slice.step
-    )
-    {
-        q[i] -= value;
-    }
-}
-
-
 template<unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void sub_inplace(quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a)
 {
@@ -783,29 +720,6 @@ inline CUDA_CALLABLE void adj_sub_inplace(quat_t<Type>& q, int idx, Type value,
     }
 
     adj_value -= adj_q[idx];
-}
-
-
-template<typename Type>
-inline CUDA_CALLABLE void adj_sub_inplace(
-    const quat_t<Type>& q, slice_t slice, Type value,
-    quat_t<Type>& adj_q, slice_t& adj_slice, Type& adj_value
-)
-{
-    assert(slice.start >= 0 && slice.start <= 4);
-    assert(slice.stop >= -1 && slice.stop <= 4);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (
-        int i = slice.start;
-        is_reversed ? (i > slice.stop) : (i < slice.stop);
-        i += slice.step
-    )
-    {
-        adj_value -= adj_q[i];
-    }
 }
 
 
@@ -857,26 +771,6 @@ inline CUDA_CALLABLE void assign_inplace(quat_t<Type>& q, int idx, Type value)
 }
 
 
-template<typename Type>
-inline CUDA_CALLABLE void assign_inplace(quat_t<Type>& q, slice_t slice, Type value)
-{
-    assert(slice.start >= 0 && slice.start <= 4);
-    assert(slice.stop >= -1 && slice.stop <= 4);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (
-        int i = slice.start;
-        is_reversed ? (i > slice.stop) : (i < slice.stop);
-        i += slice.step
-    )
-    {
-        q[i] = value;
-    }
-}
-
-
 template<unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void assign_inplace(quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a)
 {
@@ -919,29 +813,6 @@ inline CUDA_CALLABLE void adj_assign_inplace(quat_t<Type>& q, int idx, Type valu
     }
 
     adj_value += adj_q[idx];
-}
-
-
-template<typename Type>
-inline CUDA_CALLABLE void adj_assign_inplace(
-    const quat_t<Type>& q, slice_t slice, Type value,
-    quat_t<Type>& adj_q, slice_t& adj_slice, Type& adj_value
-)
-{
-    assert(slice.start >= 0 && slice.start <= 4);
-    assert(slice.stop >= -1 && slice.stop <= 4);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (
-        int i = slice.start;
-        is_reversed ? (i > slice.stop) : (i < slice.stop);
-        i += slice.step
-    )
-    {
-        adj_value += adj_q[i];
-    }
 }
 
 
@@ -994,14 +865,6 @@ inline CUDA_CALLABLE quat_t<Type> assign_copy(quat_t<Type>& q, int idx, Type val
     return ret;
 }
 
-template<typename Type>
-inline CUDA_CALLABLE quat_t<Type> assign_copy(quat_t<Type>& q, slice_t slice, Type value)
-{
-    quat_t<Type> ret(q);
-    assign_inplace(ret, slice, value);
-    return ret;
-}
-
 template<unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE quat_t<Type> assign_copy(quat_t<Type>& q, slice_t slice, const vec_t<SliceLength, Type> &a)
 {
@@ -1031,37 +894,6 @@ inline CUDA_CALLABLE void adj_assign_copy(quat_t<Type>& q, int idx, Type value, 
     {
         if(i != idx)
             adj_q[i] += adj_ret[i];
-    }
-}
-
-
-template<typename Type>
-inline CUDA_CALLABLE void adj_assign_copy(
-    quat_t<Type>& q, slice_t slice, Type value,
-    quat_t<Type>& adj_q, slice_t& adj_slice, Type& adj_value,
-    const quat_t<Type>& adj_ret
-)
-{
-    assert(slice.start >= 0 && slice.start <= 4);
-    assert(slice.stop >= -1 && slice.stop <= 4);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (int i = 0; i < 4; ++i)
-    {
-        bool in_slice = is_reversed
-            ? (i <= slice.start && i > slice.stop && (slice.start - i) % (-slice.step) == 0)
-            : (i >= slice.start && i < slice.stop && (i - slice.start) % slice.step == 0);
-
-        if (!in_slice)
-        {
-            adj_q[i] += adj_ret[i];
-        }
-        else
-        {
-            adj_value += adj_ret[i];
-        }
     }
 }
 

@@ -2570,20 +2570,11 @@ def test_transform_slicing_assign(test, device):
         t[1::-2] = vec1(42.0)
         wp.expect_eq(t == wp.transform(p=wp.vec3(41.0, 42.0, 40.0), q=wp.quat(34.0, 39.0, 32.0, 38.0)), True)
 
-        t[:2] = 43.0
-        wp.expect_eq(t == wp.transform(p=wp.vec3(43.0, 43.0, 40.0), q=wp.quat(34.0, 39.0, 32.0, 38.0)), True)
+        t[1:] += vec6(43.0, 44.0, 45.0, 46.0, 47.0, 48.0)
+        wp.expect_eq(t == wp.transform(p=wp.vec3(41.0, 85.0, 84.0), q=wp.quat(79.0, 85.0, 79.0, 86.0)), True)
 
-        t[1:] += vec6(44.0, 45.0, 46.0, 47.0, 48.0, 49.0)
-        wp.expect_eq(t == wp.transform(p=wp.vec3(43.0, 87.0, 85.0), q=wp.quat(80.0, 86.0, 80.0, 87.0)), True)
-
-        t[:2] += 50.0
-        wp.expect_eq(t == wp.transform(p=wp.vec3(93.0, 137.0, 85.0), q=wp.quat(80.0, 86.0, 80.0, 87.0)), True)
-
-        t[:-1] -= vec6(51.0, 52.0, 53.0, 54.0, 55.0, 56.0)
-        wp.expect_eq(t == wp.transform(p=wp.vec3(42.0, 85.0, 32.0), q=wp.quat(26.0, 31.0, 24.0, 87.0)), True)
-
-        t[-2:] -= 34.0
-        wp.expect_eq(t == wp.transform(p=wp.vec3(42.0, 85.0, 32.0), q=wp.quat(26.0, 31.0, -10.0, 53.0)), True)
+        t[:-1] -= vec6(49.0, 50.0, 51.0, 52.0, 53.0, 54.0)
+        wp.expect_eq(t == wp.transform(p=wp.vec3(-8.0, 35.0, 33.0), q=wp.quat(27.0, 32.0, 25.0, 86.0)), True)
 
     @wp.kernel(module="unique")
     def kernel():

@@ -1240,32 +1240,14 @@ def test_vec_slicing_assign(test, device):
         v[1::-2] = vec1(25.0)
         wp.expect_eq(v == wp.vec4(22.0, 25.0, 20.0, 23.0), True)
 
-        v[:2] = 26.0
-        wp.expect_eq(v == wp.vec4(26.0, 26.0, 20.0, 23.0), True)
+        v[1:] += vec3(26.0, 27.0, 28.0)
+        wp.expect_eq(v == wp.vec4(22.0, 51.0, 47.0, 51.0), True)
 
-        v[1:] += vec3(27.0, 28.0, 29.0)
-        wp.expect_eq(v == wp.vec4(26.0, 53.0, 48.0, 52.0), True)
+        v[:-1] -= vec3(29.0, 30.0, 31.0)
+        wp.expect_eq(v == wp.vec4(-7.0, 21.0, 16.0, 51.0), True)
 
-        v[:2] += 30.0
-        wp.expect_eq(v == wp.vec4(56.0, 83.0, 48.0, 52.0), True)
-
-        v[:-1] -= vec3(31.0, 32.0, 33.0)
-        wp.expect_eq(v == wp.vec4(25.0, 51.0, 15.0, 52.0), True)
-
-        v[-2:] -= 34.0
-        wp.expect_eq(v == wp.vec4(25.0, 51.0, -19.0, 18.0), True)
-
-        v[1::2] *= 5.0
-        wp.expect_eq(v == wp.vec4(25.0, 255.0, -19.0, 90.0), True)
-
-        v[-3:2] /= 3.0
-        wp.expect_eq(v == wp.vec4(25.0, 85.0, -19.0, 90.0), True)
-
-        v[:] %= vec4(35.0, 36.0, 37.0, 38.0)
-        wp.expect_eq(v == wp.vec4(25.0, 13.0, -19.0, 14.0), True)
-
-        v[:2] %= 3.0
-        wp.expect_eq(v == wp.vec4(1.0, 1.0, -19.0, 14.0), True)
+        v[:] %= vec4(32.0, 33.0, 34.0, 35.0)
+        wp.expect_eq(v == wp.vec4(-7.0, 21.0, 16.0, 16.0), True)
 
     @wp.kernel(module="unique")
     def kernel():
@@ -1295,7 +1277,7 @@ def test_vec_assign_inplace_errors(test, device):
 
     with test.assertRaisesRegex(
         ValueError,
-        r"The provided value is expected to be a scalar, or a vector of length 3, with dtype float32.$",
+        r"The provided value is expected to be a vector of length 3, with dtype float32.$",
     ):
         wp.launch(kernel_2, dim=1, device=device)
 
@@ -1306,7 +1288,7 @@ def test_vec_assign_inplace_errors(test, device):
 
     with test.assertRaisesRegex(
         ValueError,
-        r"The provided value is expected to be a scalar, or a vector of length 3, with dtype float32.$",
+        r"The provided value is expected to be a vector of length 3, with dtype float32.$",
     ):
         wp.launch(kernel_3, dim=1, device=device)
 

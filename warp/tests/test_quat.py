@@ -2438,20 +2438,11 @@ def test_quat_slicing_assign(test, device):
         q[1::-2] = vec1(19.0)
         wp.expect_eq(q == wp.quat(15.0, 19.0, 16.0, 18.0), True)
 
-        q[:2] = 20.0
-        wp.expect_eq(q == wp.quat(20.0, 20.0, 16.0, 18.0), True)
+        q[1:] += vec3(20.0, 21.0, 22.0)
+        wp.expect_eq(q == wp.quat(15.0, 39.0, 37.0, 40.0), True)
 
-        q[1:] += vec3(21.0, 22.0, 23.0)
-        wp.expect_eq(q == wp.quat(20.0, 41.0, 38.0, 41.0), True)
-
-        q[:2] += 24.0
-        wp.expect_eq(q == wp.quat(44.0, 65.0, 38.0, 41.0), True)
-
-        q[:-1] -= vec3(25.0, 26.0, 27.0)
-        wp.expect_eq(q == wp.quat(19.0, 39.0, 11.0, 41.0), True)
-
-        q[-2:] -= 34.0
-        wp.expect_eq(q == wp.quat(19.0, 39.0, -23.0, 7.0), True)
+        q[:-1] -= vec3(23.0, 24.0, 25.0)
+        wp.expect_eq(q == wp.quat(-8.0, 15.0, 12.0, 40.0), True)
 
     @wp.kernel(module="unique")
     def kernel():
