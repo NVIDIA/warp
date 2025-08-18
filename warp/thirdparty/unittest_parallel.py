@@ -28,6 +28,7 @@ import sys
 import tempfile
 import time
 import unittest
+from concurrent.futures.process import BrokenProcessPool
 from contextlib import contextmanager
 from io import StringIO
 
@@ -243,15 +244,76 @@ def main(argv=None):
                     test_manager = ParallelTestManager(manager, args, temp_dir)
                     results = pool.map(test_manager.run_tests, test_suites)
             else:
-                # NVIDIA Modification added concurrent.futures
-                with concurrent.futures.ProcessPoolExecutor(
-                    max_workers=process_count,
-                    mp_context=multiprocessing.get_context(method="spawn"),
-                    initializer=initialize_test_process,
-                    initargs=(manager.Lock(), shared_index, args, temp_dir),
-                ) as executor:
-                    test_manager = ParallelTestManager(manager, args, temp_dir)
-                    results = list(executor.map(test_manager.run_tests, test_suites, timeout=2400))
+                # NVIDIA Modification: added concurrent.futures with crash handling and per-suite isolated fallback
+                results = []
+                parallel_failed = False
+
+                try:
+                    with concurrent.futures.ProcessPoolExecutor(
+                        max_workers=process_count,
+                        mp_context=multiprocessing.get_context(method="spawn"),
+                        initializer=initialize_test_process,
+                        initargs=(manager.Lock(), shared_index, args, temp_dir),
+                    ) as executor:
+                        test_manager = ParallelTestManager(manager, args, temp_dir)
+                        # Try parallel execution first using the original map approach
+                        results = list(executor.map(test_manager.run_tests, test_suites, timeout=2400))
+
+                except BrokenProcessPool:
+                    # Process pool is broken - switch to isolated single-process fallback
+                    print(
+                        "Warning: Process pool broken during parallel execution. Switching to isolated single-process fallback.",
+                        file=sys.stderr,
+                    )
+                    parallel_failed = True
+                except Exception as e:
+                    # Handle other pool-level exceptions
+                    print(
+                        f"Warning: Process pool error: {e}. Switching to isolated single-process fallback.",
+                        file=sys.stderr,
+                    )
+                    parallel_failed = True
+
+                # Fallback to isolated single-process execution if parallel failed
+                if parallel_failed:
+                    print("Running all tests in isolated single-process mode...", file=sys.stderr)
+                    # Run all test suites in isolated single-process pools
+                    results = []
+                    for i, suite in enumerate(test_suites):
+                        try:
+                            # Create a new single-process pool for each test suite
+                            with concurrent.futures.ProcessPoolExecutor(
+                                max_workers=1,
+                                mp_context=multiprocessing.get_context(method="spawn"),
+                                initializer=initialize_test_process,
+                                initargs=(manager.Lock(), shared_index, args, temp_dir),
+                            ) as executor:
+                                test_manager = ParallelTestManager(manager, args, temp_dir)
+                                future = executor.submit(test_manager.run_tests, suite)
+                                try:
+                                    result = future.result(timeout=2400)
+                                    results.append(result)
+                                except BrokenProcessPool:
+                                    print(
+                                        f"Warning: Process crashed or was terminated unexpectedly in isolated execution for test suite {i + 1}/{len(test_suites)}. Marking tests as crashed.",
+                                        file=sys.stderr,
+                                    )
+                                    crash_result = create_crash_result(suite)
+                                    results.append(crash_result)
+                                except Exception as e:
+                                    print(
+                                        f"Warning: Error in isolated test suite {i + 1}/{len(test_suites)}: {e}. Marking tests as crashed.",
+                                        file=sys.stderr,
+                                    )
+                                    error_result = create_crash_result(suite)
+                                    results.append(error_result)
+                        except Exception as e:
+                            print(
+                                f"Warning: Failed to create isolated process for test suite {i + 1}/{len(test_suites)}: {e}. Marking tests as crashed.",
+                                file=sys.stderr,
+                            )
+                            error_result = create_crash_result(suite)
+                            results.append(error_result)
         else:
             # This entire path is an NVIDIA Modification
 
@@ -425,6 +487,36 @@ def _iter_test_cases(test_suite):
     else:
         for suite in test_suite:
             yield from _iter_test_cases(suite)
+
+
+def create_crash_result(test_suite):
+    """Create a result indicating the process crashed or was terminated unexpectedly while running this test suite.
+
+    This entire function is an NVIDIA modification.
+    """
+    test_count = test_suite.countTestCases()
+    crash_errors = []
+
+    # Create crash error entries for each test in the suite
+    # Note: We don't know which specific test caused the crash, just that the process crashed
+    for test in _iter_test_cases(test_suite):
+        error_msg = (
+            "Process crashed or was terminated unexpectedly while running this test suite "
+            f"(unknown which test caused the crash): {test}"
+        )
+        crash_errors.append(
+            "\n".join(
+                [
+                    unittest.TextTestResult.separator1,
+                    str(test),
+                    unittest.TextTestResult.separator2,
+                    error_msg,
+                ]
+            )
+        )
+
+    # Return the same format as run_tests: (test_count, errors, failures, skipped, expected_failures, unexpected_successes, test_records)
+    return (test_count, crash_errors, [], 0, 0, 0, [])
 
 
 class ParallelTestManager:
