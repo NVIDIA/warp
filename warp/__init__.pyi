@@ -326,7 +326,7 @@ from warp.builtins import static as static
 
 from warp.math import *
 
-import warp.config as config
+from . import config as config
 
 __version__ = config.version
 
