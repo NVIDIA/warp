@@ -17,24 +17,17 @@ import unittest
 from typing import List, Tuple
 
 import warp as wp
-from warp.tests.unittest_utils import *
-
-
-def test_context_type_str(test, device):
-    assert wp.context.type_str(List[int]) == "List[int]"
-    assert wp.context.type_str(List[float]) == "List[float]"
-
-    assert wp.context.type_str(Tuple[int]) == "Tuple[int]"
-    assert wp.context.type_str(Tuple[float]) == "Tuple[float]"
-    assert wp.context.type_str(Tuple[int, float]) == "Tuple[int, float]"
-    assert wp.context.type_str(Tuple[int, ...]) == "Tuple[int, ...]"
 
 
 class TestContext(unittest.TestCase):
-    pass
+    def test_context_type_str(self):
+        self.assertEqual(wp.context.type_str(List[int]), "List[int]")
+        self.assertEqual(wp.context.type_str(List[float]), "List[float]")
 
-
-add_function_test(TestContext, "test_context_type_str", test_context_type_str)
+        self.assertEqual(wp.context.type_str(Tuple[int]), "Tuple[int]")
+        self.assertEqual(wp.context.type_str(Tuple[float]), "Tuple[float]")
+        self.assertEqual(wp.context.type_str(Tuple[int, float]), "Tuple[int, float]")
+        self.assertEqual(wp.context.type_str(Tuple[int, ...]), "Tuple[int, ...]")
 
 
 if __name__ == "__main__":

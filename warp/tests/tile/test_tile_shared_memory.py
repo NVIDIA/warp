@@ -110,11 +110,12 @@ def test_tile_shared_mem_graph(test, device):
 
     out = wp.empty((DIM_M, DIM_N), dtype=float, device=device)
 
-    wp.load_module(device=device)
+    unique_module = compute.module
+    unique_module.load(device)
 
-    wp.capture_begin(device, force_module_load=False)
-    wp.launch_tiled(compute, dim=[1], inputs=[out], block_dim=BLOCK_DIM, device=device)
-    graph = wp.capture_end(device)
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        wp.launch_tiled(compute, dim=[1], inputs=[out], block_dim=BLOCK_DIM, device=device)
+    graph = capture.graph
 
     wp.capture_launch(graph)
 

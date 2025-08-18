@@ -77,20 +77,22 @@ def test_future_annotations(test, device):
     foo_data.x = 1.23
     foo_data.y = 2.34
 
-    out = wp.empty(1, dtype=float)
+    out = wp.empty(1, dtype=float, device=device)
 
     kernel_3 = create_kernel_3(foo)
 
-    wp.launch(kernel_1, dim=out.shape, outputs=(out,))
-    wp.launch(kernel_2, dim=out.shape, outputs=(out,))
-    wp.launch(kernel_3, dim=out.shape, inputs=(foo_data,), outputs=(out,))
+    wp.launch(kernel_1, dim=out.shape, outputs=(out,), device=device)
+    wp.launch(kernel_2, dim=out.shape, outputs=(out,), device=device)
+    wp.launch(kernel_3, dim=out.shape, inputs=(foo_data,), outputs=(out,), device=device)
 
 
 class TestFutureAnnotations(unittest.TestCase):
     pass
 
 
-add_function_test(TestFutureAnnotations, "test_future_annotations", test_future_annotations)
+devices = get_test_devices()
+
+add_function_test(TestFutureAnnotations, "test_future_annotations", test_future_annotations, devices=devices)
 
 
 if __name__ == "__main__":
