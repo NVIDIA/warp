@@ -1879,6 +1879,69 @@ Tile Primitives
     :returns: A tile with shape as specified and data type the same as the source array
 
 
+.. py:function:: tile_load_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], shape: Tuple[int, ...], offset: Tuple[int, ...], axis: int32, storage: str) -> Tile[Any,Tuple[int, ...]]
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Loads a tile from a global memory array, with loads along a specified axis mapped according to a 1D tile of indices.
+
+    :param a: The source array in global memory
+    :param indices: A 1D tile of integer indices mapping to elements in ``a``.
+    :param shape: Shape of the tile to load, must have the same number of dimensions as ``a``, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
+    :param offset: Offset in the source array to begin reading from (optional)
+    :param axis: Axis of ``a`` that indices refer to
+    :param storage: The storage location for the tile: ``"register"`` for registers (default) or ``"shared"`` for shared memory.
+    :returns: A tile with shape as specified and data type the same as the source array
+
+    This example shows how to select and store the even indexed rows from a 2D array:
+
+    .. code-block:: python
+
+        TILE_M = wp.constant(2)
+        TILE_N = wp.constant(2)
+        HALF_M = wp.constant(TILE_M // 2)
+        HALF_N = wp.constant(TILE_N // 2)
+
+        @wp.kernel
+        def compute(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+            i, j = wp.tid()
+
+            evens = wp.tile_arange(HALF_M, dtype=int, storage="shared") * 2
+
+            t0 = wp.tile_load_indexed(x, indices=evens, shape=(HALF_M, TILE_N), offset=(i*TILE_M, j*TILE_N), axis=0, storage="register")
+            wp.tile_store(y, t0, offset=(i*HALF_M, j*TILE_N))
+
+        M = TILE_M * 2
+        N = TILE_N * 2
+
+        arr = np.arange(M * N).reshape(M, N)
+
+        x = wp.array(arr, dtype=float)
+        y = wp.zeros((M // 2, N), dtype=float)
+
+        wp.launch_tiled(compute, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
+
+        print(x.numpy())
+        print(y.numpy())
+
+    Prints:
+
+    .. code-block:: text
+
+        [[ 0.  1.  2.  3.]
+         [ 4.  5.  6.  7.]
+         [ 8.  9. 10. 11.]
+         [12. 13. 14. 15.]]
+
+        [[ 0.  1.  2.  3.]
+         [ 8.  9. 10. 11.]]
+    
+
+
 .. py:function:: tile_store(a: Array[Any], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...]) -> None
 
     .. hlist::
@@ -1896,6 +1959,74 @@ Tile Primitives
     :param offset: Offset in the destination array (optional)
 
 
+.. py:function:: tile_store_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], axis: int32) -> None
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Store a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
+
+    :param a: The destination array in global memory
+    :param indices: A 1D tile of integer indices mapping to elements in ``a``.
+    :param t: The source tile to store data from, must have the same data type and number of dimensions as the destination array, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
+    :param offset: Offset in the destination array (optional)
+    :param axis: Axis of ``a`` that indices refer to
+
+    This example shows how to map tile rows to the even rows of a 2D array:
+
+    .. code-block:: python
+
+        TILE_M = wp.constant(2)
+        TILE_N = wp.constant(2)
+        TWO_M = wp.constant(TILE_M * 2)
+        TWO_N = wp.constant(TILE_N * 2)
+
+        @wp.kernel
+        def compute(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+            i, j = wp.tid()
+
+            t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
+
+            evens_M = wp.tile_arange(TILE_M, dtype=int, storage="shared") * 2
+
+            wp.tile_store_indexed(y, indices=evens_M, t=t, offset=(i*TWO_M, j*TILE_N), axis=0)
+
+        M = TILE_M * 2
+        N = TILE_N * 2
+
+        arr = np.arange(M * N, dtype=float).reshape(M, N)
+
+        x = wp.array(arr, dtype=float, requires_grad=True, device=device)
+        y = wp.zeros((M * 2, N), dtype=float, requires_grad=True, device=device)
+
+        wp.launch_tiled(compute, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
+
+        print(x.numpy())
+        print(y.numpy())
+
+    Prints:
+
+    .. code-block:: text
+
+        [[ 0.  1.  2.  3.]
+         [ 4.  5.  6.  7.]
+         [ 8.  9. 10. 11.]
+         [12. 13. 14. 15.]]
+
+        [[ 0.  1.  2.  3.]
+         [ 0.  0.  0.  0.]
+         [ 4.  5.  6.  7.]
+         [ 0.  0.  0.  0.]
+         [ 8.  9. 10. 11.]
+         [ 0.  0.  0.  0.]
+         [12. 13. 14. 15.]
+         [ 0.  0.  0.  0.]]
+    
+
+
 .. py:function:: tile_atomic_add(a: Array[Any], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]
 
     .. hlist::
@@ -1910,6 +2041,66 @@ Tile Primitives
     :param t: Source tile to add to the destination array
     :param offset: Offset in the destination array (optional)
     :returns: A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements
+
+
+.. py:function:: tile_atomic_add_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], axis: int32) -> Tile[Any,Tuple[int, ...]]
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Atomically add a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
+
+    :param a: The destination array in global memory
+    :param indices: A 1D tile of integer indices mapping to elements in ``a``.
+    :param t: The source tile to extract data from, must have the same data type and number of dimensions as the destination array, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
+    :param offset: Offset in the destination array (optional)
+    :param axis: Axis of ``a`` that indices refer to
+
+    This example shows how to compute a blocked, row-wise reduction:
+
+    .. code-block:: python
+
+        TILE_M = wp.constant(2)
+        TILE_N = wp.constant(2)
+
+        @wp.kernel
+        def tile_atomic_add_indexed(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+            i, j = wp.tid()
+
+            t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
+
+            zeros = wp.tile_zeros(TILE_M, dtype=int, storage="shared")
+
+            wp.tile_atomic_add_indexed(y, indices=zeros, t=t, offset=(i, j*TILE_N), axis=0)
+
+        M = TILE_M * 2
+        N = TILE_N * 2
+
+        arr = np.arange(M * N, dtype=float).reshape(M, N)
+
+        x = wp.array(arr, dtype=float, requires_grad=True, device=device)
+        y = wp.zeros((2, N), dtype=float, requires_grad=True, device=device)
+
+        wp.launch_tiled(tile_atomic_add_indexed, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
+
+        print(x.numpy())
+        print(y.numpy())
+
+    Prints:
+
+    .. code-block:: text
+
+        [[ 0.  1.  2.  3.]
+         [ 4.  5.  6.  7.]
+         [ 8.  9. 10. 11.]
+         [12. 13. 14. 15.]]
+
+        [[ 4.  6.  8. 10.]
+         [20. 22. 24. 26.]]
+    
 
 
 .. py:function:: tile_view(t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], shape: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]
