@@ -17,6 +17,9 @@
   ([GH-794](https://github.com/NVIDIA/warp/issues/794)).
 - Add support for `IntEnum` and `IntFlag` inside Warp kernels ([GH-529](https://github.com/NVIDIA/warp/issues/529)).
 - Add support for building Warp with CUDA 13.
+- Add indexed tile load builtin (`wp.tile_index_load()`) ([GH-796](https://github.com/NVIDIA/warp/issues/796)).
+- Add indexed tile store builtin (`wp.tile_index_store()`) ([GH-684](https://github.com/NVIDIA/warp/issues/684)).
+- Add indexed tile atomic add builtin (`wp.tile_index_atomic_add()`) ([GH-684](https://github.com/NVIDIA/warp/issues/684)).
 
 ### Removed
 

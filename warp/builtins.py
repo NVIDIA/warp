@@ -2405,6 +2405,150 @@ add_builtin(
 )
 
 
+def tile_load_indexed_tuple_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    if arg_types is None:
+        return tile(dtype=Any, shape=Tuple[int, ...])
+
+    a = arg_types["a"]
+
+    indices_tile = arg_types["indices"]
+    indices_tile.storage = "shared"  # force to shared
+
+    axis = arg_values["axis"]
+    if axis >= a.ndim:
+        raise ValueError(f"tile_load_indexed() axis argument must be valid axis of array {a}, got {axis}.")
+
+    indices_tile_dim = len(indices_tile.shape)
+    if indices_tile_dim != 1:
+        raise ValueError(
+            f"tile_load_indexed() indices argument must be a 1D tile, got {indices_tile_dim} dimensions instead."
+        )
+
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    num_indices = indices_tile.shape[0]
+    if num_indices != shape[axis]:
+        raise ValueError(
+            "The number of elements in the 1D indices tile must match the output tile shape along the specified axis."
+        )
+
+    if "offset" in arg_values:
+        offset = extract_tuple(arg_values["offset"])
+    else:
+        offset = (0,) * a.ndim
+
+    if a.ndim != len(shape):
+        raise ValueError(
+            f"tile_load_indexed() array argument must have same number of dimensions as the tile shape, trying to perform an {len(shape)} dimensional load from an array with {a.ndim} dimensions."
+        )
+
+    if a.ndim != len(offset):
+        raise ValueError(
+            f"tile_load_indexed() offset argument must have the same number of dimensions as the array to load from, got {len(offset)} indices for an array with {a.ndim} dimensions"
+        )
+
+    if arg_values["storage"] not in {"shared", "register"}:
+        raise ValueError(f"Invalid value for 'storage': {arg_values['storage']!r}. Expected 'shared' or 'register'.")
+
+    return tile(dtype=a.dtype, shape=shape, storage=arg_values["storage"])
+
+
+def tile_load_indexed_tuple_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    a = args["a"]
+    indices_tile = args["indices"]
+    axis = args["axis"]
+
+    shape = extract_tuple(args["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    if "offset" in args:
+        offset = extract_tuple(args["offset"])
+    else:
+        offset = (0,) * a.type.ndim
+
+    func_args = (a, indices_tile, axis, *offset)
+    template_args = shape
+
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_load_indexed",
+    input_types={
+        "a": array(dtype=Any),
+        "indices": tile(dtype=int, shape=Tuple[int]),
+        "shape": Tuple[int, ...],
+        "offset": Tuple[int, ...],
+        "axis": int,
+        "storage": str,
+    },
+    value_func=tile_load_indexed_tuple_value_func,
+    dispatch_func=tile_load_indexed_tuple_dispatch_func,
+    defaults={"offset": None, "axis": 0, "storage": "register"},
+    variadic=False,
+    doc="""Loads a tile from a global memory array, with loads along a specified axis mapped according to a 1D tile of indices.
+
+    :param a: The source array in global memory
+    :param indices: A 1D tile of integer indices mapping to elements in ``a``.
+    :param shape: Shape of the tile to load, must have the same number of dimensions as ``a``, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
+    :param offset: Offset in the source array to begin reading from (optional)
+    :param axis: Axis of ``a`` that indices refer to
+    :param storage: The storage location for the tile: ``"register"`` for registers (default) or ``"shared"`` for shared memory.
+    :returns: A tile with shape as specified and data type the same as the source array
+
+    This example shows how to select and store the even indexed rows from a 2D array:
+
+    .. code-block:: python
+
+        TILE_M = wp.constant(2)
+        TILE_N = wp.constant(2)
+        HALF_M = wp.constant(TILE_M // 2)
+        HALF_N = wp.constant(TILE_N // 2)
+
+        @wp.kernel
+        def compute(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+            i, j = wp.tid()
+
+            evens = wp.tile_arange(HALF_M, dtype=int, storage="shared") * 2
+
+            t0 = wp.tile_load_indexed(x, indices=evens, shape=(HALF_M, TILE_N), offset=(i*TILE_M, j*TILE_N), axis=0, storage="register")
+            wp.tile_store(y, t0, offset=(i*HALF_M, j*TILE_N))
+
+        M = TILE_M * 2
+        N = TILE_N * 2
+
+        arr = np.arange(M * N).reshape(M, N)
+
+        x = wp.array(arr, dtype=float)
+        y = wp.zeros((M // 2, N), dtype=float)
+
+        wp.launch_tiled(compute, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
+
+        print(x.numpy())
+        print(y.numpy())
+
+    Prints:
+
+    .. code-block:: text
+
+        [[ 0.  1.  2.  3.]
+         [ 4.  5.  6.  7.]
+         [ 8.  9. 10. 11.]
+         [12. 13. 14. 15.]]
+
+        [[ 0.  1.  2.  3.]
+         [ 8.  9. 10. 11.]]
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_store_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
@@ -2483,6 +2627,151 @@ add_builtin(
     skip_replay=True,
     group="Tile Primitives",
     hidden=True,
+    export=False,
+)
+
+
+def tile_store_indexed_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return None
+
+    a = arg_types["a"]
+    t = arg_types["t"]
+    indices_tile = arg_types["indices"]
+    indices_tile.storage = "shared"  # force to shared
+
+    axis = arg_values["axis"]
+    if axis >= a.ndim:
+        raise ValueError(f"tile_store_indexed() axis argument must be valid axis of array {a}, got {axis}.")
+
+    indices_tile_dim = len(indices_tile.shape)
+    if indices_tile_dim != 1:
+        raise ValueError(
+            f"tile_store_indexed() indices argument must be a 1D tile, got {indices_tile_dim} dimensions instead."
+        )
+
+    num_indices = indices_tile.shape[0]
+    if num_indices != t.shape[axis]:
+        raise ValueError(
+            "The number of elements in the 1D indices tile must match the input tile shape along the specified axis."
+        )
+
+    if "offset" in arg_types:
+        c = extract_tuple(arg_values["offset"])
+    else:
+        c = (0,) * a.ndim
+
+    if len(c) != a.ndim:
+        raise ValueError(
+            f"tile_store_indexed() 'a' argument must have {len(c)} dimensions, "
+            f"calculated based on the provided offset arguments, but got {a.ndim} dimensions."
+        )
+
+    if len(t.shape) != a.ndim:
+        raise ValueError(
+            f"tile_store_indexed() 'a' argument must have the same number of dimensions as the 't' argument, "
+            f"but got {a.ndim} dimensions for 'a' and {len(t.shape)} dimensions for 't'"
+        )
+
+    if not types_equal(arg_types["a"].dtype, arg_types["t"].dtype):
+        raise TypeError(
+            f"tile_store_indexed() 'a' and 't' arguments must have the same dtype, got {arg_types['a'].dtype} and {arg_types['t'].dtype}"
+        )
+
+    return None
+
+
+def tile_store_indexed_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    a = args["a"]
+    indices_tile = args["indices"]
+    axis = args["axis"]
+    t = args["t"]
+
+    if "offset" in args:
+        offset = extract_tuple(args["offset"])
+    else:
+        offset = (0,) * a.type.ndim
+
+    func_args = (a, indices_tile, axis, *offset, t)
+    template_args = []
+
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_store_indexed",
+    input_types={
+        "a": array(dtype=Any),
+        "indices": tile(dtype=int, shape=Tuple[int]),
+        "t": tile(dtype=Any, shape=Tuple[int, ...]),
+        "offset": Tuple[int, ...],
+        "axis": int,
+    },
+    value_func=tile_store_indexed_value_func,
+    dispatch_func=tile_store_indexed_dispatch_func,
+    defaults={"offset": None, "axis": 0},
+    variadic=False,
+    skip_replay=True,
+    doc="""Store a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
+
+    :param a: The destination array in global memory
+    :param indices: A 1D tile of integer indices mapping to elements in ``a``.
+    :param t: The source tile to store data from, must have the same data type and number of dimensions as the destination array, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
+    :param offset: Offset in the destination array (optional)
+    :param axis: Axis of ``a`` that indices refer to
+
+    This example shows how to map tile rows to the even rows of a 2D array:
+
+    .. code-block:: python
+
+        TILE_M = wp.constant(2)
+        TILE_N = wp.constant(2)
+        TWO_M = wp.constant(TILE_M * 2)
+        TWO_N = wp.constant(TILE_N * 2)
+
+        @wp.kernel
+        def compute(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+            i, j = wp.tid()
+
+            t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
+
+            evens_M = wp.tile_arange(TILE_M, dtype=int, storage="shared") * 2
+
+            wp.tile_store_indexed(y, indices=evens_M, t=t, offset=(i*TWO_M, j*TILE_N), axis=0)
+
+        M = TILE_M * 2
+        N = TILE_N * 2
+
+        arr = np.arange(M * N, dtype=float).reshape(M, N)
+
+        x = wp.array(arr, dtype=float, requires_grad=True, device=device)
+        y = wp.zeros((M * 2, N), dtype=float, requires_grad=True, device=device)
+
+        wp.launch_tiled(compute, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
+
+        print(x.numpy())
+        print(y.numpy())
+
+    Prints:
+
+    .. code-block:: text
+
+        [[ 0.  1.  2.  3.]
+         [ 4.  5.  6.  7.]
+         [ 8.  9. 10. 11.]
+         [12. 13. 14. 15.]]
+
+        [[ 0.  1.  2.  3.]
+         [ 0.  0.  0.  0.]
+         [ 4.  5.  6.  7.]
+         [ 0.  0.  0.  0.]
+         [ 8.  9. 10. 11.]
+         [ 0.  0.  0.  0.]
+         [12. 13. 14. 15.]
+         [ 0.  0.  0.  0.]]
+    """,
+    group="Tile Primitives",
     export=False,
 )
 
@@ -2568,6 +2857,143 @@ add_builtin(
     skip_replay=True,
     group="Tile Primitives",
     hidden=True,
+    export=False,
+)
+
+
+def tile_atomic_add_indexed_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return tile(dtype=Any, shape=Tuple[int, ...])
+
+    a = arg_types["a"]
+    t = arg_types["t"]
+    indices_tile = arg_types["indices"]
+    indices_tile.storage = "shared"  # force to shared
+
+    axis = arg_values["axis"]
+    if axis >= a.ndim:
+        raise ValueError(f"tile_atomic_add_indexed() axis argument must be valid axis of array {a}, got {axis}.")
+
+    indices_tile_dim = len(indices_tile.shape)
+    if indices_tile_dim != 1:
+        raise ValueError(
+            f"tile_atomic_add_indexed() indices argument must be a 1D tile, got {indices_tile_dim} dimensions instead."
+        )
+
+    num_indices = indices_tile.shape[0]
+    if num_indices != t.shape[axis]:
+        raise ValueError(
+            "The number of elements in the 1D indices tile must match the input tile shape along the specified axis."
+        )
+
+    if "offset" in arg_types:
+        c = extract_tuple(arg_values["offset"])
+    else:
+        c = (0,) * a.ndim
+
+    if len(c) != a.ndim:
+        raise ValueError(
+            f"tile_atomic_add_indexed() 'a' argument must have {len(c)} dimensions, "
+            f"calculated based on the provided offset arguments, but got {a.ndim} dimensions."
+        )
+
+    if len(t.shape) != a.ndim:
+        raise ValueError(
+            f"tile_atomic_add_indexed() 'a' argument must have the same number of dimensions as the 't' argument, "
+            f"but got {a.ndim} dimensions for 'a' and {len(t.shape)} dimensions for 't'"
+        )
+
+    if not types_equal(arg_types["a"].dtype, arg_types["t"].dtype):
+        raise TypeError(
+            f"tile_atomic_add_indexed() 'a' and 't' arguments must have the same dtype, got {arg_types['a'].dtype} and {arg_types['t'].dtype}"
+        )
+
+    return tile(dtype=t.dtype, shape=t.shape, storage=t.storage)
+
+
+def tile_atomic_add_indexed_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    a = args["a"]
+    indices_tile = args["indices"]
+    axis = args["axis"]
+    t = args["t"]
+
+    if "offset" in args:
+        offset = extract_tuple(args["offset"])
+    else:
+        offset = (0,) * a.type.ndim
+
+    func_args = (a, indices_tile, axis, *offset, t)
+    template_args = []
+
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_atomic_add_indexed",
+    input_types={
+        "a": array(dtype=Any),
+        "indices": tile(dtype=int, shape=Tuple[int]),
+        "t": tile(dtype=Any, shape=Tuple[int, ...]),
+        "offset": Tuple[int, ...],
+        "axis": int,
+    },
+    value_func=tile_atomic_add_indexed_value_func,
+    dispatch_func=tile_atomic_add_indexed_dispatch_func,
+    defaults={"offset": None, "axis": 0},
+    variadic=False,
+    skip_replay=True,
+    doc="""Atomically add a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
+
+    :param a: The destination array in global memory
+    :param indices: A 1D tile of integer indices mapping to elements in ``a``.
+    :param t: The source tile to extract data from, must have the same data type and number of dimensions as the destination array, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
+    :param offset: Offset in the destination array (optional)
+    :param axis: Axis of ``a`` that indices refer to
+
+    This example shows how to compute a blocked, row-wise reduction:
+
+    .. code-block:: python
+
+        TILE_M = wp.constant(2)
+        TILE_N = wp.constant(2)
+
+        @wp.kernel
+        def tile_atomic_add_indexed(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+            i, j = wp.tid()
+
+            t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
+
+            zeros = wp.tile_zeros(TILE_M, dtype=int, storage="shared")
+
+            wp.tile_atomic_add_indexed(y, indices=zeros, t=t, offset=(i, j*TILE_N), axis=0)
+
+        M = TILE_M * 2
+        N = TILE_N * 2
+
+        arr = np.arange(M * N, dtype=float).reshape(M, N)
+
+        x = wp.array(arr, dtype=float, requires_grad=True, device=device)
+        y = wp.zeros((2, N), dtype=float, requires_grad=True, device=device)
+
+        wp.launch_tiled(tile_atomic_add_indexed, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
+
+        print(x.numpy())
+        print(y.numpy())
+
+    Prints:
+
+    .. code-block:: text
+
+        [[ 0.  1.  2.  3.]
+         [ 4.  5.  6.  7.]
+         [ 8.  9. 10. 11.]
+         [12. 13. 14. 15.]]
+
+        [[ 4.  6.  8. 10.]
+         [20. 22. 24. 26.]]
+    """,
+    group="Tile Primitives",
     export=False,
 )
 
