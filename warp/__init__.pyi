@@ -1101,7 +1101,7 @@ def tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar, Tupl
 
 @over
 def tile_load(
-    a: Array[Any], shape: Tuple[int, ...], offset: Tuple[int, ...], storage: str
+    a: Array[Any], shape: Tuple[int, ...], offset: Tuple[int, ...], storage: str, bounds_check: bool
 ) -> Tile[Any, Tuple[int, ...]]:
     """Loads a tile from a global memory array.
 
@@ -1112,6 +1112,7 @@ def tile_load(
     :param offset: Offset in the source array to begin reading from (optional)
     :param storage: The storage location for the tile: ``"register"`` for registers
       (default) or ``"shared"`` for shared memory.
+    :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
     :returns: A tile with shape as specified and data type the same as the source array
     """
     ...
@@ -1184,7 +1185,7 @@ def tile_load_indexed(
     ...
 
 @over
-def tile_store(a: Array[Any], t: Tile[Any, Tuple[int, ...]], offset: Tuple[int, ...]):
+def tile_store(a: Array[Any], t: Tile[Any, Tuple[int, ...]], offset: Tuple[int, ...], bounds_check: bool):
     """Store a tile to a global memory array.
 
     This method will cooperatively store a tile to global memory using all threads in the block.
@@ -1192,6 +1193,8 @@ def tile_store(a: Array[Any], t: Tile[Any, Tuple[int, ...]], offset: Tuple[int, 
     :param a: The destination array in global memory
     :param t: The source tile to store data from, must have the same data type and number of dimensions as the destination array
     :param offset: Offset in the destination array (optional)
+    :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times
+
     """
     ...
 
@@ -1262,13 +1265,14 @@ def tile_store_indexed(
 
 @over
 def tile_atomic_add(
-    a: Array[Any], t: Tile[Any, Tuple[int, ...]], offset: Tuple[int, ...]
+    a: Array[Any], t: Tile[Any, Tuple[int, ...]], offset: Tuple[int, ...], bounds_check: bool
 ) -> Tile[Any, Tuple[int, ...]]:
     """Atomically add a tile onto the array `a`, each element will be updated atomically.
 
     :param a: Array in global memory, should have the same ``dtype`` as the input tile
     :param t: Source tile to add to the destination array
     :param offset: Offset in the destination array (optional)
+    :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times
     :returns: A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements
     """
     ...

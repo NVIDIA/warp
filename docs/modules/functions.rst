@@ -1859,7 +1859,7 @@ Tile Primitives
     :returns: A tile with ``shape=(n)`` with linearly spaced elements of specified data type
 
 
-.. py:function:: tile_load(a: Array[Any], shape: Tuple[int, ...], offset: Tuple[int, ...], storage: str) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: tile_load(a: Array[Any], shape: Tuple[int, ...], offset: Tuple[int, ...], storage: str, bounds_check: bool) -> Tile[Any,Tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -1876,6 +1876,7 @@ Tile Primitives
     :param offset: Offset in the source array to begin reading from (optional)
     :param storage: The storage location for the tile: ``"register"`` for registers
       (default) or ``"shared"`` for shared memory.
+    :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
     :returns: A tile with shape as specified and data type the same as the source array
 
 
@@ -1942,7 +1943,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_store(a: Array[Any], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...]) -> None
+.. py:function:: tile_store(a: Array[Any], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], bounds_check: bool) -> None
 
     .. hlist::
        :columns: 8
@@ -1957,6 +1958,8 @@ Tile Primitives
     :param a: The destination array in global memory
     :param t: The source tile to store data from, must have the same data type and number of dimensions as the destination array
     :param offset: Offset in the destination array (optional)
+    :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times
+    
 
 
 .. py:function:: tile_store_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], axis: int32) -> None
@@ -2027,7 +2030,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_atomic_add(a: Array[Any], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: tile_atomic_add(a: Array[Any], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], bounds_check: bool) -> Tile[Any,Tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2040,6 +2043,7 @@ Tile Primitives
     :param a: Array in global memory, should have the same ``dtype`` as the input tile
     :param t: Source tile to add to the destination array
     :param offset: Offset in the destination array (optional)
+    :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times
     :returns: A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements
 
 
