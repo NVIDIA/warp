@@ -13,15 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 import platform
 import subprocess
 import sys
-from typing import List, Optional
 
 from warp.utils import ScopedTimer
 
 verbose_cmd = True  # print command lines before executing them
+
+MIN_CTK_VERSION = (12, 0)
 
 
 def machine_architecture() -> str:
@@ -120,7 +123,7 @@ def find_host_compiler():
         return run_cmd("which g++").decode()
 
 
-def get_cuda_toolkit_version(cuda_home):
+def get_cuda_toolkit_version(cuda_home) -> tuple[int, int]:
     try:
         # the toolkit version can be obtained by running "nvcc --version"
         nvcc_path = os.path.join(cuda_home, "bin", "nvcc")
@@ -128,14 +131,16 @@ def get_cuda_toolkit_version(cuda_home):
         # search for release substring (e.g., "release 11.5")
         import re
 
-        m = re.search(r"(?<=release )\d+\.\d+", nvcc_version_output)
+        m = re.search(r"(?<=release )(\d+)\.(\d+)", nvcc_version_output)
         if m is not None:
-            return tuple(int(x) for x in m.group(0).split("."))
+            major, minor = map(int, m.groups())
+            return (major, minor)
         else:
             raise Exception("Failed to parse NVCC output")
 
     except Exception as e:
-        print(f"Failed to determine CUDA Toolkit version: {e}")
+        print(f"Warning: Failed to determine CUDA Toolkit version: {e}")
+        return MIN_CTK_VERSION
 
 
 def quote(path):
@@ -169,7 +174,7 @@ def add_llvm_bin_to_path(args):
     return True
 
 
-def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: Optional[List[str]] = None, mode=None):
+def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: list[str] | None = None, mode=None):
     mode = args.mode if (mode is None) else mode
     cuda_home = args.cuda_path
     cuda_cmd = None
@@ -197,11 +202,10 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: Optional[
 
     if cu_path:
         # check CUDA Toolkit version
-        min_ctk_version = (12, 0)
-        ctk_version = get_cuda_toolkit_version(cuda_home) or min_ctk_version
-        if ctk_version < min_ctk_version:
+        ctk_version = get_cuda_toolkit_version(cuda_home)
+        if ctk_version < MIN_CTK_VERSION:
             raise Exception(
-                f"CUDA Toolkit version {min_ctk_version[0]}.{min_ctk_version[1]}+ is required (found {ctk_version[0]}.{ctk_version[1]} in {cuda_home})"
+                f"CUDA Toolkit version {MIN_CTK_VERSION[0]}.{MIN_CTK_VERSION[1]}+ is required (found {ctk_version[0]}.{ctk_version[1]} in {cuda_home})"
             )
 
         # NVCC gencode options
