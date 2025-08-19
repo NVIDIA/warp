@@ -101,8 +101,11 @@ static PFN_cuEventQuery_v2000 pfn_cuEventQuery;
 static PFN_cuEventRecord_v2000 pfn_cuEventRecord;
 static PFN_cuEventRecordWithFlags_v11010 pfn_cuEventRecordWithFlags;
 static PFN_cuEventSynchronize_v2000 pfn_cuEventSynchronize;
+#if CUDA_VERSION >= 12030
+// function used to add conditional graph nodes, not available in older CUDA versions
 static PFN_cuGraphAddNode_v12030 pfn_cuGraphAddNode;
-static PFN_cuGraphNodeGetDependentNodes_v12030 pfn_cuGraphNodeGetDependentNodes;
+#endif
+static PFN_cuGraphNodeGetDependentNodes_v10000 pfn_cuGraphNodeGetDependentNodes;
 static PFN_cuGraphNodeGetType_v10000 pfn_cuGraphNodeGetType;
 static PFN_cuModuleLoadDataEx_v2010 pfn_cuModuleLoadDataEx;
 static PFN_cuModuleUnload_v2000 pfn_cuModuleUnload;
@@ -247,8 +250,11 @@ bool init_cuda_driver()
     get_driver_entry_point("cuEventRecord", 2000, &(void*&)pfn_cuEventRecord);
     get_driver_entry_point("cuEventRecordWithFlags", 11010, &(void*&)pfn_cuEventRecordWithFlags);
     get_driver_entry_point("cuEventSynchronize", 2000, &(void*&)pfn_cuEventSynchronize);
-    get_driver_entry_point("cuGraphAddNode", 12030, &(void*&)pfn_cuGraphAddNode);
-    get_driver_entry_point("cuGraphNodeGetDependentNodes", 12030, &(void*&)pfn_cuGraphNodeGetDependentNodes);
+#if CUDA_VERSION >= 12030
+    if (driver_version >= 12030)
+        get_driver_entry_point("cuGraphAddNode", 12030, &(void*&)pfn_cuGraphAddNode);
+#endif
+    get_driver_entry_point("cuGraphNodeGetDependentNodes", 10000, &(void*&)pfn_cuGraphNodeGetDependentNodes);
     get_driver_entry_point("cuGraphNodeGetType", 10000, &(void*&)pfn_cuGraphNodeGetType);
     get_driver_entry_point("cuModuleLoadDataEx", 2010, &(void*&)pfn_cuModuleLoadDataEx);
     get_driver_entry_point("cuModuleUnload", 2000, &(void*&)pfn_cuModuleUnload);
@@ -340,7 +346,7 @@ bool get_graph_leaf_nodes(cudaGraph_t graph, std::vector<cudaGraphNode_t>& leaf_
     {
         size_t dependent_count;
 
-        if (!check_cu(cuGraphNodeGetDependentNodes_f(node, NULL, NULL, &dependent_count)))
+        if (!check_cu(cuGraphNodeGetDependentNodes_f(node, NULL, &dependent_count)))
             return false;
 
         if (dependent_count == 0)
@@ -561,14 +567,16 @@ CUresult cuEventSynchronize_f(CUevent event)
     return pfn_cuEventSynchronize ? pfn_cuEventSynchronize(event) : DRIVER_ENTRY_POINT_ERROR;
 }
 
+#if CUDA_VERSION >= 12030
 CUresult cuGraphAddNode_f(CUgraphNode *phGraphNode, CUgraph hGraph, const CUgraphNode *dependencies, const CUgraphEdgeData *dependencyData, size_t numDependencies, CUgraphNodeParams *nodeParams)
 {
     return pfn_cuGraphAddNode ? pfn_cuGraphAddNode(phGraphNode, hGraph, dependencies, dependencyData, numDependencies, nodeParams) : DRIVER_ENTRY_POINT_ERROR;
 }
+#endif
 
-CUresult cuGraphNodeGetDependentNodes_f(CUgraphNode hNode, CUgraphNode *dependentNodes, CUgraphEdgeData *edgeData, size_t *numDependentNodes)
+CUresult cuGraphNodeGetDependentNodes_f(CUgraphNode hNode, CUgraphNode *dependentNodes, size_t *numDependentNodes)
 {
-    return pfn_cuGraphNodeGetDependentNodes ? pfn_cuGraphNodeGetDependentNodes(hNode, dependentNodes, edgeData, numDependentNodes) : DRIVER_ENTRY_POINT_ERROR;
+    return pfn_cuGraphNodeGetDependentNodes ? pfn_cuGraphNodeGetDependentNodes(hNode, dependentNodes, numDependentNodes) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuGraphNodeGetType_f(CUgraphNode hNode, CUgraphNodeType* type)
