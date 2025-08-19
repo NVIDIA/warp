@@ -99,8 +99,11 @@ CUresult cuEventQuery_f(CUevent event);
 CUresult cuEventRecord_f(CUevent event, CUstream stream);
 CUresult cuEventRecordWithFlags_f(CUevent event, CUstream stream, unsigned int flags);
 CUresult cuEventSynchronize_f(CUevent event);
+#if CUDA_VERSION >= 12030
+// function used to add conditional graph nodes, not available in older CUDA versions
 CUresult cuGraphAddNode_f(CUgraphNode *phGraphNode, CUgraph hGraph, const CUgraphNode *dependencies, const CUgraphEdgeData *dependencyData, size_t numDependencies, CUgraphNodeParams *nodeParams);
-CUresult cuGraphNodeGetDependentNodes_f(CUgraphNode hNode, CUgraphNode *dependentNodes, CUgraphEdgeData *edgeData, size_t *numDependentNodes);
+#endif
+CUresult cuGraphNodeGetDependentNodes_f(CUgraphNode hNode, CUgraphNode *dependentNodes, size_t *numDependentNodes);
 CUresult cuGraphNodeGetType_f(CUgraphNode hNode, CUgraphNodeType* type);
 CUresult cuModuleUnload_f(CUmodule hmod);
 CUresult cuModuleLoadDataEx_f(CUmodule *module, const void *image, unsigned int numOptions, CUjit_option *options, void **optionValues);
