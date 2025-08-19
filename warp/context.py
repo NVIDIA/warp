@@ -6436,12 +6436,17 @@ def synchronize_event(event: Event):
     runtime.core.wp_cuda_event_synchronize(event.cuda_event)
 
 
-def force_load(device: Device | str | list[Device] | list[str] | None = None, modules: list[Module] | None = None):
-    """Force a list of modules to be compiled and loaded
+def force_load(
+    device: Device | str | list[Device] | list[str] | None = None,
+    modules: list[Module] | None = None,
+    block_dim: int | None = None,
+):
+    """Force user-defined kernels to be compiled and loaded
 
     Args:
         device: The device or list of devices to load the modules on.  If None, load on all devices.
         modules: List of modules to load.  If None, load all imported modules.
+        block_dim: The number of threads per block (always 1 for "cpu" devices).
     """
 
     if is_cuda_driver_initialized():
@@ -6460,7 +6465,7 @@ def force_load(device: Device | str | list[Device] | list[str] | None = None, mo
 
     for d in devices:
         for m in modules:
-            m.load(d)
+            m.load(d, block_dim=block_dim)
 
     if is_cuda_available():
         # restore original context to avoid side effects
@@ -6468,7 +6473,10 @@ def force_load(device: Device | str | list[Device] | list[str] | None = None, mo
 
 
 def load_module(
-    module: Module | types.ModuleType | str | None = None, device: Device | str | None = None, recursive: bool = False
+    module: Module | types.ModuleType | str | None = None,
+    device: Device | str | None = None,
+    recursive: bool = False,
+    block_dim: int | None = None,
 ):
     """Force a user-defined module to be compiled and loaded
 
@@ -6476,6 +6484,7 @@ def load_module(
         module: The module to load.  If None, load the current module.
         device: The device to load the modules on.  If None, load on all devices.
         recursive: Whether to load submodules.  E.g., if the given module is `warp.sim`, this will also load `warp.sim.model`, `warp.sim.articulation`, etc.
+        block_dim: The number of threads per block (always 1 for "cpu" devices).
 
     Note: A module must be imported before it can be loaded by this function.
     """
@@ -6496,9 +6505,13 @@ def load_module(
     modules = []
 
     # add the given module, if found
-    m = user_modules.get(module_name)
-    if m is not None:
-        modules.append(m)
+    if isinstance(module, Module):
+        # this ensures that we can load "unique" or procedural modules, which aren't added to `user_modules` by name
+        modules.append(module)
+    else:
+        m = user_modules.get(module_name)
+        if m is not None:
+            modules.append(m)
 
     # add submodules, if recursive
     if recursive:
@@ -6507,7 +6520,7 @@ def load_module(
             if name.startswith(prefix):
                 modules.append(mod)
 
-    force_load(device=device, modules=modules)
+    force_load(device=device, modules=modules, block_dim=block_dim)
 
 
 def _resolve_module(module: Module | types.ModuleType | str) -> Module:

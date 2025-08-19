@@ -110,14 +110,13 @@ def test_tile_shared_mem_graph(test, device):
 
     out = wp.empty((DIM_M, DIM_N), dtype=float, device=device)
 
-    unique_module = compute.module
-    unique_module.load(device)
+    # preload the unique module
+    wp.load_module(compute.module, device=device, block_dim=BLOCK_DIM)
 
     with wp.ScopedCapture(device, force_module_load=False) as capture:
         wp.launch_tiled(compute, dim=[1], inputs=[out], block_dim=BLOCK_DIM, device=device)
-    graph = capture.graph
 
-    wp.capture_launch(graph)
+    wp.capture_launch(capture.graph)
 
     # check output
     assert_np_equal(out.numpy(), np.ones((DIM_M, DIM_N)) * 3.0)
