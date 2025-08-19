@@ -340,7 +340,8 @@ using tile_stride_t = tile_tuple_t<V...>;
 
 // represents a tile stored in global memory with dynamic strides
 // used to represent the source and offset for tile loads to register/shared
-template <typename T, typename Shape_>
+// BoundsCheck: when true (default), validates array access bounds; when false, skips validation for performance
+template <typename T, typename Shape_, bool BoundsCheck=true>
 struct tile_global_t 
 {
     using Type = T;
@@ -372,25 +373,33 @@ struct tile_global_t
     
     inline CUDA_CALLABLE bool index(const Coord& coord, int& out) const
     {
-        // element index
-        int index = 0;
-        
-        WP_PRAGMA_UNROLL
-        for (int i=0; i < Shape::N; ++i)
+        if constexpr (BoundsCheck)
         {
-            // global = offset + coord
-            int c = offset[i] + coord[i];
-
-            // handle out of bounds case
-            if (c >= data.shape[i])
-                return false;
-            else
-                index += data.strides[i]*c;
-        }   
-
-        // array strides are in bytes so we convert to elements
-        out = index / sizeof(T);
-        return true;
+            // element index
+            int index = 0;
+            
+            WP_PRAGMA_UNROLL
+            for (int i=0; i < Shape::N; ++i)
+            {
+                // global = offset + coord
+                int c = offset[i] + coord[i];
+    
+                // handle out of bounds case
+                if (c >= data.shape[i])
+                    return false;
+                else
+                    index += data.strides[i]*c;
+            }   
+    
+            // array strides are in bytes so we convert to elements
+            out = index / sizeof(T);
+            return true;
+        }
+        else
+        {
+            out = index_from_coord(coord);
+            return true;
+        }
     }
 
     inline CUDA_CALLABLE T load(const Coord& coord) const
@@ -524,7 +533,8 @@ struct tile_register_t
             data[i] = value;
     }
 
-    inline CUDA_CALLABLE auto& operator=(const tile_global_t<T, typename Layout::Shape>& t)
+    template <bool BoundsCheck>
+    inline CUDA_CALLABLE auto& operator=(const tile_global_t<T, typename Layout::Shape, BoundsCheck>& t)
     {
         copy_from_global(t);
         return *this;
@@ -937,7 +947,9 @@ struct tile_shared_t
     }    
 
     // assign from a global tile (load)
-    inline CUDA_CALLABLE auto& operator=(const tile_global_t<T, typename Layout::Shape>& t)
+
+    template <bool BoundsCheck>
+    inline CUDA_CALLABLE auto& operator=(const tile_global_t<T, typename Layout::Shape, BoundsCheck>& t)
     {        
         copy_from_global(t);
         return *this;
@@ -1729,10 +1741,10 @@ inline CUDA_CALLABLE void adj_tile_arange(T start, T stop, T step,
                                           T& adj_start, T& adj_stop, T& adj_step, AdjTile& adj_ret) {}
 
 // entry point for load operations, these just return a reference to a global memory array + coordinate
-template <unsigned... Shape, typename... Offset, typename T>
+template <typename T, bool BoundsCheck, unsigned... Shape, typename... Offset>
 inline CUDA_CALLABLE auto tile_load(array_t<T>& src, Offset... offset) 
 {
-    return tile_global_t<T, tile_shape_t<Shape...>>(src, tile_coord(offset...)); 
+    return tile_global_t<T, tile_shape_t<Shape...>, BoundsCheck>(src, tile_coord(offset...)); 
 }
 
 // used for indexed loads and stores
@@ -1799,14 +1811,14 @@ inline CUDA_CALLABLE auto tile_load_indexed(array_t<T>& src, tile_shared_t<int, 
 // }
 
 // entry point for tile store operations
-template <typename T, typename Tile>
-inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, Tile& src) { src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape>(dest, tile_coord(x))); }
-template <typename T, typename Tile>
-inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, Tile& src) { src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape>(dest, tile_coord(x, y))); }
-template <typename T, typename Tile>
-inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, int z, Tile& src) { src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape>(dest, tile_coord(x, y, z))); }
-template <typename T, typename Tile>
-inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, int z, int w, Tile& src) { src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape>(dest, tile_coord(x, y, z, w))); }
+template <typename T, bool BoundsCheck, typename Tile>
+inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, Tile& src) { src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck>(dest, tile_coord(x))); }
+template <typename T, bool BoundsCheck, typename Tile>
+inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, Tile& src) { src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck>(dest, tile_coord(x, y))); }
+template <typename T, bool BoundsCheck, typename Tile>
+inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, int z, Tile& src) { src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck>(dest, tile_coord(x, y, z))); }
+template <typename T, bool BoundsCheck, typename Tile>
+inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, int z, int w, Tile& src) { src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck>(dest, tile_coord(x, y, z, w))); }
 
 template <typename T, int M, typename Tile, typename Coord>
 inline CUDA_CALLABLE void tile_store_indexed(array_t<T>& dest, tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& indices, int axis, Coord offset, Tile& src)
@@ -1832,24 +1844,24 @@ inline CUDA_CALLABLE void tile_store_indexed(array_t<T>& dest, tile_shared_t<int
 
 
 // compiler struggles with these if they are one line
-template <typename T, typename Tile>
+template <typename T, bool BoundsCheck, typename Tile>
 inline CUDA_CALLABLE auto tile_atomic_add(array_t<T>& dest, int x, Tile& src) {
-    tile_global_t<T, typename Tile::Layout::Shape> global(dest, tile_coord(x));
+    tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck> global(dest, tile_coord(x));
     return src.atomic_add(global);
 }
-template <typename T, typename Tile>
+template <typename T, bool BoundsCheck, typename Tile>
 inline CUDA_CALLABLE auto tile_atomic_add(array_t<T>& dest, int x, int y, Tile& src) {
-    tile_global_t<T, typename Tile::Layout::Shape> global(dest, tile_coord(x, y));
+    tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck> global(dest, tile_coord(x, y));
     return src.atomic_add(global);
 }
-template <typename T, typename Tile>
+template <typename T, bool BoundsCheck, typename Tile>
 inline CUDA_CALLABLE auto tile_atomic_add(array_t<T>& dest, int x, int y, int z, Tile& src) {
-    tile_global_t<T, typename Tile::Layout::Shape> global(dest, tile_coord(x, y, z));
+    tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck> global(dest, tile_coord(x, y, z));
     return src.atomic_add(global);
 }
-template <typename T, typename Tile>
+template <typename T, bool BoundsCheck, typename Tile>
 inline CUDA_CALLABLE auto tile_atomic_add(array_t<T>& dest, int x, int y, int z, int w, Tile& src) {
-    tile_global_t<T, typename Tile::Layout::Shape> global(dest, tile_coord(x, y, z, w));
+    tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck> global(dest, tile_coord(x, y, z, w));
     return src.atomic_add(global);
 }
 

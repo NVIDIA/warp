@@ -2357,6 +2357,7 @@ def tile_load_tuple_value_func(arg_types: Mapping[str, type], arg_values: Mappin
 def tile_load_tuple_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
     a = args["a"]
     shape = extract_tuple(args["shape"], as_constant=True)
+    bounds_check = args["bounds_check"]
 
     if None in shape:
         raise ValueError("Tile functions require shape to be a compile time constant.")
@@ -2367,17 +2368,23 @@ def tile_load_tuple_dispatch_func(input_types: Mapping[str, type], return_type: 
         offset = (0,) * a.type.ndim
 
     func_args = (a, *offset)
-    template_args = shape
+    template_args = (return_type.dtype, bounds_check.constant, *shape)
 
     return (func_args, template_args)
 
 
 add_builtin(
     "tile_load",
-    input_types={"a": array(dtype=Any), "shape": Tuple[int, ...], "offset": Tuple[int, ...], "storage": str},
+    input_types={
+        "a": array(dtype=Any),
+        "shape": Tuple[int, ...],
+        "offset": Tuple[int, ...],
+        "storage": str,
+        "bounds_check": builtins.bool,
+    },
     value_func=tile_load_tuple_value_func,
     dispatch_func=tile_load_tuple_dispatch_func,
-    defaults={"offset": None, "storage": "register"},
+    defaults={"offset": None, "storage": "register", "bounds_check": True},
     variadic=False,
     doc="""Loads a tile from a global memory array.
 
@@ -2388,6 +2395,7 @@ add_builtin(
     :param offset: Offset in the source array to begin reading from (optional)
     :param storage: The storage location for the tile: ``"register"`` for registers
       (default) or ``"shared"`` for shared memory.
+    :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
     :returns: A tile with shape as specified and data type the same as the source array""",
     group="Tile Primitives",
     export=False,
@@ -2396,10 +2404,10 @@ add_builtin(
 # overload for scalar shape
 add_builtin(
     "tile_load",
-    input_types={"a": array(dtype=Any), "shape": int, "offset": int, "storage": str},
+    input_types={"a": array(dtype=Any), "shape": int, "offset": int, "storage": str, "bounds_check": builtins.bool},
     value_func=tile_load_tuple_value_func,
     dispatch_func=tile_load_tuple_dispatch_func,
-    defaults={"offset": None, "storage": "register"},
+    defaults={"offset": None, "storage": "register", "bounds_check": True},
     group="Tile Primitives",
     hidden=True,
     export=False,
@@ -2586,6 +2594,7 @@ def tile_store_value_func(arg_types, arg_values):
 def tile_store_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
     a = args["a"]
     t = args["t"]
+    bounds_check = args["bounds_check"]
 
     if "offset" in args:
         offset = extract_tuple(args["offset"])
@@ -2593,17 +2602,22 @@ def tile_store_dispatch_func(input_types: Mapping[str, type], return_type: Any, 
         offset = (0,) * a.type.ndim
 
     func_args = (a, *offset, t)
-    template_args = []
+    template_args = (a.type.dtype, bounds_check.constant)
 
     return (func_args, template_args)
 
 
 add_builtin(
     "tile_store",
-    input_types={"a": array(dtype=Any), "t": tile(dtype=Any, shape=Tuple[int, ...]), "offset": Tuple[int, ...]},
+    input_types={
+        "a": array(dtype=Any),
+        "t": tile(dtype=Any, shape=Tuple[int, ...]),
+        "offset": Tuple[int, ...],
+        "bounds_check": builtins.bool,
+    },
     value_func=tile_store_value_func,
     dispatch_func=tile_store_dispatch_func,
-    defaults={"offset": None},
+    defaults={"offset": None, "bounds_check": True},
     variadic=False,
     skip_replay=True,
     doc="""Store a tile to a global memory array.
@@ -2612,7 +2626,9 @@ add_builtin(
 
     :param a: The destination array in global memory
     :param t: The source tile to store data from, must have the same data type and number of dimensions as the destination array
-    :param offset: Offset in the destination array (optional)""",
+    :param offset: Offset in the destination array (optional)
+    :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times
+    """,
     group="Tile Primitives",
     export=False,
 )
@@ -2620,10 +2636,15 @@ add_builtin(
 # overload for scalar offset
 add_builtin(
     "tile_store",
-    input_types={"a": array(dtype=Any), "t": tile(dtype=Any, shape=Tuple[int, ...]), "offset": int},
+    input_types={
+        "a": array(dtype=Any),
+        "t": tile(dtype=Any, shape=Tuple[int, ...]),
+        "offset": int,
+        "bounds_check": builtins.bool,
+    },
     value_func=tile_store_value_func,
     dispatch_func=tile_store_dispatch_func,
-    defaults={"offset": None},
+    defaults={"offset": None, "bounds_check": True},
     variadic=False,
     skip_replay=True,
     group="Tile Primitives",
@@ -2817,6 +2838,7 @@ def tile_atomic_add_value_func(arg_types, arg_values):
 def tile_atomic_add_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
     a = args["a"]
     t = args["t"]
+    bounds_check = args["bounds_check"]
 
     if "offset" in args:
         offset = extract_tuple(args["offset"])
@@ -2824,17 +2846,22 @@ def tile_atomic_add_dispatch_func(input_types: Mapping[str, type], return_type: 
         offset = (0,) * a.type.ndim
 
     func_args = (a, *offset, t)
-    template_args = []
+    template_args = (a.type.dtype, bounds_check.constant)
 
     return (func_args, template_args)
 
 
 add_builtin(
     "tile_atomic_add",
-    input_types={"a": array(dtype=Any), "t": tile(dtype=Any, shape=Tuple[int, ...]), "offset": Tuple[int, ...]},
+    input_types={
+        "a": array(dtype=Any),
+        "t": tile(dtype=Any, shape=Tuple[int, ...]),
+        "offset": Tuple[int, ...],
+        "bounds_check": builtins.bool,
+    },
     value_func=tile_atomic_add_value_func,
     dispatch_func=tile_atomic_add_dispatch_func,
-    defaults={"offset": None},
+    defaults={"offset": None, "bounds_check": True},
     variadic=False,
     skip_replay=True,
     doc="""Atomically add a tile onto the array `a`, each element will be updated atomically.
@@ -2842,6 +2869,7 @@ add_builtin(
     :param a: Array in global memory, should have the same ``dtype`` as the input tile
     :param t: Source tile to add to the destination array
     :param offset: Offset in the destination array (optional)
+    :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times
     :returns: A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements""",
     group="Tile Primitives",
     export=False,
@@ -2850,10 +2878,15 @@ add_builtin(
 # overload for scalar offset
 add_builtin(
     "tile_atomic_add",
-    input_types={"a": array(dtype=Any), "t": tile(dtype=Any, shape=Tuple[int, ...]), "offset": int},
+    input_types={
+        "a": array(dtype=Any),
+        "t": tile(dtype=Any, shape=Tuple[int, ...]),
+        "offset": int,
+        "bounds_check": builtins.bool,
+    },
     value_func=tile_atomic_add_value_func,
     dispatch_func=tile_atomic_add_dispatch_func,
-    defaults={"offset": None},
+    defaults={"offset": None, "bounds_check": True},
     variadic=False,
     skip_replay=True,
     group="Tile Primitives",
