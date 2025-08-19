@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] - 2025-??
+## [1.9.0] - 2025-09-04
 
 ### Added
 
@@ -1790,7 +1790,8 @@
 
 - Initial publish for alpha testing
 
-[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.8.1...HEAD
+[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.8.0...HEAD
+[1.9.0]: https://github.com/NVIDIA/warp/releases/tag/v1.9.0
 [1.8.1]: https://github.com/NVIDIA/warp/releases/tag/v1.8.1
 [1.8.0]: https://github.com/NVIDIA/warp/releases/tag/v1.8.0
 [1.7.2]: https://github.com/NVIDIA/warp/releases/tag/v1.7.2

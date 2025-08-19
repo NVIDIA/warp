@@ -1,5 +1,90 @@
 # CHANGELOG
 
+## [1.9.0-rc.1] - 2025-09-04
+
+### Added
+
+- Add `wp.MarchingCubes.extract_surface_marching_cubes()` to extract a triangular mesh from a 3D scalar field
+  ([GH-788](https://github.com/NVIDIA/warp/issues/788)).
+- Add an OpenGL example demonstrating how to use ImGui ([GH-833](https://github.com/NVIDIA/warp/issues/833)).
+- Add support for displaying and editing Warp vector and array types in ImGui
+  ([GH-844](https://github.com/NVIDIA/warp/issues/844)).
+- Add support for retrieving the memory address of a Warp array in kernels as `array.ptr`
+  ([GH-819](https://github.com/NVIDIA/warp/issues/819)).
+- Add support for using struct types in the `wp.array()` constructor inside kernels
+  ([GH-853](https://github.com/NVIDIA/warp/issues/853)).
+- Add support for initializing fixed-size arrays inside kernels using `wp.zeros()`
+  ([GH-794](https://github.com/NVIDIA/warp/issues/794)).
+- Add support for `IntEnum` and `IntFlag` inside Warp kernels ([GH-529](https://github.com/NVIDIA/warp/issues/529)).
+- Add support for building Warp with CUDA 13.
+- Add `bounds_check` optimization option to `wp.tile_load()`, `wp.tile_store()`, and `wp.tile_atomic_add()`
+  ([GH-797](https://github.com/NVIDIA/warp/issues/797))
+- Add indexed tile load builtin (`wp.tile_index_load()`) ([GH-796](https://github.com/NVIDIA/warp/issues/796)).
+- Add indexed tile store builtin (`wp.tile_index_store()`) ([GH-684](https://github.com/NVIDIA/warp/issues/684)).
+- Add indexed tile atomic add builtin (`wp.tile_index_atomic_add()`) ([GH-684](https://github.com/NVIDIA/warp/issues/684)).
+- Add optional `block_dim` argument to `wp.load_module()` and `wp.force_load()`.
+
+### Removed
+
+- Remove support for building Warp with CUDA 11.
+
+### Deprecated
+
+- Deprecate support for Intel-based macOS (x86_64) with removal targeted in late 2025.
+  We will continue to support Apple Silicon-based Macs with the CPU backend.
+  Users on Intel-based hardware will now receive a `DeprecationWarning` with this information.
+
+### Changed
+
+- Strictly match arguments for user-function calls from the Python scope to the function's signature, mirroring the
+  behavior of built-ins.
+- Enforce a consistent `wp_` prefix for all exported, C-style symbols to prevent name conflicts
+  ([GH-792](https://github.com/NVIDIA/warp/issues/792)).
+- Rewrite `wp.MarchingCubes`in pure Warp for cross-platform support and differentiability
+  ([GH-788](https://github.com/NVIDIA/warp/issues/788)).
+- Allow dynamic shapes when constructing a `wp.array` from a pointer inside a kernel.
+- Allow functions passed to `wp.tile_map()` to return a different type than their input arguments
+  ([GH-732](https://github.com/NVIDIA/warp/issues/732)).
+- Use codegen instead of function evaluation to infer return types for `wp.map()`
+  ([GH-732](https://github.com/NVIDIA/warp/issues/732)).
+- Enable `warp.sparse` to efficiently on sparse matrices with arbitrarily-sized blocks and leverage tiled
+  computations when relevant ([GH-838](https://github.com/NVIDIA/warp/issues/838)).
+- Enable opportunistic use of tile-based computations in `warp.fem.integrate` for quadrature-point accumulation
+  ([GH-854](https://github.com/NVIDIA/warp/issues/854)).
+- Use an extended-length default cache path on Windows  to prevent build errors
+  ([GH-870](https://github.com/NVIDIA/warp/issues/870)).
+- Add support for `wp.breakpoint()` in CUDA kernels on Linux systems. This feature is not available on Windows, as the
+  underlying CUDA-GDB debugger only supports Linux targets ([GH-795](https://github.com/NVIDIA/warp/issues/795)).
+- Arguments for CPU kernels are now passed as a pointer to a structure to avoid a bug in the ARM64 calling convention
+  implementation of the libffi library ([GH-356](https://github.com/NVIDIA/warp/issues/356)).
+- Skip generating code for adjoint functions not referenced by any backward kernel, reducing JIT compilation time
+  ([GH-841](https://github.com/NVIDIA/warp/issues/841)).
+- Define and re-export Warp's public Python-scope API in `__init__.py` using typing re-export conventions
+  (e.g. `from Y import X as X`) to improve static type checker support
+  ([GH-864](https://github.com/NVIDIA/warp/issues/864)).
+- Improve error messages for MathDx-based tile operations that fail to compile (e.g., `Failed to compile LTO`)
+  ([GH-608](https://github.com/NVIDIA/warp/issues/608), [GH-911](https://github.com/NVIDIA/warp/issues/911)).
+- Improve error detection and reporting in conditional graphs ([GH-866](https://github.com/NVIDIA/warp/issues/866)).
+
+### Fixed
+
+- Fix FfiCallable to skip 'return' argument in FFI callback registration ([GH-893](https://github.com/NVIDIA/warp/issues/893)).
+- Fix calling user functions from Python scope not working with array parameters.
+- Fix an off-by-one error in marching cubes output coordinates to align with the `scikit-image` convention
+  ([GH-324](https://github.com/NVIDIA/warp/issues/324)).
+- Fix compatibility of the OpenGL renderer with macOS ([GH-834](https://github.com/NVIDIA/warp/issues/834))
+- Fix evaluation of Discontinuous Galerkin gradients for `warp.fem` discrete fields.
+- Work around caching issue ([GH-637](https://github.com/NVIDIA/warp/issues/637)) with operator evaluation in
+  `warp.fem` integrands.
+- Fix adding superfluous inactive nodes to tetrahedron polynomial function spaces in `warp.fem`.
+- Fix `str()` and `repr()` implementations missing for scalar types at the Python scope
+  ([GH-863](https://github.com/NVIDIA/warp/issues/863)).
+- Fix support for write operations on nested matrices ([GH-793](https://github.com/NVIDIA/warp/issues/793)).
+- Fix `#line` directives for Python↔CUDA source correlation not being emitted by default when a module is compiled in
+  debug mode ([GH-901](https://github.com/NVIDIA/warp/issues/901)).
+- Fix 2D shared tile allocation/de-allocation bug inside Warp functions ([GH-877](https://github.com/NVIDIA/warp/issues/877)).
+- Fix loading "unique" modules using `wp.load_module()`.
+
 ## [1.8.1] - 2025-08-01
 
 ### Deprecated

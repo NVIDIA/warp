@@ -141,8 +141,8 @@ create pypi wheels:
   script:
     - sed -i "s/^\(.*\)$/\1+cu13/" VERSION.md # Modify VERSION.md with +cu13
     - uv build --wheel -C--build-option=-Pwindows-x86_64
-    - uv build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux2014
-    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux2014
+    - uv build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux_2_34
+    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
   artifacts:
