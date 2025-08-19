@@ -197,8 +197,10 @@ from warp.context import from_numpy as from_numpy
 from warp.context import launch as launch
 from warp.context import launch_tiled as launch_tiled
 from warp.context import synchronize as synchronize
+from warp.context import compile_aot_module as compile_aot_module
 from warp.context import force_load as force_load
 from warp.context import load_module as load_module
+from warp.context import load_aot_module as load_aot_module
 from warp.context import event_from_ipc_handle as event_from_ipc_handle
 
 from warp.context import set_module_options as set_module_options
