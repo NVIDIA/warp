@@ -400,7 +400,7 @@ class Example:
         cell_volume = np.prod(cell_size)
 
         radius = np.max(cell_size) * 0.5
-        volume = np.prod(cell_volume) * packing_fraction
+        volume = cell_volume * packing_fraction
 
         rng = np.random.default_rng(42)
         points += 2.0 * radius * (rng.random(points.shape) - 0.5)

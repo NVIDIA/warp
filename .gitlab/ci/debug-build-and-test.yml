@@ -51,9 +51,15 @@ stages:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - yum update -y && yum install curl wget -y
     - gcc --version
+    - wget -qO- https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$CUDA_BIN:$PATH"
+    - tools/packman/packman pull --platform linux-aarch64 deps/cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - ./tools/ci/building/build-linux-aarch64/build.sh --debug --no-docker
+    - uv run build_lib.py --cuda_path=$CUDA --mode=debug
+    - mkdir -p warp/bin/linux-aarch64
+    - mv warp/bin/warp.so warp/bin/linux-aarch64
+    - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
 
 linux-x86_64 build:
   stage: build
@@ -65,9 +71,15 @@ linux-x86_64 build:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - yum update -y && yum install curl wget -y
     - gcc --version
+    - wget -qO- https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$CUDA_BIN:$PATH"
+    - tools/packman/packman pull --platform linux-x86_64 deps/cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh --debug --no-docker
+    - uv run build_lib.py --cuda_path=$CUDA --mode=debug
+    - mkdir -p warp/bin/linux-x86_64
+    - mv warp/bin/warp.so warp/bin/linux-x86_64
+    - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
 
 windows-x86_64 build:
   stage: build
@@ -78,14 +90,13 @@ windows-x86_64 build:
     - powershell -command "Get-Volume | Format-Table -AutoSize"
     - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
     - $env:PATH = "$env:CI_PROJECT_DIR\_uv\bin;$env:PATH"
-    - uv venv
-    - .venv\Scripts\activate
-    - uv pip install numpy
     - tools\packman\packman pull --platform windows-x86_64 deps\cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
     - tools\packman\packman install -l _build\host-deps\winsdk winsdk 10.17763
     - tools\packman\packman install -l _build\host-deps\msvc msvc 2019-16.11.24
   script:
-    - python build_lib.py --jobs 2 --msvc_path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk_path=_build\host-deps\winsdk --cuda_path=_build\target-deps\cuda
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run build_lib.py --mode debug --jobs 2 --msvc_path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk_path=_build\host-deps\winsdk --cuda_path=_build\target-deps\cuda
 
 # ==============================================================================
 # Unit Testing Jobs (Debug)
@@ -105,38 +116,28 @@ windows-x86_64 build:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
-    - python -m pip install -U "jax[cuda12]"
-    - python -m pip install -U psutil
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --extra dev -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
 
 linux-x86_64 test:
   stage: test
   image: ubuntu:22.04
   needs: [linux-x86_64 build]
   extends:
-    - .ipp_lnx_x86_64_gpu_2x
+    - .ipp_lnx_x86_64_gpu
     - .save_test_report_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
-    - apt-get update && apt-get install curl --no-install-recommends -y
-    - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-x86_64
-    - export PATH="$CUDA_BIN:$PATH"
-    - $PYTHON -m venv _venv
-    - source _venv/bin/activate
-    - python -m pip install --upgrade pip
-    - python -m pip install --upgrade usd-core Pillow
-    - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
-    - python -m pip install -U "jax[cuda12]"
-    - python -m pip install -U psutil
-    - python -m pip install -e .
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
-    # HACK: disable P2P tests due to misbehaving agents
-    - export WARP_DISABLE_P2P_TESTS=1
   script:
-    - python -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
 windows-x86_64 test:
   stage: test
@@ -149,18 +150,12 @@ windows-x86_64 test:
     - !reference [.snippets, define-powershell-GetTime]
     - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
     - powershell -command "Get-Volume | Format-Table -AutoSize"
-    - $python_name = $DEFAULT_PYTHON + "-windows-x86_64"
-    - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
-    - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
-    - .\_venv\Scripts\Activate.ps1
-    - python -m pip install --upgrade pip
-    - python -m pip install --upgrade usd-core==25.5.1 numpy Pillow
-    - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
-    - python -m pip install -U psutil
-    - python -m pip install -e .
+    - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
-    - python -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
 
 # ==============================================================================
 # Packaging Jobs

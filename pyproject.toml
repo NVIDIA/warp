@@ -54,19 +54,32 @@ Changelog = "https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md"
 docs = [
     'nvidia-sphinx-theme; python_version >= "3.9"',
     "sphinx-copybutton",
-    "ruff == 0.11.10",
+    "pre-commit",
     "myst_parser",
 ]
+benchmark = [
+    "usd-core>=25.5 ; platform_machine != 'aarch64'",
+    "usd-exchange>=2.1.0a3 ; python_full_version >= '3.10' and platform_machine == 'aarch64'",
+]
+examples = [
+    "blosc>=1.11.1",
+    "matplotlib>=3.7.5",
+    "pillow>=10.4.0",
+    "psutil>=7.1.0",
+    "pyglet>=2.1.9",
+    "usd-core>=25.5 ; platform_machine != 'aarch64'",
+    "usd-exchange>=2.1.0a3 ; python_full_version >= '3.10' and platform_machine == 'aarch64'",
+]
+torch-cu12 = [
+    "warp-lang[examples]",
+    'torch>=2.7.0; python_version >= "3.9"',
+]
 dev = [
-    "pre-commit",
-    "ruff == 0.11.10",
+    "warp-lang[examples]",
+    "warp-lang[docs]",
     "nvtx",
-    'nvidia-sphinx-theme; python_version >= "3.9"',
-    "sphinx-copybutton",
     "coverage[toml]",
 ]
-benchmark = ["usd-core ; platform_machine != 'aarch64'"]
-extras = ['usd-core', 'matplotlib', 'pillow', 'pyglet', 'psutil']
 
 [tool.setuptools.packages.find]
 include = ["warp*"]
@@ -84,7 +97,6 @@ extend-exclude = [
     "warp/thirdparty/appdirs.py",
     "warp/thirdparty/dlpack.py",
     "tools",
-    "__init__.pyi",
 ]
 
 [tool.ruff.lint]
@@ -113,6 +125,7 @@ ignore = [
     "UP018",   # Warp kernels often use float(val) and int(val)
     "RUF046",  # Warp kernels often use int(val)
 ]
+exclude = ["warp/__init__.pyi"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "PLC0414"]
@@ -162,4 +175,12 @@ omit = [
 name = "testpypi"
 url = "https://test.pypi.org/simple/"
 publish-url = "https://test.pypi.org/legacy/"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu129", extra = "torch-cu12" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
 explicit = true

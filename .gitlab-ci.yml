@@ -59,6 +59,7 @@ variables:
   UV_PYTHON:
     value: "3.12"
     options:
+      - "3.14"
       - "3.13"
       - "3.12"
       - "3.11"
@@ -89,9 +90,12 @@ linux-aarch64 build:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - yum update -y && yum install curl wget -y
     - gcc --version
+    - wget -qO- https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$CUDA_BIN:$PATH"
+    - tools/packman/packman pull --platform linux-aarch64 deps/cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - ./tools/ci/building/build-linux-aarch64/build.sh --no-docker
+    - uv run build_lib.py --cuda_path=$CUDA
     - mkdir -p warp/bin/linux-aarch64
     - mv warp/bin/warp.so warp/bin/linux-aarch64
     - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
@@ -106,9 +110,12 @@ linux-x86_64 build:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - yum update -y && yum install curl wget -y
     - gcc --version
+    - wget -qO- https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$CUDA_BIN:$PATH"
+    - tools/packman/packman pull --platform linux-x86_64 deps/cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh --no-docker
+    - uv run build_lib.py --cuda_path=$CUDA
     - mkdir -p warp/bin/linux-x86_64
     - mv warp/bin/warp.so warp/bin/linux-x86_64
     - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
@@ -120,8 +127,15 @@ windows-x86_64 build:
     - .runner-build-windows-x86_64
   before_script:
     - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
+    - $env:PATH = "$env:CI_PROJECT_DIR\_uv\bin;$env:PATH"
+    - tools\packman\packman pull --platform windows-x86_64 deps\cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
+    - tools\packman\packman install -l _build\host-deps\winsdk winsdk 10.17763
+    - tools\packman\packman install -l _build\host-deps\msvc msvc 2019-16.11.24
   script:
-    - ./tools/ci/building/build-windows-x86_64/build.bat
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run build_lib.py --msvc_path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk_path=_build\host-deps\winsdk --cuda_path=_build\target-deps\cuda
 
 mac-x86_64 build:
   stage: build
@@ -129,8 +143,12 @@ mac-x86_64 build:
     - .save_warp_bin_artifact
     - .runner-build-macos-universal
     - .macos_warp_tags
+  before_script:
+    - df -h
+    - curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="$CI_PROJECT_DIR/_uv" sh
+    - export PATH="$CI_PROJECT_DIR/_uv/bin:$PATH"
   script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh
+    - uv run build_lib.py
 
 linux-x86_64 cuda 13 build:
   stage: build
@@ -141,9 +159,12 @@ linux-x86_64 cuda 13 build:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - yum update -y && yum install curl wget -y
+    - wget -qO- https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$CUDA_BIN:$PATH"
+    - tools/packman/packman pull --platform linux-x86_64 deps/cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-13"
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - ./tools/ci/building/build-linux-x86_64/build.sh --cuda 13 --no-docker # We are already using the builder image
+    - uv run build_lib.py --cuda_path=$CUDA
     - mkdir -p warp/bin/linux-x86_64
     - mv warp/bin/warp.so warp/bin/linux-x86_64
     - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
@@ -182,7 +203,7 @@ osec:pulse-trufflehog:
 # This job tests code snippets in the documentation
 doctest:
   stage: quality
-  image: python:3.11-slim
+  image: ghcr.io/astral-sh/uv:bookworm
   needs: [linux-x86_64 build]
   extends:
     - .ipp_lnx_x86_64_gpu
@@ -193,11 +214,9 @@ doctest:
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
-    - python -m pip install --upgrade pip
-    - python -m pip install -r docs/requirements.txt
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - sphinx-build -b doctest docs docs/_build/doctest
+    - uv run --extra docs build_docs.py --doctest-only
 
 # The only purpose of this job is to make sure documentation can be built on Windows.
 # The output does not get published anywhere, but the website can be viewed in the
@@ -214,15 +233,12 @@ windows-x86_64 docs:
     - !reference [.snippets, define-powershell-GetTime]
     - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
     - powershell -command "Get-Volume | Format-Table -AutoSize"
-    - $python_name = "3.12.6+nv1-windows-x86_64"
-    - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
-    - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
-    - .\_venv\Scripts\Activate.ps1
-    - python -m pip install --upgrade pip
-    - python -m pip install -r docs/requirements.txt
+    - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
-    - python build_docs.py --quick
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run --extra docs build_docs.py --quick
     - mv docs/_build/html/ ./public/
   after_script:
     - echo "View the website at https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
@@ -347,10 +363,9 @@ linux-aarch64 test:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-aarch64]
-    - python -m pip install -U "coverage[toml]"
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 linux-aarch64 test jetson:
   needs: [linux-aarch64 build]
@@ -363,7 +378,7 @@ linux-aarch64 test jetson:
     - !reference [.snippets, install-python+warp-aarch64]
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - gpu/orin
 
@@ -376,20 +391,17 @@ linux-x86_64 test:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
-    - apt-get update && apt-get install curl git --no-install-recommends -y
+    - apt-get update && apt-get install curl git ca-certificates --no-install-recommends -y
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
-    - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-x86_64
-    - export PATH="$CUDA_BIN:$PATH"
-    - $PYTHON -m venv _venv
-    - source _venv/bin/activate
-    - python -m pip install --upgrade pip
-    - python -m pip install --upgrade usd-core coverage[toml] blosc Pillow
-    - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
-    - python -m pip install -U "jax[cuda12]"
-    - python -m pip install -U psutil
-    - python -m pip install -e .
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+    - uv venv
+    - source .venv/bin/activate
+    - uv sync --extra dev --extra torch-cu12
+    - uv pip install -U "jax[cuda12]"
+    - uv pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
     # HACK: disable P2P tests due to misbehaving agents
     - export WARP_DISABLE_P2P_TESTS=1
@@ -397,9 +409,8 @@ linux-x86_64 test:
     - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
     # Upload report to Codecov
     - git config --global --add safe.directory $CI_PROJECT_DIR
-    - python -m pip install codecov-cli
-    - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --plugin pycoverage -F unittests -f coverage.xml
-    - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
+    - uvx --from codecov-cli codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --plugin pycoverage -F unittests -f coverage.xml
+    - uvx --from codecov-cli codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
 
 # A temporary job for testing on Blackwell until more runners are available
 linux-x86_64-blackwell test:
@@ -410,20 +421,18 @@ linux-x86_64-blackwell test:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
-    - apt-get update && apt-get install curl git --no-install-recommends -y
+    - apt-get update && apt-get install curl git ca-certificates --no-install-recommends -y
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
-    - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-x86_64
-    - export PATH="$CUDA_BIN:$PATH"
-    - $PYTHON -m venv _venv
-    - source _venv/bin/activate
-    - python -m pip install --upgrade pip
-    - python -m pip install --upgrade usd-core coverage[toml] blosc Pillow
-    - python -m pip install -U --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128
-    - python -m pip install -U --pre jax jaxlib "jax-cuda12-plugin[with_cuda]" jax-cuda12-pjrt -f https://storage.googleapis.com/jax-releases/jax_nightly_releases.html
-    - python -m pip install -U psutil
-    - python -m pip install -e .
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+    - uv venv
+    - source .venv/bin/activate
+    - uv sync --extra dev
+    - uv pip install -U --pre torch --index-url https://download.pytorch.org/whl/nightly/cu130
+    - uv pip install -U "jax[cuda13]"
+    - uv pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
@@ -443,11 +452,9 @@ mac-x86_64 test:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-macos]
-    - python -m pip install --upgrade usd-core coverage[toml] Pillow
-    - python -m pip install -U psutil
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - uv run --extra dev -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 # Note that for throughput reasons this runs on a single-GPU runner
 windows-x86_64 test:
@@ -461,23 +468,16 @@ windows-x86_64 test:
     - !reference [.snippets, define-powershell-GetTime]
     - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
     - powershell -command "Get-Volume | Format-Table -AutoSize"
-    - $python_name = $DEFAULT_PYTHON + "-windows-x86_64"
-    - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
-    - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
-    - .\_venv\Scripts\Activate.ps1
-    - python -m pip install --upgrade pip
-    - python -m pip install --upgrade usd-core==25.5.1 coverage[toml] numpy blosc Pillow
-    - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
-    - python -m pip install -U psutil
-    - python -m pip install -e .
+    - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
-    # Upload report to Codecov
-    - git config --global --add safe.directory $env:CI_PROJECT_DIR
-    - python -m pip install codecov-cli
-    - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --plugin pycoverage -F unittests -f coverage.xml
-    - codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+      # Upload report to Codecov
+      git config --global --add safe.directory $env:CI_PROJECT_DIR
+      & "$env:CI_PROJECT_DIR\_uv\uvx.exe" --from codecov-cli codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --plugin pycoverage -F unittests -f coverage.xml
+      & "$env:CI_PROJECT_DIR\_uv\uvx.exe" --from codecov-cli codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
 
 # Optional multi-GPU Windows job (likely longer queue time)
 windows-x86_64 test mgpu:
@@ -496,18 +496,12 @@ windows-x86_64 test mgpu:
     - !reference [.snippets, define-powershell-GetTime]
     - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
     - powershell -command "Get-Volume | Format-Table -AutoSize"
-    - $python_name = $DEFAULT_PYTHON + "-windows-x86_64"
-    - tools/packman/packman.cmd install -l _build/target-deps/python python $python_name
-    - '& $env:CI_PROJECT_DIR\_build\target-deps\python\python.exe -m venv _venv'
-    - .\_venv\Scripts\Activate.ps1
-    - python -m pip install --upgrade pip
-    - python -m pip install --upgrade usd-core==25.5.1 numpy blosc Pillow
-    - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
-    - python -m pip install -U psutil
-    - python -m pip install -e .
+    - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run --extra dev --extra torch-cu12 -m warp.tests --with usd-core==25.5.1 --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - win-x86_64-gpu-2x-573.42
 
@@ -524,18 +518,15 @@ linux-x86_64 test warp-init:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
-    - apt-get update && apt-get install curl --no-install-recommends -y
+    - apt-get update && apt-get install curl ca-certificates --no-install-recommends -y
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
-    - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-x86_64
-    - $PYTHON -m venv _venv
-    - source _venv/bin/activate
-    - python -m pip install --upgrade pip
-    - python -m pip install -e .
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --disable-process-pooling --disable-concurrent-futures --level test -p 'test_implicit_init.py'
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --disable-process-pooling --disable-concurrent-futures --level test -p 'test_implicit_init.py'
 
 # Optional job to test MuJoCo Warp
 linux-x86_64 test mujoco warp:
@@ -594,6 +585,7 @@ linux-x86_64 python matrix test:
   parallel:
     matrix:
       - UV_PYTHON: "3.8"
+      - UV_PYTHON: "3.9"
       - UV_PYTHON: "3.13"
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -601,13 +593,9 @@ linux-x86_64 python matrix test:
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
-    # Python environment
-    - uv venv
-    - uv pip install usd-core blosc Pillow psutil
-    - uv pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - uv run -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
 # Benchmark this commit with the current main branch using Airspeed Velocity
 # Only runs on merge requests
@@ -662,39 +650,6 @@ linux-x86_64 asv:
 # circumstances. Most developers don't need to worry about the
 # jobs in this section.
 # ==============================================================================
-
-# Trigger additional (no code coverage) pipelines testing more Python versions
-# Workaround from https://gitlab.com/gitlab-org/gitlab/-/issues/284086
-trigger python 3.X test pipelines:
-  stage: test
-  image: busybox
-  needs:
-    - linux-aarch64 build
-    - linux-x86_64 build
-    - windows-x86_64 build
-    - mac-x86_64 build
-  extends:
-    - .ipp_lnx_x86_64_cpu_micro
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
-    - when: manual # Can be triggered in all other scenarios
-      allow_failure: true
-  variables:
-    GIT_STRATEGY: none
-  script:
-    - echo "Run this job to test additional Python versions."
-
-python 3.8 test:
-  stage: child pipelines
-  needs: [trigger python 3.X test pipelines]
-  trigger:
-    include: /.gitlab/ci/additional-tests.yml
-  extends:
-    - .trigger_common
-  variables:
-    DEFAULT_PYTHON: "3.8.18+nv1"
 
 # Trigger debug build and test (no code coverage) pipelines
 # Workaround from https://gitlab.com/gitlab-org/gitlab/-/issues/284086
@@ -1077,15 +1032,12 @@ publish wheels to github release:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KSet up docs environment"
     - df -h
-    - apt-get update && apt-get install make --no-install-recommends -y
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
-    - uv venv
-    - uv pip install -r docs/requirements.txt
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - uv run build_docs.py --quick
+    - uv run --extra docs build_docs.py --quick
     - mv docs/_build/html/ ./public/
 
 # Merge requests: Build documentation and save as an artifact

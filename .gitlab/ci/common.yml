@@ -53,22 +53,13 @@ include:
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-aarch64/warp.so warp/bin/
     - mv warp/bin/linux-aarch64/warp-clang.so warp/bin/
-    - apt-get update && apt-get install curl --no-install-recommends -y
-    - tools/packman/packman install -l _build/target-deps/python python ${DEFAULT_PYTHON}-linux-aarch64
-    - $PYTHON -m venv _venv
-    - source _venv/bin/activate
-    - python -m pip install --upgrade pip
-    - python -m pip install --upgrade blosc Pillow psutil
-    - python -m pip install -e .
+    - apt-get update && apt-get install curl ca-certificates --no-install-recommends -y
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
   install-python+warp-macos:
     - df -h
-    - export PYTHON_NAME="${DEFAULT_PYTHON}-macos-universal";
-    - tools/packman/packman install -l _build/target-deps/python python ${PYTHON_NAME}
-    - $PYTHON -m venv _venv
-    - source _venv/bin/activate
-    - python -m pip install --upgrade pip
-    - python -m pip install --upgrade blosc Pillow psutil
-    - python -m pip install -e .
+    - curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="$CI_PROJECT_DIR/_uv" sh
+    - export PATH="$CI_PROJECT_DIR/_uv/bin:$PATH"
   prepare-kit-artifacts:
     - python3 tools/ci/publishing/build_nodes_info.py
     - mv warp exts/omni.warp.core/
@@ -169,8 +160,6 @@ include:
     CUDA_BIN: "$PARENT_PROJECT_DIR/_build/target-deps/cuda/bin"
     CUDA: "$PARENT_PROJECT_DIR/_build/target-deps/cuda"
     CUDA_HOME: "$CI_PROJECT_DIR/_build/target-deps/cuda"
-    PYTHON: "$PARENT_PROJECT_DIR/_build/target-deps/python/python"
-    LINBUILD: "$PARENT_PROJECT_DIR/_build/host-deps/linbuild/linbuild.sh"
     WARP_CACHE_ROOT: "$PARENT_PROJECT_DIR/.cache/warp" # Used by the parallel test runner
   trigger:
     strategy: depend
