@@ -22,6 +22,7 @@
 #include "warp.h"
 #include "cuda_util.h"
 
+#include <cassert>
 #include <map>
 
 using namespace wp;
@@ -40,6 +41,8 @@ public:
 
 private:
 
+    void initialize_empty(BVH& bvh);
+
     bounds3 calc_bounds(const vec3* lowers, const vec3* uppers, const int* indices, int start, int end);
 
     int partition_median(const vec3* lowers, const vec3* uppers, int* indices, int start, int end, bounds3 range_bounds);
@@ -54,13 +57,53 @@ private:
 
 //////////////////////////////////////////////////////////////////////
 
+void TopDownBVHBuilder::initialize_empty(BVH& bvh)
+{
+    bvh.max_depth = 0;
+    bvh.max_nodes = 0;
+    bvh.node_lowers = nullptr;
+    bvh.node_uppers = nullptr;
+    bvh.node_parents = nullptr;
+    bvh.node_counts = nullptr;
+    bvh.root = nullptr;
+    bvh.primitive_indices = nullptr;
+    bvh.num_leaf_nodes = 0;
+}
+
 void TopDownBVHBuilder::build(BVH& bvh, const vec3* lowers, const vec3* uppers, int n, int in_constructor_type)
 {
+    assert(n >= 0);
+    if (n > 0)
+    {
+        assert(lowers != nullptr && uppers != nullptr && "Pointers must be valid for n > 0");
+    }
+
     constructor_type = in_constructor_type;
     if (constructor_type != BVH_CONSTRUCTOR_SAH && constructor_type != BVH_CONSTRUCTOR_MEDIAN)
     {
-        printf("Unrecognized Constructor type: %d! For CPU constructor it should be either SAH (%d) or Median (%d)!\n",
+        fprintf(stderr, "Unrecognized Constructor type: %d! For CPU constructor it should be either SAH (%d) or Median (%d)!\n",
             constructor_type, BVH_CONSTRUCTOR_SAH, BVH_CONSTRUCTOR_MEDIAN);
+        return;
+    }
+
+    // exact upper bound: floor((INT_MAX + 1) / 2) without overflowing int
+    const int MAX_N = (INT_MAX - 1) / 2 + 1;
+
+    if (n < 0)
+    {
+        fprintf(stderr, "Error: Cannot build BVH with a negative primitive count: %d\n", n);
+        initialize_empty(bvh);
+        return;
+    }
+    else if (n == 0)
+    {
+        initialize_empty(bvh);
+        return;
+    }
+    else if (n > MAX_N)
+    {
+        fprintf(stderr, "Error: Primitive count %d is too large and would cause an integer overflow.\n", n);
+        initialize_empty(bvh);
         return;
     }
 
@@ -70,14 +113,11 @@ void TopDownBVHBuilder::build(BVH& bvh, const vec3* lowers, const vec3* uppers, 
     bvh.node_lowers = new BVHPackedNodeHalf[bvh.max_nodes];
     bvh.node_uppers = new BVHPackedNodeHalf[bvh.max_nodes];
     bvh.node_parents = new int[bvh.max_nodes];
-    bvh.node_counts = NULL;
+    bvh.node_counts = nullptr;
 
     // root is always in first slot for top down builders
     bvh.root = new int[1];
     bvh.root[0] = 0;
-
-    if (n == 0)
-        return;
     
     bvh.primitive_indices = new int[n];
     for (int i = 0; i < n; ++i)
@@ -273,8 +313,6 @@ int TopDownBVHBuilder::build_recursive(BVH& bvh, const vec3* lowers, const vec3*
 {
     assert(start < end);
 
-    // printf("start %d end %d\n", start, end);
-
     const int n = end - start;
     const int node_index = bvh.num_nodes++;
 
@@ -448,11 +486,11 @@ void bvh_destroy_host(BVH& bvh)
     delete[] bvh.primitive_indices;
     delete[] bvh.root;
 
-    bvh.node_lowers = NULL;
-    bvh.node_uppers = NULL;
-    bvh.node_parents = NULL;
-    bvh.primitive_indices = NULL;
-    bvh.root = NULL;
+    bvh.node_lowers = nullptr;
+    bvh.node_uppers = nullptr;
+    bvh.node_parents = nullptr;
+    bvh.primitive_indices = nullptr;
+    bvh.root = nullptr;
 
     bvh.max_nodes = 0;
     bvh.num_items = 0;
