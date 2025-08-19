@@ -22,6 +22,7 @@
 - Add indexed tile load builtin (`wp.tile_index_load()`) ([GH-796](https://github.com/NVIDIA/warp/issues/796)).
 - Add indexed tile store builtin (`wp.tile_index_store()`) ([GH-684](https://github.com/NVIDIA/warp/issues/684)).
 - Add indexed tile atomic add builtin (`wp.tile_index_atomic_add()`) ([GH-684](https://github.com/NVIDIA/warp/issues/684)).
+- Add optional `block_dim` argument to `wp.load_module()` and `wp.force_load()`.
 
 ### Removed
 
@@ -82,6 +83,7 @@
 - Fix `#line` directives for Python↔CUDA source correlation not being emitted by default when a module is compiled in
   debug mode ([GH-901](https://github.com/NVIDIA/warp/issues/901)).
 - Fix 2D shared tile allocation/de-allocation bug inside Warp functions ([GH-877](https://github.com/NVIDIA/warp/issues/877)).
+- Fix loading "unique" modules using `wp.load_module()`.
 
 ## [1.8.1] - 2025-08-01
 
