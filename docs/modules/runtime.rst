@@ -1815,3 +1815,10 @@ and will remain cached even if :func:`wp.clear_kernel_cache() <clear_kernel_cach
 :func:`wp.clear_lto_cache() <clear_lto_cache>` can be used to clear the LTO cache.
 
 .. autofunction:: clear_lto_cache
+
+Module Management
+-----------------
+
+.. autofunction:: warp.compile_aot_module
+
+.. autofunction:: warp.load_aot_module

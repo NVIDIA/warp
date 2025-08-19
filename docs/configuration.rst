@@ -74,7 +74,16 @@ The options for a module can also be queried using ``wp.get_module_options()``.
 |``lineinfo``                          | Boolean | Global      | A module-level override of the :attr:`warp.config.lineinfo` setting.     |
 |                                      |         | setting     |                                                                          |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``compile_time_trace``                | Boolean | Global      | A module-level override of the :attr:`warp.config.compile_time_trace`    |
+|                                      |         | setting     | setting.                                                                 |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``cuda_output``                       | String  | ``None``    | A module-level override of the :attr:`warp.config.cuda_output` setting.  |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``block_dim``                         | Integer | 256         | The number of CUDA threads per block that kernels in the module will be  |
+|                                      |         |             | compiled for.                                                            |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``strip_hash``                        | Boolean | ``False``   | If ``True``, avoids using a content-based hash to identify the module    |
+|                                      |         |             | and its functions.                                                       |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 
 Kernel Settings

@@ -26,13 +26,28 @@ import json
 import operator
 import os
 import platform
+import shutil
 import sys
 import types
 import typing
 import weakref
 from copy import copy as shallowcopy
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Literal, Mapping, Sequence, Tuple, TypeVar, Union, get_args, get_origin
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Literal,
+    Mapping,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+)
 
 import numpy as np
 
@@ -812,14 +827,17 @@ class Kernel:
         sig = warp.types.get_signature(arg_types, func_name=self.key)
         return self.overloads.get(sig)
 
-    def get_mangled_name(self):
-        if self.hash is None:
-            raise RuntimeError(f"Missing hash for kernel {self.key} in module {self.module.name}")
+    def get_mangled_name(self) -> str:
+        if self.module.options["strip_hash"]:
+            return self.key
+        else:
+            if self.hash is None:
+                raise RuntimeError(f"Missing hash for kernel {self.key} in module {self.module.name}")
 
-        # TODO: allow customizing the number of hash characters used
-        hash_suffix = self.hash.hex()[:8]
+            # TODO: allow customizing the number of hash characters used
+            hash_suffix = self.hash.hex()[:8]
 
-        return f"{self.key}_{hash_suffix}"
+            return f"{self.key}_{hash_suffix}"
 
     def __call__(self, *args, **kwargs):
         # we implement this function only to ensure Kernel is a callable object
@@ -2040,6 +2058,7 @@ class Module:
             "mode": None,
             "block_dim": 256,
             "compile_time_trace": warp.config.compile_time_trace,
+            "strip_hash": False,
         }
 
         # Module dependencies are determined by scanning each function
@@ -2186,20 +2205,23 @@ class Module:
             if isinstance(arg.type, warp.codegen.Struct) and arg.type.module is not None:
                 add_ref(arg.type.module)
 
-    def hash_module(self):
+    def hash_module(self) -> bytes:
+        """Get the hash of the module for the current block_dim.
+
+        This function always creates a new `ModuleHasher` instance and computes the hash.
+        """
         # compute latest hash
         block_dim = self.options["block_dim"]
         self.hashers[block_dim] = ModuleHasher(self)
         return self.hashers[block_dim].get_module_hash()
 
-    def load(self, device, block_dim=None) -> ModuleExec | None:
-        device = runtime.get_device(device)
+    def get_module_hash(self, block_dim: int | None = None) -> bytes:
+        """Get the hash of the module for the current block_dim.
 
-        # update module options if launching with a new block dim
-        if block_dim is not None:
-            self.options["block_dim"] = block_dim
-
-        active_block_dim = self.options["block_dim"]
+        If a hash has not been computed for the current block_dim, it will be computed and cached.
+        """
+        if block_dim is None:
+            block_dim = self.options["block_dim"]
 
         if self.has_unresolved_static_expressions:
             # The module hash currently does not account for unresolved static expressions
@@ -2216,214 +2238,390 @@ class Module:
             self.has_unresolved_static_expressions = False
 
         # compute the hash if needed
-        if active_block_dim not in self.hashers:
-            self.hashers[active_block_dim] = ModuleHasher(self)
+        if block_dim not in self.hashers:
+            self.hashers[block_dim] = ModuleHasher(self)
+
+        return self.hashers[block_dim].get_module_hash()
+
+    def _use_ptx(self, device) -> bool:
+        # determine whether to use PTX or CUBIN
+        if device.is_cubin_supported:
+            # get user preference specified either per module or globally
+            preferred_cuda_output = self.options.get("cuda_output") or warp.config.cuda_output
+            if preferred_cuda_output is not None:
+                use_ptx = preferred_cuda_output == "ptx"
+            else:
+                # determine automatically: older drivers may not be able to handle PTX generated using newer
+                # CUDA Toolkits, in which case we fall back on generating CUBIN modules
+                use_ptx = runtime.driver_version >= runtime.toolkit_version
+        else:
+            # CUBIN not an option, must use PTX (e.g. CUDA Toolkit too old)
+            use_ptx = True
+
+        return use_ptx
+
+    def get_module_identifier(self) -> str:
+        """Get an abbreviated module name to use for directories and files in the cache.
+
+        Depending on the setting of the ``"strip_hash"`` option for this module,
+        the module identifier might include a content-dependent hash as a suffix.
+        """
+        if self.options["strip_hash"]:
+            module_name_short = f"wp_{self.name}"
+        else:
+            module_hash = self.get_module_hash()
+            module_name_short = f"wp_{self.name}_{module_hash.hex()[:7]}"
+
+        return module_name_short
+
+    def get_compile_arch(self, device: Device | None = None) -> int | None:
+        if device is None:
+            device = runtime.get_device()
+
+        if device.is_cpu:
+            return None
+
+        if self._use_ptx(device):
+            # use the default PTX arch if the device supports it
+            if warp.config.ptx_target_arch is not None:
+                output_arch = min(device.arch, warp.config.ptx_target_arch)
+            else:
+                output_arch = min(device.arch, runtime.default_ptx_arch)
+        else:
+            output_arch = device.arch
+
+        return output_arch
+
+    def get_compile_output_name(
+        self, device: Device | None, output_arch: int | None = None, use_ptx: bool | None = None
+    ) -> str:
+        """Get the filename to use for the compiled module binary.
+
+        This is only the filename, e.g. ``wp___main___0340cd1.sm86.ptx``.
+        It should be used to form a path.
+        """
+        module_name_short = self.get_module_identifier()
+
+        if device and device.is_cpu:
+            return f"{module_name_short}.o"
+
+        # For CUDA compilation, we must have an architecture.
+        final_arch = output_arch
+        if final_arch is None:
+            if device:
+                # Infer the architecture from the device
+                final_arch = self.get_compile_arch(device)
+            else:
+                raise ValueError(
+                    "Either 'device' or 'output_arch' must be provided to determine compilation architecture"
+                )
+
+        # Determine if we should compile to PTX or CUBIN
+        if use_ptx is None:
+            if device:
+                use_ptx = self._use_ptx(device)
+            else:
+                init()
+                use_ptx = final_arch not in runtime.nvrtc_supported_archs
+
+        if use_ptx:
+            output_name = f"{module_name_short}.sm{final_arch}.ptx"
+        else:
+            output_name = f"{module_name_short}.sm{final_arch}.cubin"
+
+        return output_name
+
+    def get_meta_name(self) -> str:
+        """Get the filename to use for the module metadata file.
+
+        This is only the filename. It should be used to form a path.
+        """
+        return f"{self.get_module_identifier()}.meta"
+
+    def compile(
+        self,
+        device: Device | None = None,
+        output_dir: str | os.PathLike | None = None,
+        output_name: str | None = None,
+        output_arch: int | None = None,
+        use_ptx: bool | None = None,
+    ) -> None:
+        """Compile this module for a specific device.
+
+        Note that this function only generates and compiles code. The resulting
+        binary is not loaded into the runtime.
+
+        Args:
+            device: The device to compile the module for.
+            output_dir: The directory to write the compiled module to.
+            output_name: The name of the compiled module binary file.
+            output_arch: The architecture to compile the module for.
+        """
+        if output_arch is None:
+            output_arch = self.get_compile_arch(device)  # Will remain at None if device is CPU
+
+        if output_name is None:
+            output_name = self.get_compile_output_name(device, output_arch, use_ptx)
+
+        builder_options = {
+            **self.options,
+            # Some of the tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
+            "output_arch": output_arch,
+        }
+        builder = ModuleBuilder(
+            self,
+            builder_options,
+            hasher=self.hashers.get(self.options["block_dim"], None),
+        )
+
+        # create a temporary (process unique) dir for build outputs before moving to the binary dir
+        module_name_short = self.get_module_identifier()
+
+        if output_dir is None:
+            output_dir = os.path.join(warp.config.kernel_cache_dir, f"{module_name_short}")
+        else:
+            output_dir = os.fspath(output_dir)
+
+        meta_path = os.path.join(output_dir, self.get_meta_name())
+
+        build_dir = os.path.normpath(output_dir) + f"_p{os.getpid()}"
+
+        # dir may exist from previous attempts / runs / archs
+        Path(build_dir).mkdir(parents=True, exist_ok=True)
+
+        mode = self.options["mode"] if self.options["mode"] is not None else warp.config.mode
+
+        # build CPU
+        if output_arch is None:
+            # build
+            try:
+                source_code_path = os.path.join(build_dir, f"{module_name_short}.cpp")
+
+                # write cpp sources
+                cpp_source = builder.codegen("cpu")
+
+                with open(source_code_path, "w") as cpp_file:
+                    cpp_file.write(cpp_source)
+
+                output_path = os.path.join(build_dir, output_name)
+
+                # build object code
+                with warp.ScopedTimer("Compile x86", active=warp.config.verbose):
+                    warp.build.build_cpu(
+                        output_path,
+                        source_code_path,
+                        mode=mode,
+                        fast_math=self.options["fast_math"],
+                        verify_fp=warp.config.verify_fp,
+                        fuse_fp=self.options["fuse_fp"],
+                    )
+
+            except Exception as e:
+                if isinstance(e, FileNotFoundError):
+                    _check_and_raise_long_path_error(e)
+
+                self.failed_builds.add(None)
+
+                # clean up build_dir used for this process regardless
+                shutil.rmtree(build_dir, ignore_errors=True)
+
+                raise (e)
+
+        else:
+            # build
+            try:
+                source_code_path = os.path.join(build_dir, f"{module_name_short}.cu")
+
+                # write cuda sources
+                cu_source = builder.codegen("cuda")
+
+                with open(source_code_path, "w") as cu_file:
+                    cu_file.write(cu_source)
+
+                output_path = os.path.join(build_dir, output_name)
+
+                # generate PTX or CUBIN
+                with warp.ScopedTimer(
+                    f"Compile CUDA (arch={builder_options['output_arch']}, mode={mode}, block_dim={self.options['block_dim']})",
+                    active=warp.config.verbose,
+                ):
+                    warp.build.build_cuda(
+                        source_code_path,
+                        builder_options["output_arch"],
+                        output_path,
+                        config=mode,
+                        verify_fp=warp.config.verify_fp,
+                        fast_math=self.options["fast_math"],
+                        fuse_fp=self.options["fuse_fp"],
+                        lineinfo=self.options["lineinfo"],
+                        compile_time_trace=self.options["compile_time_trace"],
+                        ltoirs=builder.ltoirs.values(),
+                        fatbins=builder.fatbins.values(),
+                    )
+
+            except Exception as e:
+                if isinstance(e, FileNotFoundError):
+                    _check_and_raise_long_path_error(e)
+
+                if device:
+                    self.failed_builds.add(device.context)
+
+                # clean up build_dir used for this process regardless
+                shutil.rmtree(build_dir, ignore_errors=True)
+
+                raise (e)
+
+        # ------------------------------------------------------------
+        # build meta data
+
+        meta = builder.build_meta()
+        output_meta_path = os.path.join(build_dir, self.get_meta_name())
+
+        with open(output_meta_path, "w") as meta_file:
+            json.dump(meta, meta_file)
+
+        # -----------------------------------------------------------
+        # update cache
+
+        # try to move process outputs to cache
+        warp.build.safe_rename(build_dir, output_dir)
+
+        if os.path.exists(output_dir):
+            # final object binary path
+            binary_path = os.path.join(output_dir, output_name)
+
+            if not os.path.exists(binary_path) or self.options["strip_hash"]:
+                # copy our output file to the destination module
+                # this is necessary in case different processes
+                # have different GPU architectures / devices
+                try:
+                    os.rename(output_path, binary_path)
+                except (OSError, FileExistsError):
+                    # another process likely updated the module dir first
+                    pass
+
+            if not os.path.exists(meta_path) or self.options["strip_hash"]:
+                # copy our output file to the destination module
+                # this is necessary in case different processes
+                # have different GPU architectures / devices
+                try:
+                    os.rename(output_meta_path, meta_path)
+                except (OSError, FileExistsError):
+                    # another process likely updated the module dir first
+                    pass
+
+            try:
+                final_source_path = os.path.join(output_dir, os.path.basename(source_code_path))
+                if not os.path.exists(final_source_path) or self.options["strip_hash"]:
+                    os.rename(source_code_path, final_source_path)
+            except (OSError, FileExistsError):
+                # another process likely updated the module dir first
+                pass
+            except Exception as e:
+                # We don't need source_code_path to be copied successfully to proceed, so warn and keep running
+                warp.utils.warn(f"Exception when renaming {source_code_path}: {e}")
+
+            # clean up build_dir used for this process regardless
+            shutil.rmtree(build_dir, ignore_errors=True)
+
+    def load(
+        self,
+        device,
+        block_dim: int | None = None,
+        binary_path: os.PathLike | None = None,
+        output_arch: int | None = None,
+        meta_path: os.PathLike | None = None,
+    ) -> ModuleExec | None:
+        device = runtime.get_device(device)
+
+        # update module options if launching with a new block dim
+        if block_dim is not None:
+            self.options["block_dim"] = block_dim
+
+        active_block_dim = self.options["block_dim"]
 
         # check if executable module is already loaded and not stale
         exec = self.execs.get((device.context, active_block_dim))
         if exec is not None:
-            if exec.module_hash == self.hashers[active_block_dim].get_module_hash():
+            if self.options["strip_hash"] or (exec.module_hash == self.get_module_hash(active_block_dim)):
                 return exec
 
         # quietly avoid repeated build attempts to reduce error spew
         if device.context in self.failed_builds:
             return None
 
-        module_name = "wp_" + self.name
-        module_hash = self.hashers[active_block_dim].get_module_hash()
+        module_hash = self.get_module_hash(active_block_dim)
 
         # use a unique module path using the module short hash
-        module_name_short = f"{module_name}_{module_hash.hex()[:7]}"
-        module_dir = os.path.join(warp.config.kernel_cache_dir, module_name_short)
+        module_name_short = self.get_module_identifier()
 
-        with warp.ScopedTimer(
-            f"Module {self.name} {module_hash.hex()[:7]} load on device '{device}'", active=not warp.config.quiet
-        ) as module_load_timer:
+        module_load_timer_name = (
+            f"Module {self.name} {module_hash.hex()[:7]} load on device '{device}'"
+            if self.options["strip_hash"] is False
+            else f"Module {self.name} load on device '{device}'"
+        )
+
+        if warp.config.verbose:
+            module_load_timer_name += f" (block_dim={active_block_dim})"
+
+        with warp.ScopedTimer(module_load_timer_name, active=not warp.config.quiet) as module_load_timer:
             # -----------------------------------------------------------
-            # determine output paths
-            if device.is_cpu:
-                output_name = f"{module_name_short}.o"
-                output_arch = None
+            # Determine binary path and build if necessary
 
-            elif device.is_cuda:
-                # determine whether to use PTX or CUBIN
-                if device.is_cubin_supported:
-                    # get user preference specified either per module or globally
-                    preferred_cuda_output = self.options.get("cuda_output") or warp.config.cuda_output
-                    if preferred_cuda_output is not None:
-                        use_ptx = preferred_cuda_output == "ptx"
-                    else:
-                        # determine automatically: older drivers may not be able to handle PTX generated using newer
-                        # CUDA Toolkits, in which case we fall back on generating CUBIN modules
-                        use_ptx = runtime.driver_version >= runtime.toolkit_version
+            if binary_path:
+                # We will never re-codegen or re-compile in this situation
+                # The expected files must already exist
+
+                if device.is_cuda and output_arch is None:
+                    raise ValueError("'output_arch' must be provided if a 'binary_path' is provided")
+
+                if meta_path is None:
+                    raise ValueError("'meta_path' must be provided if a 'binary_path' is provided")
+
+                if not os.path.exists(binary_path):
+                    module_load_timer.extra_msg = " (error)"
+                    raise FileNotFoundError(f"Binary file {binary_path} does not exist")
                 else:
-                    # CUBIN not an option, must use PTX (e.g. CUDA Toolkit too old)
-                    use_ptx = True
-
-                if use_ptx:
-                    # use the default PTX arch if the device supports it
-                    if warp.config.ptx_target_arch is not None:
-                        output_arch = min(device.arch, warp.config.ptx_target_arch)
-                    else:
-                        output_arch = min(device.arch, runtime.default_ptx_arch)
-                    output_name = f"{module_name_short}.sm{output_arch}.ptx"
-                else:
-                    output_arch = device.arch
-                    output_name = f"{module_name_short}.sm{output_arch}.cubin"
-
-            # final object binary path
-            binary_path = os.path.join(module_dir, output_name)
-
-            # -----------------------------------------------------------
-            # check cache and build if necessary
-
-            build_dir = None
-
-            # we always want to build if binary doesn't exist yet
-            # and we want to rebuild if we are not caching kernels or if we are tracking array access
-            if (
-                not os.path.exists(binary_path)
-                or not warp.config.cache_kernels
-                or warp.config.verify_autograd_array_access
-            ):
-                builder_options = {
-                    **self.options,
-                    # Some of the tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
-                    "output_arch": output_arch,
-                }
-                builder = ModuleBuilder(self, builder_options, hasher=self.hashers[active_block_dim])
-
-                # create a temporary (process unique) dir for build outputs before moving to the binary dir
-                build_dir = os.path.join(
-                    warp.config.kernel_cache_dir, f"{module_name}_{module_hash.hex()[:7]}_p{os.getpid()}"
-                )
-
-                # dir may exist from previous attempts / runs / archs
-                Path(build_dir).mkdir(parents=True, exist_ok=True)
-
-                module_load_timer.extra_msg = " (compiled)"  # For wp.ScopedTimer informational purposes
-
-                mode = self.options["mode"] if self.options["mode"] is not None else warp.config.mode
-
-                # build CPU
-                if device.is_cpu:
-                    # build
-                    try:
-                        source_code_path = os.path.join(build_dir, f"{module_name_short}.cpp")
-
-                        # write cpp sources
-                        cpp_source = builder.codegen("cpu")
-
-                        with open(source_code_path, "w") as cpp_file:
-                            cpp_file.write(cpp_source)
-
-                        output_path = os.path.join(build_dir, output_name)
-
-                        # build object code
-                        with warp.ScopedTimer("Compile x86", active=warp.config.verbose):
-                            warp.build.build_cpu(
-                                output_path,
-                                source_code_path,
-                                mode=mode,
-                                fast_math=self.options["fast_math"],
-                                verify_fp=warp.config.verify_fp,
-                                fuse_fp=self.options["fuse_fp"],
-                            )
-
-                    except Exception as e:
-                        if isinstance(e, FileNotFoundError):
-                            _check_and_raise_long_path_error(e)
-
-                        self.failed_builds.add(None)
-                        module_load_timer.extra_msg = " (error)"
-                        raise (e)
-
-                elif device.is_cuda:
-                    # build
-                    try:
-                        source_code_path = os.path.join(build_dir, f"{module_name_short}.cu")
-
-                        # write cuda sources
-                        cu_source = builder.codegen("cuda")
-
-                        with open(source_code_path, "w") as cu_file:
-                            cu_file.write(cu_source)
-
-                        output_path = os.path.join(build_dir, output_name)
-
-                        # generate PTX or CUBIN
-                        with warp.ScopedTimer("Compile CUDA", active=warp.config.verbose):
-                            warp.build.build_cuda(
-                                source_code_path,
-                                output_arch,
-                                output_path,
-                                config=mode,
-                                verify_fp=warp.config.verify_fp,
-                                fast_math=self.options["fast_math"],
-                                fuse_fp=self.options["fuse_fp"],
-                                lineinfo=self.options["lineinfo"],
-                                compile_time_trace=self.options["compile_time_trace"],
-                                ltoirs=builder.ltoirs.values(),
-                                fatbins=builder.fatbins.values(),
-                            )
-
-                    except Exception as e:
-                        if isinstance(e, FileNotFoundError):
-                            _check_and_raise_long_path_error(e)
-
-                        self.failed_builds.add(device.context)
-                        module_load_timer.extra_msg = " (error)"
-                        raise (e)
-
-                # ------------------------------------------------------------
-                # build meta data
-
-                meta = builder.build_meta()
-                meta_path = os.path.join(build_dir, f"{module_name_short}.meta")
-
-                with open(meta_path, "w") as meta_file:
-                    json.dump(meta, meta_file)
-
-                # -----------------------------------------------------------
-                # update cache
-
-                # try to move process outputs to cache
-                warp.build.safe_rename(build_dir, module_dir)
-
-                if os.path.exists(module_dir):
-                    if not os.path.exists(binary_path):
-                        # copy our output file to the destination module
-                        # this is necessary in case different processes
-                        # have different GPU architectures / devices
-                        try:
-                            os.rename(output_path, binary_path)
-                        except (OSError, FileExistsError):
-                            # another process likely updated the module dir first
-                            pass
-
-                    try:
-                        final_source_path = os.path.join(module_dir, os.path.basename(source_code_path))
-                        if not os.path.exists(final_source_path):
-                            os.rename(source_code_path, final_source_path)
-                    except (OSError, FileExistsError):
-                        # another process likely updated the module dir first
-                        pass
-                    except Exception as e:
-                        # We don't need source_code_path to be copied successfully to proceed, so warn and keep running
-                        warp.utils.warn(f"Exception when renaming {source_code_path}: {e}")
+                    module_load_timer.extra_msg = " (cached)"
             else:
-                module_load_timer.extra_msg = " (cached)"  # For wp.ScopedTimer informational purposes
+                # we will build if binary doesn't exist yet
+                # we will rebuild if we are not caching kernels or if we are tracking array access
+
+                output_name = self.get_compile_output_name(device)
+                output_arch = self.get_compile_arch(device)
+
+                module_dir = os.path.join(warp.config.kernel_cache_dir, module_name_short)
+                meta_path = os.path.join(module_dir, self.get_meta_name())
+                # final object binary path
+                binary_path = os.path.join(module_dir, output_name)
+
+                if (
+                    not os.path.exists(binary_path)
+                    or not warp.config.cache_kernels
+                    or warp.config.verify_autograd_array_access
+                ):
+                    try:
+                        self.compile(device, module_dir, output_name, output_arch)
+                    except Exception as e:
+                        module_load_timer.extra_msg = " (error)"
+                        raise (e)
+
+                    module_load_timer.extra_msg = " (compiled)"
+                else:
+                    module_load_timer.extra_msg = " (cached)"
 
             # -----------------------------------------------------------
             # Load CPU or CUDA binary
 
-            meta_path = os.path.join(module_dir, f"{module_name_short}.meta")
-            with open(meta_path) as meta_file:
-                meta = json.load(meta_file)
+            if os.path.exists(meta_path):
+                with open(meta_path) as meta_file:
+                    meta = json.load(meta_file)
+            else:
+                raise FileNotFoundError(f"Module metadata file {meta_path} was not found in the cache")
 
             if device.is_cpu:
                 # LLVM modules are identified using strings, so we need to ensure uniqueness
-                module_handle = f"{module_name}_{self.cpu_exec_id}"
+                module_handle = f"wp_{self.name}_{self.cpu_exec_id}"
                 self.cpu_exec_id += 1
                 runtime.llvm.wp_load_obj(binary_path.encode("utf-8"), module_handle.encode("utf-8"))
                 module_exec = ModuleExec(module_handle, module_hash, device, meta)
@@ -2437,12 +2635,6 @@ class Module:
                 else:
                     module_load_timer.extra_msg = " (error)"
                     raise Exception(f"Failed to load CUDA module '{self.name}'")
-
-            if build_dir:
-                import shutil
-
-                # clean up build_dir used for this process regardless
-                shutil.rmtree(build_dir, ignore_errors=True)
 
         return module_exec
 
@@ -6245,7 +6437,7 @@ def synchronize_event(event: Event):
 
 
 def force_load(device: Device | str | list[Device] | list[str] | None = None, modules: list[Module] | None = None):
-    """Force user-defined kernels to be compiled and loaded
+    """Force a list of modules to be compiled and loaded
 
     Args:
         device: The device or list of devices to load the modules on.  If None, load on all devices.
@@ -6278,7 +6470,7 @@ def force_load(device: Device | str | list[Device] | list[str] | None = None, mo
 def load_module(
     module: Module | types.ModuleType | str | None = None, device: Device | str | None = None, recursive: bool = False
 ):
-    """Force user-defined module to be compiled and loaded
+    """Force a user-defined module to be compiled and loaded
 
     Args:
         module: The module to load.  If None, load the current module.
@@ -6316,6 +6508,202 @@ def load_module(
                 modules.append(mod)
 
     force_load(device=device, modules=modules)
+
+
+def _resolve_module(module: Module | types.ModuleType | str) -> Module:
+    """Resolve a module from a string, Module, or types.ModuleType.
+
+    Args:
+        module: The module to resolve.
+
+    Returns:
+        The resolved module.
+
+    Raises:
+        TypeError: If the module argument is not a Module, a types.ModuleType, or a string.
+    """
+
+    if isinstance(module, str):
+        module_object = get_module(module)
+    elif isinstance(module, Module):
+        module_object = module
+    elif isinstance(module, types.ModuleType):
+        module_object = get_module(module.__name__)
+    else:
+        raise TypeError(f"Argument 'module' must be a Module or a string, got {type(module)}")
+
+    return module_object
+
+
+def compile_aot_module(
+    module: Module | types.ModuleType | str,
+    device: Device | str | list[Device] | list[str] | None = None,
+    arch: int | Iterable[int] | None = None,
+    module_dir: str | os.PathLike | None = None,
+    use_ptx: bool | None = None,
+    strip_hash: bool | None = None,
+) -> None:
+    """Compile a module (ahead of time) for a given device.
+
+    Args:
+        module: The module to compile.
+        device: The device or devices to compile the module for. If ``None``,
+          and ``arch`` is not specified, compile the module for the current device.
+        arch: The architecture or architectures to compile the module for. If ``None``,
+          the architecture to compile for will be inferred from the current device.
+        module_dir: The directory to save the source, meta, and compiled files to.
+          If not specified, the module will be compiled to the default cache directory.
+        use_ptx: Whether to compile the module to PTX. This setting is only used
+          when compiling modules for the GPU. If ``None``, Warp will decide an
+          appropriate setting based on the runtime environment.
+        strip_hash: Whether to strip the hash from the module and kernel names.
+          Setting this value to ``True`` or ``False`` will update the module's
+          ``"strip_hash"`` option. If left at ``None``, the current value will
+          be used.
+
+          Warning: Do not enable ``strip_hash`` for modules that contain generic
+          kernels. Generic kernels compile to multiple overloads, and the
+          per-overload hash is required to distinguish them. Stripping the hash
+          in this case will cause the module to fail to compile.
+
+    Raises:
+        TypeError: If the module argument is not a Module, a types.ModuleType, or a string.
+    """
+
+    if is_cuda_driver_initialized():
+        # save original context to avoid side effects
+        saved_context = runtime.core.wp_cuda_context_get_current()
+
+    module_object = _resolve_module(module)
+
+    if strip_hash is not None:
+        module_object.options["strip_hash"] = strip_hash
+
+    if device is None and arch:
+        # User provided no device, but an arch, so we will not compile for the default device
+        devices = []
+    elif isinstance(device, list):
+        devices = [get_device(device_item) for device_item in device]
+    else:
+        devices = [get_device(device)]
+
+    for d in devices:
+        module_object.compile(d, module_dir, use_ptx=use_ptx)
+
+    if arch:
+        if isinstance(arch, str) or not hasattr(arch, "__iter__"):
+            arch = [arch]
+
+        for arch_value in arch:
+            module_object.compile(None, module_dir, output_arch=arch_value, use_ptx=use_ptx)
+
+    if is_cuda_available():
+        # restore original context to avoid side effects
+        runtime.core.wp_cuda_context_set_current(saved_context)
+
+
+def load_aot_module(
+    module: Module | types.ModuleType | str,
+    device: Device | str | list[Device] | list[str] | None = None,
+    arch: int | None = None,
+    module_dir: str | os.PathLike | None = None,
+    use_ptx: bool | None = None,
+    strip_hash: bool = False,
+) -> None:
+    """Load a previously compiled module (ahead of time).
+
+    Args:
+        module: The module to load.
+        device: The device or devices to load the module on. If ``None``,
+          load the module for the current device.
+        arch: The architecture to load the module for on all devices.
+          If ``None``, the architecture to load for will be inferred from the
+          current device.
+        module_dir: The directory to load the module from.
+          If not specified, the module will be loaded from the default cache directory.
+        use_ptx: Whether to load the module from PTX. This setting is only used
+          when loading modules for the GPU. If ``None`` on a CUDA device, Warp will
+          try both PTX and CUBIN (PTX first) and load the first that exists.
+          If neither exists, a ``FileNotFoundError`` is raised listing all
+          attempted paths.
+        strip_hash: Whether to strip the hash from the module and kernel names.
+          Setting this value to ``True`` or ``False`` will update the module's
+          ``"strip_hash"`` option. If left at ``None``, the current value will
+          be used.
+
+          Warning: Do not enable ``strip_hash`` for modules that contain generic
+          kernels. Generic kernels compile to multiple overloads, and the
+          per-overload hash is required to distinguish them. Stripping the hash
+          in this case will cause the module to fail to compile.
+
+    Raises:
+        FileNotFoundError: If no matching binary is found. When ``use_ptx`` is
+          ``None`` on a CUDA device, both PTX and CUBIN candidates are tried
+          before raising.
+        TypeError: If the module argument is not a Module, a types.ModuleType, or a string.
+    """
+
+    if is_cuda_driver_initialized():
+        # save original context to avoid side effects
+        saved_context = runtime.core.wp_cuda_context_get_current()
+
+    if device is None:
+        devices = [runtime.get_device()]
+    elif isinstance(device, list):
+        devices = [get_device(device_item) for device_item in device]
+    else:
+        devices = [get_device(device)]
+
+    module_object = _resolve_module(module)
+
+    if strip_hash is not None:
+        module_object.options["strip_hash"] = strip_hash
+
+    if module_dir is None:
+        module_dir = os.path.join(warp.config.kernel_cache_dir, module_object.get_module_identifier())
+    else:
+        module_dir = os.fspath(module_dir)
+
+    for d in devices:
+        # Identify the files in the cache to load
+        if arch is None:
+            output_arch = module_object.get_compile_arch(d)
+        else:
+            output_arch = arch
+
+        meta_path = os.path.join(module_dir, module_object.get_meta_name())
+
+        # Determine candidate binaries to try
+        tried_paths = []
+        binary_path = None
+        if d.is_cuda and use_ptx is None:
+            candidate_flags = (True, False)  # try PTX first, then CUBIN
+        else:
+            candidate_flags = (use_ptx,)
+
+        for candidate_use_ptx in candidate_flags:
+            candidate_path = os.path.join(
+                module_dir, module_object.get_compile_output_name(d, output_arch, candidate_use_ptx)
+            )
+            tried_paths.append(candidate_path)
+            if os.path.exists(candidate_path):
+                binary_path = candidate_path
+                break
+
+        if binary_path is None:
+            raise FileNotFoundError(f"Binary file not found. Tried: {', '.join(tried_paths)}")
+
+        module_object.load(
+            d,
+            block_dim=module_object.options["block_dim"],
+            binary_path=binary_path,
+            output_arch=output_arch,
+            meta_path=meta_path,
+        )
+
+    if is_cuda_available():
+        # restore original context to avoid side effects
+        runtime.core.wp_cuda_context_set_current(saved_context)
 
 
 def set_module_options(options: dict[str, Any], module: Any = None):
@@ -7334,7 +7722,6 @@ def export_stubs(file):  # pragma: no cover
 """,
         file=file,
     )
-
     print(
         "# Autogenerated file, do not edit, this file provides stubs for builtins autocomplete in VSCode, PyCharm, etc",
         file=file,

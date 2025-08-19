@@ -35,7 +35,8 @@ def reload_module(module):
     # Clearing the .pyc file associated with a module is a necessary workaround
     # for `importlib.reload` to work as expected when run from within Kit.
     cache_file = importlib.util.cache_from_source(module.__file__)
-    os.remove(cache_file)
+    if os.path.exists(cache_file):
+        os.remove(cache_file)
     importlib.reload(module)
 
 
