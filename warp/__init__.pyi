@@ -22,6 +22,7 @@ from typing import TypeVar
 from typing import Generic
 from typing import Sequence
 from typing import overload as over
+from typing import Optional
 
 Length = TypeVar("Length", bound=int)
 Rows = TypeVar("Rows", bound=int)
@@ -3222,7 +3223,7 @@ def tile_map(
     ...
 
 @over
-def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQuery:
+def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: Optional[int32] = -1) -> BvhQuery:
     """Construct an axis-aligned bounding box query against a BVH object.
 
     This query can be used to iterate over all bounds inside a BVH.
@@ -3230,11 +3231,12 @@ def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQuery:
     :param id: The BVH identifier
     :param low: The lower bound of the bounding box in BVH space
     :param high: The upper bound of the bounding box in BVH space
+    :param root: The root to begin the query from
     """
     ...
 
 @over
-def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> BvhQuery:
+def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: Optional[int32] = -1) -> BvhQuery:
     """Construct a ray query against a BVH object.
 
     This query can be used to iterate over all bounds that intersect the ray.
@@ -3242,6 +3244,7 @@ def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> BvhQuery:
     :param id: The BVH identifier
     :param start: The start of the ray in BVH space
     :param dir: The direction of the ray in BVH space
+    :param root: The root to begin the query from
     """
     ...
 
@@ -3249,6 +3252,15 @@ def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> BvhQuery:
 def bvh_query_next(query: BvhQuery, index: int32) -> bool:
     """Move to the next bound returned by the query.
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
+    """
+    ...
+
+@over
+def bvh_get_group_root(id: uint64, group: int) -> int:
+    """Get the root of a group in a BVH.
+    
+    :param id: The BVH identifier
+    :param group: The group identifier
     """
     ...
 

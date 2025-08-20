@@ -4795,7 +4795,7 @@ add_builtin(
 
 add_builtin(
     "bvh_query_aabb",
-    input_types={"id": uint64, "low": vec3, "high": vec3},
+    input_types={"id": uint64, "low": vec3, "high": vec3, "root": int32},
     value_type=BvhQuery,
     group="Geometry",
     doc="""Construct an axis-aligned bounding box query against a BVH object.
@@ -4804,13 +4804,14 @@ add_builtin(
 
     :param id: The BVH identifier
     :param low: The lower bound of the bounding box in BVH space
-    :param high: The upper bound of the bounding box in BVH space""",
+    :param high: The upper bound of the bounding box in BVH space
+    :param root: The root to begin the query from""",
     export=False,
 )
 
 add_builtin(
     "bvh_query_ray",
-    input_types={"id": uint64, "start": vec3, "dir": vec3},
+    input_types={"id": uint64, "start": vec3, "dir": vec3, "root": int32},
     value_type=BvhQuery,
     group="Geometry",
     doc="""Construct a ray query against a BVH object.
@@ -4819,7 +4820,8 @@ add_builtin(
 
     :param id: The BVH identifier
     :param start: The start of the ray in BVH space
-    :param dir: The direction of the ray in BVH space""",
+    :param dir: The direction of the ray in BVH space
+    :param root: The root to begin the query from""",
     export=False,
 )
 
@@ -4830,6 +4832,18 @@ add_builtin(
     group="Geometry",
     doc="""Move to the next bound returned by the query.
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.""",
+    export=False,
+)
+
+add_builtin(
+    "bvh_get_group_root",
+    input_types={"id": uint64, "group": int},
+    value_type=int,
+    group="Geometry",
+    doc="""Get the root of a group in a BVH.
+    
+    :param id: The BVH identifier
+    :param group: The group identifier""",
     export=False,
 )
 

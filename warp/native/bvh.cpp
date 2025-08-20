@@ -490,12 +490,13 @@ void bvh_rem_descriptor(uint64_t id)
 
 
 // create in-place given existing descriptor
-void bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type, BVH& bvh)
+void bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type, int* groups, BVH& bvh)
 {
     memset(&bvh, 0, sizeof(BVH));
 
     bvh.item_lowers = lowers;
     bvh.item_uppers = uppers;
+    bvh.item_groups = groups;
     bvh.num_items = num_items;
 
     TopDownBVHBuilder builder;
@@ -508,13 +509,15 @@ void bvh_destroy_host(BVH& bvh)
     delete[] bvh.node_uppers;
     delete[] bvh.node_parents;
     delete[] bvh.primitive_indices;
+    delete[] bvh.keys;
     delete[] bvh.root;
 
-    bvh.node_lowers = nullptr;
-    bvh.node_uppers = nullptr;
-    bvh.node_parents = nullptr;
-    bvh.primitive_indices = nullptr;
-    bvh.root = nullptr;
+    bvh.node_lowers = NULL;
+    bvh.node_uppers = NULL;
+    bvh.node_parents = NULL;
+    bvh.primitive_indices = NULL;
+    bvh.keys = NULL;
+    bvh.root = NULL;
 
     bvh.max_nodes = 0;
     bvh.num_items = 0;
@@ -522,10 +525,10 @@ void bvh_destroy_host(BVH& bvh)
 
 } // namespace wp
 
-uint64_t wp_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type)
+uint64_t wp_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type, int* groups)
 {
     BVH* bvh = new BVH();
-    wp::bvh_create_host(lowers, uppers, num_items, constructor_type, *bvh);
+    wp::bvh_create_host(lowers, uppers, num_items, constructor_type, groups, *bvh);
 
     return (uint64_t)bvh;
 }
@@ -553,7 +556,7 @@ void wp_bvh_destroy_host(uint64_t id)
 // stubs for non-CUDA platforms
 #if !WP_ENABLE_CUDA
 
-uint64_t wp_bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type) { return 0; }
+uint64_t wp_bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type, int* groups) { return 0; }
 void wp_bvh_refit_device(uint64_t id) {}
 void wp_bvh_destroy_device(uint64_t id) {}
 void wp_bvh_rebuild_device(uint64_t id) {}
