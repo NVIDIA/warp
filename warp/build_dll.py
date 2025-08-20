@@ -131,7 +131,7 @@ def get_cuda_toolkit_version(cuda_home) -> tuple[int, int]:
         # search for release substring (e.g., "release 11.5")
         import re
 
-        m = re.search(r"(?<=release )(\d+)\.(\d+)", nvcc_version_output)
+        m = re.search(r"release (\d+)\.(\d+)", nvcc_version_output)
         if m is not None:
             major, minor = map(int, m.groups())
             return (major, minor)
