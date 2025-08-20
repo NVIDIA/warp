@@ -4035,7 +4035,14 @@ class Bvh:
         instance.id = None
         return instance
 
-    def __init__(self, lowers: array, uppers: array, constructor: str | None = None, groups: array | None = None, num_groups: int = 0):
+    def __init__(
+        self,
+        lowers: array,
+        uppers: array,
+        constructor: str | None = None,
+        groups: array | None = None,
+        num_groups: int = 0,
+    ):
         """Class representing a bounding volume hierarchy.
 
         Depending on which device the input bounds live, it can be either a CPU tree or a GPU tree.
