@@ -1296,8 +1296,8 @@ inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l, size_t inde
 }
 
 // should match types.py
-constexpr int SLICE_BEGIN = (1U << (sizeof(int) - 1)) - 1; // std::numeric_limits<int>::max()
-constexpr int SLICE_END = -(1U << (sizeof(int) - 1)); // std::numeric_limits<int>::min()
+static const int SLICE_BEGIN = (1LL << (sizeof(int) * 8 - 1)) - 1; // std::numeric_limits<int>::max()
+static const int SLICE_END = -(1LL << (sizeof(int) * 8 - 1)); // std::numeric_limits<int>::min()
 
 struct slice_t
 {

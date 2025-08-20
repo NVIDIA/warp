@@ -6282,14 +6282,13 @@ for array_type in array_types:
 # does argument checking and type propagation for view()
 def view_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     arr_type = arg_types["arr"]
-    idx_types = tuple(arg_types[x] for x in "ijk" if arg_types.get(x, None) is not None)
+    idx_types = tuple(arg_types[x] for x in "ijkl" if arg_types.get(x, None) is not None)
 
     if not is_array(arr_type):
         raise RuntimeError("view() first argument must be an array")
 
     idx_count = len(idx_types)
-
-    if idx_count >= arr_type.ndim:
+    if idx_count > arr_type.ndim:
         raise RuntimeError(
             f"Trying to create an array view with {idx_count} indices, "
             f"but the array only has {arr_type.ndim} dimension(s). "
@@ -6297,14 +6296,35 @@ def view_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]
             f"the expected number of dimensions, e.g.: def func(param: wp.array3d(dtype=float): ..."
         )
 
-    # check index types
-    for t in idx_types:
-        if not type_is_int(t):
-            raise RuntimeError(f"view() index arguments must be of integer type, got index of type {type_repr(t)}")
+    has_slice = any(is_slice(x) for x in idx_types)
+    if has_slice:
+        # check index types
+        for t in idx_types:
+            if not (type_is_int(t) or is_slice(t)):
+                raise RuntimeError(
+                    f"view() index arguments must be of integer or slice types, got index of type {type_repr(t)}"
+                )
 
-    # create an array view with leading dimensions removed
+        # Each integer index collapses one dimension.
+        int_count = sum(x.step == 0 for x in idx_types)
+        ndim = arr_type.ndim - int_count
+        assert ndim > 0
+    else:
+        if idx_count == arr_type.ndim:
+            raise RuntimeError("Expected to call `address()` instead of `view()`")
+
+        # check index types
+        for t in idx_types:
+            if not type_is_int(t):
+                raise RuntimeError(
+                    f"view() index arguments must be of integer or slice types, got index of type {type_repr(t)}"
+                )
+
+        # create an array view with leading dimensions removed
+        ndim = arr_type.ndim - idx_count
+        assert ndim > 0
+
     dtype = arr_type.dtype
-    ndim = arr_type.ndim - idx_count
     if isinstance(arr_type, (fabricarray, indexedfabricarray)):
         # fabric array of arrays: return array attribute as a regular array
         return array(dtype=dtype, ndim=ndim)
@@ -6315,8 +6335,18 @@ def view_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]
 for array_type in array_types:
     add_builtin(
         "view",
-        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int},
-        defaults={"j": None, "k": None},
+        input_types={
+            "arr": array_type(dtype=Any),
+            "i": Any,
+            "j": Any,
+            "k": Any,
+            "l": Any,
+        },
+        defaults={
+            "j": None,
+            "k": None,
+            "l": None,
+        },
         constraint=sametypes,
         hidden=True,
         value_func=view_value_func,

@@ -2027,6 +2027,10 @@ def is_tuple(t) -> builtins.bool:
     return isinstance(t, tuple_t)
 
 
+def is_slice(t) -> builtins.bool:
+    return isinstance(t, slice_t)
+
+
 def scalars_equal(a, b, match_generic=False):
     # convert to canonical types
     if a == float:
@@ -2155,6 +2159,9 @@ def types_equal(a, b, match_generic=False):
         return True
 
     if is_tile(a) and is_tile(b):
+        return True
+
+    if is_slice(a) and is_slice(b):
         return True
 
     return scalars_equal(a, b, match_generic)

@@ -118,6 +118,23 @@ namespace wp
 
 #endif  // WP_FP_CHECK
 
+
+template<size_t... Is>
+struct index_sequence {};
+
+template<size_t N, size_t... Is>
+struct make_index_sequence_impl : make_index_sequence_impl<N-1, N-1, Is...> {};
+
+template<size_t... Is>
+struct make_index_sequence_impl<0, Is...>
+{
+    using type = index_sequence<Is...>;
+};
+
+template<size_t N>
+using make_index_sequence = typename make_index_sequence_impl<N>::type;
+
+
 const int ARRAY_MAX_DIMS = 4;       // must match constant in types.py
 
 // must match constants in types.py
@@ -860,6 +877,78 @@ CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i, int j, int k)
 }
 
 
+template <typename T, size_t... Idxs>
+size_t byte_offset_helper(
+    array_t<T>& src,
+    const slice_t (&slices)[sizeof...(Idxs)],
+    index_sequence<Idxs...>
+)
+{
+    return byte_offset(src, slices[Idxs].start...);
+}
+
+
+template <typename T, typename... Slices>
+CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, const Slices&... slice_args)
+{
+    constexpr int N = sizeof...(Slices);
+    static_assert(N >= 1 && N <= 4, "view supports 1 to 4 slices");
+    assert(src.ndim >= N);
+
+    slice_t slices[N] = { slice_args... };
+    int slice_idxs[N];
+    int slice_count = 0;
+
+    for (int i = 0; i < N; ++i)
+    {
+        if (slices[i].step == 0)
+        {
+            // We have a slice representing an integer index.
+            if (slices[i].start < 0)
+            {
+                slices[i].start += src.shape[i];
+            }
+        }
+        else
+        {
+            slices[i] = slice_adjust_indices(slices[i], src.shape[i]);
+            slice_idxs[slice_count] = i;
+            ++slice_count;
+        }
+    }
+
+    size_t offset = byte_offset_helper(src, slices, make_index_sequence<N>{});
+
+    array_t<T> out;
+
+    out.data = data_at_byte_offset(src, offset);
+    if (src.grad)
+    {
+        out.grad = grad_at_byte_offset(src, offset);
+    }
+
+    int dim = 0;
+    for (; dim < slice_count; ++dim)
+    {
+        int idx = slice_idxs[dim];
+        out.shape[dim] = slice_get_length(slices[idx]);
+        out.strides[dim] = src.strides[idx] * slices[idx].step;
+    }
+    for (; dim < slice_count + 4 - N; ++dim)
+    {
+        out.shape[dim] = src.shape[dim - slice_count + N];
+        out.strides[dim] = src.strides[dim - slice_count + N];
+    }
+    for (; dim < 4; ++dim)
+    {
+        out.shape[dim] = 0;
+        out.strides[dim] = 0;
+    }
+
+    out.ndim = src.ndim + slice_count - N;
+    return out;
+}
+
 template <typename T>
 CUDA_CALLABLE inline indexedarray_t<T> view(indexedarray_t<T>& src, int i)
 {
@@ -968,6 +1057,9 @@ template<template<typename> class A1, template<typename> class A2, template<type
 inline CUDA_CALLABLE void adj_view(A1<T>& src, int i, int j, A2<T>& adj_src, int adj_i, int adj_j, A3<T>& adj_ret) {}
 template<template<typename> class A1, template<typename> class A2, template<typename> class A3, typename T>
 inline CUDA_CALLABLE void adj_view(A1<T>& src, int i, int j, int k, A2<T>& adj_src, int adj_i, int adj_j, int adj_k, A3<T>& adj_ret) {}
+
+template <typename... Args>
+CUDA_CALLABLE inline void adj_view(Args&&...) { }
 
 // TODO: lower_bound() for indexed arrays?
 
@@ -1602,7 +1694,6 @@ template<template<typename> class A, typename T>
 CUDA_CALLABLE inline void adj_len(const A<T>& a, A<T>& adj_a, int& adj_ret)
 {
 }
-
 
 } // namespace wp
 
