@@ -23,6 +23,8 @@
 - Add indexed tile store builtin (`wp.tile_index_store()`) ([GH-684](https://github.com/NVIDIA/warp/issues/684)).
 - Add indexed tile atomic add builtin (`wp.tile_index_atomic_add()`) ([GH-684](https://github.com/NVIDIA/warp/issues/684)).
 - Add optional `block_dim` argument to `wp.load_module()` and `wp.force_load()`.
+- Add support for negative indexing and improve slicing for the `wp.matrix()`/`wp.vector()`/`wp.quaternion()` types
+  ([GH-899](https://github.com/NVIDIA/warp/issues/899)).
 
 ### Removed
 
@@ -190,8 +192,6 @@
   `fem/example_darcy_ls_optimization.py` ([GH-698](https://github.com/NVIDIA/warp/issues/698)).
 - Add a `py.typed` marker file (per PEP 561) to the package to formally support static type checking by downstream users
   ([GH-780](https://github.com/NVIDIA/warp/issues/780)).
-- Add support for negative indexing and improve slicing for the `wp.matrix()`/`wp.vector()`/`wp.quaternion()` types
-  ([GH-899](https://github.com/NVIDIA/warp/issues/899)).
 
 ### Removed
 
