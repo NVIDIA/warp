@@ -24,6 +24,7 @@
 
 #include <cassert>
 #include <map>
+#include <climits>
 
 using namespace wp;
 
