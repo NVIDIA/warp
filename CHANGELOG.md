@@ -17,6 +17,9 @@
   ([GH-794](https://github.com/NVIDIA/warp/issues/794)).
 - Add support for `IntEnum` and `IntFlag` inside Warp kernels ([GH-529](https://github.com/NVIDIA/warp/issues/529)).
 - Add support for building Warp with CUDA 13.
+- Added an in-place `wp.Bvh.rebuild` method that rebuilds the hierarchy without allocating new memory ([GH-826](https://github.com/NVIDIA/warp/issues/826)),
+  reusing existing buffers. This method can be captured in a CUDA graph. Additionally, previously captured graphs that 
+  include query operations on this BVH remain valid after calling `wp.Bvh.rebuild`.
 - Add `bounds_check` optimization option to `wp.tile_load()`, `wp.tile_store()`, and `wp.tile_atomic_add()`
   ([GH-797](https://github.com/NVIDIA/warp/issues/797))
 - Add indexed tile load builtin (`wp.tile_index_load()`) ([GH-796](https://github.com/NVIDIA/warp/issues/796)).
@@ -67,6 +70,8 @@
 - Improve error messages for MathDx-based tile operations that fail to compile (e.g., `Failed to compile LTO`)
   ([GH-608](https://github.com/NVIDIA/warp/issues/608), [GH-911](https://github.com/NVIDIA/warp/issues/911)).
 - Improve error detection and reporting in conditional graphs ([GH-866](https://github.com/NVIDIA/warp/issues/866)).
+- Improve efficiency for `bvh_query_aabb`, `mesh_query_aabb` and `bvh_query_ray`.  This fixes a performance regression 
+  introduced in Warp 1.6.0 ([GH-758](https://github.com/NVIDIA/warp/issues/758)).
 
 ### Fixed
 

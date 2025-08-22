@@ -276,9 +276,6 @@ class Example:
 
             if i != 0 and not i % self.bvh_rebuild_frames and self.use_cuda_graph:
                 self.integrator.rebuild_bvh(self.state0)
-                with wp.ScopedCapture() as capture:
-                    self.integrate_frame_substeps()
-                self.cuda_graph = capture.graph
 
     def render(self):
         if self.renderer is None:

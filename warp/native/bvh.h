@@ -369,7 +369,7 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(
 		{
 			// Reached a leaf node, point to its first primitive
 			// Back up one level and return 
-			query.primitive_counter = left_index;
+			query.primitive_counter = 0;
 			query.stack[query.count++] = node_index;
 			return query;
 		}
@@ -390,8 +390,7 @@ CUDA_CALLABLE inline bvh_query_t bvh_query_aabb(
 }
 
 
-CUDA_CALLABLE inline bvh_query_t bvh_query_ray(
-    uint64_t id, const vec3& start, const vec3& dir)
+CUDA_CALLABLE inline bvh_query_t bvh_query_ray(uint64_t id, const vec3& start, const vec3& dir)
 {
 	return bvh_query(id, true, start, 1.0f / dir);
 }
@@ -413,61 +412,21 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index)
 {
 	BVH bvh = query.bvh;
 
-	if (query.primitive_counter != -1)
-		// currently in a leaf node which is the last node in the stack
-	{
-		const int node_index = query.stack[query.count - 1];
-		BVHPackedNodeHalf node_lower = bvh_load_node(bvh.node_lowers, node_index);
-		BVHPackedNodeHalf node_upper = bvh_load_node(bvh.node_uppers, node_index);
-
-		const int end = node_upper.i;
-		for (int primitive_counter = query.primitive_counter; primitive_counter < end; primitive_counter++)
-		{
-			int primitive_index = bvh.primitive_indices[primitive_counter];
-			if (bvh_query_intersection_test(query, bvh.item_lowers[primitive_index], bvh.item_uppers[primitive_index]))
-			{
-				if (primitive_counter < end - 1)
-					// still need to come back to this leaf node for the leftover primitives
-				{
-					query.primitive_counter = primitive_counter + 1;
-				}
-				else
-					// no need to come back to this leaf node
-				{
-					query.count--;
-					query.primitive_counter = -1;
-				}
-				index = primitive_index;
-				query.bounds_nr = primitive_index;
-
-				return true;
-			}
-		}
-		// if we reach here that means we have finished the current leaf node without finding intersections
-		query.primitive_counter = -1;
-		// remove the leaf node from the back of the stack because it is finished
-		// and continue the bvh traversal
-		query.count--;
-	}
-
 	// Navigate through the bvh, find the first overlapping leaf node.
 	while (query.count)
 	{
 		const int node_index = query.stack[--query.count];
+
 		BVHPackedNodeHalf node_lower = bvh_load_node(bvh.node_lowers, node_index);
 		BVHPackedNodeHalf node_upper = bvh_load_node(bvh.node_uppers, node_index);
-
-		const int left_index = node_lower.i;
-		const int right_index = node_upper.i;
-
-		wp::vec3 lower_pos(node_lower.x, node_lower.y, node_lower.z);
-		wp::vec3 upper_pos(node_upper.x, node_upper.y, node_upper.z);
-		wp::bounds3 current_bounds(lower_pos, upper_pos);
 
 		if (!bvh_query_intersection_test(query, (vec3&)node_lower, (vec3&)node_upper))
 		{
 			continue;
 		}
+
+		const int left_index = node_lower.i;
+		const int right_index = node_upper.i;
 
 		if (node_lower.b)
 		{
@@ -475,31 +434,30 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index)
 			const int start = left_index;
 			const int end = right_index;
 
-			for (int primitive_counter = start; primitive_counter < end; primitive_counter++)
+			int primitive_index = bvh.primitive_indices[start + (query.primitive_counter++)];
+			// if already visited the last primitive in the leaf node
+			// move to the next node and reset the primitive counter to 0
+			if (start + query.primitive_counter == end)
 			{
-				int primitive_index = bvh.primitive_indices[primitive_counter];
-				if (bvh_query_intersection_test(query, bvh.item_lowers[primitive_index], bvh.item_uppers[primitive_index]))
-				{
-					if (primitive_counter < end - 1)
-						// still need to come back to this leaf node for the leftover primitives
-					{
-						query.primitive_counter = primitive_counter + 1;
-						query.stack[query.count++] = node_index;
-					}
-					else
-						// no need to come back to this leaf node
-					{
-						query.primitive_counter = -1;
-					}
-					index = primitive_index;
-					query.bounds_nr = primitive_index;
+				query.primitive_counter = 0;
+			}
+			// otherwise we need to keep this leaf node in stack for a future visit
+			else
+			{
+				query.stack[query.count++] = node_index;
+			}
+			if (bvh_query_intersection_test(query, bvh.item_lowers[primitive_index], bvh.item_uppers[primitive_index]))
+			{
+				index = primitive_index;
+				query.bounds_nr = primitive_index;
 
-					return true;
-				}
+				return true;
 			}
 		}
 		else
 		{
+			// if it's not a leaf node we treat it as if we have visited the last primitive
+			query.primitive_counter = 0;
 			query.stack[query.count++] = left_index;
 			query.stack[query.count++] = right_index;
 		}

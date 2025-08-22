@@ -95,7 +95,7 @@ def test_bvh(test, type, device):
     query_start = wp.vec3(0.0, 0.0, 0.0)
     query_dir = wp.normalize(wp.vec3(1.0, 1.0, 1.0))
 
-    for test_case in range(2):
+    for test_case in range(3):
         if type == "AABB":
             wp.launch(
                 kernel=bvh_query_aabb,
@@ -120,13 +120,17 @@ def test_bvh(test, type, device):
 
             test.assertEqual(host_intersected, device_intersected[i])
 
-        if test_case == 0:
+        if test_case == 0 or test_case == 1:
             lowers = rng.random(size=(num_bounds, 3)) * 5.0
             uppers = lowers + rng.random(size=(num_bounds, 3)) * 5.0
             wp.copy(device_lowers, wp.array(lowers, dtype=wp.vec3, device=device))
             wp.copy(device_uppers, wp.array(uppers, dtype=wp.vec3, device=device))
-            bvh.refit()
             bounds_intersected.zero_()
+
+            if test_case == 0:
+                bvh.refit()
+            else:
+                bvh.rebuild()
 
 
 def test_bvh_query_aabb(test, device):
@@ -161,7 +165,132 @@ def test_gh_288(test, device):
         test.assertEqual(device_intersected.sum(), num_bounds)
 
 
+def get_random_aabbs(
+    n,
+    center,
+    relative_shift,
+    relative_size,
+    rng,
+):
+    centers = rng.uniform(-0.5, 0.5, size=n * 3).reshape(n, 3) * relative_shift + center
+    diffs = 0.5 * rng.random(n * 3).reshape(n, 3) * relative_size
+
+    lowers = centers - diffs
+    uppers = centers + diffs
+
+    return lowers, uppers
+
+
+@wp.kernel
+def compute_num_contact_with_checksums(
+    lowers: wp.array(dtype=wp.vec3),
+    uppers: wp.array(dtype=wp.vec3),
+    bvh_id: wp.uint64,
+    counts: wp.array(dtype=int),
+    check_sums: wp.array(dtype=int),
+):
+    tid = wp.tid()
+
+    upper = uppers[tid]
+    lower = lowers[tid]
+
+    query = wp.bvh_query_aabb(bvh_id, lower, upper)
+    count = int(0)
+
+    check_sum = int(0)
+    index = int(0)
+    while wp.bvh_query_next(query, index):
+        check_sum = check_sum ^ index
+        count += 1
+
+    counts[tid] = count
+    check_sums[tid] = check_sum
+
+
+def test_capture_bvh_rebuild(test, device):
+    with wp.ScopedDevice(device):
+        rng = np.random.default_rng(123)
+
+        num_item_bounds = 100000
+        item_bound_size = 0.01
+
+        relative_shift = 2
+
+        num_test_bounds = 10000
+        test_bound_relative_size = 0.05
+
+        center = np.array([0.0, 0.0, 0.0])
+
+        item_lowers_np, item_uppers_np = get_random_aabbs(num_item_bounds, center, relative_shift, item_bound_size, rng)
+        item_lowers = wp.array(item_lowers_np, dtype=wp.vec3)
+        item_uppers = wp.array(item_uppers_np, dtype=wp.vec3)
+        bvh_1 = wp.Bvh(item_lowers, item_uppers)
+        item_lowers_2 = wp.zeros_like(item_lowers)
+        item_uppers_2 = wp.zeros_like(item_lowers)
+
+        test_lowers_np, test_uppers_np = get_random_aabbs(
+            num_test_bounds, center, relative_shift, test_bound_relative_size, rng
+        )
+        test_lowers = wp.array(test_lowers_np, dtype=wp.vec3)
+        test_uppers = wp.array(test_uppers_np, dtype=wp.vec3)
+
+        item_lowers_2_np, item_uppers_2_np = get_random_aabbs(
+            num_item_bounds,
+            center,
+            relative_shift,
+            item_bound_size,
+            rng,
+        )
+        item_lowers_2.assign(item_lowers_2_np)
+        item_uppers_2.assign(item_uppers_2_np)
+
+        counts_1 = wp.empty(n=num_test_bounds, dtype=int)
+        checksums_1 = wp.empty(n=num_test_bounds, dtype=int)
+        counts_2 = wp.empty(n=num_test_bounds, dtype=int)
+        checksums_2 = wp.empty(n=num_test_bounds, dtype=int)
+
+        wp.load_module(device=device)
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            wp.copy(item_lowers, item_lowers_2)
+            wp.copy(item_uppers, item_uppers_2)
+            bvh_1.rebuild()
+            wp.launch(
+                kernel=compute_num_contact_with_checksums,
+                dim=num_test_bounds,
+                inputs=[test_lowers, test_uppers, bvh_1.id],
+                outputs=[counts_1, checksums_1],
+            )
+
+        cuda_graph = capture.graph
+
+        for _ in range(10):
+            item_lowers_2_np, item_uppers_2_np = get_random_aabbs(
+                num_item_bounds,
+                center,
+                relative_shift,
+                item_bound_size,
+                rng,
+            )
+            item_lowers_2.assign(item_lowers_2_np)
+            item_uppers_2.assign(item_uppers_2_np)
+
+            wp.capture_launch(cuda_graph)
+
+            bvh_2 = wp.Bvh(item_lowers_2, item_uppers_2)
+            wp.launch(
+                kernel=compute_num_contact_with_checksums,
+                dim=num_test_bounds,
+                inputs=[test_lowers, test_uppers, bvh_2.id],
+                outputs=[counts_2, checksums_2],
+                device=device,
+            )
+
+            assert_array_equal(counts_1, counts_2)
+            assert_array_equal(checksums_1, checksums_2)
+
+
 devices = get_test_devices()
+cuda_devices = get_cuda_test_devices()
 
 
 class TestBvh(unittest.TestCase):
@@ -194,6 +323,8 @@ class TestBvh(unittest.TestCase):
 add_function_test(TestBvh, "test_bvh_aabb", test_bvh_query_aabb, devices=devices)
 add_function_test(TestBvh, "test_bvh_ray", test_bvh_query_ray, devices=devices)
 add_function_test(TestBvh, "test_gh_288", test_gh_288, devices=devices)
+
+add_function_test(TestBvh, "test_capture_bvh_rebuild", test_capture_bvh_rebuild, devices=cuda_devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

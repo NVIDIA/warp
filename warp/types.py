@@ -4139,6 +4139,59 @@ class Bvh:
             self.runtime.core.wp_bvh_refit_device(self.id)
             self.runtime.verify_cuda_device(self.device)
 
+    def rebuild(self, constructor: str | None = None):
+        """Rebuild the BVH hierarchy **in place** from the current ``lowers``/``uppers`` arrays.
+
+        This method does not allocate new memory; it reuses the existing BVH buffers.
+
+        Unlike :meth:`refit`, which only tightens parent AABBs while preserving the existing
+        tree topology, ``rebuild`` discards the old hierarchy and constructs a new one. Use
+        this when primitive distributions change significantly (large deformations,
+        insertions/removals, or reordered items), or when you want to switch construction
+        algorithms.
+
+        Args:
+            constructor (str | None): Construction algorithm to use. One of ``"sah"``,
+                ``"median"``, ``"lbvh"``, or ``None``. If ``None``, the default is chosen
+                based on the device (CPU → ``"sah"``, CUDA → ``"lbvh"``). On CPU,
+                ``"sah"`` and ``"median"`` are supported; requesting ``"lbvh"`` falls back
+                to ``"sah"`` with a warning. On CUDA, in-place rebuild supports ``"lbvh"``
+                only; other values fall back to ``"lbvh"`` with a warning.
+
+        Notes:
+            - This method is CUDA graph-capture safe: previously captured graphs that include
+              queries on this BVH remain valid after ``rebuild`` because buffers are reused.
+            - If you need a CPU top-down constructor (``"sah"``/``"median"``) for a GPU tree,
+              create a new BVH via the class constructor instead.
+
+        Raises:
+            ValueError: If an unknown constructor is provided.
+        """
+        if constructor is None:
+            if self.device.is_cpu:
+                constructor = "sah"
+            else:
+                constructor = "lbvh"
+
+        if constructor not in bvh_constructor_values:
+            raise ValueError(f"Unrecognized BVH constructor type: {constructor}")
+
+        if self.device.is_cpu:
+            if constructor == "lbvh":
+                warp.utils.warn(
+                    "LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.", stacklevel=2
+                )
+                constructor = "sah"
+            self.runtime.core.wp_bvh_rebuild_host(self.id, bvh_constructor_values[constructor])
+        else:
+            if constructor != "lbvh":
+                warp.utils.warn(
+                    "In-place rebuild method on the CUDA device only supports LBVH constructor. Falling back to LBVH constructor.",
+                    stacklevel=2,
+                )
+            self.runtime.core.wp_bvh_rebuild_device(self.id)
+            self.runtime.verify_cuda_device(self.device)
+
 
 class Mesh:
     from warp.codegen import Var
