@@ -806,7 +806,7 @@ void bvh_rebuild_device(BVH& bvh)
     ContextGuard guard(bvh.context);
 
     LinearBVHBuilderGPU builder;
-    builder.build(bvh, bvh.item_lowers, bvh.item_uppers, bvh.num_items, NULL);
+    builder.build(bvh, bvh.item_lowers, bvh.item_uppers, bvh.num_items, NULL, bvh.item_groups);
 }
 
 
