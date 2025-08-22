@@ -149,17 +149,6 @@ __global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __
     }
 }
 
-
-void bvh_refit_device(BVH& bvh)
-{
-    ContextGuard guard(bvh.context);
-
-    // clear child counters
-    wp_memset_device(WP_CURRENT_CONTEXT, bvh.node_counts, 0, sizeof(int) * bvh.max_nodes);
-    wp_launch_device(WP_CURRENT_CONTEXT, bvh_refit_kernel, bvh.num_leaf_nodes, (bvh.num_leaf_nodes, bvh.node_parents, bvh.node_counts, bvh.primitive_indices, bvh.node_lowers, bvh.node_uppers, bvh.item_lowers, bvh.item_uppers));
-}
-
-
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 // Create a linear BVH as described in Fast and Simple Agglomerative LBVH construction
@@ -514,11 +503,15 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
     }
     else
     {
-        static vec3 upper(-FLT_MAX);
-        static vec3 lower(FLT_MAX);
+        // IEEE-754 bit patterns for ±FLT_MAX
+        constexpr int FLT_MAX_BITS = 0x7f7fffff;
+        constexpr int NEG_FLT_MAX_BITS = 0xff7fffff;
 
-        wp_memcpy_h2d(WP_CURRENT_CONTEXT, total_lower, &lower, sizeof(lower));
-        wp_memcpy_h2d(WP_CURRENT_CONTEXT, total_upper, &upper, sizeof(upper));
+        // total_lower := ( +FLT_MAX, +FLT_MAX, +FLT_MAX )
+        wp_launch_device(WP_CURRENT_CONTEXT, memset_kernel, sizeof(vec3) / 4, ((int*)total_lower, FLT_MAX_BITS, sizeof(vec3) / 4));
+
+        // total_upper := ( -FLT_MAX, -FLT_MAX, -FLT_MAX )
+        wp_launch_device(WP_CURRENT_CONTEXT, memset_kernel, sizeof(vec3) / 4, ((int*)total_upper, NEG_FLT_MAX_BITS, sizeof(vec3) / 4));
 
         // compute the total bounds on the GPU
         wp_launch_device(WP_CURRENT_CONTEXT, compute_total_bounds, num_items, (item_lowers, item_uppers, total_lower, total_upper, num_items));
@@ -737,6 +730,24 @@ void bvh_destroy_device(BVH& bvh)
     wp_free_device(WP_CURRENT_CONTEXT, bvh.root); bvh.root = NULL;
 }
 
+void bvh_refit_device(BVH& bvh)
+{
+    ContextGuard guard(bvh.context);
+
+    // clear child counters
+    wp_memset_device(WP_CURRENT_CONTEXT, bvh.node_counts, 0, sizeof(int) * bvh.max_nodes);
+    wp_launch_device(WP_CURRENT_CONTEXT, bvh_refit_kernel, bvh.num_leaf_nodes, (bvh.num_leaf_nodes, bvh.node_parents, bvh.node_counts, bvh.primitive_indices, bvh.node_lowers, bvh.node_uppers, bvh.item_lowers, bvh.item_uppers));
+}
+
+void bvh_rebuild_device(BVH& bvh)
+{
+    ContextGuard guard(bvh.context);
+
+    LinearBVHBuilderGPU builder;
+    builder.build(bvh, bvh.item_lowers, bvh.item_uppers, bvh.num_items, NULL);
+}
+
+
 
 } // namespace wp
 
@@ -749,6 +760,17 @@ void wp_bvh_refit_device(uint64_t id)
         ContextGuard guard(bvh.context);
 
         wp::bvh_refit_device(bvh);
+    }
+}
+
+void wp_bvh_rebuild_device(uint64_t id)
+{
+    wp::BVH bvh;
+    if (bvh_get_descriptor(id, bvh))
+    {
+        ContextGuard guard(bvh.context);
+
+        wp::bvh_rebuild_device(bvh);
     }
 }
 

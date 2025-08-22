@@ -2408,7 +2408,7 @@ class TriMeshCollisionDetector:
             dim=self.model.tri_count,
             device=self.model.device,
         )
-        self.bvh_tris = wp.Bvh(self.lower_bounds_tris, self.upper_bounds_tris)
+        self.bvh_tris.rebuild()
 
         wp.launch(
             kernel=compute_edge_aabbs,
@@ -2417,7 +2417,7 @@ class TriMeshCollisionDetector:
             dim=self.model.edge_count,
             device=self.model.device,
         )
-        self.bvh_edges = wp.Bvh(self.lower_bounds_edges, self.upper_bounds_edges)
+        self.bvh_edges.rebuild()
 
     def refit(self, new_pos=None):
         if new_pos is not None:

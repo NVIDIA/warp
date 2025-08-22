@@ -3681,7 +3681,9 @@ class Runtime:
             self.core.wp_bvh_destroy_device.argtypes = [ctypes.c_uint64]
 
             self.core.wp_bvh_refit_host.argtypes = [ctypes.c_uint64]
+            self.core.wp_bvh_rebuild_host.argtypes = [ctypes.c_uint64, ctypes.c_int]
             self.core.wp_bvh_refit_device.argtypes = [ctypes.c_uint64]
+            self.core.wp_bvh_rebuild_device.argtypes = [ctypes.c_uint64]
 
             self.core.wp_mesh_create_host.restype = ctypes.c_uint64
             self.core.wp_mesh_create_host.argtypes = [
