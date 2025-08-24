@@ -26,25 +26,48 @@ def increment_minor(version: str) -> str:
     """Return an incremented version based on the input semantic version.
     
     Args:
-        version: Input version string in format <major>.<minor>.<patch>.
+        version: Input version string in format <major>.<minor>.<patch> or 
+                <major>.<minor>.<patch><tag>.
         
     Returns:
-        New version with incremented minor version and patch set to 0.
+        New version with incremented minor version, patch set to 0, and tag removed.
         
     Raises:
         ValueError: If version string is not in expected format.
     """
     # Split the version string into components
     parts = version.split(".")
-    if len(parts) != 3:
-        raise ValueError("Version string must be in <major>.<minor>.<patch> format")
+    if len(parts) < 3:
+        raise ValueError("Version string must be in <major>.<minor>.<patch> or <major>.<minor>.<patch><tag> format")
+    
+    # Extract major, minor, and patch
+    major = int(parts[0])
+    minor = int(parts[1])
+    
+    # Handle patch and potential tag
+    patch_part = parts[2]
+    if patch_part.isdigit():
+        # Simple case: major.minor.patch
+        patch = int(patch_part)
+    else:
+        # Case with tag: major.minor.patch<tag>
+        # Find where digits end and tag begins
+        patch_end = 0
+        for i, char in enumerate(patch_part):
+            if not char.isdigit():
+                patch_end = i
+                break
+        
+        if patch_end == 0:
+            raise ValueError("Patch version must contain at least one digit")
+        
+        patch = int(patch_part[:patch_end])
     
     # Increment the minor version and reset patch to 0
-    major, minor, patch = map(int, parts)
     minor += 1
     patch = 0
     
-    # Return the new version string
+    # Return the new version string without tag
     return f"{major}.{minor}.{patch}"
 
 def write_new_version_to_config(config_file_path: str, new_version: str, dry_run: bool = False) -> bool:
@@ -152,7 +175,13 @@ if __name__ == "__main__":
             base_version = file.readline().strip()
             
         # Increment the minor version so the nightly build is considered newer than the latest release
-        base_version_incremented = increment_minor(base_version)
+        # But don't increment if the base version is already a dev version
+        if "dev" in base_version:
+            # Extract the version part before "dev" (e.g., "1.9.0" from "1.9.0.dev0")
+            dev_index = base_version.find("dev")
+            base_version_incremented = base_version[:dev_index].rstrip(".")
+        else:
+            base_version_incremented = increment_minor(base_version)
 
         # See https://peps.python.org/pep-0440/#developmental-releases
         dateint = args.date if args.date else datetime.date.today().strftime("%Y%m%d")
