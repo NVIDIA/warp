@@ -47,6 +47,7 @@ variables:
   LINBUILD: "$CI_PROJECT_DIR/_build/host-deps/linbuild/linbuild.sh"
   WARP_CACHE_ROOT: "$CI_PROJECT_DIR/.cache/warp" # Used by the parallel test runner
   GIT_DEPTH: 1
+  UV_LINK_MODE: copy
   DEFAULT_PYTHON:
     value: "3.9.18+nv1"
     options:
@@ -257,6 +258,53 @@ check un-namespaced symbols linux-x86_64:
       fi
 
       echo "SUCCESS: All symbols are correctly namespaced."
+
+cppcheck:
+  stage: quality
+  image: ghcr.io/astral-sh/uv:bookworm-slim
+  needs: []
+  extends:
+    - .runner-build-linux-x86_64
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
+    - apt-get update && apt-get install -y --no-install-recommends cppcheck
+    - mkdir -p _build/.cppcheck
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    # Pass 1: For the CI log and job failure.
+    - cppcheck_exit_code=0
+    - >-
+      cppcheck
+      --cppcheck-build-dir=_build/.cppcheck
+      --enable=warning
+      --quiet
+      --error-exitcode=1
+      -j $(nproc)
+      -i warp/native/nanovdb
+      warp
+      || cppcheck_exit_code=$?
+    # Pass 2: For the Code Quality report.
+    - >-
+      cppcheck
+      --cppcheck-build-dir=_build/.cppcheck
+      --enable=warning
+      --quiet
+      --xml
+      --xml-version=2
+      -j $(nproc)
+      -i warp/native/nanovdb
+      warp
+      2> cppcheck-report.xml
+    - uvx cppcheck-codequality --input-file=cppcheck-report.xml --output-file=gl-code-quality-report.json
+    - exit $cppcheck_exit_code
+  artifacts:
+    when: always
+    reports:
+      codequality: gl-code-quality-report.json
+    paths:
+      - cppcheck-report.xml
+  allow_failure: true  # TODO: Remove this once cppcheck reports no issues
 
 # ==============================================================================
 # Main Unit Testing Jobs
