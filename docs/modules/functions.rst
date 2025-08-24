@@ -6094,55 +6094,7 @@ Operators
        * Differentiable
 
 
-.. py:function:: bit_and(a: Vector[Any,Int], b: Int) -> Vector[Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: bit_and(a: Int, b: Vector[Any,Int]) -> Vector[Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
 .. py:function:: bit_and(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: bit_and(a: Matrix[Any,Any,Int], b: Int) -> Matrix[Any,Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: bit_and(a: Int, b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
     :noindex:
     :nocontentsentry:
 
@@ -6190,55 +6142,7 @@ Operators
        * Differentiable
 
 
-.. py:function:: bit_or(a: Vector[Any,Int], b: Int) -> Vector[Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: bit_or(a: Int, b: Vector[Any,Int]) -> Vector[Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
 .. py:function:: bit_or(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: bit_or(a: Matrix[Any,Any,Int], b: Int) -> Matrix[Any,Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: bit_or(a: Int, b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
     :noindex:
     :nocontentsentry:
 
@@ -6286,55 +6190,7 @@ Operators
        * Differentiable
 
 
-.. py:function:: bit_xor(a: Vector[Any,Int], b: Int) -> Vector[Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: bit_xor(a: Int, b: Vector[Any,Int]) -> Vector[Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
 .. py:function:: bit_xor(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: bit_xor(a: Matrix[Any,Any,Int], b: Int) -> Matrix[Any,Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: bit_xor(a: Int, b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
     :noindex:
     :nocontentsentry:
 
@@ -6382,55 +6238,7 @@ Operators
        * Differentiable
 
 
-.. py:function:: lshift(a: Vector[Any,Int], b: Int) -> Vector[Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: lshift(a: Int, b: Vector[Any,Int]) -> Vector[Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
 .. py:function:: lshift(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: lshift(a: Matrix[Any,Any,Int], b: Int) -> Matrix[Any,Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: lshift(a: Int, b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
     :noindex:
     :nocontentsentry:
 
@@ -6464,55 +6272,7 @@ Operators
        * Differentiable
 
 
-.. py:function:: rshift(a: Vector[Any,Int], b: Int) -> Vector[Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: rshift(a: Int, b: Vector[Any,Int]) -> Vector[Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
 .. py:function:: rshift(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: rshift(a: Matrix[Any,Any,Int], b: Int) -> Matrix[Any,Any,Int]
-    :noindex:
-    :nocontentsentry:
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: rshift(a: Int, b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
     :noindex:
     :nocontentsentry:
 

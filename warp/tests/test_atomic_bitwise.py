@@ -82,7 +82,7 @@ def test_atomic_bitwise_vector(test, device):
         i = wp.tid()
         word_idx = i // 32
         bit_idx = i % 32
-        bit_mask = wp.vec3ui(wp.uint32(1)) << wp.uint32(bit_idx)
+        bit_mask = wp.vec3ui(wp.uint32(1)) << wp.vec3ui(wp.uint32(bit_idx))
         if op_type == 0:
             a[word_idx] &= (b[word_idx] & bit_mask) | ~bit_mask
         elif op_type == 1:
@@ -140,7 +140,7 @@ def test_atomic_bitwise_matrix(test, device):
         i = wp.tid()
         word_idx = i // 32
         bit_idx = i % 32
-        bit_mask = mat33ui(wp.uint32(1)) << wp.uint32(bit_idx)
+        bit_mask = mat33ui(wp.uint32(1)) << mat33ui(wp.uint32(bit_idx))
         if op_type == 0:
             a[word_idx] &= (b[word_idx] & bit_mask) | ~bit_mask
         elif op_type == 1:

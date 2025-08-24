@@ -146,7 +146,7 @@ def test_tile_atomic_bitwise_vector(test, device):
         # write to tile first, then write only once to the array
         s[0] = a[word_idx]
         if op_type < 3:
-            bit_mask = wp.vec3ui(wp.uint32(1)) << wp.uint32(bit_idx)
+            bit_mask = wp.vec3ui(wp.uint32(1)) << wp.vec3ui(wp.uint32(bit_idx))
             if op_type == 0:
                 s[0] &= (b[word_idx] & bit_mask) | ~bit_mask
             elif op_type == 1:
@@ -156,7 +156,7 @@ def test_tile_atomic_bitwise_vector(test, device):
         else:
             # inter-tile operations
             s_bit_mask = wp.tile_zeros(shape=32, dtype=wp.vec3ui)
-            s_bit_mask[(bit_idx + 1) % 32] = wp.vec3ui(wp.uint32(1)) << wp.uint32((bit_idx + 1) % 32)
+            s_bit_mask[(bit_idx + 1) % 32] = wp.vec3ui(wp.uint32(1) << wp.uint32((bit_idx + 1) % 32))
             if op_type == 3:
                 s[0] &= (b[word_idx] & s_bit_mask[bit_idx]) | ~s_bit_mask[bit_idx]
             elif op_type == 4:
@@ -262,7 +262,7 @@ def test_tile_atomic_bitwise_matrix(test, device):
         # write to tile first, then write only once to the array
         s[0] = a[word_idx]
         if op_type < 3:
-            bit_mask = mat33ui(wp.uint32(1)) << wp.uint32(bit_idx)
+            bit_mask = mat33ui(wp.uint32(1)) << mat33ui(wp.uint32(bit_idx))
             if op_type == 0:
                 s[0] &= (b[word_idx] & bit_mask) | ~bit_mask
             elif op_type == 1:
@@ -272,7 +272,7 @@ def test_tile_atomic_bitwise_matrix(test, device):
         else:
             # inter-tile operations
             s_bit_mask = wp.tile_zeros(shape=32, dtype=mat33ui)
-            s_bit_mask[(bit_idx + 1) % 32] = mat33ui(wp.uint32(1)) << wp.uint32((bit_idx + 1) % 32)
+            s_bit_mask[(bit_idx + 1) % 32] = mat33ui(wp.uint32(1) << wp.uint32((bit_idx + 1) % 32))
             if op_type == 3:
                 s[0] &= (b[word_idx] & s_bit_mask[bit_idx]) | ~s_bit_mask[bit_idx]
             elif op_type == 4:

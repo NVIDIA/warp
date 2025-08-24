@@ -7577,41 +7577,9 @@ add_builtin(
 )
 add_builtin(
     "bit_and",
-    input_types={"a": vector(length=Any, dtype=Int), "b": Int},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", vector(length=Any, dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "bit_and",
-    input_types={"a": Int, "b": vector(length=Any, dtype=Int)},
-    constraint=op_scalar_create_constraint_func("b", "a"),
-    value_func=op_scalar_create_value_func("b", "a", vector(length=Any, dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "bit_and",
     input_types={"a": matrix(shape=(Any, Any), dtype=Int), "b": matrix(shape=(Any, Any), dtype=Int)},
     constraint=sametypes,
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "bit_and",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Int), "b": Int},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", matrix(shape=(Any, Any), dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "bit_and",
-    input_types={"a": Int, "b": matrix(shape=(Any, Any), dtype=Int)},
-    constraint=op_scalar_create_constraint_func("b", "a"),
-    value_func=op_scalar_create_value_func("b", "a", matrix(shape=(Any, Any), dtype=Int)),
     doc="",
     group="Operators",
 )
@@ -7627,41 +7595,9 @@ add_builtin(
 )
 add_builtin(
     "bit_or",
-    input_types={"a": vector(length=Any, dtype=Int), "b": Int},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", vector(length=Any, dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "bit_or",
-    input_types={"a": Int, "b": vector(length=Any, dtype=Int)},
-    constraint=op_scalar_create_constraint_func("b", "a"),
-    value_func=op_scalar_create_value_func("b", "a", vector(length=Any, dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "bit_or",
     input_types={"a": matrix(shape=(Any, Any), dtype=Int), "b": matrix(shape=(Any, Any), dtype=Int)},
     constraint=sametypes,
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "bit_or",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Int), "b": Int},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", matrix(shape=(Any, Any), dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "bit_or",
-    input_types={"a": Int, "b": matrix(shape=(Any, Any), dtype=Int)},
-    constraint=op_scalar_create_constraint_func("b", "a"),
-    value_func=op_scalar_create_value_func("b", "a", matrix(shape=(Any, Any), dtype=Int)),
     doc="",
     group="Operators",
 )
@@ -7677,41 +7613,9 @@ add_builtin(
 )
 add_builtin(
     "bit_xor",
-    input_types={"a": vector(length=Any, dtype=Int), "b": Int},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", vector(length=Any, dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "bit_xor",
-    input_types={"a": Int, "b": vector(length=Any, dtype=Int)},
-    constraint=op_scalar_create_constraint_func("b", "a"),
-    value_func=op_scalar_create_value_func("b", "a", vector(length=Any, dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "bit_xor",
     input_types={"a": matrix(shape=(Any, Any), dtype=Int), "b": matrix(shape=(Any, Any), dtype=Int)},
     constraint=sametypes,
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "bit_xor",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Int), "b": Int},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", matrix(shape=(Any, Any), dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "bit_xor",
-    input_types={"a": Int, "b": matrix(shape=(Any, Any), dtype=Int)},
-    constraint=op_scalar_create_constraint_func("b", "a"),
-    value_func=op_scalar_create_value_func("b", "a", matrix(shape=(Any, Any), dtype=Int)),
     doc="",
     group="Operators",
 )
@@ -7727,41 +7631,9 @@ add_builtin(
 )
 add_builtin(
     "lshift",
-    input_types={"a": vector(length=Any, dtype=Int), "b": Int},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", vector(length=Any, dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "lshift",
-    input_types={"a": Int, "b": vector(length=Any, dtype=Int)},
-    constraint=op_scalar_create_constraint_func("b", "a"),
-    value_func=op_scalar_create_value_func("b", "a", vector(length=Any, dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "lshift",
     input_types={"a": matrix(shape=(Any, Any), dtype=Int), "b": matrix(shape=(Any, Any), dtype=Int)},
     constraint=sametypes,
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "lshift",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Int), "b": Int},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", matrix(shape=(Any, Any), dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "lshift",
-    input_types={"a": Int, "b": matrix(shape=(Any, Any), dtype=Int)},
-    constraint=op_scalar_create_constraint_func("b", "a"),
-    value_func=op_scalar_create_value_func("b", "a", matrix(shape=(Any, Any), dtype=Int)),
     doc="",
     group="Operators",
 )
@@ -7777,41 +7649,9 @@ add_builtin(
 )
 add_builtin(
     "rshift",
-    input_types={"a": vector(length=Any, dtype=Int), "b": Int},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", vector(length=Any, dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "rshift",
-    input_types={"a": Int, "b": vector(length=Any, dtype=Int)},
-    constraint=op_scalar_create_constraint_func("b", "a"),
-    value_func=op_scalar_create_value_func("b", "a", vector(length=Any, dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "rshift",
     input_types={"a": matrix(shape=(Any, Any), dtype=Int), "b": matrix(shape=(Any, Any), dtype=Int)},
     constraint=sametypes,
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "rshift",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Int), "b": Int},
-    constraint=op_scalar_create_constraint_func("a", "b"),
-    value_func=op_scalar_create_value_func("a", "b", matrix(shape=(Any, Any), dtype=Int)),
-    doc="",
-    group="Operators",
-)
-add_builtin(
-    "rshift",
-    input_types={"a": Int, "b": matrix(shape=(Any, Any), dtype=Int)},
-    constraint=op_scalar_create_constraint_func("b", "a"),
-    value_func=op_scalar_create_value_func("b", "a", matrix(shape=(Any, Any), dtype=Int)),
     doc="",
     group="Operators",
 )

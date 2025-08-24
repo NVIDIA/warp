@@ -439,30 +439,6 @@ inline CUDA_CALLABLE vec_t<Length, Type> bit_and(vec_t<Length, Type> a, vec_t<Le
     return ret;
 }
 
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> bit_and(vec_t<Length, Type> a, Type b)
-{
-    vec_t<Length, Type> ret;
-    for (unsigned i=0; i < Length; ++i)
-    {
-        ret[i] = Type(a[i] & b);
-    }
-
-    return ret;
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> bit_and(Type a, vec_t<Length, Type> b)
-{
-    vec_t<Length, Type> ret;
-    for (unsigned i=0; i < Length; ++i)
-    {
-        ret[i] = Type(a & b[i]);
-    }
-
-    return ret;
-}
-
 template<typename Type>
 inline CUDA_CALLABLE vec_t<2, Type> bit_and(vec_t<2, Type> a, vec_t<2, Type> b)
 {
@@ -484,30 +460,6 @@ inline CUDA_CALLABLE vec_t<Length, Type> bit_or(vec_t<Length, Type> a, vec_t<Len
     {
         ret[i] = Type(a[i] | b[i]);
     }
-    return ret;
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> bit_or(vec_t<Length, Type> a, Type b)
-{
-    vec_t<Length, Type> ret;
-    for (unsigned i=0; i < Length; ++i)
-    {
-        ret[i] = Type(a[i] | b);
-    }
-
-    return ret;
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> bit_or(Type a, vec_t<Length, Type> b)
-{
-    vec_t<Length, Type> ret;
-    for (unsigned i=0; i < Length; ++i)
-    {
-        ret[i] = Type(a | b[i]);
-    }
-
     return ret;
 }
 
@@ -535,30 +487,6 @@ inline CUDA_CALLABLE vec_t<Length, Type> bit_xor(vec_t<Length, Type> a, vec_t<Le
     return ret;
 }
 
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> bit_xor(vec_t<Length, Type> a, Type b)
-{
-    vec_t<Length, Type> ret;
-    for (unsigned i=0; i < Length; ++i)
-    {
-        ret[i] = Type(a[i] ^ b);
-    }
-
-    return ret;
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> bit_xor(Type a, vec_t<Length, Type> b)
-{
-    vec_t<Length, Type> ret;
-    for (unsigned i=0; i < Length; ++i)
-    {
-        ret[i] = Type(a ^ b[i]);
-    }
-
-    return ret;
-}
-
 template<typename Type>
 inline CUDA_CALLABLE vec_t<2, Type> bit_xor(vec_t<2, Type> a, vec_t<2, Type> b)
 {
@@ -583,30 +511,6 @@ inline CUDA_CALLABLE vec_t<Length, Type> lshift(vec_t<Length, Type> a, vec_t<Len
     return ret;
 }
 
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> lshift(vec_t<Length, Type> a, Type b)
-{
-    vec_t<Length, Type> ret;
-    for (unsigned i=0; i < Length; ++i)
-    {
-        ret[i] = Type(a[i] << b);
-    }
-
-    return ret;
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> lshift(Type a, vec_t<Length, Type> b)
-{
-    vec_t<Length, Type> ret;
-    for (unsigned i=0; i < Length; ++i)
-    {
-        ret[i] = Type(a << b[i]);
-    }
-
-    return ret;
-}
-
 template<typename Type>
 inline CUDA_CALLABLE vec_t<2, Type> lshift(vec_t<2, Type> a, vec_t<2, Type> b)
 {
@@ -628,30 +532,6 @@ inline CUDA_CALLABLE vec_t<Length, Type> rshift(vec_t<Length, Type> a, vec_t<Len
     {
         ret[i] = Type(a[i] >> b[i]);
     }
-    return ret;
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> rshift(vec_t<Length, Type> a, Type b)
-{
-    vec_t<Length, Type> ret;
-    for (unsigned i=0; i < Length; ++i)
-    {
-        ret[i] = Type(a[i] >> b);
-    }
-
-    return ret;
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> rshift(Type a, vec_t<Length, Type> b)
-{
-    vec_t<Length, Type> ret;
-    for (unsigned i=0; i < Length; ++i)
-    {
-        ret[i] = Type(a >> b[i]);
-    }
-
     return ret;
 }
 
@@ -1020,26 +900,6 @@ inline CUDA_CALLABLE void bit_and_inplace(vec_t<Length, Type>& v, int idx, Type 
 }
 
 
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void bit_and_inplace(vec_t<Length, Type>& v, slice_t slice, Type value)
-{
-    assert(slice.start >= 0 && slice.start <= (int)Length);
-    assert(slice.stop >= -1 && slice.stop <= (int)Length);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (
-        int i = slice.start;
-        is_reversed ? (i > slice.stop) : (i < slice.stop);
-        i += slice.step
-    )
-    {
-        v[i] &= value;
-    }
-}
-
-
 template<unsigned SliceLength, unsigned Length, typename Type>
 inline CUDA_CALLABLE void bit_and_inplace(vec_t<Length, Type>& v, slice_t slice, const vec_t<SliceLength, Type> &a)
 {
@@ -1072,13 +932,6 @@ inline CUDA_CALLABLE void adj_bit_and_inplace(
 ) {}
 
 
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_bit_and_inplace(
-    const vec_t<Length, Type>& v, slice_t slice, Type value,
-    vec_t<Length, Type>& adj_v, slice_t& adj_slice, Type& adj_value
-) {}
-
-
 template<unsigned SliceLength, unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_bit_and_inplace(
     const vec_t<Length, Type>& v, slice_t slice, const vec_t<SliceLength, Type> &a,
@@ -1103,26 +956,6 @@ inline CUDA_CALLABLE void bit_or_inplace(vec_t<Length, Type>& v, int idx, Type v
     }
 
     v[idx] |= value;
-}
-
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void bit_or_inplace(vec_t<Length, Type>& v, slice_t slice, Type value)
-{
-    assert(slice.start >= 0 && slice.start <= (int)Length);
-    assert(slice.stop >= -1 && slice.stop <= (int)Length);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (
-        int i = slice.start;
-        is_reversed ? (i > slice.stop) : (i < slice.stop);
-        i += slice.step
-    )
-    {
-        v[i] |= value;
-    }
 }
 
 
@@ -1158,13 +991,6 @@ inline CUDA_CALLABLE void adj_bit_or_inplace(
 ) {}
 
 
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_bit_or_inplace(
-    const vec_t<Length, Type>& v, slice_t slice, Type value,
-    vec_t<Length, Type>& adj_v, slice_t& adj_slice, Type& adj_value
-) {}
-
-
 template<unsigned SliceLength, unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_bit_or_inplace(
     const vec_t<Length, Type>& v, slice_t slice, const vec_t<SliceLength, Type> &a,
@@ -1189,26 +1015,6 @@ inline CUDA_CALLABLE void bit_xor_inplace(vec_t<Length, Type>& v, int idx, Type 
     }
 
     v[idx] ^= value;
-}
-
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void bit_xor_inplace(vec_t<Length, Type>& v, slice_t slice, Type value)
-{
-    assert(slice.start >= 0 && slice.start <= (int)Length);
-    assert(slice.stop >= -1 && slice.stop <= (int)Length);
-    assert(slice.step != 0 && slice.step < 0 ? slice.start >= slice.stop : slice.start <= slice.stop);
-
-    bool is_reversed = slice.step < 0;
-
-    for (
-        int i = slice.start;
-        is_reversed ? (i > slice.stop) : (i < slice.stop);
-        i += slice.step
-    )
-    {
-        v[i] ^= value;
-    }
 }
 
 
@@ -1241,13 +1047,6 @@ template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_bit_xor_inplace(
     vec_t<Length, Type>& v, int idx, Type value,
     vec_t<Length, Type>& adj_v, int adj_idx, Type& adj_value
-) {}
-
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_bit_xor_inplace(
-    const vec_t<Length, Type>& v, slice_t slice, Type value,
-    vec_t<Length, Type>& adj_v, slice_t& adj_slice, Type& adj_value
 ) {}
 
 
@@ -1911,16 +1710,6 @@ inline CUDA_CALLABLE void adj_bit_and(vec_t<Length, Type> a, vec_t<Length, Type>
 {
 }
 
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_bit_and(vec_t<Length, Type> a, Type b, vec_t<Length, Type>& adj_a, Type& adj_b, const vec_t<Length, Type>& adj_ret)
-{
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_bit_and(Type a, vec_t<Length, Type> b, Type& adj_a, vec_t<Length, Type>& adj_b, const vec_t<Length, Type>& adj_ret)
-{
-}
-
 template<typename Type>
 inline CUDA_CALLABLE void adj_bit_and(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type>& adj_a, vec_t<2, Type>& adj_b, const vec_t<2, Type>& adj_ret)
 {
@@ -1933,16 +1722,6 @@ inline CUDA_CALLABLE void adj_bit_and(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<
 
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_bit_or(vec_t<Length, Type> a, vec_t<Length, Type> b, vec_t<Length, Type>& adj_a, vec_t<Length, Type>& adj_b, const vec_t<Length, Type>& adj_ret)
-{
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_bit_or(vec_t<Length, Type> a, Type b, vec_t<Length, Type>& adj_a, Type& adj_b, const vec_t<Length, Type>& adj_ret)
-{
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_bit_or(Type a, vec_t<Length, Type> b, Type& adj_a, vec_t<Length, Type>& adj_b, const vec_t<Length, Type>& adj_ret)
 {
 }
 
@@ -1961,16 +1740,6 @@ inline CUDA_CALLABLE void adj_bit_xor(vec_t<Length, Type> a, vec_t<Length, Type>
 {
 }
 
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_bit_xor(vec_t<Length, Type> a, Type b, vec_t<Length, Type>& adj_a, Type& adj_b, const vec_t<Length, Type>& adj_ret)
-{
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_bit_xor(Type a, vec_t<Length, Type> b, Type& adj_a, vec_t<Length, Type>& adj_b, const vec_t<Length, Type>& adj_ret)
-{
-}
-
 template<typename Type>
 inline CUDA_CALLABLE void adj_bit_xor(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type>& adj_a, vec_t<2, Type>& adj_b, const vec_t<2, Type>& adj_ret)
 {
@@ -1986,16 +1755,6 @@ inline CUDA_CALLABLE void adj_lshift(vec_t<Length, Type> a, vec_t<Length, Type> 
 {
 }
 
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_lshift(vec_t<Length, Type> a, Type b, vec_t<Length, Type>& adj_a, Type& adj_b, const vec_t<Length, Type>& adj_ret)
-{
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_lshift(Type a, vec_t<Length, Type> b, Type& adj_a, vec_t<Length, Type>& adj_b, const vec_t<Length, Type>& adj_ret)
-{
-}
-
 template<typename Type>
 inline CUDA_CALLABLE void adj_lshift(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type>& adj_a, vec_t<2, Type>& adj_b, const vec_t<2, Type>& adj_ret)
 {
@@ -2008,16 +1767,6 @@ inline CUDA_CALLABLE void adj_lshift(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3
 
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_rshift(vec_t<Length, Type> a, vec_t<Length, Type> b, vec_t<Length, Type>& adj_a, vec_t<Length, Type>& adj_b, const vec_t<Length, Type>& adj_ret)
-{
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_rshift(vec_t<Length, Type> a, Type b, vec_t<Length, Type>& adj_a, Type& adj_b, const vec_t<Length, Type>& adj_ret)
-{
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_rshift(Type a, vec_t<Length, Type> b, Type& adj_a, vec_t<Length, Type>& adj_b, const vec_t<Length, Type>& adj_ret)
 {
 }
 
