@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import os
 import platform
 import subprocess
@@ -174,7 +175,7 @@ def add_llvm_bin_to_path(args):
     return True
 
 
-def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: list[str] | None = None, mode=None):
+def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str] | None = None, mode=None):
     mode = args.mode if (mode is None) else mode
     cuda_home = args.cuda_path
     cuda_cmd = None
@@ -182,7 +183,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: list[str]
     # Add LLVM bin directory to PATH
     add_llvm_bin_to_path(args)
 
-    if args.quick or cu_path is None:
+    if args.quick or cu_paths is None:
         cuda_compat_enabled = "WP_ENABLE_CUDA_COMPATIBILITY=0"
     else:
         cuda_compat_enabled = "WP_ENABLE_CUDA_COMPATIBILITY=1"
@@ -200,7 +201,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: list[str]
 
     native_dir = os.path.join(warp_home, "native")
 
-    if cu_path:
+    if cu_paths:
         # check CUDA Toolkit version
         ctk_version = get_cuda_toolkit_version(cuda_home)
         if ctk_version < MIN_CTK_VERSION:
@@ -306,7 +307,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: list[str]
             nvcc_opts.append("--use_fast_math")
 
     # is the library being built with CUDA enabled?
-    cuda_enabled = "WP_ENABLE_CUDA=1" if (cu_path is not None) else "WP_ENABLE_CUDA=0"
+    cuda_enabled = "WP_ENABLE_CUDA=1" if (cu_paths is not None) else "WP_ENABLE_CUDA=0"
 
     if args.libmathdx_path:
         libmathdx_includes = f' -I"{args.libmathdx_path}/include"'
@@ -323,11 +324,11 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: list[str]
 
         cpp_includes = f' /I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}-{arch}/include"'
         cpp_includes += f' /I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
-        cuda_includes = f' /I"{cuda_home}/include"' if cu_path else ""
+        cuda_includes = f' /I"{cuda_home}/include"' if cu_paths else ""
         includes = cpp_includes + cuda_includes
 
         # nvrtc_static.lib is built with /MT and _ITERATOR_DEBUG_LEVEL=0 so if we link it in we must match these options
-        if cu_path or mode != "debug":
+        if cu_paths or mode != "debug":
             runtime = "/MT"
             iter_dbg = "_ITERATOR_DEBUG_LEVEL=0"
             debug = "NDEBUG"
@@ -353,32 +354,52 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: list[str]
         if args.fast_math:
             cpp_flags += " /fp:fast"
 
-        with ScopedTimer("build", active=args.verbose):
-            for cpp_path in cpp_paths:
-                cpp_out = cpp_path + ".obj"
-                linkopts.append(quote(cpp_out))
+        futures = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=args.multi_process) as executor:
+            with ScopedTimer("build", active=args.verbose):
+                cpp_cmds = []
+                for cpp_path in cpp_paths:
+                    cpp_out = cpp_path + ".obj"
+                    linkopts.append(quote(cpp_out))
+                    cpp_cmd = f'"{args.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
+                    cpp_cmds.append(cpp_cmd)
 
-                cpp_cmd = f'"{args.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
-                run_cmd(cpp_cmd)
+                if args.multi_process <= 1:
+                    for cpp_cmd in cpp_cmds:
+                        run_cmd(cpp_cmd)
+                else:
+                    futures = [executor.submit(run_cmd, cmd=cpp_cmd) for cpp_cmd in cpp_cmds]
 
-        if cu_path:
-            cu_out = cu_path + ".o"
+            if cu_paths:
+                cuda_cmds = []
+                for cu_path in cu_paths:
+                    cu_out = cu_path + ".o"
 
-            if mode == "debug":
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 --compiler-options=/MT,/Zi,/Od -g -G -O0 -DNDEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -line-info {" ".join(nvcc_opts)} -DWP_ENABLE_CUDA=1 -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                    if mode == "debug":
+                        cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 --compiler-options=/MT,/Zi,/Od -g -G -O0 -DNDEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -line-info {" ".join(nvcc_opts)} -DWP_ENABLE_CUDA=1 -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                    elif mode == "release":
+                        cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 {" ".join(nvcc_opts)} -I"{native_dir}" -DNDEBUG -DWP_ENABLE_CUDA=1 -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
 
-            elif mode == "release":
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 {" ".join(nvcc_opts)} -I"{native_dir}" -DNDEBUG -DWP_ENABLE_CUDA=1 -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                    cuda_cmds.append(cuda_cmd)
 
-            with ScopedTimer("build_cuda", active=args.verbose):
-                run_cmd(cuda_cmd)
-                linkopts.append(quote(cu_out))
+                    linkopts.append(quote(cu_out))
+
                 linkopts.append(
                     f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib /LIBPATH:"{cuda_home}/lib/x64"'
                 )
 
                 if args.libmathdx_path:
                     linkopts.append(f'nvJitLink_static.lib /LIBPATH:"{args.libmathdx_path}/lib/x64" mathdx_static.lib')
+
+                with ScopedTimer("build_cuda", active=args.verbose):
+                    if args.multi_process <= 1:
+                        for cuda_cmd in cuda_cmds:
+                            run_cmd(cuda_cmd)
+                    else:
+                        futures = [executor.submit(run_cmd, cmd=cuda_cmd) for cuda_cmd in cuda_cmds]
+
+        if futures:
+            concurrent.futures.wait(futures, return_when=concurrent.futures.ALL_COMPLETED)
 
         with ScopedTimer("link", active=args.verbose):
             link_cmd = f'"{host_linker}" {" ".join(linkopts + libs)} /out:"{dll_path}"'
@@ -391,7 +412,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: list[str]
 
         cpp_includes = f' -I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}-{arch}/include"'
         cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
-        cuda_includes = f' -I"{cuda_home}/include"' if cu_path else ""
+        cuda_includes = f' -I"{cuda_home}/include"' if cu_paths else ""
         includes = cpp_includes + cuda_includes
 
         if sys.platform == "darwin":
@@ -418,39 +439,58 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: list[str]
 
         ld_inputs = []
 
-        with ScopedTimer("build", active=args.verbose):
-            for cpp_path in cpp_paths:
-                cpp_out = cpp_path + ".o"
-                ld_inputs.append(quote(cpp_out))
+        futures = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=args.multi_process) as executor:
+            with ScopedTimer("build", active=args.verbose):
+                cpp_cmds = []
+                for cpp_path in cpp_paths:
+                    cpp_out = cpp_path + ".o"
+                    ld_inputs.append(quote(cpp_out))
+                    cpp_cmd = f'{cpp_compiler} {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'
+                    cpp_cmds.append(cpp_cmd)
 
-                build_cmd = f'{cpp_compiler} {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'
-                run_cmd(build_cmd)
+                if args.multi_process <= 1:
+                    for cpp_cmd in cpp_cmds:
+                        run_cmd(cpp_cmd)
+                else:
+                    futures = [executor.submit(run_cmd, cmd=cpp_cmd) for cpp_cmd in cpp_cmds]
 
-        if cu_path:
-            cu_out = cu_path + ".o"
+            if cu_paths:
+                cuda_cmds = []
+                for cu_path in cu_paths:
+                    cu_out = cu_path + ".o"
 
-            if cuda_compiler == "nvcc":
-                if mode == "debug":
-                    cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
-                elif mode == "release":
-                    cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
-            else:
-                # Use Clang compiler
-                if mode == "debug":
-                    cuda_cmd = f'clang++ -Werror -Wuninitialized -Wno-unknown-cuda-version {" ".join(clang_opts)} -g -O0 -fPIC -fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
-                elif mode == "release":
-                    cuda_cmd = f'clang++ -Werror -Wuninitialized -Wno-unknown-cuda-version {" ".join(clang_opts)} -O3 -fPIC -fvisibility=hidden -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                    if cuda_compiler == "nvcc":
+                        if mode == "debug":
+                            cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                        elif mode == "release":
+                            cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                    else:
+                        # Use Clang compiler
+                        if mode == "debug":
+                            cuda_cmd = f'clang++ -Werror -Wuninitialized -Wno-unknown-cuda-version {" ".join(clang_opts)} -g -O0 -fPIC -fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                        elif mode == "release":
+                            cuda_cmd = f'clang++ -Werror -Wuninitialized -Wno-unknown-cuda-version {" ".join(clang_opts)} -O3 -fPIC -fvisibility=hidden -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
 
-            with ScopedTimer("build_cuda", active=args.verbose):
-                run_cmd(cuda_cmd)
+                    cuda_cmds.append(cuda_cmd)
 
-                ld_inputs.append(quote(cu_out))
+                    ld_inputs.append(quote(cu_out))
+
                 ld_inputs.append(
                     f'-L"{cuda_home}/lib64" -lcudart_static -lnvrtc_static -lnvrtc-builtins_static -lnvptxcompiler_static -lpthread -ldl -lrt'
                 )
 
                 if args.libmathdx_path:
                     ld_inputs.append(f"-lnvJitLink_static -L{args.libmathdx_path}/lib -lmathdx_static")
+
+                with ScopedTimer("build_cuda", active=args.verbose):
+                    if args.multi_process <= 1:
+                        for cuda_cmd in cuda_cmds:
+                            run_cmd(cuda_cmd)
+                    else:
+                        futures = [executor.submit(run_cmd, cmd=cuda_cmd) for cuda_cmd in cuda_cmds]
+        if futures:
+            concurrent.futures.wait(futures, return_when=concurrent.futures.ALL_COMPLETED)
 
         if sys.platform == "darwin":
             opt_no_undefined = "-Wl,-undefined,error"
@@ -475,15 +515,15 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: list[str]
                     )
 
 
-def build_dll(args, dll_path, cpp_paths, cu_path, libs=None):
+def build_dll(args, dll_path, cpp_paths, cu_paths, libs=None):
     if sys.platform == "darwin":
         # create a universal binary by combining x86-64 and AArch64 builds
-        build_dll_for_arch(args, dll_path + "-x86_64", cpp_paths, cu_path, "x86_64", libs)
-        build_dll_for_arch(args, dll_path + "-aarch64", cpp_paths, cu_path, "aarch64", libs)
+        build_dll_for_arch(args, dll_path + "-x86_64", cpp_paths, cu_paths, "x86_64", libs)
+        build_dll_for_arch(args, dll_path + "-aarch64", cpp_paths, cu_paths, "aarch64", libs)
 
         run_cmd(f"lipo -create -output {dll_path} {dll_path}-x86_64 {dll_path}-aarch64")
         os.remove(f"{dll_path}-x86_64")
         os.remove(f"{dll_path}-aarch64")
 
     else:
-        build_dll_for_arch(args, dll_path, cpp_paths, cu_path, machine_architecture(), libs)
+        build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, machine_architecture(), libs)

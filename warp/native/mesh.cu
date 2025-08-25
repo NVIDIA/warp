@@ -21,6 +21,8 @@
 #include "bvh.h"
 #include "scan.h"
 
+extern CUcontext get_current_context();
+
 namespace wp
 {
 

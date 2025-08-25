@@ -16,6 +16,8 @@
  */
 
 #include "volume_builder.h"
+#include "cuda_util.h"
+#include "warp.h"
 
 #include <nanovdb/tools/cuda/PointsToGrid.cuh>
 
