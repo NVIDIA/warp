@@ -916,6 +916,168 @@ def test_jax_ad_kernel_auto_static_argnames(test, device):
     assert_np_equal(np.asarray(db), ref_db)
 
 
+@unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for shard_map test")
+def test_jax_ad_kernel_shard_map_mul2(test, device):
+    import jax
+    import jax.numpy as jp
+    from jax.experimental.shard_map import shard_map
+    from jax.sharding import PartitionSpec as P
+
+    from warp.jax_experimental.ffi import jax_ad_kernel
+
+    if jax.local_device_count() < 2:
+        test.skipTest("requires >= 2 local devices")
+
+    @wp.kernel
+    def mul2(a: wp.array(dtype=float), out: wp.array(dtype=float)):
+        tid = wp.tid()
+        out[tid] = 2.0 * a[tid]
+
+    jax_mul = jax_ad_kernel(mul2, num_outputs=1)
+
+    devices = jax.local_devices()
+    mesh = jax.sharding.Mesh(np.array(devices), "x")
+
+    n = jax.local_device_count() * 5
+    sharding = jax.sharding.NamedSharding(mesh, P("x"))
+    a = jp.arange(n, dtype=jp.float32)
+    shape = (n,)
+    arrays = [jax.device_put(a[idx], d) for d, idx in sharding.addressable_devices_indices_map(shape).items()]
+    x = jax.make_array_from_single_device_arrays(shape, sharding, arrays)
+
+    def loss(x):
+        y = shard_map(lambda v: jax_mul(v)[0], mesh=mesh, in_specs=(P("x"),), out_specs=P("x"), check_rep=False)(x)
+        return jp.sum(y)
+
+    g = jax.grad(loss)(x)
+    test.assertTrue(np.allclose(np.asarray(g), np.full(n, 2.0, dtype=np.float32), rtol=1e-5, atol=1e-6))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for pmap test")
+def test_jax_ad_kernel_pmap_mul2(test, device):
+    import jax
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_ad_kernel
+
+    if jax.local_device_count() < 2:
+        test.skipTest("requires >= 2 local devices")
+
+    @wp.kernel
+    def mul2(a: wp.array(dtype=float), out: wp.array(dtype=float)):
+        tid = wp.tid()
+        out[tid] = 2.0 * a[tid]
+
+    jax_mul = jax_ad_kernel(mul2, num_outputs=1)
+
+    per_device = 6
+    ndev = jax.local_device_count()
+    x = jp.arange(ndev * per_device, dtype=jp.float32).reshape((ndev, per_device))
+
+    def per_device_loss(x):
+        y = jax_mul(x)[0]
+        return jp.sum(y)
+
+    grads = jax.pmap(jax.grad(per_device_loss))(x)
+    test.assertTrue(
+        np.allclose(np.asarray(grads), np.full((ndev, per_device), 2.0, dtype=np.float32), rtol=1e-5, atol=1e-6)
+    )
+
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for shard_map multi-output test")
+def test_jax_ad_kernel_shard_map_multi_output(test, device):
+    import jax
+    import jax.numpy as jp
+    from jax.experimental.shard_map import shard_map
+    from jax.sharding import PartitionSpec as P
+
+    from warp.jax_experimental.ffi import jax_ad_kernel
+
+    if jax.local_device_count() < 2:
+        test.skipTest("requires >= 2 local devices")
+
+    @wp.kernel
+    def multi_output(
+        a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, c: wp.array(dtype=float), d: wp.array(dtype=float)
+    ):
+        tid = wp.tid()
+        c[tid] = a[tid] * a[tid]
+        d[tid] = a[tid] * b[tid] * s
+
+    jax_mo = jax_ad_kernel(multi_output, num_outputs=2, static_argnames=("s",))
+
+    devices = jax.local_devices()
+    mesh = jax.sharding.Mesh(np.array(devices), "x")
+
+    n = jax.local_device_count() * 5
+    sharding = jax.sharding.NamedSharding(mesh, P("x"))
+    a = jp.arange(n, dtype=jp.float32)
+    b = jp.arange(n, dtype=jp.float32)
+    shape = (n,)
+    arrays_a = [jax.device_put(a[idx], d) for d, idx in sharding.addressable_devices_indices_map(shape).items()]
+    arrays_b = [jax.device_put(b[idx], d) for d, idx in sharding.addressable_devices_indices_map(shape).items()]
+    ashard = jax.make_array_from_single_device_arrays(shape, sharding, arrays_a)
+    bshard = jax.make_array_from_single_device_arrays(shape, sharding, arrays_b)
+
+    s = 2.0
+
+    def body(aa, bb):
+        c, d = jax_mo(aa, bb, s)
+        return c + d
+
+    def loss(aa, bb):
+        y = shard_map(body, mesh=mesh, in_specs=(P("x"), P("x")), out_specs=P("x"), check_rep=False)(aa, bb)
+        return jp.sum(y)
+
+    da, db = jax.grad(loss, argnums=(0, 1))(ashard, bshard)
+    a_np = np.arange(n, dtype=np.float32)
+    b_np = np.arange(n, dtype=np.float32)
+    ref_da = 2.0 * a_np + b_np * s
+    ref_db = a_np * s
+    assert_np_equal(np.asarray(da), ref_da)
+    assert_np_equal(np.asarray(db), ref_db)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for pmap multi-output test")
+def test_jax_ad_kernel_pmap_multi_output(test, device):
+    import jax
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_ad_kernel
+
+    if jax.local_device_count() < 2:
+        test.skipTest("requires >= 2 local devices")
+
+    @wp.kernel
+    def multi_output(
+        a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, c: wp.array(dtype=float), d: wp.array(dtype=float)
+    ):
+        tid = wp.tid()
+        c[tid] = a[tid] * a[tid]
+        d[tid] = a[tid] * b[tid] * s
+
+    jax_mo = jax_ad_kernel(multi_output, num_outputs=2, static_argnames=("s",))
+
+    per_device = 5
+    ndev = jax.local_device_count()
+    a = jp.arange(ndev * per_device, dtype=jp.float32).reshape((ndev, per_device))
+    b = jp.arange(ndev * per_device, dtype=jp.float32).reshape((ndev, per_device))
+    s = 2.0
+
+    def per_dev_loss(aa, bb):
+        c, d = jax_mo(aa, bb, s)
+        return jp.sum(c + d)
+
+    da, db = jax.pmap(jax.grad(per_dev_loss, argnums=(0, 1)))(a, b)
+
+    a_np = np.arange(ndev * per_device, dtype=np.float32).reshape((ndev, per_device))
+    b_np = np.arange(ndev * per_device, dtype=np.float32).reshape((ndev, per_device))
+    ref_da = 2.0 * a_np + b_np * s
+    ref_db = a_np * s
+    assert_np_equal(np.asarray(da), ref_da)
+    assert_np_equal(np.asarray(db), ref_db)
+
+
 class TestJax(unittest.TestCase):
     pass
 
@@ -1056,6 +1218,34 @@ try:
             test_jax_ad_kernel_jit_of_grad_multi_output,
             devices=jax_compatible_cuda_devices,
         )
+
+        add_function_test(
+            TestJax,
+            "test_jax_ad_kernel_pmap_mul2",
+            test_jax_ad_kernel_pmap_mul2,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_jax_ad_kernel_shard_map_mul2",
+            test_jax_ad_kernel_shard_map_mul2,
+            devices=jax_compatible_cuda_devices,
+        )
+
+        add_function_test(
+            TestJax,
+            "test_jax_ad_kernel_pmap_multi_output",
+            test_jax_ad_kernel_pmap_multi_output,
+            devices=jax_compatible_cuda_devices,
+        )
+
+        add_function_test(
+            TestJax,
+            "test_jax_ad_kernel_pmap_multi_output",
+            test_jax_ad_kernel_pmap_multi_output,
+            devices=jax_compatible_cuda_devices,
+        )
+
 
 except Exception as e:
     print(f"Skipping Jax tests due to exception: {e}")

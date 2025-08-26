@@ -505,11 +505,37 @@ class FfiCallable:
             # has_side_effect=True,  # force this function to execute even if outputs aren't used
         )
 
-        # load the module
-        # NOTE: if the target function uses kernels from different modules, they will not be loaded here
-        device = wp.device_from_jax(get_jax_device())
-        module = wp.get_module(self.func.__module__)
-        module.load(device)
+        # Preload relevant modules across local GPUs to avoid per-device build races (e.g., __main__)
+        try:
+            gpus = [d for d in jax.local_devices() if getattr(d, "platform", "") == "gpu"]
+        except Exception:
+            gpus = []
+
+        modules_to_load = {wp.get_module(self.func.__module__)}
+        try:
+            closure_cells = getattr(self.func, "__closure__", None) or []
+            for cell in closure_cells:
+                try:
+                    val = cell.cell_contents
+                except Exception:
+                    continue
+                try:
+                    if isinstance(val, wp.context.Kernel):
+                        modules_to_load.add(val.module)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        if gpus:
+            for d in gpus:
+                dev = wp.device_from_jax(d)
+                for mod in modules_to_load:
+                    mod.load(dev)
+        else:
+            device = wp.device_from_jax(get_jax_device())
+            for mod in modules_to_load:
+                mod.load(device)
 
         # save call data to be retrieved by callback
         call_id = self.call_id
@@ -582,7 +608,8 @@ class FfiCallable:
                     # early out
                     return
 
-            device = wp.device_from_jax(get_jax_device())
+            # Use the current CUDA context's device to avoid stream/device mismatch in multi-GPU runs
+            device = wp.get_device("cuda")
             stream = wp.Stream(device, cuda_stream=cuda_stream)
 
             # reconstruct the argument list
@@ -641,23 +668,28 @@ class FfiCallable:
                 arg_list.append(arr)
 
             # call the Python function with reconstructed arguments
-            with wp.ScopedStream(stream, sync_enter=False):
-                if stream.is_capturing:
-                    # capturing with JAX
-                    with wp.ScopedCapture(external=True) as capture:
+            _FFI_STREAM_LOCAL.stream = stream
+            try:
+                # with wp.ScopedDevice(device):
+                with wp.ScopedStream(stream, sync_enter=False):
+                    if stream.is_capturing:
+                        # capturing with JAX
+                        with wp.ScopedCapture(external=True) as capture:
+                            self.func(*arg_list)
+                        # keep a reference to the capture object to prevent required modules getting unloaded
+                        call_desc.capture = capture
+                    elif self.graph_mode == GraphMode.WARP:
+                        # capturing with WARP
+                        with wp.ScopedCapture() as capture:
+                            self.func(*arg_list)
+                        wp.capture_launch(capture.graph)
+                        # keep a reference to the capture object and reuse it with same buffers
+                        call_desc.captures[buffer_hash] = capture
+                    else:
+                        # not capturing
                         self.func(*arg_list)
-                    # keep a reference to the capture object to prevent required modules getting unloaded
-                    call_desc.capture = capture
-                elif self.graph_mode == GraphMode.WARP:
-                    # capturing with WARP
-                    with wp.ScopedCapture() as capture:
-                        self.func(*arg_list)
-                    wp.capture_launch(capture.graph)
-                    # keep a reference to the capture object and reuse it with same buffers
-                    call_desc.captures[buffer_hash] = capture
-                else:
-                    # not capturing
-                    self.func(*arg_list)
+            finally:
+                _FFI_STREAM_LOCAL.stream = None
 
         except Exception as e:
             print(traceback.format_exc())
@@ -672,6 +704,13 @@ class FfiCallable:
 _FFI_CALLABLE_REGISTRY: dict[str, FfiCallable] = {}
 _FFI_KERNEL_REGISTRY: dict[str, FfiKernel] = {}
 _FFI_REGISTRY_LOCK = threading.Lock()
+
+# Thread-local storage for the current FFI stream so wrappers can launch on the correct device
+_FFI_STREAM_LOCAL = threading.local()
+
+
+def _get_current_ffi_stream() -> Optional[wp.Stream]:
+    return getattr(_FFI_STREAM_LOCAL, "stream", None)
 
 
 def jax_kernel(
@@ -903,7 +942,17 @@ def jax_ad_kernel(kernel, num_outputs=1, static_argnames=None, vmap_method: Opti
     # Forward kernel wrapper: simply launches the kernel
     def fwd_kernel_wrapper(*args):
         # args are Warp arrays/scalars reconstructed via FFI in jax_callable
-        wp.launch(kernel, dim=args[0].shape, inputs=args[:-num_outputs], outputs=args[-num_outputs:])
+        stream = _get_current_ffi_stream()
+        if stream is not None:
+            wp.launch(
+                kernel,
+                dim=args[0].shape,
+                inputs=args[:-num_outputs],
+                outputs=args[-num_outputs:],
+                stream=stream,
+            )
+        else:
+            wp.launch(kernel, dim=args[0].shape, inputs=args[:-num_outputs], outputs=args[-num_outputs:])
 
     # Expose the kernel signature to the wrapper so type annotations flow through
     fwd_kernel_wrapper.__signature__ = signature
@@ -934,15 +983,28 @@ def jax_ad_kernel(kernel, num_outputs=1, static_argnames=None, vmap_method: Opti
             pass
 
         # Launch adjoint
-        wp.launch(
-            kernel,
-            dim=inputs[0].shape,
-            inputs=inputs,
-            outputs=outputs,
-            adj_inputs=grad_in,
-            adj_outputs=grad_out,
-            adjoint=True,
-        )
+        stream = _get_current_ffi_stream()
+        if stream is not None:
+            wp.launch(
+                kernel,
+                dim=inputs[0].shape,
+                inputs=inputs,
+                outputs=outputs,
+                adj_inputs=grad_in,
+                adj_outputs=grad_out,
+                adjoint=True,
+                stream=stream,
+            )
+        else:
+            wp.launch(
+                kernel,
+                dim=inputs[0].shape,
+                inputs=inputs,
+                outputs=outputs,
+                adj_inputs=grad_in,
+                adj_outputs=grad_out,
+                adjoint=True,
+            )
 
     # Build the backward wrapper signature expected by jax_callable
     # Inputs to the backward function are: inputs, outputs, output grads
