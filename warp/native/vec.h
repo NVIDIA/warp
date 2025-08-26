@@ -343,17 +343,6 @@ inline CUDA_CALLABLE vec_t<Length, Type> add(vec_t<Length, Type> a, vec_t<Length
     return ret;
 }
 
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> add(Type a, vec_t<Length, Type> b)
-{
-    vec_t<Length, Type> ret;
-    for( unsigned i=0; i < Length; ++i )
-    {
-        ret[i] = a + b[i];
-    }
-    return ret;
-}
-
 template<typename Type>
 inline CUDA_CALLABLE vec_t<2, Type> add(vec_t<2, Type> a, vec_t<2, Type> b)
 {
@@ -375,18 +364,6 @@ inline CUDA_CALLABLE vec_t<Length, Type> sub(vec_t<Length, Type> a, vec_t<Length
     {
         ret[i] = Type(a[i] - b[i]);
     }
-    return ret;
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> sub(Type a, vec_t<Length, Type> b)
-{
-    vec_t<Length, Type> ret;
-    for (unsigned i=0; i < Length; ++i)
-    {
-        ret[i] = Type(a - b[i]);
-    }
-
     return ret;
 }
 
@@ -1303,21 +1280,6 @@ inline CUDA_CALLABLE void adj_add(vec_t<Length, Type> a, vec_t<Length, Type> b, 
     adj_b += adj_ret;
 }
 
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_add(
-    Type a, vec_t<Length, Type> b,
-    Type& adj_a, vec_t<Length, Type>& adj_b,
-    const vec_t<Length, Type>& adj_ret
-)
-{
-    for (unsigned i = 0; i < Length; ++i)
-    {
-        adj_a += adj_ret.c[i];
-    }
-
-    adj_b += adj_ret;
-}
-
 template<typename Type>
 inline CUDA_CALLABLE void adj_add(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type>& adj_a, vec_t<2, Type>& adj_b, const vec_t<2, Type>& adj_ret)
 {
@@ -1342,21 +1304,6 @@ template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_sub(vec_t<Length, Type> a, vec_t<Length, Type> b, vec_t<Length, Type>& adj_a, vec_t<Length, Type>& adj_b, const vec_t<Length, Type>& adj_ret)
 {
     adj_a += adj_ret;
-    adj_b -= adj_ret;
-}
-
-template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_sub(
-    Type a, vec_t<Length, Type> b,
-    Type& adj_a, vec_t<Length, Type>& adj_b,
-    const vec_t<Length, Type>& adj_ret
-)
-{
-    for (unsigned i = 0; i < Length; ++i)
-    {
-        adj_a += adj_ret.c[i];
-    }
-
     adj_b -= adj_ret;
 }
 
