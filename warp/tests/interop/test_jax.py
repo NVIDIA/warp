@@ -350,6 +350,87 @@ def test_jax_ad_kernel_simple(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for FFI custom_vjp")
+def test_jax_ad_kernel_jit_of_grad_simple(test, device):
+    import jax
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_ad_kernel
+
+    @wp.kernel
+    def scale_sum_square_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, c: wp.array(dtype=float)):
+        tid = wp.tid()
+        c[tid] = (a[tid] * s + b[tid]) ** 2.0
+
+    jax_func = jax_ad_kernel(scale_sum_square_kernel, num_outputs=1, static_argnames=("s",))
+
+    def loss(a, b, s):
+        out = jax_func(a, b, s)[0]
+        return jp.sum(out)
+
+    grad_fn = jax.grad(loss, argnums=(0, 1))
+
+    # more typical: jit(grad(...)) with static scalar
+    jitted_grad = jax.jit(lambda a, b, s: grad_fn(a, b, s), static_argnames=("s",))
+
+    n = 16
+    a = jp.arange(n, dtype=jp.float32)
+    b = jp.ones(n, dtype=jp.float32)
+    s = 2.0
+
+    with jax.default_device(wp.device_to_jax(device)):
+        da, db = jitted_grad(a, b, s)
+
+    a_np = np.arange(n, dtype=np.float32)
+    b_np = np.ones(n, dtype=np.float32)
+    ref_da = 2.0 * (a_np * s + b_np) * s
+    ref_db = 2.0 * (a_np * s + b_np)
+
+    assert_np_equal(np.asarray(da), ref_da)
+    assert_np_equal(np.asarray(db), ref_db)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for FFI custom_vjp")
+def test_jax_ad_kernel_jit_of_grad_multi_output(test, device):
+    import jax
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_ad_kernel
+
+    @wp.kernel
+    def multi_output_kernel(
+        a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, c: wp.array(dtype=float), d: wp.array(dtype=float)
+    ):
+        tid = wp.tid()
+        c[tid] = a[tid] ** 2.0
+        d[tid] = a[tid] * b[tid] * s
+
+    jax_func = jax_ad_kernel(multi_output_kernel, num_outputs=2, static_argnames=("s",))
+
+    def loss(a, b, s):
+        c, d = jax_func(a, b, s)
+        return jp.sum(c + d)
+
+    grad_fn = jax.grad(loss, argnums=(0, 1))
+    jitted_grad = jax.jit(lambda a, b, s: grad_fn(a, b, s), static_argnames=("s",))
+
+    n = 16
+    a = jp.arange(n, dtype=jp.float32)
+    b = jp.ones(n, dtype=jp.float32)
+    s = 2.0
+
+    with jax.default_device(wp.device_to_jax(device)):
+        da, db = jitted_grad(a, b, s)
+
+    a_np = np.arange(n, dtype=np.float32)
+    b_np = np.ones(n, dtype=np.float32)
+    ref_da = 2.0 * a_np + b_np * s
+    ref_db = a_np * s
+
+    assert_np_equal(np.asarray(da), ref_da)
+    assert_np_equal(np.asarray(db), ref_db)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for FFI custom_vjp")
 def test_jax_ad_kernel_multi_output(test, device):
     import jax
     import jax.numpy as jp
@@ -960,6 +1041,19 @@ try:
             TestJax,
             "test_jax_ad_kernel_vmap_2d_expand_dims",
             test_jax_ad_kernel_vmap_2d_expand_dims,
+            devices=jax_compatible_cuda_devices,
+        )
+
+        add_function_test(
+            TestJax,
+            "test_jax_ad_kernel_jit_of_grad_simple",
+            test_jax_ad_kernel_jit_of_grad_simple,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_jax_ad_kernel_jit_of_grad_multi_output",
+            test_jax_ad_kernel_jit_of_grad_multi_output,
             devices=jax_compatible_cuda_devices,
         )
 
