@@ -171,6 +171,7 @@ struct BVH
 	// used for fast refits
 	int* node_parents;
 	int* node_counts;
+	uint64_t* keys;
 	// reordered primitive indices corresponds to the ordering of leaf nodes
 	int* primitive_indices;
 	
@@ -184,10 +185,13 @@ struct BVH
 	// representing the root of the tree, this is not always the first node
 	// for bottom-up builders
 	int* root;
+	// pointer for the root of each group
+	int* group_roots;
 
 	// item bounds are not owned by the BVH but by the caller
-    vec3* item_lowers;
+	vec3* item_lowers;
 	vec3* item_uppers;
+	int* item_groups;
 	int num_items;
 
 	// cuda context
@@ -276,6 +280,68 @@ CUDA_CALLABLE inline int bvh_get_num_bounds(uint64_t id)
 	return bvh.num_items;
 }
 
+CUDA_CALLABLE inline int lower_bound_group(const uint64_t* keys, int n, unsigned int group)
+{
+	uint64_t prefix = uint64_t(group) << 32;
+	int lo = 0;
+	int hi = n;
+	
+	while (lo < hi)
+	{
+    	int mid = (lo + hi) >> 1;
+		if (keys[mid] < prefix)
+		{
+			lo = mid + 1;
+		}
+		else
+		{
+			hi = mid;
+		}
+	}
+	
+	if (lo == n || (keys[lo] >> 32) != group) return -1;
+	
+	return lo;
+}
+
+
+CUDA_CALLABLE inline int lca(int node_a, int node_b, const int* parent)
+{
+	int da = 0, db = 0;
+    for (int t = node_a; t != -1; t = parent[t]) ++da;
+    for (int t = node_b; t != -1; t = parent[t]) ++db;
+
+	if (da > db) {
+        int diff = da - db;
+        while (diff-- && node_a != -1) node_a = parent[node_a];
+    } else if (db > da) {
+        int diff = db - da;
+        while (diff-- && node_b != -1) node_b = parent[node_b];
+    }
+
+	while (node_a != node_b) {
+        if (node_a == -1 || node_b == -1) return -1;
+        node_a = parent[node_a];
+        node_b = parent[node_b];
+    }
+    return node_a;  // either the LCA or -1
+}
+
+
+CUDA_CALLABLE inline int bvh_get_group_root(uint64_t id, int group_id)
+{
+	BVH bvh = bvh_get(id);
+	// locate first leaf of the current group
+	int first = lower_bound_group(bvh.keys, bvh.num_items, group_id);
+	if (first < 0) return -1;
+	
+	// find first leaf of next group to find the last leaf of the current group
+    int next = lower_bound_group(bvh.keys, bvh.num_items, group_id + 1);
+	int last = (next < 0 ? bvh.num_items : next) - 1;
+
+	// climb both until we meet
+	return lca(first, last, bvh.node_parents);
+}
 
 // stores state required to traverse the BVH nodes that 
 // overlap with a query AABB.
@@ -329,7 +395,7 @@ CUDA_CALLABLE inline bool bvh_query_intersection_test(const bvh_query_t& query, 
 }
 
 CUDA_CALLABLE inline bvh_query_t bvh_query(
-	uint64_t id, bool is_ray, const vec3& lower, const vec3& upper)
+	uint64_t id, bool is_ray, const vec3& lower, const vec3& upper, int root)
 {
 	// This routine traverses the BVH tree until it finds
 	// the first overlapping bound. 
@@ -345,7 +411,7 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(
 	query.is_ray = is_ray;
 
 	// optimization: make the latest	
-	query.stack[0] = *bvh.root;
+	query.stack[0] = root == -1 ? *bvh.root : root;
 	query.count = 1;
 	query.input_lower = lower;
 	query.input_upper = upper;
@@ -384,26 +450,31 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(
 }
 
 CUDA_CALLABLE inline bvh_query_t bvh_query_aabb(
-    uint64_t id, const vec3& lower, const vec3& upper)
+    uint64_t id, const vec3& lower, const vec3& upper, int root)
 {
-	return bvh_query(id, false, lower, upper);
+	return bvh_query(id, false, lower, upper, root);
 }
 
 
-CUDA_CALLABLE inline bvh_query_t bvh_query_ray(uint64_t id, const vec3& start, const vec3& dir)
+CUDA_CALLABLE inline bvh_query_t bvh_query_ray(
+    uint64_t id, const vec3& start, const vec3& dir, int root)
 {
-	return bvh_query(id, true, start, 1.0f / dir);
+	return bvh_query(id, true, start, 1.0f / dir, root);
 }
 
 //Stub
 CUDA_CALLABLE inline void adj_bvh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper,
-											   uint64_t, vec3&, vec3&, bvh_query_t&)
+											   int root, uint64_t, vec3&, vec3&, int&, bvh_query_t&)
 {
 }
 
 
 CUDA_CALLABLE inline void adj_bvh_query_ray(uint64_t id, const vec3& start, const vec3& dir,
-											   uint64_t, vec3&, vec3&, bvh_query_t&)
+											   int root, uint64_t, vec3&, vec3&, int&, bvh_query_t&)
+{
+}
+
+CUDA_CALLABLE inline void adj_bvh_get_group_root(uint64_t id, int group_id, uint64_t&, int&, int&)
 {
 }
 
@@ -500,7 +571,7 @@ CUDA_CALLABLE void bvh_rem_descriptor(uint64_t id);
 
 #if !__CUDA_ARCH__
 
-void bvh_create_host(vec3* lowers, vec3* uppers, int num_items,  int constructor_type, BVH& bvh);
+void bvh_create_host(vec3* lowers, vec3* uppers, int num_items,  int constructor_type, int* groups, BVH& bvh);
 void bvh_destroy_host(wp::BVH& bvh);
 void bvh_refit_host(wp::BVH& bvh);
 
