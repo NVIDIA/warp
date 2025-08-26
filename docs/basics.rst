@@ -120,8 +120,6 @@ Arrays can be allocated similar to NumPy and PyTorch::
     a = np.ones((10, 3), dtype=np.float32)
     v = wp.from_numpy(a, dtype=wp.vec3, device="cuda")
 
-Arrays cannot be created inside of Warp kernels.
-
 Arrays up to four dimensions are supported. The aliases
 ``wp.array2d``, ``wp.array3d``, ``wp.array4d`` are useful when typing kernel
 arguments:

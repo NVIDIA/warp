@@ -427,6 +427,88 @@ Structured arrays fully support nested structs and Warp vector (and matrix) type
      ( 0, 13.37, ([0., 0., 0.],)) ( 0,  0.  , ([0., 0., 0.],))
      ( 0,  0.  , ([1., 1., 1.],))]
 
+
+Local Arrays
+############
+
+While arrays are typically created at the Python scope and passed to kernels as arguments,
+Warp also supports creating arrays directly inside kernels. This capability is limited to two specific approaches:
+
+1. **Creating array views from existing memory**: Initialize an array that references an existing data buffer
+   by using ``wp.array(ptr=..., shape=..., dtype=...)``. This is useful to reinterpret memory
+   with a different shape or when working with external memory pointers:
+
+    .. testcode::
+
+        @wp.kernel
+        def sum_rows_kernel(
+            flat_arr: wp.array(dtype=int),
+            out: wp.array(dtype=int),
+        ):
+            tid = wp.tid()
+
+            # Reinterpret the flat array as a 2D array of 3x4 elements.
+            arr = wp.array(ptr=flat_arr.ptr, shape=(3, 4), dtype=int)
+
+            # Compute sum of row.
+            sum = int(0)
+            for j in range(arr.shape[1]):
+                sum += arr[tid, j]
+
+            out[tid] = sum
+
+        flat_arr = wp.array(range(12), dtype=int)
+        row_sums = wp.zeros(3, dtype=int)
+        wp.launch(sum_rows_kernel, dim=3, inputs=(flat_arr, row_sums))
+        print(row_sums.numpy())
+
+    .. testoutput::
+
+        [ 6 22 38]
+
+2. **Allocating fixed-size arrays**: Allocate a new zero-initialized array with a compile-time constant shape
+   using ``wp.zeros(shape=..., dtype=...)``:
+
+    .. testcode::
+
+        N = 6
+
+        @wp.kernel
+        def find_cumsum_avg_crossing_kernel(
+            arr: wp.array2d(dtype=float),
+            out: wp.array(dtype=int),
+        ):
+            tid = wp.tid()
+
+            # Create temporary array to store cumulative sums for this column.
+            tmp = wp.zeros(shape=(N,), dtype=float)
+
+            # Compute the cumulative sum values.
+            tmp[0] = arr[0, tid]
+            for i in range(1, N):
+                tmp[i] = tmp[i - 1] + arr[i, tid]
+
+            # Calculate the average of the cumulative sum values.
+            sum = float(0)
+            for i in range(N):
+                sum += tmp[i]
+            avg = sum / float(N)
+
+            # Find the first index where `cumulative sum value >= avg`.
+            # This represents the crossing point where accumulated values exceed
+            # the average accumulation.
+            out[tid] = wp.lower_bound(tmp, avg)
+
+        arr = wp.array(np.abs(np.sin(np.arange(N * 3))).reshape(N, 3), dtype=float)
+        idx = wp.empty(shape=(3,), dtype=int)
+        wp.launch(find_cumsum_avg_crossing_kernel, dim=(3,), inputs=(arr,), outputs=(idx,))
+        print(idx.numpy())
+
+    .. testoutput::
+
+        [3 3 3]
+
+
 .. _Data_Types:
 
 Data Types
