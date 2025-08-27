@@ -34,7 +34,6 @@ Kernels and User Functions
 A limitation of Warp is that each dimension of the grid used to launch a kernel must be representable as a 32-bit
 signed integer. Therefore, no single dimension of a grid should exceed :math:`2^{31}-1`.
 
-Warp also currently uses a fixed block size of 256 (CUDA) threads per block.
 By default, Warp will try to process one element from the Warp grid in one CUDA thread.
 This is not always possible for kernels launched with multi-dimensional grid bounds, as there are
 `hardware limitations <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications-technical-specifications-per-compute-capability>`_
