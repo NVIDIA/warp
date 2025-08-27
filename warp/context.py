@@ -2422,9 +2422,6 @@ class Module:
 
                 self.failed_builds.add(None)
 
-                # clean up build_dir used for this process regardless
-                shutil.rmtree(build_dir, ignore_errors=True)
-
                 raise (e)
 
         else:
@@ -2465,9 +2462,6 @@ class Module:
 
                 if device:
                     self.failed_builds.add(device.context)
-
-                # clean up build_dir used for this process regardless
-                shutil.rmtree(build_dir, ignore_errors=True)
 
                 raise (e)
 
