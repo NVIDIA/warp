@@ -909,13 +909,23 @@ struct tile_shared_t
     // we delete the copy constructor because in the case the shared tile is owning,
     // this leads to a double deallocation. 
     // this also forces one to handle copies explicitly
-    inline CUDA_CALLABLE tile_shared_t(const tile_shared_t&) = delete;
+    inline CUDA_CALLABLE tile_shared_t(const tile_shared_t& other) : data(other.data), grad(other.grad), initialized(other.initialized)
+    {
+        static_assert(!Owner, "Copy constructor is only supported for non-owning tiles.");
+    }
 
     // move constructor
     inline CUDA_CALLABLE tile_shared_t(tile_shared_t&& other) : data(other.data), grad(other.grad), initialized(other.initialized)
     {
         other.data.ptr = nullptr;
         other.grad.ptr = nullptr;
+    }
+
+    template <typename OtherT, typename OtherLayout, bool OtherOwner>
+    inline CUDA_CALLABLE tile_shared_t(const tile_shared_t<OtherT, OtherLayout, OtherOwner>& other) : data(other.data.ptr), grad(other.grad.ptr), initialized(other.initialized)
+    {
+        static_assert(!Owner, "Copy constructor is only supported for non-owning tiles.");
+        static_assert(Layout::Size == OtherLayout::Size, "Expected Size == OtherLayout::Size");
     }
 
     // initialize from an existing tile's memory
