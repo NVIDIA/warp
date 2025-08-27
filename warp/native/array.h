@@ -845,13 +845,25 @@ template<template<typename> class A, typename T>
 inline CUDA_CALLABLE T atomic_exch(const A<T>& buf, int i, int j, int k, int l, T value) { return atomic_exch(&index(buf, i, j, k, l), value); }
 
 template<template<typename> class A, typename T>
-inline CUDA_CALLABLE T* address(const A<T>& buf, int i) { return &index(buf, i); }
+inline CUDA_CALLABLE T* address(const A<T>& buf, int i)
+{
+    return &index(buf, i); // cppcheck-suppress returnDanglingLifetime
+}
 template<template<typename> class A, typename T>
-inline CUDA_CALLABLE T* address(const A<T>& buf, int i, int j) { return &index(buf, i, j); }
+inline CUDA_CALLABLE T* address(const A<T>& buf, int i, int j)
+{
+    return &index(buf, i, j); // cppcheck-suppress returnDanglingLifetime
+}
 template<template<typename> class A, typename T>
-inline CUDA_CALLABLE T* address(const A<T>& buf, int i, int j, int k) { return &index(buf, i, j, k); }
+inline CUDA_CALLABLE T* address(const A<T>& buf, int i, int j, int k)
+{
+    return &index(buf, i, j, k); // cppcheck-suppress returnDanglingLifetime
+}
 template<template<typename> class A, typename T>
-inline CUDA_CALLABLE T* address(const A<T>& buf, int i, int j, int k, int l) { return &index(buf, i, j, k, l); }
+inline CUDA_CALLABLE T* address(const A<T>& buf, int i, int j, int k, int l)
+{
+    return &index(buf, i, j, k, l); // cppcheck-suppress returnDanglingLifetime
+}
 
 template<template<typename> class A, typename T>
 inline CUDA_CALLABLE void array_store(const A<T>& buf, int i, T value)

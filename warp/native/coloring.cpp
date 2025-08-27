@@ -35,6 +35,7 @@
 
 #include "warp.h"
 
+#include <climits>
 #include <iostream>
 #include <vector>
 #include <array>
@@ -338,6 +339,10 @@ public:
 
     int get_node_weight(int node_idx) 
     {
+        if (node_idx < 0 || node_idx >= (int)node_weights.size()) {
+            fprintf(stderr, "The node_idx %d is out of range!\n", node_idx);
+            return INT_MIN;
+        }
         return node_weights[node_idx];
     }
 

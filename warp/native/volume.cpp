@@ -205,7 +205,7 @@ void wp_volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size)
 
 void wp_volume_get_voxel_size(uint64_t id, float* dx, float* dy, float* dz)
 {
-    *dx = *dx = *dz = 0.0f;
+    *dx = *dy = *dz = 0.0f;
 
     const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume))
@@ -257,7 +257,7 @@ const char* wp_volume_get_grid_info(uint64_t id, uint64_t* grid_size, uint32_t* 
         memcpy(transform, grid_data.map.matf, sizeof(grid_data.map.matf));
 
         nanovdb::toStr(type_str, static_cast<nanovdb::GridType>(grid_data.grid_type));
-        return (const char*)grid_data.grid_name;
+        return reinterpret_cast<const char*>(grid_data.grid_name);
     }
 
     *grid_size = 0;
@@ -291,7 +291,7 @@ const char* wp_volume_get_blind_data_info(uint64_t id, uint32_t data_index, void
         nanovdb::toStr(type_str, static_cast<nanovdb::GridType>(metadata.data_type));
         *buf = static_cast<uint8_t*>(volume->buffer) + volume->grid_data.blind_metadata_offset +
                data_index * sizeof(pnanovdb_gridblindmetadata_t) + metadata.data_offset;
-        return (const char*)metadata.name;
+        return reinterpret_cast<const char*>(metadata.name);
     }
     *buf = nullptr;
     *value_count = 0;

@@ -175,7 +175,7 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
 
     clang::EmitLLVMOnlyAction emit_llvm_only_action(&context);
     bool success = compiler_instance.ExecuteAction(emit_llvm_only_action);
-    buffer.release();
+    (void)buffer.release();
 
     return success ? std::move(emit_llvm_only_action.takeModule()) : nullptr;
 }
@@ -240,7 +240,7 @@ static std::unique_ptr<llvm::Module> cuda_to_llvm(const std::string& input_file,
 
     clang::EmitLLVMOnlyAction emit_llvm_only_action(&context);
     bool success = compiler_instance.ExecuteAction(emit_llvm_only_action);
-    buffer.release();
+    (void)buffer.release();
 
     return success ? std::move(emit_llvm_only_action.takeModule()) : nullptr;
 }

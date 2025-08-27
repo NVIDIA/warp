@@ -35,7 +35,8 @@ template <typename T>
 struct fabricarray_t
 {
     CUDA_CALLABLE inline fabricarray_t()
-        : nbuckets(0),
+        : buckets(nullptr),
+          nbuckets(0),
           size(0)
     {}
 
