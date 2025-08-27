@@ -177,12 +177,12 @@ struct mat_t
 
     CUDA_CALLABLE vec_t<Cols,Type> get_row(int index) const
     {
-        return (vec_t<Cols,Type>&)data[index]; 
+        return reinterpret_cast<const vec_t<Cols,Type>&>(data[index]); 
     }
 
     CUDA_CALLABLE void set_row(int index, const vec_t<Cols,Type>& v)
     {
-        (vec_t<Cols,Type>&)data[index] = v;
+        reinterpret_cast<vec_t<Cols,Type>&>(data[index]) = v;
     }
 
     CUDA_CALLABLE vec_t<Rows,Type> get_col(int index) const

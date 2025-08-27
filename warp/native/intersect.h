@@ -264,12 +264,12 @@ CUDA_CALLABLE inline bool intersect_ray_tri_rtcd(const vec3& p, const vec3& dir,
 // these are provided as built-ins by CUDA
 inline float __int_as_float(int i)
 {
-	return *(float*)(&i);
+    return *reinterpret_cast<float*>(&i);
 }
 
 inline int __float_as_int(float f)
 {
-	return *(int*)(&f);
+    return *reinterpret_cast<int*>(&f);
 }
 
 #endif
