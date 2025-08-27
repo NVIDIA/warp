@@ -5832,8 +5832,17 @@ def invoke(kernel, hooks, params: Sequence[Any], adjoint: bool):
 
     # for adjoint kernels the adjoint arguments are passed through a second struct
     else:
-        adj_args = ArgsStruct()
-        for i, field in enumerate(fields):
+        adj_fields = []
+
+        for i in range(0, len(kernel.adj.args)):
+            arg_name = kernel.adj.args[i].label
+            field = (arg_name, type(params[1 + len(fields) + i]))  # skip the first argument, which is the launch bounds
+            adj_fields.append(field)
+
+        AdjArgsStruct = type("AdjArgsStruct", (ctypes.Structure,), {"_fields_": adj_fields})
+
+        adj_args = AdjArgsStruct()
+        for i, field in enumerate(adj_fields):
             name = field[0]
             setattr(adj_args, name, params[1 + len(fields) + i])
 
