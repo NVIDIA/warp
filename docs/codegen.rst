@@ -1215,19 +1215,23 @@ Ahead-of-Time Compilation Workflows
 
 Under typical use cases, Warp will compile and load modules automatically at runtime when kernels are launched using
 :func:`wp.launch() <warp.launch>` or :func:`wp.launch_tiled() <warp.launch_tiled>`.
+
 However, there are some cases where it is convenient to compile a module ahead of time, perhaps even on a different
 machine.
 For example, you might want to use Warp to generate source code that can be included in a native CUDA C++ application.
-By disabling module hashing, it is even possible to distribute the compiled modules without the original source code
-for use in other Warp programs.
 
-The :func:`warp.compile_aot_module` and :func:`warp.load_aot_module` functions can be used to compile and load modules
-manually.
+By disabling module hashing, you can even distribute pre-compiled modules without the original source code.
+
+The :func:`wp.compile_aot_module() <warp.compile_aot_module>` and :func:`wp.load_aot_module() <warp.load_aot_module>`
+functions can be used to compile and load modules manually.
 
 Example: Compile a module manually without launching any kernels
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The following example shows how to compile a module manually without launching any kernels:
+The following example shows how to compile a module manually without launching any kernels.
+We pass ``__name__`` as the first argument to :func:`wp.compile_aot_module() <warp.compile_aot_module>` to indicate
+that the current module is the one that should be compiled, but it is also possible to pass the name of another
+module containing Warp kernels.
 
 .. code:: python
 
@@ -1251,16 +1255,26 @@ This will create the following files:
    ├── wp___main___97ca746.meta
    └── wp___main___97ca746.sm86.ptx
 
-Example: Distributing a pre-compiled module without the source code
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Example: Distributing a pre-compiled module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In this example, our goal is to load and run kernels from a pre-compiled module without access to the original source
-code that produced the module (either the Python function or the generated CUDA C++ code). We can imagine two personas:
-The first is the developer of the Warp program, and the second is a user who needs to run the
-program but cannot be given access to the original source code.
+In this example, our goal is to load and run kernels from a pre-compiled module without the original source
+code that produced the module (either the Python function or the generated CUDA C++ code).
 
-The developer will compile the code they want to distribute without module hashing enabled by passing
-``strip_hash=True`` to :func:`warp.compile_aot_module`:
+First, we will disable module hashing when we ahead-of-time compile the code by passing ``strip_hash=True`` to
+:func:`wp.compile_aot_module() <warp.compile_aot_module>`.
+When hashing is disabled, the generated function names and filenames become more readable.
+For example, instead of a function named ``sum_kernel_b6a8b352_cuda_kernel_forward()`` in the file
+``wp___main___3a2e577/wp___main___3a2e577.cu``, you get the cleaner function ``sum_kernel_cuda_kernel_forward()``
+in the file ``wp___main__/wp___main__.cu``. Therefore, ``strip_hash=True`` can also be used to prevent name mangling.
+
+.. important::
+
+    Not all modules can be compiled successfully with hashing disabled. Name collisions can occur when
+    hashes are removed from the function names, particularly when using :doc:`Generics <modules/generics>`, which can
+    result in multiple versions of the same function or kernel.
+
+Only use ``strip_hash=True`` when your module has a single version of each function and kernel.
 
 .. code:: python
 
@@ -1277,17 +1291,22 @@ The developer will compile the code they want to distribute without module hashi
 
 This results in the following files:
 
-.. code-block:: text
+.. code:: text
 
    output/
    ├── wp___main__.cu
    ├── wp___main__.meta
    └── wp___main__.sm86.ptx
 
-Now we will remove the ``output/wp___main__.cu`` to mock up the user's situation in which they have been provided
-with only the ``output/wp___main__.sm86.ptx`` and ``output/wp___main__.meta`` files.
+The second part of this workflow involves writing a script that can load the pre-compiled module and run the kernels,
+all without access to the original script that compiled the module.
 
-The user will run a script like the following:
+We will remove the ``output/wp___main__.cu`` to mock up a potential user that has been provided with only the
+``output/wp___main__.sm86.ptx`` and ``output/wp___main__.meta`` files.
+For example, intellectual-property concerns may prevent disclosure of the original source code.
+
+We can write a script that also defines the ``multiply_arrays`` kernel with the same signature as in the previous
+script, but contains an empty body.
 
 .. code:: python
 
@@ -1310,25 +1329,27 @@ The user will run a script like the following:
 
         print(c)
 
-Note that the user does not need to know what was in the body of the original ``multiply_arrays`` kernel.
-When the user runs the above script, they will see the following output:
+When we run the above script, we see the following output:
 
-.. code-block:: text
+.. code:: text
 
     Module __main__ load on device 'cuda:0' took 46.33 ms  (cached)
     [50. 50. 50. 50. 50. 50. 50. 50. 50. 50.]
 
-We see that the module is loaded from cache instead of being compiled.
+The ``(cached)`` in the module-load message indicates that the module is loaded from cache instead of being compiled.
+The output also shows that the kernel multiplied the elements of the arrays ``a`` and ``b`` together despite the
+empty body of the ``multiply_arrays`` kernel.
 
-This example assumed that both the developer and the user are using the same type of GPU. When compiling a module
-with :func:`warp.compile_aot_module`, the developer optionally can specify a list of GPU architectures to generate code
-for as well as whether to generate PTX or CUBIN files.
+This example assumed both the module compilation and loading happened on the same machine, but it might be necessary
+to compile a module for multiple GPU architectures.
+A list of GPU architectures for which to generate code as well as whether to generate PTX or CUBIN files can be
+specified when calling :func:`wp.compile_aot_module() <warp.compile_aot_module>`.
 
-The following example shows how to compile a module without name mangling for multiple architectures as CUBIN files:
+The following example shows how to compile a module without hashing for multiple architectures as CUBIN files
+by passing in a list of architectures to the ``arch`` argument.
 
 .. code:: python
 
-    import warp
     import warp as wp
 
 
@@ -1346,7 +1367,7 @@ The following example shows how to compile a module without name mangling for mu
         wp.init()
         wp.compile_aot_module(
             __name__,
-            arch=warp.context.runtime.nvrtc_supported_archs,
+            arch=[75, 80, 86, 87, 88, 89, 90, 120, 100, 103, 110, 121],
             module_dir="output",
             strip_hash=True,
             use_ptx=False,
@@ -1354,7 +1375,7 @@ The following example shows how to compile a module without name mangling for mu
 
 On a CUDA 13.0 build of Warp, this results in the following files:
 
-.. code-block:: text
+.. code:: text
 
    output/
    ├── wp___main__.cu
