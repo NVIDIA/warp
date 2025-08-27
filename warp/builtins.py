@@ -3737,6 +3737,105 @@ add_builtin(
     export=False,
 )
 
+add_builtin(
+    "tile_bit_and_inplace",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+add_builtin(
+    "tile_bit_and_inplace",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+add_builtin(
+    "tile_bit_and_inplace",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+add_builtin(
+    "tile_bit_and_inplace",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+
+add_builtin(
+    "tile_bit_or_inplace",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+add_builtin(
+    "tile_bit_or_inplace",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+add_builtin(
+    "tile_bit_or_inplace",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+add_builtin(
+    "tile_bit_or_inplace",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+
+add_builtin(
+    "tile_bit_xor_inplace",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+add_builtin(
+    "tile_bit_xor_inplace",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+add_builtin(
+    "tile_bit_xor_inplace",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+add_builtin(
+    "tile_bit_xor_inplace",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+
 
 def tile_transpose_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
@@ -6412,6 +6511,13 @@ def create_atomic_op_value_func(op: str):
                     f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
+        elif op in ("and", "or", "xor"):
+            supported_atomic_types = (warp.int32, warp.int64, warp.uint32, warp.uint64)
+            if not any(types_equal(scalar_type, x, match_generic=True) for x in supported_atomic_types):
+                raise RuntimeError(
+                    f"atomic_{op}() operations only work on arrays with [u]int32 or [u]int64 "
+                    f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
+                )
         else:
             raise NotImplementedError
 
@@ -6751,6 +6857,153 @@ for array_type in array_types:
         doc="""Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.""",
+        group="Utility",
+        skip_replay=True,
+    )
+
+    add_builtin(
+        "atomic_and",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("and"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise AND between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i] &= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_and",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("and"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise AND between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j] &= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_and",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("and"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] &= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_and",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("and"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+
+    add_builtin(
+        "atomic_or",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("or"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise OR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i] |= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_or",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("or"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise OR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j] |= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_or",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("or"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] |= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_or",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("or"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+
+    add_builtin(
+        "atomic_xor",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("xor"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise XOR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i] ^= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_xor",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("xor"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_xor",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("xor"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.""",
+        group="Utility",
+        skip_replay=True,
+    )
+    add_builtin(
+        "atomic_xor",
+        hidden=hidden,
+        input_types={"arr": array_type(dtype=Any), "i": Int, "j": Int, "k": Int, "l": Int, "value": Any},
+        constraint=atomic_op_constraint,
+        value_func=create_atomic_op_value_func("xor"),
+        dispatch_func=atomic_op_dispatch_func,
+        doc="""Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+        This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -7158,6 +7411,40 @@ add_builtin(
 )
 
 
+# implements vector[idx] &= scalar
+add_builtin(
+    "bit_and_inplace",
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": Any, "value": Any},
+    value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+# implements vector[idx] |= scalar
+add_builtin(
+    "bit_or_inplace",
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": Any, "value": Any},
+    value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+# implements vector[idx] ^= scalar
+add_builtin(
+    "bit_xor_inplace",
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": Any, "value": Any},
+    value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+
 def matrix_index_row_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     mat_type = arg_types["a"]
     row_type = mat_type._wp_row_type_
@@ -7382,6 +7669,72 @@ add_builtin(
 # implements matrix[i,j] -= value
 add_builtin(
     "sub_inplace",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "j": Any, "value": Any},
+    value_type=None,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+
+# implements matrix[i] &= value
+add_builtin(
+    "bit_and_inplace",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "value": Any},
+    value_type=None,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+
+# implements matrix[i,j] &= value
+add_builtin(
+    "bit_and_inplace",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "j": Any, "value": Any},
+    value_type=None,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+
+# implements matrix[i] |= value
+add_builtin(
+    "bit_or_inplace",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "value": Any},
+    value_type=None,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+
+# implements matrix[i,j] |= value
+add_builtin(
+    "bit_or_inplace",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "j": Any, "value": Any},
+    value_type=None,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+
+# implements matrix[i] ^= value
+add_builtin(
+    "bit_xor_inplace",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "value": Any},
+    value_type=None,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+
+# implements matrix[i,j] ^= value
+add_builtin(
+    "bit_xor_inplace",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Any, "j": Any, "value": Any},
     value_type=None,
     hidden=True,
@@ -7672,12 +8025,109 @@ add_builtin(
 )
 
 # bitwise operators
-add_builtin("bit_and", input_types={"a": Int, "b": Int}, value_func=sametypes_create_value_func(Int))
-add_builtin("bit_or", input_types={"a": Int, "b": Int}, value_func=sametypes_create_value_func(Int))
-add_builtin("bit_xor", input_types={"a": Int, "b": Int}, value_func=sametypes_create_value_func(Int))
-add_builtin("lshift", input_types={"a": Int, "b": Int}, value_func=sametypes_create_value_func(Int))
-add_builtin("rshift", input_types={"a": Int, "b": Int}, value_func=sametypes_create_value_func(Int))
-add_builtin("invert", input_types={"a": Int}, value_func=sametypes_create_value_func(Int))
+add_builtin("bit_and", input_types={"a": Int, "b": Int}, value_func=sametypes_create_value_func(Int), group="Operators")
+add_builtin(
+    "bit_and",
+    input_types={"a": vector(length=Any, dtype=Int), "b": vector(length=Any, dtype=Int)},
+    constraint=sametypes,
+    value_func=sametypes_create_value_func(vector(length=Any, dtype=Int)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "bit_and",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Int), "b": matrix(shape=(Any, Any), dtype=Int)},
+    constraint=sametypes,
+    value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
+    doc="",
+    group="Operators",
+)
+
+add_builtin("bit_or", input_types={"a": Int, "b": Int}, value_func=sametypes_create_value_func(Int), group="Operators")
+add_builtin(
+    "bit_or",
+    input_types={"a": vector(length=Any, dtype=Int), "b": vector(length=Any, dtype=Int)},
+    constraint=sametypes,
+    value_func=sametypes_create_value_func(vector(length=Any, dtype=Int)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "bit_or",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Int), "b": matrix(shape=(Any, Any), dtype=Int)},
+    constraint=sametypes,
+    value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
+    doc="",
+    group="Operators",
+)
+
+add_builtin("bit_xor", input_types={"a": Int, "b": Int}, value_func=sametypes_create_value_func(Int), group="Operators")
+add_builtin(
+    "bit_xor",
+    input_types={"a": vector(length=Any, dtype=Int), "b": vector(length=Any, dtype=Int)},
+    constraint=sametypes,
+    value_func=sametypes_create_value_func(vector(length=Any, dtype=Int)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "bit_xor",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Int), "b": matrix(shape=(Any, Any), dtype=Int)},
+    constraint=sametypes,
+    value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
+    doc="",
+    group="Operators",
+)
+
+add_builtin("lshift", input_types={"a": Int, "b": Int}, value_func=sametypes_create_value_func(Int), group="Operators")
+add_builtin(
+    "lshift",
+    input_types={"a": vector(length=Any, dtype=Int), "b": vector(length=Any, dtype=Int)},
+    constraint=sametypes,
+    value_func=sametypes_create_value_func(vector(length=Any, dtype=Int)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "lshift",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Int), "b": matrix(shape=(Any, Any), dtype=Int)},
+    constraint=sametypes,
+    value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
+    doc="",
+    group="Operators",
+)
+
+add_builtin("rshift", input_types={"a": Int, "b": Int}, value_func=sametypes_create_value_func(Int), group="Operators")
+add_builtin(
+    "rshift",
+    input_types={"a": vector(length=Any, dtype=Int), "b": vector(length=Any, dtype=Int)},
+    constraint=sametypes,
+    value_func=sametypes_create_value_func(vector(length=Any, dtype=Int)),
+    doc="",
+    group="Operators",
+)
+add_builtin(
+    "rshift",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Int), "b": matrix(shape=(Any, Any), dtype=Int)},
+    constraint=sametypes,
+    value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
+    doc="",
+    group="Operators",
+)
+
+add_builtin("invert", input_types={"a": Int}, value_func=sametypes_create_value_func(Int), group="Operators")
+add_builtin(
+    "invert",
+    input_types={"a": vector(length=Any, dtype=Int)},
+    value_func=sametypes_create_value_func(vector(length=Any, dtype=Int)),
+    group="Operators",
+)
+add_builtin(
+    "invert",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Int)},
+    value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
+    group="Operators",
+)
 
 
 add_builtin(
@@ -8061,6 +8511,42 @@ add_builtin(
     export=False,
 )
 
+add_builtin(
+    "bit_and",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    value_func=tile_binary_map_value_func,
+    # dispatch_func=tile_map_dispatch_func,
+    # variadic=True,
+    native_func="tile_bit_and",
+    doc="Bitwise AND each element of two tiles together",
+    group="Tile Primitives",
+    export=False,
+)
+
+add_builtin(
+    "bit_or",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    value_func=tile_binary_map_value_func,
+    # dispatch_func=tile_map_dispatch_func,
+    # variadic=True,
+    native_func="tile_bit_or",
+    doc="Bitwise OR each element of two tiles together",
+    group="Tile Primitives",
+    export=False,
+)
+
+add_builtin(
+    "bit_xor",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    value_func=tile_binary_map_value_func,
+    # dispatch_func=tile_map_dispatch_func,
+    # variadic=True,
+    native_func="tile_bit_xor",
+    doc="Bitwise XOR each element of two tiles together",
+    group="Tile Primitives",
+    export=False,
+)
+
 
 add_builtin(
     "mul",
@@ -8118,6 +8604,42 @@ add_builtin(
     export=False,
     hidden=True,
     native_func="tile_sub_inplace",
+    group="Operators",
+)
+
+
+add_builtin(
+    "bit_and_inplace",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    value_type=None,
+    dispatch_func=tile_inplace_dispatch_func,
+    export=False,
+    hidden=True,
+    native_func="tile_bit_and_inplace",
+    group="Operators",
+)
+
+
+add_builtin(
+    "bit_or_inplace",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    value_type=None,
+    dispatch_func=tile_inplace_dispatch_func,
+    export=False,
+    hidden=True,
+    native_func="tile_bit_or_inplace",
+    group="Operators",
+)
+
+
+add_builtin(
+    "bit_xor_inplace",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    value_type=None,
+    dispatch_func=tile_inplace_dispatch_func,
+    export=False,
+    hidden=True,
+    native_func="tile_bit_xor_inplace",
     group="Operators",
 )
 
