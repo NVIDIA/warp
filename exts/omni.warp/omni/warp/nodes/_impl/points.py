@@ -256,17 +256,21 @@ def points_get_world_extent(
     extent = points_get_local_extent(bundle, child_idx=child_idx)
     xform = bundle_get_world_xform(bundle, child_idx=child_idx)
 
+    # Depending on the Kit version, the extent might be returned
+    # as either `float[6]` or `float[2][3]`.
+    extent = extent.flatten()
+
     if axis_aligned:
         points = np.array(
             (
-                (extent[0][0], extent[0][1], extent[0][2]),
-                (extent[0][0], extent[0][1], extent[1][2]),
-                (extent[0][0], extent[1][1], extent[0][2]),
-                (extent[0][0], extent[1][1], extent[1][2]),
-                (extent[1][0], extent[1][1], extent[1][2]),
-                (extent[1][0], extent[0][1], extent[1][2]),
-                (extent[1][0], extent[1][1], extent[0][2]),
-                (extent[1][0], extent[0][1], extent[0][2]),
+                (extent[0], extent[1], extent[2]),
+                (extent[0], extent[1], extent[5]),
+                (extent[0], extent[4], extent[2]),
+                (extent[0], extent[4], extent[5]),
+                (extent[3], extent[4], extent[5]),
+                (extent[3], extent[1], extent[5]),
+                (extent[3], extent[4], extent[2]),
+                (extent[3], extent[1], extent[2]),
             ),
         )
     else:
