@@ -261,42 +261,53 @@ check un-namespaced symbols linux-x86_64:
 
 cppcheck:
   stage: quality
-  image: ghcr.io/astral-sh/uv:bookworm-slim
+  image: ubuntu:24.04
   needs: []
   extends:
     - .runner-build-linux-x86_64
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
-    - apt-get update && apt-get install -y --no-install-recommends cppcheck
+    - apt-get update && apt-get install wget ca-certificates --no-install-recommends -y
+    - wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+    - bash Miniforge3.sh -b -p "${HOME}/conda"
+    - source "${HOME}/conda/etc/profile.d/conda.sh"
+    - conda activate
+    - conda install cppcheck --channel conda-forge
+    - python -m pip install -U cppcheck-codequality
     - mkdir -p _build/.cppcheck
+    - cppcheck --version
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     # Pass 1: For the CI log and job failure.
     - cppcheck_exit_code=0
     - >-
       cppcheck
+      --inline-suppr
       --cppcheck-build-dir=_build/.cppcheck
       --enable=warning
       --quiet
       --error-exitcode=1
       -j $(nproc)
-      -i warp/native/nanovdb
+      --suppress=*:warp/native/nanovdb/*
+      --suppress=normalCheckLevelMaxBranches
       warp
       || cppcheck_exit_code=$?
     # Pass 2: For the Code Quality report.
     - >-
       cppcheck
+      --inline-suppr
       --cppcheck-build-dir=_build/.cppcheck
       --enable=warning
       --quiet
       --xml
       --xml-version=2
       -j $(nproc)
-      -i warp/native/nanovdb
+      --suppress=*:warp/native/nanovdb/*
+      --suppress=normalCheckLevelMaxBranches
       warp
       2> cppcheck-report.xml
-    - uvx cppcheck-codequality --input-file=cppcheck-report.xml --output-file=gl-code-quality-report.json
+    - cppcheck-codequality --input-file=cppcheck-report.xml --output-file=gl-code-quality-report.json
     - exit $cppcheck_exit_code
   artifacts:
     when: always
@@ -304,7 +315,6 @@ cppcheck:
       codequality: gl-code-quality-report.json
     paths:
       - cppcheck-report.xml
-  allow_failure: true  # TODO: Remove this once cppcheck reports no issues
 
 # ==============================================================================
 # Main Unit Testing Jobs

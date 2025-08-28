@@ -87,9 +87,6 @@ void TopDownBVHBuilder::build(BVH& bvh, const vec3* lowers, const vec3* uppers, 
         return;
     }
 
-    // exact upper bound: floor((INT_MAX + 1) / 2) without overflowing int
-    const int MAX_N = (INT_MAX - 1) / 2 + 1;
-
     if (n < 0)
     {
         fprintf(stderr, "Error: Cannot build BVH with a negative primitive count: %d\n", n);
@@ -101,7 +98,7 @@ void TopDownBVHBuilder::build(BVH& bvh, const vec3* lowers, const vec3* uppers, 
         initialize_empty(bvh);
         return;
     }
-    else if (n > MAX_N)
+    else if (n > INT_MAX / 2)
     {
         fprintf(stderr, "Error: Primitive count %d is too large and would cause an integer overflow.\n", n);
         initialize_empty(bvh);
@@ -392,8 +389,8 @@ void bvh_refit_recursive(BVH& bvh, int index)
             bound.add_bounds(bvh.item_lowers[item], bvh.item_uppers[item]);
         }
 
-        (vec3&)lower = bound.lower;
-        (vec3&)upper = bound.upper;
+        reinterpret_cast<vec3&>(lower) = bound.lower;
+        reinterpret_cast<vec3&>(upper) = bound.upper;
     }
     else
     {
@@ -404,19 +401,19 @@ void bvh_refit_recursive(BVH& bvh, int index)
         bvh_refit_recursive(bvh, right_index);
 
         // compute union of children
-        const vec3& left_lower = (vec3&)bvh.node_lowers[left_index];
-        const vec3& left_upper = (vec3&)bvh.node_uppers[left_index];
+        const vec3& left_lower = reinterpret_cast<const vec3&>(bvh.node_lowers[left_index]);
+        const vec3& left_upper = reinterpret_cast<const vec3&>(bvh.node_uppers[left_index]);
 
-        const vec3& right_lower = (vec3&)bvh.node_lowers[right_index];
-        const vec3& right_upper = (vec3&)bvh.node_uppers[right_index];
+        const vec3& right_lower = reinterpret_cast<const vec3&>(bvh.node_lowers[right_index]);
+        const vec3& right_upper = reinterpret_cast<const vec3&>(bvh.node_uppers[right_index]);
 
         // union of child bounds
         vec3 new_lower = min(left_lower, right_lower);
         vec3 new_upper = max(left_upper, right_upper);
         
         // write new BVH nodes
-        (vec3&)lower = new_lower;
-        (vec3&)upper = new_upper;
+        reinterpret_cast<vec3&>(lower) = new_lower;
+        reinterpret_cast<vec3&>(upper) = new_upper;
     }
 }
 

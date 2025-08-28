@@ -58,6 +58,7 @@ struct Mesh
         context = nullptr;
         solid_angle_props = nullptr;	
         average_edge_length = 0.0f;
+        bvh = BVH{};
     }
 
     inline CUDA_CALLABLE Mesh(
@@ -73,6 +74,7 @@ struct Mesh
         uppers = nullptr;
         solid_angle_props = nullptr;
         average_edge_length = 0.0f;
+        bvh = BVH{};
     }
 };
 
@@ -1630,7 +1632,7 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
         BVHPackedNodeHalf node_lower = bvh_load_node(mesh.bvh.node_lowers, nodeIndex);
         BVHPackedNodeHalf node_upper = bvh_load_node(mesh.bvh.node_uppers, nodeIndex);
 
-        if (!input_bounds.overlaps((vec3&)node_lower, (vec3&)node_upper))
+        if (!input_bounds.overlaps(reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)))
         {
             // Skip this box, it doesn't overlap with our target box.
             continue;
@@ -1715,7 +1717,7 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& in
         BVHPackedNodeHalf node_lower = bvh_load_node(mesh.bvh.node_lowers, node_index);
         BVHPackedNodeHalf node_upper = bvh_load_node(mesh.bvh.node_uppers, node_index);
 
-        if (!input_bounds.overlaps((vec3&)node_lower, (vec3&)node_upper))
+        if (!input_bounds.overlaps(reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)))
         {
             // Skip this box, it doesn't overlap with our target box.
             continue;

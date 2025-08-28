@@ -96,8 +96,8 @@ void bvh_refit_with_solid_angle_recursive_host(BVH& bvh, int index, Mesh& mesh)
              }
          }
 
-         (vec3&)lower = mesh.solid_angle_props[index].box.lower;
-         (vec3&)upper = mesh.solid_angle_props[index].box.upper;
+         reinterpret_cast<vec3&>(lower) = mesh.solid_angle_props[index].box.lower;
+         reinterpret_cast<vec3&>(upper) = mesh.solid_angle_props[index].box.upper;
     }
     else
     {
@@ -114,19 +114,19 @@ void bvh_refit_with_solid_angle_recursive_host(BVH& bvh, int index, Mesh& mesh)
         combine_precomputed_solid_angle_props(mesh.solid_angle_props[index], left_child_data, right_child_data);
 
         // compute union of children
-        const vec3& left_lower = (vec3&)bvh.node_lowers[left_index];
-        const vec3& left_upper = (vec3&)bvh.node_uppers[left_index];
+        const vec3& left_lower = reinterpret_cast<const vec3&>(bvh.node_lowers[left_index]);
+        const vec3& left_upper = reinterpret_cast<const vec3&>(bvh.node_uppers[left_index]);
 
-        const vec3& right_lower = (vec3&)bvh.node_lowers[right_index];
-        const vec3& right_upper = (vec3&)bvh.node_uppers[right_index];
+        const vec3& right_lower = reinterpret_cast<const vec3&>(bvh.node_lowers[right_index]);
+        const vec3& right_upper = reinterpret_cast<const vec3&>(bvh.node_uppers[right_index]);
 
         // union of child bounds
         vec3 new_lower = min(left_lower, right_lower);
         vec3 new_upper = max(left_upper, right_upper);
         
         // write new BVH nodes
-        (vec3&)lower = new_lower;
-        (vec3&)upper = new_upper;        
+        reinterpret_cast<vec3&>(lower) = new_lower;
+        reinterpret_cast<vec3&>(upper) = new_upper; 
     }
 }
 

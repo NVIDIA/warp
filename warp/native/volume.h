@@ -48,7 +48,7 @@ static constexpr int LINEAR = 1;
 
 CUDA_CALLABLE inline pnanovdb_buf_t id_to_buffer(uint64_t id)
 {
-    pnanovdb_buf_t buf;
+    pnanovdb_buf_t buf = {};  // Zero-initialize the entire struct
     buf.data = (uint32_t *)id;
     return buf;
 }
@@ -171,6 +171,7 @@ struct value_accessor_base
 
     explicit inline CUDA_CALLABLE value_accessor_base(const pnanovdb_buf_t buf) : buf(buf), root(get_root(buf))
     {
+        accessor = {};
     }
 
     CUDA_CALLABLE inline void init_cache()
