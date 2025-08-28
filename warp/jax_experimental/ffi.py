@@ -808,12 +808,21 @@ def jax_callable(
         if graph_compatible is False:
             graph_mode = GraphMode.NONE
 
+    if isinstance(output_dims, dict):
+        od_key = tuple(sorted(output_dims.items()))
+    elif output_dims is None:
+        od_key = None
+    elif isinstance(output_dims, (list, tuple)):
+        od_key = tuple(output_dims)
+    else:
+        od_key = output_dims
+
     key = (
         func,
         num_outputs,
         graph_mode,
         vmap_method,
-        tuple(sorted(output_dims.items())) if output_dims else output_dims,
+        od_key,
     )
 
     with _FFI_REGISTRY_LOCK:
@@ -896,8 +905,18 @@ def register_ffi_callback(name: str, func: Callable, graph_compatible: bool = Tr
     jax.ffi.register_ffi_target(name, ffi_capsule, platform="CUDA")
 
 
-def jax_ad_kernel(kernel, num_outputs=1, static_argnames=None, vmap_method: Optional[str] = "broadcast_all"):
+def jax_ad_kernel(
+    kernel,
+    num_outputs=1,
+    static_argnames=None,
+    vmap_method: Optional[str] = "broadcast_all",
+    launch_dim_arg_index: int = 0,
+    output_dims=None,
+):
     """Create a JAX-callable from a Warp kernel with a custom VJP.
+
+    This helper wraps an existing Warp kernel in a JAX-compatible callable that
+    supports jit and grad via a custom VJP implemented with the FFI path.
 
     Args:
         kernel: The Warp kernel to wrap.
@@ -906,9 +925,23 @@ def jax_ad_kernel(kernel, num_outputs=1, static_argnames=None, vmap_method: Opti
             as static (non-differentiable) in JAX. If None, scalar (non-array) inputs
             are treated as static by default.
         vmap_method: How the callback transforms under jax.vmap.
+        launch_dim_arg_index: Index (in the kernel's argument list) of the input
+            array whose shape determines the kernel launch dimensions. For example,
+            if the kernel launches one thread per articulation and takes an
+            ``articulation_mask`` as its second argument, pass ``1`` here.
+        output_dims: Optional default output dimensions for the kernel outputs in
+            Warp (non-batch) indexing order. Use this to make the output shapes
+            explicit when they cannot be inferred from inputs (e.g., outputs sized
+            by a model property rather than an input array). Examples:
+            - ``(N,)`` to indicate a 1D output of size N for each output array
+            - ``{"body_q": (N,), "body_qd": (N,)}`` to set per-output shapes
 
     Returns:
         A JAX-callable function that can be used inside jax.jit and differentiated with jax.grad.
+
+    Notes:
+        - The wrapped function preserves Warp's automatic adjoint for the kernel by
+          launching the same kernel in adjoint mode during the backward pass.
     """
 
     # Infer the original kernel signature (names and annotations)
@@ -939,28 +972,44 @@ def jax_ad_kernel(kernel, num_outputs=1, static_argnames=None, vmap_method: Opti
 
     static_args = sorted(set(static_args))
 
-    # Forward kernel wrapper: simply launches the kernel
+    # Forward kernel wrapper: simply launches the kernel.
+    # The launch dimensions are taken from the argument at
+    # `launch_dim_arg_index` to avoid needing a separate launch-dims parameter.
     def fwd_kernel_wrapper(*args):
         # args are Warp arrays/scalars reconstructed via FFI in jax_callable
         stream = _get_current_ffi_stream()
         if stream is not None:
             wp.launch(
                 kernel,
-                dim=args[0].shape,
+                dim=args[launch_dim_arg_index].shape,
                 inputs=args[:-num_outputs],
                 outputs=args[-num_outputs:],
                 stream=stream,
             )
         else:
-            wp.launch(kernel, dim=args[0].shape, inputs=args[:-num_outputs], outputs=args[-num_outputs:])
+            wp.launch(
+                kernel,
+                dim=args[launch_dim_arg_index].shape,
+                inputs=args[:-num_outputs],
+                outputs=args[-num_outputs:],
+            )
 
     # Expose the kernel signature to the wrapper so type annotations flow through
     fwd_kernel_wrapper.__signature__ = signature
 
-    # JAX forward callable using FFI
-    jax_fwd_kernel = jax_callable(fwd_kernel_wrapper, num_outputs=num_outputs, vmap_method=vmap_method)
+    # JAX forward callable using FFI. If `output_dims` is provided, pass it so
+    # JAX/XLA knows output shapes ahead of time (important when outputs aren't
+    # directly sized by input arguments).
+    jax_fwd_kernel = jax_callable(
+        fwd_kernel_wrapper,
+        num_outputs=num_outputs,
+        vmap_method=vmap_method,
+        output_dims=output_dims,
+    )
 
-    # Backward wrapper: launches adjoint with provided output gradients
+    # Backward wrapper: launches the same kernel in adjoint mode using the provided
+    # output gradients and accumulating into input gradients. Launch dims mirror
+    # the forward pass via `launch_dim_arg_index`.
     def bwd_kernel_wrapper(*args):
         # Args: inputs ++ outputs ++ out-grads ++ in-grads-without-statics
         assert len(args) == 2 * parameter_count - len(static_args)
@@ -987,7 +1036,7 @@ def jax_ad_kernel(kernel, num_outputs=1, static_argnames=None, vmap_method: Opti
         if stream is not None:
             wp.launch(
                 kernel,
-                dim=inputs[0].shape,
+                dim=inputs[launch_dim_arg_index].shape,
                 inputs=inputs,
                 outputs=outputs,
                 adj_inputs=grad_in,
@@ -998,7 +1047,7 @@ def jax_ad_kernel(kernel, num_outputs=1, static_argnames=None, vmap_method: Opti
         else:
             wp.launch(
                 kernel,
-                dim=inputs[0].shape,
+                dim=inputs[launch_dim_arg_index].shape,
                 inputs=inputs,
                 outputs=outputs,
                 adj_inputs=grad_in,
@@ -1048,7 +1097,7 @@ def jax_ad_kernel(kernel, num_outputs=1, static_argnames=None, vmap_method: Opti
 
     # Define custom VJP wrappers
     def fwd_function(*args):
-        outputs = jax_fwd_kernel(*args)
+        outputs = jax_fwd_kernel(*args, output_dims=output_dims)
         non_static_inputs = list(args)
         for i in reversed(static_args):
             del non_static_inputs[i]
