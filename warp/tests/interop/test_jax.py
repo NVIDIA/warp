@@ -881,6 +881,46 @@ def test_jax_ad_kernel_vmap_2d_expand_dims(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for FFI custom_vjp")
+def test_jax_ad_kernel_launch_dim_and_output_dims(test, device):
+    import jax
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_ad_kernel
+
+    n = 32
+
+    @wp.kernel
+    def add_one_masked(x: wp.array(dtype=float), mask: wp.array(dtype=bool), out: wp.array(dtype=float)):
+        tid = wp.tid()
+        if mask[tid]:
+            out[tid] = x[tid] + 1.0
+        else:
+            out[tid] = x[tid]
+
+    jax_fn = jax_ad_kernel(add_one_masked, num_outputs=1, launch_dim_arg_index=1, output_dims=(n,))
+
+    x = jp.arange(n, dtype=jp.float32)
+    mask = jp.arange(n) % 2 == 0
+
+    with jax.default_device(wp.device_to_jax(device)):
+        (y,) = jax.jit(lambda a, m: jax_fn(a, m))(x, mask)
+
+        def loss_fn(a, m):
+            y = jax_fn(a, m)[0]
+            return jp.sum(y)
+
+        grads = jax.jit(jax.grad(loss_fn))(x, mask)
+
+    y_np = np.asarray(y)
+    ref_y = np.where(np.asarray(mask), np.asarray(x) + 1.0, np.asarray(x))
+    test.assertTrue(np.allclose(y_np, ref_y, rtol=1e-6, atol=1e-6))
+
+    grads_np = np.asarray(grads)
+    ref_grads = np.ones_like(np.asarray(x), dtype=np.float32)
+    test.assertTrue(np.allclose(grads_np, ref_grads, rtol=1e-6, atol=1e-6))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for FFI custom_vjp")
 def test_jax_ad_kernel_auto_static_argnames(test, device):
     import jax
     import jax.numpy as jp
@@ -1243,6 +1283,12 @@ try:
             TestJax,
             "test_jax_ad_kernel_pmap_multi_output",
             test_jax_ad_kernel_pmap_multi_output,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_jax_ad_kernel_launch_dim_and_output_dims",
+            test_jax_ad_kernel_launch_dim_and_output_dims,
             devices=jax_compatible_cuda_devices,
         )
 
