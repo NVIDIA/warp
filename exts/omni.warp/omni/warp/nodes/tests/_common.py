@@ -99,6 +99,7 @@ async def open_sample(
             "/rtx/post/tonemap/op": 1,
             "/rtx/raytracing/lightcache/spatialCache/enabled": False,
             "/rtx/reflections/enabled": False,
+            "/rtx/rendermode": "RayTracedLighting",
             "/rtx/shadows/enabled": False,
         }
     )
