@@ -3439,21 +3439,6 @@ inline CUDA_CALLABLE mat_t<Rows,ColsOut,Type> mul(const mat_t<Rows,Cols,Type>& a
     return t;
 }
 
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE mat_t<Rows,Cols,Type> mod(const mat_t<Rows,Cols,Type>& a, Type b)
-{
-    mat_t<Rows,Cols,Type> t;
-    for (unsigned i=0; i < Rows; ++i)
-    {
-        for (unsigned j=0; j < Cols; ++j)
-        {
-            t.data[i][j] = mod(a.data[i][j], b);
-        }
-    }
-
-    return t;
-}
-
 // bitwise AND
 template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE mat_t<Rows,Cols,Type> bit_and(const mat_t<Rows,Cols,Type>& a, const mat_t<Rows,Cols,Type>& b)
