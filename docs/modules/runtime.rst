@@ -1432,8 +1432,26 @@ Graph API Reference
 .. autoclass:: ScopedCapture
     :members:
 
+Spatial Computing Primitives
+----------------------------
+
+Spatial computing primitives provide efficient data structures for spatial queries and geometric operations.
+These include hash grids for particle neighbor searches, bounding volume hierarchies (BVHs) for ray tracing and
+collision detection, and mesh types.
+These ready-to-use implementations save significant development time compared to building spatial data structures from
+scratch, while providing high-performance on the GPU.
+
+.. caution::
+    **Object Lifetime Management**: Spatial computing primitives
+    (e.g. :class:`wp.HashGrid <HashGrid>`, :class:`wp.Bvh <Bvh>`, etc.) must remain in scope.
+    These acceleration data structures are identified by their ``id`` attribute when passed to kernels, 
+    but if the Python object is garbage collected, the memory allocated for the primitive may be
+    freed, causing crashes and undefined behavior.
+
+    See the :ref:`Object Lifetime Pitfall<object lifetime pitfall>` section below for more information.
+
 Meshes
-------
+######
 
 Warp provides a :class:`wp.Mesh <Mesh>` class to manage triangle mesh data. To create a mesh, users provide a points, indices and optionally a velocity array::
 
@@ -1483,7 +1501,7 @@ structure and ensure that queries work correctly.
     :exclude-members: vars, Var
 
 Hash Grids
-----------
+##########
 
 Many particle-based simulation methods such as the Discrete Element Method (DEM), or Smoothed Particle Hydrodynamics (SPH), involve iterating over spatial neighbors to compute force interactions. Hash grids are a well-established data structure to accelerate these nearest neighbor queries, and particularly well-suited to the GPU.
 
@@ -1539,7 +1557,7 @@ and :func:`wp.hash_grid_query_next() <hash_grid_query_next>` as follows:
     :members:
 
 Volumes
--------
+#######
 
 Sparse volumes are incredibly useful for representing grid data over large domains, such as signed distance fields
 (SDFs) for complex objects, or velocities for large-scale fluid flow. Warp supports reading sparse volumetric grids
@@ -1627,7 +1645,7 @@ NanoVDB grids may also contain embedded *blind* data arrays; those can be access
 
 
 Bounding Value Hierarchies (BVH)
---------------------------------
+################################
 
 The :class:`wp.Bvh <Bvh>` class can be used to create a BVH for a group of bounding volumes. This object can then be traversed
 to determine which parts are intersected by a ray using :func:`bvh_query_ray` and which parts overlap
@@ -1652,7 +1670,7 @@ The following snippet demonstrates how to create a :class:`wp.Bvh <Bvh>` object 
     :members:
 
 Example: BVH Ray Traversal
-##########################
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 An example of performing a ray traversal on the data structure is as follows:
 
@@ -1692,7 +1710,7 @@ A while statement is used for the actual traversal using :func:`wp.bvh_query_nex
 which returns ``True`` as long as there are intersecting bounds.
 
 Example: BVH Volume Traversal
-#############################
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Similar to the ray-traversal example, we can perform volume traversal to find the volumes that are fully contained
 within a specified bounding box.
@@ -1728,6 +1746,52 @@ within a specified bounding box.
 
 The kernel is nearly identical to the ray-traversal example, except we obtain ``query`` using
 :func:`wp.bvh_query_aabb() <bvh_query_aabb>`.
+
+.. _object lifetime pitfall:
+
+Object Lifetime Pitfall
+#######################
+
+When working with spatial computing primitives like :class:`wp.HashGrid <HashGrid>` and :class:`wp.Bvh <Bvh>`,
+it's crucial to understand how Python's garbage collection interacts with these objects.
+The following example demonstrate a common mistake and how to avoid it.
+
+**Common Pitfall**: Creating objects in loops and only storing their IDs
+
+.. code-block:: python
+    
+    # WRONG - objects may be garbage collected
+    hash_grids = []
+    for i in range(10):
+        grid = wp.HashGrid(dim_x=128, dim_y=128, dim_z=128)
+        grid.build(points=particle_positions[i], radius=search_radius)
+        hash_grids.append(grid.id)  # Only storing the ID
+    
+    # RIGHT - maintain references to the objects
+    hash_grid_objects = []
+    for i in range(10):
+        grid = wp.HashGrid(dim_x=128, dim_y=128, dim_z=128)
+        grid.build(points=particle_positions[i], radius=search_radius)
+        hash_grid_objects.append(grid)  # Keep the object alive
+    
+    # Create Warp array for kernel execution when needed
+    grid_ids_array = wp.array([x.id for x in hash_grid_objects], dtype=wp.uint64, device="cuda")
+    
+    wp.launch(my_kernel, dim=10, inputs=[grid_ids_array])
+
+**Why This Happens**: When you only store the ``id`` attribute (which is a ``wp.uint64`` pointer), 
+Python's garbage collector may free the original object if no other references exist. This leads to 
+undefined behavior when the kernel tries to access the freed memory.
+
+**Common Problematic Scenarios**:
+
+1. **Creating objects in loops** and only storing their IDs
+2. **Creating objects in functions** and returning only the ID  
+3. **Creating objects as temporary variables** that get overwritten
+
+Always maintain references to spatial computing primitive objects
+(like :class:`wp.HashGrid <HashGrid>`, :class:`wp.Bvh <Bvh>`, etc.) rather than just their ID values.
+This is especially important in loops, functions, and temporary variables where object scope might be unclear.
 
 Marching Cubes
 --------------
