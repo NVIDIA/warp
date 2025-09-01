@@ -124,6 +124,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_array import TestArray
     from warp.tests.test_array_reduce import TestArrayReduce
     from warp.tests.test_atomic import TestAtomic
+    from warp.tests.test_atomic_bitwise import TestAtomicBitwise
     from warp.tests.test_atomic_cas import TestAtomicCAS
     from warp.tests.test_bool import TestBool
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
@@ -199,6 +200,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_vec_scalar_ops import TestVecScalarOps
     from warp.tests.test_verify_fp import TestVerifyFP
     from warp.tests.tile.test_tile import TestTile
+    from warp.tests.tile.test_tile_atomic_bitwise import TestTileAtomicBitwise
     from warp.tests.tile.test_tile_cholesky import TestTileCholesky
     from warp.tests.tile.test_tile_load import TestTileLoad
     from warp.tests.tile.test_tile_mathdx import TestTileMathDx
@@ -215,6 +217,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestArrayReduce,
         TestAsync,
         TestAtomic,
+        TestAtomicBitwise,
         TestAtomicCAS,
         TestBool,
         TestBuiltinsResolution,
@@ -301,6 +304,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestStruct,
         TestTape,
         TestTile,
+        TestTileAtomicBitwise,
         TestTileCholesky,
         TestTileLoad,
         TestTileMathDx,

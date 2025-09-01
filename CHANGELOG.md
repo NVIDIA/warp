@@ -28,6 +28,9 @@
 - Add optional `block_dim` argument to `wp.load_module()` and `wp.force_load()`.
 - Add support for negative indexing and improve slicing for the `wp.matrix()`/`wp.vector()`/`wp.quaternion()` types
   ([GH-899](https://github.com/NVIDIA/warp/issues/899)).
+- Add atomic bitwise operations `wp.atomic_and()` (`&=`), `wp.atomic_or()` (`|=`), and `wp.atomic_xor()` (`^=`) for
+  scalar types, along with bitwise operations for vector, matrix, and tile types
+  ([GH-886](https://github.com/NVIDIA/warp/issues/886)).
 
 ### Removed
 
