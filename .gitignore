@@ -1,38 +1,51 @@
+# Python
 __pycache__
-.idea
-.history
-*.net
-*.prof
-warp/kernels
-warp.egg-info
+*.py[cod]
+*$py.class
+*.so
+.Python
 .[v]env
-.vscode
-archive
+warp_lang.egg-info
+
+# Build artifacts
+/_build
+/_repo
+/_conan
+/_deps
+/build
+/dist
+/docs/_build
+
+# IDE and editor files
+.idea/
+.vscode/
+.vs/
+.history
+
+# Development and testing
 *.o
 *.exp
 *.dll
 *.lib
 *.cpp.obj
 *.pdb
-/_build
-/_repo
-/_conan
-/_deps
-/docs/_build
-/warp_lang.egg-info
-exts/omni.warp/omni/warp/ogn/tests/usd
-.vs/
+*.log
+*.bak
 outputs/
-build/lib/
-.venv/
+
+# USD and extension files
 .usd_cache/
+exts/omni.warp/omni/warp/ogn/tests/usd
 exts/omni.warp/config/extension.gen.toml
+
+# External dependencies
 /external/llvm-project
-/build
-/dist
+
+# Coverage and caching
 .coverage
 .cache
-warp/tests/outputs
+
+# Benchmarking (ASV)
 asv/env
 asv/results
 asv/html
