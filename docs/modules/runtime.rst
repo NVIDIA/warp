@@ -196,7 +196,7 @@ e.g. to pass a 2D array to a kernel the number of dims is specified using the ``
     @wp.kernel
     def test(input: wp.array(dtype=float, ndim=2)):
 
-Type-hint helpers are provided for common array sizes, e.g.: ``array2d()``, ``array3d()``, which are equivalent to calling ``array(..., ndim=2)```, etc.
+Type-hint helpers are provided for common array sizes, e.g.: ``array2d()``, ``array3d()``, which are equivalent to calling ``array(..., ndim=2)``, etc.
 To index a multi-dimensional array, use the following kernel syntax::
 
     # returns a float from the 2d array

@@ -22,7 +22,7 @@ The easiest way to install Warp is from `PyPI <https://pypi.org/project/warp-lan
 
     $ pip install warp-lang
 
-You can also use ```pip install warp-lang[extras]``` to install additional dependencies for running examples
+You can also use ``pip install warp-lang[extras]`` to install additional dependencies for running examples
 and USD-related features.
 
 The binaries hosted on PyPI are currently built with the CUDA 12 runtime and therefore
