@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import builtins
 import ctypes
+import enum
 import inspect
 import math
 import struct
@@ -29,6 +30,7 @@ from typing import (
     ClassVar,
     Generic,
     Literal,
+    Mapping,
     NamedTuple,
     Sequence,
     Tuple,
@@ -233,37 +235,94 @@ def flatten(value: Sequence) -> tuple[list, tuple[int, ...]]:
 # built-in types
 
 
+class BuiltinOpDispatchKind(enum.Enum):
+    """Describes the kind of operation to perform."""
+
+    DIRECT = 1  # Standard operation on the whole type.
+    BROADCAST_SCALAR = 2  # Broadcasting operation with a scalar value.
+    COMPONENT_WISE = 3  # Component-wise operation.
+
+
+# Caches to significantly improve performance for repeated operations
+# with arguments of the same types.
+_unary_builtin_cache: Mapping[str, tuple[warp.context.BuiltinCallDesc, BuiltinOpDispatchKind]] = {}
+_binary_builtin_cache: Mapping[str, tuple[warp.context.BuiltinCallDesc, BuiltinOpDispatchKind]] = {}
+_rbinary_builtin_cache: Mapping[str, tuple[warp.context.BuiltinCallDesc, BuiltinOpDispatchKind]] = {}
+
+
 def _unary_op(self, op, t):
-    try:
-        return op(self)
-    except RuntimeError:
-        return t(*(op(a) for a in self))
+    key = (op, t)
+    desc, kind = _unary_builtin_cache.get(key, (None, None))
+    if desc is None:
+        try:
+            desc = op.get_builtin(self)
+            kind = BuiltinOpDispatchKind.DIRECT
+        except RuntimeError:
+            desc = op.get_builtin(self[0])
+            kind = BuiltinOpDispatchKind.COMPONENT_WISE
+
+        _unary_builtin_cache[key] = (desc, kind)
+
+    if kind == BuiltinOpDispatchKind.DIRECT:
+        return warp.context.call_builtin_from_desc(desc, (self,))
+
+    return t(*(warp.context.call_builtin_from_desc(desc, (a,)) for a in self))
 
 
 def _binary_op(self, op, x, t, cw=True):
-    try:
-        return op(self, x)
-    except RuntimeError:
-        if is_scalar(x):
-            return t(*(op(a, x) for a in self))
+    key = (op, t, type(x))
+    desc, kind = _binary_builtin_cache.get(key, (None, None))
+    if desc is None:
+        try:
+            desc = op.get_builtin(self, x)
+            kind = BuiltinOpDispatchKind.DIRECT
+        except RuntimeError:
+            if is_scalar(x):
+                desc = op.get_builtin(self[0], x)
+                kind = BuiltinOpDispatchKind.BROADCAST_SCALAR
+            elif cw and types_equal(x, t):
+                desc = op.get_builtin(self[0], x[0])
+                kind = BuiltinOpDispatchKind.COMPONENT_WISE
+            else:
+                raise
 
-        if cw and types_equal(x, t):
-            return t(*(op(a, b) for a, b in zip(self, x)))
+        _binary_builtin_cache[key] = (desc, kind)
 
-        raise
+    if kind == BuiltinOpDispatchKind.DIRECT:
+        return warp.context.call_builtin_from_desc(desc, (self, x))
+
+    if kind == BuiltinOpDispatchKind.BROADCAST_SCALAR:
+        return t(*(warp.context.call_builtin_from_desc(desc, (a, x)) for a in self))
+
+    return t(*(warp.context.call_builtin_from_desc(desc, (a, b)) for a, b in zip(self, x)))
 
 
 def _rbinary_op(self, op, x, t, cw=True):
-    try:
-        return op(x, self)
-    except RuntimeError:
-        if is_scalar(x):
-            return t(*(op(x, a) for a in self))
+    key = (op, t, type(x))
+    desc, kind = _rbinary_builtin_cache.get(key, (None, None))
+    if desc is None:
+        try:
+            desc = op.get_builtin(x, self)
+            kind = BuiltinOpDispatchKind.DIRECT
+        except RuntimeError:
+            if is_scalar(x):
+                desc = op.get_builtin(x, self[0])
+                kind = BuiltinOpDispatchKind.BROADCAST_SCALAR
+            elif cw and types_equal(x, t):
+                desc = op.get_builtin(x[0], self[0])
+                kind = BuiltinOpDispatchKind.COMPONENT_WISE
+            else:
+                raise
 
-        if cw and types_equal(x, t):
-            return t(*(op(b, a) for a, b in zip(self, x)))
+        _rbinary_builtin_cache[key] = (desc, kind)
 
-        raise
+    if kind == BuiltinOpDispatchKind.DIRECT:
+        return warp.context.call_builtin_from_desc(desc, (x, self))
+
+    if kind == BuiltinOpDispatchKind.BROADCAST_SCALAR:
+        return t(*(warp.context.call_builtin_from_desc(desc, (x, a)) for a in self))
+
+    return t(*(warp.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x)))
 
 
 def vector(length, dtype):
