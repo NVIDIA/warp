@@ -19,7 +19,7 @@
 - Add support for initializing fixed-size arrays inside kernels using `wp.zeros()`
   ([GH-794](https://github.com/NVIDIA/warp/issues/794)).
 - Add support for `IntEnum` and `IntFlag` inside Warp kernels ([GH-529](https://github.com/NVIDIA/warp/issues/529)).
-- Add `bounds_check` option to `wp.tile_load()`, `wp.tile_store()`, and `wp.tile_atomic_add()` 
+- Add `bounds_check` option to `wp.tile_load()`, `wp.tile_store()`, and `wp.tile_atomic_add()`
   for performance optimization. When set to `False`, boundary checks are disabled for memory-aligned tiles,
   improving performance (defaults to `True` for safety) ([GH-797](https://github.com/NVIDIA/warp/issues/797)).
 - Add indexed tile operations: `wp.tile_index_load()`, `wp.tile_index_store()`, and `wp.tile_index_atomic_add()`
@@ -1795,7 +1795,7 @@
 
 - Initial publish for alpha testing
 
-[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.9.0...HEAD
 [1.9.0]: https://github.com/NVIDIA/warp/releases/tag/v1.9.0
 [1.8.1]: https://github.com/NVIDIA/warp/releases/tag/v1.8.1
 [1.8.0]: https://github.com/NVIDIA/warp/releases/tag/v1.8.0
