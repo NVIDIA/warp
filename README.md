@@ -100,66 +100,32 @@ To remedy the situation there are a few options:
 * Install a compatible pre-built Warp package.
 * Build Warp from source using a CUDA Toolkit that's compatible with the installed driver.
 
-## Getting Started
+## Tutorial Notebooks
 
-An example first program that computes the lengths of random 3D vectors is given below:
+The [NVIDIA Accelerated Computing Hub](https://github.com/NVIDIA/accelerated-computing-hub) contains the current,
+actively maintained set of Warp tutorials:
 
-```python
-import warp as wp
-import numpy as np
+| Notebook | Colab Link |
+|----------|------------|
+| [Introduction to NVIDIA Warp](https://github.com/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb) |
+| [GPU-Accelerated Ising Model Simulation in NVIDIA Warp](https://github.com/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb) |
 
-num_points = 1024
+Additionally, several notebooks in the [notebooks](https://github.com/NVIDIA/warp/tree/main/notebooks) directory
+provide additional examples and cover key Warp features:
 
-@wp.kernel
-def length(points: wp.array(dtype=wp.vec3),
-           lengths: wp.array(dtype=float)):
-
-    # thread index
-    tid = wp.tid()
-    
-    # compute distance of each point from origin
-    lengths[tid] = wp.length(points[tid])
-
-
-# allocate an array of 3d points
-points = wp.array(np.random.rand(num_points, 3), dtype=wp.vec3)
-lengths = wp.zeros(num_points, dtype=float)
-
-# launch kernel
-wp.launch(kernel=length,
-          dim=len(points),
-          inputs=[points, lengths])
-
-print(lengths)
-```
-
-## Running Notebooks
-
-A few notebooks are available in the [notebooks](./notebooks/) directory to provide an overview over the key features available in Warp.
-
-To run these notebooks, ``jupyterlab`` is required to be installed using:
-
-```text
-pip install jupyterlab
-```
-
-From there, opening the notebooks can be done with the following command:
-
-```text
-jupyter lab ./notebooks
-```
-
-* [Warp Core Tutorial: Basics](./notebooks/core_01_basics.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_01_basics.ipynb)
-* [Warp Core Tutorial: Generics](./notebooks/core_02_generics.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_02_generics.ipynb)
-* [Warp Core Tutorial: Points](./notebooks/core_03_points.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_03_points.ipynb)
-* [Warp Core Tutorial: Meshes](./notebooks/core_04_meshes.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_04_meshes.ipynb)
-* [Warp Core Tutorial: Volumes](./notebooks/core_05_volumes.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_05_volumes.ipynb)
-* [Warp PyTorch Tutorial: Basics](./notebooks/pytorch_01_basics.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/pytorch_01_basics.ipynb)
-* [Warp PyTorch Tutorial: Custom Operators](./notebooks/pytorch_02_custom_operators.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/pytorch_02_custom_operators.ipynb)
+| Notebook | Colab Link |
+|----------|------------|
+| [Warp Core Tutorial: Basics](https://github.com/NVIDIA/warp/blob/main/notebooks/core_01_basics.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_01_basics.ipynb) |
+| [Warp Core Tutorial: Generics](https://github.com/NVIDIA/warp/blob/main/notebooks/core_02_generics.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_02_generics.ipynb) |
+| [Warp Core Tutorial: Points](https://github.com/NVIDIA/warp/blob/main/notebooks/core_03_points.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_03_points.ipynb) |
+| [Warp Core Tutorial: Meshes](https://github.com/NVIDIA/warp/blob/main/notebooks/core_04_meshes.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_04_meshes.ipynb) |
+| [Warp Core Tutorial: Volumes](https://github.com/NVIDIA/warp/blob/main/notebooks/core_05_volumes.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_05_volumes.ipynb) |
+| [Warp PyTorch Tutorial: Basics](https://github.com/NVIDIA/warp/blob/main/notebooks/pytorch_01_basics.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/pytorch_01_basics.ipynb) |
+| [Warp PyTorch Tutorial: Custom Operators](https://github.com/NVIDIA/warp/blob/main/notebooks/pytorch_02_custom_operators.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/pytorch_02_custom_operators.ipynb) |
 
 ## Running Examples
 
-The [warp/examples](./warp/examples/) directory contains a number of scripts categorized under subdirectories
+The [warp/examples](https://github.com/NVIDIA/warp/tree/main/warp/examples) directory contains a number of scripts categorized under subdirectories
 that show how to implement various simulation methods using the Warp API.
 Most examples will generate USD files containing time-sampled animations in the current working directory.
 Before running examples, users should ensure that the ``usd-core``, ``matplotlib``, and ``pyglet`` packages are installed using:
