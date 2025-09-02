@@ -39,6 +39,8 @@
 - Make `warp.sparse` operations with `masked=True` consistent with `bsr_mm()` by preserving result matrix topology,
   enabling CUDA subgraph capture for `bsr_axpy()`, `bsr_assign()` and `bsr_set_transpose()`
   ([GH-987](https://github.com/NVIDIA/warp/issues/987)).
+- Improve performance when calling built-in functions from the Python scope
+  ([GH-801](https://github.com/NVIDIA/warp/issues/801)).
 
 ### Fixed
 

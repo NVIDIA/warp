@@ -304,38 +304,8 @@ class Function:
         """
 
         if self.is_builtin() and self.mangled_name:
-            # For each of this function's existing overloads, we attempt to pack
-            # the given arguments into the C types expected by the corresponding
-            # parameters, and we rinse and repeat until we get a match.
-            for overload in self.overloads:
-                if overload.generic:
-                    continue
-
-                try:
-                    # Try to bind the given arguments to the function's signature.
-                    # This is not checking whether the argument types are matching,
-                    # rather it's just assigning each argument to the corresponding
-                    # function parameter.
-                    bound_args = self.signature.bind(*args, **kwargs)
-                except TypeError:
-                    continue
-
-                if self.defaults:
-                    # Populate the bound arguments with any default values.
-                    default_args = {k: v for k, v in self.defaults.items() if k not in bound_args.arguments}
-                    warp.codegen.apply_defaults(bound_args, default_args)
-
-                bound_args = tuple(bound_args.arguments.values())
-
-                builtin_desc = get_builtin_call_desc(overload, bound_args)
-                if builtin_desc is not None:
-                    return call_builtin_from_desc(builtin_desc, bound_args)
-
-            # overload resolution or call failed
-            raise RuntimeError(
-                f"Couldn't find a function '{self.key}' compatible with "
-                f"the arguments '{', '.join(type(x).__name__ for x in args)}'"
-            )
+            builtin_desc = self.get_builtin(*args, **kwargs)
+            return self.call_builtin(builtin_desc, *args, **kwargs)
 
         if hasattr(self, "user_overloads") and len(self.user_overloads):
             # user-defined function with overloads
@@ -478,6 +448,51 @@ class Function:
         # failed  to find overload
         return None
 
+    def get_builtin(self, *args, **kwargs) -> BuiltinCallDesc:
+        try:
+            # Try to bind the given arguments to the function's signature.
+            # This is not checking whether the argument types are matching,
+            # rather it's just assigning each argument to the corresponding
+            # function parameter.
+            bound_args = self.signature.bind(*args, **kwargs)
+        except TypeError:
+            pass
+        else:
+            if self.defaults:
+                # Populate the bound arguments with any default values.
+                default_args = {k: v for k, v in self.defaults.items() if k not in bound_args.arguments}
+                warp.codegen.apply_defaults(bound_args, default_args)
+
+            bound_arg_types = tuple(type(x) for x in bound_args.arguments.values())
+
+            # For each of this function's existing overloads, we attempt to pack
+            # the given arguments into the C types expected by the corresponding
+            # parameters, and we rinse and repeat until we get a match.
+            for overload in self.overloads:
+                if overload.generic:
+                    continue
+
+                desc = get_builtin_call_desc(overload, bound_arg_types)
+                if desc is not None:
+                    return desc
+
+        # overload resolution or call failed
+        raise RuntimeError(
+            f"Couldn't find a function '{self.key}' compatible with "
+            f"the arguments '{', '.join(type(x).__name__ for x in args + tuple(kwargs.values()))}'"
+        )
+
+    def call_builtin(self, desc: BuiltinCallDesc, *args, **kwargs) -> Any:
+        bound_args = self.signature.bind(*args, **kwargs)
+
+        if self.defaults:
+            # Populate the bound arguments with any default values.
+            default_args = {k: v for k, v in self.defaults.items() if k not in bound_args.arguments}
+            warp.codegen.apply_defaults(bound_args, default_args)
+
+        bound_args = tuple(bound_args.arguments.values())
+        return call_builtin_from_desc(desc, bound_args)
+
     def build(self, builder: ModuleBuilder | None):
         self.adj.build(builder)
 
@@ -552,9 +567,10 @@ class BuiltinCallDesc(NamedTuple):
     value_type: Any  # Return type.
 
 
+@functools.lru_cache(maxsize=None)
 def get_builtin_call_desc(
     func: Function,
-    params: Sequence,
+    param_types: Sequence,
 ) -> BuiltinCallDesc | None:
     """
     Extract any invariant that can be cached to optimize calls to a built-in
@@ -580,47 +596,37 @@ def get_builtin_call_desc(
     arg_types = []
     param_kinds = []
     for i, (_, arg_type) in enumerate(func_args.items()):
-        param = params[i]
+        param_type = param_types[i]
 
-        try:
-            iter(param)
-        except TypeError:
-            is_array = False
-        else:
-            is_array = True
-
-        if is_array:
+        if issubclass(param_type, ctypes.Array):
             if not issubclass(arg_type, ctypes.Array):
                 return None
 
-            # The argument expects a built-in Warp type like a vector or a matrix.
+            # The given parameter is also a built-in Warp type, so we only need
+            # to make sure that it matches with the argument.
+            if not warp.types.types_equal(param_type, arg_type):
+                return None
 
-            if isinstance(param, ctypes.Array):
-                # The given parameter is also a built-in Warp type, so we only need
-                # to make sure that it matches with the argument.
-                if not warp.types.types_equal(type(param), arg_type):
-                    return None
-
-                if isinstance(param, arg_type):
-                    param_kind = BuiltinParamKind.BUILTIN_PREDEFINED
-                else:
-                    param_kind = BuiltinParamKind.BUILTIN_GENERIC
+            if issubclass(param_type, arg_type):
+                param_kind = BuiltinParamKind.BUILTIN_PREDEFINED
             else:
-                raise TypeError(
-                    "Built-in functions cannot be called with non-Warp array types, "
-                    "such as lists, tuples, NumPy arrays, and others. Use a Warp type "
-                    "such as `wp.vec`, `wp.mat`, `wp.quat`, or `wp.transform`."
-                )
+                param_kind = BuiltinParamKind.BUILTIN_GENERIC
+        elif issubclass(param_type, Sequence):
+            raise TypeError(
+                "Built-in functions cannot be called with non-Warp array types, "
+                "such as lists, tuples, and NumPy arrays. Use a Warp type "
+                "such as `wp.vec`, `wp.mat`, `wp.quat`, or `wp.transform`."
+            )
         else:
             if issubclass(arg_type, ctypes.Array):
                 return None
 
             if not (
-                isinstance(param, arg_type)
-                or (type(param) is float and arg_type is warp.types.float32)
-                or (type(param) is int and arg_type is warp.types.int32)
-                or (type(param) is bool and arg_type is warp.types.bool)
-                or warp.types.np_dtype_to_warp_type.get(getattr(param, "dtype", None)) is arg_type
+                issubclass(param_type, arg_type)
+                or (param_type is float and arg_type is warp.types.float32)
+                or (param_type is int and arg_type is warp.types.int32)
+                or (param_type is bool and arg_type is warp.types.bool)
+                or warp.types.np_dtype_to_warp_type.get(param_type, None) is arg_type
             ):
                 return None
 
