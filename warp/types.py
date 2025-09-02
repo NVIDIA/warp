@@ -1159,8 +1159,8 @@ def transformation(dtype=Any):
             if hasattr(p, "__len__") and hasattr(q, "__len__"):
                 # Initialize from the `p` and `q` components.
                 super().__init__()
-                self[0:3] = vector(length=3, dtype=dtype)(*p)
-                self[3:7] = quaternion(dtype=dtype)(*q)
+                self[0:3] = p
+                self[3:7] = q
                 return
 
             # Fallback to the vector's constructor.
