@@ -530,8 +530,6 @@ def extract_return_value(value_type: type, value_ctype: type, ret: Any) -> Any:
 
 
 def call_builtin(func: Function, params: tuple) -> tuple[bool, Any]:
-    uses_non_warp_array_type = False
-
     init()
 
     if func.mangled_name is None:
@@ -585,76 +583,11 @@ def call_builtin(func: Function, params: tuple) -> tuple[bool, Any]:
                     # even though both types are semantically identical.
                     c_param = arg_type(param)
             else:
-                # Flatten the parameter values into a flat 1-D array.
-                arr = []
-                ndim = 1
-                stack = [(0, param)]
-                while stack:
-                    depth, elem = stack.pop(0)
-                    try:
-                        # If `elem` is a sequence, then it should be possible
-                        # to add its elements to the stack for later processing.
-                        stack.extend((depth + 1, x) for x in elem)
-                    except TypeError:
-                        # Since `elem` doesn't seem to be a sequence,
-                        # we must have a leaf value that we need to add to our
-                        # resulting array.
-                        arr.append(elem)
-                        ndim = max(depth, ndim)
-
-                assert ndim > 0
-
-                # Ensure that if the given parameter value is, say, a 2-D array,
-                # then we try to resolve it against a matrix argument rather than
-                # a vector.
-                if ndim > len(arg_type._shape_):
-                    return (False, None)
-
-                elem_count = len(arr)
-                if elem_count != arg_type._length_:
-                    return (False, None)
-
-                # Retrieve the element type of the sequence while ensuring that it's homogeneous.
-                elem_type = type(arr[0])
-                for array_index in range(1, elem_count):
-                    if type(arr[array_index]) is not elem_type:
-                        raise ValueError("All array elements must share the same type.")
-
-                expected_elem_type = arg_type._wp_scalar_type_
-                if not (
-                    elem_type is expected_elem_type
-                    or (elem_type is float and expected_elem_type is warp.types.float32)
-                    or (elem_type is int and expected_elem_type is warp.types.int32)
-                    or (elem_type is bool and expected_elem_type is warp.types.bool)
-                    or (
-                        issubclass(elem_type, np.number)
-                        and warp.types.np_dtype_to_warp_type[np.dtype(elem_type)] is expected_elem_type
-                    )
-                ):
-                    # The parameter value has a type not matching the type defined
-                    # for the corresponding argument.
-                    return (False, None)
-
-                if elem_type in warp.types.int_types:
-                    # Pass the value through the expected integer type
-                    # in order to evaluate any integer wrapping.
-                    # For example `uint8(-1)` should result in the value `-255`.
-                    arr = tuple(elem_type._type_(x.value).value for x in arr)
-                elif elem_type in warp.types.float_types:
-                    # Extract the floating-point values.
-                    arr = tuple(x.value for x in arr)
-
-                c_param = arg_type()
-                if warp.types.type_is_matrix(arg_type):
-                    rows, cols = arg_type._shape_
-                    for row_index in range(rows):
-                        idx_start = row_index * cols
-                        idx_end = idx_start + cols
-                        c_param[row_index] = arr[idx_start:idx_end]
-                else:
-                    c_param[:] = arr
-
-                uses_non_warp_array_type = True
+                raise TypeError(
+                    "Built-in functions cannot be called with non-Warp array types, "
+                    "such as lists, tuples, NumPy arrays, and others. Use a Warp type "
+                    "such as `wp.vec`, `wp.mat`, `wp.quat`, or `wp.transform`."
+                )
 
             c_params.append(ctypes.byref(c_param))
         else:
@@ -694,16 +627,6 @@ def call_builtin(func: Function, params: tuple) -> tuple[bool, Any]:
 
     # Call the built-in function from Warp's dll.
     c_func(*c_params)
-
-    if uses_non_warp_array_type:
-        warp.utils.warn(
-            "Support for built-in functions called with non-Warp array types, "
-            "such as lists, tuples, NumPy arrays, and others, will be dropped "
-            "in the future. Use a Warp type such as `wp.vec`, `wp.mat`, "
-            "`wp.quat`, or `wp.transform`.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
 
     if value_type is None:
         return (True, None)

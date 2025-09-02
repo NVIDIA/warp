@@ -26,6 +26,8 @@
   package with a new API. For migration guidance, see the
   [Newton migration guide](https://newton-physics.github.io/newton/migration.html) and the original GitHub announcement
   ([GH-735](https://github.com/NVIDIA/warp/discussions/735)).
+- Remove support for passing lists, tuples, and other non-Warp array arguments when calling built-ins at the Python scope
+  (e.g: `wp.normalize([1.0, 2.0, 3.0])` should be written as `wp.normalize(wp.vec3(1.0, 2.0, 3.0))`).
 
 ### Deprecated
 
