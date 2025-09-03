@@ -20,6 +20,8 @@
 #include "hashgrid.h"
 #include "sort.h"
 
+extern CUcontext get_current_context();
+
 namespace wp
 {
 

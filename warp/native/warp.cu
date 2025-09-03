@@ -337,7 +337,7 @@ int cuda_init()
 }
 
 
-static inline CUcontext get_current_context()
+CUcontext get_current_context()
 {
     CUcontext ctx;
     if (check_cu(cuCtxGetCurrent_f(&ctx)))
@@ -4286,18 +4286,6 @@ void wp_cuda_timing_end(timing_result_t* results, int size)
     delete g_cuda_timing_state;
     g_cuda_timing_state = parent_state;
 }
-
-// impl. files
-#include "bvh.cu"
-#include "mesh.cu"
-#include "sort.cu"
-#include "hashgrid.cu"
-#include "reduce.cu"
-#include "runlength_encode.cu"
-#include "scan.cu"
-#include "sparse.cu"
-#include "volume.cu"
-#include "volume_builder.cu"
 
 //#include "spline.inl"
 //#include "volume.inl"

@@ -207,6 +207,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--quick", action="store_true", help="Only generate PTX code")
     parser.set_defaults(quick=False)
 
+    parser.add_argument("-j", "--jobs", type=int, default=4, help="Number of concurrent build tasks.")
+
     group_clang_llvm = parser.add_argument_group("Clang/LLVM Options")
     group_clang_llvm.add_argument("--llvm_path", type=str, help="Path to an existing LLVM installation")
     group_clang_llvm.add_argument(
@@ -302,15 +304,28 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.cuda_path is None:
             print("Warning: CUDA toolchain not found, building without CUDA support")
-            warp_cu_path = None
+            warp_cu_paths = None
         else:
-            warp_cu_path = os.path.join(build_path, "native/warp.cu")
+            cuda_sources = [
+                "native/bvh.cu",
+                "native/mesh.cu",
+                "native/sort.cu",
+                "native/hashgrid.cu",
+                "native/reduce.cu",
+                "native/runlength_encode.cu",
+                "native/scan.cu",
+                "native/sparse.cu",
+                "native/volume.cu",
+                "native/volume_builder.cu",
+                "native/warp.cu",
+            ]
+            warp_cu_paths = [os.path.join(build_path, cu) for cu in cuda_sources]
 
         if args.libmathdx and args.libmathdx_path is None:
             print("Warning: libmathdx not found, building without MathDx support")
 
         warp_dll_path = os.path.join(build_path, f"bin/{lib_name('warp')}")
-        build_dll.build_dll(args, dll_path=warp_dll_path, cpp_paths=warp_cpp_paths, cu_path=warp_cu_path)
+        build_dll.build_dll(args, dll_path=warp_dll_path, cpp_paths=warp_cpp_paths, cu_paths=warp_cu_paths)
 
         # build warp-clang.dll
         if args.standalone:

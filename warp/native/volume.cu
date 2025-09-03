@@ -19,6 +19,7 @@
 #include "volume_impl.h"
 #include "warp.h"
 
+extern CUcontext get_current_context();
 
 __global__ void volume_get_leaf_coords(const uint32_t leaf_count, pnanovdb_coord_t *leaf_coords,
                                        const pnanovdb_buf_t buf)

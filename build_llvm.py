@@ -386,7 +386,7 @@ def build_warp_clang_for_arch(args, lib_name: str, arch: str) -> None:
             args,
             dll_path=clang_dll_path,
             cpp_paths=clang_cpp_paths,
-            cu_path=None,
+            cu_paths=None,
             arch=arch,
             libs=libs,
             mode=args.mode if args.build_llvm else "release",
