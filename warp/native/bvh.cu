@@ -31,11 +31,22 @@
 
 #include <cub/cub.cuh>
 
+extern CUcontext get_current_context();
 
 namespace wp
 {
-    void bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type, BVH& bvh);
-    void bvh_destroy_host(BVH& bvh);
+void bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type, BVH& bvh);
+void bvh_destroy_host(BVH& bvh);
+
+__global__ void memset_kernel(int* dest, int value, size_t n)
+{
+    const size_t tid = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
+    
+    if (tid < n)
+    {
+        dest[tid] = value;
+    }
+}
 
 // for LBVH: this will start with some muted leaf nodes, but that is okay, we can still trace up because there parents information is still valid
 // the only thing worth mentioning is that when the parent leaf node is also a leaf node, we need to recompute its bounds, since their child information are lost
@@ -503,7 +514,7 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
     }
     else
     {
-        // IEEE-754 bit patterns for ±FLT_MAX
+        // IEEE-754 bit patterns for +/- FLT_MAX
         constexpr int FLT_MAX_BITS = 0x7f7fffff;
         constexpr int NEG_FLT_MAX_BITS = 0xff7fffff;
 

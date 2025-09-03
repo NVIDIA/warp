@@ -16,8 +16,9 @@
  */
 
 #include "cuda_util.h"
+#include "temp_buffer.h"
 #include "warp.h"
-#include "stdint.h"
+
 #include <cstdint>
 
 #define THRUST_IGNORE_CUB_VERSION_CHECK
@@ -25,6 +26,8 @@
 #include <cub/device/device_radix_sort.cuh>
 #include <cub/device/device_run_length_encode.cuh>
 #include <cub/device/device_scan.cuh>
+
+extern CUcontext get_current_context();
 
 namespace
 {
