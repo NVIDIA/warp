@@ -23,6 +23,7 @@
 
 ### Fixed
 - Fix crash when radix sort is used on multiple streams, including HashGrids ([GH-950](https://github.com/NVIDIA/warp/issues/950)).
+- Fix scaling not being correctly applied to rendered meshes in some cases ([GH-880](https://github.com/NVIDIA/warp/issues/880)).
 
 ## [1.9.0] - 2025-09-04
 
