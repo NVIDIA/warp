@@ -390,9 +390,9 @@ def compute_gfx_vertices(
     gfx_vertices: wp.array(dtype=float, ndim=2),
 ):
     tid = wp.tid()
-    v0 = vertices[indices[tid, 0]] * scale[0]
-    v1 = vertices[indices[tid, 1]] * scale[1]
-    v2 = vertices[indices[tid, 2]] * scale[2]
+    v0 = wp.cw_mul(vertices[indices[tid, 0]], scale)
+    v1 = wp.cw_mul(vertices[indices[tid, 1]], scale)
+    v2 = wp.cw_mul(vertices[indices[tid, 2]], scale)
     i = tid * 3
     j = i + 1
     k = i + 2
@@ -421,6 +421,7 @@ def compute_gfx_vertices(
 def compute_average_normals(
     indices: wp.array(dtype=int, ndim=2),
     vertices: wp.array(dtype=wp.vec3),
+    scale: wp.vec3,
     # outputs
     normals: wp.array(dtype=wp.vec3),
     faces_per_vertex: wp.array(dtype=int),
@@ -429,9 +430,9 @@ def compute_average_normals(
     i = indices[tid, 0]
     j = indices[tid, 1]
     k = indices[tid, 2]
-    v0 = vertices[i]
-    v1 = vertices[j]
-    v2 = vertices[k]
+    v0 = wp.cw_mul(vertices[i], scale)
+    v1 = wp.cw_mul(vertices[j], scale)
+    v2 = wp.cw_mul(vertices[k], scale)
     n = wp.normalize(wp.cross(v1 - v0, v2 - v0))
     wp.atomic_add(normals, i, n)
     wp.atomic_add(faces_per_vertex, i, 1)
@@ -446,15 +447,16 @@ def assemble_gfx_vertices(
     vertices: wp.array(dtype=wp.vec3, ndim=1),
     normals: wp.array(dtype=wp.vec3),
     faces_per_vertex: wp.array(dtype=int),
+    scale: wp.vec3,
     # outputs
     gfx_vertices: wp.array(dtype=float, ndim=2),
 ):
     tid = wp.tid()
     v = vertices[tid]
     n = normals[tid] / float(faces_per_vertex[tid])
-    gfx_vertices[tid, 0] = v[0]
-    gfx_vertices[tid, 1] = v[1]
-    gfx_vertices[tid, 2] = v[2]
+    gfx_vertices[tid, 0] = v[0] * scale[0]
+    gfx_vertices[tid, 1] = v[1] * scale[1]
+    gfx_vertices[tid, 2] = v[2] * scale[2]
     gfx_vertices[tid, 3] = n[0]
     gfx_vertices[tid, 4] = n[1]
     gfx_vertices[tid, 5] = n[2]
@@ -3130,7 +3132,7 @@ Instances: {len(self._instances)}"""
                 wp.launch(
                     compute_average_normals,
                     dim=idx_count,
-                    inputs=[wp.array(indices, dtype=int), vertices],
+                    inputs=[wp.array(indices, dtype=int), vertices, scale],
                     outputs=[normals, faces_per_vertex],
                     record_tape=False,
                 )
@@ -3138,7 +3140,7 @@ Instances: {len(self._instances)}"""
                 wp.launch(
                     assemble_gfx_vertices,
                     dim=point_count,
-                    inputs=[vertices, normals, faces_per_vertex],
+                    inputs=[vertices, normals, faces_per_vertex, scale],
                     outputs=[gfx_vertices],
                     record_tape=False,
                 )
@@ -3149,7 +3151,7 @@ Instances: {len(self._instances)}"""
                 wp.launch(
                     compute_gfx_vertices,
                     dim=idx_count,
-                    inputs=[wp.array(indices, dtype=int), wp.array(points, dtype=wp.vec3)],
+                    inputs=[wp.array(indices, dtype=int), wp.array(points, dtype=wp.vec3), scale],
                     outputs=[gfx_vertices],
                     record_tape=False,
                 )

@@ -22,6 +22,7 @@
 ### Fixed
 - Fix crash when radix sort is used on multiple streams, including HashGrids ([GH-950](https://github.com/NVIDIA/warp/issues/950)).
 - Fix tile memory leaks and copy/select/where operations ([GH-777](https://github.com/NVIDIA/warp/pull/777/files))
+- Fix scaling not being correctly applied to rendered meshes in some cases ([GH-880](https://github.com/NVIDIA/warp/issues/880)).
 
 ## [1.9.0] - 2025-09-04
 
