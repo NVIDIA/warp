@@ -1883,7 +1883,9 @@ def type_typestr(dtype: type) -> str:
 
 
 def scalar_short_name(t):
-    if t == float32:
+    if t == float16:
+        return "h"
+    elif t == float32:
         return "f"
     elif t == float64:
         return "d"
