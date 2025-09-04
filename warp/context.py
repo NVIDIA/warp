@@ -7748,6 +7748,7 @@ def export_stubs(file):  # pragma: no cover
     print("from typing import Callable", file=file)
     print("from typing import TypeVar", file=file)
     print("from typing import Generic", file=file)
+    print("from typing import Sequence", file=file)
     print("from typing import overload as over", file=file)
     print(file=file)
 
@@ -7776,7 +7777,7 @@ def export_stubs(file):  # pragma: no cover
     print(header, file=file)
     print(file=file)
 
-    def add_stub(f):
+    def add_builtin_function_stub(f):
         args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
 
         return_str = ""
@@ -7796,12 +7797,162 @@ def export_stubs(file):  # pragma: no cover
         print('    """', file=file)
         print("    ...\n\n", file=file)
 
+    def add_vector_type_stub(cls, label):
+        cls_name = cls.__name__
+        scalar_type_name = cls._wp_scalar_type_.__name__
+
+        print(f"class {cls_name}:", file=file)
+
+        print("    @over", file=file)
+        print("    def __init__(self) -> None:", file=file)
+        print(f'        """Construct a zero-initialized {label}."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, other: {cls_name}) -> None:", file=file)
+        print(f'        """Construct a {label} by copy."""', file=file)
+        print("        ...\n\n", file=file)
+
+        args = ", ".join(f"{x}: {scalar_type_name}" for x in "xyzw"[: cls._length_])
+        print("    @over", file=file)
+        print(f"    def __init__(self, {args}) -> None:", file=file)
+        print(f'        """Construct a {label} from its component values."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, args: Sequence[{scalar_type_name}]) -> None:", file=file)
+        print(f'        """Construct a {label} from a sequence of values."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, value: {scalar_type_name}) -> None:", file=file)
+        print(f'        """Construct a {label} filled with a value."""', file=file)
+        print("        ...\n\n", file=file)
+
+    def add_matrix_type_stub(cls, label):
+        cls_name = cls.__name__
+        scalar_type_name = cls._wp_scalar_type_.__name__
+        scalar_short_name = warp.types.scalar_short_name(cls._wp_scalar_type_)
+
+        print(f"class {cls_name}:", file=file)
+
+        print("    @over", file=file)
+        print("    def __init__(self) -> None:", file=file)
+        print(f'        """Construct a zero-initialized {label}."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, other: {cls_name}) -> None:", file=file)
+        print(f'        """Construct a {label} by copy."""', file=file)
+        print("        ...\n\n", file=file)
+
+        args = ", ".join(f"m{i}{j}: {scalar_type_name}" for i in range(cls._shape_[0]) for j in range(cls._shape_[1]))
+        print("    @over", file=file)
+        print(f"    def __init__(self, {args}) -> None:", file=file)
+        print(f'        """Construct a {label} from its component values."""', file=file)
+        print("        ...\n\n", file=file)
+
+        args = ", ".join(f"v{i}: vec{cls._shape_[0]}{scalar_short_name}" for i in range(cls._shape_[0]))
+        print("    @over", file=file)
+        print(f"    def __init__(self, {args}) -> None:", file=file)
+        print(f'        """Construct a {label} from its row vectors."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, args: Sequence[{scalar_type_name}]) -> None:", file=file)
+        print(f'        """Construct a {label} from a sequence of values."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, value: {scalar_type_name}) -> None:", file=file)
+        print(f'        """Construct a {label} filled with a value."""', file=file)
+        print("        ...\n\n", file=file)
+
+    def add_transform_type_stub(cls, label):
+        cls_name = cls.__name__
+        scalar_type_name = cls._wp_scalar_type_.__name__
+        scalar_short_name = warp.types.scalar_short_name(cls._wp_scalar_type_)
+
+        print(f"class {cls_name}:", file=file)
+
+        print("    @over", file=file)
+        print("    def __init__(self) -> None:", file=file)
+        print(f'        """Construct a zero-initialized {label}."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, other: {cls_name}) -> None:", file=file)
+        print(f'        """Construct a {label} by copy."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, p: vec3{scalar_short_name}, q: quat{scalar_short_name}) -> None:", file=file)
+        print(f'        """Construct a {label} from its p and q components."""', file=file)
+        print("        ...\n\n", file=file)
+
+        args = ()
+        args += tuple(f"p{x}: {scalar_type_name}" for x in "xyz")
+        args += tuple(f"q{x}: {scalar_type_name}" for x in "xyzw")
+        args = ", ".join(args)
+        print("    @over", file=file)
+        print(f"    def __init__(self, {args}) -> None:", file=file)
+        print(f'        """Construct a {label} from its component values."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(
+            f"    def __init__(self, p: Sequence[{scalar_type_name}], q: Sequence[{scalar_type_name}]) -> None:",
+            file=file,
+        )
+        print(f'        """Construct a {label} from two sequences of values."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, value: {scalar_type_name}) -> None:", file=file)
+        print(f'        """Construct a {label} filled with a value."""', file=file)
+        print("        ...\n\n", file=file)
+
+    # Vector types.
+    suffixes = ("h", "f", "d", "b", "ub", "s", "us", "i", "ui", "l", "ul")
+    for length in (2, 3, 4):
+        for suffix in suffixes:
+            cls = getattr(warp.types, f"vec{length}{suffix}")
+            add_vector_type_stub(cls, "vector")
+
+        print(f"vec{length} = vec{length}f", file=file)
+
+    # Matrix types.
+    suffixes = ("h", "f", "d")
+    for length in (2, 3, 4):
+        shape = f"{length}{length}"
+        for suffix in suffixes:
+            cls = getattr(warp.types, f"mat{shape}{suffix}")
+            add_matrix_type_stub(cls, "matrix")
+
+        print(f"mat{shape} = mat{shape}f", file=file)
+
+    # Quaternion types.
+    suffixes = ("h", "f", "d")
+    for suffix in suffixes:
+        cls = getattr(warp.types, f"quat{suffix}")
+        add_vector_type_stub(cls, "quaternion")
+
+    print("quat = quatf", file=file)
+
+    # Transformation types.
+    suffixes = ("h", "f", "d")
+    for suffix in suffixes:
+        cls = getattr(warp.types, f"transform{suffix}")
+        add_transform_type_stub(cls, "transformation")
+
+    print("transform = transformf", file=file)
+
     for g in builtin_functions.values():
         if hasattr(g, "overloads"):
             for f in g.overloads:
-                add_stub(f)
+                add_builtin_function_stub(f)
         elif isinstance(g, Function):
-            add_stub(g)
+            add_builtin_function_stub(g)
 
 
 def export_builtins(file: io.TextIOBase):  # pragma: no cover
