@@ -953,6 +953,141 @@ and it can also be passed to each call::
         ...
 
 
+Automatic Differentiation (AD) for Warp kernels in JAX
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Warp kernels can be given JAX gradients using a convenience wrapper that wires a custom VJP around a kernel and its adjoint.
+
+.. autofunction:: warp.jax_experimental.ffi.jax_ad_kernel
+
+Basic example (one output, static scalar argument)::
+
+    import jax
+    import jax.numpy as jnp
+
+    import warp as wp
+    from warp.jax_experimental.ffi import jax_ad_kernel
+
+    @wp.kernel
+    def scale_sum_square(
+        a: wp.array(dtype=float),
+        b: wp.array(dtype=float),
+        s: float,
+        out: wp.array(dtype=float),
+    ):
+        tid = wp.tid()
+        out[tid] = (a[tid] * s + b[tid]) ** 2.0
+
+    # s is a scalar and must be static in JAX; mark it explicitly
+    jax_scale = jax_ad_kernel(scale_sum_square, num_outputs=1, static_argnames=("s",))
+
+    @jax.jit
+    def loss(a, b, s):
+        (out,) = jax_scale(a, b, s)
+        return jnp.sum(out)
+
+    n = 16
+    a = jnp.arange(n, dtype=jnp.float32)
+    b = jnp.ones(n, dtype=jnp.float32)
+    s = 2.0
+
+    # gradients w.r.t. array inputs
+    da, db = jax.grad(loss, argnums=(0, 1))(a, b, s)
+    print(da, db)
+
+Multiple outputs::
+
+    @wp.kernel
+    def multi_output(
+        a: wp.array(dtype=float),
+        b: wp.array(dtype=float),
+        s: float,
+        c: wp.array(dtype=float),
+        d: wp.array(dtype=float),
+    ):
+        tid = wp.tid()
+        c[tid] = a[tid] ** 2.0
+        d[tid] = a[tid] * b[tid] * s
+
+    jax_multi = jax_ad_kernel(multi_output, num_outputs=2, static_argnames=("s",))
+
+    def caller(fn, a, b, s):
+        c, d = fn(a, b, s)
+        return jnp.sum(c + d)
+
+    # differentiate a batched scalar objective over two inputs
+    da, db = jax.grad(lambda a, b, s: caller(jax_multi, a, b, s), argnums=(0, 1))(a, b, s)
+    print(da, db)
+
+Vector and matrix arrays also work. Inner component dimensions are packed in the JAX array and handled automatically::
+
+    @wp.kernel
+    def scale_vec2(a: wp.array(dtype=wp.vec2), s: float, out: wp.array(dtype=wp.vec2)):
+        tid = wp.tid()
+        out[tid] = a[tid] * s
+
+    jax_vec = jax_ad_kernel(scale_vec2, num_outputs=1, static_argnames=("s",))
+
+    @jax.jit
+    def vec_loss(a, s):
+        (out,) = jax_vec(a, s)
+        return jnp.sum(out)
+
+    a2 = jnp.arange(10, dtype=jnp.float32).reshape((5, 2))  # vec2 payload shape
+    (da2,) = jax.grad(vec_loss, argnums=(0,))(a2, 3.0)
+    print(da2)
+
+Notes
+.....
+
+- Scalar inputs must be static in JAX. By default, :func:`jax_ad_kernel` auto-detects scalars, but you can
+  specify them explicitly via ``static_argnames``.
+- Gradients are returned for differentiable array inputs (static scalars are excluded from the gradient tuple).
+- CUDA backend is required.
+
+
+VMAP with gradients
+...................
+
+The AD wrapper works under :func:`jax.vmap` using the same batching semantics as forward-only calls.
+Leading batch axes are supported without changing the kernel's launch dimensions.
+
+There are three options for ``vmap_method``:
+
+- ``"sequential"``: lowers to a :func:`jax.lax.scan`; most general, least parallel.
+- ``"broadcast_all"`` (default): assumes the kernel can handle broadcasted batch axes; best for data-parallel batches.
+- ``"expand_dims"``: expands a new leading axis per-batched argument; use only if your kernel semantics require it.
+
+Per-sample batched gradients with broadcasting::
+
+    # same scale_sum_square kernel and jax_scale from above, but ensure vmap-friendly method
+    jax_scale = jax_ad_kernel(scale_sum_square, num_outputs=1, static_argnames=("s",), vmap_method="broadcast_all")
+
+    def per_sample_loss(a, b):
+        (out,) = jax_scale(a, b, 2.0)
+        return jnp.sum(out)
+
+    B, N = 4, 12
+    A = jnp.arange(B * N, dtype=jnp.float32).reshape((B, N))
+    Bv = jnp.ones((B, N), dtype=jnp.float32)
+
+    # map batch axis on both inputs
+    dA, dB = jax.vmap(jax.grad(per_sample_loss, argnums=(0, 1)), in_axes=(0, 0))(A, Bv)
+    print(dA.shape, dB.shape)  # (B, N), (B, N)
+
+When one input is shared across the batch, use ``in_axes=(0, None)`` (or pass a constant inside the mapped function)::
+
+    shared = jnp.ones((N,), dtype=jnp.float32)
+    dA_shared, dB_shared = jax.vmap(jax.grad(per_sample_loss, argnums=(0, 1)), in_axes=(0, None))(A, shared)
+    print(dA_shared.shape, dB_shared.shape)  # (B, N), (N,)
+
+Constraints and tips:
+
+- Kernel arguments must be contiguous arrays or scalars. Scalars must be static in JAX (pass via ``static_argnames`` or use Python constants).
+- Only the CUDA backend is supported.
+- For vector/matrix arrays, specify Warp dtypes (e.g., ``wp.vec2``); JAX inner component dimensions are derived automatically.
+
+
 Calling Annotated Python Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
