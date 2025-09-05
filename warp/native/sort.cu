@@ -129,6 +129,11 @@ void radix_sort_pairs_device(void* context, int64_t* keys, int* values, int n)
     radix_sort_pairs_device<int64_t>(context, keys, values, n);
 }
 
+void radix_sort_pairs_device(void* context, uint64_t* keys, int* values, int n)
+{
+    radix_sort_pairs_device<uint64_t>(context, keys, values, n);
+}
+
 void wp_radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n)
 {
     radix_sort_pairs_device(
@@ -150,6 +155,14 @@ void wp_radix_sort_pairs_int64_device(uint64_t keys, uint64_t values, int n)
     radix_sort_pairs_device(
         WP_CURRENT_CONTEXT,
         reinterpret_cast<int64_t *>(keys),
+        reinterpret_cast<int *>(values), n);
+}
+
+void wp_radix_sort_pairs_uint64_device(uint64_t keys, uint64_t values, int n)
+{
+    radix_sort_pairs_device(
+        WP_CURRENT_CONTEXT,
+        reinterpret_cast<uint64_t *>(keys),
         reinterpret_cast<int *>(values), n);
 }
 
