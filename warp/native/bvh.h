@@ -569,7 +569,6 @@ CUDA_CALLABLE bool bvh_get_descriptor(uint64_t id, BVH& bvh);
 CUDA_CALLABLE void bvh_add_descriptor(uint64_t id, const BVH& bvh);
 CUDA_CALLABLE void bvh_rem_descriptor(uint64_t id);
 
-#if !__CUDA_ARCH__
 
 void bvh_create_host(vec3* lowers, vec3* uppers, int num_items,  int constructor_type, int* groups, BVH& bvh);
 void bvh_destroy_host(wp::BVH& bvh);
@@ -577,7 +576,7 @@ void bvh_refit_host(wp::BVH& bvh);
 
 #if WP_ENABLE_CUDA
 
-void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items, int constructor_type, BVH& bvh_device_on_host);
+void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items, int constructor_type, int* groups, BVH& bvh_device_on_host);
 void bvh_destroy_device(BVH& bvh);
 void bvh_refit_device(BVH& bvh);
 
