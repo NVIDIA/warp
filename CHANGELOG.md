@@ -20,6 +20,7 @@
   This fixes a performance regression introduced in Warp 1.6.0 ([GH-758](https://github.com/NVIDIA/warp/issues/758)).
 
 ### Fixed
+- Fix crash when radix sort is used on multiple streams, including HashGrids ([GH-950](https://github.com/NVIDIA/warp/issues/950)).
 
 ## [1.9.0] - 2025-09-04
 
@@ -112,6 +113,8 @@
 - Fix adding superfluous inactive nodes to tetrahedron polynomial function spaces in `warp.fem`.
 - Fix `#line` directives for Python↔CUDA source correlation not being emitted by default when a module is compiled in
   debug mode ([GH-901](https://github.com/NVIDIA/warp/issues/901)).
+- Fix 2D shared tile allocation/de-allocation bug inside Warp functions ([GH-877](https://github.com/NVIDIA/warp/issues/877)).
+- Fix loading "unique" modules using `wp.load_module()`.
 
 ## [1.8.1] - 2025-08-01
 
