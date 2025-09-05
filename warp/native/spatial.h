@@ -34,7 +34,7 @@ CUDA_CALLABLE inline Type spatial_dot(const spatial_vector_t<Type>& a, const spa
 template<typename Type>
 CUDA_CALLABLE inline vec_t<3,Type> &w_vec( spatial_vector_t<Type>& a )
 {
-    return *(vec_t<3,Type>*)(&a);
+    return *reinterpret_cast<vec_t<3,Type>*>(&a);
 }
 
 template<typename Type>
@@ -46,14 +46,14 @@ CUDA_CALLABLE inline vec_t<3,Type> &v_vec( spatial_vector_t<Type>& a )
 template<typename Type>
 CUDA_CALLABLE inline const vec_t<3,Type> &w_vec( const spatial_vector_t<Type>& a )
 {
-    spatial_vector_t<Type> &non_const_vec = *(spatial_vector_t<Type>*)(const_cast<Type*>(&a.c[0]));
+    spatial_vector_t<Type> &non_const_vec = *reinterpret_cast<spatial_vector_t<Type>*>(const_cast<Type*>(&a.c[0]));
     return w_vec(non_const_vec);
 }
 
 template<typename Type>
 CUDA_CALLABLE inline const vec_t<3,Type> &v_vec( const spatial_vector_t<Type>& a )
 {
-    spatial_vector_t<Type> &non_const_vec = *(spatial_vector_t<Type>*)(const_cast<Type*>(&a.c[0]));
+    spatial_vector_t<Type> &non_const_vec = *reinterpret_cast<spatial_vector_t<Type>*>(const_cast<Type*>(&a.c[0]));
     return v_vec(non_const_vec);
 }
 

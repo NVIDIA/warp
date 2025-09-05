@@ -47,6 +47,7 @@ variables:
   LINBUILD: "$CI_PROJECT_DIR/_build/host-deps/linbuild/linbuild.sh"
   WARP_CACHE_ROOT: "$CI_PROJECT_DIR/.cache/warp" # Used by the parallel test runner
   GIT_DEPTH: 1
+  UV_LINK_MODE: copy
   DEFAULT_PYTHON:
     value: "3.9.18+nv1"
     options:
@@ -257,6 +258,63 @@ check un-namespaced symbols linux-x86_64:
       fi
 
       echo "SUCCESS: All symbols are correctly namespaced."
+
+cppcheck:
+  stage: quality
+  image: ubuntu:24.04
+  needs: []
+  extends:
+    - .runner-build-linux-x86_64
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
+    - apt-get update && apt-get install wget ca-certificates --no-install-recommends -y
+    - wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+    - bash Miniforge3.sh -b -p "${HOME}/conda"
+    - source "${HOME}/conda/etc/profile.d/conda.sh"
+    - conda activate
+    - conda install cppcheck --channel conda-forge
+    - python -m pip install -U cppcheck-codequality
+    - mkdir -p _build/.cppcheck
+    - cppcheck --version
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    # Pass 1: For the CI log and job failure.
+    - cppcheck_exit_code=0
+    - >-
+      cppcheck
+      --inline-suppr
+      --cppcheck-build-dir=_build/.cppcheck
+      --enable=warning
+      --quiet
+      --error-exitcode=1
+      -j $(nproc)
+      --suppress=*:warp/native/nanovdb/*
+      --suppress=normalCheckLevelMaxBranches
+      warp
+      || cppcheck_exit_code=$?
+    # Pass 2: For the Code Quality report.
+    - >-
+      cppcheck
+      --inline-suppr
+      --cppcheck-build-dir=_build/.cppcheck
+      --enable=warning
+      --quiet
+      --xml
+      --xml-version=2
+      -j $(nproc)
+      --suppress=*:warp/native/nanovdb/*
+      --suppress=normalCheckLevelMaxBranches
+      warp
+      2> cppcheck-report.xml
+    - cppcheck-codequality --input-file=cppcheck-report.xml --output-file=gl-code-quality-report.json
+    - exit $cppcheck_exit_code
+  artifacts:
+    when: always
+    reports:
+      codequality: gl-code-quality-report.json
+    paths:
+      - cppcheck-report.xml
 
 # ==============================================================================
 # Main Unit Testing Jobs
@@ -521,8 +579,8 @@ linux-x86_64 test mujoco warp:
   script:
     - pytest -n 4 --pyargs mujoco_warp --junit-xml=rspec.xml
 
-# Ensure minimum Python version is supported
-linux-x86_64 python 3.8 test:
+# Ensure minimum and maximum Python versions are supported
+linux-x86_64 python matrix test:
   stage: test
   image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: [linux-x86_64 build]
@@ -530,8 +588,10 @@ linux-x86_64 python 3.8 test:
     - .runner-test-linux-x86_64-gpu
     - .save_test_report_artifact
     - .basic_test_changes_rules
-  variables:
-    UV_PYTHON: "3.8"
+  parallel:
+    matrix:
+      - UV_PYTHON: "3.8"
+      - UV_PYTHON: "3.13"
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
@@ -688,7 +748,6 @@ cuda 13 build:
     include: /.gitlab/ci/cuda-13-build.yml
   extends:
     - .trigger_common
-
 
 trigger kit extensions pipeline:
   stage: test

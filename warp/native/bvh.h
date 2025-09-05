@@ -357,7 +357,7 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(
 		BVHPackedNodeHalf node_lower = bvh_load_node(bvh.node_lowers, node_index);
 		BVHPackedNodeHalf node_upper = bvh_load_node(bvh.node_uppers, node_index);
 
-		if (!bvh_query_intersection_test(query, (vec3&)node_lower, (vec3&)node_upper))
+        if (!bvh_query_intersection_test(query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)))
 		{
 			continue;
 		}
@@ -464,7 +464,7 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index)
 		wp::vec3 upper_pos(node_upper.x, node_upper.y, node_upper.z);
 		wp::bounds3 current_bounds(lower_pos, upper_pos);
 
-		if (!bvh_query_intersection_test(query, (vec3&)node_lower, (vec3&)node_upper))
+        if (!bvh_query_intersection_test(query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)))
 		{
 			continue;
 		}

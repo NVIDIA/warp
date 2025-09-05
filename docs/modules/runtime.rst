@@ -196,7 +196,7 @@ e.g. to pass a 2D array to a kernel the number of dims is specified using the ``
     @wp.kernel
     def test(input: wp.array(dtype=float, ndim=2)):
 
-Type-hint helpers are provided for common array sizes, e.g.: ``array2d()``, ``array3d()``, which are equivalent to calling ``array(..., ndim=2)```, etc.
+Type-hint helpers are provided for common array sizes, e.g.: ``array2d()``, ``array3d()``, which are equivalent to calling ``array(..., ndim=2)``, etc.
 To index a multi-dimensional array, use the following kernel syntax::
 
     # returns a float from the 2d array
@@ -426,6 +426,88 @@ Structured arrays fully support nested structs and Warp vector (and matrix) type
     [(42,  0.  , ([0., 0., 0.],)) ( 0,  0.  , ([0., 0., 0.],))
      ( 0, 13.37, ([0., 0., 0.],)) ( 0,  0.  , ([0., 0., 0.],))
      ( 0,  0.  , ([1., 1., 1.],))]
+
+
+Local Arrays
+############
+
+While arrays are typically created at the Python scope and passed to kernels as arguments,
+Warp also supports creating arrays directly inside kernels. This capability is limited to two specific approaches:
+
+1. **Creating array views from existing memory**: Initialize an array that references an existing data buffer
+   by using ``wp.array(ptr=..., shape=..., dtype=...)``. This is useful to reinterpret memory
+   with a different shape or when working with external memory pointers:
+
+    .. testcode::
+
+        @wp.kernel
+        def sum_rows_kernel(
+            flat_arr: wp.array(dtype=int),
+            out: wp.array(dtype=int),
+        ):
+            tid = wp.tid()
+
+            # Reinterpret the flat array as a 2D array of 3x4 elements.
+            arr = wp.array(ptr=flat_arr.ptr, shape=(3, 4), dtype=int)
+
+            # Compute sum of row.
+            sum = int(0)
+            for j in range(arr.shape[1]):
+                sum += arr[tid, j]
+
+            out[tid] = sum
+
+        flat_arr = wp.array(range(12), dtype=int)
+        row_sums = wp.zeros(3, dtype=int)
+        wp.launch(sum_rows_kernel, dim=3, inputs=(flat_arr, row_sums))
+        print(row_sums.numpy())
+
+    .. testoutput::
+
+        [ 6 22 38]
+
+2. **Allocating fixed-size arrays**: Allocate a new zero-initialized array with a compile-time constant shape
+   using ``wp.zeros(shape=..., dtype=...)``:
+
+    .. testcode::
+
+        N = 6
+
+        @wp.kernel
+        def find_cumsum_avg_crossing_kernel(
+            arr: wp.array2d(dtype=float),
+            out: wp.array(dtype=int),
+        ):
+            tid = wp.tid()
+
+            # Create temporary array to store cumulative sums for this column.
+            tmp = wp.zeros(shape=(N,), dtype=float)
+
+            # Compute the cumulative sum values.
+            tmp[0] = arr[0, tid]
+            for i in range(1, N):
+                tmp[i] = tmp[i - 1] + arr[i, tid]
+
+            # Calculate the average of the cumulative sum values.
+            sum = float(0)
+            for i in range(N):
+                sum += tmp[i]
+            avg = sum / float(N)
+
+            # Find the first index where `cumulative sum value >= avg`.
+            # This represents the crossing point where accumulated values exceed
+            # the average accumulation.
+            out[tid] = wp.lower_bound(tmp, avg)
+
+        arr = wp.array(np.abs(np.sin(np.arange(N * 3))).reshape(N, 3), dtype=float)
+        idx = wp.empty(shape=(3,), dtype=int)
+        wp.launch(find_cumsum_avg_crossing_kernel, dim=(3,), inputs=(arr,), outputs=(idx,))
+        print(idx.numpy())
+
+    .. testoutput::
+
+        [3 3 3]
+
 
 .. _Data_Types:
 
@@ -1432,8 +1514,26 @@ Graph API Reference
 .. autoclass:: ScopedCapture
     :members:
 
+Spatial Computing Primitives
+----------------------------
+
+Spatial computing primitives provide efficient data structures for spatial queries and geometric operations.
+These include hash grids for particle neighbor searches, bounding volume hierarchies (BVHs) for ray tracing and
+collision detection, and mesh types.
+These ready-to-use implementations save significant development time compared to building spatial data structures from
+scratch, while providing high-performance on the GPU.
+
+.. caution::
+    **Object Lifetime Management**: Spatial computing primitives
+    (e.g. :class:`wp.HashGrid <HashGrid>`, :class:`wp.Bvh <Bvh>`, etc.) must remain in scope.
+    These acceleration data structures are identified by their ``id`` attribute when passed to kernels, 
+    but if the Python object is garbage collected, the memory allocated for the primitive may be
+    freed, causing crashes and undefined behavior.
+
+    See the :ref:`Object Lifetime Pitfall<object lifetime pitfall>` section below for more information.
+
 Meshes
-------
+######
 
 Warp provides a :class:`wp.Mesh <Mesh>` class to manage triangle mesh data. To create a mesh, users provide a points, indices and optionally a velocity array::
 
@@ -1483,7 +1583,7 @@ structure and ensure that queries work correctly.
     :exclude-members: vars, Var
 
 Hash Grids
-----------
+##########
 
 Many particle-based simulation methods such as the Discrete Element Method (DEM), or Smoothed Particle Hydrodynamics (SPH), involve iterating over spatial neighbors to compute force interactions. Hash grids are a well-established data structure to accelerate these nearest neighbor queries, and particularly well-suited to the GPU.
 
@@ -1539,7 +1639,7 @@ and :func:`wp.hash_grid_query_next() <hash_grid_query_next>` as follows:
     :members:
 
 Volumes
--------
+#######
 
 Sparse volumes are incredibly useful for representing grid data over large domains, such as signed distance fields
 (SDFs) for complex objects, or velocities for large-scale fluid flow. Warp supports reading sparse volumetric grids
@@ -1627,7 +1727,7 @@ NanoVDB grids may also contain embedded *blind* data arrays; those can be access
 
 
 Bounding Value Hierarchies (BVH)
---------------------------------
+################################
 
 The :class:`wp.Bvh <Bvh>` class can be used to create a BVH for a group of bounding volumes. This object can then be traversed
 to determine which parts are intersected by a ray using :func:`bvh_query_ray` and which parts overlap
@@ -1652,7 +1752,7 @@ The following snippet demonstrates how to create a :class:`wp.Bvh <Bvh>` object 
     :members:
 
 Example: BVH Ray Traversal
-##########################
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 An example of performing a ray traversal on the data structure is as follows:
 
@@ -1692,7 +1792,7 @@ A while statement is used for the actual traversal using :func:`wp.bvh_query_nex
 which returns ``True`` as long as there are intersecting bounds.
 
 Example: BVH Volume Traversal
-#############################
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Similar to the ray-traversal example, we can perform volume traversal to find the volumes that are fully contained
 within a specified bounding box.
@@ -1728,6 +1828,52 @@ within a specified bounding box.
 
 The kernel is nearly identical to the ray-traversal example, except we obtain ``query`` using
 :func:`wp.bvh_query_aabb() <bvh_query_aabb>`.
+
+.. _object lifetime pitfall:
+
+Object Lifetime Pitfall
+#######################
+
+When working with spatial computing primitives like :class:`wp.HashGrid <HashGrid>` and :class:`wp.Bvh <Bvh>`,
+it's crucial to understand how Python's garbage collection interacts with these objects.
+The following example demonstrate a common mistake and how to avoid it.
+
+**Common Pitfall**: Creating objects in loops and only storing their IDs
+
+.. code-block:: python
+    
+    # WRONG - objects may be garbage collected
+    hash_grids = []
+    for i in range(10):
+        grid = wp.HashGrid(dim_x=128, dim_y=128, dim_z=128)
+        grid.build(points=particle_positions[i], radius=search_radius)
+        hash_grids.append(grid.id)  # Only storing the ID
+    
+    # RIGHT - maintain references to the objects
+    hash_grid_objects = []
+    for i in range(10):
+        grid = wp.HashGrid(dim_x=128, dim_y=128, dim_z=128)
+        grid.build(points=particle_positions[i], radius=search_radius)
+        hash_grid_objects.append(grid)  # Keep the object alive
+    
+    # Create Warp array for kernel execution when needed
+    grid_ids_array = wp.array([x.id for x in hash_grid_objects], dtype=wp.uint64, device="cuda")
+    
+    wp.launch(my_kernel, dim=10, inputs=[grid_ids_array])
+
+**Why This Happens**: When you only store the ``id`` attribute (which is a ``wp.uint64`` pointer), 
+Python's garbage collector may free the original object if no other references exist. This leads to 
+undefined behavior when the kernel tries to access the freed memory.
+
+**Common Problematic Scenarios**:
+
+1. **Creating objects in loops** and only storing their IDs
+2. **Creating objects in functions** and returning only the ID  
+3. **Creating objects as temporary variables** that get overwritten
+
+Always maintain references to spatial computing primitive objects
+(like :class:`wp.HashGrid <HashGrid>`, :class:`wp.Bvh <Bvh>`, etc.) rather than just their ID values.
+This is especially important in loops, functions, and temporary variables where object scope might be unclear.
 
 Marching Cubes
 --------------

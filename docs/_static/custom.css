@@ -24,3 +24,11 @@ section#built-ins-reference dl.function table.hlist li
     margin: 0 0.25rem;
     padding: 0 0.25rem;
 }
+
+ol.arabic li blockquote:has(div[class^="highlight-"])
+{
+    background-color: inherit;
+    border: none;
+    color: inherit;
+    padding: 0;
+}

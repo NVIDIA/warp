@@ -41,11 +41,11 @@ extern "C" WP_API void _wp_assert(const char* expression, const char* file, unsi
     fflush(stdout);
     fprintf(stderr,
         "Assertion failed: '%s'\n"
-        "At '%s:%d'\n",
+        "At '%s:%u'\n",
         expression, file, line);
     fflush(stderr);
 
     // Now invoke the standard assert(), which may abort the program or break
     // into the debugger as decided by the runtime environment.
-    assert(false && "assert() failed");
+    assert(false && "assert() failed"); // cppcheck-suppress incorrectStringBooleanError
 }

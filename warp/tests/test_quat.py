@@ -2015,6 +2015,22 @@ def test_py_arithmetic_ops(test, device, dtype):
 
 
 @wp.kernel
+def quat_grad(q: wp.quat):
+    wp.expect_eq(q.w, 1.0)
+
+
+# Test passing of a quaternion in the backward pass
+def test_quat_backward(test, device):
+    q = wp.quat_identity()
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(quat_grad, dim=1, inputs=[q], device=device)
+
+    tape.backward()
+
+
+@wp.kernel
 def quat_len_kernel(
     q: wp.quat,
     out: wp.array(dtype=int),
@@ -2581,6 +2597,7 @@ for dtype in np_float_types:
         TestQuat, f"test_py_arithmetic_ops_{dtype.__name__}", test_py_arithmetic_ops, devices=None, dtype=dtype
     )
 
+add_function_test(TestQuat, "test_quat_backward", test_quat_backward, devices=devices)
 add_function_test(TestQuat, "test_quat_len", test_quat_len, devices=devices)
 add_function_test(TestQuat, "test_quat_extract", test_quat_extract, devices=devices)
 add_function_test(TestQuat, "test_quat_assign", test_quat_assign, devices=devices)
