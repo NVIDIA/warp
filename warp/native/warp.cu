@@ -19,6 +19,7 @@
 #include "scan.h"
 #include "cuda_util.h"
 #include "error.h"
+#include "sort.h"
 
 #include <cstdlib>
 #include <fstream>
@@ -2447,6 +2448,9 @@ void wp_cuda_stream_destroy(void* context, void* stream)
         return;
 
     wp_cuda_stream_unregister(context, stream);
+
+    // release temporary radix sort buffer associated with this stream
+    radix_sort_release(context, stream);
 
     check_cu(cuStreamDestroy_f(static_cast<CUstream>(stream)));
 }
