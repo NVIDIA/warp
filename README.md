@@ -37,12 +37,9 @@ pip install warp-lang
 
 You can also use `pip install warp-lang[extras]` to install additional dependencies for running examples and USD-related features.
 
-The binaries hosted on PyPI are currently built with the CUDA 12 runtime and therefore
-require a minimum version of the CUDA driver of 525.60.13 (Linux x86-64) or 528.33 (Windows x86-64).
-
-If you require GPU support on a system with an older CUDA driver, you can build Warp from source or
-install wheels built with the CUDA 11.8 runtime from the [GitHub Releases](https://github.com/NVIDIA/warp/releases) page.
-Copy the URL of the appropriate wheel file (`warp-lang-{ver}+cu12-py3-none-{platform}.whl`) and pass it to
+The binaries hosted on PyPI are currently built with the CUDA 12 runtime.
+We also provide binaries built with the CUDA 13.0 runtime on the [GitHub Releases](https://github.com/NVIDIA/warp/releases) page.
+Copy the URL of the appropriate wheel file (`warp-lang-{ver}+cu13-py3-none-{platform}.whl`) and pass it to
 the `pip install` command, e.g.
 
 | Platform        | Install Command                                                                                                               |
@@ -76,8 +73,8 @@ This ensures the index is automatically used for `pip` commands, avoiding the ne
 
 ### CUDA Requirements
 
-* Warp packages built with CUDA Toolkit 11.x require NVIDIA driver 470 or newer.
 * Warp packages built with CUDA Toolkit 12.x require NVIDIA driver 525 or newer.
+* Warp packages built with CUDA Toolkit 13.x require NVIDIA driver 580 or newer.
 
 This applies to pre-built packages distributed on PyPI and GitHub and also when building Warp from source.
 
@@ -369,7 +366,7 @@ For developers who want to build the library themselves, the following tools are
 
 * Microsoft Visual Studio 2019 upwards (Windows)
 * GCC 9.4 upwards (Linux)
-* CUDA Toolkit 11.5 or higher
+* CUDA Toolkit 12.0 or higher
 * [Git LFS](https://git-lfs.github.com/) installed
 
 After cloning the repository, users should run:
