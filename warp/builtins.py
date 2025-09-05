@@ -4841,7 +4841,7 @@ add_builtin(
     value_type=int,
     group="Geometry",
     doc="""Get the root of a group in a BVH.
-    
+
     :param id: The BVH identifier
     :param group: The group identifier""",
     export=False,
