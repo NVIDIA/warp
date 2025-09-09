@@ -446,15 +446,16 @@ def assemble_gfx_vertices(
     vertices: wp.array(dtype=wp.vec3, ndim=1),
     normals: wp.array(dtype=wp.vec3),
     faces_per_vertex: wp.array(dtype=int),
+    scale: wp.vec3,
     # outputs
     gfx_vertices: wp.array(dtype=float, ndim=2),
 ):
     tid = wp.tid()
     v = vertices[tid]
     n = normals[tid] / float(faces_per_vertex[tid])
-    gfx_vertices[tid, 0] = v[0]
-    gfx_vertices[tid, 1] = v[1]
-    gfx_vertices[tid, 2] = v[2]
+    gfx_vertices[tid, 0] = v[0] * scale[0]
+    gfx_vertices[tid, 1] = v[1] * scale[1]
+    gfx_vertices[tid, 2] = v[2] * scale[2]
     gfx_vertices[tid, 3] = n[0]
     gfx_vertices[tid, 4] = n[1]
     gfx_vertices[tid, 5] = n[2]
@@ -892,7 +893,7 @@ class ShapeInstancer:
                 wp_transforms = transforms.to(self.device)
             self.transforms = wp_transforms
         if scalings is not None:
-            if transforms.device.is_cuda:
+            if scalings.device.is_cuda:
                 wp_scalings = scalings
             else:
                 wp_scalings = scalings.to(self.device)
@@ -2569,7 +2570,7 @@ Instances: {len(self._instances)}"""
             self._update_shape_instances = False
             self._wp_instance_transforms = wp.array(
                 [instance[3] for instance in self._instances.values()], dtype=wp.transform, device=self._device
-            )
+            )            
             self.update_body_transforms(None)
 
     def update_body_transforms(self, body_tf: wp.array):
@@ -3138,7 +3139,7 @@ Instances: {len(self._instances)}"""
                 wp.launch(
                     assemble_gfx_vertices,
                     dim=point_count,
-                    inputs=[vertices, normals, faces_per_vertex],
+                    inputs=[vertices, normals, faces_per_vertex, wp.vec3(scale)],
                     outputs=[gfx_vertices],
                     record_tape=False,
                 )
@@ -3149,7 +3150,7 @@ Instances: {len(self._instances)}"""
                 wp.launch(
                     compute_gfx_vertices,
                     dim=idx_count,
-                    inputs=[wp.array(indices, dtype=int), wp.array(points, dtype=wp.vec3)],
+                    inputs=[wp.array(indices, dtype=int), wp.array(points, dtype=wp.vec3), wp.vec3(scale)],
                     outputs=[gfx_vertices],
                     record_tape=False,
                 )
