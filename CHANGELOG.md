@@ -1,5 +1,8 @@
 # Changelog
 
+- Fixed missing scaling on `assemble_gfx_vertices` when `smooth_shading` is true
+- Fixed incomplete relative transform in `parse_prim`
+
 ## [1.9.0] - 2025-09-04
 
 ### Added

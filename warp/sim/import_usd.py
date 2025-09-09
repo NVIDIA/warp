@@ -432,14 +432,14 @@ def parse_usd(
         # so that shapes inherit all upstream Xform rotations/translations.
         # Previously we used local_xform which drops parent transforms when no body exists.
         if parent_body == -1:
-            geo_tf = xform          # full accumulated (world) transform
+            geo_tf = xform  # full accumulated (world) transform
         else:
             # We are already inside a rigid body; accumulate relative transform:
             # incoming_xform is world tf of parent; local_xform is this prim's local tf.
             # Relative to body origin we want (body_world^-1 * current_world).
             # We don't have body_world stored directly here, so for now approximate by chaining:
-            geo_tf = local_xform    # (NOTE: full accumulation after a body would need extra state)
-            
+            geo_tf = local_xform  # (NOTE: full accumulation after a body would need extra state)
+
         body_id = parent_body
         is_rigid_body = "PhysicsRigidBodyAPI" in schemas and parent_body == -1
         create_rigid_body = is_rigid_body or path in joint_parents

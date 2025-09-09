@@ -2570,7 +2570,7 @@ Instances: {len(self._instances)}"""
             self._update_shape_instances = False
             self._wp_instance_transforms = wp.array(
                 [instance[3] for instance in self._instances.values()], dtype=wp.transform, device=self._device
-            )            
+            )
             self.update_body_transforms(None)
 
     def update_body_transforms(self, body_tf: wp.array):
