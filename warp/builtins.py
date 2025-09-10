@@ -4795,7 +4795,8 @@ add_builtin(
 
 add_builtin(
     "bvh_query_aabb",
-    input_types={"id": uint64, "low": vec3, "high": vec3, "root": int32},
+    input_types={"id": uint64, "low": vec3, "high": vec3, "root": int},
+    defaults={"root": -1},
     value_type=BvhQuery,
     group="Geometry",
     doc="""Construct an axis-aligned bounding box query against a BVH object.
@@ -4811,7 +4812,8 @@ add_builtin(
 
 add_builtin(
     "bvh_query_ray",
-    input_types={"id": uint64, "start": vec3, "dir": vec3, "root": int32},
+    input_types={"id": uint64, "start": vec3, "dir": vec3, "root": int},
+    defaults={"root": -1},
     value_type=BvhQuery,
     group="Geometry",
     doc="""Construct a ray query against a BVH object.
