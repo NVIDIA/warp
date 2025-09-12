@@ -1419,10 +1419,10 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
                     vec3 q = mesh.points[j];
                     vec3 r = mesh.points[k];
 
-                    float t, u, v, sign;
+                    float t, u, v, w, sign;
                     vec3 n;
 
-                    if (intersect_ray_tri_woop(start, dir, p, q, r, t, u, v, sign, &n))
+                    if (intersect_ray_tri_rtcd(start, dir, p, q, r, t, u, v, w, sign, &n))
                     {
                         if (t < min_t && t >= 0.0f)
                         {
