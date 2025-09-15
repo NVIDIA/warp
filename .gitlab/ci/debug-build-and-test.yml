@@ -76,8 +76,16 @@ windows-x86_64 build:
     - .runner-build-windows-x86_64
   before_script:
     - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
+    - $env:PATH = "$env:CI_PROJECT_DIR\_uv\bin;$env:PATH"
+    - uv venv
+    - .venv\Scripts\activate
+    - uv pip install numpy
+    - tools\packman\packman pull --platform windows-x86_64 deps\cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
+    - tools\packman\packman install -l _build\host-deps\winsdk winsdk 10.17763
+    - tools\packman\packman install -l _build\host-deps\msvc msvc 2019-16.11.24
   script:
-    - ./tools/ci/building/build-windows-x86_64/build.bat --debug
+    - python build_lib.py --jobs 2 --msvc_path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk_path=_build\host-deps\winsdk --cuda_path=_build\target-deps\cuda
 
 # ==============================================================================
 # Unit Testing Jobs (Debug)
