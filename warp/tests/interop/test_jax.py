@@ -573,6 +573,43 @@ def test_jax_ad_kernel_mat22(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for FFI custom_vjp")
+def test_jax_ad_kernel_rgb_hw_not_c(test, device):
+    import jax
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_ad_kernel
+
+    @wp.kernel
+    def brighten_rgb(a: wp.array2d(dtype=wp.vec3), out: wp.array2d(dtype=wp.vec3)):
+        i, j = wp.tid()
+        out[i, j] = a[i, j] * 2.0
+
+    jax_fn = jax_ad_kernel(brighten_rgb, num_outputs=1)
+
+    H, W = 7, 5
+
+    @jax.jit
+    def f(x):
+        return jax_fn(x)[0]
+
+    @jax.jit
+    def gradf(x):
+        return jax.grad(lambda v: jp.sum(jax_fn(v)[0]))(x)
+
+    x = jp.arange(H * W * 3, dtype=jp.float32).reshape((H, W, 3))
+
+    with jax.default_device(wp.device_to_jax(device)):
+        y = f(x)
+        g = gradf(x)
+
+    expected_y = 2.0 * np.arange(H * W * 3, dtype=np.float32).reshape((H, W, 3))
+    expected_g = np.full((H, W, 3), 2.0, dtype=np.float32)
+
+    assert_np_equal(np.asarray(y), expected_y)
+    assert_np_equal(np.asarray(g), expected_g)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for FFI custom_vjp")
 def test_jax_ad_kernel_vmap_simple(test, device):
     import jax
     import jax.numpy as jp
@@ -1187,6 +1224,12 @@ try:
         add_function_test(TestJax, "test_jax_ad_kernel_2d", test_jax_ad_kernel_2d, devices=jax_compatible_cuda_devices)
         add_function_test(
             TestJax, "test_jax_ad_kernel_mat22", test_jax_ad_kernel_mat22, devices=jax_compatible_cuda_devices
+        )
+        add_function_test(
+            TestJax,
+            "test_jax_ad_kernel_rgb_hw_not_c",
+            test_jax_ad_kernel_rgb_hw_not_c,
+            devices=jax_compatible_cuda_devices,
         )
         add_function_test(
             TestJax,
