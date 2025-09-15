@@ -2516,7 +2516,9 @@ class Adjoint:
         indices = adj.eval_indices(target_type, indices)
 
         if is_array(target_type):
-            if len(indices) == target_type.ndim:
+            if len(indices) == target_type.ndim and all(
+                warp.types.type_is_int(strip_reference(x.type)) for x in indices
+            ):
                 # handles array loads (where each dimension has an index specified)
                 out = adj.add_builtin_call("address", [target, *indices])
 
@@ -2524,6 +2526,21 @@ class Adjoint:
                     target.mark_read()
 
             else:
+                if isinstance(target_type, warp.types.array):
+                    # In order to reduce the number of overloads needed in the C
+                    # implementation to support combinations of int/slice indices,
+                    # we convert all integer indices into slices, and set their
+                    # step to 0 if they are representing an integer index.
+                    new_indices = []
+                    for idx in indices:
+                        if not warp.types.is_slice(strip_reference(idx.type)):
+                            new_idx = adj.add_builtin_call("slice", (idx, idx, 0))
+                            new_indices.append(new_idx)
+                        else:
+                            new_indices.append(idx)
+
+                    indices = new_indices
+
                 # handles array views (fewer indices than dimensions)
                 out = adj.add_builtin_call("view", [target, *indices])
 
@@ -2624,6 +2641,12 @@ class Adjoint:
         target, indices = adj.eval_subscript(node)
 
         return adj.emit_indexing(target, indices)
+
+    def emit_Slice(adj, node):
+        start = SLICE_BEGIN if node.lower is None else adj.eval(node.lower)
+        stop = SLICE_END if node.upper is None else adj.eval(node.upper)
+        step = 1 if node.step is None else adj.eval(node.step)
+        return adj.add_builtin_call("slice", (start, stop, step))
 
     def emit_Assign(adj, node):
         if len(node.targets) != 1:
@@ -3041,6 +3064,7 @@ class Adjoint:
         ast.Call: emit_Call,
         ast.Index: emit_Index,  # Deprecated in 3.9
         ast.Subscript: emit_Subscript,
+        ast.Slice: emit_Slice,
         ast.Assign: emit_Assign,
         ast.Return: emit_Return,
         ast.AugAssign: emit_AugAssign,

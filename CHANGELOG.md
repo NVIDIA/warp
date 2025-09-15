@@ -9,6 +9,8 @@
 - Add atomic bitwise operations `wp.atomic_and()` (`&=`), `wp.atomic_or()` (`|=`), and `wp.atomic_xor()` (`^=`) for
   scalar types, along with bitwise operations for vector, matrix, and tile types
   ([GH-886](https://github.com/NVIDIA/warp/issues/886)).
+- Add support for negative indexing and improve slicing for the `wp.array()` type
+  ([GH-504](https://github.com/NVIDIA/warp/issues/504)).
 
 ### Removed
 
