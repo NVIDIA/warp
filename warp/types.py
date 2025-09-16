@@ -20,6 +20,8 @@ import ctypes
 import inspect
 import math
 import struct
+import sys
+import types
 import zlib
 from typing import (
     Any,
@@ -5739,6 +5741,16 @@ def get_type_code(arg_type: type) -> str:
         # special case for generics
         # note: since Python 3.11 Any is a type, so we check for it first
         return "?"
+    elif (
+        sys.version_info < (3, 11)
+        and hasattr(types, "GenericAlias")
+        and isinstance(arg_type, types.GenericAlias)
+        and arg_type.__origin__ is tuple
+    ):
+        # Handle tuple[...] on Python <= 3.10 where it creates types.GenericAlias
+        # This must come before isinstance(arg_type, type) check
+        arg_types = arg_type.__args__
+        return f"tpl{len(arg_types)}{''.join(get_type_code(x) for x in arg_types)}"
     elif isinstance(arg_type, type):
         if hasattr(arg_type, "_wp_scalar_type_"):
             # vector/matrix type
