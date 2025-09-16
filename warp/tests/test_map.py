@@ -476,6 +476,20 @@ add_function_test(TestMap, "test_graph_capture", test_graph_capture, devices=cud
 add_function_test(TestMap, "test_renamed_warp_module", test_renamed_warp_module, devices=devices)
 
 
+class TestMapDebug(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._saved_mode = wp.config.mode
+        wp.config.mode = "debug"
+
+    @classmethod
+    def tearDownClass(cls):
+        wp.config.mode = cls._saved_mode
+
+
+add_function_test(TestMapDebug, "test_mixed_inputs", test_mixed_inputs, devices=devices)
+add_function_test(TestMapDebug, "test_kernel_creation", test_kernel_creation, devices=devices)
+
 if __name__ == "__main__":
     wp.clear_kernel_cache()
     unittest.main(verbosity=2)
