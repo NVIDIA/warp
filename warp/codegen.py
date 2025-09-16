@@ -1244,6 +1244,11 @@ class Adjoint:
             A line directive for the given statement, or None if no line directive is needed.
         """
 
+        if adj.filename == "unknown source file" or adj.fun_lineno == 0:
+            # Early return if function is not associated with a source file or is otherwise invalid
+            # TODO: Get line directives working with wp.map() functions
+            return None
+
         # lineinfo is enabled by default in debug mode regardless of the builder option, don't want to unnecessarily
         # emit line directives in generated code if it's not being compiled with line information
         build_mode = val if (val := adj.builder_options.get("mode")) is not None else warp.config.mode
