@@ -647,6 +647,7 @@ class UsdRenderer:
             mesh.GetDisplayColorAttr().Set(colors, self.time)
 
         self._shape_constructors[name] = UsdGeom.Mesh
+        self._shape_custom_scale[name] = scale
 
         if not is_template:
             _usd_set_xform(mesh, pos, rot, scale, self.time)
