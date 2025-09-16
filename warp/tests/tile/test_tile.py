@@ -838,6 +838,66 @@ def test_tile_assign(test, device):
 
 
 @wp.kernel
+def test_tile_where_kernel(select: int, x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float)):
+    x_reg = wp.tile_load(x, shape=(TILE_M,), storage="register")
+    y_reg = wp.tile_load(y, shape=(TILE_M,), storage="register")
+
+    x_shared = wp.tile_load(x, shape=(TILE_M,), storage="shared")
+    y_shared = wp.tile_load(y, shape=(TILE_M,), storage="shared")
+
+    if select == 0:
+        s = x_reg
+    elif select == 1:
+        s = y_reg
+    elif select == 2:
+        s = x_shared
+    else:
+        s = y_shared
+
+    wp.tile_store(z, s)
+
+
+def test_tile_where(test, device):
+    x = wp.full((TILE_M,), 1.0, dtype=float, device=device, requires_grad=True)
+    y = wp.full((TILE_M,), 2.0, dtype=float, device=device, requires_grad=True)
+    z = wp.zeros((TILE_M), dtype=float, device=device, requires_grad=True)
+
+    z_expected = [
+        np.full(TILE_M, 1.0, dtype=np.float32),
+        np.full(TILE_M, 2.0, dtype=np.float32),
+        np.full(TILE_M, 1.0, dtype=np.float32),
+        np.full(TILE_M, 2.0, dtype=np.float32),
+    ]
+    x_grad_expected = [
+        np.full(TILE_M, 1.0, dtype=np.float32),
+        np.full(TILE_M, 0.0, dtype=np.float32),
+        np.full(TILE_M, 1.0, dtype=np.float32),
+        np.full(TILE_M, 0.0, dtype=np.float32),
+    ]
+    y_grad_expected = [
+        np.full(TILE_M, 0.0, dtype=np.float32),
+        np.full(TILE_M, 1.0, dtype=np.float32),
+        np.full(TILE_M, 0.0, dtype=np.float32),
+        np.full(TILE_M, 1.0, dtype=np.float32),
+    ]
+
+    for i in range(4):
+        tape = wp.Tape()
+        with tape:
+            wp.launch_tiled(test_tile_where_kernel, dim=[1], inputs=[i, x, y], outputs=[z], block_dim=32, device=device)
+
+        z.grad = wp.ones_like(z)
+
+        tape.backward()
+
+        assert_np_equal(z.numpy(), z_expected[i])
+        assert_np_equal(x.grad.numpy(), x_grad_expected[i])
+        assert_np_equal(y.grad.numpy(), y_grad_expected[i])
+
+        tape.zero()
+
+
+@wp.kernel
 def test_tile_transpose_kernel(input: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
     x = wp.tile_load(input, shape=(TILE_M, TILE_N))
     y = wp.tile_transpose(x)
@@ -1261,6 +1321,7 @@ add_function_test(TestTile, "test_tile_sum_launch", test_tile_sum_launch, device
 add_function_test(TestTile, "test_tile_extract", test_tile_extract, devices=devices)
 add_function_test(TestTile, "test_tile_extract_repeated", test_tile_extract_repeated, devices=devices)
 add_function_test(TestTile, "test_tile_assign", test_tile_assign, devices=devices)
+add_function_test(TestTile, "test_tile_where", test_tile_where, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_add_1d", test_tile_broadcast_add_1d, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_add_2d", test_tile_broadcast_add_2d, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_add_3d", test_tile_broadcast_add_3d, devices=devices)
