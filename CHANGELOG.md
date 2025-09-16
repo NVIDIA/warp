@@ -26,6 +26,8 @@
 - Fix `TypeError: Unrecognized type 'tuple[...]'` when using tuple type annotations on Python 3.10. Tuple type hints like `tuple[float, wp.vec3f, wp.vec3f]` now work correctly across all supported Python versions ([GH-959](https://github.com/NVIDIA/warp/issues/959)).
 - Restore support for older GPU architectures (Maxwell, Pascal, Volta) when building with CUDA 12
   ([GH-966](https://github.com/NVIDIA/warp/issues/966)).
+- Fix invalid `#line` directives being emitted for `wp.map()` calls during code generation
+  ([GH-953](https://github.com/NVIDIA/warp/issues/953)).
 
 ## [1.9.0] - 2025-09-04
 
