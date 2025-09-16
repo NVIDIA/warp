@@ -862,6 +862,79 @@ def test_jax_ad_kernel_vmap_double_batch(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for FFI custom_vjp")
+def test_jax_callable_with_custom_vjp(test, device):
+    import jax
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_callable
+
+    # Forward kernel: c = (a*s + b)^2
+    @wp.kernel
+    def fwd_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, c: wp.array(dtype=float)):
+        tid = wp.tid()
+        c[tid] = (a[tid] * s + b[tid]) * (a[tid] * s + b[tid])
+
+    # Backward kernel: produce grads for a and b; s is static
+    @wp.kernel
+    def bwd_kernel(
+        a: wp.array(dtype=float),
+        b: wp.array(dtype=float),
+        s: float,
+        c: wp.array(dtype=float),
+        dc: wp.array(dtype=float),
+        da: wp.array(dtype=float),
+        db: wp.array(dtype=float),
+    ):
+        tid = wp.tid()
+        tmp = 2.0 * (a[tid] * s + b[tid])
+        da[tid] = tmp * s * dc[tid]
+        db[tid] = tmp * dc[tid]
+
+    # Python wrappers with Warp-type annotations for jax_callable
+    def fwd_py(a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, c: wp.array(dtype=float)):
+        wp.launch(fwd_kernel, dim=a.shape, inputs=[a, b, s], outputs=[c])
+
+    def bwd_py(
+        a: wp.array(dtype=float),
+        b: wp.array(dtype=float),
+        s: float,
+        c: wp.array(dtype=float),
+        dc: wp.array(dtype=float),
+        da: wp.array(dtype=float),
+        db: wp.array(dtype=float),
+    ):
+        wp.launch(bwd_kernel, dim=a.shape, inputs=[a, b, s, c, dc], outputs=[da, db])
+
+    # Compose a custom-vjp version: pass bwd via bwd_func
+    j = jax_callable(
+        fwd_py,
+        num_outputs=1,
+        vmap_method="broadcast_all",
+        bwd_func=bwd_py,
+        static_argnames=("s",),
+    )
+
+    def loss(a, b, s):
+        c = j(a, b, s)[0]
+        return jp.sum(c)
+
+    n = 10
+    a = jp.arange(n, dtype=jp.float32)
+    b = jp.ones(n, dtype=jp.float32)
+    s = 2.0
+
+    with jax.default_device(wp.device_to_jax(device)):
+        da, db = jax.grad(loss, argnums=(0, 1))(a, b, s)
+
+    a_np = np.arange(n, dtype=np.float32)
+    b_np = np.ones(n, dtype=np.float32)
+    ref_da = 2.0 * (a_np * s + b_np) * s
+    ref_db = 2.0 * (a_np * s + b_np)
+
+    assert_np_equal(np.asarray(da), ref_da)
+    assert_np_equal(np.asarray(db), ref_db)
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for FFI custom_vjp")
 def test_jax_ad_kernel_vmap_2d_broadcast_all(test, device):
     import jax
     import jax.numpy as jp
@@ -993,6 +1066,52 @@ def test_jax_ad_kernel_auto_static_argnames(test, device):
     assert_np_equal(np.asarray(db), ref_db)
 
 
+@unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for FFI custom_vjp")
+def test_jax_callable_auto_grad(test, device):
+    import jax
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_callable
+
+    # Forward kernel: c = (a*s + b)^2
+    @wp.kernel
+    def fwd_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, c: wp.array(dtype=float)):
+        tid = wp.tid()
+        c[tid] = (a[tid] * s + b[tid]) * (a[tid] * s + b[tid])
+
+    # Python wrapper with annotations
+    def fwd_py(a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, c: wp.array(dtype=float)):
+        wp.launch(fwd_kernel, dim=a.shape, inputs=[a, b, s], outputs=[c])
+
+    # Auto-grad jax_callable
+    j = jax_callable(
+        fwd_py,
+        num_outputs=1,
+        vmap_method="broadcast_all",
+        static_argnames=("s",),
+        auto_grad=True,
+    )
+
+    def loss(a, b, s):
+        c = j(a, b, s)[0]
+        return jp.sum(c)
+
+    n = 12
+    a = jp.arange(n, dtype=jp.float32)
+    b = jp.ones(n, dtype=jp.float32)
+    s = 2.0
+
+    with jax.default_device(wp.device_to_jax(device)):
+        da, db = jax.grad(loss, argnums=(0, 1))(a, b, s)
+
+    a_np = np.arange(n, dtype=np.float32)
+    b_np = np.ones(n, dtype=np.float32)
+    ref_da = 2.0 * (a_np * s + b_np) * s
+    ref_db = 2.0 * (a_np * s + b_np)
+
+    assert_np_equal(np.asarray(da), ref_da)
+    assert_np_equal(np.asarray(db), ref_db)
+
 @unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for shard_map test")
 def test_jax_ad_kernel_shard_map_mul2(test, device):
     import jax
@@ -1114,6 +1233,39 @@ def test_jax_ad_kernel_shard_map_multi_output(test, device):
     assert_np_equal(np.asarray(da), ref_da)
     assert_np_equal(np.asarray(db), ref_db)
 
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for FFI custom_vjp")
+def test_jax_callable_auto_grad_pmap_mul2(test, device):
+    import jax
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_callable
+
+    if jax.local_device_count() < 2:
+        test.skipTest("requires >= 2 local devices")
+
+    @wp.kernel
+    def mul2(a: wp.array(dtype=float), out: wp.array(dtype=float)):
+        tid = wp.tid()
+        out[tid] = 2.0 * a[tid]
+
+    def mul2_py(a: wp.array(dtype=float), out: wp.array(dtype=float)):
+        wp.launch(mul2, dim=a.shape, inputs=[a], outputs=[out])
+
+    j = jax_callable(mul2_py, num_outputs=1, auto_grad=True)
+
+    per_device = 6
+    ndev = jax.local_device_count()
+    x = jp.arange(ndev * per_device, dtype=jp.float32).reshape((ndev, per_device))
+
+    def per_dev_loss(v):
+        (y,) = j(v)
+        return jp.sum(y)
+
+    grads = jax.pmap(jax.grad(per_dev_loss))(x)
+    test.assertTrue(
+        np.allclose(np.asarray(grads), np.full((ndev, per_device), 2.0, dtype=np.float32), rtol=1e-5, atol=1e-6)
+    )
 
 @unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for pmap multi-output test")
 def test_jax_ad_kernel_pmap_multi_output(test, device):
@@ -1299,6 +1451,25 @@ try:
             TestJax,
             "test_jax_ad_kernel_jit_of_grad_multi_output",
             test_jax_ad_kernel_jit_of_grad_multi_output,
+            devices=jax_compatible_cuda_devices,
+        )
+
+        add_function_test(
+            TestJax,
+            "test_jax_callable_with_custom_vjp",
+            test_jax_callable_with_custom_vjp,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_jax_callable_auto_grad",
+            test_jax_callable_auto_grad,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_jax_callable_auto_grad_pmap_mul2",
+            test_jax_callable_auto_grad_pmap_mul2,
             devices=jax_compatible_cuda_devices,
         )
 

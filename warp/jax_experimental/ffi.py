@@ -608,8 +608,8 @@ class FfiCallable:
                     # early out
                     return
 
-            # Use the current CUDA context's device to avoid stream/device mismatch in multi-GPU runs
-            device = wp.get_device("cuda")
+            # Bind to the current JAX device (replica-local) to avoid cross-device mismatches under pmap
+            device = wp.device_from_jax(get_jax_device())
             stream = wp.Stream(device, cuda_stream=cuda_stream)
 
             # reconstruct the argument list
@@ -637,6 +637,7 @@ class FfiCallable:
                         warp_dims = list(dims_jax[jax_rank - warp_ndim :])
                         warp_dims[0] = warp_dims[0] * batch_prod
                         collapsed_shape = tuple(warp_dims)
+                    # ensure the array view is created on the current device
                     arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=collapsed_shape, device=device)
                     arg_list.append(arr)
                 else:
@@ -664,6 +665,7 @@ class FfiCallable:
                     warp_dims = list(dims_jax[jax_rank - warp_ndim :])
                     warp_dims[0] = warp_dims[0] * batch_prod
                     collapsed_shape = tuple(warp_dims)
+                # ensure the array view is created on the current device
                 arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=collapsed_shape, device=device)
                 arg_list.append(arr)
 
@@ -707,6 +709,8 @@ _FFI_REGISTRY_LOCK = threading.Lock()
 
 # Thread-local storage for the current FFI stream so wrappers can launch on the correct device
 _FFI_STREAM_LOCAL = threading.local()
+# Global lock to guard Tape usage in auto-grad backward to avoid nested tapes under pmap
+_FFI_TAPE_LOCK = threading.Lock()
 
 
 def _get_current_ffi_stream() -> Optional[wp.Stream]:
@@ -765,6 +769,10 @@ def jax_callable(
     vmap_method: Optional[str] = "broadcast_all",
     output_dims=None,
     in_out_argnames=None,
+    # Optional custom VJP support
+    bwd_func: Optional[Callable] = None,
+    static_argnames=None,
+    auto_grad: bool = False,
 ):
     """Create a JAX callback from an annotated Python function.
 
@@ -790,6 +798,8 @@ def jax_callable(
             If ``None``, output dimensions are inferred from the launch dimensions.
             This argument can also be specified for individual calls.
         in_out_argnames: Optional. Names of input-output arguments.
+        bwd_func: Optional. A custom backward function to use for the VJP.
+        static_argnames: Optional. Names of static arguments.
 
     Limitations:
         - All kernel arguments must be contiguous arrays or scalars.
@@ -830,7 +840,190 @@ def jax_callable(
             new_callable = FfiCallable(func, num_outputs, graph_mode, vmap_method, output_dims, in_out_argnames)
             _FFI_CALLABLE_REGISTRY[key] = new_callable
 
-    return _FFI_CALLABLE_REGISTRY[key]
+    # If no backward function is provided and auto_grad is not requested, return the forward callable directly
+    if bwd_func is None and not auto_grad:
+        return _FFI_CALLABLE_REGISTRY[key]
+
+    # Build a custom VJP wrapper using either the provided backward function or an auto-grad wrapper.
+    # Infer signature and static args
+    signature = inspect.signature(func)
+    parameters = [p for p in signature.parameters.values() if p.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD]
+    parameter_count = len(parameters)
+    num_inputs_total = parameter_count - num_outputs
+
+    # Determine static args
+    static_args: list[int] = []
+    if static_argnames is not None:
+        name_set = set(static_argnames)
+        for i, p in enumerate(parameters[:num_inputs_total]):
+            if p.name in name_set:
+                static_args.append(i)
+    else:
+        for i, p in enumerate(parameters[:num_inputs_total]):
+            ann = p.annotation
+            try:
+                is_array = isinstance(ann, wp.array)
+            except Exception:
+                is_array = False
+            if not is_array:
+                static_args.append(i)
+    static_args = sorted(set(static_args))
+
+    jax_fwd = _FFI_CALLABLE_REGISTRY[key]
+
+    # Decide backward implementation
+    # Number of gradient outputs equals number of differentiable inputs
+    differentiable_input_indices = [i for i in range(num_inputs_total) if i not in static_args]
+
+    if bwd_func is not None and auto_grad:
+        raise ValueError("Provide either bwd_func or set auto_grad=True, not both.")
+
+    if bwd_func is None and auto_grad:
+        # Create an auto-grad backward wrapper using Tape
+        bwd_input_params = parameters[:num_inputs_total]
+        bwd_output_params = parameters[num_inputs_total:parameter_count]
+        bwd_grad_output_params = [
+            inspect.Parameter(
+                p.name + "__vjp",
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                default=p.default,
+                annotation=p.annotation,
+            )
+            for p in bwd_output_params
+        ]
+
+        bwd_grad_input_params = [
+            inspect.Parameter(
+                parameters[i].name + "__vjp",
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                default=parameters[i].default,
+                annotation=parameters[i].annotation,
+            )
+            for i in differentiable_input_indices
+        ]
+
+        def auto_bwd_wrapper(*args):
+            assert len(args) == 2 * parameter_count - len(static_args)
+            inputs = list(args[:num_inputs_total])
+            outputs = list(args[num_inputs_total:parameter_count])
+            grad_out = list(args[parameter_count : parameter_count + num_outputs])
+            grad_in = list(args[parameter_count + num_outputs :])
+
+            # Map differentiable input index -> grad buffer provided at end
+            idx_to_grad = {idx: grad_in[k] for k, idx in enumerate(differentiable_input_indices)}
+
+            stream = _get_current_ffi_stream()
+            if stream is None:
+                ctx_mgr = wp.ScopedDevice(wp.get_device("cuda"))
+            else:
+                ctx_mgr = wp.ScopedStream(stream, sync_enter=False)
+
+            with ctx_mgr:
+                _FFI_TAPE_LOCK.acquire()
+                try:
+                    with wp.Tape() as tape:
+                        # Mark differentiable inputs and attach grad buffers
+                        for i, arr in enumerate(inputs):
+                            if i in static_args:
+                                continue
+                            if isinstance(arr, wp.array):
+                                try:
+                                    arr.requires_grad = True
+                                    arr.grad = idx_to_grad[i]
+                                    idx_to_grad[i].zero_()
+                                except Exception:
+                                    pass
+
+                        # Run forward
+                        func(*inputs, *outputs)
+
+                        # Backward from provided output cotangents
+                        grads_map = {}
+                        for o, go in zip(outputs, grad_out):
+                            grads_map[o] = go
+                        tape.backward(grads=grads_map)
+                finally:
+                    _FFI_TAPE_LOCK.release()
+
+        # Build the wrapper signature so jax_callable can infer types/shapes
+        auto_bwd_wrapper.__signature__ = inspect.Signature(
+            bwd_input_params + bwd_output_params + bwd_grad_output_params + bwd_grad_input_params
+        )
+
+        jax_bwd = jax_callable(
+            auto_bwd_wrapper,
+            num_outputs=len(differentiable_input_indices),
+            graph_mode=graph_mode,
+            vmap_method=vmap_method,
+        )
+    else:
+        # User-provided backward function path
+        jax_bwd = jax_callable(
+            bwd_func,
+            num_outputs=len(differentiable_input_indices),
+            graph_mode=graph_mode,
+            vmap_method=vmap_method,
+        )
+
+    def fwd_function(*args):
+        outs = jax_fwd(*args, output_dims=output_dims)
+        non_static_inputs = list(args)
+        for i in reversed(static_args):
+            del non_static_inputs[i]
+        if num_outputs == 1:
+            if isinstance(outs, (list, tuple)):
+                outs_tuple = (outs[0],)
+            else:
+                outs_tuple = (outs,)
+        else:
+            outs_tuple = tuple(outs) if isinstance(outs, (list, tuple)) else (outs,)
+        return outs, (tuple(non_static_inputs), outs_tuple)
+
+    def bwd_function(*bwd_args):
+        nondiff_vals = list(bwd_args[: len(static_args)])
+        residuals = bwd_args[len(static_args)]
+        grad_out_args = bwd_args[len(static_args) + 1 :]
+
+        non_static_inputs, output_vals_tuple = residuals
+
+        # Reconstruct full input list including static values at correct indices
+        input_vals = list(non_static_inputs)
+        for i, v in zip(static_args, nondiff_vals):
+            input_vals.insert(i, v)
+
+        if num_outputs > 1:
+            if len(grad_out_args) == 1 and isinstance(grad_out_args[0], (list, tuple)):
+                grad_out_tuple = tuple(grad_out_args[0])
+            else:
+                grad_out_tuple = tuple(grad_out_args)
+        else:
+            go = grad_out_args[0]
+            if isinstance(go, (list, tuple)):
+                grad_out_tuple = (go[0],)
+            else:
+                grad_out_tuple = (go,)
+
+        bwd_call_args = list(input_vals) + list(output_vals_tuple) + list(grad_out_tuple)
+
+        # Let the backward JAX-callable infer output dimensions from inputs
+        # For auto-grad path, different grad outputs may have different shapes, but
+        # the callable can infer them from inputs and annotations.
+        non_static_input_grads = jax_bwd(*bwd_call_args)
+        return tuple(non_static_input_grads)
+
+    jax_func = jax.custom_vjp(jax_fwd, nondiff_argnums=tuple(static_args))
+    jax_func.defvjp(fwd_function, bwd_function)
+
+    if static_args:
+        static_names = [parameters[i].name for i in static_args]
+
+        def _user_callable(*args):
+            return jax_func(*args)
+
+        _user_callable.__signature__ = signature
+        return jax.jit(_user_callable, static_argnames=tuple(static_names))
+
+    return jax_func
 
 
 ###############################################################################
