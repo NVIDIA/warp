@@ -120,12 +120,12 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
         args.push_back("+f16c");  // Enables support for _Float16
     #endif
 
-    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagnostic_options = new clang::DiagnosticOptions();
+    clang::DiagnosticOptions diagnostic_options;
     std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer =
-            std::make_unique<clang::TextDiagnosticPrinter>(llvm::errs(), &*diagnostic_options);
+            std::make_unique<clang::TextDiagnosticPrinter>(llvm::errs(), diagnostic_options);
     clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagnostic_ids;
     std::unique_ptr<clang::DiagnosticsEngine> diagnostic_engine =
-            std::make_unique<clang::DiagnosticsEngine>(diagnostic_ids, &*diagnostic_options, text_diagnostic_printer.release());
+            std::make_unique<clang::DiagnosticsEngine>(diagnostic_ids, diagnostic_options, text_diagnostic_printer.release());
 
     clang::CompilerInstance compiler_instance;
 
@@ -158,7 +158,7 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
     compiler_instance.getLangOpts().MicrosoftExt = 1;  // __forceinline / __int64
     compiler_instance.getLangOpts().DeclSpecKeyword = 1;  // __declspec
 
-    compiler_instance.createDiagnostics(text_diagnostic_printer.get(), false);
+    compiler_instance.createDiagnostics(compiler_instance.getVirtualFileSystem(), text_diagnostic_printer.get(), false);
 
     clang::EmitLLVMOnlyAction emit_llvm_only_action(&context);
     bool success = compiler_instance.ExecuteAction(emit_llvm_only_action);
@@ -184,12 +184,12 @@ static std::unique_ptr<llvm::Module> cuda_to_llvm(const std::string& input_file,
     args.push_back("-target-cpu");
     args.push_back("sm_70");
 
-    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagnostic_options = new clang::DiagnosticOptions();
+    clang::DiagnosticOptions diagnostic_options;
     std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer =
-            std::make_unique<clang::TextDiagnosticPrinter>(llvm::errs(), &*diagnostic_options);
+            std::make_unique<clang::TextDiagnosticPrinter>(llvm::errs(), diagnostic_options);
     clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagnostic_ids;
     std::unique_ptr<clang::DiagnosticsEngine> diagnostic_engine =
-            std::make_unique<clang::DiagnosticsEngine>(diagnostic_ids, &*diagnostic_options, text_diagnostic_printer.release());
+            std::make_unique<clang::DiagnosticsEngine>(diagnostic_ids, diagnostic_options, text_diagnostic_printer.release());
 
     clang::CompilerInstance compiler_instance;
 
@@ -223,7 +223,7 @@ static std::unique_ptr<llvm::Module> cuda_to_llvm(const std::string& input_file,
     compiler_instance.getLangOpts().CUDAIsDevice = 1;
     compiler_instance.getLangOpts().CUDAAllowVariadicFunctions = 1;
 
-    compiler_instance.createDiagnostics(text_diagnostic_printer.get(), false);
+    compiler_instance.createDiagnostics(compiler_instance.getVirtualFileSystem(), text_diagnostic_printer.get(), false);
 
     clang::EmitLLVMOnlyAction emit_llvm_only_action(&context);
     bool success = compiler_instance.ExecuteAction(emit_llvm_only_action);
@@ -358,8 +358,8 @@ WP_API int wp_load_obj(const char* object_file, const char* module_name)
 
         auto jit_expected = llvm::orc::LLJITBuilder()
             .setObjectLinkingLayerCreator(
-                [&](llvm::orc::ExecutionSession &session, const llvm::Triple &triple) {
-                    auto get_memory_manager = []() {
+                [&](llvm::orc::ExecutionSession &session) {
+                    auto get_memory_manager = [](const llvm::MemoryBuffer &) {
                         return std::make_unique<llvm::SectionMemoryManager>();
                     };
                     auto obj_linking_layer = std::make_unique<llvm::orc::RTDyldObjectLinkingLayer>(session, std::move(get_memory_manager));
