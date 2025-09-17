@@ -649,8 +649,8 @@ linux-x86_64 asv:
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - asv machine --yes
-    - asv continuous --interleave-rounds --append-samples --no-only-changed -f 1.10 --bench '^(?!api)' $COMPARE_REF $CI_COMMIT_SHA
-  allow_failure: True # Can make success required after we have tested this job more
+    - asv continuous -e --interleave-rounds --append-samples --no-only-changed -f 1.10 --bench '^(?!api)' $COMPARE_REF $CI_COMMIT_SHA 2>&1 || (asv compare --split $COMPARE_REF $CI_COMMIT_SHA 2>&1 && exit 2)
+  allow_failure: True
 
 # ==============================================================================
 # Child pipelines
