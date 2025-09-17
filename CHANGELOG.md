@@ -28,6 +28,8 @@
 - Fix invalid `#line` directives being emitted for `wp.map()` calls during code generation
   ([GH-953](https://github.com/NVIDIA/warp/issues/953)).
 - Fix scaling not being correctly applied to rendered meshes in some cases ([GH-880](https://github.com/NVIDIA/warp/issues/880)).
+- Restore support for older GPU architectures (Maxwell, Pascal, Volta) when building with CUDA 12
+  ([GH-966](https://github.com/NVIDIA/warp/issues/966)).
 
 ## [1.9.0] - 2025-09-04
 
