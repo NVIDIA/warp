@@ -151,9 +151,8 @@ class FemCorotatedElasticity:
 class FemCorotatedElasticityQuadraticTetmesh(FemCorotatedElasticity):
     """Test corotated elasticity with quadratic tetrahedral elements."""
 
-    rounds = 1
-    repeat = 2
-    number = 5
+    repeat = 5
+    number = 15
 
     params = (["energy", "forces", "hessian"], ["dispatch"])
     param_names = ["fn", "assembly"]
@@ -177,9 +176,8 @@ class FemCorotatedElasticityQuadraticTetmesh(FemCorotatedElasticity):
 class FemCorotatedElasticityLinearGrid(FemCorotatedElasticity):
     """Test corotated elasticity with linear grid elements."""
 
-    rounds = 1
-    repeat = 2
-    number = 5
+    repeat = 5
+    number = 15
 
     params = (["energy", "forces", "hessian"], ["generic", "dispatch"])
     param_names = ["fn", "assembly"]
@@ -202,9 +200,8 @@ class FemCorotatedElasticityLinearGrid(FemCorotatedElasticity):
 class FemCorotatedElasticityVeryHighOrder(FemCorotatedElasticity):
     """Test corotated elasticity with high order elements."""
 
-    rounds = 1
-    repeat = 2
-    number = 5
+    repeat = 15
+    number = 50
 
     params = (["energy", "forces", "hessian"], ["dispatch"])
     param_names = ["fn", "assembly"]
