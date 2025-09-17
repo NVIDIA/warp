@@ -40,6 +40,7 @@ def tile_load_1d_kernel(
     input: wp.array1d(dtype=float),
     out_full: wp.array1d(dtype=float),
     out_padded: wp.array1d(dtype=float),
+    out_sliced: wp.array1d(dtype=float),
     out_offset: wp.array1d(dtype=float),
 ):
     full0 = wp.tile_load(input, TILE_M)
@@ -50,8 +51,13 @@ def tile_load_1d_kernel(
     padded1 = wp.tile_load(input, shape=TILE_M, offset=TILE_OFFSET)
     padded2 = wp.tile_load(input, shape=(TILE_M,), offset=(TILE_OFFSET,))
 
+    sliced0 = wp.tile_load(input[::2], TILE_M)
+    sliced1 = wp.tile_load(input[::2], shape=TILE_M)
+    sliced2 = wp.tile_load(input[::2], shape=(TILE_M,))
+
     wp.tile_store(out_full, full0)
     wp.tile_store(out_padded, padded0)
+    wp.tile_store(out_sliced, sliced0)
     wp.tile_store(out_offset, full0, offset=(TILE_OFFSET,))
 
 
@@ -60,13 +66,16 @@ def tile_load_2d_kernel(
     input: wp.array2d(dtype=float),
     out_full: wp.array2d(dtype=float),
     out_padded: wp.array2d(dtype=float),
+    out_sliced: wp.array2d(dtype=float),
     out_offset: wp.array2d(dtype=float),
 ):
     full0 = wp.tile_load(input, shape=(TILE_M, TILE_N))
     padded0 = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(TILE_OFFSET, TILE_OFFSET))
+    sliced0 = wp.tile_load(input[::2, ::2], shape=(TILE_M, TILE_N))
 
     wp.tile_store(out_full, full0)
     wp.tile_store(out_padded, padded0)
+    wp.tile_store(out_sliced, sliced0)
     wp.tile_store(out_offset, full0, offset=(TILE_OFFSET, TILE_OFFSET))
 
 
@@ -75,13 +84,16 @@ def tile_load_3d_kernel(
     input: wp.array3d(dtype=float),
     out_full: wp.array3d(dtype=float),
     out_padded: wp.array3d(dtype=float),
+    out_sliced: wp.array3d(dtype=float),
     out_offset: wp.array3d(dtype=float),
 ):
     full0 = wp.tile_load(input, shape=(TILE_M, TILE_N, TILE_O))
     padded0 = wp.tile_load(input, shape=(TILE_M, TILE_N, TILE_O), offset=(TILE_OFFSET, TILE_OFFSET, TILE_OFFSET))
+    sliced0 = wp.tile_load(input[::2, ::2, ::2], shape=(TILE_M, TILE_N, TILE_O))
 
     wp.tile_store(out_full, full0)
     wp.tile_store(out_padded, padded0)
+    wp.tile_store(out_sliced, sliced0)
     wp.tile_store(out_offset, full0, offset=(TILE_OFFSET, TILE_OFFSET, TILE_OFFSET))
 
 
@@ -90,15 +102,18 @@ def tile_load_4d_kernel(
     input: wp.array4d(dtype=float),
     out_full: wp.array4d(dtype=float),
     out_padded: wp.array4d(dtype=float),
+    out_sliced: wp.array4d(dtype=float),
     out_offset: wp.array4d(dtype=float),
 ):
     full0 = wp.tile_load(input, shape=(TILE_M, TILE_N, TILE_O, TILE_P))
     padded0 = wp.tile_load(
         input, shape=(TILE_M, TILE_N, TILE_O, TILE_P), offset=(TILE_OFFSET, TILE_OFFSET, TILE_OFFSET, TILE_OFFSET)
     )
+    sliced0 = wp.tile_load(input[::2, ::2, ::2, ::2], shape=(TILE_M, TILE_N, TILE_O, TILE_P))
 
     wp.tile_store(out_full, full0)
     wp.tile_store(out_padded, padded0)
+    wp.tile_store(out_sliced, sliced0)
     wp.tile_store(out_offset, full0, offset=(TILE_OFFSET, TILE_OFFSET, TILE_OFFSET, TILE_OFFSET))
 
 
@@ -112,13 +127,14 @@ def test_tile_load(kernel, ndim):
         input = wp.array(rng.random(shape), dtype=float, requires_grad=True, device=device)
         output_full = wp.zeros(shape, dtype=float, device=device)
         output_padded = wp.zeros(shape, dtype=float, device=device)
+        output_sliced = wp.zeros(shape, dtype=float, device=device)
         output_offset = wp.zeros(shape, dtype=float, device=device)
 
         with wp.Tape() as tape:
             wp.launch_tiled(
                 kernel,
                 dim=[1],
-                inputs=[input, output_full, output_padded, output_offset],
+                inputs=[input, output_full, output_padded, output_sliced, output_offset],
                 block_dim=TILE_DIM,
                 device=device,
             )
@@ -134,8 +150,16 @@ def test_tile_load(kernel, ndim):
         ref_offset = np.zeros_like(ref_full)
         ref_offset[src_slice] = ref_full[dest_slice]
 
+        # construct a slice for the source/dest sliced arrays
+        src_slice = tuple(slice(0, dim, 2) for dim in shape)
+        dest_slice = tuple(slice(0, (dim + 1) // 2) for dim in shape)
+
+        ref_sliced = np.zeros_like(ref_full)
+        ref_sliced[dest_slice] = ref_full[src_slice]
+
         assert_np_equal(output_full.numpy(), ref_full)
         assert_np_equal(output_padded.numpy(), ref_padded)
+        assert_np_equal(output_sliced.numpy(), ref_sliced)
         assert_np_equal(output_offset.numpy(), ref_offset)
 
         output_full.grad = wp.ones_like(output_full)
