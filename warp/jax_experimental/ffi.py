@@ -729,16 +729,7 @@ class FfiCallable:
                 if use_xla_stream:
                     with wp.ScopedDevice(device):
                         with wp.ScopedStream(ffi_stream, sync_enter=False), wp.context.ScopedExternalStream(ffi_stream):
-                            if ffi_stream.is_capturing:
-                                with wp.ScopedCapture(external=True) as capture:
-                                    self.func(*arg_list)
-                                call_desc.capture = capture
-                            elif self.graph_mode == GraphMode.WARP:
-                                with wp.ScopedCapture() as capture:
-                                    self.func(*arg_list)
-                                wp.capture_launch(capture.graph)
-                                call_desc.captures[buffer_hash] = capture
-                            else:
+                            with _temporarily_disable_backward():
                                 self.func(*arg_list)
                 else:
                     # Use buffer-device default stream; explicitly clear any external stream
@@ -772,10 +763,27 @@ _FFI_REGISTRY_LOCK = threading.Lock()
 _FFI_STREAM_LOCAL = threading.local()
 # Global lock to guard Tape usage in auto-grad backward to avoid nested tapes under pmap
 _FFI_TAPE_LOCK = threading.Lock()
+# Global lock to guard temporary global build-config changes (e.g., enable_backward)
+_FFI_BUILD_LOCK = threading.Lock()
 
 
 def _get_current_ffi_stream() -> Optional[wp.Stream]:
     return getattr(_FFI_STREAM_LOCAL, "stream", None)
+
+
+def _temporarily_disable_backward():
+    class _Ctx:
+        def __enter__(self):
+            _FFI_BUILD_LOCK.acquire()
+            self.prev = wp.config.enable_backward
+            wp.config.enable_backward = False
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            wp.config.enable_backward = self.prev
+            _FFI_BUILD_LOCK.release()
+
+    return _Ctx()
 
 
 def jax_kernel(
@@ -945,7 +953,7 @@ def jax_callable(
         bwd_output_params = parameters[num_inputs_total:parameter_count]
         bwd_grad_output_params = [
             inspect.Parameter(
-                p.name + "__vjp",
+                p.name + "__vjp_out",
                 inspect.Parameter.POSITIONAL_OR_KEYWORD,
                 default=p.default,
                 annotation=p.annotation,
@@ -955,7 +963,7 @@ def jax_callable(
 
         bwd_grad_input_params = [
             inspect.Parameter(
-                parameters[i].name + "__vjp",
+                parameters[i].name + "__vjp_in",
                 inspect.Parameter.POSITIONAL_OR_KEYWORD,
                 default=parameters[i].default,
                 annotation=parameters[i].annotation,
@@ -1315,26 +1323,27 @@ def jax_ad_kernel(
     bwd_output_params = parameters[num_inputs:parameter_count]
     bwd_grad_output_params = [
         inspect.Parameter(
-            p.name + "__vjp",
+            f"__wp_vjp_out_{k}",
             inspect.Parameter.POSITIONAL_OR_KEYWORD,
             default=p.default,
             annotation=p.annotation,
         )
-        for p in bwd_output_params
+        for k, p in enumerate(bwd_output_params)
     ]
+
+    differentiable_input_indices = [i for i in range(num_inputs) if i not in static_args]
+    differentiable_input_names = [parameters[i].name for i in differentiable_input_indices]
 
     # Outputs of backward are gradients for differentiable inputs (exclude statics)
     bwd_grad_input_params = [
         inspect.Parameter(
-            p.name + "__vjp",
+            f"__wp_vjp_in_{k}",
             inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            default=p.default,
-            annotation=p.annotation,
+            default=parameters[i].default,
+            annotation=parameters[i].annotation,
         )
-        for p in bwd_input_params
+        for k, i in enumerate(differentiable_input_indices)
     ]
-    for i in reversed(static_args):
-        del bwd_grad_input_params[i]
 
     bwd_signature = bwd_input_params + bwd_output_params + bwd_grad_output_params + bwd_grad_input_params
     bwd_kernel_wrapper.__signature__ = inspect.Signature(bwd_signature)
@@ -1345,9 +1354,6 @@ def jax_ad_kernel(
         vmap_method=vmap_method,
     )
 
-    # Names of gradient outputs corresponding to differentiable inputs
-    differentiable_input_indices = [i for i in range(num_inputs) if i not in static_args]
-    differentiable_input_names = [parameters[i].name for i in differentiable_input_indices]
 
     # Define custom VJP wrappers
     def fwd_function(*args):
@@ -1396,7 +1402,7 @@ def jax_ad_kernel(
         out_dims_map = {}
         # Build a quick lookup of parameter annotations by name
         param_ann = {p.name: p.annotation for p in parameters[:num_inputs]}
-        for name, val in zip(differentiable_input_names, non_static_inputs):
+        for k, (name, val) in enumerate(zip(differentiable_input_names, non_static_inputs)):
             ann = param_ann.get(name)
             if ann is None:
                 continue
@@ -1424,7 +1430,7 @@ def jax_ad_kernel(
                 warp_dims = vshape[max(0, core_rank - warp_ndim) : core_rank]
             else:
                 warp_dims = vshape[-warp_ndim:]
-            out_dims_map[f"{name}__vjp"] = tuple(warp_dims)
+            out_dims_map[f"__wp_vjp_in_{k}"] = tuple(warp_dims)
 
         non_static_input_grads = jax_bwd_kernel(*bwd_call_args, output_dims=out_dims_map)
         return tuple(non_static_input_grads)
