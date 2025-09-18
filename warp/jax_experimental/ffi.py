@@ -233,9 +233,21 @@ class FfiKernel:
             input_output_aliases=self.input_output_aliases,
         )
 
-        # ensure the kernel module is loaded before the callback, otherwise graph capture may fail
-        device = wp.device_from_jax(get_jax_device())
-        self.kernel.module.load(device)
+        # ensure the kernel module is loaded on all local GPUs to avoid per-device build races
+        try:
+            gpus = [d for d in jax.local_devices() if getattr(d, "platform", "") == "gpu"]
+        except Exception:
+            gpus = []
+        if gpus:
+            for d in gpus:
+                dev = wp.device_from_jax(d)
+                self.kernel.module.load(dev)
+        else:
+            d = get_jax_device()
+            if getattr(d, "platform", "") != "gpu":
+                raise RuntimeError("CUDA required for jax_kernel. No GPU devices detected")
+            device = wp.device_from_jax(d)
+            self.kernel.module.load(device)
 
         # save launch data to be retrieved by callback
         launch_id = self.launch_id
@@ -309,9 +321,14 @@ class FfiKernel:
                 kernel_params[num_inputs + i + 1] = ctypes.addressof(arg)
                 arg_refs.append(arg)  # keep a reference
 
-            # get device and stream
-            device = wp.device_from_jax(get_jax_device())
-            stream = get_stream_from_callframe(call_frame.contents)
+            # get stream and derive device from stream to be replica-local under pmap
+            stream_handle = get_stream_from_callframe(call_frame.contents)
+            try:
+                ordinal = wp.context.runtime.core.wp_cuda_stream_get_device_ordinal(stream_handle)
+                device = wp.get_cuda_device(ordinal)
+            except Exception:
+                device = wp.device_from_jax(get_jax_device())
+            stream = wp.Stream(device, cuda_stream=stream_handle)
 
             # get kernel hooks
             hooks = self.kernel.module.get_kernel_hooks(self.kernel, device)
@@ -608,9 +625,26 @@ class FfiCallable:
                     # early out
                     return
 
-            # Bind to the current JAX device (replica-local) to avoid cross-device mismatches under pmap
-            device = wp.device_from_jax(get_jax_device())
-            stream = wp.Stream(device, cuda_stream=cuda_stream)
+            # Determine device strictly and consistently:
+            # 1) Stream device ordinal from XLA's stream
+            stream_ord = wp.context.runtime.core.wp_cuda_stream_get_device_ordinal(cuda_stream)
+            if stream_ord < 0:
+                raise RuntimeError("Failed to derive device ordinal from CUDA stream in FFI callback")
+
+            # 2) Pointer device ordinal from first array input (if any)
+            ptr_ord = None
+            for idx in self.array_input_indices:
+                buf0 = inputs[idx].contents
+                ptr_ord = wp.context.runtime.core.wp_cuda_pointer_get_device_ordinal(ctypes.c_void_p(buf0.data))
+                break
+            if ptr_ord is None or ptr_ord < 0:
+                ptr_ord = stream_ord
+
+            # 3) Enforce agreement between stream and buffer ordinals
+            use_xla_stream = (ptr_ord == stream_ord)
+
+            device = wp.get_cuda_device(ptr_ord)
+            ffi_stream = wp.Stream(device, cuda_stream=cuda_stream) if use_xla_stream else None
 
             # reconstruct the argument list
             arg_list = []
@@ -639,6 +673,16 @@ class FfiCallable:
                         collapsed_shape = tuple(warp_dims)
                     # ensure the array view is created on the current device
                     arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=collapsed_shape, device=device)
+                    if arr.device != device:
+                        raise RuntimeError(
+                            f"FFI array device mismatch for input '{arg.name}': {arr.device} vs {device}"
+                        )
+                    # strict pointer/device ordinal check
+                    ptr_dev = wp.context.runtime.core.wp_cuda_pointer_get_device_ordinal(ctypes.c_void_p(buffer.data))
+                    if ptr_dev >= 0 and ptr_dev != device.ordinal:
+                        raise RuntimeError(
+                            f"FFI input '{arg.name}' pointer device ordinal {ptr_dev} != stream device ordinal {device.ordinal}"
+                        )
                     arg_list.append(arr)
                 else:
                     # scalar argument, get stashed value
@@ -667,29 +711,46 @@ class FfiCallable:
                     collapsed_shape = tuple(warp_dims)
                 # ensure the array view is created on the current device
                 arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=collapsed_shape, device=device)
+                if arr.device != device:
+                    raise RuntimeError(
+                        f"FFI array device mismatch for output '{arg.name}': {arr.device} vs {device}"
+                    )
+                # strict pointer/device ordinal check
+                ptr_dev = wp.context.runtime.core.wp_cuda_pointer_get_device_ordinal(ctypes.c_void_p(buffer.data))
+                if ptr_dev >= 0 and ptr_dev != device.ordinal:
+                    raise RuntimeError(
+                        f"FFI output '{arg.name}' pointer device ordinal {ptr_dev} != stream device ordinal {device.ordinal}"
+                    )
                 arg_list.append(arr)
 
             # call the Python function with reconstructed arguments
-            _FFI_STREAM_LOCAL.stream = stream
+            _FFI_STREAM_LOCAL.stream = ffi_stream if use_xla_stream else None
             try:
-                # with wp.ScopedDevice(device):
-                with wp.ScopedStream(stream, sync_enter=False):
-                    if stream.is_capturing:
-                        # capturing with JAX
-                        with wp.ScopedCapture(external=True) as capture:
-                            self.func(*arg_list)
-                        # keep a reference to the capture object to prevent required modules getting unloaded
-                        call_desc.capture = capture
-                    elif self.graph_mode == GraphMode.WARP:
-                        # capturing with WARP
-                        with wp.ScopedCapture() as capture:
-                            self.func(*arg_list)
-                        wp.capture_launch(capture.graph)
-                        # keep a reference to the capture object and reuse it with same buffers
-                        call_desc.captures[buffer_hash] = capture
-                    else:
-                        # not capturing
-                        self.func(*arg_list)
+                if use_xla_stream:
+                    with wp.ScopedDevice(device):
+                        with wp.ScopedStream(ffi_stream, sync_enter=False), wp.context.ScopedExternalStream(ffi_stream):
+                            if ffi_stream.is_capturing:
+                                with wp.ScopedCapture(external=True) as capture:
+                                    self.func(*arg_list)
+                                call_desc.capture = capture
+                            elif self.graph_mode == GraphMode.WARP:
+                                with wp.ScopedCapture() as capture:
+                                    self.func(*arg_list)
+                                wp.capture_launch(capture.graph)
+                                call_desc.captures[buffer_hash] = capture
+                            else:
+                                self.func(*arg_list)
+                else:
+                    # Use buffer-device default stream; explicitly clear any external stream
+                    with wp.context.ScopedExternalStream(None):
+                        with wp.ScopedDevice(device):
+                            if self.graph_mode == GraphMode.WARP:
+                                with wp.ScopedCapture() as capture:
+                                    self.func(*arg_list)
+                                wp.capture_launch(capture.graph)
+                                call_desc.captures[buffer_hash] = capture
+                            else:
+                                self.func(*arg_list)
             finally:
                 _FFI_STREAM_LOCAL.stream = None
 

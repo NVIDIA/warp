@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import ast
+import threading
 import ctypes
 import functools
 import hashlib
@@ -2833,6 +2834,23 @@ class Stream:
         return runtime.core.wp_cuda_stream_get_priority(self.cuda_stream)
 
 
+_EXTERNAL_STREAM_LOCAL = threading.local()
+
+def _get_external_stream():
+    return getattr(_EXTERNAL_STREAM_LOCAL, "stream", None)
+
+class ScopedExternalStream:
+    def __init__(self, stream: Stream | None):
+        self.stream = stream
+
+    def __enter__(self):
+        _EXTERNAL_STREAM_LOCAL.stream = self.stream
+        return self.stream
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        _EXTERNAL_STREAM_LOCAL.stream = None
+
+
 class Device:
     """A device to allocate Warp arrays and to launch kernels on.
 
@@ -3801,6 +3819,10 @@ class Runtime:
             self.core.wp_cuda_stream_get_capture_id.restype = ctypes.c_uint64
             self.core.wp_cuda_stream_get_priority.argtypes = [ctypes.c_void_p]
             self.core.wp_cuda_stream_get_priority.restype = ctypes.c_int
+            self.core.wp_cuda_stream_get_device_ordinal.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_stream_get_device_ordinal.restype = ctypes.c_int
+            self.core.wp_cuda_pointer_get_device_ordinal.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_pointer_get_device_ordinal.restype = ctypes.c_int
 
             self.core.wp_cuda_event_create.argtypes = [ctypes.c_void_p, ctypes.c_uint]
             self.core.wp_cuda_event_create.restype = ctypes.c_void_p
@@ -5553,10 +5575,23 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
                     f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with {arg_type.ndim} dimension(s) but the passed array has {value.ndim} dimension(s)."
                 )
 
-            # check device
+            # check device; provide detailed diagnostics on mismatch
             if value.device != device:
+                try:
+                    ext_stream = _get_external_stream()
+                    ext_dev = ext_stream.device if ext_stream is not None else None
+                except Exception:
+                    ext_dev = None
+                try:
+                    ptr_ord = runtime.core.wp_cuda_pointer_get_device_ordinal(ctypes.c_void_p(value.ptr)) if value.ptr is not None else -1
+                except Exception:
+                    ptr_ord = -1
                 raise RuntimeError(
-                    f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', but input array for argument '{arg_name}' is on device={value.device}."
+                    (
+                        f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', "
+                        f"but input array for argument '{arg_name}' is on device={value.device}. "
+                        f"[debug ext_stream_device={ext_dev}, ptr_device_ordinal={ptr_ord}]"
+                    )
                 )
 
             return value.__ctype__()
@@ -5911,11 +5946,36 @@ def launch(
 
     init()
 
-    # if stream is specified, use the associated device
+    # resolve device and stream deterministically, avoiding the global default under parallel execution
+    external_stream = _get_external_stream()
+    if stream is None and external_stream is not None:
+        stream = external_stream
     if stream is not None:
         device = stream.device
     else:
         device = runtime.get_device(device)
+
+    # If no explicit stream, prefer the device inferred from the first array argument to avoid
+    # cross-device launches under parallel execution (e.g., pmap). This must happen before module load.
+    # Determine first array device (if any)
+    first_array_device = None
+    for seq in (inputs, outputs, adj_inputs, adj_outputs):
+        for arg in seq:
+            try:
+                if warp.types.is_array(arg):
+                    first_array_device = arg.device
+                    break
+            except Exception:
+                pass
+        if first_array_device is not None:
+            break
+
+    # Prefer the array device to avoid cross-device launches
+    if first_array_device is not None and first_array_device != device:
+        device = first_array_device
+        # If a stream was provided but it is bound to a different device, drop it so we use device.stream
+        if stream is not None and stream.device != device:
+            stream = None
 
     if device == "cpu":
         block_dim = 1
@@ -6011,7 +6071,8 @@ def launch(
             kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
             if stream is None:
-                stream = device.stream
+                ext_s = _get_external_stream()
+                stream = ext_s if ext_s is not None else device.stream
 
             # If the stream is capturing, we retain the CUDA module so that it doesn't get unloaded
             # before the captured graph is released.
