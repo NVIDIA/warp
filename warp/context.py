@@ -3660,7 +3660,13 @@ class Runtime:
             ]
 
             self.core.wp_bvh_create_host.restype = ctypes.c_uint64
-            self.core.wp_bvh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+            self.core.wp_bvh_create_host.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_void_p,
+            ]
 
             self.core.wp_bvh_create_device.restype = ctypes.c_uint64
             self.core.wp_bvh_create_device.argtypes = [
@@ -3668,6 +3674,8 @@ class Runtime:
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_void_p,
                 ctypes.c_int,
             ]
 
