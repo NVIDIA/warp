@@ -36,7 +36,6 @@ from pathlib import Path
 from typing import (
     Any,
     Callable,
-    Dict,
     Iterable,
     List,
     Literal,
@@ -48,6 +47,7 @@ from typing import (
     get_args,
     get_origin,
 )
+from typing import overload as _overload
 
 import numpy as np
 
@@ -849,8 +849,15 @@ class Kernel:
 # ----------------------
 
 
-# decorator to register function, @func
-def func(f: Callable | None = None, *, name: str | None = None):
+@_overload
+def func(f: Callable, *, name: str | None = None) -> Function: ...
+@_overload
+def func(*, name: str | None = None) -> Callable[[Callable], Function]: ...
+def func(f: Callable | None = None, *, name: str | None = None) -> Any:
+    """
+    Decorator to register function, @func
+    """
+
     def wrapper(f, *args, **kwargs):
         if name is None:
             key = warp.codegen.make_full_qualified_name(f)
@@ -1066,12 +1073,17 @@ def func_replay(forward_fn):
     return wrapper
 
 
+@_overload
 def kernel(
-    f: Callable | None = None,
-    *,
-    enable_backward: bool | None = None,
-    module: Module | Literal["unique"] | None = None,
-):
+    f: Callable, *, enable_backward: bool | None = None, module: Module | Literal["unique"] | None = None
+) -> Kernel: ...
+@_overload
+def kernel(
+    *, enable_backward: bool | None = None, module: Module | Literal["unique"] | None = None
+) -> Callable[[Callable], Kernel]: ...
+def kernel(
+    f: Callable | None = None, *, enable_backward: bool | None = None, module: Module | Literal["unique"] | None = None
+) -> Any:
     """
     Decorator to register a Warp kernel from a Python function.
     The function must be defined with type annotations for all arguments.
@@ -1141,15 +1153,17 @@ def kernel(
     return wrapper(f)
 
 
-# decorator to register struct, @struct
-def struct(c: type):
+def struct(c: type) -> warp.codegen.Struct:
+    """
+    Decorator to register struct, @struct
+    """
     m = get_module(c.__module__)
     s = warp.codegen.Struct(key=warp.codegen.make_full_qualified_name(c), cls=c, module=m)
     s = functools.update_wrapper(s, c)
     return s
 
 
-def overload(kernel, arg_types=Union[None, Dict[str, Any], List[Any]]):
+def overload(kernel: Kernel | Callable, arg_types: dict[str, Any] | list[Any] | None = None):
     """Overload a generic kernel with the given argument types.
 
     Can be called directly or used as a function decorator.
