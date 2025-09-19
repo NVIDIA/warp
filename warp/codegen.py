@@ -230,122 +230,19 @@ def struct_instance_repr_recursive(inst: StructInstance, depth: int, use_repr: b
 
 
 class StructInstance:
-    def __init__(self, cls: Struct, ctype):
-        super().__setattr__("_cls", cls)
-
+    def __init__(self, ctype):
         # maintain a c-types object for the top-level instance the struct
-        if not ctype:
-            super().__setattr__("_ctype", cls.ctype())
-        else:
-            super().__setattr__("_ctype", ctype)
+        super().__setattr__("_ctype", ctype)
 
         # create Python attributes for each of the struct's variables
-        for field, var in cls.vars.items():
-            if isinstance(var.type, warp.codegen.Struct):
-                self.__dict__[field] = var.type.instance_type(ctype=getattr(self._ctype, field))
-            elif isinstance(var.type, warp.types.array):
-                self.__dict__[field] = None
-            else:
-                self.__dict__[field] = var.type()
-
-    def __getattribute__(self, name):
-        cls = super().__getattribute__("_cls")
-        if name == "native_name":
-            return cls.native_name
-
-        var = cls.vars.get(name)
-        if var is not None:
-            if isinstance(var.type, type) and issubclass(var.type, ctypes.Array):
-                # Each field stored in a `StructInstance` is exposed as
-                # a standard Python attribute but also has a `ctypes`
-                # equivalent that is being updated in `__setattr__`.
-                # However, when assigning in place an object such as a vec/mat
-                # (e.g.: `my_struct.my_vec[0] = 1.23`), the `__setattr__` method
-                # from `StructInstance` isn't called, and the synchronization
-                # mechanism has no chance of updating the underlying ctype data.
-                # As a workaround, we catch here all attempts at accessing such
-                # objects and directly return their underlying ctype since
-                # the Python-facing Warp vectors and matrices are implemented
-                # using `ctypes.Array` anyways.
-                return getattr(self._ctype, name)
-
-        return super().__getattribute__(name)
+        for k, cst in type(self)._constructors:
+            self.__dict__[k] = cst(ctype)
 
     def __setattr__(self, name, value):
-        if name not in self._cls.vars:
-            raise RuntimeError(f"Trying to set Warp struct attribute that does not exist {name}")
-
-        var = self._cls.vars[name]
-
-        # update our ctype flat copy
-        if isinstance(var.type, array):
-            if value is None:
-                # create array with null pointer
-                setattr(self._ctype, name, array_t())
-            else:
-                # wp.array
-                assert isinstance(value, array)
-                assert types_equal(value.dtype, var.type.dtype), (
-                    f"assign to struct member variable {name} failed, expected type {type_repr(var.type.dtype)}, got type {type_repr(value.dtype)}"
-                )
-                setattr(self._ctype, name, value.__ctype__())
-
-                # workaround to prevent gradient buffers being garbage collected
-                # since users can do struct.array.requires_grad = False the gradient array
-                # would be collected while the struct ctype still holds a reference to it
-                super().__setattr__("_" + name + "_grad", value.grad)
-
-        elif isinstance(var.type, Struct):
-            # assign structs by-value, otherwise we would have problematic cases transferring ownership
-            # of the underlying ctypes data between shared Python struct instances
-
-            if not isinstance(value, StructInstance):
-                raise RuntimeError(
-                    f"Trying to assign a non-structure value to a struct attribute with type: {self._cls.key}"
-                )
-
-            # destination attribution on self
-            dest = getattr(self, name)
-
-            if dest._cls.key is not value._cls.key:
-                raise RuntimeError(
-                    f"Trying to assign a structure of type {value._cls.key} to an attribute of {self._cls.key}"
-                )
-
-            # update all nested ctype vars by deep copy
-            for n in dest._cls.vars:
-                setattr(dest, n, getattr(value, n))
-
-            # early return to avoid updating our Python StructInstance
-            return
-
-        elif issubclass(var.type, ctypes.Array):
-            # vector/matrix type, e.g. vec3
-            if value is None:
-                setattr(self._ctype, name, var.type())
-            elif type(value) == var.type:
-                setattr(self._ctype, name, value)
-            else:
-                # conversion from list/tuple, ndarray, etc.
-                setattr(self._ctype, name, var.type(value))
-
-        else:
-            # primitive type
-            if value is None:
-                # zero initialize
-                setattr(self._ctype, name, var.type._type_())
-            else:
-                if hasattr(value, "_type_"):
-                    # assigning warp type value (e.g.: wp.float32)
-                    value = value.value
-                # float16 needs conversion to uint16 bits
-                if var.type == warp.float16:
-                    setattr(self._ctype, name, float_to_half_bits(value))
-                else:
-                    setattr(self._ctype, name, value)
-
-        # update Python instance
-        super().__setattr__(name, value)
+        try:
+            self._setters[name](self, value)
+        except KeyError as err:
+            raise RuntimeError(f"Trying to set Warp struct attribute that does not exist {name}") from err
 
     def __ctype__(self):
         return self._ctype
@@ -355,6 +252,22 @@ class StructInstance:
 
     def __str__(self):
         return struct_instance_repr_recursive(self, 0, use_repr=False)
+
+    def assign(self, value):
+        """Assigns the values of another struct instance to this one."""
+        if not isinstance(value, StructInstance):
+            raise RuntimeError(
+                f"Trying to assign a non-structure value to a struct attribute with type: {self._cls.key}"
+            )
+
+        if self._cls.key is not value._cls.key:
+            raise RuntimeError(
+                f"Trying to assign a structure of type {value._cls.key} to an attribute of {self._cls.key}"
+            )
+
+        # update all nested ctype vars by deep copy
+        for n in self._cls.vars:
+            setattr(self, n, getattr(value, n))
 
     def to(self, device):
         """Copies this struct with all array members moved onto the given device.
@@ -372,12 +285,12 @@ class StructInstance:
                 setattr(dst, name, value.to(device))
             elif isinstance(var.type, Struct):
                 # nested struct
-                new_struct = value._cls()
+                new_struct = var.type()
                 setattr(dst, name, new_struct)
                 # The call to `setattr()` just above makes a copy of `new_struct`
                 # so we need to reference that new instance of the struct.
                 new_struct = getattr(dst, name)
-                stack.extend((value, new_struct, k, v) for k, v in value._cls.vars.items())
+                stack.extend((value, new_struct, k, v) for k, v in var.type.vars.items())
             else:
                 setattr(dst, name, value)
 
@@ -417,6 +330,82 @@ class StructInstance:
         return tuple(npvalue)
 
 
+def _make_struct_field_constructor(field: str, var_type: type):
+    if isinstance(var_type, warp.codegen.Struct):
+        return lambda ctype: var_type.instance_type(ctype=getattr(ctype, field))
+    elif isinstance(var_type, warp.types.array):
+        return lambda ctype: None
+    elif issubclass(var_type, ctypes.Array):
+        # for vector/matrices, the Python attribute aliases the ctype one
+        return lambda ctype: getattr(ctype, field)
+    else:
+        return lambda ctype: var_type()
+
+
+def _make_struct_field_setter(cls, field: str, var_type: type):
+    def set_array_value(inst, value):
+        if value is None:
+            # create array with null pointer
+            setattr(inst._ctype, field, array_t())
+        else:
+            # wp.array
+            assert isinstance(value, array)
+            assert types_equal(value.dtype, var_type.dtype), (
+                f"assign to struct member variable {field} failed, expected type {type_repr(var_type.dtype)}, got type {type_repr(value.dtype)}"
+            )
+            setattr(inst._ctype, field, value.__ctype__())
+
+            # workaround to prevent gradient buffers being garbage collected
+            # since users can do struct.array.requires_grad = False the gradient array
+            # would be collected while the struct ctype still holds a reference to it
+            if value.requires_grad:
+                cls.__setattr__(inst, "_" + field + "_grad", value.grad)
+
+        cls.__setattr__(inst, field, value)
+
+    def set_struct_value(inst, value):
+        getattr(inst, field).assign(value)
+
+    def set_vector_value(inst, value):
+        # vector/matrix type, e.g. vec3
+        if value is None:
+            setattr(inst._ctype, field, var_type())
+        elif type(value) is var_type:
+            setattr(inst._ctype, field, value)
+        else:
+            # conversion from list/tuple, ndarray, etc.
+            setattr(inst._ctype, field, var_type(value))
+
+        # no need to update the Python attribute,
+        # it's already aliasing the ctype one
+
+    def set_primitive_value(inst, value):
+        # primitive type
+        if value is None:
+            # zero initialize
+            setattr(inst._ctype, field, var_type._type_())
+        else:
+            if hasattr(value, "_type_"):
+                # assigning warp type value (e.g.: wp.float32)
+                value = value.value
+            # float16 needs conversion to uint16 bits
+            if var_type == warp.float16:
+                setattr(inst._ctype, field, float_to_half_bits(value))
+            else:
+                setattr(inst._ctype, field, value)
+
+        cls.__setattr__(inst, field, value)
+
+    if isinstance(var_type, array):
+        return set_array_value
+    elif isinstance(var_type, Struct):
+        return set_struct_value
+    elif issubclass(var_type, ctypes.Array):
+        return set_vector_value
+    else:
+        return set_primitive_value
+
+
 class Struct:
     hash: bytes
 
@@ -430,8 +419,8 @@ class Struct:
             raise RuntimeError("Warp structs must be defined as base classes")
 
         annotations = get_annotations(self.cls)
-        for label, type in annotations.items():
-            self.vars[label] = Var(label, type)
+        for label, type_ in annotations.items():
+            self.vars[label] = Var(label, type_)
 
         fields = []
         for label, var in self.vars.items():
@@ -513,12 +502,19 @@ class Struct:
 
         # The type annotations are inherited in A(), allowing autocomplete in kernels
         class NewStructInstance(self.cls, StructInstance):
-            def __init__(inst, ctype=None):
-                StructInstance.__init__(inst, self, ctype)
+            cls: ClassVar[type] = self.cls
+            native_name: ClassVar[str] = self.native_name
 
-        # make sure warp.types.get_type_code works with this StructInstance
-        NewStructInstance.cls = self.cls
-        NewStructInstance.native_name = self.native_name
+            _cls: ClassVar[type] = self
+            _constructors: ClassVar[list[tuple[str, Callable]]] = [
+                (field, _make_struct_field_constructor(field, var.type)) for field, var in self.vars.items()
+            ]
+            _setters: ClassVar[dict[str, Callable]] = {
+                field: _make_struct_field_setter(self.cls, field, var.type) for field, var in self.vars.items()
+            }
+
+            def __init__(inst, ctype=None):
+                StructInstance.__init__(inst, ctype or self.ctype())
 
         self.instance_type = NewStructInstance
 
