@@ -20,6 +20,7 @@
 
 - Improve efficiency for `bvh_query_aabb`, `mesh_query_aabb` and `bvh_query_ray`.
   This fixes a performance regression introduced in Warp 1.6.0 ([GH-758](https://github.com/NVIDIA/warp/issues/758)).
+- Improve efficiency of struct instance creation and attribute access ([GH-968](https://github.com/NVIDIA/warp/issues/968)).
 
 ### Fixed
 - Fix crash when radix sort is used on multiple streams, including HashGrids ([GH-950](https://github.com/NVIDIA/warp/issues/950)).
