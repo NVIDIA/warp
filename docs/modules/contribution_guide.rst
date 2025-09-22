@@ -5,8 +5,7 @@ Some ways to contribute to the development of Warp include:
 
 * Reporting bugs and requesting new features on `GitHub <https://github.com/NVIDIA/warp/issues>`__.
 * Asking questions, sharing your work, or participating in discussion threads on
-  `GitHub <https://github.com/NVIDIA/warp/discussions>`__ (preferred) or
-  `Discord <https://discord.com/invite/nvidiaomniverse>`__. 
+  `GitHub <https://github.com/NVIDIA/warp/discussions>`__.
 * Adding new examples to the Warp repository.
 * Documentation improvements.
 * Contributing bug fixes or new features.
