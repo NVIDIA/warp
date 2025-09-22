@@ -316,9 +316,9 @@ extern "C"
     WP_API bool wp_cuda_graph_exec_destroy(void* context, void* graph_exec);
     WP_API bool wp_capture_debug_dot_print(void* graph, const char *path, uint32_t flags);
 
-    WP_API bool wp_cuda_graph_insert_if_else(void* context, void* stream, int* condition, void** if_graph_ret, void** else_graph_ret);
-    WP_API bool wp_cuda_graph_insert_while(void* context, void* stream, int* condition, void** body_graph_ret, uint64_t* handle_ret);
-    WP_API bool wp_cuda_graph_set_condition(void* context, void* stream, int* condition, uint64_t handle);
+    WP_API bool wp_cuda_graph_insert_if_else(void* context, void* stream, int arch, bool use_ptx, int* condition, void** if_graph_ret, void** else_graph_ret);
+    WP_API bool wp_cuda_graph_insert_while(void* context, void* stream, int arch, bool use_ptx, int* condition, void** body_graph_ret, uint64_t* handle_ret);
+    WP_API bool wp_cuda_graph_set_condition(void* context, void* stream, int arch, bool use_ptx, int* condition, uint64_t handle);
     WP_API bool wp_cuda_graph_pause_capture(void* context, void* stream, void** graph_ret);
     WP_API bool wp_cuda_graph_resume_capture(void* context, void* stream, void* graph);
     WP_API bool wp_cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph);
