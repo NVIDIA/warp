@@ -184,11 +184,5 @@ html_theme_options = {
             "icon": "fa-brands fa-python",
             "type": "fontawesome",
         },
-        {
-            "name": "Discord",
-            "url": "https://discord.com/channels/827959428476174346/1285719658325999686",
-            "icon": "fa-brands fa-discord",
-            "type": "fontawesome",
-        },
     ],
 }
