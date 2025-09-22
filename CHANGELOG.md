@@ -34,6 +34,7 @@
   ([GH-966](https://github.com/NVIDIA/warp/issues/966)).
 - Fix conditional graph compilation on newer GPU architectures by using PTX fallback when CUBIN is not supported
   ([GH-963](https://github.com/NVIDIA/warp/issues/963)).
+- Fix empty slice `arr[i:i]` causing errors ([GH-958](https://github.com/NVIDIA/warp/issues/958)).
 
 ## [1.9.0] - 2025-09-04
 
