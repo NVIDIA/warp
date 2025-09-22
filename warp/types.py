@@ -2967,9 +2967,9 @@ class array(Array[DType]):
 
                 if start < 0 or start >= self.shape[idx]:
                     raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
-                if stop < 1 or stop > self.shape[idx]:
+                if stop < 0 or stop > self.shape[idx]:
                     raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
-                if stop <= start:
+                if stop < start:
                     raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
 
                 new_shape.append(-((stop - start) // -step))  # ceil division
