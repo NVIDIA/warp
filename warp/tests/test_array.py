@@ -364,6 +364,7 @@ def test_slicing(test, device):
     slice_e = arr[-1:3, :, :]  # test mixed slicing
     slice_e2 = slice_e[0, 0, :]  # test 2x slicing
     slice_f = arr[0:3:2, 0, :]  # test step
+    slice_g = arr[1:1, :0, -1:-1]  # test empty slice
 
     assert_array_equal(slice_a, wp.array(np_arr[1, :, :], dtype=float, device=device))
     assert_array_equal(slice_b, wp.array(np_arr[1:2, :, :], dtype=float, device=device))
@@ -371,6 +372,7 @@ def test_slicing(test, device):
     assert_array_equal(slice_d, wp.array(np_arr[-2:-1, :, :], dtype=float, device=device))
     assert_array_equal(slice_e, wp.array(np_arr[-1:3, :, :], dtype=float, device=device))
     assert_array_equal(slice_e2, wp.array(np_arr[2, 0, :], dtype=float, device=device))
+    assert slice_g.shape == np_arr[1:1, :0, -1:-1].shape == (0, 0, 0)
 
     # wp does not support copying from/to non-contiguous arrays
     # stepped windows must read on the device the original array was created on
