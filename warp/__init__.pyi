@@ -20,6 +20,7 @@ from typing import Tuple
 from typing import Callable
 from typing import TypeVar
 from typing import Generic
+from typing import Sequence
 from typing import overload as over
 
 Length = TypeVar("Length", bound=int)
@@ -331,6 +332,1423 @@ from warp.math import *
 from . import config as config
 
 __version__ = config.version
+
+class vec2h:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec2h) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: float16, y: float16) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float16]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float16) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec2f:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec2f) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: float32, y: float32) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float32]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float32) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec2d:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec2d) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: float64, y: float64) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float64]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float64) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec2b:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec2b) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: int8, y: int8) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[int8]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: int8) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec2ub:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec2ub) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: uint8, y: uint8) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[uint8]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: uint8) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec2s:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec2s) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: int16, y: int16) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[int16]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: int16) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec2us:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec2us) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: uint16, y: uint16) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[uint16]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: uint16) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec2i:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec2i) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: int32, y: int32) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[int32]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: int32) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec2ui:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec2ui) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: uint32, y: uint32) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[uint32]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: uint32) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec2l:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec2l) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: int64, y: int64) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[int64]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: int64) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec2ul:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec2ul) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: uint64, y: uint64) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[uint64]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: uint64) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+vec2 = vec2f
+
+class vec3h:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec3h) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: float16, y: float16, z: float16) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float16]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float16) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec3f:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec3f) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: float32, y: float32, z: float32) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float32]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float32) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec3d:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec3d) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: float64, y: float64, z: float64) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float64]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float64) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec3b:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec3b) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: int8, y: int8, z: int8) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[int8]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: int8) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec3ub:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec3ub) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: uint8, y: uint8, z: uint8) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[uint8]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: uint8) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec3s:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec3s) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: int16, y: int16, z: int16) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[int16]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: int16) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec3us:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec3us) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: uint16, y: uint16, z: uint16) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[uint16]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: uint16) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec3i:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec3i) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: int32, y: int32, z: int32) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[int32]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: int32) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec3ui:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec3ui) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: uint32, y: uint32, z: uint32) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[uint32]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: uint32) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec3l:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec3l) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: int64, y: int64, z: int64) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[int64]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: int64) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec3ul:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec3ul) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: uint64, y: uint64, z: uint64) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[uint64]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: uint64) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+vec3 = vec3f
+
+class vec4h:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec4h) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: float16, y: float16, z: float16, w: float16) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float16]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float16) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec4f:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec4f) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: float32, y: float32, z: float32, w: float32) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float32]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float32) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec4d:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec4d) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: float64, y: float64, z: float64, w: float64) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float64]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float64) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec4b:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec4b) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: int8, y: int8, z: int8, w: int8) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[int8]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: int8) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec4ub:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec4ub) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: uint8, y: uint8, z: uint8, w: uint8) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[uint8]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: uint8) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec4s:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec4s) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: int16, y: int16, z: int16, w: int16) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[int16]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: int16) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec4us:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec4us) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: uint16, y: uint16, z: uint16, w: uint16) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[uint16]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: uint16) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec4i:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec4i) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: int32, y: int32, z: int32, w: int32) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[int32]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: int32) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec4ui:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec4ui) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: uint32, y: uint32, z: uint32, w: uint32) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[uint32]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: uint32) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec4l:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec4l) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: int64, y: int64, z: int64, w: int64) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[int64]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: int64) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+class vec4ul:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized vector."""
+        ...
+
+    @over
+    def __init__(self, other: vec4ul) -> None:
+        """Construct a vector by copy."""
+        ...
+
+    @over
+    def __init__(self, x: uint64, y: uint64, z: uint64, w: uint64) -> None:
+        """Construct a vector from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[uint64]) -> None:
+        """Construct a vector from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: uint64) -> None:
+        """Construct a vector filled with a value."""
+        ...
+
+vec4 = vec4f
+
+class mat22h:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized matrix."""
+        ...
+
+    @over
+    def __init__(self, other: mat22h) -> None:
+        """Construct a matrix by copy."""
+        ...
+
+    @over
+    def __init__(self, m00: float16, m01: float16, m10: float16, m11: float16) -> None:
+        """Construct a matrix from its component values."""
+        ...
+
+    @over
+    def __init__(self, v0: vec2h, v1: vec2h) -> None:
+        """Construct a matrix from its row vectors."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float16]) -> None:
+        """Construct a matrix from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float16) -> None:
+        """Construct a matrix filled with a value."""
+        ...
+
+class mat22f:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized matrix."""
+        ...
+
+    @over
+    def __init__(self, other: mat22f) -> None:
+        """Construct a matrix by copy."""
+        ...
+
+    @over
+    def __init__(self, m00: float32, m01: float32, m10: float32, m11: float32) -> None:
+        """Construct a matrix from its component values."""
+        ...
+
+    @over
+    def __init__(self, v0: vec2f, v1: vec2f) -> None:
+        """Construct a matrix from its row vectors."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float32]) -> None:
+        """Construct a matrix from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float32) -> None:
+        """Construct a matrix filled with a value."""
+        ...
+
+class mat22d:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized matrix."""
+        ...
+
+    @over
+    def __init__(self, other: mat22d) -> None:
+        """Construct a matrix by copy."""
+        ...
+
+    @over
+    def __init__(self, m00: float64, m01: float64, m10: float64, m11: float64) -> None:
+        """Construct a matrix from its component values."""
+        ...
+
+    @over
+    def __init__(self, v0: vec2d, v1: vec2d) -> None:
+        """Construct a matrix from its row vectors."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float64]) -> None:
+        """Construct a matrix from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float64) -> None:
+        """Construct a matrix filled with a value."""
+        ...
+
+mat22 = mat22f
+
+class mat33h:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized matrix."""
+        ...
+
+    @over
+    def __init__(self, other: mat33h) -> None:
+        """Construct a matrix by copy."""
+        ...
+
+    @over
+    def __init__(
+        self,
+        m00: float16,
+        m01: float16,
+        m02: float16,
+        m10: float16,
+        m11: float16,
+        m12: float16,
+        m20: float16,
+        m21: float16,
+        m22: float16,
+    ) -> None:
+        """Construct a matrix from its component values."""
+        ...
+
+    @over
+    def __init__(self, v0: vec3h, v1: vec3h, v2: vec3h) -> None:
+        """Construct a matrix from its row vectors."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float16]) -> None:
+        """Construct a matrix from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float16) -> None:
+        """Construct a matrix filled with a value."""
+        ...
+
+class mat33f:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized matrix."""
+        ...
+
+    @over
+    def __init__(self, other: mat33f) -> None:
+        """Construct a matrix by copy."""
+        ...
+
+    @over
+    def __init__(
+        self,
+        m00: float32,
+        m01: float32,
+        m02: float32,
+        m10: float32,
+        m11: float32,
+        m12: float32,
+        m20: float32,
+        m21: float32,
+        m22: float32,
+    ) -> None:
+        """Construct a matrix from its component values."""
+        ...
+
+    @over
+    def __init__(self, v0: vec3f, v1: vec3f, v2: vec3f) -> None:
+        """Construct a matrix from its row vectors."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float32]) -> None:
+        """Construct a matrix from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float32) -> None:
+        """Construct a matrix filled with a value."""
+        ...
+
+class mat33d:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized matrix."""
+        ...
+
+    @over
+    def __init__(self, other: mat33d) -> None:
+        """Construct a matrix by copy."""
+        ...
+
+    @over
+    def __init__(
+        self,
+        m00: float64,
+        m01: float64,
+        m02: float64,
+        m10: float64,
+        m11: float64,
+        m12: float64,
+        m20: float64,
+        m21: float64,
+        m22: float64,
+    ) -> None:
+        """Construct a matrix from its component values."""
+        ...
+
+    @over
+    def __init__(self, v0: vec3d, v1: vec3d, v2: vec3d) -> None:
+        """Construct a matrix from its row vectors."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float64]) -> None:
+        """Construct a matrix from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float64) -> None:
+        """Construct a matrix filled with a value."""
+        ...
+
+mat33 = mat33f
+
+class mat44h:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized matrix."""
+        ...
+
+    @over
+    def __init__(self, other: mat44h) -> None:
+        """Construct a matrix by copy."""
+        ...
+
+    @over
+    def __init__(
+        self,
+        m00: float16,
+        m01: float16,
+        m02: float16,
+        m03: float16,
+        m10: float16,
+        m11: float16,
+        m12: float16,
+        m13: float16,
+        m20: float16,
+        m21: float16,
+        m22: float16,
+        m23: float16,
+        m30: float16,
+        m31: float16,
+        m32: float16,
+        m33: float16,
+    ) -> None:
+        """Construct a matrix from its component values."""
+        ...
+
+    @over
+    def __init__(self, v0: vec4h, v1: vec4h, v2: vec4h, v3: vec4h) -> None:
+        """Construct a matrix from its row vectors."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float16]) -> None:
+        """Construct a matrix from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float16) -> None:
+        """Construct a matrix filled with a value."""
+        ...
+
+class mat44f:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized matrix."""
+        ...
+
+    @over
+    def __init__(self, other: mat44f) -> None:
+        """Construct a matrix by copy."""
+        ...
+
+    @over
+    def __init__(
+        self,
+        m00: float32,
+        m01: float32,
+        m02: float32,
+        m03: float32,
+        m10: float32,
+        m11: float32,
+        m12: float32,
+        m13: float32,
+        m20: float32,
+        m21: float32,
+        m22: float32,
+        m23: float32,
+        m30: float32,
+        m31: float32,
+        m32: float32,
+        m33: float32,
+    ) -> None:
+        """Construct a matrix from its component values."""
+        ...
+
+    @over
+    def __init__(self, v0: vec4f, v1: vec4f, v2: vec4f, v3: vec4f) -> None:
+        """Construct a matrix from its row vectors."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float32]) -> None:
+        """Construct a matrix from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float32) -> None:
+        """Construct a matrix filled with a value."""
+        ...
+
+class mat44d:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized matrix."""
+        ...
+
+    @over
+    def __init__(self, other: mat44d) -> None:
+        """Construct a matrix by copy."""
+        ...
+
+    @over
+    def __init__(
+        self,
+        m00: float64,
+        m01: float64,
+        m02: float64,
+        m03: float64,
+        m10: float64,
+        m11: float64,
+        m12: float64,
+        m13: float64,
+        m20: float64,
+        m21: float64,
+        m22: float64,
+        m23: float64,
+        m30: float64,
+        m31: float64,
+        m32: float64,
+        m33: float64,
+    ) -> None:
+        """Construct a matrix from its component values."""
+        ...
+
+    @over
+    def __init__(self, v0: vec4d, v1: vec4d, v2: vec4d, v3: vec4d) -> None:
+        """Construct a matrix from its row vectors."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float64]) -> None:
+        """Construct a matrix from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float64) -> None:
+        """Construct a matrix filled with a value."""
+        ...
+
+mat44 = mat44f
+
+class quath:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized quaternion."""
+        ...
+
+    @over
+    def __init__(self, other: quath) -> None:
+        """Construct a quaternion by copy."""
+        ...
+
+    @over
+    def __init__(self, x: float16, y: float16, z: float16, w: float16) -> None:
+        """Construct a quaternion from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float16]) -> None:
+        """Construct a quaternion from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float16) -> None:
+        """Construct a quaternion filled with a value."""
+        ...
+
+class quatf:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized quaternion."""
+        ...
+
+    @over
+    def __init__(self, other: quatf) -> None:
+        """Construct a quaternion by copy."""
+        ...
+
+    @over
+    def __init__(self, x: float32, y: float32, z: float32, w: float32) -> None:
+        """Construct a quaternion from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float32]) -> None:
+        """Construct a quaternion from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float32) -> None:
+        """Construct a quaternion filled with a value."""
+        ...
+
+class quatd:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized quaternion."""
+        ...
+
+    @over
+    def __init__(self, other: quatd) -> None:
+        """Construct a quaternion by copy."""
+        ...
+
+    @over
+    def __init__(self, x: float64, y: float64, z: float64, w: float64) -> None:
+        """Construct a quaternion from its component values."""
+        ...
+
+    @over
+    def __init__(self, args: Sequence[float64]) -> None:
+        """Construct a quaternion from a sequence of values."""
+        ...
+
+    @over
+    def __init__(self, value: float64) -> None:
+        """Construct a quaternion filled with a value."""
+        ...
+
+quat = quatf
+
+class transformh:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized transformation."""
+        ...
+
+    @over
+    def __init__(self, other: transformh) -> None:
+        """Construct a transformation by copy."""
+        ...
+
+    @over
+    def __init__(self, p: vec3h, q: quath) -> None:
+        """Construct a transformation from its p and q components."""
+        ...
+
+    @over
+    def __init__(
+        self, px: float16, py: float16, pz: float16, qx: float16, qy: float16, qz: float16, qw: float16
+    ) -> None:
+        """Construct a transformation from its component values."""
+        ...
+
+    @over
+    def __init__(self, p: Sequence[float16], q: Sequence[float16]) -> None:
+        """Construct a transformation from two sequences of values."""
+        ...
+
+    @over
+    def __init__(self, value: float16) -> None:
+        """Construct a transformation filled with a value."""
+        ...
+
+class transformf:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized transformation."""
+        ...
+
+    @over
+    def __init__(self, other: transformf) -> None:
+        """Construct a transformation by copy."""
+        ...
+
+    @over
+    def __init__(self, p: vec3f, q: quatf) -> None:
+        """Construct a transformation from its p and q components."""
+        ...
+
+    @over
+    def __init__(
+        self, px: float32, py: float32, pz: float32, qx: float32, qy: float32, qz: float32, qw: float32
+    ) -> None:
+        """Construct a transformation from its component values."""
+        ...
+
+    @over
+    def __init__(self, p: Sequence[float32], q: Sequence[float32]) -> None:
+        """Construct a transformation from two sequences of values."""
+        ...
+
+    @over
+    def __init__(self, value: float32) -> None:
+        """Construct a transformation filled with a value."""
+        ...
+
+class transformd:
+    @over
+    def __init__(self) -> None:
+        """Construct a zero-initialized transformation."""
+        ...
+
+    @over
+    def __init__(self, other: transformd) -> None:
+        """Construct a transformation by copy."""
+        ...
+
+    @over
+    def __init__(self, p: vec3d, q: quatd) -> None:
+        """Construct a transformation from its p and q components."""
+        ...
+
+    @over
+    def __init__(
+        self, px: float64, py: float64, pz: float64, qx: float64, qy: float64, qz: float64, qw: float64
+    ) -> None:
+        """Construct a transformation from its component values."""
+        ...
+
+    @over
+    def __init__(self, p: Sequence[float64], q: Sequence[float64]) -> None:
+        """Construct a transformation from two sequences of values."""
+        ...
+
+    @over
+    def __init__(self, value: float64) -> None:
+        """Construct a transformation filled with a value."""
+        ...
+
+transform = transformf
 
 @over
 def min(a: Scalar, b: Scalar) -> Scalar:
