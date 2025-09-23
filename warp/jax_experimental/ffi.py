@@ -29,6 +29,18 @@ from warp.types import array_t, launch_bounds_t, strides_from_shape, type_to_war
 from .xla_ffi import *
 
 
+def check_jax_version():
+    # check if JAX version supports this
+    if jax.__version_info__ < (0, 5, 0):
+        msg = (
+            "This version of jax_kernel() requires JAX version 0.5.0 or higher, "
+            f"but installed JAX version is {jax.__version_info__}."
+        )
+        if jax.__version_info__ >= (0, 4, 25):
+            msg += " Please use warp.jax_experimental.custom_call.jax_kernel instead."
+        raise RuntimeError(msg)
+
+
 class GraphMode(IntEnum):
     NONE = 0  # don't capture a graph
     JAX = 1  # let JAX capture a graph
@@ -668,8 +680,12 @@ def jax_kernel(
         - There must be at least one output or input-output argument.
         - Only the CUDA backend is supported.
     """
+
+    check_jax_version()
+
     key = (
         kernel.func,
+        kernel.sig,
         num_outputs,
         vmap_method,
         tuple(launch_dims) if launch_dims else launch_dims,
@@ -726,6 +742,8 @@ def jax_callable(
         - Only the CUDA backend is supported.
     """
 
+    check_jax_version()
+
     if graph_compatible is not None:
         wp.utils.warn(
             "The `graph_compatible` argument is deprecated, use `graph_mode` instead.",
@@ -771,6 +789,8 @@ def register_ffi_callback(name: str, func: Callable, graph_compatible: bool = Tr
         func: The Python function to call.
         graph_compatible: Optional. Whether the function can be called during CUDA graph capture.
     """
+
+    check_jax_version()
 
     # TODO check that the name is not already registered
 

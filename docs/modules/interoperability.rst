@@ -523,9 +523,12 @@ Using Warp kernels as JAX primitives
 .. note::
     This version of :func:`jax_kernel() <warp.jax_experimental.jax_kernel>` is based on JAX features that are now deprecated.
 
-    For JAX version 0.4.31 or newer, users are encouraged to switch to the new version of
+    For JAX version 0.5.0 or newer, users are encouraged to switch to the new FFI version of
     :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>`
     based on the new :ref:`Foreign Function Interface (FFI)<jax-ffi>`.
+
+    In Warp version 1.10, the FFI version will become the default implementation of `jax_kernel()`.
+    The older version will continue to be available as `warp.jax_experimental.custom_call.jax_kernel`.
 
 Warp kernels can be used as JAX primitives, which allows calling them inside of jitted JAX functions::
 
@@ -656,7 +659,7 @@ JAX Foreign Function Interface (FFI)
 
 .. versionadded:: 1.7
 
-JAX v0.4.31 introduced a new `foreign function interface <https://docs.jax.dev/en/latest/ffi.html>`_ that supersedes
+JAX v0.5.0 introduced a new `foreign function interface <https://docs.jax.dev/en/latest/ffi.html>`_ that supersedes
 the older custom call mechanism. One important benefit is that it allows the foreign function to be captured in a CUDA
 graph together with other JAX operations. This can lead to significant performance improvements.
 
