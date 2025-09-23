@@ -1,37 +1,26 @@
 # Changelog
 
-## [Unreleased] - 2025-??
-
-### Added
-
-- Add an in-place `wp.Bvh.rebuild()` method that rebuilds the hierarchy without allocating new memory and can be
-  captured in CUDA graphs ([GH-826](https://github.com/NVIDIA/warp/issues/826)).
-- Add atomic bitwise operations `wp.atomic_and()` (`&=`), `wp.atomic_or()` (`|=`), and `wp.atomic_xor()` (`^=`) for
-  scalar types, along with bitwise operations for vector, matrix, and tile types
-  ([GH-886](https://github.com/NVIDIA/warp/issues/886)).
-
-### Removed
-
-### Deprecated
-
-### Changed
-
-- Improve efficiency for `bvh_query_aabb`, `mesh_query_aabb` and `bvh_query_ray`.
-  This fixes a performance regression introduced in Warp 1.6.0 ([GH-758](https://github.com/NVIDIA/warp/issues/758)).
+## [1.9.1] - 2025-10-01
 
 ### Fixed
 
-- Fix crash when radix sort is used on multiple streams, including HashGrids ([GH-950](https://github.com/NVIDIA/warp/issues/950)).
-- Fix tile memory leaks and copy/select/where operations ([GH-777](https://github.com/NVIDIA/warp/pull/777/files))
-- Fix scaling not being correctly applied to rendered meshes in some cases ([GH-880](https://github.com/NVIDIA/warp/issues/880)).
-- Fix `TypeError: Unrecognized type 'tuple[...]'` when using tuple type annotations on Python 3.10. Tuple type hints like `tuple[float, wp.vec3f, wp.vec3f]` now work correctly across all supported Python versions ([GH-959](https://github.com/NVIDIA/warp/issues/959)).
-- Restore support for older GPU architectures (Maxwell, Pascal, Volta) when building with CUDA 12
-  ([GH-966](https://github.com/NVIDIA/warp/issues/966)).
+- Fix crash when radix sort is used on multiple streams (e.g., when using hash grids on multiple streams)
+  ([GH-950](https://github.com/NVIDIA/warp/issues/950)).
+- Fix empty slice operations `arr[i:i]` that previously failed with indexing errors
+  ([GH-958](https://github.com/NVIDIA/warp/issues/958)).
+- Fix `TypeError: Unrecognized type 'tuple[...]'` with tuple type annotations on Python 3.10
+  ([GH-959](https://github.com/NVIDIA/warp/issues/959)).
+- Fix memory management issues with shared tiles, including double frees and memory leaks
+  ([GH-777](https://github.com/NVIDIA/warp/pull/777)).
+- Fix use of `wp.copy()`, `wp.select()`, and `wp.where()` with tiles ([GH-777](https://github.com/NVIDIA/warp/pull/777)).
 - Fix invalid `#line` directives being emitted for `wp.map()` calls during code generation
   ([GH-953](https://github.com/NVIDIA/warp/issues/953)).
+- Restore support for older GPU architectures (Maxwell, Pascal, Volta) when building with CUDA 12
+  ([GH-966](https://github.com/NVIDIA/warp/issues/966)).
 - Fix conditional graph compilation on newer GPU architectures by using PTX fallback when CUBIN is not supported
   ([GH-963](https://github.com/NVIDIA/warp/issues/963)).
-- Fix empty slice `arr[i:i]` causing errors ([GH-958](https://github.com/NVIDIA/warp/issues/958)).
+- Fix scaling not being correctly applied to rendered meshes in some cases
+  ([GH-880](https://github.com/NVIDIA/warp/issues/880)).
 
 ## [1.9.0] - 2025-09-04
 
@@ -124,8 +113,6 @@
 - Fix adding superfluous inactive nodes to tetrahedron polynomial function spaces in `warp.fem`.
 - Fix `#line` directives for Python↔CUDA source correlation not being emitted by default when a module is compiled in
   debug mode ([GH-901](https://github.com/NVIDIA/warp/issues/901)).
-- Fix 2D shared tile allocation/de-allocation bug inside Warp functions ([GH-877](https://github.com/NVIDIA/warp/issues/877)).
-- Fix loading "unique" modules using `wp.load_module()`.
 
 ## [1.8.1] - 2025-08-01
 
@@ -1830,7 +1817,8 @@
 
 - Initial publish for alpha testing
 
-[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.9.1...HEAD
+[1.9.1]: https://github.com/NVIDIA/warp/releases/tag/v1.9.1
 [1.9.0]: https://github.com/NVIDIA/warp/releases/tag/v1.9.0
 [1.8.1]: https://github.com/NVIDIA/warp/releases/tag/v1.8.1
 [1.8.0]: https://github.com/NVIDIA/warp/releases/tag/v1.8.0
