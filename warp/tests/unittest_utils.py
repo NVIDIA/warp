@@ -376,24 +376,25 @@ def write_junit_results(
     )
 
     for test_data in test_records:
-        test = test_data[0]
-        test_duration = test_data[1]
-        test_status = test_data[2]
+        test_classname = test_data[0]
+        test_methodname = test_data[1]
+        test_duration = test_data[2]
+        test_status = test_data[3]
 
         test_case = ET.SubElement(
-            root, "testcase", classname=test.__class__.__name__, name=test._testMethodName, time=f"{test_duration:.3f}"
+            root, "testcase", classname=test_classname, name=test_methodname, time=f"{test_duration:.3f}"
         )
 
         if test_status == "FAIL":
-            failure = ET.SubElement(test_case, "failure", message=str(test_data[3]))
-            failure.text = str(test_data[4])  # Stacktrace
+            failure = ET.SubElement(test_case, "failure", message=str(test_data[4]))
+            failure.text = str(test_data[5])  # Stacktrace
         elif test_status == "ERROR":
             error = ET.SubElement(test_case, "error")
-            error.text = str(test_data[4])  # Stacktrace
+            error.text = str(test_data[5])  # Stacktrace
         elif test_status == "SKIP":
             skip = ET.SubElement(test_case, "skipped")
             # Set the skip reason
-            skip.set("message", str(test_data[3]))
+            skip.set("message", str(test_data[4]))
 
     tree = ET.ElementTree(root)
 
@@ -425,7 +426,7 @@ class ParallelJunitTestResult(unittest.TextTestResult):
 
     def _record_test(self, test, code, message=None, details=None):
         duration = round((time.perf_counter_ns() - self.start_time) * 1e-9, 3)  # [s]
-        self.test_record.append((test, duration, code, message, details))
+        self.test_record.append((test.__class__.__name__, test._testMethodName, duration, code, message, details))
 
     def addSuccess(self, test):
         super(unittest.TextTestResult, self).addSuccess(test)
