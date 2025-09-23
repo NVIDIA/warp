@@ -191,7 +191,44 @@ def test_hashgrid_inputs(test, device):
             assert_array_equal(counts_ndim, counts_ref)
 
 
+def test_hashgrid_multiple_streams(test, device):
+    with wp.ScopedDevice(device):
+        points = particle_grid(16, 32, 16, (0.0, 0.3, 0.0), cell_radius * 0.25, 0.1)
+        points_ref = wp.array(points, dtype=wp.vec3)
+        counts_ref = wp.zeros(len(points), dtype=int)
+
+        grid_dim = 64
+        grid_ref = wp.HashGrid(grid_dim, grid_dim, grid_dim)
+        grid_ref.build(points_ref, cell_radius)
+
+        # get reference counts
+        wp.launch(kernel=count_neighbors, dim=len(points), inputs=[grid_ref.id, query_radius, points_ref, counts_ref])
+
+        # create multiple streams
+        num_streams = 10
+        streams = [wp.Stream(device=device) for _ in range(num_streams)]
+        counts_per_stream = [wp.zeros(len(points), dtype=int) for _ in range(num_streams)]
+
+        # test whether HashGrid and radix sort work with multiple streams without race conditions
+        for i in range(num_streams):
+            with wp.ScopedStream(streams[i]):
+                grid = wp.HashGrid(grid_dim, grid_dim, grid_dim)
+                grid.build(points_ref, cell_radius)
+
+                # get counts for this stream
+                wp.launch(
+                    kernel=count_neighbors,
+                    dim=len(points),
+                    inputs=[grid.id, query_radius, points_ref, counts_per_stream[i]],
+                )
+
+        # run this loop after all streams are scheduled to ensure asynchronous behaviour above
+        for i in range(num_streams):
+            assert_array_equal(counts_per_stream[i], counts_ref)
+
+
 devices = get_test_devices()
+cuda_devices = get_cuda_test_devices()
 
 
 class TestHashGrid(unittest.TestCase):
@@ -214,6 +251,7 @@ class TestHashGrid(unittest.TestCase):
 
 add_function_test(TestHashGrid, "test_hashgrid_query", test_hashgrid_query, devices=devices)
 add_function_test(TestHashGrid, "test_hashgrid_inputs", test_hashgrid_inputs, devices=devices)
+add_function_test(TestHashGrid, "test_hashgrid_multiple_streams", test_hashgrid_multiple_streams, devices=cuda_devices)
 
 
 if __name__ == "__main__":

@@ -20,6 +20,8 @@ import ctypes
 import inspect
 import math
 import struct
+import sys
+import types
 import zlib
 from typing import (
     Any,
@@ -1883,7 +1885,9 @@ def type_typestr(dtype: type) -> str:
 
 
 def scalar_short_name(t):
-    if t == float32:
+    if t == float16:
+        return "h"
+    elif t == float32:
         return "f"
     elif t == float64:
         return "d"
@@ -2963,9 +2967,9 @@ class array(Array[DType]):
 
                 if start < 0 or start >= self.shape[idx]:
                     raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
-                if stop < 1 or stop > self.shape[idx]:
+                if stop < 0 or stop > self.shape[idx]:
                     raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
-                if stop <= start:
+                if stop < start:
                     raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
 
                 new_shape.append(-((stop - start) // -step))  # ceil division
@@ -5679,6 +5683,16 @@ def get_type_code(arg_type: type) -> str:
         # special case for generics
         # note: since Python 3.11 Any is a type, so we check for it first
         return "?"
+    elif (
+        sys.version_info < (3, 11)
+        and hasattr(types, "GenericAlias")
+        and isinstance(arg_type, types.GenericAlias)
+        and arg_type.__origin__ is tuple
+    ):
+        # Handle tuple[...] on Python <= 3.10 where it creates types.GenericAlias
+        # This must come before isinstance(arg_type, type) check
+        arg_types = arg_type.__args__
+        return f"tpl{len(arg_types)}{''.join(get_type_code(x) for x in arg_types)}"
     elif isinstance(arg_type, type):
         if hasattr(arg_type, "_wp_scalar_type_"):
             # vector/matrix type

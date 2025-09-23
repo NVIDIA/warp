@@ -2244,21 +2244,7 @@ class Module:
         return self.hashers[block_dim].get_module_hash()
 
     def _use_ptx(self, device) -> bool:
-        # determine whether to use PTX or CUBIN
-        if device.is_cubin_supported:
-            # get user preference specified either per module or globally
-            preferred_cuda_output = self.options.get("cuda_output") or warp.config.cuda_output
-            if preferred_cuda_output is not None:
-                use_ptx = preferred_cuda_output == "ptx"
-            else:
-                # determine automatically: older drivers may not be able to handle PTX generated using newer
-                # CUDA Toolkits, in which case we fall back on generating CUBIN modules
-                use_ptx = runtime.driver_version >= runtime.toolkit_version
-        else:
-            # CUBIN not an option, must use PTX (e.g. CUDA Toolkit too old)
-            use_ptx = True
-
-        return use_ptx
+        return device.get_cuda_output_format(self.options.get("cuda_output")) == "ptx"
 
     def get_module_identifier(self) -> str:
         """Get an abbreviated module name to use for directories and files in the cache.
@@ -2278,19 +2264,7 @@ class Module:
         if device is None:
             device = runtime.get_device()
 
-        if device.is_cpu:
-            return None
-
-        if self._use_ptx(device):
-            # use the default PTX arch if the device supports it
-            if warp.config.ptx_target_arch is not None:
-                output_arch = min(device.arch, warp.config.ptx_target_arch)
-            else:
-                output_arch = min(device.arch, runtime.default_ptx_arch)
-        else:
-            output_arch = device.arch
-
-        return output_arch
+        return device.get_cuda_compile_arch()
 
     def get_compile_output_name(
         self, device: Device | None, output_arch: int | None = None, use_ptx: bool | None = None
@@ -3327,6 +3301,78 @@ class Device:
         else:
             return False
 
+    def get_cuda_output_format(self, preferred_cuda_output: str | None = None) -> str | None:
+        """Determine the CUDA output format to use for this device.
+
+        This method is intended for internal use by Warp's compilation system.
+        External users should not need to call this method directly.
+
+        It determines whether to use PTX or CUBIN output based on device capabilities,
+        caller preferences, and runtime constraints.
+
+        Args:
+            preferred_cuda_output: Caller's preferred format (``"ptx"``, ``"cubin"``, or ``None``).
+                If ``None``, falls back to global config or automatic determination.
+
+        Returns:
+            The output format to use: ``"ptx"``, ``"cubin"``, or ``None`` for CPU devices.
+        """
+
+        if self.is_cpu:
+            # CPU devices don't use CUDA compilation
+            return None
+
+        if not self.is_cubin_supported:
+            return "ptx"
+
+        # Use provided preference or fall back to global config
+        if preferred_cuda_output is None:
+            preferred_cuda_output = warp.config.cuda_output
+
+        if preferred_cuda_output is not None:
+            # Caller specified a preference, use it if supported
+            if preferred_cuda_output in ("ptx", "cubin"):
+                return preferred_cuda_output
+            else:
+                # Invalid preference, fall back to automatic determination
+                pass
+
+        # Determine automatically: Older drivers may not be able to handle PTX generated using newer CUDA Toolkits,
+        # in which case we fall back on generating CUBIN modules
+        return "ptx" if self.runtime.driver_version >= self.runtime.toolkit_version else "cubin"
+
+    def get_cuda_compile_arch(self) -> int | None:
+        """Get the CUDA architecture to use when compiling code for this device.
+
+        This method is intended for internal use by Warp's compilation system.
+        External users should not need to call this method directly.
+
+        Determines the appropriate compute capability version to use when compiling
+        CUDA kernels for this device. The architecture depends on the device's
+        CUDA output format preference and available target architectures.
+
+        For PTX output format, uses the minimum of the device's architecture and
+        the configured PTX target architecture to ensure compatibility.
+        For CUBIN output format, uses the device's exact architecture.
+
+        Returns:
+            The compute capability version (e.g., 75 for ``sm_75``) to use for compilation,
+            or ``None`` for CPU devices which don't use CUDA compilation.
+        """
+        if self.is_cpu:
+            return None
+
+        if self.get_cuda_output_format() == "ptx":
+            # use the default PTX arch if the device supports it
+            if warp.config.ptx_target_arch is not None:
+                output_arch = min(self.arch, warp.config.ptx_target_arch)
+            else:
+                output_arch = min(self.arch, runtime.default_ptx_arch)
+        else:
+            output_arch = self.arch
+
+        return output_arch
+
 
 """ Meta-type for arguments that can be resolved to a concrete Device.
 """
@@ -4036,6 +4082,8 @@ class Runtime:
             self.core.wp_cuda_graph_insert_if_else.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_bool,
                 ctypes.POINTER(ctypes.c_int),
                 ctypes.POINTER(ctypes.c_void_p),
                 ctypes.POINTER(ctypes.c_void_p),
@@ -4045,6 +4093,8 @@ class Runtime:
             self.core.wp_cuda_graph_insert_while.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_bool,
                 ctypes.POINTER(ctypes.c_int),
                 ctypes.POINTER(ctypes.c_void_p),
                 ctypes.POINTER(ctypes.c_uint64),
@@ -4054,6 +4104,8 @@ class Runtime:
             self.core.wp_cuda_graph_set_condition.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_bool,
                 ctypes.POINTER(ctypes.c_int),
                 ctypes.c_uint64,
             ]
@@ -7053,6 +7105,8 @@ def capture_if(
     if not runtime.core.wp_cuda_graph_insert_if_else(
         device.context,
         stream.cuda_stream,
+        device.get_cuda_compile_arch(),
+        device.get_cuda_output_format() == "ptx",
         ctypes.cast(condition.ptr, ctypes.POINTER(ctypes.c_int32)),
         None if on_true is None else ctypes.byref(graph_on_true),
         None if on_false is None else ctypes.byref(graph_on_false),
@@ -7117,7 +7171,9 @@ def capture_if(
     capture_resume(main_graph, stream=stream)
 
 
-def capture_while(condition: warp.array(dtype=int), while_body: Callable | Graph, stream: Stream = None, **kwargs):
+def capture_while(
+    condition: warp.array(dtype=int), while_body: Callable | Graph, stream: Stream | None = None, **kwargs
+):
     """Create a dynamic loop based on a condition.
 
     The condition value is retrieved from the first element of the ``condition`` array.
@@ -7185,6 +7241,8 @@ def capture_while(condition: warp.array(dtype=int), while_body: Callable | Graph
     if not runtime.core.wp_cuda_graph_insert_while(
         device.context,
         stream.cuda_stream,
+        device.get_cuda_compile_arch(),
+        device.get_cuda_output_format() == "ptx",
         ctypes.cast(condition.ptr, ctypes.POINTER(ctypes.c_int32)),
         ctypes.byref(body_graph),
         ctypes.byref(cond_handle),
@@ -7218,6 +7276,8 @@ def capture_while(condition: warp.array(dtype=int), while_body: Callable | Graph
     if not runtime.core.wp_cuda_graph_set_condition(
         device.context,
         stream.cuda_stream,
+        device.get_cuda_compile_arch(),
+        device.get_cuda_output_format() == "ptx",
         ctypes.cast(condition.ptr, ctypes.POINTER(ctypes.c_int32)),
         cond_handle,
     ):
@@ -7748,6 +7808,7 @@ def export_stubs(file):  # pragma: no cover
     print("from typing import Callable", file=file)
     print("from typing import TypeVar", file=file)
     print("from typing import Generic", file=file)
+    print("from typing import Sequence", file=file)
     print("from typing import overload as over", file=file)
     print(file=file)
 
@@ -7776,7 +7837,7 @@ def export_stubs(file):  # pragma: no cover
     print(header, file=file)
     print(file=file)
 
-    def add_stub(f):
+    def add_builtin_function_stub(f):
         args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
 
         return_str = ""
@@ -7796,12 +7857,162 @@ def export_stubs(file):  # pragma: no cover
         print('    """', file=file)
         print("    ...\n\n", file=file)
 
+    def add_vector_type_stub(cls, label):
+        cls_name = cls.__name__
+        scalar_type_name = cls._wp_scalar_type_.__name__
+
+        print(f"class {cls_name}:", file=file)
+
+        print("    @over", file=file)
+        print("    def __init__(self) -> None:", file=file)
+        print(f'        """Construct a zero-initialized {label}."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, other: {cls_name}) -> None:", file=file)
+        print(f'        """Construct a {label} by copy."""', file=file)
+        print("        ...\n\n", file=file)
+
+        args = ", ".join(f"{x}: {scalar_type_name}" for x in "xyzw"[: cls._length_])
+        print("    @over", file=file)
+        print(f"    def __init__(self, {args}) -> None:", file=file)
+        print(f'        """Construct a {label} from its component values."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, args: Sequence[{scalar_type_name}]) -> None:", file=file)
+        print(f'        """Construct a {label} from a sequence of values."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, value: {scalar_type_name}) -> None:", file=file)
+        print(f'        """Construct a {label} filled with a value."""', file=file)
+        print("        ...\n\n", file=file)
+
+    def add_matrix_type_stub(cls, label):
+        cls_name = cls.__name__
+        scalar_type_name = cls._wp_scalar_type_.__name__
+        scalar_short_name = warp.types.scalar_short_name(cls._wp_scalar_type_)
+
+        print(f"class {cls_name}:", file=file)
+
+        print("    @over", file=file)
+        print("    def __init__(self) -> None:", file=file)
+        print(f'        """Construct a zero-initialized {label}."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, other: {cls_name}) -> None:", file=file)
+        print(f'        """Construct a {label} by copy."""', file=file)
+        print("        ...\n\n", file=file)
+
+        args = ", ".join(f"m{i}{j}: {scalar_type_name}" for i in range(cls._shape_[0]) for j in range(cls._shape_[1]))
+        print("    @over", file=file)
+        print(f"    def __init__(self, {args}) -> None:", file=file)
+        print(f'        """Construct a {label} from its component values."""', file=file)
+        print("        ...\n\n", file=file)
+
+        args = ", ".join(f"v{i}: vec{cls._shape_[0]}{scalar_short_name}" for i in range(cls._shape_[0]))
+        print("    @over", file=file)
+        print(f"    def __init__(self, {args}) -> None:", file=file)
+        print(f'        """Construct a {label} from its row vectors."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, args: Sequence[{scalar_type_name}]) -> None:", file=file)
+        print(f'        """Construct a {label} from a sequence of values."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, value: {scalar_type_name}) -> None:", file=file)
+        print(f'        """Construct a {label} filled with a value."""', file=file)
+        print("        ...\n\n", file=file)
+
+    def add_transform_type_stub(cls, label):
+        cls_name = cls.__name__
+        scalar_type_name = cls._wp_scalar_type_.__name__
+        scalar_short_name = warp.types.scalar_short_name(cls._wp_scalar_type_)
+
+        print(f"class {cls_name}:", file=file)
+
+        print("    @over", file=file)
+        print("    def __init__(self) -> None:", file=file)
+        print(f'        """Construct a zero-initialized {label}."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, other: {cls_name}) -> None:", file=file)
+        print(f'        """Construct a {label} by copy."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, p: vec3{scalar_short_name}, q: quat{scalar_short_name}) -> None:", file=file)
+        print(f'        """Construct a {label} from its p and q components."""', file=file)
+        print("        ...\n\n", file=file)
+
+        args = ()
+        args += tuple(f"p{x}: {scalar_type_name}" for x in "xyz")
+        args += tuple(f"q{x}: {scalar_type_name}" for x in "xyzw")
+        args = ", ".join(args)
+        print("    @over", file=file)
+        print(f"    def __init__(self, {args}) -> None:", file=file)
+        print(f'        """Construct a {label} from its component values."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(
+            f"    def __init__(self, p: Sequence[{scalar_type_name}], q: Sequence[{scalar_type_name}]) -> None:",
+            file=file,
+        )
+        print(f'        """Construct a {label} from two sequences of values."""', file=file)
+        print("        ...\n\n", file=file)
+
+        print("    @over", file=file)
+        print(f"    def __init__(self, value: {scalar_type_name}) -> None:", file=file)
+        print(f'        """Construct a {label} filled with a value."""', file=file)
+        print("        ...\n\n", file=file)
+
+    # Vector types.
+    suffixes = ("h", "f", "d", "b", "ub", "s", "us", "i", "ui", "l", "ul")
+    for length in (2, 3, 4):
+        for suffix in suffixes:
+            cls = getattr(warp.types, f"vec{length}{suffix}")
+            add_vector_type_stub(cls, "vector")
+
+        print(f"vec{length} = vec{length}f", file=file)
+
+    # Matrix types.
+    suffixes = ("h", "f", "d")
+    for length in (2, 3, 4):
+        shape = f"{length}{length}"
+        for suffix in suffixes:
+            cls = getattr(warp.types, f"mat{shape}{suffix}")
+            add_matrix_type_stub(cls, "matrix")
+
+        print(f"mat{shape} = mat{shape}f", file=file)
+
+    # Quaternion types.
+    suffixes = ("h", "f", "d")
+    for suffix in suffixes:
+        cls = getattr(warp.types, f"quat{suffix}")
+        add_vector_type_stub(cls, "quaternion")
+
+    print("quat = quatf", file=file)
+
+    # Transformation types.
+    suffixes = ("h", "f", "d")
+    for suffix in suffixes:
+        cls = getattr(warp.types, f"transform{suffix}")
+        add_transform_type_stub(cls, "transformation")
+
+    print("transform = transformf", file=file)
+
     for g in builtin_functions.values():
         if hasattr(g, "overloads"):
             for f in g.overloads:
-                add_stub(f)
+                add_builtin_function_stub(f)
         elif isinstance(g, Function):
-            add_stub(g)
+            add_builtin_function_stub(g)
 
 
 def export_builtins(file: io.TextIOBase):  # pragma: no cover

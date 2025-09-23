@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.9.1] - 2025-10-01
+
+### Fixed
+
+- Fix crash when radix sort is used on multiple streams (e.g., when using hash grids on multiple streams)
+  ([GH-950](https://github.com/NVIDIA/warp/issues/950)).
+- Fix empty slice operations `arr[i:i]` that previously failed with indexing errors
+  ([GH-958](https://github.com/NVIDIA/warp/issues/958)).
+- Fix `TypeError: Unrecognized type 'tuple[...]'` with tuple type annotations on Python 3.10
+  ([GH-959](https://github.com/NVIDIA/warp/issues/959)).
+- Fix memory management issues with shared tiles, including double frees and memory leaks
+  ([GH-777](https://github.com/NVIDIA/warp/pull/777)).
+- Fix use of `wp.copy()`, `wp.select()`, and `wp.where()` with tiles ([GH-777](https://github.com/NVIDIA/warp/pull/777)).
+- Fix invalid `#line` directives being emitted for `wp.map()` calls during code generation
+  ([GH-953](https://github.com/NVIDIA/warp/issues/953)).
+- Restore support for older GPU architectures (Maxwell, Pascal, Volta) when building with CUDA 12
+  ([GH-966](https://github.com/NVIDIA/warp/issues/966)).
+- Fix conditional graph compilation on newer GPU architectures by using PTX fallback when CUBIN is not supported
+  ([GH-963](https://github.com/NVIDIA/warp/issues/963)).
+- Fix scaling not being correctly applied to rendered meshes in some cases
+  ([GH-880](https://github.com/NVIDIA/warp/issues/880)).
+- Fix empty slice `arr[i:i]` causing errors ([GH-958](https://github.com/NVIDIA/warp/issues/958)).
+- Fix handling of generic kernels with `wp.jax_experimental.ffi.jax_kernel()`.
+
 ## [1.9.0] - 2025-09-04
 
 ### Added
@@ -1795,7 +1819,8 @@
 
 - Initial publish for alpha testing
 
-[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.9.1...HEAD
+[1.9.1]: https://github.com/NVIDIA/warp/releases/tag/v1.9.1
 [1.9.0]: https://github.com/NVIDIA/warp/releases/tag/v1.9.0
 [1.8.1]: https://github.com/NVIDIA/warp/releases/tag/v1.8.1
 [1.8.0]: https://github.com/NVIDIA/warp/releases/tag/v1.8.0

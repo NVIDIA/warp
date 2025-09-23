@@ -1093,8 +1093,8 @@ CUDA_CALLABLE inline T select(const C& cond, const T& a, const T& b)
     return (!!cond) ? b : a;
 }
 
-template <typename C, typename T>
-CUDA_CALLABLE inline void adj_select(const C& cond, const T& a, const T& b, C& adj_cond, T& adj_a, T& adj_b, const T& adj_ret)
+template <typename C, typename TA, typename TB, typename TRet>
+CUDA_CALLABLE inline void adj_select(const C& cond, const TA& a, const TB& b, C& adj_cond, TA& adj_a, TB& adj_b, const TRet& adj_ret)
 {
     // The double NOT operator !! casts to bool without compiler warnings.
     if (!!cond)
@@ -1110,8 +1110,8 @@ CUDA_CALLABLE inline T where(const C& cond, const T& a, const T& b)
     return (!!cond) ? a : b;
 }
 
-template <typename C, typename T>
-CUDA_CALLABLE inline void adj_where(const C& cond, const T& a, const T& b, C& adj_cond, T& adj_a, T& adj_b, const T& adj_ret)
+template <typename C, typename TA, typename TB, typename TRet>
+CUDA_CALLABLE inline void adj_where(const C& cond, const TA& a, const TB& b, C& adj_cond, TA& adj_a, TB& adj_b, const TRet& adj_ret)
 {
     // The double NOT operator !! casts to bool without compiler warnings.
     if (!!cond)

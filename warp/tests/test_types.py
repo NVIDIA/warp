@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 from warp.tests.unittest_utils import *
@@ -526,6 +527,66 @@ class TestTypes(unittest.TestCase):
         test_conversions(wp.uint32, np.uint32)
         test_conversions(wp.uint64, np.uint64)
         test_conversions(wp.bool, np.bool_)
+
+    # Only define this test method on Python 3.9+ where lowercase tuple is supported
+    if sys.version_info >= (3, 9):
+
+        def test_tuple_type_code_generation(self):
+            """Test that tuple type annotations generate correct type codes, especially on Python 3.10."""
+            import sys
+            import types
+            from typing import get_origin
+
+            # Test basic tuple types
+            tuple_float_float = tuple[float, float]
+            result = wp.types.get_type_code(tuple_float_float)
+            self.assertEqual(result, "tpl2f4f4", "tuple[float, float] should generate 'tpl2f4f4'")
+
+            # Test tuple with Warp vector types - the problematic case from Python 3.10
+            tuple_mixed = tuple[float, wp.vec3f, wp.vec3f]
+            result = wp.types.get_type_code(tuple_mixed)
+            self.assertEqual(result, "tpl3f4v3f4v3f4", "tuple[float, vec3f, vec3f] should generate 'tpl3f4v3f4v3f4'")
+
+            # Test homogeneous tuple with ellipsis
+            tuple_homogeneous = tuple[wp.vec3f, ...]
+            result = wp.types.get_type_code(tuple_homogeneous)
+            self.assertEqual(result, "tpl2v3f4?", "tuple[vec3f, ...] should generate 'tpl2v3f4?'")
+
+            # Test single element tuple
+            tuple_single = tuple[wp.int32]
+            result = wp.types.get_type_code(tuple_single)
+            self.assertEqual(result, "tpl1i4", "tuple[int32] should generate 'tpl1i4'")
+
+            # Test tuple with multiple Warp types
+            tuple_multi_warp = tuple[wp.vec3f, wp.mat33f, wp.quatf]
+            result = wp.types.get_type_code(tuple_multi_warp)
+            self.assertEqual(
+                result, "tpl3v3f4m33f4qf4", "tuple[vec3f, mat33f, quatf] should generate 'tpl3v3f4m33f4qf4'"
+            )
+
+            # Verify the fix works on Python 3.9-3.10 specifically
+            if sys.version_info < (3, 11) and hasattr(types, "GenericAlias"):
+                # On Python 3.9-3.10, tuple[...] creates types.GenericAlias
+                self.assertIsInstance(
+                    tuple_mixed, types.GenericAlias, "On Python 3.9-3.10, tuple[...] should create types.GenericAlias"
+                )
+                self.assertIs(tuple_mixed.__origin__, tuple, "GenericAlias origin should be tuple")
+
+                # Verify our fix catches this case
+                self.assertEqual(get_origin(tuple_mixed), tuple, "get_origin should return tuple")
+            elif sys.version_info >= (3, 11):
+                # On Python 3.11+, the existing code path should handle it
+                self.assertEqual(get_origin(tuple_mixed), tuple, "get_origin should return tuple on Python 3.11+")
+
+            # Test that the fix doesn't break existing functionality
+            # Test with built-in Python types
+            tuple_builtin = tuple[int, str, bool]
+            try:
+                # This might fail because str and bool aren't Warp types, but it shouldn't crash
+                wp.types.get_type_code(tuple_builtin)
+            except TypeError as e:
+                # Expected to fail for non-Warp types, but should be a clean TypeError
+                self.assertIn("Unrecognized type", str(e))
 
 
 for dtype in wp.types.int_types:

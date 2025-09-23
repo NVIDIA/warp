@@ -223,6 +223,21 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: list[str]
                 gencode_opts += ["-gencode=arch=compute_52,code=compute_52", "-gencode=arch=compute_75,code=compute_75"]
                 clang_arch_flags += ["--cuda-gpu-arch=sm_52", "--cuda-gpu-arch=sm_75"]
         else:
+            if ctk_version < (13, 0):
+                # Add targets that were removed in CUDA 13
+                gencode_opts += [
+                    "-gencode=arch=compute_52,code=sm_52",  # Maxwell
+                    "-gencode=arch=compute_60,code=sm_60",  # Pascal
+                    "-gencode=arch=compute_61,code=sm_61",
+                    "-gencode=arch=compute_70,code=sm_70",  # Volta
+                ]
+                clang_arch_flags += [
+                    "--cuda-gpu-arch=sm_52",
+                    "--cuda-gpu-arch=sm_60",
+                    "--cuda-gpu-arch=sm_61",
+                    "--cuda-gpu-arch=sm_70",  # Volta
+                ]
+
             # generate code for all supported architectures
             gencode_opts += [
                 # SASS for supported desktop/datacenter architectures

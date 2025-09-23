@@ -5975,14 +5975,33 @@ add_builtin(
 )
 
 
+def copy_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    a = arg_types["a"]
+
+    # if the input is a shared tile, we force a copy
+    if is_tile(a) and a.storage == "shared":
+        return tile(
+            dtype=a.dtype,
+            shape=a.shape,
+            storage=a.storage,
+            strides=a.strides,
+            layout=a.layout,
+            owner=True,
+        )
+
+    return a
+
+
 add_builtin(
     "copy",
     input_types={"a": Any},
-    value_func=lambda arg_types, arg_values: arg_types["a"],
+    value_func=copy_value_func,
     hidden=True,
     export=False,
     group="Utility",
 )
+
+
 add_builtin(
     "assign",
     input_types={"dest": Any, "src": Any},
@@ -5990,6 +6009,37 @@ add_builtin(
     export=False,
     group="Utility",
 )
+
+
+def select_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    if arg_types is None:
+        return Any
+
+    v_true = arg_types["value_if_true"]
+    v_false = arg_types["value_if_false"]
+
+    if not types_equal(v_true, v_false):
+        raise RuntimeError(
+            f"select() true value type ({v_true}) must be of the same type as the false type ({v_false})"
+        )
+
+    if is_tile(v_false):
+        if v_true.storage == "register":
+            return v_true
+        if v_false.storage == "register":
+            return v_false
+
+        # both v_true and v_false are shared
+        return tile(
+            dtype=v_true.dtype,
+            shape=v_true.shape,
+            storage=v_true.storage,
+            strides=v_true.strides,
+            layout=v_true.layout,
+            owner=True,
+        )
+
+    return v_true
 
 
 def select_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
@@ -6008,7 +6058,7 @@ def select_dispatch_func(input_types: Mapping[str, type], return_type: Any, args
 add_builtin(
     "select",
     input_types={"cond": builtins.bool, "value_if_false": Any, "value_if_true": Any},
-    value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
+    value_func=select_value_func,
     dispatch_func=select_dispatch_func,
     doc="""Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
@@ -6021,7 +6071,7 @@ for t in int_types:
     add_builtin(
         "select",
         input_types={"cond": t, "value_if_false": Any, "value_if_true": Any},
-        value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
+        value_func=select_value_func,
         dispatch_func=select_dispatch_func,
         doc="""Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
@@ -6033,7 +6083,7 @@ for t in int_types:
 add_builtin(
     "select",
     input_types={"arr": array(dtype=Any), "value_if_false": Any, "value_if_true": Any},
-    value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
+    value_func=select_value_func,
     dispatch_func=select_dispatch_func,
     doc="""Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``.
 
@@ -6043,10 +6093,40 @@ add_builtin(
     group="Utility",
 )
 
+
+def where_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    if arg_types is None:
+        return Any
+
+    v_true = arg_types["value_if_true"]
+    v_false = arg_types["value_if_false"]
+
+    if not types_equal(v_true, v_false):
+        raise RuntimeError(f"where() true value type ({v_true}) must be of the same type as the false type ({v_false})")
+
+    if is_tile(v_false):
+        if v_true.storage == "register":
+            return v_true
+        if v_false.storage == "register":
+            return v_false
+
+        # both v_true and v_false are shared
+        return tile(
+            dtype=v_true.dtype,
+            shape=v_true.shape,
+            storage=v_true.storage,
+            strides=v_true.strides,
+            layout=v_true.layout,
+            owner=True,
+        )
+
+    return v_true
+
+
 add_builtin(
     "where",
     input_types={"cond": builtins.bool, "value_if_true": Any, "value_if_false": Any},
-    value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
+    value_func=where_value_func,
     doc="Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.",
     group="Utility",
 )
@@ -6054,14 +6134,14 @@ for t in int_types:
     add_builtin(
         "where",
         input_types={"cond": t, "value_if_true": Any, "value_if_false": Any},
-        value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
+        value_func=where_value_func,
         doc="Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.",
         group="Utility",
     )
 add_builtin(
     "where",
     input_types={"arr": array(dtype=Any), "value_if_true": Any, "value_if_false": Any},
-    value_func=lambda arg_types, arg_values: Any if arg_types is None else arg_types["value_if_false"],
+    value_func=where_value_func,
     doc="Select between two arguments, if ``arr`` is not null then return ``value_if_true``, otherwise return ``value_if_false``.",
     group="Utility",
 )

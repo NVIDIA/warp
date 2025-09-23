@@ -19,6 +19,7 @@
 #include "scan.h"
 #include "cuda_util.h"
 #include "error.h"
+#include "sort.h"
 
 #include <cstdlib>
 #include <fstream>
@@ -2448,6 +2449,9 @@ void wp_cuda_stream_destroy(void* context, void* stream)
 
     wp_cuda_stream_unregister(context, stream);
 
+    // release temporary radix sort buffer associated with this stream
+    radix_sort_release(context, stream);
+
     check_cu(cuStreamDestroy_f(static_cast<CUstream>(stream)));
 }
 
@@ -2811,11 +2815,12 @@ bool wp_cuda_graph_create_exec(void* context, void* stream, void* graph, void** 
 // Support for conditional graph nodes available with CUDA 12.4+.
 #if CUDA_VERSION >= 12040
 
-// CUBIN data for compiled conditional modules, loaded on demand, keyed on device architecture
-static std::map<int, void*> g_conditional_cubins;
+// CUBIN or PTX data for compiled conditional modules, loaded on demand, keyed on device architecture
+using ModuleKey = std::pair<int, bool>; // <arch, use_ptx>
+static std::map<ModuleKey, void*> g_conditional_modules;
 
 // Compile module with conditional helper kernels
-static void* compile_conditional_module(int arch)
+static void* compile_conditional_module(int arch, bool use_ptx)
 {
     static const char* kernel_source = R"(
         typedef __device_builtin__ unsigned long long cudaGraphConditionalHandle;
@@ -2844,8 +2849,9 @@ static void* compile_conditional_module(int arch)
     )";
 
     // avoid recompilation
-    auto it = g_conditional_cubins.find(arch);
-    if (it != g_conditional_cubins.end())
+    ModuleKey key = {arch, use_ptx};
+    auto it = g_conditional_modules.find(key);
+    if (it != g_conditional_modules.end())
         return it->second;
 
     nvrtcProgram prog;
@@ -2853,10 +2859,22 @@ static void* compile_conditional_module(int arch)
         return NULL;
 
     char arch_opt[128];
-    snprintf(arch_opt, sizeof(arch_opt), "--gpu-architecture=sm_%d", arch);
+    if (use_ptx)
+        snprintf(arch_opt, sizeof(arch_opt), "--gpu-architecture=compute_%d", arch);
+    else
+        snprintf(arch_opt, sizeof(arch_opt), "--gpu-architecture=sm_%d", arch);
 
     std::vector<const char*> opts;
     opts.push_back(arch_opt);
+
+    const bool print_debug = (std::getenv("WARP_DEBUG") != nullptr);
+    if (print_debug) 
+    {
+        printf("NVRTC options (conditional module, arch=%d, use_ptx=%s):\n", arch, use_ptx ? "true" : "false");
+        for(auto o: opts) {
+            printf("%s\n", o);
+        }
+    }
 
     if (!check_nvrtc(nvrtcCompileProgram(prog, int(opts.size()), opts.data())))
     {
@@ -2874,23 +2892,37 @@ static void* compile_conditional_module(int arch)
     // get output
     char* output = NULL;
     size_t output_size = 0;
-    check_nvrtc(nvrtcGetCUBINSize(prog, &output_size));
-    if (output_size > 0)
+
+    if (use_ptx)
     {
-        output = new char[output_size];
-        if (check_nvrtc(nvrtcGetCUBIN(prog, output)))
-            g_conditional_cubins[arch] = output;
+        check_nvrtc(nvrtcGetPTXSize(prog, &output_size));
+        if (output_size > 0)
+        {
+            output = new char[output_size];
+            if (check_nvrtc(nvrtcGetPTX(prog, output)))
+                g_conditional_modules[key] = output;
+        }
+    }
+    else
+    {
+        check_nvrtc(nvrtcGetCUBINSize(prog, &output_size));
+        if (output_size > 0)
+        {
+            output = new char[output_size];
+            if (check_nvrtc(nvrtcGetCUBIN(prog, output)))
+                g_conditional_modules[key] = output;
+        }
     }
 
     nvrtcDestroyProgram(&prog);    
 
-    // return CUBIN data
+    // return CUBIN or PTX data
     return output;
 }
 
 
 // Load module with conditional helper kernels
-static CUmodule load_conditional_module(void* context)
+static CUmodule load_conditional_module(void* context, int arch, bool use_ptx)
 {
     ContextInfo* context_info = get_context_info(context);
     if (!context_info)
@@ -2900,17 +2932,15 @@ static CUmodule load_conditional_module(void* context)
     if (context_info->conditional_module)
         return context_info->conditional_module;
 
-    int arch = context_info->device_info->arch;
-
     // compile if needed
-    void* compiled_module = compile_conditional_module(arch);
+    void* compiled_module = compile_conditional_module(arch, use_ptx);
     if (!compiled_module)
     {
         fprintf(stderr, "Warp error: Failed to compile conditional kernels\n");
         return NULL;
     }
 
-    // load module
+    // load module (handles both PTX and CUBIN data automatically)
     CUmodule module = NULL;
     if (!check_cu(cuModuleLoadDataEx_f(&module, compiled_module, 0, NULL, NULL)))
     {
@@ -2923,10 +2953,10 @@ static CUmodule load_conditional_module(void* context)
     return module;
 }
 
-static CUfunction get_conditional_kernel(void* context, const char* name)
+static CUfunction get_conditional_kernel(void* context, int arch, bool use_ptx, const char* name)
 {
     // load module if needed
-    CUmodule module = load_conditional_module(context);
+    CUmodule module = load_conditional_module(context, arch, use_ptx);
     if (!module)
         return NULL;
 
@@ -2976,7 +3006,7 @@ bool wp_cuda_graph_resume_capture(void* context, void* stream, void* graph)
 // https://developer.nvidia.com/blog/dynamic-control-flow-in-cuda-graphs-with-conditional-nodes/
 // condition is a gpu pointer
 // if_graph_ret and else_graph_ret should be NULL if not needed
-bool wp_cuda_graph_insert_if_else(void* context, void* stream, int* condition, void** if_graph_ret, void** else_graph_ret)
+bool wp_cuda_graph_insert_if_else(void* context, void* stream, int arch, bool use_ptx, int* condition, void** if_graph_ret, void** else_graph_ret)
 {
     bool has_if = if_graph_ret != NULL;
     bool has_else = else_graph_ret != NULL;
@@ -3019,9 +3049,9 @@ bool wp_cuda_graph_insert_if_else(void* context, void* stream, int* condition, v
         // (need to negate the condition if only the else branch is used)
         CUfunction kernel;
         if (has_if)
-            kernel = get_conditional_kernel(context, "set_conditional_if_handle_kernel");
+            kernel = get_conditional_kernel(context, arch, use_ptx, "set_conditional_if_handle_kernel");
         else
-            kernel = get_conditional_kernel(context, "set_conditional_else_handle_kernel");
+            kernel = get_conditional_kernel(context, arch, use_ptx, "set_conditional_else_handle_kernel");
 
         if (!kernel)
         {
@@ -3072,7 +3102,7 @@ bool wp_cuda_graph_insert_if_else(void* context, void* stream, int* condition, v
         check_cuda(cudaGraphConditionalHandleCreate(&if_handle, cuda_graph));
         check_cuda(cudaGraphConditionalHandleCreate(&else_handle, cuda_graph));
         
-        CUfunction kernel = get_conditional_kernel(context, "set_conditional_if_else_handles_kernel");
+        CUfunction kernel = get_conditional_kernel(context, arch, use_ptx, "set_conditional_if_else_handles_kernel");
         if (!kernel)
         {
             wp::set_error_string("Failed to get built-in conditional kernel");
@@ -3273,7 +3303,7 @@ bool wp_cuda_graph_insert_child_graph(void* context, void* stream, void* child_g
     return true;
 }
 
-bool wp_cuda_graph_insert_while(void* context, void* stream, int* condition, void** body_graph_ret, uint64_t* handle_ret)
+bool wp_cuda_graph_insert_while(void* context, void* stream, int arch, bool use_ptx, int* condition, void** body_graph_ret, uint64_t* handle_ret)
 {
     // if there's no body, it's a no-op
     if (!body_graph_ret)
@@ -3303,7 +3333,7 @@ bool wp_cuda_graph_insert_while(void* context, void* stream, int* condition, voi
         return false;
     
     // launch a kernel to set the condition handle from condition pointer
-    CUfunction kernel = get_conditional_kernel(context, "set_conditional_if_handle_kernel");
+    CUfunction kernel = get_conditional_kernel(context, arch, use_ptx, "set_conditional_if_handle_kernel");
     if (!kernel)
     {
         wp::set_error_string("Failed to get built-in conditional kernel");
@@ -3339,14 +3369,14 @@ bool wp_cuda_graph_insert_while(void* context, void* stream, int* condition, voi
     return true;
 }
 
-bool wp_cuda_graph_set_condition(void* context, void* stream, int* condition, uint64_t handle)
+bool wp_cuda_graph_set_condition(void* context, void* stream, int arch, bool use_ptx, int* condition, uint64_t handle)
 {
     ContextGuard guard(context);
 
     CUstream cuda_stream = static_cast<CUstream>(stream);
 
     // launch a kernel to set the condition handle from condition pointer
-    CUfunction kernel = get_conditional_kernel(context, "set_conditional_if_handle_kernel");
+    CUfunction kernel = get_conditional_kernel(context, arch, use_ptx, "set_conditional_if_handle_kernel");
     if (!kernel)
     {
         wp::set_error_string("Failed to get built-in conditional kernel");
@@ -3378,19 +3408,19 @@ bool wp_cuda_graph_resume_capture(void* context, void* stream, void* graph)
     return false;
 }
 
-bool wp_cuda_graph_insert_if_else(void* context, void* stream, int* condition, void** if_graph_ret, void** else_graph_ret)
+bool wp_cuda_graph_insert_if_else(void* context, void* stream, int arch, bool use_ptx, int* condition, void** if_graph_ret, void** else_graph_ret)
 {
     wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
     return false;
 }
 
-bool wp_cuda_graph_insert_while(void* context, void* stream, int* condition, void** body_graph_ret, uint64_t* handle_ret)
+bool wp_cuda_graph_insert_while(void* context, void* stream, int arch, bool use_ptx, int* condition, void** body_graph_ret, uint64_t* handle_ret)
 {
     wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
     return false;
 }
 
-bool wp_cuda_graph_set_condition(void* context, void* stream, int* condition, uint64_t handle)
+bool wp_cuda_graph_set_condition(void* context, void* stream, int arch, bool use_ptx, int* condition, uint64_t handle)
 {
     wp::set_error_string("Warp error: Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes");
     return false;
