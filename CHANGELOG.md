@@ -35,6 +35,7 @@
 - Fix conditional graph compilation on newer GPU architectures by using PTX fallback when CUBIN is not supported
   ([GH-963](https://github.com/NVIDIA/warp/issues/963)).
 - Fix empty slice `arr[i:i]` causing errors ([GH-958](https://github.com/NVIDIA/warp/issues/958)).
+- Fix handling of generic kernels with `wp.jax_experimental.ffi.jax_kernel()`.
 
 ## [1.9.0] - 2025-09-04
 

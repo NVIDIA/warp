@@ -45,7 +45,8 @@ def sincos_kernel(angle: wp.array(dtype=float), sin_out: wp.array(dtype=float), 
 @wp.kernel
 def diagonal_kernel(output: wp.array(dtype=wp.mat33)):
     tid = wp.tid()
-    output[tid] = wp.mat33(1.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 3.0)
+    d = float(tid + 1)
+    output[tid] = wp.mat33(d, 0.0, 0.0, 0.0, d * 2.0, 0.0, 0.0, 0.0, d * 3.0)
 
 
 @wp.kernel
