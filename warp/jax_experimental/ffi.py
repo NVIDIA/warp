@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import ctypes
+import inspect
 import threading
 import traceback
 from enum import IntEnum
@@ -173,14 +174,14 @@ class FfiKernel:
                     raise TypeError(
                         f"Invalid data type for array argument '{input_arg.name}', expected {input_arg.jax_scalar_type}, got {input_value.dtype}"
                     )
-                # check ndim
-                if input_value.ndim != input_arg.jax_ndim:
+                # allow leading batch dims under vmap; require trailing dtype dims to match
+                if input_value.ndim < input_arg.jax_ndim:
                     raise TypeError(
-                        f"Invalid dimensionality for array argument '{input_arg.name}', expected {input_arg.jax_ndim} dimensions, got {input_value.ndim}"
+                        f"Invalid dimensionality for array argument '{input_arg.name}', expected at least {input_arg.jax_ndim} dimensions, got {input_value.ndim}"
                     )
-                # check inner dims
+                # check inner (dtype) dims at the end
                 for d in range(input_arg.dtype_ndim):
-                    if input_value.shape[input_arg.type.ndim + d] != input_arg.dtype_shape[d]:
+                    if input_value.shape[-input_arg.dtype_ndim + d] != input_arg.dtype_shape[d]:
                         raise TypeError(
                             f"Invalid inner dimensions for array argument '{input_arg.name}', expected {input_arg.dtype_shape}, got {input_value.shape[-input_arg.dtype_ndim :]}"
                         )
@@ -193,7 +194,7 @@ class FfiKernel:
 
             # append in-out arg to output types
             if input_arg.in_out:
-                out_types.append(get_jax_output_type(input_arg, input_value.shape))
+                out_types.append(get_jax_output_type(input_arg, get_warp_shape(input_arg, input_value.shape)))
 
         # launch dimensions
         if launch_dims is None:
@@ -232,9 +233,21 @@ class FfiKernel:
             input_output_aliases=self.input_output_aliases,
         )
 
-        # ensure the kernel module is loaded before the callback, otherwise graph capture may fail
-        device = wp.device_from_jax(get_jax_device())
-        self.kernel.module.load(device)
+        # ensure the kernel module is loaded on all local GPUs to avoid per-device build races
+        try:
+            gpus = [d for d in jax.local_devices() if getattr(d, "platform", "") == "gpu"]
+        except Exception:
+            gpus = []
+        if gpus:
+            for d in gpus:
+                dev = wp.device_from_jax(d)
+                self.kernel.module.load(dev)
+        else:
+            d = get_jax_device()
+            if getattr(d, "platform", "") != "gpu":
+                raise RuntimeError("CUDA required for jax_kernel. No GPU devices detected")
+            device = wp.device_from_jax(d)
+            self.kernel.module.load(device)
 
         # save launch data to be retrieved by callback
         launch_id = self.launch_id
@@ -308,9 +321,14 @@ class FfiKernel:
                 kernel_params[num_inputs + i + 1] = ctypes.addressof(arg)
                 arg_refs.append(arg)  # keep a reference
 
-            # get device and stream
-            device = wp.device_from_jax(get_jax_device())
-            stream = get_stream_from_callframe(call_frame.contents)
+            # get stream and derive device from stream to be replica-local under pmap
+            stream_handle = get_stream_from_callframe(call_frame.contents)
+            try:
+                ordinal = wp.context.runtime.core.wp_cuda_stream_get_device_ordinal(stream_handle)
+                device = wp.get_cuda_device(ordinal)
+            except Exception:
+                device = wp.device_from_jax(get_jax_device())
+            stream = wp.Stream(device, cuda_stream=stream_handle)
 
             # get kernel hooks
             hooks = self.kernel.module.get_kernel_hooks(self.kernel, device)
@@ -455,14 +473,14 @@ class FfiCallable:
                     raise TypeError(
                         f"Invalid data type for array argument '{input_arg.name}', expected {input_arg.jax_scalar_type}, got {input_value.dtype}"
                     )
-                # check ndim
-                if input_value.ndim != input_arg.jax_ndim:
+                # allow leading batch dims under vmap; require trailing dtype dims to match
+                if input_value.ndim < input_arg.jax_ndim:
                     raise TypeError(
-                        f"Invalid dimensionality for array argument '{input_arg.name}', expected {input_arg.jax_ndim} dimensions, got {input_value.ndim}"
+                        f"Invalid dimensionality for array argument '{input_arg.name}', expected at least {input_arg.jax_ndim} dimensions, got {input_value.ndim}"
                     )
-                # check inner dims
+                # check inner (dtype) dims at the end
                 for d in range(input_arg.dtype_ndim):
-                    if input_value.shape[input_arg.type.ndim + d] != input_arg.dtype_shape[d]:
+                    if input_value.shape[-input_arg.dtype_ndim + d] != input_arg.dtype_shape[d]:
                         raise TypeError(
                             f"Invalid inner dimensions for array argument '{input_arg.name}', expected {input_arg.dtype_shape}, got {input_value.shape[-input_arg.dtype_ndim :]}"
                         )
@@ -475,7 +493,7 @@ class FfiCallable:
 
             # append in-out arg to output types
             if input_arg.in_out:
-                out_types.append(get_jax_output_type(input_arg, input_value.shape))
+                out_types.append(get_jax_output_type(input_arg, get_warp_shape(input_arg, input_value.shape)))
 
         # output shapes
         if isinstance(output_dims, dict):
@@ -504,11 +522,37 @@ class FfiCallable:
             # has_side_effect=True,  # force this function to execute even if outputs aren't used
         )
 
-        # load the module
-        # NOTE: if the target function uses kernels from different modules, they will not be loaded here
-        device = wp.device_from_jax(get_jax_device())
-        module = wp.get_module(self.func.__module__)
-        module.load(device)
+        # Preload relevant modules across local GPUs to avoid per-device build races (e.g., __main__)
+        try:
+            gpus = [d for d in jax.local_devices() if getattr(d, "platform", "") == "gpu"]
+        except Exception:
+            gpus = []
+
+        modules_to_load = {wp.get_module(self.func.__module__)}
+        try:
+            closure_cells = getattr(self.func, "__closure__", None) or []
+            for cell in closure_cells:
+                try:
+                    val = cell.cell_contents
+                except Exception:
+                    continue
+                try:
+                    if isinstance(val, wp.context.Kernel):
+                        modules_to_load.add(val.module)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        if gpus:
+            for d in gpus:
+                dev = wp.device_from_jax(d)
+                for mod in modules_to_load:
+                    mod.load(dev)
+        else:
+            device = wp.device_from_jax(get_jax_device())
+            for mod in modules_to_load:
+                mod.load(device)
 
         # save call data to be retrieved by callback
         call_id = self.call_id
@@ -581,8 +625,26 @@ class FfiCallable:
                     # early out
                     return
 
-            device = wp.device_from_jax(get_jax_device())
-            stream = wp.Stream(device, cuda_stream=cuda_stream)
+            # Determine device strictly and consistently:
+            # 1) Stream device ordinal from XLA's stream
+            stream_ord = wp.context.runtime.core.wp_cuda_stream_get_device_ordinal(cuda_stream)
+            if stream_ord < 0:
+                raise RuntimeError("Failed to derive device ordinal from CUDA stream in FFI callback")
+
+            # 2) Pointer device ordinal from first array input (if any)
+            ptr_ord = None
+            for idx in self.array_input_indices:
+                buf0 = inputs[idx].contents
+                ptr_ord = wp.context.runtime.core.wp_cuda_pointer_get_device_ordinal(ctypes.c_void_p(buf0.data))
+                break
+            if ptr_ord is None or ptr_ord < 0:
+                ptr_ord = stream_ord
+
+            # 3) Enforce agreement between stream and buffer ordinals
+            use_xla_stream = (ptr_ord == stream_ord)
+
+            device = wp.get_cuda_device(ptr_ord)
+            ffi_stream = wp.Stream(device, cuda_stream=cuda_stream) if use_xla_stream else None
 
             # reconstruct the argument list
             arg_list = []
@@ -591,8 +653,36 @@ class FfiCallable:
             for i, arg in enumerate(self.input_args):
                 if arg.is_array:
                     buffer = inputs[i].contents
-                    shape = buffer.dims[: buffer.rank - arg.dtype_ndim]
-                    arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=shape, device=device)
+                    # Collapse leading batch dimensions so Warp sees only the declared warp_ndim
+                    jax_rank = buffer.rank - arg.dtype_ndim
+                    dims_jax = buffer.dims[:jax_rank]
+                    warp_ndim = arg.type.ndim
+                    if jax_rank < warp_ndim:
+                        raise RuntimeError(
+                            f"Argument '{arg.name}' expects {warp_ndim} dimension(s) but the passed array has {jax_rank} dimension(s)."
+                        )
+                    if jax_rank == warp_ndim:
+                        collapsed_shape = dims_jax
+                    else:
+                        # collapse all leading (batch) dims into the first warp dimension
+                        batch_prod = 1
+                        for d in dims_jax[: jax_rank - warp_ndim]:
+                            batch_prod *= d
+                        warp_dims = list(dims_jax[jax_rank - warp_ndim :])
+                        warp_dims[0] = warp_dims[0] * batch_prod
+                        collapsed_shape = tuple(warp_dims)
+                    # ensure the array view is created on the current device
+                    arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=collapsed_shape, device=device)
+                    if arr.device != device:
+                        raise RuntimeError(
+                            f"FFI array device mismatch for input '{arg.name}': {arr.device} vs {device}"
+                        )
+                    # strict pointer/device ordinal check
+                    ptr_dev = wp.context.runtime.core.wp_cuda_pointer_get_device_ordinal(ctypes.c_void_p(buffer.data))
+                    if ptr_dev >= 0 and ptr_dev != device.ordinal:
+                        raise RuntimeError(
+                            f"FFI input '{arg.name}' pointer device ordinal {ptr_dev} != stream device ordinal {device.ordinal}"
+                        )
                     arg_list.append(arr)
                 else:
                     # scalar argument, get stashed value
@@ -602,28 +692,58 @@ class FfiCallable:
             # pure output args (skip in-out FFI buffers)
             for i, arg in enumerate(self.output_args):
                 buffer = outputs[i + self.num_in_out].contents
-                shape = buffer.dims[: buffer.rank - arg.dtype_ndim]
-                arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=shape, device=device)
+                # Collapse leading batch dimensions so Warp sees only the declared warp_ndim
+                jax_rank = buffer.rank - arg.dtype_ndim
+                dims_jax = buffer.dims[:jax_rank]
+                warp_ndim = arg.type.ndim
+                if jax_rank < warp_ndim:
+                    raise RuntimeError(
+                        f"Output argument '{arg.name}' expects {warp_ndim} dimension(s) but the passed array has {jax_rank} dimension(s)."
+                    )
+                if jax_rank == warp_ndim:
+                    collapsed_shape = dims_jax
+                else:
+                    batch_prod = 1
+                    for d in dims_jax[: jax_rank - warp_ndim]:
+                        batch_prod *= d
+                    warp_dims = list(dims_jax[jax_rank - warp_ndim :])
+                    warp_dims[0] = warp_dims[0] * batch_prod
+                    collapsed_shape = tuple(warp_dims)
+                # ensure the array view is created on the current device
+                arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=collapsed_shape, device=device)
+                if arr.device != device:
+                    raise RuntimeError(
+                        f"FFI array device mismatch for output '{arg.name}': {arr.device} vs {device}"
+                    )
+                # strict pointer/device ordinal check
+                ptr_dev = wp.context.runtime.core.wp_cuda_pointer_get_device_ordinal(ctypes.c_void_p(buffer.data))
+                if ptr_dev >= 0 and ptr_dev != device.ordinal:
+                    raise RuntimeError(
+                        f"FFI output '{arg.name}' pointer device ordinal {ptr_dev} != stream device ordinal {device.ordinal}"
+                    )
                 arg_list.append(arr)
 
             # call the Python function with reconstructed arguments
-            with wp.ScopedStream(stream, sync_enter=False):
-                if stream.is_capturing:
-                    # capturing with JAX
-                    with wp.ScopedCapture(external=True) as capture:
-                        self.func(*arg_list)
-                    # keep a reference to the capture object to prevent required modules getting unloaded
-                    call_desc.capture = capture
-                elif self.graph_mode == GraphMode.WARP:
-                    # capturing with WARP
-                    with wp.ScopedCapture() as capture:
-                        self.func(*arg_list)
-                    wp.capture_launch(capture.graph)
-                    # keep a reference to the capture object and reuse it with same buffers
-                    call_desc.captures[buffer_hash] = capture
+            _FFI_STREAM_LOCAL.stream = ffi_stream if use_xla_stream else None
+            try:
+                if use_xla_stream:
+                    with wp.ScopedDevice(device):
+                        with wp.ScopedStream(ffi_stream, sync_enter=False), wp.context.ScopedExternalStream(ffi_stream):
+                            with _temporarily_disable_backward():
+                                self.func(*arg_list)
                 else:
-                    # not capturing
-                    self.func(*arg_list)
+                    # Use buffer-device default stream; explicitly clear any external stream
+                    with wp.context.ScopedExternalStream(None):
+                        with wp.ScopedDevice(device):
+                            if self.graph_mode == GraphMode.WARP:
+                                with wp.ScopedCapture() as capture:
+                                    self.func(*arg_list)
+                                wp.capture_launch(capture.graph)
+                                call_desc.captures[buffer_hash] = capture
+                            else:
+                                self.func(*arg_list)
+            finally:
+                _FFI_STREAM_LOCAL.stream = None
 
         except Exception as e:
             print(traceback.format_exc())
@@ -638,6 +758,32 @@ class FfiCallable:
 _FFI_CALLABLE_REGISTRY: dict[str, FfiCallable] = {}
 _FFI_KERNEL_REGISTRY: dict[str, FfiKernel] = {}
 _FFI_REGISTRY_LOCK = threading.Lock()
+
+# Thread-local storage for the current FFI stream so wrappers can launch on the correct device
+_FFI_STREAM_LOCAL = threading.local()
+# Global lock to guard Tape usage in auto-grad backward to avoid nested tapes under pmap
+_FFI_TAPE_LOCK = threading.Lock()
+# Global lock to guard temporary global build-config changes (e.g., enable_backward)
+_FFI_BUILD_LOCK = threading.Lock()
+
+
+def _get_current_ffi_stream() -> Optional[wp.Stream]:
+    return getattr(_FFI_STREAM_LOCAL, "stream", None)
+
+
+def _temporarily_disable_backward():
+    class _Ctx:
+        def __enter__(self):
+            _FFI_BUILD_LOCK.acquire()
+            self.prev = wp.config.enable_backward
+            wp.config.enable_backward = False
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            wp.config.enable_backward = self.prev
+            _FFI_BUILD_LOCK.release()
+
+    return _Ctx()
 
 
 def jax_kernel(
@@ -692,6 +838,10 @@ def jax_callable(
     vmap_method: Optional[str] = "broadcast_all",
     output_dims=None,
     in_out_argnames=None,
+    # Optional custom VJP support
+    bwd_func: Optional[Callable] = None,
+    static_argnames=None,
+    auto_grad: bool = False,
 ):
     """Create a JAX callback from an annotated Python function.
 
@@ -717,6 +867,8 @@ def jax_callable(
             If ``None``, output dimensions are inferred from the launch dimensions.
             This argument can also be specified for individual calls.
         in_out_argnames: Optional. Names of input-output arguments.
+        bwd_func: Optional. A custom backward function to use for the VJP.
+        static_argnames: Optional. Names of static arguments.
 
     Limitations:
         - All kernel arguments must be contiguous arrays or scalars.
@@ -735,12 +887,21 @@ def jax_callable(
         if graph_compatible is False:
             graph_mode = GraphMode.NONE
 
+    if isinstance(output_dims, dict):
+        od_key = tuple(sorted(output_dims.items()))
+    elif output_dims is None:
+        od_key = None
+    elif isinstance(output_dims, (list, tuple)):
+        od_key = tuple(output_dims)
+    else:
+        od_key = output_dims
+
     key = (
         func,
         num_outputs,
         graph_mode,
         vmap_method,
-        tuple(sorted(output_dims.items())) if output_dims else output_dims,
+        od_key,
     )
 
     with _FFI_REGISTRY_LOCK:
@@ -748,7 +909,190 @@ def jax_callable(
             new_callable = FfiCallable(func, num_outputs, graph_mode, vmap_method, output_dims, in_out_argnames)
             _FFI_CALLABLE_REGISTRY[key] = new_callable
 
-    return _FFI_CALLABLE_REGISTRY[key]
+    # If no backward function is provided and auto_grad is not requested, return the forward callable directly
+    if bwd_func is None and not auto_grad:
+        return _FFI_CALLABLE_REGISTRY[key]
+
+    # Build a custom VJP wrapper using either the provided backward function or an auto-grad wrapper.
+    # Infer signature and static args
+    signature = inspect.signature(func)
+    parameters = [p for p in signature.parameters.values() if p.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD]
+    parameter_count = len(parameters)
+    num_inputs_total = parameter_count - num_outputs
+
+    # Determine static args
+    static_args: list[int] = []
+    if static_argnames is not None:
+        name_set = set(static_argnames)
+        for i, p in enumerate(parameters[:num_inputs_total]):
+            if p.name in name_set:
+                static_args.append(i)
+    else:
+        for i, p in enumerate(parameters[:num_inputs_total]):
+            ann = p.annotation
+            try:
+                is_array = isinstance(ann, wp.array)
+            except Exception:
+                is_array = False
+            if not is_array:
+                static_args.append(i)
+    static_args = sorted(set(static_args))
+
+    jax_fwd = _FFI_CALLABLE_REGISTRY[key]
+
+    # Decide backward implementation
+    # Number of gradient outputs equals number of differentiable inputs
+    differentiable_input_indices = [i for i in range(num_inputs_total) if i not in static_args]
+
+    if bwd_func is not None and auto_grad:
+        raise ValueError("Provide either bwd_func or set auto_grad=True, not both.")
+
+    if bwd_func is None and auto_grad:
+        # Create an auto-grad backward wrapper using Tape
+        bwd_input_params = parameters[:num_inputs_total]
+        bwd_output_params = parameters[num_inputs_total:parameter_count]
+        bwd_grad_output_params = [
+            inspect.Parameter(
+                p.name + "__vjp_out",
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                default=p.default,
+                annotation=p.annotation,
+            )
+            for p in bwd_output_params
+        ]
+
+        bwd_grad_input_params = [
+            inspect.Parameter(
+                parameters[i].name + "__vjp_in",
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                default=parameters[i].default,
+                annotation=parameters[i].annotation,
+            )
+            for i in differentiable_input_indices
+        ]
+
+        def auto_bwd_wrapper(*args):
+            assert len(args) == 2 * parameter_count - len(static_args)
+            inputs = list(args[:num_inputs_total])
+            outputs = list(args[num_inputs_total:parameter_count])
+            grad_out = list(args[parameter_count : parameter_count + num_outputs])
+            grad_in = list(args[parameter_count + num_outputs :])
+
+            # Map differentiable input index -> grad buffer provided at end
+            idx_to_grad = {idx: grad_in[k] for k, idx in enumerate(differentiable_input_indices)}
+
+            stream = _get_current_ffi_stream()
+            if stream is None:
+                ctx_mgr = wp.ScopedDevice(wp.get_device("cuda"))
+            else:
+                ctx_mgr = wp.ScopedStream(stream, sync_enter=False)
+
+            with ctx_mgr:
+                _FFI_TAPE_LOCK.acquire()
+                try:
+                    with wp.Tape() as tape:
+                        # Mark differentiable inputs and attach grad buffers
+                        for i, arr in enumerate(inputs):
+                            if i in static_args:
+                                continue
+                            if isinstance(arr, wp.array):
+                                try:
+                                    arr.requires_grad = True
+                                    arr.grad = idx_to_grad[i]
+                                    idx_to_grad[i].zero_()
+                                except Exception:
+                                    pass
+
+                        # Run forward
+                        func(*inputs, *outputs)
+
+                        # Backward from provided output cotangents
+                        grads_map = {}
+                        for o, go in zip(outputs, grad_out):
+                            grads_map[o] = go
+                        tape.backward(grads=grads_map)
+                finally:
+                    _FFI_TAPE_LOCK.release()
+
+        # Build the wrapper signature so jax_callable can infer types/shapes
+        auto_bwd_wrapper.__signature__ = inspect.Signature(
+            bwd_input_params + bwd_output_params + bwd_grad_output_params + bwd_grad_input_params
+        )
+
+        jax_bwd = jax_callable(
+            auto_bwd_wrapper,
+            num_outputs=len(differentiable_input_indices),
+            graph_mode=graph_mode,
+            vmap_method=vmap_method,
+        )
+    else:
+        # User-provided backward function path
+        jax_bwd = jax_callable(
+            bwd_func,
+            num_outputs=len(differentiable_input_indices),
+            graph_mode=graph_mode,
+            vmap_method=vmap_method,
+        )
+
+    def fwd_function(*args):
+        outs = jax_fwd(*args, output_dims=output_dims)
+        non_static_inputs = list(args)
+        for i in reversed(static_args):
+            del non_static_inputs[i]
+        if num_outputs == 1:
+            if isinstance(outs, (list, tuple)):
+                outs_tuple = (outs[0],)
+            else:
+                outs_tuple = (outs,)
+        else:
+            outs_tuple = tuple(outs) if isinstance(outs, (list, tuple)) else (outs,)
+        return outs, (tuple(non_static_inputs), outs_tuple)
+
+    def bwd_function(*bwd_args):
+        nondiff_vals = list(bwd_args[: len(static_args)])
+        residuals = bwd_args[len(static_args)]
+        grad_out_args = bwd_args[len(static_args) + 1 :]
+
+        non_static_inputs, output_vals_tuple = residuals
+
+        # Reconstruct full input list including static values at correct indices
+        input_vals = list(non_static_inputs)
+        for i, v in zip(static_args, nondiff_vals):
+            input_vals.insert(i, v)
+
+        if num_outputs > 1:
+            if len(grad_out_args) == 1 and isinstance(grad_out_args[0], (list, tuple)):
+                grad_out_tuple = tuple(grad_out_args[0])
+            else:
+                grad_out_tuple = tuple(grad_out_args)
+        else:
+            go = grad_out_args[0]
+            if isinstance(go, (list, tuple)):
+                grad_out_tuple = (go[0],)
+            else:
+                grad_out_tuple = (go,)
+
+        bwd_call_args = list(input_vals) + list(output_vals_tuple) + list(grad_out_tuple)
+
+        # Let the backward JAX-callable infer output dimensions from inputs
+        # For auto-grad path, different grad outputs may have different shapes, but
+        # the callable can infer them from inputs and annotations.
+        non_static_input_grads = jax_bwd(*bwd_call_args)
+        return tuple(non_static_input_grads)
+
+    jax_func = jax.custom_vjp(jax_fwd, nondiff_argnums=tuple(static_args))
+    jax_func.defvjp(fwd_function, bwd_function)
+
+    if static_args:
+        static_names = [parameters[i].name for i in static_args]
+
+        def _user_callable(*args):
+            return jax_func(*args)
+
+        _user_callable.__signature__ = signature
+        return jax.jit(_user_callable, static_argnames=tuple(static_names))
+
+    return jax_func
 
 
 ###############################################################################
@@ -823,6 +1167,290 @@ def register_ffi_callback(name: str, func: Callable, graph_compatible: bool = Tr
     jax.ffi.register_ffi_target(name, ffi_capsule, platform="CUDA")
 
 
+def jax_ad_kernel(
+    kernel,
+    num_outputs=1,
+    static_argnames=None,
+    vmap_method: Optional[str] = "broadcast_all",
+    launch_dim_arg_index: int = 0,
+    output_dims=None,
+):
+    """Create a JAX-callable from a Warp kernel with a custom VJP.
+
+    This helper wraps an existing Warp kernel in a JAX-compatible callable that
+    supports jit and grad via a custom VJP implemented with the FFI path.
+
+    Args:
+        kernel: The Warp kernel to wrap.
+        num_outputs: Number of output arrays produced by the kernel.
+        static_argnames: Optional iterable of argument names that should be treated
+            as static (non-differentiable) in JAX. If None, scalar (non-array) inputs
+            are treated as static by default.
+        vmap_method: How the callback transforms under jax.vmap.
+        launch_dim_arg_index: Index (in the kernel's argument list) of the input
+            array whose shape determines the kernel launch dimensions. For example,
+            if the kernel launches one thread per articulation and takes an
+            ``articulation_mask`` as its second argument, pass ``1`` here.
+        output_dims: Optional default output dimensions for the kernel outputs in
+            Warp (non-batch) indexing order. Use this to make the output shapes
+            explicit when they cannot be inferred from inputs (e.g., outputs sized
+            by a model property rather than an input array). Examples:
+            - ``(N,)`` to indicate a 1D output of size N for each output array
+            - ``{"body_q": (N,), "body_qd": (N,)}`` to set per-output shapes
+
+    Returns:
+        A JAX-callable function that can be used inside jax.jit and differentiated with jax.grad.
+
+    Notes:
+        - The wrapped function preserves Warp's automatic adjoint for the kernel by
+          launching the same kernel in adjoint mode during the backward pass.
+    """
+
+    # Infer the original kernel signature (names and annotations)
+    signature = inspect.signature(kernel.func)
+
+    # Positional-or-keyword parameters only
+    parameters = [p for p in signature.parameters.values() if p.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD]
+    parameter_count = len(parameters)
+    num_inputs = parameter_count - num_outputs
+
+    # Determine static argument indices
+    static_args: list[int] = []
+    if static_argnames is not None:
+        name_set = set(static_argnames)
+        for i, p in enumerate(parameters[:num_inputs]):
+            if p.name in name_set:
+                static_args.append(i)
+    else:
+        # Default heuristic: non-array inputs (e.g., scalars) are static
+        for i, p in enumerate(parameters[:num_inputs]):
+            ann = p.annotation
+            try:
+                is_array = isinstance(ann, wp.array)
+            except Exception:
+                is_array = False
+            if not is_array:
+                static_args.append(i)
+
+    static_args = sorted(set(static_args))
+
+    # Forward kernel wrapper: simply launches the kernel.
+    # The launch dimensions are taken from the argument at
+    # `launch_dim_arg_index` to avoid needing a separate launch-dims parameter.
+    def fwd_kernel_wrapper(*args):
+        # args are Warp arrays/scalars reconstructed via FFI in jax_callable
+        stream = _get_current_ffi_stream()
+        if stream is not None:
+            wp.launch(
+                kernel,
+                dim=args[launch_dim_arg_index].shape,
+                inputs=args[:-num_outputs],
+                outputs=args[-num_outputs:],
+                stream=stream,
+            )
+        else:
+            wp.launch(
+                kernel,
+                dim=args[launch_dim_arg_index].shape,
+                inputs=args[:-num_outputs],
+                outputs=args[-num_outputs:],
+            )
+
+    # Expose the kernel signature to the wrapper so type annotations flow through
+    fwd_kernel_wrapper.__signature__ = signature
+
+    # JAX forward callable using FFI. If `output_dims` is provided, pass it so
+    # JAX/XLA knows output shapes ahead of time (important when outputs aren't
+    # directly sized by input arguments).
+    jax_fwd_kernel = jax_callable(
+        fwd_kernel_wrapper,
+        num_outputs=num_outputs,
+        vmap_method=vmap_method,
+        output_dims=output_dims,
+    )
+
+    # Backward wrapper: launches the same kernel in adjoint mode using the provided
+    # output gradients and accumulating into input gradients. Launch dims mirror
+    # the forward pass via `launch_dim_arg_index`.
+    def bwd_kernel_wrapper(*args):
+        # Args: inputs ++ outputs ++ out-grads ++ in-grads-without-statics
+        assert len(args) == 2 * parameter_count - len(static_args)
+
+        inputs = list(args[:num_inputs])
+        outputs = list(args[num_inputs:parameter_count])
+        grad_out = list(args[parameter_count : parameter_count + num_outputs])
+        grad_in = list(args[parameter_count + num_outputs :])
+
+        # Insert placeholders for static arg grads to satisfy Warp's adjoint signature
+        for i in static_args:
+            grad_in.insert(i, inputs[i])
+
+        # Ensure gradient input buffers are zero-initialized before accumulation
+        try:
+            for gi in grad_in:
+                if isinstance(gi, wp.array):
+                    gi.zero_()
+        except Exception:
+            pass
+
+        # Launch adjoint
+        stream = _get_current_ffi_stream()
+        if stream is not None:
+            wp.launch(
+                kernel,
+                dim=inputs[launch_dim_arg_index].shape,
+                inputs=inputs,
+                outputs=outputs,
+                adj_inputs=grad_in,
+                adj_outputs=grad_out,
+                adjoint=True,
+                stream=stream,
+            )
+        else:
+            wp.launch(
+                kernel,
+                dim=inputs[launch_dim_arg_index].shape,
+                inputs=inputs,
+                outputs=outputs,
+                adj_inputs=grad_in,
+                adj_outputs=grad_out,
+                adjoint=True,
+            )
+
+    # Build the backward wrapper signature expected by jax_callable
+    # Inputs to the backward function are: inputs, outputs, output grads
+    bwd_input_params = parameters[:num_inputs]
+    bwd_output_params = parameters[num_inputs:parameter_count]
+    bwd_grad_output_params = [
+        inspect.Parameter(
+            f"__wp_vjp_out_{k}",
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            default=p.default,
+            annotation=p.annotation,
+        )
+        for k, p in enumerate(bwd_output_params)
+    ]
+
+    differentiable_input_indices = [i for i in range(num_inputs) if i not in static_args]
+    differentiable_input_names = [parameters[i].name for i in differentiable_input_indices]
+
+    # Outputs of backward are gradients for differentiable inputs (exclude statics)
+    bwd_grad_input_params = [
+        inspect.Parameter(
+            f"__wp_vjp_in_{k}",
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            default=parameters[i].default,
+            annotation=parameters[i].annotation,
+        )
+        for k, i in enumerate(differentiable_input_indices)
+    ]
+
+    bwd_signature = bwd_input_params + bwd_output_params + bwd_grad_output_params + bwd_grad_input_params
+    bwd_kernel_wrapper.__signature__ = inspect.Signature(bwd_signature)
+
+    jax_bwd_kernel = jax_callable(
+        bwd_kernel_wrapper,
+        num_outputs=len(bwd_input_params) - len(static_args),
+        vmap_method=vmap_method,
+    )
+
+
+    # Define custom VJP wrappers
+    def fwd_function(*args):
+        outputs = jax_fwd_kernel(*args, output_dims=output_dims)
+        non_static_inputs = list(args)
+        for i in reversed(static_args):
+            del non_static_inputs[i]
+        if num_outputs == 1:
+            if isinstance(outputs, (list, tuple)):
+                outputs_tuple = (outputs[0],)
+            else:
+                outputs_tuple = (outputs,)
+        else:
+            outputs_tuple = tuple(outputs) if isinstance(outputs, (list, tuple)) else (outputs,)
+        return outputs, (tuple(non_static_inputs), outputs_tuple)
+
+    def bwd_function(*bwd_args):
+        # Layout: (*nondiff_values, residuals, *grad_out)
+        nondiff_vals = list(bwd_args[: len(static_args)])
+        residuals = bwd_args[len(static_args)]
+        grad_out_args = bwd_args[len(static_args) + 1 :]
+
+        non_static_inputs, output_vals_tuple = residuals
+
+        # Reconstruct full input list including static values at correct indices
+        input_vals = list(non_static_inputs)
+        for i, v in zip(static_args, nondiff_vals):
+            input_vals.insert(i, v)
+
+        # Call the adjoint launcher
+        if num_outputs > 1:
+            if len(grad_out_args) == 1 and isinstance(grad_out_args[0], (list, tuple)):
+                grad_out_tuple = tuple(grad_out_args[0])
+            else:
+                grad_out_tuple = tuple(grad_out_args)
+        else:
+            go = grad_out_args[0]
+            if isinstance(go, (list, tuple)):
+                grad_out_tuple = (go[0],)
+            else:
+                grad_out_tuple = (go,)
+        bwd_call_args = list(input_vals) + list(output_vals_tuple) + list(grad_out_tuple)
+
+        # Provide output dims mapping in warp dims (exclude batch and dtype trailing dims)
+        # so that vmap can broadcast batch dims externally.
+        out_dims_map = {}
+        # Build a quick lookup of parameter annotations by name
+        param_ann = {p.name: p.annotation for p in parameters[:num_inputs]}
+        for k, (name, val) in enumerate(zip(differentiable_input_names, non_static_inputs)):
+            ann = param_ann.get(name)
+            if ann is None:
+                continue
+            try:
+                is_array_ann = isinstance(ann, wp.array)
+            except Exception:
+                is_array_ann = False
+            if not is_array_ann:
+                continue
+            # Determine dtype_ndim from annotation
+            dtype_ndim = 0
+            try:
+                if hasattr(ann.dtype, "_wp_scalar_type_"):
+                    dtype_ndim = len(ann.dtype._shape_)
+            except Exception:
+                pass
+            warp_ndim = getattr(ann, "ndim", 0)
+            vshape = tuple(val.shape)
+            if warp_ndim == 0:
+                # scalar value: no gradient array expected
+                continue
+            if dtype_ndim > 0:
+                # remove trailing dtype dims then take last warp_ndim dims
+                core_rank = max(0, len(vshape) - dtype_ndim)
+                warp_dims = vshape[max(0, core_rank - warp_ndim) : core_rank]
+            else:
+                warp_dims = vshape[-warp_ndim:]
+            out_dims_map[f"__wp_vjp_in_{k}"] = tuple(warp_dims)
+
+        non_static_input_grads = jax_bwd_kernel(*bwd_call_args, output_dims=out_dims_map)
+        return tuple(non_static_input_grads)
+
+    jax_func = jax.custom_vjp(jax_fwd_kernel, nondiff_argnums=tuple(static_args))
+    jax_func.defvjp(fwd_function, bwd_function)
+
+    # If static scalar args are present, wrap with jitted callable that marks them static
+    if static_args:
+        static_names = [parameters[i].name for i in static_args]
+
+        def _user_callable(*args):
+            return jax_func(*args)
+
+        _user_callable.__signature__ = signature
+        return jax.jit(_user_callable, static_argnames=tuple(static_names))
+
+    return jax_func
+
+
 ###############################################################################
 #
 # Utilities
@@ -859,7 +1487,7 @@ def get_jax_output_type(arg, dims):
         # vector/matrix array
         if ndim == arg.warp_ndim:
             return jax.ShapeDtypeStruct((*dims, *arg.dtype_shape), arg.jax_scalar_type)
-        elif ndim == arg.jax_ndim:
+        elif ndim >= arg.jax_ndim:
             # make sure inner dimensions match
             inner_dims = dims[-arg.dtype_ndim :]
             for i in range(arg.dtype_ndim):
@@ -870,6 +1498,6 @@ def get_jax_output_type(arg, dims):
             raise ValueError(f"Invalid output dimensions for argument '{arg.name}': {dims}")
     else:
         # scalar array
-        if ndim != arg.warp_ndim:
+        if ndim < arg.warp_ndim:
             raise ValueError(f"Invalid output dimensions for argument '{arg.name}': {dims}")
         return jax.ShapeDtypeStruct(dims, arg.jax_scalar_type)

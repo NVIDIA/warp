@@ -2546,6 +2546,32 @@ int wp_cuda_stream_get_priority(void* stream)
     return priority;
 }
 
+int wp_cuda_stream_get_device_ordinal(void* stream)
+{
+    CUcontext context = get_stream_context(static_cast<CUstream>(stream));
+    return wp_cuda_context_get_device_ordinal(context);
+}
+
+int wp_cuda_pointer_get_device_ordinal(void* ptr)
+{
+    if (!ptr)
+        return -1;
+    CUmemorytype type = CU_MEMORYTYPE_UNIFIED;
+    CUresult res;
+    CUdevice device = -1;
+    res = cuPointerGetAttribute_f(&type, CU_POINTER_ATTRIBUTE_MEMORY_TYPE, (CUdeviceptr)ptr);
+    if (res != CUDA_SUCCESS)
+        return -1;
+    if (type == CU_MEMORYTYPE_DEVICE)
+    {
+        res = cuPointerGetAttribute_f(&device, CU_POINTER_ATTRIBUTE_DEVICE_ORDINAL, (CUdeviceptr)ptr);
+        if (res != CUDA_SUCCESS)
+            return -1;
+        return (int)device;
+    }
+    return -1;
+}
+
 void* wp_cuda_event_create(void* context, unsigned flags)
 {
     ContextGuard guard(context, true);
