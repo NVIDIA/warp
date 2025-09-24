@@ -11,6 +11,8 @@
   ([GH-886](https://github.com/NVIDIA/warp/issues/886)).
 - Add support for negative indexing and improve slicing for the `wp.array()` type
   ([GH-504](https://github.com/NVIDIA/warp/issues/504)).
+- Add documentation describing Python IntFlag limitations in Warp kernels
+  ([GH-917](https://github.com/NVIDIA/warp/issues/917)).
 
 ### Removed
 
