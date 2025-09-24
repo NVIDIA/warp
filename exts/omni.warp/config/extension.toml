@@ -36,7 +36,7 @@ exclude = ["Ogn*Database.py", "*/ogn*"]
 "omni.timeline" = {}
 "omni.ui" = {optional = true}
 "omni.usd" = {}
-"omni.warp.core" = { version="~1.9" }
+"omni.warp.core" = { version="~1.9-*" }
 "usdrt.scenegraph" = {}
 
 [settings]
