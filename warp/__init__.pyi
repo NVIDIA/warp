@@ -3236,7 +3236,7 @@ def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: Optional[int32] = 
     ...
 
 @over
-def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: Optional[int32] = -1) -> BvhQuery:
+def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: Optional[int32] = -1, max_dist: float32 = inf) -> BvhQuery:
     """Construct a ray query against a BVH object.
 
     This query can be used to iterate over all bounds that intersect the ray.
@@ -3245,13 +3245,18 @@ def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: Optional[int32] = 
     :param start: The start of the ray in BVH space
     :param dir: The direction of the ray in BVH space
     :param root: The root to begin the query from
+    :param max_dist: The maximum distance along the ray to check for intersections
     """
     ...
 
 @over
-def bvh_query_next(query: BvhQuery, index: int32) -> bool:
+def bvh_query_next(query: BvhQuery, index: int32, max_dist: float32 = inf) -> bool:
     """Move to the next bound returned by the query.
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
+
+    :param query: The query to move to the next bound
+    :param index: The index of the current bound
+    :param max_dist: The maximum distance along the ray to check for intersections for ray queries
     """
     ...
 

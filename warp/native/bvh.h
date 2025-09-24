@@ -408,11 +408,10 @@ struct bvh_query_t
     bool is_ray;
 };
 
-CUDA_CALLABLE inline bool bvh_query_intersection_test(const bvh_query_t& query, const vec3& node_lower, const vec3& node_upper)
+CUDA_CALLABLE inline bool bvh_query_intersection_test(const bvh_query_t& query, const vec3& node_lower, const vec3& node_upper, float& t)
 {
     if (query.is_ray)
     {
-        float t = 0.0f;
         return intersect_ray_aabb(query.input_lower, query.input_upper, node_lower, node_upper, t);
     }
     else
@@ -422,7 +421,7 @@ CUDA_CALLABLE inline bool bvh_query_intersection_test(const bvh_query_t& query, 
 }
 
 CUDA_CALLABLE inline bvh_query_t bvh_query(
-	uint64_t id, bool is_ray, const vec3& lower, const vec3& upper, int root)
+	uint64_t id, bool is_ray, const vec3& lower, const vec3& upper, int root, float max_dist)
 {
     // This routine traverses the BVH tree until it finds
     // the first overlapping bound. 
@@ -455,7 +454,9 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(
         BVHPackedNodeHalf node_lower = bvh_load_node(bvh.node_lowers, node_index);
         BVHPackedNodeHalf node_upper = bvh_load_node(bvh.node_uppers, node_index);
 
-        if (!bvh_query_intersection_test(query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)))
+        float t = INFINITY;
+        bool hit = bvh_query_intersection_test(query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper), t);
+        if (!hit || t >= max_dist)
         {
             continue;
         }
@@ -484,14 +485,14 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(
 CUDA_CALLABLE inline bvh_query_t bvh_query_aabb(
     uint64_t id, const vec3& lower, const vec3& upper, int root)
 {
-	return bvh_query(id, false, lower, upper, root);
+	return bvh_query(id, false, lower, upper, root, INFINITY);
 }
 
 
 CUDA_CALLABLE inline bvh_query_t bvh_query_ray(
-    uint64_t id, const vec3& start, const vec3& dir, int root)
+    uint64_t id, const vec3& start, const vec3& dir, int root, float max_dist)
 {
-	return bvh_query(id, true, start, 1.0f / dir, root);
+	return bvh_query(id, true, start, 1.0f / dir, root, max_dist);
 }
 
 //Stub
@@ -502,7 +503,8 @@ CUDA_CALLABLE inline void adj_bvh_query_aabb(uint64_t id, const vec3& lower, con
 
 
 CUDA_CALLABLE inline void adj_bvh_query_ray(uint64_t id, const vec3& start, const vec3& dir,
-											   int root, uint64_t, vec3&, vec3&, int&, bvh_query_t&)
+											   int root, float& max_dist, uint64_t, vec3&, vec3&, int&,
+                                               float&, bvh_query_t&)
 {
 }
 
@@ -511,7 +513,7 @@ CUDA_CALLABLE inline void adj_bvh_get_group_root(uint64_t id, int group_id, uint
 }
 
 
-CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index)
+CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index, float& max_dist)
 {
     BVH bvh = query.bvh;
 
@@ -523,7 +525,9 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index)
         BVHPackedNodeHalf node_lower = bvh_load_node(bvh.node_lowers, node_index);
         BVHPackedNodeHalf node_upper = bvh_load_node(bvh.node_uppers, node_index);
 
-        if (!bvh_query_intersection_test(query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)))
+        float t = INFINITY;
+        bool hit = bvh_query_intersection_test(query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper), t);
+        if (!hit || t >= max_dist)
         {
             continue;
         }
@@ -561,7 +565,8 @@ CUDA_CALLABLE inline int iter_next(bvh_query_t& query)
 
 CUDA_CALLABLE inline bool iter_cmp(bvh_query_t& query)
 {
-    bool finished = bvh_query_next(query, query.bounds_nr);
+    float max_dist = INFINITY;
+    bool finished = bvh_query_next(query, query.bounds_nr, max_dist);
     return finished;
 }
 
@@ -577,7 +582,7 @@ CUDA_CALLABLE inline void adj_iter_reverse(const bvh_query_t& query, bvh_query_t
 
 
 // stub
-CUDA_CALLABLE inline void adj_bvh_query_next(bvh_query_t& query, int& index, bvh_query_t&, int&, bool&) 
+CUDA_CALLABLE inline void adj_bvh_query_next(bvh_query_t& query, int& index, float& max_dist, bvh_query_t&, int&, float&, bool&) 
 {
 
 }

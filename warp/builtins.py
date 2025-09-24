@@ -4812,8 +4812,8 @@ add_builtin(
 
 add_builtin(
     "bvh_query_ray",
-    input_types={"id": uint64, "start": vec3, "dir": vec3, "root": int},
-    defaults={"root": -1},
+    input_types={"id": uint64, "start": vec3, "dir": vec3, "root": int, "max_dist": float},
+    defaults={"root": -1, "max_dist": math.inf},
     value_type=BvhQuery,
     group="Geometry",
     doc="""Construct a ray query against a BVH object.
@@ -4823,13 +4823,15 @@ add_builtin(
     :param id: The BVH identifier
     :param start: The start of the ray in BVH space
     :param dir: The direction of the ray in BVH space
-    :param root: The root to begin the query from""",
+    :param root: The root to begin the query from
+    :param max_dist: The maximum distance along the ray to check for intersections""",
     export=False,
 )
 
 add_builtin(
     "bvh_query_next",
-    input_types={"query": BvhQuery, "index": int},
+    input_types={"query": BvhQuery, "index": int, "max_dist": float},
+    defaults={"max_dist": math.inf},
     value_type=builtins.bool,
     group="Geometry",
     doc="""Move to the next bound returned by the query.
