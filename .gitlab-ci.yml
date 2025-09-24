@@ -905,7 +905,7 @@ publish wheels to testpypi registry:
     name: staging
     url: https://test.pypi.org/project/warp-lang/
   script:
-    - uvx twine upload --verbose --skip-existing --non-interactive --repository testpypi dist/* -u __token__ -p $TESTPYPI_DEPLOY_KEY
+    - uv publish --verbose --index testpypi -t $TESTPYPI_DEPLOY_KEY dist/*
 
 publish wheels to pypi registry:
   stage: deploy
@@ -921,7 +921,7 @@ publish wheels to pypi registry:
     name: production
     url: https://pypi.org/project/warp-lang/
   script:
-    - uvx twine upload --verbose --skip-existing --non-interactive dist/* -u __token__ -p $PYPI_DEPLOY_KEY
+    - uv publish --verbose -t $PYPI_DEPLOY_KEY dist/*
 
 publish wheels to gitlab pypi registry:
   stage: deploy
@@ -934,7 +934,7 @@ publish wheels to gitlab pypi registry:
       when: manual
       allow_failure: true
   script:
-    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token uvx twine upload --verbose --skip-existing --non-interactive --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist-github/*
+    - uv publish --verbose -t ${CI_JOB_TOKEN} --publish-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi --check-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi/simple dist-github/*
 
 # Uploads the wheels to the internal GitLab package registry in the Warp project
 # Generated files will be in a branch/tag-specific folder
