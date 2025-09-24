@@ -1,6 +1,29 @@
 # Changelog
 
 ## [1.9.1] - 2025-10-01
+## [Unreleased] - 2025-??
+
+### Added
+
+- Add an in-place `wp.Bvh.rebuild()` method that rebuilds the hierarchy without allocating new memory and can be
+  captured in CUDA graphs ([GH-826](https://github.com/NVIDIA/warp/issues/826)).
+- Add atomic bitwise operations `wp.atomic_and()` (`&=`), `wp.atomic_or()` (`|=`), and `wp.atomic_xor()` (`^=`) for
+  scalar types, along with bitwise operations for vector, matrix, and tile types
+  ([GH-886](https://github.com/NVIDIA/warp/issues/886)).
+- Add support for negative indexing and improve slicing for the `wp.array()` type
+  ([GH-504](https://github.com/NVIDIA/warp/issues/504)).
+- Add documentation describing Python IntFlag limitations in Warp kernels
+  ([GH-917](https://github.com/NVIDIA/warp/issues/917)).
+
+### Removed
+
+### Deprecated
+
+### Changed
+
+- Improve efficiency for `bvh_query_aabb`, `mesh_query_aabb` and `bvh_query_ray`.
+  This fixes a performance regression introduced in Warp 1.6.0 ([GH-758](https://github.com/NVIDIA/warp/issues/758)).
+- Improve efficiency of struct instance creation and attribute access ([GH-968](https://github.com/NVIDIA/warp/issues/968)).
 
 ### Fixed
 
