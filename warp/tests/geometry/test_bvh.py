@@ -75,7 +75,7 @@ def intersect_ray_aabb(start, rcp_dir, lower, upper):
         return 0
 
 
-def test_bvh(test, type, device):
+def test_bvh(test, type, device, leaf_size):
     rng = np.random.default_rng(123)
 
     num_bounds = 100
@@ -85,7 +85,7 @@ def test_bvh(test, type, device):
     device_lowers = wp.array(lowers, dtype=wp.vec3, device=device)
     device_uppers = wp.array(uppers, dtype=wp.vec3, device=device)
 
-    bvh = wp.Bvh(device_lowers, device_uppers)
+    bvh = wp.Bvh(device_lowers, device_uppers, leaf_size=leaf_size)
 
     bounds_intersected = wp.zeros(shape=(num_bounds), dtype=int, device=device)
 
@@ -134,11 +134,21 @@ def test_bvh(test, type, device):
 
 
 def test_bvh_query_aabb(test, device):
-    test_bvh(test, "AABB", device)
+    for leaf_size in [
+        1,
+        2,
+        4,
+    ]:
+        test_bvh(test, "AABB", device, leaf_size)
 
 
 def test_bvh_query_ray(test, device):
-    test_bvh(test, "ray", device)
+    for leaf_size in [
+        1,
+        2,
+        4,
+    ]:
+        test_bvh(test, "ray", device, leaf_size)
 
 
 def test_gh_288(test, device):

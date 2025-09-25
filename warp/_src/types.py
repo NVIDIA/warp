@@ -4101,7 +4101,7 @@ class Bvh:
         instance.id = None
         return instance
 
-    def __init__(self, lowers: array, uppers: array, constructor: str | None = None):
+    def __init__(self, lowers: array, uppers: array, constructor: str | None = None, leaf_size: int = 1):
         """Class representing a bounding volume hierarchy.
 
         Depending on which device the input bounds live, it can be either a CPU tree or a GPU tree.
@@ -4117,6 +4117,7 @@ class Bvh:
             constructor: The construction algorithm used to build the tree.
               Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, or ``None``.
               When ``None``, the default constructor will be used (see the note).
+            leaf_size: how many AABBs that each leaf node contains.
 
         Note:
             Explanation of BVH constructors:
@@ -4139,6 +4140,19 @@ class Bvh:
 
             Only ``"sah"`` and ``"median"`` are supported for CPU trees. If ``"lbvh"`` is selected for a CPU tree, a
             warning message will be issued, and the constructor will automatically fall back to ``"sah"``.
+
+            The `leaf_size` parameter controls the number of primitives (AABBs) stored in each leaf node of the BVH.
+            This parameter can have a considerable impact on query performance, and the optimal value depends on the
+            types of queries that will be performed:
+
+            - For intersection queries (such as ray or AABB queries), smaller `leaf_size` values (e.g., 1) are generally
+              preferred, as they reduce the number of unnecessary primitive checks and can improve traversal speed.
+            - For closest point queries, larger `leaf_size` values (e.g., 4 or more) may be beneficial, as they allow
+              more primitives to be checked together, potentially reducing traversal overhead.
+
+            The default value is 1, which is optimal for intersection queries. For use cases that involve both intersection
+            and closest point queries (such as mesh queries), a moderate value (e.g., 4) may provide a good balance.
+            Users are encouraged to experiment with this parameter to find the best value for their specific workload.
         """
 
         if len(lowers) != len(uppers):
@@ -4174,6 +4188,9 @@ class Bvh:
         if constructor not in bvh_constructor_values:
             raise ValueError(f"Unrecognized BVH constructor type: {constructor}")
 
+        if leaf_size < 1:
+            raise ValueError(f"leaf_size must be greater than or equal to 1, current value: {leaf_size}")
+
         if self.device.is_cpu:
             if constructor == "lbvh":
                 warp._src.utils.warn(
@@ -4182,7 +4199,7 @@ class Bvh:
                 constructor = "sah"
 
             self.id = self.runtime.core.wp_bvh_create_host(
-                get_data(lowers), get_data(uppers), len(lowers), bvh_constructor_values[constructor]
+                get_data(lowers), get_data(uppers), len(lowers), bvh_constructor_values[constructor], leaf_size
             )
         else:
             self.id = self.runtime.core.wp_bvh_create_device(
@@ -4191,6 +4208,7 @@ class Bvh:
                 get_data(uppers),
                 len(lowers),
                 bvh_constructor_values[constructor],
+                leaf_size,
             )
 
     def __del__(self):
@@ -4291,6 +4309,7 @@ class Mesh:
         velocities: array | None = None,
         support_winding_number: builtins.bool = False,
         bvh_constructor: str | None = None,
+        bvh_leaf_size: int = 4,
     ):
         """Class representing a triangle mesh.
 
@@ -4308,6 +4327,9 @@ class Mesh:
             bvh_constructor: The construction algorithm for the underlying BVH
               (see the docstring of :class:`Bvh` for explanation).
               Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, or ``None``.
+            bvh_leaf_size: how many AABBs that each leaf node contains.
+              (see the docstring of :class:`Bvh` for explanation).
+
         """
 
         if points.device != indices.device:
@@ -4341,6 +4363,9 @@ class Mesh:
         if bvh_constructor not in bvh_constructor_values:
             raise ValueError(f"Unrecognized BVH constructor type: {bvh_constructor}")
 
+        if bvh_leaf_size < 1:
+            raise ValueError(f"bvh_leaf_size must be greater than or equal to 1, current value: {bvh_leaf_size}")
+
         if self.device.is_cpu:
             if bvh_constructor == "lbvh":
                 warp._src.utils.warn(
@@ -4356,6 +4381,7 @@ class Mesh:
                 int(indices.size / 3),
                 int(support_winding_number),
                 bvh_constructor_values[bvh_constructor],
+                bvh_leaf_size,
             )
         else:
             self.id = self.runtime.core.wp_mesh_create_device(
@@ -4367,6 +4393,7 @@ class Mesh:
                 int(indices.size / 3),
                 int(support_winding_number),
                 bvh_constructor_values[bvh_constructor],
+                bvh_leaf_size,
             )
 
     def __del__(self):

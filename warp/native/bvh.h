@@ -20,13 +20,17 @@
 #include "builtin.h"
 #include "intersect.h"
 
+ // only used while building the warp core library
+#ifndef WP_TILE_BLOCK_DIM
+#define WP_TILE_BLOCK_DIM 256
+#endif
+
 #ifdef __CUDA_ARCH__
 #define BVH_SHARED_STACK 1
 #else
 #define BVH_SHARED_STACK 0
 #endif
 
-#define BVH_LEAF_SIZE (1)
 #define SAH_NUM_BUCKETS (16)
 #define USE_LOAD4
 #define BVH_QUERY_STACK_SIZE (32)
@@ -195,6 +199,8 @@ struct BVH
     vec3* item_lowers;
     vec3* item_uppers;
     int num_items;
+
+    int leaf_size;
 
     // cuda context
     void* context;
@@ -448,9 +454,11 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index)
         BVHPackedNodeHalf node_lower = bvh_load_node(bvh.node_lowers, node_index);
         BVHPackedNodeHalf node_upper = bvh_load_node(bvh.node_uppers, node_index);
 
-        if (!bvh_query_intersection_test(query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)))
-        {
-            continue;
+        if (query.primitive_counter == 0) {
+            if (!bvh_query_intersection_test(query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)))
+            {
+                continue;
+            }
         }
 
         const int left_index = node_lower.i;
@@ -460,33 +468,39 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index)
         {
             // found leaf, loop through its content primitives
             const int start = left_index;
-            const int end = right_index;
 
-            int primitive_index = bvh.primitive_indices[start];
-            index = primitive_index;
-            query.bounds_nr = primitive_index;
-            return true;
+            if (bvh.leaf_size == 1)
+            {
+                int primitive_index = bvh.primitive_indices[start];
+                index = primitive_index;
+                query.bounds_nr = primitive_index;
+                return true;
+            }
+            else
+            {
+                const int end = right_index;
+                int primitive_index = bvh.primitive_indices[start + (query.primitive_counter++)];
 
-            // int primitive_index = bvh.primitive_indices[start + (query.primitive_counter++)];
-            
-            // // if already visited the last primitive in the leaf node
-            // // move to the next node and reset the primitive counter to 0
-            // if (start + query.primitive_counter == end)
-            // {
-            //     query.primitive_counter = 0;
-            // }
-            // // otherwise we need to keep this leaf node in stack for a future visit
-            // else
-            // {
-            //     query.stack[query.count++] = node_index;
-            // }
-            // if (bvh_query_intersection_test(query, bvh.item_lowers[primitive_index], bvh.item_uppers[primitive_index]))
-            // {
-            //     index = primitive_index;
-            //     query.bounds_nr = primitive_index;
+                // if already visited the last primitive in the leaf node
+                // move to the next node and reset the primitive counter to 0
+                if (start + query.primitive_counter == end)
+                {
+                    query.primitive_counter = 0;
+                }
+                // otherwise we need to keep this leaf node in stack for a future visit
+                else
+                {
+                    query.stack[query.count++] = node_index;
+                }
+                // return true;
+                if (bvh_query_intersection_test(query, bvh.item_lowers[primitive_index], bvh.item_uppers[primitive_index]))
+                {
+                    index = primitive_index;
+                    query.bounds_nr = primitive_index;
 
-            //     return true;
-            // }
+                    return true;
+                }
+            }
         }
         else
         {
@@ -531,13 +545,13 @@ CUDA_CALLABLE bool bvh_get_descriptor(uint64_t id, BVH& bvh);
 CUDA_CALLABLE void bvh_add_descriptor(uint64_t id, const BVH& bvh);
 CUDA_CALLABLE void bvh_rem_descriptor(uint64_t id);
 
-void bvh_create_host(vec3* lowers, vec3* uppers, int num_items,  int constructor_type, BVH& bvh);
+void bvh_create_host(vec3* lowers, vec3* uppers, int num_items,  int constructor_type, BVH& bvh, int leaf_size);
 void bvh_destroy_host(wp::BVH& bvh);
 void bvh_refit_host(wp::BVH& bvh);
 
 #if WP_ENABLE_CUDA
 
-void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items, int constructor_type, BVH& bvh_device_on_host);
+void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items, int constructor_type, BVH& bvh_device_on_host, int leaf_size);
 void bvh_destroy_device(BVH& bvh);
 void bvh_refit_device(BVH& bvh);
 

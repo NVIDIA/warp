@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import math
 import unittest
 
@@ -314,7 +315,9 @@ def test_mesh_query_point(test, device):
     else:
         constructors = ["sah", "median", "lbvh"]
 
-    for constructor in constructors:
+    leaf_sizes = [1, 2, 4]
+
+    for leaf_size, constructor in itertools.product(leaf_sizes, constructors):
         # create mesh
         mesh = wp.Mesh(
             points=mesh_points,
@@ -322,6 +325,7 @@ def test_mesh_query_point(test, device):
             indices=mesh_indices,
             support_winding_number=True,
             bvh_constructor=constructor,
+            bvh_leaf_size=leaf_size,
         )
 
         p = particle_grid(32, 32, 32, np.array([-1.1, -1.1, -1.1]), 0.05, 0.0)

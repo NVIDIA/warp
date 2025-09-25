@@ -345,7 +345,7 @@ int TopDownBVHBuilder::build_recursive(BVH& bvh, const vec3* lowers, const vec3*
 
     // If the depth exceeds BVH_QUERY_STACK_SIZE, an out-of-bounds access bug may occur during querying.
     // In that case, we merge the following nodes into a single large leaf node.
-    if (n <= BVH_LEAF_SIZE || depth >= BVH_QUERY_STACK_SIZE - 1)
+    if (n <= bvh.leaf_size || depth >= BVH_QUERY_STACK_SIZE - 1)
     {
         bvh.node_lowers[node_index] = make_node(b.lower, start, true);
         bvh.node_uppers[node_index] = make_node(b.upper, end, false);
@@ -490,13 +490,14 @@ void bvh_rem_descriptor(uint64_t id)
 
 
 // create in-place given existing descriptor
-void bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type, BVH& bvh)
+void bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type, BVH& bvh, int leaf_size)
 {
     memset(&bvh, 0, sizeof(BVH));
 
     bvh.item_lowers = lowers;
     bvh.item_uppers = uppers;
     bvh.num_items = num_items;
+    bvh.leaf_size = leaf_size;
 
     TopDownBVHBuilder builder;
     builder.build(bvh, lowers, uppers, num_items, constructor_type);
@@ -522,10 +523,10 @@ void bvh_destroy_host(BVH& bvh)
 
 } // namespace wp
 
-uint64_t wp_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type)
+uint64_t wp_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type, int leaf_size)
 {
     BVH* bvh = new BVH();
-    wp::bvh_create_host(lowers, uppers, num_items, constructor_type, *bvh);
+    wp::bvh_create_host(lowers, uppers, num_items, constructor_type, *bvh, leaf_size);
 
     return (uint64_t)bvh;
 }
@@ -553,7 +554,7 @@ void wp_bvh_destroy_host(uint64_t id)
 // stubs for non-CUDA platforms
 #if !WP_ENABLE_CUDA
 
-uint64_t wp_bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type) { return 0; }
+uint64_t wp_bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type, int leaf_size) { return 0; }
 void wp_bvh_refit_device(uint64_t id) {}
 void wp_bvh_destroy_device(uint64_t id) {}
 void wp_bvh_rebuild_device(uint64_t id) {}

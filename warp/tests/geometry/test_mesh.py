@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import itertools
 import unittest
 
 import numpy as np
@@ -204,11 +204,13 @@ def test_mesh_query_ray(test, device):
     else:
         constructors = ["sah", "median", "lbvh"]
 
-    for constructor in constructors:
+    leaf_sizes = [1, 2, 4]
+
+    for leaf_size, constructor in itertools.product(leaf_sizes, constructors):
         points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
 
         indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
-        mesh = wp.Mesh(points=points, indices=indices, bvh_constructor=constructor)
+        mesh = wp.Mesh(points=points, indices=indices, bvh_constructor=constructor, bvh_leaf_size=leaf_size)
         expected_sign = -1.0
         wp.launch(
             query_ray_kernel,

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
@@ -104,12 +105,20 @@ def test_mesh_query_ray_grad(test, device):
     else:
         constructors = ["sah", "median", "lbvh"]
 
-    for constructor in constructors:
+    leaf_sizes = [1, 2, 4]
+
+    for leaf_size, constructor in itertools.product(leaf_sizes, constructors):
         p = wp.vec3(50.0, 50.0, 0.0)
         D = wp.vec3(0.0, -1.0, 0.0)
 
         # create mesh
-        mesh = wp.Mesh(points=mesh_points, velocities=None, indices=mesh_indices, bvh_constructor=constructor)
+        mesh = wp.Mesh(
+            points=mesh_points,
+            velocities=None,
+            indices=mesh_indices,
+            bvh_constructor=constructor,
+            bvh_leaf_size=leaf_size,
+        )
 
         tape = wp.Tape()
 
@@ -248,6 +257,8 @@ def test_mesh_query_ray_edge(test, device):
     else:
         constructors = ["sah", "median", "lbvh"]
 
+    leaf_sizes = [1, 2, 4]
+
     # Create raycast starts and directions
     xx, yy = np.meshgrid(np.arange(0.1, 0.4, 0.01), np.arange(0.1, 0.4, 0.01))
     xx = xx.flatten().reshape(-1, 1)
@@ -268,11 +279,12 @@ def test_mesh_query_ray_edge(test, device):
 
     triangles = np.array([[1, 0, 2], [1, 2, 3]], dtype=np.int32)
 
-    for constructor in constructors:
+    for leaf_size, constructor in itertools.product(leaf_sizes, constructors):
         mesh = wp.Mesh(
             points=wp.array(vertices, dtype=wp.vec3, device=device),
             indices=wp.array(triangles.flatten(), dtype=int, device=device),
             bvh_constructor=constructor,
+            bvh_leaf_size=leaf_size,
         )
 
         counts = wp.zeros(1, dtype=int, device=device)
