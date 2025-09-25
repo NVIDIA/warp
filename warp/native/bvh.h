@@ -447,38 +447,6 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(
 	query.input_lower = lower;
 	query.input_upper = upper;
 
-    // Navigate through the bvh, find the first overlapping leaf node.
-    while (query.count)
-    {
-        const int node_index = query.stack[--query.count];
-        BVHPackedNodeHalf node_lower = bvh_load_node(bvh.node_lowers, node_index);
-        BVHPackedNodeHalf node_upper = bvh_load_node(bvh.node_uppers, node_index);
-
-        float t = INFINITY;
-        bool hit = bvh_query_intersection_test(query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper), t);
-        if (!hit || t >= max_dist)
-        {
-            continue;
-        }
-
-        const int left_index = node_lower.i;
-        const int right_index = node_upper.i;
-        // Make bounds from this AABB
-        if (node_lower.b)
-        {
-            // Reached a leaf node, point to its first primitive
-            // Back up one level and return 
-            query.primitive_counter = 0;
-            query.stack[query.count++] = node_index;
-            return query;
-        }
-        else
-        {
-            query.stack[query.count++] = left_index;
-            query.stack[query.count++] = right_index;
-        }
-    }
-
     return query;
 }
 
