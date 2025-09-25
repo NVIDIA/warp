@@ -2514,15 +2514,36 @@ void wp_cuda_stream_synchronize(void* stream)
     check_cu(cuStreamSynchronize_f(static_cast<CUstream>(stream)));
 }
 
-void wp_cuda_stream_wait_event(void* stream, void* event)
+void wp_cuda_stream_wait_event(void* stream, void* event, bool external)
 {
-    check_cu(cuStreamWaitEvent_f(static_cast<CUstream>(stream), static_cast<CUevent>(event), 0));
+    // the external flag can only be used during graph capture
+    if (external && !g_captures.empty() && wp_cuda_stream_is_capturing(stream))
+    {
+        // wait for an external event during graph capture
+        check_cu(cuStreamWaitEvent_f(static_cast<CUstream>(stream), static_cast<CUevent>(event), CU_EVENT_WAIT_EXTERNAL));
+    }
+    else
+    {
+        check_cu(cuStreamWaitEvent_f(static_cast<CUstream>(stream), static_cast<CUevent>(event), CU_EVENT_WAIT_DEFAULT));
+    }
 }
 
-void wp_cuda_stream_wait_stream(void* stream, void* other_stream, void* event)
+void wp_cuda_stream_wait_stream(void* stream, void* other_stream, void* event, bool external)
 {
-    check_cu(cuEventRecord_f(static_cast<CUevent>(event), static_cast<CUstream>(other_stream)));
-    check_cu(cuStreamWaitEvent_f(static_cast<CUstream>(stream), static_cast<CUevent>(event), 0));
+    unsigned record_flags = CU_EVENT_RECORD_DEFAULT;
+    unsigned wait_flags = CU_EVENT_WAIT_DEFAULT;
+
+    // the external flag can only be used during graph capture
+    if (external && !g_captures.empty())
+    {
+        if (wp_cuda_stream_is_capturing(other_stream))
+            record_flags = CU_EVENT_RECORD_EXTERNAL;
+        if (wp_cuda_stream_is_capturing(stream))
+            wait_flags = CU_EVENT_WAIT_EXTERNAL;
+    }
+
+    check_cu(cuEventRecordWithFlags_f(static_cast<CUevent>(event), static_cast<CUstream>(other_stream), record_flags));
+    check_cu(cuStreamWaitEvent_f(static_cast<CUstream>(stream), static_cast<CUevent>(event), wait_flags));
 }
 
 int wp_cuda_stream_is_capturing(void* stream)
@@ -2575,11 +2596,12 @@ int wp_cuda_event_query(void* event)
     return res;
 }
 
-void wp_cuda_event_record(void* event, void* stream, bool timing)
+void wp_cuda_event_record(void* event, void* stream, bool external)
 {
-    if (timing && !g_captures.empty() && wp_cuda_stream_is_capturing(stream))
+    // the external flag can only be used during graph capture
+    if (external && !g_captures.empty() && wp_cuda_stream_is_capturing(stream))
     {
-        // record timing event during graph capture
+        // record external event during graph capture (e.g., for timing or when explicitly specified by the user)
         check_cu(cuEventRecordWithFlags_f(static_cast<CUevent>(event), static_cast<CUstream>(stream), CU_EVENT_RECORD_EXTERNAL));
     }
     else

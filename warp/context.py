@@ -2919,12 +2919,14 @@ class Stream:
             self._cached_event = Event(self.device)
         return self._cached_event
 
-    def record_event(self, event: Event | None = None) -> Event:
+    def record_event(self, event: Event | None = None, external: bool = False) -> Event:
         """Record an event onto the stream.
 
         Args:
             event: A warp.Event instance to be recorded onto the stream. If not
-              provided, an :class:`~warp.Event` on the same device will be created.
+                provided, an :class:`~warp.Event` on the same device will be created.
+            external: Whether this is an external event during graph capture. This
+                argument has no effect outside of graph capture.
 
         Raises:
             RuntimeError: The provided :class:`~warp.Event` is from a different device than
@@ -2937,18 +2939,23 @@ class Stream:
                 f"Event from device {event.device} cannot be recorded on stream from device {self.device}"
             )
 
-        runtime.core.wp_cuda_event_record(event.cuda_event, self.cuda_stream, event.enable_timing)
+        runtime.core.wp_cuda_event_record(event.cuda_event, self.cuda_stream, external or event.enable_timing)
 
         return event
 
-    def wait_event(self, event: Event):
+    def wait_event(self, event: Event, external: bool = False):
         """Makes all future work in this stream wait until `event` has completed.
 
         This function does not block the host thread.
-        """
-        runtime.core.wp_cuda_stream_wait_event(self.cuda_stream, event.cuda_event)
 
-    def wait_stream(self, other_stream: Stream, event: Event | None = None):
+        Args:
+            event: :class:`Event` instance to wait for.
+            external: Whether this is an external event during graph capture. This
+                argument has no effect outside of graph capture.
+        """
+        runtime.core.wp_cuda_stream_wait_event(self.cuda_stream, event.cuda_event, external)
+
+    def wait_stream(self, other_stream: Stream, event: Event | None = None, external: bool = False):
         """Records an event on `other_stream` and makes this stream wait on it.
 
         All work added to this stream after this function has been called will
@@ -2959,17 +2966,19 @@ class Stream:
 
         Args:
             other_stream: The stream on which the calling stream will wait for
-              previously issued commands to complete before executing subsequent
-              commands.
+                previously issued commands to complete before executing subsequent
+                commands.
             event: An optional :class:`Event` instance that will be used to
-              record an event onto ``other_stream``. If ``None``, an internally
-              managed :class:`Event` instance will be used.
+                record an event onto ``other_stream``. If ``None``, an internally
+                managed :class:`Event` instance will be used.
+            external: Whether this is an external event during graph capture. This
+                argument has no effect outside of graph capture.
         """
 
         if event is None:
             event = other_stream.cached_event
 
-        runtime.core.wp_cuda_stream_wait_stream(self.cuda_stream, other_stream.cuda_stream, event.cuda_event)
+        runtime.core.wp_cuda_stream_wait_stream(self.cuda_stream, other_stream.cuda_stream, event.cuda_event, external)
 
     @property
     def is_complete(self) -> bool:
@@ -4029,9 +4038,14 @@ class Runtime:
             self.core.wp_cuda_stream_unregister.restype = None
             self.core.wp_cuda_stream_synchronize.argtypes = [ctypes.c_void_p]
             self.core.wp_cuda_stream_synchronize.restype = None
-            self.core.wp_cuda_stream_wait_event.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_stream_wait_event.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool]
             self.core.wp_cuda_stream_wait_event.restype = None
-            self.core.wp_cuda_stream_wait_stream.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_stream_wait_stream.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_bool,
+            ]
             self.core.wp_cuda_stream_wait_stream.restype = None
             self.core.wp_cuda_stream_is_capturing.argtypes = [ctypes.c_void_p]
             self.core.wp_cuda_stream_is_capturing.restype = ctypes.c_int
@@ -5169,28 +5183,32 @@ def set_stream(stream: Stream, device: Devicelike = None, sync: bool = False) ->
     get_device(device).set_stream(stream, sync=sync)
 
 
-def record_event(event: Event | None = None):
+def record_event(event: Event | None = None, external: bool = False):
     """Convenience function for calling :meth:`Stream.record_event` on the current stream.
 
     Args:
         event: :class:`Event` instance to record. If ``None``, a new :class:`Event`
-          instance will be created.
+            instance will be created.
+        external: Whether this is an external event during graph capture. This
+            argument has no effect outside of graph capture.
 
     Returns:
         The recorded event.
     """
 
-    return get_stream().record_event(event)
+    return get_stream().record_event(event, external=external)
 
 
-def wait_event(event: Event):
+def wait_event(event: Event, external: bool = False):
     """Convenience function for calling :meth:`Stream.wait_event` on the current stream.
 
     Args:
         event: :class:`Event` instance to wait for.
+        external: Whether this is an external event during graph capture. This
+            argument has no effect outside of graph capture.
     """
 
-    get_stream().wait_event(event)
+    get_stream().wait_event(event, external=external)
 
 
 def get_event_elapsed_time(start_event: Event, end_event: Event, synchronize: bool = True):
@@ -5218,19 +5236,21 @@ def get_event_elapsed_time(start_event: Event, end_event: Event, synchronize: bo
     return runtime.core.wp_cuda_event_elapsed_time(start_event.cuda_event, end_event.cuda_event)
 
 
-def wait_stream(other_stream: Stream, event: Event | None = None):
+def wait_stream(other_stream: Stream, event: Event | None = None, external: bool = False):
     """Convenience function for calling :meth:`Stream.wait_stream` on the current stream.
 
     Args:
         other_stream: The stream on which the calling stream will wait for
-          previously issued commands to complete before executing subsequent
-          commands.
+            previously issued commands to complete before executing subsequent
+            commands.
         event: An optional :class:`Event` instance that will be used to
-          record an event onto ``other_stream``. If ``None``, an internally
-          managed :class:`Event` instance will be used.
+            record an event onto ``other_stream``. If ``None``, an internally
+            managed :class:`Event` instance will be used.
+        external: Whether this is an external event during graph capture. This
+            argument has no effect outside of graph capture.
     """
 
-    get_stream().wait_stream(other_stream, event=event)
+    get_stream().wait_stream(other_stream, event=event, external=external)
 
 
 class RegisteredGLBuffer:

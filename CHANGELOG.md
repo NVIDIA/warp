@@ -13,6 +13,7 @@
   ([GH-504](https://github.com/NVIDIA/warp/issues/504)).
 - Add documentation describing Python IntFlag limitations in Warp kernels
   ([GH-917](https://github.com/NVIDIA/warp/issues/917)).
+- Add support for recording and waiting for external events in CUDA graphs ([GH-983](https://github.com/NVIDIA/warp/issues/983)).
 
 ### Removed
 
