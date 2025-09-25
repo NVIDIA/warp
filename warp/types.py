@@ -4035,7 +4035,14 @@ class Bvh:
         instance.id = None
         return instance
 
-    def __init__(self, lowers: array, uppers: array, constructor: str | None = None):
+    def __init__(
+        self,
+        lowers: array,
+        uppers: array,
+        constructor: str | None = None,
+        groups: array | None = None,
+        num_groups: int = 0,
+    ):
         """Class representing a bounding volume hierarchy.
 
         Depending on which device the input bounds live, it can be either a CPU tree or a GPU tree.
@@ -4051,6 +4058,8 @@ class Bvh:
             constructor: The construction algorithm used to build the tree.
               Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, or ``None``.
               When ``None``, the default constructor will be used (see the note).
+            groups: Optional array of group indices of data type :class:`warp.int32`.
+            num_groups: Optional number of groups.
 
         Note:
             Explanation of BVH constructors:
@@ -4087,9 +4096,14 @@ class Bvh:
         if uppers.dtype != vec3 or not uppers.is_contiguous:
             raise RuntimeError("uppers should be a contiguous array of type wp.vec3")
 
+        if groups is not None:
+            if groups.dtype != int32 or not groups.is_contiguous:
+                raise RuntimeError("groups should be a contiguous array of type wp.int32")
+
         self.device = lowers.device
         self.lowers = lowers
         self.uppers = uppers
+        self.groups = groups
 
         def get_data(array):
             if array:
@@ -4116,7 +4130,11 @@ class Bvh:
                 constructor = "sah"
 
             self.id = self.runtime.core.wp_bvh_create_host(
-                get_data(lowers), get_data(uppers), len(lowers), bvh_constructor_values[constructor]
+                get_data(lowers),
+                get_data(uppers),
+                len(lowers),
+                bvh_constructor_values[constructor],
+                get_data(groups),
             )
         else:
             self.id = self.runtime.core.wp_bvh_create_device(
@@ -4125,6 +4143,8 @@ class Bvh:
                 get_data(uppers),
                 len(lowers),
                 bvh_constructor_values[constructor],
+                get_data(groups),
+                num_groups,
             )
 
     def __del__(self):
