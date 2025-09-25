@@ -792,6 +792,137 @@ def test_ffi_callback(test, device):
     assert_np_equal(d, 2 * np.arange(10, dtype=np.float32).reshape((5, 2)))
 
 
+@unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for pmap forward test")
+def test_jax_callable_pmap_mul_forward(test, device):
+    import jax
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_callable
+
+    if jax.local_device_count() < 2:
+        test.skipTest("requires >= 2 local devices")
+
+    @wp.kernel
+    def mul2(a: wp.array(dtype=float), out: wp.array(dtype=float)):
+        tid = wp.tid()
+        out[tid] = 2.0 * a[tid]
+
+    def mul2_py(a: wp.array(dtype=float), out: wp.array(dtype=float)):
+        wp.launch(mul2, dim=a.shape, inputs=[a], outputs=[out])
+
+    j = jax_callable(mul2_py, num_outputs=1)
+
+    per_device = 8
+    ndev = jax.local_device_count()
+    x = jp.arange(ndev * per_device, dtype=jp.float32).reshape((ndev, per_device))
+
+    def per_device_fwd(v):
+        (y,) = j(v)
+        return y
+
+    y = jax.pmap(per_device_fwd)(x)
+    test.assertTrue(np.allclose(np.asarray(y), 2.0 * np.asarray(x), rtol=1e-5, atol=1e-6))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for pmap forward test")
+def test_jax_callable_pmap_multi_output_forward(test, device):
+    import jax
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_callable
+
+    if jax.local_device_count() < 2:
+        test.skipTest("requires >= 2 local devices")
+
+    @wp.kernel
+    def multi_out(
+        a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, c: wp.array(dtype=float), d: wp.array(dtype=float)
+    ):
+        tid = wp.tid()
+        c[tid] = a[tid] + b[tid]
+        d[tid] = s * a[tid]
+
+    def multi_out_py(
+        a: wp.array(dtype=float),
+        b: wp.array(dtype=float),
+        s: float,
+        c: wp.array(dtype=float),
+        d: wp.array(dtype=float),
+    ):
+        wp.launch(multi_out, dim=a.shape, inputs=[a, b, s], outputs=[c, d])
+
+    j = jax_callable(multi_out_py, num_outputs=2)
+
+    per_device = 7
+    ndev = jax.local_device_count()
+    a = jp.arange(ndev * per_device, dtype=jp.float32).reshape((ndev, per_device))
+    b = jp.ones((ndev, per_device), dtype=jp.float32)
+    s = 3.0
+
+    def per_device_fwd(aa, bb):
+        c, d = j(aa, bb, s)
+        return c + d  # simple combine to exercise both outputs
+
+    out = jax.pmap(per_device_fwd)(a, b)
+
+    a_np = np.arange(ndev * per_device, dtype=np.float32).reshape((ndev, per_device))
+    b_np = np.ones((ndev, per_device), dtype=np.float32)
+    ref = (a_np + b_np) + s * a_np
+    test.assertTrue(np.allclose(np.asarray(out), ref, rtol=1e-5, atol=1e-6))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 4, 31), "Jax version too old for pmap forward test")
+def test_jax_callable_pmap_multi_stage_forward(test, device):
+    import jax
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_callable
+
+    if jax.local_device_count() < 2:
+        test.skipTest("requires >= 2 local devices")
+
+    @wp.kernel
+    def add_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), out: wp.array(dtype=float)):
+        tid = wp.tid()
+        out[tid] = a[tid] + b[tid]
+
+    @wp.kernel
+    def axpy_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float), alpha: float, out: wp.array(dtype=float)):
+        tid = wp.tid()
+        out[tid] = alpha * x[tid] + y[tid]
+
+    def multi_stage_py(
+        a: wp.array(dtype=float),
+        b: wp.array(dtype=float),
+        alpha: float,
+        tmp: wp.array(dtype=float),
+        out: wp.array(dtype=float),
+    ):
+        wp.launch(add_kernel, dim=a.shape, inputs=[a, b], outputs=[tmp])
+        wp.launch(axpy_kernel, dim=a.shape, inputs=[tmp, b, alpha], outputs=[out])
+
+    j = jax_callable(multi_stage_py, num_outputs=2)
+
+    per_device = 9
+    ndev = jax.local_device_count()
+    a = jp.arange(ndev * per_device, dtype=jp.float32).reshape((ndev, per_device))
+    b = jp.ones((ndev, per_device), dtype=jp.float32)
+    alpha = 2.5
+
+    def per_device_fwd(aa, bb):
+        tmp, out = j(aa, bb, alpha)
+        return tmp + out
+
+    combined = jax.pmap(per_device_fwd)(a, b)
+
+    a_np = np.arange(ndev * per_device, dtype=np.float32).reshape((ndev, per_device))
+    b_np = np.ones((ndev, per_device), dtype=np.float32)
+    tmp_ref = a_np + b_np
+    out_ref = alpha * (a_np + b_np) + b_np
+    ref = tmp_ref + out_ref
+    test.assertTrue(np.allclose(np.asarray(combined), ref, rtol=1e-5, atol=1e-6))
+
+
 class TestJax(unittest.TestCase):
     pass
 
@@ -939,6 +1070,25 @@ try:
 
         # ffi callback tests
         add_function_test(TestJax, "test_ffi_callback", test_ffi_callback, devices=jax_compatible_cuda_devices)
+
+        add_function_test(
+            TestJax,
+            "test_jax_callable_pmap_multi_output_forward",
+            test_jax_callable_pmap_multi_output_forward,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_jax_callable_pmap_mul_forward",
+            test_jax_callable_pmap_mul_forward,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_jax_callable_pmap_multi_stage_forward",
+            test_jax_callable_pmap_multi_stage_forward,
+            devices=jax_compatible_cuda_devices,
+        )
 
 
 except Exception as e:

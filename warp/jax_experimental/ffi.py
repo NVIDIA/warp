@@ -23,10 +23,11 @@ import jax
 
 import warp as wp
 from warp.codegen import get_full_arg_spec, make_full_qualified_name
-from warp.jax import get_jax_device
 from warp.types import array_t, launch_bounds_t, strides_from_shape, type_to_warp
 
 from .xla_ffi import *
+
+WARP_DEVICE_CONTEXT_LOCK = threading.Lock()
 
 
 def check_jax_version():
@@ -244,9 +245,10 @@ class FfiKernel:
             input_output_aliases=self.input_output_aliases,
         )
 
-        # ensure the kernel module is loaded before the callback, otherwise graph capture may fail
-        device = wp.device_from_jax(get_jax_device())
-        self.kernel.module.load(device)
+        # ensure the kernel module is loaded on all local GPUs to avoid per-device build races
+        for d in jax.local_devices():
+            dev = wp.device_from_jax(d)
+            self.kernel.module.load(dev)
 
         # save launch data to be retrieved by callback
         launch_id = self.launch_id
@@ -321,7 +323,7 @@ class FfiKernel:
                 arg_refs.append(arg)  # keep a reference
 
             # get device and stream
-            device = wp.device_from_jax(get_jax_device())
+            device = wp.get_cuda_device(get_device_ordinal_from_callframe(call_frame.contents))
             stream = get_stream_from_callframe(call_frame.contents)
 
             # get kernel hooks
@@ -516,11 +518,11 @@ class FfiCallable:
             # has_side_effect=True,  # force this function to execute even if outputs aren't used
         )
 
-        # load the module
-        # NOTE: if the target function uses kernels from different modules, they will not be loaded here
-        device = wp.device_from_jax(get_jax_device())
+        # Preload relevant modules across local GPUs to avoid per-device build races (e.g., __main__)
         module = wp.get_module(self.func.__module__)
-        module.load(device)
+        for d in jax.local_devices():
+            dev = wp.device_from_jax(d)
+            module.load(dev)
 
         # save call data to be retrieved by callback
         call_id = self.call_id
@@ -592,10 +594,9 @@ class FfiCallable:
 
                     # early out
                     return
-
-            device = wp.device_from_jax(get_jax_device())
+            device_ordinal = get_device_ordinal_from_callframe(call_frame.contents)
+            device = wp.get_cuda_device(device_ordinal)
             stream = wp.Stream(device, cuda_stream=cuda_stream)
-
             # reconstruct the argument list
             arg_list = []
 
@@ -619,23 +620,26 @@ class FfiCallable:
                 arg_list.append(arr)
 
             # call the Python function with reconstructed arguments
-            with wp.ScopedStream(stream, sync_enter=False):
-                if stream.is_capturing:
-                    # capturing with JAX
-                    with wp.ScopedCapture(external=True) as capture:
+            # Lock is required here to prevent wp.ScopedStreams from overwriting each other
+            # when XLA calls this method from multiple threads.
+            with WARP_DEVICE_CONTEXT_LOCK:
+                with wp.ScopedStream(stream, sync_enter=True):
+                    if stream.is_capturing:
+                        # capturing with JAX
+                        with wp.ScopedCapture(external=True) as capture:
+                            self.func(*arg_list)
+                        # keep a reference to the capture object to prevent required modules getting unloaded
+                        call_desc.capture = capture
+                    elif self.graph_mode == GraphMode.WARP:
+                        # capturing with WARP
+                        with wp.ScopedCapture() as capture:
+                            self.func(*arg_list)
+                        wp.capture_launch(capture.graph)
+                        # keep a reference to the capture object and reuse it with same buffers
+                        call_desc.captures[buffer_hash] = capture
+                    else:
+                        # not capturing
                         self.func(*arg_list)
-                    # keep a reference to the capture object to prevent required modules getting unloaded
-                    call_desc.capture = capture
-                elif self.graph_mode == GraphMode.WARP:
-                    # capturing with WARP
-                    with wp.ScopedCapture() as capture:
-                        self.func(*arg_list)
-                    wp.capture_launch(capture.graph)
-                    # keep a reference to the capture object and reuse it with same buffers
-                    call_desc.captures[buffer_hash] = capture
-                else:
-                    # not capturing
-                    self.func(*arg_list)
 
         except Exception as e:
             print(traceback.format_exc())
