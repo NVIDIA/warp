@@ -746,6 +746,7 @@ void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items,
         // replace host bounds with device bounds
         bvh_device_on_host.item_lowers = lowers;
         bvh_device_on_host.item_uppers = uppers;
+        bvh_device_on_host.item_groups = groups;
         // node_counts is not allocated for host tree
         bvh_device_on_host.node_counts = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh_device_on_host.max_nodes);
         wp::bvh_destroy_host(bvh_host);
