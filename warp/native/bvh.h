@@ -195,8 +195,6 @@ struct BVH
 	// representing the root of the tree, this is not always the first node
 	// for bottom-up builders
 	int* root;
-	// pointer for the root of each group
-	int* group_roots;
 
 	// item bounds are not owned by the BVH but by the caller
 	vec3* item_lowers;
