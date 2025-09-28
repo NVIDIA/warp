@@ -4041,7 +4041,6 @@ class Bvh:
         uppers: array,
         constructor: str | None = None,
         groups: array | None = None,
-        num_groups: int = 0,
     ):
         """Class representing a bounding volume hierarchy.
 
@@ -4059,7 +4058,6 @@ class Bvh:
               Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, or ``None``.
               When ``None``, the default constructor will be used (see the note).
             groups: Optional array of group indices of data type :class:`warp.int32`.
-            num_groups: Optional number of groups.
 
         Note:
             Explanation of BVH constructors:
@@ -4144,7 +4142,6 @@ class Bvh:
                 len(lowers),
                 bvh_constructor_values[constructor],
                 get_data(groups),
-                num_groups,
             )
 
     def __del__(self):
