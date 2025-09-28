@@ -129,6 +129,11 @@ static std::unique_ptr<llvm::Module> source_to_llvm(bool is_cuda, const std::str
             args.push_back("-target-feature");
             args.push_back("+f16c");  // Enables support for _Float16
         #endif
+
+        #if defined(__aarch64__)
+            args.push_back("-target-feature");
+            args.push_back("+reserve-x28");
+        #endif
     }
 
     #if LLVM_VERSION_MAJOR >= 21

@@ -3719,6 +3719,11 @@ WP_API void {name}_cpu_forward(
     wp::launch_bounds_t dim,
     wp_args_{name} *_wp_args)
 {{
+#if defined(__aarch64__)
+    wp::SharedTileStorage tile_mem;
+    wp::shared_tile_storage = &tile_mem;
+#endif
+
 for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
         // init shared memory allocator
@@ -3745,6 +3750,11 @@ WP_API void {name}_cpu_backward(
     wp_args_{name} *_wp_args,
     wp_args_{name} *_wp_adj_args)
 {{
+#if defined(__aarch64__)
+    wp::SharedTileStorage tile_mem;
+    wp::shared_tile_storage = &tile_mem;
+#endif
+
     for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
         // initialize shared memory allocator

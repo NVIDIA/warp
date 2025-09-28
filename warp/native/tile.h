@@ -48,6 +48,11 @@
 #define WP_TILE_BLOCK_DIM 256
 #endif
 
+// on CPU allocate a fixed 256k block to use for shared allocs
+#ifndef WP_MAX_CPU_SHARED
+#define WP_MAX_CPU_SHARED 256*1024
+#endif
+
 #if !defined(__CUDA_ARCH__)
 #define WP_TILE_SHARED static
 #define WP_TILE_SYNC void
@@ -733,12 +738,26 @@ inline CUDA_CALLABLE int tile_align(int num_bytes)
     return sign * ((num_bytes_abs + alignment - 1) / alignment) * alignment;
 }
 
+#if !defined(__CUDA_ARCH__) && defined(__aarch64__)
+struct SharedTileStorage
+{
+    int smem_base[WP_TILE_BLOCK_DIM];
+    char dynamic_smem_base[WP_MAX_CPU_SHARED];
+};
+
+register SharedTileStorage* shared_tile_storage asm("x28");
+#endif
+
 inline CUDA_CALLABLE void* tile_alloc_shared(int num_bytes, bool init=false, bool check=false)
 {
     // we maintain a per-thread offset into dynamic
     // shared memory that allows us to keep track of 
     // current use across dynamic function calls
+#if defined(__CUDA_ARCH__) || !defined(__aarch64__)
     WP_TILE_SHARED int smem_base[WP_TILE_BLOCK_DIM];
+#else
+    int* smem_base = shared_tile_storage->smem_base;
+#endif
 
     if (init)
     {
@@ -761,12 +780,15 @@ inline CUDA_CALLABLE void* tile_alloc_shared(int num_bytes, bool init=false, boo
 #ifdef __CUDA_ARCH__
         extern __shared__ char dynamic_smem_base[];
 #else
-        // on CPU allocate a fixed 256k block to use for shared allocs
-        static const int max_cpu_shared = 256*1024;
-        static char dynamic_smem_base[max_cpu_shared];
+    #if !defined(__aarch64__)
+        static char dynamic_smem_base[WP_MAX_CPU_SHARED];
+    #else
+        char* dynamic_smem_base = shared_tile_storage->dynamic_smem_base;
+    #endif
 
-        assert(smem_base[WP_TILE_THREAD_IDX] <= max_cpu_shared);
+        assert(smem_base[WP_TILE_THREAD_IDX] <= WP_MAX_CPU_SHARED);
 #endif
+
         return &(dynamic_smem_base[offset]);
     }
 }
