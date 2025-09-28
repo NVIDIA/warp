@@ -271,7 +271,11 @@ WP_API int wp_compile_cpp(const char* cpp_src, const char *input_file, const cha
         target_options.AllowFPOpFusion = llvm::FPOpFusion::Strict;
     llvm::Reloc::Model relocation_model = llvm::Reloc::PIC_;  // Position Independent Code
     llvm::CodeModel::Model code_model = llvm::CodeModel::Large;  // Don't make assumptions about displacement sizes
+    #if LLVM_VERSION_MAJOR >= 22
+    llvm::TargetMachine* target_machine = target->createTargetMachine(llvm::Triple(target_triple), CPU, features, target_options, relocation_model, code_model);
+    #else
     llvm::TargetMachine* target_machine = target->createTargetMachine(target_triple, CPU, features, target_options, relocation_model, code_model);
+    #endif
 
     module->setDataLayout(target_machine->createDataLayout());
 
@@ -313,7 +317,11 @@ WP_API int wp_compile_cuda(const char* cpp_src, const char *input_file, const ch
     const char* features = "+ptx75";  // Warp requires CUDA 11.5, which supports PTX ISA 7.5
     llvm::TargetOptions target_options;
     llvm::Reloc::Model relocation_model = llvm::Reloc::PIC_;
+    #if LLVM_VERSION_MAJOR >= 22
+    llvm::TargetMachine* target_machine = target->createTargetMachine(llvm::Triple("nvptx64-nvidia-cuda"), CPU, features, target_options, relocation_model);
+    #else
     llvm::TargetMachine* target_machine = target->createTargetMachine("nvptx64-nvidia-cuda", CPU, features, target_options, relocation_model);
+    #endif
 
     module->setDataLayout(target_machine->createDataLayout());
 
