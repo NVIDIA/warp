@@ -3259,6 +3259,7 @@ def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: Optional[int32] = 
 @over
 def bvh_query_next(query: BvhQuery, index: int32, max_dist: float32 = inf) -> bool:
     """Move to the next bound returned by the query.
+    
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
     The maximum distance along a ray query to check for intersections can be set using ``max_dist``.
 

@@ -4802,11 +4802,14 @@ add_builtin(
     doc="""Construct an axis-aligned bounding box query against a BVH object.
 
     This query can be used to iterate over all bounds inside a BVH.
+    To start a query from a specific node, set ``root`` to the index of the node. The root
+    can be obtained using the :func:`bvh_get_group_root` function.
+    The query will only trace down from that node, limiting traversal to that subtree.
 
     :param id: The BVH identifier
     :param low: The lower bound of the bounding box in BVH space
     :param high: The upper bound of the bounding box in BVH space
-    :param root: The root to begin the query from""",
+    :param root: The root to begin the query from (optional, default: -1)""",
     export=False,
 )
 
@@ -4819,12 +4822,16 @@ add_builtin(
     doc="""Construct a ray query against a BVH object.
 
     This query can be used to iterate over all bounds that intersect the ray.
+    To start a query from a specific node, set ``root`` to the index of the node. The root
+    can be obtained using the :func:`bvh_get_group_root` function.
+    The query will only trace down from that node, limiting traversal to that subtree.
+    The maximum distance along the ray to check for intersections can be set using ``max_dist``.
 
     :param id: The BVH identifier
     :param start: The start of the ray in BVH space
     :param dir: The direction of the ray in BVH space
-    :param root: The root to begin the query from
-    :param max_dist: The maximum distance along the ray to check for intersections""",
+    :param root: The root to begin the query from (optional, default: -1)
+    :param max_dist: The maximum distance along the ray to check for intersections (optional, default: inf)""",
     export=False,
 )
 
@@ -4835,7 +4842,13 @@ add_builtin(
     value_type=builtins.bool,
     group="Geometry",
     doc="""Move to the next bound returned by the query.
-    The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.""",
+    
+    The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
+    The maximum distance along a ray query to check for intersections can be set using ``max_dist``.
+
+    :param query: The query to move to the next bound
+    :param index: The index of the current bound
+    :param max_dist: The maximum distance along the ray to check for intersections for ray queries""",
     export=False,
 )
 

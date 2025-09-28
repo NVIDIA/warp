@@ -3656,6 +3656,9 @@ class Runtime:
             self.core.wp_radix_sort_pairs_int64_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
             self.core.wp_radix_sort_pairs_int64_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
 
+            self.core.wp_radix_sort_pairs_uint64_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_radix_sort_pairs_uint64_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+
             self.core.wp_segmented_sort_pairs_int_host.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
