@@ -130,7 +130,7 @@ line-ending = "auto"
 docstring-code-format = true
 
 [tool.coverage.run]
-source = ["warp", "warp.sim", "warp.render"]
+source = ["warp", "warp.render"]
 disable_warnings = [
     "module-not-measured",
     "module-not-imported",

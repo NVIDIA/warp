@@ -210,89 +210,14 @@ warp/examples/optim
 .. list-table::
     :class: gallery
 
-    * - .. image:: ./img/examples/optim_bounce.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_bounce.py
-      - .. image:: ./img/examples/optim_cloth_throw.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_cloth_throw.py
-      - .. image:: ./img/examples/optim_diffray.png
+    * - .. image:: ./img/examples/optim_diffray.png
            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_diffray.py
-      - .. image:: ./img/examples/optim_drone.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_drone.py
-    * - bounce
-      - cloth throw
-      - diffray
-      - drone
-    * - .. image:: ./img/examples/optim_inverse_kinematics.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_inverse_kinematics.py
-      - .. image:: ./img/examples/optim_spring_cage.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_spring_cage.py
-      - .. image:: ./img/examples/optim_trajectory.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_trajectory.py
-      - .. image:: ./img/examples/optim_softbody_properties.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_softbody_properties.py
-    * - inverse kinematics
-      - spring cage
-      - trajectory
-      - soft body properties
-    * - .. image:: ./img/examples/optim_fluid_checkpoint.png
+      - .. image:: ./img/examples/optim_fluid_checkpoint.png
            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_fluid_checkpoint.py
       -
       -
-      -
-    * - fluid checkpoint
-      -
-      -
-      -
-
-warp/examples/sim
-^^^^^^^^^^^^^^^^^
-
-.. list-table::
-    :class: gallery
-
-    * - .. image:: ./img/examples/sim_cartpole.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_cartpole.py
-      - .. image:: ./img/examples/sim_cloth.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_cloth.py
-      - .. image:: ./img/examples/sim_granular.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_granular.py
-      - .. image:: ./img/examples/sim_granular_collision_sdf.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_granular_collision_sdf.py
-    * - cartpole
-      - cloth
-      - granular
-      - granular collision sdf
-    * - .. image:: ./img/examples/sim_jacobian_ik.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_jacobian_ik.py
-      - .. image:: ./img/examples/sim_quadruped.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_quadruped.py
-      - .. image:: ./img/examples/sim_rigid_chain.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_chain.py
-      - .. image:: ./img/examples/sim_rigid_contact.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_contact.py
-    * - jacobian ik
-      - quadruped
-      - rigid chain
-      - rigid contact
-    * - .. image:: ./img/examples/sim_rigid_force.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_force.py
-      - .. image:: ./img/examples/sim_rigid_gyroscopic.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_gyroscopic.py
-      - .. image:: ./img/examples/sim_rigid_soft_contact.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_soft_contact.py
-      - .. image:: ./img/examples/sim_soft_body.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_soft_body.py
-    * - rigid force
-      - rigid gyroscopic
-      - rigid soft contact
-      - soft body
-    * - .. image:: ./img/examples/sim_example_cloth_self_contact.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_cloth_self_contact.py
-      -
-      -
-      -
-    * - cloth self contact
-      -
+    * - diffray
+      - fluid checkpoint
       -
       -
 
@@ -306,12 +231,11 @@ warp/examples/tile
             :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_mlp.py
       - .. image:: ./img/examples/tile_nbody.png
             :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_nbody.py
-      - .. image:: ./img/examples/tile_walker.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_walker.py
+      -
       -
     * - mlp
       - nbody
-      - walker
+      -
       -
 
 Omniverse
@@ -460,7 +384,6 @@ Full Table of Contents
     :maxdepth: 2
     :caption: Simulation Reference
    
-    modules/sim
     modules/sparse
     modules/fem
     modules/render

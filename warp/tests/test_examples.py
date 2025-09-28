@@ -52,8 +52,6 @@ from warp.tests.unittest_utils import (
 )
 from warp.utils import check_p2p
 
-wp.init()  # For wp.context.runtime.core.wp_is_debug_enabled()
-
 
 def _build_command_line_options(test_options: Dict[str, Any]) -> list:
     """Helper function to build command-line options from the test options dictionary."""
@@ -282,25 +280,6 @@ class TestOptimExamples(unittest.TestCase):
 
 add_example_test(
     TestOptimExamples,
-    name="optim.example_bounce",
-    devices=test_devices,
-    test_options_cpu={"train_iters": 3},
-)
-add_example_test(
-    TestOptimExamples,
-    name="optim.example_drone",
-    devices=test_devices,
-    test_options={"headless": True},
-    test_options_cpu={"num_frames": 10},
-)
-add_example_test(
-    TestOptimExamples,
-    name="optim.example_cloth_throw",
-    devices=test_devices,
-    test_options_cpu={"train_iters": 3},
-)
-add_example_test(
-    TestOptimExamples,
     name="optim.example_diffray",
     devices=test_devices,
     test_options={"usd_required": True, "headless": True},
@@ -311,68 +290,6 @@ add_example_test(
     name="optim.example_fluid_checkpoint",
     devices=cuda_test_devices,
     test_options={"headless": True, "train_iters": 5, "num_frames": 300, "pillow_required": True},
-)
-add_example_test(TestOptimExamples, name="optim.example_inverse_kinematics", devices=test_devices)
-add_example_test(
-    TestOptimExamples,
-    name="optim.example_inverse_kinematics_torch",
-    devices=test_devices,
-    test_options={"torch_required": True},
-)
-add_example_test(TestOptimExamples, name="optim.example_spring_cage", devices=test_devices)
-add_example_test(
-    TestOptimExamples,
-    name="optim.example_trajectory",
-    devices=test_devices,
-    test_options={"headless": True, "train_iters": 50},
-)
-add_example_test(
-    TestOptimExamples,
-    name="optim.example_softbody_properties",
-    devices=test_devices,
-    test_options_cuda={
-        "train_iters": 1 if warp.context.runtime.core.wp_is_debug_enabled() else 3,
-    },
-    test_options_cpu={"train_iters": 1},
-)
-
-
-class TestSimExamples(unittest.TestCase):
-    pass
-
-
-add_example_test(TestSimExamples, name="sim.example_cartpole", devices=test_devices)
-add_example_test(
-    TestSimExamples,
-    name="sim.example_cloth",
-    devices=test_devices,
-    test_options={"usd_required": True},
-    test_options_cpu={"num_frames": 10},
-)
-add_example_test(
-    TestSimExamples, name="sim.example_granular", devices=test_devices, test_options_cpu={"num_frames": 10}
-)
-add_example_test(TestSimExamples, name="sim.example_granular_collision_sdf", devices=cuda_test_devices)
-add_example_test(TestSimExamples, name="sim.example_jacobian_ik", devices=test_devices)
-add_example_test(TestSimExamples, name="sim.example_particle_chain", devices=test_devices)
-add_example_test(
-    TestSimExamples, name="sim.example_quadruped", devices=test_devices, test_options_cpu={"num_frames": 100}
-)
-add_example_test(TestSimExamples, name="sim.example_rigid_chain", devices=test_devices)
-add_example_test(
-    TestSimExamples,
-    name="sim.example_rigid_contact",
-    devices=test_devices,
-    test_options={"usd_required": True},
-    test_options_cpu={"num_frames": 3},
-)
-add_example_test(
-    TestSimExamples, name="sim.example_rigid_soft_contact", devices=test_devices, test_options_cpu={"num_frames": 10}
-)
-add_example_test(TestSimExamples, name="sim.example_rigid_force", devices=test_devices)
-add_example_test(TestSimExamples, name="sim.example_rigid_gyroscopic", devices=test_devices)
-add_example_test(
-    TestSimExamples, name="sim.example_soft_body", devices=test_devices, test_options_cpu={"num_frames": 10}
 )
 
 
