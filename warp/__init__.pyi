@@ -3227,11 +3227,14 @@ def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: Optional[int32] = 
     """Construct an axis-aligned bounding box query against a BVH object.
 
     This query can be used to iterate over all bounds inside a BVH.
+    To start a query from a specific node, set ``root`` to the index of the node. The root
+    can be obtained using the :func:`bvh_get_group_root` function.
+    The query will only trace down from that node, limiting traversal to that subtree.
 
     :param id: The BVH identifier
     :param low: The lower bound of the bounding box in BVH space
     :param high: The upper bound of the bounding box in BVH space
-    :param root: The root to begin the query from
+    :param root: The root to begin the query from (optional, default: -1)
     """
     ...
 
@@ -3240,12 +3243,16 @@ def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: Optional[int32] = 
     """Construct a ray query against a BVH object.
 
     This query can be used to iterate over all bounds that intersect the ray.
+    To start a query from a specific node, set ``root`` to the index of the node. The root
+    can be obtained using the :func:`bvh_get_group_root` function.
+    The query will only trace down from that node, limiting traversal to that subtree.
+    The maximum distance along the ray to check for intersections can be set using ``max_dist``.
 
     :param id: The BVH identifier
     :param start: The start of the ray in BVH space
     :param dir: The direction of the ray in BVH space
-    :param root: The root to begin the query from
-    :param max_dist: The maximum distance along the ray to check for intersections
+    :param root: The root to begin the query from (optional, default: -1)
+    :param max_dist: The maximum distance along the ray to check for intersections (optional, default: inf)
     """
     ...
 
@@ -3253,6 +3260,7 @@ def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: Optional[int32] = 
 def bvh_query_next(query: BvhQuery, index: int32, max_dist: float32 = inf) -> bool:
     """Move to the next bound returned by the query.
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
+    The maximum distance along a ray query to check for intersections can be set using ``max_dist``.
 
     :param query: The query to move to the next bound
     :param index: The index of the current bound
