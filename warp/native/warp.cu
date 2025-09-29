@@ -989,15 +989,15 @@ void wp_memtile_device(void* context, void* dst, const void* src, size_t srcsize
 
 
 static __global__ void array_copy_1d_kernel(void* dst, const void* src,
-                                        int dst_stride, int src_stride,
+                                        size_t dst_stride, size_t src_stride,
                                         const int* dst_indices, const int* src_indices,
-                                        int n, int elem_size)
+                                        size_t n, size_t elem_size)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t i = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
     if (i < n)
     {
-        int src_idx = src_indices ? src_indices[i] : i;
-        int dst_idx = dst_indices ? dst_indices[i] : i;
+        size_t src_idx = src_indices ? src_indices[i] : i;
+        size_t dst_idx = dst_indices ? dst_indices[i] : i;
         const char* p = (const char*)src + src_idx * src_stride;
         char* q = (char*)dst + dst_idx * dst_stride;
         memcpy(q, p, elem_size);
@@ -1005,20 +1005,20 @@ static __global__ void array_copy_1d_kernel(void* dst, const void* src,
 }
 
 static __global__ void array_copy_2d_kernel(void* dst, const void* src,
-                                        wp::vec_t<2, int> dst_strides, wp::vec_t<2, int> src_strides,
+                                        wp::vec_t<2, size_t> dst_strides, wp::vec_t<2, size_t> src_strides,
                                         wp::vec_t<2, const int*> dst_indices, wp::vec_t<2, const int*> src_indices,
-                                        wp::vec_t<2, int> shape, int elem_size)
+                                        wp::vec_t<2, size_t> shape, size_t elem_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int n = shape[1];
-    int i = tid / n;
-    int j = tid % n;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
+    size_t n = shape[1];
+    size_t i = tid / n;
+    size_t j = tid % n;
     if (i < shape[0] /*&& j < shape[1]*/)
     {
-        int src_idx0 = src_indices[0] ? src_indices[0][i] : i;
-        int dst_idx0 = dst_indices[0] ? dst_indices[0][i] : i;
-        int src_idx1 = src_indices[1] ? src_indices[1][j] : j;
-        int dst_idx1 = dst_indices[1] ? dst_indices[1][j] : j;
+        size_t src_idx0 = src_indices[0] ? src_indices[0][i] : i;
+        size_t dst_idx0 = dst_indices[0] ? dst_indices[0][i] : i;
+        size_t src_idx1 = src_indices[1] ? src_indices[1][j] : j;
+        size_t dst_idx1 = dst_indices[1] ? dst_indices[1][j] : j;
         const char* p = (const char*)src + src_idx0 * src_strides[0] + src_idx1 * src_strides[1];
         char* q = (char*)dst + dst_idx0 * dst_strides[0] + dst_idx1 * dst_strides[1];
         memcpy(q, p, elem_size);
@@ -1026,24 +1026,24 @@ static __global__ void array_copy_2d_kernel(void* dst, const void* src,
 }
 
 static __global__ void array_copy_3d_kernel(void* dst, const void* src,
-                                        wp::vec_t<3, int> dst_strides, wp::vec_t<3, int> src_strides,
+                                        wp::vec_t<3, size_t> dst_strides, wp::vec_t<3, size_t> src_strides,
                                         wp::vec_t<3, const int*> dst_indices, wp::vec_t<3, const int*> src_indices,
-                                        wp::vec_t<3, int> shape, int elem_size)
+                                        wp::vec_t<3, size_t> shape, size_t elem_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int n = shape[1];
-    int o = shape[2];
-    int i = tid / (n * o);
-    int j = tid % (n * o) / o;
-    int k = tid % o;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
+    size_t n = shape[1];
+    size_t o = shape[2];
+    size_t i = tid / (n * o);
+    size_t j = tid % (n * o) / o;
+    size_t k = tid % o;
     if (i < shape[0] && j < shape[1] /*&& k < shape[2]*/)
     {
-        int src_idx0 = src_indices[0] ? src_indices[0][i] : i;
-        int dst_idx0 = dst_indices[0] ? dst_indices[0][i] : i;
-        int src_idx1 = src_indices[1] ? src_indices[1][j] : j;
-        int dst_idx1 = dst_indices[1] ? dst_indices[1][j] : j;
-        int src_idx2 = src_indices[2] ? src_indices[2][k] : k;
-        int dst_idx2 = dst_indices[2] ? dst_indices[2][k] : k;
+        size_t src_idx0 = src_indices[0] ? src_indices[0][i] : i;
+        size_t dst_idx0 = dst_indices[0] ? dst_indices[0][i] : i;
+        size_t src_idx1 = src_indices[1] ? src_indices[1][j] : j;
+        size_t dst_idx1 = dst_indices[1] ? dst_indices[1][j] : j;
+        size_t src_idx2 = src_indices[2] ? src_indices[2][k] : k;
+        size_t dst_idx2 = dst_indices[2] ? dst_indices[2][k] : k;
         const char* p = (const char*)src + src_idx0 * src_strides[0]
                                          + src_idx1 * src_strides[1]
                                          + src_idx2 * src_strides[2];
@@ -1055,28 +1055,28 @@ static __global__ void array_copy_3d_kernel(void* dst, const void* src,
 }
 
 static __global__ void array_copy_4d_kernel(void* dst, const void* src,
-                                        wp::vec_t<4, int> dst_strides, wp::vec_t<4, int> src_strides,
+                                        wp::vec_t<4, size_t> dst_strides, wp::vec_t<4, size_t> src_strides,
                                         wp::vec_t<4, const int*> dst_indices, wp::vec_t<4, const int*> src_indices,
-                                        wp::vec_t<4, int> shape, int elem_size)
+                                        wp::vec_t<4, size_t> shape, size_t elem_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int n = shape[1];
-    int o = shape[2];
-    int p = shape[3];
-    int i = tid / (n * o * p);
-    int j = tid % (n * o * p) / (o * p);
-    int k = tid % (o * p) / p;
-    int l = tid % p;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
+    size_t n = shape[1];
+    size_t o = shape[2];
+    size_t p = shape[3];
+    size_t i = tid / (n * o * p);
+    size_t j = tid % (n * o * p) / (o * p);
+    size_t k = tid % (o * p) / p;
+    size_t l = tid % p;
     if (i < shape[0] && j < shape[1] && k < shape[2] /*&& l < shape[3]*/)
     {
-        int src_idx0 = src_indices[0] ? src_indices[0][i] : i;
-        int dst_idx0 = dst_indices[0] ? dst_indices[0][i] : i;
-        int src_idx1 = src_indices[1] ? src_indices[1][j] : j;
-        int dst_idx1 = dst_indices[1] ? dst_indices[1][j] : j;
-        int src_idx2 = src_indices[2] ? src_indices[2][k] : k;
-        int dst_idx2 = dst_indices[2] ? dst_indices[2][k] : k;
-        int src_idx3 = src_indices[3] ? src_indices[3][l] : l;
-        int dst_idx3 = dst_indices[3] ? dst_indices[3][l] : l;
+        size_t src_idx0 = src_indices[0] ? src_indices[0][i] : i;
+        size_t dst_idx0 = dst_indices[0] ? dst_indices[0][i] : i;
+        size_t src_idx1 = src_indices[1] ? src_indices[1][j] : j;
+        size_t dst_idx1 = dst_indices[1] ? dst_indices[1][j] : j;
+        size_t src_idx2 = src_indices[2] ? src_indices[2][k] : k;
+        size_t dst_idx2 = dst_indices[2] ? dst_indices[2][k] : k;
+        size_t src_idx3 = src_indices[3] ? src_indices[3][l] : l;
+        size_t dst_idx3 = dst_indices[3] ? dst_indices[3][l] : l;
         const char* p = (const char*)src + src_idx0 * src_strides[0]
                                          + src_idx1 * src_strides[1]
                                          + src_idx2 * src_strides[2]
@@ -1091,14 +1091,14 @@ static __global__ void array_copy_4d_kernel(void* dst, const void* src,
 
 
 static __global__ void array_copy_from_fabric_kernel(wp::fabricarray_t<void> src,
-                                                     void* dst_data, int dst_stride, const int* dst_indices,
-                                                     int elem_size)
+                                                     void* dst_data, size_t dst_stride, const int* dst_indices,
+                                                     size_t elem_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
 
     if (tid < src.size)
     {
-        int dst_idx = dst_indices ? dst_indices[tid] : tid;
+        size_t dst_idx = dst_indices ? dst_indices[tid] : tid;
         void* dst_ptr = (char*)dst_data + dst_idx * dst_stride;
         const void* src_ptr = fabricarray_element_ptr(src, tid, elem_size);
         memcpy(dst_ptr, src_ptr, elem_size);
@@ -1106,15 +1106,15 @@ static __global__ void array_copy_from_fabric_kernel(wp::fabricarray_t<void> src
 }
 
 static __global__ void array_copy_from_fabric_indexed_kernel(wp::indexedfabricarray_t<void> src,
-                                                             void* dst_data, int dst_stride, const int* dst_indices,
-                                                             int elem_size)
+                                                             void* dst_data, size_t dst_stride, const int* dst_indices,
+                                                             size_t elem_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
 
     if (tid < src.size)
     {
-        int src_index = src.indices[tid];
-        int dst_idx = dst_indices ? dst_indices[tid] : tid;
+        size_t src_index = src.indices[tid];
+        size_t dst_idx = dst_indices ? dst_indices[tid] : tid;
         void* dst_ptr = (char*)dst_data + dst_idx * dst_stride;
         const void* src_ptr = fabricarray_element_ptr(src.fa, src_index, elem_size);
         memcpy(dst_ptr, src_ptr, elem_size);
@@ -1122,14 +1122,14 @@ static __global__ void array_copy_from_fabric_indexed_kernel(wp::indexedfabricar
 }
 
 static __global__ void array_copy_to_fabric_kernel(wp::fabricarray_t<void> dst,
-                                                   const void* src_data, int src_stride, const int* src_indices,
-                                                   int elem_size)
+                                                   const void* src_data, size_t src_stride, const int* src_indices,
+                                                   size_t elem_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
 
     if (tid < dst.size)
     {
-        int src_idx = src_indices ? src_indices[tid] : tid;
+        size_t src_idx = src_indices ? src_indices[tid] : tid;
         const void* src_ptr = (const char*)src_data + src_idx * src_stride;
         void* dst_ptr = fabricarray_element_ptr(dst, tid, elem_size);
         memcpy(dst_ptr, src_ptr, elem_size);
@@ -1137,25 +1137,25 @@ static __global__ void array_copy_to_fabric_kernel(wp::fabricarray_t<void> dst,
 }
 
 static __global__ void array_copy_to_fabric_indexed_kernel(wp::indexedfabricarray_t<void> dst,
-                                                           const void* src_data, int src_stride, const int* src_indices,
-                                                           int elem_size)
+                                                           const void* src_data, size_t src_stride, const int* src_indices,
+                                                           size_t elem_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
 
     if (tid < dst.size)
     {
-        int src_idx = src_indices ? src_indices[tid] : tid;
+        size_t src_idx = src_indices ? src_indices[tid] : tid;
         const void* src_ptr = (const char*)src_data + src_idx * src_stride;
-        int dst_idx = dst.indices[tid];
+        size_t dst_idx = dst.indices[tid];
         void* dst_ptr = fabricarray_element_ptr(dst.fa, dst_idx, elem_size);
         memcpy(dst_ptr, src_ptr, elem_size);
     }
 }
 
 
-static __global__ void array_copy_fabric_to_fabric_kernel(wp::fabricarray_t<void> dst, wp::fabricarray_t<void> src, int elem_size)
+static __global__ void array_copy_fabric_to_fabric_kernel(wp::fabricarray_t<void> dst, wp::fabricarray_t<void> src, size_t elem_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
 
     if (tid < dst.size)
     {
@@ -1166,27 +1166,27 @@ static __global__ void array_copy_fabric_to_fabric_kernel(wp::fabricarray_t<void
 }
 
 
-static __global__ void array_copy_fabric_to_fabric_indexed_kernel(wp::indexedfabricarray_t<void> dst, wp::fabricarray_t<void> src, int elem_size)
+static __global__ void array_copy_fabric_to_fabric_indexed_kernel(wp::indexedfabricarray_t<void> dst, wp::fabricarray_t<void> src, size_t elem_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
 
     if (tid < dst.size)
     {
         const void* src_ptr = fabricarray_element_ptr(src, tid, elem_size);
-        int dst_index = dst.indices[tid];
+        size_t dst_index = dst.indices[tid];
         void* dst_ptr = fabricarray_element_ptr(dst.fa, dst_index, elem_size);
         memcpy(dst_ptr, src_ptr, elem_size);
     }
 }
 
 
-static __global__ void array_copy_fabric_indexed_to_fabric_kernel(wp::fabricarray_t<void> dst, wp::indexedfabricarray_t<void> src, int elem_size)
+static __global__ void array_copy_fabric_indexed_to_fabric_kernel(wp::fabricarray_t<void> dst, wp::indexedfabricarray_t<void> src, size_t elem_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
 
     if (tid < dst.size)
     {
-        int src_index = src.indices[tid];
+        size_t src_index = src.indices[tid];
         const void* src_ptr = fabricarray_element_ptr(src.fa, src_index, elem_size);
         void* dst_ptr = fabricarray_element_ptr(dst, tid, elem_size);
         memcpy(dst_ptr, src_ptr, elem_size);
@@ -1194,14 +1194,14 @@ static __global__ void array_copy_fabric_indexed_to_fabric_kernel(wp::fabricarra
 }
 
 
-static __global__ void array_copy_fabric_indexed_to_fabric_indexed_kernel(wp::indexedfabricarray_t<void> dst, wp::indexedfabricarray_t<void> src, int elem_size)
+static __global__ void array_copy_fabric_indexed_to_fabric_indexed_kernel(wp::indexedfabricarray_t<void> dst, wp::indexedfabricarray_t<void> src, size_t elem_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
 
     if (tid < dst.size)
     {
-        int src_index = src.indices[tid];
-        int dst_index = dst.indices[tid];
+        size_t src_index = src.indices[tid];
+        size_t dst_index = dst.indices[tid];
         const void* src_ptr = fabricarray_element_ptr(src.fa, src_index, elem_size);
         void* dst_ptr = fabricarray_element_ptr(dst.fa, dst_index, elem_size);
         memcpy(dst_ptr, src_ptr, elem_size);
@@ -1440,9 +1440,9 @@ WP_API bool wp_array_copy_device(void* context, void* dst, void* src, int dst_ty
     }
     case 2:
     {
-        wp::vec_t<2, int> shape_v(src_shape[0], src_shape[1]);
-        wp::vec_t<2, int> src_strides_v(src_strides[0], src_strides[1]);
-        wp::vec_t<2, int> dst_strides_v(dst_strides[0], dst_strides[1]);
+        wp::vec_t<2, size_t> shape_v(src_shape[0], src_shape[1]);
+        wp::vec_t<2, size_t> src_strides_v(src_strides[0], src_strides[1]);
+        wp::vec_t<2, size_t> dst_strides_v(dst_strides[0], dst_strides[1]);
         wp::vec_t<2, const int*> src_indices_v(src_indices[0], src_indices[1]);
         wp::vec_t<2, const int*> dst_indices_v(dst_indices[0], dst_indices[1]);
 
@@ -1454,9 +1454,9 @@ WP_API bool wp_array_copy_device(void* context, void* dst, void* src, int dst_ty
     }
     case 3:
     {
-        wp::vec_t<3, int> shape_v(src_shape[0], src_shape[1], src_shape[2]);
-        wp::vec_t<3, int> src_strides_v(src_strides[0], src_strides[1], src_strides[2]);
-        wp::vec_t<3, int> dst_strides_v(dst_strides[0], dst_strides[1], dst_strides[2]);
+        wp::vec_t<3, size_t> shape_v(src_shape[0], src_shape[1], src_shape[2]);
+        wp::vec_t<3, size_t> src_strides_v(src_strides[0], src_strides[1], src_strides[2]);
+        wp::vec_t<3, size_t> dst_strides_v(dst_strides[0], dst_strides[1], dst_strides[2]);
         wp::vec_t<3, const int*> src_indices_v(src_indices[0], src_indices[1], src_indices[2]);
         wp::vec_t<3, const int*> dst_indices_v(dst_indices[0], dst_indices[1], dst_indices[2]);
 
@@ -1468,9 +1468,9 @@ WP_API bool wp_array_copy_device(void* context, void* dst, void* src, int dst_ty
     }
     case 4:
     {
-        wp::vec_t<4, int> shape_v(src_shape[0], src_shape[1], src_shape[2], src_shape[3]);
-        wp::vec_t<4, int> src_strides_v(src_strides[0], src_strides[1], src_strides[2], src_strides[3]);
-        wp::vec_t<4, int> dst_strides_v(dst_strides[0], dst_strides[1], dst_strides[2], dst_strides[3]);
+        wp::vec_t<4, size_t> shape_v(src_shape[0], src_shape[1], src_shape[2], src_shape[3]);
+        wp::vec_t<4, size_t> src_strides_v(src_strides[0], src_strides[1], src_strides[2], src_strides[3]);
+        wp::vec_t<4, size_t> dst_strides_v(dst_strides[0], dst_strides[1], dst_strides[2], dst_strides[3]);
         wp::vec_t<4, const int*> src_indices_v(src_indices[0], src_indices[1], src_indices[2], src_indices[3]);
         wp::vec_t<4, const int*> dst_indices_v(dst_indices[0], dst_indices[1], dst_indices[2], dst_indices[3]);
 
@@ -1490,94 +1490,94 @@ WP_API bool wp_array_copy_device(void* context, void* dst, void* src, int dst_ty
 
 
 static __global__ void array_fill_1d_kernel(void* data,
-                                            int n,
-                                            int stride,
+                                            size_t n,
+                                            size_t stride,
                                             const int* indices,
                                             const void* value,
-                                            int value_size)
+                                            size_t value_size)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t i = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
     if (i < n)
     {
-        int idx = indices ? indices[i] : i;
+        size_t idx = indices ? indices[i] : i;
         char* p = (char*)data + idx * stride;
         memcpy(p, value, value_size);
     }
 }
 
 static __global__ void array_fill_2d_kernel(void* data,
-                                            wp::vec_t<2, int> shape,
-                                            wp::vec_t<2, int> strides,
+                                            wp::vec_t<2, size_t> shape,
+                                            wp::vec_t<2, size_t> strides,
                                             wp::vec_t<2, const int*> indices,
                                             const void* value,
-                                            int value_size)
+                                            size_t value_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int n = shape[1];
-    int i = tid / n;
-    int j = tid % n;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
+    size_t n = shape[1];
+    size_t i = tid / n;
+    size_t j = tid % n;
     if (i < shape[0] /*&& j < shape[1]*/)
     {
-        int idx0 = indices[0] ? indices[0][i] : i;
-        int idx1 = indices[1] ? indices[1][j] : j;
+        size_t idx0 = indices[0] ? indices[0][i] : i;
+        size_t idx1 = indices[1] ? indices[1][j] : j;
         char* p = (char*)data + idx0 * strides[0] + idx1 * strides[1];
         memcpy(p, value, value_size);
     }
 }
 
 static __global__ void array_fill_3d_kernel(void* data,
-                                            wp::vec_t<3, int> shape,
-                                            wp::vec_t<3, int> strides,
+                                            wp::vec_t<3, size_t> shape,
+                                            wp::vec_t<3, size_t> strides,
                                             wp::vec_t<3, const int*> indices,
                                             const void* value,
-                                            int value_size)
+                                            size_t value_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int n = shape[1];
-    int o = shape[2];
-    int i = tid / (n * o);
-    int j = tid % (n * o) / o;
-    int k = tid % o;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
+    size_t n = shape[1];
+    size_t o = shape[2];
+    size_t i = tid / (n * o);
+    size_t j = tid % (n * o) / o;
+    size_t k = tid % o;
     if (i < shape[0] && j < shape[1] /*&& k < shape[2]*/)
     {
-        int idx0 = indices[0] ? indices[0][i] : i;
-        int idx1 = indices[1] ? indices[1][j] : j;
-        int idx2 = indices[2] ? indices[2][k] : k;
+        size_t idx0 = indices[0] ? indices[0][i] : i;
+        size_t idx1 = indices[1] ? indices[1][j] : j;
+        size_t idx2 = indices[2] ? indices[2][k] : k;
         char* p = (char*)data + idx0 * strides[0] + idx1 * strides[1] + idx2 * strides[2];
         memcpy(p, value, value_size);
     }
 }
 
 static __global__ void array_fill_4d_kernel(void* data,
-                                            wp::vec_t<4, int> shape,
-                                            wp::vec_t<4, int> strides,
+                                            wp::vec_t<4, size_t> shape,
+                                            wp::vec_t<4, size_t> strides,
                                             wp::vec_t<4, const int*> indices,
                                             const void* value,
-                                            int value_size)
+                                            size_t value_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int n = shape[1];
-    int o = shape[2];
-    int p = shape[3];
-    int i = tid / (n * o * p);
-    int j = tid % (n * o * p) / (o * p);
-    int k = tid % (o * p) / p;
-    int l = tid % p;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
+    size_t n = shape[1];
+    size_t o = shape[2];
+    size_t p = shape[3];
+    size_t i = tid / (n * o * p);
+    size_t j = tid % (n * o * p) / (o * p);
+    size_t k = tid % (o * p) / p;
+    size_t l = tid % p;
     if (i < shape[0] && j < shape[1] && k < shape[2] /*&& l < shape[3]*/)
     {
-        int idx0 = indices[0] ? indices[0][i] : i;
-        int idx1 = indices[1] ? indices[1][j] : j;
-        int idx2 = indices[2] ? indices[2][k] : k;
-        int idx3 = indices[3] ? indices[3][l] : l;
+        size_t idx0 = indices[0] ? indices[0][i] : i;
+        size_t idx1 = indices[1] ? indices[1][j] : j;
+        size_t idx2 = indices[2] ? indices[2][k] : k;
+        size_t idx3 = indices[3] ? indices[3][l] : l;
         char* p = (char*)data + idx0 * strides[0] + idx1 * strides[1] + idx2 * strides[2] + idx3 * strides[3];
         memcpy(p, value, value_size);
     }
 }
 
 
-static __global__ void array_fill_fabric_kernel(wp::fabricarray_t<void> fa, const void* value, int value_size)
+static __global__ void array_fill_fabric_kernel(wp::fabricarray_t<void> fa, const void* value, size_t value_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
     if (tid < fa.size)
     {
         void* dst_ptr = fabricarray_element_ptr(fa, tid, value_size);
@@ -1586,9 +1586,9 @@ static __global__ void array_fill_fabric_kernel(wp::fabricarray_t<void> fa, cons
 }
 
 
-static __global__ void array_fill_fabric_indexed_kernel(wp::indexedfabricarray_t<void> ifa, const void* value, int value_size)
+static __global__ void array_fill_fabric_indexed_kernel(wp::indexedfabricarray_t<void> ifa, const void* value, size_t value_size)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
     if (tid < ifa.size)
     {
         size_t idx = size_t(ifa.indices[tid]);
@@ -1685,8 +1685,8 @@ WP_API void wp_array_fill_device(void* context, void* arr_ptr, int arr_type, con
     }
     case 2:
     {
-        wp::vec_t<2, int> shape_v(shape[0], shape[1]);
-        wp::vec_t<2, int> strides_v(strides[0], strides[1]);
+        wp::vec_t<2, size_t> shape_v(shape[0], shape[1]);
+        wp::vec_t<2, size_t> strides_v(strides[0], strides[1]);
         wp::vec_t<2, const int*> indices_v(indices[0], indices[1]);
         wp_launch_device(WP_CURRENT_CONTEXT, array_fill_2d_kernel, n,
                          (data, shape_v, strides_v, indices_v, value_devptr, value_size));
@@ -1694,8 +1694,8 @@ WP_API void wp_array_fill_device(void* context, void* arr_ptr, int arr_type, con
     }
     case 3:
     {
-        wp::vec_t<3, int> shape_v(shape[0], shape[1], shape[2]);
-        wp::vec_t<3, int> strides_v(strides[0], strides[1], strides[2]);
+        wp::vec_t<3, size_t> shape_v(shape[0], shape[1], shape[2]);
+        wp::vec_t<3, size_t> strides_v(strides[0], strides[1], strides[2]);
         wp::vec_t<3, const int*> indices_v(indices[0], indices[1], indices[2]);
         wp_launch_device(WP_CURRENT_CONTEXT, array_fill_3d_kernel, n,
                          (data, shape_v, strides_v, indices_v, value_devptr, value_size));
@@ -1703,8 +1703,8 @@ WP_API void wp_array_fill_device(void* context, void* arr_ptr, int arr_type, con
     }
     case 4:
     {
-        wp::vec_t<4, int> shape_v(shape[0], shape[1], shape[2], shape[3]);
-        wp::vec_t<4, int> strides_v(strides[0], strides[1], strides[2], strides[3]);
+        wp::vec_t<4, size_t> shape_v(shape[0], shape[1], shape[2], shape[3]);
+        wp::vec_t<4, size_t> strides_v(strides[0], strides[1], strides[2], strides[3]);
         wp::vec_t<4, const int*> indices_v(indices[0], indices[1], indices[2], indices[3]);
         wp_launch_device(WP_CURRENT_CONTEXT, array_fill_4d_kernel, n,
                          (data, shape_v, strides_v, indices_v, value_devptr, value_size));

@@ -57,7 +57,7 @@ include:
     - $PYTHON -m venv _venv
     - source _venv/bin/activate
     - python -m pip install --upgrade pip
-    - python -m pip install --upgrade blosc Pillow
+    - python -m pip install --upgrade blosc Pillow psutil
     - python -m pip install -e .
   install-python+warp-macos:
     - df -h
@@ -66,7 +66,7 @@ include:
     - $PYTHON -m venv _venv
     - source _venv/bin/activate
     - python -m pip install --upgrade pip
-    - python -m pip install --upgrade blosc Pillow
+    - python -m pip install --upgrade blosc Pillow psutil
     - python -m pip install -e .
   prepare-kit-artifacts:
     - python3 tools/ci/publishing/build_nodes_info.py

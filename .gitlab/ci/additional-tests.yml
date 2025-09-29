@@ -54,6 +54,7 @@ linux-x86_64 test:
     - python -m pip install --upgrade usd-core blosc Pillow
     - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
     - python -m pip install -U "jax[cuda12]"
+    - python -m pip install -U psutil
     - python -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
     # HACK: disable P2P tests due to misbehaving agents
@@ -81,6 +82,7 @@ windows-x86_64 test:
     - python -m pip install --upgrade pip
     - python -m pip install --upgrade usd-core==25.5.1 numpy blosc Pillow
     - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
+    - python -m pip install -U psutil
     - python -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:

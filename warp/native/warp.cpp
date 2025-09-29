@@ -260,14 +260,14 @@ void wp_array_scan_float_host(uint64_t in, uint64_t out, int len, bool inclusive
 static void array_copy_nd(void* dst, const void* src,
                       const int* dst_strides, const int* src_strides,
                       const int*const* dst_indices, const int*const* src_indices,
-                      const int* shape, int ndim, int elem_size)
+                      const int* shape, int ndim, size_t elem_size)
 {
     if (ndim == 1)
     {
         for (int i = 0; i < shape[0]; i++)
         {
-            int src_idx = src_indices[0] ? src_indices[0][i] : i;
-            int dst_idx = dst_indices[0] ? dst_indices[0][i] : i;
+            size_t src_idx = src_indices[0] ? src_indices[0][i] : i;
+            size_t dst_idx = dst_indices[0] ? dst_indices[0][i] : i;
             const char* p = (const char*)src + src_idx * src_strides[0];
             char* q = (char*)dst + dst_idx * dst_strides[0];
             // copy element
@@ -278,8 +278,8 @@ static void array_copy_nd(void* dst, const void* src,
     {
         for (int i = 0; i < shape[0]; i++)
         {
-            int src_idx = src_indices[0] ? src_indices[0][i] : i;
-            int dst_idx = dst_indices[0] ? dst_indices[0][i] : i;
+            size_t src_idx = src_indices[0] ? src_indices[0][i] : i;
+            size_t dst_idx = dst_indices[0] ? dst_indices[0][i] : i;
             const char* p = (const char*)src + src_idx * src_strides[0];
             char* q = (char*)dst + dst_idx * dst_strides[0];
             // recurse on next inner dimension
@@ -290,7 +290,7 @@ static void array_copy_nd(void* dst, const void* src,
 
 
 static void array_copy_to_fabric(wp::fabricarray_t<void>& dst, const void* src_data,
-                                 int src_stride, const int* src_indices, int elem_size)
+                                 size_t src_stride, const int* src_indices, size_t elem_size)
 {
     const int8_t* src_ptr = static_cast<const int8_t*>(src_data);
 
@@ -304,7 +304,7 @@ static void array_copy_to_fabric(wp::fabricarray_t<void>& dst, const void* src_d
             size_t bucket_size = bucket.index_end - bucket.index_start;
             for (size_t j = 0; j < bucket_size; j++)
             {
-                int idx = *src_indices;
+                size_t idx = *src_indices;
                 memcpy(dst_ptr, src_ptr + idx * elem_size, elem_size);
                 dst_ptr += elem_size;
                 ++src_indices;
@@ -344,7 +344,7 @@ static void array_copy_to_fabric(wp::fabricarray_t<void>& dst, const void* src_d
 }
 
 static void array_copy_from_fabric(const wp::fabricarray_t<void>& src, void* dst_data,
-                                   int dst_stride, const int* dst_indices, int elem_size)
+                                   size_t dst_stride, const int* dst_indices, size_t elem_size)
 {
     int8_t* dst_ptr = static_cast<int8_t*>(dst_data);
 
@@ -397,7 +397,7 @@ static void array_copy_from_fabric(const wp::fabricarray_t<void>& src, void* dst
     }
 }
 
-static void array_copy_fabric_to_fabric(wp::fabricarray_t<void>& dst, const wp::fabricarray_t<void>& src, int elem_size)
+static void array_copy_fabric_to_fabric(wp::fabricarray_t<void>& dst, const wp::fabricarray_t<void>& src, size_t elem_size)
 {
     wp::fabricbucket_t* dst_bucket = dst.buckets;
     const wp::fabricbucket_t* src_bucket = src.buckets;
@@ -450,7 +450,7 @@ static void array_copy_fabric_to_fabric(wp::fabricarray_t<void>& dst, const wp::
 
 
 static void array_copy_to_fabric_indexed(wp::indexedfabricarray_t<void>& dst, const void* src_data,
-                                         int src_stride, const int* src_indices, int elem_size)
+                                         size_t src_stride, const int* src_indices, size_t elem_size)
 {
     const int8_t* src_ptr = static_cast<const int8_t*>(src_data);
 
@@ -482,7 +482,7 @@ static void array_copy_to_fabric_indexed(wp::indexedfabricarray_t<void>& dst, co
 }
 
 
-static void array_copy_fabric_indexed_to_fabric(wp::fabricarray_t<void>& dst, const wp::indexedfabricarray_t<void>& src, int elem_size)
+static void array_copy_fabric_indexed_to_fabric(wp::fabricarray_t<void>& dst, const wp::indexedfabricarray_t<void>& src, size_t elem_size)
 {
     wp::fabricbucket_t* dst_bucket = dst.buckets;
     int8_t* dst_ptr = static_cast<int8_t*>(dst_bucket->ptr);
@@ -508,7 +508,7 @@ static void array_copy_fabric_indexed_to_fabric(wp::fabricarray_t<void>& dst, co
 }
 
 
-static void array_copy_fabric_indexed_to_fabric_indexed(wp::indexedfabricarray_t<void>& dst, const wp::indexedfabricarray_t<void>& src, int elem_size)
+static void array_copy_fabric_indexed_to_fabric_indexed(wp::indexedfabricarray_t<void>& dst, const wp::indexedfabricarray_t<void>& src, size_t elem_size)
 {
     for (size_t i = 0; i < src.size; i++)
     {
@@ -523,7 +523,7 @@ static void array_copy_fabric_indexed_to_fabric_indexed(wp::indexedfabricarray_t
 }
 
 
-static void array_copy_fabric_to_fabric_indexed(wp::indexedfabricarray_t<void>& dst, const wp::fabricarray_t<void>& src, int elem_size)
+static void array_copy_fabric_to_fabric_indexed(wp::indexedfabricarray_t<void>& dst, const wp::fabricarray_t<void>& src, size_t elem_size)
 {
     wp::fabricbucket_t* src_bucket = src.buckets;
     const int8_t* src_ptr = static_cast<const int8_t*>(src_bucket->ptr);
@@ -550,7 +550,7 @@ static void array_copy_fabric_to_fabric_indexed(wp::indexedfabricarray_t<void>& 
 
 
 static void array_copy_from_fabric_indexed(const wp::indexedfabricarray_t<void>& src, void* dst_data,
-                                           int dst_stride, const int* dst_indices, int elem_size)
+                                           size_t dst_stride, const int* dst_indices, size_t elem_size)
 {
     int8_t* dst_ptr = static_cast<int8_t*>(dst_data);
 
@@ -563,7 +563,7 @@ static void array_copy_from_fabric_indexed(const wp::indexedfabricarray_t<void>&
             if (idx < src.fa.size)
             {
                 const void* src_ptr = fabricarray_element_ptr(src.fa, idx, elem_size);
-                int dst_idx = dst_indices[i];
+                size_t dst_idx = dst_indices[i];
                 memcpy(dst_ptr + dst_idx * elem_size, src_ptr, elem_size);
             }
             else
@@ -811,22 +811,23 @@ WP_API bool wp_array_copy_host(void* dst, void* src, int dst_type, int src_type,
 }
 
 
-static void array_fill_strided(void* data, const int* shape, const int* strides, int ndim, const void* value, int value_size)
+static void array_fill_strided(void* data, const int* shape, const int* strides, int ndim, const void* value, size_t value_size)
 {
+    size_t stride = strides[0];
     if (ndim == 1)
     {
         char* p = (char*)data;
         for (int i = 0; i < shape[0]; i++)
         {
             memcpy(p, value, value_size);
-            p += strides[0];
+            p += stride;
         }
     }
     else
     {
         for (int i = 0; i < shape[0]; i++)
         {
-            char* p = (char*)data + i * strides[0];
+            char* p = (char*)data + i * stride;
             // recurse on next inner dimension
             array_fill_strided(p, shape + 1, strides + 1, ndim - 1, value, value_size);
         }
@@ -834,14 +835,15 @@ static void array_fill_strided(void* data, const int* shape, const int* strides,
 }
 
 
-static void array_fill_indexed(void* data, const int* shape, const int* strides, const int*const* indices, int ndim, const void* value, int value_size)
+static void array_fill_indexed(void* data, const int* shape, const int* strides, const int*const* indices, int ndim, const void* value, size_t value_size)
 {
+    size_t stride = strides[0];
     if (ndim == 1)
     {
         for (int i = 0; i < shape[0]; i++)
         {
-            int idx = indices[0] ? indices[0][i] : i;
-            char* p = (char*)data + idx * strides[0];
+            size_t idx = indices[0] ? indices[0][i] : i;
+            char* p = (char*)data + idx * stride;
             memcpy(p, value, value_size);
         }
     }
@@ -849,8 +851,8 @@ static void array_fill_indexed(void* data, const int* shape, const int* strides,
     {
         for (int i = 0; i < shape[0]; i++)
         {
-            int idx = indices[0] ? indices[0][i] : i;
-            char* p = (char*)data + idx * strides[0];
+            size_t idx = indices[0] ? indices[0][i] : i;
+            char* p = (char*)data + idx * stride;
             // recurse on next inner dimension
             array_fill_indexed(p, shape + 1, strides + 1, indices + 1, ndim - 1, value, value_size);
         }
@@ -858,7 +860,7 @@ static void array_fill_indexed(void* data, const int* shape, const int* strides,
 }
 
 
-static void array_fill_fabric(wp::fabricarray_t<void>& fa, const void* value_ptr, int value_size)
+static void array_fill_fabric(wp::fabricarray_t<void>& fa, const void* value_ptr, size_t value_size)
 {
     for (size_t i = 0; i < fa.nbuckets; i++)
     {
@@ -869,7 +871,7 @@ static void array_fill_fabric(wp::fabricarray_t<void>& fa, const void* value_ptr
 }
 
 
-static void array_fill_fabric_indexed(wp::indexedfabricarray_t<void>& ifa, const void* value_ptr, int value_size)
+static void array_fill_fabric_indexed(wp::indexedfabricarray_t<void>& ifa, const void* value_ptr, size_t value_size)
 {
     for (size_t i = 0; i < ifa.size; i++)
     {
