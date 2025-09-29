@@ -44,6 +44,7 @@
 - Fix handling of generic kernels with `wp.jax_experimental.ffi.jax_kernel()`.
 - Update builtin documentation to reflect accurate differentiability for all functions ([GH-970](https://github.com/NVIDIA/warp/issues/970)).
 - Fix copying and filling arrays with large strides ([GH-929](https://github.com/NVIDIA/warp/issues/929)).
+- Fix graph deletion during capture ([GH-992](https://github.com/NVIDIA/warp/issues/992)).
 
 ## [1.9.0] - 2025-09-04
 

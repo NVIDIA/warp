@@ -222,6 +222,14 @@ struct ModuleInfo
     void* module = NULL;
 };
 
+// Information used when deferring graph destruction.
+struct GraphDestroyInfo
+{
+    void* context = NULL;
+    void* graph = NULL;
+    void* graph_exec = NULL;
+};
+
 static std::unordered_map<CUfunction, std::string> g_kernel_names;
 
 // cached info for all devices, indexed by ordinal
@@ -252,6 +260,11 @@ static std::vector<FreeInfo> g_deferred_free_list;
 // Modules that cannot be unloaded immediately get queued here.
 // Call unload_deferred_modules() to release.
 static std::vector<ModuleInfo> g_deferred_module_list;
+
+// Graphs that cannot be destroyed immediately get queued here.
+// Call destroy_deferred_graphs() to release.
+static std::vector<GraphDestroyInfo> g_deferred_graph_list;
+
 
 void wp_cuda_set_context_restore_policy(bool always_restore)
 {
@@ -493,6 +506,38 @@ static int unload_deferred_modules(void* context = NULL)
     }
 
     return num_unloaded_modules;
+}
+
+static int destroy_deferred_graphs(void* context = NULL)
+{
+    if (g_deferred_graph_list.empty() || !g_captures.empty())
+        return 0;
+
+    int num_destroyed_graphs = 0;
+    for (auto it = g_deferred_graph_list.begin(); it != g_deferred_graph_list.end(); /*noop*/)
+    {
+        // destroy the graph if it matches the given context or if the context is unspecified
+        const GraphDestroyInfo& graph_info = *it;
+        if (graph_info.context == context || !context)
+        {
+            if (graph_info.graph)
+            {
+                check_cuda(cudaGraphDestroy((cudaGraph_t)graph_info.graph));
+            }
+            if (graph_info.graph_exec)
+            {
+                check_cuda(cudaGraphExecDestroy((cudaGraphExec_t)graph_info.graph_exec));
+            }
+            ++num_destroyed_graphs;
+            it = g_deferred_graph_list.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    return num_destroyed_graphs;
 }
 
 static void CUDART_CB on_graph_destroy(void* user_data)
@@ -2072,13 +2117,17 @@ void wp_cuda_context_synchronize(void* context)
 
     check_cu(cuCtxSynchronize_f());
 
-    if (free_deferred_allocs(context ? context : get_current_context()) > 0)
+    if (!context)
+        context = get_current_context();
+
+    if (free_deferred_allocs(context) > 0)
     {
         // ensure deferred asynchronous deallocations complete
         check_cu(cuCtxSynchronize_f());
     }
 
     unload_deferred_modules(context);
+    destroy_deferred_graphs(context);
 
     // check_cuda(cudaDeviceGraphMemTrim(wp_cuda_context_get_device_ordinal(context)));
 }
@@ -2798,6 +2847,7 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
     {
         free_deferred_allocs();
         unload_deferred_modules();
+        destroy_deferred_graphs();
     }
 
     if (graph_ret)
@@ -3477,16 +3527,38 @@ bool wp_cuda_graph_launch(void* graph_exec, void* stream)
 
 bool wp_cuda_graph_destroy(void* context, void* graph)
 {
-    ContextGuard guard(context);
-
-    return check_cuda(cudaGraphDestroy((cudaGraph_t)graph));
+    // ensure there are no graph captures in progress
+    if (g_captures.empty())
+    {
+        ContextGuard guard(context);
+        return check_cuda(cudaGraphDestroy((cudaGraph_t)graph));
+    }
+    else
+    {
+        GraphDestroyInfo info;
+        info.context = context ? context : get_current_context();
+        info.graph = graph;
+        g_deferred_graph_list.push_back(info);
+        return true;
+    }
 }
 
 bool wp_cuda_graph_exec_destroy(void* context, void* graph_exec)
 {
-    ContextGuard guard(context);
-
-    return check_cuda(cudaGraphExecDestroy((cudaGraphExec_t)graph_exec));
+    // ensure there are no graph captures in progress
+    if (g_captures.empty())
+    {
+        ContextGuard guard(context);
+        return check_cuda(cudaGraphExecDestroy((cudaGraphExec_t)graph_exec));
+    }
+    else
+    {
+        GraphDestroyInfo info;
+        info.context = context ? context : get_current_context();
+        info.graph_exec = graph_exec;
+        g_deferred_graph_list.push_back(info);
+        return true;
+    }
 }
 
 bool write_file(const char* data, size_t size, std::string filename, const char* mode)
