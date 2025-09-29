@@ -123,6 +123,8 @@ To get the exact count on host, you can explicitly synchronize using the `nnz_sy
 
 .. note:: The `nnz_sync()` method ensures that any ongoing transfer of the exact nnz number from the device offsets array to the host has completed and updates the nnz upper bound. This synchronization is only necessary when you need the exact count - for most operations, the upper bound is sufficient.
 
+If the number of non-zeros has been changed from outside of the ``warp.sparse`` builtin functions, for instance by direct modifications to the offsets array, use the `notify_nnz_changed()` method to ensure consistency.
+
 Converting back to COO Format
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -212,6 +214,15 @@ For more control about memory allocations, you may use the underlying lower-leve
         alpha,             # Scale factor
     )
 
+
+Kernel-level utilities
+~~~~~~~~~~~~~~~~~~~~~~
+
+The following Warp functions are available for use in kernels:
+
+.. autofunction:: warp.sparse.bsr_row_index
+
+.. autofunction:: warp.sparse.bsr_block_index
 
 Reference
 ~~~~~~~~~

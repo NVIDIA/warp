@@ -13,8 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import ctypes
-from typing import Any, Generic, Optional, Tuple, TypeVar, Union
+from typing import Any, Generic, TypeVar, Union
 
 import warp as wp
 import warp.types
@@ -40,6 +42,7 @@ __all__ = [
     "BsrMatrix",
     "bsr_assign",
     "bsr_axpy",
+    "bsr_block_index",
     "bsr_copy",
     "bsr_diag",
     "bsr_from_triplets",
@@ -49,6 +52,7 @@ __all__ = [
     "bsr_mm",
     "bsr_mm_work_arrays",
     "bsr_mv",
+    "bsr_row_index",
     "bsr_scale",
     "bsr_set_diag",
     "bsr_set_from_triplets",
@@ -105,7 +109,7 @@ class BsrMatrix(Generic[_BlockType]):
         return type_scalar_type(self.values.dtype)
 
     @property
-    def block_shape(self) -> Tuple[int, int]:
+    def block_shape(self) -> tuple[int, int]:
         """Shape of the individual blocks."""
         return getattr(self.values.dtype, "_shape_", (1, 1))
 
@@ -115,7 +119,7 @@ class BsrMatrix(Generic[_BlockType]):
         return type_size(self.values.dtype)
 
     @property
-    def shape(self) -> Tuple[int, int]:
+    def shape(self) -> tuple[int, int]:
         """Shape of the matrix, i.e. number of rows/columns of blocks times number of rows/columns per block."""
         block_shape = self.block_shape
         return (self.nrow * block_shape[0], self.ncol * block_shape[1])
@@ -155,51 +159,76 @@ class BsrMatrix(Generic[_BlockType]):
         )
         return out
 
-    def nnz_sync(self):
-        """Ensures that any ongoing transfer of the exact nnz number from the device offsets array to the host has completed,
-        or, if none has been scheduled yet, starts a new transfer and waits for it to complete.
-        Then updates the nnz upper bound.
+    def nnz_sync(self) -> int:
+        """
+        Synchronize the number of non-zeros from the device offsets array to the host.
 
-        See also :meth:`copy_nnz_async`.
+        Ensures that any ongoing transfer of the exact nnz number from the device offsets array to the host has completed,
+        or, if none has been scheduled yet, starts a new transfer and waits for it to complete.
+
+        Then updates the host-side nnz upper bound to match the exact one, and returns it.
+
+        See also :meth:`notify_nnz_async`.
         """
 
         buf, event = self._nnz_transfer_if_any()
         if buf is None:
-            self.copy_nnz_async()
-            buf, event = self._nnz_transfer_if_any()
+            buf, event = self._copy_nnz_async()
 
         if event is not None:
             wp.synchronize_event(event)
         self.nnz = int(buf.numpy()[0])
         return self.nnz
 
+    def notify_nnz_changed(self, nnz: int | None = None) -> None:
+        """Notify the matrix that the number of non-zeros has been changed from outside of the ``warp.sparse`` builtin functions.
+
+        Should be called in particular when the offsets array has been modified, or when the nnz upper bound has changed.
+        Makes sure that the matrix is properly resized and starts the asynchronous transfer of the actual non-zero count.
+
+        Args:
+            nnz: The new upper-bound for the number of non-zeros. If not provided, it will be read from the device offsets array (requires a synchronization).
+        """
+
+        if nnz is None:
+            self.nnz_sync()
+        else:
+            self._copy_nnz_async()
+
+        _bsr_ensure_fits(self, nnz=nnz)
+
     def copy_nnz_async(self) -> None:
         """
-        Start the asynchronous transfer of the exact nnz from the device offsets array to host and records an event for completion.
+        Starts the asynchronous transfer of the exact nnz from the device offsets array to host and records an event for completion.
 
-        Needs to be called whenever the offsets array has been modified from outside ``warp.sparse``.
-
-        See also :meth:`nnz_sync`.
+        Deprecated; prefer :meth:`notify_nnz_changed` instead, which will make sure to resize arrays if necessary.
         """
+        wp.utils.warn(
+            "The `copy_nnz_async` method is deprecated and will be removed in a future version. Prefer `notify_nnz_changed` instead.",
+            DeprecationWarning,
+        )
+        self._copy_nnz_async()
 
+    def _copy_nnz_async(self) -> tuple[wp.array, wp.Event]:
         buf, event = self._setup_nnz_transfer()
-        stream = wp.get_stream(self.device) if self.device.is_cuda else None
-        wp.copy(src=self.offsets, dest=buf, src_offset=self.nrow, count=1, stream=stream)
-        if event is not None:
-            stream.record_event(event)
+        if buf is not None:
+            stream = wp.get_stream(self.device) if self.device.is_cuda else None
+            wp.copy(src=self.offsets, dest=buf, src_offset=self.nrow, count=1, stream=stream)
+            if event is not None:
+                stream.record_event(event, external=True)
+        return buf, event
 
-    def _setup_nnz_transfer(self):
+    def _setup_nnz_transfer(self) -> tuple[wp.array, wp.Event]:
         buf, event = self._nnz_transfer_if_any()
         if buf is not None:
             return buf, event
 
         buf, event = _allocate_transfer_buf(self.device)
-        if buf is not None:
-            BsrMatrix.__setattr__(self, "_nnz_transfer", (buf, event))
+        BsrMatrix.__setattr__(self, "_nnz_transfer", (buf, event))
 
         return buf, event
 
-    def _nnz_transfer_if_any(self):
+    def _nnz_transfer_if_any(self) -> tuple[wp.array, wp.Event]:
         return getattr(self, "_nnz_transfer", (None, None))
 
     def __del__(self):
@@ -314,6 +343,7 @@ def bsr_matrix_t(dtype: BlockType):
     key = f"{BsrMatrix.__qualname__}_{type_str}"
 
     if key not in _struct_cache:
+        BsrMatrixTyped.dtype = dtype  # necessary for eval_annotations
         _struct_cache[key] = wp.codegen.Struct(
             key=key,
             cls=BsrMatrixTyped,
@@ -353,17 +383,23 @@ def bsr_zeros(
     return bsr
 
 
-def _bsr_ensure_fits(bsr: BsrMatrix, nrow: Optional[int] = None, nnz: Optional[int] = None) -> None:
-    if nrow is None:
-        nrow = bsr.nrow
+def _bsr_resize(bsr: BsrMatrix, rows_of_blocks: int | None = None, cols_of_blocks: int | None = None) -> None:
+    if rows_of_blocks is not None:
+        bsr.nrow = int(rows_of_blocks)
+    if cols_of_blocks is not None:
+        bsr.ncol = int(cols_of_blocks)
+
+    if bsr.offsets.size < bsr.nrow + 1:
+        bsr.offsets = wp.empty(shape=(bsr.nrow + 1,), dtype=int, device=bsr.offsets.device)
+
+
+def _bsr_ensure_fits(bsr: BsrMatrix, nnz: int | None = None) -> None:
     if nnz is None:
         nnz = bsr.nnz
     else:
         # update nnz upper bound
         bsr.nnz = int(nnz)
 
-    if bsr.offsets.size < nrow + 1:
-        bsr.offsets = wp.empty(shape=(nrow + 1,), dtype=int, device=bsr.offsets.device)
     if bsr.columns.size < nnz:
         bsr.columns = wp.empty(shape=(nnz,), dtype=int, device=bsr.columns.device)
     if bsr.values.size < nnz:
@@ -372,11 +408,7 @@ def _bsr_ensure_fits(bsr: BsrMatrix, nrow: Optional[int] = None, nnz: Optional[i
         )
 
 
-def bsr_set_zero(
-    bsr: BsrMatrix,
-    rows_of_blocks: Optional[int] = None,
-    cols_of_blocks: Optional[int] = None,
-):
+def bsr_set_zero(bsr: BsrMatrix, rows_of_blocks: int | None = None, cols_of_blocks: int | None = None):
     """Set a BSR matrix to zero, possibly changing its size.
 
     Args:
@@ -384,15 +416,10 @@ def bsr_set_zero(
         rows_of_blocks: If not ``None``, the new number of rows of blocks.
         cols_of_blocks: If not ``None``, the new number of columns of blocks.
     """
+    _bsr_resize(bsr, rows_of_blocks, cols_of_blocks)
 
-    if rows_of_blocks is not None:
-        bsr.nrow = int(rows_of_blocks)
-    if cols_of_blocks is not None:
-        bsr.ncol = int(cols_of_blocks)
-
-    _bsr_ensure_fits(bsr, nnz=0)
     bsr.offsets.zero_()
-    bsr.copy_nnz_async()
+    bsr.notify_nnz_changed(nnz=0)
 
 
 def _as_3d_array(arr, block_shape):
@@ -406,11 +433,11 @@ def _as_3d_array(arr, block_shape):
     )
 
 
-def _optional_ctypes_pointer(array: Optional[wp.array], ctype):
+def _optional_ctypes_pointer(array: wp.array | None, ctype):
     return None if array is None else ctypes.cast(array.ptr, ctypes.POINTER(ctype))
 
 
-def _optional_ctypes_event(event: Optional[wp.Event]):
+def _optional_ctypes_event(event: wp.Event | None):
     return None if event is None else event.cuda_event
 
 
@@ -454,10 +481,10 @@ def _bsr_accumulate_triplet_values(
 
 def bsr_set_from_triplets(
     dest: BsrMatrix[BlockType[Rows, Cols, Scalar]],
-    rows: "Array[int]",
-    columns: "Array[int]",
-    values: Optional["Array[Union[Scalar, BlockType[Rows, Cols, Scalar]]]"] = None,
-    count: Optional["Array[int]"] = None,
+    rows: Array[int],
+    columns: Array[int],
+    values: Array[Scalar | BlockType[Rows, Cols, Scalar]] | None = None,
+    count: Array[int] | None = None,
     prune_numerical_zeros: bool = True,
     masked: bool = False,
 ):
@@ -597,9 +624,9 @@ def bsr_set_from_triplets(
 def bsr_from_triplets(
     rows_of_blocks: int,
     cols_of_blocks: int,
-    rows: "Array[int]",
-    columns: "Array[int]",
-    values: "Array[Union[Scalar, BlockType[Rows, Cols, Scalar]]]",
+    rows: Array[int],
+    columns: Array[int],
+    values: Array[Scalar | BlockType[Rows, Cols, Scalar]],
     prune_numerical_zeros: bool = True,
 ):
     """Constructs a BSR matrix with values defined by coordinate-oriented (COO) triplets.
@@ -666,7 +693,7 @@ class _BsrScalingExpression(_BsrExpression):
         return self.mat.scalar_type
 
     @property
-    def block_shape(self) -> Tuple[int, int]:
+    def block_shape(self) -> tuple[int, int]:
         return self.mat.block_shape
 
     @property
@@ -674,7 +701,7 @@ class _BsrScalingExpression(_BsrExpression):
         return self.mat.block_size
 
     @property
-    def shape(self) -> Tuple[int, int]:
+    def shape(self) -> tuple[int, int]:
         return self.mat.shape
 
     @property
@@ -744,36 +771,49 @@ def _extract_matrix_and_scale(bsr: BsrMatrixOrExpression):
 
 
 @wp.func
-def _bsr_row_index(
+def bsr_row_index(
     offsets: wp.array(dtype=int),
     row_count: int,
-    block: int,
-):
-    """Index of the row containing a block, or -1 if non-existing."""
-    return wp.where(block < offsets[row_count], wp.lower_bound(offsets, 0, row_count + 1, block + 1), 0) - 1
+    block_index: int,
+) -> int:
+    """Returns the index of the row containing a given block, or -1 if no such row exists.
+
+    Args:
+        offsets: Array of size at least ``1 + row_count`` containing the offsets of the blocks in each row.
+        row_count: Number of rows of blocks.
+        block_index: Index of the block.
+    """
+    return wp.where(block_index < offsets[row_count], wp.lower_bound(offsets, 0, row_count + 1, block_index + 1), 0) - 1
 
 
 @wp.func
-def _bsr_block_index(
+def bsr_block_index(
     row: int,
     col: int,
     bsr_offsets: wp.array(dtype=int),
     bsr_columns: wp.array(dtype=int),
-):
-    """Index of the block at block-coordinates (row, col), or -1 if non-existing.
-    Assumes bsr_columns is sorted.
+) -> int:
+    """
+    Returns the index of the block at block-coordinates (row, col), or -1 if no such block exists.
+    Assumes that the segments of ``bsr_columns`` corresponding to each row are sorted.
+
+    Args:
+        row: Row of the block.
+        col: Column of the block.
+        bsr_offsets: Array of size at least ``1 + row`` containing the offsets of the blocks in each row.
+        bsr_columns: Array of size at least equal to ``bsr_offsets[row + 1]`` containing the column indices of the blocks.
     """
 
     if row < 0:
         return -1
 
-    mask_row_beg = bsr_offsets[row]
-    mask_row_end = bsr_offsets[row + 1]
+    row_beg = bsr_offsets[row]
+    row_end = bsr_offsets[row + 1]
 
-    if mask_row_beg == mask_row_end:
+    if row_beg == row_end:
         return -1
 
-    block_index = wp.lower_bound(bsr_columns, mask_row_beg, mask_row_end, col)
+    block_index = wp.lower_bound(bsr_columns, row_beg, row_end, col)
     return wp.where(bsr_columns[block_index] == col, block_index, -1)
 
 
@@ -792,7 +832,7 @@ def _bsr_assign_list_blocks(
     block, subrow, subcol = wp.tid()
     dest_block = (block * src_subcols + subcol) * src_subrows + subrow
 
-    row = _bsr_row_index(src_offsets, src_row_count, block)
+    row = bsr_row_index(src_offsets, src_row_count, block)
     if row == -1:
         dest_rows[dest_block] = row  # invalid
         dest_cols[dest_block] = row
@@ -821,7 +861,7 @@ def _bsr_assign_copy_blocks(
     src_block = wp.tid()
     src_block, subrow, subcol = wp.tid()
 
-    src_row = _bsr_row_index(src_offsets, src_row_count, src_block)
+    src_row = bsr_row_index(src_offsets, src_row_count, src_block)
     if src_row == -1:
         return
 
@@ -832,7 +872,7 @@ def _bsr_assign_copy_blocks(
     dest_row = dest_subrow // dest_subrows
     dest_col = dest_subcol // dest_subcols
 
-    dest_block = _bsr_block_index(dest_row, dest_col, dest_offsets, dest_columns)
+    dest_block = bsr_block_index(dest_row, dest_col, dest_offsets, dest_columns)
     if dest_block == -1:
         return
 
@@ -870,7 +910,7 @@ def bsr_assign(
       structure_only: If ``True``, only the non-zero indices are copied, and uninitialized value storage is allocated
         to accommodate at least ``src.nnz`` blocks. If ``structure_only`` is ``False``, values are also copied with implicit
         casting if the two matrices use distinct scalar types.
-      masked: If ``True``, prevent the assignment operation from adding new non-zero blocks to ``dest``.
+      masked: If ``True``, keep the non-zero topology of ``dest`` unchanged.
     """
 
     src, src_scale = _extract_matrix_and_scale(src)
@@ -917,15 +957,13 @@ def bsr_assign(
                 f"Incompatible destination matrix size, expected ({dest_nrow}, {dest_ncol}), got ({dest.nrow}, {dest.ncol})"
             )
     else:
-        dest.nrow = dest_nrow
-        dest.ncol = dest_ncol
-        _bsr_ensure_fits(dest, nnz=nnz_alloc)
+        _bsr_resize(dest, rows_of_blocks=dest_nrow, cols_of_blocks=dest_ncol)
 
     if dest.block_shape == src.block_shape and not masked:
         # Direct copy
 
         wp.copy(dest=dest.offsets, src=src.offsets, count=src.nrow + 1)
-        dest.copy_nnz_async()
+        dest.notify_nnz_changed(nnz=nnz_alloc)
 
         if nnz_alloc > 0:
             wp.copy(dest=dest.columns, src=src.columns, count=nnz_alloc)
@@ -935,59 +973,60 @@ def bsr_assign(
                 bsr_scale(dest, src_scale)
 
     else:
-        # Masked and/or multiple src blocks per dest block, go through COO format
-
-        # Compute destination rows and columns
-        dest_rows = wp.empty(nnz_alloc, dtype=int, device=dest.device)
-        dest_cols = wp.empty(nnz_alloc, dtype=int, device=dest.device)
-        wp.launch(
-            _bsr_assign_list_blocks,
-            dim=(src.nnz, src_subrows, src_subcols),
-            device=dest.device,
-            inputs=[
-                src_subrows,
-                src_subcols,
-                dest_subrows,
-                dest_subcols,
-                src.nrow,
-                src.offsets,
-                src.columns,
-                dest_rows,
-                dest_cols,
-            ],
-        )
-
-        # Compute destination offsets from triplets
-        from warp.context import runtime
-
-        if dest.device.is_cpu:
-            native_func = runtime.core.wp_bsr_matrix_from_triplets_host
-        else:
-            native_func = runtime.core.wp_bsr_matrix_from_triplets_device
-
-        nnz_buf, nnz_event = dest._setup_nnz_transfer()
-        with wp.ScopedDevice(dest.device):
-            native_func(
-                dest.block_size,
-                0,  # scalar_size_in_bytes
-                dest.nrow,
-                dest.ncol,
-                nnz_alloc,
-                None,  # device nnz
-                ctypes.cast(dest_rows.ptr, ctypes.POINTER(ctypes.c_int32)),
-                ctypes.cast(dest_cols.ptr, ctypes.POINTER(ctypes.c_int32)),
-                None,  # triplet values
-                0,  # zero_value_mask
-                masked,
-                None,  # summed block offsets
-                None,  # summed block indices
-                ctypes.cast(dest.offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
-                ctypes.cast(dest.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
-                _optional_ctypes_pointer(nnz_buf, ctype=ctypes.c_int32),
-                _optional_ctypes_event(nnz_event),
+        if not masked:
+            # Compute destination rows and columns
+            dest_rows = wp.empty(nnz_alloc, dtype=int, device=dest.device)
+            dest_cols = wp.empty(nnz_alloc, dtype=int, device=dest.device)
+            wp.launch(
+                _bsr_assign_list_blocks,
+                dim=(src.nnz, src_subrows, src_subcols),
+                device=dest.device,
+                inputs=[
+                    src_subrows,
+                    src_subcols,
+                    dest_subrows,
+                    dest_subcols,
+                    src.nrow,
+                    src.offsets,
+                    src.columns,
+                    dest_rows,
+                    dest_cols,
+                ],
             )
 
-        # merge block values
+            _bsr_ensure_fits(dest, nnz=nnz_alloc)
+
+            # Compute destination offsets from triplets
+            from warp.context import runtime
+
+            if dest.device.is_cpu:
+                native_func = runtime.core.wp_bsr_matrix_from_triplets_host
+            else:
+                native_func = runtime.core.wp_bsr_matrix_from_triplets_device
+
+            nnz_buf, nnz_event = dest._setup_nnz_transfer()
+            with wp.ScopedDevice(dest.device):
+                native_func(
+                    dest.block_size,
+                    0,  # scalar_size_in_bytes
+                    dest.nrow,
+                    dest.ncol,
+                    nnz_alloc,
+                    None,  # device nnz
+                    ctypes.cast(dest_rows.ptr, ctypes.POINTER(ctypes.c_int32)),
+                    ctypes.cast(dest_cols.ptr, ctypes.POINTER(ctypes.c_int32)),
+                    None,  # triplet values
+                    0,  # zero_value_mask
+                    masked,
+                    None,  # summed block offsets
+                    None,  # summed block indices
+                    ctypes.cast(dest.offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
+                    ctypes.cast(dest.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
+                    _optional_ctypes_pointer(nnz_buf, ctype=ctypes.c_int32),
+                    _optional_ctypes_event(nnz_event),
+                )
+
+        # copy block values
         if not structure_only:
             dest.values.zero_()
             wp.launch(
@@ -1013,8 +1052,8 @@ def bsr_assign(
 
 def bsr_copy(
     A: BsrMatrixOrExpression,
-    scalar_type: Optional[Scalar] = None,
-    block_shape: Optional[Tuple[int, int]] = None,
+    scalar_type: Scalar | None = None,
+    block_shape: tuple[int, int] | None = None,
     structure_only: bool = False,
 ):
     """Return a copy of matrix ``A``, possibly changing its scalar type.
@@ -1053,9 +1092,12 @@ def bsr_copy(
 def _bsr_transpose_values(
     col_count: int,
     scale: Any,
+    bsr_offsets: wp.array(dtype=int),
+    bsr_columns: wp.array(dtype=int),
     bsr_values: wp.array3d(dtype=Any),
     block_index_map: wp.array(dtype=int),
     transposed_bsr_offsets: wp.array(dtype=int),
+    transposed_bsr_columns: wp.array(dtype=int),
     transposed_bsr_values: wp.array3d(dtype=Any),
 ):
     block, i, j = wp.tid()
@@ -1063,14 +1105,31 @@ def _bsr_transpose_values(
     if block >= transposed_bsr_offsets[col_count]:
         return
 
-    transposed_bsr_values[block, i, j] = bsr_values[block_index_map[block], j, i] * scale
+    if block_index_map:
+        src_block = block_index_map[block]
+    else:
+        row = bsr_row_index(transposed_bsr_offsets, col_count, block)
+        col = transposed_bsr_columns[block]
+        src_block = bsr_block_index(col, row, bsr_offsets, bsr_columns)
+        if src_block == -1:
+            return
+
+    transposed_bsr_values[block, i, j] = bsr_values[src_block, j, i] * scale
 
 
 def bsr_set_transpose(
     dest: BsrMatrix[BlockType[Cols, Rows, Scalar]],
     src: BsrMatrixOrExpression[BlockType[Rows, Cols, Scalar]],
+    masked: bool = False,
 ):
-    """Assign the transposed matrix ``src`` to matrix ``dest``."""
+    """
+    Assign the transposed matrix ``src`` to matrix ``dest``.
+
+    Args:
+        dest: Sparse matrix to populate.
+        src: Sparse matrix to transpose.
+        masked: If ``True``, keep the non-zero topology of ``dest`` unchanged.
+    """
 
     src, src_scale = _extract_matrix_and_scale(src)
 
@@ -1087,47 +1146,63 @@ def bsr_set_transpose(
     if dest.block_shape != transpose_block_shape:
         raise ValueError(f"Destination block shape must be {transpose_block_shape}, got {dest.block_shape}")
 
-    nnz = src.nnz
-    dest.nrow = src.ncol
-    dest.ncol = src.nrow
-
-    if nnz == 0:
-        bsr_set_zero(dest)
-        return
-
-    # Increase dest array sizes if needed
-    _bsr_ensure_fits(dest, nnz=nnz)
-
-    from warp.context import runtime
-
-    if dest.values.device.is_cpu:
-        native_func = runtime.core.wp_bsr_transpose_host
+    if masked:
+        if dest.nrow != src.ncol or dest.ncol != src.nrow:
+            raise ValueError(
+                f"Destination matrix must have {src.ncol} rows and {src.nrow} columns, got {dest.nrow} and {dest.ncol}"
+            )
+        block_index_map = None
+        dest.values.zero_()
     else:
-        native_func = runtime.core.wp_bsr_transpose_device
+        _bsr_resize(dest, rows_of_blocks=src.ncol, cols_of_blocks=src.nrow)
 
-    block_index_map = wp.empty(shape=2 * nnz, dtype=int, device=src.device)
+        nnz = src.nnz
+        if nnz == 0:
+            bsr_set_zero(dest)
+            return
 
-    with wp.ScopedDevice(dest.device):
-        native_func(
-            src.nrow,
+        # Increase dest array sizes if needed
+        _bsr_ensure_fits(dest, nnz=nnz)
+
+        from warp.context import runtime
+
+        if dest.values.device.is_cpu:
+            native_func = runtime.core.wp_bsr_transpose_host
+        else:
+            native_func = runtime.core.wp_bsr_transpose_device
+
+        block_index_map = wp.empty(shape=2 * nnz, dtype=int, device=src.device)
+
+        with wp.ScopedDevice(dest.device):
+            native_func(
+                src.nrow,
+                src.ncol,
+                nnz,
+                ctypes.cast(src.offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
+                ctypes.cast(src.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
+                ctypes.cast(dest.offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
+                ctypes.cast(dest.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
+                ctypes.cast(block_index_map.ptr, ctypes.POINTER(ctypes.c_int32)),
+            )
+
+            dest._copy_nnz_async()
+
+    wp.launch(
+        _bsr_transpose_values,
+        dim=(dest.nnz, *dest.block_shape),
+        device=dest.device,
+        inputs=[
             src.ncol,
-            nnz,
-            ctypes.cast(src.offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
-            ctypes.cast(src.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
-            ctypes.cast(dest.offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
-            ctypes.cast(dest.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
-            ctypes.cast(block_index_map.ptr, ctypes.POINTER(ctypes.c_int32)),
-        )
-
-        dest.copy_nnz_async()
-
-        wp.launch(
-            _bsr_transpose_values,
-            dim=(nnz, *dest.block_shape),
-            device=dest.device,
-            inputs=[src.ncol, dest.scalar_type(src_scale), src.scalar_values, block_index_map, dest.offsets],
-            outputs=[dest.scalar_values],
-        )
+            dest.scalar_type(src_scale),
+            src.offsets,
+            src.columns,
+            src.scalar_values,
+            block_index_map,
+            dest.offsets,
+            dest.columns,
+        ],
+        outputs=[dest.scalar_values],
+    )
 
 
 def bsr_transposed(A: BsrMatrixOrExpression) -> BsrMatrix:
@@ -1159,12 +1234,12 @@ def _bsr_get_diag_kernel(
 ):
     row, br, bc = wp.tid()
 
-    diag = _bsr_block_index(row, row, A_offsets, A_columns)
+    diag = bsr_block_index(row, row, A_offsets, A_columns)
     if diag != -1:
         out[row, br, bc] = scale * A_values[diag, br, bc]
 
 
-def bsr_get_diag(A: BsrMatrixOrExpression[BlockType], out: "Optional[Array[BlockType]]" = None) -> "Array[BlockType]":
+def bsr_get_diag(A: BsrMatrixOrExpression[BlockType], out: Array[BlockType] | None = None) -> Array[BlockType]:
     """Return the array of blocks that constitute the diagonal of a sparse matrix.
 
     Args:
@@ -1210,9 +1285,9 @@ def _bsr_set_diag_kernel(
 
 def bsr_set_diag(
     A: BsrMatrix[BlockType],
-    diag: "Union[BlockType, Array[BlockType]]",
-    rows_of_blocks: Optional[int] = None,
-    cols_of_blocks: Optional[int] = None,
+    diag: BlockType | Array[BlockType],
+    rows_of_blocks: int | None = None,
+    cols_of_blocks: int | None = None,
 ) -> None:
     """Set ``A`` as a block-diagonal matrix.
 
@@ -1246,11 +1321,10 @@ def bsr_set_diag(
             cols_of_blocks = diag.shape[0]
 
     if rows_of_blocks is not None:
-        A.nrow = rows_of_blocks
-        A.ncol = cols_of_blocks
+        _bsr_resize(A, rows_of_blocks, cols_of_blocks)
 
     nnz = min(A.nrow, A.ncol)
-    _bsr_ensure_fits(A, nnz=nnz)
+    A.notify_nnz_changed(nnz=nnz)  # notify change of nnz upper bound
 
     wp.launch(
         kernel=_bsr_set_diag_kernel,
@@ -1259,21 +1333,21 @@ def bsr_set_diag(
         inputs=[nnz, A.offsets, A.columns],
     )
 
+    A.notify_nnz_changed(nnz=nnz)  # notify change of offsets
+
     if is_array(diag):
         wp.copy(src=diag, dest=A.values, count=nnz)
     elif diag is not None:
         A.values.fill_(diag)
 
-    A.copy_nnz_async()
-
 
 def bsr_diag(
-    diag: Optional[Union[BlockType, Array[BlockType]]] = None,
-    rows_of_blocks: Optional[int] = None,
-    cols_of_blocks: Optional[int] = None,
-    block_type: Optional[BlockType] = None,
+    diag: BlockType | Array[BlockType] | None = None,
+    rows_of_blocks: int | None = None,
+    cols_of_blocks: int | None = None,
+    block_type: BlockType | None = None,
     device=None,
-) -> BsrMatrix["BlockType"]:
+) -> BsrMatrix[BlockType]:
     """Create and return a block-diagonal BSR matrix from an given block value or array of block values.
 
     Args:
@@ -1326,7 +1400,7 @@ def bsr_diag(
     return A
 
 
-def bsr_set_identity(A: BsrMatrix, rows_of_blocks: Optional[int] = None) -> None:
+def bsr_set_identity(A: BsrMatrix, rows_of_blocks: int | None = None) -> None:
     """Set ``A`` as the identity matrix.
 
     Args:
@@ -1393,7 +1467,7 @@ def bsr_scale(x: BsrMatrixOrExpression, alpha: Scalar) -> BsrMatrix:
 
     if alpha != 1.0 and x.nnz > 0:
         if alpha == 0.0:
-            bsr_set_zero(x)
+            x.values.zero_()
         else:
             alpha = x.scalar_type(alpha)
 
@@ -1410,7 +1484,7 @@ def bsr_scale(x: BsrMatrixOrExpression, alpha: Scalar) -> BsrMatrix:
 @wp.kernel(enable_backward=False)
 def _bsr_get_block_row(row_count: int, bsr_offsets: wp.array(dtype=int), rows: wp.array(dtype=int)):
     block = wp.tid()
-    rows[block] = _bsr_row_index(bsr_offsets, row_count, block)
+    rows[block] = bsr_row_index(bsr_offsets, row_count, block)
 
 
 @wp.kernel
@@ -1428,9 +1502,32 @@ def _bsr_axpy_add_block(
     row = rows[i + src_offset]
     col = cols[i + src_offset]
 
-    block = _bsr_block_index(row, col, dst_offsets, dst_columns)
+    block = bsr_block_index(row, col, dst_offsets, dst_columns)
     if block != -1:
         dst_values[block, br, bc] += scale * src_values[i, br, bc]
+
+
+@wp.kernel
+def _bsr_axpy_masked(
+    alpha: Any,
+    row_count: int,
+    src_offsets: wp.array(dtype=int),
+    src_columns: wp.array(dtype=int),
+    src_values: wp.array3d(dtype=Any),
+    dst_offsets: wp.array(dtype=int),
+    dst_columns: wp.array(dtype=int),
+    dst_values: wp.array3d(dtype=Any),
+):
+    block, br, bc = wp.tid()
+
+    row = bsr_row_index(dst_offsets, row_count, block)
+    if row == -1:
+        return
+
+    col = dst_columns[block]
+    src_block = bsr_block_index(row, col, src_offsets, src_columns)
+    if src_block != -1:
+        dst_values[block, br, bc] += alpha * src_values[src_block, br, bc]
 
 
 class bsr_axpy_work_arrays:
@@ -1461,11 +1558,11 @@ class bsr_axpy_work_arrays:
 
 def bsr_axpy(
     x: BsrMatrixOrExpression,
-    y: Optional[BsrMatrix[BlockType[Rows, Cols, Scalar]]] = None,
+    y: BsrMatrix[BlockType[Rows, Cols, Scalar]] | None = None,
     alpha: Scalar = 1.0,
     beta: Scalar = 1.0,
     masked: bool = False,
-    work_arrays: Optional[bsr_axpy_work_arrays] = None,
+    work_arrays: bsr_axpy_work_arrays | None = None,
 ) -> BsrMatrix[BlockType[Rows, Cols, Scalar]]:
     """
     Perform the sparse matrix addition ``y := alpha * X + beta * y`` on BSR matrices ``x`` and ``y`` and return ``y``.
@@ -1477,8 +1574,7 @@ def bsr_axpy(
         y: Mutable second operand and output matrix. If ``y`` is not provided, it will be allocated and treated as zero.
         alpha: Uniform scaling factor for ``x``.
         beta: Uniform scaling factor for ``y``.
-        masked: If ``True``, discard all blocks from ``x`` which are not
-          existing non-zeros of ``y``.
+        masked: If ``True``, keep the non-zero topology of ``y`` unchanged.
         work_arrays: In most cases, this function will require the use of temporary storage.
           This storage can be reused across calls by passing an instance of
           :class:`bsr_axpy_work_arrays` in ``work_arrays``.
@@ -1501,22 +1597,22 @@ def bsr_axpy(
 
     # Handle easy cases first
     if beta == 0.0 or y_nnz == 0:
-        bsr_assign(src=x, dest=y)
+        bsr_assign(src=x, dest=y, masked=masked)
         return bsr_scale(y, alpha=alpha)
 
     if alpha == 0.0 or x_nnz == 0:
         return bsr_scale(y, alpha=beta)
 
+    if x == y:
+        # Aliasing case
+        return bsr_scale(y, alpha=alpha + beta)
+
+    # General case
+
     if not isinstance(alpha, y.scalar_type):
         alpha = y.scalar_type(alpha)
     if not isinstance(beta, y.scalar_type):
         beta = y.scalar_type(beta)
-
-    if x == y:
-        # Aliasing case
-        return bsr_scale(y, alpha=alpha.value + beta.value)
-
-    # General case
 
     if x.values.device != y.values.device:
         raise ValueError(f"All arguments must reside on the same device, got {x.values.device} and {y.values.device}")
@@ -1531,90 +1627,108 @@ def bsr_axpy(
             f"Matrices must have the same number of rows and columns, got ({x.nrow}, {x.ncol}) and ({y.nrow}, {y.ncol})"
         )
 
-    if work_arrays is None:
-        work_arrays = bsr_axpy_work_arrays()
-
-    sum_nnz = x_nnz + y_nnz
     device = y.values.device
-    work_arrays._allocate(device, y, sum_nnz)
-
-    wp.copy(work_arrays._sum_cols, y.columns, 0, 0, y_nnz)
-    y.uncompress_rows(out=work_arrays._sum_rows)
-
-    wp.copy(work_arrays._sum_cols, x.columns, y_nnz, 0, x_nnz)
-    x.uncompress_rows(out=work_arrays._sum_rows[y_nnz:])
-
-    # Save old y values before overwriting matrix
-    wp.copy(dest=work_arrays._old_y_values, src=y.values, count=y.nnz)
-
-    # Increase dest array sizes if needed
-    if not masked:
-        _bsr_ensure_fits(y, nnz=sum_nnz)
-
-    from warp.context import runtime
-
-    if device.is_cpu:
-        native_func = runtime.core.wp_bsr_matrix_from_triplets_host
-    else:
-        native_func = runtime.core.wp_bsr_matrix_from_triplets_device
-
-    old_y_nnz = y_nnz
-    nnz_buf, nnz_event = y._setup_nnz_transfer()
-
-    with wp.ScopedDevice(y.device):
-        native_func(
-            y.block_size,
-            0,  # scalar_size_in_bytes
-            y.nrow,
-            y.ncol,
-            sum_nnz,
-            None,  # device nnz
-            ctypes.cast(work_arrays._sum_rows.ptr, ctypes.POINTER(ctypes.c_int32)),
-            ctypes.cast(work_arrays._sum_cols.ptr, ctypes.POINTER(ctypes.c_int32)),
-            None,  # triplet values
-            0,  # zero_value_mask
-            masked,
-            None,  # summed block offsets
-            None,  # summed block indices
-            ctypes.cast(y.offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
-            ctypes.cast(y.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
-            _optional_ctypes_pointer(nnz_buf, ctype=ctypes.c_int32),
-            _optional_ctypes_event(nnz_event),
+    if masked:
+        bsr_scale(y, alpha=beta.value)
+        wp.launch(
+            kernel=_bsr_axpy_masked,
+            device=device,
+            dim=(y_nnz, y.block_shape[0], y.block_shape[1]),
+            inputs=[
+                alpha,
+                x.nrow,
+                x.offsets,
+                x.columns,
+                x.scalar_values,
+                y.offsets,
+                y.columns,
+                y.scalar_values,
+            ],
         )
 
-    y.values.zero_()
+    else:
+        if work_arrays is None:
+            work_arrays = bsr_axpy_work_arrays()
 
-    wp.launch(
-        kernel=_bsr_axpy_add_block,
-        device=device,
-        dim=(old_y_nnz, y.block_shape[0], y.block_shape[1]),
-        inputs=[
-            0,
-            beta,
-            work_arrays._sum_rows,
-            work_arrays._sum_cols,
-            y.offsets,
-            y.columns,
-            _as_3d_array(work_arrays._old_y_values, y.block_shape),
-            y.scalar_values,
-        ],
-    )
+        sum_nnz = x_nnz + y_nnz
+        work_arrays._allocate(device, y, sum_nnz)
 
-    wp.launch(
-        kernel=_bsr_axpy_add_block,
-        device=device,
-        dim=(x_nnz, y.block_shape[0], y.block_shape[1]),
-        inputs=[
-            old_y_nnz,
-            alpha,
-            work_arrays._sum_rows,
-            work_arrays._sum_cols,
-            y.offsets,
-            y.columns,
-            x.scalar_values,
-            y.scalar_values,
-        ],
-    )
+        wp.copy(work_arrays._sum_cols, y.columns, 0, 0, y_nnz)
+        y.uncompress_rows(out=work_arrays._sum_rows)
+
+        wp.copy(work_arrays._sum_cols, x.columns, y_nnz, 0, x_nnz)
+        x.uncompress_rows(out=work_arrays._sum_rows[y_nnz:])
+
+        # Save old y values before overwriting matrix
+        wp.copy(dest=work_arrays._old_y_values, src=y.values, count=y.nnz)
+
+        # Increase dest array sizes if needed
+        _bsr_ensure_fits(y, nnz=sum_nnz)
+
+        from warp.context import runtime
+
+        if device.is_cpu:
+            native_func = runtime.core.wp_bsr_matrix_from_triplets_host
+        else:
+            native_func = runtime.core.wp_bsr_matrix_from_triplets_device
+
+        old_y_nnz = y_nnz
+        nnz_buf, nnz_event = y._setup_nnz_transfer()
+
+        with wp.ScopedDevice(y.device):
+            native_func(
+                y.block_size,
+                0,  # scalar_size_in_bytes
+                y.nrow,
+                y.ncol,
+                sum_nnz,
+                None,  # device nnz
+                ctypes.cast(work_arrays._sum_rows.ptr, ctypes.POINTER(ctypes.c_int32)),
+                ctypes.cast(work_arrays._sum_cols.ptr, ctypes.POINTER(ctypes.c_int32)),
+                None,  # triplet values
+                0,  # zero_value_mask
+                masked,
+                None,  # summed block offsets
+                None,  # summed block indices
+                ctypes.cast(y.offsets.ptr, ctypes.POINTER(ctypes.c_int32)),
+                ctypes.cast(y.columns.ptr, ctypes.POINTER(ctypes.c_int32)),
+                _optional_ctypes_pointer(nnz_buf, ctype=ctypes.c_int32),
+                _optional_ctypes_event(nnz_event),
+            )
+
+        y.values.zero_()
+
+        wp.launch(
+            kernel=_bsr_axpy_add_block,
+            device=device,
+            dim=(old_y_nnz, y.block_shape[0], y.block_shape[1]),
+            inputs=[
+                0,
+                beta,
+                work_arrays._sum_rows,
+                work_arrays._sum_cols,
+                y.offsets,
+                y.columns,
+                _as_3d_array(work_arrays._old_y_values, y.block_shape),
+                y.scalar_values,
+            ],
+        )
+
+        wp.launch(
+            kernel=_bsr_axpy_add_block,
+            device=device,
+            dim=(x_nnz, y.block_shape[0], y.block_shape[1]),
+            inputs=[
+                old_y_nnz,
+                alpha,
+                work_arrays._sum_rows,
+                work_arrays._sum_cols,
+                y.offsets,
+                y.columns,
+                x.scalar_values,
+                y.scalar_values,
+            ],
+        )
 
     return y
 
@@ -1700,7 +1814,7 @@ def _bsr_mm_list_coeffs(
     x_block = wp.lower_bound(mm_offsets, 0, x_nnz + 1, mm_block + 1) - 1
     pos = mm_block - mm_offsets[x_block]
 
-    row = _bsr_row_index(x_offsets, x_nrow, x_block)
+    row = bsr_row_index(x_offsets, x_nrow, x_block)
 
     row_min_col = mm_row_min[row]
     if row_min_col == -1:
@@ -1762,7 +1876,7 @@ def _bsr_mm_compute_values(
 ):
     mm_block = wp.tid()
 
-    row = _bsr_row_index(mm_offsets, mm_row_count, mm_block)
+    row = bsr_row_index(mm_offsets, mm_row_count, mm_block)
     if row == -1:
         return
 
@@ -1777,12 +1891,12 @@ def _bsr_mm_compute_values(
             x_block = summed_triplet_src_blocks[tpl_idx]
             x_col = x_columns[x_block]
             if x_block != -1:
-                y_block = _bsr_block_index(x_col, col, y_offsets, y_columns)
+                y_block = bsr_block_index(x_col, col, y_offsets, y_columns)
                 mm_val += x_values[x_block] * y_values[y_block]
     else:
         for x_block in range(block_beg, block_end):
             x_col = x_columns[x_block]
-            y_block = _bsr_block_index(x_col, col, y_offsets, y_columns)
+            y_block = bsr_block_index(x_col, col, y_offsets, y_columns)
             if y_block != -1:
                 mm_val += x_values[x_block] * y_values[y_block]
 
@@ -1797,12 +1911,12 @@ def make_bsr_mm_compute_values_tiled_outer(subblock_rows, subblock_cols, block_d
     x_col_vec_t = wp.vec(dtype=scalar_type, length=subblock_rows)
     y_row_vec_t = wp.vec(dtype=scalar_type, length=subblock_cols)
 
-    suffix = f"{subblock_rows}{subblock_cols}{block_depth}{tile_size}{scalar_type.__name__}"
+    suffix = f"{subblock_rows}{subblock_cols}{block_depth}{tile_size}"
 
     @dynamic_func(suffix=suffix)
     def _outer_product(
-        x_values: wp.array2d(dtype=scalar_type),
-        y_values: wp.array2d(dtype=scalar_type),
+        x_values: wp.array2d(dtype=Any),
+        y_values: wp.array2d(dtype=Any),
         brow_off: int,
         bcol_off: int,
         block_col: int,
@@ -1821,20 +1935,20 @@ def make_bsr_mm_compute_values_tiled_outer(subblock_rows, subblock_cols, block_d
 
     @dynamic_kernel(suffix=suffix, kernel_options={"enable_backward": False})
     def bsr_mm_compute_values(
-        alpha: scalar_type,
+        alpha: Any,
         x_offsets: wp.array(dtype=int),
         x_columns: wp.array(dtype=int),
-        x_values: wp.array3d(dtype=scalar_type),
+        x_values: wp.array3d(dtype=Any),
         y_offsets: wp.array(dtype=int),
         y_columns: wp.array(dtype=int),
-        y_values: wp.array3d(dtype=scalar_type),
+        y_values: wp.array3d(dtype=Any),
         mm_row_min: wp.array(dtype=int),
         summed_triplet_offsets: wp.array(dtype=int),
         summed_triplet_src_blocks: wp.indexedarray(dtype=int),
         mm_row_count: int,
         mm_offsets: wp.array(dtype=int),
         mm_cols: wp.array(dtype=int),
-        mm_values: wp.array3d(dtype=scalar_type),
+        mm_values: wp.array3d(dtype=Any),
     ):
         mm_block, subrow, subcol, lane = wp.tid()
 
@@ -1844,7 +1958,7 @@ def make_bsr_mm_compute_values_tiled_outer(subblock_rows, subblock_cols, block_d
         brow_count = wp.min(mm_values.shape[1] - brow_off, subblock_rows)
         bcol_count = wp.min(mm_values.shape[2] - bcol_off, subblock_cols)
 
-        mm_row = _bsr_row_index(mm_offsets, mm_row_count, mm_block)
+        mm_row = bsr_row_index(mm_offsets, mm_row_count, mm_block)
         if mm_row == -1:
             return
 
@@ -1866,7 +1980,7 @@ def make_bsr_mm_compute_values_tiled_outer(subblock_rows, subblock_cols, block_d
                 x_block = summed_triplet_src_blocks[tpl_block]
                 if x_block != -1:
                     x_col = x_columns[x_block]
-                    y_block = _bsr_block_index(x_col, mm_col, y_offsets, y_columns)
+                    y_block = bsr_block_index(x_col, mm_col, y_offsets, y_columns)
                     lane_val += _outer_product(
                         x_values[x_block], y_values[y_block], brow_off, bcol_off, block_col, brow_count, bcol_count
                     )
@@ -1877,7 +1991,7 @@ def make_bsr_mm_compute_values_tiled_outer(subblock_rows, subblock_cols, block_d
                 x_block += block_beg
 
                 x_col = x_columns[x_block]
-                y_block = _bsr_block_index(x_col, mm_col, y_offsets, y_columns)
+                y_block = bsr_block_index(x_col, mm_col, y_offsets, y_columns)
 
                 if y_block != -1:
                     lane_val += _outer_product(
@@ -1950,11 +2064,11 @@ class bsr_mm_work_arrays:
 def bsr_mm(
     x: BsrMatrixOrExpression[BlockType[Rows, Any, Scalar]],
     y: BsrMatrixOrExpression[BlockType[Any, Cols, Scalar]],
-    z: Optional[BsrMatrix[BlockType[Rows, Cols, Scalar]]] = None,
+    z: BsrMatrix[BlockType[Rows, Cols, Scalar]] | None = None,
     alpha: Scalar = 1.0,
     beta: Scalar = 0.0,
     masked: bool = False,
-    work_arrays: Optional[bsr_mm_work_arrays] = None,
+    work_arrays: bsr_mm_work_arrays | None = None,
     reuse_topology: bool = False,
     tile_size: int = 0,
 ) -> BsrMatrix[BlockType[Rows, Cols, Scalar]]:
@@ -1970,7 +2084,7 @@ def bsr_mm(
         z: Mutable affine operand and result matrix. If ``z`` is not provided, it will be allocated and treated as zero.
         alpha: Uniform scaling factor for the ``x @ y`` product
         beta: Uniform scaling factor for ``z``
-        masked: If ``True``, ignore all blocks from ``x @ y`` which are not existing non-zeros of ``y``
+        masked: If ``True``, keep the non-zero topology of ``z`` unchanged.
         work_arrays: In most cases, this function will require the use of temporary storage.
           This storage can be reused across calls by passing an instance of
           :class:`bsr_mm_work_arrays` in ``work_arrays``.
@@ -2218,7 +2332,7 @@ def bsr_mm(
         max_tiles_per_sm = 2048 // tile_size  # assume 64 resident warps per SM
         use_tiles = device.is_cuda and (
             max(x.block_size, y.block_size, z.block_size) > max_subblock_dim**2
-            or mm_nnz < max_tiles_per_sm * device.sm_count
+            or z.nnz < max_tiles_per_sm * device.sm_count
         )
 
     if use_tiles:
@@ -2394,7 +2508,7 @@ def make_bsr_mv_transpose_kernel(block_rows: int):
     ):
         block, subcol = wp.tid()
 
-        row = _bsr_row_index(A_offsets, A_row_count, block)
+        row = bsr_row_index(A_offsets, A_row_count, block)
         if row == -1:
             return
 
@@ -2455,14 +2569,14 @@ def _vec_array_view(array: wp.array, dtype: type, expected_scalar_count: int) ->
 
 def bsr_mv(
     A: BsrMatrixOrExpression[BlockType[Rows, Cols, Scalar]],
-    x: "Array[Vector[Cols, Scalar] | Scalar]",
-    y: Optional["Array[Vector[Rows, Scalar] | Scalar]"] = None,
+    x: Array[Vector[Cols, Scalar] | Scalar],
+    y: Array[Vector[Rows, Scalar] | Scalar] | None = None,
     alpha: Scalar = 1.0,
     beta: Scalar = 0.0,
     transpose: bool = False,
-    work_buffer: Optional["Array[Vector[Rows, Scalar] | Scalar]"] = None,
+    work_buffer: Array[Vector[Rows, Scalar] | Scalar] | None = None,
     tile_size: int = 0,
-) -> "Array[Vector[Rows, Scalar] | Scalar]":
+) -> Array[Vector[Rows, Scalar] | Scalar]:
     """Perform the sparse matrix-vector product ``y := alpha * A * x + beta * y`` and return ``y``.
 
     The ``x`` and ``y`` vectors are allowed to alias.
