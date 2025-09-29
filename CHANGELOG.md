@@ -14,6 +14,7 @@
 - Add documentation describing Python IntFlag limitations in Warp kernels
   ([GH-917](https://github.com/NVIDIA/warp/issues/917)).
 - Add support for recording and waiting for external events in CUDA graphs ([GH-983](https://github.com/NVIDIA/warp/issues/983)).
+- Add kernel-level functions `bsr_row_index` and `bsr_block_index` to `warp.sparse` ([GH-895](https://github.com/NVIDIA/warp/issues/895)).
 
 ### Removed
 
@@ -24,6 +25,7 @@
 - Improve efficiency for `bvh_query_aabb`, `mesh_query_aabb` and `bvh_query_ray`.
   This fixes a performance regression introduced in Warp 1.6.0 ([GH-758](https://github.com/NVIDIA/warp/issues/758)).
 - Improve efficiency of struct instance creation and attribute access ([GH-968](https://github.com/NVIDIA/warp/issues/968)).
+- warp.sparse: the `masked` flag of `bsr_axpy`, `bsr_assign` and `bsr_transpose` now completely preserves the non-zero topology of the result matrix, providing an allocation-free path ([GH-987](https://github.com/NVIDIA/warp/issues/987)).
 
 ### Fixed
 

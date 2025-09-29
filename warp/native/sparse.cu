@@ -364,7 +364,8 @@ WP_API void wp_bsr_matrix_from_triplets_device(
 
         if (bsr_nnz_event)
         {
-            wp_cuda_event_record(bsr_nnz_event, stream);
+            const bool external = true;
+            wp_cuda_event_record(bsr_nnz_event, stream, external);
         }
     }
 
