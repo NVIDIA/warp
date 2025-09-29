@@ -222,7 +222,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return -1 if ``x`` < 0, return 1 otherwise.
 
@@ -248,7 +247,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return 1.0 if ``x`` < 0.0, return 0.0 otherwise.
 
@@ -260,7 +258,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return 1.0 if ``x`` is not equal to zero, return 0.0 otherwise.
 
@@ -500,7 +497,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return the nearest integer value to ``x``, rounding halfway cases away from zero.
 
@@ -515,7 +511,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
 
@@ -529,7 +524,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return the nearest integer that is closer to zero than ``x``.
 
@@ -545,7 +539,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return the largest integer that is less than or equal to ``x``.
 
@@ -557,7 +550,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return the smallest integer that is greater than or equal to ``x``.
 
@@ -569,7 +561,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Retrieve the fractional part of ``x``.
 
@@ -583,7 +574,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return ``True`` if ``a`` is a finite number, otherwise return ``False``.
 
@@ -597,7 +587,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return ``True`` if all elements of the vector ``a`` are finite, otherwise return ``False``.
 
@@ -611,7 +600,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return ``True`` if all elements of the quaternion ``a`` are finite, otherwise return ``False``.
 
@@ -625,7 +613,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return ``True`` if all elements of the matrix ``a`` are finite, otherwise return ``False``.
 
@@ -637,7 +624,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return ``True`` if ``a`` is NaN, otherwise return ``False``.
 
@@ -651,7 +637,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return ``True`` if any element of the vector ``a`` is NaN, otherwise return ``False``.
 
@@ -665,7 +650,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return ``True`` if any element of the quaternion ``a`` is NaN, otherwise return ``False``.
 
@@ -679,7 +663,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return ``True`` if any element of the matrix ``a`` is NaN, otherwise return ``False``.
 
@@ -691,7 +674,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return ``True`` if ``a`` is positive or negative infinity, otherwise return ``False``.
 
@@ -705,7 +687,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return ``True`` if any element of the vector ``a`` is positive or negative infinity, otherwise return ``False``.
 
@@ -719,7 +700,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return ``True`` if any element of the quaternion ``a`` is positive or negative infinity, otherwise return ``False``.
 
@@ -733,7 +713,6 @@ Scalar Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Return ``True`` if any element of the matrix ``a`` is positive or negative infinity, otherwise return ``False``.
 
@@ -1163,7 +1142,6 @@ Vector Math
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Create an identity matrix with shape=(n,n) with the type given by ``dtype``.
 
@@ -1347,7 +1325,6 @@ Quaternion Math
 
        * Kernel
        * Python
-       * Differentiable
 
     Construct an identity quaternion with zero imaginary part and real part of 1.0
 
@@ -1515,7 +1492,6 @@ Transformations
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Construct a spatial transform vector of given dtype.
 
@@ -1527,7 +1503,6 @@ Transformations
 
        * Kernel
        * Python
-       * Differentiable
 
     Construct an identity transform with zero translation and identity rotation.
 
@@ -2308,7 +2283,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
 
@@ -2349,7 +2323,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Cooperatively compute the minimum of the tile elements using all threads in the block.
 
@@ -2386,7 +2359,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Cooperatively compute the index of the minimum element in the tile using all threads in the block.
 
@@ -2423,7 +2395,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Cooperatively compute the maximum of the tile elements using all threads in the block.
 
@@ -2459,7 +2430,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Cooperatively compute the index of the maximum element in the tile using all threads in the block.
 
@@ -2495,7 +2465,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Apply a custom reduction operator across the tile.
 
@@ -2533,7 +2502,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Inclusive scan (prefix sum) across the tile.
 
@@ -2568,7 +2536,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Exclusive scan (prefix sum) across the tile.
 
@@ -2684,7 +2651,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Add a square matrix and a diagonal matrix 'd' represented as a 1D tile
 
@@ -2743,7 +2709,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Compute the forward FFT along the second dimension of a 2D tile of data.
 
@@ -2763,7 +2728,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Compute the inverse FFT along the second dimension of a 2D tile of data.
 
@@ -2783,7 +2747,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Compute the Cholesky factorization L of a matrix A.
     L is lower triangular and satisfies LL^T = A.
@@ -2807,7 +2770,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     With L such that LL^T = A, solve for x in Ax = y
 
@@ -2828,7 +2790,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Solve for z in Lz = y, where L is a lower triangular matrix.
 
@@ -2851,7 +2812,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Solve for x in U x = z, where U is an upper triangular matrix.
 
@@ -2878,7 +2838,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Returns the range in reversed order.
 
@@ -2889,7 +2848,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Allows printing formatted strings using C-style format specifiers.
 
@@ -2911,7 +2869,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Debugger breakpoint
 
@@ -2922,7 +2879,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Return the current thread index for a 1D kernel launch.
 
@@ -2940,7 +2896,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Return the current thread indices for a 2D kernel launch.
 
@@ -2957,7 +2912,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Return the current thread indices for a 3D kernel launch.
 
@@ -2974,7 +2928,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Return the current thread indices for a 4D kernel launch.
 
@@ -2990,7 +2943,6 @@ Utility
 
        * Kernel
        * Python
-       * Differentiable
 
     Returns the number of threads in the current block.
 
@@ -3985,7 +3937,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
 
@@ -4000,7 +3951,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
 
@@ -4015,7 +3965,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
 
@@ -4030,7 +3979,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
 
@@ -4045,7 +3993,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
 
@@ -4060,7 +4007,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
 
@@ -4075,7 +4021,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
 
@@ -4090,7 +4035,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
 
@@ -4105,7 +4049,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
 
@@ -4120,7 +4063,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
 
@@ -4135,7 +4077,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
 
@@ -4150,7 +4091,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
 
@@ -4163,7 +4103,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically exchange ``value`` with ``arr[i]`` and return the old value.
 
@@ -4178,7 +4117,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
 
@@ -4193,7 +4131,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically exchange ``value`` with ``arr[i,j,k]`` and return the old value.
 
@@ -4223,7 +4160,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically exchange ``value`` with ``arr[i]`` and return the old value.
 
@@ -4238,7 +4174,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
 
@@ -4253,7 +4188,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically exchange ``value`` with ``arr[i,j,k]`` and return the old value.
 
@@ -4283,7 +4217,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically exchange ``value`` with ``arr[i]`` and return the old value.
 
@@ -4298,7 +4231,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
 
@@ -4313,7 +4245,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Atomically exchange ``value`` with ``arr[i,j,k]`` and return the old value.
 
@@ -4423,7 +4354,6 @@ Utility
 
        * Kernel
        * Python
-       * Differentiable
 
     Prints an error to stdout if ``a`` and ``b`` are not closer than tolerance in magnitude
 
@@ -4437,7 +4367,6 @@ Utility
 
        * Kernel
        * Python
-       * Differentiable
 
     Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
 
@@ -4451,7 +4380,6 @@ Utility
 
        * Kernel
        * Python
-       * Differentiable
 
     Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
 
@@ -4465,7 +4393,6 @@ Utility
 
        * Kernel
        * Python
-       * Differentiable
 
     Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
 
@@ -4476,7 +4403,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Return the number of elements in a vector.
 
@@ -4489,7 +4415,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Return the number of elements in a quaternion.
 
@@ -4502,7 +4427,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Return the number of rows in a matrix.
 
@@ -4515,7 +4439,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Return the number of elements in a transformation.
 
@@ -4528,7 +4451,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Return the size of the first dimension in an array.
 
@@ -4541,7 +4463,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Return the number of rows in a tile.
 
@@ -4554,7 +4475,6 @@ Utility
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Return the number of elements in a tuple.
 
@@ -4571,7 +4491,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Construct an axis-aligned bounding box query against a BVH object.
 
@@ -4588,7 +4507,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Construct a ray query against a BVH object.
 
@@ -4605,7 +4523,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Move to the next bound returned by the query.
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
@@ -4736,7 +4653,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Construct an axis-aligned bounding box query against a :class:`Mesh`.
 
@@ -4753,7 +4669,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Move to the next triangle overlapping the query bounding box.
 
@@ -4790,7 +4705,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Construct a point query against a :class:`HashGrid`.
 
@@ -4803,7 +4717,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Move to the next point in the hash grid query.
 
@@ -4816,7 +4729,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Return the index of a point in the :class:`HashGrid`.
 
@@ -4831,7 +4743,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method.
 
@@ -4854,7 +4765,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Evaluates the face normal the mesh given a face index.
 
@@ -4865,7 +4775,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Returns the point of the mesh given a index.
 
@@ -4876,7 +4785,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Returns the velocity of the mesh given a index.
 
@@ -4887,7 +4795,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Returns the point-index of the mesh given a face-vertex index.
 
@@ -4948,7 +4855,6 @@ Volumes
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Returns the value of voxel with coordinates ``i``, ``j``, ``k`` for a volume of type type `dtype`.
 
@@ -4961,7 +4867,6 @@ Volumes
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
 
@@ -5001,7 +4906,6 @@ Volumes
 
        * Kernel
        * Python
-       * Differentiable
 
     Returns the value of voxel with coordinates ``i``, ``j``, ``k``.
 
@@ -5014,7 +4918,6 @@ Volumes
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
 
@@ -5040,7 +4943,6 @@ Volumes
 
        * Kernel
        * Python
-       * Differentiable
 
     Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``.
 
@@ -5053,7 +4955,6 @@ Volumes
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
 
@@ -5077,7 +4978,6 @@ Volumes
 
        * Kernel
        * Python
-       * Differentiable
 
     Returns the :class:`int32` value of voxel with coordinates ``i``, ``j``, ``k``.
 
@@ -5090,7 +4990,6 @@ Volumes
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
 
@@ -5134,7 +5033,6 @@ Volumes
 
        * Kernel
        * Python
-       * Differentiable
 
     Returns the index associated to the voxel with coordinates ``i``, ``j``, ``k``.
 
@@ -5202,7 +5100,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Initialize a new random number generator given a user-defined seed. Returns a 32-bit integer representing the RNG state.
 
@@ -5216,7 +5113,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Initialize a new random number generator given a user-defined seed and an offset.
 
@@ -5231,7 +5127,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Return a random integer in the range [-2^31, 2^31).
 
@@ -5245,7 +5140,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Return a random integer between [low, high).
 
@@ -5257,7 +5151,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Return a random unsigned integer in the range [0, 2^32).
 
@@ -5271,7 +5164,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Return a random unsigned integer between [low, high).
 
@@ -5283,7 +5175,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Return a random float between [0.0, 1.0).
 
@@ -5297,7 +5188,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Return a random float between [low, high).
 
@@ -5309,7 +5199,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Sample a normal (Gaussian) distribution of mean 0 and variance 1. 
 
@@ -5320,7 +5209,6 @@ Random
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Inverse-transform sample a cumulative distribution function.
 
@@ -5332,7 +5220,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Uniformly sample a triangle. Returns sample barycentric coordinates.
 
@@ -5344,7 +5231,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Uniformly sample a ring in the xy plane.
 
@@ -5356,7 +5242,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Uniformly sample a disk in the xy plane.
 
@@ -5368,7 +5253,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Uniformly sample a unit sphere surface.
 
@@ -5380,7 +5264,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Uniformly sample a unit sphere.
 
@@ -5392,7 +5275,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Uniformly sample a unit hemisphere surface.
 
@@ -5404,7 +5286,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Uniformly sample a unit hemisphere.
 
@@ -5416,7 +5297,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Uniformly sample a unit square.
 
@@ -5428,7 +5308,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Uniformly sample a unit cube.
 
@@ -5440,7 +5319,6 @@ Random
 
        * Kernel
        * Python
-       * Differentiable
 
     Generate a random sample from a Poisson distribution.
 
@@ -5603,7 +5481,6 @@ Other
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Search a sorted array ``arr`` for the closest element greater than or equal to ``value``.
 
@@ -5616,69 +5493,8 @@ Other
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Search a sorted array ``arr`` in the range [arr_begin, arr_end) for the closest element greater than or equal to ``value``.
-
-
-.. py:function:: bit_and(a: Int, b: Int) -> Int
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: bit_or(a: Int, b: Int) -> Int
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: bit_xor(a: Int, b: Int) -> Int
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: lshift(a: Int, b: Int) -> Int
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: rshift(a: Int, b: Int) -> Int
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
-
-
-.. py:function:: invert(a: Int) -> Int
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-       * Differentiable
 
 
 
@@ -5827,6 +5643,62 @@ Operators
        * Differentiable
 
     Subtract each element b from a
+
+
+.. py:function:: bit_and(a: Int, b: Int) -> Int
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+
+.. py:function:: bit_or(a: Int, b: Int) -> Int
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+
+.. py:function:: bit_xor(a: Int, b: Int) -> Int
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+
+.. py:function:: lshift(a: Int, b: Int) -> Int
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+
+.. py:function:: rshift(a: Int, b: Int) -> Int
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+
+.. py:function:: invert(a: Int) -> Int
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
 
 
 .. py:function:: mul(a: Scalar, b: Scalar) -> Scalar
@@ -6044,7 +5916,6 @@ Operators
 
        * Kernel
        * Python
-       * Differentiable
 
     Modulo operation using truncated division.
 
@@ -6138,7 +6009,6 @@ Operators
 
        * Kernel
        * Python
-       * Differentiable
 
 
 .. py:function:: pos(x: Scalar) -> Scalar
@@ -6254,7 +6124,6 @@ Operators
 
        * Kernel
        * Python
-       * Differentiable
 
 
 .. py:function:: unot(a: int8) -> bool
@@ -6266,7 +6135,6 @@ Operators
 
        * Kernel
        * Python
-       * Differentiable
 
 
 .. py:function:: unot(a: uint8) -> bool
@@ -6278,7 +6146,6 @@ Operators
 
        * Kernel
        * Python
-       * Differentiable
 
 
 .. py:function:: unot(a: int16) -> bool
@@ -6290,7 +6157,6 @@ Operators
 
        * Kernel
        * Python
-       * Differentiable
 
 
 .. py:function:: unot(a: uint16) -> bool
@@ -6302,7 +6168,6 @@ Operators
 
        * Kernel
        * Python
-       * Differentiable
 
 
 .. py:function:: unot(a: int32) -> bool
@@ -6314,7 +6179,6 @@ Operators
 
        * Kernel
        * Python
-       * Differentiable
 
 
 .. py:function:: unot(a: uint32) -> bool
@@ -6326,7 +6190,6 @@ Operators
 
        * Kernel
        * Python
-       * Differentiable
 
 
 .. py:function:: unot(a: int64) -> bool
@@ -6338,7 +6201,6 @@ Operators
 
        * Kernel
        * Python
-       * Differentiable
 
 
 .. py:function:: unot(a: uint64) -> bool
@@ -6350,7 +6212,6 @@ Operators
 
        * Kernel
        * Python
-       * Differentiable
 
 
 .. py:function:: unot(a: Array[Any]) -> bool
@@ -6362,7 +6223,6 @@ Operators
 
        * Kernel
        * Python
-       * Differentiable
 
 
 
@@ -6375,7 +6235,6 @@ Code Generation
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Evaluate a static Python expression and replaces it with its result.
 
