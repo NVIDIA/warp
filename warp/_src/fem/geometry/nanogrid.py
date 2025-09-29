@@ -18,8 +18,8 @@ from typing import Any, Optional
 import numpy as np
 
 import warp as wp
-from warp.fem import cache, utils
-from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
+from warp._src.fem import cache, utils
+from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
 
 from .element import Cube, Square
 from .geometry import Geometry

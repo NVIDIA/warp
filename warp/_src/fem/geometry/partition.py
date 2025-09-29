@@ -17,9 +17,9 @@ from functools import cached_property
 from typing import Any
 
 import warp as wp
-from warp.fem.cache import TemporaryStore, borrow_temporary, cached_arg_value, dynamic_struct
-from warp.fem.types import NULL_ELEMENT_INDEX, ElementIndex
-from warp.fem.utils import masked_indices
+from warp._src.fem.cache import TemporaryStore, borrow_temporary, cached_arg_value, dynamic_struct
+from warp._src.fem.types import NULL_ELEMENT_INDEX, ElementIndex
+from warp._src.fem.utils import masked_indices
 
 from .geometry import Geometry
 
@@ -222,7 +222,7 @@ class CellBasedGeometryPartition(GeometryPartition):
     def compute_side_indices_from_cells(
         self, cell_arg_value: Any, cell_inclusion_test_func: wp.Function, device, temporary_store: TemporaryStore = None
     ):
-        from warp.fem import cache
+        from warp._src.fem import cache
 
         cell_arg_type = next(iter(cell_inclusion_test_func.input_types.values()))
 

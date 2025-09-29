@@ -16,10 +16,10 @@
 import ctypes
 
 import warp as wp
-from warp.context import type_str
-from warp.jax import get_jax_device
-from warp.types import array_t, launch_bounds_t, strides_from_shape
-from warp.utils import warn
+from warp._src.context import type_str
+from warp._src.jax import get_jax_device
+from warp._src.types import array_t, launch_bounds_t, strides_from_shape
+from warp._src.utils import warn
 
 _jax_warp_p = None
 
@@ -130,7 +130,7 @@ def _warp_custom_callback(stream, buffers, opaque, opaque_len):
     assert hooks.forward, "Failed to find kernel entry point"
 
     # Launch the kernel.
-    wp.context.runtime.core.wp_cuda_launch_kernel(
+    wp._src.context.runtime.core.wp_cuda_launch_kernel(
         device.context, hooks.forward, bounds.size, 0, 256, hooks.forward_smem_bytes, kernel_params, stream
     )
 

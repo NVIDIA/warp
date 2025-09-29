@@ -16,10 +16,10 @@
 from typing import Any, ClassVar
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.space import CollocatedFunctionSpace, SpacePartition
-from warp.fem.types import NULL_NODE_INDEX, ElementIndex, Sample
-from warp.fem.utils import type_zero_element
+from warp._src.fem import cache
+from warp._src.fem.space import CollocatedFunctionSpace, SpacePartition
+from warp._src.fem.types import NULL_NODE_INDEX, ElementIndex, Sample
+from warp._src.fem.utils import type_zero_element
 
 from .field import DiscreteField
 

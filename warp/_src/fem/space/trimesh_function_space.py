@@ -14,9 +14,9 @@
 # limitations under the License.
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.geometry import Trimesh
-from warp.fem.types import ElementIndex
+from warp._src.fem import cache
+from warp._src.fem.geometry import Trimesh
+from warp._src.fem.types import ElementIndex
 
 from .shape import TriangleShapeFunction
 from .topology import SpaceTopology, forward_base_topology

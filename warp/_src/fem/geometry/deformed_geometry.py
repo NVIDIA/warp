@@ -16,9 +16,9 @@
 from typing import ClassVar
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.polynomial import Polynomial
-from warp.fem.types import Coords, ElementIndex, Sample, make_free_sample
+from warp._src.fem import cache
+from warp._src.fem.polynomial import Polynomial
+from warp._src.fem.types import Coords, ElementIndex, Sample, make_free_sample
 
 from .geometry import Geometry
 
@@ -50,17 +50,20 @@ class DeformedGeometry(Geometry):
         "side_coordinates": lambda obj: obj._make_side_coordinates(),
     }
 
-    def __init__(self, field: "wp.fem.field.GeometryField", relative: bool = True, build_bvh: bool = False):
+    def __init__(self, field: "wp._src.fem.field.GeometryField", relative: bool = True, build_bvh: bool = False):
         """Constructs a Deformed Geometry from a displacement or absolute position field defined over a base geometry.
         The deformation field does not need to be isoparameteric.
 
         See also: :meth:`warp.fem.DiscreteField.make_deformed_geometry`
         """
 
-        from warp.fem.field import DiscreteField, GeometryField
+        from warp._src.fem.field import DiscreteField, GeometryField
 
         if isinstance(field, DiscreteField):
-            if not wp.types.type_is_vector(field.dtype) or wp.types.type_size(field.dtype) != field.geometry.dimension:
+            if (
+                not wp._src.types.type_is_vector(field.dtype)
+                or wp._src.types.type_size(field.dtype) != field.geometry.dimension
+            ):
                 raise ValueError(
                     "Invalid value type for position field, must be vector-valued with same dimension as underlying geometry"
                 )

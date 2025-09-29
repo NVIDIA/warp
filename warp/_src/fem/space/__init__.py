@@ -18,9 +18,9 @@
 from enum import Enum
 from typing import Optional
 
-import warp.fem.domain as _domain
-import warp.fem.geometry as _geometry
-import warp.fem.polynomial as _polynomial
+import warp._src.fem.domain as _domain
+import warp._src.fem.geometry as _geometry
+import warp._src.fem.polynomial as _polynomial
 
 from .function_space import FunctionSpace
 from .basis_function_space import CollocatedFunctionSpace, ContravariantFunctionSpace, CovariantFunctionSpace
@@ -56,7 +56,7 @@ def make_space_restriction(
     domain: Optional[_domain.GeometryDomain] = None,
     space_topology: Optional[SpaceTopology] = None,
     device=None,
-    temporary_store: "Optional[warp.fem.cache.TemporaryStore]" = None,  # noqa: F821
+    temporary_store: "Optional[warp._src.fem.cache.TemporaryStore]" = None,  # noqa: F821
 ) -> SpaceRestriction:
     """
     Restricts a function space partition to a Domain, i.e. a subset of its elements.

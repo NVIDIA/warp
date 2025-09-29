@@ -25,8 +25,6 @@ from warp.tests.unittest_utils import *
 def intersect_tri(
     v0: wp.vec3, v1: wp.vec3, v2: wp.vec3, u0: wp.vec3, u1: wp.vec3, u2: wp.vec3, result: wp.array(dtype=int)
 ):
-    tid = wp.tid()
-
     result[0] = wp.intersect_tri_tri(v0, v1, v2, u0, u1, u2)
 
 

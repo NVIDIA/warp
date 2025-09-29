@@ -21,12 +21,14 @@ import os
 import time
 from pathlib import Path
 
-import warp.config
-from warp.thirdparty import appdirs
-from warp.types import *
+import warp._src.config
+from warp._src.thirdparty import appdirs
+from warp._src.types import *
 
 # From nvJitLink.h
 nvJitLink_input_type = {"cubin": 1, "ptx": 2, "ltoir": 3, "fatbin": 4, "object": 5, "library": 6}
+
+warp_home = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 # builds cuda source to PTX or CUBIN using NVRTC (output type determined by output_path extension)
@@ -47,11 +49,11 @@ def build_cuda(
         src = src_file.read()
         cu_path_bytes = cu_path.encode("utf-8")
         program_name_bytes = os.path.basename(cu_path).encode("utf-8")
-        inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode("utf-8")
+        inc_path = os.path.join(warp_home, "native").encode("utf-8")
         output_path = output_path.encode("utf-8")
 
-        if warp.config.llvm_cuda:
-            warp.context.runtime.llvm.wp_compile_cuda(src, cu_path_bytes, inc_path, output_path, False)
+        if warp._src.config.llvm_cuda:
+            warp._src.context.runtime.llvm.wp_compile_cuda(src, cu_path_bytes, inc_path, output_path, False)
 
         else:
             if ltoirs is None:
@@ -67,7 +69,7 @@ def build_cuda(
                 fatbins
             )
             arr_link_input_types = (ctypes.c_int * num_link)(*link_input_types)
-            err = warp.context.runtime.core.wp_cuda_compile_program(
+            err = warp._src.context.runtime.core.wp_cuda_compile_program(
                 src,
                 program_name_bytes,
                 arch,
@@ -75,7 +77,7 @@ def build_cuda(
                 0,
                 None,
                 config == "debug",
-                warp.config.verbose,
+                warp._src.config.verbose,
                 verify_fp,
                 fast_math,
                 fuse_fp,
@@ -96,17 +98,17 @@ def load_cuda(input_path, device):
     if not device.is_cuda:
         raise RuntimeError("Not a CUDA device")
 
-    return warp.context.runtime.core.wp_cuda_load_module(device.context, input_path.encode("utf-8"))
+    return warp._src.context.runtime.core.wp_cuda_load_module(device.context, input_path.encode("utf-8"))
 
 
 def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=False, fuse_fp=True):
     with open(cpp_path, "rb") as cpp:
         src = cpp.read()
         cpp_path = cpp_path.encode("utf-8")
-        inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode("utf-8")
+        inc_path = os.path.join(warp_home, "native").encode("utf-8")
         obj_path = obj_path.encode("utf-8")
 
-        err = warp.context.runtime.llvm.wp_compile_cpp(
+        err = warp._src.context.runtime.llvm.wp_compile_cpp(
             src, cpp_path, inc_path, obj_path, mode == "debug", verify_fp, fuse_fp
         )
         if err != 0:
@@ -127,7 +129,7 @@ def init_kernel_cache(path=None):
     elif "WARP_CACHE_PATH" in os.environ:
         cache_root_dir = os.path.realpath(os.environ.get("WARP_CACHE_PATH"))
     else:
-        cache_root_dir = appdirs.user_cache_dir(appname="warp", appauthor="NVIDIA", version=warp.config.version)
+        cache_root_dir = appdirs.user_cache_dir(appname="warp", appauthor="NVIDIA", version=warp._src.config.version)
 
         if os.name == "nt" and os.path.isabs(cache_root_dir) and not cache_root_dir.startswith("\\\\?\\"):
             # Add Windows long-path prefix, accounting for UNC shares.
@@ -138,9 +140,9 @@ def init_kernel_cache(path=None):
                 # Drive-letter path  C:\…  →  \\?\C:\…
                 cache_root_dir = "\\\\?\\" + cache_root_dir
 
-    warp.config.kernel_cache_dir = cache_root_dir
+    warp._src.config.kernel_cache_dir = cache_root_dir
 
-    os.makedirs(warp.config.kernel_cache_dir, exist_ok=True)
+    os.makedirs(warp._src.config.kernel_cache_dir, exist_ok=True)
 
 
 def clear_kernel_cache() -> None:
@@ -151,15 +153,15 @@ def clear_kernel_cache() -> None:
     LTO artifacts are not affected.
     """
 
-    warp.context.init()
+    warp._src.context.init()
 
     import shutil
 
-    is_initialized = warp.context.runtime is not None
+    is_initialized = warp._src.context.runtime is not None
     assert is_initialized, "The kernel cache directory is not configured; wp.init() has not been called yet or failed."
 
-    for item in os.listdir(warp.config.kernel_cache_dir):
-        item_path = os.path.join(warp.config.kernel_cache_dir, item)
+    for item in os.listdir(warp._src.config.kernel_cache_dir):
+        item_path = os.path.join(warp._src.config.kernel_cache_dir, item)
         if os.path.isdir(item_path) and item.startswith("wp_"):
             # Remove the directory and its contents
             shutil.rmtree(item_path, ignore_errors=True)
@@ -172,14 +174,14 @@ def clear_lto_cache() -> None:
     This function only clears the cache for the current Warp version.
     """
 
-    warp.context.init()
+    warp._src.context.init()
 
     import shutil
 
-    is_initialized = warp.context.runtime is not None
+    is_initialized = warp._src.context.runtime is not None
     assert is_initialized, "The kernel cache directory is not configured; wp.init() has not been called yet or failed."
 
-    lto_path = os.path.join(warp.config.kernel_cache_dir, "lto")
+    lto_path = os.path.join(warp._src.config.kernel_cache_dir, "lto")
     if os.path.isdir(lto_path):
         # Remove the lto directory and its contents
         shutil.rmtree(lto_path, ignore_errors=True)
@@ -219,7 +221,7 @@ def hash_symbol(symbol):
 
 
 def get_lto_cache_dir():
-    lto_dir = os.path.join(warp.config.kernel_cache_dir, "lto")
+    lto_dir = os.path.join(warp._src.config.kernel_cache_dir, "lto")
     return lto_dir
 
 
@@ -389,7 +391,7 @@ def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, ar
     lto_symbol = f"dot_{M}_{N}_{K}_{arch}_{num_threads}_{a_arrangement}_{b_arrangement}_{c_arrangement}_{a_prec}_{b_prec}_{c_prec}_{element_type}"
 
     def compile_lto_dot(temp_paths):
-        result = warp.context.runtime.core.wp_cuda_compile_dot(
+        result = warp._src.context.runtime.core.wp_cuda_compile_dot(
             temp_paths[".lto"].encode("utf-8"),
             lto_symbol.encode("utf-8"),
             0,
@@ -470,7 +472,7 @@ def build_lto_solver(
 
     def compile_lto_solver(temp_paths):
         # compile LTO
-        result = warp.context.runtime.core.wp_cuda_compile_solver(
+        result = warp._src.context.runtime.core.wp_cuda_compile_solver(
             temp_paths["_fatbin.lto"].encode("utf-8"),
             temp_paths[".lto"].encode("utf-8"),
             lto_symbol.encode("utf-8"),
@@ -515,7 +517,7 @@ def build_lto_solver(
                 for d in warp.get_cuda_devices():
                     if d.arch == arch:
                         # We can directly query the max shared memory for this device
-                        queried_bytes = warp.context.runtime.core.wp_cuda_get_max_shared_memory(d.context)
+                        queried_bytes = warp._src.context.runtime.core.wp_cuda_get_max_shared_memory(d.context)
                         if queried_bytes > 0:
                             max_smem_bytes = queried_bytes
                             max_smem_is_estimate = False
@@ -528,10 +530,10 @@ def build_lto_solver(
                         "The tile size(s) may be too large for this device."
                     )
 
-            if warp.context.runtime.toolkit_version < (12, 6):
+            if warp._src.context.runtime.toolkit_version < (12, 6):
                 raise RuntimeError(
                     "cuSolverDx requires CUDA Toolkit 12.6.3 or later. This version of Warp was built against CUDA Toolkit "
-                    f"{warp.context.runtime.toolkit_version[0]}.{warp.context.runtime.toolkit_version[1]}. "
+                    f"{warp._src.context.runtime.toolkit_version[0]}.{warp._src.context.runtime.toolkit_version[1]}. "
                     "Upgrade your CUDA Toolkit and rebuild Warp, or install a Warp wheel built with CUDA >= 12.6.3."
                 )
             else:
@@ -556,7 +558,7 @@ def build_lto_fft(arch, size, ept, direction, dir, precision, builder):
     def compile_lto_fft(temp_paths):
         shared_memory_size = ctypes.c_int(0)
 
-        result = warp.context.runtime.core.wp_cuda_compile_fft(
+        result = warp._src.context.runtime.core.wp_cuda_compile_fft(
             temp_paths[".lto"].encode("utf-8"),
             lto_symbol.encode("utf-8"),
             0,

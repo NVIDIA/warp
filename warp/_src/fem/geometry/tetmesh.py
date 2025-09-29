@@ -16,13 +16,13 @@
 from typing import Optional
 
 import warp as wp
-from warp.fem.cache import (
+from warp._src.fem.cache import (
     TemporaryStore,
     borrow_temporary,
     borrow_temporary_like,
     cached_arg_value,
 )
-from warp.fem.types import (
+from warp._src.fem.types import (
     OUTSIDE,
     Coords,
     ElementIndex,
@@ -325,8 +325,8 @@ class Tetmesh(Geometry):
         return side_arg.cell_arg
 
     def _build_topology(self, temporary_store: TemporaryStore):
-        from warp.fem.utils import compress_node_indices, host_read_at_index, masked_indices
-        from warp.utils import array_scan
+        from warp._src.fem.utils import compress_node_indices, host_read_at_index, masked_indices
+        from warp._src.utils import array_scan
 
         device = self.tet_vertex_indices.device
 
@@ -422,8 +422,8 @@ class Tetmesh(Geometry):
         self._boundary_face_indices = boundary_face_indices.detach()
 
     def _compute_tet_edges(self, temporary_store: Optional[TemporaryStore] = None):
-        from warp.fem.utils import host_read_at_index
-        from warp.utils import array_scan
+        from warp._src.fem.utils import host_read_at_index
+        from warp._src.utils import array_scan
 
         device = self.tet_vertex_indices.device
 

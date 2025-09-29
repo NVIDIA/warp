@@ -44,7 +44,7 @@ def test_devices_map_cuda_device(test, device):
         # Map alias twice to check code path
         wp.map_cuda_device("new_alias")
         wp.map_cuda_device("new_alias")
-        wp.context.runtime.rename_device(device, saved_alias)
+        wp._src.context.runtime.rename_device(device, saved_alias)
 
 
 def test_devices_verify_cuda_device(test, device):
@@ -52,7 +52,7 @@ def test_devices_verify_cuda_device(test, device):
 
     wp.config.verify_cuda = True
 
-    wp.context.runtime.verify_cuda_device(device)
+    wp._src.context.runtime.verify_cuda_device(device)
 
     wp.config.verify_cuda = verify_cuda_saved
 

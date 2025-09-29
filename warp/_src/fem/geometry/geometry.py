@@ -17,8 +17,8 @@ from functools import cached_property
 from typing import Any, ClassVar
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, ElementKind, Sample, make_free_sample
+from warp._src.fem import cache
+from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, ElementKind, Sample, make_free_sample
 
 from .element import Element
 
@@ -80,13 +80,13 @@ class Geometry:
     def __str__(self) -> str:
         return self.name
 
-    CellArg: wp.codegen.Struct
+    CellArg: wp._src.codegen.Struct
     """Structure containing arguments to be passed to device functions evaluating cell-related quantities"""
 
-    SideArg: wp.codegen.Struct
+    SideArg: wp._src.codegen.Struct
     """Structure containing arguments to be passed to device functions evaluating side-related quantities"""
 
-    SideIndexArg: wp.codegen.Struct
+    SideIndexArg: wp._src.codegen.Struct
     """Structure containing arguments to be passed to device functions for indexing sides"""
 
     def cell_arg_value(self, device) -> "Geometry.CellArg":

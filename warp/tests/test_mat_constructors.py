@@ -419,11 +419,10 @@ def test_quat_constructor(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    mat44 = wp.types.matrix(shape=(4, 4), dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    quat = wp.types.quaternion(dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    quat = wp._src.types.quaternion(dtype=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 

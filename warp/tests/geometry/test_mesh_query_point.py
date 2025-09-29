@@ -791,7 +791,6 @@ def point_query_aabb_and_closest(
 
     tri_index = wp.int32(0)
     num_collisions = wp.int32(0)
-    min_dis_to_tris = query_radius
     while wp.mesh_query_aabb_next(query, tri_index):
         t1 = tri_indices[tri_index, 0]
         t2 = tri_indices[tri_index, 1]

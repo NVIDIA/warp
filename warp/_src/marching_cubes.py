@@ -49,7 +49,7 @@ def marching_cubes_extract_vertices(
 
     ### Evaluate a cumulative sum, to compute the output index for each generated vertex
     vertex_result_ind = wp.zeros(shape=(nnode_x * nnode_y * nnode_z * 3), dtype=wp.int32, device=device)
-    wp.utils.array_scan(thread_output_count, vertex_result_ind, inclusive=True)
+    wp._src.utils.array_scan(thread_output_count, vertex_result_ind, inclusive=True)
 
     # (synchronization point!)
     N_vert = int(vertex_result_ind[-1:].numpy()[0])
@@ -205,7 +205,7 @@ def marching_cubes_extract_faces(
 
     ### Evaluate a cumulative sum, to compute the output index for each generated face
     face_result_ind = wp.zeros(shape=(ncell_x * ncell_y * ncell_z), dtype=wp.int32, device=device)
-    wp.utils.array_scan(thread_output_count, face_result_ind, inclusive=True)
+    wp._src.utils.array_scan(thread_output_count, face_result_ind, inclusive=True)
 
     # (synchronization point!)
     N_faces = int(face_result_ind[-1:].numpy()[0])
@@ -508,7 +508,7 @@ class MarchingCubes:
         indices (warp.array | None): An array of triangle indices of type
           :class:`warp.int32` for the output mesh.
           This is populated by calling the :meth:`~.surface` method.
-        device (warp.Device): The device on which the context was created. This
+        device (warp._src.context.Device): The device on which the context was created. This
           attribute is for backward compatibility and is not used by the
           class's methods.
     """
@@ -564,7 +564,7 @@ class MarchingCubes:
 
         # These are unused, but retained for backwards-compatibility for code which might use them
         self.id = 0
-        self.runtime = wp.context.runtime
+        self.runtime = wp._src.context.runtime
         self.device = self.runtime.get_device(device)
 
     def resize(self, nx: int, ny: int, nz: int, max_verts: int = 0, max_tris: int = 0) -> None:

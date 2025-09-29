@@ -16,10 +16,10 @@
 from typing import Any, Optional
 
 import warp as wp
-import warp.fem.cache as cache
-from warp.fem.geometry import GeometryPartition, WholeGeometryPartition
-from warp.fem.types import NULL_NODE_INDEX
-from warp.fem.utils import compress_node_indices
+import warp._src.fem.cache as cache
+from warp._src.fem.geometry import GeometryPartition, WholeGeometryPartition
+from warp._src.fem.types import NULL_NODE_INDEX
+from warp._src.fem.utils import compress_node_indices
 
 from .function_space import FunctionSpace
 from .topology import SpaceTopology
@@ -177,7 +177,7 @@ class NodePartition(SpacePartition):
         return args.space_to_partition[space_node_index]
 
     def _compute_node_indices_from_sides(self, device, with_halo: bool, temporary_store: cache.TemporaryStore):
-        from warp.fem import cache
+        from warp._src.fem import cache
 
         trace_topology = self.space_topology.trace()
 

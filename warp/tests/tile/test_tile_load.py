@@ -594,7 +594,7 @@ def test_tile_assign(kernel, ndim):
         input = wp.array(rng.random(shape), dtype=float, requires_grad=True, device=device)
         output = wp.zeros_like(input)
 
-        with wp.Tape() as tape:
+        with wp.Tape():
             wp.launch(
                 kernel,
                 dim=shape,

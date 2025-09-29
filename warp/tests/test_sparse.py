@@ -124,7 +124,7 @@ def test_bsr_from_triplets(test, device):
 
     ref = _triplets_to_dense(shape, rows, cols, vals)
 
-    bsr = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=float), device=device)
+    bsr = bsr_zeros(nrow, ncol, wp._src.types.matrix(shape=block_shape, dtype=float), device=device)
     bsr_set_from_triplets(bsr, rows, cols, vals)
     test.assertEqual(bsr.block_size, block_shape[0] * block_shape[1])
 
@@ -229,7 +229,7 @@ def test_bsr_get_set_diag(test, device):
     vals_np = rng.random(size=(nnz, block_shape[0], block_shape[1]))
     vals = wp.array(vals_np, dtype=float, device=device)
 
-    bsr = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=float), device=device)
+    bsr = bsr_zeros(nrow, ncol, wp._src.types.matrix(shape=block_shape, dtype=float), device=device)
     bsr_set_from_triplets(bsr, rows, cols, vals)
 
     diag = bsr_get_diag(bsr)
@@ -285,14 +285,13 @@ def test_bsr_split_merge(test, device):
     block_shape = (4, 2)
     nrow = 4
     ncol = 8
-    shape = (block_shape[0] * nrow, block_shape[1] * ncol)
     n = 20
 
     rows = wp.array(rng.integers(0, high=nrow, size=n, dtype=int), dtype=int, device=device)
     cols = wp.array(rng.integers(0, high=ncol, size=n, dtype=int), dtype=int, device=device)
     vals = wp.array(rng.random(size=(n, block_shape[0], block_shape[1])), dtype=float, device=device)
 
-    bsr = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=float), device=device)
+    bsr = bsr_zeros(nrow, ncol, wp._src.types.matrix(shape=block_shape, dtype=float), device=device)
     bsr_set_from_triplets(bsr, rows, cols, vals)
     ref = _bsr_to_dense(bsr)
 
@@ -370,7 +369,7 @@ def make_test_bsr_transpose(block_shape, scalar_type):
         vals_np = rng.random(size=(nnz, block_shape[0], block_shape[1]))
         vals = wp.array(vals_np, dtype=scalar_type, device=device).reshape((nnz, block_shape[0], block_shape[1]))
 
-        bsr = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
+        bsr = bsr_zeros(nrow, ncol, wp._src.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
         bsr_set_from_triplets(bsr, rows, cols, vals)
         ref = 2.0 * np.transpose(_bsr_to_dense(bsr))
 
@@ -419,7 +418,7 @@ def make_test_bsr_axpy(block_shape, scalar_type):
         x_vals = wp.array(rng.random(size=(nnz, block_shape[0], block_shape[1])), dtype=scalar_type, device=device)
         x_vals = x_vals.reshape((nnz, block_shape[0], block_shape[1]))
 
-        x = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
+        x = bsr_zeros(nrow, ncol, wp._src.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
         bsr_set_from_triplets(x, x_rows, x_cols, x_vals)
 
         y_rows = wp.array(rng.integers(0, high=nrow, size=nnz, dtype=int), dtype=int, device=device)
@@ -427,7 +426,7 @@ def make_test_bsr_axpy(block_shape, scalar_type):
         y_vals = wp.array(rng.random(size=(nnz, block_shape[0], block_shape[1])), dtype=scalar_type, device=device)
         y_vals = y_vals.reshape((nnz, block_shape[0], block_shape[1]))
 
-        y = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
+        y = bsr_zeros(nrow, ncol, wp._src.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
         bsr_set_from_triplets(y, y_rows, y_cols, y_vals)
 
         work_arrays = bsr_axpy_work_arrays()
@@ -484,7 +483,7 @@ def make_test_bsr_mm(block_shape, scalar_type):
         x_vals = wp.array(rng.random(size=(nnz, x_block_shape[0], x_block_shape[1])), dtype=scalar_type, device=device)
         x_vals = x_vals.reshape((nnz, x_block_shape[0], x_block_shape[1]))
 
-        x = bsr_zeros(x_nrow, x_ncol, wp.types.matrix(shape=x_block_shape, dtype=scalar_type), device=device)
+        x = bsr_zeros(x_nrow, x_ncol, wp._src.types.matrix(shape=x_block_shape, dtype=scalar_type), device=device)
         bsr_set_from_triplets(x, x_rows, x_cols, x_vals)
 
         y_rows = wp.array(rng.integers(0, high=y_nrow, size=nnz, dtype=int), dtype=int, device=device)
@@ -492,7 +491,7 @@ def make_test_bsr_mm(block_shape, scalar_type):
         y_vals = wp.array(rng.random(size=(nnz, y_block_shape[0], y_block_shape[1])), dtype=scalar_type, device=device)
         y_vals = y_vals.reshape((nnz, y_block_shape[0], y_block_shape[1]))
 
-        y = bsr_zeros(y_nrow, y_ncol, wp.types.matrix(shape=y_block_shape, dtype=scalar_type), device=device)
+        y = bsr_zeros(y_nrow, y_ncol, wp._src.types.matrix(shape=y_block_shape, dtype=scalar_type), device=device)
         bsr_set_from_triplets(y, y_rows, y_cols, y_vals)
 
         z_rows = wp.array(rng.integers(0, high=z_nrow, size=nnz, dtype=int), dtype=int, device=device)
@@ -500,7 +499,7 @@ def make_test_bsr_mm(block_shape, scalar_type):
         z_vals = wp.array(rng.random(size=(nnz, z_block_shape[0], z_block_shape[1])), dtype=scalar_type, device=device)
         z_vals = z_vals.reshape((nnz, z_block_shape[0], z_block_shape[1]))
 
-        z = bsr_zeros(z_nrow, z_ncol, wp.types.matrix(shape=z_block_shape, dtype=scalar_type), device=device)
+        z = bsr_zeros(z_nrow, z_ncol, wp._src.types.matrix(shape=z_block_shape, dtype=scalar_type), device=device)
         bsr_set_from_triplets(z, z_rows, z_cols, z_vals)
 
         work_arrays = bsr_mm_work_arrays()
@@ -571,7 +570,7 @@ def make_test_bsr_mv(block_shape, scalar_type):
         A_vals = wp.array(rng.random(size=(nnz, block_shape[0], block_shape[1])), dtype=scalar_type, device=device)
         A_vals = A_vals.reshape((nnz, block_shape[0], block_shape[1]))
 
-        A = bsr_zeros(nrow, ncol, wp.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
+        A = bsr_zeros(nrow, ncol, wp._src.types.matrix(shape=block_shape, dtype=scalar_type), device=device)
         bsr_set_from_triplets(A, A_rows, A_cols, A_vals)
 
         if block_shape[1] == 1:
@@ -742,7 +741,9 @@ class TestSparse(unittest.TestCase):
         diag_bsr = bsr_diag(diag=np.eye(bsize, dtype=float) * 2.0, rows_of_blocks=nrow)
         diag_copy = bsr_copy(diag_bsr, scalar_type=wp.float64)
 
-        self.assertTrue(wp.types.types_equal(diag_copy.values.dtype, wp.mat(shape=(bsize, bsize), dtype=wp.float64)))
+        self.assertTrue(
+            wp._src.types.types_equal(diag_copy.values.dtype, wp.mat(shape=(bsize, bsize), dtype=wp.float64))
+        )
         bsr_scale(x=diag_copy, alpha=0.5)
 
         res = _bsr_to_dense(diag_copy)

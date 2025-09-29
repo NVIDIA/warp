@@ -27,7 +27,7 @@ def nps(dtype, value):
 
 
 def test_int_arg_support(test, device, dtype):
-    np_type = wp.types.warp_type_to_np_dtype[dtype]
+    np_type = wp._src.types.warp_type_to_np_dtype[dtype]
     value = -1234567890123456789
     expected = wp.invert(dtype(value))
 
@@ -35,7 +35,7 @@ def test_int_arg_support(test, device, dtype):
 
 
 def test_float_arg_support(test, device, dtype):
-    np_type = wp.types.warp_type_to_np_dtype[dtype]
+    np_type = wp._src.types.warp_type_to_np_dtype[dtype]
     value = 1.23
     expected = wp.sin(dtype(value))
 
@@ -43,7 +43,7 @@ def test_float_arg_support(test, device, dtype):
 
 
 def test_int_int_args_support(test, device, dtype):
-    np_type = wp.types.warp_type_to_np_dtype[dtype]
+    np_type = wp._src.types.warp_type_to_np_dtype[dtype]
     value = -1234567890
     expected = wp.mul(dtype(value), dtype(value))
 
@@ -704,7 +704,7 @@ class TestBuiltinsResolution(unittest.TestCase):
         self.assertAlmostEqual(result[3], expected_w, places=1)
 
 
-for dtype in wp.types.int_types:
+for dtype in wp._src.types.int_types:
     add_function_test(
         TestBuiltinsResolution,
         f"test_int_arg_support_{dtype.__name__}",
@@ -718,7 +718,7 @@ for dtype in wp.types.int_types:
         dtype=dtype,
     )
 
-for dtype in wp.types.float_types:
+for dtype in wp._src.types.float_types:
     add_function_test(
         TestBuiltinsResolution,
         f"test_float_arg_support_{dtype.__name__}",

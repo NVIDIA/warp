@@ -14,9 +14,9 @@
 # limitations under the License.
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.geometry import Tetmesh
-from warp.fem.types import ElementIndex
+from warp._src.fem import cache
+from warp._src.fem.geometry import Tetmesh
+from warp._src.fem.types import ElementIndex
 
 from .shape import (
     ShapeFunction,

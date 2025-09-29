@@ -20,11 +20,11 @@ import functools
 import math
 from typing import Any, Callable, Mapping, Sequence
 
-import warp.build
-import warp.context
-import warp.utils
-from warp.codegen import Reference, Var, get_arg_value, strip_reference
-from warp.types import *
+import warp._src.build
+import warp._src.context
+import warp._src.utils
+from warp._src.codegen import Reference, Var, get_arg_value, strip_reference
+from warp._src.types import *
 
 from .context import add_builtin
 
@@ -61,11 +61,11 @@ def sametypes_create_value_func(default: TypeVar):
 
 def extract_tuple(arg, as_constant=False):
     if isinstance(arg, Var):
-        if isinstance(arg.type, warp.types.tuple_t):
+        if isinstance(arg.type, warp._src.types.tuple_t):
             out = arg.type.values
         else:
             out = (arg,)
-    elif isinstance(arg, warp.types.tuple_t):
+    elif isinstance(arg, warp._src.types.tuple_t):
         out = arg.values
     elif not isinstance(arg, Sequence):
         out = (arg,)
@@ -82,7 +82,7 @@ def static_len_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
     if arg_types is None:
         return int
 
-    length = warp.types.type_length(arg_types["a"])
+    length = warp._src.types.type_length(arg_types["a"])
     return Var(None, type=int, constant=length)
 
 
@@ -888,7 +888,7 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
 
             if dtype is None:
                 dtype = value_type
-            elif not warp.types.scalars_equal(value_type, dtype):
+            elif not warp._src.types.scalars_equal(value_type, dtype):
                 raise RuntimeError(
                     f"the value used to fill this vector is expected to be of the type `{dtype.__name__}`"
                 )
@@ -909,7 +909,7 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
 
         if dtype is None:
             dtype = value_type
-        elif not warp.types.scalars_equal(value_type, dtype):
+        elif not warp._src.types.scalars_equal(value_type, dtype):
             raise RuntimeError(
                 f"all values used to initialize this vector are expected to be of the type `{dtype.__name__}`"
             )
@@ -992,7 +992,7 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
 
             if dtype is None:
                 dtype = value_type
-            elif not warp.types.scalars_equal(value_type, dtype):
+            elif not warp._src.types.scalars_equal(value_type, dtype):
                 raise RuntimeError(
                     f"the value used to fill this matrix is expected to be of the type `{dtype.__name__}`"
                 )
@@ -1002,7 +1002,7 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             raise RuntimeError("the `shape` argument must be specified when initializing a matrix by value")
 
         if all(type_is_vector(x) for x in variadic_arg_types):
-            warp.utils.warn(
+            warp._src.utils.warn(
                 "the built-in `wp.matrix()` won't support taking column vectors as input "
                 "in the future. Use `wp.matrix_from_rows()` or `wp.matrix_from_cols()` instead.",
                 DeprecationWarning,
@@ -1031,7 +1031,7 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
 
         if dtype is None:
             dtype = value_type
-        elif not warp.types.scalars_equal(value_type, dtype):
+        elif not warp._src.types.scalars_equal(value_type, dtype):
             raise RuntimeError(
                 f"all values used to initialize this matrix are expected to be of the type `{dtype.__name__}`"
             )
@@ -1208,7 +1208,7 @@ add_builtin(
 
 
 def matrix_transform_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
-    warp.utils.warn(
+    warp._src.utils.warn(
         "the built-in `wp.matrix()` function to construct a 4x4 matrix from a 3D position, quaternion, "
         "and 3D scale vector will be deprecated in favor of `wp.transform_compose()`.",
         DeprecationWarning,
@@ -1228,7 +1228,7 @@ def matrix_transform_value_func(arg_types: Mapping[str, type], arg_values: Mappi
 
     if dtype is None:
         dtype = value_type
-    elif not warp.types.scalars_equal(value_type, dtype):
+    elif not warp._src.types.scalars_equal(value_type, dtype):
         raise RuntimeError(
             f"all values used to initialize this transformation matrix are expected to be of the type `{dtype.__name__}`"
         )
@@ -1460,7 +1460,7 @@ def quaternion_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
 
         if dtype is None:
             dtype = value_type
-        elif not warp.types.scalars_equal(value_type, dtype):
+        elif not warp._src.types.scalars_equal(value_type, dtype):
             raise RuntimeError(
                 f"all values used to initialize this quaternion are expected to be of the type `{dtype.__name__}`"
             )
@@ -1697,7 +1697,7 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
         value_type = strip_reference(variadic_arg_types[0])
         if dtype is None:
             dtype = value_type
-        elif not warp.types.scalars_equal(value_type, dtype):
+        elif not warp._src.types.scalars_equal(value_type, dtype):
             raise RuntimeError(
                 f"the value used to fill this transform is expected to be of the type `{dtype.__name__}`"
             )
@@ -1710,7 +1710,7 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
 
         if dtype is None:
             dtype = value_type
-        elif not warp.types.scalars_equal(value_type, dtype):
+        elif not warp._src.types.scalars_equal(value_type, dtype):
             raise RuntimeError(
                 f"all values used to initialize this transform are expected to be of the type `{dtype.__name__}`"
             )
@@ -1735,7 +1735,7 @@ def transformation_pq_value_func(arg_types: Mapping[str, type], arg_values: Mapp
     dtype = arg_values.get("dtype", None)
     if dtype is None:
         dtype = value_type
-    elif not warp.types.scalars_equal(value_type, dtype):
+    elif not warp._src.types.scalars_equal(value_type, dtype):
         raise RuntimeError(
             f"all values used to initialize this transformation matrix are expected to be of the type `{dtype.__name__}`"
         )
@@ -1953,7 +1953,7 @@ def spatial_vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping
 
         if dtype is None:
             dtype = value_type
-        elif not warp.types.scalars_equal(value_type, dtype):
+        elif not warp._src.types.scalars_equal(value_type, dtype):
             raise RuntimeError(
                 f"all values used to initialize this spatial vector are expected to be of the type `{dtype.__name__}`"
             )
@@ -2300,13 +2300,13 @@ def tile_arange_dispatch_func(arg_types: Mapping[str, type], return_type: Any, a
     args = arg_values["args"]
 
     if len(args) == 1:
-        start = warp.codegen.Var(label=None, type=return_type.dtype, constant=0)
+        start = warp._src.codegen.Var(label=None, type=return_type.dtype, constant=0)
         stop = args[0]
-        step = warp.codegen.Var(label=None, type=return_type.dtype, constant=1)
+        step = warp._src.codegen.Var(label=None, type=return_type.dtype, constant=1)
     elif len(args) == 2:
         start = args[0]
         stop = args[1]
-        step = warp.codegen.Var(label=None, type=return_type.dtype, constant=1)
+        step = warp._src.codegen.Var(label=None, type=return_type.dtype, constant=1)
     elif len(args) == 3:
         start = args[0]
         stop = args[1]
@@ -3416,7 +3416,7 @@ def tile_value_func(arg_types, arg_values):
 
     if preserve_type:
         dtype = arg_types["x"]
-        shape = (warp.codegen.options["block_dim"],)
+        shape = (warp._src.codegen.options["block_dim"],)
 
         return tile(dtype=dtype, shape=shape)
 
@@ -3424,18 +3424,18 @@ def tile_value_func(arg_types, arg_values):
         if type_is_vector(arg_types["x"]):
             dtype = arg_types["x"]._wp_scalar_type_
             length = arg_types["x"]._shape_[0]
-            shape = (length, warp.codegen.options["block_dim"])
+            shape = (length, warp._src.codegen.options["block_dim"])
         elif type_is_quaternion(arg_types["x"]):
             dtype = arg_types["x"]._wp_scalar_type_
-            shape = (4, warp.codegen.options["block_dim"])
+            shape = (4, warp._src.codegen.options["block_dim"])
         elif type_is_matrix(arg_types["x"]):
             dtype = arg_types["x"]._wp_scalar_type_
             rows = arg_types["x"]._shape_[0]
             cols = arg_types["x"]._shape_[1]
-            shape = (rows, cols, warp.codegen.options["block_dim"])
+            shape = (rows, cols, warp._src.codegen.options["block_dim"])
         else:
             dtype = arg_types["x"]
-            shape = (warp.codegen.options["block_dim"],)
+            shape = (warp._src.codegen.options["block_dim"],)
 
         return tile(dtype=dtype, shape=shape)
 
@@ -3525,17 +3525,17 @@ def untile_value_func(arg_types, arg_values):
     if not is_tile(t):
         raise TypeError(f"untile() argument must be a tile, got {t!r}")
 
-    if t.shape[-1] != warp.codegen.options["block_dim"]:
+    if t.shape[-1] != warp._src.codegen.options["block_dim"]:
         raise ValueError(
-            f"untile() argument last dimension {t.shape[-1]} does not match the expected block width {warp.codegen.options['block_dim']}"
+            f"untile() argument last dimension {t.shape[-1]} does not match the expected block width {warp._src.codegen.options['block_dim']}"
         )
 
     if len(t.shape) == 1:
         return t.dtype
     elif len(t.shape) == 2:
-        return warp.types.vector(t.shape[0], t.dtype)
+        return warp._src.types.vector(t.shape[0], t.dtype)
     elif len(t.shape) == 3:
-        return warp.types.matrix((t.shape[0], t.shape[1]), t.dtype)
+        return warp._src.types.matrix((t.shape[0], t.shape[1]), t.dtype)
     else:
         raise ValueError(f"untile() argument must have a positive size in dimension 0, but got {t.shape[0]}")
 
@@ -6266,7 +6266,7 @@ def select_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
 
 
 def select_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
-    warp.utils.warn(
+    warp._src.utils.warn(
         "wp.select() is deprecated and will be removed in a future\n"
         "version. Use wp.where(cond, value_if_true, value_if_false) instead.",
         category=DeprecationWarning,
@@ -9042,7 +9042,7 @@ def tile_diag_add_lto_dispatch_func(
     return_values: List[Var],
     arg_values: Mapping[str, Var],
     options: Mapping[str, Any],
-    builder: warp.context.ModuleBuilder,
+    builder: warp._src.context.ModuleBuilder,
 ):
     a = arg_values["a"]
     d = arg_values["d"]
@@ -9119,7 +9119,7 @@ def tile_matmul_lto_dispatch_func(
     return_values: List[Var],
     arg_values: Mapping[str, Var],
     options: Mapping[str, Any],
-    builder: warp.context.ModuleBuilder,
+    builder: warp._src.context.ModuleBuilder,
 ):
     a = arg_values["a"]
     b = arg_values["b"]
@@ -9157,7 +9157,7 @@ def tile_matmul_lto_dispatch_func(
     num_threads = options["block_dim"]
     arch = options["output_arch"]
 
-    if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
+    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ((0, 0, 0, a, b, out), template_args, [], 0)
     else:
@@ -9170,7 +9170,7 @@ def tile_matmul_lto_dispatch_func(
 
         # generate the LTOs
         #    C += A * B
-        (fun_forward, lto_forward) = warp.build.build_lto_dot(
+        (fun_forward, lto_forward) = warp._src.build.build_lto_dot(
             M,
             N,
             K,
@@ -9186,7 +9186,7 @@ def tile_matmul_lto_dispatch_func(
         )
         if warp.config.enable_backward:
             # adjA += adjC * B^T - Transpose ~= flipped layout
-            (fun_backward_A, lto_backward_A) = warp.build.build_lto_dot(
+            (fun_backward_A, lto_backward_A) = warp._src.build.build_lto_dot(
                 M,
                 K,
                 N,
@@ -9201,7 +9201,7 @@ def tile_matmul_lto_dispatch_func(
                 builder,
             )
             # adjB += A^T * adjC - Transpose ~= flipped layout
-            (fun_backward_B, lto_backward_B) = warp.build.build_lto_dot(
+            (fun_backward_B, lto_backward_B) = warp._src.build.build_lto_dot(
                 K,
                 N,
                 M,
@@ -9318,7 +9318,7 @@ def tile_fft_generic_lto_dispatch_func(
     return_values: List[Var],
     arg_values: Mapping[str, Var],
     options: Mapping[str, Any],
-    builder: warp.context.ModuleBuilder,
+    builder: warp._src.context.ModuleBuilder,
     direction: str | None = None,
 ):
     inout = arg_values["inout"]
@@ -9347,12 +9347,12 @@ def tile_fft_generic_lto_dispatch_func(
     arch = options["output_arch"]
     ept = size // num_threads
 
-    if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
+    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ([], [], [], 0)
     else:
         # generate the LTO
-        lto_symbol, lto_code_data, shared_memory_bytes = warp.build.build_lto_fft(
+        lto_symbol, lto_code_data, shared_memory_bytes = warp._src.build.build_lto_fft(
             arch, size, ept, direction, dir, precision, builder
         )
 
@@ -9457,7 +9457,7 @@ def tile_cholesky_generic_lto_dispatch_func(
     return_values: List[Var],
     arg_values: Mapping[str, Var],
     options: Mapping[str, Any],
-    builder: warp.context.ModuleBuilder,
+    builder: warp._src.context.ModuleBuilder,
 ):
     a = arg_values["A"]
     # force source tile to shared memory
@@ -9477,7 +9477,7 @@ def tile_cholesky_generic_lto_dispatch_func(
 
     arch = options["output_arch"]
 
-    if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
+    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ((0, a, out), [], [], 0)
     else:
@@ -9492,7 +9492,7 @@ def tile_cholesky_generic_lto_dispatch_func(
         req_smem_bytes = a.type.size * type_size_in_bytes(a.type.dtype)
 
         # generate the LTO
-        lto_symbol, lto_code_data = warp.build.build_lto_solver(
+        lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
             M,
             N,
             1,
@@ -9581,7 +9581,7 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
     return_values: List[Var],
     arg_values: Mapping[str, Var],
     options: Mapping[str, Any],
-    builder: warp.context.ModuleBuilder,
+    builder: warp._src.context.ModuleBuilder,
 ):
     L = arg_values["L"]
     y = arg_values["y"]
@@ -9610,7 +9610,7 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
 
     arch = options["output_arch"]
 
-    if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
+    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ((0, L, y, x), [], [], 0)
     else:
@@ -9626,7 +9626,7 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
         req_smem_bytes = (x.type.size + y.type.size + L.type.size) * type_size_in_bytes(L.type.dtype)
 
         # generate the LTO
-        lto_symbol, lto_code_data = warp.build.build_lto_solver(
+        lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
             M,
             N,
             NRHS,
@@ -9678,7 +9678,7 @@ def tile_lower_solve_generic_lto_dispatch_func(
     return_values: List[Var],
     arg_values: Mapping[str, Var],
     options: Mapping[str, Any],
-    builder: warp.context.ModuleBuilder,
+    builder: warp._src.context.ModuleBuilder,
 ):
     L = arg_values["L"]
     y = arg_values["y"]
@@ -9707,7 +9707,7 @@ def tile_lower_solve_generic_lto_dispatch_func(
 
     arch = options["output_arch"]
 
-    if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
+    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ((0, L, y, z), [], [], 0)
     else:
@@ -9723,7 +9723,7 @@ def tile_lower_solve_generic_lto_dispatch_func(
         req_smem_bytes = (z.type.size + y.type.size + L.type.size) * type_size_in_bytes(L.type.dtype)
 
         # generate the LTO
-        lto_symbol, lto_code_data = warp.build.build_lto_solver(
+        lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
             M,
             N,
             NRHS,
@@ -9811,7 +9811,7 @@ def tile_upper_solve_generic_lto_dispatch_func(
     return_values: List[Var],
     arg_values: Mapping[str, Var],
     options: Mapping[str, Any],
-    builder: warp.context.ModuleBuilder,
+    builder: warp._src.context.ModuleBuilder,
 ):
     U = arg_values["U"]
     z = arg_values["z"]
@@ -9840,7 +9840,7 @@ def tile_upper_solve_generic_lto_dispatch_func(
 
     arch = options["output_arch"]
 
-    if arch is None or not warp.context.runtime.core.wp_is_mathdx_enabled():
+    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
         return ((0, U, z, x), [], [], 0)
     else:
@@ -9856,7 +9856,7 @@ def tile_upper_solve_generic_lto_dispatch_func(
         req_smem_bytes = (x.type.size + z.type.size + U.type.size) * type_size_in_bytes(U.type.dtype)
 
         # generate the LTO
-        lto_symbol, lto_code_data = warp.build.build_lto_solver(
+        lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
             M,
             N,
             NRHS,

@@ -16,10 +16,10 @@
 import numpy as np
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.geometry import Grid3D
-from warp.fem.polynomial import is_closed
-from warp.fem.types import ElementIndex
+from warp._src.fem import cache
+from warp._src.fem.geometry import Grid3D
+from warp._src.fem.polynomial import is_closed
+from warp._src.fem.types import ElementIndex
 
 from .shape import (
     CubeShapeFunction,

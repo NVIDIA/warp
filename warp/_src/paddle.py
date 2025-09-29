@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 import numpy
 
 import warp
-import warp.context
+import warp._src.context
 
 if TYPE_CHECKING:
     import paddle
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 
 # return the warp device corresponding to a paddle device
-def device_from_paddle(paddle_device: Place | CPUPlace | CUDAPinnedPlace | CUDAPlace | str) -> warp.context.Device:
+def device_from_paddle(paddle_device: Place | CPUPlace | CUDAPinnedPlace | CUDAPlace | str) -> warp._src.context.Device:
     """Return the Warp device corresponding to a Paddle device.
 
     Args:
@@ -41,11 +41,11 @@ def device_from_paddle(paddle_device: Place | CPUPlace | CUDAPinnedPlace | CUDAP
     if type(paddle_device) is str:
         if paddle_device.startswith("gpu:"):
             paddle_device = paddle_device.replace("gpu:", "cuda:")
-        warp_device = warp.context.runtime.device_map.get(paddle_device)
+        warp_device = warp._src.context.runtime.device_map.get(paddle_device)
         if warp_device is not None:
             return warp_device
         elif paddle_device == "gpu":
-            return warp.context.runtime.get_current_cuda_device()
+            return warp._src.context.runtime.get_current_cuda_device()
         else:
             raise RuntimeError(f"Unsupported Paddle device {paddle_device}")
     else:
@@ -54,15 +54,15 @@ def device_from_paddle(paddle_device: Place | CPUPlace | CUDAPinnedPlace | CUDAP
 
             if isinstance(paddle_device, Place):
                 if paddle_device.is_gpu_place():
-                    return warp.context.runtime.cuda_devices[paddle_device.gpu_device_id()]
+                    return warp._src.context.runtime.cuda_devices[paddle_device.gpu_device_id()]
                 elif paddle_device.is_cpu_place():
-                    return warp.context.runtime.cpu_device
+                    return warp._src.context.runtime.cpu_device
                 else:
                     raise RuntimeError(f"Unsupported Paddle device type {paddle_device}")
             elif isinstance(paddle_device, (CPUPlace, CUDAPinnedPlace)):
-                return warp.context.runtime.cpu_device
+                return warp._src.context.runtime.cpu_device
             elif isinstance(paddle_device, CUDAPlace):
-                return warp.context.runtime.cuda_devices[paddle_device.get_device_id()]
+                return warp._src.context.runtime.cuda_devices[paddle_device.get_device_id()]
             else:
                 raise RuntimeError(f"Unsupported Paddle device type {paddle_device}")
         except ModuleNotFoundError as e:
@@ -80,11 +80,11 @@ def device_from_paddle(paddle_device: Place | CPUPlace | CUDAPinnedPlace | CUDAP
             raise
 
 
-def device_to_paddle(warp_device: warp.context.Devicelike) -> str:
+def device_to_paddle(warp_device: warp._src.context.Devicelike) -> str:
     """Return the Paddle device string corresponding to a Warp device.
 
     Args:
-        warp_device: An identifier that can be resolved to a :class:`warp.context.Device`.
+        warp_device: An identifier that can be resolved to a :class:`warp._src.context.Device`.
 
     Raises:
         RuntimeError: The Warp device is not compatible with PyPaddle.
@@ -313,7 +313,7 @@ def from_paddle(
         ptr = t.data_ptr()
 
         # create array descriptor
-        array_ctype = warp.types.array_t(ptr, grad_ptr, len(shape), shape, strides)
+        array_ctype = warp._src.types.array_t(ptr, grad_ptr, len(shape), shape, strides)
 
         # keep data and gradient alive
         array_ctype._ref = t
@@ -356,7 +356,7 @@ def to_paddle(a: warp.array, requires_grad: bool | None = None) -> paddle.Tensor
         requires_grad = a.requires_grad
 
     # Paddle does not support structured arrays
-    if isinstance(a.dtype, warp.codegen.Struct):
+    if isinstance(a.dtype, warp._src.codegen.Struct):
         raise RuntimeError("Cannot convert structured Warp arrays to Paddle.")
 
     if a.device.is_cpu:

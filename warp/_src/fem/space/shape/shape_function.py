@@ -18,9 +18,9 @@ from enum import Enum
 import numpy as np
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.geometry import Element
-from warp.fem.types import Coords
+from warp._src.fem import cache
+from warp._src.fem.geometry import Element
+from warp._src.fem.types import Coords
 
 
 class ShapeFunction:

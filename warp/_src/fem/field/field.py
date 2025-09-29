@@ -16,22 +16,22 @@
 from typing import Any, ClassVar, Dict, Optional, Set
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.domain import GeometryDomain, Sides
-from warp.fem.geometry import DeformedGeometry, Geometry
-from warp.fem.operator import Operator, integrand
-from warp.fem.space import FunctionSpace, SpacePartition
-from warp.fem.types import NULL_ELEMENT_INDEX, ElementKind, Sample
-from warp.fem.utils import type_zero_element
+from warp._src.fem import cache
+from warp._src.fem.domain import GeometryDomain, Sides
+from warp._src.fem.geometry import DeformedGeometry, Geometry
+from warp._src.fem.operator import Operator, integrand
+from warp._src.fem.space import FunctionSpace, SpacePartition
+from warp._src.fem.types import NULL_ELEMENT_INDEX, ElementKind, Sample
+from warp._src.fem.utils import type_zero_element
 
 
 class FieldLike:
     """Base class for integrable fields"""
 
-    EvalArg: wp.codegen.Struct
+    EvalArg: wp._src.codegen.Struct
     """Structure containing field-level arguments passed to device functions for field evaluation"""
 
-    ElementEvalArg: wp.codegen.Struct
+    ElementEvalArg: wp._src.codegen.Struct
     """Structure combining geometry-level and field-level arguments passed to device functions for field evaluation"""
 
     def eval_arg_value(self, device) -> "EvalArg":  # noqa: F821
@@ -143,46 +143,48 @@ class GeometryField(FieldLike):
     @property
     def gradient_dtype(self):
         """Return type of the (world space) gradient operator. Assumes self.gradient_valid()"""
-        if wp.types.type_is_matrix(self.dtype):
+        if wp._src.types.type_is_matrix(self.dtype):
             return None
 
-        if wp.types.type_is_vector(self.dtype):
+        if wp._src.types.type_is_vector(self.dtype):
             return cache.cached_mat_type(
-                shape=(wp.types.type_size(self.dtype), self.geometry.dimension),
-                dtype=wp.types.type_scalar_type(self.dtype),
+                shape=(wp._src.types.type_size(self.dtype), self.geometry.dimension),
+                dtype=wp._src.types.type_scalar_type(self.dtype),
             )
-        if wp.types.type_is_quaternion(self.dtype):
+        if wp._src.types.type_is_quaternion(self.dtype):
             return cache.cached_mat_type(
                 shape=(4, self.geometry.dimension),
-                dtype=wp.types.type_scalar_type(self.dtype),
+                dtype=wp._src.types.type_scalar_type(self.dtype),
             )
-        return cache.cached_vec_type(length=self.geometry.dimension, dtype=wp.types.type_scalar_type(self.dtype))
+        return cache.cached_vec_type(length=self.geometry.dimension, dtype=wp._src.types.type_scalar_type(self.dtype))
 
     @property
     def reference_gradient_dtype(self):
         """Return type of the reference space gradient operator. Assumes self.gradient_valid()"""
-        if wp.types.type_is_matrix(self.dtype):
+        if wp._src.types.type_is_matrix(self.dtype):
             return None
 
-        if wp.types.type_is_vector(self.dtype):
+        if wp._src.types.type_is_vector(self.dtype):
             return cache.cached_mat_type(
-                shape=(wp.types.type_size(self.dtype), self.geometry.cell_dimension),
-                dtype=wp.types.type_scalar_type(self.dtype),
+                shape=(wp._src.types.type_size(self.dtype), self.geometry.cell_dimension),
+                dtype=wp._src.types.type_scalar_type(self.dtype),
             )
-        if wp.types.type_is_quaternion(self.dtype):
+        if wp._src.types.type_is_quaternion(self.dtype):
             return cache.cached_mat_type(
                 shape=(4, self.geometry.cell_dimension),
-                dtype=wp.types.type_scalar_type(self.dtype),
+                dtype=wp._src.types.type_scalar_type(self.dtype),
             )
-        return cache.cached_vec_type(length=self.geometry.cell_dimension, dtype=wp.types.type_scalar_type(self.dtype))
+        return cache.cached_vec_type(
+            length=self.geometry.cell_dimension, dtype=wp._src.types.type_scalar_type(self.dtype)
+        )
 
     @property
     def divergence_dtype(self):
         """Return type of the divergence operator. Assumes self.divergence_valid()"""
-        if wp.types.type_is_vector(self.dtype):
-            return wp.types.type_scalar_type(self.dtype)
-        if wp.types.type_is_matrix(self.dtype):
-            return cache.cached_vec_type(length=self.dtype._shape_[1], dtype=wp.types.type_scalar_type(self.dtype))
+        if wp._src.types.type_is_vector(self.dtype):
+            return wp._src.types.type_scalar_type(self.dtype)
+        if wp._src.types.type_is_matrix(self.dtype):
+            return cache.cached_vec_type(length=self.dtype._shape_[1], dtype=wp._src.types.type_scalar_type(self.dtype))
         return None
 
 
@@ -306,7 +308,7 @@ class ImplicitField(GeometryField):
         arg_types = argspec.annotations
 
         pos_arg_type = arg_types.pop(argspec.args[0]) if arg_types else None
-        if not pos_arg_type or not wp.types.types_equal(
+        if not pos_arg_type or not wp._src.types.types_equal(
             pos_arg_type, wp.vec(length=domain.geometry.dimension, dtype=float), match_generic=True
         ):
             raise ValueError(
@@ -435,10 +437,10 @@ class UniformField(GeometryField):
     def __init__(self, domain: GeometryDomain, value: Any):
         self.domain = domain
 
-        if not wp.types.is_value(value):
+        if not wp._src.types.is_value(value):
             raise ValueError("value must be a Warp scalar, vector or matrix")
 
-        self.dtype = wp.types.type_to_warp(type(value))
+        self.dtype = wp._src.types.type_to_warp(type(value))
         self._value = self.dtype(value)
 
         cache.setup_dynamic_attributes(self)
@@ -449,8 +451,8 @@ class UniformField(GeometryField):
 
     @value.setter
     def value(self, v):
-        value_type = wp.types.type_to_warp(type(v))
-        assert wp.types.types_equal(value_type, self.dtype)
+        value_type = wp._src.types.type_to_warp(type(v))
+        assert wp._src.types.types_equal(value_type, self.dtype)
         self._value = self.dtype(v)
 
     @property
@@ -481,7 +483,7 @@ class UniformField(GeometryField):
 
     @property
     def name(self) -> str:
-        return f"Uniform{self.domain.name}_{wp.types.get_type_code(self.dtype)}"
+        return f"Uniform{self.domain.name}_{wp._src.types.get_type_code(self.dtype)}"
 
     def _make_eval_inner(self):
         @cache.dynamic_func(suffix=self.name)
@@ -496,7 +498,7 @@ class UniformField(GeometryField):
 
         zero_element = type_zero_element(dtype)
 
-        @cache.dynamic_func(suffix=f"{self.name}_{wp.types.get_type_code(dtype)}")
+        @cache.dynamic_func(suffix=f"{self.name}_{wp._src.types.get_type_code(dtype)}")
         def eval_zero(args: self.ElementEvalArg, s: Sample):
             return zero_element()
 

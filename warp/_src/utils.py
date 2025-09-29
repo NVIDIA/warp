@@ -27,10 +27,10 @@ from typing import Any, Callable
 import numpy as np
 
 import warp as wp
-import warp.context
-import warp.types
-from warp.context import Devicelike
-from warp.types import Array, DType, type_repr, types_equal
+import warp._src.context
+import warp._src.types
+from warp._src.context import Devicelike
+from warp._src.types import Array, DType, type_repr, types_equal
 
 warnings_seen = set()
 
@@ -127,7 +127,7 @@ def array_scan(in_array, out_array, inclusive=True):
     if in_array.size == 0:
         return
 
-    from warp.context import runtime
+    from warp._src.context import runtime
 
     if in_array.device.is_cpu:
         if in_array.dtype == wp.int32:
@@ -169,7 +169,7 @@ def radix_sort_pairs(keys, values, count: int):
     if keys.size < 2 * count or values.size < 2 * count:
         raise RuntimeError("Keys and values array storage must be large enough to contain 2*count elements")
 
-    from warp.context import runtime
+    from warp._src.context import runtime
 
     if keys.device.is_cpu:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
@@ -233,7 +233,7 @@ def segmented_sort_pairs(
     if keys.size < 2 * count or values.size < 2 * count:
         raise RuntimeError("Array storage must be large enough to contain 2*count elements")
 
-    from warp.context import runtime
+    from warp._src.context import runtime
 
     if segment_start_indices.dtype != wp.int32:
         raise RuntimeError("segment_start_indices array must be of type int32")
@@ -352,7 +352,7 @@ def runlength_encode(values, run_values, run_lengths, run_count=None, value_coun
             return run_count
         host_return = False
 
-    from warp.context import runtime
+    from warp._src.context import runtime
 
     if values.device.is_cpu:
         if values.dtype == wp.int32:
@@ -408,8 +408,8 @@ def array_sum(values, out=None, value_count=None, axis=None):
 
         output_shape = tuple(output_dim(ax, dim) for ax, dim in enumerate(values.shape))
 
-    type_size = wp.types.type_size(values.dtype)
-    scalar_type = wp.types.type_scalar_type(values.dtype)
+    type_size = wp._src.types.type_size(values.dtype)
+    scalar_type = wp._src.types.type_scalar_type(values.dtype)
 
     # User can provide a device output array for storing the number of runs
     # For convenience, if no such array is provided, number of runs is returned on host
@@ -431,7 +431,7 @@ def array_sum(values, out=None, value_count=None, axis=None):
             return out.numpy()[0]
         return out
 
-    from warp.context import runtime
+    from warp._src.context import runtime
 
     if values.device.is_cpu:
         if scalar_type == wp.float32:
@@ -449,7 +449,7 @@ def array_sum(values, out=None, value_count=None, axis=None):
             raise RuntimeError(f"Unsupported data type: {type_repr(values.dtype)}")
 
     if axis is None:
-        stride = wp.types.type_size_in_bytes(values.dtype)
+        stride = wp._src.types.type_size_in_bytes(values.dtype)
         native_func(values.ptr, out.ptr, value_count, stride, type_size)
 
         if host_return:
@@ -516,8 +516,8 @@ def array_inner(a, b, out=None, count=None, axis=None):
 
         output_shape = tuple(output_dim(ax, dim) for ax, dim in enumerate(a.shape))
 
-    type_size = wp.types.type_size(a.dtype)
-    scalar_type = wp.types.type_scalar_type(a.dtype)
+    type_size = wp._src.types.type_size(a.dtype)
+    scalar_type = wp._src.types.type_scalar_type(a.dtype)
 
     # User can provide a device output array for storing the number of runs
     # For convenience, if no such array is provided, number of runs is returned on host
@@ -539,7 +539,7 @@ def array_inner(a, b, out=None, count=None, axis=None):
         out.zero_()
         return out
 
-    from warp.context import runtime
+    from warp._src.context import runtime
 
     if a.device.is_cpu:
         if scalar_type == wp.float32:
@@ -557,8 +557,8 @@ def array_inner(a, b, out=None, count=None, axis=None):
             raise RuntimeError(f"Unsupported data type: {type_repr(a.dtype)}")
 
     if axis is None:
-        stride_a = wp.types.type_size_in_bytes(a.dtype)
-        stride_b = wp.types.type_size_in_bytes(b.dtype)
+        stride_a = wp._src.types.type_size_in_bytes(a.dtype)
+        stride_b = wp._src.types.type_size_in_bytes(b.dtype)
         native_func(a.ptr, b.ptr, out.ptr, count, stride_a, stride_b, type_size)
 
         if host_return:
@@ -628,10 +628,10 @@ def array_cast(in_array, out_array, count=None):
         in_array = in_array.flatten()
         out_array = out_array.flatten()
 
-        in_array_data_length = warp.types.type_size(in_array.dtype)
-        out_array_data_length = warp.types.type_size(out_array.dtype)
-        in_array_scalar_type = wp.types.type_scalar_type(in_array.dtype)
-        out_array_scalar_type = wp.types.type_scalar_type(out_array.dtype)
+        in_array_data_length = warp._src.types.type_size(in_array.dtype)
+        out_array_data_length = warp._src.types.type_size(out_array.dtype)
+        in_array_scalar_type = wp._src.types.type_scalar_type(in_array.dtype)
+        out_array_scalar_type = wp._src.types.type_scalar_type(out_array.dtype)
 
         in_array = wp.array(
             data=None,
@@ -671,7 +671,7 @@ def array_cast(in_array, out_array, count=None):
         wp.launch(kernel=_array_cast_kernel, dim=dim, inputs=[out_array, in_array], device=out_array.device)
 
 
-def create_warp_function(func: Callable) -> tuple[wp.Function, warp.context.Module]:
+def create_warp_function(func: Callable) -> tuple[wp.Function, warp._src.context.Module]:
     """Create a Warp function from a Python function.
 
     Args:
@@ -704,7 +704,7 @@ def create_warp_function(func: Callable) -> tuple[wp.Function, warp.context.Modu
         key = getattr(func, "__qualname__", key)
         key = key.replace(".", "_").replace(" ", "_").replace("<", "").replace(">", "_")
 
-    module = warp.context.get_module(f"map_{key}")
+    module = warp._src.context.get_module(f"map_{key}")
     func = wp.Function(
         func,
         namespace="",
@@ -875,13 +875,15 @@ def map(
                 referenced_modules[wp_type.__module__] = module
             return key
         if type_is_transformation(wp_type):
-            return f"warp.types.transformation(dtype={type_to_code(wp_type._wp_scalar_type_)})"
+            return f"warp._src.types.transformation(dtype={type_to_code(wp_type._wp_scalar_type_)})"
         if type_is_quaternion(wp_type):
-            return f"warp.types.quaternion(dtype={type_to_code(wp_type._wp_scalar_type_)})"
+            return f"warp._src.types.quaternion(dtype={type_to_code(wp_type._wp_scalar_type_)})"
         if type_is_vector(wp_type):
-            return f"warp.types.vector(length={wp_type._shape_[0]}, dtype={type_to_code(wp_type._wp_scalar_type_)})"
+            return (
+                f"warp._src.types.vector(length={wp_type._shape_[0]}, dtype={type_to_code(wp_type._wp_scalar_type_)})"
+            )
         if type_is_matrix(wp_type):
-            return f"warp.types.matrix(shape=({wp_type._shape_[0]}, {wp_type._shape_[1]}), dtype={type_to_code(wp_type._wp_scalar_type_)})"
+            return f"warp._src.types.matrix(shape=({wp_type._shape_[0]}, {wp_type._shape_[1]}), dtype={type_to_code(wp_type._wp_scalar_type_)})"
         if wp_type == builtins.bool:
             return "bool"
         if wp_type == builtins.float:
@@ -924,7 +926,7 @@ def map(
         wp_func, module = create_warp_function(func)
         func_name = wp_func.key
     if module is None:
-        module = warp.context.get_module(f"map_{func_name}")
+        module = warp._src.context.get_module(f"map_{func_name}")
 
     arg_names = list(wp_func.input_types.keys())
 
@@ -1351,8 +1353,8 @@ class ScopedTimer:
                 self.dict[name] = []
 
     def __enter__(self):
-        if not self.skip_tape and warp.context.runtime is not None and warp.context.runtime.tape is not None:
-            warp.context.runtime.tape.record_scope_begin(self.name)
+        if not self.skip_tape and warp._src.context.runtime is not None and warp._src.context.runtime.tape is not None:
+            warp._src.context.runtime.tape.record_scope_begin(self.name)
         if self.active:
             if self.synchronize:
                 wp.synchronize()
@@ -1383,8 +1385,8 @@ class ScopedTimer:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if not self.skip_tape and warp.context.runtime is not None and warp.context.runtime.tape is not None:
-            warp.context.runtime.tape.record_scope_end()
+        if not self.skip_tape and warp._src.context.runtime is not None and warp._src.context.runtime.tape is not None:
+            warp._src.context.runtime.tape.record_scope_end()
         if self.active:
             if self.synchronize:
                 wp.synchronize()
@@ -1541,7 +1543,7 @@ class TimingResult:
     """Timing result for a single activity."""
 
     def __init__(self, device, name, filter, elapsed):
-        self.device: warp.context.Device = device
+        self.device: warp._src.context.Device = device
         """The device where the activity was recorded."""
 
         self.name: str = name
@@ -1565,7 +1567,7 @@ def timing_begin(cuda_filter: int = TIMING_ALL, synchronize: bool = True) -> Non
     if synchronize:
         warp.synchronize()
 
-    warp.context.runtime.core.wp_cuda_timing_begin(cuda_filter)
+    warp._src.context.runtime.core.wp_cuda_timing_begin(cuda_filter)
 
 
 def timing_end(synchronize: bool = True) -> list[TimingResult]:
@@ -1582,16 +1584,16 @@ def timing_end(synchronize: bool = True) -> list[TimingResult]:
         warp.synchronize()
 
     # get result count
-    count = warp.context.runtime.core.wp_cuda_timing_get_result_count()
+    count = warp._src.context.runtime.core.wp_cuda_timing_get_result_count()
 
     # get result array from C++
     result_buffer = (timing_result_t * count)()
-    warp.context.runtime.core.wp_cuda_timing_end(ctypes.byref(result_buffer), count)
+    warp._src.context.runtime.core.wp_cuda_timing_end(ctypes.byref(result_buffer), count)
 
     # prepare Python result list
     results = []
     for r in result_buffer:
-        device = warp.context.runtime.context_map.get(r.context)
+        device = warp._src.context.runtime.context_map.get(r.context)
         filter = r.filter
         elapsed = r.elapsed
 

@@ -19,11 +19,11 @@ import textwrap
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Set, Tuple, Union
 
 import warp as wp
-import warp.fem.operator as operator
-from warp.codegen import get_annotations
-from warp.fem import cache
-from warp.fem.domain import GeometryDomain
-from warp.fem.field import (
+import warp._src.fem.operator as operator
+from warp._src.codegen import get_annotations
+from warp._src.fem import cache
+from warp._src.fem.domain import GeometryDomain
+from warp._src.fem.field import (
     DiscreteField,
     FieldLike,
     FieldRestriction,
@@ -34,18 +34,18 @@ from warp.fem.field import (
     TrialField,
     make_restriction,
 )
-from warp.fem.field.virtual import (
+from warp._src.fem.field.virtual import (
     make_bilinear_dispatch_kernel,
     make_linear_dispatch_kernel,
 )
-from warp.fem.linalg import array_axpy, basis_coefficient
-from warp.fem.operator import (
+from warp._src.fem.linalg import array_axpy, basis_coefficient
+from warp._src.fem.operator import (
     Integrand,
     Operator,
     integrand,
 )
-from warp.fem.quadrature import Quadrature, RegularQuadrature
-from warp.fem.types import (
+from warp._src.fem.quadrature import Quadrature, RegularQuadrature
+from warp._src.fem.types import (
     NULL_DOF_INDEX,
     NULL_ELEMENT_INDEX,
     NULL_NODE_INDEX,
@@ -57,15 +57,15 @@ from warp.fem.types import (
     Sample,
     make_free_sample,
 )
-from warp.fem.utils import type_zero_element
-from warp.sparse import BsrMatrix, bsr_set_from_triplets, bsr_zeros
-from warp.types import is_array, type_size
-from warp.utils import array_cast
+from warp._src.fem.utils import type_zero_element
+from warp._src.sparse import BsrMatrix, bsr_set_from_triplets, bsr_zeros
+from warp._src.types import is_array, type_size
+from warp._src.utils import array_cast
 
 
 def _resolve_path(func, node):
     """
-    Resolves variable and path from ast node/attribute (adapted from warp.codegen)
+    Resolves variable and path from ast node/attribute (adapted from warp._src.codegen)
     """
 
     modules = []
@@ -275,7 +275,7 @@ class IntegrandTransformer(IntegrandVisitor):
         try:
             # Retrieve the function pointer corresponding to the operator implementation for the field type
             pointer = operator.resolver(field)
-            if not isinstance(pointer, wp.context.Function):
+            if not isinstance(pointer, wp._src.context.Function):
                 raise NotImplementedError(operator.resolver.__name__)
 
         except (AttributeError, NotImplementedError) as e:
@@ -615,8 +615,8 @@ def get_integrate_constant_kernel(
     integrand_func: wp.Function,
     domain: GeometryDomain,
     quadrature: Quadrature,
-    FieldStruct: wp.codegen.Struct,
-    ValueStruct: wp.codegen.Struct,
+    FieldStruct: wp._src.codegen.Struct,
+    ValueStruct: wp._src.codegen.Struct,
     accumulate_dtype,
     tile_size: int = _INTEGRATE_CONSTANT_TILE_SIZE,
 ):
@@ -667,8 +667,8 @@ def get_integrate_linear_kernel(
     integrand_func: wp.Function,
     domain: GeometryDomain,
     quadrature: Quadrature,
-    FieldStruct: wp.codegen.Struct,
-    ValueStruct: wp.codegen.Struct,
+    FieldStruct: wp._src.codegen.Struct,
+    ValueStruct: wp._src.codegen.Struct,
     test: TestField,
     output_dtype,
     accumulate_dtype,
@@ -725,8 +725,8 @@ def get_integrate_linear_kernel(
 def get_integrate_linear_nodal_kernel(
     integrand_func: wp.Function,
     domain: GeometryDomain,
-    FieldStruct: wp.codegen.Struct,
-    ValueStruct: wp.codegen.Struct,
+    FieldStruct: wp._src.codegen.Struct,
+    ValueStruct: wp._src.codegen.Struct,
     test: TestField,
     output_dtype,
     accumulate_dtype,
@@ -797,8 +797,8 @@ def get_integrate_linear_local_kernel(
     integrand_func: wp.Function,
     domain: GeometryDomain,
     quadrature: Quadrature,
-    FieldStruct: wp.codegen.Struct,
-    ValueStruct: wp.codegen.Struct,
+    FieldStruct: wp._src.codegen.Struct,
+    ValueStruct: wp._src.codegen.Struct,
     test: LocalTestField,
 ):
     def integrate_kernel_fn(
@@ -838,8 +838,8 @@ def get_integrate_bilinear_kernel(
     integrand_func: wp.Function,
     domain: GeometryDomain,
     quadrature: Quadrature,
-    FieldStruct: wp.codegen.Struct,
-    ValueStruct: wp.codegen.Struct,
+    FieldStruct: wp._src.codegen.Struct,
+    ValueStruct: wp._src.codegen.Struct,
     test: TestField,
     trial: TrialField,
     output_dtype,
@@ -934,8 +934,8 @@ def get_integrate_bilinear_kernel(
 def get_integrate_bilinear_nodal_kernel(
     integrand_func: wp.Function,
     domain: GeometryDomain,
-    FieldStruct: wp.codegen.Struct,
-    ValueStruct: wp.codegen.Struct,
+    FieldStruct: wp._src.codegen.Struct,
+    ValueStruct: wp._src.codegen.Struct,
     test: TestField,
     output_dtype,
     accumulate_dtype,
@@ -1009,8 +1009,8 @@ def get_integrate_bilinear_local_kernel(
     integrand_func: wp.Function,
     domain: GeometryDomain,
     quadrature: Quadrature,
-    FieldStruct: wp.codegen.Struct,
-    ValueStruct: wp.codegen.Struct,
+    FieldStruct: wp._src.codegen.Struct,
+    ValueStruct: wp._src.codegen.Struct,
     test: LocalTestField,
     trial: LocalTrialField,
 ):
@@ -1066,7 +1066,7 @@ def _generate_integrate_kernel(
     accumulate_dtype: type,
     kernel_options: Optional[Dict[str, Any]] = None,
 ) -> wp.Kernel:
-    output_dtype = wp.types.type_scalar_type(output_dtype)
+    output_dtype = wp._src.types.type_scalar_type(output_dtype)
 
     FieldStruct = _gen_field_struct(arguments.field_args)
     ValueStruct = cache.get_argument_struct(arguments.value_args)
@@ -1075,7 +1075,9 @@ def _generate_integrate_kernel(
 
     # Check if kernel exist in cache
     field_names = "_".join(f"{k}{f.name}" for k, f in arguments.field_args.items())
-    kernel_suffix = f"_itg_{wp.types.type_typestr(output_dtype)}{wp.types.type_typestr(accumulate_dtype)}_{field_names}"
+    kernel_suffix = (
+        f"_itg_{wp._src.types.type_typestr(output_dtype)}{wp._src.types.type_typestr(accumulate_dtype)}_{field_names}"
+    )
 
     if quadrature is not None:
         kernel_suffix += quadrature.name
@@ -1220,8 +1222,8 @@ def _launch_integrate_kernel(
     integrand: Integrand,
     kernel: wp.Kernel,
     auxiliary_kernels: List[Tuple[wp.Kernel, int]],
-    FieldStruct: wp.codegen.Struct,
-    ValueStruct: wp.codegen.Struct,
+    FieldStruct: wp._src.codegen.Struct,
+    ValueStruct: wp._src.codegen.Struct,
     domain: GeometryDomain,
     quadrature: Quadrature,
     test: Optional[TestField],
@@ -1315,7 +1317,7 @@ def _launch_integrate_kernel(
                 output_shape = (test.space_partition.node_count(), test.node_dof_count)
             else:
                 raise RuntimeError(
-                    f"Incompatible output type {wp.types.type_repr(output_dtype)}, must be scalar or vector of length {test.node_dof_count}"
+                    f"Incompatible output type {wp._src.types.type_repr(output_dtype)}, must be scalar or vector of length {test.node_dof_count}"
                 )
 
             output_temporary = cache.borrow_temporary(
@@ -1337,7 +1339,7 @@ def _launch_integrate_kernel(
             if type_size(output_dtype) != test.node_dof_count:
                 if type_size(output_dtype) != 1:
                     raise RuntimeError(
-                        f"Incompatible output type {wp.types.type_repr(output_dtype)}, must be scalar or vector of length {test.node_dof_count}"
+                        f"Incompatible output type {wp._src.types.type_repr(output_dtype)}, must be scalar or vector of length {test.node_dof_count}"
                     )
                 if output.ndim != 2 and output.shape[1] != test.node_dof_count:
                     raise RuntimeError(
@@ -1355,7 +1357,7 @@ def _launch_integrate_kernel(
                 capacity=array.capacity,
                 device=array.device,
                 shape=(test.space_partition.node_count(), test.node_dof_count),
-                dtype=wp.types.type_scalar_type(output_dtype),
+                dtype=wp._src.types.type_scalar_type(output_dtype),
                 grad=None if array.grad is None else as_2d_array(array.grad),
             )
 
@@ -1401,7 +1403,7 @@ def _launch_integrate_kernel(
             )
 
             if test.TAYLOR_DOF_COUNT == 0:
-                wp.utils.warn(
+                wp._src.utils.warn(
                     f"Test field is never evaluated in integrand '{integrand.name}', result will be zero",
                     category=UserWarning,
                     stacklevel=2,
@@ -1530,7 +1532,7 @@ def _launch_integrate_kernel(
         )
 
         if test.TAYLOR_DOF_COUNT * trial.TAYLOR_DOF_COUNT == 0:
-            wp.utils.warn(
+            wp._src.utils.warn(
                 f"Test and/or trial fields are never evaluated in integrand '{integrand.name}', result will be zero",
                 category=UserWarning,
                 stacklevel=2,
@@ -1633,7 +1635,7 @@ def _pick_assembly_strategy(
             raise ValueError(f"Invalid assembly strategy'{assembly}'")
         return assembly
     elif nodal is not None:
-        wp.utils.warn(
+        wp._src.utils.warn(
             "'nodal' argument of `warp.fem.integrate` is deprecated and will be removed in a future version. Please use `assembly='nodal'` instead.",
             category=DeprecationWarning,
             stacklevel=2,
@@ -1738,7 +1740,7 @@ def integrate(
     _find_integrand_operators(integrand, arguments.field_args)
 
     if operator.lookup in integrand.operators.get(arguments.domain_name, []) and not domain.supports_lookup(device):
-        wp.utils.warn(f"{integrand.name}: using lookup() operator on a domain that does not support it")
+        wp._src.utils.warn(f"{integrand.name}: using lookup() operator on a domain that does not support it")
 
     assembly = _pick_assembly_strategy(assembly, nodal, arguments=arguments, operators=integrand.operators)
     # print("assembly for ", integrand.name, ":", strategy)
@@ -1770,7 +1772,7 @@ def integrate(
             raise ValueError("Incompatible integration and quadrature domain")
 
     # Canonicalize types
-    accumulate_dtype = wp.types.type_to_warp(accumulate_dtype)
+    accumulate_dtype = wp._src.types.type_to_warp(accumulate_dtype)
     if output is not None:
         if isinstance(output, BsrMatrix):
             output_dtype = output.scalar_type
@@ -1779,7 +1781,7 @@ def integrate(
     elif output_dtype is None:
         output_dtype = accumulate_dtype
     else:
-        output_dtype = wp.types.type_to_warp(output_dtype)
+        output_dtype = wp._src.types.type_to_warp(output_dtype)
 
     kernel, FieldStruct, ValueStruct = _generate_integrate_kernel(
         integrand=integrand,
@@ -1827,8 +1829,8 @@ def integrate(
 def get_interpolate_to_field_function(
     integrand_func: wp.Function,
     domain: GeometryDomain,
-    FieldStruct: wp.codegen.Struct,
-    ValueStruct: wp.codegen.Struct,
+    FieldStruct: wp._src.codegen.Struct,
+    ValueStruct: wp._src.codegen.Struct,
     dest: FieldRestriction,
 ):
     zero_value = type_zero_element(dest.space.dtype)
@@ -1894,8 +1896,8 @@ def get_interpolate_to_field_function(
 def get_interpolate_to_field_kernel(
     interpolate_to_field_fn: wp.Function,
     domain: GeometryDomain,
-    FieldStruct: wp.codegen.Struct,
-    ValueStruct: wp.codegen.Struct,
+    FieldStruct: wp._src.codegen.Struct,
+    ValueStruct: wp._src.codegen.Struct,
     dest: FieldRestriction,
 ):
     @wp.func
@@ -1959,8 +1961,8 @@ def get_interpolate_at_quadrature_kernel(
     integrand_func: wp.Function,
     domain: GeometryDomain,
     quadrature: Quadrature,
-    FieldStruct: wp.codegen.Struct,
-    ValueStruct: wp.codegen.Struct,
+    FieldStruct: wp._src.codegen.Struct,
+    ValueStruct: wp._src.codegen.Struct,
     value_type: type,
 ):
     def interpolate_at_quadrature_nonvalued_kernel_fn(
@@ -2022,8 +2024,8 @@ def get_interpolate_jacobian_at_quadrature_kernel(
     integrand_func: wp.Function,
     domain: GeometryDomain,
     quadrature: Quadrature,
-    FieldStruct: wp.codegen.Struct,
-    ValueStruct: wp.codegen.Struct,
+    FieldStruct: wp._src.codegen.Struct,
+    ValueStruct: wp._src.codegen.Struct,
     trial: TrialField,
     value_size: int,
     value_type: type,
@@ -2090,8 +2092,8 @@ def get_interpolate_jacobian_at_quadrature_kernel(
 def get_interpolate_free_kernel(
     integrand_func: wp.Function,
     domain: GeometryDomain,
-    FieldStruct: wp.codegen.Struct,
-    ValueStruct: wp.codegen.Struct,
+    FieldStruct: wp._src.codegen.Struct,
+    ValueStruct: wp._src.codegen.Struct,
     value_type: type,
 ):
     def interpolate_free_nonvalued_kernel_fn(
@@ -2156,7 +2158,7 @@ def _generate_interpolate_kernel(
         kernel_suffix = f"_itp_{field_names}_{dest.domain.name}_{dest.space_restriction.space_partition.name}"
     else:
         dest_dtype = dest.dtype if dest else None
-        type_str = wp.types.get_type_code(dest_dtype) if dest_dtype else ""
+        type_str = wp._src.types.get_type_code(dest_dtype) if dest_dtype else ""
         if quadrature is None:
             kernel_suffix = f"_itp_{field_names}_{domain.name}_{type_str}"
         else:
@@ -2253,8 +2255,8 @@ def _generate_interpolate_kernel(
 def _launch_interpolate_kernel(
     integrand: Integrand,
     kernel: wp.kernel,
-    FieldStruct: wp.codegen.Struct,
-    ValueStruct: wp.codegen.Struct,
+    FieldStruct: wp._src.codegen.Struct,
+    ValueStruct: wp._src.codegen.Struct,
     domain: GeometryDomain,
     dest: Optional[Union[FieldRestriction, wp.array]],
     quadrature: Optional[Quadrature],
@@ -2313,7 +2315,7 @@ def _launch_interpolate_kernel(
     qp_index_count = quadrature.total_point_count()
 
     if qp_eval_count != qp_index_count:
-        wp.utils.warn(
+        wp._src.utils.warn(
             f"Quadrature used for interpolation of {integrand.name} has different number of evaluation and indexed points, this may lead to incorrect results",
             category=UserWarning,
             stacklevel=2,
@@ -2470,7 +2472,7 @@ def interpolate(
     _find_integrand_operators(integrand, arguments.field_args)
 
     if operator.lookup in integrand.operators.get(arguments.domain_name, []) and not domain.supports_lookup(device):
-        wp.utils.warn(f"{integrand.name}: using lookup() operator on a domain that does not support it")
+        wp._src.utils.warn(f"{integrand.name}: using lookup() operator on a domain that does not support it")
 
     kernel, FieldStruct, ValueStruct = _generate_interpolate_kernel(
         integrand=integrand,

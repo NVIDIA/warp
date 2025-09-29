@@ -18,7 +18,7 @@ import math
 from typing import Any
 
 import warp
-from warp.types import *
+from warp._src.types import *
 
 
 class fabricbucket_t(ctypes.Structure):
@@ -270,7 +270,7 @@ class fabricarray(noncontiguous_array_base[T]):
         # member attributes available during code-gen (e.g.: d = arr.shape[0])
         # Note: we use a shared dict for all fabricarray instances
         if fabricarray._vars is None:
-            fabricarray._vars = {"size": warp.codegen.Var("size", uint64)}
+            fabricarray._vars = {"size": warp._src.codegen.Var("size", uint64)}
         return fabricarray._vars
 
     def fill_(self, value):
@@ -336,7 +336,7 @@ class indexedfabricarray(noncontiguous_array_base[T]):
         # member attributes available during code-gen (e.g.: d = arr.shape[0])
         # Note: we use a shared dict for all indexedfabricarray instances
         if indexedfabricarray._vars is None:
-            indexedfabricarray._vars = {"size": warp.codegen.Var("size", uint64)}
+            indexedfabricarray._vars = {"size": warp._src.codegen.Var("size", uint64)}
         return indexedfabricarray._vars
 
     def fill_(self, value):

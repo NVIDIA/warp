@@ -16,8 +16,8 @@
 from typing import Any, Callable, Dict, Optional, Set
 
 import warp as wp
-from warp.fem.linalg import skew_part, symmetric_part
-from warp.fem.types import (
+from warp._src.fem.linalg import skew_part, symmetric_part
+from warp._src.fem.types import (
     Coords,
     Domain,
     ElementIndex,
@@ -35,9 +35,9 @@ class Integrand:
 
     def __init__(self, func: Callable, kernel_options: Optional[Dict[str, Any]] = None):
         self.func = func
-        self.name = wp.codegen.make_full_qualified_name(self.func)
+        self.name = wp._src.codegen.make_full_qualified_name(self.func)
         self.module = wp.get_module(self.func.__module__)
-        self.argspec = wp.codegen.get_full_arg_spec(self.func)
+        self.argspec = wp._src.codegen.get_full_arg_spec(self.func)
         self.kernel_options = {} if kernel_options is None else kernel_options
 
         # Operators for each field argument. This will be populated at first integrate call

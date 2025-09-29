@@ -136,9 +136,9 @@ def smooth_normalize(v: Any, delta: float = 1.0):
 
 
 def create_transform_from_matrix_func(dtype):
-    mat44 = wp.types.matrix((4, 4), dtype)
-    vec3 = wp.types.vector(3, dtype)
-    transform = wp.types.transformation(dtype)
+    mat44 = wp._src.types.matrix((4, 4), dtype)
+    vec3 = wp._src.types.vector(3, dtype)
+    transform = wp._src.types.transformation(dtype)
 
     def transform_from_matrix(mat: mat44) -> transform:
         """
@@ -185,8 +185,8 @@ wp.func(
 
 
 def create_transform_to_matrix_func(dtype):
-    mat44 = wp.types.matrix((4, 4), dtype)
-    transform = wp.types.transformation(dtype)
+    mat44 = wp._src.types.matrix((4, 4), dtype)
+    transform = wp._src.types.transformation(dtype)
 
     def transform_to_matrix(xform: transform) -> mat44:
         """
@@ -241,9 +241,9 @@ wp.func(
 
 
 def create_transform_compose_func(dtype):
-    mat44 = wp.types.matrix((4, 4), dtype)
-    quat = wp.types.quaternion(dtype)
-    vec3 = wp.types.vector(3, dtype)
+    mat44 = wp._src.types.matrix((4, 4), dtype)
+    quat = wp._src.types.quaternion(dtype)
+    vec3 = wp._src.types.vector(3, dtype)
 
     def transform_compose(position: vec3, rotation: quat, scale: vec3):
         """
@@ -299,9 +299,9 @@ wp.func(
 
 
 def create_transform_decompose_func(dtype):
-    mat44 = wp.types.matrix((4, 4), dtype)
-    vec3 = wp.types.vector(3, dtype)
-    mat33 = wp.types.matrix((3, 3), dtype)
+    mat44 = wp._src.types.matrix((4, 4), dtype)
+    vec3 = wp._src.types.vector(3, dtype)
+    mat33 = wp._src.types.matrix((3, 3), dtype)
     zero = dtype(0.0)
 
     def transform_decompose(m: mat44):
@@ -376,39 +376,39 @@ wp.func(
 
 # register API functions so they appear in the documentation
 
-wp.context.register_api_function(
+wp._src.context.register_api_function(
     norm_l1,
     group="Vector Math",
 )
-wp.context.register_api_function(
+wp._src.context.register_api_function(
     norm_l2,
     group="Vector Math",
 )
-wp.context.register_api_function(
+wp._src.context.register_api_function(
     norm_huber,
     group="Vector Math",
 )
-wp.context.register_api_function(
+wp._src.context.register_api_function(
     norm_pseudo_huber,
     group="Vector Math",
 )
-wp.context.register_api_function(
+wp._src.context.register_api_function(
     smooth_normalize,
     group="Vector Math",
 )
-wp.context.register_api_function(
+wp._src.context.register_api_function(
     transform_from_matrix,
     group="Transformations",
 )
-wp.context.register_api_function(
+wp._src.context.register_api_function(
     transform_to_matrix,
     group="Transformations",
 )
-wp.context.register_api_function(
+wp._src.context.register_api_function(
     transform_compose,
     group="Transformations",
 )
-wp.context.register_api_function(
+wp._src.context.register_api_function(
     transform_decompose,
     group="Transformations",
 )

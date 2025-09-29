@@ -14,10 +14,10 @@
 # limitations under the License.
 
 import warp as wp
-from warp.fem.cache import TemporaryStore, borrow_temporary, borrow_temporary_like, cached_arg_value
-from warp.fem.domain import GeometryDomain
-from warp.fem.types import NULL_NODE_INDEX, NodeElementIndex
-from warp.fem.utils import compress_node_indices
+from warp._src.fem.cache import TemporaryStore, borrow_temporary, borrow_temporary_like, cached_arg_value
+from warp._src.fem.domain import GeometryDomain
+from warp._src.fem.types import NULL_NODE_INDEX, NodeElementIndex
+from warp._src.fem.utils import compress_node_indices
 
 from .partition import SpacePartition
 
@@ -49,7 +49,7 @@ class SpaceRestriction:
         self._compute_node_element_indices(device=device, temporary_store=temporary_store)
 
     def _compute_node_element_indices(self, device, temporary_store: TemporaryStore):
-        from warp.fem import cache
+        from warp._src.fem import cache
 
         MAX_NODES_PER_ELEMENT = self.space_topology.MAX_NODES_PER_ELEMENT
 

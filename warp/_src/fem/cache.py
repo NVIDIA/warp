@@ -21,9 +21,9 @@ import weakref
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import warp as wp
-from warp.codegen import get_annotations
-from warp.fem.operator import Integrand
-from warp.fem.types import Domain, Field
+from warp._src.codegen import get_annotations
+from warp._src.fem.operator import Integrand
+from warp._src.fem.types import Domain, Field
 
 _kernel_cache = {}
 _struct_cache = {}
@@ -59,7 +59,7 @@ def _arg_type_name(arg_type):
         return arg_type
     if arg_type in (Field, Domain):
         return ""
-    return wp.types.get_type_code(wp.types.type_to_warp(arg_type))
+    return wp._src.types.get_type_code(wp._src.types.type_to_warp(arg_type))
 
 
 def _make_cache_key(func, key, argspec=None, allow_overloads: bool = True):
@@ -162,7 +162,7 @@ def get_struct(struct: type, suffix: str):
         # used in codegen
         struct.__qualname__ = _key_re.sub("", key)
         module = wp.get_module(struct.__module__)
-        _struct_cache[cache_key] = wp.codegen.Struct(
+        _struct_cache[cache_key] = wp._src.codegen.Struct(
             key=struct.__qualname__,
             cls=struct,
             module=module,
@@ -182,7 +182,7 @@ def get_argument_struct(arg_types: Dict[str, type]):
     class Args:
         pass
 
-    annotations = wp.codegen.get_annotations(Args)
+    annotations = wp._src.codegen.get_annotations(Args)
 
     for name, arg_type in arg_types.items():
         setattr(Args, name, None)
@@ -199,7 +199,7 @@ def get_argument_struct(arg_types: Dict[str, type]):
 
 
 def populate_argument_struct(
-    Args: wp.codegen.Struct, values: Dict[str, Any], func_name: str, value_struct_values: Optional = None
+    Args: wp._src.codegen.Struct, values: Dict[str, Any], func_name: str, value_struct_values: Optional = None
 ):
     if values is None:
         values = {}
@@ -216,12 +216,12 @@ def populate_argument_struct(
                 f"Passed value argument '{k}' does not match any of the function '{func_name}' parameters"
             ) from err
         raise ValueError(
-            f"Passed value argument '{k}' of type '{wp.types.type_repr(v)}' is incompatible with the function '{func_name}' parameter of type '{wp.types.type_repr(Args.vars[k].type)}'"
+            f"Passed value argument '{k}' of type '{wp._src.types.type_repr(v)}' is incompatible with the function '{func_name}' parameter of type '{wp._src.types.type_repr(Args.vars[k].type)}'"
         ) from err
 
     missing_values = Args.vars.keys() - values.keys()
     if missing_values:
-        wp.utils.warn(
+        wp._src.utils.warn(
             f"Missing values for parameter(s) '{', '.join(missing_values)}' of the function '{func_name}', will be zero-initialized"
         )
 
@@ -231,7 +231,7 @@ def populate_argument_struct(
 class ExpandStarredArgumentStruct(ast.NodeTransformer):
     def __init__(
         self,
-        structs: Dict[str, wp.codegen.Struct],
+        structs: Dict[str, wp._src.codegen.Struct],
     ):
         self._structs = structs
 
@@ -409,11 +409,11 @@ class Temporary:
         self._array_view = array
         self._pool = pool
 
-        if pool is not None and wp.context.runtime.tape is not None:
+        if pool is not None and wp._src.context.runtime.tape is not None:
             # Extend lifetime to that of Tape (or Pool if shorter)
             # This is to prevent temporary arrays held in tape launch parameters to be redeemed
             pool.hold(self)
-            weakref.finalize(wp.context.runtime.tape, TemporaryStore.Pool.stop_holding, pool, self)
+            weakref.finalize(wp._src.context.runtime.tape, TemporaryStore.Pool.stop_holding, pool, self)
 
         if shape is not None or dtype is not None:
             self._view_as(shape=shape, dtype=dtype)
@@ -440,7 +440,7 @@ class Temporary:
 
     def _view_as(self, shape, dtype) -> "Temporary":
         def _view_reshaped_truncated(array):
-            view = wp.types.array(
+            view = wp._src.types.array(
                 ptr=array.ptr,
                 dtype=dtype,
                 shape=shape,
@@ -543,16 +543,18 @@ class TemporaryStore:
         self._temporaries = {}
 
     def borrow(self, shape, dtype, pinned: bool = False, device=None, requires_grad: bool = False) -> Temporary:
-        dtype = wp.types.type_to_warp(dtype)
+        dtype = wp._src.types.type_to_warp(dtype)
         device = wp.get_device(device)
 
-        type_size = wp.types.type_size(dtype)
+        type_size = wp._src.types.type_size(dtype)
         key = (dtype._type_, type_size, pinned, device.ordinal)
 
         pool = self._temporaries.get(key, None)
         if pool is None:
             value_type = (
-                cached_vec_type(length=type_size, dtype=wp.types.type_scalar_type(dtype)) if type_size > 1 else dtype
+                cached_vec_type(length=type_size, dtype=wp._src.types.type_scalar_type(dtype))
+                if type_size > 1
+                else dtype
             )
             pool = TemporaryStore.Pool(value_type, device, pinned=pinned)
             self._temporaries[key] = pool
@@ -594,7 +596,7 @@ def borrow_temporary(
     if temporary_store is None:
         temporary_store = TemporaryStore._default_store
 
-    if temporary_store is None or (requires_grad and wp.context.runtime.tape is not None):
+    if temporary_store is None or (requires_grad and wp._src.context.runtime.tape is not None):
         return Temporary(
             array=wp.empty(shape=shape, dtype=dtype, pinned=pinned, device=device, requires_grad=requires_grad)
         )

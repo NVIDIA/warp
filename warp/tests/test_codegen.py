@@ -385,7 +385,7 @@ def test_unresolved_func(test, device):
 
     # remove all references to the bad module so that subsequent calls to wp.force_load()
     # won't try to load it unless we explicitly re-import it again
-    del wp.context.user_modules["warp.tests.aux_test_unresolved_func"]
+    del wp._src.context.user_modules["warp.tests.aux_test_unresolved_func"]
     del sys.modules["warp.tests.aux_test_unresolved_func"]
 
 
@@ -399,7 +399,7 @@ def test_unresolved_symbol(test, device):
 
     # remove all references to the bad module so that subsequent calls to wp.force_load()
     # won't try to load it unless we explicitly re-import it again
-    del wp.context.user_modules["warp.tests.aux_test_unresolved_symbol"]
+    del wp._src.context.user_modules["warp.tests.aux_test_unresolved_symbol"]
     del sys.modules["warp.tests.aux_test_unresolved_symbol"]
 
 
@@ -418,15 +418,15 @@ def test_error_global_var(test, device):
     out = wp.empty_like(arr)
 
     kernel = wp.Kernel(func=kernel_1_fn)
-    with test.assertRaisesRegex(TypeError, r"Invalid external reference type: <class 'warp.types.array'>"):
+    with test.assertRaisesRegex(TypeError, r"Invalid external reference type: <class 'warp._src.types.array'>"):
         wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,), device=device)
 
     kernel = wp.Kernel(func=kernel_2_fn)
-    with test.assertRaisesRegex(TypeError, r"Invalid external reference type: <class 'warp.types.array'>"):
+    with test.assertRaisesRegex(TypeError, r"Invalid external reference type: <class 'warp._src.types.array'>"):
         wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,), device=device)
 
     kernel = wp.Kernel(func=kernel_3_fn)
-    with test.assertRaisesRegex(TypeError, r"Invalid external reference type: <class 'warp.types.array'>"):
+    with test.assertRaisesRegex(TypeError, r"Invalid external reference type: <class 'warp._src.types.array'>"):
         wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,), device=device)
 
 
@@ -477,7 +477,7 @@ def test_error_mutating_constant_in_dynamic_loop(test, device):
 
     inputs = wp.array([1.0, 2.0, 3.0], dtype=float, device=device)
     with test.assertRaisesRegex(
-        wp.codegen.WarpCodegenError,
+        wp._src.codegen.WarpCodegenError,
         r"Error mutating a constant my_constant inside a dynamic loop, use the following syntax\: pi = float\(3\.141\) to declare a dynamic variable",
     ):
         wp.launch(dynamic_loop_kernel, dim=1, inputs=[3, inputs], device=device)
@@ -584,28 +584,28 @@ def test_error_return_annotation_mismatch(test, device):
 
     kernel = wp.Kernel(func=kernel_1_fn)
     with test.assertRaisesRegex(
-        wp.codegen.WarpCodegenError,
+        wp._src.codegen.WarpCodegenError,
         r"The function `foo_1` has its return type annotated as `int16` but the code returns a value of type `int8`.",
     ):
         wp.launch(kernel, dim=1, device=device)
 
     kernel = wp.Kernel(func=kernel_2_fn)
     with test.assertRaisesRegex(
-        wp.codegen.WarpCodegenError,
+        wp._src.codegen.WarpCodegenError,
         r"The function `foo_2` has its return type annotated as `int` but the code returns 2 values.",
     ):
         wp.launch(kernel, dim=1, device=device)
 
     kernel = wp.Kernel(func=kernel_3_fn)
     with test.assertRaisesRegex(
-        wp.codegen.WarpCodegenError,
+        wp._src.codegen.WarpCodegenError,
         r"The function `foo_3` has its return type annotated as `Tuple\[int, int\]` but the code returns a tuple with types `\(int32, float32\)`.",
     ):
         wp.launch(kernel, dim=1, device=device)
 
     kernel = wp.Kernel(func=kernel_4_fn)
     with test.assertRaisesRegex(
-        wp.codegen.WarpCodegenError,
+        wp._src.codegen.WarpCodegenError,
         r"The function `foo_4` has its return type annotated as a tuple of 3 elements but the code returns 2 values.",
     ):
         wp.launch(kernel, dim=1, device=device)

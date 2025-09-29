@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from warp.fem.space import SpaceRestriction
+from warp._src.fem.space import SpaceRestriction
 
 from .field import DiscreteField
 

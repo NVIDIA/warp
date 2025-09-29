@@ -19,7 +19,7 @@
 import ctypes
 
 import warp
-from warp.thirdparty.dlpack import (
+from warp._src.thirdparty.dlpack import (
     DLDataType,
     DLDataTypeCode,
     DLDevice,
@@ -108,7 +108,7 @@ def _dlpack_capsule_deleter(ptr) -> None:
             managed_tensor.deleter(managed_ptr)
 
 
-def _device_to_dlpack(wp_device: warp.context.Device) -> DLDevice:
+def _device_to_dlpack(wp_device: warp._src.context.Device) -> DLDevice:
     dl_device = DLDevice()
 
     if wp_device.is_cpu:
@@ -163,27 +163,27 @@ def dtype_from_dlpack(dl_dtype):
     if dl_dtype == (DLDataTypeCode.kDLUInt, 1):
         raise RuntimeError("Warp does not support bit boolean types")
     elif dl_dtype == (DLDataTypeCode.kDLInt, 8):
-        return warp.types.int8
+        return warp._src.types.int8
     elif dl_dtype == (DLDataTypeCode.kDLInt, 16):
-        return warp.types.int16
+        return warp._src.types.int16
     elif dl_dtype == (DLDataTypeCode.kDLInt, 32):
-        return warp.types.int32
+        return warp._src.types.int32
     elif dl_dtype == (DLDataTypeCode.kDLInt, 64):
-        return warp.types.int64
+        return warp._src.types.int64
     elif dl_dtype == (DLDataTypeCode.kDLUInt, 8):
-        return warp.types.uint8
+        return warp._src.types.uint8
     elif dl_dtype == (DLDataTypeCode.kDLUInt, 16):
-        return warp.types.uint16
+        return warp._src.types.uint16
     elif dl_dtype == (DLDataTypeCode.kDLUInt, 32):
-        return warp.types.uint32
+        return warp._src.types.uint32
     elif dl_dtype == (DLDataTypeCode.kDLUInt, 64):
-        return warp.types.uint64
+        return warp._src.types.uint64
     elif dl_dtype == (DLDataTypeCode.kDLFloat, 16):
-        return warp.types.float16
+        return warp._src.types.float16
     elif dl_dtype == (DLDataTypeCode.kDLFloat, 32):
-        return warp.types.float32
+        return warp._src.types.float32
     elif dl_dtype == (DLDataTypeCode.kDLFloat, 64):
-        return warp.types.float64
+        return warp._src.types.float64
     elif dl_dtype == (DLDataTypeCode.kDLComplex, 64):
         raise RuntimeError("Warp does not support complex types")
     elif dl_dtype == (DLDataTypeCode.kDLComplex, 128):
@@ -193,15 +193,15 @@ def dtype_from_dlpack(dl_dtype):
 
 
 def device_from_dlpack(dl_device):
-    assert warp.context.runtime is not None, "Warp not initialized, call wp.init() before use"
+    assert warp._src.context.runtime is not None, "Warp not initialized, call wp.init() before use"
 
     if dl_device.device_type.value == DLDeviceType.kDLCPU or dl_device.device_type.value == DLDeviceType.kDLCUDAHost:
-        return warp.context.runtime.cpu_device
+        return warp._src.context.runtime.cpu_device
     elif (
         dl_device.device_type.value == DLDeviceType.kDLCUDA
         or dl_device.device_type.value == DLDeviceType.kDLCUDAManaged
     ):
-        return warp.context.runtime.cuda_devices[dl_device.device_id]
+        return warp._src.context.runtime.cuda_devices[dl_device.device_id]
     else:
         raise RuntimeError(f"Unknown device type from DLPack: {dl_device.device_type.value}")
 
@@ -215,7 +215,7 @@ def strides_to_dlpack(strides, dtype):
     # convert from byte count to element count
     ndim = len(strides)
     a = (ctypes.c_int64 * ndim)()
-    dtype_size = warp.types.type_size_in_bytes(dtype)
+    dtype_size = warp._src.types.type_size_in_bytes(dtype)
     for i in range(ndim):
         a[i] = strides[i] // dtype_size
     return a
@@ -233,7 +233,7 @@ def to_dlpack(wp_array: warp.array):
     """
 
     # DLPack does not support structured arrays
-    if isinstance(wp_array.dtype, warp.codegen.Struct):
+    if isinstance(wp_array.dtype, warp._src.codegen.Struct):
         raise RuntimeError("Cannot convert structured Warp arrays to DLPack.")
 
     # handle vector types
@@ -242,7 +242,7 @@ def to_dlpack(wp_array: warp.array):
         target_dtype = wp_array.dtype._wp_scalar_type_
         target_ndim = wp_array.ndim + len(wp_array.dtype._shape_)
         target_shape = (*wp_array.shape, *wp_array.dtype._shape_)
-        dtype_strides = warp.types.strides_from_shape(wp_array.dtype._shape_, wp_array.dtype._wp_scalar_type_)
+        dtype_strides = warp._src.types.strides_from_shape(wp_array.dtype._shape_, wp_array.dtype._wp_scalar_type_)
         target_strides = (*wp_array.strides, *dtype_strides)
     else:
         # scalar type
@@ -287,7 +287,7 @@ def to_dlpack(wp_array: warp.array):
     else:
         stride_offset = shape_offset + shape_size
         stride_ptr = ctypes.cast(mem_ptr + stride_offset, ctypes.POINTER(ctypes.c_int64))
-        dtype_size = warp.types.type_size_in_bytes(target_dtype)
+        dtype_size = warp._src.types.type_size_in_bytes(target_dtype)
         for i in range(target_ndim):
             stride_ptr[i] = target_strides[i] // dtype_size
         managed_tensor.dl_tensor.strides = stride_ptr
@@ -409,7 +409,7 @@ def _from_dlpack(capsule, dtype=None) -> warp.array:
         # incompatible dtype requested
         raise RuntimeError(f"Incompatible data types: {dlt.dtype} and {dtype}")
 
-    a = warp.types.array(
+    a = warp._src.types.array(
         ptr=dlt.data, dtype=dtype, shape=shape, strides=strides, copy=False, device=device, pinned=pinned
     )
 

@@ -16,11 +16,11 @@
 from typing import Any, ClassVar, Optional
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.domain import GeometryDomain
-from warp.fem.geometry import Element
-from warp.fem.space import FunctionSpace
-from warp.fem.types import NULL_ELEMENT_INDEX, Coords, ElementIndex, QuadraturePointIndex
+from warp._src.fem import cache
+from warp._src.fem.domain import GeometryDomain
+from warp._src.fem.geometry import Element
+from warp._src.fem.space import FunctionSpace
+from warp._src.fem.types import NULL_ELEMENT_INDEX, Coords, ElementIndex, QuadraturePointIndex
 
 from ..polynomial import Polynomial
 

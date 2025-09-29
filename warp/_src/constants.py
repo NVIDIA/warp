@@ -15,7 +15,7 @@
 
 import math
 
-from warp.types import constant
+from warp._src.types import constant
 
 __all__ = [  # noqa: RUF022
     "E",

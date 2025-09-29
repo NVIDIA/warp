@@ -19,7 +19,7 @@ import os
 import subprocess
 import sys
 
-from warp.build_dll import *
+from warp._src.build_dll import *
 
 # set build output path off this file
 base_path = os.path.dirname(os.path.realpath(__file__))

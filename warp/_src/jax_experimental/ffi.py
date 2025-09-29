@@ -23,9 +23,9 @@ from typing import Callable, Optional
 import jax
 
 import warp as wp
-from warp.codegen import get_full_arg_spec, make_full_qualified_name
-from warp.jax import get_jax_device
-from warp.types import array_t, launch_bounds_t, strides_from_shape, type_to_warp
+from warp._src.codegen import get_full_arg_spec, make_full_qualified_name
+from warp._src.jax import get_jax_device
+from warp._src.types import array_t, launch_bounds_t, strides_from_shape, type_to_warp
 
 from .xla_ffi import *
 
@@ -82,7 +82,7 @@ class FfiArg:
                 self.dtype_ndim = len(self.dtype_shape)
                 self.jax_scalar_type = wp.dtype_to_jax(type.dtype._wp_scalar_type_)
                 self.jax_ndim = type.ndim + self.dtype_ndim
-            elif type.dtype in wp.types.value_types:
+            elif type.dtype in wp._src.types.value_types:
                 self.dtype_ndim = 0
                 self.dtype_shape = ()
                 self.jax_scalar_type = wp.dtype_to_jax(type.dtype)
@@ -90,7 +90,7 @@ class FfiArg:
             else:
                 raise TypeError(f"Invalid data type for array argument '{name}', expected scalar, vector, or matrix")
             self.warp_ndim = type.ndim
-        elif type in wp.types.value_types:
+        elif type in wp._src.types.value_types:
             self.dtype_ndim = 0
             self.dtype_shape = ()
             self.jax_scalar_type = wp.dtype_to_jax(type_to_warp(type))
@@ -368,7 +368,7 @@ class FfiKernel:
                 assert hooks.forward, "Failed to find kernel entry point"
 
                 # launch the kernel
-                wp.context.runtime.core.wp_cuda_launch_kernel(
+                wp._src.context.runtime.core.wp_cuda_launch_kernel(
                     device.context,
                     hooks.forward,
                     launch_bounds.size,
@@ -648,13 +648,13 @@ class FfiCallable:
                         graph = capture.graph
                         if graph.graph_exec is None:
                             g = ctypes.c_void_p()
-                            if not wp.context.runtime.core.wp_cuda_graph_create_exec(
+                            if not wp._src.context.runtime.core.wp_cuda_graph_create_exec(
                                 graph.device.context, cuda_stream, graph.graph, ctypes.byref(g)
                             ):
                                 raise RuntimeError(f"Graph creation error: {wp.context.runtime.get_error_string()}")
                             graph.graph_exec = g
 
-                        if not wp.context.runtime.core.wp_cuda_graph_launch(graph.graph_exec, cuda_stream):
+                        if not wp._src.context.runtime.core.wp_cuda_graph_launch(graph.graph_exec, cuda_stream):
                             raise RuntimeError(f"Graph launch error: {wp.context.runtime.get_error_string()}")
 
                         # update the graph cache to keep recently used graphs alive
@@ -845,7 +845,7 @@ def jax_callable(
     check_jax_version()
 
     if graph_compatible is not None:
-        wp.utils.warn(
+        wp._src.utils.warn(
             "The `graph_compatible` argument is deprecated, use `graph_mode` instead.",
             DeprecationWarning,
             stacklevel=3,

@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import warp as wp
+from warp._src.utils import check_p2p
 from warp.tests.unittest_utils import *
-from warp.utils import check_p2p
 
 
 @wp.kernel

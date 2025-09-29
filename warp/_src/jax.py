@@ -16,7 +16,7 @@
 import warp
 
 
-def device_to_jax(warp_device: warp.context.Devicelike):
+def device_to_jax(warp_device: warp._src.context.Devicelike):
     """Return the Jax device corresponding to a Warp device.
 
     Returns:
@@ -41,7 +41,7 @@ def device_to_jax(warp_device: warp.context.Devicelike):
         return cpu_devices[0]
 
 
-def device_from_jax(jax_device) -> warp.context.Device:
+def device_from_jax(jax_device) -> warp._src.context.Device:
     """Return the Warp device corresponding to a Jax device.
 
     Args:

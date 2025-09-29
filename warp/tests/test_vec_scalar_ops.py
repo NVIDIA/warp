@@ -87,11 +87,11 @@ def get_select_kernel2(dtype):
 def test_arrays(test, device, dtype):
     rng = np.random.default_rng(123)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     v2_np = randvals(rng, (10, 2), dtype)
     v3_np = randvals(rng, (10, 3), dtype)
@@ -108,9 +108,9 @@ def test_arrays(test, device, dtype):
     assert_np_equal(v4.numpy(), v4_np, tol=1.0e-6)
     assert_np_equal(v5.numpy(), v5_np, tol=1.0e-6)
 
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
 
     v2 = wp.array(v2_np, dtype=vec2, requires_grad=True, device=device)
     v3 = wp.array(v3_np, dtype=vec3, requires_grad=True, device=device)
@@ -125,8 +125,8 @@ def test_components(test, device, dtype):
     # test accessing vector components from Python - this is especially important
     # for float16, which requires special handling internally
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec3 = wp.types.vector(length=3, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
 
     v = vec3(1, 2, 3)
 
@@ -184,10 +184,10 @@ def test_components(test, device, dtype):
 
 
 def test_py_arithmetic_ops(test, device, dtype):
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
     def make_vec(*args):
-        if wptype in wp.types.int_types:
+        if wptype in wp._src.types.int_types:
             # Cast to the correct integer type to simulate wrapping.
             return tuple(wptype._type_(x).value for x in args)
 
@@ -219,11 +219,11 @@ def test_constructors(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     def check_scalar_constructor(
         input: wp.array(dtype=wptype),
@@ -463,7 +463,7 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
     def check_scalar_init(
         input: wp.array(dtype=wptype),
@@ -586,11 +586,11 @@ def test_indexing(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     def check_indexing(
         v2: wp.array(dtype=vec2),
@@ -691,11 +691,11 @@ def test_indexing(test, device, dtype, register_kernels=False):
 
 
 def test_equality(test, device, dtype, register_kernels=False):
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     def check_unsigned_equality(
         v20: wp.array(dtype=vec2),
@@ -821,11 +821,11 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     def check_mul(
         s: wp.array(dtype=wptype),
@@ -953,11 +953,11 @@ def test_scalar_multiplication_rightmul(test, device, dtype, register_kernels=Fa
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     def check_rightmul(
         s: wp.array(dtype=wptype),
@@ -1085,11 +1085,11 @@ def test_cw_multiplication(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     def check_cw_mul(
         s2: wp.array(dtype=vec2),
@@ -1230,11 +1230,11 @@ def test_scalar_division(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     def check_div(
         s: wp.array(dtype=wptype),
@@ -1386,11 +1386,11 @@ def test_cw_division(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     def check_cw_div(
         s2: wp.array(dtype=vec2),
@@ -1554,11 +1554,11 @@ def test_addition(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     def check_add(
         s2: wp.array(dtype=vec2),
@@ -1695,11 +1695,11 @@ def test_dotproduct(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     def check_dot(
         s2: wp.array(dtype=vec2),
@@ -1816,11 +1816,11 @@ def test_modulo(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     def check_mod(
         s2: wp.array(dtype=vec2),
@@ -1942,19 +1942,19 @@ def test_modulo(test, device, dtype, register_kernels=False):
 
 
 def test_equivalent_types(test, device, dtype, register_kernels=False):
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
     # vector types
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     # vector types equivalent to the above
-    vec2_equiv = wp.types.vector(length=2, dtype=wptype)
-    vec3_equiv = wp.types.vector(length=3, dtype=wptype)
-    vec4_equiv = wp.types.vector(length=4, dtype=wptype)
-    vec5_equiv = wp.types.vector(length=5, dtype=wptype)
+    vec2_equiv = wp._src.types.vector(length=2, dtype=wptype)
+    vec3_equiv = wp._src.types.vector(length=3, dtype=wptype)
+    vec4_equiv = wp._src.types.vector(length=4, dtype=wptype)
+    vec5_equiv = wp._src.types.vector(length=5, dtype=wptype)
 
     # declare kernel with original types
     def check_equivalence(
@@ -2021,11 +2021,11 @@ def test_conversions(test, device, dtype, register_kernels=False):
 
 
 def test_constants(test, device, dtype, register_kernels=False):
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     cv2 = wp.constant(vec2(1, 2))
     cv3 = wp.constant(vec3(1, 2, 3))
@@ -2047,11 +2047,11 @@ def test_constants(test, device, dtype, register_kernels=False):
 
 
 def test_abs(test, device, dtype, register_kernels=False):
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     def check_vector_abs():
         res2 = wp.abs(vec2(wptype(-1), wptype(2)))
@@ -2075,11 +2075,11 @@ def test_abs(test, device, dtype, register_kernels=False):
 
 
 def test_sign(test, device, dtype, register_kernels=False):
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     def check_vector_sign():
         res2 = wp.sign(vec2(wptype(-1), wptype(2)))
@@ -2113,11 +2113,11 @@ def test_minmax(test, device, dtype, register_kernels=False):
         np.float16: 1.0e-2,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    vec4 = wp.types.vector(length=4, dtype=wptype)
-    vec5 = wp.types.vector(length=5, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    vec4 = wp._src.types.vector(length=4, dtype=wptype)
+    vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
     # \TODO: Also not quite sure why: this kernel compiles incredibly
     # slowly though...

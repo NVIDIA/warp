@@ -43,7 +43,7 @@ def create_array(rng, dim_in, dim_hid, dtype=float):
 def test_multi_layer_nn(test, device):
     import torch as tc
 
-    if device.is_cuda and not wp.context.runtime.core.wp_is_mathdx_enabled():
+    if device.is_cuda and not wp._src.context.runtime.core.wp_is_mathdx_enabled():
         test.skipTest("Skipping test on CUDA device without MathDx (tolerance)")
 
     NUM_FREQ = wp.constant(8)
@@ -63,7 +63,7 @@ def test_multi_layer_nn(test, device):
         NUM_THREADS = 32
 
     dtype = wp.float16
-    npdtype = wp.types.warp_type_to_np_dtype[dtype]
+    npdtype = wp._src.types.warp_type_to_np_dtype[dtype]
 
     @wp.func
     def relu(x: dtype):
@@ -188,7 +188,6 @@ def test_multi_layer_nn(test, device):
         optimizer_inputs = [p.flatten() for p in params]
         optimizer = warp.optim.Adam(optimizer_inputs, lr=0.01)
 
-        num_batches = int((IMG_WIDTH * IMG_HEIGHT) / BATCH_SIZE)
         max_epochs = 30
 
         # create randomized batch indices
@@ -288,7 +287,6 @@ def test_single_layer_nn(test, device):
     import torch as tc
 
     DIM_IN = 8
-    DIM_HID = 32
     DIM_OUT = 16
 
     NUM_BLOCKS = 56

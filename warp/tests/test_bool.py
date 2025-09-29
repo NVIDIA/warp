@@ -146,7 +146,7 @@ def test_bool_constant_mat(test, device):
     assert_np_equal(result_array.numpy(), np.full(result_array.shape, 9))
 
 
-vec3bool_type = wp.types.vector(length=3, dtype=bool)
+vec3bool_type = wp._src.types.vector(length=3, dtype=bool)
 
 
 @wp.kernel
@@ -173,7 +173,7 @@ def test_bool_vec_typing(test, device):
     wp.launch(test_bool_vec_anonymous_typing, (1,), inputs=[], device=device)
 
 
-mat22bool_type = wp.types.matrix((2, 2), dtype=bool)
+mat22bool_type = wp._src.types.matrix((2, 2), dtype=bool)
 
 
 @wp.kernel

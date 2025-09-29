@@ -17,18 +17,18 @@ from functools import cached_property
 from typing import Any, Optional, Set, Union
 
 import warp as wp
-import warp.codegen
-import warp.context
-import warp.fem.cache as cache
-import warp.fem.utils as utils
-from warp.fem.geometry import (
+import warp._src.codegen
+import warp._src.context
+import warp._src.fem.cache as cache
+import warp._src.fem.utils as utils
+from warp._src.fem.geometry import (
     Element,
     Geometry,
     GeometryPartition,
     WholeGeometryPartition,
 )
-from warp.fem.operator import Operator
-from warp.fem.types import NULL_ELEMENT_INDEX, ElementKind
+from warp._src.fem.operator import Operator
+from warp._src.fem.types import NULL_ELEMENT_INDEX, ElementKind
 
 GeometryOrPartition = Union[Geometry, GeometryPartition]
 
@@ -76,15 +76,15 @@ class GeometryDomain:
         """Protypical element"""
         raise NotImplementedError
 
-    def element_index_arg_value(self, device: warp.context.Devicelike) -> warp.codegen.StructInstance:
+    def element_index_arg_value(self, device: warp._src.context.Devicelike) -> warp._src.codegen.StructInstance:
         """Value of the argument to be passed to device functions"""
         raise NotImplementedError
 
-    def element_arg_value(self, device: warp.context.Devicelike) -> warp.codegen.StructInstance:
+    def element_arg_value(self, device: warp._src.context.Devicelike) -> warp._src.codegen.StructInstance:
         """Value of the argument to be passed to device functions"""
         raise NotImplementedError
 
-    ElementIndexArg: warp.codegen.Struct
+    ElementIndexArg: warp._src.codegen.Struct
     """Structure containing arguments to be passed to device functions computing element indices"""
 
     element_index: wp.Function
@@ -93,7 +93,7 @@ class GeometryDomain:
     element_partition_index: wp.Function
     """Device function for retrieving linearized index in the domain's partition from an ElementIndex"""
 
-    ElementArg: warp.codegen.Struct
+    ElementArg: warp._src.codegen.Struct
     """Structure containing arguments to be passed to device functions computing element geometry"""
 
     element_measure: wp.Function
@@ -164,13 +164,13 @@ class Cells(GeometryDomain):
         return self.geometry.cell_count()
 
     @property
-    def ElementIndexArg(self) -> warp.codegen.Struct:
+    def ElementIndexArg(self) -> warp._src.codegen.Struct:
         return self.geometry_partition.CellArg
 
-    def element_index_arg_value(self, device: warp.context.Devicelike) -> warp.codegen.StructInstance:
+    def element_index_arg_value(self, device: warp._src.context.Devicelike) -> warp._src.codegen.StructInstance:
         return self.geometry_partition.cell_arg_value(device)
 
-    def fill_element_index_arg(self, arg: ElementIndexArg, device: warp.context.Devicelike):
+    def fill_element_index_arg(self, arg: ElementIndexArg, device: warp._src.context.Devicelike):
         self.geometry_partition.fill_cell_arg(arg, device)
 
     @property
@@ -181,14 +181,14 @@ class Cells(GeometryDomain):
     def element_partition_index(self) -> wp.Function:
         return self.geometry_partition.partition_cell_index
 
-    def element_arg_value(self, device: warp.context.Devicelike) -> warp.codegen.StructInstance:
+    def element_arg_value(self, device: warp._src.context.Devicelike) -> warp._src.codegen.StructInstance:
         return self.geometry.cell_arg_value(device)
 
-    def fill_element_arg(self, arg: "ElementArg", device: warp.context.Devicelike):
+    def fill_element_arg(self, arg: "ElementArg", device: warp._src.context.Devicelike):
         self.geometry.fill_cell_arg(arg, device)
 
     @property
-    def ElementArg(self) -> warp.codegen.Struct:
+    def ElementArg(self) -> warp._src.codegen.Struct:
         return self.geometry.CellArg
 
     @property
@@ -295,13 +295,13 @@ class Sides(GeometryDomain):
         return self.geometry.side_count()
 
     @property
-    def ElementIndexArg(self) -> warp.codegen.Struct:
+    def ElementIndexArg(self) -> warp._src.codegen.Struct:
         return self.geometry_partition.SideArg
 
-    def element_index_arg_value(self, device: warp.context.Devicelike) -> warp.codegen.StructInstance:
+    def element_index_arg_value(self, device: warp._src.context.Devicelike) -> warp._src.codegen.StructInstance:
         return self.geometry_partition.side_arg_value(device)
 
-    def fill_element_index_arg(self, arg: "ElementIndexArg", device: warp.context.Devicelike):
+    def fill_element_index_arg(self, arg: "ElementIndexArg", device: warp._src.context.Devicelike):
         self.geometry_partition.fill_side_arg(arg, device)
 
     @property
@@ -309,13 +309,13 @@ class Sides(GeometryDomain):
         return self.geometry_partition.side_index
 
     @property
-    def ElementArg(self) -> warp.codegen.Struct:
+    def ElementArg(self) -> warp._src.codegen.Struct:
         return self.geometry.SideArg
 
-    def element_arg_value(self, device: warp.context.Devicelike) -> warp.codegen.StructInstance:
+    def element_arg_value(self, device: warp._src.context.Devicelike) -> warp._src.codegen.StructInstance:
         return self.geometry.side_arg_value(device)
 
-    def fill_element_arg(self, arg: "ElementArg", device: warp.context.Devicelike):
+    def fill_element_arg(self, arg: "ElementArg", device: warp._src.context.Devicelike):
         self.geometry.fill_side_arg(arg, device)
 
     @property
@@ -498,12 +498,12 @@ class Subdomain(GeometryDomain):
         return ElementIndexArg
 
     @cache.cached_arg_value
-    def element_index_arg_value(self, device: warp.context.Devicelike):
+    def element_index_arg_value(self, device: warp._src.context.Devicelike):
         arg = self.ElementIndexArg()
         self.fill_element_index_arg(arg, device)
         return arg
 
-    def fill_element_index_arg(self, arg: "GeometryDomain.ElementIndexArg", device: warp.context.Devicelike):
+    def fill_element_index_arg(self, arg: "GeometryDomain.ElementIndexArg", device: warp._src.context.Devicelike):
         self._domain.fill_element_index_arg(arg.domain_arg, device)
         arg.element_indices = self._element_indices.to(device)
 

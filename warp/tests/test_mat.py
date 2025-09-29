@@ -67,17 +67,17 @@ def test_shape_mismatch(test, device):
 
 
 def test_py_arithmetic_ops(test, device, dtype):
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
     def make_mat(*args):
-        if wptype in wp.types.int_types:
+        if wptype in wp._src.types.int_types:
             # Cast to the correct integer type to simulate wrapping.
             return tuple(tuple(wptype._type_(x).value for x in row) for row in args)
 
         return args
 
     def make_vec(*args):
-        if wptype in wp.types.int_types:
+        if wptype in wp._src.types.int_types:
             # Cast to the correct integer type to simulate wrapping.
             return tuple(wptype._type_(x).value for x in args)
 
@@ -116,11 +116,11 @@ def test_negation(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
-    mat33 = wp.types.matrix(shape=(3, 3), dtype=wptype)
-    mat44 = wp.types.matrix(shape=(4, 4), dtype=wptype)
-    mat55 = wp.types.matrix(shape=(5, 5), dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat22 = wp._src.types.matrix(shape=(2, 2), dtype=wptype)
+    mat33 = wp._src.types.matrix(shape=(3, 3), dtype=wptype)
+    mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
+    mat55 = wp._src.types.matrix(shape=(5, 5), dtype=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -205,12 +205,12 @@ def test_matmul(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-12,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
-    mat33 = wp.types.matrix(shape=(3, 3), dtype=wptype)
-    mat23 = wp.types.matrix(shape=(2, 3), dtype=wptype)
-    mat32 = wp.types.matrix(shape=(3, 2), dtype=wptype)
-    mat44 = wp.types.matrix(shape=(4, 4), dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat22 = wp._src.types.matrix(shape=(2, 2), dtype=wptype)
+    mat33 = wp._src.types.matrix(shape=(3, 3), dtype=wptype)
+    mat23 = wp._src.types.matrix(shape=(2, 3), dtype=wptype)
+    mat32 = wp._src.types.matrix(shape=(3, 2), dtype=wptype)
+    mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -276,11 +276,11 @@ def test_subtraction(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
-    mat33 = wp.types.matrix(shape=(3, 3), dtype=wptype)
-    mat44 = wp.types.matrix(shape=(4, 4), dtype=wptype)
-    mat55 = wp.types.matrix(shape=(5, 5), dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat22 = wp._src.types.matrix(shape=(2, 2), dtype=wptype)
+    mat33 = wp._src.types.matrix(shape=(3, 3), dtype=wptype)
+    mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
+    mat55 = wp._src.types.matrix(shape=(5, 5), dtype=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -397,10 +397,10 @@ def test_determinant(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
-    mat33 = wp.types.matrix(shape=(3, 3), dtype=wptype)
-    mat44 = wp.types.matrix(shape=(4, 4), dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat22 = wp._src.types.matrix(shape=(2, 2), dtype=wptype)
+    mat33 = wp._src.types.matrix(shape=(3, 3), dtype=wptype)
+    mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
     def check_mat_det(
         v2: wp.array(dtype=mat22),
@@ -535,8 +535,8 @@ def test_determinant(test, device, dtype, register_kernels=False):
 #         np.float64: 1.0e-8,
 #     }.get(dtype, 0)
 #
-#     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-#     mat55 = wp.types.vector(shape=(5, 5), dtype=wptype)
+#     wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+#     mat55 = wp._src.types.vector(shape=(5, 5), dtype=wptype)
 #
 #     output_select_kernel = get_select_kernel(wptype)
 #
@@ -590,10 +590,10 @@ def test_inverse(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
-    mat33 = wp.types.matrix(shape=(3, 3), dtype=wptype)
-    mat44 = wp.types.matrix(shape=(4, 4), dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat22 = wp._src.types.matrix(shape=(2, 2), dtype=wptype)
+    mat33 = wp._src.types.matrix(shape=(3, 3), dtype=wptype)
+    mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -760,9 +760,9 @@ def test_svd(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-12,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    mat33 = wp.types.matrix(shape=(3, 3), dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    mat33 = wp._src.types.matrix(shape=(3, 3), dtype=wptype)
 
     def check_mat_svd(
         m3: wp.array(dtype=mat33),
@@ -879,9 +879,9 @@ def test_svd_2D(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-12,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.types.vector(length=2, dtype=wptype)
-    mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp._src.types.vector(length=2, dtype=wptype)
+    mat22 = wp._src.types.matrix(shape=(2, 2), dtype=wptype)
 
     def check_mat_svd2(
         m2: wp.array(dtype=mat22),
@@ -1027,8 +1027,8 @@ def test_qr(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-12,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    mat33 = wp.types.matrix(shape=(3, 3), dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat33 = wp._src.types.matrix(shape=(3, 3), dtype=wptype)
 
     def check_mat_qr(
         m3: wp.array(dtype=mat33),
@@ -1139,9 +1139,9 @@ def test_eig(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-5,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    mat33 = wp.types.matrix(shape=(3, 3), dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    mat33 = wp._src.types.matrix(shape=(3, 3), dtype=wptype)
 
     def check_mat_eig(
         m3: wp.array(dtype=mat33),
@@ -1251,8 +1251,8 @@ def test_skew(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec3 = wp.types.vector(length=3, dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -1283,7 +1283,6 @@ def test_skew(test, device, dtype, register_kernels=False):
 
     # make sure it gives you a cross product matrix:
     crossprodmat = outcomponents.numpy().reshape(3, 3)
-    v = np.array([1, 0, 0])
     assert_np_equal(
         np.matmul(crossprodmat, np.array([1, 0, 0])).reshape(-1),
         2 * np.cross(v3.numpy()[0], np.array([1, 0, 0])),
@@ -1353,9 +1352,9 @@ def test_transform_point(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    mat44 = wp.types.matrix(shape=(4, 4), dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -1414,9 +1413,9 @@ def test_transform_vector(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec3 = wp.types.vector(length=3, dtype=wptype)
-    mat44 = wp.types.matrix(shape=(4, 4), dtype=wptype)
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -1466,7 +1465,7 @@ def test_transform_vector(test, device, dtype, register_kernels=False):
 
 
 @wp.kernel
-def test_matrix_mutation(expected: wp.types.matrix(shape=(10, 3), dtype=float)):
+def test_matrix_mutation(expected: wp._src.types.matrix(shape=(10, 3), dtype=float)):
     m = wp.matrix(shape=(10, 3), dtype=float)
 
     # test direct element indexing
@@ -3443,7 +3442,7 @@ class TestMat(unittest.TestCase):
         self.assertSequenceEqual(m, ((0.0, 1.0), (2.0, 3.0)))
 
 
-mat103 = wp.types.matrix(shape=(10, 3), dtype=float)
+mat103 = wp._src.types.matrix(shape=(10, 3), dtype=float)
 add_kernel_test(
     TestMat,
     test_matrix_mutation,

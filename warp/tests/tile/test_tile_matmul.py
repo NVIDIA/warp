@@ -60,7 +60,7 @@ def test_tile_grouped_gemm(test, device):
     B_wp = wp.array(B, requires_grad=True, device=device)
     C_wp = wp.zeros((batch_count, TILE_M, TILE_N), requires_grad=True, device=device)
 
-    with wp.Tape() as tape:
+    with wp.Tape():
         wp.launch_tiled(
             tile_grouped_gemm, dim=[batch_count], inputs=[A_wp, B_wp, C_wp], block_dim=TILE_DIM, device=device
         )

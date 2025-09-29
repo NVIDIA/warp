@@ -17,8 +17,8 @@ import functools
 from enum import Enum
 from typing import Optional
 
-from warp.fem.geometry import element as _element
-from warp.fem.polynomial import Polynomial
+from warp._src.fem.geometry import element as _element
+from warp._src.fem.polynomial import Polynomial
 
 from .cube_shape_function import (
     CubeNedelecFirstKindShapeFunctions,

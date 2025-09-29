@@ -39,7 +39,6 @@ import numpy as np
 from mpi4py import MPI
 
 import warp as wp
-import warp.context
 from warp.types import warp_type_to_np_dtype
 
 wp.config.quiet = True  # Suppress wp.init() output
@@ -50,7 +49,7 @@ wptype = wp.float32  # Global precision setting, can set wp.float64 here for dou
 pi = wptype(math.pi)  # GitHub #485
 
 
-def calc_default_device(mpi_comm: "MPI.Comm") -> warp.context.Device:
+def calc_default_device(mpi_comm: "MPI.Comm") -> wp.context.Device:
     """Return the device that should be used for the current rank.
 
     This function is used to ensure that multiple MPI ranks running on the same
@@ -72,7 +71,7 @@ def calc_default_device(mpi_comm: "MPI.Comm") -> warp.context.Device:
     local_size = local_mpi_comm.Get_size()
     local_rank = local_mpi_comm.Get_rank()
 
-    num_cuda_devices = warp.get_cuda_device_count()
+    num_cuda_devices = wp.get_cuda_device_count()
 
     if 1 < num_cuda_devices < local_size:
         raise RuntimeError(
@@ -81,9 +80,9 @@ def calc_default_device(mpi_comm: "MPI.Comm") -> warp.context.Device:
 
     if 1 < num_cuda_devices:
         # Get the device based on local_rank
-        return warp.get_cuda_device(local_rank)
+        return wp.get_cuda_device(local_rank)
     else:
-        return warp.get_device()
+        return wp.get_device()
 
 
 def calc_decomp_1d(total_points: int, rank: int, total_ranks: int) -> Tuple[int, int]:

@@ -16,10 +16,10 @@
 from typing import List, Tuple
 
 import warp as wp
-from warp.fem.polynomial import Polynomial, quadrature_1d
-from warp.fem.types import Coords
+from warp._src.fem.polynomial import Polynomial, quadrature_1d
+from warp._src.fem.types import Coords
 
-_vec1 = wp.types.vector(length=1, dtype=float)
+_vec1 = wp._src.types.vector(length=1, dtype=float)
 
 
 class Element:

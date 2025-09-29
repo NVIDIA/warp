@@ -16,7 +16,7 @@
 from typing import Any
 
 import warp as wp
-import warp.types
+import warp._src.types
 
 
 @wp.func
@@ -351,7 +351,7 @@ def symmetric_eigenvalues_qr(A: Any, tol: Any):
 def array_axpy(x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 1.0):
     """Performs y = alpha*x + beta*y"""
 
-    dtype = wp.types.type_scalar_type(y.dtype)
+    dtype = wp._src.types.type_scalar_type(y.dtype)
 
     alpha = dtype(alpha)
     beta = dtype(beta)
@@ -364,9 +364,9 @@ def array_axpy(x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 1.0):
     # and record a custom adjoint function on the tape.
 
     # temporarily disable tape to avoid printing warning that kernel is not differentiable
-    (tape, wp.context.runtime.tape) = (wp.context.runtime.tape, None)
+    (tape, wp._src.context.runtime.tape) = (wp._src.context.runtime.tape, None)
     wp.launch(kernel=_array_axpy_kernel, dim=x.shape, device=x.device, inputs=[x, y, alpha, beta])
-    wp.context.runtime.tape = tape
+    wp._src.context.runtime.tape = tape
 
     if tape is not None and (x.requires_grad or y.requires_grad):
 

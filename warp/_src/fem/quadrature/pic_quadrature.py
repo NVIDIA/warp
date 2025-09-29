@@ -16,10 +16,10 @@
 from typing import Any, Optional, Tuple, Union
 
 import warp as wp
-from warp.fem.cache import TemporaryStore, borrow_temporary, cached_arg_value, dynamic_kernel
-from warp.fem.domain import GeometryDomain
-from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, make_free_sample
-from warp.fem.utils import compress_node_indices
+from warp._src.fem.cache import TemporaryStore, borrow_temporary, cached_arg_value, dynamic_kernel
+from warp._src.fem.domain import GeometryDomain
+from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, make_free_sample
+from warp._src.fem.utils import compress_node_indices
 
 from .quadrature import Quadrature
 
@@ -184,7 +184,7 @@ class PicQuadrature(Quadrature):
             cell_fraction[p] = 1.0 / float(cell_particle_count)
 
     def _bin_particles(self, positions, measures, max_dist: float, temporary_store: TemporaryStore):
-        if wp.types.is_array(positions):
+        if wp._src.types.is_array(positions):
             device = positions.device
             if not self.domain.supports_lookup(device):
                 raise RuntimeError(

@@ -138,21 +138,21 @@ class Adam:
         assert params.dtype == g.dtype
         assert params.shape == g.shape
         kernel_inputs = [g, m, v, lr, beta1, beta2, t, eps, params]
-        if params.dtype == wp.types.float32:
+        if params.dtype == wp._src.types.float32:
             wp.launch(
                 kernel=adam_step_kernel_float,
                 dim=len(params),
                 inputs=kernel_inputs,
                 device=params.device,
             )
-        elif params.dtype == wp.types.float16:
+        elif params.dtype == wp._src.types.float16:
             wp.launch(
                 kernel=adam_step_kernel_half,
                 dim=len(params),
                 inputs=kernel_inputs,
                 device=params.device,
             )
-        elif params.dtype == wp.types.vec3:
+        elif params.dtype == wp._src.types.vec3:
             wp.launch(
                 kernel=adam_step_kernel_vec3,
                 dim=len(params),

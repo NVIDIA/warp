@@ -16,9 +16,9 @@
 from typing import Any
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.geometry import Geometry
-from warp.fem.types import Coords, ElementIndex, ElementKind, Sample, make_free_sample
+from warp._src.fem import cache
+from warp._src.fem.geometry import Geometry
+from warp._src.fem.types import Coords, ElementIndex, ElementKind, Sample, make_free_sample
 
 from .topology import SpaceTopology
 
@@ -41,7 +41,7 @@ class FunctionSpace:
     dof_dtype: type
     """Data type of the degrees of freedom of each node"""
 
-    SpaceArg: wp.codegen.Struct
+    SpaceArg: wp._src.codegen.Struct
     """Structure containing arguments to be passed to device function"""
 
     LocalValueMap: type
@@ -71,7 +71,7 @@ class FunctionSpace:
         """Number of nodes in the interpolation basis"""
         return self.topology.node_count()
 
-    def space_arg_value(self, device) -> wp.codegen.StructInstance:
+    def space_arg_value(self, device) -> wp._src.codegen.StructInstance:
         """Value of the arguments to be passed to device functions"""
         raise NotImplementedError
 
@@ -123,13 +123,13 @@ class FunctionSpace:
 
     def gradient_valid(self) -> bool:
         """Whether gradient operator can be computed. Only for scalar and vector fields as higher-order tensors are not supported yet"""
-        return not wp.types.type_is_matrix(self.dtype)
+        return not wp._src.types.type_is_matrix(self.dtype)
 
     def divergence_valid(self) -> bool:
         """Whether divergence of this field can be computed. Only for vector and tensor fields with same dimension as embedding geometry"""
-        if wp.types.type_is_vector(self.dtype):
-            return wp.types.type_size(self.dtype) == self.geometry.dimension
-        if wp.types.type_is_matrix(self.dtype):
+        if wp._src.types.type_is_vector(self.dtype):
+            return wp._src.types.type_size(self.dtype) == self.geometry.dimension
+        if wp._src.types.type_is_matrix(self.dtype):
             return self.dtype._shape_[0] == self.geometry.dimension
         return False
 

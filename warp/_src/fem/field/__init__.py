@@ -15,8 +15,14 @@
 
 from typing import Optional, Union
 
-from warp.fem.domain import Cells, GeometryDomain
-from warp.fem.space import FunctionSpace, SpacePartition, SpaceRestriction, make_space_partition, make_space_restriction
+from warp._src.fem.domain import Cells, GeometryDomain
+from warp._src.fem.space import (
+    FunctionSpace,
+    SpacePartition,
+    SpaceRestriction,
+    make_space_partition,
+    make_space_restriction,
+)
 
 from .field import DiscreteField, FieldLike, GeometryField, ImplicitField, NonconformingField, SpaceField, UniformField
 from .nodal_field import NodalField

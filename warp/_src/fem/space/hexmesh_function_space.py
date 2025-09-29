@@ -14,14 +14,14 @@
 # limitations under the License.
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.geometry import Hexmesh
-from warp.fem.geometry.hexmesh import (
+from warp._src.fem import cache
+from warp._src.fem.geometry import Hexmesh
+from warp._src.fem.geometry.hexmesh import (
     EDGE_VERTEX_INDICES,
     FACE_ORIENTATION,
     FACE_TRANSLATION,
 )
-from warp.fem.types import ElementIndex
+from warp._src.fem.types import ElementIndex
 
 from .shape import CubeShapeFunction
 from .topology import SpaceTopology, forward_base_topology

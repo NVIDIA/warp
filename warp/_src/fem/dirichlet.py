@@ -16,9 +16,9 @@
 from typing import Any, Optional
 
 import warp as wp
-from warp.fem.linalg import array_axpy, symmetric_eigenvalues_qr
-from warp.sparse import BsrMatrix, bsr_assign, bsr_axpy, bsr_copy, bsr_mm, bsr_mv
-from warp.types import type_is_matrix, type_size
+from warp._src.fem.linalg import array_axpy, symmetric_eigenvalues_qr
+from warp._src.sparse import BsrMatrix, bsr_assign, bsr_axpy, bsr_copy, bsr_mm, bsr_mv
+from warp._src.types import type_is_matrix, type_size
 
 
 def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: Optional[wp.array] = None):

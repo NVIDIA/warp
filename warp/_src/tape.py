@@ -58,20 +58,20 @@ class Tape:
         self.loss = None
 
     def __enter__(self):
-        wp.context.init()
+        wp._src.context.init()
 
-        if wp.context.runtime.tape is not None:
+        if wp._src.context.runtime.tape is not None:
             raise RuntimeError("Warp: Error, entering a tape while one is already active")
 
-        wp.context.runtime.tape = self
+        wp._src.context.runtime.tape = self
 
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if wp.context.runtime.tape is None:
+        if wp._src.context.runtime.tape is None:
             raise RuntimeError("Warp: Error, ended tape capture, but tape not present")
 
-        wp.context.runtime.tape = None
+        wp._src.context.runtime.tape = None
 
     # adj_outputs is a mapping from output tensor -> adjoint of the output
     # after running backward the gradients of tensors may be retrieved by:
@@ -92,7 +92,7 @@ class Tape:
         # if scalar loss is specified then initialize
         # a 'seed' array for it, with gradient of one
         if loss:
-            if loss.size > 1 or wp.types.type_size(loss.dtype) > 1:
+            if loss.size > 1 or wp._src.types.type_size(loss.dtype) > 1:
                 raise RuntimeError("Can only return gradients for scalar loss functions.")
 
             if not loss.requires_grad:
@@ -124,12 +124,12 @@ class Tape:
                 enable_backward = launch[0].options.get("enable_backward")
                 if enable_backward is False:
                     msg = f"Running the tape backwards may produce incorrect gradients because recorded kernel {launch[0].key} is configured with the option 'enable_backward=False'."
-                    wp.utils.warn(msg)
+                    wp._src.utils.warn(msg)
                 elif enable_backward is None:
                     enable_backward = launch[0].module.options.get("enable_backward")
                     if enable_backward is False:
                         msg = f"Running the tape backwards may produce incorrect gradients because recorded kernel {launch[0].key} is defined in a module with the option 'enable_backward=False' set."
-                        wp.utils.warn(msg)
+                        wp._src.utils.warn(msg)
 
                 kernel = launch[0]
                 dim = launch[1]
@@ -228,18 +228,18 @@ class Tape:
 
     # returns the adjoint of a kernel parameter
     def get_adjoint(self, a):
-        if not wp.types.is_array(a) and not isinstance(a, wp.codegen.StructInstance):
+        if not wp._src.types.is_array(a) and not isinstance(a, wp._src.codegen.StructInstance):
             # if input is a simple type (e.g.: float, vec3, etc) or a non-Warp array,
             # then no gradient needed (we only return gradients through Warp arrays and structs)
             return None
 
-        elif wp.types.is_array(a) and a.grad:
+        elif wp._src.types.is_array(a) and a.grad:
             # keep track of all gradients used by the tape (for zeroing)
             # ignore the scalar loss since we don't want to clear its grad
             self.gradients[a] = a.grad
             return a.grad
 
-        elif isinstance(a, wp.codegen.StructInstance):
+        elif isinstance(a, wp._src.codegen.StructInstance):
             adj = a._cls()
             for name, _ in a._cls.ctype._fields_:
                 if name.startswith("_"):
@@ -251,7 +251,7 @@ class Tape:
                     else:
                         grad = None
                     setattr(adj, name, grad)
-                elif isinstance(a._cls.vars[name].type, wp.codegen.Struct):
+                elif isinstance(a._cls.vars[name].type, wp._src.codegen.Struct):
                     setattr(adj, name, self.get_adjoint(getattr(a, name)))
                 else:
                     setattr(adj, name, getattr(a, name))
@@ -276,7 +276,7 @@ class Tape:
         Zero out all gradients recorded on the tape.
         """
         for a, g in self.gradients.items():
-            if isinstance(a, wp.codegen.StructInstance):
+            if isinstance(a, wp._src.codegen.StructInstance):
                 for name in g._cls.vars:
                     if isinstance(g._cls.vars[name].type, wp.array) and g._cls.vars[name].requires_grad:
                         getattr(g, name).zero_()
@@ -395,7 +395,7 @@ class TapeVisitor:
         pass
 
 
-def get_struct_vars(x: wp.codegen.StructInstance):
+def get_struct_vars(x: wp._src.codegen.StructInstance):
     return {varname: getattr(x, varname) for varname, _ in x._cls.ctype._fields_}
 
 
@@ -1105,7 +1105,7 @@ def visit_tape(
                         add_array_node(x, name, active_scope_stack)
                     # input_arrays.append(x.ptr)
                     visitor.emit_edge_array_kernel(xptr, k_id, id, indent_level)
-            elif isinstance(x, wp.codegen.StructInstance):
+            elif isinstance(x, wp._src.codegen.StructInstance):
                 for varname, var in get_struct_vars(x).items():
                     if isinstance(var, wp.array):
                         if not hide_readonly_arrays or var.ptr in computed_nodes or var.ptr in input_output_ptr:
@@ -1123,7 +1123,7 @@ def visit_tape(
                 output_arrays.append(x.ptr)
                 computed_nodes.add(x.ptr)
                 visitor.emit_edge_kernel_array(k_id, id, x.ptr, indent_level)
-            elif isinstance(x, wp.codegen.StructInstance):
+            elif isinstance(x, wp._src.codegen.StructInstance):
                 for varname, var in get_struct_vars(x).items():
                     if isinstance(var, wp.array):
                         add_array_node(var, f"{name}.{varname}", active_scope_stack)

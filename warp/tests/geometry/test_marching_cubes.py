@@ -232,7 +232,6 @@ def test_marching_cubes_differentiable(test, device):
     the sphere's radius.
     """
     node_dim = 64
-    cell_dim = node_dim - 1
     bounds_low = wp.vec3(-1.0, -1.0, -1.0)
     bounds_high = wp.vec3(1.0, 1.0, 1.0)
 

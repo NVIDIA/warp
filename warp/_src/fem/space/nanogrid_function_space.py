@@ -16,9 +16,9 @@
 from typing import Union
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.geometry import AdaptiveNanogrid, Nanogrid
-from warp.fem.types import ElementIndex
+from warp._src.fem import cache
+from warp._src.fem.geometry import AdaptiveNanogrid, Nanogrid
+from warp._src.fem.types import ElementIndex
 
 from .shape import CubeShapeFunction
 from .topology import SpaceTopology, forward_base_topology

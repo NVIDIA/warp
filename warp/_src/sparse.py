@@ -20,9 +20,8 @@ import weakref
 from typing import Any, Generic, TypeVar, Union
 
 import warp as wp
-import warp.types
-import warp.utils
-from warp.types import (
+import warp._src.utils
+from warp._src.types import (
     Array,
     Cols,
     Rows,
@@ -131,7 +130,7 @@ class BsrMatrix(Generic[_BlockType]):
         return self.values.dtype
 
     @property
-    def device(self) -> wp.context.Device:
+    def device(self) -> wp._src.context.Device:
         """Device on which ``offsets``, ``columns``, and ``values`` are allocated -- assumed to be the same for all three arrays."""
         return self.values.device
 
@@ -204,7 +203,7 @@ class BsrMatrix(Generic[_BlockType]):
 
         Deprecated; prefer :meth:`notify_nnz_changed` instead, which will make sure to resize arrays if necessary.
         """
-        wp.utils.warn(
+        wp._src.utils.warn(
             "The `copy_nnz_async` method is deprecated and will be removed in a future version. Prefer `notify_nnz_changed` instead.",
             DeprecationWarning,
         )
@@ -342,7 +341,7 @@ def bsr_matrix_t(dtype: BlockType):
 
     if key not in _struct_cache:
         BsrMatrixTyped.dtype = dtype  # necessary for eval_annotations
-        _struct_cache[key] = wp.codegen.Struct(
+        _struct_cache[key] = wp._src.codegen.Struct(
             key=key,
             cls=BsrMatrixTyped,
             module=module,
@@ -355,7 +354,7 @@ def bsr_zeros(
     rows_of_blocks: int,
     cols_of_blocks: int,
     block_type: BlockType,
-    device: wp.context.Devicelike = None,
+    device: wp._src.context.Devicelike = None,
 ) -> BsrMatrix:
     """Construct and return an empty BSR or CSR matrix with the given shape.
 
@@ -572,7 +571,7 @@ def bsr_set_from_triplets(
 
     # compute the BSR topology
 
-    from warp.context import runtime
+    from warp._src.context import runtime
 
     if device.is_cpu:
         native_func = runtime.core.wp_bsr_matrix_from_triplets_host
@@ -711,7 +710,7 @@ class _BsrScalingExpression(_BsrExpression):
         return self.mat.requires_grad
 
     @property
-    def device(self) -> wp.context.Device:
+    def device(self) -> wp._src.context.Device:
         return self.mat.device
 
     # Overloaded math operators
@@ -967,7 +966,7 @@ def bsr_assign(
             wp.copy(dest=dest.columns, src=src.columns, count=nnz_alloc)
 
             if not structure_only:
-                warp.utils.array_cast(out_array=dest.values, in_array=src.values, count=nnz_alloc)
+                warp._src.utils.array_cast(out_array=dest.values, in_array=src.values, count=nnz_alloc)
                 bsr_scale(dest, src_scale)
 
     else:
@@ -995,7 +994,7 @@ def bsr_assign(
             _bsr_ensure_fits(dest, nnz=nnz_alloc)
 
             # Compute destination offsets from triplets
-            from warp.context import runtime
+            from warp._src.context import runtime
 
             if dest.device.is_cpu:
                 native_func = runtime.core.wp_bsr_matrix_from_triplets_host
@@ -1162,7 +1161,7 @@ def bsr_set_transpose(
         # Increase dest array sizes if needed
         _bsr_ensure_fits(dest, nnz=nnz)
 
-        from warp.context import runtime
+        from warp._src.context import runtime
 
         if dest.values.device.is_cpu:
             native_func = runtime.core.wp_bsr_transpose_host
@@ -1420,7 +1419,7 @@ def bsr_set_identity(A: BsrMatrix, rows_of_blocks: int | None = None) -> None:
 def bsr_identity(
     rows_of_blocks: int,
     block_type: BlockType[Rows, Rows, Scalar],
-    device: wp.context.Devicelike = None,
+    device: wp._src.context.Devicelike = None,
 ) -> BsrMatrix[BlockType[Rows, Rows, Scalar]]:
     """Create and return a square identity matrix.
 
@@ -1663,7 +1662,7 @@ def bsr_axpy(
         # Increase dest array sizes if needed
         _bsr_ensure_fits(y, nnz=sum_nnz)
 
-        from warp.context import runtime
+        from warp._src.context import runtime
 
         if device.is_cpu:
             native_func = runtime.core.wp_bsr_matrix_from_triplets_host
@@ -1732,7 +1731,7 @@ def bsr_axpy(
 
 
 def make_bsr_mm_count_coeffs(tile_size):
-    from warp.fem.cache import dynamic_kernel
+    from warp._src.fem.cache import dynamic_kernel
 
     @dynamic_kernel(suffix=tile_size)
     def bsr_mm_count_coeffs(
@@ -1902,7 +1901,7 @@ def _bsr_mm_compute_values(
 
 
 def make_bsr_mm_compute_values_tiled_outer(subblock_rows, subblock_cols, block_depth, scalar_type, tile_size):
-    from warp.fem.cache import dynamic_func, dynamic_kernel
+    from warp._src.fem.cache import dynamic_func, dynamic_kernel
 
     mm_type = wp.mat(dtype=scalar_type, shape=(subblock_rows, subblock_cols))
 
@@ -2201,7 +2200,7 @@ def bsr_mm(
                 work_arrays._mm_block_counts,
             ],
         )
-        warp.utils.array_scan(work_arrays._mm_block_counts[: x.nnz + 1], work_arrays._mm_block_counts[: x.nnz + 1])
+        warp._src.utils.array_scan(work_arrays._mm_block_counts[: x.nnz + 1], work_arrays._mm_block_counts[: x.nnz + 1])
 
         # Get back total counts on host -- we need a synchronization here
         # Use pinned buffer from z, we are going to need it later anyway
@@ -2261,7 +2260,7 @@ def bsr_mm(
         if z.columns.shape[0] < mm_nnz:
             z.columns = wp.empty(shape=(mm_nnz,), dtype=int, device=device)
 
-        from warp.context import runtime
+        from warp._src.context import runtime
 
         if device.is_cpu:
             native_func = runtime.core.wp_bsr_matrix_from_triplets_host
@@ -2403,7 +2402,7 @@ def bsr_mm(
 
 
 def make_bsr_mv_kernel(block_cols: int):
-    from warp.fem.cache import dynamic_kernel
+    from warp._src.fem.cache import dynamic_kernel
 
     @dynamic_kernel(suffix=f"{block_cols}", kernel_options={"enable_backward": False})
     def bsr_mv_kernel(
@@ -2443,7 +2442,7 @@ def make_bsr_mv_kernel(block_cols: int):
 
 
 def make_bsr_mv_tiled_kernel(tile_size: int):
-    from warp.fem.cache import dynamic_kernel
+    from warp._src.fem.cache import dynamic_kernel
 
     @dynamic_kernel(suffix=f"{tile_size}", kernel_options={"enable_backward": False})
     def bsr_mv_tiled_kernel(
@@ -2492,7 +2491,7 @@ def make_bsr_mv_tiled_kernel(tile_size: int):
 
 
 def make_bsr_mv_transpose_kernel(block_rows: int):
-    from warp.fem.cache import dynamic_kernel
+    from warp._src.fem.cache import dynamic_kernel
 
     @dynamic_kernel(suffix=f"{block_rows}", kernel_options={"enable_backward": False})
     def bsr_mv_transpose_kernel(

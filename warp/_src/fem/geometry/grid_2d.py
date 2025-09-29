@@ -16,8 +16,8 @@
 from typing import Any, Optional
 
 import warp as wp
-from warp.fem.cache import cached_arg_value, dynamic_func
-from warp.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
+from warp._src.fem.cache import cached_arg_value, dynamic_func
+from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
 
 from .closest_point import project_on_box_at_origin
 from .element import LinearEdge, Square

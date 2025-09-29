@@ -18,10 +18,10 @@ from typing import ClassVar, Optional
 import numpy as np
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.geometry import Geometry
-from warp.fem.quadrature import Quadrature
-from warp.fem.types import (
+from warp._src.fem import cache
+from warp._src.fem.geometry import Geometry
+from warp._src.fem.quadrature import Quadrature
+from warp._src.fem.types import (
     NULL_ELEMENT_INDEX,
     NULL_QP_INDEX,
     Coords,
@@ -109,9 +109,9 @@ class BasisSpace:
                 dtype=pos_type,
             )
         else:
-            if out.shape != shape or not wp.types.types_equal(pos_type, out.dtype):
+            if out.shape != shape or not wp._src.types.types_equal(pos_type, out.dtype):
                 raise ValueError(
-                    f"Out node positions array must have shape {shape} and data type {wp.types.type_repr(pos_type)}"
+                    f"Out node positions array must have shape {shape} and data type {wp._src.types.type_repr(pos_type)}"
                 )
             node_positions = out
 

@@ -267,7 +267,7 @@ def test_assign_view(test, device):
     m = wp.array([[wp.mat44()]], dtype=wp.mat44, device=device)
 
     with test.assertRaisesRegex(
-        wp.codegen.WarpCodegenError,
+        wp._src.codegen.WarpCodegenError,
         r"Incorrect number of indices specified for array indexing",
     ):
         wp.launch(kernel_assign_view, dim=[1, 1], outputs=[m], device=device)

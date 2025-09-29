@@ -18,13 +18,13 @@ from typing import List, Optional, Tuple
 import numpy as np
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.domain import Cells
-from warp.fem.field import GeometryField
-from warp.fem.geometry import AdaptiveNanogrid
-from warp.fem.integrate import interpolate
-from warp.fem.operator import integrand, lookup
-from warp.fem.types import NULL_ELEMENT_INDEX, Domain, Field, Sample
+from warp._src.fem import cache
+from warp._src.fem.domain import Cells
+from warp._src.fem.field import GeometryField
+from warp._src.fem.geometry import AdaptiveNanogrid
+from warp._src.fem.integrate import interpolate
+from warp._src.fem.operator import integrand, lookup
+from warp._src.fem.types import NULL_ELEMENT_INDEX, Domain, Field, Sample
 
 
 def adaptive_nanogrid_from_hierarchy(

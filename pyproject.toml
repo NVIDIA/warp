@@ -130,6 +130,7 @@ exclude = ["warp/__init__.pyi"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "PLC0414"]
+"warp/*.py" = ["PLC0414"]
 "warp/tests/*.py" = ["F841"]
 "asv/benchmarks/**.py" = ["RUF012"]
 

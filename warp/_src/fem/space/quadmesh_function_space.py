@@ -14,10 +14,10 @@
 # limitations under the License.
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.geometry import Quadmesh2D
-from warp.fem.polynomial import is_closed
-from warp.fem.types import NULL_NODE_INDEX, ElementIndex
+from warp._src.fem import cache
+from warp._src.fem.geometry import Quadmesh2D
+from warp._src.fem.polynomial import is_closed
+from warp._src.fem.types import NULL_NODE_INDEX, ElementIndex
 
 from .shape import SquareShapeFunction
 from .topology import SpaceTopology, forward_base_topology

@@ -16,11 +16,11 @@
 from typing import Any, ClassVar, Optional
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.geometry import Geometry
-from warp.fem.linalg import generalized_inner, generalized_outer
-from warp.fem.types import NULL_QP_INDEX, Coords, ElementIndex, make_free_sample
-from warp.fem.utils import type_basis_element
+from warp._src.fem import cache
+from warp._src.fem.geometry import Geometry
+from warp._src.fem.linalg import generalized_inner, generalized_outer
+from warp._src.fem.types import NULL_QP_INDEX, Coords, ElementIndex, make_free_sample
+from warp._src.fem.utils import type_basis_element
 
 from .basis_space import BasisSpace
 from .dof_mapper import DofMapper, IdentityMapper
@@ -91,8 +91,8 @@ class CollocatedFunctionSpace(FunctionSpace):
     def make_field(
         self,
         space_partition: Optional[SpacePartition] = None,
-    ) -> "wp.fem.field.NodalField":
-        from warp.fem.field import NodalField
+    ) -> "wp._src.fem.field.NodalField":
+        from warp._src.fem.field import NodalField
 
         if space_partition is None:
             space_partition = make_space_partition(space_topology=self.topology)
@@ -243,8 +243,8 @@ class VectorValuedFunctionSpace(FunctionSpace):
     def make_field(
         self,
         space_partition: Optional[SpacePartition] = None,
-    ) -> "wp.fem.field.NodalField":
-        from warp.fem.field import NodalField
+    ) -> "wp._src.fem.field.NodalField":
+        from warp._src.fem.field import NodalField
 
         if space_partition is None:
             space_partition = make_space_partition(space_topology=self.topology)

@@ -16,8 +16,8 @@
 import numpy as np
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.types import Coords
+from warp._src.fem import cache
+from warp._src.fem.types import Coords
 
 from .shape_function import ShapeFunction
 

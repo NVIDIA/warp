@@ -18,11 +18,11 @@ import ctypes
 import numpy
 
 import warp
-import warp.context
+import warp._src.context
 
 
 # return the warp device corresponding to a torch device
-def device_from_torch(torch_device) -> warp.context.Device:
+def device_from_torch(torch_device) -> warp._src.context.Device:
     """Return the Warp device corresponding to a Torch device.
 
     Args:
@@ -32,19 +32,19 @@ def device_from_torch(torch_device) -> warp.context.Device:
         RuntimeError: Torch device does not have a corresponding Warp device
     """
     if type(torch_device) is str:
-        warp_device = warp.context.runtime.device_map.get(torch_device)
+        warp_device = warp._src.context.runtime.device_map.get(torch_device)
         if warp_device is not None:
             return warp_device
         elif torch_device == "cuda":
-            return warp.context.runtime.get_current_cuda_device()
+            return warp._src.context.runtime.get_current_cuda_device()
         else:
             raise RuntimeError(f"Unsupported Torch device {torch_device}")
     else:
         try:
             if torch_device.type == "cuda":
-                return warp.context.runtime.cuda_devices[torch_device.index]
+                return warp._src.context.runtime.cuda_devices[torch_device.index]
             elif torch_device.type == "cpu":
-                return warp.context.runtime.cpu_device
+                return warp._src.context.runtime.cpu_device
             else:
                 raise RuntimeError(f"Unsupported Torch device type {torch_device.type}")
         except Exception as e:
@@ -55,11 +55,11 @@ def device_from_torch(torch_device) -> warp.context.Device:
             raise
 
 
-def device_to_torch(warp_device: warp.context.Devicelike) -> str:
+def device_to_torch(warp_device: warp._src.context.Devicelike) -> str:
     """Return the Torch device string corresponding to a Warp device.
 
     Args:
-        warp_device: An identifier that can be resolved to a :class:`warp.context.Device`.
+        warp_device: An identifier that can be resolved to a :class:`warp._src.context.Device`.
 
     Raises:
         RuntimeError: The Warp device is not compatible with PyTorch.
@@ -280,7 +280,7 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None, return_ctype=False)
         ptr = t.data_ptr()
 
         # create array descriptor
-        array_ctype = warp.types.array_t(ptr, grad_ptr, len(shape), shape, strides)
+        array_ctype = warp._src.types.array_t(ptr, grad_ptr, len(shape), shape, strides)
 
         # keep data and gradient alive
         array_ctype._ref = t
@@ -323,7 +323,7 @@ def to_torch(a, requires_grad=None):
         requires_grad = a.requires_grad
 
     # Torch does not support structured arrays
-    if isinstance(a.dtype, warp.codegen.Struct):
+    if isinstance(a.dtype, warp._src.codegen.Struct):
         raise RuntimeError("Cannot convert structured Warp arrays to Torch.")
 
     if a.device.is_cpu:

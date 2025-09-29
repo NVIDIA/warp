@@ -18,8 +18,8 @@ import math
 from typing import Any, Callable, Optional, Tuple, Union
 
 import warp as wp
-import warp.sparse as sparse
-from warp.types import type_length, type_scalar_type
+import warp._src.sparse as sparse
+from warp._src.types import type_length, type_scalar_type
 
 __all__ = ["LinearOperator", "aslinearoperator", "bicgstab", "cg", "cr", "gmres", "preconditioner"]
 
@@ -55,7 +55,7 @@ class LinearOperator:
 
     """
 
-    def __init__(self, shape: Tuple[int, int], dtype: type, device: wp.context.Device, matvec: Callable):
+    def __init__(self, shape: Tuple[int, int], dtype: type, device: wp._src.context.Device, matvec: Callable):
         self._shape = shape
         self._dtype = dtype
         self._device = device
@@ -70,7 +70,7 @@ class LinearOperator:
         return self._dtype
 
     @property
-    def device(self) -> wp.context.Device:
+    def device(self) -> wp._src.context.Device:
         return self._device
 
     @property
@@ -79,7 +79,7 @@ class LinearOperator:
 
     @property
     def scalar_type(self):
-        return wp.types.type_scalar_type(self.dtype)
+        return wp._src.types.type_scalar_type(self.dtype)
 
 
 _Matrix = Union[wp.array, sparse.BsrMatrix, LinearOperator]
@@ -138,7 +138,7 @@ def aslinearoperator(A: _Matrix) -> LinearOperator:
         if A.ndim == 2:
             return LinearOperator(A.shape, A.dtype, A.device, matvec=dense_mv)
         if A.ndim == 1:
-            if wp.types.type_is_vector(A.dtype):
+            if wp._src.types.type_is_vector(A.dtype):
                 return LinearOperator(A.shape, A.dtype, A.device, matvec=diag_mv_vec)
             return LinearOperator(A.shape, A.dtype, A.device, matvec=diag_mv)
     if isinstance(A, sparse.BsrMatrix):
@@ -166,7 +166,7 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
         use_abs = 1 if ptype == "diag_abs" else 0
         if isinstance(A, sparse.BsrMatrix):
             A_diag = sparse.bsr_get_diag(A)
-            if wp.types.type_is_matrix(A.dtype):
+            if wp._src.types.type_is_matrix(A.dtype):
                 inv_diag = wp.empty(
                     shape=A.nrow, dtype=wp.vec(length=A.block_shape[0], dtype=A.scalar_type), device=A.device
                 )
@@ -520,7 +520,7 @@ def cr(
         maxiter = A.shape[0]
 
     device = A.device
-    scalar_type = wp.types.type_scalar_type(A.dtype)
+    scalar_type = wp._src.types.type_scalar_type(A.dtype)
 
     # Notations below follow roughly pseudo-code from https://en.wikipedia.org/wiki/Conjugate_residual_method
     # with z := M^-1 r and y := M^-1 Ap
@@ -669,7 +669,7 @@ def bicgstab(
         maxiter = A.shape[0]
 
     device = A.device
-    scalar_type = wp.types.type_scalar_type(A.dtype)
+    scalar_type = wp._src.types.type_scalar_type(A.dtype)
 
     # Notations below follow pseudo-code from biconjugate https://en.wikipedia.org/wiki/Biconjugate_gradient_stabilized_method
 
@@ -848,7 +848,7 @@ def gmres(
         check_every = max(restart, check_every)
 
     device = A.device
-    scalar_dtype = wp.types.type_scalar_type(A.dtype)
+    scalar_dtype = wp._src.types.type_scalar_type(A.dtype)
 
     pivot_tolerance = _get_dtype_epsilon(scalar_dtype) ** 2
 

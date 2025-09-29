@@ -44,10 +44,10 @@ np_scalar_types = np_int_types + np_float_types
 
 
 def test_py_arithmetic_ops(test, device, dtype):
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
     def make_scalar(value):
-        if wptype in wp.types.int_types:
+        if wptype in wp._src.types.int_types:
             # Cast to the correct integer type to simulate wrapping.
             return wptype._type_(value).value
 
@@ -69,10 +69,10 @@ def test_py_arithmetic_ops(test, device, dtype):
 
 
 def test_py_math_ops(test, device, dtype):
-    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
     def make_scalar(value):
-        if wptype in wp.types.int_types:
+        if wptype in wp._src.types.int_types:
             # Cast to the correct integer type to simulate wrapping.
             return wptype._type_(value).value
 

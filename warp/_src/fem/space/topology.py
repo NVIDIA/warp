@@ -16,9 +16,9 @@
 from typing import ClassVar, Optional, Tuple, Type
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.geometry import DeformedGeometry, Geometry
-from warp.fem.types import NULL_ELEMENT_INDEX, NULL_NODE_INDEX, ElementIndex
+from warp._src.fem import cache
+from warp._src.fem.geometry import DeformedGeometry, Geometry
+from warp._src.fem.types import NULL_ELEMENT_INDEX, NULL_NODE_INDEX, ElementIndex
 
 
 class SpaceTopology:

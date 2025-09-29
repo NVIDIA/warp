@@ -22,7 +22,7 @@ import subprocess
 import sys
 import time
 
-from warp.utils import ScopedTimer
+from warp._src.utils import ScopedTimer
 
 verbose_cmd = True  # print command lines before executing them
 
@@ -353,7 +353,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
 
     import pathlib
 
-    warp_home_path = pathlib.Path(__file__).parent
+    warp_home_path = pathlib.Path(__file__).parent.parent
     warp_home = warp_home_path.resolve()
 
     if args.verbose:

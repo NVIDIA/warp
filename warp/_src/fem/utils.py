@@ -18,21 +18,21 @@ from typing import Tuple, Union
 import numpy as np
 
 import warp as wp
-import warp.fem.cache as cache
-import warp.types
-from warp.fem.linalg import (  # noqa: F401 (for backward compatibility, not part of public API but used in examples)
+import warp._src.fem.cache as cache
+import warp._src.types
+from warp._src.fem.linalg import (  # noqa: F401 (for backward compatibility, not part of public API but used in examples)
     array_axpy,
     inverse_qr,
     symmetric_eigenvalues_qr,
 )
-from warp.fem.types import NULL_NODE_INDEX
-from warp.utils import array_scan, radix_sort_pairs, runlength_encode
+from warp._src.fem.types import NULL_NODE_INDEX
+from warp._src.utils import array_scan, radix_sort_pairs, runlength_encode
 
 
 def type_zero_element(dtype):
-    suffix = warp.types.get_type_code(dtype)
+    suffix = warp._src.types.get_type_code(dtype)
 
-    if dtype in warp.types.scalar_types:
+    if dtype in warp._src.types.scalar_types:
 
         @cache.dynamic_func(suffix=suffix)
         def zero_element():
@@ -48,9 +48,9 @@ def type_zero_element(dtype):
 
 
 def type_basis_element(dtype):
-    suffix = warp.types.get_type_code(dtype)
+    suffix = warp._src.types.get_type_code(dtype)
 
-    if dtype in warp.types.scalar_types:
+    if dtype in warp._src.types.scalar_types:
 
         @cache.dynamic_func(suffix=suffix)
         def basis_element(coord: int):
@@ -58,7 +58,7 @@ def type_basis_element(dtype):
 
         return basis_element
 
-    if warp.types.type_is_matrix(dtype):
+    if warp._src.types.type_is_matrix(dtype):
         cols = dtype._shape_[1]
 
         @cache.dynamic_func(suffix=suffix)
@@ -193,7 +193,7 @@ def masked_indices(
     offsets_temp = cache.borrow_temporary_like(mask, temporary_store)
     offsets = offsets_temp.array
 
-    wp.utils.array_scan(mask, offsets, inclusive=True)
+    wp._src.utils.array_scan(mask, offsets, inclusive=True)
 
     # Get back total counts on host
     masked_count = int(host_read_at_index(offsets, temporary_store=temporary_store))

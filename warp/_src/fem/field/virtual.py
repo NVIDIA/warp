@@ -16,13 +16,13 @@
 from typing import Any, ClassVar, Dict, Optional, Set
 
 import warp as wp
-import warp.fem.operator as operator
-from warp.fem import cache
-from warp.fem.domain import GeometryDomain
-from warp.fem.linalg import basis_coefficient, generalized_inner, generalized_outer
-from warp.fem.quadrature import Quadrature
-from warp.fem.space import FunctionSpace, SpacePartition, SpaceRestriction
-from warp.fem.types import (
+import warp._src.fem.operator as operator
+from warp._src.fem import cache
+from warp._src.fem.domain import GeometryDomain
+from warp._src.fem.linalg import basis_coefficient, generalized_inner, generalized_outer
+from warp._src.fem.quadrature import Quadrature
+from warp._src.fem.space import FunctionSpace, SpacePartition, SpaceRestriction
+from warp._src.fem.types import (
     NULL_ELEMENT_INDEX,
     NULL_NODE_INDEX,
     DofIndex,
@@ -32,7 +32,7 @@ from warp.fem.types import (
     get_node_coord,
     get_node_index_in_element,
 )
-from warp.fem.utils import type_zero_element
+from warp._src.fem.utils import type_zero_element
 
 from .field import SpaceField
 
@@ -417,7 +417,7 @@ class LocalAdjointField(SpaceField):
         pass
 
     def _make_element_eval_arg(self):
-        from warp.fem import cache
+        from warp._src.fem import cache
 
         @cache.dynamic_struct(suffix=self.name)
         class ElementEvalArg:
@@ -631,7 +631,7 @@ def make_linear_dispatch_kernel(
         return qp, elem_offset, qp_point_count, element_index, test_element_index
 
     @cache.dynamic_kernel(
-        f"{test.name}_{quadrature.name}_{wp.types.get_type_code(accumulate_dtype)}_{tile_size}",
+        f"{test.name}_{quadrature.name}_{wp._src.types.get_type_code(accumulate_dtype)}_{tile_size}",
         kernel_options=kernel_options,
     )
     def dispatch_linear_kernel_fn(
@@ -816,7 +816,7 @@ def make_bilinear_dispatch_kernel(
     val_t = cache.cached_mat_type(shape=(test.node_dof_count, trial.node_dof_count), dtype=accumulate_dtype)
 
     @cache.dynamic_kernel(
-        f"{trial.name}_{test.name}_{quadrature.name}{wp.types.get_type_code(accumulate_dtype)}_{tile_size}",
+        f"{trial.name}_{test.name}_{quadrature.name}{wp._src.types.get_type_code(accumulate_dtype)}_{tile_size}",
         kernel_options=kernel_options,
     )
     def dispatch_bilinear_kernel_fn(

@@ -343,7 +343,7 @@ def gradcheck_tape(
     return overall_success
 
 
-def get_struct_vars(x: wp.codegen.StructInstance):
+def get_struct_vars(x: wp._src.codegen.StructInstance):
     return {varname: getattr(x, varname) for varname, _ in x._cls.ctype._fields_}
 
 
@@ -352,7 +352,7 @@ def infer_device(xs: list):
     for x in xs:
         if isinstance(x, wp.array):
             return x.device
-        elif isinstance(x, wp.codegen.StructInstance):
+        elif isinstance(x, wp._src.codegen.StructInstance):
             for var in get_struct_vars(x).values():
                 if isinstance(var, wp.array):
                     return var.device
@@ -631,9 +631,9 @@ def jacobian_plot(
 
 def scalarize_array_1d(arr):
     # convert array to 1D array with scalar dtype
-    if arr.dtype in wp.types.scalar_types:
+    if arr.dtype in wp._src.types.scalar_types:
         return arr.flatten()
-    elif arr.dtype in wp.types.vector_types:
+    elif arr.dtype in wp._src.types.vector_types:
         return wp.array(
             ptr=arr.ptr,
             shape=(arr.size * arr.dtype._length_,),
@@ -649,9 +649,9 @@ def scalarize_array_1d(arr):
 def scalarize_array_2d(arr):
     assert arr.ndim == 2
     # convert array to 2D array with scalar dtype
-    if arr.dtype in wp.types.scalar_types:
+    if arr.dtype in wp._src.types.scalar_types:
         return arr
-    elif arr.dtype in wp.types.vector_types:
+    elif arr.dtype in wp._src.types.vector_types:
         return wp.array(
             ptr=arr.ptr,
             shape=(arr.shape[0], arr.shape[1] * arr.dtype._length_),

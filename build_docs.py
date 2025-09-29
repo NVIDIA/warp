@@ -19,7 +19,7 @@ import os
 import shutil
 
 import warp  # ensure all API functions are loaded  # noqa: F401
-from warp.context import export_functions_rst, export_stubs
+from warp._src.context import export_functions_rst, export_stubs
 
 parser = argparse.ArgumentParser(description="Warp Sphinx Documentation Builder")
 parser.add_argument("--quick", action="store_true", help="Only build docs, skipping doctest tests of code blocks.")
