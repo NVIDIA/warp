@@ -744,7 +744,7 @@ class SharedTileStorage;
 register SharedTileStorage* shared_tile_storage asm("x28");
 #else
 // Ideally this would be thread_local, but LLVM's JIT doesn't support TLS yet
-// There is also no support for -ffixed-r15 either
+// There is also no support for something like -ffixed-r15 either
 static SharedTileStorage* shared_tile_storage;
 #endif
 #endif
@@ -756,6 +756,7 @@ public:
     {
 #if !defined(__CUDA_ARCH__)
         // 
+        old_value = shared_tile_storage;
         shared_tile_storage = this;
 #endif
 
@@ -765,6 +766,10 @@ public:
     ~SharedTileStorage()
     {
         alloc(0, false, true);  // check
+
+#if !defined(__CUDA_ARCH__)
+        shared_tile_storage = old_value; 
+#endif
     }
 
     static inline CUDA_CALLABLE void* alloc(int num_bytes, bool init=false, bool check=false)
@@ -810,6 +815,7 @@ public:
 
 private:
 #if !defined(__CUDA_ARCH__)
+    SharedTileStorage* old_value;
     int smem_base[WP_TILE_BLOCK_DIM];
     char dynamic_smem_base[WP_MAX_CPU_SHARED];
 #endif
