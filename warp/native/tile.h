@@ -738,9 +738,15 @@ inline CUDA_CALLABLE int tile_align(int num_bytes)
     return sign * ((num_bytes_abs + alignment - 1) / alignment) * alignment;
 }
 
-#if !defined(__CUDA_ARCH__) && defined(__aarch64__)
+#if !defined(__CUDA_ARCH__)
 class SharedTileStorage;
+#if defined(__aarch64__)
 register SharedTileStorage* shared_tile_storage asm("x28");
+#else
+// Ideally this would be thread_local, but LLVM's JIT doesn't support TLS yet
+// There is also no support for -ffixed-r15 either
+static SharedTileStorage* shared_tile_storage;
+#endif
 #endif
 
 class SharedTileStorage
@@ -748,7 +754,7 @@ class SharedTileStorage
 public:
     SharedTileStorage()
     {
-#if !defined(__CUDA_ARCH__) && defined(__aarch64__)
+#if !defined(__CUDA_ARCH__)
         // 
         shared_tile_storage = this;
 #endif
@@ -766,7 +772,7 @@ public:
         // we maintain a per-thread offset into dynamic
         // shared memory that allows us to keep track of 
         // current use across dynamic function calls
-#if defined(__CUDA_ARCH__) || !defined(__aarch64__)
+#if defined(__CUDA_ARCH__)
         WP_TILE_SHARED int smem_base[WP_TILE_BLOCK_DIM];
 #else
         int* smem_base = shared_tile_storage->smem_base;
@@ -793,13 +799,9 @@ public:
 #ifdef __CUDA_ARCH__
             extern __shared__ char dynamic_smem_base[];
 #else
-    #if !defined(__aarch64__)
-            static char dynamic_smem_base[WP_MAX_CPU_SHARED];
-    #else
-            char* dynamic_smem_base = shared_tile_storage->dynamic_smem_base;
-    #endif
-
             assert(smem_base[WP_TILE_THREAD_IDX] <= WP_MAX_CPU_SHARED);
+
+            char* dynamic_smem_base = shared_tile_storage->dynamic_smem_base;
 #endif
 
             return &(dynamic_smem_base[offset]);
@@ -807,7 +809,7 @@ public:
     }
 
 private:
-#if !defined(__CUDA_ARCH__) && defined(__aarch64__)
+#if !defined(__CUDA_ARCH__)
     int smem_base[WP_TILE_BLOCK_DIM];
     char dynamic_smem_base[WP_MAX_CPU_SHARED];
 #endif
