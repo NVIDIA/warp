@@ -3660,13 +3660,12 @@ cuda_kernel_template_forward = """
 {line_directive}extern "C" __global__ void {name}_cuda_kernel_forward(
     {forward_args})
 {{
+{line_directive}    wp::SharedTileStorage tile_mem;
+
 {line_directive}    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
 {line_directive}         _idx < dim.size;
 {line_directive}         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
-        // reset shared memory allocator
-{line_directive}        wp::tile_alloc_shared(0, true);
-
 {forward_body}{line_directive}    }}
 {line_directive}}}
 
@@ -3677,13 +3676,12 @@ cuda_kernel_template_backward = """
 {line_directive}extern "C" __global__ void {name}_cuda_kernel_backward(
     {reverse_args})
 {{
+{line_directive}    wp::SharedTileStorage tile_mem;
+
 {line_directive}    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
 {line_directive}         _idx < dim.size;
 {line_directive}         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
-        // reset shared memory allocator
-{line_directive}        wp::tile_alloc_shared(0, true);
-
 {reverse_body}{line_directive}    }}
 {line_directive}}}
 
@@ -3719,21 +3717,11 @@ WP_API void {name}_cpu_forward(
     wp::launch_bounds_t dim,
     wp_args_{name} *_wp_args)
 {{
-#if defined(__aarch64__)
     wp::SharedTileStorage tile_mem;
-    wp::shared_tile_storage = &tile_mem;
-#endif
 
-for (size_t task_index = 0; task_index < dim.size; ++task_index)
+    for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
-        // init shared memory allocator
-        wp::tile_alloc_shared(0, true);
-
         {name}_cpu_kernel_forward(dim, task_index, _wp_args);
-
-        // check shared memory allocator
-        wp::tile_alloc_shared(0, false, true);
-
     }}
 }}
 
@@ -3750,20 +3738,11 @@ WP_API void {name}_cpu_backward(
     wp_args_{name} *_wp_args,
     wp_args_{name} *_wp_adj_args)
 {{
-#if defined(__aarch64__)
     wp::SharedTileStorage tile_mem;
-    wp::shared_tile_storage = &tile_mem;
-#endif
 
     for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
-        // initialize shared memory allocator
-        wp::tile_alloc_shared(0, true);
-
         {name}_cpu_kernel_backward(dim, task_index, _wp_args, _wp_adj_args);
-
-        // check shared memory allocator
-        wp::tile_alloc_shared(0, false, true);
     }}
 }}
 
