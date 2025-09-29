@@ -198,7 +198,7 @@ jobs:
       - name: Install Dependencies
         run: |
           uv venv
-          uv pip install --upgrade numpy usd-core Pillow
+          uv pip install --upgrade numpy usd-core Pillow psutil
           uv pip install -e .
       - name: Run Tests
         run: uv run -m warp.tests --junit-report-xml rspec.xml -s autodetect
@@ -235,7 +235,7 @@ jobs:
       - name: Install Dependencies
         run: |
           uv venv
-          uv pip install --upgrade numpy usd-core Pillow
+          uv pip install --upgrade numpy usd-core Pillow psutil
           uv pip install -e .
       - name: Run Tests
         run: uv run -m warp.tests --junit-report-xml rspec.xml -s autodetect
@@ -269,7 +269,7 @@ jobs:
         run: |
           python -m pip cache purge
           python -m pip install --upgrade pip
-          pip install --no-cache-dir --upgrade numpy
+          pip install --no-cache-dir --upgrade numpy psutil
           pip install -e .
       - name: Run Tests
         run: python -m warp.tests --junit-report-xml rspec.xml -s autodetect
@@ -306,7 +306,7 @@ jobs:
       - name: Install Dependencies
         run: |
           uv venv
-          uv pip install --upgrade numpy usd-core Pillow
+          uv pip install --upgrade numpy usd-core Pillow psutil
           uv pip install -e .
       - name: Run Tests
         run: uv run -m warp.tests --maxjobs 4  --junit-report-xml rspec.xml -s autodetect

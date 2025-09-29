@@ -15,6 +15,7 @@
   ([GH-917](https://github.com/NVIDIA/warp/issues/917)).
 - Add support for recording and waiting for external events in CUDA graphs ([GH-983](https://github.com/NVIDIA/warp/issues/983)).
 - Add kernel-level functions `bsr_row_index` and `bsr_block_index` to `warp.sparse` ([GH-895](https://github.com/NVIDIA/warp/issues/895)).
+- Add support for querying CPU memory information (requires `psutil` package) ([GH-985](https://github.com/NVIDIA/warp/issues/985)).
 
 ### Removed
 
@@ -41,6 +42,7 @@
   ([GH-963](https://github.com/NVIDIA/warp/issues/963)).
 - Fix empty slice `arr[i:i]` causing errors ([GH-958](https://github.com/NVIDIA/warp/issues/958)).
 - Fix handling of generic kernels with `wp.jax_experimental.ffi.jax_kernel()`.
+- Fix copying and filling arrays with large strides ([GH-929](https://github.com/NVIDIA/warp/issues/929)).
 
 ## [1.9.0] - 2025-09-04
 

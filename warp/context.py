@@ -3251,29 +3251,37 @@ class Device:
     def total_memory(self) -> int:
         """The total amount of device memory available in bytes.
 
-        This function is currently only implemented for CUDA devices. 0 will be returned if called on a CPU device.
+        Querying memory information for the CPU device requires the `psutil` package to be installed
+        and will raise an exception otherwise.
         """
         if self.is_cuda:
             total_mem = ctypes.c_size_t()
             self.runtime.core.wp_cuda_device_get_memory_info(self.ordinal, None, ctypes.byref(total_mem))
             return total_mem.value
         else:
-            # TODO: cpu
-            return 0
+            try:
+                import psutil
+            except ModuleNotFoundError as e:
+                raise ModuleNotFoundError("Please install the 'psutil' package to query CPU memory information.") from e
+            return psutil.virtual_memory().total
 
     @property
     def free_memory(self) -> int:
         """The amount of memory on the device that is free according to the OS in bytes.
 
-        This function is currently only implemented for CUDA devices. 0 will be returned if called on a CPU device.
+        Querying memory information for the CPU device requires the `psutil` package to be installed
+        and will raise an exception otherwise.
         """
         if self.is_cuda:
             free_mem = ctypes.c_size_t()
             self.runtime.core.wp_cuda_device_get_memory_info(self.ordinal, ctypes.byref(free_mem), None)
             return free_mem.value
         else:
-            # TODO: cpu
-            return 0
+            try:
+                import psutil
+            except ModuleNotFoundError as e:
+                raise ModuleNotFoundError("Please install the 'psutil' package to query CPU memory information.") from e
+            return psutil.virtual_memory().free
 
     def __str__(self):
         return self.alias

@@ -390,6 +390,7 @@ linux-x86_64 test:
     - python -m pip install --upgrade usd-core coverage[toml] blosc Pillow
     - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
     - python -m pip install -U "jax[cuda12]"
+    - python -m pip install -U psutil
     - python -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
     # HACK: disable P2P tests due to misbehaving agents
@@ -423,6 +424,7 @@ linux-x86_64-blackwell test:
     - python -m pip install --upgrade usd-core coverage[toml] blosc Pillow
     - python -m pip install -U --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128
     - python -m pip install -U --pre jax jaxlib "jax-cuda12-plugin[with_cuda]" jax-cuda12-pjrt -f https://storage.googleapis.com/jax-releases/jax_nightly_releases.html
+    - python -m pip install -U psutil
     - python -m pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
@@ -444,6 +446,7 @@ mac-x86_64 test:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - !reference [.snippets, install-python+warp-macos]
     - python -m pip install --upgrade usd-core coverage[toml] Pillow
+    - python -m pip install -U psutil
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - python -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
@@ -467,6 +470,7 @@ windows-x86_64 test:
     - python -m pip install --upgrade pip
     - python -m pip install --upgrade usd-core==25.5.1 coverage[toml] numpy blosc Pillow
     - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
+    - python -m pip install -U psutil
     - python -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
@@ -501,6 +505,7 @@ windows-x86_64 test mgpu:
     - python -m pip install --upgrade pip
     - python -m pip install --upgrade usd-core==25.5.1 numpy blosc Pillow
     - python -m pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
+    - python -m pip install -U psutil
     - python -m pip install -e .
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
@@ -600,7 +605,7 @@ linux-x86_64 python matrix test:
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
     # Python environment
     - uv venv
-    - uv pip install usd-core blosc Pillow
+    - uv pip install usd-core blosc Pillow psutil
     - uv pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
