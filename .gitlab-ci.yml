@@ -101,7 +101,7 @@ linux-x86_64 build:
   image: quay.io/pypa/manylinux_2_28_x86_64:latest
   extends:
     - .save_warp_bin_artifact
-    - .runner-build-linux-x86_64
+    - .ipp_lnx_x86_64_cpu_medium
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - yum update -y && yum install curl wget -y
@@ -137,7 +137,7 @@ linux-x86_64 cuda 13 build:
   image: quay.io/pypa/manylinux_2_34_x86_64:latest
   extends:
     - .save_warp_bin_artifact
-    - .runner-build-linux-x86_64
+    - .ipp_lnx_x86_64_cpu_medium
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - yum update -y && yum install curl wget -y
@@ -160,7 +160,7 @@ pre-commit checks:
   image: ghcr.io/astral-sh/uv:bookworm
   needs: []
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   before_script:
     - apt-get update -q
     - apt-get install -y -q --no-install-recommends git-lfs
@@ -175,11 +175,9 @@ osec:sonarqube:
     # Disable C/C++ analyzer until project specific work is done to enable it.
     # See: https://confluence.nvidia.com/display/OMNIVERSE/SonarQube+Gitlab+CI+Integration#C+Project+Enablement+Additions
     SONAR_EXTRA_ARGS: "-Dsonar.c.file.suffixes=- -Dsonar.cpp.file.suffixes=- -Dsonar.objc.file.suffixes=-"
-  tags: !reference [.omni_nvks_micro_runner, tags]
 
 osec:pulse-trufflehog:
   stage: quality
-  tags: !reference [.omni_nvks_micro_runner, tags]
 
 # This job tests code snippets in the documentation
 doctest:
@@ -187,7 +185,7 @@ doctest:
   image: python:3.11-slim
   needs: [linux-x86_64 build]
   extends:
-    - .runner-test-linux-x86_64-gpu
+    - .ipp_lnx_x86_64_gpu
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KSet up docs environment"
     - df -h
@@ -234,7 +232,7 @@ check un-namespaced symbols linux-x86_64:
   image: python:3.12-bullseye
   needs: [linux-x86_64 build]
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   script:
     - |
       echo "Checking for un-namespaced symbols..."
@@ -264,7 +262,7 @@ cppcheck:
   image: ubuntu:24.04
   needs: []
   extends:
-    - .runner-build-linux-x86_64
+    - .ipp_lnx_x86_64_cpu_medium
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
@@ -373,7 +371,7 @@ linux-x86_64 test:
   needs: [linux-x86_64 build]
   image: ubuntu:22.04
   extends:
-    - .omni_nvks_gpu_2x
+    - .ipp_lnx_x86_64_gpu_2x
     - .test_common_with_coverage
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -514,7 +512,7 @@ linux-x86_64 test warp-init:
   image: ubuntu:22.04
   needs: [linux-x86_64 build]
   extends:
-    - .runner-test-linux-x86_64-gpu
+    - .ipp_lnx_x86_64_gpu
     - .save_test_report_artifact
     - .basic_test_changes_rules
   timeout: 10m
@@ -540,7 +538,7 @@ linux-x86_64 test mujoco warp:
   needs: [linux-x86_64 build]
   image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   extends:
-    - .runner-test-linux-x86_64-gpu
+    - .ipp_lnx_x86_64_gpu
     - .save_test_report_artifact
   variables:
     UV_PYTHON: "3.12"
@@ -585,7 +583,7 @@ linux-x86_64 python matrix test:
   image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: [linux-x86_64 build]
   extends:
-    - .runner-test-linux-x86_64-gpu
+    - .ipp_lnx_x86_64_gpu
     - .save_test_report_artifact
     - .basic_test_changes_rules
   parallel:
@@ -613,7 +611,7 @@ linux-x86_64 asv:
   needs: []
   image: ubuntu:22.04
   extends:
-    - .runner-test-linux-x86_64-gpu
+    - .ipp_lnx_x86_64_gpu
   variables:
     GIT_DEPTH: "50"
   rules:
@@ -671,7 +669,7 @@ trigger python 3.X test pipelines:
     - windows-x86_64 build
     - mac-x86_64 build
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
@@ -699,7 +697,7 @@ trigger debug build and test pipeline:
   stage: test
   image: busybox
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   needs: []
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
@@ -727,7 +725,7 @@ trigger cuda 13 pipeline:
   stage: test
   image: busybox
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   needs: [linux-x86_64 cuda 13 build]
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
@@ -757,7 +755,7 @@ trigger kit extensions pipeline:
     - linux-x86_64 build
     - windows-x86_64 build
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
@@ -806,7 +804,7 @@ create pypi wheels:
     - windows-x86_64 build
     - mac-x86_64 build
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
@@ -858,7 +856,7 @@ create dev wheels:
     - windows-x86_64 build
     - mac-x86_64 build
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   before_script:
@@ -896,7 +894,7 @@ publish wheels to testpypi registry:
   image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: ["create pypi wheels"]
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $CI_COMMIT_BRANCH =~ /release-.*/ || $CI_COMMIT_TAG
       when: manual
@@ -912,7 +910,7 @@ publish wheels to pypi registry:
   image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: ["create pypi wheels"]
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $CI_COMMIT_TAG
       when: manual
@@ -928,7 +926,7 @@ publish wheels to gitlab pypi registry:
   image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: ["create pypi wheels"]
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/ || $CI_COMMIT_TAG
       when: manual
@@ -942,7 +940,7 @@ publish wheels to gitlab package registry:
   stage: deploy
   needs: ["create pypi wheels"]
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/
@@ -965,7 +963,7 @@ publish dev wheels to artifactory:
     - job: create dev wheels
       optional: true
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules: # Should be consistent with create dev wheels
     - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   allow_failure: true
@@ -1003,7 +1001,7 @@ publish tag wheels to artifactory:
   image: releases-docker.jfrog.io/jfrog/jfrog-cli-v2-jf
   needs: ["create pypi wheels"]
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $CI_COMMIT_TAG
   allow_failure: true
@@ -1047,7 +1045,7 @@ publish wheels to github release:
   image: ubuntu:22.04
   needs: ["create pypi wheels"]
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $CI_COMMIT_TAG
   before_script:
@@ -1067,7 +1065,7 @@ publish wheels to github release:
   image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: [linux-x86_64 build]
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   artifacts:
     paths:
       - public
@@ -1123,7 +1121,7 @@ check generated files:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   timeout: 10m
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   script:
     - >
       git diff --exit-code warp/__init__.pyi docs/modules/functions.rst ||

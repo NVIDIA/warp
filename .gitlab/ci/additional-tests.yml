@@ -37,7 +37,7 @@ linux-x86_64 test:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 build
   extends:
-    - .omni_nvks_gpu_2x
+    - .ipp_lnx_x86_64_gpu_2x
     - .save_test_report_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"

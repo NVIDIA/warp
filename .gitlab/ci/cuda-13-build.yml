@@ -91,7 +91,7 @@ check un-namespaced symbols linux-x86_64:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 cuda 13 build
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   script:
     - |
       echo "Checking for un-namespaced symbols..."
@@ -132,7 +132,7 @@ create pypi wheels:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 cuda 13 build
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   before_script:
     # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
     - mkdir -p warp/bin/windows-x86_64
@@ -164,7 +164,7 @@ publish wheels to gitlab pypi registry:
   image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: ["create pypi wheels"]
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $PARENT_COMMIT_TAG
     - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
@@ -179,7 +179,7 @@ publish wheels to gitlab package registry:
   stage: deploy
   needs: ["create pypi wheels"]
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $PARENT_COMMIT_TAG
     - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
@@ -200,7 +200,7 @@ publish wheels to github release:
   image: ubuntu:22.04
   needs: ["create pypi wheels"]
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $PARENT_COMMIT_TAG
   before_script:
@@ -220,7 +220,7 @@ publish tag wheels to artifactory:
   image: releases-docker.jfrog.io/jfrog/jfrog-cli-v2-jf
   needs: ["create pypi wheels"]
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $PARENT_COMMIT_TAG
   allow_failure: true
