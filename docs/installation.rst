@@ -101,6 +101,17 @@ To remedy the situation there are a few options:
 
 Also note that full support for tile-based MathDx features requires CUDA version 12.6.3 or later. See :ref:`mathdx` for more information.
 
+CUDA 12.9 limitation on Linux ARM platforms
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When building Warp from source with CUDA 12.9 on a Linux ARM platform (including NVIDIA Jetson platforms),
+the resulting binary will not support Maxwell, Pascal, or Volta GPU architectures due to a
+`bug <https://github.com/NVIDIA/cccl/issues/4967>`__ in the CUDA 12.9 Toolkit which limits the number of architectures that
+can be compiled at once.
+
+If support for these architectures is required, build Warp using a CUDA Toolkit prior to 12.9.
+Note that CUDA 13.0 dropped support for the same architectures entirely.
+
 Dependencies
 ------------
 
