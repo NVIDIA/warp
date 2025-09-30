@@ -8388,7 +8388,13 @@ add_builtin(
     missing_grad=True,
 )
 
-add_builtin("lshift", input_types={"a": Int, "b": Int}, value_func=sametypes_create_value_func(Int), group="Operators")
+add_builtin(
+    "lshift",
+    input_types={"a": Int, "b": Int},
+    value_func=sametypes_create_value_func(Int),
+    group="Operators",
+    missing_grad=True,
+)
 add_builtin(
     "lshift",
     input_types={"a": vector(length=Any, dtype=Int), "b": vector(length=Any, dtype=Int)},
@@ -8434,7 +8440,9 @@ add_builtin(
     missing_grad=True,
 )
 
-add_builtin("invert", input_types={"a": Int}, value_func=sametypes_create_value_func(Int), group="Operators")
+add_builtin(
+    "invert", input_types={"a": Int}, value_func=sametypes_create_value_func(Int), group="Operators", missing_grad=True
+)
 add_builtin(
     "invert",
     input_types={"a": vector(length=Any, dtype=Int)},
