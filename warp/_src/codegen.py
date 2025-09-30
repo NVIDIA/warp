@@ -3718,6 +3718,7 @@ WP_API void {name}_cpu_forward(
     wp_args_{name} *_wp_args)
 {{
     wp::SharedTileStorage tile_mem;
+    wp::shared_tile_storage = &tile_mem;
 
     for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
@@ -3739,6 +3740,7 @@ WP_API void {name}_cpu_backward(
     wp_args_{name} *_wp_adj_args)
 {{
     wp::SharedTileStorage tile_mem;
+    wp::shared_tile_storage = &tile_mem;
 
     for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
