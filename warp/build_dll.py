@@ -174,6 +174,324 @@ def add_llvm_bin_to_path(args):
     return True
 
 
+def _get_architectures_cu12(
+    ctk_version: tuple[int, int], arch: str, target_platform: str, quick_build: bool = False
+) -> tuple[list[str], list[str]]:
+    """Get architecture flags for CUDA 12.x."""
+    gencode_opts = []
+    clang_arch_flags = []
+
+    if quick_build:
+        gencode_opts = ["-gencode=arch=compute_52,code=compute_52", "-gencode=arch=compute_75,code=compute_75"]
+        clang_arch_flags = ["--cuda-gpu-arch=sm_52", "--cuda-gpu-arch=sm_75"]
+    else:
+        if arch == "aarch64" and target_platform == "linux" and ctk_version == (12, 9):
+            # Skip certain architectures for aarch64 with CUDA 12.9 due to CCCL bug
+            print(
+                "[INFO] Skipping sm_52, sm_60, sm_61, and sm_70 targets for ARM due to a CUDA Toolkit bug. "
+                "See https://nvidia.github.io/warp/installation.html#cuda-12-9-limitation-on-linux-arm-platforms "
+                "for details."
+            )
+        else:
+            gencode_opts.extend(
+                [
+                    "-gencode=arch=compute_52,code=sm_52",  # Maxwell
+                    "-gencode=arch=compute_60,code=sm_60",  # Pascal
+                    "-gencode=arch=compute_61,code=sm_61",
+                    "-gencode=arch=compute_70,code=sm_70",  # Volta
+                ]
+            )
+            clang_arch_flags.extend(
+                [
+                    "--cuda-gpu-arch=sm_52",
+                    "--cuda-gpu-arch=sm_60",
+                    "--cuda-gpu-arch=sm_61",
+                    "--cuda-gpu-arch=sm_70",
+                ]
+            )
+
+        # Desktop architectures
+        gencode_opts.extend(
+            [
+                "-gencode=arch=compute_75,code=sm_75",  # Turing
+                "-gencode=arch=compute_75,code=compute_75",  # Turing (PTX)
+                "-gencode=arch=compute_80,code=sm_80",  # Ampere
+                "-gencode=arch=compute_86,code=sm_86",
+                "-gencode=arch=compute_89,code=sm_89",  # Ada
+                "-gencode=arch=compute_90,code=sm_90",  # Hopper
+            ]
+        )
+        clang_arch_flags.extend(
+            [
+                "--cuda-gpu-arch=sm_75",  # Turing
+                "--cuda-gpu-arch=sm_80",  # Ampere
+                "--cuda-gpu-arch=sm_86",
+                "--cuda-gpu-arch=sm_89",  # Ada
+                "--cuda-gpu-arch=sm_90",  # Hopper
+            ]
+        )
+
+        if ctk_version >= (12, 8):
+            gencode_opts.extend(["-gencode=arch=compute_100,code=sm_100", "-gencode=arch=compute_120,code=sm_120"])
+            clang_arch_flags.extend(["--cuda-gpu-arch=sm_100", "--cuda-gpu-arch=sm_120"])
+
+        # Mobile architectures for aarch64 Linux
+        if arch == "aarch64" and target_platform == "linux":
+            gencode_opts.extend(
+                [
+                    "-gencode=arch=compute_87,code=sm_87",  # Orin
+                    "-gencode=arch=compute_53,code=sm_53",  # X1
+                    "-gencode=arch=compute_62,code=sm_62",  # X2
+                    "-gencode=arch=compute_72,code=sm_72",  # Xavier
+                ]
+            )
+            clang_arch_flags.extend(
+                [
+                    "--cuda-gpu-arch=sm_87",
+                    "--cuda-gpu-arch=sm_53",
+                    "--cuda-gpu-arch=sm_62",
+                    "--cuda-gpu-arch=sm_72",
+                ]
+            )
+
+            # Thor support in CUDA 12.8+
+            if ctk_version >= (12, 8):
+                gencode_opts.append("-gencode=arch=compute_101,code=sm_101")  # Thor (CUDA 12 numbering)
+                clang_arch_flags.append("--cuda-gpu-arch=sm_101")
+
+            if ctk_version >= (12, 9):
+                gencode_opts.append("-gencode=arch=compute_121,code=sm_121")
+                clang_arch_flags.append("--cuda-gpu-arch=sm_121")
+
+        # PTX for future hardware (use highest available compute capability)
+        if ctk_version >= (12, 9):
+            gencode_opts.extend(["-gencode=arch=compute_121,code=compute_121"])
+        elif ctk_version >= (12, 8):
+            gencode_opts.extend(["-gencode=arch=compute_120,code=compute_120"])
+        else:
+            gencode_opts.append("-gencode=arch=compute_90,code=compute_90")
+
+    return gencode_opts, clang_arch_flags
+
+
+def _get_architectures_cu13(
+    ctk_version: tuple[int, int], arch: str, target_platform: str, quick_build: bool = False
+) -> tuple[list[str], list[str]]:
+    """Get architecture flags for CUDA 13.x."""
+    gencode_opts = []
+    clang_arch_flags = []
+
+    if quick_build:
+        gencode_opts = ["-gencode=arch=compute_75,code=compute_75"]
+        clang_arch_flags = ["--cuda-gpu-arch=sm_75"]
+    else:
+        # Desktop architectures
+        gencode_opts.extend(
+            [
+                "-gencode=arch=compute_75,code=sm_75",  # Turing
+                "-gencode=arch=compute_75,code=compute_75",  # Turing (PTX)
+                "-gencode=arch=compute_80,code=sm_80",  # Ampere
+                "-gencode=arch=compute_86,code=sm_86",
+                "-gencode=arch=compute_89,code=sm_89",  # Ada
+                "-gencode=arch=compute_90,code=sm_90",  # Hopper
+                "-gencode=arch=compute_100,code=sm_100",  # Blackwell
+                "-gencode=arch=compute_120,code=sm_120",  # Blackwell
+            ]
+        )
+        clang_arch_flags.extend(
+            [
+                "--cuda-gpu-arch=sm_75",  # Turing
+                "--cuda-gpu-arch=sm_80",  # Ampere
+                "--cuda-gpu-arch=sm_86",
+                "--cuda-gpu-arch=sm_89",  # Ada
+                "--cuda-gpu-arch=sm_90",  # Hopper
+                "--cuda-gpu-arch=sm_100",  # Blackwell
+                "--cuda-gpu-arch=sm_120",  # Blackwell
+            ]
+        )
+
+        # Mobile architectures for aarch64 Linux
+        if arch == "aarch64" and target_platform == "linux":
+            gencode_opts.extend(
+                [
+                    "-gencode=arch=compute_87,code=sm_87",  # Orin
+                    "-gencode=arch=compute_110,code=sm_110",  # Thor
+                    "-gencode=arch=compute_121,code=sm_121",  # Spark
+                ]
+            )
+            clang_arch_flags.extend(
+                [
+                    "--cuda-gpu-arch=sm_87",
+                    "--cuda-gpu-arch=sm_110",
+                    "--cuda-gpu-arch=sm_121",
+                ]
+            )
+
+        # PTX for future hardware (use highest available compute capability)
+        gencode_opts.extend(["-gencode=arch=compute_121,code=compute_121"])
+
+    return gencode_opts, clang_arch_flags
+
+
+def _get_architectures_cu12(
+    ctk_version: tuple[int, int], arch: str, target_platform: str, quick_build: bool = False
+) -> tuple[list[str], list[str]]:
+    """Get architecture flags for CUDA 12.x."""
+    gencode_opts = []
+    clang_arch_flags = []
+
+    if quick_build:
+        gencode_opts = ["-gencode=arch=compute_52,code=compute_52", "-gencode=arch=compute_75,code=compute_75"]
+        clang_arch_flags = ["--cuda-gpu-arch=sm_52", "--cuda-gpu-arch=sm_75"]
+    else:
+        if arch == "aarch64" and target_platform == "linux" and ctk_version == (12, 9):
+            # Skip certain architectures for aarch64 with CUDA 12.9 due to CCCL bug
+            print(
+                "[INFO] Skipping sm_52, sm_60, sm_61, and sm_70 targets for ARM due to a CUDA Toolkit bug. "
+                "See https://nvidia.github.io/warp/installation.html#cuda-12-9-limitation-on-linux-arm-platforms "
+                "for details."
+            )
+        else:
+            gencode_opts.extend(
+                [
+                    "-gencode=arch=compute_52,code=sm_52",  # Maxwell
+                    "-gencode=arch=compute_60,code=sm_60",  # Pascal
+                    "-gencode=arch=compute_61,code=sm_61",
+                    "-gencode=arch=compute_70,code=sm_70",  # Volta
+                ]
+            )
+            clang_arch_flags.extend(
+                [
+                    "--cuda-gpu-arch=sm_52",
+                    "--cuda-gpu-arch=sm_60",
+                    "--cuda-gpu-arch=sm_61",
+                    "--cuda-gpu-arch=sm_70",
+                ]
+            )
+
+        # Desktop architectures
+        gencode_opts.extend(
+            [
+                "-gencode=arch=compute_75,code=sm_75",  # Turing
+                "-gencode=arch=compute_75,code=compute_75",  # Turing (PTX)
+                "-gencode=arch=compute_80,code=sm_80",  # Ampere
+                "-gencode=arch=compute_86,code=sm_86",
+                "-gencode=arch=compute_89,code=sm_89",  # Ada
+                "-gencode=arch=compute_90,code=sm_90",  # Hopper
+            ]
+        )
+        clang_arch_flags.extend(
+            [
+                "--cuda-gpu-arch=sm_75",  # Turing
+                "--cuda-gpu-arch=sm_80",  # Ampere
+                "--cuda-gpu-arch=sm_86",
+                "--cuda-gpu-arch=sm_89",  # Ada
+                "--cuda-gpu-arch=sm_90",  # Hopper
+            ]
+        )
+
+        if ctk_version >= (12, 8):
+            gencode_opts.extend(["-gencode=arch=compute_100,code=sm_100", "-gencode=arch=compute_120,code=sm_120"])
+            clang_arch_flags.extend(["--cuda-gpu-arch=sm_100", "--cuda-gpu-arch=sm_120"])
+
+        # Mobile architectures for aarch64 Linux
+        if arch == "aarch64" and target_platform == "linux":
+            gencode_opts.extend(
+                [
+                    "-gencode=arch=compute_87,code=sm_87",  # Orin
+                    "-gencode=arch=compute_53,code=sm_53",  # X1
+                    "-gencode=arch=compute_62,code=sm_62",  # X2
+                    "-gencode=arch=compute_72,code=sm_72",  # Xavier
+                ]
+            )
+            clang_arch_flags.extend(
+                [
+                    "--cuda-gpu-arch=sm_87",
+                    "--cuda-gpu-arch=sm_53",
+                    "--cuda-gpu-arch=sm_62",
+                    "--cuda-gpu-arch=sm_72",
+                ]
+            )
+
+            # Thor support in CUDA 12.8+
+            if ctk_version >= (12, 8):
+                gencode_opts.append("-gencode=arch=compute_101,code=sm_101")  # Thor (CUDA 12 numbering)
+                clang_arch_flags.append("--cuda-gpu-arch=sm_101")
+
+            if ctk_version >= (12, 9):
+                gencode_opts.append("-gencode=arch=compute_121,code=sm_121")
+                clang_arch_flags.append("--cuda-gpu-arch=sm_121")
+
+        # PTX for future hardware (use highest available compute capability)
+        if ctk_version >= (12, 9):
+            gencode_opts.extend(["-gencode=arch=compute_121,code=compute_121"])
+        elif ctk_version >= (12, 8):
+            gencode_opts.extend(["-gencode=arch=compute_120,code=compute_120"])
+        else:
+            gencode_opts.append("-gencode=arch=compute_90,code=compute_90")
+
+    return gencode_opts, clang_arch_flags
+
+
+def _get_architectures_cu13(
+    ctk_version: tuple[int, int], arch: str, target_platform: str, quick_build: bool = False
+) -> tuple[list[str], list[str]]:
+    """Get architecture flags for CUDA 13.x."""
+    gencode_opts = []
+    clang_arch_flags = []
+
+    if quick_build:
+        gencode_opts = ["-gencode=arch=compute_75,code=compute_75"]
+        clang_arch_flags = ["--cuda-gpu-arch=sm_75"]
+    else:
+        # Desktop architectures
+        gencode_opts.extend(
+            [
+                "-gencode=arch=compute_75,code=sm_75",  # Turing
+                "-gencode=arch=compute_75,code=compute_75",  # Turing (PTX)
+                "-gencode=arch=compute_80,code=sm_80",  # Ampere
+                "-gencode=arch=compute_86,code=sm_86",
+                "-gencode=arch=compute_89,code=sm_89",  # Ada
+                "-gencode=arch=compute_90,code=sm_90",  # Hopper
+                "-gencode=arch=compute_100,code=sm_100",  # Blackwell
+                "-gencode=arch=compute_120,code=sm_120",  # Blackwell
+            ]
+        )
+        clang_arch_flags.extend(
+            [
+                "--cuda-gpu-arch=sm_75",  # Turing
+                "--cuda-gpu-arch=sm_80",  # Ampere
+                "--cuda-gpu-arch=sm_86",
+                "--cuda-gpu-arch=sm_89",  # Ada
+                "--cuda-gpu-arch=sm_90",  # Hopper
+                "--cuda-gpu-arch=sm_100",  # Blackwell
+                "--cuda-gpu-arch=sm_120",  # Blackwell
+            ]
+        )
+
+        # Mobile architectures for aarch64 Linux
+        if arch == "aarch64" and target_platform == "linux":
+            gencode_opts.extend(
+                [
+                    "-gencode=arch=compute_87,code=sm_87",  # Orin
+                    "-gencode=arch=compute_110,code=sm_110",  # Thor
+                    "-gencode=arch=compute_121,code=sm_121",  # Spark
+                ]
+            )
+            clang_arch_flags.extend(
+                [
+                    "--cuda-gpu-arch=sm_87",
+                    "--cuda-gpu-arch=sm_110",
+                    "--cuda-gpu-arch=sm_121",
+                ]
+            )
+
+        # PTX for future hardware (use highest available compute capability)
+        gencode_opts.extend(["-gencode=arch=compute_121,code=compute_121"])
+
+    return gencode_opts, clang_arch_flags
+
+
 def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: list[str] | None = None, mode=None):
     mode = args.mode if (mode is None) else mode
     cuda_home = args.cuda_path
@@ -208,94 +526,11 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_path, arch, libs: list[str]
                 f"CUDA Toolkit version {MIN_CTK_VERSION[0]}.{MIN_CTK_VERSION[1]}+ is required (found {ctk_version[0]}.{ctk_version[1]} in {cuda_home})"
             )
 
-        # NVCC gencode options
-        gencode_opts = []
-
-        # Clang architecture flags
-        clang_arch_flags = []
-
-        if args.quick:
-            # minimum supported architectures (PTX)
-            if ctk_version >= (13, 0):
-                gencode_opts += ["-gencode=arch=compute_75,code=compute_75"]
-                clang_arch_flags += ["--cuda-gpu-arch=sm_75"]
-            else:
-                gencode_opts += ["-gencode=arch=compute_52,code=compute_52", "-gencode=arch=compute_75,code=compute_75"]
-                clang_arch_flags += ["--cuda-gpu-arch=sm_52", "--cuda-gpu-arch=sm_75"]
+        # Get architecture flags based on CUDA version
+        if ctk_version >= (13, 0):
+            gencode_opts, clang_arch_flags = _get_architectures_cu13(ctk_version, arch, sys.platform, args.quick)
         else:
-            if ctk_version < (13, 0):
-                # Add targets that were removed in CUDA 13
-                gencode_opts += [
-                    "-gencode=arch=compute_52,code=sm_52",  # Maxwell
-                    "-gencode=arch=compute_60,code=sm_60",  # Pascal
-                    "-gencode=arch=compute_61,code=sm_61",
-                    "-gencode=arch=compute_70,code=sm_70",  # Volta
-                ]
-                clang_arch_flags += [
-                    "--cuda-gpu-arch=sm_52",
-                    "--cuda-gpu-arch=sm_60",
-                    "--cuda-gpu-arch=sm_61",
-                    "--cuda-gpu-arch=sm_70",  # Volta
-                ]
-
-            # generate code for all supported architectures
-            gencode_opts += [
-                # SASS for supported desktop/datacenter architectures
-                "-gencode=arch=compute_75,code=sm_75",  # Turing
-                "-gencode=arch=compute_75,code=compute_75",  # Turing (PTX)
-                "-gencode=arch=compute_80,code=sm_80",  # Ampere
-                "-gencode=arch=compute_86,code=sm_86",
-                "-gencode=arch=compute_89,code=sm_89",  # Ada
-                "-gencode=arch=compute_90,code=sm_90",  # Hopper
-            ]
-
-            clang_arch_flags += [
-                # SASS for supported desktop/datacenter architectures
-                "--cuda-gpu-arch=sm_75",  # Turing
-                "--cuda-gpu-arch=sm_80",  # Ampere
-                "--cuda-gpu-arch=sm_86",
-                "--cuda-gpu-arch=sm_89",  # Ada
-                "--cuda-gpu-arch=sm_90",  # Hopper
-            ]
-
-            if arch == "aarch64" and sys.platform == "linux":
-                # SASS for supported mobile architectures (e.g. Tegra/Jetson)
-                gencode_opts += ["-gencode=arch=compute_87,code=sm_87"]  # Orin
-                clang_arch_flags += ["--cuda-gpu-arch=sm_87"]
-
-                if ctk_version >= (13, 0):
-                    gencode_opts += ["-gencode=arch=compute_110,code=sm_110"]  # Thor
-                    clang_arch_flags += ["--cuda-gpu-arch=sm_110"]
-                else:
-                    gencode_opts += [
-                        "-gencode=arch=compute_53,code=sm_53",  # X1
-                        "-gencode=arch=compute_62,code=sm_62",  # X2
-                        "-gencode=arch=compute_72,code=sm_72",  # Xavier
-                    ]
-                    clang_arch_flags += [
-                        "--cuda-gpu-arch=sm_53",
-                        "--cuda-gpu-arch=sm_62",
-                        "--cuda-gpu-arch=sm_72",
-                    ]
-
-                    if ctk_version >= (12, 8):
-                        gencode_opts += ["-gencode=arch=compute_101,code=sm_101"]  # Thor (CUDA 12 numbering)
-                        clang_arch_flags += ["--cuda-gpu-arch=sm_101"]
-
-            if ctk_version >= (12, 8):
-                # Support for Blackwell is available with CUDA Toolkit 12.8+
-                gencode_opts += [
-                    "-gencode=arch=compute_100,code=sm_100",  # Blackwell
-                    "-gencode=arch=compute_120,code=sm_120",  # Blackwell
-                    "-gencode=arch=compute_120,code=compute_120",  # PTX for future hardware
-                ]
-
-                clang_arch_flags += [
-                    "--cuda-gpu-arch=sm_100",  # Blackwell
-                    "--cuda-gpu-arch=sm_120",  # Blackwell
-                ]
-            else:
-                gencode_opts += ["-gencode=arch=compute_90,code=compute_90"]  # PTX for future hardware
+            gencode_opts, clang_arch_flags = _get_architectures_cu12(ctk_version, arch, sys.platform, args.quick)
 
         nvcc_opts = [
             *gencode_opts,
