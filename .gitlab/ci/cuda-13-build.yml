@@ -166,12 +166,11 @@ publish wheels to gitlab pypi registry:
   extends:
     - .ipp_lnx_x86_64_cpu_micro
   rules:
-    - if: $PARENT_COMMIT_TAG
-    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
-    - when: manual # Can be triggered in all other scenarios
+    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/ || $PARENT_COMMIT_TAG
+      when: manual
       allow_failure: true
   script:
-    - uv publish --verbose -t ${CI_JOB_TOKEN} --publish-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi --check-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi/simple dist/*
+    - uv publish --verbose -u gitlab-ci-token -p ${CI_JOB_TOKEN} --publish-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi --check-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi/simple dist/*
 
 # Uploads the wheels to the internal GitLab package registry in the Warp project
 # Generated files will be in a branch/tag-specific folder

@@ -932,7 +932,7 @@ publish wheels to gitlab pypi registry:
       when: manual
       allow_failure: true
   script:
-    - uv publish --verbose -t ${CI_JOB_TOKEN} --publish-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi --check-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi/simple dist-github/*
+    - uv publish --verbose -u gitlab-ci-token -p ${CI_JOB_TOKEN} --publish-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi --check-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi/simple dist-github/*
 
 # Uploads the wheels to the internal GitLab package registry in the Warp project
 # Generated files will be in a branch/tag-specific folder
