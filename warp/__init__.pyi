@@ -3341,7 +3341,7 @@ def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> Mesh
 def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB:
     """Construct an axis-aligned bounding box query against a :class:`Mesh`.
 
-    This query can be used to iterate over all triangles inside a volume.
+    This query can be used to iterate over all bounding boxes of the triangles inside a volume.
 
     :param id: The mesh identifier
     :param low: The lower bound of the bounding box in mesh space
@@ -3351,7 +3351,7 @@ def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB:
 
 @over
 def mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool:
-    """Move to the next triangle overlapping the query bounding box.
+    """Move to the next triangle whose bounding box overlaps the query bounding box.
 
     The index of the current face is stored in ``index``, returns ``False`` if there are no more overlapping triangles.
     """
