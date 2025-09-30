@@ -27,6 +27,8 @@
 - Fix scaling not being correctly applied to rendered meshes in some cases
   ([GH-880](https://github.com/NVIDIA/warp/issues/880)).
 - Fix handling of generic kernels with `wp.jax_experimental.ffi.jax_kernel()`.
+- Update built-in documentation to accurately reflect their differentiability status
+  ([GH-970](https://github.com/NVIDIA/warp/issues/970)).
 
 ## [1.9.0] - 2025-09-04
 
