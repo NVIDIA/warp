@@ -874,7 +874,7 @@ def test_deformed_geometry(test, device):
             np.sum(side_measures.numpy()), scale**2 * (0.5 * 6 * (N + 1) + N * 2 * math.sqrt(3.0)), places=4
         )
 
-        @wp.kernel
+        @fem.cache.dynamic_kernel(suffix=deformed_geo.name, kernel_options={"enable_backward": False})
         def _test_deformed_geometry_normal(
             geo_index_arg: geo.SideIndexArg, geo_arg: geo.SideArg, def_arg: deformed_geo.SideArg, rotation: wp.vec3
         ):
@@ -926,7 +926,7 @@ def test_deformed_geometry_codimensional(test, device):
 
         deformed_geo = pos_field.make_deformed_geometry()
 
-        @wp.kernel
+        @fem.cache.dynamic_kernel(suffix=deformed_geo.name, kernel_options={"enable_backward": False})
         def _test_deformed_geometry_normal_codimensional(
             geo_arg: geo.CellArg, def_arg: deformed_geo.CellArg, rotation: wp.vec3
         ):
@@ -1956,7 +1956,7 @@ def test_vector_spaces(test, device):
         )
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def test_qr_eigenvalues():
     tol = 5.0e-7
 
@@ -2011,7 +2011,7 @@ def test_qr_eigenvalues():
     wp.expect_near(wp.ddot(Err6, Err6), 0.0, 1.0e-13)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def test_qr_inverse():
     rng = wp.rand_init(4356, wp.tid())
     M = wp.mat33(
