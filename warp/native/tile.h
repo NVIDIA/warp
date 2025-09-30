@@ -738,6 +738,9 @@ inline CUDA_CALLABLE int tile_align(int num_bytes)
     return sign * ((num_bytes_abs + alignment - 1) / alignment) * alignment;
 }
 
+// On the CPU we use a fixed size block of stack memory for shared tile allocations.
+// We store a pointer to the current allocation storage either in a reserved register
+// (AArch64) or a static variable (x86-64).
 #if !defined(__CUDA_ARCH__)
 class SharedTileStorage;
 #if defined(__aarch64__)
@@ -749,13 +752,18 @@ static SharedTileStorage* shared_tile_storage;
 #endif
 #endif
 
+// This class manages a block of "shared" memory for use by tiles.
+// On the GPU this maps to dynamic shared memory, while on the CPU we allocate
+// a fixed size block of memory on the stack and manage allocations from it.
+// An instance of this class gets created at the start of a kernel.
 class SharedTileStorage
 {
 public:
     SharedTileStorage()
     {
 #if !defined(__CUDA_ARCH__)
-        // 
+        // On the CPU save a pointer to this instance in a reserved register
+        // or static variable so it can be accessed from anywhere within a kernel.
         old_value = shared_tile_storage;
         shared_tile_storage = this;
 #endif
@@ -820,7 +828,6 @@ private:
     char dynamic_smem_base[WP_MAX_CPU_SHARED];
 #endif
 };
-
 
 
 template <typename Shape_, typename Stride_= typename compute_strides<Shape_>::Stride>

@@ -131,6 +131,8 @@ static std::unique_ptr<llvm::Module> source_to_llvm(bool is_cuda, const std::str
         #endif
 
         #if defined(__aarch64__)
+            // Static memory support is broken on AArch64 CPUs. As a workaround we reserve some stack memory on kernel entry,
+            // and point the callee-saved x28 register to it so we can access it anywhere. See SharedTileStorage in tile.h.
             args.push_back("-target-feature");
             args.push_back("+reserve-x28");
         #endif
