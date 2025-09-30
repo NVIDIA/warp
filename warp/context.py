@@ -6566,10 +6566,12 @@ def load_module(
     """Force a user-defined module to be compiled and loaded
 
     Args:
-        module: The module to load.  If None, load the current module.
-        device: The device to load the modules on.  If None, load on all devices.
-        recursive: Whether to load submodules.  E.g., if the given module is `warp.sim`, this will also load `warp.sim.model`, `warp.sim.articulation`, etc.
-        block_dim: The number of threads per block (always 1 for "cpu" devices).
+        module: The module to load. If None, load the current module.
+        device: The device to load the modules on. If None, load on all devices.
+        recursive: Whether to load submodules. E.g., if the given module is
+          ``warp.render``, this will also load ``warp.render.utils`` and
+          ``warp.render.opengl``.
+        block_dim: The number of threads per block (always 1 for ``"cpu"`` devices).
 
     Note: A module must be imported before it can be loaded by this function.
     """

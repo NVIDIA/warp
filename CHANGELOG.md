@@ -20,6 +20,11 @@
 
 ### Removed
 
+- Remove `warp.sim` module and related examples. This module has been superseded by the Newton library, a separate
+  package with a new API. For migration guidance, see the
+  [Newton migration guide](https://newton-physics.github.io/newton/migration.html) and the original GitHub announcement
+  ([GH-735](https://github.com/NVIDIA/warp/discussions/735)).
+
 ### Deprecated
 
 ### Changed

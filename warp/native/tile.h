@@ -140,7 +140,6 @@
     [ ] LayerNorm  
     [ ] SoftMax
     [ ] GEMM
-    [ ] warp.sim (CRBA)
     [ ] Batched MLP
     [ ] Layer norm
     [ ] FNO + Burgers equation
@@ -149,7 +148,6 @@
     [ ] MeshCNN (Modulus, Oliver)
     [ ] BioNemo (Ali)
     [ ] Skinning (David/Or/Vismay)
-    [ ] warp.sim (VBD)
 [ ] Error checking
     [ ] Ensure functions passed to tile_map() are compatible with tile type
     [ ] Ensure that args passed to tile ops are compatible
