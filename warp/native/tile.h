@@ -759,6 +759,7 @@ static SharedTileStorage* shared_tile_storage;
 class SharedTileStorage
 {
 public:
+    // cppcheck-suppress uninitMemberVar
     SharedTileStorage()
     {
 #if !defined(__CUDA_ARCH__)
