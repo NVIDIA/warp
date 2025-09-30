@@ -16,6 +16,7 @@
 - Add support for recording and waiting for external events in CUDA graphs ([GH-983](https://github.com/NVIDIA/warp/issues/983)).
 - Add kernel-level functions `bsr_row_index` and `bsr_block_index` to `warp.sparse` ([GH-895](https://github.com/NVIDIA/warp/issues/895)).
 - Add support for querying CPU memory information (requires `psutil` package) ([GH-985](https://github.com/NVIDIA/warp/issues/985)).
+- Add support for limiting the graph cache size of JAX callables ([GH-989](https://github.com/NVIDIA/warp/issues/989)).
 
 ### Removed
 
