@@ -4,7 +4,6 @@
 [![Downloads](https://static.pepy.tech/badge/warp-lang/month)](https://pepy.tech/project/warp-lang)
 [![codecov](https://codecov.io/github/NVIDIA/warp/graph/badge.svg?token=7O1KSM79FG)](https://codecov.io/github/NVIDIA/warp)
 ![GitHub - CI](https://github.com/NVIDIA/warp/actions/workflows/ci.yml/badge.svg)
-[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?logo=discord&logoColor=white)](https://discord.com/invite/nvidiaomniverse)
 
 # NVIDIA Warp
 
@@ -412,9 +411,7 @@ See the [FAQ](https://nvidia.github.io/warp/faq.html) in the Warp documentation.
 
 Problems, questions, and feature requests can be opened on [GitHub Issues](https://github.com/NVIDIA/warp/issues).
 
-The Warp team also monitors the **#warp** forum on the public [Omniverse Discord](https://discord.com/invite/nvidiaomniverse) server, come chat with us!
-
-For inquiries not suited for GitHub Issues or Discord, please email warp-python@nvidia.com.
+For inquiries not suited for GitHub Issues, please email warp-python@nvidia.com.
 
 ## Versioning
 

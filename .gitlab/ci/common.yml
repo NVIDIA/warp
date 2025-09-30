@@ -33,7 +33,8 @@ default:
 # ==============================================================================
 include:
   - project: "omniverse/devplat/gitlab/templates/runners"
-    file: "/modules/include.yml"
+    file:
+    - "/modules/include.yml"
     ref: v2_latest
 
 # ==============================================================================

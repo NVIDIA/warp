@@ -160,6 +160,4 @@ How can I contact the Warp team directly?
 
 For bug reports, feature requests, and technical questions, we recommend using `GitHub Issues <https://github.com/NVIDIA/warp/issues>`_.
 
-The Warp team also monitors the **#warp** forum on the public `Omniverse Discord <https://discord.com/invite/nvidiaomniverse>`_ server.
-
-For inquiries not suited for GitHub Issues or Discord, please email warp-python@nvidia.com.
+For inquiries not suited for GitHub Issues, please email warp-python@nvidia.com.

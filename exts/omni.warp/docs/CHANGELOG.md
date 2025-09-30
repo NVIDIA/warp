@@ -1,6 +1,11 @@
 # CHANGELOG
 
-## [1.9.1-rc.1] - 2025-10-01
+## [1.9.1] - 2025-10-01
+
+### Added
+
+- Add documentation describing Python `IntFlag` limitations in Warp kernels
+  ([GH-917](https://github.com/NVIDIA/warp/issues/917)).
 
 ### Fixed
 
