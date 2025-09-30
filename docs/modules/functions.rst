@@ -6246,7 +6246,6 @@ Operators
 
        * Kernel
        * Python
-       * Differentiable
 
 
 .. py:function:: lshift(a: Vector[Any,Int], b: Vector[Any,Int]) -> Vector[Any,Int]
@@ -6309,7 +6308,6 @@ Operators
 
        * Kernel
        * Python
-       * Differentiable
 
 
 .. py:function:: invert(a: Vector[Any,Int]) -> Vector[Any,Int]
