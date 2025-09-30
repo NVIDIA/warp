@@ -60,7 +60,7 @@ linux-x86_64 build:
   image: quay.io/pypa/manylinux_2_28_x86_64:latest
   extends:
     - .save_warp_bin_artifact
-    - .runner-build-linux-x86_64
+    - .ipp_lnx_x86_64_cpu_medium
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - yum update -y && yum install curl wget -y
@@ -116,7 +116,7 @@ linux-x86_64 test:
   image: ubuntu:22.04
   needs: [linux-x86_64 build]
   extends:
-    - .omni_nvks_gpu_2x
+    - .ipp_lnx_x86_64_gpu_2x
     - .save_test_report_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -177,7 +177,7 @@ create pypi wheels:
     - linux-x86_64 build
     - windows-x86_64 build
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   before_script:
     # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
     - mkdir -p warp/bin/windows-x86_64
