@@ -1794,8 +1794,8 @@ which returns ``True`` as long as there are intersecting bounds.
 Example: BVH Volume Traversal
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Similar to the ray-traversal example, we can perform volume traversal to find the volumes that are fully contained
-within a specified bounding box.
+Similar to the ray-traversal example, we can perform volume traversal to find the volumes that are overlapping with
+a specified bounding box.
 
 .. code:: python
 
