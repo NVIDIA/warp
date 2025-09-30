@@ -142,6 +142,10 @@ Warp arrays can also be constructed from objects that define the ``__cuda_array_
     # return a Warp array wrapper around the cupy data (zero-copy)
     a = wp.array(r, device=device)
 
+.. note::
+
+    When constructing arrays from the ``__cuda_array_interface__``, it is important to pass the correct CUDA device to the Warp array constructor.  The ``__cuda_array_interface__`` protocol does not include the device, hence it is necessary to explicitly specify the device where the array resides.
+
 Arrays can be moved between devices using :meth:`array.to`::
 
     host_array = wp.array(a, dtype=float, device="cpu")
