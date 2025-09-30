@@ -703,7 +703,7 @@ class BvhRayQuery:
                 wp.capture_launch(self.cuda_graph_mesh_ray_vs_aabb)
                 wp.synchronize_device()
 
-    @skip_for_params([t for t in itertools.product([480, 1080], [1, 2, 4], ["cpu"]) if t != (1080, 1, "cpu")])
+    @skip_for_params([t for t in itertools.product([480, 1080], [1, 2, 4], ["cpu"]) if t != (480, 1, "cpu")])
     @skip_benchmark_if(USD_AVAILABLE is False)
     def time_bvh_ray_vs_aabb_query(self, resolution, leaf_size, device):
         if self.bvh.device.is_cpu:
@@ -712,7 +712,7 @@ class BvhRayQuery:
             wp.capture_launch(self.cuda_graph_bvh_ray_vs_aabb)
         wp.synchronize_device()
 
-    @skip_for_params([t for t in itertools.product([480, 1080], [1, 2, 4], ["cpu"]) if t != (1080, 1, "cpu")])
+    @skip_for_params([t for t in itertools.product([480, 1080], [1, 2, 4], ["cpu"]) if t != (480, 1, "cpu")])
     @skip_benchmark_if(USD_AVAILABLE is False)
     def time_mesh_ray_vs_aabb_query(self, resolution, leaf_size, device):
         if self.bvh.device.is_cpu:
