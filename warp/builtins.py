@@ -5105,7 +5105,7 @@ add_builtin(
     group="Geometry",
     doc="""Construct an axis-aligned bounding box query against a :class:`Mesh`.
 
-    This query can be used to iterate over all triangles inside a volume.
+    This query can be used to iterate over all bounding boxes of the triangles inside a volume.
 
     :param id: The mesh identifier
     :param low: The lower bound of the bounding box in mesh space
@@ -5119,7 +5119,7 @@ add_builtin(
     input_types={"query": MeshQueryAABB, "index": int},
     value_type=builtins.bool,
     group="Geometry",
-    doc="""Move to the next triangle overlapping the query bounding box.
+    doc="""Move to the next triangle whose bounding box overlaps the query bounding box.
 
     The index of the current face is stored in ``index``, returns ``False`` if there are no more overlapping triangles.""",
     export=False,
