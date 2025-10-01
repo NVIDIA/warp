@@ -2888,7 +2888,7 @@ class array(Array[DType]):
                 # Performance note: avoid wrapping the external stream in a temporary Stream object
                 if stream != array_stream.cuda_stream:
                     warp.context.runtime.core.wp_cuda_stream_wait_stream(
-                        stream, array_stream.cuda_stream, array_stream.cached_event.cuda_event
+                        stream, array_stream.cuda_stream, array_stream.cached_event.cuda_event, False
                     )
             elif self.device.is_cpu:
                 # on CPU, stream must be None or -1

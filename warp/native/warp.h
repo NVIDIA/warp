@@ -295,8 +295,8 @@ extern "C"
     WP_API void wp_cuda_stream_unregister(void* context, void* stream);
     WP_API void* wp_cuda_stream_get_current();
     WP_API void wp_cuda_stream_synchronize(void* stream);
-    WP_API void wp_cuda_stream_wait_event(void* stream, void* event);
-    WP_API void wp_cuda_stream_wait_stream(void* stream, void* other_stream, void* event);
+    WP_API void wp_cuda_stream_wait_event(void* stream, void* event, bool external=false);
+    WP_API void wp_cuda_stream_wait_stream(void* stream, void* other_stream, void* event, bool external=false);
     WP_API int wp_cuda_stream_is_capturing(void* stream);
     WP_API uint64_t wp_cuda_stream_get_capture_id(void* stream);
     WP_API int wp_cuda_stream_get_priority(void* stream);
@@ -304,7 +304,7 @@ extern "C"
     WP_API void* wp_cuda_event_create(void* context, unsigned flags);
     WP_API void wp_cuda_event_destroy(void* event);
     WP_API int wp_cuda_event_query(void* event);
-    WP_API void wp_cuda_event_record(void* event, void* stream, bool timing=false);
+    WP_API void wp_cuda_event_record(void* event, void* stream, bool external=false);
     WP_API void wp_cuda_event_synchronize(void* event);
     WP_API float wp_cuda_event_elapsed_time(void* start_event, void* end_event);
 

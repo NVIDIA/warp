@@ -317,49 +317,33 @@ By default, status messages will be printed out after each module has been loade
 
 For debugging purposes, ``wp.config.verbose = True`` can be set to also get a printout when each module load begins.
 
-Here is an example illustrating the functionality of the kernel cache by running ``python3 -m warp.examples.sim.example_cartpole``
+Here is an example illustrating the functionality of the kernel cache by running ``python -m warp.examples.tile.example_tile_cholesky``
 twice. The first time, we see:
 
 .. code:: bat
 
-    Warp 1.2.0 initialized:
-        CUDA Toolkit 12.5, Driver 12.5
-        Devices:
-          "cpu"      : "x86_64"
-          "cuda:0"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
-          "cuda:1"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
-        CUDA peer access:
-          Supported fully (all-directional)
-        Kernel cache:
-          /home/nvidia/.cache/warp/1.2.0
-    Module warp.sim.collide 296dfb5 load on device 'cuda:0' took 17982.83 ms (compiled)
-    Module warp.sim.articulation b2cf0c2 load on device 'cuda:0' took 5686.67 ms (compiled)
-    Module warp.sim.integrator_euler b87aa18 load on device 'cuda:0' took 7753.78 ms (compiled)
-    Module warp.sim.integrator 036f39a load on device 'cuda:0' took 456.53 ms (compiled)
-    step took 0.06 ms
-    render took 4.63 ms
+    Warp 1.10.0.dev0 initialized:
+    CUDA Toolkit 13.0, Driver 13.0
+    Devices:
+        "cpu"      : "x86_64"
+        "cuda:0"   : "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition" (95 GiB, sm_120, mempool enabled)
+    Kernel cache:
+        /home/nvidia/.cache/warp/1.10.0.dev0
+    Module __main__ 0b0ecab load on device 'cuda:0' took 4136.19 ms  (compiled)
 
-The second time we run this example, we see that the module-loading messages now say ``(cached)`` and take much
-less time to load since code compilation is skipped:
+The second time we run this example, we see that the module-loading message now says ``(cached)`` and that it takes
+much less time to load the module since code compilation is skipped:
 
 .. code:: bat
 
-    Warp 1.2.0 initialized:
-        CUDA Toolkit 12.5, Driver 12.5
-        Devices:
-          "cpu"      : "x86_64"
-          "cuda:0"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
-          "cuda:1"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
-        CUDA peer access:
-          Supported fully (all-directional)
-        Kernel cache:
-          /home/nvidia/.cache/warp/1.2.0
-    Module warp.sim.collide 296dfb5 load on device 'cuda:0' took 9.07 ms (cached)
-    Module warp.sim.articulation b2cf0c2 load on device 'cuda:0' took 4.96 ms (cached)
-    Module warp.sim.integrator_euler b87aa18 load on device 'cuda:0' took 3.69 ms (cached)
-    Module warp.sim.integrator 036f39a load on device 'cuda:0' took 0.39 ms (cached)
-    step took 0.04 ms
-    render took 5.05 ms
+    Warp 1.10.0.dev0 initialized:
+    CUDA Toolkit 13.0, Driver 13.0
+    Devices:
+        "cpu"      : "x86_64"
+        "cuda:0"   : "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition" (95 GiB, sm_120, mempool enabled)
+    Kernel cache:
+        /home/nvidia/.cache/warp/1.10.0.dev0
+    Module __main__ 0b0ecab load on device 'cuda:0' took 30.98 ms  (cached)
 
 For more information, see the :doc:`codegen` section.
 

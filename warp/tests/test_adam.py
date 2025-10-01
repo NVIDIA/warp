@@ -19,7 +19,6 @@ import numpy as np
 
 import warp as wp
 import warp.optim
-import warp.sim
 from warp.tests.unittest_utils import *
 
 

@@ -59,6 +59,17 @@ def _triplets_to_dense(shape, rows, cols, values):
     return mat
 
 
+def _bsr_pruned(bsr):
+    return bsr_from_triplets(
+        rows_of_blocks=bsr.nrow,
+        cols_of_blocks=bsr.ncol,
+        rows=bsr.uncompress_rows(),
+        columns=bsr.columns,
+        values=bsr.values,
+        prune_numerical_zeros=True,
+    )
+
+
 def _bsr_to_dense(bsr):
     mat = np.zeros(bsr.shape)
 
@@ -363,15 +374,31 @@ def make_test_bsr_transpose(block_shape, scalar_type):
         bsr_set_from_triplets(bsr, rows, cols, vals)
         ref = 2.0 * np.transpose(_bsr_to_dense(bsr))
 
-        bsr_transposed = (2.0 * bsr).transpose()
+        bsr_transposed = (2.0 * bsr).transpose().eval()
 
-        res = _bsr_to_dense(bsr_transposed.eval())
+        res = _bsr_to_dense(bsr_transposed)
         assert_np_equal(res, ref, 0.0001)
 
         if block_shape[0] != block_shape[-1]:
             # test incompatible block shape
             with test.assertRaisesRegex(ValueError, "Destination block shape must be"):
                 bsr_set_transpose(dest=bsr, src=bsr)
+
+        # test masked transpose
+        # remove some non zeros from src and dest matrices
+        bsr_set_from_triplets(bsr, rows[:3], cols[:3], vals[:3])
+        bsr_transposed = bsr_from_triplets(
+            bsr_transposed.nrow,
+            bsr_transposed.ncol,
+            bsr_transposed.uncompress_rows()[:3],
+            bsr_transposed.columns[:3],
+            bsr_transposed.values[:3],
+        )
+
+        assert_np_equal(bsr_transposed.uncompress_rows().numpy()[:3], [0, 1, 1])
+        assert_np_equal(bsr_transposed.columns.numpy()[:3], [2, 0, 2])
+        bsr_set_transpose(bsr_transposed, bsr, masked=True)
+        assert _bsr_pruned(bsr_transposed).nnz_sync() == 2
 
     return test_bsr_transpose
 
@@ -664,6 +691,45 @@ def make_test_bsr_multiply_deep(block_shape, scalar_type):
     return test_bsr_multiply_deep
 
 
+def test_capturability(test, device):
+    """Test that BSR operations are graph-capturable"""
+
+    N = 5
+    M = 3
+
+    C = bsr_diag(wp.zeros(N, dtype=wp.mat33, device=device))
+
+    rows = wp.array([3, 4, 2, 0, 1], dtype=int, device=device)
+    columns = wp.array([2, 0, 1, 2, 1], dtype=int, device=device)
+    values = wp.ones(5, dtype=wp.mat33, device=device)
+
+    def test_body():
+        A = bsr_from_triplets(
+            N,
+            M,
+            rows=rows,
+            columns=columns,
+            values=values,
+        )
+        B = A + bsr_copy(A * 2.0)
+        bsr_mm(A, bsr_transposed(B), C, masked=True)
+
+    # ensure necessary modules are loaded and reset result
+    test_body()
+    C *= 0.0
+
+    with wp.ScopedDevice(device):
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            test_body()
+
+    assert_array_equal(bsr_get_diag(C), wp.zeros(N, dtype=wp.mat33, device=device))
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+
+    assert_array_equal(bsr_get_diag(C), wp.full(N, value=wp.mat33(9.0), dtype=wp.mat33, device=device))
+
+
 devices = get_test_devices()
 cuda_test_devices = get_selected_cuda_test_devices()
 
@@ -686,7 +752,10 @@ class TestSparse(unittest.TestCase):
         bsr_scale(x=diag_copy, alpha=0.0)
         self.assertEqual(diag_copy.nrow, nrow)
         self.assertEqual(diag_copy.ncol, nrow)
-        self.assertEqual(diag_copy.nnz, 0)
+        self.assertEqual(diag_copy.nnz, diag_bsr.nnz)
+
+        diag_pruned = _bsr_pruned(diag_copy)
+        self.assertEqual(diag_pruned.nnz_sync(), 0)
 
 
 add_function_test(TestSparse, "test_csr_from_triplets", test_csr_from_triplets, devices=devices)
@@ -728,6 +797,7 @@ add_function_test(TestSparse, "test_csr_mv", make_test_bsr_mv((1, 1), wp.float32
 add_function_test(TestSparse, "test_bsr_mv_1_3", make_test_bsr_mv((1, 3), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_3_3", make_test_bsr_mv((3, 3), wp.float64), devices=devices)
 
+add_function_test(TestSparse, "test_capturability", test_capturability, devices=cuda_test_devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

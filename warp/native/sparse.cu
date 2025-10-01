@@ -364,7 +364,8 @@ WP_API void wp_bsr_matrix_from_triplets_device(
 
         if (bsr_nnz_event)
         {
-            wp_cuda_event_record(bsr_nnz_event, stream);
+            const bool external = true;
+            wp_cuda_event_record(bsr_nnz_event, stream, external);
         }
     }
 
@@ -419,7 +420,7 @@ WP_API void wp_bsr_transpose_device(int row_count, int col_count, int nnz,
         // Ensures the sorted keys are available in summed_block_indices if needed
         if(d_keys.Current() != src_block_indices)
         {
-            check_cuda(cudaMemcpy(src_block_indices, src_block_indices+nnz, size_t(nnz) * sizeof(int), cudaMemcpyDeviceToDevice));
+            check_cuda(cudaMemcpyAsync(src_block_indices, src_block_indices+nnz, size_t(nnz) * sizeof(int), cudaMemcpyDeviceToDevice, stream));
         }
     }
 

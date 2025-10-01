@@ -432,6 +432,15 @@ def in_out_func(
     wp.launch(accum_kernel, dim=a.size, inputs=[a, b])  # modifies `b`
 
 
+def double_func(
+    # inputs
+    a: wp.array(dtype=float),
+    # outputs
+    b: wp.array(dtype=float),
+):
+    wp.launch(scale_kernel, dim=a.shape, inputs=[a, 2.0], outputs=[b])
+
+
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_add(test, device):
     # two inputs and one output
@@ -734,6 +743,107 @@ def test_ffi_jax_callable_in_out(test, device):
 
     assert_np_equal(b, np.arange(1, 11, dtype=np.float32))
     assert_np_equal(c, np.full(10, 2, dtype=np.float32))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_callable_graph_cache(test, device):
+    # test graph caching limits
+    import jax
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import GraphMode, clear_jax_callable_graph_cache, jax_callable
+
+    # --- test with default cache settings ---
+
+    jax_double = jax_callable(double_func, graph_mode=GraphMode.WARP)
+    f = jax.jit(jax_double)
+    arrays = []
+
+    test.assertEqual(jax_double.graph_cache_max, wp.jax_experimental.ffi.jax_callable_default_graph_cache_max)
+
+    with jax.default_device(wp.device_to_jax(device)):
+        for i in range(10):
+            n = 10 + i
+            a = jp.arange(n, dtype=jp.float32)
+            (b,) = f(a)
+
+            assert_np_equal(b, 2 * np.arange(n, dtype=np.float32))
+
+            # ensure graph cache is always growing
+            test.assertEqual(jax_double.graph_cache_size, i + 1)
+
+            # keep JAX array alive to prevent the memory from being reused, thus forcing a new graph capture each time
+            arrays.append(a)
+
+    # --- test clearing one callable's cache ---
+
+    clear_jax_callable_graph_cache(jax_double)
+
+    test.assertEqual(jax_double.graph_cache_size, 0)
+
+    # --- test with a custom cache limit ---
+
+    graph_cache_max = 5
+    jax_double = jax_callable(double_func, graph_mode=GraphMode.WARP, graph_cache_max=graph_cache_max)
+    f = jax.jit(jax_double)
+    arrays = []
+
+    test.assertEqual(jax_double.graph_cache_max, graph_cache_max)
+
+    with jax.default_device(wp.device_to_jax(device)):
+        for i in range(10):
+            n = 10 + i
+            a = jp.arange(n, dtype=jp.float32)
+            (b,) = f(a)
+
+            assert_np_equal(b, 2 * np.arange(n, dtype=np.float32))
+
+            # ensure graph cache size is capped
+            test.assertEqual(jax_double.graph_cache_size, min(i + 1, graph_cache_max))
+
+            # keep JAX array alive to prevent the memory from being reused, thus forcing a new graph capture
+            arrays.append(a)
+
+    # --- test clearing all callables' caches ---
+
+    clear_jax_callable_graph_cache()
+
+    with wp.jax_experimental.ffi._FFI_REGISTRY_LOCK:
+        for c in wp.jax_experimental.ffi._FFI_CALLABLE_REGISTRY.values():
+            test.assertEqual(c.graph_cache_size, 0)
+
+    # --- test with a custom default cache limit ---
+
+    saved_max = wp.jax_experimental.ffi.jax_callable_default_graph_cache_max
+    try:
+        wp.jax_experimental.ffi.jax_callable_default_graph_cache_max = 5
+        jax_double = jax_callable(double_func, graph_mode=GraphMode.WARP)
+        f = jax.jit(jax_double)
+        arrays = []
+
+        test.assertEqual(jax_double.graph_cache_max, wp.jax_experimental.ffi.jax_callable_default_graph_cache_max)
+
+        with jax.default_device(wp.device_to_jax(device)):
+            for i in range(10):
+                n = 10 + i
+                a = jp.arange(n, dtype=jp.float32)
+                (b,) = f(a)
+
+                assert_np_equal(b, 2 * np.arange(n, dtype=np.float32))
+
+                # ensure graph cache size is capped
+                test.assertEqual(
+                    jax_double.graph_cache_size,
+                    min(i + 1, wp.jax_experimental.ffi.jax_callable_default_graph_cache_max),
+                )
+
+                # keep JAX array alive to prevent the memory from being reused, thus forcing a new graph capture
+                arrays.append(a)
+
+        clear_jax_callable_graph_cache()
+
+    finally:
+        wp.jax_experimental.ffi.jax_callable_default_graph_cache_max = saved_max
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -1066,6 +1176,12 @@ try:
         )
         add_function_test(
             TestJax, "test_ffi_jax_callable_in_out", test_ffi_jax_callable_in_out, devices=jax_compatible_cuda_devices
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_callable_graph_cache",
+            test_ffi_jax_callable_graph_cache,
+            devices=jax_compatible_cuda_devices,
         )
 
         # ffi callback tests

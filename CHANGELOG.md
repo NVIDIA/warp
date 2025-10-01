@@ -11,8 +11,19 @@
   ([GH-886](https://github.com/NVIDIA/warp/issues/886)).
 - Add support for negative indexing and improve slicing for the `wp.array()` type
   ([GH-504](https://github.com/NVIDIA/warp/issues/504)).
+- Add documentation describing Python IntFlag limitations in Warp kernels
+  ([GH-917](https://github.com/NVIDIA/warp/issues/917)).
+- Add support for recording and waiting for external events in CUDA graphs ([GH-983](https://github.com/NVIDIA/warp/issues/983)).
+- Add kernel-level functions `bsr_row_index` and `bsr_block_index` to `warp.sparse` ([GH-895](https://github.com/NVIDIA/warp/issues/895)).
+- Add support for querying CPU memory information (requires `psutil` package) ([GH-985](https://github.com/NVIDIA/warp/issues/985)).
+- Add support for limiting the graph cache size of JAX callables ([GH-989](https://github.com/NVIDIA/warp/issues/989)).
 
 ### Removed
+
+- Remove `warp.sim` module and related examples. This module has been superseded by the Newton library, a separate
+  package with a new API. For migration guidance, see the
+  [Newton migration guide](https://newton-physics.github.io/newton/migration.html) and the original GitHub announcement
+  ([GH-735](https://github.com/NVIDIA/warp/discussions/735)).
 
 ### Deprecated
 
@@ -21,6 +32,7 @@
 - Improve efficiency for `bvh_query_aabb`, `mesh_query_aabb` and `bvh_query_ray`.
   This fixes a performance regression introduced in Warp 1.6.0 ([GH-758](https://github.com/NVIDIA/warp/issues/758)).
 - Improve efficiency of struct instance creation and attribute access ([GH-968](https://github.com/NVIDIA/warp/issues/968)).
+- warp.sparse: the `masked` flag of `bsr_axpy`, `bsr_assign` and `bsr_transpose` now completely preserves the non-zero topology of the result matrix, providing an allocation-free path ([GH-987](https://github.com/NVIDIA/warp/issues/987)).
 
 ### Fixed
 
@@ -36,6 +48,9 @@
   ([GH-963](https://github.com/NVIDIA/warp/issues/963)).
 - Fix empty slice `arr[i:i]` causing errors ([GH-958](https://github.com/NVIDIA/warp/issues/958)).
 - Fix handling of generic kernels with `wp.jax_experimental.ffi.jax_kernel()`.
+- Update builtin documentation to reflect accurate differentiability for all functions ([GH-970](https://github.com/NVIDIA/warp/issues/970)).
+- Fix copying and filling arrays with large strides ([GH-929](https://github.com/NVIDIA/warp/issues/929)).
+- Fix graph deletion during capture ([GH-992](https://github.com/NVIDIA/warp/issues/992)).
 
 ## [1.9.0] - 2025-09-04
 

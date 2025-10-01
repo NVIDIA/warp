@@ -101,6 +101,17 @@ To remedy the situation there are a few options:
 
 Also note that full support for tile-based MathDx features requires CUDA version 12.6.3 or later. See :ref:`mathdx` for more information.
 
+CUDA 12.9 limitation on Linux ARM platforms
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When building Warp from source with CUDA 12.9 on a Linux ARM platform (including NVIDIA Jetson platforms),
+the resulting binary will not support Maxwell, Pascal, or Volta GPU architectures due to a
+`bug <https://github.com/NVIDIA/cccl/issues/4967>`__ in the CUDA 12.9 Toolkit which limits the number of architectures that
+can be compiled at once.
+
+If support for these architectures is required, build Warp using a CUDA Toolkit prior to 12.9.
+Note that CUDA 13.0 dropped support for the same architectures entirely.
+
 Dependencies
 ------------
 
@@ -110,11 +121,13 @@ Warp supports Python versions 3.8 onwards, with 3.9 or newer recommended for ful
 
 The following optional dependencies are required to support certain features:
 
-* `usd-core <https://pypi.org/project/usd-core>`_: Required for some Warp examples, ``warp.sim.parse_usd()``, and ``warp.render.UsdRenderer``.
+* `usd-core <https://pypi.org/project/usd-core>`_: Required for some Warp examples, tests, and the :class:`warp.render.UsdRenderer`.
+* `pyglet <https://pyglet.org/>`_: Required for some Warp examples and the :class:`warp.render.OpenGLRenderer`.
 * `JAX <https://jax.readthedocs.io/en/latest/installation.html>`_: Required for JAX interoperability (see :ref:`jax-interop`).
 * `PyTorch <https://pytorch.org/get-started/locally/>`_: Required for PyTorch interoperability (see :ref:`pytorch-interop`).
 * `Paddle <https://github.com/PaddlePaddle/Paddle>`_: Required for Paddle interoperability (see :ref:`paddle-interop`).
 * `NVTX for Python <https://github.com/NVIDIA/NVTX#python>`_: Required to use :class:`wp.ScopedTimer(use_nvtx=True) <warp.ScopedTimer>`.
+* `psutil <https://psutil.readthedocs.io/en/latest/>`_: Required to query CPU memory info (`get_device("cpu").total_memory`, `get_device("cpu").free_memory`).
 
 Building from Source
 --------------------

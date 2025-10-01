@@ -44,7 +44,7 @@ check extensions public API:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 build
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   before_script:
     - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
   script:
@@ -59,7 +59,7 @@ linux-x86_64 extension omni.warp.core test:
     name: gitlab-master.nvidia.com:5005/omniverse/devplat/terraform/nvks/runners/gpu/nvks-gstreamer:2.1.5
     entrypoint: [""]
   extends:
-    - .runner-test-linux-x86_64-gpu
+    - .ipp_lnx_x86_64_gpu
   before_script:
     - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
     - export TEST_KIT_EXT="omni.warp.core"
@@ -101,7 +101,7 @@ linux-x86_64 extension omni.warp test:
     name: gitlab-master.nvidia.com:5005/omniverse/devplat/terraform/nvks/runners/gpu/nvks-gstreamer:2.1.5
     entrypoint: [""]
   extends:
-    - .runner-test-linux-x86_64-gpu
+    - .ipp_lnx_x86_64_gpu
   before_script:
     - tools/packman/packman pull -p linux-x86_64 deps/kit-deps.packman.xml
     - export TEST_KIT_EXT="omni.warp"
@@ -141,11 +141,12 @@ windows-x86_64 extension omni.warp test:
 # Creates an artifact suitable for publishing the Kit extensions
 create linux-aarch64 kit artifacts:
   stage: package
+  image: python:3.12-slim-bookworm
   needs:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-aarch64 build
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   before_script:
     - apt-get update && apt-get install zip --no-install-recommends -y
     # Move compiled binaries out of platform-specific directory
@@ -162,11 +163,12 @@ create linux-aarch64 kit artifacts:
 
 create linux-x86_64 kit artifacts:
   stage: package
+  image: python:3.12-slim-bookworm
   needs:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 build
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   before_script:
     - apt-get update && apt-get install zip --no-install-recommends -y
     # Move compiled binaries out of platform-specific directory
@@ -183,11 +185,12 @@ create linux-x86_64 kit artifacts:
 
 create windows-x86_64 kit artifacts:
   stage: package
+  image: python:3.12-slim-bookworm
   needs:
     - pipeline: $PARENT_PIPELINE_ID
       job: windows-x86_64 build
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   before_script:
     - apt-get update && apt-get install zip --no-install-recommends -y
   script:
@@ -212,7 +215,7 @@ publish extensions to packman:
     - create linux-x86_64 kit artifacts
     - create windows-x86_64 kit artifacts
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
     - .osec:vault:v3:prod_token_job
   rules:
     - if: $CI_PROJECT_PATH != "omniverse/warp" # Prevent fork pipelines from running this job
@@ -250,7 +253,7 @@ publish to gitlab package registry:
     - create linux-x86_64 kit artifacts
     - create windows-x86_64 kit artifacts
   extends:
-    - .omni_nvks_micro_runner
+    - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $PARENT_COMMIT_TAG
     - if: $PARENT_COMMIT_BRANCH =~ /release-.*/

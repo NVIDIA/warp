@@ -18,12 +18,48 @@ import unittest
 import numpy as np
 
 import warp as wp
-import warp.sim
 from warp.tests.unittest_utils import *
 
 np_float_types = [np.float32, np.float64, np.float16]
 
 kernel_cache = {}
+
+
+@wp.func
+def quat_from_euler(e: wp.vec3, i: int, j: int, k: int) -> wp.quat:
+    """
+    Convert Euler angles to a quaternion.
+
+    :math:`i, j, k` are the indices in :math:`[0, 1, 2]` of the axes in which the Euler angles are provided
+    (:math:`i \\neq j, j \\neq k`), e.g. (0, 1, 2) for Euler sequence XYZ.
+
+    Args:
+        e (vec3): The Euler angles (in radians)
+        i (int): The index of the first axis
+        j (int): The index of the second axis
+        k (int): The index of the third axis
+
+    Returns:
+        quat: The quaternion
+    """
+    # Half angles
+    half_e = e / 2.0
+
+    # Precompute sines and cosines of half angles
+    cr = wp.cos(half_e[i])
+    sr = wp.sin(half_e[i])
+    cp = wp.cos(half_e[j])
+    sp = wp.sin(half_e[j])
+    cy = wp.cos(half_e[k])
+    sy = wp.sin(half_e[k])
+
+    # Components of the quaternion based on the rotation sequence
+    return wp.quat(
+        (cy * sr * cp - sy * cr * sp),
+        (cy * cr * sp + sy * sr * cp),
+        (sy * cr * cp - cy * sr * sp),
+        (cy * cr * cp + sy * sr * sp),
+    )
 
 
 def getkernel(func, suffix=""):
@@ -1909,7 +1945,7 @@ def test_quat_euler_conversion(test, device, dtype, register_kernels=False):
 
     rpy_arr = rng.uniform(low=-np.pi, high=np.pi, size=(N, 3))
 
-    quats_from_euler = [list(wp.sim.quat_from_euler(wp.vec3(*rpy), 0, 1, 2)) for rpy in rpy_arr]
+    quats_from_euler = [list(quat_from_euler(wp.vec3(*rpy), 0, 1, 2)) for rpy in rpy_arr]
     quats_from_rpy = [list(wp.quat_rpy(rpy[0], rpy[1], rpy[2])) for rpy in rpy_arr]
 
     assert_np_equal(np.array(quats_from_euler), np.array(quats_from_rpy), tol=1e-4)

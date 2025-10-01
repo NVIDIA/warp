@@ -4,7 +4,6 @@
 [![Downloads](https://static.pepy.tech/badge/warp-lang/month)](https://pepy.tech/project/warp-lang)
 [![codecov](https://codecov.io/github/NVIDIA/warp/graph/badge.svg?token=7O1KSM79FG)](https://codecov.io/github/NVIDIA/warp)
 ![GitHub - CI](https://github.com/NVIDIA/warp/actions/workflows/ci.yml/badge.svg)
-[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?logo=discord&logoColor=white)](https://discord.com/invite/nvidiaomniverse)
 
 # NVIDIA Warp
 
@@ -250,93 +249,14 @@ python -m warp.tests
 <table>
     <tbody>
         <tr>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_bounce.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_bounce.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_cloth_throw.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_cloth_throw.png"></a></td>
             <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_diffray.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_diffray.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_drone.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_drone.png"></a></td>
-        </tr>
-        <tr>
-            <td align="center">bounce</td>
-            <td align="center">cloth throw</td>
-            <td align="center">diffray</td>
-            <td align="center">drone</td>
-        </tr>
-        <tr>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_inverse_kinematics.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_inverse_kinematics.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_spring_cage.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_spring_cage.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_trajectory.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_trajectory.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_softbody_properties.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_softbody_properties.png"></a></td>
-        </tr>
-        <tr>
-            <td align="center">inverse kinematics</td>
-            <td align="center">spring cage</td>
-            <td align="center">trajectory</td>
-            <td align="center">soft body properties</td>
-        </tr>
-        <tr>
             <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_fluid_checkpoint.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_fluid_checkpoint.png"></a></td>
             <td></td>
             <td></td>
-            <td></td>
         </tr>
         <tr>
+            <td align="center">diffray</td>
             <td align="center">fluid checkpoint</td>
-            <td align="center"></td>
-            <td align="center"></td>
-            <td align="center"></td>
-        </tr>
-    </tbody>
-</table>
-
-### warp/examples/sim
-
-<table>
-    <tbody>
-        <tr>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_cartpole.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/sim_cartpole.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_cloth.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/sim_cloth.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_granular.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/sim_granular.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_granular_collision_sdf.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/sim_granular_collision_sdf.png"></a></td>
-        </tr>
-        <tr>
-            <td align="center">cartpole</td>
-            <td align="center">cloth</td>
-            <td align="center">granular</td>
-            <td align="center">granular collision sdf</td>
-        </tr>
-        <tr>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_jacobian_ik.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/sim_jacobian_ik.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_quadruped.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/sim_quadruped.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_chain.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/sim_rigid_chain.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_contact.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/sim_rigid_contact.png"></a></td>
-        </tr>
-        <tr>
-            <td align="center">jacobian ik</td>
-            <td align="center">quadruped</td>
-            <td align="center">rigid chain</td>
-            <td align="center">rigid contact</td>
-        </tr>
-        <tr>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_force.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/sim_rigid_force.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_gyroscopic.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/sim_rigid_gyroscopic.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_rigid_soft_contact.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/sim_rigid_soft_contact.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_soft_body.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/sim_soft_body.png"></a></td>
-        </tr>
-        <tr>
-            <td align="center">rigid force</td>
-            <td align="center">rigid gyroscopic</td>
-            <td align="center">rigid soft contact</td>
-            <td align="center">soft body</td>
-        </tr>
-        <tr>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/sim/example_cloth_self_contact.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/sim_example_cloth_self_contact.png"></a></td>
-            <td></td>
-            <td></td>
-            <td></td>
-        </tr>
-        <tr>
-            <td align="center">cloth self contact</td>
-            <td align="center"></td>
             <td align="center"></td>
             <td align="center"></td>
         </tr>
@@ -350,12 +270,14 @@ python -m warp.tests
         <tr>
             <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_mlp.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/tile_mlp.png"></a></td>
             <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_nbody.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/tile_nbody.png"></a></td>
-            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_walker.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/tile_walker.png"></a></td>
+            <td></td>
+            <td></td>
         </tr>
         <tr>
             <td align="center">mlp</td>
             <td align="center">nbody</td>
-            <td align="center">walker</td>
+            <td align="center"></td>
+            <td align="center"></td>
         </tr>
     </tbody>
 </table>
@@ -412,9 +334,7 @@ See the [FAQ](https://nvidia.github.io/warp/faq.html) in the Warp documentation.
 
 Problems, questions, and feature requests can be opened on [GitHub Issues](https://github.com/NVIDIA/warp/issues).
 
-The Warp team also monitors the **#warp** forum on the public [Omniverse Discord](https://discord.com/invite/nvidiaomniverse) server, come chat with us!
-
-For inquiries not suited for GitHub Issues or Discord, please email warp-python@nvidia.com.
+For inquiries not suited for GitHub Issues, please email warp-python@nvidia.com.
 
 ## Versioning
 

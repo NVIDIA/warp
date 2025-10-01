@@ -365,6 +365,41 @@ def test_event_elapsed_time_graph(test, device):
     test.assertGreater(elapsed, 0)
 
 
+def test_event_external(test, device):
+    with wp.ScopedDevice(device):
+        # event used to synchronize two graphs (external event)
+        event = wp.Event()
+
+        n = 1_000_000
+        a = wp.zeros(n, dtype=float)
+        b = wp.zeros(n, dtype=float)
+        c = wp.zeros(n, dtype=float)
+
+        with wp.ScopedCapture() as capture1:
+            wp.launch(inc, dim=n, inputs=[a])
+            wp.launch(inc, dim=n, inputs=[b])
+            # record in first graph
+            wp.record_event(event, external=True)
+
+        with wp.ScopedCapture() as capture2:
+            # wait in second graph
+            wp.wait_event(event, external=True)
+            wp.launch(sum, dim=n, inputs=[a, b, c])
+
+        stream1 = wp.Stream()
+        stream2 = wp.Stream()
+        num_iters = 10
+
+        for _ in range(num_iters):
+            # Launch graphs on different streams, but they should be
+            # synchronized using the external event.
+            wp.capture_launch(capture1.graph, stream=stream1)
+            wp.capture_launch(capture2.graph, stream=stream2)
+
+        expected = np.full(n, 2 * num_iters, dtype=np.float32)
+        assert_np_equal(c.numpy(), expected)
+
+
 def test_stream_priority_basics(test, device):
     standard_stream = wp.Stream(device)
     test.assertEqual(standard_stream.priority, 0, "Default priority of streams must be 0.")
@@ -468,6 +503,25 @@ def test_stream_event_is_complete(test, device):
 
                 # Verify result
                 test.assertEqual(a.numpy()[0], (iter + 1) * threads)
+
+
+def test_graph_destroy_during_capture(test, device):
+    with wp.ScopedDevice(device):
+        n = 10
+        a = wp.zeros(n, dtype=float)
+
+        with wp.ScopedCapture() as capture1:
+            wp.launch(inc, dim=n, inputs=[a])
+
+        wp.capture_launch(capture1.graph)
+
+        with wp.ScopedCapture() as capture2:
+            del capture1  # <--- should be deferred
+            wp.launch(inc, dim=n, inputs=[a])
+
+        wp.capture_launch(capture2.graph)
+
+        assert_np_equal(a.numpy(), np.full(n, 2, dtype=np.float32))
 
 
 devices = get_selected_cuda_test_devices()
@@ -628,6 +682,9 @@ add_function_test(TestStreams, "test_stream_event_is_complete", test_stream_even
 add_function_test(TestStreams, "test_event_synchronize", test_event_synchronize, devices=devices)
 add_function_test(TestStreams, "test_event_elapsed_time", test_event_elapsed_time, devices=devices)
 add_function_test(TestStreams, "test_event_elapsed_time_graph", test_event_elapsed_time_graph, devices=devices)
+add_function_test(TestStreams, "test_event_external", test_event_external, devices=devices)
+
+add_function_test(TestStreams, "test_graph_destroy_during_capture", test_graph_destroy_during_capture, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

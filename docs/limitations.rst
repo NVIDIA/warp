@@ -30,6 +30,8 @@ Kernels and User Functions
   (e.g. through a :func:`wp.launch() <launch>` or a ``wp.load_module()``).
 * A :class:`wp.constant() <constant>` can suffer precision loss if used with ``wp.float64``
   as it is initially assigned to a ``wp.float32`` variable in the generated code.
+* Python ``IntFlag`` values behave like raw integers in Warp kernels: bitwise negation (``~``)
+  produces the integer negation, not a masked combination of flags as in standard Python ``IntFlag`` behavior.
 
 A limitation of Warp is that each dimension of the grid used to launch a kernel must be representable as a 32-bit
 signed integer. Therefore, no single dimension of a grid should exceed :math:`2^{31}-1`.
