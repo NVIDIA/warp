@@ -737,9 +737,18 @@ void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items,
         wp_memcpy_d2h(WP_CURRENT_CONTEXT, lowers_host.data(), lowers, sizeof(vec3) * num_items);
         wp_memcpy_d2h(WP_CURRENT_CONTEXT, uppers_host.data(), uppers, sizeof(vec3) * num_items);
 
+        // copy groups back to CPU (if exists)
+        std::vector<int> groups_host(num_items);
+        int* groups_host_ptr = nullptr;
+        if (groups)
+        {
+            wp_memcpy_d2h(WP_CURRENT_CONTEXT, groups_host.data(), groups, sizeof(int) * num_items);
+            groups_host_ptr = groups_host.data();
+        }
+
         // run CPU based constructor
         wp::BVH bvh_host;
-        wp::bvh_create_host(lowers_host.data(), uppers_host.data(), num_items, constructor_type, groups, bvh_host);
+        wp::bvh_create_host(lowers_host.data(), uppers_host.data(), num_items, constructor_type, groups_host_ptr, bvh_host);
 
         // copy host tree to device
         wp::copy_host_tree_to_device(WP_CURRENT_CONTEXT, bvh_host, bvh_device_on_host);

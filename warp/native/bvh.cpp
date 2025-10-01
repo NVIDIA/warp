@@ -39,7 +39,7 @@ class TopDownBVHBuilder
 {	
 public:
 
-    void build(BVH& bvh, const vec3* lowers, const vec3* uppers, int n, int in_constructor_type);
+    void build(BVH& bvh, const vec3* lowers, const vec3* uppers, int n, int in_constructor_type, int* groups);
     void rebuild(BVH& bvh, int in_constructor_type);
 
 private:
@@ -53,7 +53,7 @@ private:
     float partition_sah_indices(const vec3* lowers, const vec3* uppers,const int* indices, int start, int end, bounds3 range_bounds, int& split_axis);
     
     // Group-aware builds
-    void build_with_groups(BVH& bvh, const vec3* lowers, const vec3* uppers, int n);
+    void build_with_groups(BVH& bvh, const vec3* lowers, const vec3* uppers, const int* groups, int n);
     int build_recursive_range(BVH& bvh, const vec3* lowers, const vec3* uppers, int start, int end, int depth, int parent, int assigned_node);
 
     int constructor_type = -1;
@@ -107,17 +107,17 @@ static inline void compute_group_ranges(const int* groups, int n, std::vector<in
     group_ends.push_back(n);
 }
 
-void TopDownBVHBuilder::build_with_groups(BVH& bvh, const vec3* lowers, const vec3* uppers, int n)
+void TopDownBVHBuilder::build_with_groups(BVH& bvh, const vec3* lowers, const vec3* uppers, const int* groups, int n)
 {
     std::vector<int> unique_groups, group_starts, group_ends, sorted_indices;
-    compute_group_ranges(bvh.item_groups, n, unique_groups, group_starts, group_ends, sorted_indices);
+    compute_group_ranges(groups, n, unique_groups, group_starts, group_ends, sorted_indices);
 
     // Reorder primitive_indices to be grouped, and set keys with group in upper 32 bits
     for (int i = 0; i < n; ++i)
     {
         int prim = sorted_indices[i];
         bvh.primitive_indices[i] = prim;
-        bvh.keys[i] = (uint64_t(uint32_t(bvh.item_groups[prim])) << 32);
+        bvh.keys[i] = (uint64_t(uint32_t(groups[prim])) << 32);
     }
 
     const int num_groups = int(unique_groups.size());
@@ -207,7 +207,7 @@ void TopDownBVHBuilder::build_with_groups(BVH& bvh, const vec3* lowers, const ve
     }
 }
 
-void TopDownBVHBuilder::build(BVH& bvh, const vec3* lowers, const vec3* uppers, int n, int in_constructor_type)
+void TopDownBVHBuilder::build(BVH& bvh, const vec3* lowers, const vec3* uppers, int n, int in_constructor_type, int* groups)
 {
     assert(n >= 0);
     if (n > 0)
@@ -260,10 +260,10 @@ void TopDownBVHBuilder::build(BVH& bvh, const vec3* lowers, const vec3* uppers, 
     
     bvh.keys = new uint64_t[n];
 
-    if (bvh.item_groups)
+    if (groups)
     {
         // Build using two-level grouping to ensure each group maps to a single subtree
-        build_with_groups(bvh, lowers, uppers, n);
+        build_with_groups(bvh, lowers, uppers, groups, n);
     }
     else
     {
@@ -295,7 +295,7 @@ void TopDownBVHBuilder::rebuild(BVH& bvh, int in_constructor_type)
 
     if (bvh.item_groups)
     {
-        build_with_groups(bvh, bvh.item_lowers, bvh.item_uppers, bvh.num_items);
+        build_with_groups(bvh, bvh.item_lowers, bvh.item_uppers, bvh.item_groups, bvh.num_items);
     }
     else
     {
@@ -728,11 +728,10 @@ void bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_
 
     bvh.item_lowers = lowers;
     bvh.item_uppers = uppers;
-    bvh.item_groups = groups;
     bvh.num_items = num_items;
 
     TopDownBVHBuilder builder;
-    builder.build(bvh, lowers, uppers, num_items, constructor_type);
+    builder.build(bvh, lowers, uppers, num_items, constructor_type, groups);
 }
 
 void bvh_destroy_host(BVH& bvh)
