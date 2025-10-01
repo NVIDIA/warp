@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import ctypes
+import weakref
 from typing import Any, Generic, TypeVar, Union
 
 import warp as wp
@@ -226,15 +227,12 @@ class BsrMatrix(Generic[_BlockType]):
         buf, event = _allocate_transfer_buf(self.device)
         BsrMatrix.__setattr__(self, "_nnz_transfer", (buf, event))
 
+        weakref.finalize(self, _redeem_transfer_buf, self.device, buf, event)
+
         return buf, event
 
     def _nnz_transfer_if_any(self) -> tuple[wp.array, wp.Event]:
         return getattr(self, "_nnz_transfer", (None, None))
-
-    def __del__(self):
-        buf, event = self._nnz_transfer_if_any()
-        if buf is not None:
-            _redeem_transfer_buf(self.device, buf, event)
 
     # Overloaded math operators
     def __add__(self, y):
@@ -1911,7 +1909,7 @@ def make_bsr_mm_compute_values_tiled_outer(subblock_rows, subblock_cols, block_d
     x_col_vec_t = wp.vec(dtype=scalar_type, length=subblock_rows)
     y_row_vec_t = wp.vec(dtype=scalar_type, length=subblock_cols)
 
-    suffix = f"{subblock_rows}{subblock_cols}{block_depth}{tile_size}"
+    suffix = f"{subblock_rows}{subblock_cols}{block_depth}{tile_size}{scalar_type.__name__}"
 
     @dynamic_func(suffix=suffix)
     def _outer_product(
