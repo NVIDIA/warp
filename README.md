@@ -354,6 +354,9 @@ Note that prior to 0.11.0, this schema was not strictly adhered to.
 Warp is provided under the Apache License, Version 2.0.
 Please see [LICENSE.md](https://github.com/NVIDIA/warp/blob/main/LICENSE.md) for full license text.
 
+This project will download and install additional third-party open source software projects.
+Review the license terms of these open source projects before use.
+
 ## Contributing
 
 Contributions and pull requests from the community are welcome.

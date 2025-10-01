@@ -2,9 +2,11 @@
 LICENSES FOR NVIDIA LIBMATHDX
 ================================================================================
 
-This file contains the license agreements for NVIDIA libmathdx and its bundled
-components. NVIDIA Warp, a dependency of this project, statically links
-libmathdx. Therefore, the following licenses apply.
+This file contains the license agreements for the NVIDIA libmathdx library and
+its bundled components.
+
+This project, NVIDIA Warp, statically links libmathdx as a dependency.
+Therefore, the following licenses apply.
 
 --------------------------------------------------------------------------------
 1. NVIDIA Software License Agreement
