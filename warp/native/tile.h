@@ -49,10 +49,8 @@
 #endif
 
 #if defined(__CUDA_ARCH__)
-#define WP_TILE_SHARED __shared__
 #define WP_TILE_SYNC __syncthreads
 #else
-#define WP_TILE_SHARED static
 #define WP_TILE_SYNC void
 #endif
 
@@ -578,7 +576,11 @@ struct tile_register_t
         const int thread = Layout::thread_from_linear(linear);
         const int reg = Layout::register_from_linear(linear);
 
-        WP_TILE_SHARED Type scratch;
+#if defined(__CUDA_ARCH__)
+        __shared__ Type scratch;
+#else
+        Type scratch;
+#endif
 
         // ensure any previously scheduled threads have finished reading from scratch
         WP_TILE_SYNC();
@@ -1638,7 +1640,11 @@ void tile_register_t<T, L>::print() const
 {
     // create a temporary shared tile so that
     // we can print it deterministically
-    WP_TILE_SHARED T smem[L::Size];
+#if defined(__CUDA_ARCH__)
+    __shared__ T smem[L::Size];
+#else
+    T smem[L::Size];
+#endif
     tile_shared_t<T, tile_layout_strided_t<typename L::Shape>, false> scratch(smem, nullptr);
 
     scratch.assign(*this);

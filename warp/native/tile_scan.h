@@ -50,7 +50,7 @@ inline CUDA_CALLABLE T scan_warp_inclusive(int lane, T value)
 template<typename T>
 inline CUDA_CALLABLE T thread_block_scan_inclusive(int lane, int warp_index, int num_warps, T value)
 {
-    WP_TILE_SHARED T sums[1024 / WP_TILE_WARP_SIZE]; // 1024 is the maximum number of threads per block
+    __shared__ T sums[1024 / WP_TILE_WARP_SIZE]; // 1024 is the maximum number of threads per block
 
     value = scan_warp_inclusive(lane, value);
 
@@ -85,7 +85,7 @@ inline CUDA_CALLABLE void thread_block_scan(T* values, int num_elements)
     const int num_threads_in_block = blockDim.x;
     const int num_iterations = (num_elements + num_threads_in_block - 1) / num_threads_in_block;
 
-    WP_TILE_SHARED T offset;
+    __shared__ T offset;
     if (threadIdx.x == 0)
         offset = T(0);
 
@@ -124,7 +124,7 @@ inline CUDA_CALLABLE auto tile_scan_inclusive_impl(Tile& t)
     constexpr int num_elements_to_scan = Tile::Layout::Shape::size(); 
 
     // create a temporary shared tile to hold the input values
-    WP_TILE_SHARED T smem[num_elements_to_scan];
+    __shared__ T smem[num_elements_to_scan];
     tile_shared_t<T, tile_layout_strided_t<typename Tile::Layout::Shape>, false> scratch(smem, nullptr);
 
     // copy input values to scratch space
@@ -147,7 +147,7 @@ inline CUDA_CALLABLE auto tile_scan_exclusive_impl(Tile& t)
     constexpr int num_elements_to_scan = Tile::Layout::Shape::size(); 
 
     // create a temporary shared tile to hold the input values
-    WP_TILE_SHARED T smem[num_elements_to_scan];
+    __shared__ T smem[num_elements_to_scan];
     tile_shared_t<T, tile_layout_strided_t<typename Tile::Layout::Shape>, false> scratch(smem, nullptr);
 
     // copy input values to scratch space

@@ -921,7 +921,7 @@ template <typename K, typename V, typename KeyToUint>
 void radix_sort_pairs_cpu_core(K* keys, K* aux_keys, V* values, V* aux_values, int n)
 {
     KeyToUint converter;
-	static unsigned int tables[2][1 << 16];
+	unsigned int tables[2][1 << 16];
 	memset(tables, 0, sizeof(tables));
 	
 	// build histograms

@@ -212,10 +212,10 @@ auto tile_reduce_impl(Op f, Tile& t)
     T warp_sum = warp_reduce(thread_sum, f, mask);
 
     // fixed size scratch pad for partial results in shared memory
-    WP_TILE_SHARED T partials[warp_count];
+    __shared__ T partials[warp_count];
 
     // count of active warps
-    WP_TILE_SHARED int active_warps;
+    __shared__ int active_warps;
     if (threadIdx.x == 0)
         active_warps = 0;
     
@@ -286,11 +286,11 @@ auto tile_arg_reduce_impl(Op f, OpTrack track, Tile& t)
     ValueAndIndex<T> warp_sum = warp_reduce_tracked(thread_sum, champion_index, f, track, mask);
 
     // fixed size scratch pad for partial results in shared memory
-    WP_TILE_SHARED T partials[warp_count];
-    WP_TILE_SHARED int partials_idx[warp_count];
+    __shared__ T partials[warp_count];
+    __shared__ int partials_idx[warp_count];
 
     // count of active warps
-    WP_TILE_SHARED int active_warps;
+    __shared__ int active_warps;
     if (threadIdx.x == 0)
         active_warps = 0;
     
@@ -418,7 +418,7 @@ void adj_tile_sum(Tile& t, Tile& adj_t, AdjTile& adj_ret)
     T scratch = adj_reg.data[0];
 #else
     // broadcast incoming adjoint to block
-    WP_TILE_SHARED T scratch;
+    __shared__ T scratch;
     if (WP_TILE_THREAD_IDX == 0)
         scratch = adj_reg.data[0];
 
