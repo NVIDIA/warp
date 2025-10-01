@@ -95,8 +95,8 @@ line-length = 120
 indent-width = 4
 extend-exclude = [
     "notebooks",
-    "warp/thirdparty/appdirs.py",
-    "warp/thirdparty/dlpack.py",
+    "warp/_src/thirdparty/appdirs.py",
+    "warp/_src/thirdparty/dlpack.py",
     "tools",
 ]
 
@@ -161,10 +161,10 @@ exclude_lines = [
     "if __name__ == .__main__.:",
 ]
 omit = [
-    "*/warp/thirdparty/*",
+    "*/warp/_src/thirdparty/*",
     "*/warp/examples/*",
     "*/warp/tests/*",
-    "*/warp/fem/*",
+    "*/warp/_src/fem/*",
     "appdirs.py",
     "render_opengl.py",
     "build_dll.py",
