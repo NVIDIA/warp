@@ -48,18 +48,12 @@
 #define WP_TILE_BLOCK_DIM 256
 #endif
 
-// on CPU allocate a fixed 256k block to use for shared allocs
-#ifndef WP_MAX_CPU_SHARED
-#define WP_MAX_CPU_SHARED 256*1024
-#endif
-
-#if !defined(__CUDA_ARCH__)
-#define WP_TILE_SHARED static
-#define WP_TILE_SYNC void
-
-#else
+#if defined(__CUDA_ARCH__)
 #define WP_TILE_SHARED __shared__
 #define WP_TILE_SYNC __syncthreads
+#else
+#define WP_TILE_SHARED static
+#define WP_TILE_SYNC void
 #endif
 
 #if defined(__CUDA_ARCH__) && !defined(__INTELLISENSE__)
@@ -758,6 +752,14 @@ static SharedTileStorage* shared_tile_storage;
 // An instance of this class gets created at the start of a kernel.
 class SharedTileStorage
 {
+private:
+#if !defined(__CUDA_ARCH__)
+#define WP_MAX_CPU_SHARED 256*1024
+    SharedTileStorage* old_value;
+    unsigned int smem_base[WP_TILE_BLOCK_DIM];
+    char dynamic_smem_base[WP_MAX_CPU_SHARED];  // on CPU allocate a fixed 256k block to use for shared allocs
+#endif
+
 public:
     // cppcheck-suppress uninitMemberVar
     SharedTileStorage()
@@ -787,9 +789,11 @@ public:
         // shared memory that allows us to keep track of 
         // current use across dynamic function calls
 #if defined(__CUDA_ARCH__)
-        WP_TILE_SHARED int smem_base[WP_TILE_BLOCK_DIM];
+        __shared__ unsigned int smem_base[WP_TILE_BLOCK_DIM];
+        extern __shared__ char dynamic_smem_base[];
 #else
-        int* smem_base = shared_tile_storage->smem_base;
+        unsigned int* smem_base = shared_tile_storage->smem_base;
+        char* dynamic_smem_base = shared_tile_storage->dynamic_smem_base;
 #endif
 
         if (init)
@@ -804,30 +808,18 @@ public:
         }
         else
         {
-            const int offset = smem_base[WP_TILE_THREAD_IDX];
+            const unsigned int offset = smem_base[WP_TILE_THREAD_IDX];
             
             // one entry per-thread so no need for synchronization
             smem_base[WP_TILE_THREAD_IDX] += tile_align(num_bytes);
-            assert(smem_base[WP_TILE_THREAD_IDX] >= 0);
 
-#ifdef __CUDA_ARCH__
-            extern __shared__ char dynamic_smem_base[];
-#else
+#if !defined(__CUDA_ARCH__)
             assert(smem_base[WP_TILE_THREAD_IDX] <= WP_MAX_CPU_SHARED);
-
-            char* dynamic_smem_base = shared_tile_storage->dynamic_smem_base;
 #endif
 
             return &(dynamic_smem_base[offset]);
         }
     }
-
-private:
-#if !defined(__CUDA_ARCH__)
-    SharedTileStorage* old_value;
-    int smem_base[WP_TILE_BLOCK_DIM];
-    char dynamic_smem_base[WP_MAX_CPU_SHARED];
-#endif
 };
 
 
@@ -3340,7 +3332,7 @@ TileL& tile_cholesky(Fwd fun_forward, TileA& A, TileL& L)
 #else
 
     // TODO: for batched Cholesky, need one info per batch
-    WP_TILE_SHARED int info[1];
+    __shared__ int info[1];
 
     if (WP_TILE_THREAD_IDX == 0) {
         info[0] = 0;
