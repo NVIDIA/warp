@@ -423,7 +423,7 @@ CUDA_CALLABLE inline bool bvh_query_intersection_test(const bvh_query_t& query, 
 }
 
 CUDA_CALLABLE inline bvh_query_t bvh_query(
-	uint64_t id, bool is_ray, const vec3& lower, const vec3& upper, int root, float max_dist)
+	uint64_t id, bool is_ray, const vec3& lower, const vec3& upper, int root)
 {
     // This routine traverses the BVH tree until it finds
     // the first overlapping bound. 
@@ -455,14 +455,14 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(
 CUDA_CALLABLE inline bvh_query_t bvh_query_aabb(
     uint64_t id, const vec3& lower, const vec3& upper, int root)
 {
-    return bvh_query(id, false, lower, upper, root, INFINITY);
+    return bvh_query(id, false, lower, upper, root);
 }
 
 
 CUDA_CALLABLE inline bvh_query_t bvh_query_ray(
-    uint64_t id, const vec3& start, const vec3& dir, int root, float max_dist)
+    uint64_t id, const vec3& start, const vec3& dir, int root)
 {
-    return bvh_query(id, true, start, 1.0f / dir, root, max_dist);
+    return bvh_query(id, true, start, 1.0f / dir, root);
 }
 
 //Stub
@@ -473,8 +473,7 @@ CUDA_CALLABLE inline void adj_bvh_query_aabb(uint64_t id, const vec3& lower, con
 
 
 CUDA_CALLABLE inline void adj_bvh_query_ray(uint64_t id, const vec3& start, const vec3& dir,
-                                                int root, float& max_dist, uint64_t, vec3&, vec3&, int&,
-                                                float&, bvh_query_t&)
+                                                int root, uint64_t, vec3&, vec3&, int&, bvh_query_t&)
 {
 }
 

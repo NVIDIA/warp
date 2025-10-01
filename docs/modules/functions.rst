@@ -5084,7 +5084,7 @@ Geometry
     :param root: The root to begin the query from (optional, default: -1)
 
 
-.. py:function:: bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32 = -1, max_dist: float32 = inf) -> BvhQuery
+.. py:function:: bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32 = -1) -> BvhQuery
 
     .. hlist::
        :columns: 8
@@ -5098,13 +5098,11 @@ Geometry
     To start a query from a specific node, set ``root`` to the index of the node. The root
     can be obtained using the :func:`bvh_get_group_root` function.
     The query will only trace down from that node, limiting traversal to that subtree.
-    The maximum distance along the ray to check for intersections can be set using ``max_dist``.
 
     :param id: The BVH identifier
     :param start: The start of the ray in BVH space
     :param dir: The direction of the ray in BVH space
     :param root: The root to begin the query from (optional, default: -1)
-    :param max_dist: The maximum distance along the ray to check for intersections (optional, default: inf)
 
 
 .. py:function:: bvh_query_next(query: BvhQuery, index: int32, max_dist: float32 = inf) -> bool

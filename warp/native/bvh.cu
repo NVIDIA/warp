@@ -210,7 +210,7 @@ __global__ void compute_morton_codes(const vec3* __restrict__ item_lowers, const
         
         // 10-bit Morton codes stored in lower 30bits (1024^3 effective resolution)
         // Group stored in upper 32 bits
-        uint64_t morton_code = morton3<1024>(local[0], local[1], local[2]);
+        uint64_t morton_code = static_cast<uint64_t>(morton3<1024>(local[0], local[1], local[2]));
         uint64_t group = item_groups ? item_groups[index] : 0;
         uint64_t key = (group << 32) | morton_code;
 
