@@ -28,13 +28,20 @@ from warp.types import array_t, launch_bounds_t, strides_from_shape, type_to_war
 
 from .xla_ffi import *
 
-WARP_DEVICE_CONTEXT_LOCK = threading.Lock()
-
 jax_callable_default_graph_cache_max: int | None = 32
 """
 Maximum size of the graph cache for graphs captured using ``GraphMode.WARP``, unlimited if ``None``.
 Example usage: ``warp.jax_experimental.ffi.jax_callable_default_graph_cache_max = 42``.
 """
+
+# Holders for the custom callbacks to keep them alive.
+_FFI_KERNEL_REGISTRY: dict[str, "FfiKernel"] = {}
+_FFI_CALLABLE_REGISTRY: dict[str, "FfiCallable"] = {}
+_FFI_CALLBACK_REGISTRY: dict[str, ctypes.CFUNCTYPE] = {}
+_FFI_REGISTRY_LOCK = threading.Lock()
+
+# Lock when XLA invokes callbacks from multiple threads.
+_FFI_DEVICE_CONTEXT_LOCK = threading.Lock()
 
 
 def check_jax_version():
@@ -607,6 +614,7 @@ class FfiCallable:
 
                     # early out
                     return
+
             device_ordinal = get_device_ordinal_from_callframe(call_frame.contents)
             device = wp.get_cuda_device(device_ordinal)
             stream = wp.Stream(device, cuda_stream=cuda_stream)
@@ -635,7 +643,7 @@ class FfiCallable:
             # call the Python function with reconstructed arguments
             # Lock is required here to prevent wp.ScopedStreams from overwriting each other
             # when XLA calls this method from multiple threads.
-            with WARP_DEVICE_CONTEXT_LOCK:
+            with _FFI_DEVICE_CONTEXT_LOCK:
                 with wp.ScopedStream(stream, sync_enter=True):
                     if stream.is_capturing:
                         # capturing with JAX
@@ -681,13 +689,6 @@ class FfiCallable:
     @property
     def graph_cache_size(self) -> int:
         return len(self.captures)
-
-
-# Holders for the custom callbacks to keep them alive.
-_FFI_KERNEL_REGISTRY: dict[str, FfiKernel] = {}
-_FFI_CALLABLE_REGISTRY: dict[str, FfiCallable] = {}
-_FFI_CALLBACK_REGISTRY: dict[str, ctypes.CFUNCTYPE] = {}
-_FFI_REGISTRY_LOCK = threading.Lock()
 
 
 def jax_kernel(
