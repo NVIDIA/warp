@@ -691,6 +691,45 @@ def make_test_bsr_multiply_deep(block_shape, scalar_type):
     return test_bsr_multiply_deep
 
 
+def test_capturability(test, device):
+    """Test that BSR operations are graph-capturable"""
+
+    N = 5
+    M = 3
+
+    C = bsr_diag(wp.zeros(N, dtype=wp.mat33, device=device))
+
+    rows = wp.array([3, 4, 2, 0, 1], dtype=int, device=device)
+    columns = wp.array([2, 0, 1, 2, 1], dtype=int, device=device)
+    values = wp.ones(5, dtype=wp.mat33, device=device)
+
+    def test_body():
+        A = bsr_from_triplets(
+            N,
+            M,
+            rows=rows,
+            columns=columns,
+            values=values,
+        )
+        B = A + bsr_copy(A * 2.0)
+        bsr_mm(A, bsr_transposed(B), C, masked=True)
+
+    # ensure necessary modules are loaded and reset result
+    test_body()
+    C *= 0.0
+
+    with wp.ScopedDevice(device):
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            test_body()
+
+    assert_array_equal(bsr_get_diag(C), wp.zeros(N, dtype=wp.mat33, device=device))
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+
+    assert_array_equal(bsr_get_diag(C), wp.full(N, value=wp.mat33(9.0), dtype=wp.mat33, device=device))
+
+
 devices = get_test_devices()
 cuda_test_devices = get_selected_cuda_test_devices()
 
@@ -758,6 +797,7 @@ add_function_test(TestSparse, "test_csr_mv", make_test_bsr_mv((1, 1), wp.float32
 add_function_test(TestSparse, "test_bsr_mv_1_3", make_test_bsr_mv((1, 3), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_3_3", make_test_bsr_mv((3, 3), wp.float64), devices=devices)
 
+add_function_test(TestSparse, "test_capturability", test_capturability, devices=cuda_test_devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
