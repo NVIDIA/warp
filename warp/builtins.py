@@ -4815,8 +4815,8 @@ add_builtin(
 
 add_builtin(
     "bvh_query_ray",
-    input_types={"id": uint64, "start": vec3, "dir": vec3, "root": int, "max_dist": float},
-    defaults={"root": -1, "max_dist": math.inf},
+    input_types={"id": uint64, "start": vec3, "dir": vec3, "root": int},
+    defaults={"root": -1},
     value_type=BvhQuery,
     group="Geometry",
     doc="""Construct a ray query against a BVH object.
@@ -4825,13 +4825,11 @@ add_builtin(
     To start a query from a specific node, set ``root`` to the index of the node. The root
     can be obtained using the :func:`bvh_get_group_root` function.
     The query will only trace down from that node, limiting traversal to that subtree.
-    The maximum distance along the ray to check for intersections can be set using ``max_dist``.
 
     :param id: The BVH identifier
     :param start: The start of the ray in BVH space
     :param dir: The direction of the ray in BVH space
-    :param root: The root to begin the query from (optional, default: -1)
-    :param max_dist: The maximum distance along the ray to check for intersections (optional, default: inf)""",
+    :param root: The root to begin the query from (optional, default: -1)""",
     export=False,
 )
 
