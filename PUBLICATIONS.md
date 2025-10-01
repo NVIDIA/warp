@@ -7,6 +7,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2025
 
+- **MechStyle: Augmenting Generative AI with Mechanical Simulation to Create Stylized and Structurally Viable 3D Models**. *F. Faruqi, A. Abdel-Rahman, L. Tejedor, M. Nisser, J. Li, V. Phadnis, V. Jampani, N. Gershenfeld, M. Hofmann, S. Mueller*. September 2025. [arXiv:2509.20571](https://arxiv.org/abs/2509.20571)
 - **AERO-MPPI: Anchor-Guided Ensemble Trajectory Optimization for Agile Mapless Drone Navigation**. *X. Chen, R. Huang, L. Tang, L. Zhao*. September 2025. [arXiv:2509.17340](https://arxiv.org/abs/2509.17340)
 - **Discovering neural elastoplasticity from kinematic observations**. *G. B. Gavris, W. Sun*. September 2025. [DOI:10.1073/pnas.2508732122](https://doi.org/10.1073/pnas.2508732122)
 - **Learning Simulatable Models of Cloth with Spatially-varying Constitutive Properties**. *G. Chen, S. Suri, Y. Wu, E. Voulga, D. I. W. Levin, D. K. Pai*. July 2025. [arXiv:2507.21288](https://arxiv.org/abs/2507.21288)
