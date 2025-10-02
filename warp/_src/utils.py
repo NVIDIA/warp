@@ -1680,3 +1680,14 @@ def timing_print(results: list[TimingResult], indent: str = "") -> None:
     print(f"{indent}----------------+---------+{activity_dashes}")
     for device, agg in device_totals.items():
         print(f"{indent}{agg.elapsed:12.6f} ms | {agg.count:7d} | {device}")
+
+
+def get_deprecated_api(module, namespace, attr_name):
+    # if not attr_name.startswith("__"):
+    #     module_name = module.__name__.split(".")[-1]
+    #     warn(
+    #         f"The symbol `{namespace}.{module_name}.{attr_name}` is internal and will be removed from the public API.",
+    #         DeprecationWarning,
+    #     )
+
+    return getattr(module, attr_name)

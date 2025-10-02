@@ -18,3 +18,14 @@
 from warp._src.fem.operator import Integrand as Integrand
 from warp._src.fem.operator import element_partition_index as element_partition_index
 from warp._src.fem.operator import node_partition_index as node_partition_index
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src.fem import operator as _operator
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api
+
+    return get_deprecated_api(_operator, "wp.fem", name)

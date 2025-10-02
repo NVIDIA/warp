@@ -18,3 +18,14 @@
 from warp._src.utils import array_cast as array_cast
 from warp._src.utils import segmented_sort_pairs as segmented_sort_pairs
 from warp._src.utils import warn as warn
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src import utils as _utils
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api
+
+    return get_deprecated_api(_utils, "wp", name)

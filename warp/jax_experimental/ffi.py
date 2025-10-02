@@ -20,3 +20,14 @@ from warp._src.jax_experimental.ffi import clear_jax_callable_graph_cache as cle
 from warp._src.jax_experimental.ffi import jax_kernel as jax_kernel
 from warp._src.jax_experimental.ffi import jax_callable as jax_callable
 from warp._src.jax_experimental.ffi import register_ffi_callback as register_ffi_callback
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src.jax_experimental import ffi as _ffi
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api
+
+    return get_deprecated_api(_ffi, "wp.jax_experimental", name)

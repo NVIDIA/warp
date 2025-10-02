@@ -16,3 +16,14 @@
 # isort: skip_file
 
 from warp._src.render.imgui_manager import ImGuiManager as ImGuiManager
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src.render import imgui_manager as _imgui_manager
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api
+
+    return get_deprecated_api(_imgui_manager, "wp.render", name)

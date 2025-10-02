@@ -20,3 +20,14 @@ from warp._src.context import Module as Module
 from warp._src.context import assert_conditional_graph_support as assert_conditional_graph_support
 from warp._src.context import get_module as get_module
 from warp._src.context import type_str as type_str
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src import context as _context
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api
+
+    return get_deprecated_api(_context, "wp", name)

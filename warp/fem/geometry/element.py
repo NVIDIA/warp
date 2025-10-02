@@ -16,3 +16,14 @@
 # isort: skip_file
 
 from warp._src.fem.geometry.element import Triangle as Triangle
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src.fem.geometry import element as _element
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api
+
+    return get_deprecated_api(_element, "wp.fem.geometry", name)

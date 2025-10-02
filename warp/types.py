@@ -38,3 +38,14 @@ from warp._src.types import quat as quat
 from warp._src.types import vec2 as vec2
 from warp._src.types import vec3 as vec3
 from warp._src.types import vec4 as vec4
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src import types as _types
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api
+
+    return get_deprecated_api(_types, "wp", name)

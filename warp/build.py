@@ -24,6 +24,6 @@ from warp._src import build as _build
 
 
 def __getattr__(name):
-    from warp._src.utils import warn_deprecated_api
+    from warp._src.utils import get_deprecated_api
 
-    warn_deprecated_api(_build, "wp", name)
+    return get_deprecated_api(_build, "wp", name)

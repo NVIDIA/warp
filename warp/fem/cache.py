@@ -17,3 +17,14 @@
 
 from warp._src.fem.cache import Temporary as Temporary
 from warp._src.fem.cache import dynamic_kernel as dynamic_kernel
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src.fem import cache as _cache
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api
+
+    return get_deprecated_api(_cache, "wp.fem", name)

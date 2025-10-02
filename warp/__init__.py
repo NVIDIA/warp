@@ -319,10 +319,21 @@ from warp._src import config as config
 
 __version__ = config.version
 
+
+# TODO: Remove after cleaning up the public API.
+
 from . import build as build
+from . import codegen as codegen
+from . import constants as constants
 from . import context as context
+from . import dlpack as dlpack
+from . import fabric as fabric
 from . import jax as jax
+from . import marching_cubes as marching_cubes
 from . import math as math
+from . import paddle as paddle
 from . import sparse as sparse
+from . import tape as tape
+from . import torch as torch
 from . import types as types
 from . import utils as utils

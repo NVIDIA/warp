@@ -19,3 +19,14 @@ from warp._src.fem.utils import array_axpy as array_axpy
 from warp._src.fem.utils import grid_to_quads as grid_to_quads
 from warp._src.fem.utils import grid_to_tris as grid_to_tris
 from warp._src.fem.utils import inverse_qr as inverse_qr
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src.fem import utils as _utils
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api
+
+    return get_deprecated_api(_utils, "wp.fem", name)

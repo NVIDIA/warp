@@ -16,3 +16,14 @@
 # isort: skip_file
 
 from warp._src.fem.field.field import NonconformingField as NonconformingField
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src.fem.field import field as _field
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api
+
+    return get_deprecated_api(_field, "wp.fem.field", name)

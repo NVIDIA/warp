@@ -16,3 +16,14 @@
 # isort: skip_file
 
 from warp._src.fem.adaptivity import adaptive_nanogrid_from_field as adaptive_nanogrid_from_field
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src.fem import adaptivity as _adaptivity
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api
+
+    return get_deprecated_api(_adaptivity, "wp.fem", name)

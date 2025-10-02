@@ -38,3 +38,14 @@ from warp._src.sparse import bsr_set_transpose as bsr_set_transpose
 from warp._src.sparse import bsr_set_zero as bsr_set_zero
 from warp._src.sparse import bsr_transposed as bsr_transposed
 from warp._src.sparse import bsr_zeros as bsr_zeros
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src import sparse as _sparse
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api
+
+    return get_deprecated_api(_sparse, "wp", name)
