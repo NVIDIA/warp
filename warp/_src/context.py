@@ -7809,7 +7809,8 @@ def export_functions_rst(file):  # pragma: no cover
                 continue
             if f.func:
                 # f is a Warp function written in Python, we can use autofunction
-                print(f".. autofunction:: {f.func.__module__}.{f.key}", file=file)
+                ns = f.func.__module__.replace("._src.", ".")
+                print(f".. autofunction:: {ns}.{f.key}", file=file)
                 continue
             for f_prefix, query_type in query_types:
                 if f.key.startswith(f_prefix) and query_type not in written_query_types:
