@@ -314,6 +314,7 @@ def node_count(f: Field, s: Sample):
     """
     Returns the number of nodes associated to the field `f` in the element containing the sample `s`
     """
+    pass
 
 
 @operator(resolver=lambda f: f.at_node)
