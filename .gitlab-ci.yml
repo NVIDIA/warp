@@ -589,6 +589,8 @@ linux-x86_64 python matrix test:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
+    # Python 3.14 requires a C compiler for some dependencies
+    - if [ "$UV_PYTHON" = "3.14" ]; then apt-get update && apt-get install build-essential --no-install-recommends -y; fi
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
