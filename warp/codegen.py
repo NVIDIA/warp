@@ -53,6 +53,22 @@ class WarpCodegenAttributeError(AttributeError):
         super().__init__(message)
 
 
+def get_node_name_safe(node):
+    """Safely get a string representation of an AST node for error messages.
+
+    This handles different AST node types (Name, Subscript, etc.) without
+    raising AttributeError when accessing attributes that may not exist.
+    """
+    if hasattr(node, "id"):
+        return node.id
+    elif hasattr(node, "value") and hasattr(node, "slice"):
+        # Subscript node like inputs[tid]
+        base_name = get_node_name_safe(node.value)
+        return f"{base_name}[...]"
+    else:
+        return f"<{type(node).__name__}>"
+
+
 class WarpCodegenKeyError(KeyError):
     def __init__(self, message):
         super().__init__(message)
@@ -185,6 +201,12 @@ def eval_annotations(annotations: Mapping[str, Any], obj: Any) -> Mapping[str, A
 
 def get_annotations(obj: Any) -> Mapping[str, Any]:
     """Same as `inspect.get_annotations()` but always returning un-stringized annotations."""
+    # Use the built-in inspect.get_annotations() for Python 3.10+ which handles
+    # PEP 649 (deferred annotation evaluation) in Python 3.14+
+    if hasattr(inspect, "get_annotations"):
+        # eval_str=True ensures stringized annotations from PEP 563 are evaluated
+        return inspect.get_annotations(obj, eval_str=True)
+
     # This backports `inspect.get_annotations()` for Python 3.9 and older.
     # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
     if isinstance(obj, type):
@@ -2047,8 +2069,9 @@ class Adjoint:
                 return type_attribute
 
             if isinstance(aggregate, Var):
+                node_name = get_node_name_safe(node.value)
                 raise WarpCodegenAttributeError(
-                    f"Error, `{node.attr}` is not an attribute of '{node.value.id}' ({type_repr(aggregate.type)})"
+                    f"Error, `{node.attr}` is not an attribute of '{node_name}' ({type_repr(aggregate.type)})"
                 ) from e
             raise WarpCodegenAttributeError(f"Error, `{node.attr}` is not an attribute of '{aggregate}'") from e
 
