@@ -261,8 +261,14 @@ class FfiKernel:
 
         # ensure the kernel module is loaded on all local GPUs to avoid per-device build races
         for d in jax.local_devices():
-            dev = wp.device_from_jax(d)
-            self.kernel.module.load(dev)
+            try:
+                dev = wp.device_from_jax(d)
+            except Exception:
+                # ignore unsupported devices like TPUs
+                pass
+            # we only support CUDA devices for now
+            if dev.is_cuda:
+                self.kernel.module.load(dev)
 
         # save launch data to be retrieved by callback
         launch_id = self.launch_id
@@ -538,11 +544,17 @@ class FfiCallable:
             # has_side_effect=True,  # force this function to execute even if outputs aren't used
         )
 
-        # Preload relevant modules across local GPUs to avoid per-device build races (e.g., __main__)
+        # ensure the module is loaded on all local GPUs to avoid per-device build races
         module = wp.get_module(self.func.__module__)
         for d in jax.local_devices():
-            dev = wp.device_from_jax(d)
-            module.load(dev)
+            try:
+                dev = wp.device_from_jax(d)
+            except Exception:
+                # ignore unsupported devices like TPUs
+                pass
+            # we only support CUDA devices for now
+            if dev.is_cuda:
+                module.load(dev)
 
         # save call data to be retrieved by callback
         call_id = self.call_id
