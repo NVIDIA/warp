@@ -1122,6 +1122,13 @@ def kernel(
             # add the hash to the module name
             hasher = warp._src.context.ModuleHasher(m)
             k.module.name = f"{k.key}_{hasher.module_hash.hex()[:8]}"
+            # check if this module exists already and just use that
+            existing_module = user_modules.get(k.module.name)
+            if existing_module is not None:
+                k.module = existing_module
+            else:
+                # register the new unique module
+                user_modules[k.module.name] = k.module
 
         k = functools.update_wrapper(k, f)
         return k
