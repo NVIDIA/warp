@@ -312,6 +312,9 @@ License
 Warp is provided under the Apache License, Version 2.0. Please see
 `LICENSE.md <https://github.com/NVIDIA/warp/blob/main/LICENSE.md>`__ for the full license text.
 
+This project will download and install additional third-party open source software projects.
+Review the license terms of these open source projects before use.
+
 Contributing
 ------------
 

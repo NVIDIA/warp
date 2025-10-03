@@ -232,7 +232,6 @@ setuptools.setup(
         ]
     },
     distclass=BinaryDistribution,
-    cmdclass={
-        "bdist_wheel": WarpBDistWheel,
-    },
+    cmdclass={"bdist_wheel": WarpBDistWheel},
+    license_files=["LICENSE.md", "licenses/*.txt"],
 )
