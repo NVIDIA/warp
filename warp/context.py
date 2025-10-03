@@ -1207,8 +1207,13 @@ def overload(kernel, arg_types=Union[None, Dict[str, Any], List[Any]]):
         for node in func_body:
             if isinstance(node, ast.Pass):
                 continue
-            elif isinstance(node, ast.Expr) and isinstance(node.value, (ast.Str, ast.Ellipsis)):
-                continue
+            elif isinstance(node, ast.Expr):
+                # Python 3.8+ uses ast.Constant for strings and Ellipsis
+                # Python 3.14+ removed ast.Str and ast.Ellipsis (deprecated since 3.8)
+                if isinstance(node.value, ast.Constant) and (
+                    isinstance(node.value.value, str) or node.value.value is ...
+                ):
+                    continue
             raise RuntimeError(
                 "Illegal statement in kernel overload definition.  Only pass, ellipsis (...), comments, or docstrings are allowed"
             )
