@@ -46,6 +46,7 @@ variables:
   WARP_CACHE_ROOT: "$CI_PROJECT_DIR/.cache/warp" # Used by the parallel test runner
   GIT_DEPTH: 1
   UV_LINK_MODE: copy
+  UV_HTTP_TIMEOUT: 120
   UV_PYTHON:
     value: "3.12"
     options:
