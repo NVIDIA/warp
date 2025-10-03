@@ -41,7 +41,7 @@ _FFI_CALLBACK_REGISTRY: dict[str, ctypes.CFUNCTYPE] = {}
 _FFI_REGISTRY_LOCK = threading.Lock()
 
 # Lock when XLA invokes callbacks from multiple threads.
-_FFI_DEVICE_CONTEXT_LOCK = threading.Lock()
+_FFI_CALLBACK_LOCK = threading.Lock()
 
 
 def check_jax_version():
@@ -289,72 +289,75 @@ class FfiKernel:
                     )
                     return None
 
-            # retrieve call info
-            attrs = decode_attrs(call_frame.contents.attrs)
-            launch_id = int(attrs["launch_id"])
-            launch_desc = self.launch_descriptors[launch_id]
+            # Lock is required to prevent race conditions when callback is invoked
+            # from multiple threads, like with pmap.
+            with _FFI_CALLBACK_LOCK:
+                # retrieve call info
+                attrs = decode_attrs(call_frame.contents.attrs)
+                launch_id = int(attrs["launch_id"])
+                launch_desc = self.launch_descriptors[launch_id]
 
-            num_inputs = call_frame.contents.args.size
-            inputs = ctypes.cast(call_frame.contents.args.args, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
+                num_inputs = call_frame.contents.args.size
+                inputs = ctypes.cast(call_frame.contents.args.args, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
 
-            num_outputs = call_frame.contents.rets.size
-            outputs = ctypes.cast(call_frame.contents.rets.rets, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
+                num_outputs = call_frame.contents.rets.size
+                outputs = ctypes.cast(call_frame.contents.rets.rets, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
 
-            assert num_inputs == self.num_inputs
-            assert num_outputs == self.num_outputs
+                assert num_inputs == self.num_inputs
+                assert num_outputs == self.num_outputs
 
-            launch_bounds = launch_bounds_t(launch_desc.launch_dims)
+                launch_bounds = launch_bounds_t(launch_desc.launch_dims)
 
-            # first kernel param is the launch bounds
-            kernel_params = (ctypes.c_void_p * (1 + self.num_kernel_args))()
-            kernel_params[0] = ctypes.addressof(launch_bounds)
+                # first kernel param is the launch bounds
+                kernel_params = (ctypes.c_void_p * (1 + self.num_kernel_args))()
+                kernel_params[0] = ctypes.addressof(launch_bounds)
 
-            arg_refs = []
+                arg_refs = []
 
-            # input and in-out args
-            for i, input_arg in enumerate(self.input_args):
-                if input_arg.is_array:
-                    buffer = inputs[i].contents
-                    shape = buffer.dims[: input_arg.type.ndim]
-                    strides = strides_from_shape(shape, input_arg.type.dtype)
-                    arg = array_t(buffer.data, 0, input_arg.type.ndim, shape, strides)
-                    kernel_params[i + 1] = ctypes.addressof(arg)
+                # input and in-out args
+                for i, input_arg in enumerate(self.input_args):
+                    if input_arg.is_array:
+                        buffer = inputs[i].contents
+                        shape = buffer.dims[: input_arg.type.ndim]
+                        strides = strides_from_shape(shape, input_arg.type.dtype)
+                        arg = array_t(buffer.data, 0, input_arg.type.ndim, shape, strides)
+                        kernel_params[i + 1] = ctypes.addressof(arg)
+                        arg_refs.append(arg)  # keep a reference
+                    else:
+                        # scalar argument, get stashed value
+                        value = launch_desc.static_inputs[input_arg.name]
+                        arg = input_arg.type._type_(value)
+                        kernel_params[i + 1] = ctypes.addressof(arg)
+                        arg_refs.append(arg)  # keep a reference
+
+                # pure output args (skip in-out FFI buffers)
+                for i, output_arg in enumerate(self.output_args):
+                    buffer = outputs[i + self.num_in_out].contents
+                    shape = buffer.dims[: output_arg.type.ndim]
+                    strides = strides_from_shape(shape, output_arg.type.dtype)
+                    arg = array_t(buffer.data, 0, output_arg.type.ndim, shape, strides)
+                    kernel_params[num_inputs + i + 1] = ctypes.addressof(arg)
                     arg_refs.append(arg)  # keep a reference
-                else:
-                    # scalar argument, get stashed value
-                    value = launch_desc.static_inputs[input_arg.name]
-                    arg = input_arg.type._type_(value)
-                    kernel_params[i + 1] = ctypes.addressof(arg)
-                    arg_refs.append(arg)  # keep a reference
 
-            # pure output args (skip in-out FFI buffers)
-            for i, output_arg in enumerate(self.output_args):
-                buffer = outputs[i + self.num_in_out].contents
-                shape = buffer.dims[: output_arg.type.ndim]
-                strides = strides_from_shape(shape, output_arg.type.dtype)
-                arg = array_t(buffer.data, 0, output_arg.type.ndim, shape, strides)
-                kernel_params[num_inputs + i + 1] = ctypes.addressof(arg)
-                arg_refs.append(arg)  # keep a reference
+                # get device and stream
+                device = wp.get_cuda_device(get_device_ordinal_from_callframe(call_frame.contents))
+                stream = get_stream_from_callframe(call_frame.contents)
 
-            # get device and stream
-            device = wp.get_cuda_device(get_device_ordinal_from_callframe(call_frame.contents))
-            stream = get_stream_from_callframe(call_frame.contents)
+                # get kernel hooks
+                hooks = self.kernel.module.get_kernel_hooks(self.kernel, device)
+                assert hooks.forward, "Failed to find kernel entry point"
 
-            # get kernel hooks
-            hooks = self.kernel.module.get_kernel_hooks(self.kernel, device)
-            assert hooks.forward, "Failed to find kernel entry point"
-
-            # launch the kernel
-            wp.context.runtime.core.wp_cuda_launch_kernel(
-                device.context,
-                hooks.forward,
-                launch_bounds.size,
-                0,
-                256,
-                hooks.forward_smem_bytes,
-                kernel_params,
-                stream,
-            )
+                # launch the kernel
+                wp.context.runtime.core.wp_cuda_launch_kernel(
+                    device.context,
+                    hooks.forward,
+                    launch_bounds.size,
+                    0,
+                    256,
+                    hooks.forward_smem_bytes,
+                    kernel_params,
+                    stream,
+                )
 
         except Exception as e:
             print(traceback.format_exc())
@@ -566,84 +569,84 @@ class FfiCallable:
                         )
                     return None
 
-            # retrieve call info
-            # NOTE: this assumes that there's only one attribute - call_id (int64).
-            # A more general but slower approach is this:
-            #   attrs = decode_attrs(call_frame.contents.attrs)
-            #   call_id = int(attrs["call_id"])
-            attr = ctypes.cast(call_frame.contents.attrs.attrs[0], ctypes.POINTER(XLA_FFI_Scalar)).contents
-            call_id = ctypes.cast(attr.value, ctypes.POINTER(ctypes.c_int64)).contents.value
-            call_desc = self.call_descriptors[call_id]
+            # Lock is required to prevent race conditions when callback is invoked
+            # from multiple threads, like with pmap.
+            with _FFI_CALLBACK_LOCK:
+                # retrieve call info
+                # NOTE: this assumes that there's only one attribute - call_id (int64).
+                # A more general but slower approach is this:
+                #   attrs = decode_attrs(call_frame.contents.attrs)
+                #   call_id = int(attrs["call_id"])
+                attr = ctypes.cast(call_frame.contents.attrs.attrs[0], ctypes.POINTER(XLA_FFI_Scalar)).contents
+                call_id = ctypes.cast(attr.value, ctypes.POINTER(ctypes.c_int64)).contents.value
+                call_desc = self.call_descriptors[call_id]
 
-            num_inputs = call_frame.contents.args.size
-            inputs = ctypes.cast(call_frame.contents.args.args, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
+                num_inputs = call_frame.contents.args.size
+                inputs = ctypes.cast(call_frame.contents.args.args, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
 
-            num_outputs = call_frame.contents.rets.size
-            outputs = ctypes.cast(call_frame.contents.rets.rets, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
+                num_outputs = call_frame.contents.rets.size
+                outputs = ctypes.cast(call_frame.contents.rets.rets, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
 
-            assert num_inputs == self.num_inputs
-            assert num_outputs == self.num_outputs
+                assert num_inputs == self.num_inputs
+                assert num_outputs == self.num_outputs
 
-            cuda_stream = get_stream_from_callframe(call_frame.contents)
+                cuda_stream = get_stream_from_callframe(call_frame.contents)
 
-            if self.graph_mode == GraphMode.WARP:
-                # check if we already captured an identical call
-                ip = [inputs[i].contents.data for i in self.array_input_indices]
-                op = [outputs[i].contents.data for i in self.array_output_indices]
-                capture_key = hash((call_id, *ip, *op))
-                capture = self.captures.get(capture_key)
+                if self.graph_mode == GraphMode.WARP:
+                    # check if we already captured an identical call
+                    ip = [inputs[i].contents.data for i in self.array_input_indices]
+                    op = [outputs[i].contents.data for i in self.array_output_indices]
+                    capture_key = hash((call_id, *ip, *op))
+                    capture = self.captures.get(capture_key)
 
-                # launch existing graph
-                if capture is not None:
-                    # NOTE: We use the native graph API to avoid overhead with obtaining Stream and Device objects in Python.
-                    # This code should match wp.capture_launch().
-                    graph = capture.graph
-                    if graph.graph_exec is None:
-                        g = ctypes.c_void_p()
-                        if not wp.context.runtime.core.wp_cuda_graph_create_exec(
-                            graph.device.context, cuda_stream, graph.graph, ctypes.byref(g)
-                        ):
-                            raise RuntimeError(f"Graph creation error: {wp.context.runtime.get_error_string()}")
-                        graph.graph_exec = g
+                    # launch existing graph
+                    if capture is not None:
+                        # NOTE: We use the native graph API to avoid overhead with obtaining Stream and Device objects in Python.
+                        # This code should match wp.capture_launch().
+                        graph = capture.graph
+                        if graph.graph_exec is None:
+                            g = ctypes.c_void_p()
+                            if not wp.context.runtime.core.wp_cuda_graph_create_exec(
+                                graph.device.context, cuda_stream, graph.graph, ctypes.byref(g)
+                            ):
+                                raise RuntimeError(f"Graph creation error: {wp.context.runtime.get_error_string()}")
+                            graph.graph_exec = g
 
-                    if not wp.context.runtime.core.wp_cuda_graph_launch(graph.graph_exec, cuda_stream):
-                        raise RuntimeError(f"Graph launch error: {wp.context.runtime.get_error_string()}")
+                        if not wp.context.runtime.core.wp_cuda_graph_launch(graph.graph_exec, cuda_stream):
+                            raise RuntimeError(f"Graph launch error: {wp.context.runtime.get_error_string()}")
 
-                    # update the graph cache to keep recently used graphs alive
-                    self.captures.move_to_end(capture_key)
+                        # update the graph cache to keep recently used graphs alive
+                        self.captures.move_to_end(capture_key)
 
-                    # early out
-                    return
+                        # early out
+                        return
 
-            device_ordinal = get_device_ordinal_from_callframe(call_frame.contents)
-            device = wp.get_cuda_device(device_ordinal)
-            stream = wp.Stream(device, cuda_stream=cuda_stream)
-            # reconstruct the argument list
-            arg_list = []
+                device_ordinal = get_device_ordinal_from_callframe(call_frame.contents)
+                device = wp.get_cuda_device(device_ordinal)
+                stream = wp.Stream(device, cuda_stream=cuda_stream)
+                # reconstruct the argument list
+                arg_list = []
 
-            # input and in-out args
-            for i, arg in enumerate(self.input_args):
-                if arg.is_array:
-                    buffer = inputs[i].contents
+                # input and in-out args
+                for i, arg in enumerate(self.input_args):
+                    if arg.is_array:
+                        buffer = inputs[i].contents
+                        shape = buffer.dims[: buffer.rank - arg.dtype_ndim]
+                        arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=shape, device=device)
+                        arg_list.append(arr)
+                    else:
+                        # scalar argument, get stashed value
+                        value = call_desc.static_inputs[arg.name]
+                        arg_list.append(value)
+
+                # pure output args (skip in-out FFI buffers)
+                for i, arg in enumerate(self.output_args):
+                    buffer = outputs[i + self.num_in_out].contents
                     shape = buffer.dims[: buffer.rank - arg.dtype_ndim]
                     arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=shape, device=device)
                     arg_list.append(arr)
-                else:
-                    # scalar argument, get stashed value
-                    value = call_desc.static_inputs[arg.name]
-                    arg_list.append(value)
 
-            # pure output args (skip in-out FFI buffers)
-            for i, arg in enumerate(self.output_args):
-                buffer = outputs[i + self.num_in_out].contents
-                shape = buffer.dims[: buffer.rank - arg.dtype_ndim]
-                arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=shape, device=device)
-                arg_list.append(arr)
-
-            # call the Python function with reconstructed arguments
-            # Lock is required here to prevent wp.ScopedStreams from overwriting each other
-            # when XLA calls this method from multiple threads.
-            with _FFI_DEVICE_CONTEXT_LOCK:
+                # call the Python function with reconstructed arguments
                 with wp.ScopedStream(stream, sync_enter=True):
                     if stream.is_capturing:
                         # capturing with JAX
@@ -883,19 +886,23 @@ def register_ffi_callback(name: str, func: Callable, graph_compatible: bool = Tr
                         )
                     return None
 
-            attrs = decode_attrs(call_frame.contents.attrs)
+            # Lock is required to prevent race conditions when callback is invoked
+            # from multiple threads, like with pmap.
+            with _FFI_CALLBACK_LOCK:
+                attrs = decode_attrs(call_frame.contents.attrs)
 
-            input_count = call_frame.contents.args.size
-            inputs = ctypes.cast(call_frame.contents.args.args, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
-            inputs = [FfiBuffer(inputs[i].contents) for i in range(input_count)]
+                input_count = call_frame.contents.args.size
+                inputs = ctypes.cast(call_frame.contents.args.args, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
+                inputs = [FfiBuffer(inputs[i].contents) for i in range(input_count)]
 
-            output_count = call_frame.contents.rets.size
-            outputs = ctypes.cast(call_frame.contents.rets.rets, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
-            outputs = [FfiBuffer(outputs[i].contents) for i in range(output_count)]
+                output_count = call_frame.contents.rets.size
+                outputs = ctypes.cast(call_frame.contents.rets.rets, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
+                outputs = [FfiBuffer(outputs[i].contents) for i in range(output_count)]
 
-            ctx = ExecutionContext(call_frame.contents)
+                ctx = ExecutionContext(call_frame.contents)
 
-            func(inputs, outputs, attrs, ctx)
+                func(inputs, outputs, attrs, ctx)
+
         except Exception as e:
             print(traceback.format_exc())
             return create_ffi_error(
