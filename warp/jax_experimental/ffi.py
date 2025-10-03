@@ -24,6 +24,7 @@ import jax
 
 import warp as wp
 from warp.codegen import get_full_arg_spec, make_full_qualified_name
+from warp.jax import get_jax_device
 from warp.types import array_t, launch_bounds_t, strides_from_shape, type_to_warp
 
 from .xla_ffi import *
@@ -60,6 +61,12 @@ class GraphMode(IntEnum):
     NONE = 0  # don't capture a graph
     JAX = 1  # let JAX capture a graph
     WARP = 2  # let Warp capture a graph
+
+
+class ModulePreloadMode(IntEnum):
+    NONE = 0  # don't preload modules
+    CURRENT_DEVICE = 1  # preload on currently active device
+    ALL_DEVICES = 2  # preload on all supported devices
 
 
 class FfiArg:
@@ -100,13 +107,16 @@ class FfiLaunchDesc:
 
 
 class FfiKernel:
-    def __init__(self, kernel, num_outputs, vmap_method, launch_dims, output_dims, in_out_argnames):
+    def __init__(
+        self, kernel, num_outputs, vmap_method, launch_dims, output_dims, in_out_argnames, module_preload_mode
+    ):
         self.kernel = kernel
         self.name = generate_unique_name(kernel.func)
         self.num_outputs = num_outputs
         self.vmap_method = vmap_method
         self.launch_dims = launch_dims
         self.output_dims = output_dims
+        self.module_preload_mode = module_preload_mode
         self.first_array_arg = None
         self.launch_id = 0
         self.launch_descriptors = {}
@@ -259,16 +269,20 @@ class FfiKernel:
             input_output_aliases=self.input_output_aliases,
         )
 
-        # ensure the kernel module is loaded on all local GPUs to avoid per-device build races
-        for d in jax.local_devices():
-            try:
-                dev = wp.device_from_jax(d)
-            except Exception:
-                # ignore unsupported devices like TPUs
-                pass
-            # we only support CUDA devices for now
-            if dev.is_cuda:
-                self.kernel.module.load(dev)
+        # preload on the specified devices
+        if self.module_preload_mode == ModulePreloadMode.CURRENT_DEVICE:
+            device = wp.device_from_jax(get_jax_device())
+            self.kernel.module.load(device)
+        elif self.module_preload_mode == ModulePreloadMode.ALL_DEVICES:
+            for d in jax.local_devices():
+                try:
+                    dev = wp.device_from_jax(d)
+                except Exception:
+                    # ignore unsupported devices like TPUs
+                    pass
+                # we only support CUDA devices for now
+                if dev.is_cuda:
+                    self.kernel.module.load(dev)
 
         # save launch data to be retrieved by callback
         launch_id = self.launch_id
@@ -378,13 +392,24 @@ class FfiCallDesc:
 
 
 class FfiCallable:
-    def __init__(self, func, num_outputs, graph_mode, vmap_method, output_dims, in_out_argnames, graph_cache_max):
+    def __init__(
+        self,
+        func,
+        num_outputs,
+        graph_mode,
+        vmap_method,
+        output_dims,
+        in_out_argnames,
+        graph_cache_max,
+        module_preload_mode,
+    ):
         self.func = func
         self.name = generate_unique_name(func)
         self.num_outputs = num_outputs
         self.vmap_method = vmap_method
         self.graph_mode = graph_mode
         self.output_dims = output_dims
+        self.module_preload_mode = module_preload_mode
         self.first_array_arg = None
         self.call_id = 0
         self.call_descriptors = {}
@@ -544,17 +569,22 @@ class FfiCallable:
             # has_side_effect=True,  # force this function to execute even if outputs aren't used
         )
 
-        # ensure the module is loaded on all local GPUs to avoid per-device build races
+        # preload on the specified devices
+        # NOTE: if the target function uses kernels from different modules, they will not be loaded here
         module = wp.get_module(self.func.__module__)
-        for d in jax.local_devices():
-            try:
-                dev = wp.device_from_jax(d)
-            except Exception:
-                # ignore unsupported devices like TPUs
-                pass
-            # we only support CUDA devices for now
-            if dev.is_cuda:
-                module.load(dev)
+        if self.module_preload_mode == ModulePreloadMode.CURRENT_DEVICE:
+            device = wp.device_from_jax(get_jax_device())
+            module.load(device)
+        elif self.module_preload_mode == ModulePreloadMode.ALL_DEVICES:
+            for d in jax.local_devices():
+                try:
+                    dev = wp.device_from_jax(d)
+                except Exception:
+                    # ignore unsupported devices like TPUs
+                    pass
+                # we only support CUDA devices for now
+                if dev.is_cuda:
+                    module.load(dev)
 
         # save call data to be retrieved by callback
         call_id = self.call_id
@@ -636,6 +666,7 @@ class FfiCallable:
                 device_ordinal = get_device_ordinal_from_callframe(call_frame.contents)
                 device = wp.get_cuda_device(device_ordinal)
                 stream = wp.Stream(device, cuda_stream=cuda_stream)
+
                 # reconstruct the argument list
                 arg_list = []
 
@@ -707,7 +738,13 @@ class FfiCallable:
 
 
 def jax_kernel(
-    kernel, num_outputs=1, vmap_method="broadcast_all", launch_dims=None, output_dims=None, in_out_argnames=None
+    kernel,
+    num_outputs=1,
+    vmap_method="broadcast_all",
+    launch_dims=None,
+    output_dims=None,
+    in_out_argnames=None,
+    module_preload_mode=ModulePreloadMode.CURRENT_DEVICE,
 ):
     """Create a JAX callback from a Warp kernel.
 
@@ -726,6 +763,7 @@ def jax_kernel(
                      dimensions are inferred from the launch dimensions.
                      This argument can also be specified for individual calls.
         in_out_argnames: Names of input-output arguments.
+        module_preload_mode: Specify the devices where the module should be preloaded.
 
     Limitations:
         - All kernel arguments must be contiguous arrays or scalars.
@@ -744,11 +782,14 @@ def jax_kernel(
         vmap_method,
         tuple(launch_dims) if launch_dims else launch_dims,
         tuple(sorted(output_dims.items())) if output_dims else output_dims,
+        module_preload_mode,
     )
 
     with _FFI_REGISTRY_LOCK:
         if key not in _FFI_KERNEL_REGISTRY:
-            new_kernel = FfiKernel(kernel, num_outputs, vmap_method, launch_dims, output_dims, in_out_argnames)
+            new_kernel = FfiKernel(
+                kernel, num_outputs, vmap_method, launch_dims, output_dims, in_out_argnames, module_preload_mode
+            )
             _FFI_KERNEL_REGISTRY[key] = new_kernel
 
     return _FFI_KERNEL_REGISTRY[key]
@@ -763,6 +804,7 @@ def jax_callable(
     output_dims=None,
     in_out_argnames=None,
     graph_cache_max: int | None = None,
+    module_preload_mode: ModulePreloadMode = ModulePreloadMode.CURRENT_DEVICE,
 ):
     """Create a JAX callback from an annotated Python function.
 
@@ -790,6 +832,7 @@ def jax_callable(
         in_out_argnames: Names of input-output arguments.
         graph_cache_max: Maximum number of cached graphs captured using ``GraphMode.WARP``.
             If ``None``, use ``warp.jax_experimental.ffi.jax_callable_default_graph_cache_max``.
+        module_preload_mode: Specify the devices where the module should be preloaded.
 
     Limitations:
         - All kernel arguments must be contiguous arrays or scalars.
@@ -820,6 +863,7 @@ def jax_callable(
         graph_mode,
         vmap_method,
         tuple(sorted(output_dims.items())) if output_dims else output_dims,
+        module_preload_mode,
     )
 
     with _FFI_REGISTRY_LOCK:
@@ -833,6 +877,7 @@ def jax_callable(
                 output_dims,
                 in_out_argnames,
                 graph_cache_max,
+                module_preload_mode,
             )
             _FFI_CALLABLE_REGISTRY[key] = callable
         else:
