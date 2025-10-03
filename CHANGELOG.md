@@ -18,6 +18,7 @@
 - Add support for querying CPU memory information (requires `psutil` package)
   ([GH-985](https://github.com/NVIDIA/warp/issues/985)).
 - Add support for limiting the graph cache size of JAX callables ([GH-989](https://github.com/NVIDIA/warp/issues/989)).
+- Add support for JAX pmap ([GH-976](https://github.com/NVIDIA/warp/pull/976)).
 
 ### Removed
 
