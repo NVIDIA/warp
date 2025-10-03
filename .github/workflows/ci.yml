@@ -356,3 +356,41 @@ jobs:
         run: >
           git diff --exit-code warp/native/exports.h ||
           (echo "Please run build_lib.py (or download from $ARTIFACT_URL) and add warp/native/exports.h to your pull request." && false)
+
+  check-unnamespaced-symbols:
+    runs-on: ubuntu-latest
+    needs: build-warp-ubuntu-x86_64
+    steps:
+      - name: Download Warp build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifact-ubuntu-x86_64
+          path: warp/bin/
+      - name: Check for un-namespaced symbols
+        run: |
+          echo "Checking for un-namespaced symbols..."
+          LIBRARIES_TO_CHECK="warp/bin/warp.so warp/bin/warp-clang.so"
+          found_symbols=""
+
+          for lib in $LIBRARIES_TO_CHECK; do
+            echo "--> Checking $lib"
+            if [ ! -f "$lib" ]; then
+              echo "ERROR: $lib not found"
+              found_symbols="true"
+              continue
+            fi
+            output=$(readelf -Ws "$lib" | awk '$7 ~ /^[0-9]+$/ && $8 !~ /^_?wp_/ {print $8}' | grep -Ev '^(_Z|__|\.)' || true)
+            
+            if [ -n "$output" ]; then
+              echo "ERROR: Found un-namespaced symbols in $lib:"
+              echo "$output"
+              found_symbols="true"
+            fi
+          done
+
+          if [ -n "$found_symbols" ]; then
+            echo "FAIL: Un-namespaced symbols detected. Please prefix them with 'wp_' or '_wp_'."
+            exit 1
+          fi
+
+          echo "SUCCESS: All symbols are correctly namespaced."
