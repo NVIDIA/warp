@@ -2700,7 +2700,7 @@ bool wp_cuda_graph_begin_capture(void* context, void* stream, int external)
     else
     {
         // start the capture
-        if (!check_cuda(cudaStreamBeginCapture(cuda_stream, cudaStreamCaptureModeGlobal)))
+        if (!check_cuda(cudaStreamBeginCapture(cuda_stream, cudaStreamCaptureModeThreadLocal)))
             return false;
     }
 
@@ -3068,7 +3068,7 @@ bool wp_cuda_graph_resume_capture(void* context, void* stream, void* graph)
                                   leaf_nodes.data(),
                                   nullptr,
                                   leaf_nodes.size(),
-                                  cudaStreamCaptureModeGlobal)))
+                                  cudaStreamCaptureModeThreadLocal)))
         return false;
 
     return true;
