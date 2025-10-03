@@ -584,6 +584,7 @@ linux-x86_64 python matrix test:
       - UV_PYTHON: "3.8"
       - UV_PYTHON: "3.9"
       - UV_PYTHON: "3.13"
+      - UV_PYTHON: "3.14"
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
