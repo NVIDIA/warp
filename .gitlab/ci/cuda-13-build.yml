@@ -224,32 +224,32 @@ publish tag wheels to artifactory:
     - if: $PARENT_COMMIT_TAG
   allow_failure: true
   before_script:
-    - export VERSION=$(head -n 1 dist/VERSION.md)
+    - export VERSION=$(head -n 1 VERSION.md)
   script:
     - cd dist
     - >
       jf rt u --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
-      --target-props 'component_name=warp-lang;release_approver=ershi;release_status=ready'
-      '*.whl' sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/$VERSION/
+      --target-props 'component_name=warp-lang;release_approver=ershi'
+      '*.whl' sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/
     # Set build-specific properties on individual artifacts
     - >
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/$VERSION/*-win_amd64.whl
+      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/*-win_amd64.whl
       'arch=x86_64;os=windows'
     - >
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/$VERSION/*-manylinux_2_34_aarch64.whl
+      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/*-manylinux_2_34_aarch64.whl
       'arch=aarch64;os=linux'
     - >
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/$VERSION/*-manylinux_2_34_x86_64.whl
+      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/*-manylinux_2_34_x86_64.whl
       'arch=x86_64;os=linux'
     # Set additional common properties on all artifacts
     - >
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/$VERSION/*.whl
+      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/*.whl
       version=$VERSION
     - >
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/$VERSION/*.whl
+      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/*.whl
       branch=$PARENT_COMMIT_REF_NAME
