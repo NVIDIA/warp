@@ -4718,8 +4718,7 @@ class Volume:
         """Create a :class:`Volume` object from a serialized NanoVDB file or in-memory buffer.
 
         Returns:
-
-            A ``warp.Volume`` object.
+            A :class:`Volume` object.
         """
         try:
             data = file_or_buffer.read()
@@ -4778,14 +4777,16 @@ class Volume:
         return cls(data_array)
 
     def save_to_nvdb(self, path, codec: Literal["none", "zip", "blosc"] = "none"):
-        """Serialize the Volume into a NanoVDB (.nvdb) file.
+        """Serialize the :class:`Volume` into a NanoVDB (``.nvdb``) file.
 
         Args:
-            path: File path to save.
-            codec: Compression codec used
-                "none" - no compression
-                "zip" - ZIP compression
-                "blosc" - BLOSC compression, requires the blosc module to be installed
+            path: File path where the ``.nvdb`` file will be saved.
+            codec: Compression codec to use. Defaults to ``"none"``.
+                Available options:
+
+                - ``"none"`` - No compression
+                - ``"zip"`` - ZIP compression
+                - ``"blosc"`` - BLOSC compression (requires ``blosc`` package)
         """
 
         codec_dict = {"none": 0, "zip": 1, "blosc": 2}
@@ -4912,23 +4913,30 @@ class Volume:
 
     @classmethod
     def load_from_address(cls, grid_ptr: int, buffer_size: int = 0, device=None) -> Volume:
-        """
-        Creates a new :class:`Volume` aliasing an in-memory grid buffer.
+        """Create a new :class:`Volume` aliasing an in-memory grid buffer.
 
         In contrast to :meth:`load_from_nvdb` which should be used to load serialized NanoVDB grids,
         here the buffer must be uncompressed and must not contain file header information.
         If the passed address does not contain a NanoVDB grid, the behavior of this function is undefined.
 
         Args:
-            grid_ptr: Integer address of the start of the grid buffer
-            buffer_size: Size of the buffer, in bytes. If not provided, the size will be assumed to be that of the single grid starting at `grid_ptr`.
-            device: Device of the buffer, and of the returned Volume. If not provided, the current Warp device is assumed.
+            grid_ptr: Integer address of the start of the grid buffer.
+            buffer_size: Size of the buffer, in bytes.
+              If not provided, the size will be assumed to be that of the single grid starting at ``grid_ptr``.
+            device: Device of the buffer and of the returned :class:`Volume`.
+              If not provided, the current Warp device is assumed.
 
-        Returns the newly created Volume.
+        Returns:
+            The newly created :class:`Volume`.
+
+        Raises:
+            RuntimeError: If ``grid_ptr`` is invalid (null pointer).
+            RuntimeError: If a Warp Volume has already been created for this grid address.
         """
+        warp.init()
 
         if not grid_ptr:
-            raise (RuntimeError, "Invalid grid buffer pointer")
+            raise RuntimeError("Invalid grid buffer pointer")
 
         # Check that a Volume has not already been created for this address
         # (to allow this we would need to ref-count the volume descriptor)
@@ -4939,22 +4947,21 @@ class Volume:
         )
 
         if existing_buf.value is not None:
-            raise RuntimeError(
-                "A warp Volume has already been created for this grid, aliasing it more than once is not possible."
-            )
+            raise RuntimeError("A Warp Volume has already been created for this grid, aliasing it is not possible.")
 
         data_array = array(ptr=grid_ptr, dtype=uint8, shape=buffer_size, device=device)
 
         return cls(data_array, copy=False)
 
-    def load_next_grid(self) -> Volume:
-        """
-        Tries to create a new warp Volume for the next grid that is linked to by this Volume.
+    def load_next_grid(self) -> Volume | None:
+        """Create a new :class:`Volume` for the next grid that is linked to by this :class:`Volume`.
 
-        The existence of a next grid is deduced from the `grid_index` and `grid_count` metadata
-        as well as the size of this Volume's in-memory buffer.
+        The existence of a next grid is determined by checking if there are more grids in the sequence
+        (based on ``grid_index`` and ``grid_count`` metadata) and if there is sufficient buffer space
+        remaining in this :class:`Volume`'s in-memory buffer.
 
-        Returns the newly created Volume, or None if there is no next grid.
+        Returns:
+            The newly created :class:`Volume`, or ``None`` if there is no next grid.
         """
 
         grid = self.get_grid_info()
@@ -4967,16 +4974,16 @@ class Volume:
         next_volume = Volume.load_from_address(
             array.ptr + grid.size_in_bytes, buffer_size=array.capacity - grid.size_in_bytes, device=self.device
         )
-        # makes the new Volume keep a reference to the current grid, as we're aliasing its buffer
+        # Make the new Volume keep a reference to the current grid, as we're aliasing its buffer
         next_volume._previous_grid = self
 
         return next_volume
 
     @classmethod
     def load_from_numpy(
-        cls, ndarray: np.array, min_world=(0.0, 0.0, 0.0), voxel_size=1.0, bg_value=0.0, device=None
+        cls, ndarray: np.ndarray, min_world=(0.0, 0.0, 0.0), voxel_size=1.0, bg_value=0.0, device=None
     ) -> Volume:
-        """Creates a Volume object from a dense 3D NumPy array.
+        """Create a :class:`Volume` object from a dense 3D NumPy array.
 
         This function is only supported for CUDA devices.
 
@@ -4990,9 +4997,6 @@ class Volume:
 
             A ``warp.Volume`` object.
         """
-
-        import math
-
         target_shape = (
             math.ceil(ndarray.shape[0] / 8) * 8,
             math.ceil(ndarray.shape[1] / 8) * 8,
@@ -5085,11 +5089,11 @@ class Volume:
         Args:
             min (array-like): Lower 3D coordinates of the bounding box in index space or world space, inclusive.
             max (array-like): Upper 3D coordinates of the bounding box in index space or world space, inclusive.
-            voxel_size (float): Voxel size of the new volume.
-            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type, a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
-            translation (array-like): translation between the index and world spaces.
-            device (Devicelike): The CUDA device to create the volume on, e.g.: "cuda" or "cuda:0".
-
+            voxel_size: Voxel size of the new volume.
+            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type,
+              a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
+            translation (array-like): Translation between the index and world spaces.
+            device (Devicelike): The CUDA device to create the volume on, e.g.: ``"cuda"`` or ``"cuda:0"``.
         """
         if points_in_world_space:
             min = np.around((np.array(min, dtype=np.float32) - translation) / voxel_size)
@@ -5112,8 +5116,8 @@ class Volume:
 
     @staticmethod
     def _fill_transform_buffers(
-        voxel_size: float | list[float],
-        translation,
+        voxel_size: float | list[float] | tuple[float, float, float] | None,
+        translation: list[float] | tuple[float, float, float],
         transform,
     ):
         if transform is None:
@@ -5148,28 +5152,31 @@ class Volume:
         device=None,
         transform=None,
     ) -> Volume:
-        """Allocate a new Volume with active tiles for each point tile_points.
+        """Allocate a new :class:`Volume` with active tiles for each point ``tile_points``.
 
         This function is only supported for CUDA devices.
 
         The smallest unit of allocation is a dense tile of 8x8x8 voxels.
-        This is the primary method for allocating sparse volumes. It uses an array of points indicating the tiles that must be allocated.
+        This is the primary method for allocating sparse volumes.
+        It uses an array of points indicating the tiles that must be allocated.
 
         Example use cases:
-            * `tile_points` can mark tiles directly in index space as in the case this method is called by `allocate`.
-            * `tile_points` can be a list of points used in a simulation that needs to transfer data to a volume.
+            * ``tile_points`` can mark tiles directly in index space as in the case this method is called by :meth:`allocate`.
+            * ``tile_points`` can be a list of points used in a simulation that needs to transfer data to a volume.
 
         Args:
             tile_points (:class:`warp.array`): Array of positions that define the tiles to be allocated.
-                The array may use an integer scalar type (2D N-by-3 array of :class:`warp.int32` or 1D array of `warp.vec3i` values), indicating index space positions,
-                or a floating point scalar type (2D N-by-3 array of :class:`warp.float32` or 1D array of `warp.vec3f` values), indicating world space positions.
-                Repeated points per tile are allowed and will be efficiently deduplicated.
-            voxel_size (float or array-like): Voxel size(s) of the new volume. Ignored if `transform` is given.
-            bg_value (array-like, scalar or None): Value of unallocated voxels of the volume, also defines the volume's type. An index volume will be created if `bg_value` is ``None``.
-              Other supported grid types are `int`, `float`, `vec3f`, and `vec4f`.
+              The array may use an integer scalar type (2D N-by-3 array of :class:`warp.int32` or 1D array of :class:`warp.vec3i` values), indicating index space positions,
+              or a floating point scalar type (2D N-by-3 array of :class:`warp.float32` or 1D array of :class:`warp.vec3f` values), indicating world space positions.
+              Repeated points per tile are allowed and will be efficiently deduplicated.
+            voxel_size (float or array-like): Voxel size(s) of the new volume. Ignored if ``transform`` is given.
+            bg_value (array-like, scalar or None): Value of unallocated voxels of the volume, also defines the volume's type.
+              An index volume will be created if ``bg_value`` is ``None``.
+              Other supported grid types are ``int``, ``float``, ``vec3f``, and ``vec4f``.
             translation (array-like): Translation between the index and world spaces.
-            transform (array-like): Linear transform between the index and world spaces. If ``None``, deduced from `voxel_size`.
-            device (Devicelike): The CUDA device to create the volume on, e.g.: "cuda" or "cuda:0".
+            transform (array-like): Linear transform between the index and world spaces.
+              If ``None``, deduced from ``voxel_size``.
+            device (Devicelike): The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
 
         """
         device = warp.get_device(device)
@@ -5255,9 +5262,9 @@ class Volume:
         device=None,
         transform=None,
     ) -> Volume:
-        """Allocate a new Volume with active voxel for each point voxel_points.
+        """Allocate a new :class:`Volume` with active voxel for each point ``voxel_points``.
 
-        This function creates an *index* Volume, a special kind of volume that does not any store any
+        This function creates an *index* volume, a special kind of volume that does not any store any
         explicit payload but encodes a linearized index for each active voxel, allowing to lookup and
         sample data from arbitrary external arrays.
 
@@ -5265,14 +5272,21 @@ class Volume:
 
         Args:
             voxel_points (:class:`warp.array`): Array of positions that define the voxels to be allocated.
-                The array may use an integer scalar type (2D N-by-3 array of :class:`warp.int32` or 1D array of `warp.vec3i` values), indicating index space positions,
-                or a floating point scalar type (2D N-by-3 array of :class:`warp.float32` or 1D array of `warp.vec3f` values), indicating world space positions.
+                The array may use an integer scalar type (2D N-by-3 array of :class:`warp.int32` or 1D array of :class:`warp.vec3i` values), indicating index space positions,
+                or a floating point scalar type (2D N-by-3 array of :class:`warp.float32` or 1D array of :class:`warp.vec3f` values), indicating world space positions.
                 Repeated points per tile are allowed and will be efficiently deduplicated.
-            voxel_size (float or array-like): Voxel size(s) of the new volume. Ignored if `transform` is given.
+            voxel_size (float or array-like): Voxel size(s) of the new volume. Ignored if ``transform`` is given.
             translation (array-like): Translation between the index and world spaces.
-            transform (array-like): Linear transform between the index and world spaces. If ``None``, deduced from `voxel_size`.
-            device (Devicelike): The CUDA device to create the volume on, e.g.: "cuda" or "cuda:0".
+            transform (array-like): Linear transform between the index and world spaces.
+              If ``None``, deduced from ``voxel_size``.
+            device (Devicelike): The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
 
+        Raises:
+            RuntimeError: If the ``device`` is not a CUDA device.
+            RuntimeError: If ``voxel_points`` is not a contiguous array of the correct type and shape.
+            RuntimeError: If :class:`Volume` creation fails.
+            ValueError: If neither ``voxel_size`` nor ``transform`` is provided.
+            ValueError: If both ``voxel_size`` and ``transform`` are provided.
         """
         device = warp.get_device(device)
 
@@ -5280,7 +5294,7 @@ class Volume:
             raise RuntimeError("Only CUDA devices are supported for allocate_by_tiles")
         if not _is_contiguous_vec_like_array(voxel_points, vec_length=3, scalar_types=(float32, int32)):
             raise RuntimeError(
-                "voxel_points must be contiguous and either a 1D warp array of vec3f or vec3i or a 2D n-by-3 array of int32 or float32."
+                "voxel_points must be contiguous and either a 1D Warp array of vec3f or vec3i or a 2D n-by-3 array of int32 or float32."
             )
         if not voxel_points.device.is_cuda:
             voxel_points = voxel_points.to(device)
