@@ -43,9 +43,6 @@ stages:
     - clang --version
     - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=$CI_PROJECT_DIR/uv sh
     - source $CI_PROJECT_DIR/uv/env
-    - uv venv
-    - source .venv/bin/activate
-    - uv pip install numpy
     - unset CUDA_HOME
 
 linux-x86_64 build:
@@ -59,7 +56,7 @@ linux-x86_64 build:
       - warp/bin/**/*.so
     expire_in: 1 day  # Binary is quite large and we just need it for the test job
   script:
-    - python build_lib.py --clang_build_toolchain
+    - uv run build_lib.py --clang_build_toolchain
     - mkdir -p warp/bin/linux-x86_64
     - mv warp/bin/warp.so warp/bin/linux-x86_64
     - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
@@ -88,14 +85,6 @@ linux-x86_64 test:
     # Install UV
     - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=$CI_PROJECT_DIR/uv sh
     - source $CI_PROJECT_DIR/uv/env
-    - uv venv
-    - source .venv/bin/activate
-    - uv pip install numpy usd-core Pillow
-    - uv pip install --upgrade torch --extra-index-url https://download.pytorch.org/whl/cu121
-    - uv pip install -U "jax[cuda12]"
-    - uv pip install -e .
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
-    # HACK: disable P2P tests due to misbehaving agents
-    - export WARP_DISABLE_P2P_TESTS=1
   script:
-    - python -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]" -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast

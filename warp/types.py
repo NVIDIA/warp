@@ -5010,12 +5010,15 @@ class Volume:
                 math.ceil(ndarray.shape[1] / 8) * 8 - ndarray.shape[1],
                 math.ceil(ndarray.shape[2] / 8) * 8 - ndarray.shape[2],
             )
-            padded_array = np.pad(
-                ndarray,
-                ((0, padded_amount[0]), (0, padded_amount[1]), (0, padded_amount[2])),
-                mode="constant",
-                constant_values=bg_value,
+
+            # Manual padding to avoid np.pad compatibility issues with code coverage tools (e.g., coverage.py)
+            target_shape = (
+                ndarray.shape[0] + padded_amount[0],
+                ndarray.shape[1] + padded_amount[1],
+                ndarray.shape[2] + padded_amount[2],
             )
+            padded_array = np.full(target_shape, bg_value, dtype=ndarray.dtype)
+            padded_array[: ndarray.shape[0], : ndarray.shape[1], : ndarray.shape[2]] = ndarray
 
         shape = padded_array.shape
         volume = warp.Volume.allocate(

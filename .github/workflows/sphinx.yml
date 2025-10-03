@@ -40,17 +40,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version-file: '.python-version'
-      - name: Install dependencies
-        run: |
-          uv venv
-          uv pip install -r docs/requirements.txt
       - name: Build Warp without CUDA Support
         run: |
-          source .venv/bin/activate
-          python build_lib.py
+          uv run build_lib.py
       - name: Build Sphinx documentation
         run: |
-          uv run build_docs.py --quick
+          uv run --extra docs build_docs.py --quick
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

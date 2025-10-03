@@ -20,3 +20,9 @@ repos:
         args: [--fix] # Apply fixes to resolve lint violations.
       # Run the formatter.
       - id: ruff-format
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    # uv version.
+    rev: 0.8.22
+    hooks:
+      # Update the uv lockfile
+      - id: uv-lock

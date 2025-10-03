@@ -48,21 +48,16 @@ linux-aarch64 build:
   extends:
     - .omni_devplat_arm_compute
     - .save_warp_bin_artifact
-  variables:
-    PM_PYTHON_EXT: "python"
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - yum update -y && yum install curl wget -y
-    - wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-    - bash Miniforge3.sh -b -p "${CI_PROJECT_DIR}/conda"
-    - source "${CI_PROJECT_DIR}/conda/etc/profile.d/conda.sh"
-    - conda activate
-    - python -m pip install --upgrade pip
-    - python -m pip install --upgrade numpy
+    - gcc --version
+    - wget -qO- https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$CUDA_BIN:$PATH"
     - tools/packman/packman pull --platform linux-aarch64 --include-tag cuda-13 deps/cuda-toolkit-deps.packman.xml
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - python build_lib.py --cuda_path $CUDA
+    - uv run build_lib.py --cuda_path $CUDA
     - mkdir -p warp/bin/linux-aarch64
     - mv warp/bin/warp.so warp/bin/linux-aarch64
     - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
@@ -74,8 +69,15 @@ windows-x86_64 build:
     - .runner-build-windows-x86_64
   before_script:
     - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
+    - $env:PATH = "$env:CI_PROJECT_DIR\_uv\bin;$env:PATH"
+    - tools\packman\packman pull --platform windows-x86_64 deps\cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-13"
+    - tools\packman\packman install -l _build\host-deps\winsdk winsdk 10.17763
+    - tools\packman\packman install -l _build\host-deps\msvc msvc 2019-16.11.24
   script:
-    - ./tools/ci/building/build-windows-x86_64/build.bat --cuda 13
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run build_lib.py --msvc_path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk_path=_build\host-deps\winsdk --cuda_path=_build\target-deps\cuda
 
 # ==============================================================================
 # Linting and Code Quality Jobs

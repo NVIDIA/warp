@@ -14,51 +14,113 @@
 # limitations under the License.
 
 import argparse
+import logging
 import os
 import shutil
-import subprocess
 
 import warp  # ensure all API functions are loaded  # noqa: F401
 from warp.context import export_functions_rst, export_stubs
 
 parser = argparse.ArgumentParser(description="Warp Sphinx Documentation Builder")
 parser.add_argument("--quick", action="store_true", help="Only build docs, skipping doctest tests of code blocks.")
+parser.add_argument("--doctest-only", action="store_true", help="Only run doctest, skipping HTML build.")
+parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
 
 args = parser.parse_args()
 
+# Validate argument combinations
+if args.quick and args.doctest_only:
+    parser.error("--quick and --doctest-only are mutually exclusive")
+
+# Configure logging
+log_level = logging.DEBUG if args.verbose else logging.INFO
+logging.basicConfig(
+    level=log_level,
+    format="[%(asctime)s] %(levelname)s: %(message)s",
+    datefmt="%H:%M:%S",
+    handlers=[logging.StreamHandler()],
+)
+logger = logging.getLogger(__name__)
+
+
+def format_file_with_ruff(file_path):
+    """Format file with ruff using pre-commit for version consistency."""
+    logger.debug(f"Formatting {file_path} with ruff via pre-commit")
+    try:
+        import pre_commit.main
+
+        result = pre_commit.main.main(["run", "ruff-format", "--files", file_path])
+        if result == 0:
+            logger.info(f"Formatted {file_path} using pre-commit (no changes needed)")
+        elif result == 1:
+            # Exit code 1 typically means files were modified (which is what we want)
+            logger.info(f"Formatted {file_path} using pre-commit (files modified)")
+        else:
+            raise RuntimeError(f"Pre-commit formatting failed for {file_path} with exit code {result}")
+    except ImportError as err:
+        raise ImportError(
+            f"Could not format {file_path}: pre-commit not available. "
+            "Install with 'pip install warp-lang[dev]' or equivalent."
+        ) from err
+
+
+def build_sphinx_docs(source_dir, output_dir, builder="html"):
+    """Build Sphinx documentation programmatically."""
+    logger.info(f"Building {builder} documentation: {source_dir} -> {output_dir}")
+    try:
+        from sphinx.cmd.build import build_main
+
+        # Clean previous output
+        if os.path.exists(output_dir):
+            logger.debug(f"Cleaning previous output directory: {output_dir}")
+            shutil.rmtree(output_dir)
+
+        # sphinx-build -W -b html source_dir output_dir
+        logger.debug(f"Running sphinx-build -W -b {builder} {source_dir} {output_dir}")
+        result = build_main(["-W", "-b", builder, source_dir, output_dir])
+        if result != 0:
+            raise RuntimeError(f"Sphinx build failed with exit code {result}")
+
+        logger.info(f"Successfully built {builder} documentation")
+
+    except ImportError as err:
+        raise ImportError(
+            "Could not build docs: sphinx not available. Install with 'pip install warp-lang[docs]' or equivalent."
+        ) from err
+
+
 base_path = os.path.dirname(os.path.realpath(__file__))
 
+logger.info("Starting Warp documentation build")
+
 # generate stubs for autocomplete
+logger.info("Generating API stubs for autocomplete")
 with open(os.path.join(base_path, "warp", "__init__.pyi"), "w") as stub_file:
     export_stubs(stub_file)
 
 # code formatting of __init__.pyi
-subprocess.run(["ruff", "format", "--verbose", os.path.join(base_path, "warp", "__init__.pyi")], check=True)
+format_file_with_ruff(os.path.join(base_path, "warp", "__init__.pyi"))
 
+logger.info("Generating function reference documentation")
 with open(os.path.join(base_path, "docs", "modules", "functions.rst"), "w") as function_ref:
     export_functions_rst(function_ref)
 
 source_dir = os.path.join(base_path, "docs")
-output_dir = os.path.join(base_path, "docs", "_build", "html")
 
-# Clean previous HTML output
-if os.path.exists(output_dir):
-    shutil.rmtree(output_dir)
+if args.doctest_only:
+    # Only run doctest
+    logger.info("Running doctest only (skipping HTML build)")
+    doctest_output_dir = os.path.join(base_path, "docs", "_build", "doctest")
+    build_sphinx_docs(source_dir, doctest_output_dir, "doctest")
+else:
+    # Build HTML docs
+    html_output_dir = os.path.join(base_path, "docs", "_build", "html")
+    build_sphinx_docs(source_dir, html_output_dir, "html")
 
-command = ["sphinx-build", "-W", "-b", "html", source_dir, output_dir]
+    # Run doctest unless --quick is specified
+    if not args.quick:
+        logger.info("Running doctest... (skip with --quick)")
+        doctest_output_dir = os.path.join(base_path, "docs", "_build", "doctest")
+        build_sphinx_docs(source_dir, doctest_output_dir, "doctest")
 
-subprocess.run(command, check=True)
-
-if not args.quick:
-    print("Running doctest... (skip with --no_doctest)")
-
-    output_dir = os.path.join(base_path, "docs", "_build", "doctest")
-
-    if os.path.exists(output_dir):
-        shutil.rmtree(output_dir)
-
-    command = ["sphinx-build", "-W", "-b", "doctest", source_dir, output_dir]
-
-    subprocess.run(command, check=True)
-
-print("Finished")
+logger.info("Documentation build completed successfully")
