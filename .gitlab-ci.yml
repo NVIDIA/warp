@@ -752,6 +752,7 @@ clang compilation:
     include: /.gitlab/ci/clang-build-and-test.yml
   needs: []
   extends:
+    - .basic_test_changes_rules
     - .trigger_common
 
 # ==============================================================================
