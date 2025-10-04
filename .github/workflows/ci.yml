@@ -28,38 +28,28 @@ on:
     - cron: "45 9 * * *"
 
 jobs:
-  build-warp-windows:
-    runs-on: windows-2022
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-      - name: Install uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
-        with:
-          version: "0.7.5"
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: '.python-version'
-      - name: Install CTK
-        uses: Jimver/cuda-toolkit@v0.2.21
-        id: cuda-toolkit
-        with:
-          sub-packages: '["cudart", "nvcc", "nvrtc_dev", "nvjitlink"]'
-          method: 'network'
-      - name: Build
-        run: |
-          uv run build_lib.py
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifact-windows
-          path: ./warp/bin/
-
-  build-warp-ubuntu-x86_64:
-    runs-on: ubuntu-22.04
+  build-warp:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            platform: windows
+            cuda-sub-packages: '["cudart", "nvcc", "nvrtc_dev", "nvjitlink"]'
+            cuda-non-cuda-packages: ''
+          - os: ubuntu-24.04
+            platform: ubuntu-x86_64
+            cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
+            cuda-non-cuda-packages: '["libnvjitlink-dev"]'
+          - os: ubuntu-24.04-arm
+            platform: ubuntu-aarch64
+            cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
+            cuda-non-cuda-packages: '["libnvjitlink-dev"]'
+          - os: macos-latest
+            platform: macos
+            cuda-sub-packages: ''
+            cuda-non-cuda-packages: ''
     outputs:
       artifact-url: ${{ steps.exports-header.outputs.artifact-url }}
     steps:
@@ -67,212 +57,99 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: true
+      
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.7.5"
+          version: "0.8.23"
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version-file: '.python-version'
-      - name: Install CTK
-        uses: Jimver/cuda-toolkit@v0.2.21
-        id: cuda-toolkit
+      
+      - name: Cache build artifacts
+        if: matrix.platform != 'macos'
+        uses: actions/cache@v4
+        id: cache-build
         with:
-          sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
-          non-cuda-sub-packages: '["libnvjitlink-dev"]'
+          path: warp/bin/
+          key: build-${{ matrix.platform }}-${{ hashFiles('warp/**/*.py', 'warp/**/*.cpp', 'warp/**/*.h', 'warp/**/*.cu', 'build_lib.py') }}
+          restore-keys: |
+            build-${{ matrix.platform }}-
+      
+      - name: Install CTK (with non-CUDA packages)
+        if: steps.cache-build.outputs.cache-hit != 'true' && matrix.cuda-sub-packages != '' && matrix.cuda-non-cuda-packages != ''
+        uses: Jimver/cuda-toolkit@1a3c14e26833ccf292b268f9a790fb47dea7b2da
+        with:
+          sub-packages: ${{ matrix.cuda-sub-packages }}
+          non-cuda-sub-packages: ${{ matrix.cuda-non-cuda-packages }}
           method: 'network'
+      
+      - name: Install CTK (without non-CUDA packages)
+        if: steps.cache-build.outputs.cache-hit != 'true' && matrix.cuda-sub-packages != '' && matrix.cuda-non-cuda-packages == ''
+        uses: Jimver/cuda-toolkit@c35baa1a18fd1fc9dcf47c5bd839bf30559c0bc3  # https://github.com/Jimver/cuda-toolkit/issues/395
+        with:
+          sub-packages: ${{ matrix.cuda-sub-packages }}
+          method: 'network'
+      
       - name: Build Warp
-        run: |
-          uv run build_lib.py
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        run: uv run build_lib.py
+      
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifact-ubuntu-x86_64
+          name: build-artifact-${{ matrix.platform }}
           path: warp/bin/
+      
       - name: Upload exports.h
         uses: actions/upload-artifact@v4
         id: exports-header
         with:
-          name: exports-header
+          name: exports-header-${{ matrix.platform }}
           path: warp/native/exports.h
 
-  build-warp-ubuntu-aarch64:
-    runs-on: ubuntu-22.04-arm
+  test-warp:
+    runs-on: ${{ matrix.os }}
+    needs: build-warp
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            platform: windows
+          - os: ubuntu-24.04
+            platform: ubuntu-x86_64
+          - os: ubuntu-24.04-arm
+            platform: ubuntu-aarch64
+          - os: macos-latest
+            platform: macos
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           lfs: true
+      
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.7.5"
+          version: "0.8.23"
+      
       - name: Set up Python
-        uses: actions/setup-python@v5.6.0
+        uses: actions/setup-python@v5
         with:
           python-version-file: '.python-version'
-      - name: Install CTK
-        uses: Jimver/cuda-toolkit@v0.2.21
-        id: cuda-toolkit
+      
+      - name: Download Warp build artifact
+        uses: actions/download-artifact@v4
         with:
-          sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
-          non-cuda-sub-packages: '["libnvjitlink-dev"]'
-          method: 'network'
-      - name: Build Warp
-        run: |
-          uv run build_lib.py
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifact-ubuntu-aarch64
+          name: build-artifact-${{ matrix.platform }}
           path: warp/bin/
-
-  build-warp-macos:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-      - name: Install uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
-        with:
-          version: "0.7.5"
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: '.python-version'
-      - name: Build
-        run: |
-          uv run build_lib.py
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifact-macos
-          path: ./warp/bin/
-
-  test-warp-windows:
-    runs-on: windows-latest
-    needs: build-warp-windows
-    env:
-      OS: windows-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-      - name: Install uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
-        with:
-          version: "0.7.5"
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: '.python-version'
-      - name: Download Warp build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-artifact-windows
-          path: ./warp/bin/
+      
       - name: Run Tests
         run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect
-      - name: Test Summary
-        uses: test-summary/action@v2.3
-        with:
-          paths: "rspec.xml"
-          show: "fail"
-        if: always()
-
-  test-warp-ubuntu-x86_64:
-    runs-on: ubuntu-latest
-    needs: build-warp-ubuntu-x86_64
-    env:
-      OS: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-      - name: Install uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
-        with:
-          version: "0.7.5"
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: '.python-version'
-      - name: Download Warp build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-artifact-ubuntu-x86_64
-          path: ./warp/bin/
-      - name: Run Tests
-        run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect
-      - name: Test Summary
-        uses: test-summary/action@v2.3
-        with:
-          paths: "rspec.xml"
-          show: "fail"
-        if: always()
-
-  test-warp-ubuntu-aarch64:
-    runs-on: ubuntu-22.04-arm
-    needs: build-warp-ubuntu-aarch64
-    env:
-      OS: ubuntu-22.04-arm
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-      - name: Install uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
-        with:
-          version: "0.7.5"
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: '.python-version'
-      - name: Download Warp build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-artifact-ubuntu-aarch64
-          path: ./warp/bin/
-      - name: Run Tests
-        run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect
-      - name: Test Summary
-        uses: test-summary/action@v2.3
-        with:
-          paths: "rspec.xml"
-          show: "fail"
-        if: always()
-
-  test-warp-macos:
-    runs-on: macos-latest
-    needs: build-warp-macos
-    env:
-      OS: macos-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-      - name: Install uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
-        with:
-          version: "0.7.5"
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: '.python-version'
-      - name: Download Warp build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-artifact-macos
-          path: ./warp/bin/
-      - name: Run Tests
-        run: uv run --extra dev -m warp.tests --maxjobs 4  --junit-report-xml rspec.xml -s autodetect
+      
       - name: Test Summary
         uses: test-summary/action@v2.3
         with:
@@ -282,7 +159,7 @@ jobs:
 
   pull-request-docs:
     runs-on: ubuntu-latest
-    needs: build-warp-ubuntu-x86_64
+    needs: build-warp
     if: ${{ github.event_name == 'pull_request' }}
     outputs:
       artifact-url: ${{ steps.build-docs-output.outputs.artifact-url }}
@@ -292,7 +169,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.7.5"
+          version: "0.8.23"
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -306,7 +183,7 @@ jobs:
         run: |
           uv run --extra docs build_docs.py --quick
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v4
         id: build-docs-output
         with:
           name: build-docs-output
@@ -340,7 +217,7 @@ jobs:
 
   check-exports-header:
     runs-on: ubuntu-latest
-    needs: build-warp-ubuntu-x86_64
+    needs: build-warp
     if: ${{ github.event_name == 'pull_request' }}
     steps:
       - name: Checkout repository
@@ -348,18 +225,18 @@ jobs:
       - name: Download exports.h
         uses: actions/download-artifact@v4
         with:
-          name: exports-header
+          name: exports-header-ubuntu-x86_64
           path: warp/native/
       - name: Check exports.h
         env:
-          ARTIFACT_URL: ${{ needs.build-warp-ubuntu-x86_64.outputs.artifact-url }}
+          ARTIFACT_URL: ${{ needs.build-warp.outputs.artifact-url }}
         run: >
           git diff --exit-code warp/native/exports.h ||
           (echo "Please run build_lib.py (or download from $ARTIFACT_URL) and add warp/native/exports.h to your pull request." && false)
 
   check-unnamespaced-symbols:
     runs-on: ubuntu-latest
-    needs: build-warp-ubuntu-x86_64
+    needs: build-warp
     steps:
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
@@ -394,3 +271,71 @@ jobs:
           fi
 
           echo "SUCCESS: All symbols are correctly namespaced."
+
+  cppcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Cache cppcheck build directory
+        uses: actions/cache@v4
+        with:
+          path: _build/.cppcheck
+          key: cppcheck-${{ github.run_id }}
+          restore-keys: |
+            cppcheck-
+      
+      - name: Set up Miniforge
+        run: |
+          wget -q -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+          bash Miniforge3.sh -b -p "${HOME}/conda"
+          echo "${HOME}/conda/bin" >> $GITHUB_PATH
+      
+      - name: Install cppcheck
+        run: |
+          source "${HOME}/conda/etc/profile.d/conda.sh"
+          conda activate
+          conda install cppcheck --channel conda-forge -y
+          mkdir -p _build/.cppcheck
+          cppcheck --version
+      
+      - name: Run cppcheck
+        run: |
+          source "${HOME}/conda/etc/profile.d/conda.sh"
+          conda activate
+          cppcheck \
+            --inline-suppr \
+            --cppcheck-build-dir=_build/.cppcheck \
+            --enable=warning \
+            --quiet \
+            --error-exitcode=1 \
+            -j $(nproc) \
+            --suppress=*:warp/native/nanovdb/* \
+            --suppress=normalCheckLevelMaxBranches \
+            warp
+      
+      - name: Generate XML report
+        if: always()
+        run: |
+          source "${HOME}/conda/etc/profile.d/conda.sh"
+          conda activate
+          cppcheck \
+            --inline-suppr \
+            --cppcheck-build-dir=_build/.cppcheck \
+            --enable=warning \
+            --quiet \
+            --xml \
+            --xml-version=2 \
+            -j $(nproc) \
+            --suppress=*:warp/native/nanovdb/* \
+            --suppress=normalCheckLevelMaxBranches \
+            warp \
+            2> cppcheck-report.xml
+      
+      - name: Upload cppcheck report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppcheck-report
+          path: cppcheck-report.xml
