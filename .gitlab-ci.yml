@@ -43,19 +43,9 @@ variables:
   CUDA_BIN: "$CI_PROJECT_DIR/_build/target-deps/cuda/bin"
   CUDA: "$CI_PROJECT_DIR/_build/target-deps/cuda"
   CUDA_HOME: "$CI_PROJECT_DIR/_build/target-deps/cuda"
-  PYTHON: "$CI_PROJECT_DIR/_build/target-deps/python/python"
-  LINBUILD: "$CI_PROJECT_DIR/_build/host-deps/linbuild/linbuild.sh"
   WARP_CACHE_ROOT: "$CI_PROJECT_DIR/.cache/warp" # Used by the parallel test runner
   GIT_DEPTH: 1
   UV_LINK_MODE: copy
-  DEFAULT_PYTHON:
-    value: "3.9.18+nv1"
-    options:
-      - "3.11.8+nv1"
-      - "3.10.13+nv3"
-      - "3.9.18+nv1"
-      - "3.8.18+nv1"
-    description: "The default Python version used in the main testing jobs."
   UV_PYTHON:
     value: "3.12"
     options:
