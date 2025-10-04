@@ -257,6 +257,11 @@ check un-namespaced symbols linux-x86_64:
 
       for lib in $LIBRARIES_TO_CHECK; do
         echo "--> Checking $lib"
+        if [ ! -f "$lib" ]; then
+          echo "ERROR: $lib not found"
+          found_symbols="true"
+          continue
+        fi
         output=$(readelf -Ws "$lib" | awk '$7 ~ /^[0-9]+$/ && $8 !~ /^_?wp_/ {print $8}' | grep -Ev '^(_Z|__|\.)' || true)
         
         if [ -n "$output" ]; then
