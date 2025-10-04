@@ -132,7 +132,7 @@ def project_linear_system(
 @wp.func
 def _normalize_projector_and_value(A: Any, b: Any):
     # Do a modal decomposition of the left and right hand side,
-    # Make lhs an orthogonal projection and apply corresponding scaling to righ-hand-side
+    # Make lhs an orthogonal projection and apply corresponding scaling to right-hand side
 
     eps = wp.trace(A) * A.dtype(1.0e-6)
 

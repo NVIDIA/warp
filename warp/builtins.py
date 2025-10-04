@@ -5449,8 +5449,8 @@ _volume_supported_value_types = {
 
 
 def _is_volume_type_supported(dtype):
-    for typ in _volume_supported_value_types:
-        if types_equal(typ, dtype):
+    for value_type in _volume_supported_value_types:
+        if types_equal(value_type, dtype):
             return True
     return False
 

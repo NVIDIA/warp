@@ -3102,7 +3102,7 @@ class Device:
             pci_domain_id = runtime.core.wp_cuda_device_get_pci_domain_id(ordinal)
             pci_bus_id = runtime.core.wp_cuda_device_get_pci_bus_id(ordinal)
             pci_device_id = runtime.core.wp_cuda_device_get_pci_device_id(ordinal)
-            # This is (mis)named to correspond to the naming of cudaDeviceGetPCIBusId
+            # Named to match the CUDA API function cudaDeviceGetPCIBusId
             self.pci_bus_id = f"{pci_domain_id:08X}:{pci_bus_id:02X}:{pci_device_id:02X}"
 
             self.default_allocator = CudaDefaultAllocator(self)

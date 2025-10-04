@@ -16,7 +16,7 @@
 ###########################################################################
 # Example Adaptive Grid
 #
-# Demonstrates using an adaptive grid to increase the simulation resolition
+# Demonstrates using an adaptive grid to increase the simulation resolution
 # near a collider boundary.
 #
 ###########################################################################

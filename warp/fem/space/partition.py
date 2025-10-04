@@ -310,7 +310,7 @@ class NodePartition(SpacePartition):
                 inputs=[category_offsets.array, node_indices.array, self._space_to_partition.array],
             )
 
-            # Copy to shrinked-to-fit array
+            # Copy to shrunk-to-fit array
             cache.synchronize_event(copy_event)  # Transfer to host must be finished to access node_count()
             self._node_indices = cache.borrow_temporary(
                 temporary_store, shape=(self.node_count()), dtype=int, device=device

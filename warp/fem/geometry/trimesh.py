@@ -467,7 +467,7 @@ class Trimesh(Geometry):
         q = pos - p0
         e = args.positions[edge_idx[1]] - p0
 
-        dist, t = project_on_seg_at_origin(q, e, wp.lengh_sq(e))
+        dist, t = project_on_seg_at_origin(q, e, wp.length_sq(e))
         return Coords(t, 0.0, 0.0), dist
 
     @wp.func
