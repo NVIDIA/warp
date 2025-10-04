@@ -43,19 +43,9 @@ variables:
   CUDA_BIN: "$CI_PROJECT_DIR/_build/target-deps/cuda/bin"
   CUDA: "$CI_PROJECT_DIR/_build/target-deps/cuda"
   CUDA_HOME: "$CI_PROJECT_DIR/_build/target-deps/cuda"
-  PYTHON: "$CI_PROJECT_DIR/_build/target-deps/python/python"
-  LINBUILD: "$CI_PROJECT_DIR/_build/host-deps/linbuild/linbuild.sh"
   WARP_CACHE_ROOT: "$CI_PROJECT_DIR/.cache/warp" # Used by the parallel test runner
   GIT_DEPTH: 1
   UV_LINK_MODE: copy
-  DEFAULT_PYTHON:
-    value: "3.9.18+nv1"
-    options:
-      - "3.11.8+nv1"
-      - "3.10.13+nv3"
-      - "3.9.18+nv1"
-      - "3.8.18+nv1"
-    description: "The default Python version used in the main testing jobs."
   UV_PYTHON:
     value: "3.12"
     options:
@@ -476,6 +466,7 @@ windows-x86_64 test:
     - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
+    # Locking usd-core to 25.5.1 to work around a frequent loading crash
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
       uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
@@ -504,9 +495,10 @@ windows-x86_64 test mgpu:
     - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
+    # Locking usd-core to 25.5.1 to work around a frequent loading crash
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
-      uv run --extra dev --extra torch-cu12 -m warp.tests --with usd-core==25.5.1 --junit-report-xml rspec.xml -s autodetect --failfast
+      uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - win-x86_64-gpu-2x-573.42
 
@@ -750,6 +742,7 @@ clang compilation:
     include: /.gitlab/ci/clang-build-and-test.yml
   needs: []
   extends:
+    - .basic_test_changes_rules
     - .trigger_common
 
 # ==============================================================================

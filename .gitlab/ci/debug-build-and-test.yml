@@ -153,6 +153,7 @@ windows-x86_64 test:
     - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
     - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
   script:
+    # Locking usd-core to 25.5.1 to work around a frequent loading crash
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
       uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
