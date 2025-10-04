@@ -38,7 +38,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.7.5"
+          version: "0.8.23"
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -56,7 +56,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifact-windows
-          path: ./warp/bin/
+          path: warp/bin/
 
   build-warp-ubuntu-x86_64:
     runs-on: ubuntu-22.04
@@ -70,7 +70,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.7.5"
+          version: "0.8.23"
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -107,9 +107,9 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.7.5"
+          version: "0.8.23"
       - name: Set up Python
-        uses: actions/setup-python@v5.6.0
+        uses: actions/setup-python@v5
         with:
           python-version-file: '.python-version'
       - name: Install CTK
@@ -138,7 +138,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.7.5"
+          version: "0.8.23"
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -150,7 +150,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifact-macos
-          path: ./warp/bin/
+          path: warp/bin/
 
   test-warp-windows:
     runs-on: windows-latest
@@ -165,7 +165,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.7.5"
+          version: "0.8.23"
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -174,7 +174,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-artifact-windows
-          path: ./warp/bin/
+          path: warp/bin/
       - name: Run Tests
         run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect
       - name: Test Summary
@@ -197,7 +197,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.7.5"
+          version: "0.8.23"
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -206,7 +206,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-artifact-ubuntu-x86_64
-          path: ./warp/bin/
+          path: warp/bin/
       - name: Run Tests
         run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect
       - name: Test Summary
@@ -229,7 +229,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.7.5"
+          version: "0.8.23"
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -238,7 +238,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-artifact-ubuntu-aarch64
-          path: ./warp/bin/
+          path: warp/bin/
       - name: Run Tests
         run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect
       - name: Test Summary
@@ -261,7 +261,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.7.5"
+          version: "0.8.23"
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -270,7 +270,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-artifact-macos
-          path: ./warp/bin/
+          path: warp/bin/
       - name: Run Tests
         run: uv run --extra dev -m warp.tests --maxjobs 4  --junit-report-xml rspec.xml -s autodetect
       - name: Test Summary
@@ -292,7 +292,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.7.5"
+          version: "0.8.23"
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -306,7 +306,7 @@ jobs:
         run: |
           uv run --extra docs build_docs.py --quick
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v4
         id: build-docs-output
         with:
           name: build-docs-output
@@ -394,3 +394,71 @@ jobs:
           fi
 
           echo "SUCCESS: All symbols are correctly namespaced."
+
+  cppcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Cache cppcheck build directory
+        uses: actions/cache@v4
+        with:
+          path: _build/.cppcheck
+          key: cppcheck-${{ github.run_id }}
+          restore-keys: |
+            cppcheck-
+      
+      - name: Set up Miniforge
+        run: |
+          wget -q -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+          bash Miniforge3.sh -b -p "${HOME}/conda"
+          echo "${HOME}/conda/bin" >> $GITHUB_PATH
+      
+      - name: Install cppcheck
+        run: |
+          source "${HOME}/conda/etc/profile.d/conda.sh"
+          conda activate
+          conda install cppcheck --channel conda-forge -y
+          mkdir -p _build/.cppcheck
+          cppcheck --version
+      
+      - name: Run cppcheck
+        run: |
+          source "${HOME}/conda/etc/profile.d/conda.sh"
+          conda activate
+          cppcheck \
+            --inline-suppr \
+            --cppcheck-build-dir=_build/.cppcheck \
+            --enable=warning \
+            --quiet \
+            --error-exitcode=1 \
+            -j $(nproc) \
+            --suppress=*:warp/native/nanovdb/* \
+            --suppress=normalCheckLevelMaxBranches \
+            warp
+      
+      - name: Generate XML report
+        if: always()
+        run: |
+          source "${HOME}/conda/etc/profile.d/conda.sh"
+          conda activate
+          cppcheck \
+            --inline-suppr \
+            --cppcheck-build-dir=_build/.cppcheck \
+            --enable=warning \
+            --quiet \
+            --xml \
+            --xml-version=2 \
+            -j $(nproc) \
+            --suppress=*:warp/native/nanovdb/* \
+            --suppress=normalCheckLevelMaxBranches \
+            warp \
+            2> cppcheck-report.xml
+      
+      - name: Upload cppcheck report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppcheck-report
+          path: cppcheck-report.xml
