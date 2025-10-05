@@ -39,6 +39,7 @@
   ([GH-963](https://github.com/NVIDIA/warp/issues/963)).
 - Fix empty slice `arr[i:i]` causing errors ([GH-958](https://github.com/NVIDIA/warp/issues/958)).
 - Fix handling of generic kernels with `wp.jax_experimental.ffi.jax_kernel()`.
+- Fix handling of multi-line lambda expressions and lambda expressions involving parentheses in `wp.map()` ([GH-984](https://github.com/NVIDIA/warp/issues/984)).
 
 ## [1.9.0] - 2025-09-04
 

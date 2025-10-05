@@ -101,6 +101,37 @@ def test_lambda(test, device):
     expected = np.array(np.arange(10) * local_var, dtype=np.float32)
     assert_np_equal(out2.numpy(), expected)
 
+    # inline variable construction which uses parentheses
+    out = wp.map(lambda a: wp.length(wp.vec3(a, a + 1.0, a + 2.0)), a1)
+    expected = np.array([np.sqrt(i * i + (i + 1) * (i + 1) + (i + 2) * (i + 2)) for i in range(10)], dtype=np.float32)
+    assert_np_equal(out.numpy(), expected)
+
+    # multi-line lambda
+    # fmt: off
+    out = wp.map(lambda a: (\
+        a + 1.0 + 2.0 + 3.0 + 4.0 + 5.0 \
+            + 6.0 + 7.0 + 8.0 + 9.0 + 10.0\
+    ), a1)
+    # fmt: on
+    expected = np.array([np.sum(np.arange(1, 11)) + i for i in range(10)], dtype=np.float32)
+    assert_np_equal(out.numpy(), expected)
+
+    # complicated expression with parentheses and line continuation
+    # fmt: off
+    out = wp.map(lambda a: (
+        a + 1.0 + ((
+            + 6.0 + 7.0 + 8.0) + 9.0 + (10.0
+            # an inline comment to make sure it is ignored
+            + 0.0) \
+            + wp.clamp(a, -0.5, 0.5) \
+            + (wp.sin(a) + wp.cos(a))
+    )), a1)
+    # fmt: on
+    expected = np.array(
+        [41.0 + i + np.clip(i, -0.5, 0.5) + (np.sin(i) + np.cos(i)) for i in range(10)], dtype=np.float32
+    )
+    assert_np_equal(out.numpy(), expected, tol=1e-6)
+
 
 def test_multiple_return_values(test, device):
     @wp.func
