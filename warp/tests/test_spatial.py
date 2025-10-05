@@ -147,12 +147,12 @@ def test_spatial_vector_indexing(test, device, dtype, register_kernels=False):
         input: wp.array(dtype=spatial_vector),
         out: wp.array(dtype=wptype),
     ):
-        inpt = input[0]
+        elem = input[0]
 
         # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(6):
-            out[idx] = wptype(2) * inpt[i]
+            out[idx] = wptype(2) * elem[i]
             idx = idx + 1
 
     kernel = getkernel(check_spatial_vector_indexing, suffix=dtype.__name__)
@@ -679,12 +679,12 @@ def test_transform_indexing(test, device, dtype, register_kernels=False):
         input: wp.array(dtype=transform),
         out: wp.array(dtype=wptype),
     ):
-        inpt = input[0]
+        elem = input[0]
 
         # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(7):
-            out[idx] = wptype(2) * inpt[i]
+            out[idx] = wptype(2) * elem[i]
             idx = idx + 1
 
     kernel = getkernel(check_transform_indexing, suffix=dtype.__name__)
@@ -1349,13 +1349,13 @@ def test_spatial_matrix_indexing(test, device, dtype, register_kernels=False):
         input: wp.array(dtype=spatial_matrix),
         out: wp.array(dtype=wptype),
     ):
-        inpt = input[0]
+        elem = input[0]
 
         # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(6):
             for j in range(6):
-                out[idx] = wptype(2) * inpt[i, j]
+                out[idx] = wptype(2) * elem[i, j]
                 idx = idx + 1
 
     kernel = getkernel(check_spatial_matrix_indexing, suffix=dtype.__name__)

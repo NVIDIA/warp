@@ -184,3 +184,23 @@ torch = [{ index = "pytorch-cu129", extra = "torch-cu12" }]
 name = "pytorch-cu129"
 url = "https://download.pytorch.org/whl/cu129"
 explicit = true
+
+[tool.typos]
+files.extend-exclude = ["/tools/packman", "/tools/repoman", "/PUBLICATIONS.md", "/licenses", "/warp/native/nanovdb", "*.svg", "*.usda"]
+
+[tool.typos.default]
+extend-ignore-re = [
+    # MSVC compiler flags like /Fo, /Fe, /Fd, etc.
+    "/F[oedpircaOAu]"
+]
+
+[tool.typos.default.extend-words]
+arange = "arange"
+commun = "commun"
+dout = "dout"
+iy = "iy"
+nd = "nd"
+
+[tool.typos.default.extend-identifiers]
+CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK_OPTIN = "CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK_OPTIN"
+ba = "ba"

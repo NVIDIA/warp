@@ -213,7 +213,7 @@ def test_from_paddle(test, device):
     def wrap_vec_tensor_with_grad(n, desired_warp_dtype):
         t = paddle.zeros((10, n), dtype=paddle.float32).to(device=paddle_device)
         a = wp.from_paddle(t, desired_warp_dtype)
-        a.reuqires_grad = True
+        a.requires_grad = True
         assert a.dtype == desired_warp_dtype
         assert a.shape == (10,)
 

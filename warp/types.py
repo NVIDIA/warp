@@ -5217,9 +5217,9 @@ class Volume:
             # look for corresponding nvdb type
             try:
                 nvdb_type = next(
-                    typ
-                    for typ in Volume._supported_allocation_types
-                    if types_equal(grid_type, Volume._nvdb_type_to_dtype[typ])
+                    alloc_type
+                    for alloc_type in Volume._supported_allocation_types
+                    if types_equal(grid_type, Volume._nvdb_type_to_dtype[alloc_type])
                 )
             except StopIteration as err:
                 raise TypeError(

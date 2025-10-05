@@ -243,7 +243,7 @@ class FunctionSpace:
          - node_weight: weight associated to the node, as given per `element_(inn|out)er_weight`
          - local_value_map: local transformation from node space to world space, as given per `local_map_value_(inn|out)er`
         """
-        raise NotADirectoryError
+        raise NotImplementedError
 
     def space_gradient(
         dof_value: "FunctionSpace.dof_dtype",
@@ -257,7 +257,7 @@ class FunctionSpace:
          - dof_value: node value in the degrees-of-freedom basis
          - node_weight_gradient: gradient of the weight associated to the node, as given per `element_(inn|out)er_weight_gradient`
          - local_value_map: local transformation from node space to world space, as given per `local_map_value_(inn|out)er`
-         - grad_transform: transform mapping the reference space gradient to worls-space gradient (inverse deformation gradient)
+         - grad_transform: transform mapping the reference-space gradient to world-space gradient (inverse deformation gradient)
         """
         raise NotImplementedError
 
@@ -273,7 +273,7 @@ class FunctionSpace:
          - dof_value: node value in the degrees-of-freedom basis
          - node_weight_gradient: gradient of the weight associated to the node, as given per `element_(inn|out)er_weight_gradient`
          - local_value_map: local transformation from node space to world space, as given per `local_map_value_(inn|out)er`
-         - grad_transform: transform mapping the reference space gradient to worls-space gradient (inverse deformation gradient)
+         - grad_transform: transform mapping the reference-space gradient to world-space gradient (inverse deformation gradient)
         """
         raise NotImplementedError
 

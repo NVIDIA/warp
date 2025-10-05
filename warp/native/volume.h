@@ -161,7 +161,7 @@ CUDA_CALLABLE inline void pnano_read(T &result, pnanovdb_buf_t buf, PNANOVDB_INO
     pnano_read<T>(result, buf, address);
 }
 
-/// regular grid accessor (values stored in leafs)
+/// regular grid accessor (values stored in leaves)
 
 struct value_accessor_base
 {

@@ -243,7 +243,7 @@ def marching_cubes_extract_faces(
 def extract_faces_kernel(
     values: wp.array3d(dtype=wp.float32),
     threshold: wp.float32,
-    edge_genererated_vert_ind: wp.array(dtype=wp.int32, ndim=4),
+    edge_generated_vert_ind: wp.array(dtype=wp.int32, ndim=4),
     face_result_ind: wp.array(dtype=wp.int32),
     mc_case_to_tri_range_table: wp.array(dtype=wp.int32),
     mc_tri_local_inds_table: wp.array(dtype=wp.int32),
@@ -306,7 +306,7 @@ def extract_faces_kernel(
         for s in range(3):
             local_ind = mc_tri_local_inds_table[tri_range_start + 3 * i_tri + s]
 
-            global_ind = edge_genererated_vert_ind[
+            global_ind = edge_generated_vert_ind[
                 ti + mc_edge_offset_table[local_ind][0],
                 tj + mc_edge_offset_table[local_ind][1],
                 tk + mc_edge_offset_table[local_ind][2],

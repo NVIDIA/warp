@@ -155,8 +155,8 @@ def clear_kernel_cache() -> None:
 
     import shutil
 
-    is_intialized = warp.context.runtime is not None
-    assert is_intialized, "The kernel cache directory is not configured; wp.init() has not been called yet or failed."
+    is_initialized = warp.context.runtime is not None
+    assert is_initialized, "The kernel cache directory is not configured; wp.init() has not been called yet or failed."
 
     for item in os.listdir(warp.config.kernel_cache_dir):
         item_path = os.path.join(warp.config.kernel_cache_dir, item)
@@ -176,8 +176,8 @@ def clear_lto_cache() -> None:
 
     import shutil
 
-    is_intialized = warp.context.runtime is not None
-    assert is_intialized, "The kernel cache directory is not configured; wp.init() has not been called yet or failed."
+    is_initialized = warp.context.runtime is not None
+    assert is_initialized, "The kernel cache directory is not configured; wp.init() has not been called yet or failed."
 
     lto_path = os.path.join(warp.config.kernel_cache_dir, "lto")
     if os.path.isdir(lto_path):

@@ -1011,7 +1011,7 @@ def test_fill_slices(test, device):
         assert_np_equal(a3.numpy(), np.zeros(a3.shape, dtype=nptype))
         assert_np_equal(a4.numpy(), np.zeros(a4.shape, dtype=nptype))
 
-        # partititon each array into even and odd slices
+        # partition each array into even and odd slices
         a1a = a1[::2]
         a1b = a1[1::2]
         a2a = a2[::2]
