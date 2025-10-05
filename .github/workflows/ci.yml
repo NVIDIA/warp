@@ -74,9 +74,7 @@ jobs:
         id: cache-build
         with:
           path: warp/bin/
-          key: build-${{ matrix.platform }}-${{ hashFiles('warp/**/*.py', 'warp/**/*.cpp', 'warp/**/*.h', 'warp/**/*.cu', 'build_lib.py') }}
-          restore-keys: |
-            build-${{ matrix.platform }}-
+          key: build-${{ matrix.platform }}-${{ hashFiles('build_lib.py', 'warp/build_dll.py', 'build_llvm.py', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.h', 'deps/libmathdx-deps.packman.xml') }}
       
       - name: Install CTK (with non-CUDA packages)
         if: steps.cache-build.outputs.cache-hit != 'true' && matrix.cuda-sub-packages != '' && matrix.cuda-non-cuda-packages != ''
