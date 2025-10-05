@@ -243,7 +243,7 @@ class FunctionSpace:
          - node_weight: weight associated to the node, as given per `element_(inn|out)er_weight`
          - local_value_map: local transformation from node space to world space, as given per `local_map_value_(inn|out)er`
         """
-        raise NotADirectoryError
+        raise NotImplementedError
 
     def space_gradient(
         dof_value: "FunctionSpace.dof_dtype",
