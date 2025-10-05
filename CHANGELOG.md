@@ -72,6 +72,7 @@
 - Fix handling of generic kernels with `wp.jax_experimental.ffi.jax_kernel()`.
 - Update built-in documentation to accurately reflect their differentiability status
   ([GH-970](https://github.com/NVIDIA/warp/issues/970)).
+- Fix handling of multi-line lambda expressions and lambda expressions involving parentheses in `wp.map()` ([GH-984](https://github.com/NVIDIA/warp/issues/984)).
 
 ## [1.9.0] - 2025-09-04
 

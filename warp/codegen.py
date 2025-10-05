@@ -3221,7 +3221,7 @@ class Adjoint:
             lines.extend(source_lines[start_line + 1 : end_line])
             # last line (from the start to end_col)
             lines.append(source_lines[end_line][:end_col])
-            return "\n".join(lines).strip()
+            return "".join(lines).strip()
 
     @staticmethod
     def extract_lambda_source(func, only_body=False) -> str | None:
@@ -3239,7 +3239,7 @@ class Adjoint:
             source = source[:-1]
         # extract lambda expression up until a comma, e.g. in the case of
         # "map(lambda a: (a + 2.0, a + 3.0), a, return_kernel=True)"
-        si = max(source.find(")"), source.find(":"))
+        si = max(source.rfind(")"), source.find(":"))
         ci = source.find(",", si)
         if ci != -1:
             source = source[:ci]
