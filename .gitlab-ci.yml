@@ -46,6 +46,7 @@ variables:
   WARP_CACHE_ROOT: "$CI_PROJECT_DIR/.cache/warp" # Used by the parallel test runner
   GIT_DEPTH: 1
   UV_LINK_MODE: copy
+  UV_HTTP_TIMEOUT: 120
   UV_PYTHON:
     value: "3.12"
     options:
@@ -584,9 +585,12 @@ linux-x86_64 python matrix test:
       - UV_PYTHON: "3.8"
       - UV_PYTHON: "3.9"
       - UV_PYTHON: "3.13"
+      - UV_PYTHON: "3.14"
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
+    # Python 3.14 requires a C compiler for some dependencies
+    - if [ "$UV_PYTHON" = "3.14" ]; then apt-get update && apt-get install build-essential --no-install-recommends -y; fi
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-x86_64/warp.so warp/bin/
     - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/

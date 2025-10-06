@@ -53,6 +53,22 @@ class WarpCodegenAttributeError(AttributeError):
         super().__init__(message)
 
 
+def get_node_name_safe(node):
+    """Safely get a string representation of an AST node for error messages.
+
+    This handles different AST node types (Name, Subscript, etc.) without
+    raising AttributeError when accessing attributes that may not exist.
+    """
+    if hasattr(node, "id"):
+        return node.id
+    elif hasattr(node, "value") and hasattr(node, "slice"):
+        # Subscript node like inputs[tid]
+        base_name = get_node_name_safe(node.value)
+        return f"{base_name}[...]"
+    else:
+        return f"<{type(node).__name__}>"
+
+
 class WarpCodegenKeyError(KeyError):
     def __init__(self, message):
         super().__init__(message)
@@ -185,23 +201,39 @@ def eval_annotations(annotations: Mapping[str, Any], obj: Any) -> Mapping[str, A
 
 def get_annotations(obj: Any) -> Mapping[str, Any]:
     """Same as `inspect.get_annotations()` but always returning un-stringized annotations."""
-    # This backports `inspect.get_annotations()` for Python 3.9 and older.
-    # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
-    if isinstance(obj, type):
-        annotations = obj.__dict__.get("__annotations__", {})
+    # Python 3.10+: Use the built-in inspect.get_annotations() which handles
+    # PEP 649 (deferred annotation evaluation) in Python 3.14+
+    if hasattr(inspect, "get_annotations"):
+        # eval_str=True ensures stringized annotations from PEP 563 are evaluated
+        return inspect.get_annotations(obj, eval_str=True)
     else:
-        annotations = getattr(obj, "__annotations__", {})
+        # Python 3.9 and older: Manual backport of inspect.get_annotations()
+        # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
+        if isinstance(obj, type):
+            annotations = obj.__dict__.get("__annotations__", {})
+        else:
+            annotations = getattr(obj, "__annotations__", {})
 
-    # Evaluating annotations can be done using the `eval_str` parameter with
-    # the official function from the `inspect` module.
-    return eval_annotations(annotations, obj)
+        return eval_annotations(annotations, obj)
 
 
 def get_full_arg_spec(func: Callable) -> inspect.FullArgSpec:
     """Same as `inspect.getfullargspec()` but always returning un-stringized annotations."""
-    # See https://docs.python.org/3/howto/annotations.html#manually-un-stringizing-stringized-annotations
     spec = inspect.getfullargspec(func)
-    return spec._replace(annotations=eval_annotations(spec.annotations, func))
+
+    # Python 3.10+: Use inspect.get_annotations()
+    if hasattr(inspect, "get_annotations"):
+        # Capture closure variables to handle cases like `foo.Data` where `foo` is a closure variable
+        closure_vars = dict(
+            zip(func.__code__.co_freevars, (get_closure_cell_contents(x) for x in (func.__closure__ or ())))
+        )
+        # Filter out None values from empty cells
+        closure_vars = {k: v for k, v in closure_vars.items() if v is not None}
+        return spec._replace(annotations=inspect.get_annotations(func, eval_str=True, locals=closure_vars))
+    else:
+        # Python 3.9 and older: Manually un-stringize annotations
+        # See https://docs.python.org/3/howto/annotations.html#manually-un-stringizing-stringized-annotations
+        return spec._replace(annotations=eval_annotations(spec.annotations, func))
 
 
 def struct_instance_repr_recursive(inst: StructInstance, depth: int, use_repr: bool) -> str:
@@ -2047,8 +2079,9 @@ class Adjoint:
                 return type_attribute
 
             if isinstance(aggregate, Var):
+                node_name = get_node_name_safe(node.value)
                 raise WarpCodegenAttributeError(
-                    f"Error, `{node.attr}` is not an attribute of '{node.value.id}' ({type_repr(aggregate.type)})"
+                    f"Error, `{node.attr}` is not an attribute of '{node_name}' ({type_repr(aggregate.type)})"
                 ) from e
             raise WarpCodegenAttributeError(f"Error, `{node.attr}` is not an attribute of '{aggregate}'") from e
 

@@ -443,10 +443,7 @@ class TestFunc(unittest.TestCase):
             a * b
 
     def test_cpython_call_user_function_with_error(self):
-        with self.assertRaisesRegex(
-            ZeroDivisionError,
-            "float division by zero",
-        ):
+        with self.assertRaises(ZeroDivisionError):
             divide_by_zero(1.0)
 
     def test_cpython_call_user_function_with_wrong_argument_types(self):

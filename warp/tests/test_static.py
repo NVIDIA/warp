@@ -155,7 +155,7 @@ def test_invalid_static_expression(test, device):
         wp.static(1.0 / 0.0)
 
     with test.assertRaisesRegex(
-        warp.codegen.WarpCodegenError, r"Error evaluating static expression\: float division by zero"
+        warp.codegen.WarpCodegenError, r"Error evaluating static expression\: (?:float )?division by zero"
     ):
         wp.launch(invalid_kernel, 1, device=device)
 
