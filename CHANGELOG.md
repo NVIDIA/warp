@@ -38,6 +38,7 @@
   ([GH-963](https://github.com/NVIDIA/warp/issues/963)).
 - Fix empty slice `arr[i:i]` causing errors ([GH-958](https://github.com/NVIDIA/warp/issues/958)).
 - Fix handling of generic kernels with `wp.jax_experimental.ffi.jax_kernel()`.
+- Fix `wp.atomic_add()` for int64 type ([GH-977](https://github.com/NVIDIA/warp/issues/977))
 
 ## [1.9.0] - 2025-09-04
 
