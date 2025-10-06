@@ -4840,7 +4840,7 @@ add_builtin(
     value_type=builtins.bool,
     group="Geometry",
     doc="""Move to the next bound returned by the query.
-    
+
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
     For ray queries only, ``max_dist`` limits the maximum intersection distance.
 

@@ -40,7 +40,13 @@ def bvh_query_ray(bvh_id: wp.uint64, start: wp.vec3, dir: wp.vec3, bounds_inters
 
 
 @wp.kernel
-def bvh_query_aabb_group(bvh_id: wp.uint64, lower: wp.vec3, upper: wp.vec3, group_ids: wp.array(dtype=int), bounds_intersected: wp.array(dtype=int)):
+def bvh_query_aabb_group(
+    bvh_id: wp.uint64,
+    lower: wp.vec3,
+    upper: wp.vec3,
+    group_ids: wp.array(dtype=int),
+    bounds_intersected: wp.array(dtype=int),
+):
     tid = wp.tid()
     root = wp.bvh_get_group_root(bvh_id, group_ids[tid])
     query = wp.bvh_query_aabb(bvh_id, lower, upper, root)
@@ -51,7 +57,13 @@ def bvh_query_aabb_group(bvh_id: wp.uint64, lower: wp.vec3, upper: wp.vec3, grou
 
 
 @wp.kernel
-def bvh_query_ray_group(bvh_id: wp.uint64, start: wp.vec3, dir: wp.vec3, group_ids: wp.array(dtype=int), bounds_intersected: wp.array(dtype=int)):
+def bvh_query_ray_group(
+    bvh_id: wp.uint64,
+    start: wp.vec3,
+    dir: wp.vec3,
+    group_ids: wp.array(dtype=int),
+    bounds_intersected: wp.array(dtype=int),
+):
     tid = wp.tid()
     root = wp.bvh_get_group_root(bvh_id, group_ids[tid])
     query = wp.bvh_query_ray(bvh_id, start, dir, root)
@@ -153,14 +165,26 @@ def test_bvh(test, type, device):
             wp.launch(
                 kernel=bvh_query_aabb_group,
                 dim=len(unique_groups),
-                inputs=[bvh.id, query_lower, query_upper, wp.array(unique_groups, dtype=int, device=device), bounds_intersected_group],
+                inputs=[
+                    bvh.id,
+                    query_lower,
+                    query_upper,
+                    wp.array(unique_groups, dtype=int, device=device),
+                    bounds_intersected_group,
+                ],
                 device=device,
             )
         else:
             wp.launch(
                 kernel=bvh_query_ray_group,
                 dim=len(unique_groups),
-                inputs=[bvh.id, query_start, query_dir, wp.array(unique_groups, dtype=int, device=device), bounds_intersected_group],
+                inputs=[
+                    bvh.id,
+                    query_start,
+                    query_dir,
+                    wp.array(unique_groups, dtype=int, device=device),
+                    bounds_intersected_group,
+                ],
                 device=device,
             )
 
@@ -181,14 +205,26 @@ def test_bvh(test, type, device):
             wp.launch(
                 kernel=bvh_query_aabb_group,
                 dim=1,
-                inputs=[bvh.id, query_lower, query_upper, wp.array([out_of_range_gid], dtype=int, device=device), bounds_intersected_group],
+                inputs=[
+                    bvh.id,
+                    query_lower,
+                    query_upper,
+                    wp.array([out_of_range_gid], dtype=int, device=device),
+                    bounds_intersected_group,
+                ],
                 device=device,
             )
         else:
             wp.launch(
                 kernel=bvh_query_ray_group,
                 dim=1,
-                inputs=[bvh.id, query_start, query_dir, wp.array([out_of_range_gid], dtype=int, device=device), bounds_intersected_group],
+                inputs=[
+                    bvh.id,
+                    query_start,
+                    query_dir,
+                    wp.array([out_of_range_gid], dtype=int, device=device),
+                    bounds_intersected_group,
+                ],
                 device=device,
             )
         device_intersected_missing = bounds_intersected_group.numpy()
@@ -398,6 +434,7 @@ class TestBvh(unittest.TestCase):
         # test the scenario in which a bvh is created but not initialized before gc
         instance = wp.Bvh.__new__(wp.Bvh)
         instance.__del__()
+
 
 add_function_test(TestBvh, "test_grouped_bvh_aabb", test_bvh_query_aabb, devices=devices)
 add_function_test(TestBvh, "test_grouped_bvh_ray", test_bvh_query_ray, devices=devices)
