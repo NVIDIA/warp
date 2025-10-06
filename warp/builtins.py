@@ -126,7 +126,7 @@ add_builtin(
     value_func=sametypes_create_value_func(Scalar),
     doc="Return -1 if ``x`` < 0, return 1 otherwise.",
     group="Scalar Math",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -135,7 +135,7 @@ add_builtin(
     value_func=sametypes_create_value_func(Scalar),
     doc="Return 1.0 if ``x`` < 0.0, return 0.0 otherwise.",
     group="Scalar Math",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "nonzero",
@@ -143,7 +143,7 @@ add_builtin(
     value_func=sametypes_create_value_func(Scalar),
     doc="Return 1.0 if ``x`` is not equal to zero, return 0.0 otherwise.",
     group="Scalar Math",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -295,7 +295,7 @@ add_builtin(
 
     This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like :func:`warp.rint()`.
     Differs from :func:`numpy.round()`, which behaves the same way as :func:`numpy.rint()`.""",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -306,7 +306,7 @@ add_builtin(
     doc="""Return the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
 
     It is generally faster than :func:`warp.round()`. Equivalent to :func:`numpy.rint()`.""",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -319,7 +319,7 @@ add_builtin(
     In other words, it discards the fractional part of ``x``.
     It is similar to casting ``float(int(a))``, but preserves the negative sign when ``x`` is in the range [-0.0, -1.0).
     Equivalent to :func:`numpy.trunc()` and :func:`numpy.fix()`.""",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -328,7 +328,7 @@ add_builtin(
     value_func=sametypes_create_value_func(Float),
     group="Scalar Math",
     doc="""Return the largest integer that is less than or equal to ``x``.""",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -337,7 +337,7 @@ add_builtin(
     value_func=sametypes_create_value_func(Float),
     group="Scalar Math",
     doc="""Return the smallest integer that is greater than or equal to ``x``.""",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -348,7 +348,7 @@ add_builtin(
     doc="""Retrieve the fractional part of ``x``.
 
     In other words, it discards the integer part of ``x`` and is equivalent to ``x - trunc(x)``.""",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -357,7 +357,7 @@ add_builtin(
     value_type=builtins.bool,
     group="Scalar Math",
     doc="""Return ``True`` if ``a`` is a finite number, otherwise return ``False``.""",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "isfinite",
@@ -365,7 +365,7 @@ add_builtin(
     value_type=builtins.bool,
     group="Vector Math",
     doc="Return ``True`` if all elements of the vector ``a`` are finite, otherwise return ``False``.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "isfinite",
@@ -373,7 +373,7 @@ add_builtin(
     value_type=builtins.bool,
     group="Vector Math",
     doc="Return ``True`` if all elements of the quaternion ``a`` are finite, otherwise return ``False``.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "isfinite",
@@ -381,7 +381,7 @@ add_builtin(
     value_type=builtins.bool,
     group="Vector Math",
     doc="Return ``True`` if all elements of the matrix ``a`` are finite, otherwise return ``False``.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -390,7 +390,7 @@ add_builtin(
     value_type=builtins.bool,
     doc="Return ``True`` if ``a`` is NaN, otherwise return ``False``.",
     group="Scalar Math",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "isnan",
@@ -398,7 +398,7 @@ add_builtin(
     value_type=builtins.bool,
     group="Vector Math",
     doc="Return ``True`` if any element of the vector ``a`` is NaN, otherwise return ``False``.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "isnan",
@@ -406,7 +406,7 @@ add_builtin(
     value_type=builtins.bool,
     group="Vector Math",
     doc="Return ``True`` if any element of the quaternion ``a`` is NaN, otherwise return ``False``.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "isnan",
@@ -414,7 +414,7 @@ add_builtin(
     value_type=builtins.bool,
     group="Vector Math",
     doc="Return ``True`` if any element of the matrix ``a`` is NaN, otherwise return ``False``.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -423,7 +423,7 @@ add_builtin(
     value_type=builtins.bool,
     group="Scalar Math",
     doc="""Return ``True`` if ``a`` is positive or negative infinity, otherwise return ``False``.""",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "isinf",
@@ -431,7 +431,7 @@ add_builtin(
     value_type=builtins.bool,
     group="Vector Math",
     doc="Return ``True`` if any element of the vector ``a`` is positive or negative infinity, otherwise return ``False``.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "isinf",
@@ -439,7 +439,7 @@ add_builtin(
     value_type=builtins.bool,
     group="Vector Math",
     doc="Return ``True`` if any element of the quaternion ``a`` is positive or negative infinity, otherwise return ``False``.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "isinf",
@@ -447,7 +447,7 @@ add_builtin(
     value_type=builtins.bool,
     group="Vector Math",
     doc="Return ``True`` if any element of the matrix ``a`` is positive or negative infinity, otherwise return ``False``.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -555,7 +555,7 @@ add_builtin(
     value_func=lambda arg_types, arg_values: warp.uint32,
     doc="Return the index of the minimum element of a vector ``a``.",
     group="Vector Math",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "argmax",
@@ -563,7 +563,7 @@ add_builtin(
     value_func=lambda arg_types, arg_values: warp.uint32,
     doc="Return the index of the maximum element of a vector ``a``.",
     group="Vector Math",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -1203,7 +1203,7 @@ add_builtin(
     doc="Create an identity matrix with shape=(n,n) with the type given by ``dtype``.",
     group="Vector Math",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -1568,7 +1568,7 @@ add_builtin(
     group="Quaternion Math",
     doc="Construct an identity quaternion with zero imaginary part and real part of 1.0",
     export=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -1784,7 +1784,7 @@ add_builtin(
     doc="Construct a spatial transform vector of given dtype.",
     group="Spatial Math",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -1819,7 +1819,7 @@ add_builtin(
     group="Transformations",
     doc="Construct an identity transform with zero translation and identity rotation.",
     export=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -2147,7 +2147,7 @@ add_builtin(
     value_func=tile_zeros_value_func,
     dispatch_func=tile_zeros_dispatch_func,
     variadic=False,
-    missing_grad=True,
+    is_differentiable=False,
     doc="""Allocate a tile of zero-initialized items.
 
     :param shape: Shape of the output tile
@@ -2167,7 +2167,7 @@ add_builtin(
     value_func=tile_zeros_value_func,
     dispatch_func=tile_zeros_dispatch_func,
     variadic=False,
-    missing_grad=True,
+    is_differentiable=False,
     hidden=True,
     group="Tile Primitives",
     export=False,
@@ -2219,7 +2219,7 @@ add_builtin(
     defaults={"storage": "register"},
     value_func=tile_ones_value_func,
     dispatch_func=tile_ones_dispatch_func,
-    missing_grad=True,
+    is_differentiable=False,
     doc="""Allocate a tile of one-initialized items.
 
     :param shape: Shape of the output tile
@@ -2238,7 +2238,7 @@ add_builtin(
     defaults={"storage": "register"},
     value_func=tile_ones_value_func,
     dispatch_func=tile_ones_dispatch_func,
-    missing_grad=True,
+    is_differentiable=False,
     hidden=True,
     group="Tile Primitives",
     export=False,
@@ -2329,7 +2329,7 @@ add_builtin(
     value_func=tile_arange_value_func,
     dispatch_func=tile_arange_dispatch_func,
     variadic=True,
-    missing_grad=True,
+    is_differentiable=False,
     doc="""Generate a tile of linearly spaced elements.
 
     :param args: Variable-length positional arguments, interpreted as:
@@ -3124,7 +3124,7 @@ add_builtin(
     :param shape: Shape of the returned slice
     :returns: A tile with dimensions given by the specified shape or the remaining source tile dimensions""",
     group="Tile Primitives",
-    missing_grad=True,
+    is_differentiable=False,
     export=False,
 )
 
@@ -3769,7 +3769,7 @@ add_builtin(
     group="Tile Primitives",
     hidden=True,
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "tile_bit_and_inplace",
@@ -3778,7 +3778,7 @@ add_builtin(
     group="Tile Primitives",
     hidden=True,
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "tile_bit_and_inplace",
@@ -3787,7 +3787,7 @@ add_builtin(
     group="Tile Primitives",
     hidden=True,
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "tile_bit_and_inplace",
@@ -3796,7 +3796,7 @@ add_builtin(
     group="Tile Primitives",
     hidden=True,
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -3806,7 +3806,7 @@ add_builtin(
     group="Tile Primitives",
     hidden=True,
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "tile_bit_or_inplace",
@@ -3815,7 +3815,7 @@ add_builtin(
     group="Tile Primitives",
     hidden=True,
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "tile_bit_or_inplace",
@@ -3824,7 +3824,7 @@ add_builtin(
     group="Tile Primitives",
     hidden=True,
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "tile_bit_or_inplace",
@@ -3833,7 +3833,7 @@ add_builtin(
     group="Tile Primitives",
     hidden=True,
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -3843,7 +3843,7 @@ add_builtin(
     group="Tile Primitives",
     hidden=True,
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "tile_bit_xor_inplace",
@@ -3852,7 +3852,7 @@ add_builtin(
     group="Tile Primitives",
     hidden=True,
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "tile_bit_xor_inplace",
@@ -3861,7 +3861,7 @@ add_builtin(
     group="Tile Primitives",
     hidden=True,
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "tile_bit_xor_inplace",
@@ -3870,7 +3870,7 @@ add_builtin(
     group="Tile Primitives",
     hidden=True,
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -4122,7 +4122,7 @@ add_builtin(
     """,
     group="Tile Primitives",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -4176,7 +4176,7 @@ add_builtin(
     """,
     group="Tile Primitives",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -4230,7 +4230,7 @@ add_builtin(
     """,
     group="Tile Primitives",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -4283,7 +4283,7 @@ add_builtin(
     """,
     group="Tile Primitives",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -4336,7 +4336,7 @@ add_builtin(
     """,
     group="Tile Primitives",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -4394,7 +4394,7 @@ add_builtin(
     """,
     group="Tile Primitives",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -4458,7 +4458,7 @@ add_builtin(
     """,
     group="Tile Primitives",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -4522,7 +4522,7 @@ add_builtin(
     """,
     group="Tile Primitives",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -4776,7 +4776,7 @@ add_builtin(
     doc="WIP",
     group="Utility",
     hidden=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -4792,7 +4792,7 @@ add_builtin(
     doc="WIP",
     group="Utility",
     hidden=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -4802,7 +4802,7 @@ add_builtin(
     doc="WIP",
     group="Utility",
     hidden=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -4854,7 +4854,7 @@ add_builtin(
     :param low: The lower bound of the bounding box in BVH space
     :param high: The upper bound of the bounding box in BVH space""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -4870,7 +4870,7 @@ add_builtin(
     :param start: The start of the ray in BVH space
     :param dir: The direction of the ray in BVH space""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -4881,7 +4881,7 @@ add_builtin(
     doc="""Move to the next bound returned by the query.
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5222,7 +5222,7 @@ add_builtin(
     :param low: The lower bound of the bounding box in mesh space
     :param high: The upper bound of the bounding box in mesh space""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5234,7 +5234,7 @@ add_builtin(
 
     The index of the current face is stored in ``index``, returns ``False`` if there are no more overlapping triangles.""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5264,7 +5264,7 @@ add_builtin(
 
     This query can be used to iterate over all neighboring point within a fixed radius from the query point.""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5276,7 +5276,7 @@ add_builtin(
 
     The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5290,7 +5290,7 @@ add_builtin(
 
     Returns -1 if the :class:`HashGrid` has not been reserved.""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5302,14 +5302,14 @@ add_builtin(
 
     Returns > 0 if triangles intersect.""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
     "mesh_get",
     input_types={"id": uint64},
     value_type=Mesh,
-    missing_grad=True,
+    is_differentiable=False,
     group="Geometry",
     doc="""Retrieves the mesh given its index.""",
     export=False,
@@ -5322,7 +5322,7 @@ add_builtin(
     group="Geometry",
     doc="""Evaluates the face normal the mesh given a face index.""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5332,7 +5332,7 @@ add_builtin(
     group="Geometry",
     doc="""Returns the point of the mesh given a index.""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5342,7 +5342,7 @@ add_builtin(
     group="Geometry",
     doc="""Returns the velocity of the mesh given a index.""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5352,7 +5352,7 @@ add_builtin(
     group="Geometry",
     doc="""Returns the point-index of the mesh given a face-vertex index.""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -5400,7 +5400,7 @@ add_builtin(
     group="Utility",
     export=False,
     hidden=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "iter_next",
@@ -5409,7 +5409,7 @@ add_builtin(
     group="Utility",
     export=False,
     hidden=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "iter_next",
@@ -5418,7 +5418,7 @@ add_builtin(
     group="Utility",
     export=False,
     hidden=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5429,7 +5429,7 @@ add_builtin(
     group="Utility",
     doc="""Returns the range in reversed order.""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 # ---------------------------------
@@ -5578,7 +5578,7 @@ add_builtin(
     doc="""Returns the value of voxel with coordinates ``i``, ``j``, ``k`` for a volume of type type `dtype`.
 
     If the voxel at this index does not exist, this function returns the background value.""",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -5599,7 +5599,7 @@ add_builtin(
     export=False,
     group="Volumes",
     doc="""Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.""",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5630,7 +5630,7 @@ add_builtin(
     doc="""Returns the value of voxel with coordinates ``i``, ``j``, ``k``.
 
     If the voxel at this index does not exist, this function returns the background value""",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5639,7 +5639,7 @@ add_builtin(
     group="Volumes",
     doc="""Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5660,7 +5660,7 @@ add_builtin(
     doc="""Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``.
 
     If the voxel at this index does not exist, this function returns the background value.""",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5669,7 +5669,7 @@ add_builtin(
     group="Volumes",
     doc="""Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5688,7 +5688,7 @@ add_builtin(
     doc="""Returns the :class:`int32` value of voxel with coordinates ``i``, ``j``, ``k``.
 
     If the voxel at this index does not exist, this function returns the background value.""",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5697,7 +5697,7 @@ add_builtin(
     group="Volumes",
     doc="""Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.""",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -5779,7 +5779,7 @@ add_builtin(
     If the voxel at this index does not exist, this function returns -1.
     This function is available for both index grids and classical volumes.
     """,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5821,7 +5821,7 @@ add_builtin(
     value_type=uint32,
     group="Random",
     doc="Initialize a new random number generator given a user-defined seed. Returns a 32-bit integer representing the RNG state.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5833,7 +5833,7 @@ add_builtin(
 
     This alternative constructor can be useful in parallel programs, where a kernel as a whole should share a seed,
     but each thread should generate uncorrelated values. In this case usage should be ``r = rand_init(seed, tid)``""",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5842,7 +5842,7 @@ add_builtin(
     value_type=int,
     group="Random",
     doc="Return a random integer in the range [-2^31, 2^31).",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "randi",
@@ -5850,7 +5850,7 @@ add_builtin(
     value_type=int,
     group="Random",
     doc="Return a random integer between [low, high).",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "randu",
@@ -5858,7 +5858,7 @@ add_builtin(
     value_type=uint32,
     group="Random",
     doc="Return a random unsigned integer in the range [0, 2^32).",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "randu",
@@ -5866,7 +5866,7 @@ add_builtin(
     value_type=uint32,
     group="Random",
     doc="Return a random unsigned integer between [low, high).",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "randf",
@@ -5874,7 +5874,7 @@ add_builtin(
     value_type=float,
     group="Random",
     doc="Return a random float between [0.0, 1.0).",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "randf",
@@ -5882,7 +5882,7 @@ add_builtin(
     value_type=float,
     group="Random",
     doc="Return a random float between [low, high).",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "randn",
@@ -5890,7 +5890,7 @@ add_builtin(
     value_type=float,
     group="Random",
     doc="Sample a normal (Gaussian) distribution of mean 0 and variance 1. ",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5899,7 +5899,7 @@ add_builtin(
     value_type=int,
     group="Random",
     doc="Inverse-transform sample a cumulative distribution function.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "sample_triangle",
@@ -5907,7 +5907,7 @@ add_builtin(
     value_type=vec2,
     group="Random",
     doc="Uniformly sample a triangle. Returns sample barycentric coordinates.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "sample_unit_ring",
@@ -5915,7 +5915,7 @@ add_builtin(
     value_type=vec2,
     group="Random",
     doc="Uniformly sample a ring in the xy plane.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "sample_unit_disk",
@@ -5923,7 +5923,7 @@ add_builtin(
     value_type=vec2,
     group="Random",
     doc="Uniformly sample a disk in the xy plane.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "sample_unit_sphere_surface",
@@ -5931,7 +5931,7 @@ add_builtin(
     value_type=vec3,
     group="Random",
     doc="Uniformly sample a unit sphere surface.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "sample_unit_sphere",
@@ -5939,7 +5939,7 @@ add_builtin(
     value_type=vec3,
     group="Random",
     doc="Uniformly sample a unit sphere.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "sample_unit_hemisphere_surface",
@@ -5947,7 +5947,7 @@ add_builtin(
     value_type=vec3,
     group="Random",
     doc="Uniformly sample a unit hemisphere surface.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "sample_unit_hemisphere",
@@ -5955,7 +5955,7 @@ add_builtin(
     value_type=vec3,
     group="Random",
     doc="Uniformly sample a unit hemisphere.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "sample_unit_square",
@@ -5963,7 +5963,7 @@ add_builtin(
     value_type=vec2,
     group="Random",
     doc="Uniformly sample a unit square.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "sample_unit_cube",
@@ -5971,7 +5971,7 @@ add_builtin(
     value_type=vec3,
     group="Random",
     doc="Uniformly sample a unit cube.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5983,7 +5983,7 @@ add_builtin(
 
     :param state: RNG state
     :param lam: The expected value of the distribution""",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -6051,7 +6051,7 @@ add_builtin(
     value_type=vec2,
     group="Random",
     doc="Divergence-free vector field based on the gradient of a Perlin noise function.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "curlnoise",
@@ -6060,7 +6060,7 @@ add_builtin(
     value_type=vec3,
     group="Random",
     doc="Divergence-free vector field based on the curl of three Perlin noise functions.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "curlnoise",
@@ -6069,7 +6069,7 @@ add_builtin(
     value_type=vec3,
     group="Random",
     doc="Divergence-free vector field based on the curl of three Perlin noise functions.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -6101,7 +6101,7 @@ add_builtin(
     dispatch_func=printf_dispatch_func,
     group="Utility",
     doc="Allows printing formatted strings using C-style format specifiers.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -6120,7 +6120,7 @@ add_builtin(
     group="Utility",
     namespace="",
     native_func="__debugbreak",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 # helpers
@@ -6138,7 +6138,7 @@ add_builtin(
     This function may not be called from user-defined Warp functions.""",
     namespace="",
     native_func="builtin_tid1d",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -6149,7 +6149,7 @@ add_builtin(
     doc="Returns the number of threads in the current block.",
     namespace="",
     native_func="builtin_block_dim",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -6164,7 +6164,7 @@ add_builtin(
     This function may not be called from user-defined Warp functions.""",
     namespace="",
     native_func="builtin_tid2d",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -6179,7 +6179,7 @@ add_builtin(
     This function may not be called from user-defined Warp functions.""",
     namespace="",
     native_func="builtin_tid3d",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -6194,7 +6194,7 @@ add_builtin(
     This function may not be called from user-defined Warp functions.""",
     namespace="",
     native_func="builtin_tid4d",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -6402,7 +6402,7 @@ add_builtin(
     group="Utility",
     hidden=True,
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -6443,7 +6443,7 @@ add_builtin(
     native_func="fixedarray_t",
     group="Utility",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
     hidden=True,  # Unhide once we can document both a built-in and a Python scope function sharing the same name.
 )
 
@@ -6654,7 +6654,7 @@ add_builtin(
     hidden=True,
     skip_replay=True,
     group="Utility",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -6671,7 +6671,7 @@ add_builtin(
     dispatch_func=load_dispatch_func,
     hidden=True,
     group="Utility",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -6995,7 +6995,7 @@ for array_type in array_types:
     The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
     add_builtin(
         "atomic_cas",
@@ -7009,7 +7009,7 @@ for array_type in array_types:
     The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
     add_builtin(
         "atomic_cas",
@@ -7023,7 +7023,7 @@ for array_type in array_types:
     The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
     add_builtin(
         "atomic_cas",
@@ -7045,7 +7045,7 @@ for array_type in array_types:
     The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
 
     add_builtin(
@@ -7060,7 +7060,7 @@ for array_type in array_types:
     The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
     add_builtin(
         "atomic_exch",
@@ -7074,7 +7074,7 @@ for array_type in array_types:
     The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
     add_builtin(
         "atomic_exch",
@@ -7088,7 +7088,7 @@ for array_type in array_types:
     The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
     add_builtin(
         "atomic_exch",
@@ -7115,7 +7115,7 @@ for array_type in array_types:
         This function is automatically invoked when using the syntax ``arr[i] &= value``.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
     add_builtin(
         "atomic_and",
@@ -7128,7 +7128,7 @@ for array_type in array_types:
         This function is automatically invoked when using the syntax ``arr[i,j] &= value``.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
     add_builtin(
         "atomic_and",
@@ -7141,7 +7141,7 @@ for array_type in array_types:
         This function is automatically invoked when using the syntax ``arr[i,j,k] &= value``.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
     add_builtin(
         "atomic_and",
@@ -7154,7 +7154,7 @@ for array_type in array_types:
         This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
 
     add_builtin(
@@ -7168,7 +7168,7 @@ for array_type in array_types:
         This function is automatically invoked when using the syntax ``arr[i] |= value``.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
     add_builtin(
         "atomic_or",
@@ -7181,7 +7181,7 @@ for array_type in array_types:
         This function is automatically invoked when using the syntax ``arr[i,j] |= value``.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
     add_builtin(
         "atomic_or",
@@ -7194,7 +7194,7 @@ for array_type in array_types:
         This function is automatically invoked when using the syntax ``arr[i,j,k] |= value``.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
     add_builtin(
         "atomic_or",
@@ -7207,7 +7207,7 @@ for array_type in array_types:
         This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
 
     add_builtin(
@@ -7221,7 +7221,7 @@ for array_type in array_types:
         This function is automatically invoked when using the syntax ``arr[i] ^= value``.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
     add_builtin(
         "atomic_xor",
@@ -7234,7 +7234,7 @@ for array_type in array_types:
         This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
     add_builtin(
         "atomic_xor",
@@ -7247,7 +7247,7 @@ for array_type in array_types:
         This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
     add_builtin(
         "atomic_xor",
@@ -7260,7 +7260,7 @@ for array_type in array_types:
         This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.""",
         group="Utility",
         skip_replay=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
 
 
@@ -7411,7 +7411,7 @@ add_builtin(
     hidden=True,
     group="Utility",
     skip_replay=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 # implements &quaternion[index]
 add_builtin(
@@ -7422,7 +7422,7 @@ add_builtin(
     hidden=True,
     group="Utility",
     skip_replay=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 # implements &transformation[index]
 add_builtin(
@@ -7433,7 +7433,7 @@ add_builtin(
     hidden=True,
     group="Utility",
     skip_replay=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 # implements &(*vector)[index]
 add_builtin(
@@ -7444,7 +7444,7 @@ add_builtin(
     hidden=True,
     group="Utility",
     skip_replay=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 # implements &(*matrix)[i, j]
 add_builtin(
@@ -7455,7 +7455,7 @@ add_builtin(
     hidden=True,
     group="Utility",
     skip_replay=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 # implements &(*quaternion)[index]
 add_builtin(
@@ -7466,7 +7466,7 @@ add_builtin(
     hidden=True,
     group="Utility",
     skip_replay=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 # implements &(*transformation)[index]
 add_builtin(
@@ -7477,7 +7477,7 @@ add_builtin(
     hidden=True,
     group="Utility",
     skip_replay=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -7682,7 +7682,7 @@ add_builtin(
     hidden=True,
     export=False,
     group="Utility",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 # implements vector[idx] |= scalar
@@ -7694,7 +7694,7 @@ add_builtin(
     hidden=True,
     export=False,
     group="Utility",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 # implements vector[idx] ^= scalar
@@ -7706,7 +7706,7 @@ add_builtin(
     hidden=True,
     export=False,
     group="Utility",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -7725,7 +7725,7 @@ add_builtin(
     hidden=True,
     group="Utility",
     skip_replay=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -7744,7 +7744,7 @@ add_builtin(
     hidden=True,
     group="Utility",
     skip_replay=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -7952,7 +7952,7 @@ add_builtin(
     hidden=True,
     export=False,
     group="Utility",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -7964,7 +7964,7 @@ add_builtin(
     hidden=True,
     export=False,
     group="Utility",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -7976,7 +7976,7 @@ add_builtin(
     hidden=True,
     export=False,
     group="Utility",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -7988,7 +7988,7 @@ add_builtin(
     hidden=True,
     export=False,
     group="Utility",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -8000,7 +8000,7 @@ add_builtin(
     hidden=True,
     export=False,
     group="Utility",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -8012,7 +8012,7 @@ add_builtin(
     hidden=True,
     export=False,
     group="Utility",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -8027,7 +8027,7 @@ for t in scalar_types + vector_types + (bool,):
         doc="Prints an error to stdout if ``a`` and ``b`` are not equal",
         group="Utility",
         hidden=True,
-        missing_grad=True,
+        is_differentiable=False,
     )
 
     add_builtin(
@@ -8038,7 +8038,7 @@ for t in scalar_types + vector_types + (bool,):
         group="Utility",
         hidden=True,
         export=False,
-        missing_grad=True,
+        is_differentiable=False,
     )
 
 
@@ -8057,7 +8057,7 @@ add_builtin(
     doc="Prints an error to stdout if ``a`` and ``b`` are not equal",
     group="Utility",
     hidden=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "expect_neq",
@@ -8068,7 +8068,7 @@ add_builtin(
     group="Utility",
     hidden=True,
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -8079,7 +8079,7 @@ add_builtin(
     doc="Prints an error to stdout if ``a`` and ``b`` are not equal",
     group="Utility",
     hidden=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "expect_neq",
@@ -8090,7 +8090,7 @@ add_builtin(
     group="Utility",
     hidden=True,
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -8181,7 +8181,7 @@ add_builtin(
     value_type=None,
     doc="Prints an error to stdout if ``a`` and ``b`` are not closer than tolerance in magnitude",
     group="Utility",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "expect_near",
@@ -8191,7 +8191,7 @@ add_builtin(
     value_type=None,
     doc="Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude",
     group="Utility",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "expect_near",
@@ -8201,7 +8201,7 @@ add_builtin(
     value_type=None,
     doc="Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude",
     group="Utility",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "expect_near",
@@ -8215,7 +8215,7 @@ add_builtin(
     value_type=None,
     doc="Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude",
     group="Utility",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 # ---------------------------------
@@ -8226,7 +8226,7 @@ add_builtin(
     input_types={"arr": array(dtype=Scalar), "value": Scalar},
     value_type=int,
     doc="Search a sorted array ``arr`` for the closest element greater than or equal to ``value``.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -8234,7 +8234,7 @@ add_builtin(
     input_types={"arr": array(dtype=Scalar), "arr_begin": int, "arr_end": int, "value": Scalar},
     value_type=int,
     doc="Search a sorted array ``arr`` in the range [arr_begin, arr_end) for the closest element greater than or equal to ``value``.",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 # ---------------------------------
@@ -8315,7 +8315,7 @@ add_builtin(
     input_types={"a": Int, "b": Int},
     value_func=sametypes_create_value_func(Int),
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "bit_and",
@@ -8324,7 +8324,7 @@ add_builtin(
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Int)),
     doc="",
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "bit_and",
@@ -8333,7 +8333,7 @@ add_builtin(
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
     doc="",
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -8341,7 +8341,7 @@ add_builtin(
     input_types={"a": Int, "b": Int},
     value_func=sametypes_create_value_func(Int),
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "bit_or",
@@ -8350,7 +8350,7 @@ add_builtin(
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Int)),
     doc="",
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "bit_or",
@@ -8359,7 +8359,7 @@ add_builtin(
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
     doc="",
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -8367,7 +8367,7 @@ add_builtin(
     input_types={"a": Int, "b": Int},
     value_func=sametypes_create_value_func(Int),
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "bit_xor",
@@ -8376,7 +8376,7 @@ add_builtin(
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Int)),
     doc="",
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "bit_xor",
@@ -8385,7 +8385,7 @@ add_builtin(
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
     doc="",
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -8393,7 +8393,7 @@ add_builtin(
     input_types={"a": Int, "b": Int},
     value_func=sametypes_create_value_func(Int),
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "lshift",
@@ -8402,7 +8402,7 @@ add_builtin(
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Int)),
     doc="",
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "lshift",
@@ -8411,7 +8411,7 @@ add_builtin(
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
     doc="",
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -8419,7 +8419,7 @@ add_builtin(
     input_types={"a": Int, "b": Int},
     value_func=sametypes_create_value_func(Int),
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "rshift",
@@ -8428,7 +8428,7 @@ add_builtin(
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Int)),
     doc="",
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "rshift",
@@ -8437,25 +8437,29 @@ add_builtin(
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
     doc="",
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
-    "invert", input_types={"a": Int}, value_func=sametypes_create_value_func(Int), group="Operators", missing_grad=True
+    "invert",
+    input_types={"a": Int},
+    value_func=sametypes_create_value_func(Int),
+    group="Operators",
+    is_differentiable=False,
 )
 add_builtin(
     "invert",
     input_types={"a": vector(length=Any, dtype=Int)},
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Int)),
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 add_builtin(
     "invert",
     input_types={"a": matrix(shape=(Any, Any), dtype=Int)},
     value_func=sametypes_create_value_func(matrix(shape=(Any, Any), dtype=Int)),
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -8657,7 +8661,7 @@ add_builtin(
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Scalar)),
     doc="Modulo operation using truncated division.",
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -8717,7 +8721,7 @@ add_builtin(
     value_func=sametypes_create_value_func(Scalar),
     doc="",
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin("pos", input_types={"x": Scalar}, value_func=sametypes_create_value_func(Scalar), group="Operators")
@@ -8766,14 +8770,26 @@ add_builtin(
 )
 
 add_builtin(
-    "unot", input_types={"a": builtins.bool}, value_type=builtins.bool, doc="", group="Operators", missing_grad=True
+    "unot",
+    input_types={"a": builtins.bool},
+    value_type=builtins.bool,
+    doc="",
+    group="Operators",
+    is_differentiable=False,
 )
 for t in int_types:
-    add_builtin("unot", input_types={"a": t}, value_type=builtins.bool, doc="", group="Operators", missing_grad=True)
+    add_builtin(
+        "unot", input_types={"a": t}, value_type=builtins.bool, doc="", group="Operators", is_differentiable=False
+    )
 
 
 add_builtin(
-    "unot", input_types={"a": array(dtype=Any)}, value_type=builtins.bool, doc="", group="Operators", missing_grad=True
+    "unot",
+    input_types={"a": array(dtype=Any)},
+    value_type=builtins.bool,
+    doc="",
+    group="Operators",
+    is_differentiable=False,
 )
 
 
@@ -8856,7 +8872,7 @@ add_builtin(
     doc="Bitwise AND each element of two tiles together",
     group="Tile Primitives",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -8869,7 +8885,7 @@ add_builtin(
     doc="Bitwise OR each element of two tiles together",
     group="Tile Primitives",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -8882,7 +8898,7 @@ add_builtin(
     doc="Bitwise XOR each element of two tiles together",
     group="Tile Primitives",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -8955,7 +8971,7 @@ add_builtin(
     hidden=True,
     native_func="tile_bit_and_inplace",
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -8968,7 +8984,7 @@ add_builtin(
     hidden=True,
     native_func="tile_bit_or_inplace",
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -8981,7 +8997,7 @@ add_builtin(
     hidden=True,
     native_func="tile_bit_xor_inplace",
     group="Operators",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -9046,7 +9062,7 @@ add_builtin(
     doc="Add a square matrix and a diagonal matrix 'd' represented as a 1D tile",
     group="Tile Primitives",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -9374,7 +9390,7 @@ add_builtin(
     group="Tile Primitives",
     export=False,
     namespace="",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -9396,7 +9412,7 @@ add_builtin(
     group="Tile Primitives",
     export=False,
     namespace="",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -9521,7 +9537,7 @@ add_builtin(
     group="Tile Primitives",
     export=False,
     namespace="",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -9652,7 +9668,7 @@ add_builtin(
     group="Tile Primitives",
     export=False,
     namespace="",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -9785,7 +9801,7 @@ add_builtin(
     group="Tile Primitives",
     export=False,
     namespace="",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -9918,7 +9934,7 @@ add_builtin(
     group="Tile Primitives",
     export=False,
     namespace="",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -9938,7 +9954,7 @@ add_builtin(
     The return type of the expression must be either a Warp function, a string, or a type that is supported inside Warp kernels and functions
     (excluding Warp arrays since they cannot be created in a Warp kernel at the moment).""",
     group="Code Generation",
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -9963,7 +9979,7 @@ add_builtin(
     doc="Return the number of elements in a vector.",
     group="Utility",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -9973,7 +9989,7 @@ add_builtin(
     doc="Return the number of elements in a quaternion.",
     group="Utility",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -9983,7 +9999,7 @@ add_builtin(
     doc="Return the number of rows in a matrix.",
     group="Utility",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -9993,7 +10009,7 @@ add_builtin(
     doc="Return the number of elements in a transformation.",
     group="Utility",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -10003,7 +10019,7 @@ add_builtin(
     doc="Return the size of the first dimension in an array.",
     group="Utility",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -10013,7 +10029,7 @@ add_builtin(
     doc="Return the number of rows in a tile.",
     group="Utility",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -10040,7 +10056,7 @@ add_builtin(
     doc="Construct a tuple from a list of values",
     group="Utility",
     hidden=True,
-    missing_grad=True,
+    is_differentiable=False,
     export=False,
 )
 
@@ -10077,7 +10093,7 @@ add_builtin(
     dispatch_func=tuple_extract_dispatch_func,
     group="Utility",
     hidden=True,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 
@@ -10088,7 +10104,7 @@ add_builtin(
     doc="Return the number of elements in a tuple.",
     group="Utility",
     export=False,
-    missing_grad=True,
+    is_differentiable=False,
 )
 
 # ---------------------------------
@@ -10107,5 +10123,5 @@ add_builtin(
     export=False,
     group="Utility",
     hidden=True,
-    missing_grad=True,
+    is_differentiable=False,
 )

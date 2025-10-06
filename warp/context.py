@@ -138,7 +138,7 @@ class Function:
         group: str = "",
         hidden: bool = False,
         skip_replay: bool = False,
-        missing_grad: bool = False,
+        is_differentiable: bool = True,
         generic: bool = False,
         native_func: str | None = None,
         defaults: dict[str, Any] | None = None,
@@ -193,7 +193,7 @@ class Function:
         self.skip_replay = (
             skip_replay  # whether operation will be performed during the forward replay in the backward pass
         )
-        self.missing_grad = missing_grad  # whether builtin is missing a corresponding adjoint
+        self.is_differentiable = is_differentiable  # whether a corresponding adjoint exists for this builtin in Warp
         self.generic = generic
         self.mangled_name: str | None = None
 
@@ -1271,7 +1271,7 @@ def add_builtin(
     group: str = "Other",
     hidden: bool = False,
     skip_replay: bool = False,
-    missing_grad: bool = False,
+    is_differentiable: bool = True,
     native_func: str | None = None,
     defaults: dict[str, Any] | None = None,
     require_original_output_arg: bool = False,
@@ -1319,7 +1319,7 @@ def add_builtin(
         hidden: Whether to add that function into the documentation.
         skip_replay: Whether operation will be performed during
             the forward replay in the backward pass.
-        missing_grad: Whether the function is missing a corresponding adjoint.
+        is_differentiable: Whether a corresponding adjoint exists for this function in Warp.
         native_func: Name of the underlying C++ function.
         defaults: Default values for the parameters defined in `input_types`.
         require_original_output_arg: Used during the codegen stage to
@@ -1448,7 +1448,7 @@ def add_builtin(
                     group=group,
                     hidden=True,
                     skip_replay=skip_replay,
-                    missing_grad=missing_grad,
+                    is_differentiable=is_differentiable,
                     defaults=defaults,
                     require_original_output_arg=require_original_output_arg,
                 )
@@ -1470,7 +1470,7 @@ def add_builtin(
         group=group,
         hidden=hidden,
         skip_replay=skip_replay,
-        missing_grad=missing_grad,
+        is_differentiable=is_differentiable,
         generic=generic,
         native_func=native_func,
         defaults=defaults,
@@ -7690,7 +7690,7 @@ def print_function(f, file, is_exported, noentry=False):  # pragma: no cover
     if is_exported:
         print("       * Python", file=file)
 
-    if not f.missing_grad:
+    if f.is_differentiable:
         print("       * Differentiable", file=file)
 
     print("", file=file)
