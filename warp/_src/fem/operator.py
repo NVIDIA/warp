@@ -297,7 +297,7 @@ def grad_outer(f: Field, s: Sample):
     pass
 
 
-@operator(resolver=lambda f: f.eval_grad_outer)
+@operator(resolver=lambda f: f.div_outer)
 def div_outer(f: Field, s: Sample):
     """Evaluates the field divergence at a sample point `s`. On oriented sides, uses the outer element. On interior points and on domain boundaries, this is equivalent to :func:`div`."""
     pass
