@@ -764,7 +764,7 @@ private:
 
 public:
     // cppcheck-suppress uninitMemberVar
-    SharedTileStorage()
+    inline CUDA_CALLABLE SharedTileStorage()
     {
 #if !defined(__CUDA_ARCH__)
         // On the CPU save a pointer to this instance in a reserved register
@@ -776,7 +776,7 @@ public:
         alloc(0, true);  // init
     }
 
-    ~SharedTileStorage()
+    inline CUDA_CALLABLE ~SharedTileStorage()
     {
         alloc(0, false, true);  // check
 
