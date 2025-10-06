@@ -132,14 +132,18 @@ test_atomic_mat44 = make_atomic_test(wp.mat44)
 
 
 def test_atomic_add_supported_dtypes(test, device, dtype):
+    N = 1024
     scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
 
     @wp.kernel
     def kernel(arr: wp.array(dtype=dtype)):
-        wp.atomic_add(arr, 0, dtype(scalar_type(0)))
+        wp.atomic_add(arr, 0, dtype(scalar_type(1)))
 
     arr = wp.zeros(1, dtype=dtype, device=device)
-    wp.launch(kernel, dim=1, outputs=(arr,), device=device)
+    wp.launch(kernel, dim=N, outputs=(arr,), device=device)
+
+    size = 1 if not hasattr(dtype, "_shape_") else dtype._shape_
+    assert_np_equal(arr.numpy().flatten(), np.full(size, N, dtype=wp.types.warp_type_to_np_dtype[scalar_type]))
 
 
 def test_atomic_min_supported_dtypes(test, device, dtype):
