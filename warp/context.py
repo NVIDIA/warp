@@ -3252,7 +3252,7 @@ class Device:
         """The total amount of device memory available in bytes.
 
         Querying memory information for the CPU device requires the `psutil` package to be installed
-        and will raise an exception otherwise.
+        and will return 0 otherwise.
         """
         if self.is_cuda:
             total_mem = ctypes.c_size_t()
@@ -3261,16 +3261,23 @@ class Device:
         else:
             try:
                 import psutil
-            except ModuleNotFoundError as e:
-                raise ModuleNotFoundError("Please install the 'psutil' package to query CPU memory information.") from e
-            return psutil.virtual_memory().total
+
+                return psutil.virtual_memory().total
+            except ModuleNotFoundError:
+                warp.utils.warn(
+                    "Please install the 'psutil' package to query CPU memory information.",
+                    UserWarning,
+                    stacklevel=2,
+                    once=True,
+                )
+                return 0
 
     @property
     def free_memory(self) -> int:
         """The amount of memory on the device that is free according to the OS in bytes.
 
         Querying memory information for the CPU device requires the `psutil` package to be installed
-        and will raise an exception otherwise.
+        and will return 0 otherwise.
         """
         if self.is_cuda:
             free_mem = ctypes.c_size_t()
@@ -3279,9 +3286,16 @@ class Device:
         else:
             try:
                 import psutil
-            except ModuleNotFoundError as e:
-                raise ModuleNotFoundError("Please install the 'psutil' package to query CPU memory information.") from e
-            return psutil.virtual_memory().free
+
+                return psutil.virtual_memory().free
+            except ModuleNotFoundError:
+                warp.utils.warn(
+                    "Please install the 'psutil' package to query CPU memory information.",
+                    UserWarning,
+                    stacklevel=2,
+                    once=True,
+                )
+                return 0
 
     def __str__(self):
         return self.alias

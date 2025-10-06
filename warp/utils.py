@@ -62,7 +62,7 @@ def warp_showwarning(message, category, filename, lineno, file=None, line=None):
     sys.stdout.write(s)
 
 
-def warn(message, category=None, stacklevel=1):
+def warn(message, category=None, stacklevel=1, once=False):
     if (category, message) in warnings_seen:
         return
 
@@ -75,7 +75,7 @@ def warn(message, category=None, stacklevel=1):
             stacklevel=stacklevel + 1,  # Increment stacklevel by 1 since we are in a wrapper
         )
 
-    if category is DeprecationWarning:
+    if category is DeprecationWarning or once:
         warnings_seen.add((category, message))
 
 
