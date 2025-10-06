@@ -1558,7 +1558,7 @@ class Adjoint:
         else:
             adj.add_forward(forward_call, replay=replay_call)
 
-        if not func.missing_grad and len(func_args):
+        if func.is_differentiable and len(func_args):
             adj_args = tuple(strip_reference(x) for x in func_args)
             reverse_has_output_args = (
                 func.require_original_output_arg or len(output_list) > 1
