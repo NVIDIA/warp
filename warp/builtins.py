@@ -4803,7 +4803,7 @@ add_builtin(
 
     This query can be used to iterate over all bounds inside a BVH.
     To start a query from a specific node, set ``root`` to the index of the node. The root
-    can be obtained using the :func:`bvh_get_group_root` function.
+    can be obtained using the :func:`bvh_get_group_root` function when creating a grouped BVH.
     The query will only trace down from that node, limiting traversal to that subtree.
 
     :param id: The BVH identifier
@@ -4823,7 +4823,7 @@ add_builtin(
 
     This query can be used to iterate over all bounds that intersect the ray.
     To start a query from a specific node, set ``root`` to the index of the node. The root
-    can be obtained using the :func:`bvh_get_group_root` function.
+    can be obtained using the :func:`bvh_get_group_root` function when creating a grouped BVH.
     The query will only trace down from that node, limiting traversal to that subtree.
 
     :param id: The BVH identifier
@@ -4842,11 +4842,11 @@ add_builtin(
     doc="""Move to the next bound returned by the query.
     
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
-    The maximum distance along a ray query to check for intersections can be set using ``max_dist``.
+    For ray queries only, ``max_dist`` limits the maximum intersection distance.
 
     :param query: The query to move to the next bound
     :param index: The index of the current bound
-    :param max_dist: The maximum distance along the ray to check for intersections for ray queries""",
+    :param max_dist: The maximum distance along the ray to check for intersections for ray queries (optional, default: inf)""",
     export=False,
 )
 
@@ -4856,6 +4856,9 @@ add_builtin(
     value_type=int,
     group="Geometry",
     doc="""Get the root of a group in a BVH.
+
+    Returns the root node index for the specified group. If the group is not found, returns -1
+    which is the root of the entire BVH.
 
     :param id: The BVH identifier
     :param group: The group identifier""",

@@ -482,7 +482,7 @@ CUDA_CALLABLE inline void adj_bvh_get_group_root(uint64_t id, int group_id, uint
 }
 
 
-CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index, float& max_dist)
+CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index, const float& max_dist)
 {
     BVH bvh = query.bvh;
 
@@ -551,7 +551,7 @@ CUDA_CALLABLE inline void adj_iter_reverse(const bvh_query_t& query, bvh_query_t
 
 
 // stub
-CUDA_CALLABLE inline void adj_bvh_query_next(bvh_query_t& query, int& index, float& max_dist, bvh_query_t&, int&, float&, bool&) 
+CUDA_CALLABLE inline void adj_bvh_query_next(bvh_query_t& query, int& index, const float& max_dist, bvh_query_t&, int&, float&, bool&) 
 {
 
 }
