@@ -96,7 +96,7 @@ windows-x86_64 build:
   script:
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
-      uv run build_lib.py --mode debug --jobs 2 --msvc_path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk_path=_build\host-deps\winsdk --cuda_path=_build\target-deps\cuda
+      uv run build_lib.py --msvc_path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk_path=_build\host-deps\winsdk --cuda_path=_build\target-deps\cuda
 
 # ==============================================================================
 # Unit Testing Jobs (Debug)
