@@ -62,7 +62,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 - **Neurally Integrated Finite Elements for Differentiable Elasticity on Evolving Domains**. *G. Daviet, T. Shen, N. Sharp, D. I. W. Levin*. April 2024. [arXiv:2410.09417](https://arxiv.org/abs/2410.09417)
 - **PhysDreamer: Physics-Based Interaction with 3D Objects via Video Generation**. *T. Zhang, H. Yu, R. Wu, B. Y. Feng, C. Zheng, N. Snavely, J. Wu, W. T. Freeman*. April 2024. [arXiv:2404.13026](https://arxiv.org/abs/2404.13026)
 - **Differentiable Rendering as a Way to Program Cable-Driven Soft Robots**. *K. Arnavaz, K. Erleben*. April 2024. [arXiv:2404.07590](https://arxiv.org/abs/2404.07590)
-- **Learning Quadrupedal Locomotion via Differentiable Simulation**. *C. Schwarke, V. Klemm, J. Tordesillas, J. Sleiman, M. Hutter*. April 2024. [arXiv:2404.02887](https://arxiv.org/abs/2404.02887)
+- **Learning Deployable Locomotion Control via Differentiable Simulation**. *C. Schwarke, V. Klemm, J. Bagajo, J. Sleiman, I. Georgiev, J. Tordesillas, M. Hutter*. April 2024. [arXiv:2404.02887](https://arxiv.org/abs/2404.02887)
 - **Sailing Through Point Clouds: Safe Navigation Using Point Cloud Based Control Barrier Functions**. *B. Dai, R. Khorrambakht, P. Krishnamurthy, F. Khorrami*. March 2024. [arXiv:2403.18206](https://arxiv.org/abs/2403.18206)
 - **Fast Explicit-Input Assistance for Teleoperation in Clutter**. *N. Walker, X. Yang, A. Garg, M. Cakmak, D. Fox, C. Pérez-D' Arpino*. February 2024. [arXiv:2402.02612](https://arxiv.org/abs/2402.02612)
 
