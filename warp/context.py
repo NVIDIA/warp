@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import ast
 import ctypes
+import enum
 import functools
 import hashlib
 import inspect
@@ -41,6 +42,7 @@ from typing import (
     List,
     Literal,
     Mapping,
+    NamedTuple,
     Sequence,
     Tuple,
     TypeVar,
@@ -302,38 +304,8 @@ class Function:
         """
 
         if self.is_builtin() and self.mangled_name:
-            # For each of this function's existing overloads, we attempt to pack
-            # the given arguments into the C types expected by the corresponding
-            # parameters, and we rinse and repeat until we get a match.
-            for overload in self.overloads:
-                if overload.generic:
-                    continue
-
-                try:
-                    # Try to bind the given arguments to the function's signature.
-                    # This is not checking whether the argument types are matching,
-                    # rather it's just assigning each argument to the corresponding
-                    # function parameter.
-                    bound_args = self.signature.bind(*args, **kwargs)
-                except TypeError:
-                    continue
-
-                if self.defaults:
-                    # Populate the bound arguments with any default values.
-                    default_args = {k: v for k, v in self.defaults.items() if k not in bound_args.arguments}
-                    warp.codegen.apply_defaults(bound_args, default_args)
-
-                bound_args = tuple(bound_args.arguments.values())
-
-                success, return_value = call_builtin(overload, bound_args)
-                if success:
-                    return return_value
-
-            # overload resolution or call failed
-            raise RuntimeError(
-                f"Couldn't find a function '{self.key}' compatible with "
-                f"the arguments '{', '.join(type(x).__name__ for x in args)}'"
-            )
+            builtin_desc = self.get_builtin(*args, **kwargs)
+            return self.call_builtin(builtin_desc, *args, **kwargs)
 
         if hasattr(self, "user_overloads") and len(self.user_overloads):
             # user-defined function with overloads
@@ -476,6 +448,51 @@ class Function:
         # failed  to find overload
         return None
 
+    def get_builtin(self, *args, **kwargs) -> BuiltinCallDesc:
+        try:
+            # Try to bind the given arguments to the function's signature.
+            # This is not checking whether the argument types are matching,
+            # rather it's just assigning each argument to the corresponding
+            # function parameter.
+            bound_args = self.signature.bind(*args, **kwargs)
+        except TypeError:
+            pass
+        else:
+            if self.defaults:
+                # Populate the bound arguments with any default values.
+                default_args = {k: v for k, v in self.defaults.items() if k not in bound_args.arguments}
+                warp.codegen.apply_defaults(bound_args, default_args)
+
+            bound_arg_types = tuple(type(x) for x in bound_args.arguments.values())
+
+            # For each of this function's existing overloads, we attempt to pack
+            # the given arguments into the C types expected by the corresponding
+            # parameters, and we rinse and repeat until we get a match.
+            for overload in self.overloads:
+                if overload.generic:
+                    continue
+
+                desc = get_builtin_call_desc(overload, bound_arg_types)
+                if desc is not None:
+                    return desc
+
+        # overload resolution or call failed
+        raise RuntimeError(
+            f"Couldn't find a function '{self.key}' compatible with "
+            f"the arguments '{', '.join(type(x).__name__ for x in args + tuple(kwargs.values()))}'"
+        )
+
+    def call_builtin(self, desc: BuiltinCallDesc, *args, **kwargs) -> Any:
+        bound_args = self.signature.bind(*args, **kwargs)
+
+        if self.defaults:
+            # Populate the bound arguments with any default values.
+            default_args = {k: v for k, v in self.defaults.items() if k not in bound_args.arguments}
+            warp.codegen.apply_defaults(bound_args, default_args)
+
+        bound_args = tuple(bound_args.arguments.values())
+        return call_builtin_from_desc(desc, bound_args)
+
     def build(self, builder: ModuleBuilder | None):
         self.adj.build(builder)
 
@@ -529,13 +546,43 @@ def extract_return_value(value_type: type, value_ctype: type, ret: Any) -> Any:
     return ret.value
 
 
-def call_builtin(func: Function, params: tuple) -> tuple[bool, Any]:
-    uses_non_warp_array_type = False
+class BuiltinParamKind(enum.Enum):
+    """Describes the kind of a built-in parameter.
 
+    This decides how it's being packed into its corresponding C type.
+    """
+
+    BUILTIN_GENERIC = 1  # Type created with `wp.types.vector()`, `wp.types.matrix()`, ...
+    BUILTIN_PREDEFINED = 2  # Predefined type like `vec3`, `mat22`, ...
+    SCALAR = 3  # Float or integer value.
+    SCALAR_FLOAT_16 = 4  # 16-bit float value.
+
+
+class BuiltinCallDesc(NamedTuple):
+    """Descriptor containing all invariant data needed to call a built-in C function."""
+
+    c_func: Callable  # C function.
+    arg_types: Sequence[type]  # Types passed to `add_builtin()` or defined by the `export_func` callback.
+    param_kinds: Sequence[BuiltinParamKind]  # How to pack a parameter into a C type.
+    value_type: Any  # Return type.
+
+
+@functools.lru_cache(maxsize=None)
+def get_builtin_call_desc(
+    func: Function,
+    param_types: Sequence,
+) -> BuiltinCallDesc | None:
+    """
+    Extract any invariant that can be cached to optimize calls to a built-in
+    function, as long as parameters with the same types are passed.
+
+    If the function signature is not compatible with the given parameters,
+    ``None`` is returned.
+    """
     init()
 
     if func.mangled_name is None:
-        return (False, None)
+        return None
 
     # Retrieve the built-in function from Warp's dll.
     c_func = getattr(warp.context.runtime.core, func.mangled_name)
@@ -546,143 +593,96 @@ def call_builtin(func: Function, params: tuple) -> tuple[bool, Any]:
     else:
         func_args = func.input_types
 
-    value_type = func.value_func(None, None)
-
-    # Try gathering the parameters that the function expects and pack them
-    # into their corresponding C types.
-    c_params = []
+    arg_types = []
+    param_kinds = []
     for i, (_, arg_type) in enumerate(func_args.items()):
-        param = params[i]
+        param_type = param_types[i]
 
-        try:
-            iter(param)
-        except TypeError:
-            is_array = False
-        else:
-            is_array = True
-
-        if is_array:
+        if issubclass(param_type, ctypes.Array):
             if not issubclass(arg_type, ctypes.Array):
-                return (False, None)
+                return None
 
-            # The argument expects a built-in Warp type like a vector or a matrix.
+            # The given parameter is also a built-in Warp type, so we only need
+            # to make sure that it matches with the argument.
+            if not warp.types.types_equal(param_type, arg_type):
+                return None
 
-            c_param = None
-
-            if isinstance(param, ctypes.Array):
-                # The given parameter is also a built-in Warp type, so we only need
-                # to make sure that it matches with the argument.
-                if not warp.types.types_equal(type(param), arg_type):
-                    return (False, None)
-
-                if isinstance(param, arg_type):
-                    c_param = param
-                else:
-                    # Cast the value to its argument type to make sure that it
-                    # can be assigned to the field of the `Param` struct.
-                    # This could error otherwise when, for example, the field type
-                    # is set to `vec3i` while the value is of type `vector(length=3, dtype=int)`,
-                    # even though both types are semantically identical.
-                    c_param = arg_type(param)
+            if issubclass(param_type, arg_type):
+                param_kind = BuiltinParamKind.BUILTIN_PREDEFINED
             else:
-                # Flatten the parameter values into a flat 1-D array.
-                arr = []
-                ndim = 1
-                stack = [(0, param)]
-                while stack:
-                    depth, elem = stack.pop(0)
-                    try:
-                        # If `elem` is a sequence, then it should be possible
-                        # to add its elements to the stack for later processing.
-                        stack.extend((depth + 1, x) for x in elem)
-                    except TypeError:
-                        # Since `elem` doesn't seem to be a sequence,
-                        # we must have a leaf value that we need to add to our
-                        # resulting array.
-                        arr.append(elem)
-                        ndim = max(depth, ndim)
-
-                assert ndim > 0
-
-                # Ensure that if the given parameter value is, say, a 2-D array,
-                # then we try to resolve it against a matrix argument rather than
-                # a vector.
-                if ndim > len(arg_type._shape_):
-                    return (False, None)
-
-                elem_count = len(arr)
-                if elem_count != arg_type._length_:
-                    return (False, None)
-
-                # Retrieve the element type of the sequence while ensuring that it's homogeneous.
-                elem_type = type(arr[0])
-                for array_index in range(1, elem_count):
-                    if type(arr[array_index]) is not elem_type:
-                        raise ValueError("All array elements must share the same type.")
-
-                expected_elem_type = arg_type._wp_scalar_type_
-                if not (
-                    elem_type is expected_elem_type
-                    or (elem_type is float and expected_elem_type is warp.types.float32)
-                    or (elem_type is int and expected_elem_type is warp.types.int32)
-                    or (elem_type is bool and expected_elem_type is warp.types.bool)
-                    or (
-                        issubclass(elem_type, np.number)
-                        and warp.types.np_dtype_to_warp_type[np.dtype(elem_type)] is expected_elem_type
-                    )
-                ):
-                    # The parameter value has a type not matching the type defined
-                    # for the corresponding argument.
-                    return (False, None)
-
-                if elem_type in warp.types.int_types:
-                    # Pass the value through the expected integer type
-                    # in order to evaluate any integer wrapping.
-                    # For example `uint8(-1)` should result in the value `-255`.
-                    arr = tuple(elem_type._type_(x.value).value for x in arr)
-                elif elem_type in warp.types.float_types:
-                    # Extract the floating-point values.
-                    arr = tuple(x.value for x in arr)
-
-                c_param = arg_type()
-                if warp.types.type_is_matrix(arg_type):
-                    rows, cols = arg_type._shape_
-                    for row_index in range(rows):
-                        idx_start = row_index * cols
-                        idx_end = idx_start + cols
-                        c_param[row_index] = arr[idx_start:idx_end]
-                else:
-                    c_param[:] = arr
-
-                uses_non_warp_array_type = True
-
-            c_params.append(ctypes.byref(c_param))
+                param_kind = BuiltinParamKind.BUILTIN_GENERIC
+        elif issubclass(param_type, Sequence):
+            raise TypeError(
+                "Built-in functions cannot be called with non-Warp array types, "
+                "such as lists, tuples, and NumPy arrays. Use a Warp type "
+                "such as `wp.vec`, `wp.mat`, `wp.quat`, or `wp.transform`."
+            )
         else:
             if issubclass(arg_type, ctypes.Array):
-                return (False, None)
+                return None
 
             if not (
-                isinstance(param, arg_type)
-                or (type(param) is float and arg_type is warp.types.float32)
-                or (type(param) is int and arg_type is warp.types.int32)
-                or (type(param) is bool and arg_type is warp.types.bool)
-                or warp.types.np_dtype_to_warp_type.get(getattr(param, "dtype", None)) is arg_type
+                issubclass(param_type, arg_type)
+                or (param_type is float and arg_type is warp.types.float32)
+                or (param_type is int and arg_type is warp.types.int32)
+                or (param_type is bool and arg_type is warp.types.bool)
+                or warp.types.np_dtype_to_warp_type.get(param_type, None) is arg_type
             ):
-                return (False, None)
+                return None
 
-            if type(param) in warp.types.scalar_types:
-                param = param.value
-
-            # try to pack as a scalar type
             if arg_type == warp.types.float16:
-                c_params.append(arg_type._type_(warp.types.float_to_half_bits(param)))
+                param_kind = BuiltinParamKind.SCALAR_FLOAT_16
             else:
-                c_params.append(arg_type._type_(param))
+                param_kind = BuiltinParamKind.SCALAR
+
+        arg_types.append(arg_type)
+        param_kinds.append(param_kind)
 
     # Retrieve the return type.
     value_type = func.value_func(func_args, None)
 
-    if value_type is not None:
+    return BuiltinCallDesc(c_func, arg_types, param_kinds, value_type)
+
+
+def call_builtin_from_desc(
+    builtin_desc: BuiltinCallDesc,
+    params: Sequence,
+) -> Any:
+    """Call a C function using its descriptor.
+
+    Given built-in invariants returned by `get_builtin_call_desc()`,
+    this packs the given parameters to their corresponding C types, and calls
+    the underlying C function.
+    """
+    # Each `arg_types` item should have a corresponding `param_kinds` item.
+    assert len(builtin_desc.arg_types) == len(builtin_desc.param_kinds)
+
+    # Try gathering the parameters that the function expects and pack them
+    # into their corresponding C types.
+    c_params = []
+    for i, (arg_type, param_kind) in enumerate(zip(builtin_desc.arg_types, builtin_desc.param_kinds)):
+        param = params[i]
+
+        if param_kind == BuiltinParamKind.BUILTIN_GENERIC:
+            # Cast the value to its argument type to make sure that it
+            # can be assigned to the field of the `Param` struct.
+            # This could error otherwise when, for example, the field type
+            # is set to `vec3i` while the value is of type `vector(length=3, dtype=int)`,
+            # even though both types are semantically identical.
+            c_params.append(ctypes.byref(arg_type(param)))
+        elif param_kind == BuiltinParamKind.BUILTIN_PREDEFINED:
+            c_params.append(ctypes.byref(param))
+        elif param_kind == BuiltinParamKind.SCALAR:
+            c_params.append(arg_type._type_(param))
+        elif param_kind == BuiltinParamKind.SCALAR_FLOAT_16:
+            c_params.append(arg_type._type_(warp.types.float_to_half_bits(param)))
+        else:
+            raise AssertionError(f"Unexpected parameter kind value `{param_kind}`")
+
+    value_type = builtin_desc.value_type
+    if value_type is None:
+        ret = None
+    else:
         if not isinstance(value_type, Sequence):
             value_type = (value_type,)
 
@@ -693,26 +693,17 @@ def call_builtin(func: Function, params: tuple) -> tuple[bool, Any]:
         c_params.extend(ret_addr)
 
     # Call the built-in function from Warp's dll.
-    c_func(*c_params)
-
-    if uses_non_warp_array_type:
-        warp.utils.warn(
-            "Support for built-in functions called with non-Warp array types, "
-            "such as lists, tuples, NumPy arrays, and others, will be dropped "
-            "in the future. Use a Warp type such as `wp.vec`, `wp.mat`, "
-            "`wp.quat`, or `wp.transform`.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
+    builtin_desc.c_func(*c_params)
 
     if value_type is None:
-        return (True, None)
+        return None
 
+    value_ctype = tuple(warp.types.type_ctype(x) for x in value_type)
     return_value = tuple(extract_return_value(x, y, z) for x, y, z in zip(value_type, value_ctype, ret))
     if len(return_value) == 1:
         return_value = return_value[0]
 
-    return (True, return_value)
+    return return_value
 
 
 class KernelHooks:

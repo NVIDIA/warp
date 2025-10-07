@@ -26,6 +26,8 @@
   package with a new API. For migration guidance, see the
   [Newton migration guide](https://newton-physics.github.io/newton/migration.html) and the original GitHub announcement
   ([GH-735](https://github.com/NVIDIA/warp/discussions/735)).
+- Remove support for passing lists, tuples, and other non-Warp array arguments when calling built-ins at the Python scope
+  (e.g: `wp.normalize([1.0, 2.0, 3.0])` should be written as `wp.normalize(wp.vec3(1.0, 2.0, 3.0))`).
 
 ### Deprecated
 
@@ -37,6 +39,8 @@
 - Make `warp.sparse` operations with `masked=True` consistent with `bsr_mm()` by preserving result matrix topology,
   enabling CUDA subgraph capture for `bsr_axpy()`, `bsr_assign()` and `bsr_set_transpose()`
   ([GH-987](https://github.com/NVIDIA/warp/issues/987)).
+- Improve performance when calling built-in functions from the Python scope
+  ([GH-801](https://github.com/NVIDIA/warp/issues/801)).
 
 ### Fixed
 
