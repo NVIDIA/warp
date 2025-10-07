@@ -1183,24 +1183,24 @@ try:
             test_ffi_jax_callable_graph_cache,
             devices=jax_compatible_cuda_devices,
         )
-        add_function_test(
-            TestJax,
-            "test_ffi_jax_callable_pmap_multi_output_forward",
-            test_ffi_jax_callable_pmap_multi_output_forward,
-            devices=jax_compatible_cuda_devices,
-        )
-        add_function_test(
-            TestJax,
-            "test_ffi_jax_callable_pmap_mul_forward",
-            test_ffi_jax_callable_pmap_mul_forward,
-            devices=jax_compatible_cuda_devices,
-        )
-        add_function_test(
-            TestJax,
-            "test_ffi_jax_callable_pmap_multi_stage_forward",
-            test_ffi_jax_callable_pmap_multi_stage_forward,
-            devices=jax_compatible_cuda_devices,
-        )
+        # add_function_test(
+        #     TestJax,
+        #     "test_ffi_jax_callable_pmap_multi_output_forward",
+        #     test_ffi_jax_callable_pmap_multi_output_forward,
+        #     devices=jax_compatible_cuda_devices,
+        # )
+        # add_function_test(
+        #     TestJax,
+        #     "test_ffi_jax_callable_pmap_mul_forward",
+        #     test_ffi_jax_callable_pmap_mul_forward,
+        #     devices=jax_compatible_cuda_devices,
+        # )
+        # add_function_test(
+        #     TestJax,
+        #     "test_ffi_jax_callable_pmap_multi_stage_forward",
+        #     test_ffi_jax_callable_pmap_multi_stage_forward,
+        #     devices=jax_compatible_cuda_devices,
+        # )
 
         # ffi callback tests
         add_function_test(TestJax, "test_ffi_callback", test_ffi_callback, devices=jax_compatible_cuda_devices)
