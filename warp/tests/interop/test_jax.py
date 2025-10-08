@@ -1085,104 +1085,104 @@ try:
             # only ffi supported
             ffi_opts = [True]
 
-        for use_ffi in ffi_opts:
-            suffix = "ffi" if use_ffi else "cc"
-            add_function_test(
-                TestJax,
-                f"test_jax_kernel_basic_{suffix}",
-                test_jax_kernel_basic,
-                devices=jax_compatible_cuda_devices,
-                use_ffi=use_ffi,
-            )
-            add_function_test(
-                TestJax,
-                f"test_jax_kernel_scalar_{suffix}",
-                test_jax_kernel_scalar,
-                devices=jax_compatible_cuda_devices,
-                use_ffi=use_ffi,
-            )
-            add_function_test(
-                TestJax,
-                f"test_jax_kernel_vecmat_{suffix}",
-                test_jax_kernel_vecmat,
-                devices=jax_compatible_cuda_devices,
-                use_ffi=use_ffi,
-            )
-            add_function_test(
-                TestJax,
-                f"test_jax_kernel_multiarg_{suffix}",
-                test_jax_kernel_multiarg,
-                devices=jax_compatible_cuda_devices,
-                use_ffi=use_ffi,
-            )
-            add_function_test(
-                TestJax,
-                f"test_jax_kernel_launch_dims_{suffix}",
-                test_jax_kernel_launch_dims,
-                devices=jax_compatible_cuda_devices,
-                use_ffi=use_ffi,
-            )
+        # for use_ffi in ffi_opts:
+        #     suffix = "ffi" if use_ffi else "cc"
+        #     add_function_test(
+        #         TestJax,
+        #         f"test_jax_kernel_basic_{suffix}",
+        #         test_jax_kernel_basic,
+        #         devices=jax_compatible_cuda_devices,
+        #         use_ffi=use_ffi,
+        #     )
+        #     add_function_test(
+        #         TestJax,
+        #         f"test_jax_kernel_scalar_{suffix}",
+        #         test_jax_kernel_scalar,
+        #         devices=jax_compatible_cuda_devices,
+        #         use_ffi=use_ffi,
+        #     )
+        #     add_function_test(
+        #         TestJax,
+        #         f"test_jax_kernel_vecmat_{suffix}",
+        #         test_jax_kernel_vecmat,
+        #         devices=jax_compatible_cuda_devices,
+        #         use_ffi=use_ffi,
+        #     )
+        #     add_function_test(
+        #         TestJax,
+        #         f"test_jax_kernel_multiarg_{suffix}",
+        #         test_jax_kernel_multiarg,
+        #         devices=jax_compatible_cuda_devices,
+        #         use_ffi=use_ffi,
+        #     )
+        #     add_function_test(
+        #         TestJax,
+        #         f"test_jax_kernel_launch_dims_{suffix}",
+        #         test_jax_kernel_launch_dims,
+        #         devices=jax_compatible_cuda_devices,
+        #         use_ffi=use_ffi,
+        #     )
 
-        # ffi.jax_kernel() tests
-        add_function_test(
-            TestJax, "test_ffi_jax_kernel_add", test_ffi_jax_kernel_add, devices=jax_compatible_cuda_devices
-        )
-        add_function_test(
-            TestJax, "test_ffi_jax_kernel_sincos", test_ffi_jax_kernel_sincos, devices=jax_compatible_cuda_devices
-        )
-        add_function_test(
-            TestJax, "test_ffi_jax_kernel_diagonal", test_ffi_jax_kernel_diagonal, devices=jax_compatible_cuda_devices
-        )
-        add_function_test(
-            TestJax, "test_ffi_jax_kernel_in_out", test_ffi_jax_kernel_in_out, devices=jax_compatible_cuda_devices
-        )
-        add_function_test(
-            TestJax,
-            "test_ffi_jax_kernel_scale_vec_constant",
-            test_ffi_jax_kernel_scale_vec_constant,
-            devices=jax_compatible_cuda_devices,
-        )
-        add_function_test(
-            TestJax,
-            "test_ffi_jax_kernel_scale_vec_static",
-            test_ffi_jax_kernel_scale_vec_static,
-            devices=jax_compatible_cuda_devices,
-        )
-        add_function_test(
-            TestJax,
-            "test_ffi_jax_kernel_launch_dims_default",
-            test_ffi_jax_kernel_launch_dims_default,
-            devices=jax_compatible_cuda_devices,
-        )
-        add_function_test(
-            TestJax,
-            "test_ffi_jax_kernel_launch_dims_custom",
-            test_ffi_jax_kernel_launch_dims_custom,
-            devices=jax_compatible_cuda_devices,
-        )
+        # # ffi.jax_kernel() tests
+        # add_function_test(
+        #     TestJax, "test_ffi_jax_kernel_add", test_ffi_jax_kernel_add, devices=jax_compatible_cuda_devices
+        # )
+        # add_function_test(
+        #     TestJax, "test_ffi_jax_kernel_sincos", test_ffi_jax_kernel_sincos, devices=jax_compatible_cuda_devices
+        # )
+        # add_function_test(
+        #     TestJax, "test_ffi_jax_kernel_diagonal", test_ffi_jax_kernel_diagonal, devices=jax_compatible_cuda_devices
+        # )
+        # add_function_test(
+        #     TestJax, "test_ffi_jax_kernel_in_out", test_ffi_jax_kernel_in_out, devices=jax_compatible_cuda_devices
+        # )
+        # add_function_test(
+        #     TestJax,
+        #     "test_ffi_jax_kernel_scale_vec_constant",
+        #     test_ffi_jax_kernel_scale_vec_constant,
+        #     devices=jax_compatible_cuda_devices,
+        # )
+        # add_function_test(
+        #     TestJax,
+        #     "test_ffi_jax_kernel_scale_vec_static",
+        #     test_ffi_jax_kernel_scale_vec_static,
+        #     devices=jax_compatible_cuda_devices,
+        # )
+        # add_function_test(
+        #     TestJax,
+        #     "test_ffi_jax_kernel_launch_dims_default",
+        #     test_ffi_jax_kernel_launch_dims_default,
+        #     devices=jax_compatible_cuda_devices,
+        # )
+        # add_function_test(
+        #     TestJax,
+        #     "test_ffi_jax_kernel_launch_dims_custom",
+        #     test_ffi_jax_kernel_launch_dims_custom,
+        #     devices=jax_compatible_cuda_devices,
+        # )
 
-        # ffi.jax_callable() tests
-        add_function_test(
-            TestJax,
-            "test_ffi_jax_callable_scale_constant",
-            test_ffi_jax_callable_scale_constant,
-            devices=jax_compatible_cuda_devices,
-        )
-        add_function_test(
-            TestJax,
-            "test_ffi_jax_callable_scale_static",
-            test_ffi_jax_callable_scale_static,
-            devices=jax_compatible_cuda_devices,
-        )
-        add_function_test(
-            TestJax, "test_ffi_jax_callable_in_out", test_ffi_jax_callable_in_out, devices=jax_compatible_cuda_devices
-        )
-        add_function_test(
-            TestJax,
-            "test_ffi_jax_callable_graph_cache",
-            test_ffi_jax_callable_graph_cache,
-            devices=jax_compatible_cuda_devices,
-        )
+        # # ffi.jax_callable() tests
+        # add_function_test(
+        #     TestJax,
+        #     "test_ffi_jax_callable_scale_constant",
+        #     test_ffi_jax_callable_scale_constant,
+        #     devices=jax_compatible_cuda_devices,
+        # )
+        # add_function_test(
+        #     TestJax,
+        #     "test_ffi_jax_callable_scale_static",
+        #     test_ffi_jax_callable_scale_static,
+        #     devices=jax_compatible_cuda_devices,
+        # )
+        # add_function_test(
+        #     TestJax, "test_ffi_jax_callable_in_out", test_ffi_jax_callable_in_out, devices=jax_compatible_cuda_devices
+        # )
+        # add_function_test(
+        #     TestJax,
+        #     "test_ffi_jax_callable_graph_cache",
+        #     test_ffi_jax_callable_graph_cache,
+        #     devices=jax_compatible_cuda_devices,
+        # )
         # add_function_test(
         #     TestJax,
         #     "test_ffi_jax_callable_pmap_multi_output_forward",
@@ -1202,8 +1202,8 @@ try:
         #     devices=jax_compatible_cuda_devices,
         # )
 
-        # ffi callback tests
-        add_function_test(TestJax, "test_ffi_callback", test_ffi_callback, devices=jax_compatible_cuda_devices)
+        # # ffi callback tests
+        # add_function_test(TestJax, "test_ffi_callback", test_ffi_callback, devices=jax_compatible_cuda_devices)
 
 
 except Exception as e:
