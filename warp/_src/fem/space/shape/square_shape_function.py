@@ -18,9 +18,9 @@ import math
 import numpy as np
 
 import warp as wp
-from warp.fem import cache
-from warp.fem.polynomial import Polynomial, is_closed, lagrange_scales, quadrature_1d
-from warp.fem.types import Coords
+from warp._src.fem import cache
+from warp._src.fem.polynomial import Polynomial, is_closed, lagrange_scales, quadrature_1d
+from warp._src.fem.types import Coords
 
 from .shape_function import ShapeFunction
 from .triangle_shape_function import TrianglePolynomialShapeFunctions
@@ -68,7 +68,7 @@ class SquareBipolynomialShapeFunctions(SquareShapeFunction):
         lobatto_coords, lobatto_weight = quadrature_1d(point_count=degree + 1, family=family)
         lagrange_scale = lagrange_scales(lobatto_coords)
 
-        NodeVec = wp.types.vector(length=degree + 1, dtype=wp.float32)
+        NodeVec = wp._src.types.vector(length=degree + 1, dtype=wp.float32)
         self.LOBATTO_COORDS = wp.constant(NodeVec(lobatto_coords))
         self.LOBATTO_WEIGHT = wp.constant(NodeVec(lobatto_weight))
         self.LAGRANGE_SCALE = wp.constant(NodeVec(lagrange_scale))
@@ -291,7 +291,7 @@ class SquareBipolynomialShapeFunctions(SquareShapeFunction):
         return cache.get_func(element_inner_weight_gradient, self.name)
 
     def element_node_triangulation(self):
-        from warp.fem.utils import grid_to_tris
+        from warp._src.fem.utils import grid_to_tris
 
         return grid_to_tris(self.ORDER, self.ORDER)
 
@@ -348,7 +348,7 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
         lobatto_coords, lobatto_weight = quadrature_1d(point_count=degree + 1, family=family)
         lagrange_scale = lagrange_scales(lobatto_coords)
 
-        NodeVec = wp.types.vector(length=degree + 1, dtype=wp.float32)
+        NodeVec = wp._src.types.vector(length=degree + 1, dtype=wp.float32)
         self.LOBATTO_COORDS = wp.constant(NodeVec(lobatto_coords))
         self.LOBATTO_WEIGHT = wp.constant(NodeVec(lobatto_weight))
         self.LAGRANGE_SCALE = wp.constant(NodeVec(lagrange_scale))

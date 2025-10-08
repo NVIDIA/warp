@@ -44,13 +44,13 @@ from typing import Any, Dict, Optional, Type
 
 import warp as wp
 import warp.tests.unittest_utils
+from warp._src.utils import check_p2p
 from warp.tests.unittest_utils import (
     USD_AVAILABLE,
     get_selected_cuda_test_devices,
     get_test_devices,
     sanitize_identifier,
 )
-from warp.utils import check_p2p
 
 
 def _build_command_line_options(test_options: Dict[str, Any]) -> list:

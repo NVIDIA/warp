@@ -168,7 +168,7 @@ For example, we can add two arrays together using the ``+`` operator:
 
     [  0.  30.  60.  90. 120. 150. 180. 210. 240. 270.]
 
-For further details on mapping arbitrary functions to Warp arrays, see :func:`warp.utils.map`.
+For further details on mapping arbitrary functions to Warp arrays, see :func:`warp.map`.
 
 Please see the :ref:`Arrays Reference <Arrays>` for more details.
 

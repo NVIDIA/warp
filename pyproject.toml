@@ -95,8 +95,8 @@ line-length = 120
 indent-width = 4
 extend-exclude = [
     "notebooks",
-    "warp/thirdparty/appdirs.py",
-    "warp/thirdparty/dlpack.py",
+    "warp/_src/thirdparty/appdirs.py",
+    "warp/_src/thirdparty/dlpack.py",
     "tools",
 ]
 
@@ -130,6 +130,7 @@ exclude = ["warp/__init__.pyi"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "PLC0414"]
+"warp/*.py" = ["PLC0414"]
 "warp/tests/*.py" = ["F841"]
 "asv/benchmarks/**.py" = ["RUF012"]
 
@@ -161,10 +162,10 @@ exclude_lines = [
     "if __name__ == .__main__.:",
 ]
 omit = [
-    "*/warp/thirdparty/*",
+    "*/warp/_src/thirdparty/*",
     "*/warp/examples/*",
     "*/warp/tests/*",
-    "*/warp/fem/*",
+    "*/warp/_src/fem/*",
     "appdirs.py",
     "render_opengl.py",
     "build_dll.py",

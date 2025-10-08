@@ -22,13 +22,13 @@ import numpy as np
 
 import warp as wp
 import warp.fem as fem
-from warp.fem import Coords, D, Domain, Field, Sample, curl, div, grad, integrand, normal
-from warp.fem.cache import dynamic_kernel
-from warp.fem.geometry.closest_point import project_on_tet_at_origin, project_on_tri_at_origin
-from warp.fem.linalg import inverse_qr, spherical_part, symmetric_eigenvalues_qr, symmetric_part
-from warp.fem.space import shape
-from warp.fem.types import make_free_sample
-from warp.fem.utils import (
+from warp._src.fem import Coords, D, Domain, Field, Sample, curl, div, grad, integrand, normal
+from warp._src.fem.cache import dynamic_kernel
+from warp._src.fem.geometry.closest_point import project_on_tet_at_origin, project_on_tri_at_origin
+from warp._src.fem.linalg import inverse_qr, spherical_part, symmetric_eigenvalues_qr, symmetric_part
+from warp._src.fem.space import shape
+from warp._src.fem.types import make_free_sample
+from warp._src.fem.utils import (
     grid_to_hexes,
     grid_to_quads,
     grid_to_tets,
@@ -775,7 +775,7 @@ def _refinement_field(x: wp.vec3):
 def test_adaptive_nanogrid(test, device):
     # 3 res-1 voxels, 8 res-0 voxels
 
-    if platform.system() == "Windows" or (device.is_cuda and wp.context.runtime.toolkit_version[0] == 11):
+    if platform.system() == "Windows" or (device.is_cuda and wp._src.context.runtime.toolkit_version[0] == 11):
         test.skipTest("Skipping test due to NVRTC bug on CUDA 11 and Windows")
 
     res0 = wp.array(
@@ -1045,7 +1045,7 @@ def test_closest_point_queries(test, device):
 
 
 def test_regular_quadrature(test, device):
-    from warp.fem.geometry.element import LinearEdge, Polynomial, Triangle
+    from warp._src.fem.geometry.element import LinearEdge, Polynomial, Triangle
 
     for family in Polynomial:
         # test integrating monomials

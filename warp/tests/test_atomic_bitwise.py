@@ -133,7 +133,7 @@ def test_atomic_bitwise_vector(test, device):
         assert_np_equal(atomic_xor_array.numpy(), expected_xor)
 
 
-mat33ui = wp.types.matrix(shape=(3, 3), dtype=wp.uint32)
+mat33ui = wp._src.types.matrix(shape=(3, 3), dtype=wp.uint32)
 
 
 @wp.kernel

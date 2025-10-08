@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,5 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .adam import Adam
-from .sgd import SGD
+# isort: skip_file
+
+from warp._src.optim.adam import Adam as Adam
+
+from warp._src.optim.sgd import SGD as SGD

@@ -176,8 +176,8 @@ When indexing an array with an array of integers, the result is an :ref:`indexed
 
 .. testoutput::
 
-    <class 'warp.types.array'> (6,)
-    <class 'warp.types.indexedarray'> (3,)
+    <class 'warp._src.types.array'> (6,)
+    <class 'warp._src.types.indexedarray'> (3,)
     [1 3 5]
 
 .. autoclass:: array
@@ -1200,7 +1200,7 @@ Mapping Functions
 
 The :func:`wp.map()` function can be used to apply a function to each element of an array.
 
-.. autofunction:: warp.utils.map
+.. autofunction:: warp.map
 
 Streams
 -------

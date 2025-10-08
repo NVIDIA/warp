@@ -260,7 +260,7 @@ def test_conditional_unequal_types(test: unittest.TestCase, device):
 
     # remove all references to the bad module so that subsequent calls to wp.force_load()
     # won't try to load it unless we explicitly re-import it again
-    del wp.context.user_modules["warp.tests.aux_test_conditional_unequal_types_kernels"]
+    del wp._src.context.user_modules["warp.tests.aux_test_conditional_unequal_types_kernels"]
     del sys.modules["warp.tests.aux_test_conditional_unequal_types_kernels"]
 
 

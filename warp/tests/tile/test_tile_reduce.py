@@ -79,7 +79,7 @@ def tile_sum_to_shared_kernel(input: wp.array2d(dtype=float), output: wp.array(d
 
     a = wp.tile_load(input[i], shape=TILE_DIM)
     s = wp.tile_sum(a)
-    v = s[0]  # force shared storage for s
+    v = s[0]
     wp.tile_store(output, s * 0.5, offset=i)
 
 
@@ -142,7 +142,7 @@ def test_tile_reduce_min(test, device):
     input_wp = wp.array(input, requires_grad=True, device=device)
     output_wp = wp.zeros(batch_count, requires_grad=True, device=device)
 
-    with wp.Tape() as tape:
+    with wp.Tape():
         wp.launch_tiled(
             tile_min_kernel, dim=[batch_count], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device
         )
@@ -190,7 +190,7 @@ def test_tile_reduce_argmin(test, device):
     input_wp = wp.array(input, requires_grad=True, device=device)
     output_wp = wp.zeros(batch_count, dtype=wp.int32, requires_grad=True, device=device)
 
-    with wp.Tape() as tape:
+    with wp.Tape():
         wp.launch_tiled(
             tile_argmin_kernel, dim=[batch_count], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device
         )
@@ -231,7 +231,7 @@ def test_tile_reduce_max(test, device):
     input_wp = wp.array(input, requires_grad=True, device=device)
     output_wp = wp.zeros(batch_count, requires_grad=True, device=device)
 
-    with wp.Tape() as tape:
+    with wp.Tape():
         wp.launch_tiled(
             tile_max_kernel, dim=[batch_count], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device
         )
@@ -264,7 +264,7 @@ def test_tile_reduce_argmax(test, device):
     input_wp = wp.array(input, requires_grad=True, device=device)
     output_wp = wp.zeros(batch_count, dtype=wp.int32, requires_grad=True, device=device)
 
-    with wp.Tape() as tape:
+    with wp.Tape():
         wp.launch_tiled(
             tile_argmax_kernel, dim=[batch_count], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device
         )
@@ -297,7 +297,7 @@ def test_tile_reduce_custom(test, device):
     input_wp = wp.array(input, requires_grad=True, device=device)
     output_wp = wp.zeros(batch_count, requires_grad=True, device=device)
 
-    with wp.Tape() as tape:
+    with wp.Tape():
         wp.launch_tiled(
             tile_reduce_custom_kernel,
             dim=[batch_count],
@@ -333,7 +333,7 @@ def test_tile_scan_inclusive(test, device):
     input_wp = wp.array2d(input, requires_grad=True, device=device)
     output_wp = wp.zeros_like(input_wp, requires_grad=True, device=device)
 
-    with wp.Tape() as tape:
+    with wp.Tape():
         wp.launch_tiled(
             create_tile_scan_inclusive_kernel(N),
             dim=[batch_count],
@@ -369,7 +369,7 @@ def test_tile_scan_exclusive(test, device):
     input_wp = wp.array2d(input, requires_grad=True, device=device)
     output_wp = wp.zeros_like(input_wp, requires_grad=True, device=device)
 
-    with wp.Tape() as tape:
+    with wp.Tape():
         wp.launch_tiled(
             create_tile_scan_exclusive_kernel(N),
             dim=[batch_count],
@@ -501,7 +501,7 @@ def test_tile_reduce_simt(test, device):
 
     output = wp.zeros(shape=1, dtype=int, requires_grad=True, device=device)
 
-    with wp.Tape() as tape:
+    with wp.Tape():
         wp.launch(tile_reduce_simt_kernel, dim=N, inputs=[output], block_dim=TILE_DIM, device=device)
 
     test.assertEqual(output.numpy()[0], np.sum(np.arange(N)))
@@ -525,7 +525,7 @@ def test_tile_untile(test, device):
 
     output = wp.zeros(shape=N, dtype=int, requires_grad=True, device=device)
 
-    with wp.Tape() as tape:
+    with wp.Tape():
         wp.launch(tile_untile_kernel, dim=N, inputs=[output], block_dim=TILE_DIM, device=device)
 
     assert_np_equal(output.numpy(), np.arange(N) * 2)
@@ -549,7 +549,7 @@ def test_tile_untile_scalar(test, device):
 
     output = wp.zeros(shape=N, dtype=int, requires_grad=True, device=device)
 
-    with wp.Tape() as tape:
+    with wp.Tape():
         wp.launch(tile_untile_kernel, dim=N, inputs=[output], block_dim=TILE_DIM, device=device)
 
     assert_np_equal(output.numpy(), np.arange(N) * 2)
@@ -594,7 +594,7 @@ def tile_ones_kernel(out: wp.array(dtype=float)):
 def test_tile_ones(test, device):
     output = wp.zeros(1, dtype=float, device=device)
 
-    with wp.Tape() as tape:
+    with wp.Tape():
         wp.launch_tiled(tile_ones_kernel, dim=[1], inputs=[output], block_dim=TILE_DIM, device=device)
 
     test.assertAlmostEqual(output.numpy()[0], 256.0)
@@ -622,7 +622,7 @@ def test_tile_arange(test, device):
 
     output = wp.zeros(shape=(5, N), dtype=int, device=device)
 
-    with wp.Tape() as tape:
+    with wp.Tape():
         wp.launch_tiled(tile_arange_kernel, dim=[1], inputs=[output], block_dim=TILE_DIM, device=device)
 
     assert_np_equal(output.numpy()[0], np.arange(17))

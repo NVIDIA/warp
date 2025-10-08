@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import warp as wp
-import warp.context
+import warp._src.context
 import warp.tests.aux_test_name_clash1 as name_clash_module_1
 import warp.tests.aux_test_name_clash2 as name_clash_module_2
 from warp.tests.unittest_utils import add_function_test, assert_np_equal, get_cuda_test_devices, get_test_devices
@@ -183,7 +183,7 @@ def test_custom_struct_operator(test, device):
 
 
 def test_name_clash(test, device):
-    vec5 = wp.types.vector(5, dtype=wp.float32)
+    vec5 = wp._src.types.vector(5, dtype=wp.float32)
 
     @wp.func
     def name_clash_structs_args_func(
@@ -446,8 +446,8 @@ def test_kernel_creation(test, device):
 
 
 def test_graph_capture(test, device):
-    assert warp.context.runtime.driver_version is not None
-    if warp.context.runtime.driver_version < (12, 3):
+    assert warp._src.context.runtime.driver_version is not None
+    if warp._src.context.runtime.driver_version < (12, 3):
         test.skipTest("Module loading during CUDA graph capture is not supported on driver versions < 12.3")
     a_np = np.arange(10, dtype=np.float32)
     b_np = np.arange(1, 11, dtype=np.float32)

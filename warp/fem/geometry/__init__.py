@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,20 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .adaptive_nanogrid import AdaptiveNanogrid
-from .deformed_geometry import DeformedGeometry
-from .element import Element
-from .geometry import Geometry
-from .grid_2d import Grid2D
-from .grid_3d import Grid3D
-from .hexmesh import Hexmesh
-from .nanogrid import Nanogrid
-from .partition import (
-    ExplicitGeometryPartition,
-    GeometryPartition,
-    LinearGeometryPartition,
-    WholeGeometryPartition,
-)
-from .quadmesh import Quadmesh, Quadmesh2D, Quadmesh3D
-from .tetmesh import Tetmesh
-from .trimesh import Trimesh, Trimesh2D, Trimesh3D
+# isort: skip_file
+
+from . import element as element

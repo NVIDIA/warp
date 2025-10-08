@@ -105,17 +105,17 @@ def test_tpl_constructor_error_numeric_args_mismatch(test, device):
 
 def test_casting_constructors(test, device, dtype, register_kernels=False):
     np_type = np.dtype(dtype)
-    wp_type = wp.types.np_dtype_to_warp_type[np_type]
-    vec3 = wp.types.vector(length=3, dtype=wp_type)
+    wp_type = wp._src.types.np_dtype_to_warp_type[np_type]
+    vec3 = wp._src.types.vector(length=3, dtype=wp_type)
 
     np16 = np.dtype(np.float16)
-    wp16 = wp.types.np_dtype_to_warp_type[np16]
+    wp16 = wp._src.types.np_dtype_to_warp_type[np16]
 
     np32 = np.dtype(np.float32)
-    wp32 = wp.types.np_dtype_to_warp_type[np32]
+    wp32 = wp._src.types.np_dtype_to_warp_type[np32]
 
     np64 = np.dtype(np.float64)
-    wp64 = wp.types.np_dtype_to_warp_type[np64]
+    wp64 = wp._src.types.np_dtype_to_warp_type[np64]
 
     def cast_float16(a: wp.array(dtype=wp_type, ndim=2), b: wp.array(dtype=wp16, ndim=2)):
         tid = wp.tid()

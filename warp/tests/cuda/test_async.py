@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import warp as wp
+from warp._src.utils import check_p2p
 from warp.tests.unittest_utils import *
-from warp.utils import check_p2p
 
 
 class Capturable:
@@ -426,13 +426,13 @@ def copy_template(test, src_ctor, dst_ctor, src_device, dst_device, n, params: C
         if expected_error_type is not None:
             # disable error output from Warp if we expect an exception
             try:
-                saved_error_output_enabled = wp.context.runtime.core.wp_is_error_output_enabled()
-                wp.context.runtime.core.wp_set_error_output_enabled(False)
+                saved_error_output_enabled = wp._src.context.runtime.core.wp_is_error_output_enabled()
+                wp._src.context.runtime.core.wp_set_error_output_enabled(False)
                 with test.assertRaisesRegex(expected_error_type, expected_error_regex):
                     with Capturable(use_graph=params.use_graph, stream=stream):
                         wp.copy(dst, src, stream=stream_arg)
             finally:
-                wp.context.runtime.core.wp_set_error_output_enabled(saved_error_output_enabled)
+                wp._src.context.runtime.core.wp_set_error_output_enabled(saved_error_output_enabled)
                 wp.synchronize()
 
                 # print(f"SUCCESSFUL ERROR PREDICTION: {expected_error_regex}")

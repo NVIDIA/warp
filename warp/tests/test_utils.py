@@ -18,8 +18,8 @@ import inspect
 import io
 import unittest
 
+from warp._src.types import type_scalar_type
 from warp.tests.unittest_utils import *
-from warp.types import type_scalar_type
 
 
 def test_array_scan(test, device):
@@ -37,8 +37,8 @@ def test_array_scan(test, device):
         result_inc = wp.zeros_like(values)
         result_exc = wp.zeros_like(values)
 
-        wp.utils.array_scan(values, result_inc, True)
-        wp.utils.array_scan(values, result_exc, False)
+        wp._src.utils.array_scan(values, result_inc, True)
+        wp._src.utils.array_scan(values, result_exc, False)
 
         tolerance = 0 if dtype == int else 1e-3
 
@@ -54,7 +54,7 @@ def test_array_scan(test, device):
 def test_array_scan_empty(test, device):
     values = wp.array((), dtype=int, device=device)
     result = wp.array((), dtype=int, device=device)
-    wp.utils.array_scan(values, result)
+    wp._src.utils.array_scan(values, result)
 
 
 def test_array_scan_error_sizes_mismatch(test, device):
@@ -64,7 +64,7 @@ def test_array_scan_error_sizes_mismatch(test, device):
         RuntimeError,
         r"In and out array storage sizes do not match \(123 vs 234\)$",
     ):
-        wp.utils.array_scan(values, result, True)
+        wp._src.utils.array_scan(values, result, True)
 
 
 def test_array_scan_error_dtypes_mismatch(test, device):
@@ -74,7 +74,7 @@ def test_array_scan_error_dtypes_mismatch(test, device):
         RuntimeError,
         r"In and out array data types do not match \(int32 vs float32\)$",
     ):
-        wp.utils.array_scan(values, result, True)
+        wp._src.utils.array_scan(values, result, True)
 
 
 def test_array_scan_error_unsupported_dtype(test, device):
@@ -84,7 +84,7 @@ def test_array_scan_error_unsupported_dtype(test, device):
         RuntimeError,
         r"Unsupported data type: vec3f$",
     ):
-        wp.utils.array_scan(values, result, True)
+        wp._src.utils.array_scan(values, result, True)
 
 
 def test_radix_sort_pairs(test, device):
@@ -93,7 +93,7 @@ def test_radix_sort_pairs(test, device):
     for keyType in keyTypes:
         keys = wp.array((7, 2, 8, 4, 1, 6, 5, 3, 0, 0, 0, 0, 0, 0, 0, 0), dtype=keyType, device=device)
         values = wp.array((1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 0, 0, 0, 0), dtype=int, device=device)
-        wp.utils.radix_sort_pairs(keys, values, 8)
+        wp._src.utils.radix_sort_pairs(keys, values, 8)
         assert_np_equal(keys.numpy()[:8], np.array((1, 2, 3, 4, 5, 6, 7, 8)))
         assert_np_equal(values.numpy()[:8], np.array((5, 2, 8, 4, 7, 6, 1, 3)))
 
@@ -104,7 +104,7 @@ def test_segmented_sort_pairs(test, device):
     for keyType in keyTypes:
         keys = wp.array((7, 2, 8, 4, 1, 6, 5, 3, 0, 0, 0, 0, 0, 0, 0, 0), dtype=keyType, device=device)
         values = wp.array((1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 0, 0, 0, 0), dtype=int, device=device)
-        wp.utils.segmented_sort_pairs(
+        wp._src.utils.segmented_sort_pairs(
             keys,
             values,
             8,
@@ -121,7 +121,7 @@ def test_radix_sort_pairs_empty(test, device):
     for keyType in keyTypes:
         keys = wp.array((), dtype=keyType, device=device)
         values = wp.array((), dtype=int, device=device)
-        wp.utils.radix_sort_pairs(keys, values, 0)
+        wp._src.utils.radix_sort_pairs(keys, values, 0)
 
 
 def test_segmented_sort_pairs_empty(test, device):
@@ -130,7 +130,7 @@ def test_segmented_sort_pairs_empty(test, device):
     for keyType in keyTypes:
         keys = wp.array((), dtype=keyType, device=device)
         values = wp.array((), dtype=int, device=device)
-        wp.utils.segmented_sort_pairs(
+        wp._src.utils.segmented_sort_pairs(
             keys, values, 0, wp.array((), dtype=int, device=device), wp.array((), dtype=int, device=device)
         )
 
@@ -145,7 +145,7 @@ def test_radix_sort_pairs_error_insufficient_storage(test, device):
             RuntimeError,
             r"Keys and values array storage must be large enough to contain 2\*count elements$",
         ):
-            wp.utils.radix_sort_pairs(keys, values, 3)
+            wp._src.utils.radix_sort_pairs(keys, values, 3)
 
 
 def test_segmented_sort_pairs_error_insufficient_storage(test, device):
@@ -158,7 +158,7 @@ def test_segmented_sort_pairs_error_insufficient_storage(test, device):
             RuntimeError,
             r"Array storage must be large enough to contain 2\*count elements$",
         ):
-            wp.utils.segmented_sort_pairs(
+            wp._src.utils.segmented_sort_pairs(
                 keys,
                 values,
                 3,
@@ -177,7 +177,7 @@ def test_radix_sort_pairs_error_unsupported_dtype(test, device):
             RuntimeError,
             rf"Unsupported keys and values data types: {keyType.__name__}, float32$",
         ):
-            wp.utils.radix_sort_pairs(keys, values, 1)
+            wp._src.utils.radix_sort_pairs(keys, values, 1)
 
 
 def test_segmented_sort_pairs_error_unsupported_dtype(test, device):
@@ -190,7 +190,7 @@ def test_segmented_sort_pairs_error_unsupported_dtype(test, device):
             RuntimeError,
             rf"Unsupported data type: {keyType.__name__}$",
         ):
-            wp.utils.segmented_sort_pairs(
+            wp._src.utils.segmented_sort_pairs(
                 keys,
                 values,
                 1,
@@ -203,11 +203,11 @@ def test_array_sum(test, device):
     for dtype in (wp.float32, wp.float64):
         with test.subTest(dtype=dtype):
             values = wp.array((1.0, 2.0, 3.0), dtype=dtype, device=device)
-            test.assertEqual(wp.utils.array_sum(values), 6.0)
+            test.assertEqual(wp._src.utils.array_sum(values), 6.0)
 
             values = wp.array((1.0, 2.0, 3.0), dtype=dtype, device=device)
             result = wp.empty(shape=(1,), dtype=dtype, device=device)
-            wp.utils.array_sum(values, out=result)
+            wp._src.utils.array_sum(values, out=result)
             test.assertEqual(result.numpy()[0], 6.0)
 
 
@@ -218,7 +218,7 @@ def test_array_sum_error_out_dtype_mismatch(test, device):
         RuntimeError,
         r"out array should have type float32$",
     ):
-        wp.utils.array_sum(values, out=result)
+        wp._src.utils.array_sum(values, out=result)
 
 
 def test_array_sum_error_out_shape_mismatch(test, device):
@@ -228,7 +228,7 @@ def test_array_sum_error_out_shape_mismatch(test, device):
         RuntimeError,
         r"out array should have shape \(1,\)$",
     ):
-        wp.utils.array_sum(values, out=result)
+        wp._src.utils.array_sum(values, out=result)
 
 
 def test_array_sum_error_unsupported_dtype(test, device):
@@ -237,25 +237,25 @@ def test_array_sum_error_unsupported_dtype(test, device):
         RuntimeError,
         r"Unsupported data type: int32$",
     ):
-        wp.utils.array_sum(values)
+        wp._src.utils.array_sum(values)
 
 
 def test_array_inner(test, device):
     for dtype in (wp.float32, wp.float64, wp.vec3):
         a = wp.array((1.0, 2.0, 3.0), dtype=dtype, device=device)
         b = wp.array((1.0, 2.0, 3.0), dtype=dtype, device=device)
-        test.assertEqual(wp.utils.array_inner(a, b), 14.0)
+        test.assertEqual(wp._src.utils.array_inner(a, b), 14.0)
 
         a = wp.array((1.0, 2.0, 3.0), dtype=dtype, device=device)
         b = wp.array((1.0, 2.0, 3.0), dtype=dtype, device=device)
         result = wp.empty(shape=(1,), dtype=type_scalar_type(dtype), device=device)
-        wp.utils.array_inner(a, b, out=result)
+        wp._src.utils.array_inner(a, b, out=result)
         test.assertEqual(result.numpy()[0], 14.0)
 
     # test with different instances of same type
     a = wp.array((1.0, 2.0, 3.0), dtype=wp.vec3, device=device)
     b = wp.array((1.0, 2.0, 3.0), dtype=wp.vec(3, float), device=device)
-    test.assertEqual(wp.utils.array_inner(a, b), 14.0)
+    test.assertEqual(wp._src.utils.array_inner(a, b), 14.0)
 
 
 def test_array_inner_error_sizes_mismatch(test, device):
@@ -265,7 +265,7 @@ def test_array_inner_error_sizes_mismatch(test, device):
         RuntimeError,
         r"A and b array storage sizes do not match \(2 vs 3\)$",
     ):
-        wp.utils.array_inner(a, b)
+        wp._src.utils.array_inner(a, b)
 
 
 def test_array_inner_error_dtypes_mismatch(test, device):
@@ -275,7 +275,7 @@ def test_array_inner_error_dtypes_mismatch(test, device):
         RuntimeError,
         r"A and b array data types do not match \(float32 vs float64\)$",
     ):
-        wp.utils.array_inner(a, b)
+        wp._src.utils.array_inner(a, b)
 
 
 def test_array_inner_error_out_dtype_mismatch(test, device):
@@ -286,7 +286,7 @@ def test_array_inner_error_out_dtype_mismatch(test, device):
         RuntimeError,
         r"out array should have type float32$",
     ):
-        wp.utils.array_inner(a, b, result)
+        wp._src.utils.array_inner(a, b, result)
 
 
 def test_array_inner_error_out_shape_mismatch(test, device):
@@ -297,7 +297,7 @@ def test_array_inner_error_out_shape_mismatch(test, device):
         RuntimeError,
         r"out array should have shape \(1,\)$",
     ):
-        wp.utils.array_inner(a, b, result)
+        wp._src.utils.array_inner(a, b, result)
 
 
 def test_array_inner_error_unsupported_dtype(test, device):
@@ -307,34 +307,34 @@ def test_array_inner_error_unsupported_dtype(test, device):
         RuntimeError,
         r"Unsupported data type: int32$",
     ):
-        wp.utils.array_inner(a, b)
+        wp._src.utils.array_inner(a, b)
 
 
 def test_array_cast(test, device):
     values = wp.array((1, 2, 3), dtype=int, device=device)
     result = wp.empty(3, dtype=float, device=device)
-    wp.utils.array_cast(values, result)
+    wp._src.utils.array_cast(values, result)
     test.assertEqual(result.dtype, wp.float32)
     test.assertEqual(result.shape, (3,))
     assert_np_equal(result.numpy(), np.array((1.0, 2.0, 3.0), dtype=float))
 
     values = wp.array((1, 2, 3, 4), dtype=int, device=device)
     result = wp.empty((2, 2), dtype=float, device=device)
-    wp.utils.array_cast(values, result)
+    wp._src.utils.array_cast(values, result)
     test.assertEqual(result.dtype, wp.float32)
     test.assertEqual(result.shape, (2, 2))
     assert_np_equal(result.numpy(), np.array(((1.0, 2.0), (3.0, 4.0)), dtype=float))
 
     values = wp.array(((1, 2), (3, 4)), dtype=wp.vec2, device=device)
     result = wp.zeros(2, dtype=float, device=device)
-    wp.utils.array_cast(values, result, count=1)
+    wp._src.utils.array_cast(values, result, count=1)
     test.assertEqual(result.dtype, wp.float32)
     test.assertEqual(result.shape, (2,))
     assert_np_equal(result.numpy(), np.array((1.0, 2.0), dtype=float))
 
     values = wp.array(((1, 2), (3, 4)), dtype=int, device=device)
     result = wp.zeros((2, 2), dtype=int, device=device)
-    wp.utils.array_cast(values, result)
+    wp._src.utils.array_cast(values, result)
     test.assertEqual(result.dtype, wp.int32)
     test.assertEqual(result.shape, (2, 2))
     assert_np_equal(result.numpy(), np.array(((1, 2), (3, 4)), dtype=int))
@@ -347,7 +347,7 @@ def test_array_cast_error_unsupported_partial_cast(test, device):
         RuntimeError,
         r"Partial cast is not supported for arrays with more than one dimension$",
     ):
-        wp.utils.array_cast(values, result, count=1)
+        wp._src.utils.array_cast(values, result, count=1)
 
 
 devices = get_test_devices()
@@ -357,8 +357,8 @@ class TestUtils(unittest.TestCase):
     def test_warn(self):
         # Multiple warnings get printed out each time.
         with contextlib.redirect_stdout(io.StringIO()) as f:
-            wp.utils.warn("hello, world!")
-            wp.utils.warn("hello, world!")
+            wp._src.utils.warn("hello, world!")
+            wp._src.utils.warn("hello, world!")
 
         expected = "Warp UserWarning: hello, world!\nWarp UserWarning: hello, world!\n"
 
@@ -370,14 +370,14 @@ class TestUtils(unittest.TestCase):
             wp.config.verbose_warnings = True
             with contextlib.redirect_stdout(io.StringIO()) as f:
                 frame_info = inspect.getframeinfo(inspect.currentframe())
-                wp.utils.warn("hello, world!")
-                wp.utils.warn("hello, world!")
+                wp._src.utils.warn("hello, world!")
+                wp._src.utils.warn("hello, world!")
 
             expected = (
                 f"Warp UserWarning: hello, world! ({frame_info.filename}:{frame_info.lineno + 1})\n"
-                '  wp.utils.warn("hello, world!")\n'
+                '  wp._src.utils.warn("hello, world!")\n'
                 f"Warp UserWarning: hello, world! ({frame_info.filename}:{frame_info.lineno + 2})\n"
-                '  wp.utils.warn("hello, world!")\n'
+                '  wp._src.utils.warn("hello, world!")\n'
             )
 
             self.assertEqual(f.getvalue(), expected)
@@ -388,8 +388,8 @@ class TestUtils(unittest.TestCase):
 
         # Multiple similar deprecation warnings get printed out only once.
         with contextlib.redirect_stdout(io.StringIO()) as f:
-            wp.utils.warn("hello, world!", category=DeprecationWarning)
-            wp.utils.warn("hello, world!", category=DeprecationWarning)
+            wp._src.utils.warn("hello, world!", category=DeprecationWarning)
+            wp._src.utils.warn("hello, world!", category=DeprecationWarning)
 
         expected = "Warp DeprecationWarning: hello, world!\n"
 
@@ -397,8 +397,8 @@ class TestUtils(unittest.TestCase):
 
         # Multiple different deprecation warnings get printed out each time.
         with contextlib.redirect_stdout(io.StringIO()) as f:
-            wp.utils.warn("foo", category=DeprecationWarning)
-            wp.utils.warn("bar", category=DeprecationWarning)
+            wp._src.utils.warn("foo", category=DeprecationWarning)
+            wp._src.utils.warn("bar", category=DeprecationWarning)
 
         expected = "Warp DeprecationWarning: foo\nWarp DeprecationWarning: bar\n"
 
@@ -407,7 +407,7 @@ class TestUtils(unittest.TestCase):
     def test_transform_expand(self):
         t = (1.0, 2.0, 3.0, 4.0, 3.0, 2.0, 1.0)
         self.assertEqual(
-            wp.utils.transform_expand(t),
+            wp._src.utils.transform_expand(t),
             wp.transformf(p=(1.0, 2.0, 3.0), q=(4.0, 3.0, 2.0, 1.0)),
         )
 
@@ -419,7 +419,7 @@ class TestUtils(unittest.TestCase):
             RuntimeError,
             r"In and out array storage devices do not match \(cpu vs cuda:0\)$",
         ):
-            wp.utils.array_scan(values, result, True)
+            wp._src.utils.array_scan(values, result, True)
 
     @unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
     def test_radix_sort_pairs_error_devices_mismatch(self):
@@ -429,7 +429,7 @@ class TestUtils(unittest.TestCase):
             RuntimeError,
             r"Keys and values array storage devices do not match \(cpu vs cuda:0\)$",
         ):
-            wp.utils.radix_sort_pairs(keys, values, 1)
+            wp._src.utils.radix_sort_pairs(keys, values, 1)
 
     @unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
     def test_array_inner_error_out_device_mismatch(self):
@@ -440,7 +440,7 @@ class TestUtils(unittest.TestCase):
             RuntimeError,
             r"out storage device should match values array$",
         ):
-            wp.utils.array_inner(a, b, result)
+            wp._src.utils.array_inner(a, b, result)
 
     @unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
     def test_array_sum_error_out_device_mismatch(self):
@@ -450,7 +450,7 @@ class TestUtils(unittest.TestCase):
             RuntimeError,
             r"out storage device should match values array$",
         ):
-            wp.utils.array_sum(values, out=result)
+            wp._src.utils.array_sum(values, out=result)
 
     @unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
     def test_array_inner_error_devices_mismatch(self):
@@ -460,7 +460,7 @@ class TestUtils(unittest.TestCase):
             RuntimeError,
             r"A and b array storage devices do not match \(cpu vs cuda:0\)$",
         ):
-            wp.utils.array_inner(a, b)
+            wp._src.utils.array_inner(a, b)
 
     @unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
     def test_array_cast_error_devices_mismatch(self):
@@ -470,14 +470,14 @@ class TestUtils(unittest.TestCase):
             RuntimeError,
             r"Array storage devices do not match \(cpu vs cuda:0\)$",
         ):
-            wp.utils.array_cast(values, result)
+            wp._src.utils.array_cast(values, result)
 
     def test_mesh_adjacency(self):
         triangles = (
             (0, 3, 1),
             (0, 2, 3),
         )
-        adj = wp.utils.MeshAdjacency(triangles, len(triangles))
+        adj = wp._src.utils.MeshAdjacency(triangles, len(triangles))
         expected_edges = {
             (0, 3): (0, 3, 1, 2, 0, 1),
             (1, 3): (3, 1, 0, -1, 0, -1),
@@ -496,7 +496,7 @@ class TestUtils(unittest.TestCase):
         )
 
         with contextlib.redirect_stdout(io.StringIO()) as f:
-            wp.utils.MeshAdjacency(triangles, len(triangles))
+            wp._src.utils.MeshAdjacency(triangles, len(triangles))
 
         self.assertEqual(f.getvalue(), "Detected non-manifold edge\n")
 

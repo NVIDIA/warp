@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp.context import assert_conditional_graph_support
+from warp._src.context import assert_conditional_graph_support
 from warp.optim.linear import bicgstab, cg, cr, gmres, preconditioner
 from warp.tests.unittest_utils import *
 

@@ -34,9 +34,9 @@ import shutil
 import subprocess
 import sys
 
-import warp.build_dll as build_dll
-from warp.build import clear_kernel_cache, clear_lto_cache
-from warp.context import export_builtins
+import warp._src.build_dll as build_dll
+from warp._src.build import clear_kernel_cache, clear_lto_cache
+from warp._src.context import export_builtins
 
 
 def find_cuda_sdk() -> str | None:

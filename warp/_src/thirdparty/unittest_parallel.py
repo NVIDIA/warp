@@ -47,7 +47,7 @@ except ImportError:
 
 
 # The following variables are NVIDIA Modifications
-START_DIRECTORY = os.path.dirname(__file__)  # The directory to start test discovery
+START_DIRECTORY = os.path.join(os.path.dirname(__file__), "..")  # The directory to start test discovery
 
 
 def main(argv=None):

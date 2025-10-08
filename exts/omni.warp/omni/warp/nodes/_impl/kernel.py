@@ -555,7 +555,7 @@ def initialize_kernel_module(
     # Validate the module's contents.
     if not hasattr(kernel_module, "compute"):
         raise RuntimeError("The code must define a kernel function named 'compute'.")
-    if not isinstance(kernel_module.compute, wp.context.Kernel):
+    if not isinstance(kernel_module.compute, wp._src.context.Kernel):
         raise RuntimeError("The 'compute' function must be decorated with '@wp.kernel'.")
 
     # Configure warp to only compute the forward pass.

@@ -26,7 +26,7 @@ This is useful for manipulating OpenGL array buffers without having to copy them
 
 See the `CUDA documentation on OpenGL Interoperability <https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__GL.html>`_ for more information.
 
-.. currentmodule:: warp.context
+.. currentmodule:: warp
 
 .. autoclass:: RegisteredGLBuffer
     :members:

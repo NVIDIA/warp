@@ -60,11 +60,6 @@ def compute_bounds(
 def compute_num_contacts(
     lowers: wp.array(dtype=wp.vec3), uppers: wp.array(dtype=wp.vec3), mesh_id: wp.uint64, counts: wp.array(dtype=int)
 ):
-    face_index = int(0)
-    face_u = float(0.0)
-    face_v = float(0.0)
-    sign = float(0.0)
-
     tid = wp.tid()
 
     upper = uppers[tid]
@@ -210,11 +205,6 @@ def compute_num_contact_with_checksums(
     counts: wp.array(dtype=int),
     check_sums: wp.array(dtype=int),
 ):
-    face_index = int(0)
-    face_u = float(0.0)
-    face_v = float(0.0)
-    sign = float(0.0)
-
     tid = wp.tid()
 
     upper = uppers[tid]

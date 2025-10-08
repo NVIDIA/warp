@@ -521,7 +521,7 @@ def test_type_attribute_error(test, device):
         a = wp.vec3(0.0)
         _ = a.dtype.shape
 
-    with test.assertRaisesRegex(AttributeError, r"`shape` is not an attribute of '<class 'warp.types.float32'>'"):
+    with test.assertRaisesRegex(AttributeError, r"`shape` is not an attribute of '<class 'warp._src.types.float32'>'"):
         wp.launch(
             kernel,
             dim=1,

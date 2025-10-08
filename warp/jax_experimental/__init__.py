@@ -13,4 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .custom_call import jax_kernel
+# isort: skip_file
+
+from warp._src.jax_experimental.custom_call import jax_kernel as jax_kernel

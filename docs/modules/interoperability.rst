@@ -1333,7 +1333,7 @@ using :func:`warp.from_paddle` is as follows::
     import paddle
 
     # init warp context at beginning
-    wp.context.init()
+    wp.init()
 
     @wp.kernel()
     def loss(xs: wp.array(dtype=float, ndim=2), l: wp.array(dtype=float)):
@@ -1378,7 +1378,7 @@ Here, we revisit the same example from above where now only a single conversion 
     import paddle
 
     # init warp context at beginning
-    wp.context.init()
+    wp.init()
 
     @wp.kernel()
     def loss(xs: wp.array(dtype=float, ndim=2), l: wp.array(dtype=float)):

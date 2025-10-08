@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .render_opengl import OpenGLRenderer
-from .render_usd import UsdRenderer
-from .utils import bourke_color_map
+# isort: skip_file
+
+from warp._src.render.render_opengl import OpenGLRenderer as OpenGLRenderer
+
+from warp._src.render.render_usd import UsdRenderer as UsdRenderer
+
+from warp._src.render.utils import bourke_color_map as bourke_color_map

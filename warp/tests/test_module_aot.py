@@ -226,14 +226,14 @@ class TestModuleAOT(unittest.TestCase):
         if wp.get_cuda_device_count() == 0:
             self.skipTest("No CUDA devices found")
 
-        if len(wp.context.runtime.nvrtc_supported_archs) < 2:
+        if len(wp._src.context.runtime.nvrtc_supported_archs) < 2:
             self.skipTest("NVRTC must support at least two architectures to run this test")
 
         try:
             shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
             TEST_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-            archs = list(wp.context.runtime.nvrtc_supported_archs)[:2]
+            archs = list(wp._src.context.runtime.nvrtc_supported_archs)[:2]
 
             wp.compile_aot_module(warp.tests.aux_test_module_aot, arch=archs, module_dir=TEST_CACHE_DIR, use_ptx=True)
 
@@ -254,14 +254,14 @@ class TestModuleAOT(unittest.TestCase):
         if wp.get_cuda_device_count() == 0:
             self.skipTest("No CUDA devices found")
 
-        if len(wp.context.runtime.nvrtc_supported_archs) < 2:
+        if len(wp._src.context.runtime.nvrtc_supported_archs) < 2:
             self.skipTest("NVRTC must support at least two architectures to run this test")
 
         try:
             shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
             TEST_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-            archs = list(wp.context.runtime.nvrtc_supported_archs)[:2]
+            archs = list(wp._src.context.runtime.nvrtc_supported_archs)[:2]
 
             wp.compile_aot_module(warp.tests.aux_test_module_aot, arch=archs, module_dir=TEST_CACHE_DIR, use_ptx=False)
 

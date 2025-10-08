@@ -21,8 +21,6 @@ from warp.tests.unittest_utils import *
 
 @wp.kernel
 def test_pow(e: float, expected: float):
-    tid = wp.tid()
-
     y = wp.pow(-2.0, e)
 
     # Since equality comparisons with NaN's are false, we have to do something manually

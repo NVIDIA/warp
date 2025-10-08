@@ -81,7 +81,7 @@ def test_constructors_default_precision():
 
 
 @wp.kernel
-def test_matrix_mutation(expected: wp.types.matrix(shape=(10, 3), dtype=float)):
+def test_matrix_mutation(expected: wp._src.types.matrix(shape=(10, 3), dtype=float)):
     m = wp.matrix(shape=(10, 3), dtype=float)
 
     # test direct element indexing

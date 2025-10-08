@@ -396,7 +396,7 @@ class TestFunc(unittest.TestCase):
         t = wp.transform(*wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
         self.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
 
-        transformf = wp.types.transformation(dtype=float)
+        transformf = wp._src.types.transformation(dtype=float)
 
         t = wp.transformf((1.0, 2.0, 3.0), (4.0, 5.0, 6.0, 7.0))
         self.assertSequenceEqual(

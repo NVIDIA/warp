@@ -20,7 +20,7 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()  # For wp.context.runtime.core.wp_is_mathdx_enabled()
+wp.init()  # For wp._src.context.runtime.core.wp_is_mathdx_enabled()
 
 TILE_M = wp.constant(8)
 TILE_N = wp.constant(4)
@@ -490,7 +490,7 @@ def test_tile_upper_solve(L: wp.array2d(dtype=float), y: wp.array(dtype=float), 
 
 
 def test_tile_cholesky_singular_matrices(test, device):
-    if not wp.context.runtime.core.wp_is_mathdx_enabled():
+    if not wp._src.context.runtime.core.wp_is_mathdx_enabled():
         test.skipTest("MathDx is not enabled")
 
     rng = np.random.default_rng(42)
@@ -527,8 +527,11 @@ cuda_devices = get_cuda_test_devices()
 
 
 @unittest.skipUnless(
-    not wp.context.runtime.core.wp_is_mathdx_enabled()
-    or (wp.context.runtime.core.wp_is_mathdx_enabled() and wp.context.runtime.core.wp_cuda_toolkit_version() >= 12060),
+    not wp._src.context.runtime.core.wp_is_mathdx_enabled()
+    or (
+        wp._src.context.runtime.core.wp_is_mathdx_enabled()
+        and wp._src.context.runtime.core.wp_cuda_toolkit_version() >= 12060
+    ),
     "MathDx is not enabled or is enabled but CUDA toolkit version is less than 12.6",
 )
 class TestTileCholesky(unittest.TestCase):

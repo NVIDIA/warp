@@ -21,7 +21,7 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()  # For wp.context.runtime.core.wp_is_mathdx_enabled()
+wp.init()  # For wp._src.context.runtime.core.wp_is_mathdx_enabled()
 
 TILE_M = wp.constant(8)
 TILE_N = wp.constant(4)
@@ -92,7 +92,7 @@ def tile_math_fft_kernel_vec2d(gx: wp.array2d(dtype=wp.vec2d), gy: wp.array2d(dt
     wp.tile_store(gy, xy)
 
 
-@unittest.skipUnless(wp.context.runtime.core.wp_is_mathdx_enabled(), "Warp was not built with MathDx support")
+@unittest.skipUnless(wp._src.context.runtime.core.wp_is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_math_fft(test, device, wp_dtype):
     np_real_dtype = {wp.vec2f: np.float32, wp.vec2d: np.float64}[wp_dtype]
     np_cplx_dtype = {wp.vec2f: np.complex64, wp.vec2d: np.complex128}[wp_dtype]
@@ -113,7 +113,7 @@ def test_tile_math_fft(test, device, wp_dtype):
     X_c64 = X.view(np_cplx_dtype).reshape(fft_size, fft_size)
     Y_c64 = np.fft.fft(X_c64, axis=-1)
 
-    with wp.Tape() as tape:
+    with wp.Tape():
         wp.launch_tiled(kernel, dim=[1, 1], inputs=[X_wp, Y_wp], block_dim=TILE_DIM, device=device)
 
     Y_wp_c64 = Y_wp.numpy().view(np_cplx_dtype).reshape(fft_size, fft_size)
