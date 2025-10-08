@@ -15,6 +15,7 @@
 
 import collections
 import ctypes
+import inspect
 import threading
 import traceback
 from enum import IntEnum
@@ -29,6 +30,9 @@ from warp.types import array_t, launch_bounds_t, strides_from_shape, type_to_war
 
 from .xla_ffi import *
 
+# Type alias for differentiable kernel cache key
+DiffKernelCacheKey = tuple[Callable, tuple, int, str, tuple[str, ...]]
+
 jax_callable_default_graph_cache_max: int | None = 32
 """
 Maximum size of the graph cache for graphs captured using ``GraphMode.WARP``, unlimited if ``None``.
@@ -37,6 +41,7 @@ Example usage: ``warp.jax_experimental.ffi.jax_callable_default_graph_cache_max 
 
 # Holders for the custom callbacks to keep them alive.
 _FFI_KERNEL_REGISTRY: dict[str, "FfiKernel"] = {}
+_FFI_DIFF_KERNEL_REGISTRY: dict[DiffKernelCacheKey, Callable] = {}
 _FFI_CALLABLE_REGISTRY: dict[str, "FfiCallable"] = {}
 _FFI_CALLBACK_REGISTRY: dict[str, ctypes.CFUNCTYPE] = {}
 _FFI_REGISTRY_LOCK = threading.Lock()
@@ -338,9 +343,14 @@ class FfiKernel:
                 for i, input_arg in enumerate(self.input_args):
                     if input_arg.is_array:
                         buffer = inputs[i].contents
-                        shape = buffer.dims[: input_arg.type.ndim]
+                        # exclude leading batch dims and trailing dtype dims; pass only warp dims to kernel
+                        rank = buffer.rank
+                        warp_ndim = input_arg.type.ndim
+                        dtype_ndim = input_arg.dtype_ndim
+                        batch_ndim = max(0, rank - dtype_ndim - warp_ndim)
+                        shape = buffer.dims[batch_ndim : batch_ndim + warp_ndim]
                         strides = strides_from_shape(shape, input_arg.type.dtype)
-                        arg = array_t(buffer.data, 0, input_arg.type.ndim, shape, strides)
+                        arg = array_t(buffer.data, 0, warp_ndim, shape, strides)
                         kernel_params[i + 1] = ctypes.addressof(arg)
                         arg_refs.append(arg)  # keep a reference
                     else:
@@ -353,9 +363,14 @@ class FfiKernel:
                 # pure output args (skip in-out FFI buffers)
                 for i, output_arg in enumerate(self.output_args):
                     buffer = outputs[i + self.num_in_out].contents
-                    shape = buffer.dims[: output_arg.type.ndim]
+                    # exclude leading batch dims and trailing dtype dims; pass only warp dims to kernel
+                    rank = buffer.rank
+                    warp_ndim = output_arg.type.ndim
+                    dtype_ndim = output_arg.dtype_ndim
+                    batch_ndim = max(0, rank - dtype_ndim - warp_ndim)
+                    shape = buffer.dims[batch_ndim : batch_ndim + warp_ndim]
                     strides = strides_from_shape(shape, output_arg.type.dtype)
-                    arg = array_t(buffer.data, 0, output_arg.type.ndim, shape, strides)
+                    arg = array_t(buffer.data, 0, warp_ndim, shape, strides)
                     kernel_params[num_inputs + i + 1] = ctypes.addressof(arg)
                     arg_refs.append(arg)  # keep a reference
 
@@ -745,6 +760,8 @@ def jax_kernel(
     output_dims=None,
     in_out_argnames=None,
     module_preload_mode=ModulePreloadMode.CURRENT_DEVICE,
+    differentiable: bool = False,
+    static_argnames=None,
 ):
     """Create a JAX callback from a Warp kernel.
 
@@ -762,7 +779,10 @@ def jax_kernel(
         output_dims: Specify the default dimensions of output arrays.  If None, output
                      dimensions are inferred from the launch dimensions.
                      This argument can also be specified for individual calls.
-        in_out_argnames: Names of input-output arguments.
+        in_out_argnames: Names of arguments that are both inputs and outputs (aliased buffers).
+            These must be array arguments that appear before any pure output arguments in the
+            kernel signature. The number of in-out arguments is included in ``num_outputs``.
+            Not supported when ``differentiable=True``.
         module_preload_mode: Specify the devices where the module should be preloaded.
 
     Limitations:
@@ -775,24 +795,267 @@ def jax_kernel(
 
     check_jax_version()
 
-    key = (
-        kernel.func,
-        kernel.sig,
-        num_outputs,
-        vmap_method,
-        tuple(launch_dims) if launch_dims else launch_dims,
-        tuple(sorted(output_dims.items())) if output_dims else output_dims,
-        module_preload_mode,
+    if not differentiable:
+        key = (
+            kernel.func,
+            kernel.sig,
+            num_outputs,
+            vmap_method,
+            tuple(launch_dims) if launch_dims else launch_dims,
+            tuple(sorted(output_dims.items())) if output_dims else output_dims,
+            module_preload_mode,
+        )
+
+        with _FFI_REGISTRY_LOCK:
+            if key not in _FFI_KERNEL_REGISTRY:
+                new_kernel = FfiKernel(
+                    kernel, num_outputs, vmap_method, launch_dims, output_dims, in_out_argnames, module_preload_mode
+                )
+                _FFI_KERNEL_REGISTRY[key] = new_kernel
+
+        return _FFI_KERNEL_REGISTRY[key]
+
+    if in_out_argnames:
+        raise NotImplementedError(
+            "jax_kernel(..., differentiable=True) does not support input-output arguments (in_out_argnames) yet."
+        )
+
+    # Differentiable path: build a custom VJP wrapper inline.
+    # Infer the original kernel signature (names and annotations)
+    signature = inspect.signature(kernel.func)
+
+    parameters = [p for p in signature.parameters.values() if p.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD]
+    parameter_count = len(parameters)
+    num_inputs = parameter_count - num_outputs
+
+    # Determine static argument indices
+    static_args: list[int] = []
+    if static_argnames is not None:
+        name_set = set(static_argnames)
+        for i, p in enumerate(parameters[:num_inputs]):
+            if p.name in name_set:
+                static_args.append(i)
+
+    static_args = sorted(set(static_args))
+
+    # Infer Warp launch dimensions from runtime args and type annotations:
+    # - If the first argument has a 'shape' attribute, use it directly (fast path).
+    # - Otherwise, find the first input annotated as a wp.array and derive dims from its
+    #   runtime JAX shape and the annotation:
+    #   * For vector/matrix arrays (dtype has inner payload dimensions), drop the trailing
+    #     dtype dims and take the last 'warp_ndim' dims immediately before them.
+    #   * For scalar arrays, take the last 'warp_ndim' dims.
+    # - Leading batch axes (e.g., from vmap) are naturally ignored since we slice dims
+    #   relative to the dtype payload at the end of the shape.
+    def _resolve_launch_dims(call_args):
+        s = getattr(call_args[0], "shape", None)
+        if s is not None:
+            return s
+        param_ann = {p.name: p.annotation for p in parameters[:num_inputs]}
+        for i in range(num_inputs):
+            ann = param_ann.get(parameters[i].name)
+            if ann is None or not isinstance(ann, wp.array):
+                continue
+            val = call_args[i]
+            vshape = getattr(val, "shape", None)
+            if vshape is None:
+                continue
+            vshape = tuple(vshape)
+            dtype_ndim = 0
+            if hasattr(ann, "dtype") and hasattr(ann.dtype, "_wp_scalar_type_"):
+                dtype_ndim = len(ann.dtype._shape_)
+            warp_ndim = getattr(ann, "ndim", 0)
+            if warp_ndim == 0:
+                continue
+            if dtype_ndim > 0:
+                core_end = max(0, len(vshape) - dtype_ndim)
+                core_begin = max(0, core_end - warp_ndim)
+                return vshape[core_begin:core_end]
+            else:
+                return vshape[-warp_ndim:]
+        raise RuntimeError("Unable to determine launch dimensions")
+
+    # Forward kernel wrapper: simply launches the kernel
+    def fwd_kernel_wrapper(*args):
+        wp.launch(kernel, dim=_resolve_launch_dims(args), inputs=args[:num_inputs], outputs=args[num_inputs:])
+
+    fwd_kernel_wrapper.__signature__ = signature
+    # populate annotations so jax_callable sees a fully annotated function
+    fwd_kernel_wrapper.__annotations__ = {p.name: p.annotation for p in parameters}
+    fwd_kernel_wrapper.__annotations__["return"] = None
+
+    jax_fwd_kernel = jax_callable(fwd_kernel_wrapper, num_outputs=num_outputs, vmap_method=vmap_method)
+
+    # Backward wrapper: launches adjoint with provided output gradients
+    def bwd_kernel_wrapper(*args):
+        assert len(args) == 2 * parameter_count - len(static_args)
+
+        inputs = list(args[:num_inputs])
+        outputs = list(args[num_inputs:parameter_count])
+        grad_out = list(args[parameter_count : parameter_count + num_outputs])
+        grad_in = list(args[parameter_count + num_outputs :])
+
+        for i in static_args:
+            grad_in.insert(i, inputs[i])
+
+        for gi in grad_in:
+            if isinstance(gi, wp.array):
+                try:
+                    gi.zero_()
+                except Exception as e:
+                    wp.utils.warn(f"Failed to zero gradient array: {e}", stacklevel=2)
+                    raise e
+
+        # Note: we cannot use a passed launch_dims here, the backward rule doesn't receive it (and it could be wrong under pmap/vmap) and we need to infer from inputs.
+        wp.launch(
+            kernel,
+            dim=_resolve_launch_dims(inputs),
+            inputs=inputs,
+            outputs=outputs,
+            adj_inputs=grad_in,
+            adj_outputs=grad_out,
+            adjoint=True,
+        )
+
+    # Build the backward wrapper signature expected by jax_callable
+    bwd_input_params = parameters[:num_inputs]
+    bwd_output_params = parameters[num_inputs:parameter_count]
+    bwd_grad_output_params = [
+        inspect.Parameter(
+            p.name + "__vjp",
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            default=p.default,
+            annotation=p.annotation,
+        )
+        for p in bwd_output_params
+    ]
+
+    bwd_grad_input_params = [
+        inspect.Parameter(
+            p.name + "__vjp",
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            default=p.default,
+            annotation=p.annotation,
+        )
+        for p in bwd_input_params
+    ]
+    for i in reversed(static_args):
+        del bwd_grad_input_params[i]
+
+    bwd_signature = bwd_input_params + bwd_output_params + bwd_grad_output_params + bwd_grad_input_params
+    bwd_kernel_wrapper.__signature__ = inspect.Signature(bwd_signature)
+    # populate annotations for backward wrapper to cover all parameters
+    bwd_annotations = {}
+    for p in bwd_input_params:
+        bwd_annotations[p.name] = p.annotation
+    for p in bwd_output_params:
+        bwd_annotations[p.name] = p.annotation
+    for p in bwd_grad_output_params:
+        bwd_annotations[p.name] = p.annotation
+    for p in bwd_grad_input_params:
+        bwd_annotations[p.name] = p.annotation
+    bwd_annotations["return"] = None
+    bwd_kernel_wrapper.__annotations__ = bwd_annotations
+
+    jax_bwd_kernel = jax_callable(
+        bwd_kernel_wrapper,
+        num_outputs=len(bwd_input_params) - len(static_args),
+        vmap_method=vmap_method,
     )
 
-    with _FFI_REGISTRY_LOCK:
-        if key not in _FFI_KERNEL_REGISTRY:
-            new_kernel = FfiKernel(
-                kernel, num_outputs, vmap_method, launch_dims, output_dims, in_out_argnames, module_preload_mode
-            )
-            _FFI_KERNEL_REGISTRY[key] = new_kernel
+    differentiable_input_indices = [i for i in range(num_inputs) if i not in static_args]
+    differentiable_input_names = [parameters[i].name for i in differentiable_input_indices]
 
-    return _FFI_KERNEL_REGISTRY[key]
+    def fwd_function(*args):
+        outputs = jax_fwd_kernel(*args)
+        non_static_inputs = list(args)
+        for i in reversed(static_args):
+            del non_static_inputs[i]
+        # Normalize to tuple for consistent handling
+        if num_outputs == 1:
+            outputs_tuple = (outputs,) if not isinstance(outputs, (list, tuple)) else (outputs[0],)
+        else:
+            outputs_tuple = outputs if isinstance(outputs, tuple) else tuple(outputs)
+        return outputs, (tuple(non_static_inputs), outputs_tuple)
+
+    def bwd_function(*bwd_args):
+        nondiff_vals = list(bwd_args[: len(static_args)])
+        residuals = bwd_args[len(static_args)]
+        grad_out_args = bwd_args[len(static_args) + 1 :]
+
+        non_static_inputs, output_vals_tuple = residuals
+
+        input_vals = list(non_static_inputs)
+        for i, v in zip(static_args, nondiff_vals):
+            input_vals.insert(i, v)
+
+        # Normalize grad outputs and handle nested containers (e.g., single tuple for multi-output)
+        if num_outputs == 1:
+            go = grad_out_args[0]
+            grad_out_tuple = tuple(go) if isinstance(go, (list, tuple)) else (go,)
+        else:
+            if len(grad_out_args) == 1 and isinstance(grad_out_args[0], (list, tuple)):
+                grad_out_tuple = tuple(grad_out_args[0])
+            else:
+                grad_out_tuple = tuple(grad_out_args)
+        bwd_call_args = list(input_vals) + list(output_vals_tuple) + list(grad_out_tuple)
+
+        out_dims_map = {}
+        param_ann = {p.name: p.annotation for p in parameters[:num_inputs]}
+        for name, val in zip(differentiable_input_names, non_static_inputs):
+            ann = param_ann.get(name)
+            if ann is None:
+                continue
+            # Check if annotation is a warp array type (annotation is an instance of wp.array)
+            is_array_ann = isinstance(ann, wp.array)
+            if not is_array_ann:
+                continue
+            dtype_ndim = 0
+            # Extract dtype ndim if it's a vector/matrix type
+            if hasattr(ann, "dtype") and hasattr(ann.dtype, "_wp_scalar_type_"):
+                dtype_ndim = len(ann.dtype._shape_)
+            warp_ndim = getattr(ann, "ndim", 0)
+            vshape = tuple(val.shape)
+            if warp_ndim == 0:
+                continue
+            if dtype_ndim > 0:
+                core_rank = max(0, len(vshape) - dtype_ndim)
+                warp_dims = vshape[max(0, core_rank - warp_ndim) : core_rank]
+            else:
+                warp_dims = vshape[-warp_ndim:]
+            out_dims_map[f"{name}__vjp"] = tuple(warp_dims)
+
+        non_static_input_grads = jax_bwd_kernel(*bwd_call_args, output_dims=out_dims_map)
+        return tuple(non_static_input_grads)
+
+    jax_func = jax.custom_vjp(jax_fwd_kernel, nondiff_argnums=tuple(static_args))
+    jax_func.defvjp(fwd_function, bwd_function)
+
+    if static_args:
+        static_names = [parameters[i].name for i in static_args]
+
+        def _user_callable(*args):
+            return jax_func(*args)
+
+        _user_callable.__signature__ = signature
+
+        # Cache differentiable wrapper
+        key = (kernel.func, kernel.sig, num_outputs, vmap_method, tuple(sorted(static_names)))
+        with _FFI_REGISTRY_LOCK:
+            cached = _FFI_DIFF_KERNEL_REGISTRY.get(key)
+            if cached is None:
+                cached = jax.jit(_user_callable, static_argnames=tuple(static_names))
+                _FFI_DIFF_KERNEL_REGISTRY[key] = cached
+        return _FFI_DIFF_KERNEL_REGISTRY[key]
+
+    # Cache differentiable wrapper (no static args)
+    key = (kernel.func, kernel.sig, num_outputs, vmap_method, ())
+    with _FFI_REGISTRY_LOCK:
+        cached = _FFI_DIFF_KERNEL_REGISTRY.get(key)
+        if cached is None:
+            _FFI_DIFF_KERNEL_REGISTRY[key] = jax_func
+            cached = jax_func
+    return cached
 
 
 def jax_callable(
@@ -829,7 +1092,9 @@ def jax_callable(
         output_dims: Specify the default dimensions of output arrays.
             If ``None``, output dimensions are inferred from the launch dimensions.
             This argument can also be specified for individual calls.
-        in_out_argnames: Names of input-output arguments.
+        in_out_argnames: Names of arguments that are both inputs and outputs (aliased buffers).
+            These must be array arguments that appear before any pure output arguments in the
+            function signature. The number of in-out arguments is included in ``num_outputs``.
         graph_cache_max: Maximum number of cached graphs captured using ``GraphMode.WARP``.
             If ``None``, use ``warp.jax_experimental.ffi.jax_callable_default_graph_cache_max``.
         module_preload_mode: Specify the devices where the module should be preloaded.
