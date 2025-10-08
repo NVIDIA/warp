@@ -22,7 +22,6 @@ from typing import TypeVar
 from typing import Generic
 from typing import Sequence
 from typing import overload as over
-from typing import Optional
 
 Length = TypeVar("Length", bound=int)
 Rows = TypeVar("Rows", bound=int)
@@ -3223,7 +3222,7 @@ def tile_map(
     ...
 
 @over
-def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: Optional[int32] = -1) -> BvhQuery:
+def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> BvhQuery:
     """Construct an axis-aligned bounding box query against a BVH object.
 
     This query can be used to iterate over all bounds inside a BVH.
@@ -3239,7 +3238,7 @@ def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: Optional[int32] = 
     ...
 
 @over
-def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: Optional[int32] = -1) -> BvhQuery:
+def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32) -> BvhQuery:
     """Construct a ray query against a BVH object.
 
     This query can be used to iterate over all bounds that intersect the ray.
@@ -3255,9 +3254,9 @@ def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: Optional[int32] = 
     ...
 
 @over
-def bvh_query_next(query: BvhQuery, index: int32, max_dist: float32 = inf) -> bool:
+def bvh_query_next(query: BvhQuery, index: int32, max_dist: float32) -> bool:
     """Move to the next bound returned by the query.
-    
+
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
     For ray queries only, ``max_dist`` limits the maximum intersection distance.
 
@@ -3268,12 +3267,12 @@ def bvh_query_next(query: BvhQuery, index: int32, max_dist: float32 = inf) -> bo
     ...
 
 @over
-def bvh_get_group_root(id: uint64, group: int) -> int:
+def bvh_get_group_root(id: uint64, group: int32) -> int:
     """Get the root of a group in a BVH.
 
     Returns the root node index for the specified group. If the group is not found, returns -1
     which is the root of the entire BVH.
-    
+
     :param id: The BVH identifier
     :param group: The group identifier
     """

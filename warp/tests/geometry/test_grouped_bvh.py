@@ -409,7 +409,7 @@ devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 
 
-class TestBvh(unittest.TestCase):
+class TestGroupedBvh(unittest.TestCase):
     def test_bvh_codegen_adjoints_with_select(self):
         def kernel_fn(bvh: wp.uint64):
             v = wp.vec3(0.0, 0.0, 0.0)

@@ -5063,7 +5063,7 @@ Geometry
 ---------------
 .. autoclass:: warp.BvhQuery
    :exclude-members: Var, vars
-.. py:function:: bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32 = -1) -> BvhQuery
+.. py:function:: bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> BvhQuery
 
     .. hlist::
        :columns: 8
@@ -5084,7 +5084,7 @@ Geometry
     :param root: The root to begin the query from (optional, default: -1)
 
 
-.. py:function:: bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32 = -1) -> BvhQuery
+.. py:function:: bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32) -> BvhQuery
 
     .. hlist::
        :columns: 8
@@ -5105,7 +5105,7 @@ Geometry
     :param root: The root to begin the query from (optional, default: -1)
 
 
-.. py:function:: bvh_query_next(query: BvhQuery, index: int32, max_dist: float32 = inf) -> bool
+.. py:function:: bvh_query_next(query: BvhQuery, index: int32, max_dist: float32) -> bool
 
     .. hlist::
        :columns: 8
@@ -5123,18 +5123,19 @@ Geometry
     :param max_dist: The maximum distance along the ray to check for intersections for ray queries (optional, default: inf)
 
 
-.. py:function:: bvh_get_group_root(id: uint64, group: int) -> int
+.. py:function:: bvh_get_group_root(id: uint64, group: int32) -> int
 
     .. hlist::
        :columns: 8
 
        * Kernel
+       * Differentiable
 
     Get the root of a group in a BVH.
-    
+
     Returns the root node index for the specified group. If the group is not found, returns -1
     which is the root of the entire BVH.
-    
+
     :param id: The BVH identifier
     :param group: The group identifier
 
