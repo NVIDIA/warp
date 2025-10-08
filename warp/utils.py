@@ -178,6 +178,8 @@ def radix_sort_pairs(keys, values, count: int):
             runtime.core.wp_radix_sort_pairs_float_host(keys.ptr, values.ptr, count)
         elif keys.dtype == wp.int64 and values.dtype == wp.int32:
             runtime.core.wp_radix_sort_pairs_int64_host(keys.ptr, values.ptr, count)
+        elif keys.dtype == wp.uint64 and values.dtype == wp.int32:
+            runtime.core.wp_radix_sort_pairs_uint64_host(keys.ptr, values.ptr, count)
         else:
             raise RuntimeError(
                 f"Unsupported keys and values data types: {type_repr(keys.dtype)}, {type_repr(values.dtype)}"
@@ -189,6 +191,8 @@ def radix_sort_pairs(keys, values, count: int):
             runtime.core.wp_radix_sort_pairs_float_device(keys.ptr, values.ptr, count)
         elif keys.dtype == wp.int64 and values.dtype == wp.int32:
             runtime.core.wp_radix_sort_pairs_int64_device(keys.ptr, values.ptr, count)
+        elif keys.dtype == wp.uint64 and values.dtype == wp.int32:
+            runtime.core.wp_radix_sort_pairs_uint64_device(keys.ptr, values.ptr, count)
         else:
             raise RuntimeError(
                 f"Unsupported keys and values data types: {type_repr(keys.dtype)}, {type_repr(values.dtype)}"
