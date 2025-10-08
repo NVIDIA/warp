@@ -36,7 +36,7 @@ parser.add_argument(
     "-M",
     type=str,
     default="manylinux_2_28",
-    help="Manylinux flavor for Linux wheels: manylinux2014|manylinux_2_28|manylinux_2_34",
+    help="Manylinux flavor for Linux wheels: manylinux_2_28|manylinux_2_34",
 )
 args = parser.parse_known_args()[0]
 
@@ -164,7 +164,7 @@ class WarpBDistWheel(bdist_wheel):
     user_options: ClassVar[list[tuple[str, str, str]]] = [
         *bdist_wheel.user_options,
         ("platform=", "P", "Wheel platform: windows|linux|macos-x86_64|aarch64|universal"),
-        ("manylinux=", "M", "Manylinux flavor for Linux wheels: manylinux2014|manylinux_2_28|manylinux_2_34"),
+        ("manylinux=", "M", "Manylinux flavor for Linux wheels: manylinux_2_28|manylinux_2_34"),
     ]
 
     def initialize_options(self):
