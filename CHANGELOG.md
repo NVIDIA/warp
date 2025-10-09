@@ -20,6 +20,8 @@
 - Add support for limiting the graph cache size of JAX callables ([GH-989](https://github.com/NVIDIA/warp/issues/989)).
 - Add support for JAX pmap ([GH-976](https://github.com/NVIDIA/warp/pull/976)).
 - Add adjoint for `wp.transform()` when constructing with individual scalars ([GH-1011](https://github.com/NVIDIA/warp/issues/1011)).
+- Add `wp.get_cuda_supported_archs()` to query supported CUDA compute architectures for compilation targets
+  ([GH-964](https://github.com/NVIDIA/warp/issues/964)).
 
 ### Removed
 

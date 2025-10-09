@@ -1346,7 +1346,8 @@ A list of GPU architectures for which to generate code as well as whether to gen
 specified when calling :func:`wp.compile_aot_module() <warp.compile_aot_module>`.
 
 The following example shows how to compile a module without hashing for multiple architectures as CUBIN files
-by passing in a list of architectures to the ``arch`` argument.
+by passing in a list of architectures returned by
+:func:`wp.get_cuda_supported_archs() <warp.get_cuda_supported_archs>` to the ``arch`` argument.
 
 .. code:: python
 
@@ -1367,7 +1368,7 @@ by passing in a list of architectures to the ``arch`` argument.
         wp.init()
         wp.compile_aot_module(
             __name__,
-            arch=[75, 80, 86, 87, 88, 89, 90, 120, 100, 103, 110, 121],
+            arch=wp.get_cuda_supported_archs(),
             module_dir="output",
             strip_hash=True,
             use_ptx=False,

@@ -85,6 +85,28 @@ class TestDevices(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             wp.unmap_cuda_device("imaginary_device:0")
 
+    def test_devices_get_cuda_supported_archs(self):
+        if not wp.is_cuda_available():
+            self.assertEqual(wp.get_cuda_supported_archs(), [], "Should return empty list when CUDA is not available")
+        else:
+            archs = wp.get_cuda_supported_archs()
+            self.assertTrue(len(archs) > 0, "No CUDA supported architectures found")
+
+            # Check all elements are integers
+            for arch in archs:
+                self.assertIsInstance(arch, int, f"Architecture value {arch} should be an integer")
+
+            # Check the list is sorted
+            self.assertEqual(archs, sorted(archs), "Architecture list should be sorted")
+
+            # Check for no duplicates
+            self.assertEqual(len(archs), len(set(archs)), "Architecture list should not contain duplicates")
+
+            # Check values are reasonable (modern CUDA architectures are >= 50)
+            for arch in archs:
+                self.assertGreaterEqual(arch, 50, f"Architecture {arch} should be >= 50 (e.g., sm_50)")
+                self.assertLessEqual(arch, 150, f"Architecture {arch} seems unreasonably high")
+
 
 add_function_test(
     TestDevices,
