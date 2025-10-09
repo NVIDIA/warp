@@ -18,6 +18,7 @@ from __future__ import annotations
 import builtins
 import ctypes
 import enum
+import functools
 import inspect
 import math
 import struct
@@ -325,6 +326,7 @@ def _rbinary_op(self, op, x, t, cw=True):
     return t(*(warp.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x)))
 
 
+@functools.lru_cache(maxsize=None)
 def vector(length, dtype):
     # canonicalize dtype
     if dtype == int:
@@ -531,6 +533,7 @@ def vector(length, dtype):
     return vec_t
 
 
+@functools.lru_cache(maxsize=None)
 def matrix(shape, dtype):
     assert len(shape) == 2
 
