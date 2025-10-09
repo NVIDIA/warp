@@ -162,7 +162,7 @@ if each nested loop is below the ``max_unroll`` threshold.
 This setting can be overridden at the module level by setting the ``"max_unroll"`` module option.
 """
 
-enable_tiles_in_stack_memory: bool = False
+enable_tiles_in_stack_memory: bool = True
 """Use stack memory instead of static memory for tile allocations on the CPU.
 
 Static memory in kernels is not well supported on some architectures (notably AArch64). We work
