@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import cached_property
 from typing import ClassVar, Optional, Tuple, Type
 
 import warp as wp
@@ -68,14 +69,17 @@ class SpaceTopology:
         """Number of nodes in the interpolation basis"""
         raise NotImplementedError
 
+    @cache.cached_arg_value
     def topo_arg_value(self, device) -> "TopologyArg":
         """Value of the topology argument structure to be passed to device functions"""
-        return SpaceTopology.TopologyArg()
+        arg = self.TopologyArg()
+        self.fill_topo_arg(arg, device)
+        return arg
 
     def fill_topo_arg(self, arg, device):
         pass
 
-    @property
+    @cached_property
     def name(self):
         return f"{self.__class__.__name__}_{self.MAX_NODES_PER_ELEMENT}"
 
@@ -247,7 +251,7 @@ class TraceSpaceTopology(SpaceTopology):
     def node_count(self) -> int:
         return self._topo.node_count()
 
-    @property
+    @cached_property
     def name(self):
         return f"{self._topo.name}_Trace"
 
@@ -345,7 +349,7 @@ class RegularDiscontinuousSpaceTopologyMixin:
     def node_count(self):
         return self.geometry.cell_count() * self.MAX_NODES_PER_ELEMENT
 
-    @property
+    @cached_property
     def name(self):
         return f"{self.geometry.name}_D{self.MAX_NODES_PER_ELEMENT}"
 
@@ -389,7 +393,7 @@ class DeformedGeometrySpaceTopology(SpaceTopology):
 
         cache.setup_dynamic_attributes(self, cls=__class__)
 
-    @property
+    @cached_property
     def name(self):
         return f"{self.base.name}_{self.geometry.field.name}"
 

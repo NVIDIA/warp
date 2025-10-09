@@ -182,7 +182,7 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
                     index = _tet_node_index(tx, ty, tz, degree)
                     tet_coords[index] = [tx, ty, tz]
 
-        CoordTypeVec = wp.mat(dtype=int, shape=(self.NODES_PER_ELEMENT, 3))
+        CoordTypeVec = cache.cached_mat_type(dtype=int, shape=(self.NODES_PER_ELEMENT, 3))
         self.NODE_TET_COORDS = wp.constant(CoordTypeVec(tet_coords))
 
         self.node_type_and_type_index = self._get_node_type_and_type_index()

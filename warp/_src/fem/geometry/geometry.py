@@ -17,6 +17,7 @@ from functools import cached_property
 from typing import Any, ClassVar
 
 import warp as wp
+from warp._src.codegen import Struct
 from warp._src.fem import cache
 from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, ElementKind, Sample, make_free_sample
 
@@ -66,7 +67,7 @@ class Geometry:
     @property
     def cell_dimension(self) -> int:
         """Manifold dimension of the geometry cells"""
-        return self.reference_cell().dimension
+        return self.reference_cell().prototype.dimension
 
     @property
     def base(self) -> "Geometry":
@@ -80,22 +81,27 @@ class Geometry:
     def __str__(self) -> str:
         return self.name
 
-    CellArg: wp._src.codegen.Struct
+    CellArg: Struct
     """Structure containing arguments to be passed to device functions evaluating cell-related quantities"""
 
-    SideArg: wp._src.codegen.Struct
+    SideArg: Struct
     """Structure containing arguments to be passed to device functions evaluating side-related quantities"""
 
-    SideIndexArg: wp._src.codegen.Struct
+    SideIndexArg: Struct
     """Structure containing arguments to be passed to device functions for indexing sides"""
 
+    @cache.cached_arg_value
     def cell_arg_value(self, device) -> "Geometry.CellArg":
         """Value of the arguments to be passed to cell-related device functions"""
-        raise NotImplementedError
+        args = self.CellArg()
+        self.fill_cell_arg(args, device)
+        return args
 
     def fill_cell_arg(self, args: "Geometry.CellArg", device):
         """Fill the arguments to be passed to cell-related device functions"""
-        raise NotImplementedError
+        if self.cell_arg_value is __class__.cell_arg_value:
+            raise NotImplementedError()
+        args.assign(self.cell_arg_value(device))
 
     @staticmethod
     def cell_position(args: "Geometry.CellArg", s: "Sample"):
@@ -130,13 +136,31 @@ class Geometry:
         For elements with the same dimension as the embedding space, this will be zero."""
         raise NotImplementedError
 
+    @cache.cached_arg_value
     def side_arg_value(self, device) -> "Geometry.SideArg":
         """Value of the arguments to be passed to side-related device functions"""
-        raise NotImplementedError
+        args = self.SideArg()
+        self.fill_side_arg(args, device)
+        return args
 
     def fill_side_arg(self, args: "Geometry.SideArg", device):
         """Fill the arguments to be passed to side-related device functions"""
-        raise NotImplementedError
+        if self.side_arg_value is __class__.side_arg_value:
+            raise NotImplementedError()
+        args.assign(self.side_arg_value(device))
+
+    @cache.cached_arg_value
+    def side_index_arg_value(self, device) -> "Geometry.SideIndexArg":
+        """Value of the arguments to be passed to side-related device functions"""
+        args = self.SideIndexArg()
+        self.fill_side_index_arg(args, device)
+        return args
+
+    def fill_side_index_arg(self, args: "Geometry.SideIndexArg", device):
+        """Fill the arguments to be passed to side-related device functions"""
+        if self.side_index_arg_value is __class__.side_index_arg_value:
+            raise NotImplementedError()
+        args.assign(self.side_index_arg_value(device))
 
     @staticmethod
     def boundary_side_index(args: "Geometry.SideIndexArg", boundary_side_index: int):
@@ -269,7 +293,7 @@ class Geometry:
         return wp.normalize(Fcross)
 
     def _make_cell_measure(self):
-        REF_MEASURE = wp.constant(self.reference_cell().measure())
+        REF_MEASURE = wp.constant(self.reference_cell().prototype.measure())
 
         @cache.dynamic_func(suffix=self.name)
         def cell_measure(args: self.CellArg, s: Sample):
@@ -279,7 +303,7 @@ class Geometry:
         return cell_measure
 
     def _make_cell_normal(self):
-        cell_dim = self.reference_cell().dimension
+        cell_dim = self.reference_cell().prototype.dimension
         geo_dim = self.dimension
         normal_vec = wp.vec(length=geo_dim, dtype=float)
 
@@ -300,7 +324,7 @@ class Geometry:
         return None
 
     def _make_cell_inverse_deformation_gradient(self):
-        cell_dim = self.reference_cell().dimension
+        cell_dim = self.reference_cell().prototype.dimension
         geo_dim = self.dimension
 
         @cache.dynamic_func(suffix=self.name)
@@ -316,7 +340,7 @@ class Geometry:
         return cell_inverse_deformation_gradient if cell_dim == geo_dim else cell_pseudoinverse_deformation_gradient
 
     def _make_side_inverse_deformation_gradient(self):
-        side_dim = self.reference_side().dimension
+        side_dim = self.reference_side().prototype.dimension
         geo_dim = self.dimension
 
         if side_dim == geo_dim:
@@ -345,7 +369,7 @@ class Geometry:
         return side_pseudoinverse_deformation_gradient
 
     def _make_side_measure(self):
-        REF_MEASURE = wp.constant(self.reference_side().measure())
+        REF_MEASURE = wp.constant(self.reference_side().prototype.measure())
 
         @cache.dynamic_func(suffix=self.name)
         def side_measure(args: self.SideArg, s: Sample):
@@ -370,7 +394,7 @@ class Geometry:
         return side_measure_ratio
 
     def _make_side_normal(self):
-        side_dim = self.reference_side().dimension
+        side_dim = self.reference_side().prototype.dimension
         geo_dim = self.dimension
 
         @cache.dynamic_func(suffix=self.name)
@@ -407,12 +431,12 @@ class Geometry:
         pos_type = cache.cached_vec_type(self.dimension, dtype=float)
 
         if element_kind == ElementKind.CELL:
-            ref_elt = self.reference_cell()
+            ref_elt = self.reference_cell().prototype
             arg_type = self.CellArg
             elt_pos = self.cell_position
             elt_inv_grad = self.cell_inverse_deformation_gradient
         else:
-            ref_elt = self.reference_side()
+            ref_elt = self.reference_side().prototype
             arg_type = self.SideArg
             elt_pos = self.side_position
             elt_inv_grad = self.side_inverse_deformation_gradient
@@ -452,12 +476,12 @@ class Geometry:
         element_coordinates = self._make_element_coordinates(element_kind=element_kind, assume_linear=assume_linear)
 
         if element_kind == ElementKind.CELL:
-            ref_elt = self.reference_cell()
+            ref_elt = self.reference_cell().prototype
             arg_type = self.CellArg
             elt_pos = self.cell_position
             elt_def_grad = self.cell_deformation_gradient
         else:
-            ref_elt = self.reference_side()
+            ref_elt = self.reference_side().prototype
             arg_type = self.SideArg
             elt_pos = self.side_position
             elt_def_grad = self.side_deformation_gradient
@@ -636,7 +660,11 @@ class Geometry:
 
         if self._bvhs is None:
             self._bvhs = {}
+
         self._bvhs[device.ordinal] = wp.Bvh(lowers, uppers)
+
+        Geometry.cell_arg_value.invalidate(self, device)
+        Geometry.side_arg_value.invalidate(self, device)
 
     def bvh_id(self, device):
         if self._bvhs is None:

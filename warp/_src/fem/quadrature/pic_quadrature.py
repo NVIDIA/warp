@@ -16,10 +16,11 @@
 from typing import Any, Optional, Tuple, Union
 
 import warp as wp
-from warp._src.fem.cache import TemporaryStore, borrow_temporary, cached_arg_value, dynamic_kernel
+from warp._src.fem.cache import TemporaryStore, borrow_temporary, dynamic_kernel
 from warp._src.fem.domain import GeometryDomain
 from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, make_free_sample
 from warp._src.fem.utils import compress_node_indices
+from warp._src.types import is_array
 
 from .quadrature import Quadrature
 
@@ -63,7 +64,7 @@ class PicQuadrature(Quadrature):
 
     @property
     def name(self):
-        return f"{self.__class__.__name__}"
+        return self.__class__.__name__
 
     @Quadrature.domain.setter
     def domain(self, domain: GeometryDomain):
@@ -84,15 +85,9 @@ class PicQuadrature(Quadrature):
         particle_fraction: wp.array(dtype=float)
         particle_coords: wp.array(dtype=Coords)
 
-    @cached_arg_value
-    def arg_value(self, device) -> Arg:
-        arg = PicQuadrature.Arg()
-        self.fill_arg(arg, device)
-        return arg
-
     def fill_arg(self, args: Arg, device):
-        args.cell_particle_offsets = self._cell_particle_offsets.array.to(device)
-        args.cell_particle_indices = self._cell_particle_indices.array.to(device)
+        args.cell_particle_offsets = self._cell_particle_offsets.to(device)
+        args.cell_particle_indices = self._cell_particle_indices.to(device)
         args.particle_fraction = self._particle_fraction.to(device)
         args.particle_coords = self.particle_coords.to(device)
 
@@ -101,16 +96,16 @@ class PicQuadrature(Quadrature):
 
     def active_cell_count(self):
         """Number of cells containing at least one particle"""
-        return self._cell_count
+        return self._cell_count.numpy()[0]
 
     def max_points_per_element(self):
         if self._max_particles_per_cell is None:
-            max_ppc = wp.zeros(shape=(1,), dtype=int, device=self._cell_particle_offsets.array.device)
+            max_ppc = wp.zeros(shape=(1,), dtype=int, device=self._cell_particle_offsets.device)
             wp.launch(
                 PicQuadrature._max_particles_per_cell_kernel,
-                self._cell_particle_offsets.array.shape[0] - 1,
+                self._cell_particle_offsets.shape[0] - 1,
                 device=max_ppc.device,
-                inputs=[self._cell_particle_offsets.array, max_ppc],
+                inputs=[self._cell_particle_offsets, max_ppc],
             )
             self._max_particles_per_cell = int(max_ppc.numpy()[0])
         return self._max_particles_per_cell
@@ -157,7 +152,7 @@ class PicQuadrature(Quadrature):
             kernel=PicQuadrature._fill_mask_kernel,
             dim=self.domain.geometry_element_count(),
             device=mask.device,
-            inputs=[self._cell_particle_offsets.array, mask],
+            inputs=[self._cell_particle_offsets, mask],
         )
 
     @wp.kernel
@@ -184,7 +179,7 @@ class PicQuadrature(Quadrature):
             cell_fraction[p] = 1.0 / float(cell_particle_count)
 
     def _bin_particles(self, positions, measures, max_dist: float, temporary_store: TemporaryStore):
-        if wp._src.types.is_array(positions):
+        if is_array(positions):
             device = positions.device
             if not self.domain.supports_lookup(device):
                 raise RuntimeError(
@@ -272,7 +267,7 @@ class PicQuadrature(Quadrature):
                 kernel=PicQuadrature._compute_uniform_fraction,
                 inputs=[
                     cell_index,
-                    self._cell_particle_offsets.array,
+                    self._cell_particle_offsets,
                     self._particle_fraction,
                 ],
                 device=device,

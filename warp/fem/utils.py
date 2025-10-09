@@ -15,10 +15,10 @@
 
 # isort: skip_file
 
-from warp._src.fem.utils import array_axpy as array_axpy
 from warp._src.fem.utils import grid_to_quads as grid_to_quads
 from warp._src.fem.utils import grid_to_tris as grid_to_tris
-from warp._src.fem.utils import inverse_qr as inverse_qr
+from warp._src.fem.utils import grid_to_tets as grid_to_tets
+from warp._src.fem.utils import grid_to_hexes as grid_to_hexes
 
 
 # TODO: Remove after cleaning up the public API.

@@ -55,19 +55,19 @@ def adaptive_nanogrid_from_hierarchy(
     for l in range(level_count):
         voxel_count = voxel_counts[l]
         grid_voxels = cache.borrow_temporary(temporary_store, shape=(voxel_count,), dtype=wp.vec3i, device=device)
-        grids[l].get_voxels(out=grid_voxels.array)
+        grids[l].get_voxels(out=grid_voxels)
 
         wp.launch(
             _fill_hierarchy_merged_ijk,
             dim=voxel_count,
             device=device,
-            inputs=[l, voxel_offsets[l], grid_voxels.array, merged_ijks.array],
+            inputs=[l, voxel_offsets[l], grid_voxels, merged_ijks],
         )
 
     # Allocate merged grid
     grid_info = grids[0].get_grid_info()
     cell_grid = wp.Volume.allocate_by_voxels(
-        merged_ijks.array,
+        merged_ijks,
         transform=grid_info.transform_matrix,
         translation=grid_info.translation,
         device=device,
@@ -78,14 +78,14 @@ def adaptive_nanogrid_from_hierarchy(
     cell_ijk = cache.borrow_temporary(temporary_store, shape=(cell_count,), dtype=wp.vec3i, device=device)
     cell_level = wp.array(shape=(cell_count,), dtype=wp.uint8, device=device)
 
-    cell_grid.get_voxels(out=cell_ijk.array)
+    cell_grid.get_voxels(out=cell_ijk)
 
     cell_grid_ids = wp.array([grid.id for grid in grids], dtype=wp.uint64, device=device)
     wp.launch(
         _fill_hierarchy_cell_level,
         device=device,
         dim=cell_count,
-        inputs=[level_count, cell_grid_ids, cell_ijk.array, cell_level],
+        inputs=[level_count, cell_grid_ids, cell_ijk, cell_level],
     )
 
     cell_grid, cell_level = enforce_nanogrid_grading(
@@ -122,16 +122,16 @@ def adaptive_nanogrid_from_field(
     cell_ijk = cache.borrow_temporary(temporary_store, shape=(cell_count,), dtype=wp.vec3i, device=device)
     cell_level = cache.borrow_temporary(temporary_store, shape=(cell_count,), dtype=wp.uint8, device=device)
 
-    cell_level.array.fill_(level_count - 1)
-    coarse_grid.get_voxels(out=cell_ijk.array)
+    cell_level.fill_(level_count - 1)
+    coarse_grid.get_voxels(out=cell_ijk)
 
     domain = Cells(refinement_field.geometry)
 
     fine_count = cache.borrow_temporary(temporary_store, dtype=int, shape=1, device=device)
-    fine_count.array.zero_()
+    fine_count.zero_()
 
     for _ in range(level_count):
-        cell_count = cell_ijk.array.shape[0]
+        cell_count = cell_ijk.shape[0]
         cell_refinement = cache.borrow_temporary(temporary_store, shape=(cell_count,), dtype=wp.int8, device=device)
 
         with wp.ScopedDevice(device):
@@ -144,14 +144,14 @@ def adaptive_nanogrid_from_field(
                     "sample_count": samples_per_voxel,
                     "level_count": level_count,
                     "coarse_grid": coarse_grid.id,
-                    "coarse_ijk": cell_ijk.array,
-                    "coarse_level": cell_level.array,
-                    "coarse_refinement": cell_refinement.array,
-                    "fine_count": fine_count.array,
+                    "coarse_ijk": cell_ijk,
+                    "coarse_level": cell_level,
+                    "coarse_refinement": cell_refinement,
+                    "fine_count": fine_count,
                 },
             )
 
-        fine_shape = int(fine_count.array.numpy()[0])
+        fine_shape = int(fine_count.numpy()[0])
         fine_ijk = cache.borrow_temporary(temporary_store, shape=fine_shape, dtype=wp.vec3i, device=device)
         fine_level = cache.borrow_temporary(temporary_store, shape=fine_shape, dtype=wp.uint8, device=device)
 
@@ -160,12 +160,12 @@ def adaptive_nanogrid_from_field(
             dim=cell_count,
             device=device,
             inputs=[
-                cell_ijk.array,
-                cell_level.array,
-                cell_refinement.array,
-                fine_count.array,
-                fine_ijk.array,
-                fine_level.array,
+                cell_ijk,
+                cell_level,
+                cell_refinement,
+                fine_count,
+                fine_ijk,
+                fine_level,
             ],
         )
 
@@ -173,7 +173,7 @@ def adaptive_nanogrid_from_field(
         cell_ijk = fine_ijk
         cell_level = fine_level
 
-    wp.launch(_adjust_refined_ijk, dim=fine_shape, device=device, inputs=[cell_ijk.array, cell_level.array])
+    wp.launch(_adjust_refined_ijk, dim=fine_shape, device=device, inputs=[cell_ijk, cell_level])
 
     # We now have our refined voxels, allocate the grid
     coarse_info = coarse_grid.get_grid_info()
@@ -181,7 +181,7 @@ def adaptive_nanogrid_from_field(
     fine_transform = coarse_info.transform_matrix * fine_scale
     fine_translation = coarse_info.translation + (fine_scale - 1.0) * 0.5 * wp.vec3(coarse_grid.get_voxel_size())
     fine_grid = wp.Volume.allocate_by_voxels(
-        cell_ijk.array, translation=fine_translation, transform=fine_transform, device=device
+        cell_ijk, translation=fine_translation, transform=fine_transform, device=device
     )
 
     # Reorder cell_levels (voxels will have moved)
@@ -191,7 +191,7 @@ def adaptive_nanogrid_from_field(
         _fill_refined_level,
         dim=fine_count,
         device=device,
-        inputs=[fine_grid.id, cell_ijk.array, cell_level.array, fine_level],
+        inputs=[fine_grid.id, cell_ijk, cell_level, fine_level],
     )
 
     fine_grid, fine_level = enforce_nanogrid_grading(
@@ -234,31 +234,31 @@ def enforce_nanogrid_grading(
     for _ in range(level_count - 2):
         cell_count = cell_grid.get_voxel_count()
         cell_ijk = cache.borrow_temporary(temporary_store, shape=(cell_count,), dtype=wp.vec3i, device=device)
-        cell_grid.get_voxels(out=cell_ijk.array)
+        cell_grid.get_voxels(out=cell_ijk)
 
         refinement = cache.borrow_temporary(temporary_store, shape=(cell_count,), dtype=int, device=device)
-        refinement.array.zero_()
+        refinement.zero_()
 
         wp.launch(
             grading_kernel,
             dim=cell_count,
             device=device,
-            inputs=[cell_grid.id, cell_ijk.array, cell_level, level_count, refinement.array],
+            inputs=[cell_grid.id, cell_ijk, cell_level, level_count, refinement],
         )
 
-        fine_count.array.fill_(cell_count)
+        fine_count.fill_(cell_count)
         wp.launch(
             _count_graded_cells,
             dim=cell_count,
             device=device,
             inputs=[
-                refinement.array,
-                fine_count.array,
+                refinement,
+                fine_count,
             ],
         )
 
         # Add new coordinates
-        fine_shape = int(fine_count.array.numpy()[0])
+        fine_shape = int(fine_count.numpy()[0])
         if fine_shape == cell_count:
             break
 
@@ -270,25 +270,25 @@ def enforce_nanogrid_grading(
             dim=cell_count,
             device=device,
             inputs=[
-                cell_ijk.array,
+                cell_ijk,
                 cell_level,
-                refinement.array,
-                fine_count.array,
-                fine_ijk.array,
-                fine_level.array,
+                refinement,
+                fine_count,
+                fine_ijk,
+                fine_level,
             ],
         )
 
         # Rebuild grid and levels
         cell_grid = wp.Volume.allocate_by_voxels(
-            fine_ijk.array, translation=grid_info.translation, transform=grid_info.transform_matrix, device=device
+            fine_ijk, translation=grid_info.translation, transform=grid_info.transform_matrix, device=device
         )
         cell_level = wp.empty(fine_shape, dtype=wp.uint8, device=device)
         wp.launch(
             _fill_refined_level,
             dim=fine_shape,
             device=device,
-            inputs=[cell_grid.id, fine_ijk.array, fine_level.array, cell_level],
+            inputs=[cell_grid.id, fine_ijk, fine_level, cell_level],
         )
 
     return cell_grid, cell_level

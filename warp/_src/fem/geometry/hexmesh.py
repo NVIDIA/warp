@@ -20,11 +20,10 @@ from warp._src.fem.cache import (
     TemporaryStore,
     borrow_temporary,
     borrow_temporary_like,
-    cached_arg_value,
 )
 from warp._src.fem.types import OUTSIDE, Coords, ElementIndex, Sample
 
-from .element import Cube, Square
+from .element import Element
 from .geometry import Geometry
 
 
@@ -199,11 +198,11 @@ class Hexmesh(Geometry):
     def boundary_side_count(self):
         return self._boundary_face_indices.shape[0]
 
-    def reference_cell(self) -> Cube:
-        return Cube()
+    def reference_cell(self) -> Element:
+        return Element.CUBE
 
-    def reference_side(self) -> Square:
-        return Square()
+    def reference_side(self) -> Element:
+        return Element.SQUARE
 
     @property
     def hex_edge_indices(self) -> wp.array:
@@ -227,11 +226,6 @@ class Hexmesh(Geometry):
         boundary_face_indices: wp.array(dtype=int)
 
     # Geometry device interface
-
-    def cell_arg_value(self, device) -> CellArg:
-        args = self.CellArg()
-        self.fill_cell_arg(args, device)
-        return args
 
     def fill_cell_arg(self, args: CellArg, device):
         args.hex_vertex_indices = self.hex_vertex_indices.to(device)
@@ -305,12 +299,6 @@ class Hexmesh(Geometry):
         p3 = cell_arg.positions[hex_idx[4]]
         return wp.matrix_from_cols(p1 - p0, p2 - p0, p3 - p0)
 
-    @cached_arg_value
-    def side_index_arg_value(self, device) -> SideIndexArg:
-        args = self.SideIndexArg()
-        self.fill_side_index_arg(args, device)
-        return args
-
     def fill_side_index_arg(self, args: SideIndexArg, device):
         args.boundary_face_indices = self._boundary_face_indices.to(device)
 
@@ -319,11 +307,6 @@ class Hexmesh(Geometry):
         """Boundary side to side index"""
 
         return args.boundary_face_indices[boundary_side_index]
-
-    def side_arg_value(self, device) -> CellArg:
-        args = self.SideArg()
-        self.fill_side_arg(args, device)
-        return args
 
     def fill_side_arg(self, args: SideArg, device):
         self.fill_cell_arg(args.cell_arg, device)
@@ -466,7 +449,7 @@ class Hexmesh(Geometry):
         self._vertex_hex_indices = vertex_hex_indices.detach()
 
         vertex_start_face_count = borrow_temporary(temporary_store, dtype=int, device=device, shape=self.vertex_count())
-        vertex_start_face_count.array.zero_()
+        vertex_start_face_count.zero_()
         vertex_start_face_offsets = borrow_temporary_like(vertex_start_face_count, temporary_store=temporary_store)
 
         vertex_face_other_vs = borrow_temporary(
@@ -481,10 +464,10 @@ class Hexmesh(Geometry):
             kernel=Hexmesh._count_starting_faces_kernel,
             device=device,
             dim=self.cell_count(),
-            inputs=[self.hex_vertex_indices, vertex_start_face_count.array],
+            inputs=[self.hex_vertex_indices, vertex_start_face_count],
         )
 
-        array_scan(in_array=vertex_start_face_count.array, out_array=vertex_start_face_offsets.array, inclusive=False)
+        array_scan(in_array=vertex_start_face_count, out_array=vertex_start_face_offsets, inclusive=False)
 
         # Count number of unique edges (deduplicate across faces)
         vertex_unique_face_count = vertex_start_face_count
@@ -496,21 +479,19 @@ class Hexmesh(Geometry):
                 self._vertex_hex_offsets,
                 self._vertex_hex_indices,
                 self.hex_vertex_indices,
-                vertex_start_face_offsets.array,
-                vertex_unique_face_count.array,
-                vertex_face_other_vs.array,
-                vertex_face_hexes.array,
+                vertex_start_face_offsets,
+                vertex_unique_face_count,
+                vertex_face_other_vs,
+                vertex_face_hexes,
             ],
         )
 
         vertex_unique_face_offsets = borrow_temporary_like(vertex_start_face_offsets, temporary_store=temporary_store)
-        array_scan(in_array=vertex_start_face_count.array, out_array=vertex_unique_face_offsets.array, inclusive=False)
+        array_scan(in_array=vertex_start_face_count, out_array=vertex_unique_face_offsets, inclusive=False)
 
         # Get back edge count to host
         face_count = int(
-            host_read_at_index(
-                vertex_unique_face_offsets.array, self.vertex_count() - 1, temporary_store=temporary_store
-            )
+            host_read_at_index(vertex_unique_face_offsets, self.vertex_count() - 1, temporary_store=temporary_store)
         )
 
         self._face_vertex_indices = wp.empty(shape=(face_count,), dtype=wp.vec4i, device=device)
@@ -525,14 +506,14 @@ class Hexmesh(Geometry):
             device=device,
             dim=self.vertex_count(),
             inputs=[
-                vertex_start_face_offsets.array,
-                vertex_unique_face_offsets.array,
-                vertex_unique_face_count.array,
-                vertex_face_other_vs.array,
-                vertex_face_hexes.array,
+                vertex_start_face_offsets,
+                vertex_unique_face_offsets,
+                vertex_unique_face_count,
+                vertex_face_other_vs,
+                vertex_face_hexes,
                 self._face_vertex_indices,
                 self._face_hex_indices,
-                boundary_mask.array,
+                boundary_mask,
             ],
         )
 
@@ -563,7 +544,7 @@ class Hexmesh(Geometry):
             ],
         )
 
-        boundary_face_indices, _ = masked_indices(boundary_mask.array)
+        boundary_face_indices, _ = masked_indices(boundary_mask)
         self._boundary_face_indices = boundary_face_indices.detach()
 
     def _compute_hex_edges(self, temporary_store: Optional[TemporaryStore] = None):
@@ -573,7 +554,7 @@ class Hexmesh(Geometry):
         device = self.hex_vertex_indices.device
 
         vertex_start_edge_count = borrow_temporary(temporary_store, dtype=int, device=device, shape=self.vertex_count())
-        vertex_start_edge_count.array.zero_()
+        vertex_start_edge_count.zero_()
         vertex_start_edge_offsets = borrow_temporary_like(vertex_start_edge_count, temporary_store=temporary_store)
 
         vertex_edge_ends = borrow_temporary(temporary_store, dtype=int, device=device, shape=(12 * self.cell_count()))
@@ -583,10 +564,10 @@ class Hexmesh(Geometry):
             kernel=Hexmesh._count_starting_edges_kernel,
             device=device,
             dim=self.cell_count(),
-            inputs=[self.hex_vertex_indices, vertex_start_edge_count.array],
+            inputs=[self.hex_vertex_indices, vertex_start_edge_count],
         )
 
-        array_scan(in_array=vertex_start_edge_count.array, out_array=vertex_start_edge_offsets.array, inclusive=False)
+        array_scan(in_array=vertex_start_edge_count, out_array=vertex_start_edge_offsets, inclusive=False)
 
         # Count number of unique edges (deduplicate across faces)
         vertex_unique_edge_count = vertex_start_edge_count
@@ -598,22 +579,18 @@ class Hexmesh(Geometry):
                 self._vertex_hex_offsets,
                 self._vertex_hex_indices,
                 self.hex_vertex_indices,
-                vertex_start_edge_offsets.array,
-                vertex_unique_edge_count.array,
-                vertex_edge_ends.array,
+                vertex_start_edge_offsets,
+                vertex_unique_edge_count,
+                vertex_edge_ends,
             ],
         )
 
-        vertex_unique_edge_offsets = borrow_temporary_like(
-            vertex_start_edge_offsets.array, temporary_store=temporary_store
-        )
-        array_scan(in_array=vertex_start_edge_count.array, out_array=vertex_unique_edge_offsets.array, inclusive=False)
+        vertex_unique_edge_offsets = borrow_temporary_like(vertex_start_edge_offsets, temporary_store=temporary_store)
+        array_scan(in_array=vertex_start_edge_count, out_array=vertex_unique_edge_offsets, inclusive=False)
 
         # Get back edge count to host
         self._edge_count = int(
-            host_read_at_index(
-                vertex_unique_edge_offsets.array, self.vertex_count() - 1, temporary_store=temporary_store
-            )
+            host_read_at_index(vertex_unique_edge_offsets, self.vertex_count() - 1, temporary_store=temporary_store)
         )
 
         self._hex_edge_indices = wp.empty(
@@ -629,10 +606,10 @@ class Hexmesh(Geometry):
                 self._vertex_hex_offsets,
                 self._vertex_hex_indices,
                 self.hex_vertex_indices,
-                vertex_start_edge_offsets.array,
-                vertex_unique_edge_offsets.array,
-                vertex_unique_edge_count.array,
-                vertex_edge_ends.array,
+                vertex_start_edge_offsets,
+                vertex_unique_edge_offsets,
+                vertex_unique_edge_count,
+                vertex_edge_ends,
                 self._hex_edge_indices,
             ],
         )

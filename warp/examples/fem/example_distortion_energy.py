@@ -183,7 +183,7 @@ class Example:
             fem_example_utils.bsr_cg(u_matrix, b=u_rhs, x=du, quiet=self._quiet)
 
             # Accumulate to UV field
-            fem.utils.array_axpy(x=du, y=self._u_field.dof_values, alpha=-1.0, beta=1.0)
+            fem.linalg.array_axpy(x=du, y=self._u_field.dof_values, alpha=-1.0, beta=1.0)
 
     def render(self):
         # Visualization

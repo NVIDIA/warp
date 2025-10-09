@@ -13,6 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# isort: skip_file
+
+from warp._src.fem.geometry.closest_point import project_on_seg_at_origin as project_on_seg_at_origin
+from warp._src.fem.geometry.closest_point import project_on_tri_at_origin as project_on_tri_at_origin
+from warp._src.fem.geometry.closest_point import project_on_tet_at_origin as project_on_tet_at_origin
+from warp._src.fem.geometry.closest_point import project_on_box_at_origin as project_on_box_at_origin
+
 # TODO: Remove after cleaning up the public API.
 
 from warp._src.fem.geometry import closest_point as _closest_point

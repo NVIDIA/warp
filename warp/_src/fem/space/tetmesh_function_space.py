@@ -72,12 +72,6 @@ class TetmeshSpaceTopology(SpaceTopology):
     def name(self):
         return f"{self.geometry.name}_{self._shape.name}"
 
-    @cache.cached_arg_value
-    def topo_arg_value(self, device):
-        arg = TetmeshTopologyArg()
-        self.fill_topo_arg(arg, device)
-        return arg
-
     def fill_topo_arg(self, arg: TetmeshTopologyArg, device):
         arg.tet_face_indices = self._tet_face_indices.to(device)
         arg.tet_edge_indices = self._tet_edge_indices.to(device)

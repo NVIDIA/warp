@@ -535,7 +535,7 @@ def _compute_schur_inverse_diagonal(
         S = B * Ai * wp.transpose(B)
         schur += S
 
-    P_diag[row] = fem.utils.inverse_qr(schur)
+    P_diag[row] = fem.linalg.inverse_qr(schur)
 
 
 def invert_diagonal_bsr_matrix(A: BsrMatrix):
@@ -556,7 +556,7 @@ def invert_diagonal_bsr_matrix(A: BsrMatrix):
 @wp.kernel(enable_backward=False)
 def _block_diagonal_invert(values: wp.array(dtype=Any)):
     i = wp.tid()
-    values[i] = fem.utils.inverse_qr(values[i])
+    values[i] = fem.linalg.inverse_qr(values[i])
 
 
 #

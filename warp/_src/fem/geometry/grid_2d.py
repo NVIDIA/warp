@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import cached_property
 from typing import Any, Optional
 
 import warp as wp
@@ -20,7 +21,7 @@ from warp._src.fem.cache import cached_arg_value, dynamic_func
 from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, Sample, make_free_sample
 
 from .closest_point import project_on_box_at_origin
-from .element import LinearEdge, Square
+from .element import Element
 from .geometry import Geometry
 
 
@@ -59,7 +60,7 @@ class Grid2D(Geometry):
 
         self._res = res
 
-    @property
+    @cached_property
     def extents(self) -> wp.vec3:
         # Avoid using native sub due to higher over of calling builtins from Python
         return wp.vec2(
@@ -67,7 +68,7 @@ class Grid2D(Geometry):
             self.bounds_hi[1] - self.bounds_lo[1],
         )
 
-    @property
+    @cached_property
     def cell_size(self) -> wp.vec2:
         ex = self.extents
         return wp.vec2(
@@ -87,11 +88,11 @@ class Grid2D(Geometry):
     def boundary_side_count(self):
         return 2 * (self.res[0] + self.res[1])
 
-    def reference_cell(self) -> Square:
-        return Square()
+    def reference_cell(self) -> Element:
+        return Element.SQUARE
 
-    def reference_side(self) -> LinearEdge:
-        return LinearEdge()
+    def reference_side(self) -> Element:
+        return Element.LINE_SEGMENT
 
     @property
     def res(self):
@@ -101,7 +102,7 @@ class Grid2D(Geometry):
     def origin(self):
         return self.bounds_lo
 
-    @property
+    @cached_property
     def strides(self):
         return wp.vec2i(self.res[1], 1)
 
@@ -182,12 +183,6 @@ class Grid2D(Geometry):
         return Grid2D.Side(axis, origin_loc)
 
     # Geometry device interface
-
-    @cached_arg_value
-    def cell_arg_value(self, device) -> CellArg:
-        args = self.CellArg()
-        self.fill_cell_arg(args, device)
-        return args
 
     def fill_cell_arg(self, args: CellArg, device):
         args.res = self.res
@@ -303,22 +298,16 @@ class Grid2D(Geometry):
     @cached_arg_value
     def side_arg_value(self, device) -> SideArg:
         args = self.SideArg()
-        self.fill_side_arg(args, device)
-        return args
-
-    def fill_side_arg(self, args: SideArg, device):
         args.axis_offsets = wp.vec2i(
             0,
             self.res[1],
         )
         args.cell_count = self.cell_count()
         args.cell_arg = self.cell_arg_value(device)
+        return args
 
     def side_index_arg_value(self, device) -> SideIndexArg:
         return self.side_arg_value(device)
-
-    def fill_side_index_arg(self, args: SideIndexArg, device):
-        self.fill_side_arg(args, device)
 
     @wp.func
     def boundary_side_index(args: SideArg, boundary_side_index: int):

@@ -23,10 +23,12 @@ from . import linalg as linalg
 from . import operator as operator
 from . import space as space
 from . import utils as utils
+from . import types as types
 
 from warp._src.fem.adaptivity import adaptive_nanogrid_from_field as adaptive_nanogrid_from_field
 from warp._src.fem.adaptivity import adaptive_nanogrid_from_hierarchy as adaptive_nanogrid_from_hierarchy
 
+from warp._src.fem.cache import Temporary as Temporary
 from warp._src.fem.cache import TemporaryStore as TemporaryStore
 from warp._src.fem.cache import borrow_temporary as borrow_temporary
 from warp._src.fem.cache import borrow_temporary_like as borrow_temporary_like
@@ -34,6 +36,8 @@ from warp._src.fem.cache import set_default_temporary_store as set_default_tempo
 
 from warp._src.fem.dirichlet import normalize_dirichlet_projector as normalize_dirichlet_projector
 from warp._src.fem.dirichlet import project_linear_system as project_linear_system
+from warp._src.fem.dirichlet import project_system_matrix as project_system_matrix
+from warp._src.fem.dirichlet import project_system_rhs as project_system_rhs
 
 from warp._src.fem.domain import BoundarySides as BoundarySides
 from warp._src.fem.domain import Cells as Cells
@@ -43,6 +47,7 @@ from warp._src.fem.domain import Sides as Sides
 from warp._src.fem.domain import Subdomain as Subdomain
 
 from warp._src.fem.field.field import DiscreteField as DiscreteField
+from warp._src.fem.field.field import GeometryField as GeometryField
 from warp._src.fem.field.field import FieldLike as FieldLike
 from warp._src.fem.field.field import ImplicitField as ImplicitField
 from warp._src.fem.field.field import NonconformingField as NonconformingField
@@ -62,7 +67,6 @@ from warp._src.fem.geometry.geometry import Geometry as Geometry
 from warp._src.fem.geometry.partition import ExplicitGeometryPartition as ExplicitGeometryPartition
 from warp._src.fem.geometry.partition import GeometryPartition as GeometryPartition
 from warp._src.fem.geometry.partition import LinearGeometryPartition as LinearGeometryPartition
-from warp._src.fem.geometry.partition import WholeGeometryPartition as WholeGeometryPartition
 
 from warp._src.fem.geometry.grid_2d import Grid2D as Grid2D
 
@@ -82,6 +86,8 @@ from warp._src.fem.geometry.trimesh import Trimesh3D as Trimesh3D
 
 from warp._src.fem.integrate import integrate as integrate
 from warp._src.fem.integrate import interpolate as interpolate
+
+from warp._src.fem.operator import Integrand as Integrand
 
 from warp._src.fem.operator import D as D
 from warp._src.fem.operator import at_node as at_node
@@ -125,6 +131,7 @@ from warp._src.fem.quadrature.quadrature import RegularQuadrature as RegularQuad
 
 from warp._src.fem.space.basis_space import BasisSpace as BasisSpace
 from warp._src.fem.space.basis_space import PointBasisSpace as PointBasisSpace
+from warp._src.fem.space.basis_space import ShapeBasisSpace as ShapeBasisSpace
 
 from warp._src.fem.space.dof_mapper import DofMapper as DofMapper
 from warp._src.fem.space.dof_mapper import SkewSymmetricTensorMapper as SkewSymmetricTensorMapper
@@ -138,10 +145,13 @@ from warp._src.fem.space.partition import make_space_partition as make_space_par
 from warp._src.fem.space.restriction import SpaceRestriction as SpaceRestriction
 
 from warp._src.fem.space.shape import ElementBasis as ElementBasis
+from warp._src.fem.space.shape import ShapeFunction as ShapeFunction
 
 from warp._src.fem.space import make_collocated_function_space as make_collocated_function_space
 from warp._src.fem.space import make_contravariant_function_space as make_contravariant_function_space
 from warp._src.fem.space import make_covariant_function_space as make_covariant_function_space
+from warp._src.fem.space import make_element_shape_function as make_element_shape_function
+from warp._src.fem.space import make_element_based_space_topology as make_element_based_space_topology
 from warp._src.fem.space import make_polynomial_basis_space as make_polynomial_basis_space
 from warp._src.fem.space import make_polynomial_space as make_polynomial_space
 from warp._src.fem.space import make_space_restriction as make_space_restriction
@@ -149,11 +159,15 @@ from warp._src.fem.space import make_space_restriction as make_space_restriction
 from warp._src.fem.space.topology import SpaceTopology as SpaceTopology
 
 from warp._src.fem.types import NULL_ELEMENT_INDEX as NULL_ELEMENT_INDEX
+from warp._src.fem.types import NULL_NODE_INDEX as NULL_NODE_INDEX
 from warp._src.fem.types import NULL_QP_INDEX as NULL_QP_INDEX
+from warp._src.fem.types import OUTSIDE as OUTSIDE
 from warp._src.fem.types import Coords as Coords
 from warp._src.fem.types import Domain as Domain
 from warp._src.fem.types import ElementIndex as ElementIndex
+from warp._src.fem.types import ElementKind as ElementKind
 from warp._src.fem.types import Field as Field
 from warp._src.fem.types import QuadraturePointIndex as QuadraturePointIndex
+from warp._src.fem.types import NodeIndex as NodeIndex
 from warp._src.fem.types import Sample as Sample
 from warp._src.fem.types import make_free_sample as make_free_sample

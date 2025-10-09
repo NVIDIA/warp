@@ -24,9 +24,9 @@ import warp._src.fem.polynomial as _polynomial
 
 from .function_space import FunctionSpace
 from .basis_function_space import CollocatedFunctionSpace, ContravariantFunctionSpace, CovariantFunctionSpace
-from .topology import SpaceTopology
-from .basis_space import BasisSpace, PointBasisSpace, ShapeBasisSpace, make_discontinuous_basis_space
-from .shape import ElementBasis, get_shape_function, ShapeFunction
+from .topology import SpaceTopology, RegularDiscontinuousSpaceTopology
+from .basis_space import BasisSpace, ShapeBasisSpace
+from .shape import ElementBasis, make_element_shape_function, ShapeFunction
 
 from .grid_2d_function_space import make_grid_2d_space_topology
 
@@ -56,7 +56,7 @@ def make_space_restriction(
     domain: Optional[_domain.GeometryDomain] = None,
     space_topology: Optional[SpaceTopology] = None,
     device=None,
-    temporary_store: "Optional[warp._src.fem.cache.TemporaryStore]" = None,  # noqa: F821
+    temporary_store: "Optional[warp.fem.TemporaryStore]" = None,  # noqa: F821
 ) -> SpaceRestriction:
     """
     Restricts a function space partition to a Domain, i.e. a subset of its elements.
@@ -112,21 +112,41 @@ def make_polynomial_basis_space(
         the constructed basis space
     """
 
-    base_geo = geo.base
+    shape = make_element_shape_function(geo.reference_cell(), degree=degree, element_basis=element_basis, family=family)
 
-    if element_basis is None:
-        element_basis = ElementBasis.LAGRANGE
-    elif element_basis == ElementBasis.SERENDIPITY and degree == 1:
-        # Degree-1 serendipity is always equivalent to Lagrange
-        element_basis = ElementBasis.LAGRANGE
+    discontinuous = discontinuous or element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL
+    topology = make_element_based_space_topology(geo, shape, discontinuous)
 
-    shape = get_shape_function(geo.reference_cell().__class__, geo.dimension, degree, element_basis, family)
+    return ShapeBasisSpace(topology, shape)
 
-    if discontinuous or degree == 0 or element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
-        return make_discontinuous_basis_space(geo, shape)
+
+def make_element_based_space_topology(
+    geo: _geometry.Geometry,
+    shape: ShapeFunction,
+    discontinuous: bool = False,
+) -> SpaceTopology:
+    """
+    Makes a space topology from a geometry and an element-based shape function.
+
+    Args:
+        geo: The geometry to make the topology for
+        shape: The shape function to make the topology for
+        discontinuous: Whether to make a discontinuous topology
+
+    Returns:
+        The element-based space topology
+
+    Raises:
+        NotImplementedError: If the geometry type is not supported
+        ValueError: If the shape function is not supported for the given geometry`
+    """
 
     topology = None
-    if isinstance(base_geo, _geometry.Grid2D):
+    base_geo = geo.base
+
+    if discontinuous or shape.ORDER == 0:
+        topology = RegularDiscontinuousSpaceTopology(geo, shape.NODES_PER_ELEMENT)
+    elif isinstance(base_geo, _geometry.Grid2D):
         topology = make_grid_2d_space_topology(geo, shape)
     elif isinstance(base_geo, _geometry.Grid3D):
         topology = make_grid_3d_space_topology(geo, shape)
@@ -144,7 +164,7 @@ def make_polynomial_basis_space(
     if topology is None:
         raise NotImplementedError(f"Unsupported geometry type {geo.name}")
 
-    return ShapeBasisSpace(topology, shape)
+    return topology
 
 
 def make_collocated_function_space(

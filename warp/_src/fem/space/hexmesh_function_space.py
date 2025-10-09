@@ -82,12 +82,6 @@ class HexmeshSpaceTopology(SpaceTopology):
     def name(self):
         return f"{self.geometry.name}_{self._shape.name}"
 
-    @cache.cached_arg_value
-    def topo_arg_value(self, device):
-        arg = HexmeshTopologyArg()
-        self.fill_topo_arg(arg, device)
-        return arg
-
     def fill_topo_arg(self, arg: HexmeshTopologyArg, device):
         arg.hex_edge_indices = self._hex_edge_indices.to(device)
         arg.hex_face_indices = self._hex_face_indices.to(device)

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import cached_property
 from typing import ClassVar, Optional
 
 import numpy as np
@@ -29,9 +30,10 @@ from warp._src.fem.types import (
     QuadraturePointIndex,
     make_free_sample,
 )
+from warp._src.types import type_repr, types_equal
 
 from .shape import ShapeFunction
-from .topology import RegularDiscontinuousSpaceTopology, SpaceTopology
+from .topology import SpaceTopology
 
 
 class BasisSpace:
@@ -67,9 +69,12 @@ class BasisSpace:
         """Value type for the underlying shape functions"""
         raise NotImplementedError()
 
+    @cache.cached_arg_value
     def basis_arg_value(self, device) -> "BasisArg":
         """Value for the argument structure to be passed to device functions"""
-        return BasisSpace.BasisArg()
+        arg = self.BasisArg()
+        self.fill_basis_arg(arg, device)
+        return arg
 
     def fill_basis_arg(self, arg, device):
         pass
@@ -109,9 +114,9 @@ class BasisSpace:
                 dtype=pos_type,
             )
         else:
-            if out.shape != shape or not wp._src.types.types_equal(pos_type, out.dtype):
+            if out.shape != shape or not types_equal(pos_type, out.dtype):
                 raise ValueError(
-                    f"Out node positions array must have shape {shape} and data type {wp._src.types.type_repr(pos_type)}"
+                    f"Out node positions array must have shape {shape} and data type {type_repr(pos_type)}"
                 )
             node_positions = out
 
@@ -201,7 +206,7 @@ class ShapeBasisSpace(BasisSpace):
     def value(self) -> ShapeFunction.Value:
         return self.shape.value
 
-    @property
+    @cached_property
     def name(self):
         return f"{self.topology.name}_{self._shape.name}"
 
@@ -295,6 +300,12 @@ class ShapeBasisSpace(BasisSpace):
             return shape_trace_node_quadrature_weight(index_in_neighbour)
 
         return trace_node_quadrature_weight
+
+    def trace(self) -> "TraceBasisSpace":
+        if self.ORDER == 0:
+            return PiecewiseConstantBasisSpaceTrace(self)
+
+        return TraceBasisSpace(self)
 
     def _node_triangulation(self):
         element_node_indices = self._topology.element_node_indices().numpy()
@@ -475,38 +486,24 @@ class TraceBasisSpace(BasisSpace):
         return self._topo == other._topo
 
 
-class PiecewiseConstantBasisSpace(ShapeBasisSpace):
-    class Trace(TraceBasisSpace):
-        def make_node_coords_in_element(self):
-            # Makes the single node visible to all sides; useful for interpolating on boundaries
-            # For higher-order non-conforming elements direct interpolation on boundary is not possible,
-            # need to do proper integration then solve with mass matrix
+class PiecewiseConstantBasisSpaceTrace(TraceBasisSpace):
+    def make_node_coords_in_element(self):
+        # Makes the single node visible to all sides; useful for interpolating on boundaries
+        # For higher-order non-conforming elements direct interpolation on boundary is not possible,
+        # need to do proper integration then solve with mass matrix
 
-            CENTER_COORDS = Coords(self.geometry.reference_side().center())
+        CENTER_COORDS = Coords(self.geometry.reference_side().prototype.center())
 
-            @cache.dynamic_func(suffix=self._basis.name)
-            def trace_node_coords_in_element(
-                geo_side_arg: self.geometry.SideArg,
-                basis_arg: self.BasisArg,
-                element_index: ElementIndex,
-                node_index_in_elt: int,
-            ):
-                return CENTER_COORDS
+        @cache.dynamic_func(suffix=self._basis.name)
+        def trace_node_coords_in_element(
+            geo_side_arg: self.geometry.SideArg,
+            basis_arg: self.BasisArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            return CENTER_COORDS
 
-            return trace_node_coords_in_element
-
-    def trace(self):
-        return PiecewiseConstantBasisSpace.Trace(self)
-
-
-def make_discontinuous_basis_space(geometry: Geometry, shape: ShapeFunction):
-    topology = RegularDiscontinuousSpaceTopology(geometry, shape.NODES_PER_ELEMENT)
-
-    if shape.NODES_PER_ELEMENT == 1:
-        # piecewise-constant space
-        return PiecewiseConstantBasisSpace(topology=topology, shape=shape)
-
-    return ShapeBasisSpace(topology=topology, shape=shape)
+        return trace_node_coords_in_element
 
 
 class UnstructuredPointTopology(SpaceTopology):
@@ -569,12 +566,14 @@ class UnstructuredPointTopology(SpaceTopology):
         return element_node_count
 
     def _make_side_neighbor_node_counts(self):
+        MAX_NODES_PER_ELEMENT = self.MAX_NODES_PER_ELEMENT
+
         @cache.dynamic_func(suffix=self.name)
         def side_neighbor_node_counts(
             side_arg: self.geometry.SideArg,
             element_index: ElementIndex,
         ):
-            return 0, 0
+            return MAX_NODES_PER_ELEMENT, MAX_NODES_PER_ELEMENT
 
         return side_neighbor_node_counts
 

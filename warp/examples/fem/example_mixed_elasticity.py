@@ -159,7 +159,7 @@ class Example:
             self._geo, degree=degree, dtype=wp.vec2, element_basis=fem.ElementBasis.SERENDIPITY
         )
 
-        if isinstance(self._geo.reference_cell(), fem.geometry.element.Triangle):
+        if self._geo.reference_cell() == fem.Element.TRIANGLE:
             # triangle elements
             tau_basis = fem.ElementBasis.NONCONFORMING_POLYNOMIAL
             tau_degree = degree - 1
@@ -240,7 +240,7 @@ class Example:
             # Extract result -- cast to float32 and accumulate to displacement field
             delta_u = wp.empty_like(self._u_field.dof_values)
             wp.utils.array_cast(in_array=x, out_array=delta_u)
-            fem.utils.array_axpy(x=delta_u, y=self._u_field.dof_values)
+            fem.linalg.array_axpy(x=delta_u, y=self._u_field.dof_values)
 
         # Evaluate area conservation, should converge to 1.0 as Poisson ratio approaches 1.0
         final_area = fem.integrate(

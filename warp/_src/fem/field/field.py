@@ -13,9 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import cached_property
 from typing import Any, ClassVar, Dict, Optional, Set
 
 import warp as wp
+from warp._src.codegen import Struct
 from warp._src.fem import cache
 from warp._src.fem.domain import GeometryDomain, Sides
 from warp._src.fem.geometry import DeformedGeometry, Geometry
@@ -23,33 +25,48 @@ from warp._src.fem.operator import Operator, integrand
 from warp._src.fem.space import FunctionSpace, SpacePartition
 from warp._src.fem.types import NULL_ELEMENT_INDEX, ElementKind, Sample
 from warp._src.fem.utils import type_zero_element
+from warp._src.types import (
+    is_value,
+    type_is_matrix,
+    type_is_quaternion,
+    type_is_vector,
+    type_repr,
+    type_scalar_type,
+    type_size,
+    type_to_warp,
+    types_equal,
+)
 
 
 class FieldLike:
     """Base class for integrable fields"""
 
-    EvalArg: wp._src.codegen.Struct
+    EvalArg: Struct
     """Structure containing field-level arguments passed to device functions for field evaluation"""
 
-    ElementEvalArg: wp._src.codegen.Struct
+    ElementEvalArg: Struct
     """Structure combining geometry-level and field-level arguments passed to device functions for field evaluation"""
 
     def eval_arg_value(self, device) -> "EvalArg":  # noqa: F821
         """Value of the field-level arguments to be passed to device functions"""
-        raise NotImplementedError
+        args = self.EvalArg()
+        self.fill_eval_arg(args, device)
+        return args
 
     def fill_eval_arg(self, arg: "FieldLike.EvalArg", device):
         """Fill the field-level arguments to be passed to device functions"""
-        raise NotImplementedError
+        if self.eval_arg_value is __class__.eval_arg_value:
+            raise NotImplementedError()
+        arg.assign(self.eval_arg_value(device))
 
     @property
     def degree(self) -> int:
         """Polynomial degree of the field, used to estimate necessary quadrature order"""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @property
     def name(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @property
     def __str__(self) -> str:
@@ -66,37 +83,37 @@ class FieldLike:
     @staticmethod
     def eval_inner(args: "ElementEvalArg", s: Sample):  # noqa: F821
         """Device function evaluating the inner field value at a sample point"""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @staticmethod
     def eval_grad_inner(args: "ElementEvalArg", s: Sample):  # noqa: F821
         """Device function evaluating the inner field gradient at a sample point"""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @staticmethod
     def eval_div_inner(args: "ElementEvalArg", s: Sample):  # noqa: F821
         """Device function evaluating the inner field divergence at a sample point"""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @staticmethod
     def eval_outer(args: "ElementEvalArg", s: Sample):  # noqa: F821
         """Device function evaluating the outer field value at a sample point"""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @staticmethod
     def eval_grad_outer(args: "ElementEvalArg", s: Sample):  # noqa: F821
         """Device function evaluating the outer field gradient at a sample point"""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @staticmethod
     def eval_div_outer(args: "ElementEvalArg", s: Sample):  # noqa: F821
         """Device function evaluating the outer field divergence at a sample point"""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @staticmethod
     def eval_degree(args: "ElementEvalArg"):  # noqa: F821
         """Polynomial degree of the field is applicable, or hint for determination of interpolation order"""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def notify_operator_usage(self, ops: Set[Operator]):
         """Makes the Domain aware that the operators `ops` will be applied"""
@@ -114,6 +131,10 @@ class GeometryField(FieldLike):
     @property
     def element_kind(self) -> ElementKind:
         """Kind of element over which the field is expressed"""
+        raise NotImplementedError
+
+    @property
+    def dtype(self) -> type:
         raise NotImplementedError
 
     @staticmethod
@@ -140,51 +161,49 @@ class GeometryField(FieldLike):
         """
         return DeformedGeometry(self, relative=relative)
 
-    @property
+    @cached_property
     def gradient_dtype(self):
         """Return type of the (world space) gradient operator. Assumes self.gradient_valid()"""
-        if wp._src.types.type_is_matrix(self.dtype):
+        if type_is_matrix(self.dtype):
             return None
 
-        if wp._src.types.type_is_vector(self.dtype):
+        if type_is_vector(self.dtype):
             return cache.cached_mat_type(
-                shape=(wp._src.types.type_size(self.dtype), self.geometry.dimension),
-                dtype=wp._src.types.type_scalar_type(self.dtype),
+                shape=(type_size(self.dtype), self.geometry.dimension),
+                dtype=type_scalar_type(self.dtype),
             )
-        if wp._src.types.type_is_quaternion(self.dtype):
+        if type_is_quaternion(self.dtype):
             return cache.cached_mat_type(
                 shape=(4, self.geometry.dimension),
-                dtype=wp._src.types.type_scalar_type(self.dtype),
+                dtype=type_scalar_type(self.dtype),
             )
-        return cache.cached_vec_type(length=self.geometry.dimension, dtype=wp._src.types.type_scalar_type(self.dtype))
+        return cache.cached_vec_type(length=self.geometry.dimension, dtype=type_scalar_type(self.dtype))
 
-    @property
+    @cached_property
     def reference_gradient_dtype(self):
         """Return type of the reference space gradient operator. Assumes self.gradient_valid()"""
-        if wp._src.types.type_is_matrix(self.dtype):
+        if type_is_matrix(self.dtype):
             return None
 
-        if wp._src.types.type_is_vector(self.dtype):
+        if type_is_vector(self.dtype):
             return cache.cached_mat_type(
-                shape=(wp._src.types.type_size(self.dtype), self.geometry.cell_dimension),
-                dtype=wp._src.types.type_scalar_type(self.dtype),
+                shape=(type_size(self.dtype), self.geometry.cell_dimension),
+                dtype=type_scalar_type(self.dtype),
             )
-        if wp._src.types.type_is_quaternion(self.dtype):
+        if type_is_quaternion(self.dtype):
             return cache.cached_mat_type(
                 shape=(4, self.geometry.cell_dimension),
-                dtype=wp._src.types.type_scalar_type(self.dtype),
+                dtype=type_scalar_type(self.dtype),
             )
-        return cache.cached_vec_type(
-            length=self.geometry.cell_dimension, dtype=wp._src.types.type_scalar_type(self.dtype)
-        )
+        return cache.cached_vec_type(length=self.geometry.cell_dimension, dtype=type_scalar_type(self.dtype))
 
-    @property
+    @cached_property
     def divergence_dtype(self):
         """Return type of the divergence operator. Assumes self.divergence_valid()"""
-        if wp._src.types.type_is_vector(self.dtype):
-            return wp._src.types.type_scalar_type(self.dtype)
-        if wp._src.types.type_is_matrix(self.dtype):
-            return cache.cached_vec_type(length=self.dtype._shape_[1], dtype=wp._src.types.type_scalar_type(self.dtype))
+        if type_is_vector(self.dtype):
+            return type_scalar_type(self.dtype)
+        if type_is_matrix(self.dtype):
+            return cache.cached_vec_type(length=self.dtype._shape_[1], dtype=type_scalar_type(self.dtype))
         return None
 
 
@@ -254,7 +273,7 @@ class DiscreteField(SpaceField):
         """Device function setting the value at given node"""
         raise NotImplementedError
 
-    @property
+    @cached_property
     def name(self) -> str:
         return f"{self.__class__.__qualname__}_{self.space.name}_{self.space_partition.name}"
 
@@ -305,17 +324,23 @@ class ImplicitField(GeometryField):
         self._div_func = div_func
 
         argspec = integrand(func.func).argspec
-        arg_types = argspec.annotations
+        arg_types = {**argspec.annotations}  # make a mutable copy
 
-        pos_arg_type = arg_types.pop(argspec.args[0]) if arg_types else None
-        if not pos_arg_type or not wp._src.types.types_equal(
-            pos_arg_type, wp.vec(length=domain.geometry.dimension, dtype=float), match_generic=True
-        ):
+        try:
+            first_arg_type = arg_types.pop(argspec.args[0])
+            if types_equal(first_arg_type, wp.vec(length=domain.geometry.dimension, dtype=float), match_generic=True):
+                self._qp_based = False
+            elif type_to_warp(first_arg_type) == wp.int32:
+                self._qp_based = True
+            else:
+                raise TypeError(f"Unsupported argument type `{type_repr(first_arg_type)}`")
+        except Exception as err:
             raise ValueError(
-                f"Implicit field function '{func.func.__name__}' must accept a position as its first argument"
-            )
+                f"Implicit field function '{func.func.__name__}' must accept either a position or a quadrature point index as its first argument"
+            ) from err
 
         self.EvalArg = cache.get_argument_struct(arg_types)
+        self._func_arg = self.EvalArg()
         self.values = values
 
         cache.setup_dynamic_attributes(self)
@@ -327,7 +352,7 @@ class ImplicitField(GeometryField):
     @values.setter
     def values(self, v):
         self._values = v
-        self._func_arg = cache.populate_argument_struct(self.EvalArg, v, self._func.func.__name__)
+        cache.populate_argument_struct(self._func_arg, v, self._func.func.__name__)
 
     @property
     def geometry(self) -> Geometry:
@@ -337,11 +362,13 @@ class ImplicitField(GeometryField):
     def element_kind(self) -> ElementKind:
         return self.domain.element_kind
 
+    @property
+    def dtype(self):
+        # Cannot determine dtype from function
+        return None
+
     def eval_arg_value(self, device):
         return self._func_arg
-
-    def fill_eval_arg(self, arg, device):
-        cache.populate_argument_struct(self.EvalArg, self._values, self._func.func.__name__, arg)
 
     @property
     def degree(self) -> int:
@@ -362,12 +389,16 @@ class ImplicitField(GeometryField):
             return None
 
         @cache.dynamic_func(
-            suffix=f"{self.name}_{func.key}",
+            suffix=(self.name, func.key),
             code_transformers=[cache.ExpandStarredArgumentStruct({"args.eval_arg": self.EvalArg})],
         )
         def eval_inner(args: self.ElementEvalArg, s: Sample):
-            pos = self.domain.element_position(args.elt_arg, s)
-            return func(pos, *args.eval_arg)
+            if wp.static(self._qp_based):
+                qp_index = s.qp_index
+                return func(qp_index, *args.eval_arg)
+            else:
+                pos = self.domain.element_position(args.elt_arg, s)
+                return func(pos, *args.eval_arg)
 
         return eval_inner
 
@@ -437,11 +468,11 @@ class UniformField(GeometryField):
     def __init__(self, domain: GeometryDomain, value: Any):
         self.domain = domain
 
-        if not wp._src.types.is_value(value):
+        if not is_value(value):
             raise ValueError("value must be a Warp scalar, vector or matrix")
 
-        self.dtype = wp._src.types.type_to_warp(type(value))
-        self._value = self.dtype(value)
+        value_type = type_to_warp(type(value))
+        self._value = value_type(value)
 
         cache.setup_dynamic_attributes(self)
 
@@ -451,8 +482,8 @@ class UniformField(GeometryField):
 
     @value.setter
     def value(self, v):
-        value_type = wp._src.types.type_to_warp(type(v))
-        assert wp._src.types.types_equal(value_type, self.dtype)
+        value_type = type_to_warp(type(v))
+        assert types_equal(value_type, self.dtype)
         self._value = self.dtype(v)
 
     @property
@@ -463,10 +494,9 @@ class UniformField(GeometryField):
     def element_kind(self) -> ElementKind:
         return self.domain.element_kind
 
-    def eval_arg_value(self, device):
-        arg = self.EvalArg()
-        arg.value = self.value
-        return arg
+    @property
+    def dtype(self) -> type:
+        return type(self.value)
 
     def fill_eval_arg(self, arg, device):
         arg.value = self.value
@@ -481,9 +511,9 @@ class UniformField(GeometryField):
     def divergence_valid(self) -> bool:
         return self.divergence_dtype is not None
 
-    @property
+    @cached_property
     def name(self) -> str:
-        return f"Uniform{self.domain.name}_{wp._src.types.get_type_code(self.dtype)}"
+        return f"Uniform{self.domain.name}_{cache.pod_type_key(self.dtype)}"
 
     def _make_eval_inner(self):
         @cache.dynamic_func(suffix=self.name)
@@ -498,7 +528,7 @@ class UniformField(GeometryField):
 
         zero_element = type_zero_element(dtype)
 
-        @cache.dynamic_func(suffix=f"{self.name}_{wp._src.types.get_type_code(dtype)}")
+        @cache.dynamic_func(suffix=f"{self.name}_{cache.pod_type_key(dtype)}")
         def eval_zero(args: self.ElementEvalArg, s: Sample):
             return zero_element()
 
@@ -562,7 +592,6 @@ class NonconformingField(GeometryField):
         self.domain = domain
 
         self.field = field
-        self.dtype = field.dtype
 
         if not isinstance(background, GeometryField):
             background = UniformField(domain, self.dtype(background))
@@ -580,10 +609,9 @@ class NonconformingField(GeometryField):
     def element_kind(self) -> ElementKind:
         return self.domain.element_kind
 
-    def eval_arg_value(self, device):
-        arg = self.EvalArg()
-        self.fill_eval_arg(arg, device)
-        return arg
+    @property
+    def dtype(self) -> type:
+        return self.field.dtype
 
     def fill_eval_arg(self, arg, device):
         self.field.fill_eval_arg(arg.field_cell_eval_arg.eval_arg, device)
@@ -600,7 +628,7 @@ class NonconformingField(GeometryField):
     def divergence_valid(self) -> bool:
         return self.field.divergence_valid() and self.background.divergence_valid()
 
-    @property
+    @cached_property
     def name(self) -> str:
         return f"{self.domain.name}_{self.field.name}_{self.background.name}"
 

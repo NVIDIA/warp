@@ -1924,7 +1924,7 @@ def make_bsr_mm_compute_values_tiled_outer(subblock_rows, subblock_cols, block_d
     x_col_vec_t = wp.vec(dtype=scalar_type, length=subblock_rows)
     y_row_vec_t = wp.vec(dtype=scalar_type, length=subblock_cols)
 
-    suffix = f"{subblock_rows}{subblock_cols}{block_depth}{tile_size}{scalar_type.__name__}"
+    suffix = (subblock_rows, subblock_cols, block_depth, tile_size, scalar_type.__name__)
 
     @dynamic_func(suffix=suffix)
     def _outer_product(
@@ -2432,7 +2432,7 @@ def bsr_mm(
 def make_bsr_mv_kernel(block_cols: int):
     from warp._src.fem.cache import dynamic_kernel
 
-    @dynamic_kernel(suffix=f"{block_cols}", kernel_options={"enable_backward": False})
+    @dynamic_kernel(suffix=block_cols, kernel_options={"enable_backward": False})
     def bsr_mv_kernel(
         alpha: Any,
         A_offsets: wp.array(dtype=int),
@@ -2472,7 +2472,7 @@ def make_bsr_mv_kernel(block_cols: int):
 def make_bsr_mv_tiled_kernel(tile_size: int):
     from warp._src.fem.cache import dynamic_kernel
 
-    @dynamic_kernel(suffix=f"{tile_size}", kernel_options={"enable_backward": False})
+    @dynamic_kernel(suffix=tile_size, kernel_options={"enable_backward": False})
     def bsr_mv_tiled_kernel(
         alpha: Any,
         A_offsets: wp.array(dtype=int),
@@ -2521,7 +2521,7 @@ def make_bsr_mv_tiled_kernel(tile_size: int):
 def make_bsr_mv_transpose_kernel(block_rows: int):
     from warp._src.fem.cache import dynamic_kernel
 
-    @dynamic_kernel(suffix=f"{block_rows}", kernel_options={"enable_backward": False})
+    @dynamic_kernel(suffix=block_rows, kernel_options={"enable_backward": False})
     def bsr_mv_transpose_kernel(
         alpha: Any,
         A_row_count: int,

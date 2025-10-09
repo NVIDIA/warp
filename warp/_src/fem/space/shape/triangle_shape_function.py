@@ -95,7 +95,7 @@ class TrianglePolynomialShapeFunctions(TriangleShapeFunction):
                 index = _triangle_node_index(tx, ty, degree)
                 triangle_coords[index] = [tx, ty]
 
-        CoordTypeVec = wp.mat(dtype=int, shape=(self.NODES_PER_ELEMENT, 2))
+        CoordTypeVec = cache.cached_mat_type(dtype=int, shape=(self.NODES_PER_ELEMENT, 2))
         self.NODE_TRIANGLE_COORDS = wp.constant(CoordTypeVec(triangle_coords))
 
         self.node_type_and_type_index = self._get_node_type_and_type_index()

@@ -172,7 +172,7 @@ class Example:
 
         if self.velocity_field.space.degree > 0:
             # Integration on cells (if not piecewise-constant)
-            fem.utils.array_axpy(
+            fem.linalg.array_axpy(
                 x=fem.integrate(
                     cell_transport_form,
                     fields={"u": trial_velocity, "v": self._test, "w": trial_velocity},
@@ -196,19 +196,19 @@ class Example:
 
         # tmp = v0 - dt * k1
         tmp = self.velocity_field.space.make_field()
-        fem.utils.array_axpy(y=tmp.dof_values, x=self.velocity_field.dof_values, alpha=1.0, beta=0.0)
-        fem.utils.array_axpy(y=tmp.dof_values, x=k1, alpha=-self.sim_dt, beta=1.0)
+        fem.linalg.array_axpy(y=tmp.dof_values, x=self.velocity_field.dof_values, alpha=1.0, beta=0.0)
+        fem.linalg.array_axpy(y=tmp.dof_values, x=k1, alpha=-self.sim_dt, beta=1.0)
         k2 = self._velocity_delta(tmp)
 
         # tmp = v0 - dt * (0.25 * k1 + 0.25 * k2)
-        fem.utils.array_axpy(y=tmp.dof_values, x=k1, alpha=0.75 * self.sim_dt, beta=1.0)
-        fem.utils.array_axpy(y=tmp.dof_values, x=k2, alpha=-0.25 * self.sim_dt, beta=1.0)
+        fem.linalg.array_axpy(y=tmp.dof_values, x=k1, alpha=0.75 * self.sim_dt, beta=1.0)
+        fem.linalg.array_axpy(y=tmp.dof_values, x=k2, alpha=-0.25 * self.sim_dt, beta=1.0)
         k3 = self._velocity_delta(tmp)
 
         # v = v0 - dt * (1/6 * k1 + 1/6 * k2 + 2/3 * k3)
-        fem.utils.array_axpy(y=self.velocity_field.dof_values, x=k1, alpha=-1.0 / 6.0 * self.sim_dt, beta=1.0)
-        fem.utils.array_axpy(y=self.velocity_field.dof_values, x=k2, alpha=-1.0 / 6.0 * self.sim_dt, beta=1.0)
-        fem.utils.array_axpy(y=self.velocity_field.dof_values, x=k3, alpha=-2.0 / 3.0 * self.sim_dt, beta=1.0)
+        fem.linalg.array_axpy(y=self.velocity_field.dof_values, x=k1, alpha=-1.0 / 6.0 * self.sim_dt, beta=1.0)
+        fem.linalg.array_axpy(y=self.velocity_field.dof_values, x=k2, alpha=-1.0 / 6.0 * self.sim_dt, beta=1.0)
+        fem.linalg.array_axpy(y=self.velocity_field.dof_values, x=k3, alpha=-2.0 / 3.0 * self.sim_dt, beta=1.0)
 
         # Apply slope limiter
         if self.velocity_field.space.degree > 0:
