@@ -22,19 +22,18 @@ import numpy as np
 
 import warp as wp
 import warp.fem as fem
-from warp._src.fem import Coords, D, Domain, Field, Sample, curl, div, grad, integrand, normal
-from warp._src.fem.cache import dynamic_kernel
 from warp._src.fem.geometry.closest_point import project_on_tet_at_origin, project_on_tri_at_origin
-from warp._src.fem.linalg import inverse_qr, spherical_part, symmetric_eigenvalues_qr, symmetric_part
 from warp._src.fem.space import shape
-from warp._src.fem.types import make_free_sample
-from warp._src.fem.utils import (
+from warp.fem import Coords, D, Domain, Field, Sample, curl, div, grad, integrand, make_free_sample, normal
+from warp.fem.cache import dynamic_kernel
+from warp.fem.linalg import inverse_qr, spherical_part, symmetric_eigenvalues_qr, symmetric_part
+from warp.fem.utils import (
     grid_to_hexes,
     grid_to_quads,
     grid_to_tets,
     grid_to_tris,
 )
-from warp.sparse import bsr_zeros
+from warp.sparse import bsr_set_zero, bsr_zeros
 from warp.tests.unittest_utils import *
 
 vec6f = wp.vec(length=6, dtype=float)
@@ -586,7 +585,7 @@ def _launch_test_geometry_kernel(geo: fem.Geometry, device):
         fem.interpolate(
             _test_geo_sides,
             quadrature=side_quadrature,
-            values={"side_measures": side_measures, "ref_measure": geo.reference_side().measure()},
+            values={"side_measures": side_measures, "ref_measure": geo.reference_side().prototype.measure()},
         )
 
         if geo.side_normal is not None:
@@ -1573,7 +1572,9 @@ def test_particle_quadratures(test, device):
     domain = fem.Cells(geo)
 
     # Explicit quadrature
-    points, weights = domain.reference_element().instantiate_quadrature(order=4, family=fem.Polynomial.GAUSS_LEGENDRE)
+    points, weights = domain.reference_element().prototype.instantiate_quadrature(
+        order=4, family=fem.Polynomial.GAUSS_LEGENDRE
+    )
     points_per_cell = len(points)
 
     points = points * domain.element_count()
@@ -2046,7 +2047,7 @@ def test_array_axpy(test, device):
 
     tape = wp.Tape()
     with tape:
-        fem.utils.array_axpy(x=x, y=y, alpha=alpha, beta=beta)
+        fem.linalg.array_axpy(x=x, y=y, alpha=alpha, beta=beta)
 
     assert_np_equal(x.numpy(), np.full(N, 2.0))
     assert_np_equal(y.numpy(), alpha * x.numpy() + beta * np.arange(N))
@@ -2095,6 +2096,50 @@ def test_integrate_high_order(test_field, device):
         assert_array_equal(h0.offsets[: h0.nrow + 1], h1.offsets[: h1.nrow + 1])
         assert_array_equal(h0.columns[:h0_nnz], h1.columns[:h1_nnz])
         assert_np_equal(h0.values[:h0_nnz].numpy(), h1.values[:h1_nnz].numpy(), tol=1.0e-6)
+
+
+def test_capturability(test, device):
+    A = bsr_zeros(0, 0, block_type=wp.float32, device=device)
+
+    def test_body():
+        geo = fem.Grid3D(res=(4, 4, 4))
+        space = fem.make_polynomial_space(geo, degree=1)
+
+        cell_mask = wp.zeros(geo.cell_count(), dtype=int, device=device)
+        cell_mask[16:32].fill_(1)
+
+        geo_partition = fem.ExplicitGeometryPartition(geo, cell_mask, max_cell_count=32, max_side_count=0)
+        space_partition = fem.make_space_partition(space, geo_partition, with_halo=False, max_node_count=64)
+
+        test_field = fem.make_test(space, space_partition=space_partition)
+        trial_field = fem.make_trial(space, space_partition=space_partition)
+        bsr_set_zero(
+            A,
+            rows_of_blocks=test_field.space_partition.node_count(),
+            cols_of_blocks=trial_field.space_partition.node_count(),
+        )
+        fem.integrate(
+            bilinear_form,
+            fields={"v": test_field, "u": trial_field},
+            kernel_options={"enable_backward": False},
+            output=A,
+        )
+
+    with wp.ScopedDevice(device):
+        test_body()
+        assert A.shape == (64, 64)
+        nnz_ref = A.nnz_sync()
+        values_ref = A.values.numpy()[:nnz_ref]
+        columns_ref = A.columns.numpy()[:nnz_ref]
+        bsr_set_zero(A)
+        assert A.nnz_sync() == 0
+
+        with wp.ScopedCapture() as capture:
+            test_body()
+        wp.capture_launch(capture.graph)
+        assert A.nnz_sync() == nnz_ref
+        assert_np_equal(A.values.numpy()[:nnz_ref], values_ref)
+        assert_np_equal(A.columns.numpy()[:nnz_ref], columns_ref)
 
 
 devices = get_test_devices()
@@ -2152,6 +2197,7 @@ add_function_test(TestFemShapeFunctions, "test_cube_shape_functions", test_cube_
 add_function_test(TestFemShapeFunctions, "test_tri_shape_functions", test_tri_shape_functions)
 add_function_test(TestFemShapeFunctions, "test_tet_shape_functions", test_tet_shape_functions)
 
+add_function_test(TestFemShapeFunctions, "test_capturability", test_capturability, devices=cuda_devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

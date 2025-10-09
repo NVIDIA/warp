@@ -17,7 +17,7 @@ from typing import Any, ClassVar
 
 import warp as wp
 from warp._src.fem import cache
-from warp._src.fem.space import CollocatedFunctionSpace, SpacePartition
+from warp._src.fem.space import FunctionSpace, SpacePartition
 from warp._src.fem.types import NULL_NODE_INDEX, ElementIndex, Sample
 from warp._src.fem.utils import type_zero_element
 
@@ -47,7 +47,7 @@ class NodalFieldBase(DiscreteField):
         "at_node": lambda obj: obj._make_at_node(),
     }
 
-    def __init__(self, space: CollocatedFunctionSpace, space_partition: SpacePartition):
+    def __init__(self, space: FunctionSpace, space_partition: SpacePartition):
         super().__init__(space, space_partition)
         cache.setup_dynamic_attributes(self)
 
@@ -325,10 +325,10 @@ class NodalFieldBase(DiscreteField):
 class NodalField(NodalFieldBase):
     """A field holding values for all degrees of freedom at each node of the underlying function space partition
 
-    See also: warp.fem.space.CollocatedFunctionSpace.make_field
+    See also: warp.fem.space.FunctionSpace.make_field
     """
 
-    def __init__(self, space: CollocatedFunctionSpace, space_partition: SpacePartition):
+    def __init__(self, space: FunctionSpace, space_partition: SpacePartition):
         if space.topology != space_partition.space_topology:
             raise ValueError("Incompatible space and space partition topologies")
 
@@ -336,16 +336,34 @@ class NodalField(NodalFieldBase):
 
         self._dof_values = wp.zeros(n=self.space_partition.node_count(), dtype=self.dof_dtype)
 
+    @cache.cached_arg_value
     def eval_arg_value(self, device):
-        arg = self.EvalArg()
-        self.fill_eval_arg(arg, device)
-        return arg
+        return super().eval_arg_value(device)
 
     def fill_eval_arg(self, arg, device):
         arg.dof_values = self._dof_values.to(device)
         self.space.fill_space_arg(arg.space_arg, device)
         self.space_partition.fill_partition_arg(arg.partition_arg, device)
         self.space.topology.fill_topo_arg(arg.topology_arg, device)
+
+    def rebind(self, space: FunctionSpace, space_partition: SpacePartition):
+        """Rebind the field to a new space partition and space.
+        The new space partition and space must be of similar types as the current ones
+        """
+
+        if space_partition.name != self.space_partition.name or space.name != self.space.name:
+            raise ValueError("Incompatible space and/or space partition")
+
+        self._space = space
+        self._space_partition = space_partition
+
+        node_count = space_partition.node_count()
+        if node_count < self._dof_values.shape[0]:
+            self._dof_values = self._dof_values[:node_count]
+        elif node_count > self._dof_values.shape[0]:
+            self._dof_values = wp.empty(n=node_count, dtype=self.dof_dtype)
+
+        self.eval_arg_value.invalidate(self)
 
     @property
     def dof_values(self) -> wp.array:
@@ -365,15 +383,12 @@ class NodalField(NodalFieldBase):
         else:
             self._dof_values = wp.array(values, dtype=self.dof_dtype)
 
+        self.eval_arg_value.invalidate(self)
+
     class Trace(NodalFieldBase):
         def __init__(self, field):
             self._field = field
             super().__init__(field.space.trace(), field.space_partition)
-
-        def eval_arg_value(self, device):
-            arg = self.EvalArg()
-            self.fill_eval_arg(arg, device)
-            return arg
 
         def fill_eval_arg(self, arg, device):
             arg.dof_values = self._field.dof_values.to(device)

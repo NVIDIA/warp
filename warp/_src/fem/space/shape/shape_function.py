@@ -68,19 +68,18 @@ class ShapeFunction:
 class ConstantShapeFunction(ShapeFunction):
     """Shape function that is constant over the element"""
 
-    def __init__(self, element: Element, space_dimension: int):
-        self._element = element
-        self._dimension = space_dimension
+    def __init__(self, element: Element):
+        self._element_prototype = element.prototype
 
         self.ORDER = wp.constant(0)
         self.NODES_PER_ELEMENT = wp.constant(1)
 
-        coords, _ = element.instantiate_quadrature(order=0, family=None)
+        coords, _ = self._element_prototype.instantiate_quadrature(order=0, family=None)
         self.COORDS = wp.constant(coords[0])
 
     @property
     def name(self) -> str:
-        return f"{self._element.__class__.__name__}{self._dimension}"
+        return f"{self._element_prototype.__name__}"
 
     def make_node_coords_in_element(self):
         COORDS = self.COORDS
@@ -116,7 +115,7 @@ class ConstantShapeFunction(ShapeFunction):
         return ConstantShapeFunction._element_inner_weight
 
     def make_element_inner_weight_gradient(self):
-        grad_type = wp.vec(length=self._dimension, dtype=float)
+        grad_type = cache.cached_vec_type(length=self._element_prototype.dimension, dtype=float)
 
         @cache.dynamic_func(suffix=self.name)
         def element_inner_weight_gradient(

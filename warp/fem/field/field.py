@@ -15,9 +15,6 @@
 
 # isort: skip_file
 
-from warp._src.fem.field.field import NonconformingField as NonconformingField
-
-
 # TODO: Remove after cleaning up the public API.
 
 from warp._src.fem.field import field as _field

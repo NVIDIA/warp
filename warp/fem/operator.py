@@ -15,9 +15,10 @@
 
 # isort: skip_file
 
-from warp._src.fem.operator import Integrand as Integrand
 from warp._src.fem.operator import element_partition_index as element_partition_index
 from warp._src.fem.operator import node_partition_index as node_partition_index
+from warp._src.fem.operator import operator as operator
+from warp._src.fem.operator import Operator as Operator
 
 
 # TODO: Remove after cleaning up the public API.

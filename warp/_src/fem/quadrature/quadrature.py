@@ -13,13 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import cached_property
 from typing import Any, ClassVar, Optional
 
 import warp as wp
 from warp._src.fem import cache
 from warp._src.fem.domain import GeometryDomain
 from warp._src.fem.geometry import Element
-from warp._src.fem.space import FunctionSpace
+from warp._src.fem.space.function_space import FunctionSpace
 from warp._src.fem.types import NULL_ELEMENT_INDEX, Coords, ElementIndex, QuadraturePointIndex
 
 from ..polynomial import Polynomial
@@ -48,18 +49,22 @@ class Quadrature:
         """Domain over which this quadrature is defined"""
         return self._domain
 
+    @cache.cached_arg_value
     def arg_value(self, device) -> "Arg":
         """
         Value of the argument to be passed to device
         """
-        arg = Quadrature.Arg()
+        arg = self.Arg()
+        self.fill_arg(arg, device)
         return arg
 
     def fill_arg(self, arg: Arg, device):
         """
         Fill the argument with the value of the argument to be passed to device
         """
-        pass
+        if self.arg_value is __class__.arg_value:
+            raise NotImplementedError()
+        arg.assign(self.arg_value(device))
 
     def total_point_count(self):
         """Number of unique quadrature points that can be indexed by this rule.
@@ -160,6 +165,8 @@ class Quadrature:
         ):
             domain_element_index = wp.tid()
             element_index = self.domain.element_index(domain_index_arg, domain_element_index)
+            if element_index == NULL_ELEMENT_INDEX:
+                return
 
             qp_point_count = self.point_count(domain_arg, qp_arg, domain_element_index, element_index)
             for k in range(qp_point_count):
@@ -217,7 +224,9 @@ class _QuadratureWithRegularEvaluationPoints(Quadrature):
         cache.setup_dynamic_attributes(self, cls=__class__)
 
     ElementIndexArg = Quadrature.Arg
-    element_index_arg_value = Quadrature.arg_value
+
+    def element_index_arg_value(self, device):
+        return Quadrature.Arg()
 
     def evaluation_point_count(self):
         return self.domain.element_count() * self._EVALUATION_POINTS_PER_ELEMENT
@@ -267,22 +276,33 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
         _cache: ClassVar = {}
 
         def __init__(self, element: Element, order: int, family: Polynomial):
-            self.points, self.weights = element.instantiate_quadrature(order, family)
+            self.points, self.weights = element.prototype.instantiate_quadrature(order, family)
             self.count = wp.constant(len(self.points))
 
         @cache.cached_arg_value
         def arg_value(self, device):
             arg = RegularQuadrature.Arg()
-            self.fill_arg(arg, device)
-            return arg
 
-        def fill_arg(self, arg: "RegularQuadrature.Arg", device):
+            # pause graph capture while we copy from host
+            # we want the cached result to be available outside of the graph
+            if device.is_capturing:
+                graph = wp.context.capture_pause()
+            else:
+                graph = None
+
             arg.points = wp.array(self.points, device=device, dtype=Coords)
             arg.weights = wp.array(self.weights, device=device, dtype=float)
 
+            if graph is not None:
+                wp.context.capture_resume(graph)
+            return arg
+
+        def fill_arg(self, arg: "RegularQuadrature.Arg", device):
+            arg.assign(self.arg_value(device))
+
         @staticmethod
         def get(element: Element, order: int, family: Polynomial):
-            key = (element.__class__.__name__, order, family)
+            key = (element.value, order, family)
             try:
                 return RegularQuadrature.CachedFormula._cache[key]
             except KeyError:
@@ -311,7 +331,7 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
 
         cache.setup_dynamic_attributes(self)
 
-    @property
+    @cached_property
     def name(self):
         return f"{self.__class__.__name__}_{self.domain.name}_{self.family}_{self.order}"
 
@@ -328,9 +348,6 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
     @property
     def weights(self):
         return self._formula.weights
-
-    def arg_value(self, device):
-        return self._formula.arg_value(device)
 
     def fill_arg(self, arg: "RegularQuadrature.Arg", device):
         self._formula.fill_arg(arg, device)
@@ -398,20 +415,27 @@ class NodalQuadrature(Quadrature):
     any assumption about orthogonality of shape functions, and is thus safe to use for arbitrary integrands.
     """
 
-    def __init__(self, domain: Optional[GeometryDomain], space: FunctionSpace):
+    _dynamic_attribute_constructors: ClassVar = {
+        "Arg": lambda obj: obj._make_arg(),
+        "point_count": lambda obj: obj._make_point_count(),
+        "point_index": lambda obj: obj._make_point_index(),
+        "point_coords": lambda obj: obj._make_point_coords(),
+        "point_weight": lambda obj: obj._make_point_weight(),
+        "point_evaluation_index": lambda obj: obj._make_point_evaluation_index(),
+    }
+
+    def __init__(
+        self,
+        domain: Optional[GeometryDomain],
+        space: Optional[FunctionSpace],
+    ):
         self._space = space
 
         super().__init__(domain)
 
-        self.Arg = self._make_arg()
+        cache.setup_dynamic_attributes(self)
 
-        self.point_count = self._make_point_count()
-        self.point_index = self._make_point_index()
-        self.point_coords = self._make_point_coords()
-        self.point_weight = self._make_point_weight()
-        self.point_evaluation_index = self._make_point_evaluation_index()
-
-    @property
+    @cached_property
     def name(self):
         return f"{self.__class__.__name__}_{self._space.name}"
 
@@ -428,12 +452,6 @@ class NodalQuadrature(Quadrature):
             topo_arg: self._space.topology.TopologyArg
 
         return Arg
-
-    @cache.cached_arg_value
-    def arg_value(self, device):
-        arg = self.Arg()
-        self.fill_arg(arg, device)
-        return arg
 
     def fill_arg(self, arg: "NodalQuadrature.Arg", device):
         self._space.fill_space_arg(arg.space_arg, device)
@@ -486,7 +504,8 @@ class NodalQuadrature(Quadrature):
             element_index: ElementIndex,
             qp_index: int,
         ):
-            return self._space.topology.element_node_index(elt_arg, qp_arg.topo_arg, element_index, qp_index)
+            node_index = self._space.topology.element_node_index(elt_arg, qp_arg.topo_arg, element_index, qp_index)
+            return node_index
 
         return point_index
 
@@ -529,7 +548,12 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
         points: wp.array2d(dtype=Coords)
         weights: wp.array2d(dtype=float)
 
-    def __init__(self, domain: GeometryDomain, points: "wp.array2d(dtype=Coords)", weights: "wp.array2d(dtype=float)"):
+    def __init__(
+        self,
+        domain: GeometryDomain,
+        points: "wp.array2d(dtype=Coords)",
+        weights: "wp.array2d(dtype=float)",
+    ):
         if points.shape != weights.shape:
             raise ValueError("Points and weights arrays must have the same shape")
 
@@ -554,7 +578,7 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
         self._points = points
         self._weights = weights
 
-    @property
+    @cached_property
     def name(self):
         return f"{self.__class__.__name__}_{self._whole_geo}_{self._points_per_cell}"
 
@@ -564,52 +588,76 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
     def max_points_per_element(self):
         return self._points_per_cell
 
-    def arg_value(self, device):
-        arg = self.Arg()
-        self.fill_arg(arg, device)
-        return arg
-
     def fill_arg(self, arg: "ExplicitQuadrature.Arg", device):
         arg.points_per_cell = self._points_per_cell
         arg.points = self._points.to(device)
         arg.weights = self._weights.to(device)
 
     @wp.func
-    def point_count(elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex):
+    def point_count(
+        elt_arg: Any,
+        qp_arg: Arg,
+        domain_element_index: ElementIndex,
+        element_index: ElementIndex,
+    ):
         return qp_arg.points.shape[1]
 
     @wp.func
     def _point_coords_domain(
-        elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex, qp_index: int
+        elt_arg: Any,
+        qp_arg: Arg,
+        domain_element_index: ElementIndex,
+        element_index: ElementIndex,
+        qp_index: int,
     ):
         return qp_arg.points[domain_element_index, qp_index]
 
     @wp.func
     def _point_weight_domain(
-        elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex, qp_index: int
+        elt_arg: Any,
+        qp_arg: Arg,
+        domain_element_index: ElementIndex,
+        element_index: ElementIndex,
+        qp_index: int,
     ):
         return qp_arg.weights[domain_element_index, qp_index]
 
     @wp.func
     def _point_index_domain(
-        elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex, qp_index: int
+        elt_arg: Any,
+        qp_arg: Arg,
+        domain_element_index: ElementIndex,
+        element_index: ElementIndex,
+        qp_index: int,
     ):
         return qp_arg.points_per_cell * domain_element_index + qp_index
 
     @wp.func
     def _point_coords_geo(
-        elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex, qp_index: int
+        elt_arg: Any,
+        qp_arg: Arg,
+        domain_element_index: ElementIndex,
+        element_index: ElementIndex,
+        qp_index: int,
     ):
         return qp_arg.points[element_index, qp_index]
 
     @wp.func
     def _point_weight_geo(
-        elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex, qp_index: int
+        elt_arg: Any,
+        qp_arg: Arg,
+        domain_element_index: ElementIndex,
+        element_index: ElementIndex,
+        qp_index: int,
     ):
         return qp_arg.weights[element_index, qp_index]
 
     @wp.func
     def _point_index_geo(
-        elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex, qp_index: int
+        elt_arg: Any,
+        qp_arg: Arg,
+        domain_element_index: ElementIndex,
+        element_index: ElementIndex,
+        qp_index: int,
     ):
         return qp_arg.points_per_cell * element_index + qp_index

@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from enum import Enum
+from enum import IntEnum
 
 import warp as wp
 
@@ -23,19 +23,28 @@ vec3i = wp.vec3i
 vec4i = wp.vec4i
 
 Coords = wp.vec3
-OUTSIDE = wp.constant(-1.0e8)
+"""Type representing coordinates within elements"""
+OUTSIDE = -1.0e8
+"""Constant indicating an invalid element coordinate"""
 
 ElementIndex = int
+"""Type representing the index of an element in the geometry"""
 QuadraturePointIndex = int
+"""Type representing the index of a quadrature point"""
 NodeIndex = int
+"""Type representing the index of a node in a function space"""
 
-NULL_ELEMENT_INDEX = wp.constant(-1)
-NULL_QP_INDEX = wp.constant(-1)
-NULL_NODE_INDEX = wp.constant((1 << 31) - 1)  # this should be larger than normal nodes when sorting
+NULL_ELEMENT_INDEX: ElementIndex = wp.constant(-1)
+"""Constant indicating an invalid element index"""
+NULL_QP_INDEX: QuadraturePointIndex = wp.constant(-1)
+"""Constant indicating an invalid quadrature point index"""
+NULL_NODE_INDEX: NodeIndex = wp.constant((1 << 31) - 1)  # this should be larger than normal nodes when sorting
+"""Constant indicating an invalid node index"""
 
 DofIndex = wp.vec2i
 """Opaque descriptor for indexing degrees of freedom within elements"""
-NULL_DOF_INDEX = wp.constant(DofIndex(-1, -1))
+NULL_DOF_INDEX: DofIndex = wp.constant(DofIndex(-1, -1))
+"""Constant indicating an invalid degree of freedom index"""
 
 
 @wp.func
@@ -48,9 +57,13 @@ def get_node_coord(dof_idx: DofIndex):
     return dof_idx[1]
 
 
-class ElementKind(Enum):
+class ElementKind(IntEnum):
+    """Type of geometry elements"""
+
     CELL = 0
+    """Cells: elements that have the same dimension as the geometry"""
     SIDE = 1
+    """Sides: elements that have one dimension less than the geometry"""
 
 
 @wp.struct
@@ -88,7 +101,7 @@ class Field:
     Tag for field-like integrand arguments
     """
 
-    call_operator: "warp._src.fem.operator.Operator" = None  # noqa: F821 Set in operator.py
+    call_operator: "warp.fem.operator.Operator" = None  # noqa: F821 Set in operator.py
 
 
 class Domain:
@@ -96,4 +109,4 @@ class Domain:
     Tag for domain-like integrand arguments
     """
 
-    call_operator: "warp._src.fem.operator.Operator" = None  # noqa: F821 Set in operator.py
+    call_operator: "warp.fem.operator.Operator" = None  # noqa: F821 Set in operator.py

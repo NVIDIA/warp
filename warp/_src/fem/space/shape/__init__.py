@@ -17,7 +17,7 @@ import functools
 from enum import Enum
 from typing import Optional
 
-from warp._src.fem.geometry import element as _element
+from warp._src.fem.geometry import Element
 from warp._src.fem.polynomial import Polynomial
 
 from .cube_shape_function import (
@@ -69,34 +69,41 @@ class ElementBasis(Enum):
 
 
 @functools.lru_cache(maxsize=None)
-def get_shape_function(
-    element_class: type,
-    space_dimension: int,
+def make_element_shape_function(
+    element: Element,
     degree: int,
-    element_basis: ElementBasis,
+    element_basis: Optional[ElementBasis] = None,
     family: Optional[Polynomial] = None,
-):
+) -> ShapeFunction:
     """
     Equips a reference element with a shape function basis.
 
     Args:
-        element_class: the type of reference element on which to build the shape function
-        space_dimension: the dimension of the embedding space
+        element: the type of reference element on which to build the shape function
         degree: polynomial degree of the per-element shape functions
         element_basis: type of basis function for the individual elements
         family: Polynomial family used to generate the shape function basis. If not provided, a reasonable basis is chosen.
 
     Returns:
         the corresponding shape function
+
+    Raises:
+        NotImplementedError: If the shape function is not implemented for the given element type
     """
 
+    if element_basis is None:
+        element_basis = ElementBasis.LAGRANGE
+    elif element_basis == ElementBasis.SERENDIPITY and degree == 1:
+        # Degree-1 serendipity is always equivalent to Lagrange
+        element_basis = ElementBasis.LAGRANGE
+
     if degree == 0:
-        return ConstantShapeFunction(element_class(), space_dimension)
+        return ConstantShapeFunction(element)
 
     if family is None:
         family = Polynomial.LOBATTO_GAUSS_LEGENDRE
 
-    if issubclass(element_class, _element.Square):
+    if element == Element.SQUARE:
         if element_basis == ElementBasis.NEDELEC_FIRST_KIND:
             return SquareNedelecFirstKindShapeFunctions(degree=degree)
         if element_basis == ElementBasis.RAVIART_THOMAS:
@@ -107,7 +114,7 @@ def get_shape_function(
             return SquareSerendipityShapeFunctions(degree=degree, family=family)
 
         return SquareBipolynomialShapeFunctions(degree=degree, family=family)
-    if issubclass(element_class, _element.Triangle):
+    if element == Element.TRIANGLE:
         if element_basis == ElementBasis.NEDELEC_FIRST_KIND:
             return TriangleNedelecFirstKindShapeFunctions(degree=degree)
         if element_basis == ElementBasis.RAVIART_THOMAS:
@@ -119,7 +126,7 @@ def get_shape_function(
 
         return TrianglePolynomialShapeFunctions(degree=degree)
 
-    if issubclass(element_class, _element.Cube):
+    if element == Element.CUBE:
         if element_basis == ElementBasis.NEDELEC_FIRST_KIND:
             return CubeNedelecFirstKindShapeFunctions(degree=degree)
         if element_basis == ElementBasis.RAVIART_THOMAS:
@@ -130,7 +137,7 @@ def get_shape_function(
             return CubeSerendipityShapeFunctions(degree=degree, family=family)
 
         return CubeTripolynomialShapeFunctions(degree=degree, family=family)
-    if issubclass(element_class, _element.Tetrahedron):
+    if element == Element.TETRAHEDRON:
         if element_basis == ElementBasis.NEDELEC_FIRST_KIND:
             return TetrahedronNedelecFirstKindShapeFunctions(degree=degree)
         if element_basis == ElementBasis.RAVIART_THOMAS:
@@ -142,4 +149,4 @@ def get_shape_function(
 
         return TetrahedronPolynomialShapeFunctions(degree=degree)
 
-    raise NotImplementedError(f"Unrecognized element type {element_class.__name__}")
+    raise NotImplementedError(f"Unrecognized element type {element}")

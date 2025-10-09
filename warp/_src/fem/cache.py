@@ -16,14 +16,17 @@
 import ast
 import bisect
 import hashlib
+import pickle
 import re
 import weakref
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, ClassVar, Dict, Optional, Tuple, Union
 
 import warp as wp
-from warp._src.codegen import get_annotations
+from warp._src.codegen import Struct, StructInstance, get_annotations
 from warp._src.fem.operator import Integrand
 from warp._src.fem.types import Domain, Field
+from warp._src.types import get_type_code, type_repr, type_scalar_type, type_size, type_size_in_bytes, type_to_warp
+from warp._src.utils import warn
 
 _kernel_cache = {}
 _struct_cache = {}
@@ -32,34 +35,29 @@ _func_cache = {}
 _key_re = re.compile("[^0-9a-zA-Z_]+")
 
 
-def _make_key(obj, suffix: str, options: Optional[Dict[str, Any]] = None):
-    # human-readable part
-    suffix = str(suffix)
-
-    sorted_opts = sorted(options.items()) if options is not None else ()
-    opts_str = "".join(
-        (
-            obj.__module__,
-            obj.__qualname__,
-            suffix,
-            *(opt[0] for opt in sorted_opts),
-            *(str(opt[1]) for opt in sorted_opts),
-        )
+def _make_key(obj, suffix: Any, options: Optional[Dict[str, Any]] = None):
+    sorted_opts = tuple(sorted(options.items())) if options is not None else ()
+    key = (
+        obj.__module__,
+        obj.__qualname__,
+        suffix,
+        sorted_opts,
     )
-    uid = hashlib.blake2b(bytes(opts_str, encoding="utf-8"), digest_size=4).hexdigest()
-
-    # avoid long keys, issues on win
-    key = f"{obj.__name__}_{suffix[:32]}_{uid}"
-
     return key
 
 
-def _arg_type_name(arg_type):
+def _native_key(obj, key: Any):
+    uid = hashlib.blake2b(pickle.dumps(key), digest_size=4).hexdigest()
+    key = f"{obj.__name__}_{uid}"
+    return _key_re.sub("", key)
+
+
+def _arg_type_key(arg_type):
     if isinstance(arg_type, str):
         return arg_type
     if arg_type in (Field, Domain):
         return ""
-    return wp._src.types.get_type_code(wp._src.types.type_to_warp(arg_type))
+    return get_type_code(type_to_warp(arg_type))
 
 
 def _make_cache_key(func, key, argspec=None, allow_overloads: bool = True):
@@ -71,7 +69,7 @@ def _make_cache_key(func, key, argspec=None, allow_overloads: bool = True):
     else:
         annotations = argspec.annotations
 
-    sig_key = (key, tuple((k, _arg_type_name(v)) for k, v in annotations.items()))
+    sig_key = (key, *((k, _arg_type_key(v)) for k, v in annotations.items()))
     return sig_key
 
 
@@ -83,7 +81,7 @@ def _register_function(
 ):
     # wp.Function will override existing func for a given key...
     # manually add back our overloads
-    key = _key_re.sub("", key)
+    key = _native_key(func, key)
     existing = module.functions.get(key)
     new_fn = wp.Function(
         func=func,
@@ -99,7 +97,7 @@ def _register_function(
     return module.functions[key]
 
 
-def get_func(func, suffix: str, code_transformers=None, allow_overloads=False):
+def get_func(func, suffix: Any, code_transformers=None, allow_overloads=False):
     key = _make_key(func, suffix)
     cache_key = _make_cache_key(func, key, allow_overloads=allow_overloads)
 
@@ -115,7 +113,7 @@ def get_func(func, suffix: str, code_transformers=None, allow_overloads=False):
     return _func_cache[cache_key]
 
 
-def dynamic_func(suffix: str, code_transformers=None, allow_overloads=False):
+def dynamic_func(suffix: Any, code_transformers=None, allow_overloads=False):
     def wrap_func(func: Callable):
         return get_func(func, suffix=suffix, code_transformers=code_transformers, allow_overloads=allow_overloads)
 
@@ -124,27 +122,25 @@ def dynamic_func(suffix: str, code_transformers=None, allow_overloads=False):
 
 def get_kernel(
     func,
-    suffix: str,
-    kernel_options: Optional[Dict[str, Any]] = None,
+    suffix: Any,
+    kernel_options: Dict[str, Any],
     allow_overloads=False,
 ):
-    if kernel_options is None:
-        kernel_options = {}
-
     key = _make_key(func, suffix, kernel_options)
     cache_key = _make_cache_key(func, key, allow_overloads=allow_overloads)
 
     if cache_key not in _kernel_cache:
-        kernel_key = _key_re.sub("", key)
+        kernel_key = _native_key(func, key)
         module_name = f"{func.__module__}.dyn.{kernel_key}"
         module = wp.get_module(module_name)
         module.options = dict(wp.get_module(func.__module__).options)
         module.options.update(kernel_options)
         _kernel_cache[cache_key] = wp.Kernel(func=func, key=kernel_key, module=module, options=kernel_options)
+
     return _kernel_cache[cache_key]
 
 
-def dynamic_kernel(suffix: str, kernel_options: Optional[Dict[str, Any]] = None, allow_overloads=False):
+def dynamic_kernel(suffix: Any, kernel_options: Optional[Dict[str, Any]] = None, allow_overloads=False):
     if kernel_options is None:
         kernel_options = {}
 
@@ -154,15 +150,15 @@ def dynamic_kernel(suffix: str, kernel_options: Optional[Dict[str, Any]] = None,
     return wrap_kernel
 
 
-def get_struct(struct: type, suffix: str):
+def get_struct(struct: type, suffix: Any):
     key = _make_key(struct, suffix)
     cache_key = key
 
     if cache_key not in _struct_cache:
         # used in codegen
-        struct.__qualname__ = _key_re.sub("", key)
+        struct.__qualname__ = _native_key(struct, key)
         module = wp.get_module(struct.__module__)
-        _struct_cache[cache_key] = wp._src.codegen.Struct(
+        _struct_cache[cache_key] = Struct(
             key=struct.__qualname__,
             cls=struct,
             module=module,
@@ -171,7 +167,7 @@ def get_struct(struct: type, suffix: str):
     return _struct_cache[cache_key]
 
 
-def dynamic_struct(suffix: str):
+def dynamic_struct(suffix: Any):
     def wrap_struct(struct: type):
         return get_struct(struct, suffix=suffix)
 
@@ -182,7 +178,7 @@ def get_argument_struct(arg_types: Dict[str, type]):
     class Args:
         pass
 
-    annotations = wp._src.codegen.get_annotations(Args)
+    annotations = get_annotations(Args)
 
     for name, arg_type in arg_types.items():
         setattr(Args, name, None)
@@ -193,45 +189,41 @@ def get_argument_struct(arg_types: Dict[str, type]):
     except AttributeError:
         Args.__dict__.__annotations__ = annotations
 
-    suffix = "_".join([f"{name}_{_arg_type_name(arg_type)}" for name, arg_type in annotations.items()])
-
+    suffix = tuple((name, _arg_type_key(arg_type)) for name, arg_type in annotations.items())
     return get_struct(Args, suffix=suffix)
 
 
-def populate_argument_struct(
-    Args: wp._src.codegen.Struct, values: Dict[str, Any], func_name: str, value_struct_values: Optional = None
-):
+def populate_argument_struct(value_struct: StructInstance, values: Optional[Dict[str, Any]], func_name: str):
     if values is None:
         values = {}
 
-    if value_struct_values is None:
-        value_struct_values = Args()
+    Args = value_struct._cls
 
     try:
         for k, v in values.items():
-            setattr(value_struct_values, k, v)
+            setattr(value_struct, k, v)
     except Exception as err:
         if k not in Args.vars:
             raise ValueError(
                 f"Passed value argument '{k}' does not match any of the function '{func_name}' parameters"
             ) from err
         raise ValueError(
-            f"Passed value argument '{k}' of type '{wp._src.types.type_repr(v)}' is incompatible with the function '{func_name}' parameter of type '{wp._src.types.type_repr(Args.vars[k].type)}'"
+            f"Passed value argument '{k}' of type '{type_repr(v)}' is incompatible with the function '{func_name}' parameter of type '{type_repr(Args.vars[k].type)}'"
         ) from err
 
     missing_values = Args.vars.keys() - values.keys()
     if missing_values:
-        wp._src.utils.warn(
+        warn(
             f"Missing values for parameter(s) '{', '.join(missing_values)}' of the function '{func_name}', will be zero-initialized"
         )
 
-    return value_struct_values
+    return value_struct
 
 
 class ExpandStarredArgumentStruct(ast.NodeTransformer):
     def __init__(
         self,
-        structs: Dict[str, wp._src.codegen.Struct],
+        structs: Dict[str, Struct],
     ):
         self._structs = structs
 
@@ -273,10 +265,9 @@ def get_integrand_function(
     code_transformers=None,
 ):
     key = _make_key(integrand.func, suffix)
-    cache_key = _make_cache_key(integrand.func, key, integrand.argspec)
 
-    if cache_key not in _func_cache:
-        _func_cache[cache_key] = _register_function(
+    if key not in integrand.cached_funcs:
+        integrand.cached_funcs[key] = _register_function(
             func=integrand.func if func is None else func,
             key=key,
             module=integrand.module,
@@ -284,7 +275,7 @@ def get_integrand_function(
             code_transformers=code_transformers,
         )
 
-    return _func_cache[cache_key]
+    return integrand.cached_funcs[key]
 
 
 def get_integrand_kernel(
@@ -293,26 +284,42 @@ def get_integrand_kernel(
     kernel_fn: Optional[Callable] = None,
     kernel_options: Optional[Dict[str, Any]] = None,
     code_transformers=None,
-):
-    options = integrand.module.options.copy()
-    options.update(integrand.kernel_options)
+    FieldStruct=None,
+    ValueStruct=None,
+) -> Tuple[wp.Kernel, StructInstance, StructInstance]:
+    options = {**integrand.module.options, **integrand.kernel_options}
     if kernel_options is not None:
         options.update(kernel_options)
 
-    kernel_key = _make_key(integrand.func, suffix, options=options)
-    cache_key = _make_cache_key(integrand, kernel_key, integrand.argspec, allow_overloads=True)
-
-    if cache_key not in _kernel_cache:
+    key = _make_key(integrand.func, suffix, options=options)
+    if key not in integrand.cached_kernels:
         if kernel_fn is None:
-            return None
+            return None, None, None
 
-        kernel_key = _key_re.sub("", kernel_key)
+        kernel_key = _native_key(integrand.func, key)
         module = wp.get_module(f"{integrand.module.name}.{kernel_key}")
         module.options = options
-        _kernel_cache[cache_key] = wp.Kernel(
-            func=kernel_fn, key=kernel_key, module=module, code_transformers=code_transformers, options=options
+
+        integrand.cached_kernels[key] = (
+            wp.Kernel(
+                func=kernel_fn, key=kernel_key, module=module, code_transformers=code_transformers, options=options
+            ),
+            FieldStruct(),
+            ValueStruct(),
         )
-    return _kernel_cache[cache_key]
+
+    return integrand.cached_kernels[key]
+
+
+def pod_type_key(pod_type: type):
+    """Hashable key for POD (single or sequence of scalars) types"""
+
+    pod_type = type_to_warp(pod_type)
+    if hasattr(pod_type, "_wp_scalar_type_"):
+        if hasattr(pod_type, "_shape_"):
+            return (pod_type.__name__, pod_type._shape_, pod_type._wp_scalar_type_.__name__)
+        return (pod_type.__name__, pod_type._length_, pod_type._wp_scalar_type_.__name__)
+    return pod_type.__name__
 
 
 def cached_arg_value(func: Callable):
@@ -323,16 +330,26 @@ def cached_arg_value(func: Callable):
     cache_attr = f"_{func.__name__}_cache"
 
     def get_arg(obj, device):
-        if not hasattr(obj, cache_attr):
-            setattr(obj, cache_attr, {})
-
-        cache = getattr(obj, cache_attr, {})
+        cache = getattr(obj, cache_attr, None)
+        if cache is None:
+            cache = {}
+            setattr(obj, cache_attr, cache)
 
         device = wp.get_device(device)
         if device.ordinal not in cache:
             cache[device.ordinal] = func(obj, device)
 
         return cache[device.ordinal]
+
+    def invalidate(obj, device=None):
+        if device is not None and hasattr(obj, cache_attr):
+            cache = getattr(obj, cache_attr)
+            if device.ordinal in cache:
+                del cache[device.ordinal]
+        else:
+            setattr(obj, cache_attr, {})
+
+    get_arg.invalidate = invalidate
 
     return get_arg
 
@@ -391,73 +408,16 @@ def cached_mat_type(shape, dtype):
     return _cached_mat_types[key]
 
 
-class Temporary:
-    """Handle over a temporary array from a :class:`TemporaryStore`.
+Temporary = wp.array
+"""Temporary array borrowed from a :class:`TemporaryStore`.
 
-    The array will be automatically returned to the temporary pool for reuse upon destruction of this object, unless
-    the temporary is explicitly detached from the pool using :meth:`detach`.
-    The temporary may also be explicitly returned to the pool before destruction using :meth:`release`.
-    """
+The array will be automatically returned to the temporary pool for reuse upon destruction of this object, unless
+the temporary is explicitly detached from the pool using :meth:`detach`.
+The temporary may also be explicitly returned to the pool before destruction using :meth:`release`.
 
-    def __new__(cls, *args, **kwargs):
-        instance = super().__new__(cls)
-        instance._pool = None
-        return instance
-
-    def __init__(self, array: wp.array, pool: Optional["TemporaryStore.Pool"] = None, shape=None, dtype=None):
-        self._raw_array = array
-        self._array_view = array
-        self._pool = pool
-
-        if pool is not None and wp._src.context.runtime.tape is not None:
-            # Extend lifetime to that of Tape (or Pool if shorter)
-            # This is to prevent temporary arrays held in tape launch parameters to be redeemed
-            pool.hold(self)
-            weakref.finalize(wp._src.context.runtime.tape, TemporaryStore.Pool.stop_holding, pool, self)
-
-        if shape is not None or dtype is not None:
-            self._view_as(shape=shape, dtype=dtype)
-
-    def detach(self) -> wp.array:
-        """Detaches the temporary so it is never returned to the pool"""
-        if self._pool is not None:
-            self._pool.detach(self._raw_array)
-
-        self._pool = None
-        return self._array_view
-
-    def release(self):
-        """Returns the temporary array to the pool"""
-        if self._pool is not None:
-            self._pool.redeem(self._raw_array)
-
-        self._pool = None
-
-    @property
-    def array(self) -> wp.array:
-        """View of the array with desired shape and data type."""
-        return self._array_view
-
-    def _view_as(self, shape, dtype) -> "Temporary":
-        def _view_reshaped_truncated(array):
-            view = wp._src.types.array(
-                ptr=array.ptr,
-                dtype=dtype,
-                shape=shape,
-                device=array.device,
-                pinned=array.pinned,
-                capacity=array.capacity,
-                copy=False,
-                grad=None if array.grad is None else _view_reshaped_truncated(array.grad),
-            )
-            view._ref = array
-            return view
-
-        self._array_view = _view_reshaped_truncated(self._raw_array)
-        return self
-
-    def __del__(self):
-        self.release()
+Note: `Temporary` is now a direct alias for `wp.array` with a custom deleter. Convenience `detach` and `release`
+are added at borrow time, as well as a self-pointing `array` attribute is for backward compatibility.
+"""
 
 
 class TemporaryStore:
@@ -470,71 +430,104 @@ class TemporaryStore:
     By default, there is no default temporary store, so that temporary allocations are not persisted.
     """
 
-    _default_store: "TemporaryStore" = None
+    _default_store: ClassVar[Optional["TemporaryStore"]] = None
 
     class Pool:
+        class Deleter:
+            def __init__(self, pool: "TemporaryStore.Pool"):
+                self.pool = weakref.ref(pool)
+
+            def __call__(self, ptr, size):
+                pool = self.pool()
+                if pool is not None:
+                    pool.redeem(ptr)
+
+            def detach(self, temporary: Temporary):
+                pool = self.pool()
+                if pool is not None:
+                    pool.detach(temporary)
+
         def __init__(self, dtype, device, pinned: bool):
             self.dtype = dtype
             self.device = device
             self.pinned = pinned
 
-            self._pool = []  # Currently available arrays for borrowing, ordered by size
-            self._pool_sizes = []  # Sizes of available arrays for borrowing, ascending
-            self._allocs = {}  # All allocated arrays, including borrowed ones
+            self._pool: list[int] = []  # Currently available buffers for borrowing, ordered by size
+            self._pool_capacities: list[int] = []  # Sizes of available arrays for borrowing, ascending
+            self._allocs: dict[int, int] = {}  # All allocated capacities, including borrowed ones
 
-            self._held_temporaries = set()  # Temporaries that are prevented from going out of scope
+            self._dtype_size = type_size_in_bytes(dtype)
+            self._allocator = device.get_allocator(pinned=self.pinned)
+            self._deleter = TemporaryStore.Pool.Deleter(self)
+
+            # self._held_temporaries = set()  # Temporaries that are prevented from going out of scope
 
         def borrow(self, shape, dtype, requires_grad: bool):
-            size = 1
+            if requires_grad:
+                grad = self.borrow(shape=shape, dtype=dtype, requires_grad=False)
+                # Zero-out gradient to mimic semantics of wp.empty()
+                grad.zero_()
+            else:
+                grad = None
+
+            capacity = self._dtype_size
             if isinstance(shape, int):
-                shape = (shape,)
-            for d in shape:
-                size *= d
+                capacity *= shape
+            else:
+                for d in shape:
+                    capacity *= d
 
-            index = bisect.bisect_left(
-                a=self._pool_sizes,
-                x=size,
+            if capacity == 0:
+                ptr = 0
+                deleter = None
+            else:
+                index = bisect.bisect_left(
+                    a=self._pool_capacities,
+                    x=capacity,
+                )
+                if index < len(self._pool):
+                    # Big enough array found, remove from pool
+                    ptr = self._pool.pop(index)
+                    capacity = self._pool_capacities.pop(index)
+                else:
+                    # No big enough array found, allocate new one
+                    if len(self._pool) > 0:
+                        grow_factor = 1.5
+                        capacity = max(int(self._pool_capacities[-1] * grow_factor), capacity)
+
+                    ptr = self._allocator.alloc(capacity)
+                    self._allocs[ptr] = capacity
+                deleter = self._deleter
+
+            temporary = Temporary(
+                ptr=ptr,
+                capacity=capacity,
+                shape=shape,
+                dtype=dtype,
+                grad=grad,
+                device=self.device,
+                pinned=self.pinned,
+                deleter=deleter,
             )
-            if index < len(self._pool):
-                # Big enough array found, remove from pool
-                array = self._pool.pop(index)
-                self._pool_sizes.pop(index)
-                if requires_grad:
-                    if array.grad is None:
-                        array.requires_grad = True
-                    else:
-                        # Zero-out existing gradient to mimic semantics of wp.empty()
-                        array.grad.zero_()
-                return Temporary(pool=self, array=array, shape=shape, dtype=dtype)
+            return temporary
 
-            # No big enough array found, allocate new one
-            if len(self._pool) > 0:
-                grow_factor = 1.5
-                size = max(int(self._pool_sizes[-1] * grow_factor), size)
-
-            array = wp.empty(
-                shape=(size,), dtype=self.dtype, pinned=self.pinned, device=self.device, requires_grad=requires_grad
-            )
-            self._allocs[array.ptr] = array
-            return Temporary(pool=self, array=array, shape=shape, dtype=dtype)
-
-        def redeem(self, array):
+        def redeem(self, ptr: int):
+            capacity = self._allocs[ptr]
             # Insert back array into available pool
             index = bisect.bisect_left(
-                a=self._pool_sizes,
-                x=array.size,
+                a=self._pool_capacities,
+                x=capacity,
             )
-            self._pool.insert(index, array)
-            self._pool_sizes.insert(index, array.size)
+            self._pool.insert(index, ptr)
+            self._pool_capacities.insert(index, capacity)
 
-        def detach(self, array):
+        def detach(self, array: Temporary):
             del self._allocs[array.ptr]
+            array.deleter = self._allocator.deleter
 
-        def hold(self, temp: Temporary):
-            self._held_temporaries.add(temp)
-
-        def stop_holding(self, temp: Temporary):
-            self._held_temporaries.remove(temp)
+        def __del__(self):
+            for ptr, capacity in self._allocs.items():
+                self._allocator.free(ptr, capacity)
 
     def __init__(self):
         self.clear()
@@ -543,23 +536,48 @@ class TemporaryStore:
         self._temporaries = {}
 
     def borrow(self, shape, dtype, pinned: bool = False, device=None, requires_grad: bool = False) -> Temporary:
-        dtype = wp._src.types.type_to_warp(dtype)
+        dtype = type_to_warp(dtype)
         device = wp.get_device(device)
 
-        type_size = wp._src.types.type_size(dtype)
-        key = (dtype._type_, type_size, pinned, device.ordinal)
+        type_length = type_size(dtype)
+        key = (dtype._type_, type_length, pinned, device.ordinal)
 
-        pool = self._temporaries.get(key, None)
-        if pool is None:
+        try:
+            pool = self._temporaries[key]
+        except KeyError:
             value_type = (
-                cached_vec_type(length=type_size, dtype=wp._src.types.type_scalar_type(dtype))
-                if type_size > 1
-                else dtype
+                cached_vec_type(length=type_length, dtype=type_scalar_type(dtype)) if type_length > 1 else dtype
             )
             pool = TemporaryStore.Pool(value_type, device, pinned=pinned)
             self._temporaries[key] = pool
 
-        return pool.borrow(dtype=dtype, shape=shape, requires_grad=requires_grad)
+        res = TemporaryStore.add_temporary_convenience_methods(
+            pool.borrow(dtype=dtype, shape=shape, requires_grad=requires_grad)
+        )
+        return res
+
+    @staticmethod
+    def add_temporary_convenience_methods(temporary: wp.array) -> Temporary:
+        temporary.release = TemporaryStore._release_temporary.__get__(temporary)
+        temporary.detach = TemporaryStore._detach_temporary.__get__(temporary)
+        temporary.array = temporary
+        return temporary
+
+    @staticmethod
+    def _detach_temporary(temporary) -> wp.array:
+        """Detaches the temporary so it is never returned to the pool"""
+        if temporary.deleter is not None:
+            if isinstance(temporary.deleter, TemporaryStore.Pool.Deleter):
+                temporary.deleter.detach(temporary)
+        return temporary
+
+    @staticmethod
+    def _release_temporary(temporary):
+        """Returns the temporary array to the pool"""
+        if temporary.deleter is not None:
+            with temporary.device.context_guard:
+                temporary.deleter(temporary.ptr, temporary.capacity)
+            temporary.deleter = None
 
 
 def set_default_temporary_store(temporary_store: Optional[TemporaryStore]):
@@ -596,9 +614,9 @@ def borrow_temporary(
     if temporary_store is None:
         temporary_store = TemporaryStore._default_store
 
-    if temporary_store is None or (requires_grad and wp._src.context.runtime.tape is not None):
-        return Temporary(
-            array=wp.empty(shape=shape, dtype=dtype, pinned=pinned, device=device, requires_grad=requires_grad)
+    if temporary_store is None:
+        return TemporaryStore.add_temporary_convenience_methods(
+            Temporary(shape=shape, dtype=dtype, pinned=pinned, device=device, requires_grad=requires_grad)
         )
 
     return temporary_store.borrow(shape=shape, dtype=dtype, device=device, pinned=pinned, requires_grad=requires_grad)
@@ -615,8 +633,6 @@ def borrow_temporary_like(
         array: Warp or temporary array to read the desired attributes from
         temporary_store: the shared pool to borrow the temporary from. If `temporary_store` is ``None``, the global default temporary store, if set, will be used.
     """
-    if isinstance(array, Temporary):
-        array = array.array
     return borrow_temporary(
         temporary_store=temporary_store,
         shape=array.shape,

@@ -13,26 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 import numpy as np
 
 import warp as wp
 import warp._src.fem.cache as cache
-import warp._src.types
-from warp._src.fem.linalg import (  # noqa: F401 (for backward compatibility, not part of public API but used in examples)
-    array_axpy,
-    inverse_qr,
-    symmetric_eigenvalues_qr,
-)
+from warp._src.fem.linalg import array_axpy, inverse_qr, symmetric_eigenvalues_qr  # noqa: F401
 from warp._src.fem.types import NULL_NODE_INDEX
+from warp._src.types import scalar_types, type_is_matrix
 from warp._src.utils import array_scan, radix_sort_pairs, runlength_encode
 
 
 def type_zero_element(dtype):
-    suffix = warp._src.types.get_type_code(dtype)
+    suffix = cache.pod_type_key(dtype)
 
-    if dtype in warp._src.types.scalar_types:
+    if dtype in scalar_types:
 
         @cache.dynamic_func(suffix=suffix)
         def zero_element():
@@ -48,9 +44,9 @@ def type_zero_element(dtype):
 
 
 def type_basis_element(dtype):
-    suffix = warp._src.types.get_type_code(dtype)
+    suffix = cache.pod_type_key(dtype)
 
-    if dtype in warp._src.types.scalar_types:
+    if dtype in scalar_types:
 
         @cache.dynamic_func(suffix=suffix)
         def basis_element(coord: int):
@@ -58,7 +54,7 @@ def type_basis_element(dtype):
 
         return basis_element
 
-    if warp._src.types.type_is_matrix(dtype):
+    if type_is_matrix(dtype):
         cols = dtype._shape_[1]
 
         @cache.dynamic_func(suffix=suffix)
@@ -84,29 +80,35 @@ def compress_node_indices(
     node_count: int,
     node_indices: wp.array(dtype=int),
     return_unique_nodes=False,
+    node_offsets: wp.array(dtype=int) = None,
+    sorted_array_indices: wp.array(dtype=int) = None,
+    unique_node_count: wp.array(dtype=int) = None,
+    unique_node_indices: wp.array(dtype=int) = None,
     temporary_store: cache.TemporaryStore = None,
 ) -> Union[Tuple[cache.Temporary, cache.Temporary], Tuple[cache.Temporary, cache.Temporary, int, cache.Temporary]]:
     """
     Compress an unsorted list of node indices into:
-     - a node_offsets array, giving for each node the start offset of corresponding indices in sorted_array_indices
-     - a sorted_array_indices array, listing the indices in the input array corresponding to each node
+     - the `node_offsets` array, giving for each node the start offset of corresponding indices in sorted_array_indices
+     - the `sorted_array_indices` array, listing the indices in the input array corresponding to each node
 
     Plus if `return_unique_nodes` is ``True``,
-     - the number of unique node indices
-     - a unique_node_indices array containing the sorted list of unique node indices (i.e. the list of indices i for which node_offsets[i] < node_offsets[i+1])
+     - the `unique_node_count` array containing the number of unique node indices
+     - the `unique_node_indices` array containing the sorted list of unique node indices (i.e. the list of indices i for which node_offsets[i] < node_offsets[i+1])
 
     Node indices equal to NULL_NODE_INDEX will be ignored
+
+    If the ``node_offsets``, ``sorted_array_indices``, ``unique_node_count`` and ``unique_node_indices`` arrays are provided and adequately shaped, they will be used to store the results instead of creating new arrays.
+
     """
 
     index_count = node_indices.size
     device = node_indices.device
 
     with wp.ScopedDevice(device):
-        sorted_node_indices_temp = cache.borrow_temporary(temporary_store, shape=2 * index_count, dtype=int)
-        sorted_array_indices_temp = cache.borrow_temporary_like(sorted_node_indices_temp, temporary_store)
+        sorted_node_indices = cache.borrow_temporary(temporary_store, shape=2 * index_count, dtype=int)
 
-        sorted_node_indices = sorted_node_indices_temp.array
-        sorted_array_indices = sorted_array_indices_temp.array
+        if sorted_array_indices is None or sorted_array_indices.shape != sorted_node_indices.shape:
+            sorted_array_indices = cache.borrow_temporary_like(sorted_node_indices, temporary_store)
 
         indices_per_element = 1 if node_indices.ndim == 1 else node_indices.shape[-1]
         wp.launch(
@@ -119,58 +121,42 @@ def compress_node_indices(
         radix_sort_pairs(sorted_node_indices, sorted_array_indices, count=index_count)
 
         # Build prefix sum of number of elements per node
-        unique_node_indices_temp = cache.borrow_temporary(temporary_store, shape=index_count, dtype=int)
-        node_element_counts_temp = cache.borrow_temporary(temporary_store, shape=index_count, dtype=int)
+        node_element_counts = cache.borrow_temporary(temporary_store, shape=index_count, dtype=int)
+        if unique_node_indices is None or unique_node_indices.shape != node_element_counts.shape:
+            unique_node_indices = cache.borrow_temporary_like(node_element_counts, temporary_store)
 
-        unique_node_indices = unique_node_indices_temp.array
-        node_element_counts = node_element_counts_temp.array
-
-        unique_node_count_dev = cache.borrow_temporary(temporary_store, shape=(1,), dtype=int)
+        if unique_node_count is None or unique_node_count.shape != (1,):
+            unique_node_count = cache.borrow_temporary(temporary_store, shape=(1,), dtype=int)
 
         runlength_encode(
             sorted_node_indices,
             unique_node_indices,
             node_element_counts,
             value_count=index_count,
-            run_count=unique_node_count_dev.array,
+            run_count=unique_node_count,
         )
 
         # Scatter seen run counts to global array of element count per node
-        node_offsets_temp = cache.borrow_temporary(temporary_store, shape=(node_count + 1), dtype=int)
-        node_offsets = node_offsets_temp.array
+        if node_offsets is None or node_offsets.shape != (node_count + 1,):
+            node_offsets = cache.borrow_temporary(temporary_store, shape=(node_count + 1), dtype=int)
 
         node_offsets.zero_()
         wp.launch(
             kernel=_scatter_node_counts,
             dim=node_count + 1,  # +1 to accommodate possible NULL node,
-            inputs=[node_element_counts, unique_node_indices, node_offsets, unique_node_count_dev.array],
+            inputs=[node_element_counts, unique_node_indices, node_offsets, unique_node_count],
         )
-
-        if device.is_cuda and return_unique_nodes:
-            unique_node_count_host = cache.borrow_temporary(
-                temporary_store, shape=(1,), dtype=int, pinned=True, device="cpu"
-            )
-            wp.copy(src=unique_node_count_dev.array, dest=unique_node_count_host.array, count=1)
-            copy_event = cache.capture_event(device)
 
         # Prefix sum of number of elements per node
         array_scan(node_offsets, node_offsets, inclusive=True)
 
-        sorted_node_indices_temp.release()
-        node_element_counts_temp.release()
+        sorted_node_indices.release()
+        node_element_counts.release()
 
         if not return_unique_nodes:
-            unique_node_count_dev.release()
-            return node_offsets_temp, sorted_array_indices_temp
+            return node_offsets, sorted_array_indices
 
-        if device.is_cuda:
-            cache.synchronize_event(copy_event)
-            unique_node_count_dev.release()
-        else:
-            unique_node_count_host = unique_node_count_dev
-        unique_node_count = int(unique_node_count_host.array.numpy()[0])
-        unique_node_count_host.release()
-        return node_offsets_temp, sorted_array_indices_temp, unique_node_count, unique_node_indices_temp
+        return node_offsets, sorted_array_indices, unique_node_count, unique_node_indices
 
 
 def host_read_at_index(array: wp.array, index: int = -1, temporary_store: cache.TemporaryStore = None) -> int:
@@ -182,33 +168,55 @@ def host_read_at_index(array: wp.array, index: int = -1, temporary_store: cache.
 
 
 def masked_indices(
-    mask: wp.array, missing_index=-1, temporary_store: cache.TemporaryStore = None
-) -> Tuple[cache.Temporary, cache.Temporary]:
+    mask: wp.array,
+    missing_index: int = -1,
+    max_index_count: int = -1,
+    local_to_global: Optional[wp.array] = None,
+    global_to_local: Optional[wp.array] = None,
+    temporary_store: cache.TemporaryStore = None,
+) -> Tuple[wp.array, wp.array]:
     """
     From an array of boolean masks (must be either 0 or 1), returns:
-      - The list of indices for which the mask is 1
-      - A map associating to each element of the input mask array its local index if non-zero, or missing_index if zero.
+      - Local to global map: The list of indices for which the mask is 1
+      - Global to local map: A map associating to each element of the input mask array its local index if non-zero, or missing_index if zero.
+
+    If ``max_index_count`` is provided, it will be used to limit the number of indices returned instead of synchronizing back to the host
+
+    If ``local_to_global`` and ``global_to_local`` are provided and adequately sized, they will be used to store the indices instead of creating new arrays.
     """
 
-    offsets_temp = cache.borrow_temporary_like(mask, temporary_store)
-    offsets = offsets_temp.array
+    if global_to_local is None or global_to_local.shape != mask.shape:
+        offsets = cache.borrow_temporary_like(mask, temporary_store)
+        global_to_local = offsets
+    else:
+        offsets = global_to_local
 
-    wp._src.utils.array_scan(mask, offsets, inclusive=True)
+    array_scan(mask, offsets, inclusive=True)
 
-    # Get back total counts on host
-    masked_count = int(host_read_at_index(offsets, temporary_store=temporary_store))
+    # Get back total counts (on host if no estimate is provided)
+    local_count = (
+        min(max_index_count, mask.shape[0])
+        if max_index_count >= 0
+        else int(host_read_at_index(offsets, temporary_store=temporary_store))
+    )
 
     # Convert counts to indices
-    indices_temp = cache.borrow_temporary(temporary_store, shape=masked_count, device=mask.device, dtype=int)
+    if local_to_global is None or local_to_global.shape[0] != local_count:
+        local_to_global = cache.borrow_temporary(temporary_store, shape=local_count, device=mask.device, dtype=int)
+
+    if max_index_count >= 0:
+        # We might (and hopefully have) reserved more space than necessary
+        # Fill with missing index to avoid uninitialized values
+        local_to_global.fill_(missing_index)
 
     wp.launch(
         kernel=_masked_indices_kernel,
         dim=offsets.shape,
-        inputs=[missing_index, mask, offsets, indices_temp.array, offsets],
+        inputs=[missing_index, mask, offsets, local_to_global, offsets],
         device=mask.device,
     )
 
-    return indices_temp, offsets_temp
+    return local_to_global, global_to_local
 
 
 @wp.kernel
@@ -234,6 +242,8 @@ def _scatter_node_counts(
     i = wp.tid()
 
     if i >= unique_node_count[0]:
+        if i < unique_node_indices.shape[0]:
+            unique_node_indices[i] = NULL_NODE_INDEX
         return
 
     node_index = unique_node_indices[i]
@@ -254,10 +264,21 @@ def _masked_indices_kernel(
 ):
     i = wp.tid()
 
-    if mask[i] == 0:
+    max_count = masked_to_global.shape[0]
+    masked_idx = offsets[i] - 1
+
+    if i + 1 == offsets.shape[0] and masked_idx >= max_count:
+        if max_count < offsets[i]:
+            wp.printf(
+                "Number of elements exceeded the %d limit; increase to %d.\n",
+                max_count,
+                masked_idx + 1,
+            )
+
+    if mask[i] == 0 or masked_idx >= max_count:
+        # index not in mask, or greater than reserved index count
         global_to_masked[i] = missing_index
     else:
-        masked_idx = offsets[i] - 1
         global_to_masked[i] = masked_idx
         masked_to_global[masked_idx] = i
 

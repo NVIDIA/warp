@@ -173,7 +173,7 @@ class Example:
 
         # Damped update of coupling stress (for stability)
         alpha = 0.1
-        fem.utils.array_axpy(
+        fem.linalg.array_axpy(
             x=self._sig2_field_new.dof_values, y=self._sig2_field.dof_values, alpha=alpha, beta=1.0 - alpha
         )
 
@@ -219,7 +219,7 @@ class Example:
         u_rhs = fem.integrate(gravity_form, fields={"v": u_test}, values={"gravity": gravity}, output_dtype=wp.vec2d)
 
         # Add boundary stress from other solid field
-        other_stress_field = fem.field.field.NonconformingField(boundary, other_stress_field)
+        other_stress_field = fem.NonconformingField(boundary, other_stress_field)
         fem.integrate(
             boundary_stress_form,
             fields={"u": u_bd_test, "tau": other_stress_field},
@@ -233,7 +233,7 @@ class Example:
         )
 
         # read displacement from other body set create bottom boundary Dirichlet BC
-        other_u_field = fem.field.field.NonconformingField(boundary, other_u_field)
+        other_u_field = fem.NonconformingField(boundary, other_u_field)
         u_bd_rhs = fem.integrate(
             bottom_boundary_projector_form, fields={"u": other_u_field, "v": u_bd_test}, assembly="nodal"
         )

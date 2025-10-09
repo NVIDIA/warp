@@ -13,16 +13,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import IntEnum
 from typing import List, Tuple
 
 import warp as wp
 from warp._src.fem.polynomial import Polynomial, quadrature_1d
 from warp._src.fem.types import Coords
 
-_vec1 = wp._src.types.vector(length=1, dtype=float)
+_vec1 = wp.vec(length=1, dtype=float)
 
 
-class Element:
+class Element(IntEnum):
+    """Enumeration of reference element types"""
+
+    LINE_SEGMENT = 1
+    SQUARE = 2
+    CUBE = 3
+    TRIANGLE = 4
+    TETRAHEDRON = 5
+
+    @property
+    def prototype(self) -> "PrototypeElement":
+        """Prototype element for the given element type"""
+        return {
+            Element.LINE_SEGMENT: LinearEdge,
+            Element.SQUARE: Square,
+            Element.CUBE: Cube,
+            Element.TRIANGLE: Triangle,
+            Element.TETRAHEDRON: Tetrahedron,
+        }[self]
+
+
+class PrototypeElement:
     dimension = 0
     """Intrinsic dimension of the element"""
 
@@ -76,7 +98,7 @@ def _point_count_from_order(order: int, family: Polynomial):
     return point_count
 
 
-class Cube(Element):
+class Cube(PrototypeElement):
     dimension = 3
 
     @staticmethod
@@ -97,7 +119,7 @@ class Cube(Element):
         return coords, weights
 
 
-class Square(Element):
+class Square(PrototypeElement):
     dimension = 2
 
     @staticmethod
@@ -118,7 +140,7 @@ class Square(Element):
         return coords, weights
 
 
-class LinearEdge(Element):
+class LinearEdge(PrototypeElement):
     dimension = 1
 
     @staticmethod
@@ -137,7 +159,7 @@ class LinearEdge(Element):
         return coords, weights_1d
 
 
-class Triangle(Element):
+class Triangle(PrototypeElement):
     dimension = 2
 
     @staticmethod
@@ -492,7 +514,7 @@ class Triangle(Element):
         return Coords(-ref_delta[0] - ref_delta[1], ref_delta[0], ref_delta[1])
 
 
-class Tetrahedron(Element):
+class Tetrahedron(PrototypeElement):
     dimension = 3
 
     @staticmethod
@@ -827,4 +849,4 @@ class Tetrahedron(Element):
         c = c - Coords(n, 0.0, n)
 
         # project on cube
-        return Element.project(c)
+        return PrototypeElement.project(c)

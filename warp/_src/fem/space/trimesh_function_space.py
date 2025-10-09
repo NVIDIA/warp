@@ -47,12 +47,6 @@ class TrimeshSpaceTopology(SpaceTopology):
     def name(self):
         return f"{self.geometry.name}_{self._shape.name}"
 
-    @cache.cached_arg_value
-    def topo_arg_value(self, device):
-        arg = TrimeshTopologyArg()
-        self.fill_topo_arg(arg, device)
-        return arg
-
     def fill_topo_arg(self, arg: TrimeshTopologyArg, device):
         arg.tri_edge_indices = self._tri_edge_indices.to(device)
         arg.edge_vertex_indices = self._mesh.edge_vertex_indices.to(device)

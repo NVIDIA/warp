@@ -2,6 +2,7 @@ warp.fem
 ========
 
 .. currentmodule:: warp.fem
+.. py:currentmodule:: warp.fem
 
 The ``warp.fem`` module is designed to facilitate solving physical systems described as differential 
 equations. For example, it can solve PDEs for diffusion, convection, fluid flow, and elasticity problems 
@@ -141,7 +142,7 @@ High-order (curved) geometries
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 It is possible to convert any :class:`.Geometry` (grids and explicit meshes) into a curved, high-order variant by deforming them 
-with an arbitrary-order displacement field using the :meth:`~.field.GeometryField.make_deformed_geometry` method. 
+with an arbitrary-order displacement field using the :meth:`~.GeometryField.make_deformed_geometry` method. 
 The process looks as follows::
 
    # Define a base geometry
@@ -224,7 +225,7 @@ Memory management
 Several ``warp.fem`` functions require allocating temporary buffers to perform their computations. 
 If such functions are called many times in a tight loop, those many allocations and de-allocations may degrade performance,
 though this is a lot less significant when :ref:`mempool_allocators` are in use.
-To overcome this issue, a :class:`.cache.TemporaryStore` object may be created to persist and reuse temporary allocations across calls,
+To overcome this issue, a :class:`.TemporaryStore` object may be created to persist and reuse temporary allocations across calls,
 either globally using :func:`set_default_temporary_store` or at a per-function granularity using the corresponding argument.
 
 Visualization
@@ -328,19 +329,23 @@ Integration
    :no-members:
    :no-special-members:
    
-   .. py:attribute:: element_index (ElementIndex=int)
+   .. py:attribute:: element_index
+      :type: ElementIndex
 
       Index in the geometry of the the sample point is in
    
-   .. py:attribute:: element_coords (Coords=wp.vec3f)
+   .. py:attribute:: element_coords
+      :type: Coords
 
       Coordinates of the sample point in the element
    
-   .. py:attribute:: qp_index (QuadraturePointIndex=int)
+   .. py:attribute:: qp_index
+      :type: QuadraturePointIndex
 
       If the sample corresponds to a quadrature point, its index
    
-   .. py:attribute:: qp_weight (float)
+   .. py:attribute:: qp_weight
+      :type: float
 
       If the sample corresponds to a quadrature point, its weight
 
@@ -351,6 +356,45 @@ Integration
 .. autoclass:: Domain 
    :no-members:
    :no-special-members:
+
+.. autoclass:: Integrand
+   :no-members:
+   :no-special-members:
+
+.. autofunction:: make_free_sample
+
+.. py:type:: ElementIndex
+   :canonical: int
+   :no-index:
+
+   Type representing the index of an element in the geometry
+
+.. py:type:: QuadraturePointIndex
+   :canonical: int
+   :no-index:
+
+   Type representing the index of a quadrature point
+
+.. py:type:: Coords
+   :canonical: wp.vec3f
+
+   Type representing coordinates within elements
+
+.. py:data:: NULL_ELEMENT_INDEX
+   :type: ElementIndex
+
+   Constant indicating an invalid element index
+
+
+.. py:data:: NULL_QP_INDEX
+   :type: QuadraturePointIndex
+   
+   Constant indicating an invalid quadrature point index
+
+.. py:data:: OUTSIDE
+   :type: float
+
+   Constant indicating an invalid element coordinate
 
 Geometry
 --------
@@ -421,6 +465,12 @@ Geometry
    :show-inheritance:
    :no-members:
 
+.. autoclass:: Element
+   :members:
+
+.. autoclass:: ElementKind
+   :members:
+
 .. autoclass:: Polynomial
    :members:
 
@@ -446,6 +496,8 @@ Function Spaces
 .. autofunction:: make_polynomial_space
 
 .. autofunction:: make_polynomial_basis_space
+.. autofunction:: make_element_shape_function
+.. autofunction:: make_element_based_space_topology
 
 .. autofunction:: make_collocated_function_space
 .. autofunction:: make_covariant_function_space
@@ -469,6 +521,22 @@ Function Spaces
 .. autoclass:: PointBasisSpace
    :show-inheritance:
    :no-members:
+
+.. autoclass:: ShapeBasisSpace
+   :show-inheritance:
+   :no-members:
+   :members: shape
+
+.. py:type:: NodeIndex
+   :canonical: int
+   :no-index:
+
+   Type representing the index of a node in a function space
+
+.. py:data:: NULL_NODE_INDEX
+   :type: NodeIndex
+
+   Constant indicating an invalid node index
 
 .. _Fields:
 
@@ -503,6 +571,10 @@ Boundary Conditions
 .. autofunction:: normalize_dirichlet_projector
 
 .. autofunction:: project_linear_system
+
+.. autofunction:: project_system_matrix
+
+.. autofunction:: project_system_rhs
 
 Adaptivity
 ----------
@@ -554,7 +626,7 @@ Interface classes are not meant to be constructed directly, but can be derived f
    :no-members:
    :members: topology, geometry, node_positions
 
-.. autoclass:: warp.fem.space.shape.ShapeFunction
+.. autoclass:: ShapeFunction
    :no-members:
 
 .. autoclass:: SpacePartition
@@ -576,30 +648,15 @@ Interface classes are not meant to be constructed directly, but can be derived f
    :no-members:
    :members: dof_values
 
-.. autoclass:: warp.fem.field.FieldRestriction
-   :no-members:
-
-.. autoclass:: warp.fem.field.GeometryField
+.. autoclass:: GeometryField
    :show-inheritance:
    :no-members:
    :members: trace, make_deformed_geometry
-
-.. autoclass:: warp.fem.field.SpaceField
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: warp.fem.field.TestField
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: warp.fem.field.TrialField
-   :show-inheritance:
-   :no-members:
 
 .. autoclass:: TemporaryStore
    :no-members:
    :members: clear
 
-.. autoclass:: warp.fem.cache.Temporary
+.. autoclass:: Temporary
    :no-members:
    :members: array, detach, release

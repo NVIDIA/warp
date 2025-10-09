@@ -20,7 +20,6 @@ from warp._src.fem.cache import (
     TemporaryStore,
     borrow_temporary,
     borrow_temporary_like,
-    cached_arg_value,
 )
 from warp._src.fem.types import (
     OUTSIDE,
@@ -30,7 +29,7 @@ from warp._src.fem.types import (
 )
 
 from .closest_point import project_on_seg_at_origin, project_on_tri_at_origin
-from .element import LinearEdge, Triangle
+from .element import Element
 from .geometry import Geometry
 
 
@@ -103,11 +102,11 @@ class Trimesh(Geometry):
     def boundary_side_count(self):
         return self._boundary_edge_indices.shape[0]
 
-    def reference_cell(self) -> Triangle:
-        return Triangle()
+    def reference_cell(self) -> Element:
+        return Element.TRIANGLE
 
-    def reference_side(self) -> LinearEdge:
-        return LinearEdge()
+    def reference_side(self) -> Element:
+        return Element.LINE_SEGMENT
 
     @property
     def edge_tri_indices(self) -> wp.array:
@@ -130,29 +129,13 @@ class Trimesh(Geometry):
         args.edge_vertex_indices = self._edge_vertex_indices.to(device)
         args.edge_tri_indices = self._edge_tri_indices.to(device)
 
-    def cell_arg_value(self, device):
-        args = self.CellArg()
-        self.fill_cell_arg(args, device)
-        return args
-
     def fill_cell_arg(self, args: TrimeshCellArg, device):
         self._fill_cell_topo_arg(args.topology, device)
         args.positions = self.positions.to(device)
 
-    def side_arg_value(self, device):
-        args = self.SideArg()
-        self.fill_side_arg(args, device)
-        return args
-
     def fill_side_arg(self, args: TrimeshSideArg, device):
         self._fill_side_topo_arg(args.topology, device)
         args.positions = self.positions.to(device)
-
-    @cached_arg_value
-    def side_index_arg_value(self, device) -> SideIndexArg:
-        args = self.SideIndexArg()
-        self.fill_side_index_arg(args, device)
-        return args
 
     def fill_side_index_arg(self, args: SideIndexArg, device):
         args.boundary_edge_indices = self._boundary_edge_indices.to(device)
@@ -228,7 +211,7 @@ class Trimesh(Geometry):
         self._vertex_tri_indices = vertex_tri_indices.detach()
 
         vertex_start_edge_count = borrow_temporary(temporary_store, dtype=int, device=device, shape=self.vertex_count())
-        vertex_start_edge_count.array.zero_()
+        vertex_start_edge_count.zero_()
         vertex_start_edge_offsets = borrow_temporary_like(vertex_start_edge_count, temporary_store=temporary_store)
 
         vertex_edge_ends = borrow_temporary(temporary_store, dtype=int, device=device, shape=(3 * self.cell_count()))
@@ -239,10 +222,10 @@ class Trimesh(Geometry):
             kernel=Trimesh._count_starting_edges_kernel,
             device=device,
             dim=self.cell_count(),
-            inputs=[self.tri_vertex_indices, vertex_start_edge_count.array],
+            inputs=[self.tri_vertex_indices, vertex_start_edge_count],
         )
 
-        array_scan(in_array=vertex_start_edge_count.array, out_array=vertex_start_edge_offsets.array, inclusive=False)
+        array_scan(in_array=vertex_start_edge_count, out_array=vertex_start_edge_offsets, inclusive=False)
 
         # Count number of unique edges (deduplicate across faces)
         vertex_unique_edge_count = vertex_start_edge_count
@@ -254,21 +237,19 @@ class Trimesh(Geometry):
                 self._vertex_tri_offsets,
                 self._vertex_tri_indices,
                 self.tri_vertex_indices,
-                vertex_start_edge_offsets.array,
-                vertex_unique_edge_count.array,
-                vertex_edge_ends.array,
-                vertex_edge_tris.array,
+                vertex_start_edge_offsets,
+                vertex_unique_edge_count,
+                vertex_edge_ends,
+                vertex_edge_tris,
             ],
         )
 
         vertex_unique_edge_offsets = borrow_temporary_like(vertex_start_edge_offsets, temporary_store=temporary_store)
-        array_scan(in_array=vertex_start_edge_count.array, out_array=vertex_unique_edge_offsets.array, inclusive=False)
+        array_scan(in_array=vertex_start_edge_count, out_array=vertex_unique_edge_offsets, inclusive=False)
 
         # Get back edge count to host
         edge_count = int(
-            host_read_at_index(
-                vertex_unique_edge_offsets.array, self.vertex_count() - 1, temporary_store=temporary_store
-            )
+            host_read_at_index(vertex_unique_edge_offsets, self.vertex_count() - 1, temporary_store=temporary_store)
         )
 
         self._edge_vertex_indices = wp.empty(shape=(edge_count,), dtype=wp.vec2i, device=device)
@@ -282,14 +263,14 @@ class Trimesh(Geometry):
             device=device,
             dim=self.vertex_count(),
             inputs=[
-                vertex_start_edge_offsets.array,
-                vertex_unique_edge_offsets.array,
-                vertex_unique_edge_count.array,
-                vertex_edge_ends.array,
-                vertex_edge_tris.array,
+                vertex_start_edge_offsets,
+                vertex_unique_edge_offsets,
+                vertex_unique_edge_count,
+                vertex_edge_ends,
+                vertex_edge_tris,
                 self._edge_vertex_indices,
                 self._edge_tri_indices,
-                boundary_mask.array,
+                boundary_mask,
             ],
         )
 
@@ -299,7 +280,7 @@ class Trimesh(Geometry):
         vertex_edge_ends.release()
         vertex_edge_tris.release()
 
-        boundary_edge_indices, _ = masked_indices(boundary_mask.array, temporary_store=temporary_store)
+        boundary_edge_indices, _ = masked_indices(boundary_mask, temporary_store=temporary_store)
         self._boundary_edge_indices = boundary_edge_indices.detach()
 
         boundary_mask.release()

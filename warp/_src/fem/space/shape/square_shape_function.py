@@ -68,7 +68,7 @@ class SquareBipolynomialShapeFunctions(SquareShapeFunction):
         lobatto_coords, lobatto_weight = quadrature_1d(point_count=degree + 1, family=family)
         lagrange_scale = lagrange_scales(lobatto_coords)
 
-        NodeVec = wp._src.types.vector(length=degree + 1, dtype=wp.float32)
+        NodeVec = cache.cached_vec_type(length=degree + 1, dtype=wp.float32)
         self.LOBATTO_COORDS = wp.constant(NodeVec(lobatto_coords))
         self.LOBATTO_WEIGHT = wp.constant(NodeVec(lobatto_weight))
         self.LAGRANGE_SCALE = wp.constant(NodeVec(lagrange_scale))
@@ -348,7 +348,7 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
         lobatto_coords, lobatto_weight = quadrature_1d(point_count=degree + 1, family=family)
         lagrange_scale = lagrange_scales(lobatto_coords)
 
-        NodeVec = wp._src.types.vector(length=degree + 1, dtype=wp.float32)
+        NodeVec = cache.cached_vec_type(length=degree + 1, dtype=wp.float32)
         self.LOBATTO_COORDS = wp.constant(NodeVec(lobatto_coords))
         self.LOBATTO_WEIGHT = wp.constant(NodeVec(lobatto_weight))
         self.LAGRANGE_SCALE = wp.constant(NodeVec(lagrange_scale))

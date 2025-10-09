@@ -27,7 +27,7 @@
 import warp as wp
 import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
-from warp.fem.utils import array_axpy
+from warp.fem.linalg import array_axpy
 
 
 @fem.integrand

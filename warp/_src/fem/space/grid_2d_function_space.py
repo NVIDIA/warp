@@ -38,9 +38,6 @@ class Grid2DSpaceTopology(SpaceTopology):
     def name(self):
         return f"{self.geometry.name}_{self._shape.name}"
 
-    def topo_arg_value(self, device):
-        return self.geometry.side_arg_value(device)
-
     def fill_topo_arg(self, arg: Grid2D.SideArg, device):
         self.geometry.fill_side_arg(arg, device)
 

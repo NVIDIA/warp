@@ -15,4 +15,7 @@
 
 # isort: skip_file
 
-from . import element as element
+from . import closest_point as closest_point
+
+from warp._src.fem.geometry import DeformedGeometry as DeformedGeometry
+from warp._src.fem.geometry import WholeGeometryPartition as WholeGeometryPartition

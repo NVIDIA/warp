@@ -69,12 +69,6 @@ class NanogridSpaceTopology(SpaceTopology):
     def name(self):
         return f"{self.geometry.name}_{self._shape.name}"
 
-    @cache.cached_arg_value
-    def topo_arg_value(self, device):
-        arg = NanogridTopologyArg()
-        self.fill_topo_arg(arg, device)
-        return arg
-
     def fill_topo_arg(self, arg, device):
         arg.vertex_grid = self._vertex_grid
         arg.face_grid = self._face_grid

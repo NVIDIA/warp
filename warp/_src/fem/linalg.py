@@ -16,7 +16,7 @@
 from typing import Any
 
 import warp as wp
-import warp._src.types
+from warp._src.types import type_scalar_type
 
 
 @wp.func
@@ -252,12 +252,7 @@ def tridiagonal_symmetric_eigenvalues_qr(D: Any, L: Any, Q: Any, tol: Any):
     """
 
     two = D.dtype(2.0)
-
-    # so that we can use the type length in expressions
-    # this will prevent unrolling by warp, but should be ok for native code
-    m = int(0)
-    for _ in range(type(D).length):
-        m += 1
+    m = wp.static(len(D) + 1)
 
     start = int(0)
     y = D.dtype(0.0)  # moving buldge
@@ -351,7 +346,9 @@ def symmetric_eigenvalues_qr(A: Any, tol: Any):
 def array_axpy(x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 1.0):
     """Performs y = alpha*x + beta*y"""
 
-    dtype = wp._src.types.type_scalar_type(y.dtype)
+    from warp._src.context import runtime
+
+    dtype = type_scalar_type(y.dtype)
 
     alpha = dtype(alpha)
     beta = dtype(beta)
@@ -364,9 +361,9 @@ def array_axpy(x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 1.0):
     # and record a custom adjoint function on the tape.
 
     # temporarily disable tape to avoid printing warning that kernel is not differentiable
-    (tape, wp._src.context.runtime.tape) = (wp._src.context.runtime.tape, None)
+    (tape, runtime.tape) = (runtime.tape, None)
     wp.launch(kernel=_array_axpy_kernel, dim=x.shape, device=x.device, inputs=[x, y, alpha, beta])
-    wp._src.context.runtime.tape = tape
+    runtime.tape = tape
 
     if tape is not None and (x.requires_grad or y.requires_grad):
 

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import cached_property
 from typing import Any, ClassVar, Dict, Optional, Set
 
 import warp as wp
@@ -55,27 +56,43 @@ class AdjointField(SpaceField):
         "node_index": lambda obj: obj._make_node_index(),
     }
 
-    def __init__(self, space: FunctionSpace, space_partition: SpacePartition):
+    def __init__(self, space: FunctionSpace, space_partition: SpacePartition, domain: GeometryDomain):
         super().__init__(space, space_partition=space_partition)
 
         self.node_dof_count = self.space.NODE_DOF_COUNT
         self.value_dof_count = self.space.VALUE_DOF_COUNT
+        self.domain = domain
 
         cache.setup_dynamic_attributes(self)
 
-    @property
+    @cached_property
     def name(self) -> str:
         return f"{self.__class__.__name__}{self.space.name}{self._space_partition.name}"
 
     @cache.cached_arg_value
     def eval_arg_value(self, device):
-        arg = self.EvalArg()
-        self.fill_eval_arg(arg, device)
-        return arg
+        return super().eval_arg_value(device)
 
     def fill_eval_arg(self, arg, device):
         self.space.fill_space_arg(arg.space_arg, device)
         self.space.topology.fill_topo_arg(arg.topo_arg, device)
+
+    def rebind(self, space: FunctionSpace, space_partition: SpacePartition, domain: GeometryDomain):
+        """Rebind the field to a new space partition, space and domain.
+        The new space topology and space must be of similar types as the current ones
+        """
+
+        if (
+            space_partition.space_topology.name != self.space_partition.space_topology.name
+            or space.name != self.space.name
+        ):
+            raise ValueError("Incompatible space and/or space partition")
+
+        self._space = space
+        self._space_partition = space_partition
+        self.domain = domain
+
+        self.eval_arg_value.invalidate(self)
 
     def _make_eval_arg(self):
         @cache.dynamic_struct(suffix=self.name)
@@ -254,7 +271,7 @@ class TestField(AdjointField):
     defined for a different value type than the test function value type, as long as the node topology is similar.
     """
 
-    def __init__(self, space_restriction: SpaceRestriction, space: FunctionSpace):
+    def __init__(self, space: FunctionSpace, space_restriction: SpaceRestriction):
         if space_restriction.domain.dimension == space.dimension - 1:
             space = space.trace()
 
@@ -264,10 +281,17 @@ class TestField(AdjointField):
         if space.topology != space_restriction.space_topology:
             raise ValueError("Incompatible space and space partition topologies")
 
-        super().__init__(space, space_restriction.space_partition)
+        super().__init__(space, space_restriction.space_partition, space_restriction.domain)
 
         self.space_restriction = space_restriction
-        self.domain = space_restriction.domain
+
+    def rebind(self, space: FunctionSpace, space_restriction: SpaceRestriction):
+        """Rebind the test field to a new space restriction and space.
+        The new space restriction and space must be of a similar type as the current ones
+        """
+
+        super().rebind(space, space_restriction.space_partition, space_restriction.domain)
+        self.space_restriction = space_restriction
 
     @wp.func
     def _get_dof(s: Sample):
@@ -292,8 +316,7 @@ class TrialField(AdjointField):
         if not space.topology.is_derived_from(space_partition.space_topology):
             raise ValueError("Incompatible space and space partition topologies")
 
-        super().__init__(space, space_partition)
-        self.domain = domain
+        super().__init__(space, space_partition, domain)
 
     def partition_node_count(self) -> int:
         """Returns the number of nodes in the associated space topology partition"""
@@ -409,9 +432,6 @@ class LocalAdjointField(SpaceField):
     @property
     def name(self) -> str:
         return f"{self.global_field.name}_Taylor{self._dof_suffix}"
-
-    def eval_arg_value(self, device):
-        return LocalAdjointField.EvalArg()
 
     def fill_eval_arg(self, arg, device):
         pass
@@ -631,7 +651,7 @@ def make_linear_dispatch_kernel(
         return qp, elem_offset, qp_point_count, element_index, test_element_index
 
     @cache.dynamic_kernel(
-        f"{test.name}_{quadrature.name}_{wp._src.types.get_type_code(accumulate_dtype)}_{tile_size}",
+        (test.name, quadrature.name, cache.pod_type_key(accumulate_dtype), tile_size),
         kernel_options=kernel_options,
     )
     def dispatch_linear_kernel_fn(
@@ -646,6 +666,9 @@ def make_linear_dispatch_kernel(
         local_node_index, lane = wp.tid()
 
         node_index = space_restriction.node_partition_index(test_arg, local_node_index)
+        if node_index == NULL_NODE_INDEX:
+            return
+
         element_beg, element_end = space_restriction.node_element_range(test_arg, node_index)
 
         val_sum = res_vec()
@@ -816,7 +839,7 @@ def make_bilinear_dispatch_kernel(
     val_t = cache.cached_mat_type(shape=(test.node_dof_count, trial.node_dof_count), dtype=accumulate_dtype)
 
     @cache.dynamic_kernel(
-        f"{trial.name}_{test.name}_{quadrature.name}{wp._src.types.get_type_code(accumulate_dtype)}_{tile_size}",
+        (trial.name, test.name, quadrature.name, cache.pod_type_key(accumulate_dtype), tile_size),
         kernel_options=kernel_options,
     )
     def dispatch_bilinear_kernel_fn(
@@ -841,9 +864,12 @@ def make_bilinear_dispatch_kernel(
         element_index = domain.element_index(domain_index_arg, test_element_index.domain_element_index)
         test_node = test_element_index.node_index_in_element
 
-        element_trial_node_count = trial.space.topology.element_node_count(
-            domain_arg, trial_topology_arg, element_index
-        )
+        if element_index == NULL_ELEMENT_INDEX:
+            element_trial_node_count = 0
+        else:
+            element_trial_node_count = trial.space.topology.element_node_count(
+                domain_arg, trial_topology_arg, element_index
+            )
 
         if trial_node >= element_trial_node_count:
             block_offset = test_node_offset * MAX_NODES_PER_ELEMENT + trial_node

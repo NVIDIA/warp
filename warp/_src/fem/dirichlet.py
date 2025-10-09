@@ -17,8 +17,8 @@ from typing import Any, Optional
 
 import warp as wp
 from warp._src.fem.linalg import array_axpy, symmetric_eigenvalues_qr
-from warp._src.sparse import BsrMatrix, bsr_assign, bsr_axpy, bsr_copy, bsr_mm, bsr_mv
 from warp._src.types import type_is_matrix, type_size
+from warp.sparse import BsrMatrix, bsr_assign, bsr_axpy, bsr_block_index, bsr_copy, bsr_mm, bsr_mv
 
 
 def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: Optional[wp.array] = None):
@@ -26,8 +26,8 @@ def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: Opti
     Scale projector so that it becomes idempotent, and apply the same scaling to fixed_value if provided
     """
 
-    if projector_matrix.nrow < projector_matrix.nnz or projector_matrix.ncol != projector_matrix.nrow:
-        raise ValueError("Projector must be a square diagonal matrix, with at most one non-zero block per row")
+    if projector_matrix.ncol != projector_matrix.nrow:
+        raise ValueError("Projector must be a square block-diagonal matrix")
 
     # Cast blocks to matrix type if necessary
     projector_values = projector_matrix.values
@@ -160,22 +160,15 @@ def _normalize_dirichlet_projector_and_values_kernel(
 ):
     row = wp.tid()
 
-    beg = offsets[row]
-    end = offsets[row + 1]
+    diag = bsr_block_index(row, row, offsets, columns)
 
-    if beg == end:
-        return
+    if diag != -1:
+        P = block_values[diag]
 
-    diag = wp.lower_bound(columns, beg, end, row)
+        P_norm, v_norm = _normalize_projector_and_value(P, fixed_values[row])
 
-    if diag < end:
-        if columns[diag] == row:
-            P = block_values[diag]
-
-            P_norm, v_norm = _normalize_projector_and_value(P, fixed_values[row])
-
-            block_values[diag] = P_norm
-            fixed_values[row] = v_norm
+        block_values[diag] = P_norm
+        fixed_values[row] = v_norm
 
 
 @wp.kernel
@@ -186,17 +179,10 @@ def _normalize_dirichlet_projector_kernel(
 ):
     row = wp.tid()
 
-    beg = offsets[row]
-    end = offsets[row + 1]
+    diag = bsr_block_index(row, row, offsets, columns)
 
-    if beg == end:
-        return
+    if diag != -1:
+        P = block_values[diag]
 
-    diag = wp.lower_bound(columns, beg, end, row)
-
-    if diag < end:
-        if columns[diag] == row:
-            P = block_values[diag]
-
-            P_norm, v_norm = _normalize_projector_and_value(P, type(P[0])())
-            block_values[diag] = P_norm
+        P_norm, v_norm = _normalize_projector_and_value(P, type(P[0])())
+        block_values[diag] = P_norm

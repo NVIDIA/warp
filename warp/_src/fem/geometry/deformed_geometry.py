@@ -19,6 +19,7 @@ import warp as wp
 from warp._src.fem import cache
 from warp._src.fem.polynomial import Polynomial
 from warp._src.fem.types import Coords, ElementIndex, Sample, make_free_sample
+from warp._src.types import type_is_vector, type_size
 
 from .geometry import Geometry
 
@@ -50,23 +51,21 @@ class DeformedGeometry(Geometry):
         "side_coordinates": lambda obj: obj._make_side_coordinates(),
     }
 
-    def __init__(self, field: "wp._src.fem.field.GeometryField", relative: bool = True, build_bvh: bool = False):
+    def __init__(self, field: "wp.fem.field.GeometryField", relative: bool = True, build_bvh: bool = False):
         """Constructs a Deformed Geometry from a displacement or absolute position field defined over a base geometry.
         The deformation field does not need to be isoparameteric.
 
-        See also: :meth:`warp.fem.DiscreteField.make_deformed_geometry`
+        See also: :meth:`warp.fem.GeometryField.make_deformed_geometry`
         """
 
-        from warp._src.fem.field import DiscreteField, GeometryField
+        from warp._src.fem.field import GeometryField
 
-        if isinstance(field, DiscreteField):
-            if (
-                not wp._src.types.type_is_vector(field.dtype)
-                or wp._src.types.type_size(field.dtype) != field.geometry.dimension
-            ):
-                raise ValueError(
-                    "Invalid value type for position field, must be vector-valued with same dimension as underlying geometry"
-                )
+        if field.dtype is not None and (
+            not type_is_vector(field.dtype) or type_size(field.dtype) != field.geometry.dimension
+        ):
+            raise ValueError(
+                "Invalid value type for position field, must be vector-valued with same dimension as underlying geometry"
+            )
         if field.eval_grad_inner is None:
             raise ValueError("Gradient evaluation is not supported on the passed field")
 
@@ -116,11 +115,6 @@ class DeformedGeometry(Geometry):
 
         return CellArg
 
-    def cell_arg_value(self, device) -> "DeformedGeometry.CellArg":
-        args = self.CellArg()
-        self.fill_cell_arg(args, device)
-        return args
-
     def fill_cell_arg(self, args: "DeformedGeometry.CellArg", device):
         self.base.fill_cell_arg(args.base_arg, device)
         self.field.fill_eval_arg(args.field_arg, device)
@@ -163,11 +157,6 @@ class DeformedGeometry(Geometry):
             cell_bvh: wp.uint64
 
         return SideArg
-
-    def side_arg_value(self, device) -> "DeformedGeometry.SideArg":
-        args = self.SideArg()
-        self.fill_side_arg(args, device)
-        return args
 
     def fill_side_arg(self, args: "DeformedGeometry.SideArg", device):
         self.base.fill_side_arg(args.base_arg, device)
@@ -262,7 +251,7 @@ class DeformedGeometry(Geometry):
         return cell_bvh_id
 
     def _make_cell_bounds(self):
-        points, _weights = self.reference_cell().instantiate_quadrature(
+        points, _weights = self.reference_cell().prototype.instantiate_quadrature(
             order=self.field.degree, family=Polynomial.LOBATTO_GAUSS_LEGENDRE
         )
 

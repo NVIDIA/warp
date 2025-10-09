@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import cached_property
 from typing import Any, ClassVar, Optional
 
 import warp as wp
@@ -81,9 +82,13 @@ class CollocatedFunctionSpace(FunctionSpace):
         if hasattr(basis, "vtk_cells"):
             self.vtk_cells = basis.vtk_cells
 
-    @property
+    @cached_property
     def name(self):
         return f"{self._basis.name}_{self.dof_mapper}".replace(".", "_")
+
+    @property
+    def basis(self) -> BasisSpace:
+        return self._basis
 
     def node_positions(self, out: Optional[wp.array] = None) -> wp.array:
         return self._basis.node_positions(out=out)
@@ -91,7 +96,7 @@ class CollocatedFunctionSpace(FunctionSpace):
     def make_field(
         self,
         space_partition: Optional[SpacePartition] = None,
-    ) -> "wp._src.fem.field.NodalField":
+    ) -> "wp.fem.field.NodalField":
         from warp._src.fem.field import NodalField
 
         if space_partition is None:
@@ -185,7 +190,7 @@ class CollocatedFunctionSpaceTrace(CollocatedFunctionSpace):
         self._space = space
         super().__init__(space._basis.trace(), space.dtype, space.dof_mapper)
 
-    @property
+    @cached_property
     def name(self):
         return f"{self._space.name}_Trace"
 
@@ -237,13 +242,17 @@ class VectorValuedFunctionSpace(FunctionSpace):
     def name(self):
         return self._basis.name
 
+    @property
+    def basis(self) -> BasisSpace:
+        return self._basis
+
     def node_positions(self, out: Optional[wp.array] = None) -> wp.array:
         return self._basis.node_positions(out=out)
 
     def make_field(
         self,
         space_partition: Optional[SpacePartition] = None,
-    ) -> "wp._src.fem.field.NodalField":
+    ) -> "wp.fem.field.NodalField":
         from warp._src.fem.field import NodalField
 
         if space_partition is None:
@@ -367,7 +376,7 @@ class CovariantFunctionSpaceTrace(VectorValuedFunctionSpace):
 
         cache.setup_dynamic_attributes(self, cls=__class__)
 
-    @property
+    @cached_property
     def name(self):
         return f"{self._space.name}_Trace"
 
@@ -448,7 +457,7 @@ class ContravariantFunctionSpaceTrace(VectorValuedFunctionSpace):
 
         cache.setup_dynamic_attributes(self, cls=__class__)
 
-    @property
+    @cached_property
     def name(self):
         return f"{self._space.name}_Trace"
 

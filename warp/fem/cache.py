@@ -15,8 +15,8 @@
 
 # isort: skip_file
 
-from warp._src.fem.cache import Temporary as Temporary
 from warp._src.fem.cache import dynamic_kernel as dynamic_kernel
+from warp._src.fem.cache import dynamic_func as dynamic_func
 
 
 # TODO: Remove after cleaning up the public API.

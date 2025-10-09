@@ -13,6 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# isort: skip_file
+
+from warp._src.fem.polynomial import quadrature_1d as quadrature_1d
+from warp._src.fem.polynomial import lagrange_scales as lagrange_scales
+
 # TODO: Remove after cleaning up the public API.
 
 from warp._src.fem import polynomial as _polynomial

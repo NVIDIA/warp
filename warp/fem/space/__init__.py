@@ -15,4 +15,8 @@
 
 # isort: skip_file
 
+from warp._src.fem.space import CollocatedFunctionSpace as CollocatedFunctionSpace
+from warp._src.fem.space import ContravariantFunctionSpace as ContravariantFunctionSpace
+from warp._src.fem.space import CovariantFunctionSpace as CovariantFunctionSpace
+
 from . import shape as shape

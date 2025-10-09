@@ -18,9 +18,9 @@ from enum import Enum
 from typing import Any
 
 import warp as wp
-import warp._src.types
+from warp._src.types import type_size
 
-vec6 = wp._src.types.vector(length=6, dtype=wp.float32)
+vec6 = wp.vec(length=6, dtype=wp.float32)
 
 _SQRT_2 = wp.constant(math.sqrt(2.0))
 _SQRT_3 = wp.constant(math.sqrt(3.0))
@@ -57,7 +57,7 @@ class IdentityMapper(DofMapper):
         self.value_dtype = dtype
         self.dof_dtype = dtype
 
-        size = warp._src.types.type_size(dtype)
+        size = type_size(dtype)
         self.DOF_SIZE = wp.constant(size)
 
     @wp.func
