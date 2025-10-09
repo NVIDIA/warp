@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import warp as wp
+from warp._src.sparse import bsr_set_zero
 from warp.sparse import (
     bsr_assign,
     bsr_axpy,
@@ -690,6 +691,44 @@ def make_test_bsr_multiply_deep(block_shape, scalar_type):
     return test_bsr_multiply_deep
 
 
+def test_bsr_mm_max_new_nnz(test, device):
+    """Test that BSR matrix multiplication with max_new_nnz works"""
+    A = bsr_from_triplets(
+        2,
+        2,
+        wp.array([0, 0, 1, 1], dtype=int, device=device),
+        wp.array([0, 1, 0, 1], dtype=int, device=device),
+        wp.array([1.0, 2.0, 3.0, 4.0], dtype=wp.float32, device=device),
+    )
+    B = bsr_from_triplets(
+        2,
+        2,
+        wp.array([0, 0, 1, 1], dtype=int, device=device),
+        wp.array([0, 1, 0, 1], dtype=int, device=device),
+        wp.array([1.0, 2.0, 3.0, 4.0], dtype=wp.float32, device=device),
+    )
+    C = bsr_zeros(2, 2, wp.float32, device=device)
+
+    # max_new_nnz big enough
+    bsr_mm(A, B, C, max_new_nnz=4)
+    test.assertEqual(C.nnz_sync(), 4)
+
+    bsr_set_zero(C)
+    test.assertEqual(C.nnz_sync(), 0)
+
+    # max_new_nnz too small, check warning
+    capture = StdOutCapture()
+    capture.begin()
+    bsr_mm(A, B, C, max_new_nnz=2)
+    test.assertEqual(C.nnz_sync(), 2)
+    output = capture.end()
+
+    # Check that the output contains warnings about "max_new_nnz" being exceeded.
+    # Older Windows C runtimes have a bug where stdout sometimes does not get properly flushed.
+    if output != "" or sys.platform != "win32":
+        test.assertRegex(output, r"exceeded")
+
+
 def test_capturability(test, device):
     """Test that BSR operations are graph-capturable"""
 
@@ -711,11 +750,12 @@ def test_capturability(test, device):
             values=values,
         )
         B = A + bsr_copy(A * 2.0)
-        bsr_mm(A, bsr_transposed(B), C, masked=True)
+        bsr_mm(A, bsr_transposed(B), C, max_new_nnz=N * N)
 
     # ensure necessary modules are loaded and reset result
     test_body()
-    C *= 0.0
+    bsr_set_zero(C)
+    test.assertEqual(C.nnz_sync(), 0)
 
     with wp.ScopedDevice(device):
         with wp.ScopedCapture(force_module_load=False) as capture:
@@ -724,8 +764,7 @@ def test_capturability(test, device):
     assert_array_equal(bsr_get_diag(C), wp.zeros(N, dtype=wp.mat33, device=device))
 
     wp.capture_launch(capture.graph)
-    wp.synchronize_device(device)
-
+    test.assertEqual(C.nnz_sync(), 9)
     assert_array_equal(bsr_get_diag(C), wp.full(N, value=wp.mat33(9.0), dtype=wp.mat33, device=device))
 
 
@@ -799,6 +838,7 @@ add_function_test(TestSparse, "test_bsr_mv_1_3", make_test_bsr_mv((1, 3), wp.flo
 add_function_test(TestSparse, "test_bsr_mv_3_3", make_test_bsr_mv((3, 3), wp.float64), devices=devices)
 
 add_function_test(TestSparse, "test_capturability", test_capturability, devices=cuda_test_devices)
+add_function_test(TestSparse, "test_bsr_mm_max_new_nnz", test_bsr_mm_max_new_nnz, devices=devices, check_output=False)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
