@@ -600,6 +600,14 @@ def matrix(shape, dtype):
                     super().__setitem__(i, mat_t.scalar_import(args[i]))
             elif num_args == self._shape_[0]:
                 # row vectors
+                if any(type_is_vector(x) for x in args):
+                    warp.utils.warn(
+                        "In the future, the matrix constructor won't support taking row vectors as input arguments. "
+                        "Use `wp.matrix_from_rows()` or `wp.matrix_from_cols()` instead.",
+                        DeprecationWarning,
+                        stacklevel=2,
+                    )
+
                 for i, row in enumerate(args):
                     if not hasattr(row, "__len__") or len(row) != self._shape_[1]:
                         raise TypeError(
@@ -818,8 +826,11 @@ def matrix(shape, dtype):
             elif isinstance(key, slice):
                 indices = range(*key.indices(self._shape_[0]))
                 row_vecs = tuple(self.get_row(x) for x in indices)
-                shape = (len(row_vecs), self._shape_[1])
-                return matrix(shape, self._wp_scalar_type_)(*row_vecs)
+                if not row_vecs:
+                    shape = (0, self._shape_[1])
+                    return matrix(shape, self._wp_scalar_type_)()
+
+                return matrix_from_rows(*row_vecs)
             else:
                 raise KeyError(f"Invalid key {key}, expected int or pair of ints")
 

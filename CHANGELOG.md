@@ -31,6 +31,8 @@
 
 ### Deprecated
 
+- Deprecate constructing a matrix from vectors at the Python scope (e.g.: `wp.mat22(wp.vec2(1, 2), wp.vec2(3, 4))` should become `wp.matrix_from_rows(wp.vec2(1, 2), wp.vec2(3, 4))`) ([GH-981](https://github.com/NVIDIA/warp/issues/981)).
+
 ### Changed
 
 - Improve efficiency for `wp.bvh_query_aabb()`, `wp.mesh_query_aabb()` and `wp.bvh_query_ray()`.

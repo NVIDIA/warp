@@ -266,7 +266,7 @@ class DeformedGeometry(Geometry):
             order=self.field.degree, family=Polynomial.LOBATTO_GAUSS_LEGENDRE
         )
 
-        points = cache.cached_mat_type((len(points), 3), dtype=float)(points)
+        points = wp.matrix_from_rows(*points)
         point_count = len(points)
 
         @cache.dynamic_func(suffix=self.name)
