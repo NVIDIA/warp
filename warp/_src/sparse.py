@@ -224,9 +224,10 @@ class BsrMatrix(Generic[_BlockType]):
             return buf, event
 
         buf, event = _allocate_transfer_buf(self.device)
-        BsrMatrix.__setattr__(self, "_nnz_transfer", (buf, event))
-
-        weakref.finalize(self, _redeem_transfer_buf, self.device, buf, event)
+        if buf is not None:
+            # buf may still be None if device is currently capturing
+            BsrMatrix.__setattr__(self, "_nnz_transfer", (buf, event))
+            weakref.finalize(self, _redeem_transfer_buf, self.device, buf, event)
 
         return buf, event
 
@@ -1794,6 +1795,7 @@ def make_bsr_mm_count_coeffs(tile_size):
 @wp.kernel(enable_backward=False)
 def _bsr_mm_list_coeffs(
     copied_z_nnz: int,
+    mm_nnz: int,
     x_nrow: int,
     x_offsets: wp.array(dtype=int),
     x_columns: wp.array(dtype=int),
@@ -1808,7 +1810,21 @@ def _bsr_mm_list_coeffs(
     mm_block = wp.tid() + copied_z_nnz
 
     x_nnz = x_offsets[x_nrow]
-    x_block = wp.lower_bound(mm_offsets, 0, x_nnz + 1, mm_block + 1) - 1
+
+    x_block = bsr_row_index(mm_offsets, x_nnz, mm_block)
+
+    if x_block == -1:
+        mm_cols[mm_block] = -1
+        mm_rows[mm_block] = -1
+        return
+
+    if mm_block + 1 == mm_nnz and mm_nnz < mm_offsets[x_nnz]:
+        wp.printf(
+            "Number of potential `bsr_mm` blocks (%d) exceeded `max_nnz` (%d)\n",
+            mm_offsets[x_nnz] - copied_z_nnz,
+            mm_nnz - copied_z_nnz,
+        )
+
     pos = mm_block - mm_offsets[x_block]
 
     row = bsr_row_index(x_offsets, x_nrow, x_block)
@@ -2029,8 +2045,7 @@ class bsr_mm_work_arrays:
             self._reset(device)
 
         # Allocations that do not depend on any computation
-        z_nnz = z.nnz_sync()
-        self._copied_z_nnz = z_nnz if beta != 0.0 or z_aliasing else 0
+        self._copied_z_nnz = z.nnz if beta != 0.0 or z_aliasing else 0
 
         if self._mm_row_min is None or self._mm_block_counts.size < z.nrow + 1:
             self._mm_row_min = wp.empty(shape=(z.nrow + 1,), dtype=int, device=self.device)
@@ -2042,8 +2057,8 @@ class bsr_mm_work_arrays:
                 self._old_z_values = wp.empty(shape=(self._copied_z_nnz,), dtype=z.values.dtype, device=self.device)
 
         if z_aliasing:
-            if self._old_z_columns is None or self._old_z_columns.size < z_nnz:
-                self._old_z_columns = wp.empty(shape=(z_nnz,), dtype=z.columns.dtype, device=self.device)
+            if self._old_z_columns is None or self._old_z_columns.size < z.nnz:
+                self._old_z_columns = wp.empty(shape=(z.nnz,), dtype=z.columns.dtype, device=self.device)
             if self._old_z_offsets is None or self._old_z_offsets.size < z.nrow + 1:
                 self._old_z_offsets = wp.empty(shape=(z.nrow + 1,), dtype=z.offsets.dtype, device=self.device)
 
@@ -2068,12 +2083,18 @@ def bsr_mm(
     work_arrays: bsr_mm_work_arrays | None = None,
     reuse_topology: bool = False,
     tile_size: int = 0,
+    max_new_nnz: int | None = None,
 ) -> BsrMatrix[BlockType[Rows, Cols, Scalar]]:
     """
     Perform the sparse matrix-matrix multiplication ``z := alpha * x @ y + beta * z`` on BSR matrices ``x``, ``y`` and ``z``, and return ``z``.
 
     The ``x``, ``y`` and ``z`` matrices are allowed to alias.
     If the matrix ``z`` is not provided as input, it will be allocated and treated as zero.
+
+    This method can be graph-captured if either:
+     - `masked=True`
+     - `reuse_topology=True`
+     - `max_new_nnz` is provided
 
     Args:
         x: Read-only left operand of the matrix-matrix product.
@@ -2089,7 +2110,8 @@ def bsr_mm(
           stored in ``work_arrays`` rather than recompute it from scratch.
           The matrices ``x``, ``y`` and ``z`` must be structurally similar to
           the previous call in which ``work_arrays`` were populated.
-          This is necessary for ``bsr_mm`` to be captured in a CUDA graph.
+        max_new_nnz: If provided, the maximum number of non-zeros for the matrix-matrix product result
+           (not counting the existing non-zeros in ``z``).
         tile_size: If a positive integer, use tiles of this size to compute the matrix-matrix product.
           If negative, disable tile-based computation. Defaults to ``0``, which determines whether to
           use tiles using using an heuristic based on the matrix shape and number of non-zeros..
@@ -2166,13 +2188,15 @@ def bsr_mm(
         copied_z_nnz = work_arrays._copied_z_nnz
         mm_nnz = work_arrays._mm_nnz
     else:
-        if device.is_capturing:
-            raise RuntimeError(
-                "`bsr_mm` requires either `reuse_topology=True` or `masked=True` for use in graph capture"
-            )
-
         if work_arrays is None:
             work_arrays = bsr_mm_work_arrays()
+
+        if max_new_nnz is None:
+            if device.is_capturing:
+                raise RuntimeError(
+                    "`bsr_mm` requires either `reuse_topology=True`, `masked=True` or `max_new_nnz` to be set for use in graph capture"
+                )
+            z.nnz_sync()
 
         work_arrays._allocate_stage_1(device, x.nnz, z, beta, z_aliasing)
         copied_z_nnz = work_arrays._copied_z_nnz
@@ -2202,18 +2226,21 @@ def bsr_mm(
         )
         warp._src.utils.array_scan(work_arrays._mm_block_counts[: x.nnz + 1], work_arrays._mm_block_counts[: x.nnz + 1])
 
-        # Get back total counts on host -- we need a synchronization here
-        # Use pinned buffer from z, we are going to need it later anyway
-        nnz_buf, _ = z._setup_nnz_transfer()
-        stream = wp.get_stream(device) if device.is_cuda else None
-        wp.copy(dest=nnz_buf, src=work_arrays._mm_block_counts, src_offset=x.nnz, count=1, stream=stream)
-        if device.is_cuda:
-            wp.synchronize_stream(stream)
-        mm_nnz = int(nnz_buf.numpy()[0])
+        if max_new_nnz is not None:
+            mm_nnz = max_new_nnz + copied_z_nnz
+        else:
+            # Get back total counts on host -- we need a synchronization here
+            # Use pinned buffer from z, we are going to need it later anyway
+            nnz_buf, _ = z._setup_nnz_transfer()
+            stream = wp.get_stream(device) if device.is_cuda else None
+            wp.copy(dest=nnz_buf, src=work_arrays._mm_block_counts, src_offset=x.nnz, count=1, stream=stream)
+            if device.is_cuda:
+                wp.synchronize_stream(stream)
+            mm_nnz = int(nnz_buf.numpy()[0])
 
-        if mm_nnz == copied_z_nnz:
-            # x@y = 0
-            return bsr_scale(z, beta)
+            if mm_nnz == copied_z_nnz:
+                # x@y = 0
+                return bsr_scale(z, beta)
 
         work_arrays._allocate_stage_2(mm_nnz)
 
@@ -2235,6 +2262,7 @@ def bsr_mm(
             dim=mm_nnz - copied_z_nnz,
             inputs=[
                 copied_z_nnz,
+                mm_nnz,
                 x.nrow,
                 x.offsets,
                 x.columns,
@@ -2295,7 +2323,7 @@ def bsr_mm(
         # Resize z to fit mm result if necessary
         # If we are not reusing the product topology, this needs another synchronization
         if not reuse_topology:
-            work_arrays.result_nnz = z.nnz_sync()
+            work_arrays.result_nnz = z.nnz_sync() if max_new_nnz is None else mm_nnz
 
         _bsr_ensure_fits(z, nnz=work_arrays.result_nnz)
         z.values.zero_()
