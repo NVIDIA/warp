@@ -491,7 +491,7 @@ class Function:
         if self.defaults:
             # Populate the bound arguments with any default values.
             default_args = {k: v for k, v in self.defaults.items() if k not in bound_args.arguments}
-            warp.codegen.apply_defaults(bound_args, default_args)
+            warp._src.codegen.apply_defaults(bound_args, default_args)
 
         bound_args = tuple(bound_args.arguments.values())
         return call_builtin_from_desc(desc, bound_args)

@@ -13,11 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# isort: skip_file
-
-from warp._src.build import clear_kernel_cache as clear_kernel_cache
-
-
 # TODO: Remove after cleaning up the public API.
 
 from warp._src import build as _build

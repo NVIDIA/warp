@@ -207,7 +207,7 @@ def test_atomic_add_supported_dtypes(test, device, dtype):
     wp.launch(kernel, dim=N, outputs=(arr,), device=device)
 
     size = 1 if not hasattr(dtype, "_shape_") else dtype._shape_
-    assert_np_equal(arr.numpy().flatten(), np.full(size, N, dtype=wp.types.warp_type_to_np_dtype[scalar_type]))
+    assert_np_equal(arr.numpy().flatten(), np.full(size, N, dtype=wp.dtype_to_numpy(scalar_type)))
 
 
 def test_atomic_min_supported_dtypes(test, device, dtype):
@@ -235,8 +235,8 @@ def test_atomic_max_supported_dtypes(test, device, dtype):
 def test_atomic_add_unsupported_dtypes(test, device, dtype):
     scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
 
-    dtype_str = re.escape(wp._src.types.type_repr(dtype))
-    scalar_type_str = wp._src.types.type_repr(scalar_type)
+    dtype_str = re.escape(wp.types.type_repr(dtype))
+    scalar_type_str = wp.types.type_repr(scalar_type)
 
     @wp.kernel
     def kernel(arr: wp.array(dtype=dtype)):
@@ -256,8 +256,8 @@ def test_atomic_add_unsupported_dtypes(test, device, dtype):
 def test_atomic_min_unsupported_dtypes(test, device, dtype):
     scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
 
-    dtype_str = re.escape(wp._src.types.type_repr(dtype))
-    scalar_type_str = wp._src.types.type_repr(scalar_type)
+    dtype_str = re.escape(wp.types.type_repr(dtype))
+    scalar_type_str = wp.types.type_repr(scalar_type)
 
     @wp.kernel
     def kernel(arr: wp.array(dtype=dtype)):
@@ -277,8 +277,8 @@ def test_atomic_min_unsupported_dtypes(test, device, dtype):
 def test_atomic_max_unsupported_dtypes(test, device, dtype):
     scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
 
-    dtype_str = re.escape(wp._src.types.type_repr(dtype))
-    scalar_type_str = wp._src.types.type_repr(scalar_type)
+    dtype_str = re.escape(wp.types.type_repr(dtype))
+    scalar_type_str = wp.types.type_repr(scalar_type)
 
     @wp.kernel
     def kernel(arr: wp.array(dtype=dtype)):

@@ -25,7 +25,7 @@ import jax.numpy as jnp
 import numpy as np
 
 import warp as wp
-from warp.jax import get_jax_device
+from warp._src.jax import get_jax_device
 from warp.jax_experimental import register_ffi_callback
 
 

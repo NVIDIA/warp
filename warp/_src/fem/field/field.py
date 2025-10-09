@@ -330,7 +330,9 @@ class ImplicitField(GeometryField):
 
         try:
             first_arg_type = arg_types.pop(argspec.args[0])
-            if types_equal(first_arg_type, wp.vec(length=domain.geometry.dimension, dtype=float), match_generic=True):
+            if types_equal(
+                first_arg_type, wp.types.vector(length=domain.geometry.dimension, dtype=float), match_generic=True
+            ):
                 self._qp_based = False
             elif type_to_warp(first_arg_type) == wp.int32:
                 self._qp_based = True

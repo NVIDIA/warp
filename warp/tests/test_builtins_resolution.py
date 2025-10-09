@@ -27,7 +27,7 @@ def nps(dtype, value):
 
 
 def test_int_arg_support(test, device, dtype):
-    np_type = wp._src.types.warp_type_to_np_dtype[dtype]
+    np_type = wp.dtype_to_numpy(dtype)
     value = -1234567890123456789
     expected = wp.invert(dtype(value))
 
@@ -35,7 +35,7 @@ def test_int_arg_support(test, device, dtype):
 
 
 def test_float_arg_support(test, device, dtype):
-    np_type = wp._src.types.warp_type_to_np_dtype[dtype]
+    np_type = wp.dtype_to_numpy(dtype)
     value = 1.23
     expected = wp.sin(dtype(value))
 
@@ -43,7 +43,7 @@ def test_float_arg_support(test, device, dtype):
 
 
 def test_int_int_args_support(test, device, dtype):
-    np_type = wp._src.types.warp_type_to_np_dtype[dtype]
+    np_type = wp.dtype_to_numpy(dtype)
     value = -1234567890
     expected = wp.mul(dtype(value), dtype(value))
 

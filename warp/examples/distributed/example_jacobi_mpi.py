@@ -39,7 +39,6 @@ import numpy as np
 from mpi4py import MPI
 
 import warp as wp
-from warp.types import warp_type_to_np_dtype
 
 wp.config.quiet = True  # Suppress wp.init() output
 
@@ -386,7 +385,7 @@ class Example:
     def run(self) -> None:
         """Run the Jacobi relaxation on multiple GPUs using MPI and compare with single-GPU results."""
         iter = 0
-        l2_norm = np.array([1.0], dtype=warp_type_to_np_dtype[wptype])
+        l2_norm = np.array([1.0], dtype=wp.dtype_to_numpy(wptype))
 
         start_time = MPI.Wtime()
 

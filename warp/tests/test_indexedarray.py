@@ -268,9 +268,9 @@ def test_indexedarray_mixed(test, device):
     wp.launch(kernel_3d, dim=iarr.shape, inputs=[iarr, expected_arr], device=device)
 
 
-vec2i = wp._src.types.vector(length=2, dtype=wp.int32)
-vec3i = wp._src.types.vector(length=3, dtype=wp.int32)
-vec4i = wp._src.types.vector(length=4, dtype=wp.int32)
+vec2i = wp.types.vector(length=2, dtype=wp.int32)
+vec3i = wp.types.vector(length=3, dtype=wp.int32)
+vec4i = wp.types.vector(length=4, dtype=wp.int32)
 
 
 @wp.kernel
@@ -575,9 +575,9 @@ def test_indexedarray_empty(test, device):
             # scalar, vector, or matrix
             if ncols > 0:
                 if nrows > 0:
-                    wptype = wp._src.types.matrix((nrows, ncols), wptype)
+                    wptype = wp.types.matrix((nrows, ncols), wptype)
                 else:
-                    wptype = wp._src.types.vector(ncols, wptype)
+                    wptype = wp.types.vector(ncols, wptype)
                 dtype_shape = wptype._shape_
             fill_value = wptype(42)
         else:
@@ -720,10 +720,10 @@ def test_indexedarray_fill_vector(test, device):
     for nptype, wptype in wp._src.types.np_dtype_to_warp_type.items():
         # vector types
         vector_types = [
-            wp._src.types.vector(2, wptype),
-            wp._src.types.vector(3, wptype),
-            wp._src.types.vector(4, wptype),
-            wp._src.types.vector(5, wptype),
+            wp.types.vector(2, wptype),
+            wp.types.vector(3, wptype),
+            wp.types.vector(4, wptype),
+            wp.types.vector(5, wptype),
         ]
 
         for vec_type in vector_types:
@@ -867,15 +867,15 @@ def test_indexedarray_fill_matrix(test, device):
         # matrix types
         matrix_types = [
             # square matrices
-            wp._src.types.matrix((2, 2), wptype),
-            wp._src.types.matrix((3, 3), wptype),
-            wp._src.types.matrix((4, 4), wptype),
-            wp._src.types.matrix((5, 5), wptype),
+            wp.types.matrix((2, 2), wptype),
+            wp.types.matrix((3, 3), wptype),
+            wp.types.matrix((4, 4), wptype),
+            wp.types.matrix((5, 5), wptype),
             # non-square matrices
-            wp._src.types.matrix((2, 3), wptype),
-            wp._src.types.matrix((3, 2), wptype),
-            wp._src.types.matrix((3, 4), wptype),
-            wp._src.types.matrix((4, 3), wptype),
+            wp.types.matrix((2, 3), wptype),
+            wp.types.matrix((3, 2), wptype),
+            wp.types.matrix((3, 4), wptype),
+            wp.types.matrix((4, 3), wptype),
         ]
 
         for mat_type in matrix_types:

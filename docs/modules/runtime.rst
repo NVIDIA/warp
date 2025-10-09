@@ -645,17 +645,17 @@ In addition, it's possible to directly create *anonymously* typed instances of t
     def compute( ... ):
 
         # zero initialize vector of 5 doubles:
-        v = wp.vector(dtype=wp.float64, length=5)
+        v = wp.types.vector(dtype=wp.float64, length=5)
 
         # scalar initialize a vector of 5 doubles to the same value:
-        v = wp.vector(wp.float64(1.0), length=5)
+        v = wp.types.vector(wp.float64(1.0), length=5)
 
         # component-wise initialize a vector of 5 doubles
-        v = wp.vector(wp.float64(1.0),
-                      wp.float64(2.0),
-                      wp.float64(3.0),
-                      wp.float64(4.0),
-                      wp.float64(5.0))
+        v = wp.types.vector(wp.float64(1.0),
+                            wp.float64(2.0),
+                            wp.float64(3.0),
+                            wp.float64(4.0),
+                            wp.float64(5.0))
 
 
 These can be used with all the standard vector arithmetic operators, e.g.: ``+``, ``-``, scalar multiplication, and can also be transformed using matrices with compatible dimensions, potentially returning vectors with a different length.
@@ -736,14 +736,14 @@ It's also possible to directly create anonymously typed instances inside kernels
         ...
 
         # create a 3x2 half precision matrix from components (row major ordering):
-        m = wp.matrix(
+        m = wp.types.matrix(
             wp.float16(1.0), wp.float16(2.0),
             wp.float16(1.0), wp.float16(2.0),
             wp.float16(1.0), wp.float16(2.0),
             shape=(3,2))
 
         # zero initialize a 3x2 half precision matrix:
-        m = wp.matrix(wp.float16(0.0),shape=(3,2))
+        m = wp.types.matrix(wp.float16(0.0),shape=(3,2))
 
         # create a 5x5 double precision identity matrix:
         m = wp.identity(n=5, dtype=wp.float64)
@@ -1927,8 +1927,8 @@ Some basic requirements for using IPC include:
   The ``wp.ScopedMempool`` context manager is useful for temporarily disabling
   memory pools for the purpose of allocating arrays that can be shared using IPC.
 
-Support for IPC on a device is indicated by the :attr:`is_ipc_supported <warp.context.Device.is_ipc_supported>`
-attribute of the :class:`Device <warp.context.Device>`. If the Warp library has
+Support for IPC on a device is indicated by the :attr:`is_ipc_supported <warp.Device.is_ipc_supported>`
+attribute of the :class:`Device <warp.Device>`. If the Warp library has
 been compiled with CUDA 11, this device attribute will be ``None`` to indicate
 that IPC support could not be determined using the CUDA API.
 

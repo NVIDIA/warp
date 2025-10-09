@@ -248,9 +248,9 @@ class BuiltinOpDispatchKind(enum.Enum):
 
 # Caches to significantly improve performance for repeated operations
 # with arguments of the same types.
-_unary_builtin_cache: Mapping[str, tuple[warp.context.BuiltinCallDesc, BuiltinOpDispatchKind]] = {}
-_binary_builtin_cache: Mapping[str, tuple[warp.context.BuiltinCallDesc, BuiltinOpDispatchKind]] = {}
-_rbinary_builtin_cache: Mapping[str, tuple[warp.context.BuiltinCallDesc, BuiltinOpDispatchKind]] = {}
+_unary_builtin_cache: Mapping[str, tuple[warp._src.context.BuiltinCallDesc, BuiltinOpDispatchKind]] = {}
+_binary_builtin_cache: Mapping[str, tuple[warp._src.context.BuiltinCallDesc, BuiltinOpDispatchKind]] = {}
+_rbinary_builtin_cache: Mapping[str, tuple[warp._src.context.BuiltinCallDesc, BuiltinOpDispatchKind]] = {}
 
 
 def _unary_op(self, op, t):
@@ -267,9 +267,9 @@ def _unary_op(self, op, t):
         _unary_builtin_cache[key] = (desc, kind)
 
     if kind == BuiltinOpDispatchKind.DIRECT:
-        return warp.context.call_builtin_from_desc(desc, (self,))
+        return warp._src.context.call_builtin_from_desc(desc, (self,))
 
-    return t(*(warp.context.call_builtin_from_desc(desc, (a,)) for a in self))
+    return t(*(warp._src.context.call_builtin_from_desc(desc, (a,)) for a in self))
 
 
 def _binary_op(self, op, x, t, cw=True):
@@ -292,12 +292,12 @@ def _binary_op(self, op, x, t, cw=True):
         _binary_builtin_cache[key] = (desc, kind)
 
     if kind == BuiltinOpDispatchKind.DIRECT:
-        return warp.context.call_builtin_from_desc(desc, (self, x))
+        return warp._src.context.call_builtin_from_desc(desc, (self, x))
 
     if kind == BuiltinOpDispatchKind.BROADCAST_SCALAR:
-        return t(*(warp.context.call_builtin_from_desc(desc, (a, x)) for a in self))
+        return t(*(warp._src.context.call_builtin_from_desc(desc, (a, x)) for a in self))
 
-    return t(*(warp.context.call_builtin_from_desc(desc, (a, b)) for a, b in zip(self, x)))
+    return t(*(warp._src.context.call_builtin_from_desc(desc, (a, b)) for a, b in zip(self, x)))
 
 
 def _rbinary_op(self, op, x, t, cw=True):
@@ -320,12 +320,12 @@ def _rbinary_op(self, op, x, t, cw=True):
         _rbinary_builtin_cache[key] = (desc, kind)
 
     if kind == BuiltinOpDispatchKind.DIRECT:
-        return warp.context.call_builtin_from_desc(desc, (x, self))
+        return warp._src.context.call_builtin_from_desc(desc, (x, self))
 
     if kind == BuiltinOpDispatchKind.BROADCAST_SCALAR:
-        return t(*(warp.context.call_builtin_from_desc(desc, (x, a)) for a in self))
+        return t(*(warp._src.context.call_builtin_from_desc(desc, (x, a)) for a in self))
 
-    return t(*(warp.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x)))
+    return t(*(warp._src.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x)))
 
 
 @functools.lru_cache(maxsize=None)

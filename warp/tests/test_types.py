@@ -96,8 +96,8 @@ def test_vector(test, device, dtype):
 
         return args
 
-    vec3_cls = wp.vec(3, dtype)
-    vec4_cls = wp.vec(4, dtype)
+    vec3_cls = wp.types.vector(3, dtype)
+    vec4_cls = wp.types.vector(4, dtype)
 
     v = vec4_cls(1, 2, 3, 4)
     test.assertEqual(v[0], make_scalar(1))
@@ -315,9 +315,9 @@ class TestTypes(unittest.TestCase):
 
                 return args
 
-            mat22_cls = wp.mat((2, 2), dtype)
-            mat33_cls = wp.mat((3, 3), dtype)
-            vec2_cls = wp.vec(2, dtype)
+            mat22_cls = wp.types.matrix((2, 2), dtype)
+            mat33_cls = wp.types.matrix((3, 3), dtype)
+            vec2_cls = wp.types.vector(2, dtype)
 
             m = mat33_cls(((1, 2, 3), (4, 5, 6), (7, 8, 9)))
             self.assertEqual(m[0][0], make_scalar(1))

@@ -27,13 +27,13 @@ from warp.tests.unittest_utils import *
 # types to test fabric arrays
 _fabric_types = [
     *wp._src.types.scalar_types,
-    *[wp._src.types.vector(2, T) for T in wp._src.types.scalar_types],
-    *[wp._src.types.vector(3, T) for T in wp._src.types.scalar_types],
-    *[wp._src.types.vector(4, T) for T in wp._src.types.scalar_types],
-    *[wp._src.types.matrix((2, 2), T) for T in wp._src.types.scalar_types],
-    *[wp._src.types.matrix((3, 3), T) for T in wp._src.types.scalar_types],
-    *[wp._src.types.matrix((4, 4), T) for T in wp._src.types.scalar_types],
-    *[wp._src.types.quaternion(T) for T in wp._src.types.float_types],
+    *[wp.types.vector(2, T) for T in wp._src.types.scalar_types],
+    *[wp.types.vector(3, T) for T in wp._src.types.scalar_types],
+    *[wp.types.vector(4, T) for T in wp._src.types.scalar_types],
+    *[wp.types.matrix((2, 2), T) for T in wp._src.types.scalar_types],
+    *[wp.types.matrix((3, 3), T) for T in wp._src.types.scalar_types],
+    *[wp.types.matrix((4, 4), T) for T in wp._src.types.scalar_types],
+    *[wp.types.quaternion(T) for T in wp._src.types.float_types],
 ]
 
 
@@ -114,7 +114,7 @@ def _create_fabric_array_interface(data: wp.array, attrib: str, bucket_sizes: li
         # empty data array
         bucket_sizes = []
 
-    dtype_size = wp._src.types.type_size_in_bytes(data.dtype)
+    dtype_size = wp.types.type_size_in_bytes(data.dtype)
     p = int(data.ptr) if data.ptr else 0
     pointers = []
     counts = []
@@ -189,10 +189,10 @@ def _create_fabric_array_array_interface(data: list, attrib: str, bucket_sizes: 
         _array_lengths.append(data[i].size)
 
     array_pointers = wp.array(_array_pointers, dtype=wp.uint64, device=device)
-    pointer_size = wp._src.types.type_size_in_bytes(array_pointers.dtype)
+    pointer_size = wp.types.type_size_in_bytes(array_pointers.dtype)
 
     lengths = wp.array(_array_lengths, dtype=wp.uint64, device=device)
-    length_size = wp._src.types.type_size_in_bytes(lengths.dtype)
+    length_size = wp.types.type_size_in_bytes(lengths.dtype)
 
     p_pointers = int(array_pointers.ptr)
     p_lengths = int(lengths.ptr)
@@ -296,9 +296,9 @@ def fa_generic_dtype_kernel_indexed(a: wp.indexedfabricarray(dtype=Any), b: wp.i
 def test_fabricarray_generic_dtype(test, device):
     for T in _fabric_types:
         if hasattr(T, "_wp_scalar_type_"):
-            nptype = wp._src.types.warp_type_to_np_dtype[T._wp_scalar_type_]
+            nptype = wp.dtype_to_numpy(T._wp_scalar_type_)
         else:
-            nptype = wp._src.types.warp_type_to_np_dtype[T]
+            nptype = wp.dtype_to_numpy(T)
 
         data = wp.array(data=np.arange(10, dtype=nptype), device=device)
         data_iface = _create_fabric_array_interface(data, "foo", copy=True)
@@ -345,9 +345,9 @@ def fa_generic_array_kernel(a: Any, b: Any):
 def test_fabricarray_generic_array(test, device):
     for T in _fabric_types:
         if hasattr(T, "_wp_scalar_type_"):
-            nptype = wp._src.types.warp_type_to_np_dtype[T._wp_scalar_type_]
+            nptype = wp.dtype_to_numpy(T._wp_scalar_type_)
         else:
-            nptype = wp._src.types.warp_type_to_np_dtype[T]
+            nptype = wp.dtype_to_numpy(T)
 
         data = wp.array(data=np.arange(100, dtype=nptype), device=device)
         data_iface = _create_fabric_array_interface(data, "foo", copy=True)
@@ -393,9 +393,9 @@ def test_fabricarray_empty(test, device):
         # scalar, vector, or matrix
         if ncols > 0:
             if nrows > 0:
-                wptype = wp._src.types.matrix((nrows, ncols), wptype)
+                wptype = wp.types.matrix((nrows, ncols), wptype)
             else:
-                wptype = wp._src.types.vector(ncols, wptype)
+                wptype = wp.types.vector(ncols, wptype)
             dtype_shape = wptype._shape_
         else:
             dtype_shape = ()
@@ -544,10 +544,10 @@ def test_fabricarray_fill_vector(test, device):
     for nptype, wptype in wp._src.types.np_dtype_to_warp_type.items():
         # vector types
         vector_types = [
-            wp._src.types.vector(2, wptype),
-            wp._src.types.vector(3, wptype),
-            wp._src.types.vector(4, wptype),
-            wp._src.types.vector(5, wptype),
+            wp.types.vector(2, wptype),
+            wp.types.vector(3, wptype),
+            wp.types.vector(4, wptype),
+            wp.types.vector(5, wptype),
         ]
 
         for vec_type in vector_types:
@@ -686,10 +686,10 @@ def test_fabricarray_fill_matrix(test, device):
         # matrix types
         matrix_types = [
             # square matrices only
-            wp._src.types.matrix((2, 2), wptype),
-            wp._src.types.matrix((3, 3), wptype),
-            wp._src.types.matrix((4, 4), wptype),
-            wp._src.types.matrix((5, 5), wptype),
+            wp.types.matrix((2, 2), wptype),
+            wp.types.matrix((3, 3), wptype),
+            wp.types.matrix((4, 4), wptype),
+            wp.types.matrix((5, 5), wptype),
         ]
 
         for mat_type in matrix_types:
@@ -896,9 +896,9 @@ def fa_generic_sums_kernel_indexed(a: wp.indexedfabricarrayarray(dtype=Any), sum
 def test_fabricarrayarray(test, device):
     for T in _fabric_types:
         if hasattr(T, "_wp_scalar_type_"):
-            nptype = wp._src.types.warp_type_to_np_dtype[T._wp_scalar_type_]
+            nptype = wp.dtype_to_numpy(T._wp_scalar_type_)
         else:
-            nptype = wp._src.types.warp_type_to_np_dtype[T]
+            nptype = wp.dtype_to_numpy(T)
 
         n = 100
 

@@ -15,6 +15,8 @@
 
 import warp as wp
 
+from ..benchmarks_utils import clear_kernel_cache
+
 wp.set_module_options({"enable_backward": False})
 
 N = 8192
@@ -31,7 +33,7 @@ class KernelLaunch:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
         wp.load_module(device="cuda:0")
         self.test_array = wp.zeros(N, dtype=float, device="cuda:0")
         self.stream = wp.Stream("cuda:0")
@@ -119,7 +121,7 @@ class KernelLaunchParameters:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
         wp.load_module(device="cuda:0")
 
         n = 1
@@ -173,7 +175,7 @@ class GraphLaunch:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
         wp.load_module(device="cuda:0")
         self.test_array = wp.zeros(N, dtype=float, device="cuda:0")
         self.stream = wp.Stream("cuda:0")

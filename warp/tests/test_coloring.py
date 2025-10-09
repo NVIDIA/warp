@@ -286,7 +286,7 @@ class TestColoring(unittest.TestCase):
         particle_colors = wp.empty((num_nodes,), dtype=wp.int32, device="cpu")
 
         # Call C++ function
-        num_colors = wp.context.runtime.core.wp_graph_coloring(
+        num_colors = wp._src.context.runtime.core.wp_graph_coloring(
             num_nodes,
             edge_indices.__ctype__(),
             ColoringAlgorithm.GREEDY,
@@ -342,7 +342,7 @@ class TestColoring(unittest.TestCase):
         particle_colors = wp.empty(shape=(num_vertices), dtype=int, device="cpu")
 
         # Test GREEDY algorithm
-        num_colors_greedy = wp.context.runtime.core.wp_graph_coloring(
+        num_colors_greedy = wp._src.context.runtime.core.wp_graph_coloring(
             num_vertices,
             edge_indices_cpu.__ctype__(),
             ColoringAlgorithm.GREEDY,
@@ -361,7 +361,7 @@ class TestColoring(unittest.TestCase):
         self.assertEqual(invalid_edges, 0, f"GREEDY coloring has {invalid_edges} invalid edges")
 
         # Test MCS algorithm
-        num_colors_mcs = wp.context.runtime.core.wp_graph_coloring(
+        num_colors_mcs = wp._src.context.runtime.core.wp_graph_coloring(
             num_vertices,
             edge_indices_cpu.__ctype__(),
             ColoringAlgorithm.MCS,
@@ -389,13 +389,13 @@ class TestColoring(unittest.TestCase):
         )
 
         # Call C++ function
-        num_colors_greedy_bending = wp.context.runtime.core.wp_graph_coloring(
+        num_colors_greedy_bending = wp._src.context.runtime.core.wp_graph_coloring(
             num_vertices,
             edge_indices_cpu_with_bending.__ctype__(),
             ColoringAlgorithm.GREEDY,
             particle_colors.__ctype__(),
         )
-        wp.context.runtime.core.wp_balance_coloring(
+        wp._src.context.runtime.core.wp_balance_coloring(
             num_vertices,
             edge_indices_cpu_with_bending.__ctype__(),
             num_colors_greedy_bending,
@@ -409,7 +409,7 @@ class TestColoring(unittest.TestCase):
         self.assertEqual(invalid_edges, 0, f"GREEDY+bending coloring has {invalid_edges} invalid edges")
 
         # Call C++ function
-        num_colors_mcs_bending = wp.context.runtime.core.wp_graph_coloring(
+        num_colors_mcs_bending = wp._src.context.runtime.core.wp_graph_coloring(
             num_vertices,
             edge_indices_cpu_with_bending.__ctype__(),
             ColoringAlgorithm.MCS,
@@ -421,7 +421,7 @@ class TestColoring(unittest.TestCase):
         sizes_before = np.array([len(g) for g in color_groups_before], dtype=np.float32)
         ratio_before = np.max(sizes_before) / np.min(sizes_before) if len(sizes_before) > 0 else 1.0
 
-        max_min_ratio = wp.context.runtime.core.wp_balance_coloring(
+        max_min_ratio = wp._src.context.runtime.core.wp_balance_coloring(
             num_vertices,
             edge_indices_cpu_with_bending.__ctype__(),
             num_colors_mcs_bending,
@@ -456,7 +456,7 @@ class TestColoring(unittest.TestCase):
         particle_colors_grid = wp.empty(shape=(num_grid_vertices), dtype=int, device="cpu")
 
         # Call C++ function
-        num_colors_grid = wp.context.runtime.core.wp_graph_coloring(
+        num_colors_grid = wp._src.context.runtime.core.wp_graph_coloring(
             num_grid_vertices,
             edge_indices_grid_with_bending.__ctype__(),
             ColoringAlgorithm.MCS,
@@ -479,7 +479,7 @@ class TestColoring(unittest.TestCase):
         particle_colors_1 = wp.empty(shape=(num_nodes_1), dtype=wp.int32, device="cpu")
 
         # Call C++ function
-        num_colors_1 = wp.context.runtime.core.wp_graph_coloring(
+        num_colors_1 = wp._src.context.runtime.core.wp_graph_coloring(
             num_nodes_1,
             edge_indices_1.__ctype__(),
             ColoringAlgorithm.MCS,
@@ -494,7 +494,7 @@ class TestColoring(unittest.TestCase):
         particle_colors_2 = wp.empty(shape=(num_nodes_2), dtype=wp.int32, device="cpu")
 
         # Call C++ function
-        num_colors_2 = wp.context.runtime.core.wp_graph_coloring(
+        num_colors_2 = wp._src.context.runtime.core.wp_graph_coloring(
             num_nodes_2,
             edge_indices_2.__ctype__(),
             ColoringAlgorithm.MCS,

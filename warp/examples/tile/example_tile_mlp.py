@@ -110,7 +110,7 @@ def compute(
     x = (float(row) / float(IMG_WIDTH) - 0.5) * 2.0
     y = (float(col) / float(IMG_HEIGHT) - 0.5) * 2.0
 
-    local = wp.vector(dtype=dtype, length=DIM_IN)
+    local = wp.types.vector(dtype=dtype, length=DIM_IN)
 
     # construct positional encoding
     for s in range(NUM_FREQ):

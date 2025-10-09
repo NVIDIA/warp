@@ -21,7 +21,6 @@ import numpy as np
 
 import warp as wp
 import warp.fem as fem
-from warp.context import assert_conditional_graph_support
 from warp.optim.linear import LinearOperator, aslinearoperator, bicgstab, cg, cr, gmres, preconditioner
 from warp.render import UsdRenderer
 from warp.sparse import BsrMatrix, bsr_get_diag, bsr_mv, bsr_transposed
@@ -267,13 +266,7 @@ def bsr_cg(
     callback = None
 
     use_cuda_graph = A.device.is_cuda and not wp.config.verify_cuda
-    capturable = use_cuda_graph and not mv_routine_uses_multiple_cuda_contexts
-
-    if capturable:
-        try:
-            assert_conditional_graph_support()
-        except RuntimeError:
-            capturable = False
+    capturable = use_cuda_graph and not mv_routine_uses_multiple_cuda_contexts and wp.is_conditional_graph_supported()
 
     if not quiet:
         if capturable:
@@ -359,8 +352,8 @@ class SaddleSystem(LinearOperator):
         self._B = B
         self._Bt = Bt
 
-        self._u_dtype = wp.vec(length=A.block_shape[0], dtype=A.scalar_type)
-        self._p_dtype = wp.vec(length=B.block_shape[0], dtype=B.scalar_type)
+        self._u_dtype = wp.types.vector(length=A.block_shape[0], dtype=A.scalar_type)
+        self._p_dtype = wp.types.vector(length=B.block_shape[0], dtype=B.scalar_type)
         self._p_byte_offset = A.nrow * wp.types.type_size_in_bytes(self._u_dtype)
 
         saddle_shape = (A.shape[0] + B.shape[0], A.shape[0] + B.shape[0])
@@ -381,7 +374,7 @@ class SaddleSystem(LinearOperator):
         A_diag = bsr_get_diag(A)
 
         schur_block_shape = (B.block_shape[0], B.block_shape[0])
-        schur_dtype = wp.mat(shape=schur_block_shape, dtype=B.scalar_type)
+        schur_dtype = wp.types.matrix(shape=schur_block_shape, dtype=B.scalar_type)
         schur_inv_diag = wp.empty(dtype=schur_dtype, shape=B.nrow, device=self.device)
         wp.launch(
             _compute_schur_inverse_diagonal,
@@ -542,7 +535,7 @@ def invert_diagonal_bsr_matrix(A: BsrMatrix):
 
     values = A.values
     if not wp.types.type_is_matrix(values.dtype):
-        values = values.view(dtype=wp.mat(shape=(1, 1), dtype=A.scalar_type))
+        values = values.view(dtype=wp.types.matrix(shape=(1, 1), dtype=A.scalar_type))
 
     wp.launch(
         kernel=_block_diagonal_invert,

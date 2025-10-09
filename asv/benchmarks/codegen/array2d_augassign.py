@@ -15,6 +15,8 @@
 
 import warp as wp
 
+from ..benchmarks_utils import clear_kernel_cache
+
 
 @wp.kernel
 def array2d_augassign_kernel(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
@@ -28,7 +30,7 @@ class CompileModule:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
 
     def teardown(self):
         array2d_augassign_kernel.module.unload()
@@ -43,7 +45,7 @@ class CompileModule:
 class RunForwardKernel:
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
         wp.load_module(device="cuda:0")
 
         N = (1024, 1024)
@@ -67,7 +69,7 @@ class RunForwardKernel:
 class RunBackwardKernel:
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
         wp.load_module(device="cuda:0")
 
         N = (1024, 1024)

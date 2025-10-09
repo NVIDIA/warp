@@ -44,7 +44,7 @@ np_scalar_types = np_int_types + np_float_types
 
 
 def test_py_arithmetic_ops(test, device, dtype):
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def make_scalar(value):
         if wptype in wp._src.types.int_types:
@@ -69,7 +69,7 @@ def test_py_arithmetic_ops(test, device, dtype):
 
 
 def test_py_math_ops(test, device, dtype):
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     a = wptype(1)
     test.assertAlmostEqual(wp.abs(a), 1)
@@ -80,7 +80,7 @@ def test_py_math_ops(test, device, dtype):
 
 
 def test_py_array_ops(test, device, dtype):
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     tol = {
         np.float16: 5.0e-3,

@@ -170,7 +170,7 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
             A_diag = sparse.bsr_get_diag(A)
             if wp._src.types.type_is_matrix(A.dtype):
                 inv_diag = wp.empty(
-                    shape=A.nrow, dtype=wp.vec(length=A.block_shape[0], dtype=A.scalar_type), device=A.device
+                    shape=A.nrow, dtype=wp.types.vector(length=A.block_shape[0], dtype=A.scalar_type), device=A.device
                 )
                 wp.launch(
                     _extract_inverse_diagonal_blocked,

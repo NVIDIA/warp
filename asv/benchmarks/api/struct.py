@@ -15,6 +15,8 @@
 
 import warp as wp
 
+from ..benchmarks_utils import clear_kernel_cache
+
 
 @wp.struct
 class A:
@@ -49,7 +51,7 @@ class StructSetup:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
 
         self._vec = wp.vec3(1, 2, 3)
         self._mat = wp.mat33(1, 2, 3, 4, 5, 6, 7, 8, 9)

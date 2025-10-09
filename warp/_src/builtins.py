@@ -1007,10 +1007,10 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             )
 
     if length is None:
-        raise RuntimeError("could not infer the `length` argument when calling the `wp.vector()` function")
+        raise RuntimeError("could not infer the `length` argument when calling the `wp.types.vector()` function")
 
     if dtype is None:
-        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.vector()` function")
+        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.types.vector()` function")
 
     return vector(length=length, dtype=dtype)
 
@@ -1095,7 +1095,7 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
 
         if all(type_is_vector(x) for x in variadic_arg_types):
             warp._src.utils.warn(
-                "the built-in `wp.matrix()` won't support taking column vectors as input "
+                "the built-in `wp.types.matrix()` won't support taking column vectors as input "
                 "in the future. Use `wp.matrix_from_rows()` or `wp.matrix_from_cols()` instead.",
                 DeprecationWarning,
             )
@@ -1129,10 +1129,10 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             )
 
     if shape is None:
-        raise RuntimeError("could not infer the `shape` argument when calling the `wp.matrix()` function")
+        raise RuntimeError("could not infer the `shape` argument when calling the `wp.types.matrix()` function")
 
     if dtype is None:
-        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.matrix()` function")
+        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.types.matrix()` function")
 
     return matrix(shape=shape, dtype=dtype)
 
@@ -1304,7 +1304,7 @@ def matrix_transform_value_func(arg_types: Mapping[str, type], arg_values: Mappi
         return matrix(shape=(4, 4), dtype=Float)
 
     raise RuntimeError(
-        "the built-in `wp.matrix()` to construct a 4x4 matrix from a 3D position, quaternion, "
+        "the built-in `wp.types.matrix()` to construct a 4x4 matrix from a 3D position, quaternion, "
         "and 3D scale vector has been removed in favor of `wp.transform_compose()`."
     )
 
@@ -1528,7 +1528,7 @@ def quaternion_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
             )
 
     if dtype is None:
-        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.quaternion()` function")
+        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.types.quaternion()` function")
 
     return quaternion(dtype=dtype)
 

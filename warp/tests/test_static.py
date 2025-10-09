@@ -155,7 +155,7 @@ def test_invalid_static_expression(test, device):
         wp.static(1.0 / 0.0)
 
     with test.assertRaisesRegex(
-        warp._src.codegen.WarpCodegenError, r"Error evaluating static expression\: (?:float )?division by zero"
+        wp.WarpCodegenError, r"Error evaluating static expression\: (?:float )?division by zero"
     ):
         wp.launch(invalid_kernel, 1, device=device)
 
@@ -164,7 +164,7 @@ def test_invalid_static_expression(test, device):
         wp.static(i * 2)
 
     with test.assertRaisesRegex(
-        wp._src.codegen.WarpCodegenError,
+        wp.WarpCodegenError,
         r"Error evaluating static expression\: name 'i' is not defined\. Make sure all variables used in the static expression are constant\.",
     ):
         wp.launch(invalid_kernel, 1, device=device, inputs=[3])
@@ -176,7 +176,7 @@ def test_static_expression_return_types(test, device):
         wp.static(wp.zeros(3, device=device))
 
     with test.assertRaisesRegex(
-        warp._src.codegen.WarpCodegenError,
+        wp.WarpCodegenError,
         r"Static expression returns an unsupported value\: a Warp array cannot be created inside Warp kernels",
     ):
         wp.launch(invalid_kernel, 1, device=device)
@@ -211,7 +211,7 @@ def test_static_expression_return_types(test, device):
         wp.static(create_struct())
 
     with test.assertRaisesRegex(
-        warp._src.codegen.WarpCodegenError,
+        wp.WarpCodegenError,
         r"Static expression returns an unsupported value: the returned Warp struct contains a data type that cannot be constructed inside Warp kernels\: a Warp array cannot be created inside Warp kernels at .*?Foo\.bar\.baz",
     ):
         wp.launch(invalid_kernel, 1, device=device)
@@ -224,7 +224,7 @@ def test_static_expression_return_types(test, device):
         wp.static(function_with_no_return_value())
 
     with test.assertRaisesRegex(
-        warp._src.codegen.WarpCodegenError,
+        wp.WarpCodegenError,
         r"Static expression returns an unsupported value\: None is returned",
     ):
         wp.launch(invalid_kernel, 1, device=device)
@@ -237,7 +237,7 @@ def test_static_expression_return_types(test, device):
         wp.static(MyClass())
 
     with test.assertRaisesRegex(
-        warp._src.codegen.WarpCodegenError,
+        wp.WarpCodegenError,
         r"Static expression returns an unsupported value\: value of type .*?MyClass",
     ):
         wp.launch(invalid_kernel, 1, device=device)

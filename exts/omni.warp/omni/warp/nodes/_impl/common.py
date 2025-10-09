@@ -63,7 +63,7 @@ class NodeTimer:
 # ------------------------------------------------------------------------------
 
 
-def device_get_cuda_compute() -> wp.context.Device:
+def device_get_cuda_compute() -> wp.Device:
     """Retrieves the preferred CUDA device for computing purposes."""
     query_fn = getattr(og, "get_compute_cuda_device", None)
     cuda_device_idx = 0 if query_fn is None else query_fn()
@@ -141,7 +141,7 @@ def get_warp_type_from_data_type_name(
 
         return f"{prefix}array(dtype={prefix}{data_type_name}, ndim={dim_count})"
 
-    dtype = getattr(wp.types, data_type_name)
+    dtype = getattr(wp, data_type_name)
     if dim_count == 0:
         return dtype
 

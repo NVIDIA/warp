@@ -107,7 +107,7 @@ def test_matrix_assign_copy(test, device):
 
 
 def test_mat_slicing_assign_backward(test, device):
-    mat23 = wp.mat((2, 3), float)
+    mat23 = wp.types.matrix((2, 3), float)
 
     @wp.kernel(module="unique")
     def kernel(

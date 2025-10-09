@@ -22,7 +22,7 @@ It is possible to explicitly target a specific device with each Warp API call us
     This is compatible with frameworks like PyTorch and other software that uses the CUDA Runtime API.
     It makes interoperability easy because GPU resources like memory can be shared with Warp.
 
-.. autoclass:: warp.context.Device
+.. autoclass:: warp.Device
     :members:
 
 Warp also provides functions that can be used to query the available devices on the system:
@@ -37,7 +37,7 @@ Default Device
 To simplify writing code, Warp has the concept of **default device**.  When the ``device`` argument is omitted from a Warp API call, the default device will be used.
 
 Calling :func:`wp.get_device() <warp.get_device>` without an argument
-will return an instance of :class:`warp.context.Device` for the default device.
+will return an instance of :class:`warp.Device` for the default device.
 
 During Warp initialization, the default device is set to ``"cuda:0"`` if CUDA is available.  Otherwise, the default device is ``"cpu"``.
 If the default device is changed, :func:`wp.get_preferred_device() <warp.get_preferred_device>` can be used to get

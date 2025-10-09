@@ -17,6 +17,8 @@ from statistics import median
 
 import warp as wp
 
+from ..benchmarks_utils import clear_kernel_cache
+
 
 @wp.kernel
 def matrix_augassign_kernel(a: wp.array2d(dtype=wp.mat22), b: wp.array2d(dtype=wp.mat22)):
@@ -39,11 +41,11 @@ class CompileModule:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
 
     def teardown(self):
         matrix_augassign_kernel.module.unload()
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
 
     def time_cuda_codegen(self):
         wp.load_module(device="cuda:0")
@@ -52,7 +54,7 @@ class CompileModule:
 class RunForwardKernel:
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
         wp.load_module(device="cuda:0")
 
         N = (1024, 1024)
@@ -74,7 +76,7 @@ class RunForwardKernel:
 class RunBackwardKernel:
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
         wp.load_module(device="cuda:0")
 
         N = (1024, 1024)

@@ -107,7 +107,7 @@ def test_transform_multiply(test, device, n):
     wp.launch(transform_multiply, dim=n, inputs=[xforms, a], device=device)
 
 
-transformf = wp._src.types.transformation(dtype=wp.float32)
+transformf = wp.types.transformation(dtype=wp.float32)
 
 
 @wp.kernel
@@ -117,7 +117,7 @@ def test_transformation_constructor():
     c = wp.transform_identity(dtype=wp.float64)
 
 
-spatial_vector = wp._src.types.vector(length=6, dtype=wp.float32)
+spatial_vector = wp.types.vector(length=6, dtype=wp.float32)
 
 
 @wp.kernel

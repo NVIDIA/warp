@@ -397,7 +397,7 @@ _cached_mat_types = {}
 def cached_vec_type(length, dtype):
     key = (length, dtype)
     if key not in _cached_vec_types:
-        _cached_vec_types[key] = wp.vec(length=length, dtype=dtype)
+        _cached_vec_types[key] = wp.types.vector(length=length, dtype=dtype)
 
     return _cached_vec_types[key]
 
@@ -405,7 +405,7 @@ def cached_vec_type(length, dtype):
 def cached_mat_type(shape, dtype):
     key = (*shape, dtype)
     if key not in _cached_mat_types:
-        _cached_mat_types[key] = wp.mat(shape=shape, dtype=dtype)
+        _cached_mat_types[key] = wp.types.matrix(shape=shape, dtype=dtype)
 
     return _cached_mat_types[key]
 

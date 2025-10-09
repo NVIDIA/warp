@@ -654,11 +654,13 @@ class FfiCallable:
                             if not wp._src.context.runtime.core.wp_cuda_graph_create_exec(
                                 graph.device.context, cuda_stream, graph.graph, ctypes.byref(g)
                             ):
-                                raise RuntimeError(f"Graph creation error: {wp.context.runtime.get_error_string()}")
+                                raise RuntimeError(
+                                    f"Graph creation error: {wp._src.context.runtime.get_error_string()}"
+                                )
                             graph.graph_exec = g
 
                         if not wp._src.context.runtime.core.wp_cuda_graph_launch(graph.graph_exec, cuda_stream):
-                            raise RuntimeError(f"Graph launch error: {wp.context.runtime.get_error_string()}")
+                            raise RuntimeError(f"Graph launch error: {wp._src.context.runtime.get_error_string()}")
 
                         # update the graph cache to keep recently used graphs alive
                         self.captures.move_to_end(capture_key)

@@ -167,7 +167,7 @@ def test_dlpack_dtypes_and_shapes(test, device):
     vec_types = []
     for t in wp._src.types.scalar_types:
         for vec_len in [2, 3, 4, 5]:
-            vec_types.append(wp._src.types.vector(vec_len, t))
+            vec_types.append(wp.types.vector(vec_len, t))
 
     vec_types.append(wp.quath)
     vec_types.append(wp.quatf)
@@ -187,7 +187,7 @@ def test_dlpack_dtypes_and_shapes(test, device):
     mat_types = []
     for t in wp._src.types.scalar_types:
         for mat_shape in mat_shapes:
-            mat_types.append(wp._src.types.matrix(mat_shape, t))
+            mat_types.append(wp.types.matrix(mat_shape, t))
 
     mat_types.append(wp.spatial_matrixh)
     mat_types.append(wp.spatial_matrixf)
@@ -256,7 +256,7 @@ def test_dlpack_warp_to_torch(test, device):
 
     t = torch.utils.dlpack.from_dlpack(wp.to_dlpack(a))
 
-    item_size = wp._src.types.type_size_in_bytes(a.dtype)
+    item_size = wp.types.type_size_in_bytes(a.dtype)
 
     test.assertEqual(a.ptr, t.data_ptr())
     test.assertEqual(a.device, wp.device_from_torch(t.device))
@@ -284,7 +284,7 @@ def test_dlpack_warp_to_torch_v2(test, device):
     # pass the array directly
     t = torch.utils.dlpack.from_dlpack(a)
 
-    item_size = wp._src.types.type_size_in_bytes(a.dtype)
+    item_size = wp.types.type_size_in_bytes(a.dtype)
 
     test.assertEqual(a.ptr, t.data_ptr())
     test.assertEqual(a.device, wp.device_from_torch(t.device))
@@ -311,7 +311,7 @@ def test_dlpack_torch_to_warp(test, device):
 
     a = wp.from_dlpack(torch.utils.dlpack.to_dlpack(t))
 
-    item_size = wp._src.types.type_size_in_bytes(a.dtype)
+    item_size = wp.types.type_size_in_bytes(a.dtype)
 
     test.assertEqual(a.ptr, t.data_ptr())
     test.assertEqual(a.device, wp.device_from_torch(t.device))
@@ -340,7 +340,7 @@ def test_dlpack_torch_to_warp_v2(test, device):
         # pass tensor directly
         a = wp.from_dlpack(t)
 
-    item_size = wp._src.types.type_size_in_bytes(a.dtype)
+    item_size = wp.types.type_size_in_bytes(a.dtype)
 
     test.assertEqual(a.ptr, t.data_ptr())
     test.assertEqual(a.device, wp.device_from_torch(t.device))
@@ -368,7 +368,7 @@ def test_dlpack_paddle_to_warp(test, device):
     # paddle do not implement __dlpack__ yet, so only test to_dlpack here
     a = wp.from_dlpack(paddle.utils.dlpack.to_dlpack(t))
 
-    item_size = wp._src.types.type_size_in_bytes(a.dtype)
+    item_size = wp.types.type_size_in_bytes(a.dtype)
 
     test.assertEqual(a.ptr, t.data_ptr())
     test.assertEqual(a.device, wp.device_from_paddle(t.place))
@@ -488,7 +488,7 @@ def test_dlpack_warp_to_paddle(test, device):
 
     t = paddle.utils.dlpack.from_dlpack(wp.to_dlpack(a))
 
-    item_size = wp._src.types.type_size_in_bytes(a.dtype)
+    item_size = wp.types.type_size_in_bytes(a.dtype)
 
     test.assertEqual(a.ptr, t.data_ptr())
     test.assertEqual(a.device, wp.device_from_paddle(t.place))
@@ -517,7 +517,7 @@ def test_dlpack_warp_to_paddle_v2(test, device):
     # pass the array directly
     t = paddle.utils.dlpack.from_dlpack(a)
 
-    item_size = wp._src.types.type_size_in_bytes(a.dtype)
+    item_size = wp.types.type_size_in_bytes(a.dtype)
 
     test.assertEqual(a.ptr, t.data_ptr())
     test.assertEqual(a.device, wp.device_from_paddle(t.place))
