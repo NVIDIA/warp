@@ -740,6 +740,9 @@ inline CUDA_CALLABLE int tile_align(int num_bytes)
 #if !defined(__CUDA_ARCH__)
 class shared_tile_storage_t;
 #if defined(__aarch64__)
+// x28 is is the last callee-saved register on AArch64. This allows us to call externally
+// compiled functions without worrying about clobbering the pointer.
+// We pass -target-feature +reserve-x28 to Clang to exclude it from register allocation.
 register shared_tile_storage_t* shared_tile_storage asm("x28");
 #else
 // Ideally this would be thread_local, but LLVM's JIT doesn't support TLS yet
