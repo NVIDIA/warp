@@ -6242,56 +6242,20 @@ def select_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
     if arg_types is None:
         return Any
 
-    v_true = arg_types["value_if_true"]
-    v_false = arg_types["value_if_false"]
-
-    if not types_equal(v_true, v_false):
-        raise RuntimeError(
-            f"select() true value type ({v_true}) must be of the same type as the false type ({v_false})"
-        )
-
-    if is_tile(v_false):
-        if v_true.storage == "register":
-            return v_true
-        if v_false.storage == "register":
-            return v_false
-
-        # both v_true and v_false are shared
-        return tile(
-            dtype=v_true.dtype,
-            shape=v_true.shape,
-            storage=v_true.storage,
-            strides=v_true.strides,
-            layout=v_true.layout,
-            owner=True,
-        )
-
-    return v_true
-
-
-def select_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
-    warp._src.utils.warn(
-        "wp.select() is deprecated and will be removed in a future\n"
-        "version. Use wp.where(cond, value_if_true, value_if_false) instead.",
-        category=DeprecationWarning,
-    )
-
-    func_args = tuple(args.values())
-    template_args = ()
-
-    return (func_args, template_args)
+    raise RuntimeError("wp.select() has been removed. Use wp.where(cond, value_if_true, value_if_false) instead.")
 
 
 add_builtin(
     "select",
     input_types={"cond": builtins.bool, "value_if_false": Any, "value_if_true": Any},
     value_func=select_value_func,
-    dispatch_func=select_dispatch_func,
     doc="""Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
-    .. deprecated:: 1.7
+    .. versionremoved:: 1.10
          Use :func:`where` instead, which has the more intuitive argument order:
-         ``where(cond, value_if_true, value_if_false)``.""",
+         ``where(cond, value_if_true, value_if_false)``.
+
+    .. deprecated:: 1.7""",
     group="Utility",
 )
 for t in int_types:
@@ -6299,24 +6263,26 @@ for t in int_types:
         "select",
         input_types={"cond": t, "value_if_false": Any, "value_if_true": Any},
         value_func=select_value_func,
-        dispatch_func=select_dispatch_func,
         doc="""Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
-    .. deprecated:: 1.7
+    .. versionremoved:: 1.10
          Use :func:`where` instead, which has the more intuitive argument order:
-         ``where(cond, value_if_true, value_if_false)``.""",
+         ``where(cond, value_if_true, value_if_false)``.
+
+    .. deprecated:: 1.7""",
         group="Utility",
     )
 add_builtin(
     "select",
     input_types={"arr": array(dtype=Any), "value_if_false": Any, "value_if_true": Any},
     value_func=select_value_func,
-    dispatch_func=select_dispatch_func,
     doc="""Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``.
 
-    .. deprecated:: 1.7
+    .. versionremoved:: 1.10
          Use :func:`where` instead, which has the more intuitive argument order:
-         ``where(arr, value_if_true, value_if_false)``.""",
+         ``where(arr, value_if_true, value_if_false)``.
+
+    .. deprecated:: 1.7""",
     group="Utility",
 )
 

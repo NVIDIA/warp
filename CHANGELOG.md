@@ -29,6 +29,7 @@
   ([GH-735](https://github.com/NVIDIA/warp/discussions/735)).
 - Remove support for passing lists, tuples, and other non-Warp array arguments when calling built-ins at the Python scope
   (e.g: `wp.normalize([1.0, 2.0, 3.0])` should be written as `wp.normalize(wp.vec3(1.0, 2.0, 3.0))`).
+- Remove `wp.select()` (deprecated since 1.7). Use `wp.where(cond, value_if_true, value_if_false)` instead.
 
 ### Deprecated
 

@@ -1647,37 +1647,6 @@ inline CUDA_CALLABLE void adj_len(const tile_register_t<T,L>& t, const AdjTile& 
 {
 }
 
-// select specialization for shared tiles
-template <typename C, typename T, typename LRegister, typename LShared, bool Owner>
-inline CUDA_CALLABLE auto select(const C& cond, const tile_register_t<T, LRegister>& a, const tile_shared_t<T, LShared, Owner>& b)
-{
-    // The double NOT operator !! casts to bool without compiler warnings.
-    return (!!cond) ? b.copy_to_register() : a;
-}
-
-template <typename C, typename T, typename LRegister, typename LShared, bool Owner>
-inline CUDA_CALLABLE auto select(const C& cond, const tile_shared_t<T, LShared, Owner>& a, const tile_register_t<T, LRegister>& b)
-{
-    // The double NOT operator !! casts to bool without compiler warnings.
-    return (!!cond) ? b : a.copy_to_register();
-}
-
-template <typename C, typename T, typename L, bool Owner>
-inline CUDA_CALLABLE auto select(const C& cond, const tile_shared_t<T, L, Owner>& a, const tile_shared_t<T, L, Owner>& b)
-{
-    // The double NOT operator !! casts to bool without compiler warnings.
-    return (!!cond) ? tile_shared_t<T, L, false>(b.data.ptr, b.grad.ptr) : tile_shared_t<T, L, false>(a.data.ptr, a.grad.ptr);
-}
-
-template <typename C, typename T, typename L, bool LOwner, bool ROwner>
-inline CUDA_CALLABLE auto select(const C& cond, const tile_shared_t<T, L, LOwner>& a, const tile_shared_t<T, L, ROwner>& b)
-{
-    // The double NOT operator !! casts to bool without compiler warnings.
-    return (!!cond) ? tile_shared_t<T, L, false>(b.data.ptr, b.grad.ptr) : tile_shared_t<T, L, false>(a.data.ptr, a.grad.ptr);
-}
-
-// adj_select same as in builtin.h
-
 // where specialization for register/shared tiles
 template <typename C, typename T, typename LRegister, typename LShared, bool Owner>
 inline CUDA_CALLABLE auto where(const C& cond, const tile_register_t<T, LRegister>& a, const tile_shared_t<T, LShared, Owner>& b)
