@@ -109,7 +109,14 @@ def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=Fal
         obj_path = obj_path.encode("utf-8")
 
         err = warp._src.context.runtime.llvm.wp_compile_cpp(
-            src, cpp_path, inc_path, obj_path, mode == "debug", verify_fp, fuse_fp
+            src,
+            cpp_path,
+            inc_path,
+            obj_path,
+            mode == "debug",
+            verify_fp,
+            fuse_fp,
+            warp.config.enable_tiles_in_stack_memory,
         )
         if err != 0:
             raise Exception(f"CPU kernel build failed with error code {err}")

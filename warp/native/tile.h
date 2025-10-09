@@ -734,6 +734,7 @@ inline CUDA_CALLABLE int tile_align(int num_bytes)
     return sign * ((num_bytes_abs + alignment - 1) / alignment) * alignment;
 }
 
+#if defined(WP_ENABLE_TILES_IN_STACK_MEMORY)
 // On the CPU we use a fixed size block of stack memory for shared tile allocations.
 // We store a pointer to the current allocation storage either in a reserved register
 // (AArch64) or a static variable (x86-64).
@@ -750,6 +751,7 @@ register shared_tile_storage_t* shared_tile_storage asm("x28");
 static shared_tile_storage_t* shared_tile_storage;
 #endif
 #endif
+#endif
 
 // This class manages a block of "shared" memory for use by tiles.
 // On the GPU this maps to dynamic shared memory, while on the CPU we allocate
@@ -760,9 +762,11 @@ class shared_tile_storage_t
 private:
 #if !defined(__CUDA_ARCH__)
 #define WP_MAX_CPU_SHARED 256*1024
+#if defined(WP_ENABLE_TILES_IN_STACK_MEMORY)
     shared_tile_storage_t* old_value;
     unsigned int smem_base[WP_TILE_BLOCK_DIM];
     char dynamic_smem_base[WP_MAX_CPU_SHARED];  // on CPU allocate a fixed 256k block to use for shared allocs
+#endif
 #endif
 
     // we maintain a per-thread offset into dynamic
@@ -773,8 +777,11 @@ private:
 #if defined(__CUDA_ARCH__)
         __shared__ unsigned int smem_base[WP_TILE_BLOCK_DIM];
         return smem_base;
-#else
+#elif defined(WP_ENABLE_TILES_IN_STACK_MEMORY)
         return shared_tile_storage->smem_base;
+#else
+        static unsigned int smem_base[WP_TILE_BLOCK_DIM];
+        return smem_base;
 #endif
     }
 
@@ -783,8 +790,11 @@ private:
 #if defined(__CUDA_ARCH__)
         extern __shared__ char dynamic_smem_base[];
         return dynamic_smem_base;
-#else
+#elif defined(WP_ENABLE_TILES_IN_STACK_MEMORY)
         return shared_tile_storage->dynamic_smem_base;
+#else
+        static char dynamic_smem_base[WP_MAX_CPU_SHARED];
+        return dynamic_smem_base;
 #endif
     }
 
@@ -792,7 +802,7 @@ public:
     // cppcheck-suppress uninitMemberVar
     inline CUDA_CALLABLE shared_tile_storage_t()
     {
-#if !defined(__CUDA_ARCH__)
+#if !defined(__CUDA_ARCH__) && defined(WP_ENABLE_TILES_IN_STACK_MEMORY)
         // On the CPU save a pointer to this instance in a reserved register
         // or static variable so it can be accessed from anywhere within a kernel.
         old_value = shared_tile_storage;
@@ -806,7 +816,7 @@ public:
     {
         check();
 
-#if !defined(__CUDA_ARCH__)
+#if !defined(__CUDA_ARCH__) && defined(WP_ENABLE_TILES_IN_STACK_MEMORY)
         shared_tile_storage = old_value; 
 #endif
     }

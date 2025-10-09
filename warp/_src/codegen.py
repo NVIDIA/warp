@@ -3724,7 +3724,9 @@ WP_API void {name}_cpu_forward(
     wp_args_{name} *_wp_args)
 {{
     wp::shared_tile_storage_t tile_mem;
+#if defined(WP_ENABLE_TILES_IN_STACK_MEMORY)
     wp::shared_tile_storage = &tile_mem;
+#endif
 
     for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
@@ -3746,7 +3748,9 @@ WP_API void {name}_cpu_backward(
     wp_args_{name} *_wp_adj_args)
 {{
     wp::shared_tile_storage_t tile_mem;
+#if defined(WP_ENABLE_TILES_IN_STACK_MEMORY)
     wp::shared_tile_storage = &tile_mem;
+#endif
 
     for (size_t task_index = 0; task_index < dim.size; ++task_index)
     {{
