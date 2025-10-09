@@ -762,6 +762,29 @@ private:
     char dynamic_smem_base[WP_MAX_CPU_SHARED];  // on CPU allocate a fixed 256k block to use for shared allocs
 #endif
 
+    // we maintain a per-thread offset into dynamic
+    // shared memory that allows us to keep track of 
+    // current use across dynamic function calls
+    static inline CUDA_CALLABLE unsigned int* get_smem_base()
+    {
+#if defined(__CUDA_ARCH__)
+        __shared__ unsigned int smem_base[WP_TILE_BLOCK_DIM];
+        return smem_base;
+#else
+        return shared_tile_storage->smem_base;
+#endif
+    }
+
+    static inline CUDA_CALLABLE char* get_dynamic_smem_base()
+    {
+#if defined(__CUDA_ARCH__)
+        extern __shared__ char dynamic_smem_base[];
+        return dynamic_smem_base;
+#else
+        return shared_tile_storage->dynamic_smem_base;
+#endif
+    }
+
 public:
     // cppcheck-suppress uninitMemberVar
     inline CUDA_CALLABLE SharedTileStorage()
@@ -773,54 +796,47 @@ public:
         shared_tile_storage = this;
 #endif
 
-        alloc(0, true);  // init
+        init();
     }
 
     inline CUDA_CALLABLE ~SharedTileStorage()
     {
-        alloc(0, false, true);  // check
+        check();
 
 #if !defined(__CUDA_ARCH__)
         shared_tile_storage = old_value; 
 #endif
     }
 
-    static inline CUDA_CALLABLE void* alloc(int num_bytes, bool init=false, bool check=false)
+    static inline CUDA_CALLABLE void init()
     {
-        // we maintain a per-thread offset into dynamic
-        // shared memory that allows us to keep track of 
-        // current use across dynamic function calls
-#if defined(__CUDA_ARCH__)
-        __shared__ unsigned int smem_base[WP_TILE_BLOCK_DIM];
-        extern __shared__ char dynamic_smem_base[];
-#else
-        unsigned int* smem_base = shared_tile_storage->smem_base;
-        char* dynamic_smem_base = shared_tile_storage->dynamic_smem_base;
-#endif
+        unsigned int* smem_base = get_smem_base();
 
-        if (init)
-        {
-            smem_base[WP_TILE_THREAD_IDX] = 0;
-            return nullptr;
-        }
-        else if (check)
-        {
-            assert(smem_base[WP_TILE_THREAD_IDX] == 0);
-            return nullptr;
-        }
-        else
-        {
-            const unsigned int offset = smem_base[WP_TILE_THREAD_IDX];
+        smem_base[WP_TILE_THREAD_IDX] = 0;
+    }
+
+    static inline CUDA_CALLABLE void check()
+    {
+        unsigned int* smem_base = get_smem_base();
+
+        assert(smem_base[WP_TILE_THREAD_IDX] == 0);
+    }
+
+    static inline CUDA_CALLABLE void* alloc(int num_bytes)
+    {
+        unsigned int* smem_base = get_smem_base();
+        char* dynamic_smem_base = get_dynamic_smem_base();
+
+        const unsigned int offset = smem_base[WP_TILE_THREAD_IDX];
             
-            // one entry per-thread so no need for synchronization
-            smem_base[WP_TILE_THREAD_IDX] += tile_align(num_bytes);
+        // one entry per-thread so no need for synchronization
+        smem_base[WP_TILE_THREAD_IDX] += tile_align(num_bytes);
 
 #if !defined(__CUDA_ARCH__)
-            assert(smem_base[WP_TILE_THREAD_IDX] <= WP_MAX_CPU_SHARED);
+        assert(smem_base[WP_TILE_THREAD_IDX] <= WP_MAX_CPU_SHARED);
 #endif
 
-            return &(dynamic_smem_base[offset]);
-        }
+        return &(dynamic_smem_base[offset]);
     }
 };
 

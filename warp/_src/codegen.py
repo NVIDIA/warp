@@ -3667,7 +3667,7 @@ cuda_kernel_template_forward = """
 {line_directive}         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
             // reset shared memory allocator
-{line_directive}        wp::SharedTileStorage::alloc(0, true);
+{line_directive}        wp::SharedTileStorage::init();
 
 {forward_body}{line_directive}    }}
 {line_directive}}}
@@ -3686,7 +3686,7 @@ cuda_kernel_template_backward = """
 {line_directive}         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
             // reset shared memory allocator
-{line_directive}        wp::SharedTileStorage::alloc(0, true);
+{line_directive}        wp::SharedTileStorage::init();
 
 {reverse_body}{line_directive}    }}
 {line_directive}}}
