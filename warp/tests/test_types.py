@@ -144,6 +144,12 @@ def test_vector(test, device, dtype):
     test.assertTrue(v != vec3_cls(1, 2, 3))
     test.assertEqual(str(v), "[{}]".format(", ".join(str(x) for x in v)))
 
+    # Copy constructor.
+    v_copy = vec3_cls(v)
+    v_copy[0] = 123
+    test.assertSequenceEqual(v, make_vec(2, 4, 6))
+    test.assertSequenceEqual(v_copy, make_vec(123, 4, 6))
+
     # Check added purely for coverage reasons but is this really a desired
     # behaviour? Not allowing to define new attributes using systems like
     # `__slots__` could help improving memory usage.
@@ -419,6 +425,12 @@ class TestTypes(unittest.TestCase):
                 str(m),
                 "[{}]".format(",\n ".join("[{}]".format(", ".join(str(y) for y in m[x])) for x in range(m._shape_[0]))),
             )
+
+            # Copy constructor.
+            m_copy = mat22_cls(m)
+            m_copy[0, 0] = 123
+            self.assertSequenceEqual(m, make_mat((2, 4), (6, 8)))
+            self.assertSequenceEqual(m_copy, make_mat((123, 4), (6, 8)))
 
             # Check added purely for coverage reasons but is this really a desired
             # behaviour? Not allowing to define new attributes using systems like

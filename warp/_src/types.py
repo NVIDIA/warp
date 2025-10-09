@@ -369,7 +369,11 @@ def vector(length, dtype):
             if num_args == 0:
                 super().__init__()
             elif num_args == 1:
-                if hasattr(args[0], "__len__"):
+                if type_generic_equal(args[0], self):
+                    # copy constructor.
+                    for i in range(self._shape_[0]):
+                        super().__setitem__(i, vec_t.scalar_import(args[0][i]))
+                elif hasattr(args[0], "__len__"):
                     # try to copy from expanded sequence, e.g. (1, 2, 3)
                     self.__init__(*args[0])
                 else:
@@ -576,7 +580,13 @@ def matrix(shape, dtype):
             if num_args == 0:
                 super().__init__()
             elif num_args == 1:
-                if hasattr(args[0], "__len__"):
+                if type_generic_equal(args[0], self):
+                    # copy constructor.
+                    for i in range(self._shape_[0]):
+                        offset = i * self._shape_[1]
+                        for j in range(self._shape_[1]):
+                            super().__setitem__(offset + j, mat_t.scalar_import(args[0][i, j]))
+                elif hasattr(args[0], "__len__"):
                     # try to copy from expanded sequence, e.g. [[1, 0], [0, 1]]
                     self.__init__(*args[0])
                 else:
@@ -5682,6 +5692,20 @@ def type_is_generic(t):
 
 def type_is_generic_scalar(t):
     return t in (Scalar, Float, Int)
+
+
+def type_generic_equal(a, b):
+    # More direct alternative to `types_equal()` that also does not error
+    # when one of the argument is a NumPy array.
+
+    if getattr(a, "_wp_generic_type_hint_", "a") is not getattr(b, "_wp_generic_type_hint_", "b"):
+        return False
+
+    for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_):
+        if not scalars_equal(p1, p2, match_generic=False):
+            return False
+
+    return True
 
 
 def type_matches_template(arg_type, template_type):
