@@ -1750,9 +1750,14 @@ def transformation_dispatch_func(input_types: Mapping[str, type], return_type: A
 
     dtype = return_type._wp_scalar_type_
 
-    variadic_args = tuple(v for k, v in args.items() if k != "dtype")
+    variadic_args = args.get("args", ())
+    variadic_arg_count = len(variadic_args)
 
-    func_args = variadic_args
+    if variadic_arg_count == 7:
+        func_args = variadic_args
+    else:
+        func_args = tuple(v for k, v in args.items() if k != "dtype")
+
     template_args = (dtype,)
     return (func_args, template_args)
 
@@ -1784,7 +1789,6 @@ add_builtin(
     doc="Construct a spatial transform vector of given dtype.",
     group="Spatial Math",
     export=False,
-    is_differentiable=False,
 )
 
 

@@ -993,6 +993,18 @@ CUDA_CALLABLE inline void adj_transform_t(const vec_t<3,Type>& p, const quat_t<T
 }
 
 template<typename Type>
+CUDA_CALLABLE inline void adj_transform_t(const initializer_array<7, Type> &l, const initializer_array<7, Type*>& adj_l, const transform_t<Type>& adj_ret)
+{
+    *adj_l[0] += adj_ret.p[0];
+    *adj_l[1] += adj_ret.p[1];
+    *adj_l[2] += adj_ret.p[2];
+    *adj_l[3] += adj_ret.q[0];
+    *adj_l[4] += adj_ret.q[1];
+    *adj_l[5] += adj_ret.q[2];
+    *adj_l[6] += adj_ret.q[3];
+}
+
+template<typename Type>
 CUDA_CALLABLE inline void adj_transform_inverse(const transform_t<Type>& t, transform_t<Type>& adj_t, const transform_t<Type>& adj_ret)
 {
 

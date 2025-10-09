@@ -622,16 +622,16 @@ def test_transform_constructors(test, device, dtype, register_kernels=False):
         input: wp.array(dtype=wptype),
         out: wp.array(dtype=wptype),
     ):
-        result = transform(vec3(input[0], input[1], input[2]), quat(input[3], input[4], input[5], input[6]))
+        a = transform(vec3(input[0], input[1], input[2]), quat(input[3], input[4], input[5], input[6]))
+        b = transform(input[0], input[1], input[2], input[3], input[4], input[5], input[6])
 
-        # multiply the output by 2 so we've got something to backpropagate:
-        out[0] = wptype(2) * result[0]
-        out[1] = wptype(2) * result[1]
-        out[2] = wptype(2) * result[2]
-        out[3] = wptype(2) * result[3]
-        out[4] = wptype(2) * result[4]
-        out[5] = wptype(2) * result[5]
-        out[6] = wptype(2) * result[6]
+        out[0] = a[0] + b[0]
+        out[1] = a[1] + b[1]
+        out[2] = a[2] + b[2]
+        out[3] = a[3] + b[3]
+        out[4] = a[4] + b[4]
+        out[5] = a[5] + b[5]
+        out[6] = a[6] + b[6]
 
     kernel = getkernel(check_transform_constructor, suffix=dtype.__name__)
     output_select_kernel = get_select_kernel(wptype)

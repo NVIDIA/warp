@@ -1492,6 +1492,7 @@ Transformations
        :columns: 8
 
        * Kernel
+       * Differentiable
 
     Construct a spatial transform vector of given dtype.
 

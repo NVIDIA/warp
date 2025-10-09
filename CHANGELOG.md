@@ -19,6 +19,7 @@
   ([GH-985](https://github.com/NVIDIA/warp/issues/985)).
 - Add support for limiting the graph cache size of JAX callables ([GH-989](https://github.com/NVIDIA/warp/issues/989)).
 - Add support for JAX pmap ([GH-976](https://github.com/NVIDIA/warp/pull/976)).
+- Add adjoint for `wp.transform()` when constructing with individual scalars ([GH-1011](https://github.com/NVIDIA/warp/issues/1011)).
 
 ### Removed
 
