@@ -23,9 +23,28 @@ from warp.tests.unittest_utils import *
 
 @wp.kernel
 def intersect_tri(
-    v0: wp.vec3, v1: wp.vec3, v2: wp.vec3, u0: wp.vec3, u1: wp.vec3, u2: wp.vec3, result: wp.array(dtype=int)
+    v0: wp.vec3,
+    v1: wp.vec3,
+    v2: wp.vec3,
+    u0: wp.vec3,
+    u1: wp.vec3,
+    u2: wp.vec3,
+    result_single_precision: wp.array(dtype=int),
+    result_double_precision: wp.array(dtype=int),
 ):
-    result[0] = wp.intersect_tri_tri(v0, v1, v2, u0, u1, u2)
+    tid = wp.tid()
+
+    result_single_precision[0] = wp.intersect_tri_tri(v0, v1, v2, u0, u1, u2)
+
+    u0_d = wp.vec3d(u0)
+    u1_d = wp.vec3d(u1)
+    u2_d = wp.vec3d(u2)
+
+    v0_d = wp.vec3d(v0)
+    v1_d = wp.vec3d(v1)
+    v2_d = wp.vec3d(v2)
+
+    result_double_precision[0] = wp.intersect_tri_tri(v0_d, v1_d, v2_d, u0_d, u1_d, u2_d)
 
 
 def test_intersect_tri(test, device):
@@ -47,13 +66,26 @@ def test_intersect_tri(test, device):
         wp.vec3(-0.5, 0.5, 0.0),
     ]
 
-    result = wp.zeros(1, dtype=int, device=device)
+    result_single_precision = wp.zeros(1, dtype=int, device=device)
+    result_double_precision = wp.zeros(1, dtype=int, device=device)
 
-    wp.launch(intersect_tri, dim=1, inputs=[*points_intersect, result], device=device)
-    assert_np_equal(result.numpy(), np.array([1]))
+    wp.launch(
+        intersect_tri,
+        dim=1,
+        inputs=[*points_intersect, result_single_precision, result_double_precision],
+        device=device,
+    )
+    assert_np_equal(result_single_precision.numpy(), np.array([1]))
+    assert_np_equal(result_double_precision.numpy(), np.array([1]))
 
-    wp.launch(intersect_tri, dim=1, inputs=[*points_separated, result], device=device)
-    assert_np_equal(result.numpy(), np.array([0]))
+    wp.launch(
+        intersect_tri,
+        dim=1,
+        inputs=[*points_separated, result_single_precision, result_double_precision],
+        device=device,
+    )
+    assert_np_equal(result_single_precision.numpy(), np.array([0]))
+    assert_np_equal(result_double_precision.numpy(), np.array([0]))
 
 
 devices = get_test_devices()
