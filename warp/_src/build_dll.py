@@ -634,13 +634,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
 
 def build_dll(args, dll_path, cpp_paths, cu_paths, libs=None):
     if sys.platform == "darwin":
-        # create a universal binary by combining x86-64 and AArch64 builds
-        build_dll_for_arch(args, dll_path + "-x86_64", cpp_paths, cu_paths, "x86_64", libs)
-        build_dll_for_arch(args, dll_path + "-aarch64", cpp_paths, cu_paths, "aarch64", libs)
-
-        run_cmd(f"lipo -create -output {dll_path} {dll_path}-x86_64 {dll_path}-aarch64")
-        os.remove(f"{dll_path}-x86_64")
-        os.remove(f"{dll_path}-aarch64")
-
+        # build for ARM64 only (may be cross-compiled from Intel Mac)
+        build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, "aarch64", libs)
     else:
         build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, machine_architecture(), libs)

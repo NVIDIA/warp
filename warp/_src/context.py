@@ -3437,11 +3437,10 @@ class Runtime:
             warp._src.utils.warn(f"Python 3.9 or newer is recommended for running Warp, detected {sys.version_info}")
 
         if platform.system() == "Darwin" and platform.machine() == "x86_64":
-            warp._src.utils.warn(
-                "Support for Warp on Intel-based macOS is deprecated and will be removed in the near future. "
-                "Apple Silicon-based Macs will continue to be supported.",
-                DeprecationWarning,
-                stacklevel=3,
+            raise RuntimeError(
+                "Warp no longer supports Intel-based macOS (x86_64). "
+                "Please use Warp 1.9.x or earlier for Intel Mac support, "
+                "or upgrade to Apple Silicon hardware (ARM64)."
             )
 
         bin_path = os.path.join(warp_home, "bin")

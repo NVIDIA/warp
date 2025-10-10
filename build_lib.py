@@ -249,6 +249,19 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
 
+    # Warn if building on Intel Mac (cross-compiling for ARM64)
+    if platform.system() == "Darwin" and platform.machine() == "x86_64":
+        print("=" * 80)
+        print("WARNING: Building Warp on Intel-based macOS")
+        print("=" * 80)
+        print("You are building Warp for ARM64 (Apple Silicon) on an Intel Mac.")
+        print("The resulting binaries will NOT run on this machine.")
+        print()
+        print("Intel-based macOS is no longer supported for running Warp.")
+        print("Use Warp 1.9.x or earlier if you need to run Warp on Intel Mac.")
+        print("=" * 80)
+        print()
+
     # resolve base paths
     base_path = os.path.dirname(os.path.realpath(__file__))
     build_path = os.path.join(base_path, "warp")
@@ -348,13 +361,18 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        is_gitlab_ci = os.getenv("GITLAB_CI") is not None
-        if not (is_gitlab_ci and platform.system() == "Windows"):
+        is_gitlab_ci_windows = os.getenv("GITLAB_CI") is not None and platform.system() == "Windows"
+        is_intel_mac = platform.system() == "Darwin" and platform.machine() == "x86_64"
+
+        if is_gitlab_ci_windows or is_intel_mac:
+            if is_gitlab_ci_windows:
+                print("Skipping kernel cache clearing in GitLab CI on Windows")
+            if is_intel_mac:
+                print("Skipping kernel cache clearing on Intel Mac (binaries built for ARM64)")
+        else:
             # Clear kernel cache (also initializes Warp)
             clear_kernel_cache()
             clear_lto_cache()
-        else:
-            print("Skipping kernel cache clearing in GitLab CI on Windows")
     except Exception as e:
         print(f"Unable to clear kernel cache: {e}")
 

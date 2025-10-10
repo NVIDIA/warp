@@ -165,7 +165,7 @@ Pip wheels are then built using:
 python -m build --wheel -C--build-option=-Pwindows-x86_64
 python -m build --wheel -C--build-option=-Plinux-x86_64
 python -m build --wheel -C--build-option=-Plinux-aarch64
-python -m build --wheel -C--build-option=-Pmacos-universal
+python -m build --wheel -C--build-option=-Pmacos-aarch64
 ```
 
 Selecting the correct library files for each wheel happens in [`setup.py`](setup.py).

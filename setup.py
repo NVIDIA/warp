@@ -29,7 +29,11 @@ from wheel.bdist_wheel import bdist_wheel
 parser = argparse.ArgumentParser()
 parser.add_argument("command")
 parser.add_argument(
-    "--platform", "-P", type=str, default="", help="Wheel platform: windows|linux|macos-x86_64|aarch64|universal"
+    "--platform",
+    "-P",
+    type=str,
+    default="",
+    help="Wheel platform: windows-x86_64|linux-x86_64|linux-aarch64|macos-aarch64",
 )
 parser.add_argument(
     "--manylinux",
@@ -84,7 +88,7 @@ platforms = [
     Platform("windows", "x86_64", "Windows x86-64", ".dll", "win_amd64"),
     Platform("linux", "x86_64", "Linux x86-64", ".so", "manylinux_2_28_x86_64"),
     Platform("linux", "aarch64", "Linux AArch64", ".so", "manylinux_2_34_aarch64"),
-    Platform("macos", "universal", "macOS universal", ".dylib", "macosx_10_13_universal2"),
+    Platform("macos", "aarch64", "macOS ARM64", ".dylib", "macosx_11_0_arm64"),
 ]
 
 
@@ -102,7 +106,7 @@ def detect_warp_libraries():
         for p in platforms:
             if os.path.splitext(file.name)[1] == p.extension:
                 # If this is a local build, assume we want a wheel for this machine's architecture
-                if file.parent.name == "bin" and (p.arch == machine_architecture() or p.arch == "universal"):
+                if file.parent.name == "bin" and p.arch == machine_architecture():
                     detected_libraries.add(Library(file.name, "bin/", p))
                 else:
                     # Expect libraries to be in a subdirectory named after the wheel platform
@@ -139,9 +143,8 @@ if args.command == "bdist_wheel":
     if wheel_platform is None:
         if len(detected_platforms) > 1:
             print("Libraries for multiple platforms were detected.")
-            print(
-                "Run `python -m build --wheel -C--build-option=-P[windows|linux|macos]-[x86_64|aarch64|universal]` to select a specific one."
-            )
+            print("Run `python -m build --wheel -C--build-option=-P<platform>` to select a specific one.")
+            print("Available platforms: windows-x86_64, linux-x86_64, linux-aarch64, macos-aarch64")
             # Select the libraries corresponding with the this machine's platform
             for p in platforms:
                 if p.os == machine_os() and p.arch == machine_architecture():
@@ -163,7 +166,7 @@ class WarpBDistWheel(bdist_wheel):
     # setuptools.Command can validate the command line options.
     user_options: ClassVar[list[tuple[str, str, str]]] = [
         *bdist_wheel.user_options,
-        ("platform=", "P", "Wheel platform: windows|linux|macos-x86_64|aarch64|universal"),
+        ("platform=", "P", "Wheel platform: windows-x86_64|linux-x86_64|linux-aarch64|macos-aarch64"),
         ("manylinux=", "M", "Manylinux flavor for Linux wheels: manylinux_2_28|manylinux_2_34"),
     ]
 

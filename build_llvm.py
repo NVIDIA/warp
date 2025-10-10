@@ -40,7 +40,6 @@ def fetch_prebuilt_libraries(arch):
         if sys.platform == "darwin":
             packages = {
                 "aarch64": "15.0.7-darwin-aarch64-macos11",
-                "x86_64": "15.0.7-darwin-x86_64-macos11",
             }
         else:
             packages = {
@@ -328,15 +327,12 @@ def build_llvm_clang_from_source(args) -> None:
     else:
         llvm_source = llvm_project_path
 
-    # build for the machine's architecture
-    build_llvm_clang_from_source_for_arch(args, machine_architecture(), llvm_source)
-
-    # for Apple systems also cross-compile for building a universal binary
+    # On macOS, always build for ARM64 (may be cross-compiled from Intel Mac)
+    # On other platforms, build for the machine's architecture
     if sys.platform == "darwin":
-        if machine_architecture() == "x86_64":
-            build_llvm_clang_from_source_for_arch(args, "aarch64", llvm_source)
-        else:
-            build_llvm_clang_from_source_for_arch(args, "x86_64", llvm_source)
+        build_llvm_clang_from_source_for_arch(args, "aarch64", llvm_source)
+    else:
+        build_llvm_clang_from_source_for_arch(args, machine_architecture(), llvm_source)
 
 
 # build warp-clang.dll
@@ -404,14 +400,7 @@ def build_warp_clang(args, lib_name: str) -> None:
     """Build the CPU-only Warp library using Clang/LLVM."""
 
     if sys.platform == "darwin":
-        # create a universal binary by combining x86-64 and AArch64 builds
-        build_warp_clang_for_arch(args, lib_name + "-x86_64", "x86_64")
-        build_warp_clang_for_arch(args, lib_name + "-aarch64", "aarch64")
-
-        dylib_path = os.path.join(build_path, f"bin/{lib_name}")
-        run_cmd(f"lipo -create -output {dylib_path} {dylib_path}-x86_64 {dylib_path}-aarch64")
-        os.remove(f"{dylib_path}-x86_64")
-        os.remove(f"{dylib_path}-aarch64")
-
+        # build for ARM64 only (may be cross-compiled from Intel Mac)
+        build_warp_clang_for_arch(args, lib_name, "aarch64")
     else:
         build_warp_clang_for_arch(args, lib_name, machine_architecture())
