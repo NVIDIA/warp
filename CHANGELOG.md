@@ -29,6 +29,9 @@
   ([GH-735](https://github.com/NVIDIA/warp/discussions/735)).
 - Remove support for passing lists, tuples, and other non-Warp array arguments when calling built-ins at the Python scope
   (e.g: `wp.normalize([1.0, 2.0, 3.0])` should be written as `wp.normalize(wp.vec3(1.0, 2.0, 3.0))`).
+- Remove support for Intel-based macOS (x86_64). Apple Silicon-based Macs (ARM64) remain fully supported.
+  Users attempting to run Warp on Intel Macs will receive a `RuntimeError` directing them to use Warp 1.9.x or earlier
+  ([GH-1016](https://github.com/NVIDIA/warp/issues/1016))
 
 ### Deprecated
 

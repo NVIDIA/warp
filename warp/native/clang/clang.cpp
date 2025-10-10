@@ -58,27 +58,14 @@
 #if defined(_WIN64)
     extern "C" void __chkstk();
 #elif defined(__APPLE__)
-
-#if defined(__MACH__) && defined(__aarch64__)
     extern "C" void _bzero(void *s, size_t n) {
         memset(s, 0, n);
     }
     extern "C" void __bzero(void *s, size_t n) {
         memset(s, 0, n);
     }
-
     extern "C" void _memset_pattern16(void *s, const void *pattern, size_t n);
     extern "C" void __memset_pattern16(void *s, const void *pattern, size_t n);
-
-#else
-    // // Intel Mac's define bzero in libSystem.dylib
-    extern "C" void __bzero(void *s, size_t n);
-
-    extern "C" void _memset_pattern16(void *s, const void *pattern, size_t n);
-    extern "C" void __memset_pattern16(void *s, const void *pattern, size_t n);
-
-#endif
-
     extern "C" __double2 __sincos_stret(double);
     extern "C" __float2 __sincosf_stret(float);
 #endif // defined(__APPLE__)
@@ -462,13 +449,8 @@ WP_API int wp_load_obj(const char* object_file, const char* module_name)
             // triggering the stack overflow guards.
             SYMBOL(__chkstk),
         #elif defined(__APPLE__)
-            #if defined(__MACH__) && defined(__aarch64__)
-                SYMBOL(bzero),
-                SYMBOL(_bzero),
-            #else
-                // Intel Mac
-                SYMBOL(__bzero),
-            #endif
+            SYMBOL(bzero),
+            SYMBOL(_bzero),
             SYMBOL(memset_pattern16),
             SYMBOL(__sincos_stret), SYMBOL(__sincosf_stret),
         #else
