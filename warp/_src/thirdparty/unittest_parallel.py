@@ -275,7 +275,14 @@ def main(argv=None):
                     parallel_failed = True
 
                 # Fallback to isolated single-process execution if parallel failed
-                if parallel_failed:
+                # Skip fallback in CI/CD environments to respect job timeouts
+                in_ci = os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS") or os.environ.get("GITLAB_CI")
+                if parallel_failed and in_ci:
+                    print(
+                        "Warning: Parallel execution failed in CI/CD environment. Skipping single-process fallback due to job timeout constraints.",
+                        file=sys.stderr,
+                    )
+                elif parallel_failed:
                     print("Running all tests in isolated single-process mode...", file=sys.stderr)
                     # Run all test suites in isolated single-process pools
                     results = []
