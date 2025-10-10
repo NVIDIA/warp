@@ -6565,14 +6565,25 @@ def force_load(
     modules: list[Module] | None = None,
     block_dim: int | None = None,
 ):
-    """Force user-defined kernels to be compiled and loaded
+    """Force user-defined kernels to be compiled and loaded (low-level API).
+
+    This is a lower-level function that accepts an explicit list of Warp :class:`Module`
+    objects. For most use cases, prefer :func:`load_module`, which provides a more
+    convenient interface for loading modules by name or Python module reference.
+
+    Use this function when you:
+
+    - Need to load multiple specific modules at once
+    - Already have :class:`Module` objects to work with
+    - Want to load all modules containing Warp code (by passing ``modules=None``)
 
     Args:
-        device: The device or list of devices to load the modules on.  If None, load on all devices.
-        modules: List of modules to load.  If None, load all imported modules.
-        block_dim: The number of threads per block (always 1 for "cpu" devices).
+        device: The device or list of devices to load the modules on. If ``None``,
+            load on all devices.
+        modules: List of Warp :class:`Module` objects to load. If ``None``,
+            load all imported modules that contain Warp code.
+        block_dim: The number of threads per block (always 1 for ``"cpu"`` devices).
     """
-
     if is_cuda_driver_initialized():
         # save original context to avoid side effects
         saved_context = runtime.core.wp_cuda_context_get_current()
@@ -6598,23 +6609,41 @@ def force_load(
 
 def load_module(
     module: Module | types.ModuleType | str | None = None,
-    device: Device | str | None = None,
+    device: Device | str | list[Device] | list[str] | None = None,
     recursive: bool = False,
     block_dim: int | None = None,
 ):
-    """Force a user-defined module to be compiled and loaded
+    """Force a user-defined module to be compiled and loaded.
+
+    This is the recommended way to explicitly load modules that contain Warp code.
+    It accepts Python module references (module object, module name string, or Warp
+    :class:`Module`) and provides convenient options for loading submodules recursively.
+
+    Modules containing Warp code are typically loaded automatically on first kernel launch,
+    so this function is mainly useful for:
+
+    - Preloading modules to avoid JIT compilation delays during runtime
+    - Loading modules in controlled environments (e.g. testing, profiling)
+    - Ensuring modules are compiled before specific operations (e.g. CUDA graph capture)
+    - Loading a module hierarchy with the ``recursive`` option
+
+    The Python module must be imported and contain at least one Warp kernel,
+    function, or struct definition to be loadable.
 
     Args:
-        module: The module to load. If None, load the current module.
-        device: The device to load the modules on. If None, load on all devices.
-        recursive: Whether to load submodules. E.g., if the given module is
-          ``warp.render``, this will also load ``warp.render.utils`` and
-          ``warp.render.opengl``.
+        module: The module to load. Can be a Python module object, module name string,
+            or Warp :class:`Module`. If ``None``, loads the module that called this function.
+        device: The device or list of devices to load the module on. If ``None``, load on all devices.
+        recursive: Whether to load submodules. For example, if the given module is
+            ``warp.render``, this will also load ``warp.render.utils`` and
+            ``warp.render.opengl``.
         block_dim: The number of threads per block (always 1 for ``"cpu"`` devices).
 
-    Note: A module must be imported before it can be loaded by this function.
+    Raises:
+        RuntimeError: If the specified module does not contain any Warp kernels, functions,
+            or structs, or has not been imported yet.
+        TypeError: If the module argument is not a valid module type.
     """
-
     if module is None:
         # if module not specified, use the module that called us
         module = inspect.getmodule(inspect.stack()[1][0])
@@ -6645,6 +6674,12 @@ def load_module(
         for name, mod in user_modules.items():
             if name.startswith(prefix):
                 modules.append(mod)
+
+    if not modules:
+        raise RuntimeError(
+            f"Module '{module_name}' does not contain any Warp kernels, functions, or structs, "
+            "or has not been imported yet."
+        )
 
     force_load(device=device, modules=modules, block_dim=block_dim)
 
