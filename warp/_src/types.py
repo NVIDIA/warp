@@ -4117,7 +4117,11 @@ class Bvh:
             constructor: The construction algorithm used to build the tree.
               Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, or ``None``.
               When ``None``, the default constructor will be used (see the note).
-            leaf_size: how many AABBs that each leaf node contains.
+            leaf_size: The number of primitives (AABBs) stored in each leaf node. The optimal value depends on the primary
+              use case. For intersection queries (e.g., AABB query), a small value like 1 (the default) is generally
+              recommended for optimal performance. For closest point queries, a larger value like 4 or 8 can be more
+              performant. This is an intrinsic parameter which does not impact the return value of the query method.
+
 
         Note:
             Explanation of BVH constructors:
@@ -4141,13 +4145,13 @@ class Bvh:
             Only ``"sah"`` and ``"median"`` are supported for CPU trees. If ``"lbvh"`` is selected for a CPU tree, a
             warning message will be issued, and the constructor will automatically fall back to ``"sah"``.
 
-            The `leaf_size` parameter controls the number of primitives (AABBs) stored in each leaf node of the BVH.
+            The ``leaf_size`` parameter controls the number of primitives (AABBs) stored in each leaf node of the BVH.
             This parameter can have a considerable impact on query performance, and the optimal value depends on the
             types of queries that will be performed:
 
-            - For intersection queries (such as ray or AABB queries), smaller `leaf_size` values (e.g., 1) are generally
+            - For intersection queries (such as ray or AABB queries), smaller ``leaf_size`` values (e.g., 1) are generally
               preferred, as they reduce the number of unnecessary primitive checks and can improve traversal speed.
-            - For closest point queries, larger `leaf_size` values (e.g., 4 or more) may be beneficial, as they allow
+            - For closest point queries, larger ``leaf_size`` values (e.g., 4 or more) may be beneficial, as they allow
               more primitives to be checked together, potentially reducing traversal overhead.
 
             The default value is 1, which is optimal for intersection queries. For use cases that involve both intersection
