@@ -7,6 +7,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2025
 
+- **Feedback Matters: Augmenting Autonomous Dissection with Visual and Topological Feedback**. *C. Wang, C. Chen, X. Liang, S. Atar, F. Richter, M. Yip*. October 2025. [arXiv:2510.04074](https://arxiv.org/abs/2510.04074)
 - **MPMAvatar: Learning 3D Gaussian Avatars with Accurate and Robust Physics-Based Dynamics**. *C. Lee, J. Lee, T. Kim*. October 2025. [arXiv:2510.01619](https://arxiv.org/abs/2510.01619)
 - **MechStyle: Augmenting Generative AI with Mechanical Simulation to Create Stylized and Structurally Viable 3D Models**. *F. Faruqi, A. Abdel-Rahman, L. Tejedor, M. Nisser, J. Li, V. Phadnis, V. Jampani, N. Gershenfeld, M. Hofmann, S. Mueller*. September 2025. [arXiv:2509.20571](https://arxiv.org/abs/2509.20571)
 - **AERO-MPPI: Anchor-Guided Ensemble Trajectory Optimization for Agile Mapless Drone Navigation**. *X. Chen, R. Huang, L. Tang, L. Zhao*. September 2025. [arXiv:2509.17340](https://arxiv.org/abs/2509.17340)
