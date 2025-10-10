@@ -5304,10 +5304,28 @@ add_builtin(
     group="Geometry",
     doc="""Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method.
 
+    This function works with single precision, may return incorrect results in some case.
+
     Returns > 0 if triangles intersect.""",
     export=False,
     is_differentiable=False,
 )
+
+
+add_builtin(
+    "intersect_tri_tri",
+    input_types={"v0": vec3d, "v1": vec3d, "v2": vec3d, "u0": vec3d, "u1": vec3d, "u2": vec3d},
+    value_type=int,
+    group="Geometry",
+    doc="""Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method.
+
+    This function works with double precision, results are more accurate than the single precision version.
+
+    Returns > 0 if triangles intersect.""",
+    export=False,
+    is_differentiable=False,
+)
+
 
 add_builtin(
     "mesh_get",

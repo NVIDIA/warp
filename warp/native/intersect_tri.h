@@ -23,8 +23,8 @@
  * Updated June 1999: removed the divisions -- a little faster now!
  * Updated October 1999: added {} to CROSS and SUB macros
  *
- * int NoDivTriTriIsect(float V0[3],float V1[3],float V2[3],
- *                      float U0[3],float U1[3],float U2[3])
+ * int NoDivTriTriIsect(T V0[3],T V1[3],T V2[3],
+ *                      T U0[3],T U1[3],T U2[3])
  *
  * parameters: vertices of triangle 1: V0,V1,V2
  *             vertices of triangle 2: U0,U1,U2
@@ -74,7 +74,7 @@
 #define SORT(a,b)       \
              if(a>b)    \
              {          \
-               float c; \
+               T c; \
                c=a;     \
                a=b;     \
                b=c;     \
@@ -106,7 +106,7 @@
 
 #define EDGE_AGAINST_TRI_EDGES(V0,V1,U0,U1,U2) \
 {                                              \
-  float Ax,Ay,Bx,By,Cx,Cy,e,d,f;               \
+  T Ax,Ay,Bx,By,Cx,Cy,e,d,f;               \
   Ax=V1[i0]-V0[i0];                            \
   Ay=V1[i1]-V0[i1];                            \
   /* test edge U0,U1 against V0,V1 */          \
@@ -119,7 +119,7 @@
 
 #define POINT_IN_TRI(V0,U0,U1,U2)           \
 {                                           \
-  float a,b,c,d0,d1,d2;                     \
+  T a,b,c,d0,d1,d2;                     \
   /* is T1 completely inside T2? */          \
   /* check if V0 is inside tri(U0,U1,U2) */ \
   a=U1[i1]-U0[i1];                          \
@@ -142,16 +142,25 @@
   }                                         \
 }
 
-CUDA_CALLABLE inline int coplanar_tri_tri(float N[3],float V0[3],float V1[3],float V2[3],
-                     float U0[3],float U1[3],float U2[3])
+
+// Type-generic abs that works on device & host without relying on std overloads
+CUDA_CALLABLE inline float abs_t(float x) { return fabsf(x); }
+CUDA_CALLABLE inline double abs_t(double x) { return fabs(x); }
+
+template <typename T>
+CUDA_CALLABLE inline T abs_t(T x) { return x < T(0) ? -x : x; }
+
+template<typename T>
+CUDA_CALLABLE inline int coplanar_tri_tri(T N[3],T V0[3],T V1[3],T V2[3],
+                     T U0[3],T U1[3],T U2[3])
 {
-   float A[3];
+   T A[3];
    short i0,i1;
    /* first project onto an axis-aligned plane, that maximizes the area */
    /* of the triangles, compute indices: i0,i1. */
-   A[0]=fabsf(N[0]);
-   A[1]=fabsf(N[1]);
-   A[2]=fabsf(N[2]);
+   A[0]=abs_t(N[0]);
+   A[1]=abs_t(N[1]);
+   A[2]=abs_t(N[2]);
    if(A[0]>A[1])
    {
       if(A[0]>A[2])
@@ -227,20 +236,20 @@ CUDA_CALLABLE inline int coplanar_tri_tri(float N[3],float V0[3],float V1[3],flo
 }
 
 
-
-CUDA_CALLABLE inline int NoDivTriTriIsect(float V0[3],float V1[3],float V2[3],
-                     float U0[3],float U1[3],float U2[3])
+template<typename T>
+CUDA_CALLABLE inline int NoDivTriTriIsect(T V0[3], T V1[3], T V2[3],
+    T U0[3], T U1[3], T U2[3])
 {
-  float E1[3],E2[3];
-  float N1[3],N2[3],d1,d2;
-  float du0,du1,du2,dv0,dv1,dv2;
-  float D[3];
-  float isect1[2], isect2[2];
-  float du0du1,du0du2,dv0dv1,dv0dv2;
+  T E1[3],E2[3];
+  T N1[3],N2[3],d1,d2;
+  T du0,du1,du2,dv0,dv1,dv2;
+  T D[3];
+  T isect1[2], isect2[2];
+  T du0du1,du0du2,dv0dv1,dv0dv2;
   short index;
-  float vp0,vp1,vp2;
-  float up0,up1,up2;
-  float bb,cc,max;
+  T vp0,vp1,vp2;
+  T up0,up1,up2;
+  T bb,cc,max;
 
   /* compute plane equation of triangle(V0,V1,V2) */
   SUB(E1,V1,V0);
@@ -256,9 +265,9 @@ CUDA_CALLABLE inline int NoDivTriTriIsect(float V0[3],float V1[3],float V2[3],
 
   /* coplanarity robustness check */
 #if USE_EPSILON_TEST==TRUE
-  if(fabsf(du0)<EPSILON) du0=0.0;
-  if(fabsf(du1)<EPSILON) du1=0.0;
-  if(fabsf(du2)<EPSILON) du2=0.0;
+  if(abs_t(du0)<EPSILON) du0=0.0;
+  if(abs_t(du1)<EPSILON) du1=0.0;
+  if(abs_t(du2)<EPSILON) du2=0.0;
 #endif
   du0du1=du0*du1;
   du0du2=du0*du2;
@@ -279,9 +288,9 @@ CUDA_CALLABLE inline int NoDivTriTriIsect(float V0[3],float V1[3],float V2[3],
   dv2=DOT(N2,V2)+d2;
 
 #if USE_EPSILON_TEST==TRUE
-  if(fabsf(dv0)<EPSILON) dv0=0.0;
-  if(fabsf(dv1)<EPSILON) dv1=0.0;
-  if(fabsf(dv2)<EPSILON) dv2=0.0;
+  if(abs_t(dv0)<EPSILON) dv0=0.0;
+  if(abs_t(dv1)<EPSILON) dv1=0.0;
+  if(abs_t(dv2)<EPSILON) dv2=0.0;
 #endif
 
   dv0dv1=dv0*dv1;
@@ -294,10 +303,10 @@ CUDA_CALLABLE inline int NoDivTriTriIsect(float V0[3],float V1[3],float V2[3],
   CROSS(D,N1,N2);
 
   /* compute and index to the largest component of D */
-  max=fabsf(D[0]);
+  max=abs_t(D[0]);
   index=0;
-  bb=fabsf(D[1]);
-  cc=fabsf(D[2]);
+  bb=abs_t(D[1]);
+  cc=abs_t(D[2]);
   if(bb>max) max=bb,index=1;
   if(cc>max) max=cc,index=2;
 
@@ -311,14 +320,14 @@ CUDA_CALLABLE inline int NoDivTriTriIsect(float V0[3],float V1[3],float V2[3],
   up2=U2[index];
 
   /* compute interval for triangle 1 */
-  float a,b,c,x0,x1;
+  T a,b,c,x0,x1;
   NEWCOMPUTE_INTERVALS(vp0,vp1,vp2,dv0,dv1,dv2,dv0dv1,dv0dv2,a,b,c,x0,x1);
 
   /* compute interval for triangle 2 */
-  float d,e,f,y0,y1;
+  T d,e,f,y0,y1;
   NEWCOMPUTE_INTERVALS(up0,up1,up2,du0,du1,du2,du0du1,du0du2,d,e,f,y0,y1);
 
-  float xx,yy,xxyy,tmp;
+  T xx,yy,xxyy,tmp;
   xx=x0*x1;
   yy=y0*y1;
   xxyy=xx*yy;
