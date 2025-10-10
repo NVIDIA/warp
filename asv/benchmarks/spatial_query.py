@@ -53,7 +53,7 @@ def sample_mesh_query_no_sign(
 
 
 class MeshQuery:
-    params = [[1, 2, 4, 8], ["bunny", "bear", "rocks"]]
+    params = [[0, 8], ["bunny", "bear", "rocks"]]
     param_names = ["leaf_size", "asset"]
     number = 20
     timeout = 60
@@ -83,12 +83,20 @@ class MeshQuery:
         self.query_points = wp.array(query_points_np, dtype=wp.vec3, device=self.device)
 
         # create wp mesh
-        self.mesh = wp.Mesh(
-            points=wp.array(points, dtype=wp.vec3, device=self.device),
-            velocities=None,
-            indices=wp.array(indices, dtype=int, device=self.device),
-            bvh_leaf_size=leaf_size,
-        )
+        if leaf_size == 0:
+            self.mesh = wp.Mesh(
+                points=wp.array(points, dtype=wp.vec3, device=self.device),
+                velocities=None,
+                indices=wp.array(indices, dtype=int, device=self.device),
+            )
+
+        else:
+            self.mesh = wp.Mesh(
+                points=wp.array(points, dtype=wp.vec3, device=self.device),
+                velocities=None,
+                indices=wp.array(indices, dtype=int, device=self.device),
+                bvh_leaf_size=leaf_size,
+            )
 
         self.query_closest_points = wp.empty_like(self.query_points, device=self.device)
 
@@ -320,7 +328,7 @@ def replicate_mesh_with_random_perturbation(
 
 
 class BvhAABBQuery:
-    params = [[0.002, 0.004, 0.008], [1, 2, 4], ["cpu", "cuda"]]
+    params = [[0.002, 0.004, 0.008], [0, 8], ["cpu", "cuda"]]
     param_names = ["query_radius", "leaf_size", "device"]
 
     number = 5
@@ -382,9 +390,12 @@ class BvhAABBQuery:
                 outputs=[self.lowers, self.uppers],
             )
 
-            self.bvh = wp.Bvh(self.lowers, self.uppers, leaf_size=leaf_size)
-
-            self.mesh = wp.Mesh(self.points, wp.array(indices, dtype=int), leaf_size=leaf_size)
+            if leaf_size == 0:
+                self.bvh = wp.Bvh(self.lowers, self.uppers)
+                self.mesh = wp.Mesh(self.points, wp.array(indices, dtype=int))
+            else:
+                self.bvh = wp.Bvh(self.lowers, self.uppers, leaf_size=leaf_size)
+                self.mesh = wp.Mesh(self.points, wp.array(indices, dtype=int), bvh_leaf_size=leaf_size)
 
             buffer_size_per_vertex = 32
             self.vertex_colliding_triangles_offsets = wp.array(
@@ -472,11 +483,11 @@ class BvhAABBQuery:
                         0.004,
                         0.008,
                     ],
-                    [1, 2, 4],
+                    [0, 8],
                     ["cpu"],
                 )
             )
-            if t != (0.002, 1, "cpu")
+            if t != (0.002, 0, "cpu")
         ]
     )
     @skip_benchmark_if(USD_AVAILABLE is False)
@@ -497,11 +508,11 @@ class BvhAABBQuery:
                         0.004,
                         0.008,
                     ],
-                    [1, 2, 4],
+                    [0, 8],
                     ["cpu"],
                 )
             )
-            if t != (0.002, 1, "cpu")
+            if t != (0.002, 0, "cpu")
         ]
     )
     @skip_benchmark_if(USD_AVAILABLE is False)
@@ -519,7 +530,7 @@ class BvhRayQuery:
             480,
             1080,
         ],
-        [1, 2, 4],
+        [0, 8],
         ["cpu", "cuda"],
     ]
     param_names = ["resolution", "leaf_size", "device"]
@@ -580,9 +591,12 @@ class BvhRayQuery:
                 inputs=[self.points, self.indices],
                 outputs=[self.lowers, self.uppers],
             )
-
-            self.bvh = wp.Bvh(self.lowers, self.uppers, leaf_size=leaf_size)
-            self.mesh = wp.Mesh(self.points, wp.array(indices, dtype=int), leaf_size=leaf_size)
+            if leaf_size == 0:
+                self.bvh = wp.Bvh(self.lowers, self.uppers)
+                self.mesh = wp.Mesh(self.points, wp.array(indices, dtype=int))
+            else:
+                self.bvh = wp.Bvh(self.lowers, self.uppers, leaf_size=leaf_size)
+                self.mesh = wp.Mesh(self.points, wp.array(indices, dtype=int), bvh_leaf_size=leaf_size)
 
             bb_min = bounding_box[0]
             bb_max = bounding_box[1]
@@ -703,7 +717,7 @@ class BvhRayQuery:
                 wp.capture_launch(self.cuda_graph_mesh_ray_vs_aabb)
                 wp.synchronize_device()
 
-    @skip_for_params([t for t in itertools.product([480, 1080], [1, 2, 4], ["cpu"]) if t != (480, 1, "cpu")])
+    @skip_for_params([t for t in itertools.product([480, 1080], [1, 2, 4], ["cpu"]) if t != (480, 0, "cpu")])
     @skip_benchmark_if(USD_AVAILABLE is False)
     def time_bvh_ray_vs_aabb_query(self, resolution, leaf_size, device):
         if self.bvh.device.is_cpu:
@@ -712,7 +726,7 @@ class BvhRayQuery:
             wp.capture_launch(self.cuda_graph_bvh_ray_vs_aabb)
         wp.synchronize_device()
 
-    @skip_for_params([t for t in itertools.product([480, 1080], [1, 2, 4], ["cpu"]) if t != (480, 1, "cpu")])
+    @skip_for_params([t for t in itertools.product([480, 1080], [1, 2, 4], ["cpu"]) if t != (480, 0, "cpu")])
     @skip_benchmark_if(USD_AVAILABLE is False)
     def time_mesh_ray_vs_aabb_query(self, resolution, leaf_size, device):
         if self.bvh.device.is_cpu:
