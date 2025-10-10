@@ -123,7 +123,7 @@ class Example:
                 [
                     [1.0, poisson, 0.0],
                     [poisson, 1.0, 0.0],
-                    [0.0, 0.0, (2.0 * (1.0 + poisson)) * (1.0 - poisson * poisson)],
+                    [0.0, 0.0, (1.0 - poisson * poisson) / (2.0 * (1.0 + poisson))],
                 ]
             )
         )
@@ -142,14 +142,14 @@ class Example:
         # Store stress degrees of freedom as symmetric tensors (3 dof) rather than full 2x2 matrices
         self._tau1_space = fem.make_polynomial_space(
             self._geo1,
-            degree=degree - 1,
+            degree=degree,
             discontinuous=True,
             element_basis=fem.ElementBasis.LAGRANGE,
             dof_mapper=fem.SymmetricTensorMapper(wp.mat22),
         )
         self._tau2_space = fem.make_polynomial_space(
             self._geo2,
-            degree=degree - 1,
+            degree=degree,
             discontinuous=True,
             element_basis=fem.ElementBasis.LAGRANGE,
             dof_mapper=fem.SymmetricTensorMapper(wp.mat22),
@@ -232,7 +232,7 @@ class Example:
             bottom_boundary_projector_form, fields={"u": u_bd_trial, "v": u_bd_test}, assembly="nodal"
         )
 
-        # read displacement from other body set create bottom boundary Dirichlet BC
+        # displacement from other body defines bottom boundary Dirichlet BC
         other_u_field = fem.NonconformingField(boundary, other_u_field)
         u_bd_rhs = fem.integrate(
             bottom_boundary_projector_form, fields={"u": other_u_field, "v": u_bd_test}, assembly="nodal"
