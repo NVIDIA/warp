@@ -47,6 +47,7 @@ variables:
   GIT_DEPTH: 1
   UV_LINK_MODE: copy
   UV_HTTP_TIMEOUT: 120
+  UV_PYTHON_PREFERENCE: only-managed
   UV_PYTHON:
     value: "3.12"
     options:
