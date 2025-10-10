@@ -1972,3 +1972,5 @@ Module Management
 .. autofunction:: warp.compile_aot_module
 
 .. autofunction:: warp.load_aot_module
+
+.. autofunction:: warp.get_cuda_supported_archs

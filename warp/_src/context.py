@@ -4398,6 +4398,9 @@ class Runtime:
                 # count known non-primary contexts on each physical device so we can
                 # give them reasonable aliases (e.g., "cuda:0.0", "cuda:0.1")
                 self.cuda_custom_context_count = [0] * cuda_device_count
+            else:
+                # driver is insufficient, no NVRTC architectures supported
+                self.nvrtc_supported_archs = set()
 
         # set default device
         if cuda_device_count > 0:
@@ -4726,6 +4729,25 @@ def is_cuda_driver_initialized() -> bool:
     init()
 
     return runtime.core.wp_cuda_driver_is_initialized()
+
+
+def get_cuda_supported_archs() -> list[int]:
+    """Return a sorted list of CUDA compute architectures that can be used as compilation targets.
+
+    The returned architectures represent the compute capabilities that Warp's NVRTC compiler
+    can generate code for. These values correspond to CUDA compute capability versions
+    (e.g., 75 for ``sm_75``, 80 for ``sm_80``, 90 for ``sm_90``).
+
+    Returns:
+        A sorted list of architecture values from lowest to highest, or an empty list
+        if CUDA is not available or no architectures are supported.
+    """
+    init()
+
+    if runtime.is_cuda_enabled:
+        return sorted(runtime.nvrtc_supported_archs)
+    else:
+        return []
 
 
 def get_devices() -> list[Device]:

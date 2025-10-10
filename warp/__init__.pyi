@@ -185,6 +185,7 @@ from warp._src.context import overload as overload
 from warp._src.context import is_cpu_available as is_cpu_available
 from warp._src.context import is_cuda_available as is_cuda_available
 from warp._src.context import is_device_available as is_device_available
+from warp._src.context import get_cuda_supported_archs as get_cuda_supported_archs
 from warp._src.context import get_devices as get_devices
 from warp._src.context import get_preferred_device as get_preferred_device
 from warp._src.context import get_cuda_devices as get_cuda_devices
