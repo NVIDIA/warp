@@ -168,7 +168,7 @@ if __name__ == "__main__":
     root_path = os.path.abspath(os.path.join(here, "..", "..", ".."))
 
     version_file = args.version_file if args.version_file else os.path.join(root_path, "VERSION.md")
-    config_file = args.config_file if args.config_file else os.path.join(root_path, "warp", "config.py")
+    config_file = args.config_file if args.config_file else os.path.join(root_path, "warp", "_src", "config.py")
 
     try:
         with open(version_file, "r") as file:
