@@ -443,7 +443,7 @@ linux-x86_64-blackwell test:
 windows-x86_64 test:
   stage: test
   needs: [windows-x86_64 build]
-  timeout: 60m
+  timeout: 45m
   extends:
     - .runner-test-windows-x86_64-gpu
     - .test_common_with_coverage
@@ -469,7 +469,7 @@ windows-x86_64 test mgpu:
   needs: [windows-x86_64 build]
   extends:
     - .save_test_report_artifact
-  timeout: 60m
+  timeout: 45m
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
