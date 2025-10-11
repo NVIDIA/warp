@@ -44,7 +44,6 @@ class Gemm256:
         wp.init()
         wp.build.clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
-        wp.load_module(device=self.device)
 
         # Parameters found by auto-tuning for a 256x256 GEMM
         self.tile_m = 16
@@ -87,7 +86,6 @@ class Gemm1024:
         wp.build.clear_kernel_cache()
         wp.set_module_options({"fast_math": True, "enable_backward": False})
         self.device = wp.get_device("cuda:0")
-        wp.load_module(device=self.device)
 
         self.tile_m = 64
         self.tile_n = 64
