@@ -3741,10 +3741,11 @@ inline CUDA_CALLABLE Type determinant(const mat_t<3,3,Type>& m)
     );
 }
 
+// Adapted from USD - see licenses/usd-LICENSE.txt
+// Copyright 2016 Pixar
 template<typename Type>
 inline CUDA_CALLABLE Type determinant(const mat_t<4,4,Type>& m)
 {
-    // adapted from USD GfMatrix4f::Inverse()
     Type x00, x01, x02, x03;
     Type x10, x11, x12, x13;
     Type x20, x21, x22, x23;
@@ -3840,16 +3841,16 @@ inline CUDA_CALLABLE mat_t<2,2,Type> inverse(const mat_t<2,2,Type>& m)
 template<typename Type>
 inline CUDA_CALLABLE mat_t<3,3,Type> inverse(const mat_t<3,3,Type>& m)
 {
-	Type det = determinant(m);
+    Type det = determinant(m);
 
-	if (det != Type(0.0f))
-	{
-		mat_t<3,3,Type> b;
-		
-		b.data[0][0] = m.data[1][1]*m.data[2][2] - m.data[1][2]*m.data[2][1]; 
-		b.data[1][0] = m.data[1][2]*m.data[2][0] - m.data[1][0]*m.data[2][2]; 
-		b.data[2][0] = m.data[1][0]*m.data[2][1] - m.data[1][1]*m.data[2][0]; 
-		
+    if (det != Type(0.0f))
+    {
+        mat_t<3,3,Type> b;
+        
+        b.data[0][0] = m.data[1][1]*m.data[2][2] - m.data[1][2]*m.data[2][1]; 
+        b.data[1][0] = m.data[1][2]*m.data[2][0] - m.data[1][0]*m.data[2][2]; 
+        b.data[2][0] = m.data[1][0]*m.data[2][1] - m.data[1][1]*m.data[2][0]; 
+        
         b.data[0][1] = m.data[0][2]*m.data[2][1] - m.data[0][1]*m.data[2][2]; 
         b.data[1][1] = m.data[0][0]*m.data[2][2] - m.data[0][2]*m.data[2][0]; 
         b.data[2][1] = m.data[0][1]*m.data[2][0] - m.data[0][0]*m.data[2][1]; 
@@ -3858,18 +3859,19 @@ inline CUDA_CALLABLE mat_t<3,3,Type> inverse(const mat_t<3,3,Type>& m)
         b.data[1][2] = m.data[0][2]*m.data[1][0] - m.data[0][0]*m.data[1][2];
         b.data[2][2] = m.data[0][0]*m.data[1][1] - m.data[0][1]*m.data[1][0];
 
-		return b*(Type(1.0f)/det);
-	}
-	else
-	{
-		return mat_t<3,3,Type>();
-	}
+        return b*(Type(1.0f)/det);
+    }
+    else
+    {
+        return mat_t<3,3,Type>();
+    }
 }
 
+// Adapted from USD - see licenses/usd-LICENSE.txt
+// Copyright 2016 Pixar
 template<typename Type>
 inline CUDA_CALLABLE mat_t<4,4,Type> inverse(const mat_t<4,4,Type>& m)
 {
-    // adapted from USD GfMatrix4f::Inverse()
     Type x00, x01, x02, x03;
     Type x10, x11, x12, x13;
     Type x20, x21, x22, x23;
@@ -4571,10 +4573,11 @@ inline CUDA_CALLABLE void adj_determinant(const mat_t<3,3,Type>& m, mat_t<3,3,Ty
     (vec_t<3,Type>&)adj_m.data[2] += cross(m.get_row(0), m.get_row(1))*adj_ret;
 }
 
+// Adapted from USD - see licenses/usd-LICENSE.txt
+// Copyright 2016 Pixar
 template<typename Type>
 inline CUDA_CALLABLE void adj_determinant(const mat_t<4,4,Type>& m, mat_t<4,4,Type>& adj_m, Type adj_ret)
 {
-    // adapted from USD GfMatrix4f::Inverse()
     Type x00, x01, x02, x03;
     Type x10, x11, x12, x13;
     Type x20, x21, x22, x23;
