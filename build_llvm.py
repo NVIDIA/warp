@@ -364,6 +364,7 @@ def build_warp_clang_for_arch(args, lib_name: str, arch: str) -> None:
         if os.name == "nt":
             libs.append("Version.lib")
             libs.append("Ws2_32.lib")
+            libs.append("ntdll.lib")
             libs.append(f'/LIBPATH:"{libpath}"')
         else:
             libs = [f"-l{lib[3:-2]}" for lib in libs if os.path.splitext(lib)[1] == ".a"]
