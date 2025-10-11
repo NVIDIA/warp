@@ -2816,7 +2816,7 @@ Tile Primitives
     Add a square matrix and a diagonal matrix 'd' represented as a 1D tile
 
 
-.. py:function:: tile_matmul(a: Tile[Float,Tuple[int, int]], b: Tile[Float,Tuple[int, int]], out: Tile[Float,Tuple[int, int]]) -> None
+.. py:function:: tile_matmul(a: Tile[Float,Tuple[int, int]], b: Tile[Float,Tuple[int, int]], out: Tile[Float,Tuple[int, int]], alpha: Float, beta: Float) -> None
 
     .. hlist::
        :columns: 8
@@ -2824,7 +2824,7 @@ Tile Primitives
        * Kernel
        * Differentiable
 
-    Computes the matrix product and accumulates ``out += a*b``.
+    Computes the matrix product and accumulates ``out = alpha * a*b + beta * out``.
 
     Supported datatypes are:
         * fp16, fp32, fp64 (real)
@@ -2833,13 +2833,17 @@ Tile Primitives
     All input and output tiles must have the same datatype. Tile data will automatically be migrated
     to shared memory if necessary and will use TensorCore operations when available.
 
+    Note that computing the adjoints of alpha and beta are not yet supported.
+
     :param a: A tile with ``shape=(M, K)``
     :param b: A tile with ``shape=(K, N)``
     :param out: A tile with ``shape=(M, N)``
+    :param alpha: Scaling factor (default 1.0)
+    :param beta: Accumulator factor (default 1.0)
     
 
 
-.. py:function:: tile_matmul(a: Tile[Float,Tuple[int, int]], b: Tile[Float,Tuple[int, int]]) -> Tile[Float,Tuple[int, int]]
+.. py:function:: tile_matmul(a: Tile[Float,Tuple[int, int]], b: Tile[Float,Tuple[int, int]], alpha: Float) -> Tile[Float,Tuple[int, int]]
     :noindex:
     :nocontentsentry:
 
@@ -2849,7 +2853,7 @@ Tile Primitives
        * Kernel
        * Differentiable
 
-    Computes the matrix product ``out = a*b``.
+    Computes the matrix product ``out = alpha * a*b``.
 
     Supported datatypes are:
         * fp16, fp32, fp64 (real)
@@ -2858,8 +2862,11 @@ Tile Primitives
     Both input tiles must have the same datatype. Tile data will automatically be migrated
     to shared memory if necessary and will use TensorCore operations when available.
 
+    Note that computing the adjoints of alpha is not yet supported.
+
     :param a: A tile with ``shape=(M, K)``
     :param b: A tile with ``shape=(K, N)``
+    :param alpha: Scaling factor (default 1.0)
     :returns: A tile with ``shape=(M, N)``
     
 
