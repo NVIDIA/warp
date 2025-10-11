@@ -370,8 +370,7 @@ def test_tile_cholesky_block_cholesky(test, device):
             for j in range(0, k, BLOCK_SIZE):
                 L_block = wp.tile_load(L, shape=(BLOCK_SIZE, BLOCK_SIZE), offset=(k, j))
                 L_block_T = wp.tile_transpose(L_block)
-                L_L_T_block = wp.tile_matmul(L_block, L_block_T)
-                A_kk_tile -= L_L_T_block
+                wp.tile_matmul(L_block, L_block_T, A_kk_tile, alpha=-1.0)
 
             # Compute the Cholesky factorization for the block
             # print(A_kk_tile)
@@ -386,8 +385,7 @@ def test_tile_cholesky_block_cholesky(test, device):
                     L_tile = wp.tile_load(L, shape=(BLOCK_SIZE, BLOCK_SIZE), offset=(i, j))
                     L_2_tile = wp.tile_load(L, shape=(BLOCK_SIZE, BLOCK_SIZE), offset=(k, j))
                     L_T_tile = wp.tile_transpose(L_2_tile)
-                    L_L_T_tile = wp.tile_matmul(L_tile, L_T_tile)
-                    A_ik_tile -= L_L_T_tile
+                    wp.tile_matmul(L_tile, L_T_tile, A_ik_tile, alpha=-1.0)
 
                 A_ik_T_tile = wp.tile_transpose(A_ik_tile)
                 sol_T_tile = wp.tile_lower_solve(L_kk_tile, A_ik_T_tile)
@@ -414,8 +412,7 @@ def test_tile_cholesky_block_cholesky(test, device):
             for j in range(0, i, BLOCK_SIZE):
                 L_block = wp.tile_load(L, shape=(BLOCK_SIZE, BLOCK_SIZE), offset=(i, j))
                 y_block = wp.tile_load(scratch, shape=(BLOCK_SIZE, 1), offset=(j, 0))
-                Ly_block = wp.tile_matmul(L_block, y_block)
-                rhs_tile -= Ly_block
+                wp.tile_matmul(L_block, y_block, rhs_tile, alpha=-1.0)
             L_tile = wp.tile_load(L, shape=(BLOCK_SIZE, BLOCK_SIZE), offset=(i, i))
             y_tile = wp.tile_lower_solve(L_tile, rhs_tile)
             wp.tile_store(scratch, y_tile, offset=(i, 0))
@@ -429,8 +426,7 @@ def test_tile_cholesky_block_cholesky(test, device):
                 L_tile = wp.tile_load(L, shape=(BLOCK_SIZE, BLOCK_SIZE), offset=(j, i_start))
                 L_T_tile = wp.tile_transpose(L_tile)
                 x_tile = wp.tile_load(x, shape=(BLOCK_SIZE, 1), offset=(j, 0))
-                L_T_x_tile = wp.tile_matmul(L_T_tile, x_tile)
-                rhs_tile -= L_T_x_tile
+                wp.tile_matmul(L_T_tile, x_tile, rhs_tile, alpha=-1.0)
             L_tile = wp.tile_load(L, shape=(BLOCK_SIZE, BLOCK_SIZE), offset=(i_start, i_start))
             x_tile = wp.tile_upper_solve(wp.tile_transpose(L_tile), rhs_tile)
             wp.tile_store(x, x_tile, offset=(i_start, 0))
