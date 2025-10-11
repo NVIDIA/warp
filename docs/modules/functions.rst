@@ -2678,8 +2678,8 @@ Tile Primitives
     :param a: A tile with ``shape=(M, K)``
     :param b: A tile with ``shape=(K, N)``
     :param out: A tile with ``shape=(M, N)``
-    :param alpha: Scaling factor (default 1.0)``
-    :param beta: Accumulator factor (default 1.0)``
+    :param alpha: Scaling factor (default 1.0)
+    :param beta: Accumulator factor (default 1.0)
     
 
 
@@ -2702,11 +2702,11 @@ Tile Primitives
     Both input tiles must have the same datatype. Tile data will automatically be migrated
     to shared memory if necessary and will use TensorCore operations when available.
 
-    Note that computing the adjoints of alpha and beta are not yet supported.
+    Note that computing the adjoints of alpha is not yet supported.
 
     :param a: A tile with ``shape=(M, K)``
     :param b: A tile with ``shape=(K, N)``
-    :param alpha: Scaling factor (default 1.0)``
+    :param alpha: Scaling factor (default 1.0)
     :returns: A tile with ``shape=(M, N)``
     
 
