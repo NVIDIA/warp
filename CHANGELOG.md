@@ -26,6 +26,9 @@
   ([GH-964](https://github.com/NVIDIA/warp/issues/964)).
 - Add `wp.cast()` to reinterpret a value as a different type while preserving its bit pattern
   ([GH-789](https://github.com/NVIDIA/warp/issues/789)).
+- Add runtime version verification to detect native library mismatches.
+  Version mismatches trigger warnings but allow execution to continue
+  ([GH-1018](https://github.com/NVIDIA/warp/issues/1018)).
 
 ### Removed
 

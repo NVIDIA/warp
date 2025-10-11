@@ -20,6 +20,7 @@
 #include "array.h"
 #include "exports.h"
 #include "error.h"
+#include "version.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -116,8 +117,27 @@ float wp_half_bits_to_float(uint16_t u)
     return o.f;
 }
 
-int wp_init()
+int wp_init(const char* expected_version)
 {
+    // Check version mismatch (guard against NULL expected_version)
+    if (expected_version != NULL && strcmp(expected_version, WP_VERSION_STRING) != 0)
+    {
+        fprintf(stderr, 
+            "Warp Warning: Version mismatch detected in Warp native library.\n"
+            "  Expected Warp version: %s\n"
+            "  Loaded native library version: %s\n"
+            "  This may occur due to environment variables or multiple Warp installations.\n",
+            expected_version,
+            WP_VERSION_STRING);
+    }
+    else if (expected_version == NULL)
+    {
+        fprintf(stderr, 
+            "Warp Warning: Version check skipped (NULL version provided).\n"
+            "  Loaded native library version: %s\n",
+            WP_VERSION_STRING);
+    }
+
 #if WP_ENABLE_CUDA
     int cuda_init(void);
     // note: it's safe to proceed even if CUDA initialization failed
@@ -129,6 +149,11 @@ int wp_init()
 
 void wp_shutdown()
 {
+}
+
+const char* wp_version()
+{
+    return WP_VERSION_STRING;
 }
 
 const char* wp_get_error_string()
@@ -1004,6 +1029,7 @@ void wp_array_fill_device(void* context, void* arr, int arr_type, const void* va
 
 WP_API int wp_cuda_driver_version() { return 0; }
 WP_API int wp_cuda_toolkit_version() { return 0; }
+
 WP_API bool wp_cuda_driver_is_initialized() { return false; }
 
 WP_API int wp_nvrtc_supported_arch_count() { return 0; }

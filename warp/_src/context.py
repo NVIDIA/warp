@@ -3465,6 +3465,32 @@ class Runtime:
             self.llvm = self.load_dll(llvm_lib)
             # setup c-types for warp-clang.dll
             self.llvm.wp_lookup.restype = ctypes.c_uint64
+
+            # Verify warp-clang version (guard against missing symbol in older/mismatched DLL)
+            if hasattr(self.llvm, "wp_warp_clang_version"):
+                self.llvm.wp_warp_clang_version.argtypes = []
+                self.llvm.wp_warp_clang_version.restype = ctypes.c_char_p
+
+                clang_version_ptr = self.llvm.wp_warp_clang_version()
+                if clang_version_ptr:
+                    clang_version = clang_version_ptr.decode("utf-8")
+                    if clang_version != warp._src.config.version:
+                        warp._src.utils.warn(
+                            f"Version mismatch detected in warp-clang library.\n"
+                            f"  Expected Warp version: {warp._src.config.version}\n"
+                            f"  Loaded warp-clang library version: {clang_version}\n"
+                            f"  This may occur due to environment variables or multiple Warp installations."
+                        )
+                else:
+                    warp._src.utils.warn(
+                        "warp-clang version check returned NULL.\n"
+                        "  This may indicate a corrupted or incompatible library."
+                    )
+            else:
+                warp._src.utils.warn(
+                    "warp-clang library does not support version checking.\n"
+                    "  This may indicate an older or mismatched library version."
+                )
         else:
             self.llvm = None
 
@@ -4325,12 +4351,17 @@ class Runtime:
             ]
             self.core.wp_balance_coloring.restype = ctypes.c_float
 
+            self.core.wp_init.argtypes = [ctypes.c_char_p]
             self.core.wp_init.restype = ctypes.c_int
+
+            self.core.wp_version.argtypes = []
+            self.core.wp_version.restype = ctypes.c_char_p
 
         except AttributeError as e:
             raise RuntimeError(f"Setting C-types for {warp_lib} failed. It may need rebuilding.") from e
 
-        error = self.core.wp_init()
+        # Initialize with version verification
+        error = self.core.wp_init(warp._src.config.version.encode("utf-8"))
 
         if error != 0:
             raise Exception("Warp initialization failed")
@@ -4576,6 +4607,49 @@ class Runtime:
 
     def get_error_string(self):
         return self.core.wp_get_error_string().decode("utf-8")
+
+    def get_warp_version(self) -> str:
+        """Get the version of the Warp core library.
+
+        Returns:
+            Version string, or "unknown" if version cannot be determined.
+        """
+        if not hasattr(self.core, "wp_version"):
+            return "unknown"
+
+        try:
+            version_ptr = self.core.wp_version()
+            if version_ptr:
+                return version_ptr.decode("utf-8")
+        except (AttributeError, OSError, UnicodeDecodeError):
+            pass
+
+        return "unknown"
+
+    def get_warp_clang_version(self) -> str:
+        """Get the version of the Warp CPU compilation backend (uses LLVM/Clang).
+
+        Note: This returns the version of the warp-clang library, not the version
+        of the LLVM/Clang compiler that is statically linked into it.
+
+        Returns:
+            Version string, or "unknown" if version cannot be determined.
+        """
+        if self.llvm is None:
+            return "unknown"
+
+        if not hasattr(self.llvm, "wp_warp_clang_version"):
+            # Already warned during init
+            return "unknown"
+
+        try:
+            clang_version_ptr = self.llvm.wp_warp_clang_version()
+            if clang_version_ptr:
+                return clang_version_ptr.decode("utf-8")
+        except (AttributeError, OSError, UnicodeDecodeError):
+            pass
+
+        return "unknown"
 
     def load_dll(self, dll_path):
         try:
@@ -8196,3 +8270,25 @@ def init():
 
     if runtime is None:
         runtime = Runtime()
+
+
+def get_warp_version():
+    """Query the version of the loaded native core library (warp.dll/.so).
+
+    Returns:
+        Version string.
+    """
+    if runtime is None:
+        init()
+    return runtime.get_warp_version()
+
+
+def get_warp_clang_version():
+    """Query the version of the loaded CPU compilation backend library (warp-clang.dll/.so).
+
+    Returns:
+        Version string.
+    """
+    if runtime is None:
+        init()
+    return runtime.get_warp_clang_version()
