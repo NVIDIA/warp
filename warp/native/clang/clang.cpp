@@ -16,6 +16,7 @@
  */
 
 #include "../native/crt.h"
+#include "../version.h"
 
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Basic/DiagnosticOptions.h>
@@ -515,6 +516,11 @@ WP_API uint64_t wp_lookup(const char* dll_name, const char* function_name)
     }
 
     return func->getValue();
+}
+
+WP_API const char* wp_warp_clang_version()
+{
+    return WP_VERSION_STRING;
 }
 
 }  // extern "C"

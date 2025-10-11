@@ -27,16 +27,99 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import glob
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
 
 import warp._src.build_dll as build_dll
-from warp._src.build import clear_kernel_cache, clear_lto_cache
+import warp._src.config as config
 from warp._src.context import export_builtins
+
+
+def handle_ci_nightly_build(base_path: str) -> str | None:
+    """Update version for nightly builds in scheduled CI pipeline.
+
+    Returns:
+        Updated version string if nightly build was triggered, None otherwise.
+    """
+    ci_pipeline_source = os.environ.get("CI_PIPELINE_SOURCE")
+    if ci_pipeline_source != "schedule":
+        return None
+
+    print("Detected scheduled CI pipeline - updating version for nightly build")
+
+    # Import CI publishing tools
+    sys.path.insert(0, os.path.join(base_path, "tools", "ci", "publishing"))
+    from set_nightly_version import increment_minor, write_new_version_to_config, write_new_version_to_version_file
+    from update_git_hash import get_git_hash, update_git_hash_in_config
+
+    # Paths
+    version_file = os.path.join(base_path, "VERSION.md")
+    config_file = os.path.join(base_path, "warp", "_src", "config.py")
+
+    # Read base version
+    with open(version_file) as f:
+        base_version = f.readline().strip()
+
+    # Generate nightly version
+    if "dev" in base_version:
+        dev_index = base_version.find("dev")
+        base_version_incremented = base_version[:dev_index].rstrip(".")
+    else:
+        base_version_incremented = increment_minor(base_version)
+
+    dateint = datetime.date.today().strftime("%Y%m%d")
+    dev_version_string = f"{base_version_incremented}.dev{dateint}"
+
+    # Update files
+    write_new_version_to_version_file(version_file, dev_version_string, dry_run=False)
+    write_new_version_to_config(config_file, dev_version_string, dry_run=False)
+
+    # Update git hash
+    git_hash = get_git_hash()
+    if git_hash:
+        update_git_hash_in_config(config_file, git_hash, dry_run=False)
+
+    return dev_version_string
+
+
+def generate_version_header(base_path: str, version: str) -> None:
+    """Generate version.h with WP_VERSION_STRING macro."""
+    version_header_path = os.path.join(base_path, "warp", "native", "version.h")
+    current_year = datetime.date.today().year
+
+    copyright_notice = f"""/*
+ * SPDX-FileCopyrightText: Copyright (c) {current_year} NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+"""
+
+    with open(version_header_path, "w") as f:
+        f.write(copyright_notice)
+        f.write("#ifndef WP_VERSION_H\n")
+        f.write("#define WP_VERSION_H\n\n")
+        f.write(f'#define WP_VERSION_STRING "{version}"\n\n')
+        f.write("#endif // WP_VERSION_H\n")
+
+    print(f"Generated {version_header_path} with version {version}")
 
 
 def find_cuda_sdk() -> str | None:
@@ -301,8 +384,33 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
 
     try:
+        # Handle CI nightly builds (returns updated version string if triggered, else None)
+        nightly_version = handle_ci_nightly_build(base_path)
+
+        if nightly_version is not None:
+            build_version = nightly_version
+        else:
+            build_version = config.version
+
+        # Reset git hash to None for non-scheduled builds (keeps config clean for local dev)
+        if nightly_version is None:
+            config_file = os.path.join(base_path, "warp", "_src", "config.py")
+            with open(config_file) as f:
+                content = f.read()
+            # Reset _git_commit_hash to None
+            pattern = r'^(_git_commit_hash\s*:\s*Optional\[str\]\s*=\s*)(None|"[^"]*")(.*)$'
+            updated_content = re.sub(pattern, r"\g<1>None\g<3>", content, flags=re.MULTILINE)
+            with open(config_file, "w") as f:
+                f.write(updated_content)
+
+        if args.verbose:
+            print(f"Building Warp version {build_version}")
+
         # Generate warp/native/export.h
         generate_exports_header_file(base_path)
+
+        # Generate warp/native/version.h
+        generate_version_header(base_path, build_version)
 
         # build warp.dll
         cpp_sources = [
@@ -370,9 +478,19 @@ def main(argv: list[str] | None = None) -> int:
             if is_intel_mac:
                 print("Skipping kernel cache clearing on Intel Mac (binaries built for ARM64)")
         else:
-            # Clear kernel cache (also initializes Warp)
-            clear_kernel_cache()
-            clear_lto_cache()
+            # Clear kernel cache in subprocess (ensures fresh import of updated config.py)
+            print("Clearing kernel cache...")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    "from warp._src.build import clear_kernel_cache, clear_lto_cache; clear_kernel_cache(); clear_lto_cache()",
+                ],
+                cwd=base_path,
+                check=False,
+            )
+            if result.returncode != 0:
+                print(f"Warning: Failed to clear kernel cache (exit code {result.returncode})")
     except Exception as e:
         print(f"Unable to clear kernel cache: {e}")
 

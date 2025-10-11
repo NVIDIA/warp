@@ -833,8 +833,7 @@ create dev wheels:
     - mv warp/bin/libwarp.dylib warp/bin/macos-aarch64/
     - mv warp/bin/libwarp-clang.dylib warp/bin/macos-aarch64/
   script:
-    - uv run tools/ci/publishing/update_git_hash.py # Modify config.py with git hash
-    - uv run tools/ci/publishing/set_nightly_version.py # Modify VERSION.md with dev version
+    # Version files (VERSION.md, config.py, version.h) are already updated from build artifacts
     - uv build --wheel -C--build-option=-Pwindows-x86_64
     - uv build --wheel -C--build-option=-Plinux-x86_64
     - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
@@ -1067,30 +1066,42 @@ merge request docs:
 # Merge requests: Ensure that exports.h, __init__.pyi, functions.rst have been
 # manually added to the MR if they are changed
 check generated files:
+  stage: deploy
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs:
     - job: linux-x86_64 build
     - job: merge request docs
       optional: true
-  stage: deploy
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  timeout: 10m
   artifacts:
     when: on_failure
     expose_as: "Generated source files"
     paths:
       - warp/native/exports.h
+      - warp/native/version.h
       - warp/__init__.pyi
       - docs/modules/functions.rst
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-  timeout: 10m
-  extends:
-    - .ipp_lnx_x86_64_cpu_micro
+  before_script:
+    - apt-get update -q
+    - apt-get install -y -q --no-install-recommends git
   script:
+    # Check version consistency across VERSION.md, config.py, and version.h
+    - uv run tools/ci/publishing/check_version_consistency.py --verbose
+    # Check that generated documentation files are committed
     - >
       git diff --exit-code warp/__init__.pyi docs/modules/functions.rst ||
       (echo "Please run build_docs.py (or download from $CI_JOB_URL/artifacts/browse) and add modified files to your merge request." && false)
+    # Check that generated native files are committed
     - >
       git diff --exit-code warp/native/exports.h ||
-      (echo "Please run build_lib.py  (or download from $CI_JOB_URL/artifacts/browse) and add warp/native/exports.h to your merge request." && false)
+      (echo "Please run build_lib.py (or download from $CI_JOB_URL/artifacts/browse) and add warp/native/exports.h to your merge request." && false)
+    - >
+      git diff --exit-code warp/native/version.h ||
+      (echo "Please run build_lib.py (or download from $CI_JOB_URL/artifacts/browse) and add warp/native/version.h to your merge request." && false)
 
 # Build documentation and publish on gitlab-master
 # This only runs in the default branch pipeline. The "pages" name is special for GitLab.

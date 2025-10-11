@@ -28,7 +28,7 @@ struct timing_result_t;
 // this is the core runtime API exposed on the DLL level
 extern "C"
 {
-    WP_API int wp_init();
+    WP_API int wp_init(const char* expected_version);
     //WP_API void wp_shutdown();
 
     // get error message from C++
@@ -234,6 +234,7 @@ extern "C"
 
     WP_API int wp_cuda_driver_version();   // CUDA driver version
     WP_API int wp_cuda_toolkit_version();  // CUDA Toolkit version used to build Warp
+    WP_API const char* wp_version();  // Warp native library version string
     WP_API bool wp_cuda_driver_is_initialized();
 
     WP_API int wp_nvrtc_supported_arch_count();
