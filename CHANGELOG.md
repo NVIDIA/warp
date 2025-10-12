@@ -56,6 +56,8 @@
 
 - Fix copying and filling arrays with large strides ([GH-929](https://github.com/NVIDIA/warp/issues/929)).
 - Fix graph deletion during capture ([GH-992](https://github.com/NVIDIA/warp/issues/992)).
+- Fix arithmetic operators not working when a scalar is on the lhs and an array on the rhs
+  ([GH-892](https://github.com/NVIDIA/warp/issues/892)).
 
 ## [1.9.1] - 2025-10-01
 
