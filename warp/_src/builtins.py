@@ -10072,7 +10072,7 @@ def _tile_upper_solve_generic_lto_dispatch_func(
 
         if len(x.type.shape) > 1 and z.type.shape[1] != x.type.shape[1]:
             raise ValueError(
-                "tile_lower_solve() output vector must have the same number of columns as 'z' "
+                "tile_upper_solve() output vector must have the same number of columns as 'z' "
                 f"got {x.type.shape[1]} columns in output and {z.type.shape[1]} columns in 'z'"
             )
 
