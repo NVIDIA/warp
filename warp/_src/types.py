@@ -1197,7 +1197,7 @@ def transformation(dtype=Any):
                         # Initialize from a single scalar.
                         super().__init__(args[0])
                         return
-                    if args[0]._wp_generic_type_str_ == self._wp_generic_type_str_:
+                    if getattr(args[0], "_wp_generic_type_str_", None) == self._wp_generic_type_str_:
                         # Copy constructor.
                         super().__init__(*args[0])
                         return
