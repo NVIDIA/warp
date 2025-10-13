@@ -35,6 +35,8 @@
 - Remove support for Intel-based macOS (x86_64). Apple Silicon-based Macs (ARM64) remain fully supported.
   Users attempting to run Warp on Intel Macs will receive a `RuntimeError` directing them to use Warp 1.9.x or earlier
   ([GH-1016](https://github.com/NVIDIA/warp/issues/1016))
+- Remove the `wp.matrix(pos, quat, scale)` built-in function. Use `wp.transform_compose()` instead
+  ([GH-980](https://github.com/NVIDIA/warp/issues/980)).
 
 ### Deprecated
 

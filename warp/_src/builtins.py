@@ -1208,44 +1208,13 @@ add_builtin(
 
 
 def matrix_transform_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
-    warp._src.utils.warn(
-        "the built-in `wp.matrix()` function to construct a 4x4 matrix from a 3D position, quaternion, "
-        "and 3D scale vector will be deprecated in favor of `wp.transform_compose()`.",
-        DeprecationWarning,
-    )
     if arg_types is None:
         return matrix(shape=(4, 4), dtype=Float)
 
-    dtype = arg_values.get("dtype", None)
-
-    value_arg_types = tuple(v for k, v in arg_types.items() if k != "dtype")
-    try:
-        value_type = scalar_infer_type(value_arg_types)
-    except RuntimeError:
-        raise RuntimeError(
-            "all values given when constructing a transformation matrix must have the same type"
-        ) from None
-
-    if dtype is None:
-        dtype = value_type
-    elif not warp._src.types.scalars_equal(value_type, dtype):
-        raise RuntimeError(
-            f"all values used to initialize this transformation matrix are expected to be of the type `{dtype.__name__}`"
-        )
-
-    return matrix(shape=(4, 4), dtype=dtype)
-
-
-def matrix_transform_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
-    # We're in the codegen stage where we emit the code calling the built-in.
-    # Further validate the given argument values if needed and map them
-    # to the underlying C++ function's runtime and template params.
-
-    dtype = return_type._wp_scalar_type_
-
-    func_args = tuple(v for k, v in args.items() if k != "dtype")
-    template_args = (4, 4, dtype)
-    return (func_args, template_args)
+    raise RuntimeError(
+        "the built-in `wp.matrix()` to construct a 4x4 matrix from a 3D position, quaternion, "
+        "and 3D scale vector has been removed in favor of `wp.transform_compose()`."
+    )
 
 
 add_builtin(
@@ -1259,13 +1228,14 @@ add_builtin(
     defaults={"dtype": None},
     value_func=matrix_transform_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
-    dispatch_func=matrix_transform_dispatch_func,
     native_func="mat_t",
     doc="""Construct a 4x4 transformation matrix that applies the transformations as
     Translation(pos)*Rotation(rot)*Scaling(scale) when applied to column vectors, i.e.: y = (TRS)*x
 
-    .. warning::
-       This function has been deprecated in favor of :func:`warp.math.transform_compose()`.""",
+    .. versionremoved:: 1.10
+       This function has been removed in favor of :func:`warp.math.transform_compose()`.
+
+    .. deprecated:: 1.8""",
     group="Vector Math",
     export=False,
 )
