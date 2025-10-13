@@ -2611,6 +2611,24 @@ def test_transform_slicing_assign_backward(test, device):
     assert_np_equal(x.grad.numpy(), np.array(((1.0, 1.0),), dtype=float))
 
 
+def test_transform_default_q_arg(test, device):
+    vec7 = wp.vec(7, float)
+
+    @wp.func
+    def fn():
+        t = wp.transform(p=wp.vec3(1.0, 2.0, 3.0))
+
+        wp.expect_eq(t[:] == vec7(1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0), True)
+
+    @wp.kernel(module="unique")
+    def kernel():
+        fn()
+
+    wp.launch(kernel, 1, device=device)
+    wp.synchronize()
+    fn()
+
+
 devices = get_test_devices()
 
 
@@ -2833,6 +2851,7 @@ add_function_test(TestSpatial, "test_transform_slicing_assign", test_transform_s
 add_function_test(
     TestSpatial, "test_transform_slicing_assign_backward", test_transform_slicing_assign_backward, devices=devices
 )
+add_function_test(TestSpatial, "test_transform_default_q_arg", test_transform_default_q_arg, devices=devices)
 
 
 if __name__ == "__main__":

@@ -1757,6 +1757,11 @@ def transformation_dispatch_func(input_types: Mapping[str, type], return_type: A
         func_args = variadic_args
     else:
         func_args = tuple(v for k, v in args.items() if k != "dtype")
+        if "p" in args and "q" not in args:
+            quat_ident = warp._src.codegen.Var(
+                label=None, type=quaternion(dtype=dtype), constant=quaternion(dtype=dtype)(0, 0, 0, 1)
+            )
+            func_args += (quat_ident,)
 
     template_args = (dtype,)
     return (func_args, template_args)
@@ -1765,7 +1770,7 @@ def transformation_dispatch_func(input_types: Mapping[str, type], return_type: A
 add_builtin(
     "transformation",
     input_types={"p": vector(length=3, dtype=Float), "q": quaternion(dtype=Float), "dtype": Float},
-    defaults={"dtype": None},
+    defaults={"q": None, "dtype": None},
     value_func=transformation_pq_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
     dispatch_func=transformation_dispatch_func,

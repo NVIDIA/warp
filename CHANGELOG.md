@@ -50,6 +50,8 @@
 - Improve performance when calling built-in functions from the Python scope
   ([GH-801](https://github.com/NVIDIA/warp/issues/801)).
 - Building `warp.fem` geometry and function space partitions is now possible in CUDA graphs by passing an explicit upper-bound for the number of cells and nodes to `ExplicitGeometryPartition` and `make_space_partition`. Additionally, building fields and field restrictions is now synchronization-free by default ([GH-1021](https://github.com/NVIDIA/warp/issues/1021)).
+- Default the `q` argument in `wp.transform()` to the identity quaternion at the kernel scope
+  ([GH-923](https://github.com/NVIDIA/warp/issues/923)).
 
 
 ### Fixed
