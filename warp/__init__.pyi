@@ -5645,7 +5645,7 @@ def tile_matmul(
     ...
 
 @over
-def tile_fft(inout: Tile[Vector[2, Float], Tuple[int, int]]) -> Tile[Vector[2, Float], Tuple[int, int]]:
+def tile_fft(inout: Tile[Vector[2, Float], Tuple[int, int]]):
     """Compute the forward FFT along the second dimension of a 2D tile of data.
 
     This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
@@ -5660,7 +5660,7 @@ def tile_fft(inout: Tile[Vector[2, Float], Tuple[int, int]]) -> Tile[Vector[2, F
     ...
 
 @over
-def tile_ifft(inout: Tile[Vector[2, Float], Tuple[int, int]]) -> Tile[Vector[2, Float], Tuple[int, int]]:
+def tile_ifft(inout: Tile[Vector[2, Float], Tuple[int, int]]):
     """Compute the inverse FFT along the second dimension of a 2D tile of data.
 
     This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
@@ -5694,7 +5694,26 @@ def tile_cholesky(A: Tile[Float, Tuple[int, int]]) -> Tile[Float, Tuple[int, int
     ...
 
 @over
-def tile_cholesky_solve(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[int]]):
+def tile_cholesky_inplace(A: Tile[Float, Tuple[int, int]]):
+    """Compute the Cholesky factorization L of a matrix A.
+    L is lower triangular and satisfies LL^T = A.
+
+    Only the lower triangular portion of A is used for the decomposition;
+    the upper triangular part may be left unspecified.
+
+    Note: This inplace variant does not support automatic differentiation (adjoint computation),
+    but offers improved performance and uses half the shared memory compared to the standard version.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param A: A square, symmetric positive-definite, matrix. Only the lower triangular part of A is replaced by L, such that LL^T = A; the upper part is untouched.
+    """
+    ...
+
+@over
+def tile_cholesky_solve(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[int]]) -> Tile[Float, Tuple[int]]:
     """With L such that LL^T = A, solve for x in Ax = y
 
     Note that computing the adjoint is not yet supported.
@@ -5706,6 +5725,22 @@ def tile_cholesky_solve(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[in
     :param L: A square, lower triangular, matrix, such that LL^T = A
     :param y: A 1D or 2D tile of length M
     :returns x: A tile of the same shape as y such that LL^T x = y
+    """
+    ...
+
+@over
+def tile_cholesky_solve_inplace(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[int]]):
+    """With L such that LL^T = A, solve for x in Ax = y by overwriting y with x
+
+    Note: This inplace variant does not support automatic differentiation (adjoint computation),
+    but avoids allocating shared memory for the output x by reusing y's memory.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param L: A square, lower triangular, matrix, such that LL^T = A
+    :param y: A 1D or 2D tile of length M that gets overwritten by x where LL^T x = y
     """
     ...
 
@@ -5728,8 +5763,26 @@ def tile_lower_solve(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[int]]
     ...
 
 @over
+def tile_lower_solve_inplace(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[int]]):
+    """Solve for z in Lz = y, where L is a lower triangular matrix by overwriting y with z.
+
+    This performs general forward substitution for a lower triangular system inplace.
+
+    Note: This inplace variant does not support automatic differentiation (adjoint computation),
+    but avoids allocating shared memory for the output z by reusing y's memory.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param L: A square, non-singular, lower triangular matrix
+    :param y: A 1D or 2D tile with compatible shape that gets overwritten by z where Lz = y
+    """
+    ...
+
+@over
 def tile_upper_solve(U: Tile[Float, Tuple[int, int]], z: Tile[Float, Tuple[int]]) -> Tile[Float, Tuple[int]]:
-    """Solve for x in U x = z, where U is an upper triangular matrix.
+    """Solve for x in Ux = z, where U is an upper triangular matrix.
 
     This performs general back substitution for upper triangular systems.
 
@@ -5742,6 +5795,24 @@ def tile_upper_solve(U: Tile[Float, Tuple[int, int]], z: Tile[Float, Tuple[int]]
     :param U: A square, non-singular, upper triangular matrix
     :param z: A 1D or 2D tile with compatible shape
     :returns x: A tile of the same shape as z such that U x = z
+    """
+    ...
+
+@over
+def tile_upper_solve_inplace(U: Tile[Float, Tuple[int, int]], z: Tile[Float, Tuple[int]]):
+    """Solve for x in Ux = z, where U is an upper triangular matrix by overwriting z with x.
+
+    This performs general back substitution for upper triangular systems inplace.
+
+    Note: This inplace variant does not support automatic differentiation (adjoint computation),
+    but avoids allocating shared memory for the output x by reusing z's memory.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param U: A square, non-singular, upper triangular matrix
+    :param z: A 1D or 2D tile with compatible shape that gets overwritten by x where Ux = z
     """
     ...
 
