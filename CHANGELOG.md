@@ -56,6 +56,7 @@
 
 - Fix copying and filling arrays with large strides ([GH-929](https://github.com/NVIDIA/warp/issues/929)).
 - Fix graph deletion during capture ([GH-992](https://github.com/NVIDIA/warp/issues/992)).
+- Fix return type annotations for `struct()` and `overload()` decorators ([GH-971](https://github.com/NVIDIA/warp/pull/971))
 
 ## [1.9.1] - 2025-10-01
 

@@ -37,7 +37,6 @@ from pathlib import Path
 from typing import (
     Any,
     Callable,
-    Dict,
     Iterable,
     List,
     Literal,
@@ -1135,14 +1134,14 @@ def kernel(
 
 
 # decorator to register struct, @struct
-def struct(c: type):
+def struct(c: type) -> warp._src.codegen.Struct:
     m = get_module(c.__module__)
     s = warp._src.codegen.Struct(key=warp._src.codegen.make_full_qualified_name(c), cls=c, module=m)
     s = functools.update_wrapper(s, c)
     return s
 
 
-def overload(kernel, arg_types=Union[None, Dict[str, Any], List[Any]]):
+def overload(kernel: Kernel | Callable, arg_types: dict[str, Any] | list[Any] | None = None) -> Kernel:
     """Overload a generic kernel with the given argument types.
 
     Can be called directly or used as a function decorator.
