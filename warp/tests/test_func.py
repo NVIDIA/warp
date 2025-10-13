@@ -408,6 +408,12 @@ class TestFunc(unittest.TestCase):
             (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
         )
 
+        with self.assertRaisesRegex(
+            TypeError,
+            r"^got an unexpected keyword argument 'pos'$",
+        ):
+            wp.transform(pos=wp.vec3(), rot=wp.quat())
+
         f = wp.sin(math.pi * 0.5)
         self.assertAlmostEqual(f, 1.0, places=3)
 

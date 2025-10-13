@@ -1190,27 +1190,28 @@ def transformation(dtype=Any):
         _wp_constructor_ = "transformation"
 
         def __init__(self, *args, **kwargs):
-            if len(args) == 1 and len(kwargs) == 0:
-                if is_float(args[0]) or is_int(args[0]):
-                    # Initialize from a single scalar.
-                    super().__init__(args[0])
-                    return
-                if args[0]._wp_generic_type_str_ == self._wp_generic_type_str_:
-                    # Copy constructor.
-                    super().__init__(*args[0])
-                    return
-
-            try:
-                # For backward compatibility, try to check if the arguments
-                # match the original signature that'd allow initializing
-                # the `p` and `q` components separately.
-                bound_args = self._wp_init_from_components_sig_.bind(*args, **kwargs)
-                bound_args.apply_defaults()
-                p, q = bound_args.args
-            except (TypeError, ValueError):
+            arg_len = len(args)
+            if arg_len == 1:
+                if len(kwargs) == 0:
+                    if is_float(args[0]) or is_int(args[0]):
+                        # Initialize from a single scalar.
+                        super().__init__(args[0])
+                        return
+                    if args[0]._wp_generic_type_str_ == self._wp_generic_type_str_:
+                        # Copy constructor.
+                        super().__init__(*args[0])
+                        return
+            elif arg_len > 2:
                 # Fallback to the vector's constructor.
                 super().__init__(*args)
                 return
+
+            # For backward compatibility, try to check if the arguments
+            # match the original signature that'd allow initializing
+            # the `p` and `q` components separately.
+            bound_args = self._wp_init_from_components_sig_.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+            p, q = bound_args.args
 
             # Even if the arguments match the original "from components"
             # signature, we still need to make sure that they represent
@@ -1221,9 +1222,6 @@ def transformation(dtype=Any):
                 self[0:3] = p
                 self[3:7] = q
                 return
-
-            # Fallback to the vector's constructor.
-            super().__init__(*args)
 
         def __getattr__(self, name):
             if name == "p":

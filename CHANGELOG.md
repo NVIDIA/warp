@@ -56,6 +56,8 @@
 
 - Fix copying and filling arrays with large strides ([GH-929](https://github.com/NVIDIA/warp/issues/929)).
 - Fix graph deletion during capture ([GH-992](https://github.com/NVIDIA/warp/issues/992)).
+- Fix invalid keyword arguments not being detected in the `wp.transform()` constructor at Python scope
+  ([GH-975](https://github.com/NVIDIA/warp/issues/975)).
 
 ## [1.9.1] - 2025-10-01
 
