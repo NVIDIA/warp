@@ -112,8 +112,8 @@ def create_blocked_cholesky_kernel(block_size: int):
                         A_ik_tile -= L_L_T_tile
 
                 t = wp.tile_transpose(A_ik_tile)
-                tmp = wp.tile_lower_solve(L_kk_tile, t)
-                sol_tile = wp.tile_transpose(tmp)
+                wp.tile_lower_solve_inplace(L_kk_tile, t)
+                sol_tile = wp.tile_transpose(t)
 
                 wp.tile_store(L, sol_tile, offset=(i, k))
 
@@ -153,8 +153,8 @@ def create_blocked_cholesky_solve_kernel(block_size: int):
                     Ly_block = wp.tile_matmul(L_block, y_block)
                     rhs_tile -= Ly_block
             L_tile = wp.tile_load(L, shape=(block_size, block_size), offset=(i, i))
-            y_tile = wp.tile_lower_solve(L_tile, rhs_tile)
-            wp.tile_store(y, y_tile, offset=(i, 0))
+            wp.tile_lower_solve_inplace(L_tile, rhs_tile)
+            wp.tile_store(y, rhs_tile, offset=(i, 0))
 
         # Backward substitution: solve L^T x = y
         for i in range(n - block_size, -1, -block_size):
@@ -169,8 +169,8 @@ def create_blocked_cholesky_solve_kernel(block_size: int):
                     L_T_x_tile = wp.tile_matmul(L_T_tile, x_tile)
                     rhs_tile -= L_T_x_tile
             L_tile = wp.tile_load(L, shape=(block_size, block_size), offset=(i_start, i_start))
-            x_tile = wp.tile_upper_solve(wp.tile_transpose(L_tile), rhs_tile)
-            wp.tile_store(x, x_tile, offset=(i_start, 0))
+            wp.tile_upper_solve_inplace(wp.tile_transpose(L_tile), rhs_tile)
+            wp.tile_store(x, rhs_tile, offset=(i_start, 0))
 
     return blocked_cholesky_solve_kernel
 

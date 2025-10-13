@@ -2996,15 +2996,15 @@ inline CUDA_CALLABLE void scalar_matmul(const StorageA& A, const StorageB& B, St
     }
 }
 
-template <typename TileA, typename TileL>
-inline CUDA_CALLABLE void scalar_cholesky(TileA& A, TileL& L)
+template <bool zeroUpper, typename TileL>
+inline CUDA_CALLABLE void scalar_cholesky(TileL& L)
 {
-    using T = typename TileA::Type;    
-    constexpr int n = TileA::Layout::Shape::dim(1);
+    using T = typename TileL::Type;    
+    constexpr int n = TileL::Layout::Shape::dim(1);
 
     for (int j=0; j < n; ++j)
     {
-        T s = A.data(tile_coord(j, j));
+        T s = L.data(tile_coord(j, j));
 
         for (int k=0; k < j; ++k) 
         {
@@ -3019,7 +3019,7 @@ inline CUDA_CALLABLE void scalar_cholesky(TileA& A, TileL& L)
 
         for (int i=j+1; i < n; ++i)
         {
-            s = A.data(tile_coord(i, j));
+            s = L.data(tile_coord(i, j));
 
             for (int k=0; k < j; ++k)
             {
@@ -3029,27 +3029,30 @@ inline CUDA_CALLABLE void scalar_cholesky(TileA& A, TileL& L)
             L.data(tile_coord(i, j)) = s * invS;           
         }
 
-        // zero out upper triangular portion
-        for (int k=j+1; k < n; ++k)
+        if (zeroUpper)
         {
-            L.data(tile_coord(j,k)) = T(0.0);
+            // zero out upper triangular portion
+            for (int k=j+1; k < n; ++k)
+            {
+                L.data(tile_coord(j,k)) = T(0.0);
+            }
         }
     }
 }
 
-// Writes into X
-template <typename TileL, typename TileX, typename TileY>
-inline CUDA_CALLABLE void scalar_cholesky_forward_substitution(TileL& L, TileX& X, TileY& Y)
+// Reads and writes X
+template <typename TileL, typename TileX>
+inline CUDA_CALLABLE void scalar_cholesky_forward_substitution(TileL& L, TileX& X)
 {
     using T = typename TileL::Type;
 
-    if constexpr (TileY::Layout::Shape::N == 1)
+    if constexpr (TileX::Layout::Shape::N == 1)
     {
         constexpr int n = TileL::Layout::Shape::dim(1);
 
         for (int i=0; i < n; ++i)
         {
-            T s = Y.data(tile_coord(i));
+            T s = X.data(tile_coord(i));
 
             for (int j=0; j < i; ++j)
                 s -= L.data(tile_coord(i,j)) * X.data(tile_coord(j));
@@ -3058,16 +3061,16 @@ inline CUDA_CALLABLE void scalar_cholesky_forward_substitution(TileL& L, TileX& 
             X.data(tile_coord(i)) = (diag != T(0.0f)) ? s / diag : s;
         }   
     }
-    else if constexpr (TileY::Layout::Shape::N == 2)
+    else if constexpr (TileX::Layout::Shape::N == 2)
     {
         constexpr int n = TileL::Layout::Shape::dim(1);
-        constexpr int m = TileY::Layout::Shape::dim(1);
+        constexpr int m = TileX::Layout::Shape::dim(1);
 
         for (int k=0; k < m; ++k)
         {
             for (int i=0; i < n; ++i)
             {
-                T s = Y.data(tile_coord(i,k));
+                T s = X.data(tile_coord(i,k));
 
                 for (int j=0; j < i; ++j)
                     s -= L.data(tile_coord(i,j)) * X.data(tile_coord(j,k));
@@ -3121,10 +3124,10 @@ inline CUDA_CALLABLE void scalar_cholesky_back_substitution(TileL& L, TileX& X)
     }
 }
 
-template <typename TileL, typename TileX, typename TileY>
-inline CUDA_CALLABLE void scalar_cholesky_solve(TileL& L, TileX& X, TileY& Y)
+template <typename TileL, typename TileX>
+inline CUDA_CALLABLE void scalar_cholesky_solve(TileL& L, TileX& X)
 {
-    scalar_cholesky_forward_substitution(L, X, Y);
+    scalar_cholesky_forward_substitution(L, X);
     scalar_cholesky_back_substitution(L, X);        
 }
 
@@ -3276,7 +3279,7 @@ TileL& tile_cholesky(Fwd fun_forward, TileA& A, TileL& L)
 
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
 
-    partitioned_gemm::scalar_cholesky(A, L);
+    partitioned_gemm::scalar_cholesky<true>(L);
 
 #else
 
@@ -3319,14 +3322,56 @@ TileL& tile_cholesky(Fwd fun_forward, TileA& A, TileL& L)
     return L;
 }
 
+template <typename Fwd, typename TileA>
+void tile_cholesky_inplace(Fwd fun_forward, TileA& A)
+{
+    static_assert(TileA::Layout::Shape::N == 2, "Expected TileA::Layout::Shape::N == 2");
+    static_assert(TileA::Layout::Shape::dim(0) == TileA::Layout::Shape::dim(1), "Expected TileA to be square");
+
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
+
+    partitioned_gemm::scalar_cholesky<false>(A);
+
+#else
+
+    // TODO: for batched Cholesky, need one info per batch
+    WP_TILE_SHARED int info[1];
+
+    if (WP_TILE_THREAD_IDX == 0) {
+        info[0] = 0;
+    }
+
+    // Call cholesky on L
+    WP_TILE_SYNC();
+    
+    fun_forward(A.data.ptr, info);
+    
+    WP_TILE_SYNC();
+
+    // TODO: for batched Cholesky, check all batches
+#if defined(_DEBUG)    
+    if (WP_TILE_THREAD_IDX == 0 && info[0] != 0) {
+        printf("Non-zero status in Cholesky factorization, got %d\n", info[0]);
+    }
+#endif
+
+#endif
+}
+
 #define adj_tile_cholesky(function_name, A, L, \
                           adj_function_name, adj_A, adj_L, adj_ret) \
     do { \
         assert(false); \
     } while (0)
 
-template <typename Fwd, typename TileL, typename TileX, typename TileY>
-TileY& tile_cholesky_solve(Fwd fun_forward, TileL& L, TileX& Y, TileY& X)
+#define adj_tile_cholesky_inplace(function_name, A, \
+                                  adj_function_name, adj_A) \
+    do { \
+        assert(false); \
+    } while (0)
+
+template <typename Fwd, typename TileL, typename TileY, typename TileX>
+TileX& tile_cholesky_solve(Fwd fun_forward, TileL& L, TileY& Y, TileX& X)
 {       
     // Copy y to x
 
@@ -3334,7 +3379,7 @@ TileY& tile_cholesky_solve(Fwd fun_forward, TileL& L, TileX& Y, TileY& X)
 
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
 
-    partitioned_gemm::scalar_cholesky_solve(L, X, Y);
+    partitioned_gemm::scalar_cholesky_solve(L, X);
 
 #else
 
@@ -3351,15 +3396,34 @@ TileY& tile_cholesky_solve(Fwd fun_forward, TileL& L, TileX& Y, TileY& X)
     return X;
 }
 
+template <typename Fwd, typename TileL, typename TileY>
+void tile_cholesky_solve_inplace(Fwd fun_forward, TileL& L, TileY& Y)
+{
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
+
+    partitioned_gemm::scalar_cholesky_solve(L, Y);
+
+#else
+
+    // Call cholesky solve on L & y
+    fun_forward(L.data.ptr, Y.data.ptr); \
+
+    WP_TILE_SYNC();
+    
+#endif
+}
+
 #define adj_tile_cholesky_solve(function_name, L, Y, X, \
                                 adj_function_name, adj_L, adj_Y, adj_X, adj_ret) \
     do { \
         assert(false); \
     } while (0)
 
-
-
-
+#define adj_tile_cholesky_solve_inplace(function_name, L, Y, \
+                                        adj_function_name, adj_L, adj_Y) \
+    do { \
+        assert(false); \
+    } while (0)
 
 
 template <typename Fwd, typename TileL, typename TileY, typename TileZ>
@@ -3370,7 +3434,7 @@ TileZ& tile_lower_solve(Fwd fun_forward, TileL& L, TileY& y, TileZ& z)
 	
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
     
-    partitioned_gemm::scalar_cholesky_forward_substitution(L, z, y);
+    partitioned_gemm::scalar_cholesky_forward_substitution(L, z);
 
 #else
 
@@ -3387,12 +3451,37 @@ TileZ& tile_lower_solve(Fwd fun_forward, TileL& L, TileY& y, TileZ& z)
     return z;
 }
 
+template <typename Fwd, typename TileL, typename TileY>
+void tile_lower_solve_inplace(Fwd fun_forward, TileL& L, TileY& y)
+{
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
+    
+    partitioned_gemm::scalar_cholesky_forward_substitution(L, y);
+
+#else
+
+    // Call cholesky solve on L & y
+
+    WP_TILE_SYNC();
+    
+    fun_forward(L.data.ptr, y.data.ptr);
+
+    WP_TILE_SYNC();
+    
+#endif
+}
+
 #define adj_tile_lower_solve(function_name, L, y, z, \
                              adj_function_name, adj_L, adj_y, adj_z, adj_ret) \
     do { \
         assert(false); \
     } while (0)
-		
+
+#define adj_tile_lower_solve_inplace(function_name, L, y, \
+                                     adj_function_name, adj_L, adj_y) \
+    do { \
+        assert(false); \
+    } while (0)		
 	
 
 template <typename Fwd, typename TileU, typename TileZ, typename TileX>
@@ -3421,16 +3510,40 @@ TileX& tile_upper_solve(Fwd fun_forward, TileU& U, TileZ& z, TileX& x)
     return x;
 }
 
+template <typename Fwd, typename TileU, typename TileZ>
+void tile_upper_solve_inplace(Fwd fun_forward, TileU& U, TileZ& z)
+{
+
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
+
+    auto L = tile_transpose(U);
+    partitioned_gemm::scalar_cholesky_back_substitution(L, z);
+
+#else
+
+    // Call cholesky solve on U & z
+
+    WP_TILE_SYNC();
+    
+    fun_forward(U.data.ptr, z.data.ptr);
+
+    WP_TILE_SYNC();
+    
+#endif
+}
+
 #define adj_tile_upper_solve(function_name, U, z, x, \
                              adj_function_name, adj_U, adj_z, adj_x, adj_ret) \
     do { \
         assert(false); \
     } while (0)
 
+#define adj_tile_upper_solve_inplace(function_name, U, z, \
+                                     adj_function_name, adj_U, adj_z) \
+    do { \
+        assert(false); \
+    } while (0)
 
-
-
-    
 
 template <typename Tile>
 inline CUDA_CALLABLE auto tile_transpose(Tile& t)
