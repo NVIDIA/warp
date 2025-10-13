@@ -192,7 +192,7 @@ static std::unique_ptr<llvm::Module> source_to_llvm(bool is_cuda, const std::str
     }
 
     #if LLVM_VERSION_MAJOR >= 21
-    compiler_instance.createDiagnostics(compiler_instance.getVirtualFileSystem(), text_diagnostic_printer.get(), false);
+    compiler_instance.createDiagnostics(*llvm::vfs::getRealFileSystem(), text_diagnostic_printer.get(), false);
     #else
     compiler_instance.createDiagnostics(text_diagnostic_printer.get(), false);
     #endif
