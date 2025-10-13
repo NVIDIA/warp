@@ -9925,7 +9925,7 @@ add_builtin(
 ##
 def tile_fft_generic_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=vector(length=2, dtype=Float), shape=Tuple[int, int])
+        return None
 
     if len(arg_types) != 1:
         raise TypeError(f"tile_fft() takes exactly 1 positional argument but {len(arg_types)} were given")
@@ -10050,11 +10050,24 @@ add_builtin(
 )
 
 
+cusolver_function_map = {"getrf": 0, "getrf_no_pivot": 1, "potrf": 2, "potrs": 3, "trsm": 4}
+
+cusolver_type_map = {float32: ("wp::float32", 5), float64: ("wp::float64", 6)}
+
+cusolver_fill_mode_map = {"upper": 0, "lower": 1}
+
+cusolver_side_map = {"-": -1, "left": 0, "right": 1}
+
+cusolver_diag_map = {"-": -1, "unit": 0, "nounit": 1}
+
+
 ##
 ## Cholesky
 ##
-def tile_cholesky_generic_value_func(arg_types, arg_values):
+def _tile_cholesky_generic_value_func(inplace: bool, arg_types, arg_values):
     if arg_types is None:
+        if inplace:
+            return None
         return tile(dtype=Float, shape=Tuple[int, int])
 
     if len(arg_types) != 1:
@@ -10071,21 +10084,21 @@ def tile_cholesky_generic_value_func(arg_types, arg_values):
     if a.shape[0] != a.shape[1]:
         raise ValueError("tile_cholesky() argument must be square")
 
+    if inplace:
+        return None
     return tile(dtype=a.dtype, shape=a.shape, layout=a.layout, strides=a.strides, storage="shared")
 
 
-cusolver_function_map = {"getrf": 0, "getrf_no_pivot": 1, "potrf": 2, "potrs": 3, "trsm": 4}
-
-cusolver_type_map = {float32: ("wp::float32", 5), float64: ("wp::float64", 6)}
-
-cusolver_fill_mode_map = {"upper": 0, "lower": 1}
-
-cusolver_side_map = {"-": -1, "left": 0, "right": 1}
-
-cusolver_diag_map = {"-": -1, "unit": 0, "nounit": 1}
+def tile_cholesky_generic_value_func(arg_types, arg_values):
+    return _tile_cholesky_generic_value_func(False, arg_types, arg_values)
 
 
-def tile_cholesky_generic_lto_dispatch_func(
+def tile_cholesky_inplace_generic_value_func(arg_types, arg_values):
+    return _tile_cholesky_generic_value_func(True, arg_types, arg_values)
+
+
+def _tile_cholesky_generic_lto_dispatch_func(
+    inplace: bool,
     arg_types: Mapping[str, type],
     return_type: Any,
     return_values: List[Var],
@@ -10100,20 +10113,22 @@ def tile_cholesky_generic_lto_dispatch_func(
     if a.type.dtype not in cusolver_type_map.keys():
         raise TypeError("tile_cholesky() argument must be a tile of float32 or float64 entries")
 
-    if len(return_values) != 1:
-        raise TypeError("tile_cholesky() returns one output")
-    out = return_values[0]
-
-    # We already ensured a is square in tile_cholesky_generic_value_func()
     M, N = a.type.shape
-    if out.type.shape[0] != M or out.type.shape[1] != M:
-        raise ValueError("tile_cholesky() output tile must be square")
+
+    if not inplace:
+        if len(return_values) != 1:
+            raise TypeError("tile_cholesky() returns one output")
+        out = return_values[0]
+
+        # We already ensured a is square in tile_cholesky_generic_value_func()
+        if out.type.shape[0] != M or out.type.shape[1] != M:
+            raise ValueError("tile_cholesky() output tile must be square")
 
     arch = options["output_arch"]
 
     if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
-        return ((0, a, out), [], [], 0)
+        return ((0, a) if inplace else (0, a, out), [], [], 0)
     else:
         solver = "potrf"
         solver_enum = cusolver_function_map[solver]
@@ -10124,6 +10139,8 @@ def tile_cholesky_generic_lto_dispatch_func(
         num_threads = options["block_dim"]
         parameter_list = f"({dtype}*, int*)"
         req_smem_bytes = a.type.size * type_size_in_bytes(a.type.dtype)
+        if not inplace:
+            req_smem_bytes *= 2
 
         # generate the LTO
         lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
@@ -10135,7 +10152,7 @@ def tile_cholesky_generic_lto_dispatch_func(
             side_enum,
             diag_enum,
             a.type.layout,
-            out.type.layout,
+            a.type.layout if inplace else out.type.layout,
             fill_mode,
             arch,
             precision_enum,
@@ -10145,7 +10162,16 @@ def tile_cholesky_generic_lto_dispatch_func(
             smem_estimate_bytes=req_smem_bytes,
         )
 
-        return ((Var(lto_symbol, str, False, True, False), a, out), [], [lto_code_data], 0)
+        var = Var(lto_symbol, str, False, True, False)
+        return ((var, a) if inplace else (var, a, out), [], [lto_code_data], 0)
+
+
+def tile_cholesky_generic_lto_dispatch_func(*args, **kwargs):
+    return _tile_cholesky_generic_lto_dispatch_func(False, *args, **kwargs)
+
+
+def tile_cholesky_inplace_generic_lto_dispatch_func(*args, **kwargs):
+    return _tile_cholesky_generic_lto_dispatch_func(True, *args, **kwargs)
 
 
 add_builtin(
@@ -10175,9 +10201,38 @@ add_builtin(
 )
 
 
-def tile_cholesky_solve_generic_value_func(arg_types, arg_values):
+add_builtin(
+    "tile_cholesky_inplace",
+    input_types={"A": tile(dtype=Float, shape=Tuple[int, int])},
+    value_func=tile_cholesky_inplace_generic_value_func,
+    lto_dispatch_func=tile_cholesky_inplace_generic_lto_dispatch_func,
+    variadic=True,
+    doc="""Compute the Cholesky factorization L of a matrix A.
+    L is lower triangular and satisfies LL^T = A.
+
+    Only the lower triangular portion of A is used for the decomposition;
+    the upper triangular part may be left unspecified.
+
+    Note: This inplace variant does not support automatic differentiation (adjoint computation),
+    but offers improved performance and uses half the shared memory compared to the standard version.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param A: A square, symmetric positive-definite, matrix. Only the lower triangular part of A is replaced by L, such that LL^T = A; the upper part is untouched.""",
+    group="Tile Primitives",
+    export=False,
+    namespace="",
+    is_differentiable=False,
+)
+
+
+def _tile_cholesky_solve_generic_value_func(inplace: bool, arg_types, arg_values):
     if arg_types is None:
-        return None
+        if inplace:
+            return None
+        return tile(dtype=Float, shape=Tuple[int])
 
     if len(arg_types) != 2:
         raise TypeError("tile_cholesky_solve() requires exactly 2 positional args")
@@ -10206,10 +10261,21 @@ def tile_cholesky_solve_generic_value_func(arg_types, arg_values):
             f"got {y.shape[0]} elements in 'x' and {l.shape[0]} rows in 'L'"
         )
 
+    if inplace:
+        return None
     return tile(dtype=l.dtype, shape=y.shape, layout=y.layout, strides=y.strides, storage="shared")
 
 
-def tile_cholesky_solve_generic_lto_dispatch_func(
+def tile_cholesky_solve_generic_value_func(arg_types, arg_values):
+    return _tile_cholesky_solve_generic_value_func(False, arg_types, arg_values)
+
+
+def tile_cholesky_solve_inplace_generic_value_func(arg_types, arg_values):
+    return _tile_cholesky_solve_generic_value_func(True, arg_types, arg_values)
+
+
+def _tile_cholesky_solve_generic_lto_dispatch_func(
+    inplace: bool,
     arg_types: Mapping[str, type],
     return_type: Any,
     return_values: List[Var],
@@ -10223,32 +10289,39 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
     L.type.storage = "shared"
     y.type.storage = "shared"
 
-    if len(return_values) != 1:
-        raise TypeError(f"tile_cholesky_solve() must return exactly one value, got {len(return_values)}")
+    M, N = L.type.shape
 
-    x = return_values[0]
+    if not inplace:
+        if len(return_values) != 1:
+            raise TypeError(f"tile_cholesky_solve() must return exactly one value, got {len(return_values)}")
+
+        x = return_values[0]
+
+        if len(x.type.shape) > 2 or len(x.type.shape) < 1:
+            raise TypeError(f"tile_cholesky_solve() output vector must be 1D or 2D, got {len(x.type.shape)}-D")
+
+        if x.type.shape[0] != M:
+            raise ValueError(
+                "tile_cholesky_solve() output vector must have same number of elements as the number of rows in 'L' "
+                f"got {x.type.shape[0]} elements in output and {M} rows in 'L'"
+            )
+
+        if len(x.type.shape) > 1 and y.type.shape[1] != x.type.shape[1]:
+            raise ValueError(
+                "tile_cholesky_solve() output vector must have the same number of columns as 'y' "
+                f"got {x.type.shape[1]} columns in output and {y.type.shape[1]} columns in 'y'"
+            )
 
     if any(T not in cusolver_type_map.keys() for T in [y.type.dtype, L.type.dtype]):
         raise TypeError("tile_cholesky_solve() arguments be tiles of float64 or float32")
-
-    M, N = L.type.shape
-
-    if len(x.type.shape) > 2 or len(x.type.shape) < 1:
-        raise TypeError(f"tile_cholesky_solve() output vector must be 1D or 2D, got {len(x.type.shape)}-D")
-
-    if x.type.shape[0] != M:
-        raise ValueError(
-            "tile_cholesky_solve() output vector must have same number of elements as the number of rows in 'L' "
-            f"got {x.type.shape[0]} elements in output and {M} rows in 'L'"
-        )
 
     arch = options["output_arch"]
 
     if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
-        return ((0, L, y, x), [], [], 0)
+        return ((0, L, y) if inplace else (0, L, y, x), [], [], 0)
     else:
-        NRHS = x.type.shape[1] if len(x.type.shape) > 1 else 1
+        NRHS = y.type.shape[1] if len(y.type.shape) > 1 else 1
         solver = "potrs"
         solver_enum = cusolver_function_map[solver]
         side_enum = cusolver_side_map["-"]
@@ -10257,7 +10330,9 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
         dtype, precision_enum = cusolver_type_map[L.type.dtype]
         num_threads = options["block_dim"]
         parameter_list = f"({dtype}*, {dtype}*)"
-        req_smem_bytes = (x.type.size + y.type.size + L.type.size) * type_size_in_bytes(L.type.dtype)
+        req_smem_bytes = (y.type.size + L.type.size) * type_size_in_bytes(L.type.dtype)
+        if not inplace:
+            req_smem_bytes += x.type.size * type_size_in_bytes(L.type.dtype)
 
         # generate the LTO
         lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
@@ -10279,7 +10354,16 @@ def tile_cholesky_solve_generic_lto_dispatch_func(
             smem_estimate_bytes=req_smem_bytes,
         )
 
-        return ((Var(lto_symbol, str, False, True, False), L, y, x), [], [lto_code_data], 0)
+        var = Var(lto_symbol, str, False, True, False)
+        return ((var, L, y) if inplace else (var, L, y, x), [], [lto_code_data], 0)
+
+
+def tile_cholesky_solve_generic_lto_dispatch_func(*args, **kwargs):
+    return _tile_cholesky_solve_generic_lto_dispatch_func(False, *args, **kwargs)
+
+
+def tile_cholesky_solve_inplace_generic_lto_dispatch_func(*args, **kwargs):
+    return _tile_cholesky_solve_generic_lto_dispatch_func(True, *args, **kwargs)
 
 
 add_builtin(
@@ -10306,81 +10390,34 @@ add_builtin(
 )
 
 
-def tile_lower_solve_generic_lto_dispatch_func(
-    arg_types: Mapping[str, type],
-    return_type: Any,
-    return_values: List[Var],
-    arg_values: Mapping[str, Var],
-    options: Mapping[str, Any],
-    builder: warp._src.context.ModuleBuilder,
-):
-    L = arg_values["L"]
-    y = arg_values["y"]
-    # force the storage type of the input variables to shared memory
-    L.type.storage = "shared"
-    y.type.storage = "shared"
+add_builtin(
+    "tile_cholesky_solve_inplace",
+    input_types={"L": tile(dtype=Float, shape=Tuple[int, int]), "y": tile(dtype=Float, shape=Tuple[int])},
+    value_func=tile_cholesky_solve_inplace_generic_value_func,
+    lto_dispatch_func=tile_cholesky_solve_inplace_generic_lto_dispatch_func,
+    variadic=True,
+    doc="""With L such that LL^T = A, solve for x in Ax = y by overwriting y with x
 
-    if any(T not in cusolver_type_map.keys() for T in [y.type.dtype, L.type.dtype]):
-        raise TypeError("tile_lower_solve() arguments must be tiles of float64 or float32")
+    Note: This inplace variant does not support automatic differentiation (adjoint computation),
+    but avoids allocating shared memory for the output x by reusing y's memory.
 
-    if len(return_values) != 1:
-        raise TypeError(f"tile_lower_solve() must return exactly one value, got {len(return_values)}")
+    Supported datatypes are:
+        * float32
+        * float64
 
-    z = return_values[0]
-
-    M, N = L.type.shape
-
-    if len(z.type.shape) > 2 or len(z.type.shape) < 1:
-        raise TypeError(f"tile_lower_solve() output vector must be 1D or 2D, got {len(z.type.shape)}-D")
-
-    if z.type.shape[0] != M:
-        raise ValueError(
-            "tile_lower_solve() output vector must have same number of elements as the number of rows in 'L' "
-            f"got {z.type.shape[0]} elements in output and {M} rows in 'L'"
-        )
-
-    arch = options["output_arch"]
-
-    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
-        # CPU/no-MathDx dispatch
-        return ((0, L, y, z), [], [], 0)
-    else:
-        NRHS = z.type.shape[1] if len(z.type.shape) > 1 else 1
-        solver = "trsm"
-        solver_enum = cusolver_function_map[solver]
-        side_enum = cusolver_side_map["left"]
-        diag_enum = cusolver_diag_map["nounit"]
-        fill_mode = cusolver_fill_mode_map["lower"]
-        dtype, precision_enum = cusolver_type_map[L.type.dtype]
-        num_threads = options["block_dim"]
-        parameter_list = f"({dtype}*, {dtype}*)"
-        req_smem_bytes = (z.type.size + y.type.size + L.type.size) * type_size_in_bytes(L.type.dtype)
-
-        # generate the LTO
-        lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
-            M,
-            N,
-            NRHS,
-            solver,
-            solver_enum,
-            side_enum,
-            diag_enum,
-            L.type.layout,
-            y.type.layout,
-            fill_mode,
-            arch,
-            precision_enum,
-            num_threads,
-            parameter_list,
-            builder,
-            smem_estimate_bytes=req_smem_bytes,
-        )
-
-        return ((Var(lto_symbol, str, False, True, False), L, y, z), [], [lto_code_data], 0)
+    :param L: A square, lower triangular, matrix, such that LL^T = A
+    :param y: A 1D or 2D tile of length M that gets overwritten by x where LL^T x = y""",
+    group="Tile Primitives",
+    export=False,
+    namespace="",
+    is_differentiable=False,
+)
 
 
-def tile_lower_solve_generic_value_func(arg_types, arg_values):
+def _tile_lower_solve_generic_value_func(inplace: bool, arg_types, arg_values):
     if arg_types is None:
+        if inplace:
+            return None
         return tile(dtype=Float, shape=Tuple[int])
 
     if len(arg_types) != 2:
@@ -10410,7 +10447,109 @@ def tile_lower_solve_generic_value_func(arg_types, arg_values):
             f"got {y.shape[0]} elements in 'y' and {l.shape[0]} rows in 'L'"
         )
 
+    if inplace:
+        return None
     return tile(dtype=l.dtype, shape=y.shape, layout=y.layout, strides=y.strides, storage="shared")
+
+
+def tile_lower_solve_generic_value_func(arg_types, arg_values):
+    return _tile_lower_solve_generic_value_func(False, arg_types, arg_values)
+
+
+def tile_lower_solve_inplace_generic_value_func(arg_types, arg_values):
+    return _tile_lower_solve_generic_value_func(True, arg_types, arg_values)
+
+
+def _tile_lower_solve_generic_lto_dispatch_func(
+    inplace: bool,
+    arg_types: Mapping[str, type],
+    return_type: Any,
+    return_values: List[Var],
+    arg_values: Mapping[str, Var],
+    options: Mapping[str, Any],
+    builder: warp._src.context.ModuleBuilder,
+):
+    L = arg_values["L"]
+    y = arg_values["y"]
+    # force the storage type of the input variables to shared memory
+    L.type.storage = "shared"
+    y.type.storage = "shared"
+
+    if any(T not in cusolver_type_map.keys() for T in [y.type.dtype, L.type.dtype]):
+        raise TypeError("tile_lower_solve() arguments must be tiles of float64 or float32")
+
+    M, N = L.type.shape
+
+    if not inplace:
+        if len(return_values) != 1:
+            raise TypeError(f"tile_lower_solve() must return exactly one value, got {len(return_values)}")
+
+        z = return_values[0]
+
+        if len(z.type.shape) > 2 or len(z.type.shape) < 1:
+            raise TypeError(f"tile_lower_solve() output vector must be 1D or 2D, got {len(z.type.shape)}-D")
+
+        if z.type.shape[0] != M:
+            raise ValueError(
+                "tile_lower_solve() output vector must have same number of elements as the number of rows in 'L' "
+                f"got {z.type.shape[0]} elements in output and {M} rows in 'L'"
+            )
+
+        if len(z.type.shape) > 1 and y.type.shape[1] != z.type.shape[1]:
+            raise ValueError(
+                "tile_lower_solve() output vector must have the same number of columns as 'y' "
+                f"got {z.type.shape[1]} columns in output and {y.type.shape[1]} columns in 'y'"
+            )
+
+    arch = options["output_arch"]
+
+    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
+        # CPU/no-MathDx dispatch
+        return ((0, L, y) if inplace else (0, L, y, z), [], [], 0)
+    else:
+        NRHS = y.type.shape[1] if len(y.type.shape) > 1 else 1
+        solver = "trsm"
+        solver_enum = cusolver_function_map[solver]
+        side_enum = cusolver_side_map["left"]
+        diag_enum = cusolver_diag_map["nounit"]
+        fill_mode = cusolver_fill_mode_map["lower"]
+        dtype, precision_enum = cusolver_type_map[L.type.dtype]
+        num_threads = options["block_dim"]
+        parameter_list = f"({dtype}*, {dtype}*)"
+        req_smem_bytes = (y.type.size + L.type.size) * type_size_in_bytes(L.type.dtype)
+        if not inplace:
+            req_smem_bytes += z.type.size * type_size_in_bytes(L.type.dtype)
+
+        # generate the LTO
+        lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
+            M,
+            N,
+            NRHS,
+            solver,
+            solver_enum,
+            side_enum,
+            diag_enum,
+            L.type.layout,
+            y.type.layout,
+            fill_mode,
+            arch,
+            precision_enum,
+            num_threads,
+            parameter_list,
+            builder,
+            smem_estimate_bytes=req_smem_bytes,
+        )
+
+        var = Var(lto_symbol, str, False, True, False)
+        return ((var, L, y) if inplace else (var, L, y, z), [], [lto_code_data], 0)
+
+
+def tile_lower_solve_generic_lto_dispatch_func(*args, **kwargs):
+    return _tile_lower_solve_generic_lto_dispatch_func(False, *args, **kwargs)
+
+
+def tile_lower_solve_inplace_generic_lto_dispatch_func(*args, **kwargs):
+    return _tile_lower_solve_generic_lto_dispatch_func(True, *args, **kwargs)
 
 
 add_builtin(
@@ -10439,81 +10578,36 @@ add_builtin(
 )
 
 
-def tile_upper_solve_generic_lto_dispatch_func(
-    arg_types: Mapping[str, type],
-    return_type: Any,
-    return_values: List[Var],
-    arg_values: Mapping[str, Var],
-    options: Mapping[str, Any],
-    builder: warp._src.context.ModuleBuilder,
-):
-    U = arg_values["U"]
-    z = arg_values["z"]
-    # force the storage type of the input variables to shared memory
-    U.type.storage = "shared"
-    z.type.storage = "shared"
+add_builtin(
+    "tile_lower_solve_inplace",
+    input_types={"L": tile(dtype=Float, shape=Tuple[int, int]), "y": tile(dtype=Float, shape=Tuple[int])},
+    value_func=tile_lower_solve_inplace_generic_value_func,
+    lto_dispatch_func=tile_lower_solve_inplace_generic_lto_dispatch_func,
+    variadic=True,
+    doc="""Solve for z in Lz = y, where L is a lower triangular matrix by overwriting y with z.
 
-    if any(T not in cusolver_type_map.keys() for T in [z.type.dtype, U.type.dtype]):
-        raise TypeError("tile_upper_solve() arguments must be tiles of float64 or float32")
+    This performs general forward substitution for a lower triangular system inplace.
 
-    if len(return_values) != 1:
-        raise TypeError(f"tile_upper_solve() must return exactly one value, got {len(return_values)}")
+    Note: This inplace variant does not support automatic differentiation (adjoint computation),
+    but avoids allocating shared memory for the output z by reusing y's memory.
 
-    x = return_values[0]
+    Supported datatypes are:
+        * float32
+        * float64
 
-    M, N = U.type.shape
-
-    if len(z.type.shape) > 2 or len(z.type.shape) < 1:
-        raise TypeError(f"tile_upper_solve() output tile must be 1D or 2D, got {len(z.type.shape)}-D")
-
-    if z.type.shape[0] != M:
-        raise ValueError(
-            "tile_upper_solve() output tile must have same number of elements as the number of rows in 'U' "
-            f"got {z.type.shape[0]} elements in output and {M} rows in 'U'"
-        )
-
-    arch = options["output_arch"]
-
-    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
-        # CPU/no-MathDx dispatch
-        return ((0, U, z, x), [], [], 0)
-    else:
-        NRHS = x.type.shape[1] if len(x.type.shape) > 1 else 1
-        solver = "trsm"
-        solver_enum = cusolver_function_map[solver]
-        side_enum = cusolver_side_map["left"]
-        diag_enum = cusolver_diag_map["nounit"]
-        fill_mode = cusolver_fill_mode_map["upper"]
-        dtype, precision_enum = cusolver_type_map[U.type.dtype]
-        num_threads = options["block_dim"]
-        parameter_list = f"({dtype}*, {dtype}*)"
-        req_smem_bytes = (x.type.size + z.type.size + U.type.size) * type_size_in_bytes(U.type.dtype)
-
-        # generate the LTO
-        lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
-            M,
-            N,
-            NRHS,
-            solver,
-            solver_enum,
-            side_enum,
-            diag_enum,
-            U.type.layout,
-            z.type.layout,
-            fill_mode,
-            arch,
-            precision_enum,
-            num_threads,
-            parameter_list,
-            builder,
-            smem_estimate_bytes=req_smem_bytes,
-        )
-
-        return ((Var(lto_symbol, str, False, True, False), U, z, x), [], [lto_code_data], 0)
+    :param L: A square, non-singular, lower triangular matrix
+    :param y: A 1D or 2D tile with compatible shape that gets overwritten by z where Lz = y""",
+    group="Tile Primitives",
+    export=False,
+    namespace="",
+    is_differentiable=False,
+)
 
 
-def tile_upper_solve_generic_value_func(arg_types, arg_values):
+def _tile_upper_solve_generic_value_func(inplace: bool, arg_types, arg_values):
     if arg_types is None:
+        if inplace:
+            return None
         return tile(dtype=Float, shape=Tuple[int])
 
     if len(arg_types) != 2:
@@ -10543,7 +10637,109 @@ def tile_upper_solve_generic_value_func(arg_types, arg_values):
             f"got {z.shape[0]} elements in 'z' and {u.shape[0]} rows in 'U'"
         )
 
+    if inplace:
+        return None
     return tile(dtype=u.dtype, shape=z.shape, layout=z.layout, strides=z.strides, storage="shared")
+
+
+def tile_upper_solve_generic_value_func(arg_types, arg_values):
+    return _tile_upper_solve_generic_value_func(False, arg_types, arg_values)
+
+
+def tile_upper_solve_inplace_generic_value_func(arg_types, arg_values):
+    return _tile_upper_solve_generic_value_func(True, arg_types, arg_values)
+
+
+def _tile_upper_solve_generic_lto_dispatch_func(
+    inplace: bool,
+    arg_types: Mapping[str, type],
+    return_type: Any,
+    return_values: List[Var],
+    arg_values: Mapping[str, Var],
+    options: Mapping[str, Any],
+    builder: warp._src.context.ModuleBuilder,
+):
+    U = arg_values["U"]
+    z = arg_values["z"]
+    # force the storage type of the input variables to shared memory
+    U.type.storage = "shared"
+    z.type.storage = "shared"
+
+    if any(T not in cusolver_type_map.keys() for T in [z.type.dtype, U.type.dtype]):
+        raise TypeError("tile_upper_solve() arguments must be tiles of float64 or float32")
+
+    M, N = U.type.shape
+
+    if not inplace:
+        if len(return_values) != 1:
+            raise TypeError(f"tile_upper_solve() must return exactly one value, got {len(return_values)}")
+
+        x = return_values[0]
+
+        if len(x.type.shape) > 2 or len(x.type.shape) < 1:
+            raise TypeError(f"tile_upper_solve() output tile must be 1D or 2D, got {len(z.type.shape)}-D")
+
+        if x.type.shape[0] != M:
+            raise ValueError(
+                "tile_upper_solve() output tile must have same number of elements as the number of rows in 'U' "
+                f"got {x.type.shape[0]} elements in output and {M} rows in 'U'"
+            )
+
+        if len(x.type.shape) > 1 and z.type.shape[1] != x.type.shape[1]:
+            raise ValueError(
+                "tile_upper_solve() output vector must have the same number of columns as 'z' "
+                f"got {x.type.shape[1]} columns in output and {z.type.shape[1]} columns in 'z'"
+            )
+
+    arch = options["output_arch"]
+
+    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
+        # CPU/no-MathDx dispatch
+        return ((0, U, z) if inplace else (0, U, z, x), [], [], 0)
+    else:
+        NRHS = z.type.shape[1] if len(z.type.shape) > 1 else 1
+        solver = "trsm"
+        solver_enum = cusolver_function_map[solver]
+        side_enum = cusolver_side_map["left"]
+        diag_enum = cusolver_diag_map["nounit"]
+        fill_mode = cusolver_fill_mode_map["upper"]
+        dtype, precision_enum = cusolver_type_map[U.type.dtype]
+        num_threads = options["block_dim"]
+        parameter_list = f"({dtype}*, {dtype}*)"
+        req_smem_bytes = (z.type.size + U.type.size) * type_size_in_bytes(U.type.dtype)
+        if not inplace:
+            req_smem_bytes += x.type.size * type_size_in_bytes(U.type.dtype)
+
+        # generate the LTO
+        lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
+            M,
+            N,
+            NRHS,
+            solver,
+            solver_enum,
+            side_enum,
+            diag_enum,
+            U.type.layout,
+            z.type.layout,
+            fill_mode,
+            arch,
+            precision_enum,
+            num_threads,
+            parameter_list,
+            builder,
+            smem_estimate_bytes=req_smem_bytes,
+        )
+
+        var = Var(lto_symbol, str, False, True, False)
+        return ((var, U, z) if inplace else (var, U, z, x), [], [lto_code_data], 0)
+
+
+def tile_upper_solve_generic_lto_dispatch_func(*args, **kwargs):
+    return _tile_upper_solve_generic_lto_dispatch_func(False, *args, **kwargs)
+
+
+def tile_upper_solve_inplace_generic_lto_dispatch_func(*args, **kwargs):
+    return _tile_upper_solve_generic_lto_dispatch_func(True, *args, **kwargs)
 
 
 add_builtin(
@@ -10552,7 +10748,7 @@ add_builtin(
     value_func=tile_upper_solve_generic_value_func,
     lto_dispatch_func=tile_upper_solve_generic_lto_dispatch_func,
     variadic=True,
-    doc="""Solve for x in U x = z, where U is an upper triangular matrix.
+    doc="""Solve for x in Ux = z, where U is an upper triangular matrix.
 
     This performs general back substitution for upper triangular systems.
 
@@ -10565,6 +10761,32 @@ add_builtin(
     :param U: A square, non-singular, upper triangular matrix
     :param z: A 1D or 2D tile with compatible shape
     :returns x: A tile of the same shape as z such that U x = z""",
+    group="Tile Primitives",
+    export=False,
+    namespace="",
+    is_differentiable=False,
+)
+
+
+add_builtin(
+    "tile_upper_solve_inplace",
+    input_types={"U": tile(dtype=Float, shape=Tuple[int, int]), "z": tile(dtype=Float, shape=Tuple[int])},
+    value_func=tile_upper_solve_inplace_generic_value_func,
+    lto_dispatch_func=tile_upper_solve_inplace_generic_lto_dispatch_func,
+    variadic=True,
+    doc="""Solve for x in Ux = z, where U is an upper triangular matrix by overwriting z with x.
+
+    This performs general back substitution for upper triangular systems inplace.
+
+    Note: This inplace variant does not support automatic differentiation (adjoint computation),
+    but avoids allocating shared memory for the output x by reusing z's memory.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param U: A square, non-singular, upper triangular matrix
+    :param z: A 1D or 2D tile with compatible shape that gets overwritten by x where Ux = z""",
     group="Tile Primitives",
     export=False,
     namespace="",

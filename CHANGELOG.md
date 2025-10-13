@@ -10,6 +10,7 @@
   - Mesh queries: `wp.mesh_query_aabb_tiled()` and `wp.mesh_query_aabb_next_tiled()`
   - Aliases with `tile_*` prefix are also available for all functions.
 - Add alpha and beta scalings to `wp.tile_matmul()` ([GH-1023](https://github.com/NVIDIA/warp/pull/1023)).
+- Add `wp.tile_cholesky_inplace()`, `wp.tile_cholesky_solve_inplace()`, `wp.tile_lower_solve_inplace()` and `wp.tile_upper_solve_inplace()` ([GH-1025](https://github.com/NVIDIA/warp/pull/1025)).
 
 ### Removed
 
