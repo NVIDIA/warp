@@ -23,6 +23,7 @@
 - Add a double precision overload for `wp.intersect_tri_tri` ([GH-1015](https://github.com/NVIDIA/warp/issues/1015)).
 - Add `wp.get_cuda_supported_archs()` to query supported CUDA compute architectures for compilation targets
   ([GH-964](https://github.com/NVIDIA/warp/issues/964)).
+- Add `wp.tile_cholesky_inplace()`, `wp.tile_cholesky_solve_inplace()`, `wp.tile_lower_solve_inplace()` and `wp.tile_upper_solve_inplace()` ([GH-1025](https://github.com/NVIDIA/warp/pull/1025)).
 
 ### Removed
 
