@@ -267,6 +267,13 @@ inline CUDA_CALLABLE half operator / (half a,half b)
 
 
 
+template<typename TRet, typename T>
+inline CUDA_CALLABLE TRet cast(T a)
+{
+    static_assert(sizeof(TRet) == sizeof(T), "source and destination must have the same size");
+    return *reinterpret_cast<TRet*>(&a);
+}
+
 template <typename T>
 CUDA_CALLABLE inline float cast_float(T x) { return (float)(x); }
 

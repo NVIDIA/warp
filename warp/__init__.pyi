@@ -5447,6 +5447,11 @@ def len(a: Tuple) -> int:
     ...
 
 @over
+def cast(a: Any, dtype: Any) -> Any:
+    """Reinterpret a value as a different type while preserving its bit pattern."""
+    ...
+
+@over
 def norm_l1(v: Any):
     """Computes the L1 norm of a vector v.
 

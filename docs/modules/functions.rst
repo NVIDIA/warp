@@ -4942,6 +4942,16 @@ Utility
     Return the number of elements in a tuple.
 
 
+.. py:function:: cast(a: Any, dtype: Any) -> Any
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+
+    Reinterpret a value as a different type while preserving its bit pattern.
+
+
 
 
 Geometry

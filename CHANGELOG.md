@@ -23,6 +23,8 @@
 - Add a double precision overload for `wp.intersect_tri_tri` ([GH-1015](https://github.com/NVIDIA/warp/issues/1015)).
 - Add `wp.get_cuda_supported_archs()` to query supported CUDA compute architectures for compilation targets
   ([GH-964](https://github.com/NVIDIA/warp/issues/964)).
+- Add `wp.cast()` to reinterpret a value as a different type while preserving its bit pattern
+  ([GH-789](https://github.com/NVIDIA/warp/issues/789)).
 
 ### Removed
 
