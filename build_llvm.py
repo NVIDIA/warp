@@ -87,7 +87,7 @@ def build_llvm_clang_from_source_for_arch(args, arch: str, llvm_source: str) -> 
         print(f"Cloning LLVM project from {repo_url}...")
 
         shallow_clone = True  # https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/
-        version = "18.1.3"
+        version = "21.1.0"
         if shallow_clone:
             repo = Repo.clone_from(
                 repo_url,
@@ -364,6 +364,7 @@ def build_warp_clang_for_arch(args, lib_name: str, arch: str) -> None:
         if os.name == "nt":
             libs.append("Version.lib")
             libs.append("Ws2_32.lib")
+            libs.append("ntdll.lib")
             libs.append(f'/LIBPATH:"{libpath}"')
         else:
             libs = [f"-l{lib[3:-2]}" for lib in libs if os.path.splitext(lib)[1] == ".a"]

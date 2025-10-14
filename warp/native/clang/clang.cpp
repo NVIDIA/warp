@@ -101,7 +101,7 @@ static void initialize_llvm()
     llvm::InitializeAllAsmPrinters();
 }
 
-static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, const char* cpp_src, const char* include_dir, bool debug, bool verify_fp, llvm::LLVMContext& context)
+static std::unique_ptr<llvm::Module> source_to_llvm(bool is_cuda, const std::string& input_file, const char* cpp_src, const char* include_dir, bool debug, bool verify_fp, llvm::LLVMContext& context)
 {
     // Compilation arguments
     std::vector<const char*> args;
@@ -112,21 +112,41 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
 
     args.push_back(debug ? "-O0" : "-O2");
 
-    args.push_back("-triple");
-    args.push_back(target_triple);
+    if(is_cuda)
+    {
+        args.push_back("-triple");
+        args.push_back("nvptx64-nvidia-cuda");
 
-    #if defined(__x86_64__) || defined(_M_X64)
-        args.push_back("-target-feature");
-        args.push_back("+f16c");  // Enables support for _Float16
+        args.push_back("-target-cpu");
+        args.push_back("sm_70");
+    }
+    else
+    {
+        args.push_back("-triple");
+        args.push_back(target_triple);
+
+        #if defined(__x86_64__) || defined(_M_X64)
+            args.push_back("-target-feature");
+            args.push_back("+f16c");  // Enables support for _Float16
+        #endif
+    }
+
+    #if LLVM_VERSION_MAJOR >= 21
+    clang::DiagnosticOptions diagnostic_options;
+    std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer =
+            std::make_unique<clang::TextDiagnosticPrinter>(llvm::errs(), diagnostic_options);
+    clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagnostic_ids;
+    std::unique_ptr<clang::DiagnosticsEngine> diagnostic_engine =
+            std::make_unique<clang::DiagnosticsEngine>(diagnostic_ids, diagnostic_options, text_diagnostic_printer.release());
+    #else
+    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagnostic_options = new clang::DiagnosticOptions();
+    std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer =
+            std::make_unique<clang::TextDiagnosticPrinter>(llvm::errs(), &*diagnostic_options);
+    clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagnostic_ids;
+    std::unique_ptr<clang::DiagnosticsEngine> diagnostic_engine =
+            std::make_unique<clang::DiagnosticsEngine>(diagnostic_ids, &*diagnostic_options, text_diagnostic_printer.release());
     #endif
 
-    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagnostic_options = new clang::DiagnosticOptions();
-    std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer =
-            std::make_unique<clang::TextDiagnosticPrinter>(llvm::errs(), &*diagnostic_options);
-    clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagnostic_ids;
-    std::unique_ptr<clang::DiagnosticsEngine> diagnostic_engine =
-            std::make_unique<clang::DiagnosticsEngine>(diagnostic_ids, &*diagnostic_options, text_diagnostic_printer.release());
-
     clang::CompilerInstance compiler_instance;
 
     auto& compiler_invocation = compiler_instance.getInvocation();
@@ -149,81 +169,34 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
     {
         compiler_instance.getPreprocessorOpts().addMacroDef("NDEBUG");
     }
-
-    if(verify_fp)
+    
+    if(is_cuda)
     {
-        compiler_instance.getPreprocessorOpts().addMacroDef("WP_VERIFY_FP");
+        // According to https://llvm.org/docs/CompileCudaWithLLVM.html, "Both clang and nvcc define `__CUDACC__` during CUDA compilation."
+        // But this normally happens in the __clang_cuda_runtime_wrapper.h header, which we don't include.
+        // The __CUDA__ and __CUDA_ARCH__ macros are internally defined by llvm-project/clang/lib/Frontend/InitPreprocessor.cpp
+        compiler_instance.getPreprocessorOpts().addMacroDef("__CUDACC__");
+
+        compiler_instance.getLangOpts().CUDA = 1;
+        compiler_instance.getLangOpts().CUDAIsDevice = 1;
+        compiler_instance.getLangOpts().CUDAAllowVariadicFunctions = 1;
+    }
+    else
+    {
+        if(verify_fp)
+        {
+            compiler_instance.getPreprocessorOpts().addMacroDef("WP_VERIFY_FP");
+        }
+
+        compiler_instance.getLangOpts().MicrosoftExt = 1;  // __forceinline / __int64
+        compiler_instance.getLangOpts().DeclSpecKeyword = 1;  // __declspec
     }
 
-    compiler_instance.getLangOpts().MicrosoftExt = 1;  // __forceinline / __int64
-    compiler_instance.getLangOpts().DeclSpecKeyword = 1;  // __declspec
-
+    #if LLVM_VERSION_MAJOR >= 21
+    compiler_instance.createDiagnostics(*llvm::vfs::getRealFileSystem(), text_diagnostic_printer.get(), false);
+    #else
     compiler_instance.createDiagnostics(text_diagnostic_printer.get(), false);
-
-    clang::EmitLLVMOnlyAction emit_llvm_only_action(&context);
-    bool success = compiler_instance.ExecuteAction(emit_llvm_only_action);
-    (void)buffer.release();
-
-    return success ? std::move(emit_llvm_only_action.takeModule()) : nullptr;
-}
-
-static std::unique_ptr<llvm::Module> cuda_to_llvm(const std::string& input_file, const char* cpp_src, const char* include_dir, bool debug, llvm::LLVMContext& context)
-{
-    // Compilation arguments
-    std::vector<const char*> args;
-    args.push_back(input_file.c_str());
-
-    args.push_back("-I");
-    args.push_back(include_dir);
-
-    args.push_back(debug ? "-O0" : "-O2");
-
-    args.push_back("-triple");
-    args.push_back("nvptx64-nvidia-cuda");
-
-    args.push_back("-target-cpu");
-    args.push_back("sm_70");
-
-    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagnostic_options = new clang::DiagnosticOptions();
-    std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer =
-            std::make_unique<clang::TextDiagnosticPrinter>(llvm::errs(), &*diagnostic_options);
-    clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagnostic_ids;
-    std::unique_ptr<clang::DiagnosticsEngine> diagnostic_engine =
-            std::make_unique<clang::DiagnosticsEngine>(diagnostic_ids, &*diagnostic_options, text_diagnostic_printer.release());
-
-    clang::CompilerInstance compiler_instance;
-
-    auto& compiler_invocation = compiler_instance.getInvocation();
-    clang::CompilerInvocation::CreateFromArgs(compiler_invocation, args, *diagnostic_engine.release());
-
-    if(debug)
-    {
-        #if LLVM_VERSION_MAJOR >= 18
-        compiler_invocation.getCodeGenOpts().setDebugInfo(llvm::codegenoptions::FullDebugInfo);
-        #else
-        compiler_invocation.getCodeGenOpts().setDebugInfo(clang::codegenoptions::FullDebugInfo);
-        #endif
-    }
-
-    // Map code to a MemoryBuffer
-    std::unique_ptr<llvm::MemoryBuffer> buffer = llvm::MemoryBuffer::getMemBufferCopy(cpp_src);
-    compiler_invocation.getPreprocessorOpts().addRemappedFile(input_file.c_str(), buffer.get());
-
-    // According to https://llvm.org/docs/CompileCudaWithLLVM.html, "Both clang and nvcc define `__CUDACC__` during CUDA compilation."
-    // But this normally happens in the __clang_cuda_runtime_wrapper.h header, which we don't include.
-    // The __CUDA__ and __CUDA_ARCH__ macros are internally defined by llvm-project/clang/lib/Frontend/InitPreprocessor.cpp
-    compiler_instance.getPreprocessorOpts().addMacroDef("__CUDACC__");
-
-    if(!debug)
-    {
-        compiler_instance.getPreprocessorOpts().addMacroDef("NDEBUG");
-    }
-
-    compiler_instance.getLangOpts().CUDA = 1;
-    compiler_instance.getLangOpts().CUDAIsDevice = 1;
-    compiler_instance.getLangOpts().CUDAAllowVariadicFunctions = 1;
-
-    compiler_instance.createDiagnostics(text_diagnostic_printer.get(), false);
+    #endif
 
     clang::EmitLLVMOnlyAction emit_llvm_only_action(&context);
     bool success = compiler_instance.ExecuteAction(emit_llvm_only_action);
@@ -239,7 +212,7 @@ WP_API int wp_compile_cpp(const char* cpp_src, const char *input_file, const cha
     initialize_llvm();
 
     llvm::LLVMContext context;
-    std::unique_ptr<llvm::Module> module = cpp_to_llvm(input_file, cpp_src, include_dir, debug, verify_fp, context);
+    std::unique_ptr<llvm::Module> module = source_to_llvm(false, input_file, cpp_src, include_dir, debug, verify_fp, context);
 
     if(!module)
     {
@@ -258,7 +231,7 @@ WP_API int wp_compile_cpp(const char* cpp_src, const char *input_file, const cha
         target_options.AllowFPOpFusion = llvm::FPOpFusion::Strict;
     llvm::Reloc::Model relocation_model = llvm::Reloc::PIC_;  // Position Independent Code
     llvm::CodeModel::Model code_model = llvm::CodeModel::Large;  // Don't make assumptions about displacement sizes
-    #if LLVM_VERSION_MAJOR >= 22
+    #if LLVM_VERSION_MAJOR >= 20
     llvm::TargetMachine* target_machine = target->createTargetMachine(llvm::Triple(target_triple), CPU, features, target_options, relocation_model, code_model);
     #else
     llvm::TargetMachine* target_machine = target->createTargetMachine(target_triple, CPU, features, target_options, relocation_model, code_model);
@@ -290,7 +263,7 @@ WP_API int wp_compile_cuda(const char* cpp_src, const char *input_file, const ch
     initialize_llvm();
 
     llvm::LLVMContext context;
-    std::unique_ptr<llvm::Module> module = cuda_to_llvm(input_file, cpp_src, include_dir, debug, context);
+    std::unique_ptr<llvm::Module> module = source_to_llvm(true, input_file, cpp_src, include_dir, debug, false, context);
 
     if(!module)
     {
@@ -304,7 +277,7 @@ WP_API int wp_compile_cuda(const char* cpp_src, const char *input_file, const ch
     const char* features = "+ptx75";  // Warp requires CUDA 11.5, which supports PTX ISA 7.5
     llvm::TargetOptions target_options;
     llvm::Reloc::Model relocation_model = llvm::Reloc::PIC_;
-    #if LLVM_VERSION_MAJOR >= 22
+    #if LLVM_VERSION_MAJOR >= 20
     llvm::TargetMachine* target_machine = target->createTargetMachine(llvm::Triple("nvptx64-nvidia-cuda"), CPU, features, target_options, relocation_model);
     #else
     llvm::TargetMachine* target_machine = target->createTargetMachine("nvptx64-nvidia-cuda", CPU, features, target_options, relocation_model);
@@ -358,8 +331,16 @@ WP_API int wp_load_obj(const char* object_file, const char* module_name)
 
         auto jit_expected = llvm::orc::LLJITBuilder()
             .setObjectLinkingLayerCreator(
+#if LLVM_VERSION_MAJOR >= 21
+                [&](llvm::orc::ExecutionSession &session) {
+#else
                 [&](llvm::orc::ExecutionSession &session, const llvm::Triple &triple) {
+#endif
+#if LLVM_VERSION_MAJOR >= 21
+                    auto get_memory_manager = [](const llvm::MemoryBuffer &) {
+#else
                     auto get_memory_manager = []() {
+#endif
                         return std::make_unique<llvm::SectionMemoryManager>();
                     };
                     auto obj_linking_layer = std::make_unique<llvm::orc::RTDyldObjectLinkingLayer>(session, std::move(get_memory_manager));
