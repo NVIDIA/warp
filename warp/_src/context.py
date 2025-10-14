@@ -56,7 +56,7 @@ import warp
 import warp._src.build
 import warp._src.codegen
 import warp._src.config
-from warp._src.types import Array, launch_bounds_t
+from warp._src.types import Array, launch_bounds_t, type_repr
 
 warp_home = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -792,11 +792,11 @@ class Kernel:
             if not warp._src.types.type_matches_template(arg_types[i], template_types[i]):
                 if warp._src.types.type_is_generic(arg_types[i]):
                     raise TypeError(
-                        f"Kernel {self.key} argument '{arg_names[i]}' cannot be generic, got {arg_types[i]}"
+                        f"Kernel {self.key} argument '{arg_names[i]}' cannot be generic, got {type_repr(arg_types[i])}"
                     )
                 else:
                     raise TypeError(
-                        f"Kernel {self.key} argument '{arg_names[i]}' type mismatch: expected {template_types[i]}, got {arg_types[i]}"
+                        f"Kernel {self.key} argument '{arg_names[i]}' type mismatch: expected {type_repr(template_types[i])}, got {type_repr(arg_types[i])}"
                     )
 
         overload_annotations = dict(zip(arg_names, arg_types))
