@@ -114,6 +114,7 @@ static std::unique_ptr<llvm::Module> source_to_llvm(bool is_cuda, const std::str
 
     if(is_cuda)
     {
+        args.push_back("-triple");
         args.push_back("nvptx64-nvidia-cuda");
 
         args.push_back("-target-cpu");
