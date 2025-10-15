@@ -1969,6 +1969,10 @@ and will remain cached even if :func:`wp.clear_kernel_cache() <clear_kernel_cach
 Module Management
 -----------------
 
+.. autofunction:: warp.load_module
+
+.. autofunction:: warp.force_load
+
 .. autofunction:: warp.compile_aot_module
 
 .. autofunction:: warp.load_aot_module
