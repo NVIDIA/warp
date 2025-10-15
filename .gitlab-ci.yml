@@ -364,7 +364,7 @@ linux-aarch64 test:
   script:
     - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
-linux-aarch64 test jetson:
+linux-aarch64 test orin:
   needs: [linux-aarch64 build]
   image: ubuntu:22.04
   extends:
@@ -378,6 +378,22 @@ linux-aarch64 test jetson:
     - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - gpu/orin
+
+linux-aarch64 test thor:
+  needs: [linux-aarch64 build]
+  image: ubuntu:22.04
+  extends:
+    - .save_test_report_artifact
+    - .basic_test_changes_rules
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - !reference [.snippets, install-python+warp-aarch64]
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+  tags:
+    - gpu/thor
+  allow_failure: true  # TODO: Remove this when stable
 
 linux-x86_64 test:
   needs: [linux-x86_64 build]
