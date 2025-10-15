@@ -11,6 +11,7 @@
   ([GH-886](https://github.com/NVIDIA/warp/issues/886)).
 - Add support for negative indexing and improve slicing for the `wp.array()` type
   ([GH-504](https://github.com/NVIDIA/warp/issues/504)).
+- Add `wp.tile_full()` builtin, which fills a tile with a constant value.
 - Add support for recording and waiting for external events in CUDA graphs
   ([GH-983](https://github.com/NVIDIA/warp/issues/983)).
 - Add kernel-level functions `bsr_row_index()` and `bsr_block_index()` to `warp.sparse`

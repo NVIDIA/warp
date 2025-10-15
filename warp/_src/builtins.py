@@ -2249,6 +2249,85 @@ add_builtin(
 )
 
 
+def tile_full_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return tile(dtype=Any, shape=Tuple[int, ...])
+
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    if "value" not in arg_values:
+        raise TypeError("tile_full() missing required keyword argument 'value'")
+
+    if "dtype" not in arg_values:
+        raise TypeError("tile_full() missing required keyword argument 'dtype'")
+
+    if "storage" not in arg_values:
+        raise TypeError("tile_full() missing required keyword argument 'storage'")
+
+    if arg_values["storage"] not in {"shared", "register"}:
+        raise ValueError(f"Invalid value for 'storage': {arg_values['storage']!r}. Expected 'shared' or 'register'.")
+
+    dtype = arg_values["dtype"]
+
+    return tile(dtype=dtype, shape=shape, storage=arg_values["storage"])
+
+
+def tile_full_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    dtype = arg_values["dtype"]
+    value = arg_values["value"]
+
+    func_args = [value]
+
+    template_args = []
+    template_args.append(dtype)
+    template_args.extend(shape)
+
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_full",
+    input_types={"shape": Tuple[int, ...], "value": Any, "dtype": Any, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_full_value_func,
+    dispatch_func=tile_full_dispatch_func,
+    is_differentiable=False,
+    doc="""Allocate a tile filled with the specified value.
+
+    :param shape: Shape of the output tile
+    :param value: Value to fill the tile with
+    :param dtype: Data type of output tile's elements
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile filled with the specified value""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+# overload for scalar shape
+add_builtin(
+    "tile_full",
+    input_types={"shape": int, "value": Any, "dtype": Any, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_full_value_func,
+    dispatch_func=tile_full_dispatch_func,
+    is_differentiable=False,
+    hidden=True,
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     # return generic type (for doc builds)
     if arg_types is None:

@@ -1925,6 +1925,14 @@ inline CUDA_CALLABLE auto tile_ones()
     return T(1);
 }
 
+// value-initialized tile
+template <typename T, unsigned... Shape>
+inline CUDA_CALLABLE auto tile_full(T x)
+{
+    // tile variable assignment operator will handle initialization (since lhs could be shared/register tile)
+    return x;
+}
+
 // tile with evenly spaced values
 template <typename T, int Len>
 inline CUDA_CALLABLE auto tile_arange(T start, T stop, T step)
