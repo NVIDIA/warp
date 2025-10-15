@@ -24,6 +24,9 @@ import warp as wp
 from warp._src.jax import get_jax_device
 from warp.tests.unittest_utils import *
 
+# default array size for tests
+ARRAY_SIZE = 1024 * 1024
+
 
 # basic kernel with one input and output
 @wp.kernel
@@ -44,6 +47,18 @@ def triple_kernel_scalar(input: wp.array(dtype=Any), output: wp.array(dtype=Any)
 def triple_kernel_vecmat(input: wp.array(dtype=Any), output: wp.array(dtype=Any)):
     tid = wp.tid()
     output[tid] = input.dtype.dtype(3) * input[tid]
+
+
+@wp.kernel
+def inc_1d_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    tid = wp.tid()
+    y[tid] = x[tid] + 1.0
+
+
+@wp.kernel
+def inc_2d_kernel(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    y[i, j] = x[i, j] + 1.0
 
 
 # kernel with multiple inputs and outputs
@@ -146,7 +161,7 @@ def test_jax_kernel_basic(test, device, use_ffi=False):
 
         jax_triple = jax_kernel(triple_kernel, quiet=True)  # suppress deprecation warnings
 
-    n = 64
+    n = ARRAY_SIZE
 
     @jax.jit
     def f():
@@ -156,6 +171,8 @@ def test_jax_kernel_basic(test, device, use_ffi=False):
     # run on the given device
     with jax.default_device(wp.device_to_jax(device)):
         y = f()
+
+    wp.synchronize_device(device)
 
     result = np.asarray(y).reshape((n,))
     expected = 3 * np.arange(n, dtype=np.float32)
@@ -175,6 +192,7 @@ def test_jax_kernel_scalar(test, device, use_ffi=False):
 
         kwargs = {"quiet": True}
 
+    # use a smallish size to ensure arange * 3 doesn't overflow
     n = 64
 
     for T in scalar_types:
@@ -195,6 +213,8 @@ def test_jax_kernel_scalar(test, device, use_ffi=False):
             # run on the given device
             with jax.default_device(wp.device_to_jax(device)):
                 y = f()
+
+            wp.synchronize_device(device)
 
             result = np.asarray(y).reshape((n,))
             expected = 3 * np.arange(n, dtype=np_dtype)
@@ -218,6 +238,7 @@ def test_jax_kernel_vecmat(test, device, use_ffi=False):
         jp_dtype = wp.dtype_to_jax(T._wp_scalar_type_)
         np_dtype = wp.dtype_to_numpy(T._wp_scalar_type_)
 
+        # use a smallish size to ensure arange * 3 doesn't overflow
         n = 64 // T._length_
         scalar_shape = (n, *T._shape_)
         scalar_len = n * T._length_
@@ -237,6 +258,8 @@ def test_jax_kernel_vecmat(test, device, use_ffi=False):
             with jax.default_device(wp.device_to_jax(device)):
                 y = f()
 
+            wp.synchronize_device(device)
+
             result = np.asarray(y).reshape(scalar_shape)
             expected = 3 * np.arange(scalar_len, dtype=np_dtype).reshape(scalar_shape)
 
@@ -255,7 +278,7 @@ def test_jax_kernel_multiarg(test, device, use_ffi=False):
 
         jax_multiarg = jax_kernel(multiarg_kernel, quiet=True)
 
-    n = 64
+    n = ARRAY_SIZE
 
     @jax.jit
     def f():
@@ -267,6 +290,8 @@ def test_jax_kernel_multiarg(test, device, use_ffi=False):
     # run on the given device
     with jax.default_device(wp.device_to_jax(device)):
         x, y = f()
+
+    wp.synchronize_device(device)
 
     result_x, result_y = np.asarray(x), np.asarray(y)
     expected_x = np.full(n, 3, dtype=np.float32)
@@ -292,39 +317,31 @@ def test_jax_kernel_launch_dims(test, device, use_ffi=False):
     m = 32
 
     # Test with 1D launch dims
-    @wp.kernel
-    def add_one_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
-        tid = wp.tid()
-        y[tid] = x[tid] + 1.0
-
-    jax_add_one = jax_kernel(
-        add_one_kernel, launch_dims=(n - 2,), **kwargs
+    jax_inc_1d = jax_kernel(
+        inc_1d_kernel, launch_dims=(n - 2,), **kwargs
     )  # Intentionally not the same as the first dimension of the input
 
     @jax.jit
     def f_1d():
         x = jp.arange(n, dtype=jp.float32)
-        return jax_add_one(x)
+        return jax_inc_1d(x)
 
     # Test with 2D launch dims
-    @wp.kernel
-    def add_one_2d_kernel(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
-        i, j = wp.tid()
-        y[i, j] = x[i, j] + 1.0
-
-    jax_add_one_2d = jax_kernel(
-        add_one_2d_kernel, launch_dims=(n - 2, m - 2), **kwargs
+    jax_inc_2d = jax_kernel(
+        inc_2d_kernel, launch_dims=(n - 2, m - 2), **kwargs
     )  # Intentionally not the same as the first dimension of the input
 
     @jax.jit
     def f_2d():
         x = jp.zeros((n, m), dtype=jp.float32) + 3.0
-        return jax_add_one_2d(x)
+        return jax_inc_2d(x)
 
     # run on the given device
     with jax.default_device(wp.device_to_jax(device)):
         y_1d = f_1d()
         y_2d = f_2d()
+
+    wp.synchronize_device(device)
 
     result_1d = np.asarray(y_1d).reshape((n - 2,))
     expected_1d = np.arange(n - 2, dtype=np.float32) + 1.0
@@ -342,9 +359,15 @@ def test_jax_kernel_launch_dims(test, device, use_ffi=False):
 
 
 @wp.kernel
-def add_kernel(a: wp.array(dtype=int), b: wp.array(dtype=int), output: wp.array(dtype=int)):
+def add_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), output: wp.array(dtype=float)):
     tid = wp.tid()
     output[tid] = a[tid] + b[tid]
+
+
+@wp.kernel
+def axpy_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float), alpha: float, out: wp.array(dtype=float)):
+    tid = wp.tid()
+    out[tid] = alpha * x[tid] + y[tid]
 
 
 @wp.kernel
@@ -408,6 +431,15 @@ def in_out_kernel(
     c[tid] = 2.0 * a[tid]
 
 
+@wp.kernel
+def multi_out_kernel(
+    a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, c: wp.array(dtype=float), d: wp.array(dtype=float)
+):
+    tid = wp.tid()
+    c[tid] = a[tid] + b[tid]
+    d[tid] = s * a[tid]
+
+
 # The Python function to call.
 # Note the argument annotations, just like Warp kernels.
 def scale_func(
@@ -452,16 +484,18 @@ def test_ffi_jax_kernel_add(test, device):
 
     @jax.jit
     def f():
-        n = 10
-        a = jp.arange(n, dtype=jp.int32)
-        b = jp.ones(n, dtype=jp.int32)
+        n = ARRAY_SIZE
+        a = jp.arange(n, dtype=jp.float32)
+        b = jp.ones(n, dtype=jp.float32)
         return jax_add(a, b)
 
     with jax.default_device(wp.device_to_jax(device)):
         (y,) = f()
 
+    wp.synchronize_device(device)
+
     result = np.asarray(y)
-    expected = np.arange(1, 11, dtype=np.int32)
+    expected = np.arange(1, ARRAY_SIZE + 1, dtype=np.float32)
 
     assert_np_equal(result, expected)
 
@@ -474,7 +508,8 @@ def test_ffi_jax_kernel_sincos(test, device):
     from warp._src.jax_experimental.ffi import jax_kernel
 
     jax_sincos = jax_kernel(sincos_kernel, num_outputs=2)
-    n = 32
+
+    n = ARRAY_SIZE
 
     @jax.jit
     def f():
@@ -483,6 +518,8 @@ def test_ffi_jax_kernel_sincos(test, device):
 
     with jax.default_device(wp.device_to_jax(device)):
         s, c = f()
+
+    wp.synchronize_device(device)
 
     result_s = np.asarray(s)
     result_c = np.asarray(c)
@@ -506,6 +543,8 @@ def test_ffi_jax_kernel_diagonal(test, device):
     def f():
         # launch dimensions determine output size
         return jax_diagonal(launch_dims=4)
+
+    wp.synchronize_device(device)
 
     with jax.default_device(wp.device_to_jax(device)):
         (d,) = f()
@@ -536,12 +575,14 @@ def test_ffi_jax_kernel_in_out(test, device):
     f = jax.jit(jax_func)
 
     with jax.default_device(wp.device_to_jax(device)):
-        a = jp.ones(10, dtype=jp.float32)
-        b = jp.arange(10, dtype=jp.float32)
+        a = jp.ones(ARRAY_SIZE, dtype=jp.float32)
+        b = jp.arange(ARRAY_SIZE, dtype=jp.float32)
         b, c = f(a, b)
 
-    assert_np_equal(b, np.arange(1, 11, dtype=np.float32))
-    assert_np_equal(c, np.full(10, 2, dtype=np.float32))
+    wp.synchronize_device(device)
+
+    assert_np_equal(b, np.arange(1, ARRAY_SIZE + 1, dtype=np.float32))
+    assert_np_equal(c, np.full(ARRAY_SIZE, 2, dtype=np.float32))
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -555,14 +596,16 @@ def test_ffi_jax_kernel_scale_vec_constant(test, device):
 
     @jax.jit
     def f():
-        a = jp.arange(10, dtype=jp.float32).reshape((5, 2))  # array of vec2
+        a = jp.arange(ARRAY_SIZE, dtype=jp.float32).reshape((ARRAY_SIZE // 2, 2))  # array of vec2
         s = 2.0
         return jax_scale_vec(a, s)
 
     with jax.default_device(wp.device_to_jax(device)):
         (b,) = f()
 
-    expected = 2 * np.arange(10, dtype=np.float32).reshape((5, 2))
+    wp.synchronize_device(device)
+
+    expected = 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2))
 
     assert_np_equal(b, expected)
 
@@ -581,13 +624,15 @@ def test_ffi_jax_kernel_scale_vec_static(test, device):
     def f(a, s):
         return jax_scale_vec(a, s)
 
-    a = jp.arange(10, dtype=jp.float32).reshape((5, 2))  # array of vec2
+    a = jp.arange(ARRAY_SIZE, dtype=jp.float32).reshape((ARRAY_SIZE // 2, 2))  # array of vec2
     s = 3.0
 
     with jax.default_device(wp.device_to_jax(device)):
         (b,) = f(a, s)
 
-    expected = 3 * np.arange(10, dtype=np.float32).reshape((5, 2))
+    wp.synchronize_device(device)
+
+    expected = 3 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2))
 
     assert_np_equal(b, expected)
 
@@ -613,6 +658,8 @@ def test_ffi_jax_kernel_launch_dims_default(test, device):
 
     with jax.default_device(wp.device_to_jax(device)):
         (result,) = f()
+
+    wp.synchronize_device(device)
 
     expected = np.full((3, 4), 12, dtype=np.float32)
 
@@ -650,6 +697,8 @@ def test_ffi_jax_kernel_launch_dims_custom(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         result1, result2 = f()
 
+    wp.synchronize_device(device)
+
     expected1 = np.full((3, 4), 12, dtype=np.float32)
     expected2 = np.full((4, 3), 12, dtype=np.float32)
 
@@ -671,8 +720,8 @@ def test_ffi_jax_callable_scale_constant(test, device):
     @jax.jit
     def f():
         # inputs
-        a = jp.arange(10, dtype=jp.float32)
-        b = jp.arange(10, dtype=jp.float32).reshape((5, 2))  # wp.vec2
+        a = jp.arange(ARRAY_SIZE, dtype=jp.float32)
+        b = jp.arange(ARRAY_SIZE, dtype=jp.float32).reshape((ARRAY_SIZE // 2, 2))  # wp.vec2
         s = 2.0
 
         # output shapes
@@ -685,8 +734,10 @@ def test_ffi_jax_callable_scale_constant(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         result1, result2 = f()
 
-    expected1 = 2 * np.arange(10, dtype=np.float32)
-    expected2 = 2 * np.arange(10, dtype=np.float32).reshape((5, 2))
+    wp.synchronize_device(device)
+
+    expected1 = 2 * np.arange(ARRAY_SIZE, dtype=np.float32)
+    expected2 = 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2))
 
     assert_np_equal(result1, expected1)
     assert_np_equal(result2, expected2)
@@ -713,13 +764,15 @@ def test_ffi_jax_callable_scale_static(test, device):
 
     with jax.default_device(wp.device_to_jax(device)):
         # inputs
-        a = jp.arange(10, dtype=jp.float32)
-        b = jp.arange(10, dtype=jp.float32).reshape((5, 2))  # wp.vec2
+        a = jp.arange(ARRAY_SIZE, dtype=jp.float32)
+        b = jp.arange(ARRAY_SIZE, dtype=jp.float32).reshape((ARRAY_SIZE // 2, 2))  # wp.vec2
         s = 3.0
         result1, result2 = f(a, b, s)
 
-    expected1 = 3 * np.arange(10, dtype=np.float32)
-    expected2 = 3 * np.arange(10, dtype=np.float32).reshape((5, 2))
+    wp.synchronize_device(device)
+
+    expected1 = 3 * np.arange(ARRAY_SIZE, dtype=np.float32)
+    expected2 = 3 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2))
 
     assert_np_equal(result1, expected1)
     assert_np_equal(result2, expected2)
@@ -737,12 +790,14 @@ def test_ffi_jax_callable_in_out(test, device):
     f = jax.jit(jax_func)
 
     with jax.default_device(wp.device_to_jax(device)):
-        a = jp.ones(10, dtype=jp.float32)
-        b = jp.arange(10, dtype=jp.float32)
+        a = jp.ones(ARRAY_SIZE, dtype=jp.float32)
+        b = jp.arange(ARRAY_SIZE, dtype=jp.float32)
         b, c = f(a, b)
 
-    assert_np_equal(b, np.arange(1, 11, dtype=np.float32))
-    assert_np_equal(c, np.full(10, 2, dtype=np.float32))
+    wp.synchronize_device(device)
+
+    assert_np_equal(b, np.arange(1, ARRAY_SIZE + 1, dtype=np.float32))
+    assert_np_equal(c, np.full(ARRAY_SIZE, 2, dtype=np.float32))
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -853,21 +908,10 @@ def test_ffi_jax_callable_pmap_mul_forward(test, device):
 
     from warp.jax_experimental.ffi import jax_callable
 
-    if jax.local_device_count() < 2:
-        test.skipTest("requires >= 2 local devices")
+    j = jax_callable(double_func, num_outputs=1)
 
-    @wp.kernel
-    def mul2(a: wp.array(dtype=float), out: wp.array(dtype=float)):
-        tid = wp.tid()
-        out[tid] = 2.0 * a[tid]
-
-    def mul2_py(a: wp.array(dtype=float), out: wp.array(dtype=float)):
-        wp.launch(mul2, dim=a.shape, inputs=[a], outputs=[out])
-
-    j = jax_callable(mul2_py, num_outputs=1)
-
-    per_device = 8
     ndev = jax.local_device_count()
+    per_device = max(ARRAY_SIZE // ndev, 64)
     x = jp.arange(ndev * per_device, dtype=jp.float32).reshape((ndev, per_device))
 
     def per_device_fwd(v):
@@ -875,7 +919,10 @@ def test_ffi_jax_callable_pmap_mul_forward(test, device):
         return y
 
     y = jax.pmap(per_device_fwd)(x)
-    test.assertTrue(np.allclose(np.asarray(y), 2.0 * np.asarray(x), rtol=1e-5, atol=1e-6))
+
+    wp.synchronize()
+
+    assert_np_equal(np.asarray(y), 2 * np.asarray(x))
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -885,17 +932,6 @@ def test_ffi_jax_callable_pmap_multi_output_forward(test, device):
 
     from warp.jax_experimental.ffi import jax_callable
 
-    if jax.local_device_count() < 2:
-        test.skipTest("requires >= 2 local devices")
-
-    @wp.kernel
-    def multi_out(
-        a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, c: wp.array(dtype=float), d: wp.array(dtype=float)
-    ):
-        tid = wp.tid()
-        c[tid] = a[tid] + b[tid]
-        d[tid] = s * a[tid]
-
     def multi_out_py(
         a: wp.array(dtype=float),
         b: wp.array(dtype=float),
@@ -903,12 +939,12 @@ def test_ffi_jax_callable_pmap_multi_output_forward(test, device):
         c: wp.array(dtype=float),
         d: wp.array(dtype=float),
     ):
-        wp.launch(multi_out, dim=a.shape, inputs=[a, b, s], outputs=[c, d])
+        wp.launch(multi_out_kernel, dim=a.shape, inputs=[a, b, s], outputs=[c, d])
 
     j = jax_callable(multi_out_py, num_outputs=2)
 
-    per_device = 7
     ndev = jax.local_device_count()
+    per_device = max(ARRAY_SIZE // ndev, 64)
     a = jp.arange(ndev * per_device, dtype=jp.float32).reshape((ndev, per_device))
     b = jp.ones((ndev, per_device), dtype=jp.float32)
     s = 3.0
@@ -919,10 +955,12 @@ def test_ffi_jax_callable_pmap_multi_output_forward(test, device):
 
     out = jax.pmap(per_device_fwd)(a, b)
 
+    wp.synchronize()
+
     a_np = np.arange(ndev * per_device, dtype=np.float32).reshape((ndev, per_device))
     b_np = np.ones((ndev, per_device), dtype=np.float32)
     ref = (a_np + b_np) + s * a_np
-    test.assertTrue(np.allclose(np.asarray(out), ref, rtol=1e-5, atol=1e-6))
+    assert_np_equal(np.asarray(out), ref)
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -931,19 +969,6 @@ def test_ffi_jax_callable_pmap_multi_stage_forward(test, device):
     import jax.numpy as jp
 
     from warp.jax_experimental.ffi import jax_callable
-
-    if jax.local_device_count() < 2:
-        test.skipTest("requires >= 2 local devices")
-
-    @wp.kernel
-    def add_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), out: wp.array(dtype=float)):
-        tid = wp.tid()
-        out[tid] = a[tid] + b[tid]
-
-    @wp.kernel
-    def axpy_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float), alpha: float, out: wp.array(dtype=float)):
-        tid = wp.tid()
-        out[tid] = alpha * x[tid] + y[tid]
 
     def multi_stage_py(
         a: wp.array(dtype=float),
@@ -957,8 +982,8 @@ def test_ffi_jax_callable_pmap_multi_stage_forward(test, device):
 
     j = jax_callable(multi_stage_py, num_outputs=2)
 
-    per_device = 9
     ndev = jax.local_device_count()
+    per_device = max(ARRAY_SIZE // ndev, 64)
     a = jp.arange(ndev * per_device, dtype=jp.float32).reshape((ndev, per_device))
     b = jp.ones((ndev, per_device), dtype=jp.float32)
     alpha = 2.5
@@ -969,12 +994,14 @@ def test_ffi_jax_callable_pmap_multi_stage_forward(test, device):
 
     combined = jax.pmap(per_device_fwd)(a, b)
 
+    wp.synchronize()
+
     a_np = np.arange(ndev * per_device, dtype=np.float32).reshape((ndev, per_device))
     b_np = np.ones((ndev, per_device), dtype=np.float32)
     tmp_ref = a_np + b_np
     out_ref = alpha * (a_np + b_np) + b_np
     ref = tmp_ref + out_ref
-    test.assertTrue(np.allclose(np.asarray(combined), ref, rtol=1e-5, atol=1e-6))
+    assert_np_equal(np.asarray(combined), ref)
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -1011,7 +1038,7 @@ def test_ffi_callback(test, device):
     # register callback
     register_ffi_callback("warp_func", warp_func)
 
-    n = 10
+    n = ARRAY_SIZE
 
     with jax.default_device(wp.device_to_jax(device)):
         # inputs
@@ -1029,8 +1056,10 @@ def test_ffi_callback(test, device):
         # call it
         c, d = call(a, b, scale=s)
 
-    assert_np_equal(c, 2 * np.arange(10, dtype=np.float32))
-    assert_np_equal(d, 2 * np.arange(10, dtype=np.float32).reshape((5, 2)))
+    wp.synchronize_device(device)
+
+    assert_np_equal(c, 2 * np.arange(ARRAY_SIZE, dtype=np.float32))
+    assert_np_equal(d, 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2)))
 
 
 class TestJax(unittest.TestCase):
@@ -1085,125 +1114,127 @@ try:
             # only ffi supported
             ffi_opts = [True]
 
-        # for use_ffi in ffi_opts:
-        #     suffix = "ffi" if use_ffi else "cc"
-        #     add_function_test(
-        #         TestJax,
-        #         f"test_jax_kernel_basic_{suffix}",
-        #         test_jax_kernel_basic,
-        #         devices=jax_compatible_cuda_devices,
-        #         use_ffi=use_ffi,
-        #     )
-        #     add_function_test(
-        #         TestJax,
-        #         f"test_jax_kernel_scalar_{suffix}",
-        #         test_jax_kernel_scalar,
-        #         devices=jax_compatible_cuda_devices,
-        #         use_ffi=use_ffi,
-        #     )
-        #     add_function_test(
-        #         TestJax,
-        #         f"test_jax_kernel_vecmat_{suffix}",
-        #         test_jax_kernel_vecmat,
-        #         devices=jax_compatible_cuda_devices,
-        #         use_ffi=use_ffi,
-        #     )
-        #     add_function_test(
-        #         TestJax,
-        #         f"test_jax_kernel_multiarg_{suffix}",
-        #         test_jax_kernel_multiarg,
-        #         devices=jax_compatible_cuda_devices,
-        #         use_ffi=use_ffi,
-        #     )
-        #     add_function_test(
-        #         TestJax,
-        #         f"test_jax_kernel_launch_dims_{suffix}",
-        #         test_jax_kernel_launch_dims,
-        #         devices=jax_compatible_cuda_devices,
-        #         use_ffi=use_ffi,
-        #     )
+        for use_ffi in ffi_opts:
+            suffix = "ffi" if use_ffi else "cc"
+            add_function_test(
+                TestJax,
+                f"test_jax_kernel_basic_{suffix}",
+                test_jax_kernel_basic,
+                devices=jax_compatible_cuda_devices,
+                use_ffi=use_ffi,
+            )
+            add_function_test(
+                TestJax,
+                f"test_jax_kernel_scalar_{suffix}",
+                test_jax_kernel_scalar,
+                devices=jax_compatible_cuda_devices,
+                use_ffi=use_ffi,
+            )
+            add_function_test(
+                TestJax,
+                f"test_jax_kernel_vecmat_{suffix}",
+                test_jax_kernel_vecmat,
+                devices=jax_compatible_cuda_devices,
+                use_ffi=use_ffi,
+            )
+            add_function_test(
+                TestJax,
+                f"test_jax_kernel_multiarg_{suffix}",
+                test_jax_kernel_multiarg,
+                devices=jax_compatible_cuda_devices,
+                use_ffi=use_ffi,
+            )
+            add_function_test(
+                TestJax,
+                f"test_jax_kernel_launch_dims_{suffix}",
+                test_jax_kernel_launch_dims,
+                devices=jax_compatible_cuda_devices,
+                use_ffi=use_ffi,
+            )
 
-        # # ffi.jax_kernel() tests
-        # add_function_test(
-        #     TestJax, "test_ffi_jax_kernel_add", test_ffi_jax_kernel_add, devices=jax_compatible_cuda_devices
-        # )
-        # add_function_test(
-        #     TestJax, "test_ffi_jax_kernel_sincos", test_ffi_jax_kernel_sincos, devices=jax_compatible_cuda_devices
-        # )
-        # add_function_test(
-        #     TestJax, "test_ffi_jax_kernel_diagonal", test_ffi_jax_kernel_diagonal, devices=jax_compatible_cuda_devices
-        # )
-        # add_function_test(
-        #     TestJax, "test_ffi_jax_kernel_in_out", test_ffi_jax_kernel_in_out, devices=jax_compatible_cuda_devices
-        # )
-        # add_function_test(
-        #     TestJax,
-        #     "test_ffi_jax_kernel_scale_vec_constant",
-        #     test_ffi_jax_kernel_scale_vec_constant,
-        #     devices=jax_compatible_cuda_devices,
-        # )
-        # add_function_test(
-        #     TestJax,
-        #     "test_ffi_jax_kernel_scale_vec_static",
-        #     test_ffi_jax_kernel_scale_vec_static,
-        #     devices=jax_compatible_cuda_devices,
-        # )
-        # add_function_test(
-        #     TestJax,
-        #     "test_ffi_jax_kernel_launch_dims_default",
-        #     test_ffi_jax_kernel_launch_dims_default,
-        #     devices=jax_compatible_cuda_devices,
-        # )
-        # add_function_test(
-        #     TestJax,
-        #     "test_ffi_jax_kernel_launch_dims_custom",
-        #     test_ffi_jax_kernel_launch_dims_custom,
-        #     devices=jax_compatible_cuda_devices,
-        # )
+        # ffi.jax_kernel() tests
+        add_function_test(
+            TestJax, "test_ffi_jax_kernel_add", test_ffi_jax_kernel_add, devices=jax_compatible_cuda_devices
+        )
+        add_function_test(
+            TestJax, "test_ffi_jax_kernel_sincos", test_ffi_jax_kernel_sincos, devices=jax_compatible_cuda_devices
+        )
+        add_function_test(
+            TestJax, "test_ffi_jax_kernel_diagonal", test_ffi_jax_kernel_diagonal, devices=jax_compatible_cuda_devices
+        )
+        add_function_test(
+            TestJax, "test_ffi_jax_kernel_in_out", test_ffi_jax_kernel_in_out, devices=jax_compatible_cuda_devices
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_kernel_scale_vec_constant",
+            test_ffi_jax_kernel_scale_vec_constant,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_kernel_scale_vec_static",
+            test_ffi_jax_kernel_scale_vec_static,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_kernel_launch_dims_default",
+            test_ffi_jax_kernel_launch_dims_default,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_kernel_launch_dims_custom",
+            test_ffi_jax_kernel_launch_dims_custom,
+            devices=jax_compatible_cuda_devices,
+        )
 
-        # # ffi.jax_callable() tests
-        # add_function_test(
-        #     TestJax,
-        #     "test_ffi_jax_callable_scale_constant",
-        #     test_ffi_jax_callable_scale_constant,
-        #     devices=jax_compatible_cuda_devices,
-        # )
-        # add_function_test(
-        #     TestJax,
-        #     "test_ffi_jax_callable_scale_static",
-        #     test_ffi_jax_callable_scale_static,
-        #     devices=jax_compatible_cuda_devices,
-        # )
-        # add_function_test(
-        #     TestJax, "test_ffi_jax_callable_in_out", test_ffi_jax_callable_in_out, devices=jax_compatible_cuda_devices
-        # )
-        # add_function_test(
-        #     TestJax,
-        #     "test_ffi_jax_callable_graph_cache",
-        #     test_ffi_jax_callable_graph_cache,
-        #     devices=jax_compatible_cuda_devices,
-        # )
-        # add_function_test(
-        #     TestJax,
-        #     "test_ffi_jax_callable_pmap_multi_output_forward",
-        #     test_ffi_jax_callable_pmap_multi_output_forward,
-        #     devices=jax_compatible_cuda_devices,
-        # )
-        # add_function_test(
-        #     TestJax,
-        #     "test_ffi_jax_callable_pmap_mul_forward",
-        #     test_ffi_jax_callable_pmap_mul_forward,
-        #     devices=jax_compatible_cuda_devices,
-        # )
-        # add_function_test(
-        #     TestJax,
-        #     "test_ffi_jax_callable_pmap_multi_stage_forward",
-        #     test_ffi_jax_callable_pmap_multi_stage_forward,
-        #     devices=jax_compatible_cuda_devices,
-        # )
+        # ffi.jax_callable() tests
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_callable_scale_constant",
+            test_ffi_jax_callable_scale_constant,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_callable_scale_static",
+            test_ffi_jax_callable_scale_static,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax, "test_ffi_jax_callable_in_out", test_ffi_jax_callable_in_out, devices=jax_compatible_cuda_devices
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_callable_graph_cache",
+            test_ffi_jax_callable_graph_cache,
+            devices=jax_compatible_cuda_devices,
+        )
 
-        # # ffi callback tests
-        # add_function_test(TestJax, "test_ffi_callback", test_ffi_callback, devices=jax_compatible_cuda_devices)
+        # pmap tests
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_callable_pmap_multi_output_forward",
+            test_ffi_jax_callable_pmap_multi_output_forward,
+            devices=None,
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_callable_pmap_mul_forward",
+            test_ffi_jax_callable_pmap_mul_forward,
+            devices=None,
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_callable_pmap_multi_stage_forward",
+            test_ffi_jax_callable_pmap_multi_stage_forward,
+            devices=None,
+        )
+
+        # ffi callback tests
+        add_function_test(TestJax, "test_ffi_callback", test_ffi_callback, devices=jax_compatible_cuda_devices)
 
 
 except Exception as e:
