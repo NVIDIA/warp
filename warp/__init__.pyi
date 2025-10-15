@@ -2520,6 +2520,19 @@ def tile_ones(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, Tup
     ...
 
 @over
+def tile_full(shape: Tuple[int, ...], value: Any, dtype: Any, storage: str) -> Tile[Any, Tuple[int, ...]]:
+    """Allocate a tile filled with the specified value.
+
+    :param shape: Shape of the output tile
+    :param value: Value to fill the tile with
+    :param dtype: Data type of output tile's elements
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile filled with the specified value
+    """
+    ...
+
+@over
 def tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar, Tuple[int]]:
     """Generate a tile of linearly spaced elements.
 

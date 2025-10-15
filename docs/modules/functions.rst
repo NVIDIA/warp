@@ -1814,6 +1814,23 @@ Tile Primitives
     :returns: A one-initialized tile with shape and data type as specified
 
 
+.. py:function:: tile_full(shape: Tuple[int, ...], value: Any, dtype: Any, storage: str) -> Tile[Any,Tuple[int, ...]]
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+
+    Allocate a tile filled with the specified value.
+
+    :param shape: Shape of the output tile
+    :param value: Value to fill the tile with
+    :param dtype: Data type of output tile's elements
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile filled with the specified value
+
+
 .. py:function:: tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar,Tuple[int]]
 
     .. hlist::
