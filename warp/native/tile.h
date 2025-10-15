@@ -739,16 +739,16 @@ inline CUDA_CALLABLE int tile_align(int num_bytes)
 // We store a pointer to the current allocation storage either in a reserved register
 // (AArch64) or a static variable (x86-64).
 #if !defined(__CUDA_ARCH__)
-class shared_tile_storage_t;
+class tile_shared_storage_t;
 #if defined(__aarch64__)
 // x28 is is the last callee-saved register on AArch64. This allows us to call externally
 // compiled functions without worrying about clobbering the pointer.
 // We pass -target-feature +reserve-x28 to Clang to exclude it from register allocation.
-register shared_tile_storage_t* shared_tile_storage asm("x28");
+register tile_shared_storage_t* shared_tile_storage asm("x28");
 #else
 // Ideally this would be thread_local, but LLVM's JIT doesn't support TLS yet
 // There is also no support for something like -ffixed-r15 either
-static shared_tile_storage_t* shared_tile_storage;
+static tile_shared_storage_t* shared_tile_storage;
 #endif
 #endif
 #endif
@@ -757,13 +757,13 @@ static shared_tile_storage_t* shared_tile_storage;
 // On the GPU this maps to dynamic shared memory, while on the CPU we allocate
 // a fixed size block of memory on the stack and manage allocations from it.
 // An instance of this class gets created at the start of a kernel.
-class shared_tile_storage_t
+class tile_shared_storage_t
 {
 private:
 #if !defined(__CUDA_ARCH__)
 #define WP_MAX_CPU_SHARED 256*1024
 #if defined(WP_ENABLE_TILES_IN_STACK_MEMORY)
-    shared_tile_storage_t* old_value;
+    tile_shared_storage_t* old_value;
     unsigned int smem_base[WP_TILE_BLOCK_DIM];
     char dynamic_smem_base[WP_MAX_CPU_SHARED];  // on CPU allocate a fixed 256k block to use for shared allocs
 #endif
@@ -800,7 +800,7 @@ private:
 
 public:
     // cppcheck-suppress uninitMemberVar
-    inline CUDA_CALLABLE shared_tile_storage_t()
+    inline CUDA_CALLABLE tile_shared_storage_t()
     {
 #if !defined(__CUDA_ARCH__) && defined(WP_ENABLE_TILES_IN_STACK_MEMORY)
         // On the CPU save a pointer to this instance in a reserved register
@@ -812,7 +812,7 @@ public:
         init();
     }
 
-    inline CUDA_CALLABLE ~shared_tile_storage_t()
+    inline CUDA_CALLABLE ~tile_shared_storage_t()
     {
         check();
 
@@ -1019,10 +1019,10 @@ struct tile_shared_t
         {
             // update our per-thread shared memory allocator
             if (data.ptr)
-                shared_tile_storage_t::alloc(-Layout::Size*int(sizeof(T)));
+                tile_shared_storage_t::alloc(-Layout::Size*int(sizeof(T)));
 
             if (grad.ptr)
-                shared_tile_storage_t::alloc(-Layout::Size*int(sizeof(T)));
+                tile_shared_storage_t::alloc(-Layout::Size*int(sizeof(T)));
         }
     }
 
@@ -1814,7 +1814,7 @@ template <typename T, typename Shape, typename Strides, bool RequiresGrad>
 inline CUDA_CALLABLE auto tile_alloc_empty()
 {
     constexpr int size = Shape::size();
-    T* data = (T*)shared_tile_storage_t::alloc(size*sizeof(T));
+    T* data = (T*)tile_shared_storage_t::alloc(size*sizeof(T));
     T* grad = nullptr;
 
 #if FP_CHECK
@@ -1833,7 +1833,7 @@ inline CUDA_CALLABLE auto tile_alloc_empty()
 
     if (RequiresGrad)
     {
-        grad = (T*)shared_tile_storage_t::alloc(size*sizeof(T));
+        grad = (T*)tile_shared_storage_t::alloc(size*sizeof(T));
 
         for (int i=WP_TILE_THREAD_IDX; i < size; i+= WP_TILE_BLOCK_DIM)
             grad[i] = T(0);
@@ -3314,7 +3314,7 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
 #define tile_fft(function_name, dtype, shared_memory_size, batch_size, ept, Xinout) \
     do { \
         void function_name(dtype*, char*); \
-        char* buffer = (char*)wp::shared_tile_storage_t::alloc(shared_memory_size); \
+        char* buffer = (char*)wp::tile_shared_storage_t::alloc(shared_memory_size); \
         __align__(16) dtype data[ept]; \
         for(int b = 0; b < (int)batch_size; b++) { \
             dtype* inout = Xinout.data + (int)b * (int)ept; \
@@ -3323,7 +3323,7 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
             memcpy(inout, data, sizeof(dtype) * ept); \
             WP_TILE_SYNC(); \
         } \
-        wp::shared_tile_storage_t::alloc(-shared_memory_size); \
+        wp::tile_shared_storage_t::alloc(-shared_memory_size); \
     } while (0)
 
 #define tile_ifft tile_fft
