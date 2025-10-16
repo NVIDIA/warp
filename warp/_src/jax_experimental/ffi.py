@@ -343,14 +343,9 @@ class FfiKernel:
                 for i, input_arg in enumerate(self.input_args):
                     if input_arg.is_array:
                         buffer = inputs[i].contents
-                        # exclude leading batch dims and trailing dtype dims; pass only warp dims to kernel
-                        rank = buffer.rank
-                        warp_ndim = input_arg.type.ndim
-                        dtype_ndim = input_arg.dtype_ndim
-                        batch_ndim = max(0, rank - dtype_ndim - warp_ndim)
-                        shape = buffer.dims[batch_ndim : batch_ndim + warp_ndim]
+                        shape = buffer.dims[: input_arg.type.ndim]
                         strides = strides_from_shape(shape, input_arg.type.dtype)
-                        arg = array_t(buffer.data, 0, warp_ndim, shape, strides)
+                        arg = array_t(buffer.data, 0, input_arg.type.ndim, shape, strides)
                         kernel_params[i + 1] = ctypes.addressof(arg)
                         arg_refs.append(arg)  # keep a reference
                     else:
@@ -363,14 +358,9 @@ class FfiKernel:
                 # pure output args (skip in-out FFI buffers)
                 for i, output_arg in enumerate(self.output_args):
                     buffer = outputs[i + self.num_in_out].contents
-                    # exclude leading batch dims and trailing dtype dims; pass only warp dims to kernel
-                    rank = buffer.rank
-                    warp_ndim = output_arg.type.ndim
-                    dtype_ndim = output_arg.dtype_ndim
-                    batch_ndim = max(0, rank - dtype_ndim - warp_ndim)
-                    shape = buffer.dims[batch_ndim : batch_ndim + warp_ndim]
+                    shape = buffer.dims[: output_arg.type.ndim]
                     strides = strides_from_shape(shape, output_arg.type.dtype)
-                    arg = array_t(buffer.data, 0, warp_ndim, shape, strides)
+                    arg = array_t(buffer.data, 0, output_arg.type.ndim, shape, strides)
                     kernel_params[num_inputs + i + 1] = ctypes.addressof(arg)
                     arg_refs.append(arg)  # keep a reference
 
@@ -760,8 +750,7 @@ def jax_kernel(
     output_dims=None,
     in_out_argnames=None,
     module_preload_mode=ModulePreloadMode.CURRENT_DEVICE,
-    differentiable: bool = False,
-    static_argnames=None,
+    enable_backward: bool = False,
 ):
     """Create a JAX callback from a Warp kernel.
 
@@ -782,8 +771,9 @@ def jax_kernel(
         in_out_argnames: Names of arguments that are both inputs and outputs (aliased buffers).
             These must be array arguments that appear before any pure output arguments in the
             kernel signature. The number of in-out arguments is included in ``num_outputs``.
-            Not supported when ``differentiable=True``.
+            Not supported when ``enable_backward=True``.
         module_preload_mode: Specify the devices where the module should be preloaded.
+        enable_backward: Enable automatic differentiation for this kernel.
 
     Limitations:
         - All kernel arguments must be contiguous arrays or scalars.
@@ -795,7 +785,7 @@ def jax_kernel(
 
     check_jax_version()
 
-    if not differentiable:
+    if not enable_backward:
         key = (
             kernel.func,
             kernel.sig,
@@ -815,9 +805,16 @@ def jax_kernel(
 
         return _FFI_KERNEL_REGISTRY[key]
 
+    # make sure the arguments are compatible with autodiff
     if in_out_argnames:
         raise NotImplementedError(
-            "jax_kernel(..., differentiable=True) does not support input-output arguments (in_out_argnames) yet."
+            "jax_kernel(): Input-output arguments (in_out_argnames) are not supported when enable_backward=True."
+        )
+
+    # TODO: we should support passing these to the forward and backward callables
+    if launch_dims is not None or output_dims is not None:
+        raise NotImplementedError(
+            "jax_kernel(): Custom dimensions (launch_dims, output_dims) are not supported when enable_backward=True."
         )
 
     # Differentiable path: build a custom VJP wrapper inline.
@@ -828,67 +825,49 @@ def jax_kernel(
     parameter_count = len(parameters)
     num_inputs = parameter_count - num_outputs
 
-    # Determine static argument indices
-    static_args: list[int] = []
-    if static_argnames is not None:
-        name_set = set(static_argnames)
-        for i, p in enumerate(parameters[:num_inputs]):
-            if p.name in name_set:
+    # determine static argument indices
+    static_args = []
+    for i, p in enumerate(parameters[:num_inputs]):
+        param_type = p.annotation
+        if not isinstance(param_type, wp.array):
+            if param_type in wp._src.types.value_types:
                 static_args.append(i)
-
-    static_args = sorted(set(static_args))
-
-    # Infer Warp launch dimensions from runtime args and type annotations:
-    # - If the first argument has a 'shape' attribute, use it directly (fast path).
-    # - Otherwise, find the first input annotated as a wp.array and derive dims from its
-    #   runtime JAX shape and the annotation:
-    #   * For vector/matrix arrays (dtype has inner payload dimensions), drop the trailing
-    #     dtype dims and take the last 'warp_ndim' dims immediately before them.
-    #   * For scalar arrays, take the last 'warp_ndim' dims.
-    # - Leading batch axes (e.g., from vmap) are naturally ignored since we slice dims
-    #   relative to the dtype payload at the end of the shape.
-    def _resolve_launch_dims(call_args):
-        s = getattr(call_args[0], "shape", None)
-        if s is not None:
-            return s
-        param_ann = {p.name: p.annotation for p in parameters[:num_inputs]}
-        for i in range(num_inputs):
-            ann = param_ann.get(parameters[i].name)
-            if ann is None or not isinstance(ann, wp.array):
-                continue
-            val = call_args[i]
-            vshape = getattr(val, "shape", None)
-            if vshape is None:
-                continue
-            vshape = tuple(vshape)
-            dtype_ndim = 0
-            if hasattr(ann, "dtype") and hasattr(ann.dtype, "_wp_scalar_type_"):
-                dtype_ndim = len(ann.dtype._shape_)
-            warp_ndim = getattr(ann, "ndim", 0)
-            if warp_ndim == 0:
-                continue
-            if dtype_ndim > 0:
-                core_end = max(0, len(vshape) - dtype_ndim)
-                core_begin = max(0, core_end - warp_ndim)
-                return vshape[core_begin:core_end]
             else:
-                return vshape[-warp_ndim:]
-        raise RuntimeError("Unable to determine launch dimensions")
+                raise TypeError(f"Invalid type for argument '{p.name}', expected array or scalar, got {type}")
+
+    def _resolve_launch_dims(call_args):
+        # determine launch dimensions from the shape of the first input array
+        for i, p in enumerate(parameters[:num_inputs]):
+            param_type = p.annotation
+            if isinstance(param_type, wp.array):
+                arg = call_args[i]
+                arg_shape = tuple(arg.shape)
+                if hasattr(param_type.dtype, "_wp_scalar_type_"):
+                    # vector/matrix array, trim trailing dimensions of JAX input array
+                    return arg_shape[: param_type.ndim]
+                else:
+                    # scalar array
+                    return arg_shape
+        raise RuntimeError("Unable to determine launch dimensions, at least one input array is required")
 
     # Forward kernel wrapper: simply launches the kernel
     def fwd_kernel_wrapper(*args):
         wp.launch(kernel, dim=_resolve_launch_dims(args), inputs=args[:num_inputs], outputs=args[num_inputs:])
 
+    # update forward signature and annotations so jax_callable() sees a fully annotated function
     fwd_kernel_wrapper.__signature__ = signature
-    # populate annotations so jax_callable sees a fully annotated function
     fwd_kernel_wrapper.__annotations__ = {p.name: p.annotation for p in parameters}
     fwd_kernel_wrapper.__annotations__["return"] = None
 
     jax_fwd_kernel = jax_callable(fwd_kernel_wrapper, num_outputs=num_outputs, vmap_method=vmap_method)
 
+    # backward arguments only include static args once
+    bwd_arg_count = 2 * parameter_count - len(static_args)
+
     # Backward wrapper: launches adjoint with provided output gradients
     def bwd_kernel_wrapper(*args):
-        assert len(args) == 2 * parameter_count - len(static_args)
+        if len(args) != bwd_arg_count:
+            raise RuntimeError(f"Invalid backward argument count, expected {bwd_arg_count} but got {len(args)}")
 
         inputs = list(args[:num_inputs])
         outputs = list(args[num_inputs:parameter_count])
@@ -906,7 +885,8 @@ def jax_kernel(
                     wp.utils.warn(f"Failed to zero gradient array: {e}", stacklevel=2)
                     raise e
 
-        # Note: we cannot use a passed launch_dims here, the backward rule doesn't receive it (and it could be wrong under pmap/vmap) and we need to infer from inputs.
+        # NOTE: We cannot use a passed launch_dims here, the backward rule doesn't receive it (and it could be wrong under pmap/vmap).
+        # We need to infer from the inputs.
         wp.launch(
             kernel,
             dim=_resolve_launch_dims(inputs),
@@ -922,7 +902,7 @@ def jax_kernel(
     bwd_output_params = parameters[num_inputs:parameter_count]
     bwd_grad_output_params = [
         inspect.Parameter(
-            p.name + "__vjp",
+            f"adj_{p.name}",
             inspect.Parameter.POSITIONAL_OR_KEYWORD,
             default=p.default,
             annotation=p.annotation,
@@ -932,7 +912,7 @@ def jax_kernel(
 
     bwd_grad_input_params = [
         inspect.Parameter(
-            p.name + "__vjp",
+            f"adj_{p.name}",
             inspect.Parameter.POSITIONAL_OR_KEYWORD,
             default=p.default,
             annotation=p.annotation,
@@ -942,9 +922,9 @@ def jax_kernel(
     for i in reversed(static_args):
         del bwd_grad_input_params[i]
 
+    # update backward signature and annotations so jax_callable() sees a fully annotated function
     bwd_signature = bwd_input_params + bwd_output_params + bwd_grad_output_params + bwd_grad_input_params
     bwd_kernel_wrapper.__signature__ = inspect.Signature(bwd_signature)
-    # populate annotations for backward wrapper to cover all parameters
     bwd_annotations = {}
     for p in bwd_input_params:
         bwd_annotations[p.name] = p.annotation
@@ -1023,7 +1003,7 @@ def jax_kernel(
                 warp_dims = vshape[max(0, core_rank - warp_ndim) : core_rank]
             else:
                 warp_dims = vshape[-warp_ndim:]
-            out_dims_map[f"{name}__vjp"] = tuple(warp_dims)
+            out_dims_map[f"adj_{name}"] = tuple(warp_dims)
 
         non_static_input_grads = jax_bwd_kernel(*bwd_call_args, output_dims=out_dims_map)
         return tuple(non_static_input_grads)

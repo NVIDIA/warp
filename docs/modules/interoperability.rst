@@ -956,19 +956,16 @@ and it can also be passed to each call::
         ...
 
 
-Automatic Differentiation (AD) for Warp kernels in JAX
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+JAX Automatic Differentiation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Warp kernels can be given JAX gradients using a convenience wrapper that wires a custom VJP around a kernel and its adjoint.
+Warp kernels can be given JAX gradients using a convenience wrapper that wires a custom VJP around a kernel and its adjoint. To enable autodiff, pass the ``enable_backward=True`` argument to :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>`.
 
-.. note::
-   The ``jax_ad_kernel`` wrapper has been unified into ``jax_kernel``. Use ``jax_kernel(..., differentiable=True)`` for AD. Scalar/static arguments must be provided explicitly via ``static_argnames``.
+Basic example (one output)::
 
-Basic example (one output, static scalar argument)::
-
+    from functools import partial
     import jax
     import jax.numpy as jnp
-
     import warp as wp
     from warp.jax_experimental.ffi import jax_kernel
 
@@ -982,10 +979,10 @@ Basic example (one output, static scalar argument)::
         tid = wp.tid()
         out[tid] = (a[tid] * s + b[tid]) ** 2.0
 
-    # s is a scalar and must be static in JAX; mark it explicitly
-    jax_scale = jax_kernel(scale_sum_square, num_outputs=1, differentiable=True, static_argnames=("s",))
+    jax_scale = jax_kernel(scale_sum_square, num_outputs=1, enable_backward=True)
 
-    @jax.jit
+    # scalars must be static
+    @partial(jax.jit, static_argnames=["s"])
     def loss(a, b, s):
         (out,) = jax_scale(a, b, s)
         return jnp.sum(out)
@@ -997,9 +994,16 @@ Basic example (one output, static scalar argument)::
 
     # gradients w.r.t. array inputs
     da, db = jax.grad(loss, argnums=(0, 1))(a, b, s)
-    print(da, db)
+    print(da)
+    print(db)
+
 
 Multiple outputs::
+
+    import jax
+    import jax.numpy as jnp
+    import warp as wp
+    from warp.jax_experimental.ffi import jax_kernel
 
     @wp.kernel
     def multi_output(
@@ -1013,26 +1017,38 @@ Multiple outputs::
         c[tid] = a[tid] ** 2.0
         d[tid] = a[tid] * b[tid] * s
 
-    jax_multi = jax_kernel(multi_output, num_outputs=2, differentiable=True, static_argnames=("s",))
+    jax_multi = jax_kernel(multi_output, num_outputs=2, enable_backward=True)
 
     def caller(fn, a, b, s):
         c, d = fn(a, b, s)
         return jnp.sum(c + d)
 
+    n = 16
+    a = jnp.arange(n, dtype=jnp.float32)
+    b = jnp.ones(n, dtype=jnp.float32)
+    s = 2.0
+
     # differentiate a batched scalar objective over two inputs
     da, db = jax.grad(lambda a, b, s: caller(jax_multi, a, b, s), argnums=(0, 1))(a, b, s)
-    print(da, db)
+    print(da)
+    print(db)
 
 Vector and matrix arrays also work. Inner component dimensions are packed in the JAX array and handled automatically::
+
+    from functools import partial
+    import jax
+    import jax.numpy as jnp
+    import warp as wp
+    from warp.jax_experimental.ffi import jax_kernel
 
     @wp.kernel
     def scale_vec2(a: wp.array(dtype=wp.vec2), s: float, out: wp.array(dtype=wp.vec2)):
         tid = wp.tid()
         out[tid] = a[tid] * s
 
-    jax_vec = jax_kernel(scale_vec2, num_outputs=1, differentiable=True, static_argnames=("s",))
+    jax_vec = jax_kernel(scale_vec2, num_outputs=1, enable_backward=True)
 
-    @jax.jit
+    @partial(jax.jit, static_argnames=["s"])
     def vec_loss(a, s):
         (out,) = jax_vec(a, s)
         return jnp.sum(out)
@@ -1041,29 +1057,15 @@ Vector and matrix arrays also work. Inner component dimensions are packed in the
     (da2,) = jax.grad(vec_loss, argnums=(0,))(a2, 3.0)
     print(da2)
 
-Notes
-.....
+Limitations
+...........
 
-- Scalar inputs must be static in JAX. By default, :func:`jax_ad_kernel` auto-detects scalars, but you can
-  specify them explicitly via ``static_argnames``.
+The autodiff functionality is considered experimental and is still a work in progress.
+
+- Scalar inputs must be static arguments in JAX.
 - Gradients are returned for differentiable array inputs (static scalars are excluded from the gradient tuple).
-- CUDA backend is required.
-- Input-output (``in_out``) arguments are not supported when ``differentiable=True``.
-
-
-Launch dimensions with AD
-.........................
-
-When ``differentiable=True``, the wrapper infers launch dimensions from array inputs:
-
-- For scalar arrays, it uses the last ``ndim`` elements of the JAX array shape.
-- For vector/matrix arrays, it uses the core shape just before the inner dtype payload dimensions
-  (e.g., for a ``wp.vec3`` array with JAX shape ``(..., N, 3)`` it uses ``N``; for a ``wp.mat22`` array with
-  JAX shape ``(..., N, 2, 2)`` it uses ``N``).
-
-If no array input is available to infer launch dimensions, AD launches are not supported and a runtime error is raised.
-Annotate inputs with Warp array types (e.g., ``wp.array(dtype=float)`` or ``wp.array(dtype=wp.vec2)``) so shapes can be
-derived correctly.
+- Input-output arguments (``in_out_argnames``) are not supported when ``enable_backward=True``, because in-place modifications are not differentiable.
+- Custom launch and output dimensions (``launch_dims``, ``output_dims``) are not currently supported when ``enable_backward=True``, but the goal is to support them in the future. Launch dimensions are inferred from the shape of the first array argument, thus at least one input array is required.
 
 
 Calling Annotated Python Functions
