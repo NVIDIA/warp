@@ -36,6 +36,7 @@
 - Remove support for Intel-based macOS (x86_64). Apple Silicon-based Macs (ARM64) remain fully supported.
   Users attempting to run Warp on Intel Macs will receive a `RuntimeError` directing them to use Warp 1.9.x or earlier
   ([GH-1016](https://github.com/NVIDIA/warp/issues/1016))
+- Remove `wp.select()` (deprecated since 1.7). Use `wp.where(cond, value_if_true, value_if_false)` instead.
 
 ### Deprecated
 

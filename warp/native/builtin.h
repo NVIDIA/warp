@@ -1087,23 +1087,6 @@ DECLARE_ADJOINTS(float32)
 DECLARE_ADJOINTS(float64)
 
 template <typename C, typename T>
-CUDA_CALLABLE inline T select(const C& cond, const T& a, const T& b)
-{
-    // The double NOT operator !! casts to bool without compiler warnings.
-    return (!!cond) ? b : a;
-}
-
-template <typename C, typename TA, typename TB, typename TRet>
-CUDA_CALLABLE inline void adj_select(const C& cond, const TA& a, const TB& b, C& adj_cond, TA& adj_a, TB& adj_b, const TRet& adj_ret)
-{
-    // The double NOT operator !! casts to bool without compiler warnings.
-    if (!!cond)
-        adj_b += adj_ret;
-    else
-        adj_a += adj_ret;
-}
-
-template <typename C, typename T>
 CUDA_CALLABLE inline T where(const C& cond, const T& a, const T& b)
 {
     // The double NOT operator !! casts to bool without compiler warnings.
