@@ -149,10 +149,6 @@ struct mat_t
         data[3][3] = m33;
     }
 
-    // implemented in quat.h
-    inline CUDA_CALLABLE mat_t(const vec_t<3,Type>& pos, const quat_t<Type>& rot, const vec_t<3,Type>& scale);
-
-
     inline CUDA_CALLABLE mat_t(const initializer_array<Rows * Cols, Type> &l)
     {
         for (unsigned i=0; i < Rows; ++i)

@@ -623,10 +623,9 @@ def test_call_syntax():
     pos = wp.vec3(1.0, 2.0, 3.0)
     rot = wp.quat(0.0, 0.0, 0.0, 1.0)
     scale = wp.vec3(2.0, 3.0, 4.0)
-    wp.expect_eq(wp.matrix(pos, rot, scale, wp.float32), expected_matrix)
-    wp.expect_eq(wp.matrix(pos=pos, rot=rot, scale=scale, dtype=wp.float32), expected_matrix)
-    wp.expect_eq(wp.matrix(pos, rot, scale, dtype=wp.float32), expected_matrix)
-    wp.expect_eq(wp.matrix(rot=rot, pos=pos, dtype=wp.float32, scale=scale), expected_matrix)
+    wp.expect_eq(wp.transform_compose(pos, rot, scale), expected_matrix)
+    wp.expect_eq(wp.transform_compose(position=pos, rotation=rot, scale=scale), expected_matrix)
+    wp.expect_eq(wp.transform_compose(rotation=rot, position=pos, scale=scale), expected_matrix)
 
 
 # test shadowing builtin functions

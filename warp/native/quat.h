@@ -1621,58 +1621,6 @@ inline CUDA_CALLABLE void adj_quat_from_matrix(const mat_t<Rows,Cols,Type>& m, m
     adj_m.data[2][2] += dot(dq_dm22, adj_q);
 }
 
-template<typename Type>
-inline CUDA_CALLABLE void adj_mat_t(const vec_t<3,Type>& pos, const quat_t<Type>& rot, const vec_t<3,Type>& scale,
-                                          vec_t<3,Type>& adj_pos, quat_t<Type>& adj_rot, vec_t<3,Type>& adj_scale, const mat_t<4,4,Type>& adj_ret)
-{
-    mat_t<3,3,Type> R = quat_to_matrix(rot);
-    mat_t<3,3,Type> adj_R(0);
-
-    adj_pos[0] += adj_ret.data[0][3];
-    adj_pos[1] += adj_ret.data[1][3];
-    adj_pos[2] += adj_ret.data[2][3];
-
-    adj_mul(R.data[0][0], scale[0], adj_R.data[0][0], adj_scale[0], adj_ret.data[0][0]);
-    adj_mul(R.data[1][0], scale[0], adj_R.data[1][0], adj_scale[0], adj_ret.data[1][0]);
-    adj_mul(R.data[2][0], scale[0], adj_R.data[2][0], adj_scale[0], adj_ret.data[2][0]);
-
-    adj_mul(R.data[0][1], scale[1], adj_R.data[0][1], adj_scale[1], adj_ret.data[0][1]);
-    adj_mul(R.data[1][1], scale[1], adj_R.data[1][1], adj_scale[1], adj_ret.data[1][1]);
-    adj_mul(R.data[2][1], scale[1], adj_R.data[2][1], adj_scale[1], adj_ret.data[2][1]);
-
-    adj_mul(R.data[0][2], scale[2], adj_R.data[0][2], adj_scale[2], adj_ret.data[0][2]);
-    adj_mul(R.data[1][2], scale[2], adj_R.data[1][2], adj_scale[2], adj_ret.data[1][2]);
-    adj_mul(R.data[2][2], scale[2], adj_R.data[2][2], adj_scale[2], adj_ret.data[2][2]);
-
-    adj_quat_to_matrix(rot, adj_rot, adj_R);
-}
-
-template<unsigned Rows, unsigned Cols, typename Type>                
-inline CUDA_CALLABLE mat_t<Rows,Cols,Type>::mat_t(const vec_t<3,Type>& pos, const quat_t<Type>& rot, const vec_t<3,Type>& scale)
-{
-    mat_t<3,3,Type> R = quat_to_matrix(rot);
-
-    data[0][0] = R.data[0][0]*scale[0];
-    data[1][0] = R.data[1][0]*scale[0];
-    data[2][0] = R.data[2][0]*scale[0];
-    data[3][0] = Type(0);
-
-    data[0][1] = R.data[0][1]*scale[1];
-    data[1][1] = R.data[1][1]*scale[1];
-    data[2][1] = R.data[2][1]*scale[1];
-    data[3][1] = Type(0);
-
-    data[0][2] = R.data[0][2]*scale[2];
-    data[1][2] = R.data[1][2]*scale[2];
-    data[2][2] = R.data[2][2]*scale[2];
-    data[3][2] = Type(0);
-
-    data[0][3] = pos[0];
-    data[1][3] = pos[1];
-    data[2][3] = pos[2];
-    data[3][3] = Type(1);
-}
-
 template<typename Type=float32>
 inline CUDA_CALLABLE quat_t<Type> quat_identity()
 {

@@ -2182,8 +2182,10 @@ def matrix(pos: Vector[3, Float], rot: Quaternion[Float], scale: Vector[3, Float
     """Construct a 4x4 transformation matrix that applies the transformations as
     Translation(pos)*Rotation(rot)*Scaling(scale) when applied to column vectors, i.e.: y = (TRS)*x
 
-    .. warning::
-       This function has been deprecated in favor of :func:`warp.math.transform_compose()`.
+    .. versionremoved:: 1.10
+       This function has been removed in favor of :func:`warp.math.transform_compose()`.
+
+    .. deprecated:: 1.8
     """
     ...
 

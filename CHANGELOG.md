@@ -37,6 +37,8 @@
   Users attempting to run Warp on Intel Macs will receive a `RuntimeError` directing them to use Warp 1.9.x or earlier
   ([GH-1016](https://github.com/NVIDIA/warp/issues/1016))
 - Remove `wp.select()` (deprecated since 1.7). Use `wp.where(cond, value_if_true, value_if_false)` instead.
+- Remove the `wp.matrix(pos, quat, scale)` built-in function. Use `wp.transform_compose()` instead
+  ([GH-980](https://github.com/NVIDIA/warp/issues/980)).
 
 ### Deprecated
 
