@@ -2721,7 +2721,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_fft(inout: Tile[Vector[2,Float],Tuple[int, int]]) -> Tile[Vector[2,Float],Tuple[int, int]]
+.. py:function:: tile_fft(inout: Tile[Vector[2,Float],Tuple[int, int]]) -> None
 
     .. hlist::
        :columns: 8
@@ -2740,7 +2740,7 @@ Tile Primitives
     :param inout: The input/output tile
 
 
-.. py:function:: tile_ifft(inout: Tile[Vector[2,Float],Tuple[int, int]]) -> Tile[Vector[2,Float],Tuple[int, int]]
+.. py:function:: tile_ifft(inout: Tile[Vector[2,Float],Tuple[int, int]]) -> None
 
     .. hlist::
        :columns: 8
@@ -2782,7 +2782,29 @@ Tile Primitives
     :returns L: A square, lower triangular, matrix, such that LL^T = A
 
 
-.. py:function:: tile_cholesky_solve(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]) -> None
+.. py:function:: tile_cholesky_inplace(A: Tile[Float,Tuple[int, int]]) -> None
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+
+    Compute the Cholesky factorization L of a matrix A.
+    L is lower triangular and satisfies LL^T = A.
+
+    Only the lower triangular portion of A is processed, and replaced by the lower triangular Cholesky factor L;
+    the upper triangular part is untouched.
+
+    Note that computing the adjoint is not yet supported.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param A: A square, symmetric positive-definite, matrix. Only the lower triangular part of A is replaced by L, such that LL^T = A; the upper part is untouched.
+
+
+.. py:function:: tile_cholesky_solve(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]) -> Tile[Float,Tuple[int]]
 
     .. hlist::
        :columns: 8
@@ -2800,6 +2822,25 @@ Tile Primitives
     :param L: A square, lower triangular, matrix, such that LL^T = A
     :param y: A 1D or 2D tile of length M
     :returns x: A tile of the same shape as y such that LL^T x = y
+
+
+.. py:function:: tile_cholesky_solve_inplace(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]) -> None
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+
+    With L such that LL^T = A, solve for x in Ax = y by overwriting y with x
+
+    Note that computing the adjoint is not yet supported.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param L: A square, lower triangular, matrix, such that LL^T = A
+    :param y: A 1D or 2D tile of length M that gets overwritten by x where LL^T x = y
 
 
 .. py:function:: tile_lower_solve(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]) -> Tile[Float,Tuple[int]]
@@ -2824,6 +2865,27 @@ Tile Primitives
     :returns z: A tile of the same shape as y such that Lz = y
 
 
+.. py:function:: tile_lower_solve_inplace(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]) -> None
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+
+    Solve for z in Lz = y, where L is a lower triangular matrix by overwriting y with z.
+
+    This performs general forward substitution for a lower triangular system inplace.
+
+    Note that computing the adjoint is not yet supported.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param L: A square, non-singular, lower triangular matrix
+    :param y: A 1D or 2D tile with compatible shape that gets overwritten by z where Lz = y
+
+
 .. py:function:: tile_upper_solve(U: Tile[Float,Tuple[int, int]], z: Tile[Float,Tuple[int]]) -> Tile[Float,Tuple[int]]
 
     .. hlist::
@@ -2831,7 +2893,7 @@ Tile Primitives
 
        * Kernel
 
-    Solve for x in U x = z, where U is an upper triangular matrix.
+    Solve for x in Ux = z, where U is an upper triangular matrix.
 
     This performs general back substitution for upper triangular systems.
 
@@ -2844,6 +2906,27 @@ Tile Primitives
     :param U: A square, non-singular, upper triangular matrix
     :param z: A 1D or 2D tile with compatible shape
     :returns x: A tile of the same shape as z such that U x = z
+
+
+.. py:function:: tile_upper_solve_inplace(U: Tile[Float,Tuple[int, int]], z: Tile[Float,Tuple[int]]) -> None
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+
+    Solve for x in Ux = z, where U is an upper triangular matrix by overwriting z with x.
+
+    This performs general back substitution for upper triangular systems inplace.
+
+    Note that computing the adjoint is not yet supported.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param U: A square, non-singular, upper triangular matrix
+    :param z: A 1D or 2D tile with compatible shape that gets overwritten by x where Ux = z
 
 
 
