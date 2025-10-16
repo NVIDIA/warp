@@ -61,6 +61,11 @@
 - Fix copying and filling arrays with large strides ([GH-929](https://github.com/NVIDIA/warp/issues/929)).
 - Fix graph deletion during capture ([GH-992](https://github.com/NVIDIA/warp/issues/992)).
 - Fix return type annotations for `struct()` and `overload()` decorators ([GH-971](https://github.com/NVIDIA/warp/pull/971))
+- Fix segmentation faults on AArch64 CPUs caused by referencing static memory. The LLVM JIT generates ADRP instructions
+  to address memory up to 4 GiB from the program counter, but the section for static memory may be further apart than
+  that. Work around it by reserving stack memory on kernel entry, tracked through the x28 register which is prevented
+  from being used as a scratch register. `wp.config.enable_tiles_in_stack_memory` can be used to enable (default)
+  or disable this new method ([GH-957](https://github.com/NVIDIA/warp/issues/957)).
 
 ## [1.9.1] - 2025-10-01
 
