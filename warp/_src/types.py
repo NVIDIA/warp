@@ -1006,30 +1006,45 @@ class scalar_base:
         return int(self.value)
 
     def __add__(self, y):
+        if is_array(y):
+            return NotImplemented
+
         return warp.add(self, y)
 
     def __radd__(self, y):
         return warp.add(y, self)
 
     def __sub__(self, y):
+        if is_array(y):
+            return NotImplemented
+
         return warp.sub(self, y)
 
     def __rsub__(self, y):
         return warp.sub(y, self)
 
     def __mul__(self, y):
+        if is_array(y):
+            return NotImplemented
+
         return warp.mul(self, y)
 
     def __rmul__(self, x):
         return warp.mul(x, self)
 
     def __truediv__(self, y):
+        if is_array(y):
+            return NotImplemented
+
         return warp.div(self, y)
 
     def __rtruediv__(self, x):
         return warp.div(x, self)
 
     def __mod__(self, x):
+        if is_array(x):
+            return NotImplemented
+
         return warp.mod(self, x)
 
     def __rmod__(self, x):

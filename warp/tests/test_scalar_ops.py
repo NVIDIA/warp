@@ -71,19 +71,44 @@ def test_py_arithmetic_ops(test, device, dtype):
 def test_py_math_ops(test, device, dtype):
     wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
-    def make_scalar(value):
-        if wptype in wp._src.types.int_types:
-            # Cast to the correct integer type to simulate wrapping.
-            return wptype._type_(value).value
-
-        return value
-
     a = wptype(1)
     test.assertAlmostEqual(wp.abs(a), 1)
 
     if dtype in np_float_types:
         test.assertAlmostEqual(wp.sin(a), 0.84147098480789650488, places=3)
         test.assertAlmostEqual(wp.radians(a), 0.01745329251994329577, places=5)
+
+
+def test_py_array_ops(test, device, dtype):
+    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+
+    tol = {
+        np.float16: 5.0e-3,
+        np.float32: 1.0e-6,
+        np.float64: 1.0e-8,
+    }.get(dtype, 0)
+
+    def make_array(*args):
+        if wptype in wp._src.types.int_types:
+            # Cast to the correct integer type to simulate wrapping.
+            return np.array(tuple(wptype._type_(x).value for x in args), dtype=dtype)
+
+        return np.array(args, dtype=dtype)
+
+    arr = wp.array((1, 2, 3), dtype=wptype)
+    s = wptype(5)
+    assert_np_equal((arr + s).numpy(), make_array(6, 7, 8), tol=tol)
+    assert_np_equal((s + arr).numpy(), make_array(6, 7, 8), tol=tol)
+    assert_np_equal((arr - s).numpy(), make_array(-4, -3, -2), tol=tol)
+    assert_np_equal((s - arr).numpy(), make_array(4, 3, 2), tol=tol)
+    assert_np_equal((arr * s).numpy(), make_array(5, 10, 15), tol=tol)
+    assert_np_equal((s * arr).numpy(), make_array(5, 10, 15), tol=tol)
+    assert_np_equal((arr % s).numpy(), make_array(1, 2, 3), tol=tol)
+    assert_np_equal((s % arr).numpy(), make_array(0, 1, 2), tol=tol)
+
+    if dtype in np_float_types:
+        assert_np_equal((arr / s).numpy(), make_array(0.2, 0.4, 0.6), tol=tol)
+        assert_np_equal((s / arr).numpy(), make_array(5.0, 2.5, 1.666666667), tol=tol)
 
 
 devices = get_test_devices()
@@ -98,6 +123,9 @@ for dtype in np_scalar_types:
         TestScalarOps, f"test_py_arithmetic_ops_{dtype.__name__}", test_py_arithmetic_ops, devices=None, dtype=dtype
     )
     add_function_test(TestScalarOps, f"test_py_math_ops_{dtype.__name__}", test_py_math_ops, devices=None, dtype=dtype)
+    add_function_test(
+        TestScalarOps, f"test_py_array_ops_{dtype.__name__}", test_py_array_ops, devices=None, dtype=dtype
+    )
 
 
 if __name__ == "__main__":

@@ -68,6 +68,8 @@
   that. Work around it by reserving stack memory on kernel entry, tracked through the x28 register which is prevented
   from being used as a scratch register. `wp.config.enable_tiles_in_stack_memory` can be used to enable (default)
   or disable this new method ([GH-957](https://github.com/NVIDIA/warp/issues/957)).
+- Fix arithmetic operators not working when a scalar is on the lhs and an array on the rhs
+  ([GH-892](https://github.com/NVIDIA/warp/issues/892)).
 
 ## [1.9.1] - 2025-10-01
 
