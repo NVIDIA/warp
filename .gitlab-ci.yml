@@ -1057,7 +1057,7 @@ merge request docs:
       - public
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-  timeout: 10m
+  timeout: 20m
   environment:
     name: review/$CI_MERGE_REQUEST_IID
     url: https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html
@@ -1099,7 +1099,7 @@ pages:
     - .build-docs-common
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  timeout: 10m
+  timeout: 20m
   environment:
     name: GitLab Pages
     deployment_tier: staging
