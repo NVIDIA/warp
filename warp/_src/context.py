@@ -760,6 +760,9 @@ class Kernel:
         # hash will be computed when the module is built
         self.hash = None
 
+        # flag indicating if this kernel belongs to a unique module (set by @wp.kernel decorator)
+        self.is_unique_module = False
+
         if self.module:
             self.module.register_kernel(self)
 
@@ -1119,9 +1122,24 @@ def kernel(
             options=options,
         )
         if module == "unique":
+            # Mark this kernel as belonging to a unique module
+            k.is_unique_module = True
+
             # add the hash to the module name
             hasher = warp._src.context.ModuleHasher(m)
             k.module.name = f"{k.key}_{hasher.module_hash.hex()[:8]}"
+            # check if this module exists already and just use that
+            existing_module = user_modules.get(k.module.name)
+            if existing_module is not None:
+                k.module = existing_module
+                # Reset skip_build for all kernels in this reused unique module.
+                # Previous tests may have left kernels with skip_build=True, which would
+                # prevent ModuleBuilder from compiling them for the new device.
+                for existing_kernel in k.module.live_kernels:
+                    existing_kernel.adj.skip_build = False
+            else:
+                # register the new unique module
+                user_modules[k.module.name] = k.module
 
         k = functools.update_wrapper(k, f)
         return k
@@ -6366,6 +6384,13 @@ def launch(
         if kernel.is_generic:
             fwd_types = kernel.infer_argument_types(fwd_args)
             kernel = kernel.add_overload(fwd_types)
+
+        # For unique module kernels, reset skip_build to allow compilation attempts on different devices.
+        # Even though a Module compiles separately for each device (stored in Module.execs),
+        # the skip_build flag is on the Adjoint which is shared across devices.
+        # A failure on one device shouldn't prevent compilation attempts on other devices.
+        if kernel.is_unique_module:
+            kernel.adj.skip_build = False
 
         # delay load modules, including new overload if needed
         try:
