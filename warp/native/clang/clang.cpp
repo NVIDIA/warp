@@ -236,7 +236,11 @@ WP_API int wp_compile_cpp(const char* cpp_src, const char *input_file, const cha
     }
 
     std::string error;
+     #if LLVM_VERSION_MAJOR >= 22
+    const llvm::Target* target = llvm::TargetRegistry::lookupTarget(llvm::Triple(target_triple), error);
+    #else
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget(target_triple, error);
+    #endif
 
     const char* CPU = "generic";
     const char* features = "";
@@ -287,7 +291,12 @@ WP_API int wp_compile_cuda(const char* cpp_src, const char *input_file, const ch
     }
 
     std::string error;
+
+    #if LLVM_VERSION_MAJOR >= 22
+    const llvm::Target* target = llvm::TargetRegistry::lookupTarget(llvm::Triple("nvptx64-nvidia-cuda"), error);
+    #else
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget("nvptx64-nvidia-cuda", error);
+    #endif
 
     const char* CPU = "sm_70";
     const char* features = "+ptx75";  // Warp requires CUDA 11.5, which supports PTX ISA 7.5
