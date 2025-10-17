@@ -231,11 +231,12 @@ warp/examples/tile
             :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_mlp.py
       - .. image:: ./img/examples/tile_nbody.png
             :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_nbody.py
-      -
+      - .. image:: ./img/examples/tile_mcgp.png
+            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_mcgp.py
       -
     * - mlp
       - nbody
-      -
+      - mcgp
       -
 
 Omniverse

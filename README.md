@@ -270,13 +270,13 @@ python -m warp.tests
         <tr>
             <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_mlp.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/tile_mlp.png"></a></td>
             <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_nbody.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/tile_nbody.png"></a></td>
-            <td></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_mcgp.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/tile_mcgp.png"></a></td>
             <td></td>
         </tr>
         <tr>
             <td align="center">mlp</td>
             <td align="center">nbody</td>
-            <td align="center"></td>
+            <td align="center">mcgp</td>
             <td align="center"></td>
         </tr>
     </tbody>

@@ -403,6 +403,20 @@ add_example_test(
     test_options={"headless": True, "resolution": 16, "num_steps": 2},
 )
 
+
+class TestTileExamples(unittest.TestCase):
+    pass
+
+
+add_example_test(
+    TestTileExamples,
+    name="tile.example_tile_mcgp",
+    devices=test_devices,
+    test_options={"headless": True, "usd_required": True},
+    test_options_cpu={"slices": 2},
+)
+
+
 if __name__ == "__main__":
     # force rebuild of all kernels
     wp.clear_kernel_cache()

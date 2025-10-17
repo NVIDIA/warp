@@ -12,6 +12,7 @@
 - Add support for negative indexing and improve slicing for the `wp.array()` type
   ([GH-504](https://github.com/NVIDIA/warp/issues/504)).
 - Add support for composite type tile indexed assignment and extraction ([GH-941](https://github.com/NVIDIA/warp/issues/941)).
+- Add `warp/examples/tile/example_tile_mcgp.py`, demonstrating how to implement a Monte Carlo Laplace solver. 
 - Add `wp.tile_full()` builtin, which fills a tile with a constant value.
 - Add support for recording and waiting for external events in CUDA graphs
   ([GH-983](https://github.com/NVIDIA/warp/issues/983)).
