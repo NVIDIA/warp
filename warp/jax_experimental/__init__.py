@@ -15,4 +15,8 @@
 
 # isort: skip_file
 
+from warp._src.jax_experimental.ffi import GraphMode as GraphMode
+from warp._src.jax_experimental.ffi import clear_jax_callable_graph_cache as clear_jax_callable_graph_cache
 from warp._src.jax_experimental.ffi import jax_kernel as jax_kernel
+from warp._src.jax_experimental.ffi import jax_callable as jax_callable
+from warp._src.jax_experimental.ffi import register_ffi_callback as register_ffi_callback
