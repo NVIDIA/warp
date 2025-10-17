@@ -51,7 +51,7 @@ jobs:
             cuda-sub-packages: ''
             cuda-non-cuda-packages: ''
     outputs:
-      artifact-url: ${{ steps.exports-header.outputs.artifact-url }}
+      artifact-url: ${{ steps.native-headers.outputs.artifact-url }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -101,12 +101,14 @@ jobs:
           name: build-artifact-${{ matrix.platform }}
           path: warp/bin/
       
-      - name: Upload exports.h
+      - name: Upload native headers
         uses: actions/upload-artifact@v4
-        id: exports-header
+        id: native-headers
         with:
-          name: exports-header-${{ matrix.platform }}
-          path: warp/native/exports.h
+          name: native-headers-${{ matrix.platform }}
+          path: |
+            warp/native/exports.h
+            warp/native/version.h
 
   test-warp:
     runs-on: ${{ matrix.os }}
@@ -213,24 +215,40 @@ jobs:
           git diff --exit-code warp/__init__.pyi ||
           (echo "Please run build_docs.py (or download from $ARTIFACT_URL) and add warp/__init__.pyi to your pull request." && false)
 
-  check-exports-header:
+  check-generated-files:
     runs-on: ubuntu-latest
     needs: build-warp
     if: ${{ github.event_name == 'pull_request' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Download exports.h
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.8.23"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: '.python-version'
+      - name: Download native headers
         uses: actions/download-artifact@v4
         with:
-          name: exports-header-ubuntu-x86_64
+          name: native-headers-ubuntu-x86_64
           path: warp/native/
-      - name: Check exports.h
+      - name: Check version consistency
+        run: uv run --no-project tools/ci/publishing/check_version_consistency.py --verbose
+      - name: Check exports.h is committed
         env:
           ARTIFACT_URL: ${{ needs.build-warp.outputs.artifact-url }}
         run: >
           git diff --exit-code warp/native/exports.h ||
           (echo "Please run build_lib.py (or download from $ARTIFACT_URL) and add warp/native/exports.h to your pull request." && false)
+      - name: Check version.h is committed
+        env:
+          ARTIFACT_URL: ${{ needs.build-warp.outputs.artifact-url }}
+        run: >
+          git diff --exit-code warp/native/version.h ||
+          (echo "Please run build_lib.py (or download from $ARTIFACT_URL) and add warp/native/version.h to your pull request." && false)
 
   check-unnamespaced-symbols:
     runs-on: ubuntu-latest
