@@ -74,6 +74,8 @@
   or disable this new method ([GH-957](https://github.com/NVIDIA/warp/issues/957)).
 - Fix arithmetic operators not working when a scalar is on the lhs and an array on the rhs
   ([GH-892](https://github.com/NVIDIA/warp/issues/892)).
+- Fix invalid keyword arguments not being detected in the `wp.transform()` constructor at Python scope
+  ([GH-975](https://github.com/NVIDIA/warp/issues/975)).
 
 ## [1.9.1] - 2025-10-01
 
