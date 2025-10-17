@@ -738,6 +738,28 @@ def test_tile_extract_kernel(a: wp.array2d(dtype=float), b: wp.array2d(dtype=flo
     wp.atomic_add(b, i, j, wp.tile_extract(tile, x, y))
 
 
+@wp.kernel
+def test_tile_extract_vec_kernel(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=float)):
+    i = wp.tid()
+
+    tile = wp.tile_load(x, shape=(TILE_M))
+
+    a = tile[i][1]
+
+    y[i] = a
+
+
+@wp.kernel
+def test_tile_extract_mat_kernel(x: wp.array(dtype=wp.mat33), y: wp.array(dtype=float)):
+    i = wp.tid()
+
+    tile = wp.tile_load(x, shape=(TILE_M))
+
+    a = tile[i][1, 1]
+
+    y[i] = a
+
+
 def test_tile_extract(test, device):
     block_dim = 16
 
@@ -762,6 +784,40 @@ def test_tile_extract(test, device):
 
     expected_grad = np.ones_like(input)
     assert_np_equal(a.grad.numpy(), expected_grad)
+
+    # vector element test
+    x = wp.ones(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
+    y = wp.zeros(TILE_M, dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch(test_tile_extract_vec_kernel, dim=[TILE_M], inputs=[x, y], block_dim=TILE_DIM, device=device)
+
+    y.grad = wp.ones_like(y)
+
+    tape.backward()
+
+    x_grad_np = np.zeros((TILE_M, 3), dtype=float)
+    x_grad_np[:, 1] = 1.0
+
+    assert_np_equal(x.grad.numpy(), x_grad_np)
+    assert_np_equal(y.numpy(), np.ones(TILE_M, dtype=float))
+
+    # matrix element test
+    x = wp.ones(TILE_M, dtype=wp.mat33, requires_grad=True, device=device)
+    y = wp.zeros(TILE_M, dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch(test_tile_extract_mat_kernel, dim=[TILE_M], inputs=[x, y], block_dim=TILE_DIM, device=device)
+
+    y.grad = wp.ones_like(y)
+
+    tape.backward()
+
+    x_grad_np = np.zeros((TILE_M, 3, 3), dtype=float)
+    x_grad_np[:, 1, 1] = 1.0
+
+    assert_np_equal(y.numpy(), np.ones(TILE_M, dtype=float))
+    assert_np_equal(x.grad.numpy(), x_grad_np)
 
 
 @wp.kernel(module="unique")
@@ -822,6 +878,28 @@ def test_tile_assign_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
     wp.tile_atomic_add(y, a, offset=(0,))
 
 
+@wp.kernel
+def test_tile_assign_vec_kernel(x: wp.array(dtype=float), y: wp.array(dtype=wp.vec3)):
+    i = wp.tid()
+
+    a = wp.tile_zeros(shape=(TILE_M,), dtype=wp.vec3)
+
+    a[i][1] = x[i]
+
+    wp.tile_atomic_add(y, a, offset=(0,))
+
+
+@wp.kernel
+def test_tile_assign_mat_kernel(x: wp.array(dtype=float), y: wp.array(dtype=wp.mat33)):
+    i = wp.tid()
+
+    a = wp.tile_zeros(shape=(TILE_M,), dtype=wp.mat33)
+
+    a[i][1, 1] = x[i]
+
+    wp.tile_atomic_add(y, a, offset=(0,))
+
+
 def test_tile_assign(test, device):
     x = wp.full(TILE_M, 2.0, dtype=float, device=device, requires_grad=True)
     y = wp.zeros(TILE_M, dtype=float, device=device, requires_grad=True)
@@ -834,6 +912,40 @@ def test_tile_assign(test, device):
     tape.backward()
 
     assert_np_equal(y.numpy(), np.full(TILE_M, 2.0, dtype=np.float32))
+    assert_np_equal(x.grad.numpy(), np.full(TILE_M, 1.0, dtype=np.float32))
+
+    # vector element test
+    x = wp.full(TILE_M, 2.0, dtype=float, device=device, requires_grad=True)
+    y = wp.zeros(TILE_M, dtype=wp.vec3, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(test_tile_assign_vec_kernel, dim=[TILE_M], inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    y_np = np.zeros((TILE_M, 3), dtype=float)
+    y_np[:, 1] = 2.0
+
+    assert_np_equal(y.numpy(), y_np)
+    assert_np_equal(x.grad.numpy(), np.full(TILE_M, 1.0, dtype=np.float32))
+
+    # matrix element test
+    x = wp.full(TILE_M, 2.0, dtype=float, device=device, requires_grad=True)
+    y = wp.zeros(TILE_M, dtype=wp.mat33, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(test_tile_assign_mat_kernel, dim=[TILE_M], inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device)
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    y_np = np.zeros((TILE_M, 3, 3), dtype=float)
+    y_np[:, 1, 1] = 2.0
+
+    assert_np_equal(y.numpy(), y_np)
     assert_np_equal(x.grad.numpy(), np.full(TILE_M, 1.0, dtype=np.float32))
 
 
