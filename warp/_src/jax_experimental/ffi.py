@@ -15,6 +15,7 @@
 
 import collections
 import ctypes
+import inspect
 import threading
 import traceback
 from enum import IntEnum
@@ -29,6 +30,9 @@ from warp._src.types import array_t, launch_bounds_t, strides_from_shape, type_t
 
 from .xla_ffi import *
 
+# Type alias for differentiable kernel cache key
+DiffKernelCacheKey = tuple[Callable, tuple, int, str, tuple[str, ...]]
+
 jax_callable_default_graph_cache_max: int | None = 32
 """
 Maximum size of the graph cache for graphs captured using ``GraphMode.WARP``, unlimited if ``None``.
@@ -37,6 +41,7 @@ Example usage: ``warp.jax_experimental.ffi.jax_callable_default_graph_cache_max 
 
 # Holders for the custom callbacks to keep them alive.
 _FFI_KERNEL_REGISTRY: dict[str, "FfiKernel"] = {}
+_FFI_DIFF_KERNEL_REGISTRY: dict[DiffKernelCacheKey, Callable] = {}
 _FFI_CALLABLE_REGISTRY: dict[str, "FfiCallable"] = {}
 _FFI_CALLBACK_REGISTRY: dict[str, ctypes.CFUNCTYPE] = {}
 _FFI_REGISTRY_LOCK = threading.Lock()
@@ -745,6 +750,7 @@ def jax_kernel(
     output_dims=None,
     in_out_argnames=None,
     module_preload_mode=ModulePreloadMode.CURRENT_DEVICE,
+    enable_backward: bool = False,
 ):
     """Create a JAX callback from a Warp kernel.
 
@@ -762,8 +768,12 @@ def jax_kernel(
         output_dims: Specify the default dimensions of output arrays.  If None, output
                      dimensions are inferred from the launch dimensions.
                      This argument can also be specified for individual calls.
-        in_out_argnames: Names of input-output arguments.
+        in_out_argnames: Names of arguments that are both inputs and outputs (aliased buffers).
+            These must be array arguments that appear before any pure output arguments in the
+            kernel signature. The number of in-out arguments is included in ``num_outputs``.
+            Not supported when ``enable_backward=True``.
         module_preload_mode: Specify the devices where the module should be preloaded.
+        enable_backward: Enable automatic differentiation for this kernel.
 
     Limitations:
         - All kernel arguments must be contiguous arrays or scalars.
@@ -775,24 +785,257 @@ def jax_kernel(
 
     check_jax_version()
 
-    key = (
-        kernel.func,
-        kernel.sig,
-        num_outputs,
-        vmap_method,
-        tuple(launch_dims) if launch_dims else launch_dims,
-        tuple(sorted(output_dims.items())) if output_dims else output_dims,
-        module_preload_mode,
+    if not enable_backward:
+        key = (
+            kernel.func,
+            kernel.sig,
+            num_outputs,
+            vmap_method,
+            tuple(launch_dims) if launch_dims else launch_dims,
+            tuple(sorted(output_dims.items())) if output_dims else output_dims,
+            module_preload_mode,
+        )
+
+        with _FFI_REGISTRY_LOCK:
+            if key not in _FFI_KERNEL_REGISTRY:
+                new_kernel = FfiKernel(
+                    kernel, num_outputs, vmap_method, launch_dims, output_dims, in_out_argnames, module_preload_mode
+                )
+                _FFI_KERNEL_REGISTRY[key] = new_kernel
+
+        return _FFI_KERNEL_REGISTRY[key]
+
+    # make sure the arguments are compatible with autodiff
+    if in_out_argnames:
+        raise NotImplementedError(
+            "jax_kernel(): Input-output arguments (in_out_argnames) are not supported when enable_backward=True."
+        )
+
+    # TODO: we should support passing these to the forward and backward callables
+    if launch_dims is not None or output_dims is not None:
+        raise NotImplementedError(
+            "jax_kernel(): Custom dimensions (launch_dims, output_dims) are not supported when enable_backward=True."
+        )
+
+    # Differentiable path: build a custom VJP wrapper inline.
+    # Infer the original kernel signature (names and annotations)
+    signature = inspect.signature(kernel.func)
+
+    parameters = [p for p in signature.parameters.values() if p.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD]
+    parameter_count = len(parameters)
+    num_inputs = parameter_count - num_outputs
+
+    # determine static argument indices
+    static_args = []
+    for i, p in enumerate(parameters[:num_inputs]):
+        param_type = p.annotation
+        if not isinstance(param_type, wp.array):
+            if param_type in wp._src.types.value_types:
+                static_args.append(i)
+            else:
+                raise TypeError(f"Invalid type for argument '{p.name}', expected array or scalar, got {type}")
+
+    def _resolve_launch_dims(call_args):
+        # determine launch dimensions from the shape of the first input array
+        for i, p in enumerate(parameters[:num_inputs]):
+            param_type = p.annotation
+            if isinstance(param_type, wp.array):
+                arg = call_args[i]
+                arg_shape = tuple(arg.shape)
+                if hasattr(param_type.dtype, "_wp_scalar_type_"):
+                    # vector/matrix array, trim trailing dimensions of JAX input array
+                    return arg_shape[: param_type.ndim]
+                else:
+                    # scalar array
+                    return arg_shape
+        raise RuntimeError("Unable to determine launch dimensions, at least one input array is required")
+
+    # Forward kernel wrapper: simply launches the kernel
+    def fwd_kernel_wrapper(*args):
+        wp.launch(kernel, dim=_resolve_launch_dims(args), inputs=args[:num_inputs], outputs=args[num_inputs:])
+
+    # update forward signature and annotations so jax_callable() sees a fully annotated function
+    fwd_kernel_wrapper.__signature__ = signature
+    fwd_kernel_wrapper.__annotations__ = {p.name: p.annotation for p in parameters}
+    fwd_kernel_wrapper.__annotations__["return"] = None
+
+    jax_fwd_kernel = jax_callable(fwd_kernel_wrapper, num_outputs=num_outputs, vmap_method=vmap_method)
+
+    # backward arguments only include static args once
+    bwd_arg_count = 2 * parameter_count - len(static_args)
+
+    # Backward wrapper: launches adjoint with provided output gradients
+    def bwd_kernel_wrapper(*args):
+        if len(args) != bwd_arg_count:
+            raise RuntimeError(f"Invalid backward argument count, expected {bwd_arg_count} but got {len(args)}")
+
+        inputs = list(args[:num_inputs])
+        outputs = list(args[num_inputs:parameter_count])
+        grad_out = list(args[parameter_count : parameter_count + num_outputs])
+        grad_in = list(args[parameter_count + num_outputs :])
+
+        for i in static_args:
+            grad_in.insert(i, inputs[i])
+
+        for gi in grad_in:
+            if isinstance(gi, wp.array):
+                try:
+                    gi.zero_()
+                except Exception as e:
+                    wp.utils.warn(f"Failed to zero gradient array: {e}", stacklevel=2)
+                    raise e
+
+        # NOTE: We cannot use a passed launch_dims here, the backward rule doesn't receive it (and it could be wrong under pmap/vmap).
+        # We need to infer from the inputs.
+        wp.launch(
+            kernel,
+            dim=_resolve_launch_dims(inputs),
+            inputs=inputs,
+            outputs=outputs,
+            adj_inputs=grad_in,
+            adj_outputs=grad_out,
+            adjoint=True,
+        )
+
+    # Build the backward wrapper signature expected by jax_callable
+    bwd_input_params = parameters[:num_inputs]
+    bwd_output_params = parameters[num_inputs:parameter_count]
+    bwd_grad_output_params = [
+        inspect.Parameter(
+            f"adj_{p.name}",
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            default=p.default,
+            annotation=p.annotation,
+        )
+        for p in bwd_output_params
+    ]
+
+    bwd_grad_input_params = [
+        inspect.Parameter(
+            f"adj_{p.name}",
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            default=p.default,
+            annotation=p.annotation,
+        )
+        for p in bwd_input_params
+    ]
+    for i in reversed(static_args):
+        del bwd_grad_input_params[i]
+
+    # update backward signature and annotations so jax_callable() sees a fully annotated function
+    bwd_signature = bwd_input_params + bwd_output_params + bwd_grad_output_params + bwd_grad_input_params
+    bwd_kernel_wrapper.__signature__ = inspect.Signature(bwd_signature)
+    bwd_annotations = {}
+    for p in bwd_input_params:
+        bwd_annotations[p.name] = p.annotation
+    for p in bwd_output_params:
+        bwd_annotations[p.name] = p.annotation
+    for p in bwd_grad_output_params:
+        bwd_annotations[p.name] = p.annotation
+    for p in bwd_grad_input_params:
+        bwd_annotations[p.name] = p.annotation
+    bwd_annotations["return"] = None
+    bwd_kernel_wrapper.__annotations__ = bwd_annotations
+
+    jax_bwd_kernel = jax_callable(
+        bwd_kernel_wrapper,
+        num_outputs=len(bwd_input_params) - len(static_args),
+        vmap_method=vmap_method,
     )
 
-    with _FFI_REGISTRY_LOCK:
-        if key not in _FFI_KERNEL_REGISTRY:
-            new_kernel = FfiKernel(
-                kernel, num_outputs, vmap_method, launch_dims, output_dims, in_out_argnames, module_preload_mode
-            )
-            _FFI_KERNEL_REGISTRY[key] = new_kernel
+    differentiable_input_indices = [i for i in range(num_inputs) if i not in static_args]
+    differentiable_input_names = [parameters[i].name for i in differentiable_input_indices]
 
-    return _FFI_KERNEL_REGISTRY[key]
+    def fwd_function(*args):
+        outputs = jax_fwd_kernel(*args)
+        non_static_inputs = list(args)
+        for i in reversed(static_args):
+            del non_static_inputs[i]
+        # Normalize to tuple for consistent handling
+        if num_outputs == 1:
+            outputs_tuple = (outputs,) if not isinstance(outputs, (list, tuple)) else (outputs[0],)
+        else:
+            outputs_tuple = outputs if isinstance(outputs, tuple) else tuple(outputs)
+        return outputs, (tuple(non_static_inputs), outputs_tuple)
+
+    def bwd_function(*bwd_args):
+        nondiff_vals = list(bwd_args[: len(static_args)])
+        residuals = bwd_args[len(static_args)]
+        grad_out_args = bwd_args[len(static_args) + 1 :]
+
+        non_static_inputs, output_vals_tuple = residuals
+
+        input_vals = list(non_static_inputs)
+        for i, v in zip(static_args, nondiff_vals):
+            input_vals.insert(i, v)
+
+        # Normalize grad outputs and handle nested containers (e.g., single tuple for multi-output)
+        if num_outputs == 1:
+            go = grad_out_args[0]
+            grad_out_tuple = tuple(go) if isinstance(go, (list, tuple)) else (go,)
+        else:
+            if len(grad_out_args) == 1 and isinstance(grad_out_args[0], (list, tuple)):
+                grad_out_tuple = tuple(grad_out_args[0])
+            else:
+                grad_out_tuple = tuple(grad_out_args)
+        bwd_call_args = list(input_vals) + list(output_vals_tuple) + list(grad_out_tuple)
+
+        out_dims_map = {}
+        param_ann = {p.name: p.annotation for p in parameters[:num_inputs]}
+        for name, val in zip(differentiable_input_names, non_static_inputs):
+            ann = param_ann.get(name)
+            if ann is None:
+                continue
+            # Check if annotation is a warp array type (annotation is an instance of wp.array)
+            is_array_ann = isinstance(ann, wp.array)
+            if not is_array_ann:
+                continue
+            dtype_ndim = 0
+            # Extract dtype ndim if it's a vector/matrix type
+            if hasattr(ann, "dtype") and hasattr(ann.dtype, "_wp_scalar_type_"):
+                dtype_ndim = len(ann.dtype._shape_)
+            warp_ndim = getattr(ann, "ndim", 0)
+            vshape = tuple(val.shape)
+            if warp_ndim == 0:
+                continue
+            if dtype_ndim > 0:
+                core_rank = max(0, len(vshape) - dtype_ndim)
+                warp_dims = vshape[max(0, core_rank - warp_ndim) : core_rank]
+            else:
+                warp_dims = vshape[-warp_ndim:]
+            out_dims_map[f"adj_{name}"] = tuple(warp_dims)
+
+        non_static_input_grads = jax_bwd_kernel(*bwd_call_args, output_dims=out_dims_map)
+        return tuple(non_static_input_grads)
+
+    jax_func = jax.custom_vjp(jax_fwd_kernel, nondiff_argnums=tuple(static_args))
+    jax_func.defvjp(fwd_function, bwd_function)
+
+    if static_args:
+        static_names = [parameters[i].name for i in static_args]
+
+        def _user_callable(*args):
+            return jax_func(*args)
+
+        _user_callable.__signature__ = signature
+
+        # Cache differentiable wrapper
+        key = (kernel.func, kernel.sig, num_outputs, vmap_method, tuple(sorted(static_names)))
+        with _FFI_REGISTRY_LOCK:
+            cached = _FFI_DIFF_KERNEL_REGISTRY.get(key)
+            if cached is None:
+                cached = jax.jit(_user_callable, static_argnames=tuple(static_names))
+                _FFI_DIFF_KERNEL_REGISTRY[key] = cached
+        return _FFI_DIFF_KERNEL_REGISTRY[key]
+
+    # Cache differentiable wrapper (no static args)
+    key = (kernel.func, kernel.sig, num_outputs, vmap_method, ())
+    with _FFI_REGISTRY_LOCK:
+        cached = _FFI_DIFF_KERNEL_REGISTRY.get(key)
+        if cached is None:
+            _FFI_DIFF_KERNEL_REGISTRY[key] = jax_func
+            cached = jax_func
+    return cached
 
 
 def jax_callable(
@@ -829,7 +1072,9 @@ def jax_callable(
         output_dims: Specify the default dimensions of output arrays.
             If ``None``, output dimensions are inferred from the launch dimensions.
             This argument can also be specified for individual calls.
-        in_out_argnames: Names of input-output arguments.
+        in_out_argnames: Names of arguments that are both inputs and outputs (aliased buffers).
+            These must be array arguments that appear before any pure output arguments in the
+            function signature. The number of in-out arguments is included in ``num_outputs``.
         graph_cache_max: Maximum number of cached graphs captured using ``GraphMode.WARP``.
             If ``None``, use ``warp.jax_experimental.ffi.jax_callable_default_graph_cache_max``.
         module_preload_mode: Specify the devices where the module should be preloaded.
