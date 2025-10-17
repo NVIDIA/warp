@@ -10070,6 +10070,32 @@ add_builtin(
 )
 
 
+def cast_value_func(arg_types, arg_values):
+    # Return generic type for doc builds.
+    if arg_types is None:
+        return Any
+
+    return arg_values["dtype"]
+
+
+def cast_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    func_args = (args["a"],)
+    template_args = (args["dtype"],)
+    return (func_args, template_args)
+
+
+add_builtin(
+    "cast",
+    input_types={"a": Any, "dtype": Any},
+    value_func=cast_value_func,
+    dispatch_func=cast_dispatch_func,
+    doc="Reinterpret a value as a different type while preserving its bit pattern.",
+    group="Utility",
+    export=False,
+    is_differentiable=False,
+)
+
+
 # ---------------------------------
 # Tuple
 
