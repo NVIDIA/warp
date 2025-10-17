@@ -15,4 +15,4 @@
 
 # isort: skip_file
 
-from warp._src.jax_experimental.custom_call import jax_kernel as jax_kernel
+from warp._src.jax_experimental.ffi import jax_kernel as jax_kernel

@@ -65,7 +65,8 @@ def jax_kernel(kernel, launch_dims=None, quiet=False):
         warn(
             "This version of jax_kernel() is deprecated and will not be supported with newer JAX versions. "
             "Please use the newer FFI version instead (warp.jax_experimental.ffi.jax_kernel). "
-            "In Warp release 1.10, the FFI version will become the default implementation of jax_kernel().",
+            "As of Warp release 1.10, the FFI version is the default implementation of jax_kernel(). "
+            "Pass quiet=True to disable this warning.",
             DeprecationWarning,
         )
 
