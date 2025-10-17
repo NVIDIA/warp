@@ -2871,11 +2871,12 @@ class array(Array[DType]):
         self.is_contiguous = False
 
     def __del__(self):
-        if self.deleter is None:
-            return
-
-        with self.device.context_guard:
-            self.deleter(self.ptr, self.capacity)
+        try:
+            with self.device.context_guard:
+                self.deleter(self.ptr, self.capacity)
+        except (TypeError, AttributeError):
+            # Suppress TypeError and AttributeError when callables become None during shutdown
+            pass
 
     @property
     def __array_interface__(self):
