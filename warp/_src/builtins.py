@@ -4104,6 +4104,80 @@ add_builtin(
 )
 
 
+def tile_sum_axis_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return tile(dtype=Scalar, shape=Tuple[int, ...])
+
+    a = arg_types["a"]
+
+    if not is_tile(a):
+        raise TypeError(f"tile_sum() 'a' argument must be a tile, got {a!r}")
+
+    # force input tile to shared
+    a.storage = "shared"
+
+    axis = arg_values["axis"]
+    shape = a.shape
+
+    if axis < 0 or axis >= len(shape):
+        raise ValueError(f"tile_sum() axis {axis} is out of bounds for tile with {len(shape)} dimensions")
+
+    # shape is identical less the axis reduction is along
+    if len(shape) > 1:
+        new_shape = shape[:axis] + shape[axis + 1 :]
+    else:
+        new_shape = (1,)
+
+    return tile(dtype=a.dtype, shape=new_shape)
+
+
+def tile_sum_axis_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    tile = arg_values["a"]
+    axis_var = arg_values["axis"]
+    if not hasattr(axis_var, "constant") or axis_var.constant is None:
+        raise ValueError("tile_sum() axis must be a compile-time constant")
+    axis = axis_var.constant
+
+    return ((tile,), (axis,))
+
+
+add_builtin(
+    "tile_sum",
+    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...]), "axis": int},
+    value_func=tile_sum_axis_value_func,
+    dispatch_func=tile_sum_axis_dispatch_func,
+    doc="""Cooperatively compute the sum of the tile elements across an axis of the tile using all threads in the block.
+
+    :param a: The input tile. Must reside in shared memory.
+    :param axis: The tile axis to compute the sum across. Must be a compile-time constant.
+    :returns: A tile with the same shape as the input tile less the axis dimension and the same data type as the input tile.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_ones(dtype=float, shape=(8, 8))
+            s = wp.tile_sum(t, axis=0)
+
+            print(s)
+
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+
+    Prints:
+
+    .. code-block:: text
+
+        [8 8 8 8 8 8 8 8] = tile(shape=(8), storage=register)
+
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_sort_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
@@ -4398,7 +4472,6 @@ add_builtin(
 )
 
 
-# does type propagation for load()
 def tile_reduce_value_func(arg_types, arg_values):
     if arg_types is None:
         return tile(dtype=Scalar, shape=(1,))
@@ -4449,6 +4522,87 @@ add_builtin(
     .. code-block:: text
 
         [362880] = tile(shape=(1), storage=register)
+    """,
+    group="Tile Primitives",
+    export=False,
+    is_differentiable=False,
+)
+
+
+def tile_reduce_axis_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return tile(dtype=Scalar, shape=Tuple[int, ...])
+
+    a = arg_types["a"]
+
+    if not is_tile(a):
+        raise TypeError(f"tile_reduce() 'a' argument must be a tile, got {a!r}")
+
+    # force input tile to shared memory
+    a.storage = "shared"
+
+    axis = arg_values["axis"]
+    shape = a.shape
+
+    if axis < 0 or axis >= len(shape):
+        raise ValueError(f"tile_reduce() axis {axis} is out of bounds for tile with {len(shape)} dimensions")
+
+    # shape is identical less the axis reduction is along
+    if len(shape) > 1:
+        new_shape = shape[:axis] + shape[axis + 1 :]
+    else:
+        new_shape = (1,)
+
+    return tile(dtype=a.dtype, shape=new_shape)
+
+
+add_builtin(
+    "tile_reduce",
+    input_types={"op": Callable, "a": tile(dtype=Scalar, shape=Tuple[int, ...]), "axis": int},
+    value_func=tile_reduce_axis_value_func,
+    native_func="tile_reduce_axis",
+    doc="""Apply a custom reduction operator across a tile axis.
+
+    This function cooperatively performs a reduction using the provided operator across an axis of the tile.
+
+    :param op: A callable function that accepts two arguments and returns one argument, may be a user function or builtin
+    :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's data type. Must reside in shared memory.
+    :param axis: The tile axis to perform the reduction across. Must be a compile-time constant.
+    :returns: A tile with the same shape as the input tile less the axis dimension and the same data type as the input tile.
+
+    Example:
+
+    .. code-block:: python
+
+        TILE_M = wp.constant(4)
+        TILE_N = wp.constant(2)
+
+        @wp.kernel
+        def compute(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
+
+            a = wp.tile_load(x, shape=(TILE_M, TILE_N))
+            b = wp.tile_reduce(wp.add, a, axis=1)
+            wp.tile_store(y, b)
+
+        arr = np.arange(TILE_M * TILE_N).reshape(TILE_M, TILE_N)
+
+        x = wp.array(arr, dtype=float)
+        y = wp.zeros(TILE_M, dtype=float)
+
+        wp.launch_tiled(compute, dim=[1], inputs=[x], outputs=[y], block_dim=32)
+
+        print(x.numpy())
+        print(y.numpy())
+
+    Prints:
+
+    .. code-block:: text
+
+        [[0. 1.]
+         [2. 3.]
+         [4. 5.]
+         [6. 7.]]
+        [ 1.  5.  9. 13.]
     """,
     group="Tile Primitives",
     export=False,

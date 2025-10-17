@@ -2261,7 +2261,46 @@ Tile Primitives
     :returns: Tile with broadcast shape
 
 
+.. py:function:: tile_sum(a: Tile[Scalar,Tuple[int, ...]], axis: int32) -> Tile[Scalar,Tuple[int, ...]]
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Cooperatively compute the sum of the tile elements across an axis of the tile using all threads in the block.
+
+    :param a: The input tile. Must reside in shared memory.
+    :param axis: The tile axis to compute the sum across. Must be a compile-time constant.
+    :returns: A tile with the same shape as the input tile less the axis dimension and the same data type as the input tile.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+
+            t = wp.tile_ones(dtype=float, shape=(8, 8))
+            s = wp.tile_sum(t, axis=0)
+
+            print(s)
+
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+
+    Prints:
+
+    .. code-block:: text
+
+        [8 8 8 8 8 8 8 8] = tile(shape=(8), storage=register)
+
+    
+
+
 .. py:function:: tile_sum(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]
+    :noindex:
+    :nocontentsentry:
 
     .. hlist::
        :columns: 8
@@ -2513,6 +2552,60 @@ Tile Primitives
     .. code-block:: text
 
         [362880] = tile(shape=(1), storage=register)
+    
+
+
+.. py:function:: tile_reduce(op: Callable, a: Tile[Scalar,Tuple[int, ...]], axis: int32) -> Tile[Scalar,Tuple[int, ...]]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+
+    Apply a custom reduction operator across a tile axis.
+
+    This function cooperatively performs a reduction using the provided operator across an axis of the tile.
+
+    :param op: A callable function that accepts two arguments and returns one argument, may be a user function or builtin
+    :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's data type. Must reside in shared memory.
+    :param axis: The tile axis to perform the reduction across. Must be a compile-time constant.
+    :returns: A tile with the same shape as the input tile less the axis dimension and the same data type as the input tile.
+
+    Example:
+
+    .. code-block:: python
+
+        TILE_M = wp.constant(4)
+        TILE_N = wp.constant(2)
+
+        @wp.kernel
+        def compute(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
+
+            a = wp.tile_load(x, shape=(TILE_M, TILE_N))
+            b = wp.tile_reduce(wp.add, a, axis=1)
+            wp.tile_store(y, b)
+
+        arr = np.arange(TILE_M * TILE_N).reshape(TILE_M, TILE_N)
+
+        x = wp.array(arr, dtype=float)
+        y = wp.zeros(TILE_M, dtype=float)
+
+        wp.launch_tiled(compute, dim=[1], inputs=[x], outputs=[y], block_dim=32)
+
+        print(x.numpy())
+        print(y.numpy())
+
+    Prints:
+
+    .. code-block:: text
+
+        [[0. 1.]
+         [2. 3.]
+         [4. 5.]
+         [6. 7.]]
+        [ 1.  5.  9. 13.]
     
 
 
