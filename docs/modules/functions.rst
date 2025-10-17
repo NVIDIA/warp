@@ -490,6 +490,54 @@ Scalar Math
     Return the result of ``x`` raised to power of ``y``.
 
 
+.. py:function:: erf(x: Float) -> Float
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+    Return the error function of ``x``.
+
+
+.. py:function:: erfc(x: Float) -> Float
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+    Return the complementary error function of ``x``.
+
+
+.. py:function:: erfinv(x: Float) -> Float
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+    Return the inverse error function of ``x``.
+
+
+.. py:function:: erfcinv(x: Float) -> Float
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+       * Differentiable
+
+    Return the inverse complementary error function of ``x``.
+
+
 .. py:function:: round(x: Float) -> Float
 
     .. hlist::
