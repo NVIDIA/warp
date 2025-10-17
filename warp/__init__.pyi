@@ -1923,6 +1923,26 @@ def pow(x: Float, y: Float) -> Float:
     ...
 
 @over
+def erf(x: Float) -> Float:
+    """Return the error function of ``x``."""
+    ...
+
+@over
+def erfc(x: Float) -> Float:
+    """Return the complementary error function of ``x``."""
+    ...
+
+@over
+def erfinv(x: Float) -> Float:
+    """Return the inverse error function of ``x``."""
+    ...
+
+@over
+def erfcinv(x: Float) -> Float:
+    """Return the inverse complementary error function of ``x``."""
+    ...
+
+@over
 def round(x: Float) -> Float:
     """Return the nearest integer value to ``x``, rounding halfway cases away from zero.
 

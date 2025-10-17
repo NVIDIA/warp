@@ -285,7 +285,36 @@ add_builtin(
     group="Scalar Math",
     require_original_output_arg=True,
 )
-
+add_builtin(
+    "erf",
+    input_types={"x": Float},
+    value_func=sametypes_create_value_func(Float),
+    doc="Return the error function of ``x``.",
+    group="Scalar Math",
+)
+add_builtin(
+    "erfc",
+    input_types={"x": Float},
+    value_func=sametypes_create_value_func(Float),
+    doc="Return the complementary error function of ``x``.",
+    group="Scalar Math",
+)
+add_builtin(
+    "erfinv",
+    input_types={"x": Float},
+    value_func=sametypes_create_value_func(Float),
+    doc="Return the inverse error function of ``x``.",
+    group="Scalar Math",
+    require_original_output_arg=True,
+)
+add_builtin(
+    "erfcinv",
+    input_types={"x": Float},
+    value_func=sametypes_create_value_func(Float),
+    doc="Return the inverse complementary error function of ``x``.",
+    group="Scalar Math",
+    require_original_output_arg=True,
+)
 add_builtin(
     "round",
     input_types={"x": Float},

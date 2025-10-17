@@ -59,6 +59,39 @@ def test_scalar_math(test, device):
 
 
 @wp.kernel
+def erf_kernel(x: wp.array(dtype=Any), out: wp.array(dtype=Any)):
+    i = wp.tid()
+
+    if i == 0:
+        out[i] = wp.erf(x[i])
+    elif i == 1:
+        out[i] = wp.erfc(x[i])
+    elif i == 2:
+        out[i] = wp.erfinv(x[i])
+    elif i == 3:
+        out[i] = wp.erfcinv(x[i])
+
+
+def test_erf_math(test, device):
+    for type, tol in ((wp.float16, 1e-3), (wp.float32, 1e-6), (wp.float64, 1e-6)):
+        x = wp.full(4, value=0.123, dtype=type, requires_grad=True, device=device)
+        out = wp.zeros(4, dtype=type, requires_grad=True, device=device)
+
+        with wp.Tape() as tape:
+            wp.launch(erf_kernel, dim=4, inputs=[x], outputs=[out], device=device)
+
+        out.grad = wp.ones_like(out)
+
+        tape.backward()
+
+        out_true = np.array([0.13809388, 0.86190612, 0.10944129, 1.09057285])
+        adj_x_true = np.array([1.11143641, -1.11143641, 0.89690544, -2.91120449])
+
+        assert_np_equal(out.numpy(), out_true, tol=tol)
+        assert_np_equal(adj_x_true, x.grad.numpy(), tol=tol)
+
+
+@wp.kernel
 def test_vec_norm_kernel(vs: wp.array(dtype=Any), out: wp.array(dtype=float, ndim=2)):
     tid = wp.tid()
     out[tid, 0] = wp.norm_l1(vs[tid])
@@ -170,6 +203,7 @@ class TestMath(unittest.TestCase):
 
 
 add_function_test(TestMath, "test_scalar_math", test_scalar_math, devices=devices)
+add_function_test(TestMath, "test_erf_math", test_erf_math, devices=devices)
 add_function_test(TestMath, "test_vec_norm", test_vec_norm, devices=devices)
 
 
