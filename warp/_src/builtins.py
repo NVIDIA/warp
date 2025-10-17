@@ -3458,7 +3458,7 @@ add_builtin(
 
 add_builtin(
     "assign",
-    input_types={"dst": tile(dtype=Any, shape=Tuple[int, int]), "i": int, "j": int, "src": Any},
+    input_types={"dst": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "src": Any},
     value_func=tile_assign_value_func,
     group="Tile Primitives",
     export=False,
@@ -3467,7 +3467,40 @@ add_builtin(
 
 add_builtin(
     "assign",
-    input_types={"dst": tile(dtype=Any, shape=Tuple[int, int, int]), "i": int, "j": int, "k": int, "src": Any},
+    input_types={"dst": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "src": Any},
+    value_func=tile_assign_value_func,
+    group="Tile Primitives",
+    export=False,
+    hidden=True,
+)
+
+add_builtin(
+    "assign",
+    input_types={
+        "dst": tile(dtype=Any, shape=Tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "l": int,
+        "src": Any,
+    },
+    value_func=tile_assign_value_func,
+    group="Tile Primitives",
+    export=False,
+    hidden=True,
+)
+
+add_builtin(
+    "assign",
+    input_types={
+        "dst": tile(dtype=Any, shape=Tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "l": int,
+        "m": int,
+        "src": Any,
+    },
     value_func=tile_assign_value_func,
     group="Tile Primitives",
     export=False,
@@ -3482,6 +3515,8 @@ add_builtin(
         "j": int,
         "k": int,
         "l": int,
+        "m": int,
+        "n": int,
         "src": Any,
     },
     value_func=tile_assign_value_func,
@@ -3684,7 +3719,36 @@ def tile_extract_value_func(arg_types, arg_values):
     # force the input tile to shared memory
     arg_types["a"].storage = "shared"
 
-    return arg_types["a"].dtype
+    # count the number of indices (all parameters except the tile "a")
+    num_indices = len(arg_types) - 1
+    tile_dtype = arg_types["a"].dtype
+    tile_shape = arg_types["a"].shape
+
+    if type_is_vector(tile_dtype):
+        if num_indices == len(tile_shape):
+            return tile_dtype
+        elif num_indices == len(tile_shape) + 1:
+            return tile_dtype._wp_scalar_type_
+        else:
+            raise IndexError(
+                f"tile_extract: incorrect number of indices ({num_indices}) for tile shape {tuple(tile_shape)}"
+            )
+    elif type_is_matrix(tile_dtype):
+        if num_indices == len(tile_shape):
+            return tile_dtype
+        elif num_indices == len(tile_shape) + 2:
+            return tile_dtype._wp_scalar_type_
+        else:
+            raise IndexError(
+                f"tile_extract: incorrect number of indices ({num_indices}) for matrix tile shape {tuple(tile_shape)}"
+            )
+    else:
+        # scalar element: index count must exactly match tile rank
+        if num_indices == len(tile_shape):
+            return tile_dtype
+        raise IndexError(
+            f"tile_extract: incorrect number of indices ({num_indices}) for tile shape {tuple(tile_shape)}"
+        )
 
 
 add_builtin(
@@ -3708,7 +3772,48 @@ add_builtin(
 
 add_builtin(
     "tile_extract",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, int]), "i": int, "j": int},
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int},
+    value_func=tile_extract_value_func,
+    variadic=False,
+    doc="""Extract a single element from the tile.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension, or vector index
+    :returns: The value of the element at the specified tile location with the same data type as the input tile""",
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+
+add_builtin(
+    "tile_extract",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int},
+    value_func=tile_extract_value_func,
+    variadic=False,
+    doc="""Extract a single element from the tile.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension, or first matrix index
+    :param k: Coordinate of element on the third dimension, or vector index, or second matrix index
+    :returns: The value of the element at the specified tile location with the same data type as the input tile""",
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+
+add_builtin(
+    "tile_extract",
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "l": int},
     value_func=tile_extract_value_func,
     variadic=False,
     doc="""Extract a single element from the tile.
@@ -3720,7 +3825,9 @@ add_builtin(
     :param a: Tile to extract the element from
     :param i: Coordinate of element on first dimension
     :param j: Coordinate of element on the second dimension
-    :returns: The value of the element at the specified tile location with the same data type as the input tile""",
+    :param k: Coordinate of element on the third dimension, or first matrix index
+    :param l: Coordinate of element on the fourth dimension, or vector index, or second matrix index
+    :returns: The value of the element at the specified tile location, with the same data type as the input tile""",
     group="Tile Primitives",
     hidden=True,
     export=False,
@@ -3728,7 +3835,14 @@ add_builtin(
 
 add_builtin(
     "tile_extract",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, int, int]), "i": int, "j": int, "k": int},
+    input_types={
+        "a": tile(dtype=Any, shape=Tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "l": int,
+        "m": int,
+    },
     value_func=tile_extract_value_func,
     variadic=False,
     doc="""Extract a single element from the tile.
@@ -3741,7 +3855,9 @@ add_builtin(
     :param i: Coordinate of element on first dimension
     :param j: Coordinate of element on the second dimension
     :param k: Coordinate of element on the third dimension
-    :returns: The value of the element at the specified tile location with the same data type as the input tile""",
+    :param l: Coordinate of element on the fourth dimension, or first matrix index
+    :param m: Vector index, or second matrix index
+    :returns: The value of the element at the specified tile location, with the same data type as the input tile""",
     group="Tile Primitives",
     hidden=True,
     export=False,
@@ -3749,7 +3865,15 @@ add_builtin(
 
 add_builtin(
     "tile_extract",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, int, int, int]), "i": int, "j": int, "k": int, "l": int},
+    input_types={
+        "a": tile(dtype=Any, shape=Tuple[int, int, int, int]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "l": int,
+        "m": int,
+        "n": int,
+    },
     value_func=tile_extract_value_func,
     variadic=False,
     doc="""Extract a single element from the tile.
@@ -3763,6 +3887,8 @@ add_builtin(
     :param j: Coordinate of element on the second dimension
     :param k: Coordinate of element on the third dimension
     :param l: Coordinate of element on the fourth dimension
+    :param m: Vector index, or first matrix index
+    :param n: Second matrix index
     :returns: The value of the element at the specified tile location, with the same data type as the input tile""",
     group="Tile Primitives",
     hidden=True,

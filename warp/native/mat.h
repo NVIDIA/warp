@@ -203,6 +203,17 @@ struct mat_t
     Type data[Rows < 1 ? 1 : Rows][Cols < 1 ? 1 : Cols];
 };
 
+// Type trait to detect if a type is a mat_t
+template<typename T>
+struct is_matrix {
+    static constexpr bool value = false;
+};
+
+template<unsigned Rows, unsigned Cols, typename Type>
+struct is_matrix<mat_t<Rows, Cols, Type>> {
+    static constexpr bool value = true;
+};
+
 template<typename Type>
 inline CUDA_CALLABLE mat_t<2, 2, Type> matrix_from_cols(vec_t<2, Type> c0, vec_t<2, Type> c1)
 {

@@ -149,6 +149,17 @@ using vec2d = vec_t<2,double>;
 using vec3d = vec_t<3,double>;
 using vec4d = vec_t<4,double>;
 
+// Type trait to detect if a type is a vec_t
+template<typename T>
+struct is_vector {
+    static constexpr bool value = false;
+};
+
+template<unsigned Length, typename Type>
+struct is_vector<vec_t<Length, Type>> {
+    static constexpr bool value = true;
+};
+
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE vec_t<Length, Type> operator - (const vec_t<Length, Type>& x)
 {

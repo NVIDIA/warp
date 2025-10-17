@@ -203,6 +203,12 @@ struct is_same<T, T> {
     static constexpr bool value = true;
 };
 
+// Helper for dependent static_assert failures
+template <typename T>
+struct always_false {
+    static constexpr bool value = false;
+};
+
 
 template <int N>
 struct tile_coord_t
@@ -2898,22 +2904,126 @@ inline CUDA_CALLABLE void adj_tile_bit_xor_inplace(TileA& a, TileB& b, AdjTileA&
 
 
 template<typename Tile>
-typename Tile::Type tile_extract(Tile& t, int i) { return t.extract(tile_coord(i)); }
+typename Tile::Type tile_extract(Tile& t, int i) {
+    return t.extract(tile_coord(i));
+}
 template<typename Tile>
-typename Tile::Type tile_extract(Tile& t, int i, int j) { return t.extract(tile_coord(i,j)); }
+auto tile_extract(Tile& t, int i, int j) { 
+    if constexpr(is_vector<typename Tile::Type>::value) {
+        return t.extract(tile_coord(i))[j];
+    } else {
+        return t.extract(tile_coord(i,j));
+    }
+}
 template<typename Tile>
-typename Tile::Type tile_extract(Tile& t, int i, int j, int k) { return t.extract(tile_coord(i,j,k)); }
+auto tile_extract(Tile& t, int i, int j, int k) { 
+    if constexpr(is_vector<typename Tile::Type>::value) {
+        return t.extract(tile_coord(i,j))[k];
+    } else if constexpr(is_matrix<typename Tile::Type>::value) {
+        return t.extract(tile_coord(i)).data[j][k];
+    } else {
+        return t.extract(tile_coord(i,j,k));
+    }
+}
 template<typename Tile>
-typename Tile::Type tile_extract(Tile& t, int i, int j, int k, int l) { return t.extract(tile_coord(i,j,k,l)); }
+auto tile_extract(Tile& t, int i, int j, int k, int l) { 
+    if constexpr(is_vector<typename Tile::Type>::value) {
+        return t.extract(tile_coord(i,j,k))[l];
+    } else if constexpr(is_matrix<typename Tile::Type>::value) {
+        return t.extract(tile_coord(i,j)).data[k][l];
+    } else {
+        return t.extract(tile_coord(i,j,k,l));
+    }
+}
+template<typename Tile>
+auto tile_extract(Tile& t, int i, int j, int k, int l, int m) { 
+    if constexpr(is_vector<typename Tile::Type>::value) {
+        return t.extract(tile_coord(i,j,k,l))[m];
+    } else if constexpr(is_matrix<typename Tile::Type>::value) {
+        return t.extract(tile_coord(i,j,k)).data[l][m];
+    } else {
+        static_assert(always_false<Tile>::value, 
+                      "tile_extract with 5 indices requires a tile of vectors (4D tile) or matrices (3D tile)");
+    }
+}
+template<typename Tile>
+auto tile_extract(Tile& t, int i, int j, int k, int l, int m, int n) { 
+    if constexpr(is_matrix<typename Tile::Type>::value) {
+        return t.extract(tile_coord(i,j,k,l)).data[m][n];
+    } else {
+        static_assert(always_false<Tile>::value, 
+                      "tile_extract with 6 indices requires a tile of matrices (4D tile)");
+    }
+}
 
 template<typename Tile, typename AdjTile>
-void adj_tile_extract(Tile& t, int i, AdjTile& adj_t, int adj_i, typename Tile::Type adj_ret) { adj_t.adj_extract(tile_coord(i), adj_ret); }
-template<typename Tile, typename AdjTile>
-void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_j, typename Tile::Type adj_ret) { adj_t.adj_extract(tile_coord(i, j), adj_ret); }
-template<typename Tile, typename AdjTile>
-void adj_tile_extract(Tile& t, int i, int j, int k, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, typename Tile::Type adj_ret) { adj_t.adj_extract(tile_coord(i, j, k), adj_ret); }
-template<typename Tile, typename AdjTile>
-void adj_tile_extract(Tile& t, int i, int j, int k, int l, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, int adj_l, typename Tile::Type adj_ret) { adj_t.adj_extract(tile_coord(i, j, k, l), adj_ret); }
+void adj_tile_extract(Tile& t, int i, AdjTile& adj_t, int adj_i, typename Tile::Type adj_ret) {
+    adj_t.adj_extract(tile_coord(i), adj_ret);
+}
+template<typename Tile, typename AdjTile, typename AdjType>
+void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_j, AdjType adj_ret) {
+    if constexpr(is_vector<typename Tile::Type>::value) {
+        typename Tile::Type vector_adj{};
+        vector_adj[j] = adj_ret;
+        adj_t.adj_extract(tile_coord(i), vector_adj);
+    } else {
+        adj_t.adj_extract(tile_coord(i, j), adj_ret);
+    }
+}
+template<typename Tile, typename AdjTile, typename AdjType>
+void adj_tile_extract(Tile& t, int i, int j, int k, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, AdjType adj_ret) { 
+    if constexpr(is_vector<typename Tile::Type>::value) {
+        typename Tile::Type vector_adj{};
+        vector_adj[k] = adj_ret;
+        adj_t.adj_extract(tile_coord(i, j), vector_adj);
+    } else if constexpr(is_matrix<typename Tile::Type>::value) {
+        typename Tile::Type matrix_adj{};
+        matrix_adj.data[j][k] = adj_ret;
+        adj_t.adj_extract(tile_coord(i), matrix_adj);
+    } else {
+        adj_t.adj_extract(tile_coord(i, j, k), adj_ret);
+    }
+}
+template<typename Tile, typename AdjTile, typename AdjType>
+void adj_tile_extract(Tile& t, int i, int j, int k, int l, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, int adj_l, AdjType adj_ret) { 
+    if constexpr(is_vector<typename Tile::Type>::value) {
+        typename Tile::Type vector_adj{};
+        vector_adj[l] = adj_ret;
+        adj_t.adj_extract(tile_coord(i, j, k), vector_adj);
+    } else if constexpr(is_matrix<typename Tile::Type>::value) {
+        typename Tile::Type matrix_adj{};
+        matrix_adj.data[k][l] = adj_ret;
+        adj_t.adj_extract(tile_coord(i, j), matrix_adj);
+    } else {
+        adj_t.adj_extract(tile_coord(i, j, k, l), adj_ret);
+    }
+}
+template<typename Tile, typename AdjTile, typename AdjType>
+void adj_tile_extract(Tile& t, int i, int j, int k, int l, int m, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, int adj_l, int adj_m, AdjType adj_ret) { 
+    if constexpr(is_vector<typename Tile::Type>::value) {
+        typename Tile::Type vector_adj{};
+        vector_adj[m] = adj_ret;
+        adj_t.adj_extract(tile_coord(i, j, k, l), vector_adj);
+    } else if constexpr(is_matrix<typename Tile::Type>::value) {
+        typename Tile::Type matrix_adj{};
+        matrix_adj.data[l][m] = adj_ret;
+        adj_t.adj_extract(tile_coord(i, j, k), matrix_adj);
+    } else {
+        static_assert(always_false<Tile>::value, 
+                      "adj_tile_extract with 5 indices requires a tile of vectors (4D tile) or matrices (3D tile)");
+    }
+}
+template<typename Tile, typename AdjTile, typename AdjType>
+void adj_tile_extract(Tile& t, int i, int j, int k, int l, int m, int n, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, int adj_l, int adj_m, int adj_n, AdjType adj_ret) { 
+    if constexpr(is_matrix<typename Tile::Type>::value) {
+        typename Tile::Type matrix_adj{};
+        matrix_adj.data[m][n] = adj_ret;
+        adj_t.adj_extract(tile_coord(i, j, k, l), matrix_adj);
+    } else {
+        static_assert(always_false<Tile>::value, 
+                      "adj_tile_extract with 6 indices requires a tile of matrices (4D tile)");
+    }
+}
 
 
 template<typename Tile>
@@ -3778,21 +3888,62 @@ inline CUDA_CALLABLE void assign(TileA& dest, int i, const Scalar& src)
 template <typename TileA, typename Scalar>
 inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, const Scalar& src)
 {   
-    dest.data(tile_coord(i, j)) = src;
+    if constexpr(is_vector<typename TileA::Type>::value) {
+        dest.data(tile_coord(i))[j] = src;
+    } else {
+        dest.data(tile_coord(i, j)) = src;
+    }
     WP_TILE_SYNC();
 }
 template <typename TileA, typename Scalar>
 inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, int k, const Scalar& src)
 {   
-    dest.data(tile_coord(i, j, k)) = src;
+    if constexpr(is_vector<typename TileA::Type>::value) {
+        dest.data(tile_coord(i, j))[k] = src;
+    } else if constexpr(is_matrix<typename TileA::Type>::value) {
+        dest.data(tile_coord(i)).data[j][k] = src;
+    } else {
+        dest.data(tile_coord(i, j, k)) = src;
+    }
     WP_TILE_SYNC();
 }
 template <typename TileA, typename Scalar>
 inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, int k, int l, const Scalar& src)
 {   
-    dest.data(tile_coord(i, j, k, l)) = src;
+    if constexpr(is_vector<typename TileA::Type>::value) {
+        dest.data(tile_coord(i, j, k))[l] = src;
+    } else if constexpr(is_matrix<typename TileA::Type>::value) {
+        dest.data(tile_coord(i, j)).data[k][l] = src;
+    } else {
+        dest.data(tile_coord(i, j, k, l)) = src;
+    }
     WP_TILE_SYNC();
 }
+template <typename TileA, typename Scalar>
+inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, int k, int l, int m, const Scalar& src)
+{   
+    if constexpr(is_vector<typename TileA::Type>::value) {
+        dest.data(tile_coord(i, j, k, l))[m] = src;
+    } else if constexpr(is_matrix<typename TileA::Type>::value) {
+        dest.data(tile_coord(i, j, k)).data[l][m] = src;
+    } else {
+        static_assert(always_false<TileA>::value, 
+                      "assign with 5 indices requires a tile of vectors (4D tile) or matrices (3D tile)");
+    }
+    WP_TILE_SYNC();
+}
+template <typename TileA, typename Scalar>
+inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, int k, int l, int m, int n, const Scalar& src)
+{   
+    if constexpr(is_matrix<typename TileA::Type>::value) {
+        dest.data(tile_coord(i, j, k, l)).data[m][n] = src;
+    } else {
+        static_assert(always_false<TileA>::value, 
+                      "assign with 6 indices requires a tile of matrices (4D tile)");
+    }
+    WP_TILE_SYNC();
+}
+
 
 template <typename TileA, typename AdjTileA, typename Scalar>
 inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, const Scalar& src, AdjTileA& adj_dest, int adj_i, Scalar& adj_src)
@@ -3812,7 +3963,11 @@ inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, int j, const Scalar& sr
         return;
     }
 
-    adj_src += dest.grad(tile_coord(i, j));
+    if constexpr(is_vector<typename TileA::Type>::value) {
+        adj_src += dest.grad(tile_coord(i))[j];
+    } else {
+        adj_src += dest.grad(tile_coord(i, j));
+    }
 }
 template <typename TileA, typename AdjTileA, typename Scalar>
 inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, int j, int k, const Scalar& src, AdjTileA& adj_dest, int adj_i, int adj_j, int adj_k, Scalar& adj_src)
@@ -3822,7 +3977,13 @@ inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, int j, int k, const Sca
         return;
     }
 
-    adj_src += dest.grad(tile_coord(i, j, k));
+    if constexpr(is_vector<typename TileA::Type>::value) {
+        adj_src += dest.grad(tile_coord(i, j))[k];
+    } else if constexpr(is_matrix<typename TileA::Type>::value) {
+        adj_src += dest.grad(tile_coord(i)).data[j][k];
+    } else {
+        adj_src += dest.grad(tile_coord(i, j, k));
+    }
 }
 template <typename TileA, typename AdjTileA, typename Scalar>
 inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, int j, int k, int l, const Scalar& src, AdjTileA& adj_dest, int adj_i, int adj_j, int adj_k, int adj_l, Scalar& adj_src)
@@ -3832,7 +3993,45 @@ inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, int j, int k, int l, co
         return;
     }
 
-    adj_src += dest.grad(tile_coord(i, j, k, l));
+    if constexpr(is_vector<typename TileA::Type>::value) {
+        adj_src += dest.grad(tile_coord(i, j, k))[l];
+    } else if constexpr(is_matrix<typename TileA::Type>::value) {
+        adj_src += dest.grad(tile_coord(i, j)).data[k][l];
+    } else {
+        adj_src += dest.grad(tile_coord(i, j, k, l));
+    }
+}
+template <typename TileA, typename AdjTileA, typename Scalar>
+inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, int j, int k, int l, int m, const Scalar& src, AdjTileA& adj_dest, int adj_i, int adj_j, int adj_k, int adj_l, int adj_m, Scalar& adj_src)
+{
+    if (dest.grad.ptr == nullptr)
+    {
+        return;
+    }
+
+    if constexpr(is_vector<typename TileA::Type>::value) {
+        adj_src += dest.grad(tile_coord(i, j, k, l))[m];
+    } else if constexpr(is_matrix<typename TileA::Type>::value) {
+        adj_src += dest.grad(tile_coord(i, j, k)).data[l][m];
+    } else {
+        static_assert(always_false<TileA>::value, 
+                      "adj_assign with 5 indices requires a tile of vectors (4D tile) or matrices (3D tile)");
+    }
+}
+template <typename TileA, typename AdjTileA, typename Scalar>
+inline CUDA_CALLABLE void adj_assign(TileA& dest, int i, int j, int k, int l, int m, int n, const Scalar& src, AdjTileA& adj_dest, int adj_i, int adj_j, int adj_k, int adj_l, int adj_m, int adj_n, Scalar& adj_src)
+{
+    if (dest.grad.ptr == nullptr)
+    {
+        return;
+    }
+
+    if constexpr(is_matrix<typename TileA::Type>::value) {
+        adj_src += dest.grad(tile_coord(i, j, k, l)).data[m][n];
+    } else {
+        static_assert(always_false<TileA>::value, 
+                      "adj_assign with 6 indices requires a tile of matrices (4D tile)");
+    }
 }
 
 template <typename TileA, typename TileB, typename Coord>

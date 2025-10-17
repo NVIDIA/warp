@@ -2587,7 +2587,7 @@ class Adjoint:
                     out.is_write = target.is_write
 
         elif is_tile(target_type):
-            if len(indices) == len(target_type.shape):
+            if len(indices) >= len(target_type.shape):  # equality for scalars, inequality for composite types
                 # handles extracting a single element from a tile
                 out = adj.add_builtin_call("tile_extract", [target, *indices])
             elif len(indices) < len(target_type.shape):
