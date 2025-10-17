@@ -58,6 +58,8 @@
 - Building `warp.fem` geometry and function space partitions is now possible in CUDA graphs by passing an explicit upper-bound for the number of cells and nodes to `ExplicitGeometryPartition` and `make_space_partition`. Additionally, building fields and field restrictions is now synchronization-free by default ([GH-1021](https://github.com/NVIDIA/warp/issues/1021)).
 - Raise `RuntimeError` from `wp.load_module()` when attempting to load a module that does not contain any Warp kernels,
   functions, or structs ([GH-920](https://github.com/NVIDIA/warp/issues/920)).
+- Default the `q` argument in `wp.transform()` to the identity quaternion at the kernel scope
+  ([GH-923](https://github.com/NVIDIA/warp/issues/923)).
 
 
 ### Fixed
