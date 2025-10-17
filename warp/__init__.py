@@ -137,12 +137,6 @@ from warp._src.types import MeshQueryAABB as MeshQueryAABB
 from warp._src.types import MeshQueryPoint as MeshQueryPoint
 from warp._src.types import MeshQueryRay as MeshQueryRay
 
-# device-wide gemms
-from warp._src.types import matmul as matmul
-from warp._src.types import adj_matmul as adj_matmul
-from warp._src.types import batched_matmul as batched_matmul
-from warp._src.types import adj_batched_matmul as adj_batched_matmul
-
 # discouraged, users should use wp.types.vector, wp.types.matrix
 from warp._src.types import vector as vec
 from warp._src.types import matrix as mat

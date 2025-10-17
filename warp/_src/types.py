@@ -3123,23 +3123,16 @@ class array(Array[DType]):
         return self.ctype
 
     def __matmul__(self, other):
-        """
-        Enables A @ B syntax for matrix multiplication
-        """
+        """Matrix multiplication is not supported for wp.array objects."""
         if not is_array(other):
             return NotImplemented
+        raise TypeError("Matrix multiplication (@) is not supported for wp.array objects. Use tile primitives instead.")
 
-        if self.ndim != 2 or other.ndim != 2:
-            raise RuntimeError(
-                f"A has dim = {self.ndim}, B has dim = {other.ndim}. If multiplying with @, A and B must have dim = 2."
-            )
-
-        m = self.shape[0]
-        n = other.shape[1]
-        c = warp.zeros(shape=(m, n), dtype=self.dtype, device=self.device, requires_grad=True)
-        d = warp.zeros(shape=(m, n), dtype=self.dtype, device=self.device, requires_grad=True)
-        matmul(self, other, c, d)
-        return d
+    def __rmatmul__(self, other):
+        """Matrix multiplication is not supported for wp.array objects."""
+        if not is_array(other):
+            return NotImplemented
+        raise TypeError("Matrix multiplication (@) is not supported for wp.array objects. Use tile primitives instead.")
 
     @property
     def grad(self):
@@ -5470,130 +5463,6 @@ class MeshQueryRay:
         "v": Var("v", float32),
         "normal": Var("normal", vec3),
     }
-
-
-def matmul(
-    a: array2d,
-    b: array2d,
-    c: array2d,
-    d: array2d,
-    alpha: float = 1.0,
-    beta: float = 0.0,
-    allow_tf32x3_arith: builtins.bool = False,
-):
-    """Computes a generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
-
-    .. versionremoved:: 1.7
-
-    .. deprecated:: 1.6
-        Use :doc:`tile primitives </modules/tiles>` instead.
-
-    Args:
-        a (array2d): two-dimensional array containing matrix A
-        b (array2d): two-dimensional array containing matrix B
-        c (array2d): two-dimensional array containing matrix C
-        d (array2d): two-dimensional array to which output D is written
-        alpha (float): parameter alpha of GEMM
-        beta (float): parameter beta of GEMM
-        allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
-                                   while using Tensor Cores
-    """
-
-    raise RuntimeError("This function has been removed. Use tile primitives instead.")
-
-
-def adj_matmul(
-    a: array2d,
-    b: array2d,
-    c: array2d,
-    adj_a: array2d,
-    adj_b: array2d,
-    adj_c: array2d,
-    adj_d: array2d,
-    alpha: float = 1.0,
-    beta: float = 0.0,
-    allow_tf32x3_arith: builtins.bool = False,
-):
-    """Computes the adjoint of a generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
-        note: the adjoint of parameter alpha is not included but can be computed as `adj_alpha = np.sum(np.concatenate(np.multiply(a @ b, adj_d)))`.
-        note: the adjoint of parameter beta is not included but can be computed as `adj_beta = np.sum(np.concatenate(np.multiply(c, adj_d)))`.
-
-    Args:
-        a (array2d): two-dimensional array containing matrix A
-        b (array2d): two-dimensional array containing matrix B
-        c (array2d): two-dimensional array containing matrix C
-        adj_a (array2d): two-dimensional array to which the adjoint of matrix A is written
-        adj_b (array2d): two-dimensional array to which the adjoint of matrix B is written
-        adj_c (array2d): two-dimensional array to which the adjoint of matrix C is written
-        adj_d (array2d): two-dimensional array containing the adjoint of matrix D
-        alpha (float): parameter alpha of GEMM
-        beta (float): parameter beta of GEMM
-        allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
-                                   while using Tensor Cores
-    """
-
-    raise RuntimeError("This function has been removed. Use tile primitives instead.")
-
-
-def batched_matmul(
-    a: array3d,
-    b: array3d,
-    c: array3d,
-    d: array3d,
-    alpha: float = 1.0,
-    beta: float = 0.0,
-    allow_tf32x3_arith: builtins.bool = False,
-):
-    """Computes a batched generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
-
-    .. versionremoved:: 1.7
-
-    .. deprecated:: 1.6
-        Use :doc:`tile primitives </modules/tiles>` instead.
-
-    Args:
-        a (array3d): three-dimensional array containing A matrices. Overall array dimension is {batch_count, M, K}
-        b (array3d): three-dimensional array containing B matrices. Overall array dimension is {batch_count, K, N}
-        c (array3d): three-dimensional array containing C matrices. Overall array dimension is {batch_count, M, N}
-        d (array3d): three-dimensional array to which output D is written. Overall array dimension is {batch_count, M, N}
-        alpha (float): parameter alpha of GEMM
-        beta (float): parameter beta of GEMM
-        allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
-                                   while using Tensor Cores
-    """
-
-    raise RuntimeError("This function has been removed. Use tile primitives instead.")
-
-
-def adj_batched_matmul(
-    a: array3d,
-    b: array3d,
-    c: array3d,
-    adj_a: array3d,
-    adj_b: array3d,
-    adj_c: array3d,
-    adj_d: array3d,
-    alpha: float = 1.0,
-    beta: float = 0.0,
-    allow_tf32x3_arith: builtins.bool = False,
-):
-    """Computes the adjoint of a batched generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
-
-    Args:
-        a (array3d): three-dimensional array containing A matrices. Overall array dimension is {batch_count, M, K}
-        b (array3d): three-dimensional array containing B matrices. Overall array dimension is {batch_count, K, N}
-        c (array3d): three-dimensional array containing C matrices. Overall array dimension is {batch_count, M, N}
-        adj_a (array3d): three-dimensional array to which the adjoints of A matrices are written. Overall array dimension is {batch_count, M, K}
-        adj_b (array3d): three-dimensional array to which the adjoints of B matrices are written. Overall array dimension is {batch_count, K, N}
-        adj_c (array3d): three-dimensional array to which the adjoints of C matrices are written. Overall array dimension is {batch_count, M, N}
-        adj_d (array3d): three-dimensional array containing adjoints of D matrices. Overall array dimension is {batch_count, M, N}
-        alpha (float): parameter alpha of GEMM
-        beta (float): parameter beta of GEMM
-        allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
-                                   while using Tensor Cores
-    """
-
-    raise RuntimeError("This function has been removed. Use tile primitives instead.")
 
 
 class HashGrid:
