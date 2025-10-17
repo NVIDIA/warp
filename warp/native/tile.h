@@ -328,6 +328,113 @@ template <int... V>
 using tile_stride_t = tile_tuple_t<V...>;
 
 
+// helper to remove a dimension from a shape (used for axis reductions)
+template<int Axis, typename Shape>
+struct tile_shape_remove_dim {
+    static_assert(Axis >= 0 && Axis < Shape::N, "Axis out of bounds for tile_shape_remove_dim");
+};
+
+// 1D -> scalar
+template<int D0>
+struct tile_shape_remove_dim<0, tile_shape_t<D0>> {
+    using type = tile_shape_t<1>;
+};
+
+// 2D -> 1D
+template<int D0, int D1>
+struct tile_shape_remove_dim<0, tile_shape_t<D0, D1>> {
+    using type = tile_shape_t<D1>;
+};
+
+template<int D0, int D1>
+struct tile_shape_remove_dim<1, tile_shape_t<D0, D1>> {
+    using type = tile_shape_t<D0>;
+};
+
+// 3D -> 2D
+template<int D0, int D1, int D2>
+struct tile_shape_remove_dim<0, tile_shape_t<D0, D1, D2>> {
+    using type = tile_shape_t<D1, D2>;
+};
+
+template<int D0, int D1, int D2>
+struct tile_shape_remove_dim<1, tile_shape_t<D0, D1, D2>> {
+    using type = tile_shape_t<D0, D2>;
+};
+
+template<int D0, int D1, int D2>
+struct tile_shape_remove_dim<2, tile_shape_t<D0, D1, D2>> {
+    using type = tile_shape_t<D0, D1>;
+};
+
+// 4D -> 3D
+template<int D0, int D1, int D2, int D3>
+struct tile_shape_remove_dim<0, tile_shape_t<D0, D1, D2, D3>> {
+    using type = tile_shape_t<D1, D2, D3>;
+};
+
+template<int D0, int D1, int D2, int D3>
+struct tile_shape_remove_dim<1, tile_shape_t<D0, D1, D2, D3>> {
+    using type = tile_shape_t<D0, D2, D3>;
+};
+
+template<int D0, int D1, int D2, int D3>
+struct tile_shape_remove_dim<2, tile_shape_t<D0, D1, D2, D3>> {
+    using type = tile_shape_t<D0, D1, D3>;
+};
+
+template<int D0, int D1, int D2, int D3>
+struct tile_shape_remove_dim<3, tile_shape_t<D0, D1, D2, D3>> {
+    using type = tile_shape_t<D0, D1, D2>;
+};
+
+
+// helper to insert an axis value into a coordinate (inverse of removing dimension)
+// used for mapping output coordinates back to input coordinates during axis reduction
+template<int Axis, int N>
+CUDA_CALLABLE constexpr auto tile_coord_insert_axis(const tile_coord_t<N>& coord, int axis_val)
+{
+    static_assert(Axis >= 0 && Axis <= N, "Axis out of bounds for tile_coord_insert_axis");
+    
+    if constexpr (N == 0)
+    {
+        // Scalar -> 1D
+        static_assert(Axis == 0, "Invalid axis for scalar coordinate");
+        return tile_coord(axis_val);
+    }
+    else if constexpr (N == 1)
+    {
+        // 1D -> 2D
+        if constexpr (Axis == 0)
+            return tile_coord(axis_val, coord[0]);
+        else
+            return tile_coord(coord[0], axis_val);
+    }
+    else if constexpr (N == 2)
+    {
+        // 2D -> 3D
+        if constexpr (Axis == 0)
+            return tile_coord(axis_val, coord[0], coord[1]);
+        else if constexpr (Axis == 1)
+            return tile_coord(coord[0], axis_val, coord[1]);
+        else
+            return tile_coord(coord[0], coord[1], axis_val);
+    }
+    else // N == 3
+    {
+        // 3D -> 4D
+        if constexpr (Axis == 0)
+            return tile_coord(axis_val, coord[0], coord[1], coord[2]);
+        else if constexpr (Axis == 1)
+            return tile_coord(coord[0], axis_val, coord[1], coord[2]);
+        else if constexpr (Axis == 2)
+            return tile_coord(coord[0], coord[1], axis_val, coord[2]);
+        else
+            return tile_coord(coord[0], coord[1], coord[2], axis_val);
+    }
+}
+
+
 // represents a tile stored in global memory with dynamic strides
 // used to represent the source and offset for tile loads to register/shared
 // BoundsCheck: when true (default), validates array access bounds; when false, skips validation for performance

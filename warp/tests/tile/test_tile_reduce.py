@@ -507,6 +507,204 @@ def test_tile_reduce_simt(test, device):
     test.assertEqual(output.numpy()[0], np.sum(np.arange(N)))
 
 
+# Tier 1: axis size <= 32
+@wp.kernel
+def tile_reduce_axis_tier1_sum_axis0_kernel(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
+    a = wp.tile_load(x, shape=(32, 64), storage="shared")
+    b = wp.tile_sum(a, axis=0)
+    wp.tile_store(y, b)
+
+
+@wp.kernel
+def tile_reduce_axis_tier1_prod_axis1_kernel(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
+    a = wp.tile_load(x, shape=(32, 8), storage="shared")
+    b = wp.tile_reduce(wp.mul, a, axis=1)
+    wp.tile_store(y, b)
+
+
+@wp.kernel
+def tile_reduce_axis_tier1_sum_axis2_kernel(x: wp.array3d(dtype=float), y: wp.array2d(dtype=float)):
+    a = wp.tile_load(x, shape=(8, 8, 16), storage="shared")
+    b = wp.tile_sum(a, axis=2)
+    wp.tile_store(y, b)
+
+
+# Tier 2: 32 < axis size <= 256
+@wp.kernel
+def tile_reduce_axis_tier2_sum_axis0_kernel(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
+    a = wp.tile_load(x, shape=(200, 32), storage="shared")
+    b = wp.tile_sum(a, axis=0)
+    wp.tile_store(y, b)
+
+
+@wp.kernel
+def tile_reduce_axis_tier2_prod_axis1_kernel(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
+    a = wp.tile_load(x, shape=(16, 64), storage="shared")
+    b = wp.tile_reduce(wp.mul, a, axis=1)
+    wp.tile_store(y, b)
+
+
+@wp.kernel
+def tile_reduce_axis_tier2_sum_axis2_kernel(x: wp.array3d(dtype=float), y: wp.array2d(dtype=float)):
+    a = wp.tile_load(x, shape=(8, 8, 128), storage="shared")
+    b = wp.tile_sum(a, axis=2)
+    wp.tile_store(y, b)
+
+
+# Tier 3: axis size > 256
+@wp.kernel
+def tile_reduce_axis_tier3_sum_axis0_kernel(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
+    a = wp.tile_load(x, shape=(400, 16), storage="shared")
+    b = wp.tile_sum(a, axis=0)
+    wp.tile_store(y, b)
+
+
+@wp.kernel
+def tile_reduce_axis_tier3_prod_axis1_kernel(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
+    a = wp.tile_load(x, shape=(8, 300), storage="shared")
+    b = wp.tile_reduce(wp.mul, a, axis=1)
+    wp.tile_store(y, b)
+
+
+@wp.kernel
+def tile_reduce_axis_tier3_sum_axis2_kernel(x: wp.array3d(dtype=float), y: wp.array2d(dtype=float)):
+    a = wp.tile_load(x, shape=(4, 4, 384), storage="shared")
+    b = wp.tile_sum(a, axis=2)
+    wp.tile_store(y, b)
+
+
+def test_tile_reduce_axis_tier1(test, device):
+    # 2D sum: axis=0, size 32 (forward and backward)
+    x = wp.ones((32, 64), dtype=float, requires_grad=True, device=device)
+    y = wp.zeros(64, dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_reduce_axis_tier1_sum_axis0_kernel, dim=[1], inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device
+        )
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.ones(64, dtype=float) * 32.0)
+    assert_np_equal(x.grad.numpy(), np.ones((32, 64), dtype=float))
+
+    # 2D product: axis=1, size 8
+    rng = np.random.default_rng(42)
+    x_np = rng.random((32, 8), dtype=np.float32) * 0.1 + 1.0
+    x = wp.array(x_np, dtype=float, device=device)
+    y = wp.zeros(32, dtype=float, device=device)
+
+    wp.launch_tiled(
+        tile_reduce_axis_tier1_prod_axis1_kernel, dim=[1], inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device
+    )
+
+    assert_np_equal(y.numpy(), np.prod(x_np, axis=1), tol=1e-3)
+
+    # 3D sum: axis=2, size 16 (forward and backward)
+    x = wp.ones((8, 8, 16), dtype=float, requires_grad=True, device=device)
+    y = wp.zeros((8, 8), dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_reduce_axis_tier1_sum_axis2_kernel, dim=[1], inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device
+        )
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.ones((8, 8), dtype=float) * 16.0)
+    assert_np_equal(x.grad.numpy(), np.ones((8, 8, 16), dtype=float))
+
+
+def test_tile_reduce_axis_tier2(test, device):
+    # 2D sum: axis=0, size 200 (forward and backward)
+    x = wp.ones((200, 32), dtype=float, requires_grad=True, device=device)
+    y = wp.zeros(32, dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_reduce_axis_tier2_sum_axis0_kernel, dim=[1], inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device
+        )
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.ones(32, dtype=float) * 200.0)
+    assert_np_equal(x.grad.numpy(), np.ones((200, 32), dtype=float))
+
+    # 2D product: axis=1, size 64
+    rng = np.random.default_rng(42)
+    x_np = rng.random((16, 64), dtype=np.float32) * 0.05 + 1.0
+    x = wp.array(x_np, dtype=float, device=device)
+    y = wp.zeros(16, dtype=float, device=device)
+
+    wp.launch_tiled(
+        tile_reduce_axis_tier2_prod_axis1_kernel, dim=[1], inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device
+    )
+
+    assert_np_equal(y.numpy(), np.prod(x_np, axis=1), tol=1e-2)
+
+    # 3D sum: axis=2, size 128 (forward and backward)
+    x = wp.ones((8, 8, 128), dtype=float, requires_grad=True, device=device)
+    y = wp.zeros((8, 8), dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_reduce_axis_tier2_sum_axis2_kernel, dim=[1], inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device
+        )
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.ones((8, 8), dtype=float) * 128.0)
+    assert_np_equal(x.grad.numpy(), np.ones((8, 8, 128), dtype=float))
+
+
+def test_tile_reduce_axis_tier3(test, device):
+    # 2D sum: axis=0, size 400 (forward and backward)
+    x = wp.ones((400, 16), dtype=float, requires_grad=True, device=device)
+    y = wp.zeros(16, dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_reduce_axis_tier3_sum_axis0_kernel, dim=[1], inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device
+        )
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.ones(16, dtype=float) * 400.0, tol=2e-4)
+    assert_np_equal(x.grad.numpy(), np.ones((400, 16), dtype=float))
+
+    # 2D product: axis=1, size 300
+    rng = np.random.default_rng(42)
+    x_np = rng.random((8, 300), dtype=np.float32) * 0.01 + 1.0
+    x = wp.array(x_np, dtype=float, device=device)
+    y = wp.zeros(8, dtype=float, device=device)
+
+    wp.launch_tiled(
+        tile_reduce_axis_tier3_prod_axis1_kernel, dim=[1], inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device
+    )
+
+    assert_np_equal(y.numpy(), np.prod(x_np, axis=1), tol=1e-1)
+
+    # 3D sum: axis=2, size 384 (forward and backward)
+    x = wp.ones((4, 4, 384), dtype=float, requires_grad=True, device=device)
+    y = wp.zeros((4, 4), dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_reduce_axis_tier3_sum_axis2_kernel, dim=[1], inputs=[x], outputs=[y], block_dim=TILE_DIM, device=device
+        )
+
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.ones((4, 4), dtype=float) * 384.0, tol=2e-4)
+    assert_np_equal(x.grad.numpy(), np.ones((4, 4, 384), dtype=float))
+
+
 @wp.kernel
 def tile_untile_kernel(output: wp.array(dtype=int)):
     # thread index
@@ -734,6 +932,9 @@ add_function_test(TestTileReduce, "test_tile_reduce_custom", test_tile_reduce_cu
 add_function_test(TestTileReduce, "test_tile_reduce_custom_struct", test_tile_reduce_custom_struct, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_grouped_sum", test_tile_reduce_grouped_sum, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_simt", test_tile_reduce_simt, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_axis_tier1", test_tile_reduce_axis_tier1, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_axis_tier2", test_tile_reduce_axis_tier2, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_axis_tier3", test_tile_reduce_axis_tier3, devices=devices)
 add_function_test(TestTileReduce, "test_tile_ones", test_tile_ones, devices=devices)
 add_function_test(TestTileReduce, "test_tile_arange", test_tile_arange, devices=devices)
 add_function_test(TestTileReduce, "test_tile_untile_scalar", test_tile_untile_scalar, devices=devices)
