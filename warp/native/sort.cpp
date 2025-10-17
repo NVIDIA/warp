@@ -92,6 +92,11 @@ void radix_sort_pairs_host(int64_t* keys, int* values, int n)
 	radix_sort_pairs_host<int64_t>(keys, values, n, n);
 }
 
+void radix_sort_pairs_host(uint64_t* keys, int* values, int n)
+{
+	radix_sort_pairs_host<uint64_t>(keys, values, n, n);
+}
+
  //http://stereopsis.com/radix.html
 inline unsigned int radix_float_to_int(float f)
 {
@@ -202,6 +207,8 @@ void wp_radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n) {}
 
 void wp_radix_sort_pairs_int64_device(uint64_t keys, uint64_t values, int n) {}
 
+void wp_radix_sort_pairs_uint64_device(uint64_t keys, uint64_t values, int n) {}
+
 void wp_radix_sort_pairs_float_device(uint64_t keys, uint64_t values, int n) {}
 
 void wp_segmented_sort_pairs_float_device(uint64_t keys, uint64_t values, int n, uint64_t segment_start_indices, uint64_t segment_end_indices, int num_segments) {}
@@ -222,6 +229,13 @@ void wp_radix_sort_pairs_int64_host(uint64_t keys, uint64_t values, int n)
 {
     radix_sort_pairs_host(
         reinterpret_cast<int64_t *>(keys),
+        reinterpret_cast<int *>(values), n);
+}
+
+void wp_radix_sort_pairs_uint64_host(uint64_t keys, uint64_t values, int n)
+{
+    radix_sort_pairs_host(
+        reinterpret_cast<uint64_t *>(keys),
         reinterpret_cast<int *>(values), n);
 }
 

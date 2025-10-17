@@ -3249,33 +3249,61 @@ def tile_map(
     ...
 
 @over
-def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQuery:
+def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> BvhQuery:
     """Construct an axis-aligned bounding box query against a BVH object.
 
     This query can be used to iterate over all bounds inside a BVH.
+    To start a query from a specific node, set ``root`` to the index of the node. The root
+    can be obtained using the :func:`bvh_get_group_root` function when creating a grouped BVH.
+    If ``root`` is -1 (default), traversal starts at the BVH's global root.
+    The query will only trace down from that node, limiting traversal to that subtree.
 
     :param id: The BVH identifier
     :param low: The lower bound of the bounding box in BVH space
     :param high: The upper bound of the bounding box in BVH space
+    :param root: The root to begin the query from (optional, default: -1)
     """
     ...
 
 @over
-def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> BvhQuery:
+def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32) -> BvhQuery:
     """Construct a ray query against a BVH object.
 
     This query can be used to iterate over all bounds that intersect the ray.
+    To start a query from a specific node, set ``root`` to the index of the node. The root
+    can be obtained using the :func:`bvh_get_group_root` function when creating a grouped BVH.
+    If ``root`` is -1 (default), traversal starts at the BVH's global root.
+    The query will only trace down from that node, limiting traversal to that subtree.
 
     :param id: The BVH identifier
     :param start: The start of the ray in BVH space
     :param dir: The direction of the ray in BVH space
+    :param root: The root to begin the query from (optional, default: -1)
     """
     ...
 
 @over
-def bvh_query_next(query: BvhQuery, index: int32) -> bool:
+def bvh_query_next(query: BvhQuery, index: int32, max_dist: float32) -> bool:
     """Move to the next bound returned by the query.
+
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
+    The maximum distance along a ray query to check for intersections can be set using ``max_dist``.
+
+    :param query: The query to move to the next bound
+    :param index: The index of the current bound
+    :param max_dist: The maximum distance along the ray to check for intersections for ray queries
+    """
+    ...
+
+@over
+def bvh_get_group_root(id: uint64, group: int32) -> int:
+    """Get the root of a group in a BVH.
+
+    Returns the root node index for the specified group. If the group is not found, returns -1
+    which is the root of the entire BVH.
+
+    :param id: The BVH identifier
+    :param group: The group identifier
     """
     ...
 
