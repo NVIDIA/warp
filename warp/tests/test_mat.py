@@ -1470,17 +1470,8 @@ def test_matrix_mutation(expected: wp._src.types.matrix(shape=(10, 3), dtype=flo
 
     # test direct element indexing
     m[0, 0] = 1.0
-    m[0, 1] = 2.0
-    m[0, 2] = 3.0
-
-    # The nested indexing (matrix->vector->scalar) below does not
-    # currently modify m because m[0] returns row vector by
-    # value rather than reference, this is different from NumPy
-    # which always returns by ref. Not clear how we can support
-    # this as well as auto-diff.
-
-    # m[0][1] = 2.0
-    # m[0][2] = 3.0
+    m[0][1] = 2.0
+    m[0][2] = 3.0
 
     # test setting rows
     for i in range(1, 10):
