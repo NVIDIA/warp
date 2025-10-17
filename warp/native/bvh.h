@@ -20,11 +20,6 @@
 #include "builtin.h"
 #include "intersect.h"
 
- // only used while building the warp core library
-#ifndef WP_TILE_BLOCK_DIM
-#define WP_TILE_BLOCK_DIM 256
-#endif
-
 #ifdef __CUDA_ARCH__
 #define BVH_SHARED_STACK 1
 #else

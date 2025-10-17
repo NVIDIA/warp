@@ -35,6 +35,11 @@
     #define CUDA_CALLABLE_DEVICE __device__
 #endif
 
+// Tile block dimension used while building the warp core library
+#ifndef WP_TILE_BLOCK_DIM
+#define WP_TILE_BLOCK_DIM 256
+#endif
+
 #ifdef WP_VERIFY_FP
 #define FP_CHECK 1
 #define DO_IF_FPCHECK(X) {X}
