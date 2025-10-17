@@ -18,6 +18,7 @@ from __future__ import annotations
 import builtins
 import ctypes
 import enum
+import functools
 import inspect
 import math
 import struct
@@ -325,6 +326,7 @@ def _rbinary_op(self, op, x, t, cw=True):
     return t(*(warp.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x)))
 
 
+@functools.lru_cache(maxsize=None)
 def vector(length, dtype):
     # canonicalize dtype
     if dtype == int:
@@ -369,7 +371,11 @@ def vector(length, dtype):
             if num_args == 0:
                 super().__init__()
             elif num_args == 1:
-                if hasattr(args[0], "__len__"):
+                if type_generic_equal(args[0], self):
+                    # copy constructor.
+                    for i in range(self._shape_[0]):
+                        super().__setitem__(i, vec_t.scalar_import(args[0][i]))
+                elif hasattr(args[0], "__len__"):
                     # try to copy from expanded sequence, e.g. (1, 2, 3)
                     self.__init__(*args[0])
                 else:
@@ -527,6 +533,7 @@ def vector(length, dtype):
     return vec_t
 
 
+@functools.lru_cache(maxsize=None)
 def matrix(shape, dtype):
     assert len(shape) == 2
 
@@ -576,7 +583,13 @@ def matrix(shape, dtype):
             if num_args == 0:
                 super().__init__()
             elif num_args == 1:
-                if hasattr(args[0], "__len__"):
+                if type_generic_equal(args[0], self):
+                    # copy constructor.
+                    for i in range(self._shape_[0]):
+                        offset = i * self._shape_[1]
+                        for j in range(self._shape_[1]):
+                            super().__setitem__(offset + j, mat_t.scalar_import(args[0][i, j]))
+                elif hasattr(args[0], "__len__"):
                     # try to copy from expanded sequence, e.g. [[1, 0], [0, 1]]
                     self.__init__(*args[0])
                 else:
@@ -590,6 +603,14 @@ def matrix(shape, dtype):
                     super().__setitem__(i, mat_t.scalar_import(args[i]))
             elif num_args == self._shape_[0]:
                 # row vectors
+                if any(type_is_vector(x) for x in args):
+                    warp.utils.warn(
+                        "In the future, the matrix constructor won't support taking row vectors as input arguments. "
+                        "Use `wp.matrix_from_rows()` or `wp.matrix_from_cols()` instead.",
+                        DeprecationWarning,
+                        stacklevel=2,
+                    )
+
                 for i, row in enumerate(args):
                     if not hasattr(row, "__len__") or len(row) != self._shape_[1]:
                         raise TypeError(
@@ -808,8 +829,11 @@ def matrix(shape, dtype):
             elif isinstance(key, slice):
                 indices = range(*key.indices(self._shape_[0]))
                 row_vecs = tuple(self.get_row(x) for x in indices)
-                shape = (len(row_vecs), self._shape_[1])
-                return matrix(shape, self._wp_scalar_type_)(*row_vecs)
+                if not row_vecs:
+                    shape = (0, self._shape_[1])
+                    return matrix(shape, self._wp_scalar_type_)()
+
+                return matrix_from_rows(*row_vecs)
             else:
                 raise KeyError(f"Invalid key {key}, expected int or pair of ints")
 
@@ -5592,6 +5616,20 @@ def type_is_generic(t):
 
 def type_is_generic_scalar(t):
     return t in (Scalar, Float, Int)
+
+
+def type_generic_equal(a, b):
+    # More direct alternative to `types_equal()` that also does not error
+    # when one of the argument is a NumPy array.
+
+    if getattr(a, "_wp_generic_type_hint_", "a") is not getattr(b, "_wp_generic_type_hint_", "b"):
+        return False
+
+    for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_):
+        if not scalars_equal(p1, p2, match_generic=False):
+            return False
+
+    return True
 
 
 def type_matches_template(arg_type, template_type):
