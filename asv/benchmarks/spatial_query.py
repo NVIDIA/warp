@@ -66,7 +66,7 @@ class MeshQuery:
         self.device = wp.get_device("cuda:0")
         wp.load_module(device=self.device)
 
-        asset_stage = Usd.Stage.Open(os.path.join(wp.examples.get_asset_directory(), f"{asset}.usd"))
+        asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), f"{asset}.usd"))
         mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath(f"/root/{asset}"))
 
         points = np.array(mesh_geom.GetPointsAttr().Get())
@@ -348,7 +348,7 @@ class BvhAABBQuery:
             self.device = wp.get_device(device)
             wp.load_module(device=self.device)
 
-            asset_stage = Usd.Stage.Open(os.path.join(wp.examples.get_asset_directory(), "bunny.usd"))
+            asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
             mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/root/bunny"))
 
             points_base = np.array(mesh_geom.GetPointsAttr().Get())
@@ -474,21 +474,7 @@ class BvhAABBQuery:
                 wp.synchronize_device(self.device)
 
     @skip_for_params(
-        [
-            t
-            for t in list(
-                itertools.product(
-                    [
-                        0.002,
-                        0.004,
-                        0.008,
-                    ],
-                    [0, 8],
-                    ["cpu"],
-                )
-            )
-            if t != (0.002, 0, "cpu")
-        ]
+        [t for t in list(itertools.product([0.002, 0.004, 0.008], [0, 8], ["cpu"])) if t != (0.002, 0, "cpu")]
     )
     @skip_benchmark_if(USD_AVAILABLE is False)
     def time_bvh_aabb_vs_aabb_query(self, query_radius, leaf_size, device):
@@ -499,21 +485,7 @@ class BvhAABBQuery:
         wp.synchronize_device(self.device)
 
     @skip_for_params(
-        [
-            t
-            for t in list(
-                itertools.product(
-                    [
-                        0.002,
-                        0.004,
-                        0.008,
-                    ],
-                    [0, 8],
-                    ["cpu"],
-                )
-            )
-            if t != (0.002, 0, "cpu")
-        ]
+        [t for t in list(itertools.product([0.002, 0.004, 0.008], [0, 8], ["cpu"])) if t != (0.002, 0, "cpu")]
     )
     @skip_benchmark_if(USD_AVAILABLE is False)
     def time_mesh_aabb_vs_aabb_query(self, query_radius, leaf_size, device):
@@ -525,14 +497,7 @@ class BvhAABBQuery:
 
 
 class BvhRayQuery:
-    params = [
-        [
-            480,
-            1080,
-        ],
-        [0, 8],
-        ["cpu", "cuda"],
-    ]
+    params = [[480, 1080], [0, 8], ["cpu", "cuda"]]
     param_names = ["resolution", "leaf_size", "device"]
 
     number = 5
@@ -560,7 +525,7 @@ class BvhRayQuery:
             wp.build.clear_kernel_cache()
             wp.load_module(device=self.device)
 
-            asset_stage = Usd.Stage.Open(os.path.join(wp.examples.get_asset_directory(), "bunny.usd"))
+            asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
             mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/root/bunny"))
 
             points_base = np.array(mesh_geom.GetPointsAttr().Get())
@@ -649,9 +614,7 @@ class BvhRayQuery:
                         self.rays_width,
                         self.rays_height,
                     ],
-                    outputs=[
-                        self.rays,
-                    ],
+                    outputs=[self.rays],
                     record_cmd=True,
                 )
                 self.cmd_mesh_query = wp.launch(
@@ -665,9 +628,7 @@ class BvhRayQuery:
                         self.rays_width,
                         self.rays_height,
                     ],
-                    outputs=[
-                        self.rays,
-                    ],
+                    outputs=[self.rays],
                     record_cmd=True,
                 )
 
@@ -686,9 +647,7 @@ class BvhRayQuery:
                                 self.rays_width,
                                 self.rays_height,
                             ],
-                            outputs=[
-                                self.rays,
-                            ],
+                            outputs=[self.rays],
                         )
 
                 self.cuda_graph_bvh_ray_vs_aabb = capture.graph
@@ -706,9 +665,7 @@ class BvhRayQuery:
                                 self.rays_width,
                                 self.rays_height,
                             ],
-                            outputs=[
-                                self.rays,
-                            ],
+                            outputs=[self.rays],
                         )
                 self.cuda_graph_mesh_ray_vs_aabb = capture.graph
 
@@ -717,7 +674,7 @@ class BvhRayQuery:
                 wp.capture_launch(self.cuda_graph_mesh_ray_vs_aabb)
                 wp.synchronize_device()
 
-    @skip_for_params([t for t in itertools.product([480, 1080], [1, 2, 4], ["cpu"]) if t != (480, 0, "cpu")])
+    @skip_for_params([t for t in itertools.product([480, 1080], [0, 8], ["cpu"]) if t != (480, 0, "cpu")])
     @skip_benchmark_if(USD_AVAILABLE is False)
     def time_bvh_ray_vs_aabb_query(self, resolution, leaf_size, device):
         if self.bvh.device.is_cpu:
@@ -726,7 +683,7 @@ class BvhRayQuery:
             wp.capture_launch(self.cuda_graph_bvh_ray_vs_aabb)
         wp.synchronize_device()
 
-    @skip_for_params([t for t in itertools.product([480, 1080], [1, 2, 4], ["cpu"]) if t != (480, 0, "cpu")])
+    @skip_for_params([t for t in itertools.product([480, 1080], [0, 8], ["cpu"]) if t != (480, 0, "cpu")])
     @skip_benchmark_if(USD_AVAILABLE is False)
     def time_mesh_ray_vs_aabb_query(self, resolution, leaf_size, device):
         if self.bvh.device.is_cpu:

@@ -60,12 +60,9 @@
   functions, or structs ([GH-920](https://github.com/NVIDIA/warp/issues/920)).
 - Default the `q` argument in `wp.transform()` to the identity quaternion at the kernel scope
   ([GH-923](https://github.com/NVIDIA/warp/issues/923)).
-- Introduce a runtime leaf_size parameter for `wp.Bvh` and `wp.Mesh` that controls the number of primitives per leaf, allowing users to tune it per workload for optimal performance.
-- Add `leaf_size` parameter to `wp.Bvh` and `bvh_leaf_size` to `wp.Mesh` to control the number of primitives per leaf 
-  for performance tuning. The default is now 1 for `wp.Bvh` and 4 for `wp.Mesh`, changed from a hardcoded value of 
+- Add `leaf_size` parameter to `wp.Bvh` and `bvh_leaf_size` to `wp.Mesh` to control the number of primitives per leaf
+  for performance tuning. The default is now 1 for `wp.Bvh` and 4 for `wp.Mesh`, changed from a hardcoded value of
   4 ([GH-994](https://github.com/NVIDIA/warp/issues/994)).
-
-
 
 ### Fixed
 

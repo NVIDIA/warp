@@ -4122,7 +4122,6 @@ class Bvh:
               recommended for optimal performance. For closest point queries, a larger value like 4 or 8 can be more
               performant. This is an intrinsic parameter which does not impact the return value of the query method.
 
-
         Note:
             Explanation of BVH constructors:
 
@@ -4158,7 +4157,6 @@ class Bvh:
             and closest point queries (such as mesh queries), a moderate value (e.g., 4) may provide a good balance.
             Users are encouraged to experiment with this parameter to find the best value for their specific workload.
         """
-
         if len(lowers) != len(uppers):
             raise RuntimeError("The same number of lower and upper bounds must be provided")
 
@@ -4331,11 +4329,9 @@ class Mesh:
             bvh_constructor: The construction algorithm for the underlying BVH
               (see the docstring of :class:`Bvh` for explanation).
               Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, or ``None``.
-            bvh_leaf_size: how many AABBs that each leaf node contains.
-              (see the docstring of :class:`Bvh` for explanation).
-
+            bvh_leaf_size: The number of primitives (AABBs) stored in each leaf node
+              (see the docstring of :class:`Bvh` for more details).
         """
-
         if points.device != indices.device:
             raise RuntimeError("Mesh points and indices must live on the same device")
 
