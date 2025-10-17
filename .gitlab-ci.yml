@@ -381,19 +381,22 @@ linux-aarch64 test orin:
 
 linux-aarch64 test thor:
   needs: [linux-aarch64 build]
-  image: ubuntu:22.04
+  image: ghcr.io/astral-sh/uv:bookworm-slim
   extends:
     - .save_test_report_artifact
     - .basic_test_changes_rules
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - !reference [.snippets, install-python+warp-aarch64]
+    - df -h
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-aarch64/warp.so warp/bin/
+    - mv warp/bin/linux-aarch64/warp-clang.so warp/bin/
+    - uv sync --extra dev
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
     - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - gpu/thor
-  allow_failure: true  # TODO: Remove this when stable
 
 linux-x86_64 test:
   needs: [linux-x86_64 build]
@@ -577,7 +580,7 @@ linux-x86_64 test mujoco warp:
 # Ensure minimum and maximum Python versions are supported
 linux-x86_64 python matrix test:
   stage: test
-  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  image: ghcr.io/astral-sh/uv:bookworm-slim
   needs: [linux-x86_64 build]
   extends:
     - .ipp_lnx_x86_64_gpu
