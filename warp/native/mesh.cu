@@ -247,7 +247,7 @@ void bvh_refit_with_solid_angle_device(BVH& bvh, Mesh& mesh)
 } // namespace wp
 
 
-uint64_t wp_mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> indices, int num_points, int num_tris, int support_winding_number, int constructor_type)
+uint64_t wp_mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> indices, int num_points, int num_tris, int support_winding_number, int constructor_type, int bvh_leaf_size)
 {
     ContextGuard guard(context);
 
@@ -282,7 +282,7 @@ uint64_t wp_mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::
 
     // compute triangle bound and construct BVH
     wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_triangle_bounds, mesh.num_tris, (mesh.num_tris, mesh.points, mesh.indices, mesh.lowers, mesh.uppers));
-    wp::bvh_create_device(mesh.context, mesh.lowers, mesh.uppers, num_tris, constructor_type, mesh.bvh);
+    wp::bvh_create_device(mesh.context, mesh.lowers, mesh.uppers, num_tris, constructor_type, mesh.bvh, bvh_leaf_size);
 
     // we need to overwrite mesh.bvh because it is not initialized when we construct it on device
     wp_memcpy_h2d(WP_CURRENT_CONTEXT, &(mesh_device->bvh), &mesh.bvh, sizeof(wp::BVH));

@@ -20,7 +20,12 @@
 #include "builtin.h"
 #include "intersect.h"
 
-#define BVH_LEAF_SIZE (4)
+#ifdef __CUDA_ARCH__
+#define BVH_SHARED_STACK 1
+#else
+#define BVH_SHARED_STACK 0
+#endif
+
 #define SAH_NUM_BUCKETS (16)
 #define USE_LOAD4
 #define BVH_QUERY_STACK_SIZE (32)
@@ -190,6 +195,8 @@ struct BVH
     vec3* item_uppers;
     int num_items;
 
+    int leaf_size;
+
     // cuda context
     void* context;
 };
@@ -220,8 +227,9 @@ CUDA_CALLABLE inline void make_node(volatile BVHPackedNodeHalf* n, const vec3& b
 __device__ inline wp::BVHPackedNodeHalf bvh_load_node(const wp::BVHPackedNodeHalf* nodes, int index)
 {
 #ifdef USE_LOAD4
-    //return  (const wp::BVHPackedNodeHalf&)(__ldg((const float4*)(nodes)+index));
-    return  (const wp::BVHPackedNodeHalf&)(*((const float4*)(nodes)+index));
+    float4 f4 = __ldg((const float4*)(nodes)+index);
+    return  (const wp::BVHPackedNodeHalf&)f4;
+    //return  (const wp::BVHPackedNodeHalf&)(*((const float4*)(nodes)+index));
 #else
     return  nodes[index];
 #endif // USE_LOAD4
@@ -276,6 +284,18 @@ CUDA_CALLABLE inline int bvh_get_num_bounds(uint64_t id)
     return bvh.num_items;
 }
 
+// represents a strided stack in shared memory
+// so each level of the stack is stored contiguously
+// across the block
+struct bvh_stack_t
+{
+    inline int operator[](int depth) const { return ptr[depth*WP_TILE_BLOCK_DIM]; }
+    inline int& operator[](int depth) { return ptr[depth*WP_TILE_BLOCK_DIM]; }
+
+    int* ptr;
+
+};
+
 
 // stores state required to traverse the BVH nodes that 
 // overlap with a query AABB.
@@ -301,7 +321,12 @@ struct bvh_query_t
     BVH bvh;
 
     // BVH traversal stack:
+#if BVH_SHARED_STACK
+    bvh_stack_t stack;
+#else
     int stack[BVH_QUERY_STACK_SIZE];
+#endif
+
     int count;
 
     // >= 0 if currently in a packed leaf node
@@ -336,6 +361,11 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(
 
     // initialize empty
     bvh_query_t query;
+    
+#if BVH_SHARED_STACK
+    __shared__ int stack[BVH_QUERY_STACK_SIZE*WP_TILE_BLOCK_DIM];
+    query.stack.ptr = &stack[threadIdx.x];
+#endif
 
     query.bounds_nr = -1;
 
@@ -389,7 +419,6 @@ CUDA_CALLABLE inline bvh_query_t bvh_query_aabb(
     return bvh_query(id, false, lower, upper);
 }
 
-
 CUDA_CALLABLE inline bvh_query_t bvh_query_ray(uint64_t id, const vec3& start, const vec3& dir)
 {
     return bvh_query(id, true, start, 1.0f / dir);
@@ -420,9 +449,11 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index)
         BVHPackedNodeHalf node_lower = bvh_load_node(bvh.node_lowers, node_index);
         BVHPackedNodeHalf node_upper = bvh_load_node(bvh.node_uppers, node_index);
 
-        if (!bvh_query_intersection_test(query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)))
-        {
-            continue;
+        if (query.primitive_counter == 0) {
+            if (!bvh_query_intersection_test(query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)))
+            {
+                continue;
+            }
         }
 
         const int left_index = node_lower.i;
@@ -432,26 +463,38 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index)
         {
             // found leaf, loop through its content primitives
             const int start = left_index;
-            const int end = right_index;
 
-            int primitive_index = bvh.primitive_indices[start + (query.primitive_counter++)];
-            // if already visited the last primitive in the leaf node
-            // move to the next node and reset the primitive counter to 0
-            if (start + query.primitive_counter == end)
+            if (bvh.leaf_size == 1)
             {
-                query.primitive_counter = 0;
-            }
-            // otherwise we need to keep this leaf node in stack for a future visit
-            else
-            {
-                query.stack[query.count++] = node_index;
-            }
-            if (bvh_query_intersection_test(query, bvh.item_lowers[primitive_index], bvh.item_uppers[primitive_index]))
-            {
+                int primitive_index = bvh.primitive_indices[start];
                 index = primitive_index;
                 query.bounds_nr = primitive_index;
-
                 return true;
+            }
+            else
+            {
+                const int end = right_index;
+                int primitive_index = bvh.primitive_indices[start + (query.primitive_counter++)];
+
+                // if already visited the last primitive in the leaf node
+                // move to the next node and reset the primitive counter to 0
+                if (start + query.primitive_counter == end)
+                {
+                    query.primitive_counter = 0;
+                }
+                // otherwise we need to keep this leaf node in stack for a future visit
+                else
+                {
+                    query.stack[query.count++] = node_index;
+                }
+                // return true;
+                if (bvh_query_intersection_test(query, bvh.item_lowers[primitive_index], bvh.item_uppers[primitive_index]))
+                {
+                    index = primitive_index;
+                    query.bounds_nr = primitive_index;
+
+                    return true;
+                }
             }
         }
         else
@@ -464,7 +507,6 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index)
     }
     return false;
 }
-
 
 CUDA_CALLABLE inline int iter_next(bvh_query_t& query)
 {
@@ -498,13 +540,13 @@ CUDA_CALLABLE bool bvh_get_descriptor(uint64_t id, BVH& bvh);
 CUDA_CALLABLE void bvh_add_descriptor(uint64_t id, const BVH& bvh);
 CUDA_CALLABLE void bvh_rem_descriptor(uint64_t id);
 
-void bvh_create_host(vec3* lowers, vec3* uppers, int num_items,  int constructor_type, BVH& bvh);
+void bvh_create_host(vec3* lowers, vec3* uppers, int num_items,  int constructor_type, BVH& bvh, int leaf_size);
 void bvh_destroy_host(wp::BVH& bvh);
 void bvh_refit_host(wp::BVH& bvh);
 
 #if WP_ENABLE_CUDA
 
-void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items, int constructor_type, BVH& bvh_device_on_host);
+void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items, int constructor_type, BVH& bvh_device_on_host, int leaf_size);
 void bvh_destroy_device(BVH& bvh);
 void bvh_refit_device(BVH& bvh);
 

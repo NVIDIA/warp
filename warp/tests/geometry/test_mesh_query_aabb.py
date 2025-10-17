@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import os
 import unittest
 
@@ -294,12 +295,14 @@ def test_mesh_query_aabb_count_overlap_with_checksum(test, device):
     else:
         constructors = ["sah", "median", "lbvh"]
 
+    leaf_sizes = [1, 2, 4]
+
     points, indices = load_mesh()
     points_wp = wp.array(points, dtype=wp.vec3, device=device)
     indices_wp = wp.array(indices, dtype=int, device=device)
 
-    for constructor in constructors:
-        m = wp.Mesh(points=points_wp, indices=indices_wp, bvh_constructor=constructor)
+    for leaf_size, constructor in itertools.product(leaf_sizes, constructors):
+        m = wp.Mesh(points=points_wp, indices=indices_wp, bvh_constructor=constructor, bvh_leaf_size=leaf_size)
 
         num_test_bounds = 10000
         test_bound_relative_size = 0.01

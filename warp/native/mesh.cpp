@@ -135,7 +135,7 @@ void bvh_refit_with_solid_angle_host(BVH& bvh, Mesh& mesh)
     bvh_refit_with_solid_angle_recursive_host(bvh, 0, mesh);
 }
 
-uint64_t wp_mesh_create_host(array_t<wp::vec3> points, array_t<wp::vec3> velocities, array_t<int> indices, int num_points, int num_tris, int support_winding_number, int constructor_type)
+uint64_t wp_mesh_create_host(array_t<wp::vec3> points, array_t<wp::vec3> velocities, array_t<int> indices, int num_points, int num_tris, int support_winding_number, int constructor_type, int bvh_leaf_size)
 {
     Mesh* m = new Mesh(points, velocities, indices, num_points, num_tris);
 
@@ -163,7 +163,7 @@ uint64_t wp_mesh_create_host(array_t<wp::vec3> points, array_t<wp::vec3> velocit
     }
     m->average_edge_length = sum / (num_tris*3);
 
-    wp::bvh_create_host(m->lowers, m->uppers, num_tris, constructor_type, m->bvh);
+    wp::bvh_create_host(m->lowers, m->uppers, num_tris, constructor_type, m->bvh, bvh_leaf_size);
     
     if (support_winding_number) 
     {
@@ -256,7 +256,7 @@ void wp_mesh_set_velocities_host(uint64_t id, wp::array_t<wp::vec3> velocities)
 #if !WP_ENABLE_CUDA
 
 
-WP_API uint64_t wp_mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> tris, int num_points, int num_tris, int support_winding_number, int constructor_type) { return 0; }
+WP_API uint64_t wp_mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> tris, int num_points, int num_tris, int support_winding_number, int constructor_type, int bvh_leaf_size) { return 0; }
 WP_API void wp_mesh_destroy_device(uint64_t id) {}
 WP_API void wp_mesh_refit_device(uint64_t id) {}
 WP_API void wp_mesh_set_points_device(uint64_t id, wp::array_t<wp::vec3> points) {};

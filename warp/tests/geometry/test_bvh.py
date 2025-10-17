@@ -75,7 +75,7 @@ def intersect_ray_aabb(start, rcp_dir, lower, upper):
         return 0
 
 
-def test_bvh(test, type, device):
+def test_bvh(test, type, device, leaf_size):
     rng = np.random.default_rng(123)
 
     num_bounds = 100
@@ -85,7 +85,7 @@ def test_bvh(test, type, device):
     device_lowers = wp.array(lowers, dtype=wp.vec3, device=device)
     device_uppers = wp.array(uppers, dtype=wp.vec3, device=device)
 
-    bvh = wp.Bvh(device_lowers, device_uppers)
+    bvh = wp.Bvh(device_lowers, device_uppers, leaf_size=leaf_size)
 
     bounds_intersected = wp.zeros(shape=(num_bounds), dtype=int, device=device)
 
@@ -98,15 +98,13 @@ def test_bvh(test, type, device):
     for test_case in range(3):
         if type == "AABB":
             wp.launch(
-                kernel=bvh_query_aabb,
+                bvh_query_aabb,
                 dim=1,
                 inputs=[bvh.id, query_lower, query_upper, bounds_intersected],
                 device=device,
             )
         else:
-            wp.launch(
-                kernel=bvh_query_ray, dim=1, inputs=[bvh.id, query_start, query_dir, bounds_intersected], device=device
-            )
+            wp.launch(bvh_query_ray, dim=1, inputs=[bvh.id, query_start, query_dir, bounds_intersected], device=device)
 
         device_intersected = bounds_intersected.numpy()
 
@@ -134,44 +132,45 @@ def test_bvh(test, type, device):
 
 
 def test_bvh_query_aabb(test, device):
-    test_bvh(test, "AABB", device)
+    for leaf_size in [1, 2, 4]:
+        test_bvh(test, "AABB", device, leaf_size)
 
 
 def test_bvh_query_ray(test, device):
-    test_bvh(test, "ray", device)
+    for leaf_size in [1, 2, 4]:
+        test_bvh(test, "ray", device, leaf_size)
 
 
-def test_gh_288(test, device):
-    num_bounds = 1
-    lowers = ((0.5, -1.0, -1.0),) * num_bounds
-    uppers = ((1.0, 1.0, 1.0),) * num_bounds
+def test_bvh_ray_query_inside_and_outside_bounds(test, device):
+    """Regression test for issue #288: BVH ray queries should detect intersections
+    regardless of whether the ray origin is inside or outside the bounding volumes.
+
+    Previously, rays starting outside the bounds would fail to detect intersections.
+    """
+    # Create a single AABB spanning x=[0.5, 1.0], extending across y and z axes
+    lowers = ((0.5, -1.0, -1.0),)
+    uppers = ((1.0, 1.0, 1.0),)
 
     device_lowers = wp.array(lowers, dtype=wp.vec3f, device=device)
     device_uppers = wp.array(uppers, dtype=wp.vec3f, device=device)
 
     bvh = wp.Bvh(device_lowers, device_uppers)
 
-    bounds_intersected = wp.zeros(shape=num_bounds, dtype=int, device=device)
+    bounds_intersected = wp.zeros(shape=1, dtype=int, device=device)
 
+    # Test both ray origins: outside (x=0.0) and inside (x=0.75) the AABB
     for x in (0.0, 0.75):
         query_start = wp.vec3(x, 0.0, 0.0)
-        query_dir = wp.vec3(1.0, 0.0, 0.0)
+        query_dir = wp.vec3(1.0, 0.0, 0.0)  # Ray pointing in +x direction
 
-        wp.launch(
-            kernel=bvh_query_ray, dim=1, inputs=[bvh.id, query_start, query_dir, bounds_intersected], device=device
-        )
+        wp.launch(bvh_query_ray, dim=1, inputs=[bvh.id, query_start, query_dir, bounds_intersected], device=device)
 
         device_intersected = bounds_intersected.numpy()
-        test.assertEqual(device_intersected.sum(), num_bounds)
+        # Both cases should detect the single intersection
+        test.assertEqual(device_intersected.sum(), 1)
 
 
-def get_random_aabbs(
-    n,
-    center,
-    relative_shift,
-    relative_size,
-    rng,
-):
+def get_random_aabbs(n, center, relative_shift, relative_size, rng):
     centers = rng.uniform(-0.5, 0.5, size=n * 3).reshape(n, 3) * relative_shift + center
     diffs = 0.5 * rng.random(n * 3).reshape(n, 3) * relative_size
 
@@ -255,7 +254,7 @@ def test_capture_bvh_rebuild(test, device):
             wp.copy(item_uppers, item_uppers_2)
             bvh_1.rebuild()
             wp.launch(
-                kernel=compute_num_contact_with_checksums,
+                compute_num_contact_with_checksums,
                 dim=num_test_bounds,
                 inputs=[test_lowers, test_uppers, bvh_1.id],
                 outputs=[counts_1, checksums_1],
@@ -278,7 +277,7 @@ def test_capture_bvh_rebuild(test, device):
 
             bvh_2 = wp.Bvh(item_lowers_2, item_uppers_2)
             wp.launch(
-                kernel=compute_num_contact_with_checksums,
+                compute_num_contact_with_checksums,
                 dim=num_test_bounds,
                 inputs=[test_lowers, test_uppers, bvh_2.id],
                 outputs=[counts_2, checksums_2],
@@ -322,7 +321,12 @@ class TestBvh(unittest.TestCase):
 
 add_function_test(TestBvh, "test_bvh_aabb", test_bvh_query_aabb, devices=devices)
 add_function_test(TestBvh, "test_bvh_ray", test_bvh_query_ray, devices=devices)
-add_function_test(TestBvh, "test_gh_288", test_gh_288, devices=devices)
+add_function_test(
+    TestBvh,
+    "test_bvh_ray_query_inside_and_outside_bounds",
+    test_bvh_ray_query_inside_and_outside_bounds,
+    devices=devices,
+)
 
 add_function_test(TestBvh, "test_capture_bvh_rebuild", test_capture_bvh_rebuild, devices=cuda_devices)
 

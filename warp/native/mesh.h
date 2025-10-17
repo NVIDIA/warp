@@ -1374,6 +1374,7 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
     Mesh mesh = mesh_get(id);
 
     int stack[BVH_QUERY_STACK_SIZE];
+
     stack[0] = *mesh.bvh.root;
     int count = 1;
 
@@ -1440,6 +1441,139 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
             {
                 stack[count++] = left_index;
                 stack[count++] = right_index;
+            }
+        }
+    }
+
+    if (min_t < max_t)
+    {
+        // write outputs
+        u = min_u;
+        v = min_v;
+        sign = min_sign;
+        t = min_t;
+        normal = normalize(min_normal);
+        face = min_face;
+
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+    
+}
+
+template <typename T>
+CUDA_CALLABLE inline void _swap(T& a, T& b) 
+{
+    T t = a; a = b; b = t;
+}
+
+CUDA_CALLABLE inline bool mesh_query_ray_ordered(uint64_t id, const vec3& start, const vec3& dir, float max_t, float& t, float& u, float& v, float& sign, vec3& normal, int& face)
+{
+    Mesh mesh = mesh_get(id);
+
+    int stack[BVH_QUERY_STACK_SIZE];
+    float stack_dist[BVH_QUERY_STACK_SIZE];
+
+    stack[0] = *mesh.bvh.root;
+    stack_dist[0] = -FLT_MAX;
+
+    int count = 1;
+
+    vec3 rcp_dir = vec3(1.0f/dir[0], 1.0f/dir[1], 1.0f/dir[2]);
+
+    float min_t = max_t;
+    int min_face;
+    float min_u;
+    float min_v;
+    float min_sign = 1.0f;
+    vec3 min_normal;
+
+    while (count)
+    {
+        count -= 1;
+
+        const int nodeIndex = stack[count];
+        const float nodeDist = stack_dist[count];
+
+        if (nodeDist < min_t)
+        {
+            int left_index = mesh.bvh.node_lowers[nodeIndex].i;
+            int right_index = mesh.bvh.node_uppers[nodeIndex].i;
+            bool leaf = mesh.bvh.node_lowers[nodeIndex].b;
+
+            if (leaf)
+            {	
+                const int start_index = left_index;
+                const int end_index = right_index;
+                // loops through primitives in the leaf
+                for (int primitive_counter = start_index; primitive_counter < end_index ; primitive_counter++)
+                {
+                    int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
+                    int i = mesh.indices[primitive_index * 3 + 0];
+                    int j = mesh.indices[primitive_index * 3 + 1];
+                    int k = mesh.indices[primitive_index * 3 + 2];
+
+                    vec3 p = mesh.points[i];
+                    vec3 q = mesh.points[j];
+                    vec3 r = mesh.points[k];
+
+                    float t, u, v, w, sign;
+                    vec3 n;
+
+                    if (intersect_ray_tri_rtcd(start, dir, p, q, r, t, u, v, w, sign, &n))
+                    {
+                        if (t < min_t && t >= 0.0f)
+                        {
+                            min_t = t;
+                            min_face = primitive_index;
+                            min_u = u;
+                            min_v = v;
+                            min_sign = sign;
+                            min_normal = n;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                const float eps = 1.e-3f;
+
+                BVHPackedNodeHalf left_lower = bvh_load_node(mesh.bvh.node_lowers, left_index);
+                BVHPackedNodeHalf left_upper = bvh_load_node(mesh.bvh.node_uppers, left_index);
+        
+                BVHPackedNodeHalf right_lower = bvh_load_node(mesh.bvh.node_lowers, right_index);
+                BVHPackedNodeHalf right_upper = bvh_load_node(mesh.bvh.node_uppers, right_index);
+
+                float left_dist = FLT_MAX;
+                bool left_hit = intersect_ray_aabb(start, rcp_dir, vec3(left_lower.x-eps, left_lower.y-eps, left_lower.z-eps), vec3(left_upper.x+eps, left_upper.y+eps, left_upper.z+eps), left_dist);
+                       
+                float right_dist = FLT_MAX;
+                bool right_hit = intersect_ray_aabb(start, rcp_dir, vec3(right_lower.x-eps, right_lower.y-eps, right_lower.z-eps), vec3(right_upper.x+eps, right_upper.y+eps, right_upper.z+eps), right_dist);
+                
+
+                if (left_dist < right_dist)
+                {
+                    _swap(left_index, right_index);
+                    _swap(left_dist, right_dist);
+                    _swap(left_hit, right_hit);
+                }
+
+                if (left_hit && left_dist < min_t)
+                {
+                    stack[count] = left_index;
+                    stack_dist[count] = left_dist;
+                    count += 1;
+                }
+
+                if (right_hit && right_dist < min_t)
+                {
+                    stack[count] = right_index;
+                    stack_dist[count] = right_dist;
+                    count += 1;
+                }
             }
         }
     }
@@ -1589,7 +1723,12 @@ struct mesh_query_aabb_t
     // Mesh Id
     Mesh mesh;
     // BVH traversal stack:
+#if BVH_SHARED_STACK
+    bvh_stack_t stack;
+#else
     int stack[BVH_QUERY_STACK_SIZE];
+#endif
+
     int count;
 
     // inputs
@@ -1617,6 +1756,11 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
 
     Mesh mesh = mesh_get(id);
     query.mesh = mesh;
+
+#if BVH_SHARED_STACK
+    __shared__ int stack[BVH_QUERY_STACK_SIZE * WP_TILE_BLOCK_DIM];
+    query.stack.ptr = &stack[threadIdx.x];
+#endif
     
     query.stack[0] = *mesh.bvh.root;
     query.count = 1;
@@ -1630,10 +1774,13 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
         BVHPackedNodeHalf node_lower = bvh_load_node(mesh.bvh.node_lowers, nodeIndex);
         BVHPackedNodeHalf node_upper = bvh_load_node(mesh.bvh.node_uppers, nodeIndex);
 
-        if (!intersect_aabb_aabb(query.input_lower, query.input_upper, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)))
+        if (query.primitive_counter == 0)
         {
-            // Skip this box, it doesn't overlap with our target box.
-            continue;
+            if (!intersect_aabb_aabb(query.input_lower, query.input_upper, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)))
+            {
+                // Skip this box, it doesn't overlap with our target box.
+                continue;
+            }
         }
 
         const int left_index = node_lower.i;
@@ -1690,27 +1837,37 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& in
         {
             // found leaf, loop through its content primitives
             const int start = left_index;
-            const int end = right_index;
 
-            int primitive_index = mesh.bvh.primitive_indices[start + (query.primitive_counter++)];
-            // if already visited the last primitive in the leaf node
-            // move to the next node and reset the primitive counter to 0
-            if (start + query.primitive_counter == end)
+            if (mesh.bvh.leaf_size == 1)
             {
-                query.primitive_counter = 0;
-            }
-            // otherwise we need to keep this leaf node in stack for a future visit
-            else
-            {
-                query.count++;
-            }
-            
-            if (intersect_aabb_aabb(query.input_lower, query.input_upper, mesh.lowers[primitive_index], mesh.uppers[primitive_index]))
-            {
+                int primitive_index = mesh.bvh.primitive_indices[start];
                 index = primitive_index;
                 query.face = primitive_index;
-
                 return true;
+            }
+            else
+            {
+                const int end = right_index;
+                int primitive_index = mesh.bvh.primitive_indices[start + (query.primitive_counter++)];
+                // if already visited the last primitive in the leaf node
+                // move to the next node and reset the primitive counter to 0
+                if (start + query.primitive_counter == end)
+                {
+                    query.primitive_counter = 0;
+                }
+                // otherwise we need to keep this leaf node in stack for a future visit
+                else
+                {
+                    query.count++;
+                }
+
+                if (intersect_aabb_aabb(query.input_lower, query.input_upper, mesh.lowers[primitive_index], mesh.uppers[primitive_index]))
+                {
+                    index = primitive_index;
+                    query.face = primitive_index;
+
+                    return true;
+                }
             }
         }
         else

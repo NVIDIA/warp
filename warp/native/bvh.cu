@@ -35,7 +35,7 @@ extern CUcontext get_current_context();
 
 namespace wp
 {
-void bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type, BVH& bvh);
+void bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type, BVH& bvh, int leaf_size);
 void bvh_destroy_host(BVH& bvh);
 
 __global__ void memset_kernel(int* dest, int value, size_t n)
@@ -379,18 +379,18 @@ __global__ void build_hierarchy(int n, int* root, const int* __restrict__ deltas
 
 /*
 * LBVH uses a bottom-up constructor which makes variable-sized leaf nodes more challenging to achieve. 
-* Simply splitting the ordered primitives into uniform groups of size BVH_LEAF_SIZE will result in poor
+* Simply splitting the ordered primitives into uniform groups of size leaf_size will result in poor
 * quality. Instead, after the hierarchy is built, we convert any intermediate node whose size is 
-* <= BVH_LEAF_SIZE into a new leaf node. This process is done using the new kernel function called 
+* <= leaf_size into a new leaf node. This process is done using the new kernel function called 
 * mark_packed_leaf_nodes .
 */
 __global__ void mark_packed_leaf_nodes(int n, const int* __restrict__ range_lefts, const int* __restrict__ range_rights, const int* __restrict__ parents,
-    BVHPackedNodeHalf* __restrict__ lowers, BVHPackedNodeHalf* __restrict__ uppers)
+    BVHPackedNodeHalf* __restrict__ lowers, BVHPackedNodeHalf* __restrict__ uppers, const int leaf_size)
 {
     int node_index = blockDim.x * blockIdx.x + threadIdx.x;
     if (node_index < n)
     {
-        // mark the node as leaf if its range is less than LEAF_SIZE_LBVH or it is deeper than BVH_QUERY_STACK_SIZE
+        // mark the node as leaf if its range is less than leaf_size or it is deeper than BVH_QUERY_STACK_SIZE
         // this will forever mute its child nodes so that they will never be accessed
 
         // calculate depth
@@ -407,7 +407,7 @@ __global__ void mark_packed_leaf_nodes(int n, const int* __restrict__ range_left
         // the LBVH constructor's range is defined as left <= i <= right
         // we need to convert it to our convention: left <= i < right
         int right = range_rights[node_index] + 1;
-        if (right - left <= BVH_LEAF_SIZE || depth >= BVH_QUERY_STACK_SIZE)
+        if (right - left <= leaf_size || depth >= BVH_QUERY_STACK_SIZE)
         {
             lowers[node_index].b = 1;
             lowers[node_index].i = left;
@@ -549,7 +549,7 @@ void LinearBVHBuilderGPU::build(BVH& bvh, const vec3* item_lowers, const vec3* i
 
     // build the tree and internal node bounds
     wp_launch_device(WP_CURRENT_CONTEXT, build_hierarchy, num_items, (num_items, bvh.root, deltas, num_children, bvh.primitive_indices, range_lefts, range_rights, bvh.node_parents, bvh.node_lowers, bvh.node_uppers));
-    wp_launch_device(WP_CURRENT_CONTEXT, mark_packed_leaf_nodes, bvh.max_nodes, (bvh.max_nodes, range_lefts, range_rights, bvh.node_parents, bvh.node_lowers, bvh.node_uppers));
+    wp_launch_device(WP_CURRENT_CONTEXT, mark_packed_leaf_nodes, bvh.max_nodes, (bvh.max_nodes, range_lefts, range_rights, bvh.node_parents, bvh.node_lowers, bvh.node_uppers, bvh.leaf_size));
 
     // free temporary memory
     wp_free_device(WP_CURRENT_CONTEXT, indices);
@@ -665,6 +665,7 @@ void copy_host_tree_to_device(void* context, BVH& bvh_host, BVH& bvh_device_on_h
     bvh_device_on_host.max_nodes = bvh_host.max_nodes;
     bvh_device_on_host.num_items = bvh_host.num_items;
     bvh_device_on_host.max_depth = bvh_host.max_depth;
+    bvh_device_on_host.leaf_size = bvh_host.leaf_size;
 
     bvh_device_on_host.root = (int*)wp_alloc_device(context, sizeof(int));
     wp_memcpy_h2d(context, bvh_device_on_host.root, bvh_host.root, sizeof(int));
@@ -677,7 +678,7 @@ void copy_host_tree_to_device(void* context, BVH& bvh_host, BVH& bvh_device_on_h
 }
 
 // create in-place given existing descriptor
-void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items, int constructor_type, BVH& bvh_device_on_host)
+void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items, int constructor_type, BVH& bvh_device_on_host, int leaf_size)
 {
     ContextGuard guard(context);
     if (constructor_type == BVH_CONSTRUCTOR_SAH || constructor_type == BVH_CONSTRUCTOR_MEDIAN)
@@ -691,7 +692,7 @@ void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items,
 
         // run CPU based constructor
         wp::BVH bvh_host;
-        wp::bvh_create_host(lowers_host.data(), uppers_host.data(), num_items, constructor_type, bvh_host);
+        wp::bvh_create_host(lowers_host.data(), uppers_host.data(), num_items, constructor_type, bvh_host, leaf_size);
 
         // copy host tree to device
         wp::copy_host_tree_to_device(WP_CURRENT_CONTEXT, bvh_host, bvh_device_on_host);
@@ -704,6 +705,7 @@ void bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_items,
     }
     else if (constructor_type == BVH_CONSTRUCTOR_LBVH)
     {
+        bvh_device_on_host.leaf_size = leaf_size;
         bvh_device_on_host.num_items = num_items;
         bvh_device_on_host.max_nodes = 2 * num_items - 1;
         bvh_device_on_host.num_leaf_nodes = num_items;
@@ -792,13 +794,13 @@ void wp_bvh_rebuild_device(uint64_t id)
 * muted. However, the muted leaf nodes will still have the pointer to their parents, thus the up-tracing
 * can still work. We will only compute the bounding box of a leaf node if its parent is not a leaf node.
 */
-uint64_t wp_bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type)
+uint64_t wp_bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type, int leaf_size)
 {
     ContextGuard guard(context);
     wp::BVH bvh_device_on_host;
     wp::BVH* bvh_device_ptr = nullptr;
     
-    wp::bvh_create_device(WP_CURRENT_CONTEXT, lowers, uppers, num_items, constructor_type, bvh_device_on_host);
+    wp::bvh_create_device(WP_CURRENT_CONTEXT, lowers, uppers, num_items, constructor_type, bvh_device_on_host, leaf_size);
 
     // create device-side BVH descriptor
     bvh_device_ptr = (wp::BVH*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVH));

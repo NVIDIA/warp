@@ -43,11 +43,6 @@
     };
 #endif 
 
-// only used while building the warp core library
-#ifndef WP_TILE_BLOCK_DIM
-#define WP_TILE_BLOCK_DIM 256
-#endif
-
 #if defined(__CUDA_ARCH__)
 #define WP_TILE_SYNC __syncthreads
 #else
