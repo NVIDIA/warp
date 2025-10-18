@@ -1137,7 +1137,7 @@ def get_jax_callable_default_graph_cache_max():
 
 def set_jax_callable_default_graph_cache_max(cache_max: int | None):
     """
-    Get the maximum size of the graph cache for graphs captured using ``GraphMode.WARP``, unlimited if ``None``.
+    Set the maximum size of the graph cache for graphs captured using ``GraphMode.WARP``, unlimited if ``None``.
     """
     FfiCallable.default_graph_cache_max = cache_max
 
