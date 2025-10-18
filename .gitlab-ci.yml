@@ -796,13 +796,13 @@ create pypi wheels:
     - mv warp/bin/libwarp.dylib warp/bin/macos-aarch64/
     - mv warp/bin/libwarp-clang.dylib warp/bin/macos-aarch64/
   script:
-    - sed -i "s/^\(.*\)$/\1+cu12/" VERSION.md # Modify VERSION.md with +cu12
+    - printf '%s+cu12\n' "$(head -n1 VERSION.md | tr -d '\n\r')" > VERSION.md # Modify VERSION.md with +cu12
     - uv build --wheel -C--build-option=-Pwindows-x86_64
     - uv build --wheel -C--build-option=-Plinux-x86_64
     - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
-    - sed -i "s/^\(.*\)+cu12$/\1+cpu/" VERSION.md # Modify VERSION.md with +cu12 replaced by +cpu
+    - printf '%s+cpu\n' "$(head -n1 VERSION.md | sed 's/+cu12$//' | tr -d '\n\r')" > VERSION.md # Modify VERSION.md with +cu12 replaced by +cpu
     - uv build --wheel -C--build-option=-Pmacos-aarch64
-    - sed -i "s/^\(.*\)+cpu$/\1/" VERSION.md # Revert VERSION.md changes
+    - printf '%s\n' "$(head -n1 VERSION.md | sed 's/+cpu$//' | tr -d '\n\r')" > VERSION.md # Revert VERSION.md changes
     - mv dist dist-github
     # Now make the wheels meant for PyPI publishing
     - uv build --wheel -C--build-option=-Pwindows-x86_64
