@@ -46,7 +46,7 @@ linux-aarch64 build:
   stage: build
   image: quay.io/pypa/manylinux_2_34_aarch64:latest
   extends:
-    - .omni_devplat_arm_compute
+    - .lnx-aarch64-cpu-medium
     - .save_warp_bin_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -146,7 +146,7 @@ create pypi wheels:
     - mv warp/bin/warp.dll warp/bin/windows-x86_64/
     - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
   script:
-    - sed -i "s/^\(.*\)$/\1+cu13/" VERSION.md # Modify VERSION.md with +cu13
+    - printf '%s+cu13\n' "$(head -n1 VERSION.md | tr -d '\n\r')" > VERSION.md # Modify VERSION.md with +cu13
     - uv build --wheel -C--build-option=-Pwindows-x86_64
     - uv build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux_2_34
     - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34

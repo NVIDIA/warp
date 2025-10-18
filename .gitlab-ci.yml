@@ -76,7 +76,7 @@ linux-aarch64 build:
   stage: build
   image: quay.io/pypa/manylinux_2_34_aarch64:latest
   extends:
-    - .omni_devplat_arm_compute
+    - .lnx-aarch64-cpu-medium
     - .save_warp_bin_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -376,10 +376,10 @@ linux-aarch64 test orin:
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-aarch64/warp.so warp/bin/
     - mv warp/bin/linux-aarch64/warp-clang.so warp/bin/
-    - uv sync --extra dev
+    - uv sync --extra dev --no-install-package psutil
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - uv run --extra dev -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - gpu/orin
 
@@ -796,13 +796,13 @@ create pypi wheels:
     - mv warp/bin/libwarp.dylib warp/bin/macos-aarch64/
     - mv warp/bin/libwarp-clang.dylib warp/bin/macos-aarch64/
   script:
-    - sed -i "s/^\(.*\)$/\1+cu12/" VERSION.md # Modify VERSION.md with +cu12
+    - printf '%s+cu12\n' "$(head -n1 VERSION.md | tr -d '\n\r')" > VERSION.md # Modify VERSION.md with +cu12
     - uv build --wheel -C--build-option=-Pwindows-x86_64
     - uv build --wheel -C--build-option=-Plinux-x86_64
     - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
-    - sed -i "s/^\(.*\)+cu12$/\1+cpu/" VERSION.md # Modify VERSION.md with +cu12 replaced by +cpu
+    - printf '%s+cpu\n' "$(head -n1 VERSION.md | sed 's/+cu12$//' | tr -d '\n\r')" > VERSION.md # Modify VERSION.md with +cu12 replaced by +cpu
     - uv build --wheel -C--build-option=-Pmacos-aarch64
-    - sed -i "s/^\(.*\)+cpu$/\1/" VERSION.md # Revert VERSION.md changes
+    - printf '%s\n' "$(head -n1 VERSION.md | sed 's/+cpu$//' | tr -d '\n\r')" > VERSION.md # Revert VERSION.md changes
     - mv dist dist-github
     # Now make the wheels meant for PyPI publishing
     - uv build --wheel -C--build-option=-Pwindows-x86_64
