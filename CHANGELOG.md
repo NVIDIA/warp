@@ -75,6 +75,9 @@
 - Add `leaf_size` parameter to `wp.Bvh` and `bvh_leaf_size` to `wp.Mesh` to control the number of primitives per leaf
   for performance tuning. The default is now 1 for `wp.Bvh` and 4 for `wp.Mesh`, changed from a hardcoded value of
   4 ([GH-994](https://github.com/NVIDIA/warp/issues/994)).
+- **Breaking:** Change the default implementation of `jax_kernel()` to be `wp.jax_experimental.ffi.jax_kernel()`.
+  The previous version is still available as `wp.jax_experimental.custom_call.jax_kernel()`, but it is not supported with JAX v0.8 and newer
+  ([GH-974](https://github.com/NVIDIA/warp/issues/974)).
 
 ### Fixed
 

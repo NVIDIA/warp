@@ -153,11 +153,11 @@ def test_jax_kernel_basic(test, device, use_ffi=False):
     import jax.numpy as jp
 
     if use_ffi:
-        from warp._src.jax_experimental.ffi import jax_kernel
+        from warp.jax_experimental.ffi import jax_kernel
 
         jax_triple = jax_kernel(triple_kernel)
     else:
-        from warp._src.jax_experimental.custom_call import jax_kernel
+        from warp.jax_experimental.custom_call import jax_kernel
 
         jax_triple = jax_kernel(triple_kernel, quiet=True)  # suppress deprecation warnings
 
@@ -184,11 +184,11 @@ def test_jax_kernel_scalar(test, device, use_ffi=False):
     import jax.numpy as jp
 
     if use_ffi:
-        from warp._src.jax_experimental.ffi import jax_kernel
+        from warp.jax_experimental.ffi import jax_kernel
 
         kwargs = {}
     else:
-        from warp._src.jax_experimental.custom_call import jax_kernel
+        from warp.jax_experimental.custom_call import jax_kernel
 
         kwargs = {"quiet": True}
 
@@ -226,11 +226,11 @@ def test_jax_kernel_vecmat(test, device, use_ffi=False):
     import jax.numpy as jp
 
     if use_ffi:
-        from warp._src.jax_experimental.ffi import jax_kernel
+        from warp.jax_experimental.ffi import jax_kernel
 
         kwargs = {}
     else:
-        from warp._src.jax_experimental.custom_call import jax_kernel
+        from warp.jax_experimental.custom_call import jax_kernel
 
         kwargs = {"quiet": True}
 
@@ -270,11 +270,11 @@ def test_jax_kernel_multiarg(test, device, use_ffi=False):
     import jax.numpy as jp
 
     if use_ffi:
-        from warp._src.jax_experimental.ffi import jax_kernel
+        from warp.jax_experimental.ffi import jax_kernel
 
         jax_multiarg = jax_kernel(multiarg_kernel, num_outputs=2)
     else:
-        from warp._src.jax_experimental.custom_call import jax_kernel
+        from warp.jax_experimental.custom_call import jax_kernel
 
         jax_multiarg = jax_kernel(multiarg_kernel, quiet=True)
 
@@ -305,11 +305,11 @@ def test_jax_kernel_launch_dims(test, device, use_ffi=False):
     import jax.numpy as jp
 
     if use_ffi:
-        from warp._src.jax_experimental.ffi import jax_kernel
+        from warp.jax_experimental.ffi import jax_kernel
 
         kwargs = {}
     else:
-        from warp._src.jax_experimental.custom_call import jax_kernel
+        from warp.jax_experimental.custom_call import jax_kernel
 
         kwargs = {"quiet": True}
 
@@ -502,7 +502,7 @@ def test_ffi_jax_kernel_add(test, device):
     # two inputs and one output
     import jax.numpy as jp
 
-    from warp._src.jax_experimental.ffi import jax_kernel
+    from warp.jax_experimental.ffi import jax_kernel
 
     jax_add = jax_kernel(add_kernel)
 
@@ -529,7 +529,7 @@ def test_ffi_jax_kernel_sincos(test, device):
     # one input and two outputs
     import jax.numpy as jp
 
-    from warp._src.jax_experimental.ffi import jax_kernel
+    from warp.jax_experimental.ffi import jax_kernel
 
     jax_sincos = jax_kernel(sincos_kernel, num_outputs=2)
 
@@ -559,7 +559,7 @@ def test_ffi_jax_kernel_sincos(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_diagonal(test, device):
     # no inputs and one output
-    from warp._src.jax_experimental.ffi import jax_kernel
+    from warp.jax_experimental.ffi import jax_kernel
 
     jax_diagonal = jax_kernel(diagonal_kernel)
 
@@ -592,7 +592,7 @@ def test_ffi_jax_kernel_in_out(test, device):
     # in-out args
     import jax.numpy as jp
 
-    from warp._src.jax_experimental.ffi import jax_kernel
+    from warp.jax_experimental.ffi import jax_kernel
 
     jax_func = jax_kernel(in_out_kernel, num_outputs=2, in_out_argnames=["b"])
 
@@ -614,7 +614,7 @@ def test_ffi_jax_kernel_scale_vec_constant(test, device):
     # multiply vectors by scalar (constant)
     import jax.numpy as jp
 
-    from warp._src.jax_experimental.ffi import jax_kernel
+    from warp.jax_experimental.ffi import jax_kernel
 
     jax_scale_vec = jax_kernel(scale_vec_kernel)
 
@@ -639,7 +639,7 @@ def test_ffi_jax_kernel_scale_vec_static(test, device):
     # multiply vectors by scalar (static arg)
     import jax.numpy as jp
 
-    from warp._src.jax_experimental.ffi import jax_kernel
+    from warp.jax_experimental.ffi import jax_kernel
 
     jax_scale_vec = jax_kernel(scale_vec_kernel)
 
@@ -666,7 +666,7 @@ def test_ffi_jax_kernel_launch_dims_default(test, device):
     # specify default launch dims
     import jax.numpy as jp
 
-    from warp._src.jax_experimental.ffi import jax_kernel
+    from warp.jax_experimental.ffi import jax_kernel
 
     N, M, K = 3, 4, 2
 
@@ -696,7 +696,7 @@ def test_ffi_jax_kernel_launch_dims_custom(test, device):
     # specify custom launch dims per call
     import jax.numpy as jp
 
-    from warp._src.jax_experimental.ffi import jax_kernel
+    from warp.jax_experimental.ffi import jax_kernel
 
     jax_matmul = jax_kernel(matmul_kernel)
 
@@ -737,7 +737,7 @@ def test_ffi_jax_callable_scale_constant(test, device):
     # scale two arrays using a constant
     import jax.numpy as jp
 
-    from warp._src.jax_experimental.ffi import jax_callable
+    from warp.jax_experimental.ffi import jax_callable
 
     jax_func = jax_callable(scale_func, num_outputs=2)
 
@@ -772,7 +772,7 @@ def test_ffi_jax_callable_scale_static(test, device):
     # scale two arrays using a static arg
     import jax.numpy as jp
 
-    from warp._src.jax_experimental.ffi import jax_callable
+    from warp.jax_experimental.ffi import jax_callable
 
     jax_func = jax_callable(scale_func, num_outputs=2)
 
@@ -807,7 +807,7 @@ def test_ffi_jax_callable_in_out(test, device):
     # in-out arguments
     import jax.numpy as jp
 
-    from warp._src.jax_experimental.ffi import jax_callable
+    from warp.jax_experimental.ffi import jax_callable
 
     jax_func = jax_callable(in_out_func, num_outputs=2, in_out_argnames=["b"])
 
@@ -830,7 +830,13 @@ def test_ffi_jax_callable_graph_cache(test, device):
     import jax
     import jax.numpy as jp
 
-    from warp.jax_experimental.ffi import GraphMode, clear_jax_callable_graph_cache, jax_callable
+    from warp.jax_experimental.ffi import (
+        GraphMode,
+        clear_jax_callable_graph_cache,
+        get_jax_callable_default_graph_cache_max,
+        jax_callable,
+        set_jax_callable_default_graph_cache_max,
+    )
 
     # --- test with default cache settings ---
 
@@ -838,7 +844,7 @@ def test_ffi_jax_callable_graph_cache(test, device):
     f = jax.jit(jax_double)
     arrays = []
 
-    test.assertEqual(jax_double.graph_cache_max, wp._src.jax_experimental.ffi.jax_callable_default_graph_cache_max)
+    test.assertEqual(jax_double.graph_cache_max, get_jax_callable_default_graph_cache_max())
 
     with jax.default_device(wp.device_to_jax(device)):
         for i in range(10):
@@ -887,20 +893,20 @@ def test_ffi_jax_callable_graph_cache(test, device):
 
     clear_jax_callable_graph_cache()
 
-    with wp._src.jax_experimental.ffi._FFI_REGISTRY_LOCK:
-        for c in wp._src.jax_experimental.ffi._FFI_CALLABLE_REGISTRY.values():
+    with wp.jax_experimental.ffi._FFI_REGISTRY_LOCK:
+        for c in wp.jax_experimental.ffi._FFI_CALLABLE_REGISTRY.values():
             test.assertEqual(c.graph_cache_size, 0)
 
     # --- test with a custom default cache limit ---
 
-    saved_max = wp._src.jax_experimental.ffi.jax_callable_default_graph_cache_max
+    saved_max = get_jax_callable_default_graph_cache_max()
     try:
-        wp._src.jax_experimental.ffi.jax_callable_default_graph_cache_max = 5
+        set_jax_callable_default_graph_cache_max(5)
         jax_double = jax_callable(double_func, graph_mode=GraphMode.WARP)
         f = jax.jit(jax_double)
         arrays = []
 
-        test.assertEqual(jax_double.graph_cache_max, wp._src.jax_experimental.ffi.jax_callable_default_graph_cache_max)
+        test.assertEqual(jax_double.graph_cache_max, get_jax_callable_default_graph_cache_max())
 
         with jax.default_device(wp.device_to_jax(device)):
             for i in range(10):
@@ -913,7 +919,7 @@ def test_ffi_jax_callable_graph_cache(test, device):
                 # ensure graph cache size is capped
                 test.assertEqual(
                     jax_double.graph_cache_size,
-                    min(i + 1, wp._src.jax_experimental.ffi.jax_callable_default_graph_cache_max),
+                    min(i + 1, get_jax_callable_default_graph_cache_max()),
                 )
 
                 # keep JAX array alive to prevent the memory from being reused, thus forcing a new graph capture
@@ -922,7 +928,7 @@ def test_ffi_jax_callable_graph_cache(test, device):
         clear_jax_callable_graph_cache()
 
     finally:
-        wp._src.jax_experimental.ffi.jax_callable_default_graph_cache_max = saved_max
+        set_jax_callable_default_graph_cache_max(saved_max)
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -1033,7 +1039,7 @@ def test_ffi_callback(test, device):
     # in-out arguments
     import jax.numpy as jp
 
-    from warp._src.jax_experimental.ffi import register_ffi_callback
+    from warp.jax_experimental.ffi import register_ffi_callback
 
     # the Python function to call
     def warp_func(inputs, outputs, attrs, ctx):

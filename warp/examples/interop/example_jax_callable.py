@@ -25,7 +25,7 @@ import jax
 import jax.numpy as jnp
 
 import warp as wp
-from warp.jax_experimental.ffi import jax_callable
+from warp.jax_experimental import jax_callable
 
 
 @wp.kernel

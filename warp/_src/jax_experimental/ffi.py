@@ -33,12 +33,6 @@ from .xla_ffi import *
 # Type alias for differentiable kernel cache key
 DiffKernelCacheKey = tuple[Callable, tuple, int, str, tuple[str, ...]]
 
-jax_callable_default_graph_cache_max: int | None = 32
-"""
-Maximum size of the graph cache for graphs captured using ``GraphMode.WARP``, unlimited if ``None``.
-Example usage: ``warp.jax_experimental.ffi.jax_callable_default_graph_cache_max = 42``.
-"""
-
 # Holders for the custom callbacks to keep them alive.
 _FFI_KERNEL_REGISTRY: dict[str, "FfiKernel"] = {}
 _FFI_DIFF_KERNEL_REGISTRY: dict[DiffKernelCacheKey, Callable] = {}
@@ -397,6 +391,8 @@ class FfiCallDesc:
 
 
 class FfiCallable:
+    default_graph_cache_max: int | None = 32
+
     def __init__(
         self,
         func,
@@ -1076,7 +1072,7 @@ def jax_callable(
             These must be array arguments that appear before any pure output arguments in the
             function signature. The number of in-out arguments is included in ``num_outputs``.
         graph_cache_max: Maximum number of cached graphs captured using ``GraphMode.WARP``.
-            If ``None``, use ``warp.jax_experimental.ffi.jax_callable_default_graph_cache_max``.
+            If ``None``, use ``warp.jax_experimental.get_jax_callable_default_graph_cache_max()``.
         module_preload_mode: Specify the devices where the module should be preloaded.
 
     Limitations:
@@ -1099,7 +1095,7 @@ def jax_callable(
             graph_mode = GraphMode.NONE
 
     if graph_cache_max is None:
-        graph_cache_max = jax_callable_default_graph_cache_max
+        graph_cache_max = FfiCallable.default_graph_cache_max
 
     # Note: we don't include graph_cache_max in the key, it is applied below.
     key = (
@@ -1130,6 +1126,20 @@ def jax_callable(
             callable.graph_cache_max = graph_cache_max
 
     return callable
+
+
+def get_jax_callable_default_graph_cache_max():
+    """
+    Get the maximum size of the graph cache for graphs captured using ``GraphMode.WARP``, unlimited if ``None``.
+    """
+    return FfiCallable.default_graph_cache_max
+
+
+def set_jax_callable_default_graph_cache_max(cache_max: int | None):
+    """
+    Set the maximum size of the graph cache for graphs captured using ``GraphMode.WARP``, unlimited if ``None``.
+    """
+    FfiCallable.default_graph_cache_max = cache_max
 
 
 def clear_jax_callable_graph_cache(callable: FfiCallable | None = None):
