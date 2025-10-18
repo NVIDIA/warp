@@ -146,7 +146,7 @@ create pypi wheels:
     - mv warp/bin/warp.dll warp/bin/windows-x86_64/
     - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
   script:
-    - sed -i "s/^\(.*\)$/\1+cu13/" VERSION.md # Modify VERSION.md with +cu13
+    - sed -i '1s/$/+cu13/' VERSION.md # Modify VERSION.md with +cu13
     - uv build --wheel -C--build-option=-Pwindows-x86_64
     - uv build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux_2_34
     - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
