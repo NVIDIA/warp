@@ -4125,7 +4125,14 @@ class Bvh:
         instance.id = None
         return instance
 
-    def __init__(self, lowers: array, uppers: array, constructor: str | None = None, leaf_size: int = 1):
+    def __init__(
+        self,
+        lowers: array,
+        uppers: array,
+        constructor: str | None = None,
+        groups: array | None = None,
+        leaf_size: int = 1,
+    ):
         """Class representing a bounding volume hierarchy.
 
         Depending on which device the input bounds live, it can be either a CPU tree or a GPU tree.
@@ -4141,6 +4148,7 @@ class Bvh:
             constructor: The construction algorithm used to build the tree.
               Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, or ``None``.
               When ``None``, the default constructor will be used (see the note).
+            groups: Optional array of group indices of data type :class:`warp.int32`.
             leaf_size: The number of primitives (AABBs) stored in each leaf node. The optimal value depends on the primary
               use case. For intersection queries (e.g., AABB query), a small value like 1 (the default) is generally
               recommended for optimal performance. For closest point queries, a larger value like 4 or 8 can be more
@@ -4193,9 +4201,18 @@ class Bvh:
         if uppers.dtype != vec3 or not uppers.is_contiguous:
             raise RuntimeError("uppers should be a contiguous array of type wp.vec3")
 
+        if groups is not None:
+            if groups.dtype != int32 or not groups.is_contiguous:
+                raise RuntimeError("groups should be a contiguous array of type wp.int32")
+            if groups.device != lowers.device:
+                raise RuntimeError("groups must live on the same device as lowers/uppers")
+            if len(groups) != len(lowers):
+                raise RuntimeError("groups must have the same length as lowers/uppers")
+
         self.device = lowers.device
         self.lowers = lowers
         self.uppers = uppers
+        self.groups = groups
 
         def get_data(array):
             if array:
@@ -4219,13 +4236,18 @@ class Bvh:
 
         if self.device.is_cpu:
             if constructor == "lbvh":
-                warp._src.utils.warn(
+                warp.utils.warn(
                     "LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.", stacklevel=2
                 )
                 constructor = "sah"
 
             self.id = self.runtime.core.wp_bvh_create_host(
-                get_data(lowers), get_data(uppers), len(lowers), bvh_constructor_values[constructor], leaf_size
+                get_data(lowers),
+                get_data(uppers),
+                len(lowers),
+                bvh_constructor_values[constructor],
+                get_data(groups),
+                leaf_size,
             )
         else:
             self.id = self.runtime.core.wp_bvh_create_device(
@@ -4234,6 +4256,7 @@ class Bvh:
                 get_data(uppers),
                 len(lowers),
                 bvh_constructor_values[constructor],
+                get_data(groups),
                 leaf_size,
             )
 
@@ -4299,14 +4322,14 @@ class Bvh:
 
         if self.device.is_cpu:
             if constructor == "lbvh":
-                warp._src.utils.warn(
+                warp.utils.warn(
                     "LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.", stacklevel=2
                 )
                 constructor = "sah"
             self.runtime.core.wp_bvh_rebuild_host(self.id, bvh_constructor_values[constructor])
         else:
             if constructor != "lbvh":
-                warp._src.utils.warn(
+                warp.utils.warn(
                     "In-place rebuild method on the CUDA device only supports LBVH constructor. Falling back to LBVH constructor.",
                     stacklevel=2,
                 )
