@@ -799,6 +799,7 @@ create pypi wheels:
     - printf '%s+cu12\n' "$(head -n1 VERSION.md | tr -d '\n\r')" > VERSION.md # Modify VERSION.md with +cu12
     - uv build --wheel -C--build-option=-Pwindows-x86_64
     - uv build --wheel -C--build-option=-Plinux-x86_64
+    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
     - printf '%s+cpu\n' "$(head -n1 VERSION.md | sed 's/+cu12$//' | tr -d '\n\r')" > VERSION.md # Modify VERSION.md with +cu12 replaced by +cpu
     - uv build --wheel -C--build-option=-Pmacos-aarch64
     - printf '%s\n' "$(head -n1 VERSION.md | sed 's/+cpu$//' | tr -d '\n\r')" > VERSION.md # Revert VERSION.md changes
@@ -806,6 +807,7 @@ create pypi wheels:
     # Now make the wheels meant for PyPI publishing
     - uv build --wheel -C--build-option=-Pwindows-x86_64
     - uv build --wheel -C--build-option=-Plinux-x86_64
+    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
     - uv build --wheel -C--build-option=-Pmacos-aarch64
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
