@@ -517,18 +517,10 @@ It may be preferable to use the :ref:`DLPack` protocol directly for better perfo
 .. autofunction:: warp.dtype_to_jax
 
 
+.. _jax-ffi:
+
 Using Warp kernels as JAX primitives
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. note::
-    This version of :func:`jax_kernel() <warp.jax_experimental.jax_kernel>` is based on JAX features that are now deprecated.
-
-    For JAX version 0.5.0 or newer, users are encouraged to switch to the new FFI version of
-    :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>`
-    based on the new :ref:`Foreign Function Interface (FFI)<jax-ffi>`.
-
-    In Warp version 1.10, the FFI version will become the default implementation of `jax_kernel()`.
-    The older version will continue to be available as `warp.jax_experimental.custom_call.jax_kernel`.
 
 Warp kernels can be used as JAX primitives, which allows calling them inside of jitted JAX functions::
 
@@ -560,130 +552,9 @@ Warp kernels can be used as JAX primitives, which allows calling them inside of 
 Input and Output Semantics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-All kernel arguments must be contiguous arrays.
-Input arguments must come before output arguments in the kernel definition.
-At least one input array and one output array are required.
-Here is a kernel with three inputs and two outputs::
-
-    import warp as wp
-    import jax
-    import jax.numpy as jnp
-
-    from warp.jax_experimental import jax_kernel
-
-    # kernel with multiple inputs and outputs
-    @wp.kernel
-    def multiarg_kernel(
-        # inputs
-        a: wp.array(dtype=float),
-        b: wp.array(dtype=float),
-        c: wp.array(dtype=float),
-        # outputs
-        ab: wp.array(dtype=float),
-        bc: wp.array(dtype=float),
-    ):
-        tid = wp.tid()
-        ab[tid] = a[tid] + b[tid]
-        bc[tid] = b[tid] + c[tid]
-
-    # create a Jax primitive from a Warp kernel
-    jax_multiarg = jax_kernel(multiarg_kernel)
-
-    # use the Warp kernel in a Jax jitted function with three inputs and two outputs
-    @jax.jit
-    def f():
-        a = jnp.full(64, 1, dtype=jnp.float32)
-        b = jnp.full(64, 2, dtype=jnp.float32)
-        c = jnp.full(64, 3, dtype=jnp.float32)
-        return jax_multiarg(a, b, c)
-
-    x, y = f()
-
-    print(x)
-    print(y)
-
-
-Kernel Launch and Output Dimensions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-By default, the launch dimensions are inferred from the shape of the first input array.
-When that's not appropriate, the ``launch_dims`` argument can be used to override this behavior.
-The launch dimensions also determine the shape of the output arrays.
-Here is a simple matrix multiplication kernel that multiplies an NxK matrix by a KxM matrix.
-The launch dimensions and output shape must be (N, M), which is different than the shape of the input arrays::
-
-    import warp as wp
-    import jax
-    import jax.numpy as jnp
-
-    import warp as wp
-    from warp.jax_experimental import jax_kernel
-
-    @wp.kernel
-    def matmul_kernel(
-        a: wp.array2d(dtype=float),  # NxK input
-        b: wp.array2d(dtype=float),  # KxM input
-        c: wp.array2d(dtype=float),  # NxM output
-    ):
-        # launch dims should be (N, M)
-        i, j = wp.tid()
-        N = a.shape[0]
-        K = a.shape[1]
-        M = b.shape[1]
-        if i < N and j < M:
-            s = wp.float32(0)
-            for k in range(K):
-                s += a[i, k] * b[k, j]
-            c[i, j] = s
-
-    N, M, K = 3, 4, 2
-
-    # specify custom launch dimensions
-    jax_matmul = jax_kernel(matmul_kernel, launch_dims=(N, M))
-
-    @jax.jit
-    def f():
-        a = jnp.full((N, K), 2, dtype=jnp.float32)
-        b = jnp.full((K, M), 3, dtype=jnp.float32)
-
-        # use default launch dims
-        return jax_matmul(a, b)
-
-    print(f())
-
-
-.. _jax-ffi:
-
-JAX Foreign Function Interface (FFI)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. versionadded:: 1.7
-
-JAX v0.5.0 introduced a new `foreign function interface <https://docs.jax.dev/en/latest/ffi.html>`_ that supersedes
-the older custom call mechanism. One important benefit is that it allows the foreign function to be captured in a CUDA
-graph together with other JAX operations. This can lead to significant performance improvements.
-
-Users of newer JAX versions are encouraged to switch to the new implementation of
-:func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>` based on FFI.
-The old implementation is still available to avoid breaking existing code,
-but future development will likely focus on the FFI version.
-
-.. code-block:: python
-
-    from warp.jax_experimental.ffi import jax_kernel  # new FFI-based jax_kernel()
-
-The new implementation is likely to be faster and it is also more flexible.
-
-.. autofunction:: warp.jax_experimental.ffi.jax_kernel
-
-Input and Output Semantics
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 Input arguments must come before output arguments in the kernel definition.
 At least one output array is required, but it's ok to have kernels with no inputs.
-The new :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>` allows specifying the number of outputs using the
-``num_outputs`` argument.
-It defaults to one, so this argument is only needed for kernels with multiple outputs.
+The number of outputs can be specified using the ``num_outputs`` argument, which defaults to one.
 
 Here's a kernel with two inputs and one output::
 
@@ -691,7 +562,7 @@ Here's a kernel with two inputs and one output::
     import jax.numpy as jnp
 
     import warp as wp
-    from warp.jax_experimental.ffi import jax_kernel
+    from warp.jax_experimental import jax_kernel
 
     @wp.kernel
     def add_kernel(a: wp.array(dtype=int),
@@ -719,7 +590,7 @@ One input and two outputs::
     import jax.numpy as jnp
 
     import warp as wp
-    from warp.jax_experimental.ffi import jax_kernel
+    from warp.jax_experimental import jax_kernel
 
     @wp.kernel
     def sincos_kernel(angle: wp.array(dtype=float),
@@ -810,10 +681,7 @@ When that's not appropriate, the ``launch_dims`` argument can be used to overrid
 The launch dimensions also determine the shape of the output arrays.
 
 Here is a simple matrix multiplication kernel that multiplies an NxK matrix by a KxM matrix.
-The launch dimensions and output shape must be (N, M), which is different than the shape of the input arrays.
-
-Note that the new :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>` allows specifying custom launch
-dimensions with each call, which is more flexible than the old implementation, although the old approach is still supported::
+The launch dimensions and output shape must be (N, M), which is different than the shape of the input arrays::
 
     @wp.kernel
     def matmul_kernel(
@@ -941,7 +809,7 @@ JAX VMAP Support
 ~~~~~~~~~~~~~~~~
 
 The ``vmap_method`` argument can be used to specify how the callback transforms under :func:`jax.vmap`.
-The default is ``"broadcast_all"``. This argument can be passed to :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>`,
+The default is ``"broadcast_all"``. This argument can be passed to :func:`jax_kernel() <warp.jax_experimental.jax_kernel>`,
 and it can also be passed to each call::
 
     # set default vmap behavior
@@ -959,7 +827,7 @@ and it can also be passed to each call::
 JAX Automatic Differentiation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Warp kernels can be given JAX gradients using a convenience wrapper that wires a custom VJP around a kernel and its adjoint. To enable autodiff, pass the ``enable_backward=True`` argument to :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>`.
+Warp kernels can be given JAX gradients using a convenience wrapper that wires a custom VJP around a kernel and its adjoint. To enable autodiff, pass the ``enable_backward=True`` argument to :func:`jax_kernel() <warp.jax_experimental.jax_kernel>`.
 
 Basic example (one output)::
 
@@ -967,7 +835,7 @@ Basic example (one output)::
     import jax
     import jax.numpy as jnp
     import warp as wp
-    from warp.jax_experimental.ffi import jax_kernel
+    from warp.jax_experimental import jax_kernel
 
     @wp.kernel
     def scale_sum_square(
@@ -1003,7 +871,7 @@ Multiple outputs::
     import jax
     import jax.numpy as jnp
     import warp as wp
-    from warp.jax_experimental.ffi import jax_kernel
+    from warp.jax_experimental import jax_kernel
 
     @wp.kernel
     def multi_output(
@@ -1039,7 +907,7 @@ Vector and matrix arrays also work. Inner component dimensions are packed in the
     import jax
     import jax.numpy as jnp
     import warp as wp
-    from warp.jax_experimental.ffi import jax_kernel
+    from warp.jax_experimental import jax_kernel
 
     @wp.kernel
     def scale_vec2(a: wp.array(dtype=wp.vec2), s: float, out: wp.array(dtype=wp.vec2)):
@@ -1071,12 +939,12 @@ The autodiff functionality is considered experimental and is still a work in pro
 Calling Annotated Python Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>` mechanism can be used to launch a single Warp kernel
+The :func:`jax_kernel() <warp.jax_experimental.jax_kernel>` mechanism can be used to launch a single Warp kernel
 from JAX, but it's also possible to call a Python function that launches multiple kernels.
 The target Python function should have argument type annotations as if it were a Warp kernel.
-To call this function from JAX, use :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>`::
+To call this function from JAX, use :func:`jax_callable() <warp.jax_experimental.jax_callable>`::
 
-    from warp.jax_experimental.ffi import jax_callable
+    from warp.jax_experimental import jax_callable
 
     @wp.kernel
     def scale_kernel(a: wp.array(dtype=float), s: float, output: wp.array(dtype=float)):
@@ -1125,13 +993,13 @@ To call this function from JAX, use :func:`jax_callable() <warp.jax_experimental
     print(r1)
     print(r2)
 
-The input and output semantics of :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` are similar to
-:func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>`, so we won't recap everything here,
+The input and output semantics of :func:`jax_callable() <warp.jax_experimental.jax_callable>` are similar to
+:func:`jax_kernel() <warp.jax_experimental.jax_kernel>`, so we won't recap everything here,
 just focus on the differences:
 
-- :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` does not take a ``launch_dims`` argument,
+- :func:`jax_callable() <warp.jax_experimental.jax_callable>` does not take a ``launch_dims`` argument,
   since the target function is responsible for launching kernels using appropriate dimensions.
-- :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` takes an optional ``graph_mode`` argument, which determines how the callable can be captured in a CUDA graph.
+- :func:`jax_callable() <warp.jax_experimental.jax_callable>` takes an optional ``graph_mode`` argument, which determines how the callable can be captured in a CUDA graph.
   Graphs are generally desirable, since they can greatly improve the application performance.
   ``GraphMode.JAX`` (default) lets JAX capture the graph, which may be used as a subgraph in an enclosing capture for maximal benefit.
   ``GraphMode.WARP`` lets Warp capture the graph. Use this mode when the callable cannot be used as a subgraph, such as when the callable uses conditional graph nodes.
@@ -1139,15 +1007,15 @@ just focus on the differences:
 
 See `example_jax_callable.py <https://github.com/NVIDIA/warp/tree/main/warp/examples/interop/example_jax_callable.py>`_ for examples.
 
-.. autofunction:: warp.jax_experimental.ffi.jax_callable
+.. autofunction:: warp.jax_experimental.jax_callable
 
 Generic JAX FFI Callbacks
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Another way to call Python functions is to use
-:func:`register_ffi_callback() <warp.jax_experimental.ffi.register_ffi_callback>`::
+:func:`register_ffi_callback() <warp.jax_experimental.register_ffi_callback>`::
 
-    from warp.jax_experimental.ffi import register_ffi_callback
+    from warp.jax_experimental import register_ffi_callback
 
 This allows calling functions that don't have Warp-style type annotations, but must have the form::
 
@@ -1164,7 +1032,7 @@ The input and output buffers are neither JAX nor Warp arrays.
 They are objects that expose the ``__cuda_array_interface__``, which can be passed to Warp kernels directly.
 Here is an example::
 
-    from warp.jax_experimental.ffi import register_ffi_callback
+    from warp.jax_experimental import register_ffi_callback
 
     @wp.kernel
     def scale_kernel(a: wp.array(dtype=float), s: float, output: wp.array(dtype=float)):
@@ -1226,12 +1094,12 @@ Here is an example::
 This is a more low-level approach to JAX FFI callbacks.
 A proposal was made to incorporate such a mechanism in JAX, but for now we have a prototype here.
 This approach leaves a lot of work up to the user, such as verifying argument types and shapes,
-but it can be used when other utilities like :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>` and
-:func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` are not sufficient.
+but it can be used when other utilities like :func:`jax_kernel() <warp.jax_experimental.jax_kernel>` and
+:func:`jax_callable() <warp.jax_experimental.jax_callable>` are not sufficient.
 
 See `example_jax_ffi_callback.py <https://github.com/NVIDIA/warp/tree/main/warp/examples/interop/example_jax_ffi_callback.py>`_ for examples.
 
-.. autofunction:: warp.jax_experimental.ffi.register_ffi_callback
+.. autofunction:: warp.jax_experimental.register_ffi_callback
 
 Distributed Computation
 ^^^^^^^^^^^^^^^^^^^^^^^
