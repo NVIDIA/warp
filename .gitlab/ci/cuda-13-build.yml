@@ -46,7 +46,7 @@ linux-aarch64 build:
   stage: build
   image: quay.io/pypa/manylinux_2_34_aarch64:latest
   extends:
-    - .omni_devplat_arm_compute
+    - .lnx-aarch64-cpu-medium
     - .save_warp_bin_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
