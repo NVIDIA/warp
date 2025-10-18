@@ -76,7 +76,7 @@ linux-aarch64 build:
   stage: build
   image: quay.io/pypa/manylinux_2_34_aarch64:latest
   extends:
-    - .omni_devplat_arm_compute
+    - .lnx-aarch64-cpu-medium
     - .save_warp_bin_artifact
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
@@ -376,10 +376,10 @@ linux-aarch64 test orin:
     # Move compiled binaries out of platform-specific directory
     - mv warp/bin/linux-aarch64/warp.so warp/bin/
     - mv warp/bin/linux-aarch64/warp-clang.so warp/bin/
-    - uv sync --extra dev
+    - uv sync --extra dev --no-install-package psutil
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - uv run --extra dev -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - gpu/orin
 
