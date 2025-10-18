@@ -15,7 +15,7 @@
 
 from typing import Optional
 
-version: str = "1.10.0.dev0"
+version: str = "1.10.0rc1"
 """Warp version string"""
 
 verify_fp: bool = False
