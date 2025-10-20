@@ -16,6 +16,7 @@
 # isort: skip_file
 
 from warp._src.context import Device as Device
+from warp._src.context import Devicelike as Devicelike
 from warp._src.context import Module as Module
 from warp._src.context import assert_conditional_graph_support as assert_conditional_graph_support
 from warp._src.context import get_module as get_module
