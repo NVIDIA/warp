@@ -939,7 +939,9 @@ publish dev wheels to artifactory:
     - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   allow_failure: true
   before_script:
-    - export VERSION=$(head -n 1 dist/VERSION.md)
+    - export VERSION=$(head -n 1 dist/VERSION.md | tr -d '\r\n')
+    - echo "VERSION='$VERSION'"
+    - echo "$VERSION" | cat -A
   script:
     - cd dist
     - >
@@ -977,7 +979,9 @@ publish tag wheels to artifactory:
     - if: $CI_COMMIT_TAG
   allow_failure: true
   before_script:
-    - export VERSION=$(head -n 1 VERSION.md)
+    - export VERSION=$(head -n 1 VERSION.md | tr -d '\r\n')
+    - echo "VERSION='$VERSION'"
+    - echo "$VERSION" | cat -A
   script:
     - cd dist
     - >
