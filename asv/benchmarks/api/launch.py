@@ -32,7 +32,7 @@ class KernelLaunch:
     def setup(self):
         wp.init()
         wp.build.clear_kernel_cache()
-        wp.load_module("cuda:0")
+        wp.load_module(device="cuda:0")
         self.test_array = wp.zeros(N, dtype=float, device="cuda:0")
         self.stream = wp.Stream("cuda:0")
         self.cmd = wp.launch(inc_kernel, (N,), inputs=[self.test_array], record_cmd=True)
@@ -120,7 +120,7 @@ class KernelLaunchParameters:
     def setup(self):
         wp.init()
         wp.build.clear_kernel_cache()
-        wp.load_module("cuda:0")
+        wp.load_module(device="cuda:0")
 
         n = 1
         self.a = wp.zeros(n, dtype=float, device="cuda:0")
@@ -174,7 +174,7 @@ class GraphLaunch:
     def setup(self):
         wp.init()
         wp.build.clear_kernel_cache()
-        wp.load_module("cuda:0")
+        wp.load_module(device="cuda:0")
         self.test_array = wp.zeros(N, dtype=float, device="cuda:0")
         self.stream = wp.Stream("cuda:0")
 
