@@ -18,6 +18,7 @@ import errno
 import hashlib
 import json
 import os
+import platform
 import time
 from pathlib import Path
 
@@ -108,6 +109,12 @@ def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=Fal
         inc_path = os.path.join(warp_home, "native").encode("utf-8")
         obj_path = obj_path.encode("utf-8")
 
+        # Determine enable_tiles_in_stack_memory value
+        enable_tiles_in_stack = warp.config.enable_tiles_in_stack_memory
+        if enable_tiles_in_stack is None:
+            # Default to True on aarch64 (Linux ARM), False otherwise
+            enable_tiles_in_stack = platform.machine() == "aarch64"
+
         err = warp._src.context.runtime.llvm.wp_compile_cpp(
             src,
             cpp_path,
@@ -116,7 +123,7 @@ def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=Fal
             mode == "debug",
             verify_fp,
             fuse_fp,
-            warp.config.enable_tiles_in_stack_memory,
+            enable_tiles_in_stack,
         )
         if err != 0:
             raise Exception(f"CPU kernel build failed with error code {err}")
