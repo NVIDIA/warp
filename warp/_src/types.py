@@ -4241,12 +4241,16 @@ class Bvh:
         if not self.id:
             return
 
-        if self.device.is_cpu:
-            self.runtime.core.wp_bvh_destroy_host(self.id)
-        else:
-            # use CUDA context guard to avoid side effects during garbage collection
-            with self.device.context_guard:
-                self.runtime.core.wp_bvh_destroy_device(self.id)
+        try:
+            if self.device.is_cpu:
+                self.runtime.core.wp_bvh_destroy_host(self.id)
+            else:
+                # use CUDA context guard to avoid side effects during garbage collection
+                with self.device.context_guard:
+                    self.runtime.core.wp_bvh_destroy_device(self.id)
+        except (TypeError, AttributeError):
+            # Suppress TypeError and AttributeError when callables become None during shutdown
+            pass
 
     def refit(self):
         """Refit the BVH.
@@ -4424,12 +4428,16 @@ class Mesh:
         if not self.id:
             return
 
-        if self.device.is_cpu:
-            self.runtime.core.wp_mesh_destroy_host(self.id)
-        else:
-            # use CUDA context guard to avoid side effects during garbage collection
-            with self.device.context_guard:
-                self.runtime.core.wp_mesh_destroy_device(self.id)
+        try:
+            if self.device.is_cpu:
+                self.runtime.core.wp_mesh_destroy_host(self.id)
+            else:
+                # use CUDA context guard to avoid side effects during garbage collection
+                with self.device.context_guard:
+                    self.runtime.core.wp_mesh_destroy_device(self.id)
+        except (TypeError, AttributeError):
+            # Suppress TypeError and AttributeError when callables become None during shutdown
+            pass
 
     def refit(self):
         """Refit the BVH to points.
@@ -4549,12 +4557,16 @@ class Volume:
         if not self.id:
             return
 
-        if self.device.is_cpu:
-            self.runtime.core.wp_volume_destroy_host(self.id)
-        else:
-            # use CUDA context guard to avoid side effects during garbage collection
-            with self.device.context_guard:
-                self.runtime.core.wp_volume_destroy_device(self.id)
+        try:
+            if self.device.is_cpu:
+                self.runtime.core.wp_volume_destroy_host(self.id)
+            else:
+                # use CUDA context guard to avoid side effects during garbage collection
+                with self.device.context_guard:
+                    self.runtime.core.wp_volume_destroy_device(self.id)
+        except (TypeError, AttributeError):
+            # Suppress TypeError and AttributeError when callables become None during shutdown
+            pass
 
     def array(self) -> array:
         """Return the raw memory buffer of the :class:`Volume` as an array."""
@@ -5581,12 +5593,16 @@ class HashGrid:
         if not self.id:
             return
 
-        if self.device.is_cpu:
-            self.runtime.core.wp_hash_grid_destroy_host(self.id)
-        else:
-            # use CUDA context guard to avoid side effects during garbage collection
-            with self.device.context_guard:
-                self.runtime.core.wp_hash_grid_destroy_device(self.id)
+        try:
+            if self.device.is_cpu:
+                self.runtime.core.wp_hash_grid_destroy_host(self.id)
+            else:
+                # use CUDA context guard to avoid side effects during garbage collection
+                with self.device.context_guard:
+                    self.runtime.core.wp_hash_grid_destroy_device(self.id)
+        except (TypeError, AttributeError):
+            # Suppress TypeError and AttributeError when callables become None during shutdown
+            pass
 
 
 generic_types = (Any, Scalar, Float, Int)
