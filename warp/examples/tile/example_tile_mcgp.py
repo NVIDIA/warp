@@ -95,9 +95,8 @@ def sphere_walk(delta_z: float, samples: wp.array2d(dtype=wp.vec3), solutions: w
     # solution is an average of all walks originating from this position
     walk_sum = wp.tile_sum(walk_results)
     result = walk_sum * (1.0 / wp.float32(TILE_SIZE))
-    result_2d = wp.tile_reshape(result, shape=(1, 1))
 
-    wp.tile_store(solutions, result_2d, offset=(i, j))
+    wp.tile_store(solutions[i], result, offset=(j,))
 
 
 class Example:
@@ -162,7 +161,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
-    parser.add_argument("--height", type=int, default=512, help="Height of rendered image in pixels.")
+    parser.add_argument("--height", type=int, default=256, help="Height of rendered image in pixels.")
     parser.add_argument("--slices", type=int, default=60, help="Number of planar z-slices to scan.")
     parser.add_argument(
         "--headless",
