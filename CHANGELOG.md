@@ -94,6 +94,9 @@
   ([GH-892](https://github.com/NVIDIA/warp/issues/892)).
 - Fix invalid keyword arguments not being detected in the `wp.transform()` constructor at Python scope
   ([GH-975](https://github.com/NVIDIA/warp/issues/975)).
+- Suppress `TypeError` and `AttributeError` exceptions during Python interpreter shutdown when Warp objects are being
+  cleaned up, as these can be safely ignored during process termination
+  ([GH-1048](https://github.com/NVIDIA/warp/issues/1048)).
 
 ## [1.9.1] - 2025-10-01
 
