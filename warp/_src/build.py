@@ -86,6 +86,7 @@ def build_cuda(
                 fuse_fp,
                 lineinfo,
                 compile_time_trace,
+                warp._src.config.use_precompiled_headers,
                 output_path,
                 num_link,
                 arr_link,
