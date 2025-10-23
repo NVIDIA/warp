@@ -3846,7 +3846,11 @@ size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, i
     opts.push_back(arch_opt);
     opts.push_back(include_opt);
     opts.push_back("--std=c++17");
+
+    // CUDA 12.8+ supports precompiled headers
+#if CUDA_VERSION >= 12080
     opts.push_back("-pch");
+#endif
     
     if (debug)
     {
