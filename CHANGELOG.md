@@ -36,6 +36,7 @@
   ([GH-1018](https://github.com/NVIDIA/warp/issues/1018)).
 - Add automatic differentiation support with `jax_kernel(enable_backward=True)`
   ([GH-912](https://github.com/NVIDIA/warp/pull/912), [GH-515](https://github.com/NVIDIA/warp/issues/515)).
+- Add alpha and beta scalings to `wp.tile_matmul()` ([GH-1023](https://github.com/NVIDIA/warp/pull/1023)).
 
 ### Removed
 

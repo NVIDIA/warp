@@ -5390,8 +5390,14 @@ def tile_diag_add(a: Tile[Any, Tuple[int, int]], d: Tile[Any, Tuple[int]]) -> Ti
     ...
 
 @over
-def tile_matmul(a: Tile[Float, Tuple[int, int]], b: Tile[Float, Tuple[int, int]], out: Tile[Float, Tuple[int, int]]):
-    """Computes the matrix product and accumulates ``out += a*b``.
+def tile_matmul(
+    a: Tile[Float, Tuple[int, int]],
+    b: Tile[Float, Tuple[int, int]],
+    out: Tile[Float, Tuple[int, int]],
+    alpha: Float,
+    beta: Float,
+):
+    """Computes the matrix product and accumulates ``out = alpha * a*b + beta * out``.
 
     Supported datatypes are:
         * fp16, fp32, fp64 (real)
@@ -5400,16 +5406,22 @@ def tile_matmul(a: Tile[Float, Tuple[int, int]], b: Tile[Float, Tuple[int, int]]
     All input and output tiles must have the same datatype. Tile data will automatically be migrated
     to shared memory if necessary and will use TensorCore operations when available.
 
+    Note that computing the adjoints of alpha and beta are not yet supported.
+
     :param a: A tile with ``shape=(M, K)``
     :param b: A tile with ``shape=(K, N)``
     :param out: A tile with ``shape=(M, N)``
+    :param alpha: Scaling factor (default 1.0)
+    :param beta: Accumulator factor (default 1.0)
 
     """
     ...
 
 @over
-def tile_matmul(a: Tile[Float, Tuple[int, int]], b: Tile[Float, Tuple[int, int]]) -> Tile[Float, Tuple[int, int]]:
-    """Computes the matrix product ``out = a*b``.
+def tile_matmul(
+    a: Tile[Float, Tuple[int, int]], b: Tile[Float, Tuple[int, int]], alpha: Float
+) -> Tile[Float, Tuple[int, int]]:
+    """Computes the matrix product ``out = alpha * a*b``.
 
     Supported datatypes are:
         * fp16, fp32, fp64 (real)
@@ -5418,8 +5430,11 @@ def tile_matmul(a: Tile[Float, Tuple[int, int]], b: Tile[Float, Tuple[int, int]]
     Both input tiles must have the same datatype. Tile data will automatically be migrated
     to shared memory if necessary and will use TensorCore operations when available.
 
+    Note that computing the adjoints of alpha is not yet supported.
+
     :param a: A tile with ``shape=(M, K)``
     :param b: A tile with ``shape=(K, N)``
+    :param alpha: Scaling factor (default 1.0)
     :returns: A tile with ``shape=(M, N)``
 
     """

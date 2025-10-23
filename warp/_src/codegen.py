@@ -1256,6 +1256,9 @@ class Adjoint:
         if isinstance(var, int):
             return adj.add_constant(var)
 
+        if isinstance(var, float):
+            return adj.add_constant(var)
+
         if var.label is None:
             return adj.add_var(var.type, var.constant)
 
