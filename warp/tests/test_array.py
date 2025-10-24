@@ -3591,7 +3591,56 @@ def test_array4d_slicing(test, device):
     wp.launch(test_array4d_slicing_kernel, dim=1, inputs=(arr,), device=device)
 
 
+def test_graph_fill_vecmat(test, device):
+    """Make sure the fill value persists with the graph."""
+
+    def _fill_vecmat(vecmat_arr, scalar_value):
+        # fill array with a local/temporary value, which must be retained by the graph
+        vecmat_arr.fill_(vecmat_arr.dtype(scalar_value))
+
+    def _run_tests(arrays):
+        # create captures using temporary fill values, different for each array
+        captures = []
+        for i, arr in enumerate(arrays):
+            scalar_value = i + 1
+            with wp.ScopedCapture() as capture:
+                _fill_vecmat(arr, scalar_value)
+            captures.append(capture)
+
+        # make sure each graph fills its array with the correct value
+        for i, arr in enumerate(arrays):
+            with test.subTest(msg=f"array type={type(arr)}, dtype={arr.dtype}"):
+                wp.capture_launch(captures[i].graph)
+
+                expected_scalar_value = i + 1
+                np_dtype = wp.dtype_to_numpy(arr.dtype._wp_scalar_type_)
+                np_shape = (*arr.shape, *arr.dtype._shape_)
+                expected = np.full(np_shape, expected_scalar_value, dtype=np_dtype)
+
+                assert_np_equal(arr.numpy(), expected)
+
+    with wp.ScopedDevice(device):
+        from warp._src.types import vector_types
+
+        # create arrays with different vector/matrix types
+        n = 1000
+        contiguous_arrays = []
+        strided_arrays = []
+        indexed_arrays = []
+        indices = wp.array(np.arange(n, dtype=np.int32))
+        for vectype in vector_types:
+            contiguous_arrays.append(wp.zeros(n, dtype=vectype))
+            strided_arrays.append(wp.zeros(n * 2, dtype=vectype)[::2])
+            indexed_arrays.append(wp.zeros(n, dtype=vectype)[indices])
+
+        # test the different array types
+        _run_tests(contiguous_arrays)
+        _run_tests(strided_arrays)
+        _run_tests(indexed_arrays)
+
+
 devices = get_test_devices()
+cuda_devices = get_cuda_test_devices()
 
 
 class TestArray(unittest.TestCase):
@@ -3675,6 +3724,8 @@ add_function_test(TestArray, "test_array1d_slicing", test_array1d_slicing, devic
 add_function_test(TestArray, "test_array2d_slicing", test_array2d_slicing, devices=devices)
 add_function_test(TestArray, "test_array3d_slicing", test_array3d_slicing, devices=devices)
 add_function_test(TestArray, "test_array4d_slicing", test_array4d_slicing, devices=devices)
+
+add_function_test(TestArray, "test_graph_fill_vecmat", test_graph_fill_vecmat, devices=cuda_devices)
 
 try:
     import torch
