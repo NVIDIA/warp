@@ -97,6 +97,7 @@
 - Suppress `TypeError` and `AttributeError` exceptions during Python interpreter shutdown when Warp objects are being
   cleaned up, as these can be safely ignored during process termination
   ([GH-1048](https://github.com/NVIDIA/warp/issues/1048)).
+- Fix incorrect results when filling arrays in CUDA graphs ([GH-1040](https://github.com/NVIDIA/warp/issues/1040)).
 
 ## [1.9.1] - 2025-10-01
 
