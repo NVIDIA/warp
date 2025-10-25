@@ -466,6 +466,8 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(
     // optimization: make the latest
     query.stack[0] = root == -1 ? *bvh.root : root;
     query.count = 1;
+    // ensure node-level AABB tests run on first iteration
+    query.primitive_counter = 0;
     query.input_lower = lower;
     query.input_upper = upper;
 
@@ -528,37 +530,42 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index, const f
 
         if (node_lower.b)
         {
-            // found leaf, iterate primitives in [start, end)
             const int start = left_index;
             const int end = right_index;
 
-            if (query.primitive_counter < 0)
+            // Fast path when the actual leaf range contains exactly one primitive
+            if (end - start == 1)
             {
-                query.primitive_counter = 0;
+                int primitive_index = bvh.primitive_indices[start];
+                index = primitive_index;
+                query.bounds_nr = primitive_index;
+                return true;
             }
-
-            int primitive_index = bvh.primitive_indices[start + (query.primitive_counter++)];
-
-            // if already visited the last primitive in the leaf node
-            // move to the next node and reset the primitive counter to 0
-            if (start + query.primitive_counter == end)
-            {
-                query.primitive_counter = 0;
-            }
-            // otherwise we need to keep this leaf node in stack for a future visit
             else
             {
-                query.stack[query.count++] = node_index;
+                int primitive_index = bvh.primitive_indices[start + (query.primitive_counter++)];
+
+                // if already visited the last primitive in the leaf node
+                // move to the next node and reset the primitive counter to 0
+                if (start + query.primitive_counter == end)
+                {
+                    query.primitive_counter = 0;
+                }
+                // otherwise we need to keep this leaf node in stack for a future visit
+                else
+                {
+                    query.stack[query.count++] = node_index;
+                }
+                float t = INFINITY;
+                bool hit = bvh_query_intersection_test(query, bvh.item_lowers[primitive_index], bvh.item_uppers[primitive_index], t);
+                if (!hit || (query.is_ray && t >= max_dist))
+                {
+                    continue;
+                }
+                index = primitive_index;
+                query.bounds_nr = primitive_index;
+                return true;
             }
-            float t = INFINITY;
-            bool hit = bvh_query_intersection_test(query, bvh.item_lowers[primitive_index], bvh.item_uppers[primitive_index], t);
-            if (!hit || (query.is_ray && t >= max_dist))
-            {
-                continue;
-            }
-            index = primitive_index;
-            query.bounds_nr = primitive_index;
-            return true;
         }
         else
         {
