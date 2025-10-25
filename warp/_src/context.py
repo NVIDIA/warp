@@ -3780,6 +3780,7 @@ class Runtime:
                 ctypes.c_void_p,
                 ctypes.c_int,
                 ctypes.c_int,
+                ctypes.c_void_p,
                 ctypes.c_int,
             ]
 
@@ -3790,6 +3791,7 @@ class Runtime:
                 ctypes.c_void_p,
                 ctypes.c_int,
                 ctypes.c_int,
+                ctypes.c_void_p,
                 ctypes.c_int,
             ]
 
