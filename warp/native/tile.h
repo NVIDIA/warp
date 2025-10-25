@@ -1773,7 +1773,7 @@ struct tile_shared_t
 
 
 template <typename T, typename L>
-void tile_register_t<T, L>::print() const
+CUDA_CALLABLE void tile_register_t<T, L>::print() const
 {
     // create a temporary shared tile so that
     // we can print it deterministically
@@ -3536,7 +3536,7 @@ void adj_tile_matmul(Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, 
 #endif // !defined(__CUDA_ARCH__)
 
 template <typename Fwd, typename TileA, typename TileL>
-TileL& tile_cholesky(Fwd fun_forward, TileA& A, TileL& L)
+CUDA_CALLABLE TileL& tile_cholesky(Fwd fun_forward, TileA& A, TileL& L)
 {
     static_assert(TileA::Layout::Shape::N == 2, "Expected TileA::Layout::Shape::N == 2");
     static_assert(TileL::Layout::Shape::N == 2, "Expected TileL::Layout::Shape::N == 2");
