@@ -36,6 +36,7 @@
   ([GH-1018](https://github.com/NVIDIA/warp/issues/1018)).
 - Add automatic differentiation support with `jax_kernel(enable_backward=True)`
   ([GH-912](https://github.com/NVIDIA/warp/pull/912), [GH-515](https://github.com/NVIDIA/warp/issues/515)).
+- Update warp.cast documentation to include an example ([GH-1030](https://github.com/NVIDIA/warp/issues/1030))
 
 ### Removed
 
