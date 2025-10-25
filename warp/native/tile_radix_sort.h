@@ -767,7 +767,7 @@ inline CUDA_CALLABLE void radix_sort_thread_block(
 
 
 template <typename TileK, typename TileV>
-void tile_sort(TileK& t, TileV& t2)
+CUDA_CALLABLE_DEVICE void tile_sort(TileK& t, TileV& t2)
 { 
     using T = typename TileK::Type;
     using V = typename TileV::Type;
@@ -799,7 +799,7 @@ void tile_sort(TileK& t, TileV& t2)
 }
 
 template <typename TileK, typename TileV>
-void tile_sort(TileK& t, TileV& t2, int start, int length)
+CUDA_CALLABLE_DEVICE void tile_sort(TileK& t, TileV& t2, int start, int length)
 { 
     using T = typename TileK::Type;
     using V = typename TileV::Type;

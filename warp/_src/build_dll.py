@@ -389,6 +389,13 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             f'--cuda-path="{cuda_home}"',
         ]
 
+        # CUDA 13+ moved CUB into CCCL directory structure
+        if ctk_version >= (13, 0):
+            clang_opts.append(f'-I"{cuda_home}/include/cccl"')
+            # CCCL has #pragma unroll directives that Clang can't always satisfy
+            # Suppress optimizer warnings to avoid -Werror failures
+            clang_opts.append("-Wno-pass-failed")
+
         if args.compile_time_trace:
             if ctk_version >= (12, 8):
                 nvcc_opts.append("--fdevice-time-trace=_build/build_lib_@filename@_compile-time-trace")

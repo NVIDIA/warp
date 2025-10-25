@@ -229,7 +229,7 @@ inline CUDA_CALLABLE T block_combine_thread_results(T thread_sum, bool thread_ha
 // non-axis version which computes sum 
 // across the entire tile using the whole block
 template <typename Tile, typename Op>
-auto tile_reduce_impl(Op f, Tile& t)
+CUDA_CALLABLE_DEVICE auto tile_reduce_impl(Op f, Tile& t)
 {
     using T = typename Tile::Type;
 
@@ -273,7 +273,7 @@ auto tile_reduce_impl(Op f, Tile& t)
 }
 
 template <int Axis, typename Op, typename Tile>
-auto tile_reduce_axis_impl(Op f, Tile& t)
+CUDA_CALLABLE_DEVICE auto tile_reduce_axis_impl(Op f, Tile& t)
 {
     using T = typename Tile::Type;
     using InputShape = typename Tile::Layout::Shape;
@@ -442,7 +442,7 @@ auto tile_reduce_axis_impl(Op f, Tile& t)
 // non-axis version which computes sum 
 // across the entire tile using the whole block
 template <typename Tile, typename Op, typename OpTrack>
-auto tile_arg_reduce_impl(Op f, OpTrack track, Tile& t)
+CUDA_CALLABLE_DEVICE auto tile_arg_reduce_impl(Op f, OpTrack track, Tile& t)
 {
     using T = typename Tile::Type;
 
@@ -669,7 +669,7 @@ auto tile_sum(Tile& t)
 
 // special case adjoint for summation
 template <typename Tile, typename AdjTile>
-void adj_tile_sum(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+CUDA_CALLABLE void adj_tile_sum(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {
     using T = typename Tile::Type;
 
