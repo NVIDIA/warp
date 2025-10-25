@@ -440,7 +440,9 @@ add_function_test(TestGroupedBvh, "test_grouped_bvh_aabb", test_bvh_query_aabb, 
 add_function_test(TestGroupedBvh, "test_grouped_bvh_ray", test_bvh_query_ray, devices=devices)
 add_function_test(TestGroupedBvh, "test_grouped_gh_288", test_gh_288, devices=devices)
 
-add_function_test(TestGroupedBvh, "test_grouped_capture_bvh_rebuild", test_capture_bvh_rebuild_grouped, devices=cuda_devices)
+add_function_test(
+    TestGroupedBvh, "test_grouped_capture_bvh_rebuild", test_capture_bvh_rebuild_grouped, devices=cuda_devices
+)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

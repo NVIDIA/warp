@@ -5048,7 +5048,7 @@ Geometry
 
     Move to the next bound returned by the query.
 
-    The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
+    The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bounds.
     The maximum distance along a ray query to check for intersections can be set using ``max_dist``.
 
     :param query: The query to move to the next bound
@@ -5062,12 +5062,11 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Get the root of a group in a BVH.
 
-    Returns the root node index for the specified group. If the group is not found, returns -1
-    which is the root of the entire BVH.
+    Returns the root node index for the specified group. If the group does not exist, returns ``-1``
+    (sentinel for the BVH global root). Pass ``-1`` to BVH queries to traverse from the global root.
 
     :param id: The BVH identifier
     :param group: The group identifier

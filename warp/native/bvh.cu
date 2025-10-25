@@ -228,7 +228,7 @@ __global__ void compute_key_deltas(const uint64_t* __restrict__ keys, int* __res
     if (index < n)
     {
         const uint64_t diff = keys[index] ^ keys[index + 1];
-        deltas[index] = __clzll(diff);
+        deltas[index] = (diff == 0) ? 64 : __clzll(diff);
     }
 }
 
@@ -243,9 +243,9 @@ __global__ void build_leaves(const vec3* __restrict__ item_lowers, const vec3* _
         vec3 lower = item_lowers[item];
         vec3 upper = item_uppers[item];
 
-        // write leaf nodes 
-        lowers[index] = make_node(lower, item, true);
-        uppers[index] = make_node(upper, item, false);
+        // write leaf nodes using position indices and [start, end) range
+        lowers[index] = make_node(lower, index, true);
+        uppers[index] = make_node(upper, index + 1, false);
 
         // write leaf key ranges
         range_lefts[index] = index;
