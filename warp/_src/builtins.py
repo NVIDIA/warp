@@ -10405,10 +10405,39 @@ add_builtin(
     input_types={"a": Any, "dtype": Any},
     value_func=cast_value_func,
     dispatch_func=cast_dispatch_func,
-    doc="Reinterpret a value as a different type while preserving its bit pattern.",
     group="Utility",
     export=False,
     is_differentiable=False,
+    doc="""Reinterpret a value as a different type while preserving its bit pattern.
+
+    :param a: The value to cast
+    :param dtype: The target type
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.struct
+        class MyStruct:
+            f: wp.float16
+            i: wp.int16
+
+
+        @wp.kernel
+        def compute():
+            x = wp.int32(0x40000000)
+            x_casted = wp.cast(x, wp.float32)
+            wp.expect_eq(x_casted, 2.0) # 0x40000000
+
+            s = MyStruct()
+            s.f = wp.float16(2.0) # 0x4000
+            s.i = wp.int16(4096) # 0x1000
+            s_casted = wp.cast(s, wp.int32)
+            wp.expect_eq(s_casted, 0x10004000)
+
+
+        wp.launch(compute, dim=1)
+    """,
 )
 
 
