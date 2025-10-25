@@ -760,9 +760,6 @@ class Kernel:
         # hash will be computed when the module is built
         self.hash = None
 
-        # flag indicating if this kernel belongs to a unique module (set by @wp.kernel decorator)
-        self.is_unique_module = False
-
         if self.module:
             self.module.register_kernel(self)
 
@@ -1122,24 +1119,9 @@ def kernel(
             options=options,
         )
         if module == "unique":
-            # Mark this kernel as belonging to a unique module
-            k.is_unique_module = True
-
             # add the hash to the module name
             hasher = warp._src.context.ModuleHasher(m)
             k.module.name = f"{k.key}_{hasher.module_hash.hex()[:8]}"
-            # check if this module exists already and just use that
-            existing_module = user_modules.get(k.module.name)
-            if existing_module is not None:
-                k.module = existing_module
-                # Reset skip_build for all kernels in this reused unique module.
-                # Previous tests may have left kernels with skip_build=True, which would
-                # prevent ModuleBuilder from compiling them for the new device.
-                for existing_kernel in k.module.live_kernels:
-                    existing_kernel.adj.skip_build = False
-            else:
-                # register the new unique module
-                user_modules[k.module.name] = k.module
 
         k = functools.update_wrapper(k, f)
         return k
@@ -1924,12 +1906,16 @@ class ModuleExec:
     # release the loaded module
     def __del__(self):
         if self.handle is not None:
-            if self.device.is_cuda:
-                # use CUDA context guard to avoid side effects during garbage collection
-                with self.device.context_guard:
-                    runtime.core.wp_cuda_unload_module(self.device.context, self.handle)
-            else:
-                runtime.llvm.wp_unload_obj(self.handle.encode("utf-8"))
+            try:
+                if self.device.is_cuda:
+                    # use CUDA context guard to avoid side effects during garbage collection
+                    with self.device.context_guard:
+                        runtime.core.wp_cuda_unload_module(self.device.context, self.handle)
+                else:
+                    runtime.llvm.wp_unload_obj(self.handle.encode("utf-8"))
+            except (TypeError, AttributeError):
+                # Suppress TypeError and AttributeError when callables become None during shutdown
+                pass
 
     # lookup and cache kernel entry points
     def get_kernel_hooks(self, kernel) -> KernelHooks:
@@ -2858,7 +2844,11 @@ class Event:
         if not self.owner:
             return
 
-        runtime.core.wp_cuda_event_destroy(self.cuda_event)
+        try:
+            runtime.core.wp_cuda_event_destroy(self.cuda_event)
+        except (TypeError, AttributeError):
+            # Suppress TypeError and AttributeError when callables become None during shutdown
+            pass
 
 
 class Stream:
@@ -2923,10 +2913,14 @@ class Stream:
         if not self.cuda_stream:
             return
 
-        if self.owner:
-            runtime.core.wp_cuda_stream_destroy(self.device.context, self.cuda_stream)
-        else:
-            runtime.core.wp_cuda_stream_unregister(self.device.context, self.cuda_stream)
+        try:
+            if self.owner:
+                runtime.core.wp_cuda_stream_destroy(self.device.context, self.cuda_stream)
+            else:
+                runtime.core.wp_cuda_stream_unregister(self.device.context, self.cuda_stream)
+        except (TypeError, AttributeError):
+            # Suppress TypeError and AttributeError when callables become None during shutdown
+            pass
 
     @property
     def cached_event(self) -> Event:
@@ -3437,11 +3431,15 @@ class Graph:
         if not hasattr(self, "graph") or not hasattr(self, "device") or not self.graph:
             return
 
-        # use CUDA context guard to avoid side effects during garbage collection
-        with self.device.context_guard:
-            runtime.core.wp_cuda_graph_destroy(self.device.context, self.graph)
-            if hasattr(self, "graph_exec") and self.graph_exec is not None:
-                runtime.core.wp_cuda_graph_exec_destroy(self.device.context, self.graph_exec)
+        try:
+            # use CUDA context guard to avoid side effects during garbage collection
+            with self.device.context_guard:
+                runtime.core.wp_cuda_graph_destroy(self.device.context, self.graph)
+                if hasattr(self, "graph_exec") and self.graph_exec is not None:
+                    runtime.core.wp_cuda_graph_exec_destroy(self.device.context, self.graph_exec)
+        except (TypeError, AttributeError):
+            # Suppress TypeError and AttributeError when callables become None during shutdown
+            pass
 
     # retain executable CUDA modules used by this graph, which prevents them from being unloaded
     def retain_module_exec(self, module_exec: ModuleExec):
@@ -5487,9 +5485,13 @@ class RegisteredGLBuffer:
         if not self.resource:
             return
 
-        # use CUDA context guard to avoid side effects during garbage collection
-        with self.device.context_guard:
-            runtime.core.wp_cuda_graphics_unregister_resource(self.context, self.resource)
+        try:
+            # use CUDA context guard to avoid side effects during garbage collection
+            with self.device.context_guard:
+                runtime.core.wp_cuda_graphics_unregister_resource(self.context, self.resource)
+        except (TypeError, AttributeError):
+            # Suppress TypeError and AttributeError when callables become None during shutdown
+            pass
 
     def map(self, dtype, shape) -> warp.array:
         """Map the OpenGL buffer to a Warp array.
@@ -6384,13 +6386,6 @@ def launch(
         if kernel.is_generic:
             fwd_types = kernel.infer_argument_types(fwd_args)
             kernel = kernel.add_overload(fwd_types)
-
-        # For unique module kernels, reset skip_build to allow compilation attempts on different devices.
-        # Even though a Module compiles separately for each device (stored in Module.execs),
-        # the skip_build flag is on the Adjoint which is shared across devices.
-        # A failure on one device shouldn't prevent compilation attempts on other devices.
-        if kernel.is_unique_module:
-            kernel.adj.skip_build = False
 
         # delay load modules, including new overload if needed
         try:

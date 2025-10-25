@@ -243,8 +243,13 @@ class fabricarray(noncontiguous_array_base[T]):
             return
 
         buckets_size = ctypes.sizeof(self.buckets)
-        with self.device.context_guard:
-            self.deleter(self.ctype.buckets, buckets_size)
+
+        try:
+            with self.device.context_guard:
+                self.deleter(self.ctype.buckets, buckets_size)
+        except (TypeError, AttributeError):
+            # Suppress TypeError and AttributeError when callables become None during shutdown
+            pass
 
     def __ctype__(self):
         return self.ctype

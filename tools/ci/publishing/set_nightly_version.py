@@ -120,7 +120,7 @@ def write_new_version_to_version_file(version_file_path: str, new_version: str, 
             print(f"Dry run: Would update version in {version_file_path} to {new_version}")
             return True
             
-        with open(version_file_path, 'w') as file:
+        with open(version_file_path, 'w', newline='\n') as file:
             file.write(new_version + '\n')
             
         print(f"Successfully updated version in {version_file_path} to {new_version}")

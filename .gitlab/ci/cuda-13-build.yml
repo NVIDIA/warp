@@ -231,7 +231,9 @@ publish tag wheels to artifactory:
     - if: $PARENT_COMMIT_TAG
   allow_failure: true
   before_script:
-    - export VERSION=$(head -n 1 VERSION.md)
+    - export VERSION=$(head -n 1 VERSION.md | tr -d '\r\n')
+    - echo "VERSION='$VERSION'"
+    - echo "$VERSION" | cat -A
   script:
     - cd dist
     - >

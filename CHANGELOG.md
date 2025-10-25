@@ -37,6 +37,7 @@
 - Add automatic differentiation support with `jax_kernel(enable_backward=True)`
   ([GH-912](https://github.com/NVIDIA/warp/pull/912), [GH-515](https://github.com/NVIDIA/warp/issues/515)).
 - Update warp.cast documentation to include an example ([GH-1030](https://github.com/NVIDIA/warp/issues/1030))
+- Add alpha and beta scalings to `wp.tile_matmul()` ([GH-1023](https://github.com/NVIDIA/warp/pull/1023)).
 
 ### Removed
 
@@ -94,6 +95,10 @@
   ([GH-892](https://github.com/NVIDIA/warp/issues/892)).
 - Fix invalid keyword arguments not being detected in the `wp.transform()` constructor at Python scope
   ([GH-975](https://github.com/NVIDIA/warp/issues/975)).
+- Suppress `TypeError` and `AttributeError` exceptions during Python interpreter shutdown when Warp objects are being
+  cleaned up, as these can be safely ignored during process termination
+  ([GH-1048](https://github.com/NVIDIA/warp/issues/1048)).
+- Fix incorrect results when filling arrays in CUDA graphs ([GH-1040](https://github.com/NVIDIA/warp/issues/1040)).
 
 ## [1.9.1] - 2025-10-01
 

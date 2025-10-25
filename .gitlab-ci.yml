@@ -369,7 +369,14 @@ linux-aarch64 test orin:
   image: ghcr.io/astral-sh/uv:bookworm-slim
   extends:
     - .save_test_report_artifact
-    - .basic_test_changes_rules
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - when: manual # Can be triggered in all other scenarios
+      allow_failure: true
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
@@ -939,7 +946,9 @@ publish dev wheels to artifactory:
     - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   allow_failure: true
   before_script:
-    - export VERSION=$(head -n 1 dist/VERSION.md)
+    - export VERSION=$(head -n 1 dist/VERSION.md | tr -d '\r\n')
+    - echo "VERSION='$VERSION'"
+    - echo "$VERSION" | cat -A
   script:
     - cd dist
     - >
@@ -977,7 +986,9 @@ publish tag wheels to artifactory:
     - if: $CI_COMMIT_TAG
   allow_failure: true
   before_script:
-    - export VERSION=$(head -n 1 VERSION.md)
+    - export VERSION=$(head -n 1 VERSION.md | tr -d '\r\n')
+    - echo "VERSION='$VERSION'"
+    - echo "$VERSION" | cat -A
   script:
     - cd dist
     - >

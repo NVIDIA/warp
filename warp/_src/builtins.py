@@ -9474,12 +9474,13 @@ def tile_matmul_lto_dispatch_func(
 ):
     a = arg_values["a"]
     b = arg_values["b"]
+    alpha = arg_values["alpha"]
 
     if len(return_values) > 0:
-        accumulate = 0  # for c = tile_matmul(a,b) case we want to overwrite c value
+        beta = 0.0  # for c = tile_matmul(a,b) case we want to overwrite c value
         out = return_values[0]
     else:
-        accumulate = 1  # for tile_matmul(a,b,c) case we want to add to c value
+        beta = arg_values["beta"]
         out = arg_values["out"]
 
     if not is_tile(out.type):
@@ -9501,7 +9502,7 @@ def tile_matmul_lto_dispatch_func(
     a.type.storage = "shared"
     b.type.storage = "shared"
     out.type.storage = "shared"
-    template_args = [accumulate]
+    template_args = ()
 
     M, K = a.type.shape[0], a.type.shape[1]
     _, N = b.type.shape[0], b.type.shape[1]
@@ -9510,7 +9511,7 @@ def tile_matmul_lto_dispatch_func(
 
     if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
-        return ((0, 0, 0, a, b, out), template_args, [], 0)
+        return ((0, 0, 0, a, b, out, alpha, beta), template_args, [], 0)
     else:
 
         def tile_flip_layout(layout):
@@ -9579,6 +9580,8 @@ def tile_matmul_lto_dispatch_func(
                 a,
                 b,
                 out,
+                alpha,
+                beta,
             ),
             template_args,
             [lto_forward, lto_backward_A, lto_backward_B],
@@ -9592,11 +9595,14 @@ add_builtin(
         "a": tile(dtype=Float, shape=Tuple[int, int]),
         "b": tile(dtype=Float, shape=Tuple[int, int]),
         "out": tile(dtype=Float, shape=Tuple[int, int]),
+        "alpha": Float,
+        "beta": Float,
     },
+    defaults={"alpha": 1.0, "beta": 1.0},
     value_func=tile_matmul_out_value_func,
     lto_dispatch_func=tile_matmul_lto_dispatch_func,
     variadic=False,
-    doc="""Computes the matrix product and accumulates ``out += a*b``.
+    doc="""Computes the matrix product and accumulates ``out = alpha * a*b + beta * out``.
 
     Supported datatypes are:
         * fp16, fp32, fp64 (real)
@@ -9605,9 +9611,13 @@ add_builtin(
     All input and output tiles must have the same datatype. Tile data will automatically be migrated
     to shared memory if necessary and will use TensorCore operations when available.
 
+    Note that computing the adjoints of alpha and beta are not yet supported.
+
     :param a: A tile with ``shape=(M, K)``
     :param b: A tile with ``shape=(K, N)``
     :param out: A tile with ``shape=(M, N)``
+    :param alpha: Scaling factor (default 1.0)
+    :param beta: Accumulator factor (default 1.0)
     """,
     group="Tile Primitives",
     export=False,
@@ -9615,11 +9625,16 @@ add_builtin(
 
 add_builtin(
     "tile_matmul",
-    input_types={"a": tile(dtype=Float, shape=Tuple[int, int]), "b": tile(dtype=Float, shape=Tuple[int, int])},
+    input_types={
+        "a": tile(dtype=Float, shape=Tuple[int, int]),
+        "b": tile(dtype=Float, shape=Tuple[int, int]),
+        "alpha": Float,
+    },
+    defaults={"alpha": 1.0},
     value_func=tile_matmul_value_func,
     lto_dispatch_func=tile_matmul_lto_dispatch_func,
     variadic=False,
-    doc="""Computes the matrix product ``out = a*b``.
+    doc="""Computes the matrix product ``out = alpha * a*b``.
 
     Supported datatypes are:
         * fp16, fp32, fp64 (real)
@@ -9628,8 +9643,11 @@ add_builtin(
     Both input tiles must have the same datatype. Tile data will automatically be migrated
     to shared memory if necessary and will use TensorCore operations when available.
 
+    Note that computing the adjoints of alpha is not yet supported.
+
     :param a: A tile with ``shape=(M, K)``
     :param b: A tile with ``shape=(K, N)``
+    :param alpha: Scaling factor (default 1.0)
     :returns: A tile with ``shape=(M, N)``
     """,
     group="Tile Primitives",
