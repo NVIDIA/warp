@@ -534,7 +534,7 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index, const f
             const int end = right_index;
 
             // Fast path when the actual leaf range contains exactly one primitive
-            if (end - start == 1)
+            if (end - start <= 1)
             {
                 int primitive_index = bvh.primitive_indices[start];
                 index = primitive_index;

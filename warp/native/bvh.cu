@@ -245,7 +245,7 @@ __global__ void build_leaves(const vec3* __restrict__ item_lowers, const vec3* _
 
         // write leaf nodes using position indices and [start, end) range
         lowers[index] = make_node(lower, index, true);
-        uppers[index] = make_node(upper, index + 1, false);
+        uppers[index] = make_node(upper, index, false);
 
         // write leaf key ranges
         range_lefts[index] = index;
