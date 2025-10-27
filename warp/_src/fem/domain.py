@@ -30,6 +30,8 @@ from warp._src.fem.geometry import (
 from warp._src.fem.operator import Operator
 from warp._src.fem.types import NULL_ELEMENT_INDEX, ElementKind
 
+_wp_module_name_ = "warp.fem.domain"
+
 GeometryOrPartition = Union[Geometry, GeometryPartition]
 
 

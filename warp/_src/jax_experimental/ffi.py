@@ -30,6 +30,8 @@ from warp._src.types import array_t, launch_bounds_t, strides_from_shape, type_t
 
 from .xla_ffi import *
 
+_wp_module_name_ = "warp.jax_experimental.ffi"
+
 # Type alias for differentiable kernel cache key
 DiffKernelCacheKey = tuple[Callable, tuple, int, str, tuple[str, ...]]
 

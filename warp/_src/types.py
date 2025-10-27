@@ -45,6 +45,8 @@ import numpy.typing as npt
 
 import warp
 
+_wp_module_name_ = "warp.types"
+
 # type hints
 T = TypeVar("T")
 Length = TypeVar("Length", bound=int)

@@ -23,6 +23,8 @@ from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementInde
 
 from .element import Element
 
+_wp_module_name_ = "warp.fem.geometry.geometry"
+
 _mat32 = wp.mat(shape=(3, 2), dtype=float)
 
 _NULL_BVH_ID = wp.uint64(0)

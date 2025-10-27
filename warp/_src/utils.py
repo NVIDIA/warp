@@ -32,6 +32,8 @@ import warp._src.types
 from warp._src.context import Devicelike
 from warp._src.types import Array, DType, type_repr, types_equal
 
+_wp_module_name_ = "warp.utils"
+
 warnings_seen = set()
 
 

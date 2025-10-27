@@ -28,6 +28,8 @@ from warp._src.thirdparty.dlpack import (
     _c_str_dltensor,
 )
 
+_wp_module_name_ = "warp.dlpack"
+
 _c_str_used_dltensor = b"used_dltensor"
 
 PyMem_RawMalloc = ctypes.pythonapi.PyMem_RawMalloc

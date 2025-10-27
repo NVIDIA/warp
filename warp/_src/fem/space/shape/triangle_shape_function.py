@@ -21,6 +21,8 @@ from warp._src.fem.types import Coords
 
 from .shape_function import ShapeFunction
 
+_wp_module_name_ = "warp.fem.space.shape.triangle_shape_function"
+
 
 def _triangle_node_index(tx: int, ty: int, degree: int):
     VERTEX_NODE_COUNT = 3

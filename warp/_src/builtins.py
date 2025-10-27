@@ -28,6 +28,8 @@ from warp._src.types import *
 
 from .context import add_builtin
 
+_wp_module_name_ = "warp.builtins"
+
 
 def seq_check_equal(seq_1, seq_2):
     if not isinstance(seq_1, Sequence) or not isinstance(seq_2, Sequence):

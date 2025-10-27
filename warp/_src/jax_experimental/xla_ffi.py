@@ -21,6 +21,8 @@ import numpy as np
 
 import warp as wp
 
+_wp_module_name_ = "warp.jax_experimental.xla_ffi"
+
 #######################################################################
 # ctypes structures and enums for XLA's FFI API:
 # https://github.com/openxla/xla/blob/a1a5e62fbffa3a3b6c409d72607456cf5b353a22/xla/ffi/api/c_api.h

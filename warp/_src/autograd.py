@@ -23,6 +23,8 @@ import numpy as np
 
 import warp as wp
 
+_wp_module_name_ = "warp.autograd"
+
 __all__ = [
     "gradcheck",
     "gradcheck_tape",

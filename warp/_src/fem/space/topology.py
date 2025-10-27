@@ -21,6 +21,8 @@ from warp._src.fem import cache
 from warp._src.fem.geometry import DeformedGeometry, Geometry
 from warp._src.fem.types import NULL_ELEMENT_INDEX, NULL_NODE_INDEX, ElementIndex
 
+_wp_module_name_ = "warp.fem.space.topology"
+
 
 class SpaceTopology:
     """

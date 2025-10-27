@@ -23,6 +23,8 @@ from warp._src.types import type_is_vector, type_size
 
 from .geometry import Geometry
 
+_wp_module_name_ = "warp.fem.geometry.deformed_geometry"
+
 _mat32 = wp.mat(shape=(3, 2), dtype=float)
 
 

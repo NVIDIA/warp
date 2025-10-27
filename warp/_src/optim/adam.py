@@ -15,6 +15,8 @@
 
 import warp as wp
 
+_wp_module_name_ = "warp.optim.adam"
+
 
 @wp.kernel
 def adam_step_kernel_vec3(
