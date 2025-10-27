@@ -27,6 +27,8 @@ from .shape import (
 )
 from .topology import SpaceTopology, forward_base_topology
 
+_wp_module_name_ = "warp.fem.space.grid_3d_function_space"
+
 
 class Grid3DSpaceTopology(SpaceTopology):
     def __init__(self, grid: Grid3D, shape: CubeShapeFunction):

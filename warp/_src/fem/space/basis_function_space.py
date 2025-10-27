@@ -28,6 +28,8 @@ from .dof_mapper import DofMapper, IdentityMapper
 from .function_space import FunctionSpace
 from .partition import SpacePartition, make_space_partition
 
+_wp_module_name_ = "warp.fem.space.basis_function_space"
+
 
 class CollocatedFunctionSpace(FunctionSpace):
     """Function space where values are collocated at nodes"""

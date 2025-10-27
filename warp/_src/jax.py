@@ -15,6 +15,8 @@
 
 import warp
 
+_wp_module_name_ = "warp.jax"
+
 
 def device_to_jax(warp_device: warp._src.context.Devicelike):
     """Return the Jax device corresponding to a Warp device.

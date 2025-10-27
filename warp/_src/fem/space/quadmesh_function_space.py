@@ -22,6 +22,8 @@ from warp._src.fem.types import NULL_NODE_INDEX, ElementIndex
 from .shape import SquareShapeFunction
 from .topology import SpaceTopology, forward_base_topology
 
+_wp_module_name_ = "warp.fem.space.quadmesh_function_space"
+
 
 @wp.struct
 class Quadmesh2DTopologyArg:

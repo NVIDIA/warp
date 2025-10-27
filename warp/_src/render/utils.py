@@ -19,6 +19,8 @@ import numpy as np
 
 import warp as wp
 
+_wp_module_name_ = "warp.render.utils"
+
 
 def bourke_color_map(low, high, v):
     c = [1.0, 1.0, 1.0]

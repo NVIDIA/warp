@@ -26,6 +26,8 @@ from warp._src.fem.types import ElementIndex
 from .shape import CubeShapeFunction
 from .topology import SpaceTopology, forward_base_topology
 
+_wp_module_name_ = "warp.fem.space.hexmesh_function_space"
+
 _FACE_ORIENTATION_I = wp.constant(wp.mat(shape=(16, 2), dtype=int)(FACE_ORIENTATION))
 _FACE_TRANSLATION_I = wp.constant(wp.mat(shape=(4, 2), dtype=int)(FACE_TRANSLATION))
 

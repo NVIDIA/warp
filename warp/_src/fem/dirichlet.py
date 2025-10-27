@@ -20,6 +20,8 @@ from warp._src.fem.linalg import array_axpy, symmetric_eigenvalues_qr
 from warp._src.types import type_is_matrix, type_size
 from warp.sparse import BsrMatrix, bsr_assign, bsr_axpy, bsr_block_index, bsr_copy, bsr_mm, bsr_mv
 
+_wp_module_name_ = "warp.fem.dirichlet"
+
 
 def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: Optional[wp.array] = None):
     """

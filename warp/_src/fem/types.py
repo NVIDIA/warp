@@ -17,6 +17,8 @@ from enum import IntEnum
 
 import warp as wp
 
+_wp_module_name_ = "warp.fem.types"
+
 # kept to avoid breaking existing example code, no longer used internally
 vec2i = wp.vec2i
 vec3i = wp.vec3i

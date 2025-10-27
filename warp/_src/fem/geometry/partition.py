@@ -23,6 +23,8 @@ from warp._src.fem.utils import masked_indices
 
 from .geometry import Geometry
 
+_wp_module_name_ = "warp.fem.geometry.partition"
+
 wp.set_module_options({"enable_backward": False})
 
 

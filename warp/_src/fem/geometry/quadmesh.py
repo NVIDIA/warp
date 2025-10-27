@@ -27,6 +27,8 @@ from .closest_point import project_on_seg_at_origin
 from .element import Element
 from .geometry import Geometry
 
+_wp_module_name_ = "warp.fem.geometry.quadmesh"
+
 
 @wp.struct
 class QuadmeshCellArg:

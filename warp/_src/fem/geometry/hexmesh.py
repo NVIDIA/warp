@@ -26,6 +26,8 @@ from warp._src.fem.types import OUTSIDE, Coords, ElementIndex, Sample
 from .element import Element
 from .geometry import Geometry
 
+_wp_module_name_ = "warp.fem.geometry.hexmesh"
+
 
 @wp.struct
 class HexmeshCellArg:

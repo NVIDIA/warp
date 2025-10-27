@@ -24,6 +24,8 @@ from warp._src.fem.types import NULL_NODE_INDEX
 from warp._src.types import scalar_types, type_is_matrix
 from warp._src.utils import array_scan, radix_sort_pairs, runlength_encode
 
+_wp_module_name_ = "warp.fem.utils"
+
 
 def type_zero_element(dtype):
     suffix = cache.pod_type_key(dtype)

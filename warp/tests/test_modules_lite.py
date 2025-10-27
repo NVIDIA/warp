@@ -16,7 +16,7 @@
 import unittest
 
 import warp as wp
-import warp._src.utils
+import warp.utils
 from warp.tests.unittest_utils import *
 
 devices = get_test_devices()
@@ -36,10 +36,10 @@ class TestModuleLite(unittest.TestCase):
         wp.load_module()
 
         # Load named module
-        wp.load_module(warp._src.utils)
+        wp.load_module(warp.utils)
 
         # Load named module (string)
-        wp.load_module("warp._src.utils", recursive=True)
+        wp.load_module("warp.utils", recursive=True)
 
     def test_module_lite_options(self):
         wp.set_module_options({"max_unroll": 8})

@@ -23,6 +23,8 @@ from warp._src.fem.utils import type_zero_element
 
 from .field import DiscreteField
 
+_wp_module_name_ = "warp.fem.field.nodal_field"
+
 
 class NodalFieldBase(DiscreteField):
     """Base class for nodal field and nodal field traces. Does not hold values"""

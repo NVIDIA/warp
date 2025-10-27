@@ -24,6 +24,8 @@ from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementInde
 from .element import Element
 from .geometry import Geometry
 
+_wp_module_name_ = "warp.fem.geometry.nanogrid"
+
 
 class NanogridBase(Geometry):
     """Base class for regular and adaptive Nanogrid"""
