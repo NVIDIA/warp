@@ -20,6 +20,7 @@ import numpy as np
 from asv_runner.benchmarks.mark import skip_benchmark_if
 
 import warp as wp
+import warp.examples
 
 pxr = importlib.util.find_spec("pxr")
 USD_AVAILABLE = pxr is not None
@@ -59,7 +60,7 @@ class BvhBuild:
         wp.build.clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
 
-        asset_stage = Usd.Stage.Open(os.path.join(wp.examples.get_asset_directory(), f"{asset}.usd"))
+        asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), f"{asset}.usd"))
         mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath(f"/root/{asset}"))
 
         points_np = np.array(mesh_geom.GetPointsAttr().Get())
