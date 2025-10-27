@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import warp as wp
 
+_wp_module_name_ = "warp.render.imgui_manager"
+
 
 class ImGuiManager:
     """Base class for managing an ImGui UI."""

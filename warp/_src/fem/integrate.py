@@ -62,6 +62,8 @@ from warp._src.sparse import BsrMatrix, bsr_set_from_triplets, bsr_zeros
 from warp._src.types import is_array, type_repr, type_scalar_type, type_size, type_to_warp
 from warp._src.utils import array_cast, warn
 
+_wp_module_name_ = "warp.fem.integrate"
+
 
 def _resolve_path(func, node):
     """

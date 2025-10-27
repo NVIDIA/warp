@@ -21,6 +21,8 @@ from warp._src.fem.types import Coords
 
 from .shape_function import ShapeFunction
 
+_wp_module_name_ = "warp.fem.space.shape.tet_shape_function"
+
 
 def _tet_node_index(tx: int, ty: int, tz: int, degree: int):
     from .triangle_shape_function import _triangle_node_index

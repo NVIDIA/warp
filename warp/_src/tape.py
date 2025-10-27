@@ -19,6 +19,8 @@ from collections import defaultdict, namedtuple
 
 import warp as wp
 
+_wp_module_name_ = "warp.tape"
+
 
 class Tape:
     """

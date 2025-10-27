@@ -21,6 +21,8 @@ import warp as wp
 import warp._src.sparse as sparse
 from warp._src.types import type_length, type_scalar_type
 
+_wp_module_name_ = "warp.optim.linear"
+
 __all__ = ["LinearOperator", "aslinearoperator", "bicgstab", "cg", "cr", "gmres", "preconditioner"]
 
 # No need to auto-generate adjoint code for linear solvers

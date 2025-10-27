@@ -20,6 +20,8 @@ import numpy
 import warp
 import warp._src.context
 
+_wp_module_name_ = "warp.torch"
+
 
 # return the warp device corresponding to a torch device
 def device_from_torch(torch_device) -> warp._src.context.Device:

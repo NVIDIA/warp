@@ -25,6 +25,8 @@ from warp._src.fem.types import Coords
 from .shape_function import ShapeFunction
 from .triangle_shape_function import TrianglePolynomialShapeFunctions
 
+_wp_module_name_ = "warp.fem.space.shape.square_shape_function"
+
 
 class SquareShapeFunction(ShapeFunction):
     VERTEX = 0

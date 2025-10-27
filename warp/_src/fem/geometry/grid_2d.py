@@ -24,6 +24,8 @@ from .closest_point import project_on_box_at_origin
 from .element import Element
 from .geometry import Geometry
 
+_wp_module_name_ = "warp.fem.geometry.grid_2d"
+
 
 @wp.struct
 class Grid2DCellArg:

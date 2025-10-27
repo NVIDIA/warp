@@ -58,6 +58,8 @@ import warp._src.codegen
 import warp._src.config
 from warp._src.types import Array, launch_bounds_t, type_repr
 
+_wp_module_name_ = "warp.context"
+
 warp_home = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
 
 # represents either a built-in or user-defined function
@@ -842,7 +844,12 @@ class Kernel:
 
 
 # decorator to register function, @func
-def func(f: Callable | None = None, *, name: str | None = None):
+def func(
+    f: Callable | None = None,
+    *,
+    name: str | None = None,
+    module: Module | Literal["unique"] | str | None = None,
+):
     def wrapper(f, *args, **kwargs):
         if name is None:
             key = warp._src.codegen.make_full_qualified_name(f)
@@ -851,7 +858,15 @@ def func(f: Callable | None = None, *, name: str | None = None):
 
         scope_locals = inspect.currentframe().f_back.f_back.f_locals
 
-        m = get_module(f.__module__)
+        if module is None:
+            m = get_module(f.__module__)
+        elif module == "unique":
+            m = Module(f.__name__, None)
+        elif isinstance(module, str):
+            m = get_module(module)
+        else:
+            m = module
+
         doc = getattr(f, "__doc__", "") or ""
         Function(
             func=f,
@@ -1062,7 +1077,7 @@ def kernel(
     f: Callable | None = None,
     *,
     enable_backward: bool | None = None,
-    module: Module | Literal["unique"] | None = None,
+    module: Module | Literal["unique"] | str | None = None,
 ):
     """
     Decorator to register a Warp kernel from a Python function.
@@ -1110,6 +1125,8 @@ def kernel(
             m = get_module(f.__module__)
         elif module == "unique":
             m = Module(f.__name__, None)
+        elif isinstance(module, str):
+            m = get_module(module)
         else:
             m = module
         k = Kernel(
@@ -1134,11 +1151,29 @@ def kernel(
 
 
 # decorator to register struct, @struct
-def struct(c: type) -> warp._src.codegen.Struct:
-    m = get_module(c.__module__)
-    s = warp._src.codegen.Struct(key=warp._src.codegen.make_full_qualified_name(c), cls=c, module=m)
-    s = functools.update_wrapper(s, c)
-    return s
+def struct(
+    c: type,
+    *,
+    module: Module | Literal["unique"] | str | None = None,
+) -> warp._src.codegen.Struct:
+    def wrapper(c, *args, **kwargs):
+        if module is None:
+            m = get_module(c.__module__)
+        elif module == "unique":
+            m = Module(c.__name__, None)
+        elif isinstance(module, str):
+            m = get_module(module)
+        else:
+            m = module
+        s = warp._src.codegen.Struct(key=warp._src.codegen.make_full_qualified_name(c), cls=c, module=m)
+        s = functools.update_wrapper(s, c)
+        return s
+
+    if c is None:
+        # Arguments were passed to the decorator.
+        return wrapper
+
+    return wrapper(c)
 
 
 def overload(kernel: Kernel | Callable, arg_types: dict[str, Any] | list[Any] | None = None) -> Kernel:
@@ -1537,6 +1572,9 @@ def get_module(name: str) -> Module:
     # registered into `sys.modules`
     parent = sys.modules.get(name, None)
     parent_loader = None if parent is None else parent.__loader__
+
+    # If there is a variable `_wp_module_name_` defined, use it as the module name.
+    name = getattr(parent, "_wp_module_name_", name)
 
     if name in user_modules:
         # check if the Warp module was created using a different loader object

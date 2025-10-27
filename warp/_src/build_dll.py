@@ -24,6 +24,8 @@ import time
 
 from warp._src.utils import ScopedTimer
 
+_wp_module_name_ = "warp.build_dll"
+
 verbose_cmd = True  # print command lines before executing them
 
 MIN_CTK_VERSION = (12, 0)

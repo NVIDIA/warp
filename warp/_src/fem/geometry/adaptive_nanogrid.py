@@ -21,6 +21,8 @@ from warp._src.fem.types import OUTSIDE, Coords, ElementIndex, Sample, make_free
 
 from .nanogrid import NanogridBase
 
+_wp_module_name_ = "warp.fem.geometry.adaptive_nanogrid"
+
 _FACE_LEVEL_BIT = wp.constant(wp.uint8(4))  # follows nanogrid.FACE_OUTER_OFFSET_BIT
 _GRID_LEVEL_BIT = wp.constant(wp.int32(19))  # follows nanogrid.GRID_AXIS_FLAG
 

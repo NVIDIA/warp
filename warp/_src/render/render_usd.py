@@ -19,6 +19,8 @@ import numpy as np
 
 import warp as wp
 
+_wp_module_name_ = "warp.render.render_usd"
+
 UP_AXIS_TOKEN = ("X", "Y", "Z")
 UP_AXIS_VEC = (
     np.array((1.0, 0.0, 0.0), dtype=float),
