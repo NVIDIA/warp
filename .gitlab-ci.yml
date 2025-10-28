@@ -144,7 +144,7 @@ mac-aarch64 build:
 
 linux-x86_64 cuda 13 build:
   stage: build
-  image: quay.io/pypa/manylinux_2_34_x86_64:latest
+  image: quay.io/pypa/manylinux_2_28_x86_64:latest
   extends:
     - .save_warp_bin_artifact
     - .ipp_lnx_x86_64_cpu_medium
