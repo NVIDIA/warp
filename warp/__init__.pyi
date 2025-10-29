@@ -152,8 +152,10 @@ from warp._src.types import Mesh as Mesh
 from warp._src.types import HashGrid as HashGrid
 from warp._src.types import Volume as Volume
 from warp._src.types import BvhQuery as BvhQuery
+from warp._src.types import BvhQueryTiled as BvhQueryTiled
 from warp._src.types import HashGridQuery as HashGridQuery
 from warp._src.types import MeshQueryAABB as MeshQueryAABB
+from warp._src.types import MeshQueryAABBTiled as MeshQueryAABBTiled
 from warp._src.types import MeshQueryPoint as MeshQueryPoint
 from warp._src.types import MeshQueryRay as MeshQueryRay
 
@@ -3378,6 +3380,90 @@ def bvh_query_next(query: BvhQuery, index: int32) -> bool:
     ...
 
 @over
+def bvh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled:
+    """Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.
+
+    This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+
+    :param id: The BVH identifier
+    :param low: The lower bound of the bounding box in BVH space (must be the same for all threads in the block)
+    :param high: The upper bound of the bounding box in BVH space (must be the same for all threads in the block)
+    """
+    ...
+
+@over
+def bvh_query_ray_tiled(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled:
+    """Construct a ray query against a BVH object for thread-block parallel traversal.
+
+    This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+
+    :param id: The BVH identifier
+    :param start: The ray origin (must be the same for all threads in the block)
+    :param dir: The ray direction (must be the same for all threads in the block)
+    """
+    ...
+
+@over
+def bvh_query_next_tiled(query: BvhQueryTiled) -> Tile[int32, Tuple[int]]:
+    """Move to the next bound in a thread-block parallel BVH query and return results as a tile.
+
+    Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
+    The function returns a register tile of shape ``(block_dim,)`` containing the result indices.
+
+    To check if any results were found, check if any element in the tile is >= 0.
+
+    :param query: The thread-block BVH query object
+    :returns: A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
+              the result index for that thread (-1 if no result)
+    """
+    ...
+
+@over
+def tile_bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled:
+    """Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.
+
+    This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+
+    :param id: The BVH identifier
+    :param low: The lower bound of the bounding box in BVH space (must be the same for all threads in the block)
+    :param high: The upper bound of the bounding box in BVH space (must be the same for all threads in the block)
+
+    .. note:: This is an alias for :func:`bvh_query_aabb_tiled`.
+    """
+    ...
+
+@over
+def tile_bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled:
+    """Construct a ray query against a BVH object for thread-block parallel traversal.
+
+    This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+
+    :param id: The BVH identifier
+    :param start: The ray origin (must be the same for all threads in the block)
+    :param dir: The ray direction (must be the same for all threads in the block)
+
+    .. note:: This is an alias for :func:`bvh_query_ray_tiled`.
+    """
+    ...
+
+@over
+def tile_bvh_query_next(query: BvhQueryTiled) -> Tile[int32, Tuple[int]]:
+    """Move to the next bound in a thread-block parallel BVH query and return results as a tile.
+
+    Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
+    The function returns a register tile of shape ``(block_dim,)`` containing the result indices.
+
+    To check if any results were found, check if any element in the tile is >= 0.
+
+    :param query: The thread-block BVH query object
+    :returns: A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
+              the result index for that thread (-1 if no result)
+
+    .. note:: This is an alias for :func:`bvh_query_next_tiled`.
+    """
+    ...
+
+@over
 def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint:
     """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
 
@@ -3479,6 +3565,64 @@ def mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool:
     """Move to the next triangle whose bounding box overlaps the query bounding box.
 
     The index of the current face is stored in ``index``, returns ``False`` if there are no more overlapping triangles.
+    """
+    ...
+
+@over
+def mesh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTiled:
+    """Construct an axis-aligned bounding box query against a :class:`Mesh` for thread-block parallel traversal.
+
+    This query can be used in tiled kernels to cooperatively traverse a mesh's BVH across a thread block.
+
+    :param id: The mesh identifier
+    :param low: The lower bound of the bounding box in mesh space (must be the same for all threads in the block)
+    :param high: The upper bound of the bounding box in mesh space (must be the same for all threads in the block)
+    """
+    ...
+
+@over
+def mesh_query_aabb_next_tiled(query: MeshQueryAABBTiled) -> Tile[int32, Tuple[int]]:
+    """Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.
+
+    Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
+    The function returns a register tile of shape ``(block_dim,)`` containing the result indices.
+
+    To check if any results were found, check if any element in the tile is >= 0.
+
+    :param query: The thread-block mesh query object
+    :returns: A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
+              the result index for that thread (-1 if no result)
+    """
+    ...
+
+@over
+def tile_mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTiled:
+    """Construct an axis-aligned bounding box query against a :class:`Mesh` for thread-block parallel traversal.
+
+    This query can be used in tiled kernels to cooperatively traverse a mesh's BVH across a thread block.
+
+    :param id: The mesh identifier
+    :param low: The lower bound of the bounding box in mesh space (must be the same for all threads in the block)
+    :param high: The upper bound of the bounding box in mesh space (must be the same for all threads in the block)
+
+    .. note:: This is an alias for :func:`mesh_query_aabb_tiled`.
+    """
+    ...
+
+@over
+def tile_mesh_query_aabb_next(query: MeshQueryAABBTiled) -> Tile[int32, Tuple[int]]:
+    """Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.
+
+    Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
+    The function returns a register tile of shape ``(block_dim,)`` containing the result indices.
+
+    To check if any results were found, check if any element in the tile is >= 0.
+
+    :param query: The thread-block mesh query object
+    :returns: A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
+              the result index for that thread (-1 if no result)
+
+    .. note:: This is an alias for :func:`mesh_query_aabb_next_tiled`.
     """
     ...
 

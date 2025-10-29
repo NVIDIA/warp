@@ -1688,11 +1688,23 @@ class BvhQuery:
     _wp_native_name_ = "bvh_query_t"
 
 
+class BvhQueryTiled:
+    """Object used to track state during thread-block parallel BVH traversal."""
+
+    _wp_native_name_ = "bvh_query_thread_block_t"
+
+
 # definition just for kernel type (cannot be a parameter), see mesh.h
 class MeshQueryAABB:
     """Object used to track state during mesh traversal."""
 
     _wp_native_name_ = "mesh_query_aabb_t"
+
+
+class MeshQueryAABBTiled:
+    """Object used to track state during thread-block parallel mesh traversal."""
+
+    _wp_native_name_ = "mesh_query_aabb_thread_block_t"
 
 
 # definition just for kernel type (cannot be a parameter), see hash_grid.h

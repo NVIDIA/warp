@@ -2095,3 +2095,6 @@ CUDA_CALLABLE void mesh_add_descriptor(uint64_t id, const Mesh& mesh);
 CUDA_CALLABLE void mesh_rem_descriptor(uint64_t id);
 
 } // namespace wp
+
+
+#include "tile_mesh.h"
