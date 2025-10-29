@@ -148,7 +148,7 @@ create pypi wheels:
   script:
     - printf '%s+cu13\n' "$(head -n1 VERSION.md | tr -d '\n\r')" > VERSION.md # Modify VERSION.md with +cu13
     - uv build --wheel -C--build-option=-Pwindows-x86_64
-    - uv build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux_2_34
+    - uv build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux_2_28
     - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
@@ -251,7 +251,7 @@ publish tag wheels to artifactory:
       'arch=aarch64;os=linux'
     - >
       jf rt sp --fail-no-op --url=$ARTIFACTORY_BASE_URL --access-token $ARTIFACTORY_SVC_ACCESS_TOKEN
-      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/*-manylinux_2_34_x86_64.whl
+      sw-warp-pypi-local/warp/$PARENT_COMMIT_REF_NAME/*-manylinux_2_28_x86_64.whl
       'arch=x86_64;os=linux'
     # Set additional common properties on all artifacts
     - >
