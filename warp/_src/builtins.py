@@ -5268,6 +5268,7 @@ add_builtin(
     :param high: The upper bound of the bounding box in BVH space (must be the same for all threads in the block)""",
     native_func="tile_bvh_query_aabb",
     export=False,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5284,6 +5285,7 @@ add_builtin(
     :param dir: The ray direction (must be the same for all threads in the block)""",
     native_func="tile_bvh_query_ray",
     export=False,
+    is_differentiable=False,
 )
 
 
@@ -5324,6 +5326,7 @@ add_builtin(
               the result index for that thread (-1 if no result)""",
     native_func="tile_bvh_query_next",
     export=False,
+    is_differentiable=False,
 )
 
 # Aliases for backward compatibility (tile_* naming convention)
@@ -5343,6 +5346,7 @@ add_builtin(
     .. note:: This is an alias for :func:`bvh_query_aabb_tiled`.""",
     native_func="tile_bvh_query_aabb",
     export=False,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5361,6 +5365,7 @@ add_builtin(
     .. note:: This is an alias for :func:`bvh_query_ray_tiled`.""",
     native_func="tile_bvh_query_ray",
     export=False,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5383,6 +5388,7 @@ add_builtin(
     .. note:: This is an alias for :func:`bvh_query_next_tiled`.""",
     native_func="tile_bvh_query_next",
     export=False,
+    is_differentiable=False,
 )
 
 
@@ -5754,6 +5760,7 @@ add_builtin(
     :param high: The upper bound of the bounding box in mesh space (must be the same for all threads in the block)""",
     native_func="tile_mesh_query_aabb",
     export=False,
+    is_differentiable=False,
 )
 
 
@@ -5796,6 +5803,7 @@ add_builtin(
               the result index for that thread (-1 if no result)""",
     native_func="tile_mesh_query_aabb_next",
     export=False,
+    is_differentiable=False,
 )
 
 # Aliases for backward compatibility (tile_* naming convention)
@@ -5815,6 +5823,7 @@ add_builtin(
     .. note:: This is an alias for :func:`mesh_query_aabb_tiled`.""",
     native_func="tile_mesh_query_aabb",
     export=False,
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -5837,6 +5846,7 @@ add_builtin(
     .. note:: This is an alias for :func:`mesh_query_aabb_next_tiled`.""",
     native_func="tile_mesh_query_aabb_next",
     export=False,
+    is_differentiable=False,
 )
 
 
