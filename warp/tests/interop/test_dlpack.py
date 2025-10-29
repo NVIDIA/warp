@@ -334,10 +334,11 @@ def test_dlpack_torch_to_warp_v2(test, device):
 
     import torch
 
-    t = torch.arange(N, dtype=torch.float32, device=wp.device_to_torch(device))
+    with torch.device(wp.device_to_torch(device)):
+        t = torch.arange(N, dtype=torch.float32)
 
-    # pass tensor directly
-    a = wp.from_dlpack(t)
+        # pass tensor directly
+        a = wp.from_dlpack(t)
 
     item_size = wp._src.types.type_size_in_bytes(a.dtype)
 
