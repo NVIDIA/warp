@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [1.10.0-rc.2] - 2025-11-03
+## [1.10.0] - 2025-11-03
 
 ### Added
 
@@ -100,6 +100,9 @@
 - Fix graph deletion during capture ([GH-992](https://github.com/NVIDIA/warp/issues/992)).
 - Fix arithmetic operators with scalars and arrays at the Python scope. Operations like `scalar * array`
   now work correctly (previously only `array * scalar` worked) ([GH-892](https://github.com/NVIDIA/warp/issues/892)).
+- Fix `wp.atomic_add()` failing to accumulate `wp.int64` values ([GH-977](https://github.com/NVIDIA/warp/issues/977)).
+- Fix handling of multi-line lambda expressions and lambda expressions involving parentheses in `wp.map()`
+  ([GH-984](https://github.com/NVIDIA/warp/issues/984)).
 - Fix invalid keyword arguments not being detected in the `wp.transform()` constructor at the Python scope
   ([GH-975](https://github.com/NVIDIA/warp/issues/975)).
 - Fix return type annotations for `struct()` and `overload()` decorators

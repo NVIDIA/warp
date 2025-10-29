@@ -40,8 +40,6 @@
 - Add automatic differentiation support with `jax_kernel(enable_backward=True)`
   ([GH-912](https://github.com/NVIDIA/warp/pull/912), [GH-515](https://github.com/NVIDIA/warp/issues/515)).
 - Add support for limiting the graph cache size of JAX callables ([GH-989](https://github.com/NVIDIA/warp/issues/989)).
-- Add alpha and beta scalings to `wp.tile_matmul()` ([GH-1023](https://github.com/NVIDIA/warp/pull/1023)).
-- Update warp.cast documentation to include an example ([GH-1030](https://github.com/NVIDIA/warp/issues/1030))
 
 ### Removed
 
@@ -109,6 +107,9 @@
 - Suppress `TypeError` and `AttributeError` exceptions during Python interpreter shutdown when Warp objects are being
   cleaned up, as these can be safely ignored during process termination
   ([GH-1048](https://github.com/NVIDIA/warp/issues/1048)).
+- Fix handling of multi-line lambda expressions and lambda expressions involving parentheses in `wp.map()`
+  ([GH-984](https://github.com/NVIDIA/warp/issues/984)).
+- Fix `wp.atomic_add()` for `wp.int64` ([GH-977](https://github.com/NVIDIA/warp/issues/977)).
 
 ## [1.9.1] - 2025-10-01
 
@@ -139,8 +140,6 @@
 - Fix handling of generic kernels with `wp.jax_experimental.ffi.jax_kernel()`.
 - Update built-in documentation to accurately reflect their differentiability status
   ([GH-970](https://github.com/NVIDIA/warp/issues/970)).
-- Fix handling of multi-line lambda expressions and lambda expressions involving parentheses in `wp.map()` ([GH-984](https://github.com/NVIDIA/warp/issues/984)).
-- Fix `wp.atomic_add()` for int64 type ([GH-977](https://github.com/NVIDIA/warp/issues/977))
 
 ## [1.9.0] - 2025-09-04
 
@@ -233,8 +232,6 @@
 - Fix adding superfluous inactive nodes to tetrahedron polynomial function spaces in `warp.fem`.
 - Fix `#line` directives for Python↔CUDA source correlation not being emitted by default when a module is compiled in
   debug mode ([GH-901](https://github.com/NVIDIA/warp/issues/901)).
-- Fix 2D shared tile allocation/de-allocation bug inside Warp functions ([GH-877](https://github.com/NVIDIA/warp/issues/877)).
-- Fix loading "unique" modules using `wp.load_module()`.
 
 ## [1.8.1] - 2025-08-01
 
