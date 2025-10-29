@@ -2812,7 +2812,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.
 
@@ -2831,7 +2830,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Construct a ray query against a BVH object for thread-block parallel traversal.
 
@@ -2850,7 +2848,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Move to the next bound in a thread-block parallel BVH query and return results as a tile.
 
@@ -2872,7 +2869,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Construct an axis-aligned bounding box query against a :class:`Mesh` for thread-block parallel traversal.
 
@@ -2891,7 +2887,6 @@ Tile Primitives
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.
 
@@ -5295,7 +5290,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.
 
@@ -5312,7 +5306,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Construct a ray query against a BVH object for thread-block parallel traversal.
 
@@ -5329,7 +5322,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Move to the next bound in a thread-block parallel BVH query and return results as a tile.
 
@@ -5496,7 +5488,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Construct an axis-aligned bounding box query against a :class:`Mesh` for thread-block parallel traversal.
 
@@ -5513,7 +5504,6 @@ Geometry
        :columns: 8
 
        * Kernel
-       * Differentiable
 
     Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.
 
