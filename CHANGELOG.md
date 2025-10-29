@@ -29,6 +29,11 @@
 - Add a double precision overload for `wp.intersect_tri_tri` ([GH-1015](https://github.com/NVIDIA/warp/issues/1015)).
 - Add `wp.get_cuda_supported_archs()` to query supported CUDA compute architectures for compilation targets
   ([GH-964](https://github.com/NVIDIA/warp/issues/964)).
+- Add tiled query functions for thread-block parallel traversal in tiled kernels using cooperative thread-block
+  traversal for improved performance on CUDA devices ([GH-1005](https://github.com/NVIDIA/warp/issues/1005)):
+  - BVH queries: `wp.bvh_query_aabb_tiled()`, `wp.bvh_query_ray_tiled()`, and `wp.bvh_query_next_tiled()`
+  - Mesh queries: `wp.mesh_query_aabb_tiled()` and `wp.mesh_query_aabb_next_tiled()`
+  - Aliases with `tile_*` prefix are also available for all functions.
 - Add `wp.cast()` to reinterpret a value as a different type while preserving its bit pattern
   ([GH-789](https://github.com/NVIDIA/warp/issues/789)).
 - Add runtime version verification to detect native library mismatches.

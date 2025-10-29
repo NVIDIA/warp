@@ -340,6 +340,8 @@ struct bvh_query_t
     bool is_ray;
 };
 
+
+
 CUDA_CALLABLE inline bool bvh_query_intersection_test(const bvh_query_t& query, const vec3& node_lower, const vec3& node_upper)
 {
     if (query.is_ray)
@@ -352,6 +354,7 @@ CUDA_CALLABLE inline bool bvh_query_intersection_test(const bvh_query_t& query, 
         return intersect_aabb_aabb(query.input_lower, query.input_upper, node_lower, node_upper);
     }
 }
+
 
 CUDA_CALLABLE inline bvh_query_t bvh_query(
     uint64_t id, bool is_ray, const vec3& lower, const vec3& upper)
@@ -508,6 +511,8 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index)
     return false;
 }
 
+
+
 CUDA_CALLABLE inline int iter_next(bvh_query_t& query)
 {
     return query.bounds_nr;
@@ -553,3 +558,6 @@ void bvh_refit_device(BVH& bvh);
 #endif // WP_ENABLE_CUDA
 
 } // namespace wp
+
+
+#include "tile_bvh.h"

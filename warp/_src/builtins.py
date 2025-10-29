@@ -5253,6 +5253,139 @@ add_builtin(
     is_differentiable=False,
 )
 
+# Primary naming convention (grouped with other geometry functions)
+add_builtin(
+    "bvh_query_aabb_tiled",
+    input_types={"id": uint64, "low": vec3, "high": vec3},
+    value_type=BvhQueryTiled,
+    group="Geometry",
+    doc="""Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.
+
+    This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+
+    :param id: The BVH identifier
+    :param low: The lower bound of the bounding box in BVH space (must be the same for all threads in the block)
+    :param high: The upper bound of the bounding box in BVH space (must be the same for all threads in the block)""",
+    native_func="tile_bvh_query_aabb",
+    export=False,
+)
+
+add_builtin(
+    "bvh_query_ray_tiled",
+    input_types={"id": uint64, "start": vec3, "dir": vec3},
+    value_type=BvhQueryTiled,
+    group="Geometry",
+    doc="""Construct a ray query against a BVH object for thread-block parallel traversal.
+
+    This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+
+    :param id: The BVH identifier
+    :param start: The ray origin (must be the same for all threads in the block)
+    :param dir: The ray direction (must be the same for all threads in the block)""",
+    native_func="tile_bvh_query_ray",
+    export=False,
+)
+
+
+def bvh_query_next_tiled_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return tile(dtype=int, shape=Tuple[int])
+
+    # Return a register tile of ints with shape (block_dim,)
+    block_dim = warp._src.codegen.options.get("block_dim", 256)
+    return tile(dtype=int, shape=(block_dim,), storage="register")
+
+
+def bvh_query_next_tiled_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    # This function needs to:
+    # 1. Create a temporary per-thread int variable
+    # 2. Call bvh_query_next_thread_block with query and the temp variable
+    # 3. Wrap the temp variable in a tile
+    # The actual implementation is handled via native_func
+    query = args["query"]
+    return ((query,), ())
+
+
+add_builtin(
+    "bvh_query_next_tiled",
+    input_types={"query": BvhQueryTiled},
+    value_func=bvh_query_next_tiled_value_func,
+    dispatch_func=bvh_query_next_tiled_dispatch_func,
+    group="Geometry",
+    doc="""Move to the next bound in a thread-block parallel BVH query and return results as a tile.
+
+    Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
+    The function returns a register tile of shape ``(block_dim,)`` containing the result indices.
+
+    To check if any results were found, check if any element in the tile is >= 0.
+
+    :param query: The thread-block BVH query object
+    :returns: A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
+              the result index for that thread (-1 if no result)""",
+    native_func="tile_bvh_query_next",
+    export=False,
+)
+
+# Aliases for backward compatibility (tile_* naming convention)
+add_builtin(
+    "tile_bvh_query_aabb",
+    input_types={"id": uint64, "low": vec3, "high": vec3},
+    value_type=BvhQueryTiled,
+    group="Tile Primitives",
+    doc="""Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.
+
+    This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+
+    :param id: The BVH identifier
+    :param low: The lower bound of the bounding box in BVH space (must be the same for all threads in the block)
+    :param high: The upper bound of the bounding box in BVH space (must be the same for all threads in the block)
+
+    .. note:: This is an alias for :func:`bvh_query_aabb_tiled`.""",
+    native_func="tile_bvh_query_aabb",
+    export=False,
+)
+
+add_builtin(
+    "tile_bvh_query_ray",
+    input_types={"id": uint64, "start": vec3, "dir": vec3},
+    value_type=BvhQueryTiled,
+    group="Tile Primitives",
+    doc="""Construct a ray query against a BVH object for thread-block parallel traversal.
+
+    This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+
+    :param id: The BVH identifier
+    :param start: The ray origin (must be the same for all threads in the block)
+    :param dir: The ray direction (must be the same for all threads in the block)
+
+    .. note:: This is an alias for :func:`bvh_query_ray_tiled`.""",
+    native_func="tile_bvh_query_ray",
+    export=False,
+)
+
+add_builtin(
+    "tile_bvh_query_next",
+    input_types={"query": BvhQueryTiled},
+    value_func=bvh_query_next_tiled_value_func,
+    dispatch_func=bvh_query_next_tiled_dispatch_func,
+    group="Tile Primitives",
+    doc="""Move to the next bound in a thread-block parallel BVH query and return results as a tile.
+
+    Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
+    The function returns a register tile of shape ``(block_dim,)`` containing the result indices.
+
+    To check if any results were found, check if any element in the tile is >= 0.
+
+    :param query: The thread-block BVH query object
+    :returns: A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
+              the result index for that thread (-1 if no result)
+
+    .. note:: This is an alias for :func:`bvh_query_next_tiled`.""",
+    native_func="tile_bvh_query_next",
+    export=False,
+)
+
+
 add_builtin(
     "mesh_query_point",
     input_types={
@@ -5605,6 +5738,107 @@ add_builtin(
     export=False,
     is_differentiable=False,
 )
+
+# Primary naming convention (grouped with other geometry functions)
+add_builtin(
+    "mesh_query_aabb_tiled",
+    input_types={"id": uint64, "low": vec3, "high": vec3},
+    value_type=MeshQueryAABBTiled,
+    group="Geometry",
+    doc="""Construct an axis-aligned bounding box query against a :class:`Mesh` for thread-block parallel traversal.
+
+    This query can be used in tiled kernels to cooperatively traverse a mesh's BVH across a thread block.
+
+    :param id: The mesh identifier
+    :param low: The lower bound of the bounding box in mesh space (must be the same for all threads in the block)
+    :param high: The upper bound of the bounding box in mesh space (must be the same for all threads in the block)""",
+    native_func="tile_mesh_query_aabb",
+    export=False,
+)
+
+
+def mesh_query_aabb_next_tiled_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return tile(dtype=int, shape=Tuple[int])
+
+    # Return a register tile of ints with shape (block_dim,)
+    block_dim = warp._src.codegen.options.get("block_dim", 256)
+    return tile(dtype=int, shape=(block_dim,), storage="register")
+
+
+def mesh_query_aabb_next_tiled_dispatch_func(
+    input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]
+):
+    # This function needs to:
+    # 1. Create a temporary per-thread int variable
+    # 2. Call mesh_query_aabb_next_thread_block with query and the temp variable
+    # 3. Wrap the temp variable in a tile
+    # The actual implementation is handled via native_func
+    query = args["query"]
+    return ((query,), ())
+
+
+add_builtin(
+    "mesh_query_aabb_next_tiled",
+    input_types={"query": MeshQueryAABBTiled},
+    value_func=mesh_query_aabb_next_tiled_value_func,
+    dispatch_func=mesh_query_aabb_next_tiled_dispatch_func,
+    group="Geometry",
+    doc="""Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.
+
+    Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
+    The function returns a register tile of shape ``(block_dim,)`` containing the result indices.
+
+    To check if any results were found, check if any element in the tile is >= 0.
+
+    :param query: The thread-block mesh query object
+    :returns: A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
+              the result index for that thread (-1 if no result)""",
+    native_func="tile_mesh_query_aabb_next",
+    export=False,
+)
+
+# Aliases for backward compatibility (tile_* naming convention)
+add_builtin(
+    "tile_mesh_query_aabb",
+    input_types={"id": uint64, "low": vec3, "high": vec3},
+    value_type=MeshQueryAABBTiled,
+    group="Tile Primitives",
+    doc="""Construct an axis-aligned bounding box query against a :class:`Mesh` for thread-block parallel traversal.
+
+    This query can be used in tiled kernels to cooperatively traverse a mesh's BVH across a thread block.
+
+    :param id: The mesh identifier
+    :param low: The lower bound of the bounding box in mesh space (must be the same for all threads in the block)
+    :param high: The upper bound of the bounding box in mesh space (must be the same for all threads in the block)
+
+    .. note:: This is an alias for :func:`mesh_query_aabb_tiled`.""",
+    native_func="tile_mesh_query_aabb",
+    export=False,
+)
+
+add_builtin(
+    "tile_mesh_query_aabb_next",
+    input_types={"query": MeshQueryAABBTiled},
+    value_func=mesh_query_aabb_next_tiled_value_func,
+    dispatch_func=mesh_query_aabb_next_tiled_dispatch_func,
+    group="Tile Primitives",
+    doc="""Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.
+
+    Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
+    The function returns a register tile of shape ``(block_dim,)`` containing the result indices.
+
+    To check if any results were found, check if any element in the tile is >= 0.
+
+    :param query: The thread-block mesh query object
+    :returns: A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
+              the result index for that thread (-1 if no result)
+
+    .. note:: This is an alias for :func:`mesh_query_aabb_next_tiled`.""",
+    native_func="tile_mesh_query_aabb_next",
+    export=False,
+)
+
 
 add_builtin(
     "mesh_eval_position",
