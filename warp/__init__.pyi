@@ -4275,6 +4275,7 @@ def where(arr: Array[Any], value_if_true: Any, value_if_false: Any) -> Any:
 @over
 def atomic_add(arr: Array[Any], i: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+
     This function is automatically invoked when using the syntax ``arr[i] += value``.
     """
     ...
@@ -4282,6 +4283,7 @@ def atomic_add(arr: Array[Any], i: Int, value: Any) -> Any:
 @over
 def atomic_add(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j] += value``.
     """
     ...
@@ -4289,6 +4291,7 @@ def atomic_add(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
 @over
 def atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k] += value``.
     """
     ...
@@ -4296,6 +4299,7 @@ def atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
 @over
 def atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.
     """
     ...
@@ -4303,6 +4307,7 @@ def atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> A
 @over
 def atomic_add(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+
     This function is automatically invoked when using the syntax ``arr[i] += value``.
     """
     ...
@@ -4310,6 +4315,7 @@ def atomic_add(arr: FabricArray[Any], i: Int, value: Any) -> Any:
 @over
 def atomic_add(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j] += value``.
     """
     ...
@@ -4317,6 +4323,7 @@ def atomic_add(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
 @over
 def atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k] += value``.
     """
     ...
@@ -4324,6 +4331,7 @@ def atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
 @over
 def atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.
     """
     ...
@@ -4331,6 +4339,7 @@ def atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
 @over
 def atomic_add(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+
     This function is automatically invoked when using the syntax ``arr[i] += value``.
     """
     ...
@@ -4338,6 +4347,7 @@ def atomic_add(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
 @over
 def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j] += value``.
     """
     ...
@@ -4345,6 +4355,7 @@ def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
 @over
 def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k] += value``.
     """
     ...
@@ -4352,6 +4363,7 @@ def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any)
 @over
 def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.
     """
     ...
@@ -4359,6 +4371,7 @@ def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, val
 @over
 def atomic_sub(arr: Array[Any], i: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+
     This function is automatically invoked when using the syntax ``arr[i] -= value``.
     """
     ...
@@ -4366,6 +4379,7 @@ def atomic_sub(arr: Array[Any], i: Int, value: Any) -> Any:
 @over
 def atomic_sub(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j] -= value``.
     """
     ...
@@ -4373,6 +4387,7 @@ def atomic_sub(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
 @over
 def atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``.
     """
     ...
@@ -4380,6 +4395,7 @@ def atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
 @over
 def atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.
     """
     ...
@@ -4387,6 +4403,7 @@ def atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> A
 @over
 def atomic_sub(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+
     This function is automatically invoked when using the syntax ``arr[i] -= value``.
     """
     ...
@@ -4394,6 +4411,7 @@ def atomic_sub(arr: FabricArray[Any], i: Int, value: Any) -> Any:
 @over
 def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j] -= value``.
     """
     ...
@@ -4401,6 +4419,7 @@ def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
 @over
 def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``.
     """
     ...
@@ -4408,6 +4427,7 @@ def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
 @over
 def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.
     """
     ...
@@ -4415,6 +4435,7 @@ def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
 @over
 def atomic_sub(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+
     This function is automatically invoked when using the syntax ``arr[i] -= value``.
     """
     ...
@@ -4422,6 +4443,7 @@ def atomic_sub(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
 @over
 def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j] -= value``.
     """
     ...
@@ -4429,6 +4451,7 @@ def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
 @over
 def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``.
     """
     ...
@@ -4436,6 +4459,7 @@ def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any)
 @over
 def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.
     """
     ...
@@ -4827,6 +4851,7 @@ def atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, va
 @over
 def atomic_and(arr: Array[Any], i: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i] &= value``.
     """
     ...
@@ -4834,6 +4859,7 @@ def atomic_and(arr: Array[Any], i: Int, value: Any) -> Any:
 @over
 def atomic_and(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j] &= value``.
     """
     ...
@@ -4841,6 +4867,7 @@ def atomic_and(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
 @over
 def atomic_and(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k] &= value``.
     """
     ...
@@ -4848,6 +4875,7 @@ def atomic_and(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
 @over
 def atomic_and(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.
     """
     ...
@@ -4855,6 +4883,7 @@ def atomic_and(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> A
 @over
 def atomic_and(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i] &= value``.
     """
     ...
@@ -4862,6 +4891,7 @@ def atomic_and(arr: FabricArray[Any], i: Int, value: Any) -> Any:
 @over
 def atomic_and(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j] &= value``.
     """
     ...
@@ -4869,6 +4899,7 @@ def atomic_and(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
 @over
 def atomic_and(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k] &= value``.
     """
     ...
@@ -4876,6 +4907,7 @@ def atomic_and(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
 @over
 def atomic_and(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.
     """
     ...
@@ -4883,6 +4915,7 @@ def atomic_and(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
 @over
 def atomic_and(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i] &= value``.
     """
     ...
@@ -4890,6 +4923,7 @@ def atomic_and(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
 @over
 def atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j] &= value``.
     """
     ...
@@ -4897,6 +4931,7 @@ def atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
 @over
 def atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k] &= value``.
     """
     ...
@@ -4904,6 +4939,7 @@ def atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any)
 @over
 def atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.
     """
     ...
@@ -4911,6 +4947,7 @@ def atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, val
 @over
 def atomic_or(arr: Array[Any], i: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i] |= value``.
     """
     ...
@@ -4918,6 +4955,7 @@ def atomic_or(arr: Array[Any], i: Int, value: Any) -> Any:
 @over
 def atomic_or(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j] |= value``.
     """
     ...
@@ -4925,6 +4963,7 @@ def atomic_or(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
 @over
 def atomic_or(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k] |= value``.
     """
     ...
@@ -4932,6 +4971,7 @@ def atomic_or(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
 @over
 def atomic_or(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.
     """
     ...
@@ -4939,6 +4979,7 @@ def atomic_or(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> An
 @over
 def atomic_or(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i] |= value``.
     """
     ...
@@ -4946,6 +4987,7 @@ def atomic_or(arr: FabricArray[Any], i: Int, value: Any) -> Any:
 @over
 def atomic_or(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j] |= value``.
     """
     ...
@@ -4953,6 +4995,7 @@ def atomic_or(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
 @over
 def atomic_or(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k] |= value``.
     """
     ...
@@ -4960,6 +5003,7 @@ def atomic_or(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
 @over
 def atomic_or(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.
     """
     ...
@@ -4967,6 +5011,7 @@ def atomic_or(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any)
 @over
 def atomic_or(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i] |= value``.
     """
     ...
@@ -4974,6 +5019,7 @@ def atomic_or(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
 @over
 def atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j] |= value``.
     """
     ...
@@ -4981,6 +5027,7 @@ def atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
 @over
 def atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k] |= value``.
     """
     ...
@@ -4988,6 +5035,7 @@ def atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) 
 @over
 def atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.
     """
     ...
@@ -4995,6 +5043,7 @@ def atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, valu
 @over
 def atomic_xor(arr: Array[Any], i: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i] ^= value``.
     """
     ...
@@ -5002,6 +5051,7 @@ def atomic_xor(arr: Array[Any], i: Int, value: Any) -> Any:
 @over
 def atomic_xor(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.
     """
     ...
@@ -5009,6 +5059,7 @@ def atomic_xor(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
 @over
 def atomic_xor(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.
     """
     ...
@@ -5016,6 +5067,7 @@ def atomic_xor(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
 @over
 def atomic_xor(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.
     """
     ...
@@ -5023,6 +5075,7 @@ def atomic_xor(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> A
 @over
 def atomic_xor(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i] ^= value``.
     """
     ...
@@ -5030,6 +5083,7 @@ def atomic_xor(arr: FabricArray[Any], i: Int, value: Any) -> Any:
 @over
 def atomic_xor(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.
     """
     ...
@@ -5037,6 +5091,7 @@ def atomic_xor(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
 @over
 def atomic_xor(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.
     """
     ...
@@ -5044,6 +5099,7 @@ def atomic_xor(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
 @over
 def atomic_xor(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.
     """
     ...
@@ -5051,6 +5107,7 @@ def atomic_xor(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
 @over
 def atomic_xor(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i] ^= value``.
     """
     ...
@@ -5058,6 +5115,7 @@ def atomic_xor(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
 @over
 def atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.
     """
     ...
@@ -5065,6 +5123,7 @@ def atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
 @over
 def atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.
     """
     ...
@@ -5072,6 +5131,7 @@ def atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any)
 @over
 def atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.
     """
     ...
