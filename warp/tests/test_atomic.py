@@ -119,6 +119,66 @@ def make_atomic_test(type):
     return test_atomic
 
 
+# atomic functions must return the previous value that was stored
+def make_atomic_return_test(type):
+    def test_atomic_return_value(
+        in_add: wp.array(dtype=type),
+        in_min: wp.array(dtype=type),
+        in_max: wp.array(dtype=type),
+        val: wp.array(dtype=type),
+        out_add: wp.array(dtype=type),
+        out_min: wp.array(dtype=type),
+        out_max: wp.array(dtype=type),
+    ):
+        tid = wp.tid()
+
+        out_add[tid] = wp.atomic_add(in_add, tid, val[tid])
+        out_min[tid] = wp.atomic_min(in_min, tid, val[tid])
+        out_max[tid] = wp.atomic_max(in_max, tid, val[tid])
+
+    kernel = wp.Kernel(func=test_atomic_return_value, key=f"test_atomic_{type.__name__}_return_kernel")
+
+    def test_atomic(test, device):
+        n = 1024
+
+        rng = np.random.default_rng(42)
+
+        def random(type):
+            np_type = wp.dtype_to_numpy(type)
+            if np.issubdtype(np_type, np.integer):
+                return rng.integers(-10000, 10000, size=n, dtype=np_type)
+            else:
+                return rng.random(size=n, dtype=np_type)
+
+        in_add_array = wp.array(random(type), dtype=type, device=device)
+        in_min_array = wp.array(random(type), dtype=type, device=device)
+        in_max_array = wp.array(random(type), dtype=type, device=device)
+        val_array = wp.array(random(type), dtype=type, device=device)
+        out_add_array = wp.zeros(n, dtype=type, device=device)
+        out_min_array = wp.zeros(n, dtype=type, device=device)
+        out_max_array = wp.zeros(n, dtype=type, device=device)
+
+        # the input arrays will be modified in-place by the atomic ops
+        # keep a copy of the originals to verify the returned values
+        original_add = in_add_array.numpy().copy()
+        original_min = in_min_array.numpy().copy()
+        original_max = in_max_array.numpy().copy()
+
+        wp.launch(
+            kernel,
+            n,
+            inputs=[in_add_array, in_min_array, in_max_array, val_array],
+            outputs=[out_add_array, out_min_array, out_max_array],
+            device=device,
+        )
+
+        assert_np_equal(out_add_array.numpy(), original_add)
+        assert_np_equal(out_min_array.numpy(), original_min)
+        assert_np_equal(out_max_array.numpy(), original_max)
+
+    return test_atomic
+
+
 # generate test functions for atomic types
 test_atomic_int = make_atomic_test(wp.int32)
 test_atomic_float = make_atomic_test(wp.float32)
@@ -129,6 +189,10 @@ test_atomic_vec4 = make_atomic_test(wp.vec4)
 test_atomic_mat22 = make_atomic_test(wp.mat22)
 test_atomic_mat33 = make_atomic_test(wp.mat33)
 test_atomic_mat44 = make_atomic_test(wp.mat44)
+test_atomic_return_int = make_atomic_return_test(wp.int32)
+test_atomic_return_long = make_atomic_return_test(wp.int64)
+test_atomic_return_float = make_atomic_return_test(wp.float32)
+test_atomic_return_double = make_atomic_return_test(wp.float64)
 
 
 def test_atomic_add_supported_dtypes(test, device, dtype):
@@ -247,6 +311,10 @@ add_function_test(TestAtomic, "test_atomic_vec4", test_atomic_vec4, devices=devi
 add_function_test(TestAtomic, "test_atomic_mat22", test_atomic_mat22, devices=devices)
 add_function_test(TestAtomic, "test_atomic_mat33", test_atomic_mat33, devices=devices)
 add_function_test(TestAtomic, "test_atomic_mat44", test_atomic_mat44, devices=devices)
+add_function_test(TestAtomic, "test_atomic_return_int", test_atomic_return_int, devices=devices)
+add_function_test(TestAtomic, "test_atomic_return_long", test_atomic_return_long, devices=devices)
+add_function_test(TestAtomic, "test_atomic_return_float", test_atomic_return_float, devices=devices)
+add_function_test(TestAtomic, "test_atomic_return_double", test_atomic_return_double, devices=devices)
 
 for dtype in (
     wp.int32,
