@@ -487,6 +487,406 @@ It skips creating temporary Warp arrays, but accessing the ``__cuda_array_interf
 adds overhead because they are initialized on-demand.
 
 
+Case Study: PyTorch Deferred Gradient Allocation and Warp Interoperability
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When writing custom PyTorch autograd functions that use Warp kernels, whether using analytic gradient kernels or 
+the Warp tape, PyTorch's deferred gradient allocation can cause unexpected synchronization delays.
+This case study demonstrates the problem and provides practical solutions.
+
+The Problem: Deferred Gradient Allocation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+PyTorch employs a deferred allocation strategy for gradient tensors. When you create a tensor with ``requires_grad=True``,
+PyTorch does not immediately allocate memory for the gradient. Instead, gradients are allocated on-demand during
+the backward pass.
+
+However, when ``wp.from_torch()`` encounters a tensor with ``requires_grad=True`` but no allocated gradient,
+it forces the gradient to be allocated immediately. This creates overhead that can significantly impact performance.
+
+When PyTorch later discovers that an external
+framework has allocated its gradient tensors, it must perform an expensive device-wide synchronization to ensure
+correctness. This synchronization overhead can significantly impact performance.
+
+Here's an example that demonstrates the problem:
+
+.. code:: python
+
+    import warp as wp
+    import torch
+
+    device = 'cuda'
+    N = 300_000_000
+
+    wp.init()
+
+    @wp.kernel(enable_backward=False)
+    def forward_kernel(
+        a: wp.array(dtype=float),
+        b: wp.array(dtype=float),
+        output: wp.array(dtype=float)
+    ):
+        i = wp.tid()
+        x = a[i]
+        y = b[i]
+        output[i] = x*x + y*y
+
+
+    @wp.kernel(enable_backward=False)
+    def backward_kernel(
+        grad_output: wp.array(dtype=float),
+        a: wp.array(dtype=float),
+        b: wp.array(dtype=float),
+        grad_a: wp.array(dtype=float),
+        grad_b: wp.array(dtype=float)
+    ):
+        i = wp.tid()
+        x = a[i]
+        y = b[i]
+        adj_z = grad_output[i]
+        
+        grad_a[i] = 2.0 * x * adj_z
+        grad_b[i] = 2.0 * y * adj_z
+
+
+    class WarpFunction(torch.autograd.Function):
+        
+        @staticmethod
+        def forward(ctx, a, b):
+            ctx.save_for_backward(a, b)
+            
+            device = wp.device_from_torch(a.device)
+
+            output = torch.empty(N, device=a.device)
+            wp.launch(
+                kernel=forward_kernel,
+                dim=(N),
+                device=device,
+                inputs=[
+                    wp.from_torch(a),      # ⚠️ Triggers gradient allocation
+                    wp.from_torch(b),      # ⚠️ Triggers gradient allocation
+                    wp.from_torch(output),
+                ],
+            )
+            
+            return output
+        
+        @staticmethod
+        def backward(ctx, grad_output):
+            a, b = ctx.saved_tensors
+            
+            device = wp.device_from_torch(a.device)
+            
+            grad_a = torch.empty_like(a)
+            grad_b = torch.empty_like(b)
+            
+            wp.launch(
+                kernel=backward_kernel,
+                dim=(N),
+                device=device,
+                inputs=[
+                    wp.from_torch(grad_output.contiguous()),
+                    wp.from_torch(a),
+                    wp.from_torch(b),
+                    wp.from_torch(grad_a),
+                    wp.from_torch(grad_b),
+                ],
+            )
+
+            return grad_a, grad_b
+
+
+    a = torch.randn(N, device=device, dtype=torch.float32, requires_grad=True)
+    b = torch.randn(N, device=device, dtype=torch.float32, requires_grad=True)
+
+    torch.cuda.synchronize()
+
+    for i in range(TRIALS):
+        with wp.ScopedTimer(f"TRIAL {i}", use_nvtx=True, synchronize=True):
+            with wp.ScopedTimer("Create Tensors", use_nvtx=True, synchronize=True):
+                a_torch = a.clone().detach().requires_grad_(True)
+                b_torch = b.clone().detach().requires_grad_(True)
+            with wp.ScopedTimer("Forward", use_nvtx=True, synchronize=True):
+                output_warp = WarpFunction.apply(a_torch, b_torch)
+            with wp.ScopedTimer("Loss", use_nvtx=True, synchronize=True):
+                loss_warp = output_warp.sum()
+            with wp.ScopedTimer("Backward", use_nvtx=True, synchronize=True):
+                loss_warp.backward()
+
+When profiling this code with NVIDIA Nsight Systems, significant gaps appear in the GPU timeline, indicating
+device-wide synchronization events:
+
+.. figure:: /img/torch_sync_overhead.png
+   :alt: Nsight Systems capture showing synchronization gaps between kernel launches
+   :width: 100%
+   
+   NVIDIA Nsight Systems timeline showing synchronization gaps between Warp kernel launches and PyTorch operations.
+
+The gaps represent device-wide synchronizations triggered when PyTorch discovers externally allocated gradients.
+
+This problem is particularly severe in this benchmark because new tensors (``a_torch`` and ``b_torch``) are created
+on each iteration via ``.clone().detach().requires_grad_(True)``. Since these fresh tensors have ``requires_grad=True``
+but no pre-allocated gradients, the synchronization penalty is incurred **on every single iteration**.
+
+Solutions
+~~~~~~~~~
+
+There are three approaches to avoid this synchronization overhead, depending on your use case:
+
+**Solution A: Disable Gradient Tracking in wp.from_torch()**
+
+The simplest solution is to pass ``requires_grad=False`` to ``wp.from_torch()``, preventing Warp from
+auto-allocating gradients:
+
+.. code:: python
+
+    @staticmethod
+    def forward(ctx, a, b):
+        ctx.save_for_backward(a, b)
+        device = wp.device_from_torch(a.device)
+        output = torch.empty(N, device=a.device)
+        
+        wp.launch(
+            kernel=forward_kernel,
+            dim=(N),
+            device=device,
+            inputs=[
+                wp.from_torch(a, requires_grad=False),      # ✓ No gradient allocation
+                wp.from_torch(b, requires_grad=False),      # ✓ No gradient allocation
+                wp.from_torch(output, requires_grad=False),
+            ],
+        )
+        return output
+    
+    @staticmethod
+    def backward(ctx, grad_output):
+        a, b = ctx.saved_tensors
+        device = wp.device_from_torch(a.device)
+        grad_a = torch.empty_like(a)
+        grad_b = torch.empty_like(b)
+        
+        wp.launch(
+            kernel=backward_kernel,
+            dim=(N),
+            device=device,
+            inputs=[
+                wp.from_torch(grad_output.contiguous(), requires_grad=False),
+                wp.from_torch(a, requires_grad=False),
+                wp.from_torch(b, requires_grad=False),
+                wp.from_torch(grad_a, requires_grad=False),
+                wp.from_torch(grad_b, requires_grad=False),
+            ],
+        )
+        return grad_a, grad_b
+
+This approach works well when you're managing forward and gradient tensors separately and don't need
+Warp to track gradients automatically.
+
+**Solution B: Detach Tensors from the PyTorch Graph**
+
+When managing gradients outside PyTorch's autograd graph, detaching tensors is a clean approach:
+
+.. code:: python
+
+    @staticmethod
+    def forward(ctx, a, b):
+        # Store detached tensors - we'll manage gradients manually
+        ctx.a = a.detach()
+        ctx.b = b.detach()
+        
+        device = wp.device_from_torch(a.device)
+        output = torch.empty(N, device=a.device)
+        
+        wp.launch(
+            kernel=forward_kernel,
+            dim=(N),
+            device=device,
+            inputs=[
+                ctx.a,  # ✓ Detached, no requires_grad
+                ctx.b,  # ✓ Detached, no requires_grad
+                output,
+            ],
+        )
+        return output
+    
+    @staticmethod
+    def backward(ctx, grad_output):
+        device = wp.device_from_torch(ctx.a.device)
+        grad_a = torch.empty_like(ctx.a)
+        grad_b = torch.empty_like(ctx.b)
+        
+        wp.launch(
+            kernel=backward_kernel,
+            dim=(N),
+            device=device,
+            inputs=[
+                grad_output.detach(),
+                ctx.a,  # ✓ Already detached
+                ctx.b,  # ✓ Already detached
+                grad_a,
+                grad_b,
+            ],
+        )
+        return grad_a, grad_b
+
+Detaching removes tensors from PyTorch's computational graph (and clears ``requires_grad``), making it clear 
+that gradient management happens outside PyTorch's autograd system.
+
+**Solution C: Pre-allocate Gradients with PyTorch**
+
+Alternatively, you can pre-allocate gradients using PyTorch's allocator before passing tensors to Warp.
+This approach works for both analytic gradient kernels and when using the Warp tape.
+
+*Variant 1: With Analytic Gradient Kernels*
+
+.. code:: python
+
+    @staticmethod
+    def forward(ctx, a, b):
+        # Pre-allocate gradients using PyTorch's allocator
+        if a.grad is None:
+            a.grad = torch.empty_like(a)
+        if b.grad is None:
+            b.grad = torch.empty_like(b)
+        
+        ctx.save_for_backward(a, b)
+        
+        device = wp.device_from_torch(a.device)
+        output = torch.empty(N, device=a.device)
+        
+        wp.launch(
+            kernel=forward_kernel,
+            dim=(N),
+            device=device,
+            inputs=[
+                wp.from_torch(a),
+                wp.from_torch(b),
+                wp.from_torch(output),
+            ],
+        )
+        return output
+    
+    @staticmethod
+    def backward(ctx, grad_output):
+        a, b = ctx.saved_tensors
+        device = wp.device_from_torch(a.device)
+        
+        # Now we can use a.grad and b.grad directly
+        wp.launch(
+            kernel=backward_kernel,
+            dim=(N),
+            device=device,
+            inputs=[
+                wp.from_torch(grad_output.contiguous()),
+                wp.from_torch(a),
+                wp.from_torch(b),
+                wp.from_torch(a.grad),  # ✓ Allocated by PyTorch
+                wp.from_torch(b.grad),  # ✓ Allocated by PyTorch
+            ],
+        )
+        return a.grad, b.grad
+
+*Variant 2: With Warp's Tape (Automatic Differentiation)*
+
+.. code:: python
+
+    @staticmethod
+    def forward(ctx, a, b):
+        device = wp.device_from_torch(a.device)
+        output = torch.zeros(N, device=a.device)
+
+        # Pre-allocate gradients using PyTorch's allocator
+        if a.grad is None:
+            a.grad = torch.empty_like(a)
+        if b.grad is None:
+            b.grad = torch.empty_like(b)
+
+        wp_output = wp.from_torch(output)
+
+        with wp.Tape() as tape:
+            wp.launch(
+                kernel=forward_kernel,
+                dim=(N),
+                device=device,
+                inputs=[
+                    wp.from_torch(a),
+                    wp.from_torch(b),
+                    wp_output,
+                ],
+            )
+        
+        ctx.tape = tape
+        ctx.wp_output = wp_output
+        ctx.a = a
+        ctx.b = b
+
+        return output
+    
+    @staticmethod
+    def backward(ctx, grad_output):
+        ctx.tape.backward(grads={ctx.wp_output: wp.from_torch(grad_output.contiguous())})
+        
+        # Grab gradients before clearing references
+        grad_a = ctx.a.grad
+        grad_b = ctx.b.grad
+        
+        # Clear context to break reference cycles and free memory
+        ctx.tape = None
+        ctx.wp_output = None
+
+        return grad_a, grad_b
+
+This approach ensures gradients are allocated using PyTorch's caching allocator, which properly tracks
+memory and stream dependencies. Pre-allocation can also be done earlier in the pipeline:
+
+.. code:: python
+
+    # At tensor creation time
+    a_torch = a.clone().detach().requires_grad_(True)
+    b_torch = b.clone().detach().requires_grad_(True)
+    
+    # Pre-allocate gradients immediately
+    a_torch.grad = torch.empty_like(a_torch)
+    b_torch.grad = torch.empty_like(b_torch)
+    
+    # Now safe to use in WarpFunction
+    output = WarpFunction.apply(a_torch, b_torch)
+
+
+Performance Comparison
+~~~~~~~~~~~~~~~~~~~~~~
+
+Benchmarking these approaches on a workload with N=300,000,000 elements shows:
+
+.. code::
+
+    Baseline (with synchronization overhead):  98.02 ms
+    Solution A (requires_grad=False):          22.59 ms  (4.3x faster)
+    Solution B (detach):                       22.11 ms  (4.4x faster)  
+    Solution C (pre-allocate):                 28.62 ms  (3.4x faster)
+
+All three solutions eliminate the synchronization overhead:
+
+- **Solutions A and B** are fastest because they allocate gradients in the backward pass as simple standalone tensors
+- **Solution C** is slightly slower because it allocates gradients in the forward pass and attaches them as ``.grad`` 
+  attributes, which involves PyTorch's autograd bookkeeping
+
+Choose based on your workflow:
+
+- **Solution A**: Most explicit about disabling gradient tracking
+- **Solution B**: Cleanest for manual gradient management
+- **Solution C**: Required when using Warp's tape or when you need ``.grad`` access
+
+These solutions are primarily needed when working with **newly created tensors** in scenarios like:
+
+- Training loops that create fresh tensors each iteration
+- Repeated inference with dynamically allocated tensors
+- Any workflow using ``.clone().detach().requires_grad_(True)`` patterns
+
+If you recycle the same tensors across iterations (whose gradients have already been allocated), 
+there will be no need for gradient allocation (deferred or otherwise) and therefore no synchronization overhead.
+
+
 CuPy/Numba
 ----------
 
