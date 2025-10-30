@@ -40,9 +40,8 @@
 - Add automatic differentiation support with `jax_kernel(enable_backward=True)`
   ([GH-912](https://github.com/NVIDIA/warp/pull/912), [GH-515](https://github.com/NVIDIA/warp/issues/515)).
 - Add support for limiting the graph cache size of JAX callables ([GH-989](https://github.com/NVIDIA/warp/issues/989)).
-- Add alpha and beta scalings to `wp.tile_matmul()` ([GH-1023](https://github.com/NVIDIA/warp/pull/1023)).
-- Update warp.cast documentation to include an example ([GH-1030](https://github.com/NVIDIA/warp/issues/1030))
-- Add PyTorch-Warp interop deferred gradient allocation case study to documentation ([GH-1046](https://github.com/NVIDIA/warp/issues/1046)).
+- Add PyTorch-Warp interop deferred gradient allocation case study to documentation
+  ([GH-1046](https://github.com/NVIDIA/warp/issues/1046)).
 
 ### Removed
 
@@ -103,6 +102,9 @@
 - Fix graph deletion during capture ([GH-992](https://github.com/NVIDIA/warp/issues/992)).
 - Fix arithmetic operators with scalars and arrays at the Python scope. Operations like `scalar * array`
   now work correctly (previously only `array * scalar` worked) ([GH-892](https://github.com/NVIDIA/warp/issues/892)).
+- Fix `wp.atomic_add()` failing to accumulate `wp.int64` values ([GH-977](https://github.com/NVIDIA/warp/issues/977)).
+- Fix handling of multi-line lambda expressions and lambda expressions involving parentheses in `wp.map()`
+  ([GH-984](https://github.com/NVIDIA/warp/issues/984)).
 - Fix invalid keyword arguments not being detected in the `wp.transform()` constructor at the Python scope
   ([GH-975](https://github.com/NVIDIA/warp/issues/975)).
 - Fix return type annotations for `struct()` and `overload()` decorators
@@ -110,9 +112,6 @@
 - Suppress `TypeError` and `AttributeError` exceptions during Python interpreter shutdown when Warp objects are being
   cleaned up, as these can be safely ignored during process termination
   ([GH-1048](https://github.com/NVIDIA/warp/issues/1048)).
-- Fix handling of multi-line lambda expressions and lambda expressions involving parentheses in `wp.map()`
-  ([GH-984](https://github.com/NVIDIA/warp/issues/984)).
-- Fix `wp.atomic_add()` for `wp.int64` ([GH-977](https://github.com/NVIDIA/warp/issues/977)).
 
 ## [1.9.1] - 2025-10-01
 

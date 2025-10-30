@@ -40,6 +40,8 @@
 - Add automatic differentiation support with `jax_kernel(enable_backward=True)`
   ([GH-912](https://github.com/NVIDIA/warp/pull/912), [GH-515](https://github.com/NVIDIA/warp/issues/515)).
 - Add support for limiting the graph cache size of JAX callables ([GH-989](https://github.com/NVIDIA/warp/issues/989)).
+- Add PyTorch-Warp interop deferred gradient allocation case study to documentation
+  ([GH-1046](https://github.com/NVIDIA/warp/issues/1046)).
 
 ### Removed
 
