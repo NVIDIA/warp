@@ -23,7 +23,8 @@ Kernels and User Functions
 
 * Strings cannot be passed into kernels.
 * Short-circuit evaluation is not supported
-* :func:`wp.atomic_add() <atomic_add>` does not support ``wp.int64``.
+* :func:`wp.atomic_add() <atomic_add>` does not support ``wp.float16`` on GPUs with compute capability below 7.0.
+  On such devices, the function will return ``0.0`` without modifying the target memory.
 * :func:`wp.tid() <tid>` cannot be called from user functions.
 * Modifying the value of a :class:`wp.constant() <constant>` during runtime will not trigger
   recompilation of the affected kernels if the modules have already been loaded
