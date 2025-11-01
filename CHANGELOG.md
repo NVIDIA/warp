@@ -44,6 +44,7 @@
 - Add alpha and beta scalings to `wp.tile_matmul()` ([GH-1023](https://github.com/NVIDIA/warp/pull/1023)).
 - Update warp.cast documentation to include an example ([GH-1030](https://github.com/NVIDIA/warp/issues/1030))
 - Add PyTorch-Warp interop deferred gradient allocation case study to documentation ([GH-1046](https://github.com/NVIDIA/warp/issues/1046)).
+- Add `wp.tile_cholesky_inplace()`, `wp.tile_cholesky_solve_inplace()`, `wp.tile_lower_solve_inplace()` and `wp.tile_upper_solve_inplace()` ([GH-1025](https://github.com/NVIDIA/warp/pull/1025)).
 
 ### Removed
 
