@@ -419,7 +419,7 @@ inline CUDA_CALLABLE void bitonic_sort_thread_block_direct(
     }
     else
     {
-        assert(num_elements_to_sort <= num_threads);
+        assert(num_elements_to_sort <= max_num_elements);
 
         KeyToUint key_converter; 
         const K key_max_possible_value = key_converter.max_possible_key_value();
@@ -589,7 +589,7 @@ inline CUDA_CALLABLE void radix_sort_thread_block_core(
                 buckets_cumulative_sum[lane_id] = value;
 
             if (lane_id == num_scan_buckets - 1)
-                assert(debug + value == num_elements_to_sort);
+                assert(value == num_elements_to_sort);
         }
 
         __syncthreads();
