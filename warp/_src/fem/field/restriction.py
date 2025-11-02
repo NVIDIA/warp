@@ -17,6 +17,8 @@ from warp._src.fem.space import SpaceRestriction
 
 from .field import DiscreteField
 
+_wp_module_name_ = "warp.fem.field.restriction"
+
 
 class FieldRestriction:
     """Restriction of a discrete field to a given GeometryDomain"""

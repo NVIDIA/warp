@@ -20,6 +20,8 @@ from typing import Any
 import warp
 from warp._src.types import *
 
+_wp_module_name_ = "warp.fabric"
+
 
 class fabricbucket_t(ctypes.Structure):
     _fields_ = (
@@ -243,8 +245,13 @@ class fabricarray(noncontiguous_array_base[T]):
             return
 
         buckets_size = ctypes.sizeof(self.buckets)
-        with self.device.context_guard:
-            self.deleter(self.ctype.buckets, buckets_size)
+
+        try:
+            with self.device.context_guard:
+                self.deleter(self.ctype.buckets, buckets_size)
+        except (TypeError, AttributeError):
+            # Suppress TypeError and AttributeError when callables become None during shutdown
+            pass
 
     def __ctype__(self):
         return self.ctype

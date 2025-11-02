@@ -21,6 +21,8 @@ import warp as wp
 Vector norm functions
 """
 
+_wp_module_name_ = "warp.math"
+
 __all__ = [
     "norm_huber",
     "norm_l1",

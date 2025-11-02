@@ -18,6 +18,8 @@ from enum import Enum
 
 import numpy as np
 
+_wp_module_name_ = "warp.fem.polynomial"
+
 
 class Polynomial(Enum):
     """Polynomial family defining interpolation nodes over an interval"""

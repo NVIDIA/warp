@@ -24,6 +24,8 @@ from warp._src.fem.utils import compress_node_indices
 from .function_space import FunctionSpace
 from .topology import SpaceTopology
 
+_wp_module_name_ = "warp.fem.space.partition"
+
 wp.set_module_options({"enable_backward": False})
 
 

@@ -20,6 +20,8 @@ from typing import Any
 import warp as wp
 from warp._src.types import type_size
 
+_wp_module_name_ = "warp.fem.space.dof_mapper"
+
 vec6 = wp.vec(length=6, dtype=wp.float32)
 
 _SQRT_2 = wp.constant(math.sqrt(2.0))

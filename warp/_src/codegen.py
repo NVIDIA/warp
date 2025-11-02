@@ -33,6 +33,8 @@ from typing import Any, Callable, ClassVar, Mapping, Sequence, get_args, get_ori
 import warp._src.config
 from warp._src.types import *
 
+_wp_module_name_ = "warp.codegen"
+
 # used as a globally accessible copy
 # of current compile options (block_dim) etc
 options = {}

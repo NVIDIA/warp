@@ -27,6 +27,8 @@ if TYPE_CHECKING:
     import paddle
     from paddle.base.libpaddle import CPUPlace, CUDAPinnedPlace, CUDAPlace, Place
 
+_wp_module_name_ = "warp.paddle"
+
 
 # return the warp device corresponding to a paddle device
 def device_from_paddle(paddle_device: Place | CPUPlace | CUDAPinnedPlace | CUDAPlace | str) -> warp._src.context.Device:

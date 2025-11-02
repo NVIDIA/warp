@@ -144,7 +144,7 @@ mac-aarch64 build:
 
 linux-x86_64 cuda 13 build:
   stage: build
-  image: quay.io/pypa/manylinux_2_34_x86_64:latest
+  image: quay.io/pypa/manylinux_2_28_x86_64:latest
   extends:
     - .save_warp_bin_artifact
     - .ipp_lnx_x86_64_cpu_medium
@@ -369,7 +369,14 @@ linux-aarch64 test orin:
   image: ghcr.io/astral-sh/uv:bookworm-slim
   extends:
     - .save_test_report_artifact
-    - .basic_test_changes_rules
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - when: manual # Can be triggered in all other scenarios
+      allow_failure: true
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
@@ -914,7 +921,6 @@ publish wheels to gitlab package registry:
     - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - when: manual # If not auto-triggered, allow any pipeline to run this job manually
       allow_failure: true
   before_script:

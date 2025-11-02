@@ -21,6 +21,8 @@ from warp._src.jax import get_jax_device
 from warp._src.types import array_t, launch_bounds_t, strides_from_shape
 from warp._src.utils import warn
 
+_wp_module_name_ = "warp.jax_experimental.custom_call"
+
 _jax_warp_p = None
 
 # Holder for the custom callback to keep it alive.

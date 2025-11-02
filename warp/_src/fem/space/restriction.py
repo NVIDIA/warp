@@ -23,6 +23,8 @@ from warp._src.fem.utils import compress_node_indices, host_read_at_index
 
 from .partition import SpacePartition
 
+_wp_module_name_ = "warp.fem.space.restriction"
+
 wp.set_module_options({"enable_backward": False})
 
 

@@ -23,6 +23,8 @@ from warp._src.types import type_is_matrix, type_is_vector, type_size
 
 from .topology import SpaceTopology
 
+_wp_module_name_ = "warp.fem.space.function_space"
+
 
 class FunctionSpace:
     """

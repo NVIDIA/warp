@@ -37,6 +37,8 @@ from warp._src.fem.utils import type_zero_element
 
 from .field import SpaceField
 
+_wp_module_name_ = "warp.fem.field.virtual"
+
 
 class AdjointField(SpaceField):
     """Adjoint of a discrete field with respect to its degrees of freedom"""

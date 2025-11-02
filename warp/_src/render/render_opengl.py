@@ -27,6 +27,8 @@ import warp as wp
 
 from .utils import tab10_color_map
 
+_wp_module_name_ = "warp.render.render_opengl"
+
 Mat44 = Union[List[float], List[List[float]], np.ndarray]
 
 

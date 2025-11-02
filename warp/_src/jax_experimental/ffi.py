@@ -30,6 +30,8 @@ from warp._src.types import array_t, launch_bounds_t, strides_from_shape, type_t
 
 from .xla_ffi import *
 
+_wp_module_name_ = "warp.jax_experimental.ffi"
+
 # Type alias for differentiable kernel cache key
 DiffKernelCacheKey = tuple[Callable, tuple, int, str, tuple[str, ...]]
 
@@ -691,7 +693,7 @@ class FfiCallable:
                     arg_list.append(arr)
 
                 # call the Python function with reconstructed arguments
-                with wp.ScopedStream(stream, sync_enter=True):
+                with wp.ScopedStream(stream, sync_enter=False):
                     if stream.is_capturing:
                         # capturing with JAX
                         with wp.ScopedCapture(external=True) as capture:

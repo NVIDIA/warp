@@ -38,6 +38,7 @@
 #include <iterator>
 #include <list>
 #include <map>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -176,11 +177,20 @@ struct ContextInfo
     CUmodule conditional_module = NULL;
 };
 
+// Information used for freeing allocations.
+struct FreeInfo
+{
+    void* context = NULL;
+    void* ptr = NULL;
+    bool is_async = false;
+};
+
 struct CaptureInfo
 {
     CUstream stream = NULL;  // the main stream where capture begins and ends
     uint64_t id = 0;  // unique capture id from CUDA
     bool external = false;  // whether this is an external capture
+    std::vector<FreeInfo> tmp_allocs;  // temporary allocations owned by the graph (e.g., staged array fill values)
 };
 
 struct StreamInfo
@@ -189,9 +199,13 @@ struct StreamInfo
     CaptureInfo* capture = NULL;  // capture info (only if started on this stream)
 };
 
-struct GraphInfo
+// Extra resources tied to a graph, freed after the graph is released by CUDA.
+// Used with the on_graph_destroy() callback.
+struct GraphDestroyCallbackInfo
 {
-    std::vector<void*> unfreed_allocs;
+    void* context = NULL;  // graph CUDA context
+    std::vector<void*> unfreed_allocs;  // graph allocations not freed by the graph
+    std::vector<FreeInfo> tmp_allocs;  // temporary allocations owned by the graph (e.g., staged array fill values)
 };
 
 // Information for graph allocations that are not freed by the graph.
@@ -205,14 +219,6 @@ struct GraphAllocInfo
     void* context = NULL;
     bool ref_exists = false;  // whether user reference still exists
     bool graph_destroyed = false;  // whether graph instance was destroyed
-};
-
-// Information used when deferring deallocations.
-struct FreeInfo
-{
-    void* context = NULL;
-    void* ptr = NULL;
-    bool is_async = false;
 };
 
 // Information used when deferring module unloading.
@@ -264,6 +270,10 @@ static std::vector<ModuleInfo> g_deferred_module_list;
 // Graphs that cannot be destroyed immediately get queued here.
 // Call destroy_deferred_graphs() to release.
 static std::vector<GraphDestroyInfo> g_deferred_graph_list;
+
+// Data from on_graph_destroy() callbacks that run on a different thread.
+static std::vector<GraphDestroyCallbackInfo*> g_deferred_graph_destroy_list;
+static std::mutex g_graph_destroy_mutex;
 
 
 void wp_cuda_set_context_restore_policy(bool always_restore)
@@ -421,6 +431,114 @@ static inline StreamInfo* get_stream_info(CUstream stream)
         return NULL;
 }
 
+static inline CaptureInfo* get_capture_info(CUstream stream)
+{
+    if (!g_captures.empty() && wp_cuda_stream_is_capturing(stream))
+    {
+        uint64_t capture_id = get_capture_id(stream);
+        auto capture_iter = g_captures.find(capture_id);
+        if (capture_iter != g_captures.end())
+            return capture_iter->second;
+    }
+    return NULL;
+}
+
+// helper function to copy a value to device memory in a graph-friendly way
+static bool capturable_tmp_alloc(void* context, const void* data, size_t size, void** devptr_ret, bool* free_devptr_ret)
+{
+    ContextGuard guard(context);
+
+    CUstream stream = get_current_stream();
+    CaptureInfo* capture_info = get_capture_info(stream);
+    int device_ordinal = wp_cuda_context_get_device_ordinal(context);
+    void* devptr = NULL;
+    bool free_devptr = true;
+
+    if (capture_info)
+    {
+        // ongoing graph capture - need to stage the fill value so that it persists with the graph
+        if (CUDA_VERSION >= 12040 && wp_cuda_driver_version() >= 12040)
+        {
+            // pause the capture so that the alloc/memcpy won't be captured
+            void* graph = NULL;
+            if (!wp_cuda_graph_pause_capture(WP_CURRENT_CONTEXT, stream, &graph))
+                return false;
+
+            // copy value to device memory
+            devptr = wp_alloc_device(WP_CURRENT_CONTEXT, size);
+            if (!devptr)
+            {
+                fprintf(stderr, "Warp error: Failed to allocate %llu bytes on device 'cuda:%d' (in function %s)\n", (unsigned long long)size, device_ordinal, __FUNCTION__);
+                return false;
+            }
+            if (!check_cuda(cudaMemcpyAsync(devptr, data, size, cudaMemcpyHostToDevice, stream)))
+                return false;
+
+            // graph takes ownership of the value storage
+            FreeInfo free_info;
+            free_info.context = context ? context : get_current_context();
+            free_info.ptr = devptr;
+            free_info.is_async = wp_cuda_device_is_mempool_supported(device_ordinal);
+
+            // allocation will be freed when graph is destroyed
+            capture_info->tmp_allocs.push_back(free_info);
+
+            // resume the capture
+            if (!wp_cuda_graph_resume_capture(WP_CURRENT_CONTEXT, stream, graph))
+                return false;
+
+            free_devptr = false;  // memory is owned by the graph, doesn't need to be freed
+        }
+        else
+        {
+            // older CUDA can't pause/resume the capture, so stage in CPU memory
+            void* hostptr = wp_alloc_host(size);
+            if (!hostptr)
+            {
+                fprintf(stderr, "Warp error: Failed to allocate %llu bytes on device 'cpu' (in function %s)\n", (unsigned long long)size, __FUNCTION__);
+                return false;
+            }
+            memcpy(hostptr, data, size);
+
+            // the device allocation and h2d copy will be captured in the graph
+            devptr = wp_alloc_device(WP_CURRENT_CONTEXT, size);
+            if (!devptr)
+            {
+                fprintf(stderr, "Warp error: Failed to allocate %llu bytes on device 'cuda:%d' (in function %s)\n", (unsigned long long)size, device_ordinal, __FUNCTION__);
+                return false;
+            }
+            if (!check_cuda(cudaMemcpyAsync(devptr, hostptr, size, cudaMemcpyHostToDevice, stream)))
+                return false;
+
+            // graph takes ownership of the value storage
+            FreeInfo free_info;
+            free_info.context = NULL;
+            free_info.ptr = hostptr;
+            free_info.is_async = false;
+
+            // allocation will be freed when graph is destroyed
+            capture_info->tmp_allocs.push_back(free_info);
+        }
+    }
+    else
+    {
+        // not capturing, copy the value to device memory
+        devptr = wp_alloc_device(WP_CURRENT_CONTEXT, size);
+        if (!devptr)
+        {
+            fprintf(stderr, "Warp error: Failed to allocate %llu bytes on device 'cuda:%d' (in function %s)\n", (unsigned long long)size, device_ordinal, __FUNCTION__);
+            return false;
+        }
+        if (!check_cuda(cudaMemcpyAsync(devptr, data, size, cudaMemcpyHostToDevice, stream)))
+            return false;
+    }
+
+    *devptr_ret = devptr;
+    *free_devptr_ret = free_devptr;
+
+    return true;
+}
+
 static void deferred_free(void* ptr, void* context, bool is_async)
 {
     FreeInfo free_info;
@@ -540,34 +658,92 @@ static int destroy_deferred_graphs(void* context = NULL)
     return num_destroyed_graphs;
 }
 
-static void CUDART_CB on_graph_destroy(void* user_data)
+static int process_deferred_graph_destroy_callbacks(void* context = NULL)
 {
-    if (!user_data)
-        return;
+    int num_freed = 0;
 
-    GraphInfo* graph_info = static_cast<GraphInfo*>(user_data);
+    std::lock_guard<std::mutex> lock(g_graph_destroy_mutex);
 
-    for (void* ptr : graph_info->unfreed_allocs)
+    for (auto it = g_deferred_graph_destroy_list.begin(); it != g_deferred_graph_destroy_list.end(); /*noop*/)
     {
-        auto alloc_iter = g_graph_allocs.find(ptr);
-        if (alloc_iter != g_graph_allocs.end())
+        GraphDestroyCallbackInfo* graph_info = *it;
+        if (graph_info->context == context || !context)
         {
-            GraphAllocInfo& alloc_info = alloc_iter->second;
-            if (alloc_info.ref_exists)
+            // handle unfreed graph allocations (may have outstanding user references)
+            for (void* ptr : graph_info->unfreed_allocs)
             {
-                // unreference from graph so the pointer will be deallocated when the user reference goes away
-                alloc_info.graph_destroyed = true;
+                auto alloc_iter = g_graph_allocs.find(ptr);
+                if (alloc_iter != g_graph_allocs.end())
+                {
+                    GraphAllocInfo& alloc_info = alloc_iter->second;
+                    if (alloc_info.ref_exists)
+                    {
+                        // unreference from graph so the pointer will be deallocated when the user reference goes away
+                        alloc_info.graph_destroyed = true;
+                    }
+                    else
+                    {
+                        // the pointer can be freed, no references remain
+                        wp_free_device_async(alloc_info.context, ptr);
+                        g_graph_allocs.erase(alloc_iter);
+                    }
+                }
             }
-            else
+
+            // handle temporary allocations owned by the graph (no user references)
+            for (const FreeInfo& tmp_info : graph_info->tmp_allocs)
             {
-                // the pointer can be freed, but we can't call CUDA functions in this callback, so defer it
-                deferred_free(ptr, alloc_info.context, true);
-                g_graph_allocs.erase(alloc_iter);
+                if (tmp_info.context)
+                {
+                    // GPU alloc
+                    if (tmp_info.is_async)
+                    {
+                        wp_free_device_async(tmp_info.context, tmp_info.ptr);
+                    }
+                    else
+                    {
+                        wp_free_device_default(tmp_info.context, tmp_info.ptr);
+                    }
+                }
+                else
+                {
+                    // CPU alloc
+                    wp_free_host(tmp_info.ptr);
+                }
             }
+
+            ++num_freed;
+            delete graph_info;
+            it = g_deferred_graph_destroy_list.erase(it);
+        }
+        else
+        {
+            ++it;
         }
     }
 
-    delete graph_info;
+    return num_freed;
+}
+
+static int run_deferred_actions(void* context = NULL)
+{
+    int num_actions = 0;
+    num_actions += free_deferred_allocs(context);
+    num_actions += unload_deferred_modules(context);
+    num_actions += destroy_deferred_graphs(context);
+    num_actions += process_deferred_graph_destroy_callbacks(context);
+    return num_actions;
+}
+
+// Callback used when a graph is destroyed.
+// NOTE: this runs on an internal CUDA thread and requires synchronization.
+static void CUDART_CB on_graph_destroy(void* user_data)
+{
+    if (user_data)
+    {
+        std::lock_guard<std::mutex> lock(g_graph_destroy_mutex);
+        g_deferred_graph_destroy_list.push_back(static_cast<GraphDestroyCallbackInfo*>(user_data));
+    }
 }
 
 static inline const char* get_cuda_kernel_name(void* kernel)
@@ -1019,16 +1195,22 @@ void wp_memtile_device(void* context, void* dst, const void* src, size_t srcsize
     else
     {
         // generic version
+        void* value_devptr = NULL;  // fill value in device memory
+        bool free_devptr = true;  // whether we need to free the memory
 
-        // copy value to device memory
-        // TODO: use a persistent stream-local staging buffer to avoid allocs?
-        void* src_devptr = wp_alloc_device(WP_CURRENT_CONTEXT, srcsize);
-        check_cuda(cudaMemcpyAsync(src_devptr, src, srcsize, cudaMemcpyHostToDevice, get_current_stream()));
+        // prepare the fill value in a graph-friendly way
+        if (!capturable_tmp_alloc(WP_CURRENT_CONTEXT, src, srcsize, &value_devptr, &free_devptr))
+        {
+            fprintf(stderr, "Warp fill error: failed to copy value to device memory\n");
+            return;
+        }
 
-        wp_launch_device(WP_CURRENT_CONTEXT, memtile_kernel, n, (dst, src_devptr, srcsize, n));
+        wp_launch_device(WP_CURRENT_CONTEXT, memtile_kernel, n, (dst, value_devptr, srcsize, n));
 
-        wp_free_device(WP_CURRENT_CONTEXT, src_devptr);
-
+        if (free_devptr)
+        {
+            wp_free_device(WP_CURRENT_CONTEXT, value_devptr);
+        }
     }
 }
 
@@ -1700,67 +1882,76 @@ WP_API void wp_array_fill_device(void* context, void* arr_ptr, int arr_type, con
 
     ContextGuard guard(context);
 
-    // copy value to device memory
-    // TODO: use a persistent stream-local staging buffer to avoid allocs?
-    void* value_devptr = wp_alloc_device(WP_CURRENT_CONTEXT, value_size);
-    check_cuda(cudaMemcpyAsync(value_devptr, value_ptr, value_size, cudaMemcpyHostToDevice, get_current_stream()));
+    void* value_devptr = NULL;  // fill value in device memory
+    bool free_devptr = true;  // whether we need to free the memory
 
-    // handle fabric arrays
+    // prepare the fill value in a graph-friendly way
+    if (!capturable_tmp_alloc(WP_CURRENT_CONTEXT, value_ptr, value_size, &value_devptr, &free_devptr))
+    {
+        fprintf(stderr, "Warp fill error: failed to copy value to device memory\n");
+        return;
+    }
+
     if (fa)
     {
+        // handle fabric arrays
         wp_launch_device(WP_CURRENT_CONTEXT, array_fill_fabric_kernel, n,
                          (*fa, value_devptr, value_size));
-        return;
     }
     else if (ifa)
     {
+        // handle indexed fabric arrays
         wp_launch_device(WP_CURRENT_CONTEXT, array_fill_fabric_indexed_kernel, n,
                          (*ifa, value_devptr, value_size));
-        return;
+    }
+    else
+    {
+        // handle regular or indexed arrays
+        switch (ndim)
+        {
+        case 1:
+        {
+            wp_launch_device(WP_CURRENT_CONTEXT, array_fill_1d_kernel, n,
+                            (data, shape[0], strides[0], indices[0], value_devptr, value_size));
+            break;
+        }
+        case 2:
+        {
+            wp::vec_t<2, size_t> shape_v(shape[0], shape[1]);
+            wp::vec_t<2, size_t> strides_v(strides[0], strides[1]);
+            wp::vec_t<2, const int*> indices_v(indices[0], indices[1]);
+            wp_launch_device(WP_CURRENT_CONTEXT, array_fill_2d_kernel, n,
+                            (data, shape_v, strides_v, indices_v, value_devptr, value_size));
+            break;
+        }
+        case 3:
+        {
+            wp::vec_t<3, size_t> shape_v(shape[0], shape[1], shape[2]);
+            wp::vec_t<3, size_t> strides_v(strides[0], strides[1], strides[2]);
+            wp::vec_t<3, const int*> indices_v(indices[0], indices[1], indices[2]);
+            wp_launch_device(WP_CURRENT_CONTEXT, array_fill_3d_kernel, n,
+                            (data, shape_v, strides_v, indices_v, value_devptr, value_size));
+            break;
+        }
+        case 4:
+        {
+            wp::vec_t<4, size_t> shape_v(shape[0], shape[1], shape[2], shape[3]);
+            wp::vec_t<4, size_t> strides_v(strides[0], strides[1], strides[2], strides[3]);
+            wp::vec_t<4, const int*> indices_v(indices[0], indices[1], indices[2], indices[3]);
+            wp_launch_device(WP_CURRENT_CONTEXT, array_fill_4d_kernel, n,
+                            (data, shape_v, strides_v, indices_v, value_devptr, value_size));
+            break;
+        }
+        default:
+            fprintf(stderr, "Warp fill error: invalid array dimensionality (%d)\n", ndim);
+            break;
+        }
     }
 
-    // handle regular or indexed arrays
-    switch (ndim)
+    if (free_devptr)
     {
-    case 1:
-    {
-        wp_launch_device(WP_CURRENT_CONTEXT, array_fill_1d_kernel, n,
-                         (data, shape[0], strides[0], indices[0], value_devptr, value_size));
-        break;
+        wp_free_device(WP_CURRENT_CONTEXT, value_devptr);
     }
-    case 2:
-    {
-        wp::vec_t<2, size_t> shape_v(shape[0], shape[1]);
-        wp::vec_t<2, size_t> strides_v(strides[0], strides[1]);
-        wp::vec_t<2, const int*> indices_v(indices[0], indices[1]);
-        wp_launch_device(WP_CURRENT_CONTEXT, array_fill_2d_kernel, n,
-                         (data, shape_v, strides_v, indices_v, value_devptr, value_size));
-        break;
-    }
-    case 3:
-    {
-        wp::vec_t<3, size_t> shape_v(shape[0], shape[1], shape[2]);
-        wp::vec_t<3, size_t> strides_v(strides[0], strides[1], strides[2]);
-        wp::vec_t<3, const int*> indices_v(indices[0], indices[1], indices[2]);
-        wp_launch_device(WP_CURRENT_CONTEXT, array_fill_3d_kernel, n,
-                         (data, shape_v, strides_v, indices_v, value_devptr, value_size));
-        break;
-    }
-    case 4:
-    {
-        wp::vec_t<4, size_t> shape_v(shape[0], shape[1], shape[2], shape[3]);
-        wp::vec_t<4, size_t> strides_v(strides[0], strides[1], strides[2], strides[3]);
-        wp::vec_t<4, const int*> indices_v(indices[0], indices[1], indices[2], indices[3]);
-        wp_launch_device(WP_CURRENT_CONTEXT, array_fill_4d_kernel, n,
-                         (data, shape_v, strides_v, indices_v, value_devptr, value_size));
-        break;
-    }
-    default:
-        fprintf(stderr, "Warp fill error: invalid array dimensionality (%d)\n", ndim);
-        return;
-    }
-
-    wp_free_device(WP_CURRENT_CONTEXT, value_devptr);
 }
 
 void wp_array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive)
@@ -2120,14 +2311,11 @@ void wp_cuda_context_synchronize(void* context)
     if (!context)
         context = get_current_context();
 
-    if (free_deferred_allocs(context) > 0)
+    if (run_deferred_actions(context) > 0)
     {
-        // ensure deferred asynchronous deallocations complete
+        // ensure deferred asynchronous operations complete
         check_cu(cuCtxSynchronize_f());
     }
-
-    unload_deferred_modules(context);
-    destroy_deferred_graphs(context);
 
     // check_cuda(cudaDeviceGraphMemTrim(wp_cuda_context_get_device_ordinal(context)));
 }
@@ -2744,6 +2932,7 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
     // get capture info
     bool external = capture->external;
     uint64_t capture_id = capture->id;
+    std::vector<FreeInfo> tmp_allocs = capture->tmp_allocs;
 
     // clear capture info
     stream_info->capture = NULL;
@@ -2813,15 +3002,17 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
             unfreed_allocs.push_back(it->first);
     }
 
-    if (!unfreed_allocs.empty())
+    if (!unfreed_allocs.empty() || !tmp_allocs.empty())
     {
         // Create a user object that will notify us when the instantiated graph is destroyed.
         // This works for external captures also, since we wouldn't otherwise know when
         // the externally-created graph instance gets deleted.
         // This callback is guaranteed to arrive after the graph has finished executing on the device,
         // not necessarily when cudaGraphExecDestroy() is called.
-        GraphInfo* graph_info = new GraphInfo;
+        GraphDestroyCallbackInfo* graph_info = new GraphDestroyCallbackInfo;
+        graph_info->context = context ? context : get_current_context();
         graph_info->unfreed_allocs = unfreed_allocs;
+        graph_info->tmp_allocs = tmp_allocs;
         cudaUserObject_t user_object;
         check_cuda(cudaUserObjectCreate(&user_object, graph_info, on_graph_destroy, 1, cudaUserObjectNoDestructorSync));
         check_cuda(cudaGraphRetainUserObject(graph, user_object, 1, cudaGraphUserObjectMove));
@@ -2845,9 +3036,7 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
     // process deferred free list if no more captures are ongoing
     if (g_captures.empty())
     {
-        free_deferred_allocs();
-        unload_deferred_modules();
-        destroy_deferred_graphs();
+        run_deferred_actions();
     }
 
     if (graph_ret)

@@ -19,6 +19,8 @@ import numpy as np
 
 import warp as wp
 
+_wp_module_name_ = "warp.marching_cubes"
+
 
 def marching_cubes_extract_vertices(
     field: wp.array3d(dtype=wp.float32),

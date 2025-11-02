@@ -18,6 +18,8 @@ from typing import Any
 import warp as wp
 from warp._src.fem.types import Coords
 
+_wp_module_name_ = "warp.fem.geometry.closest_point"
+
 
 @wp.func
 def project_on_seg_at_origin(q: Any, seg: Any, len_sq: float):

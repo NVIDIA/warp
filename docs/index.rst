@@ -365,6 +365,7 @@ Full Table of Contents
     limitations
     modules/contribution_guide
     publications
+    compatibility
     faq
     changelog
 

@@ -17,6 +17,8 @@ from typing import Any
 
 import warp as wp
 
+_wp_module_name_ = "warp.optim.sgd"
+
 
 @wp.kernel
 def sgd_step_kernel(

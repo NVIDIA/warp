@@ -26,6 +26,8 @@ from warp._src.fem.types import Coords
 from .shape_function import ShapeFunction
 from .tet_shape_function import TetrahedronPolynomialShapeFunctions
 
+_wp_module_name_ = "warp.fem.space.shape.cube_shape_function"
+
 
 class CubeShapeFunction(ShapeFunction):
     VERTEX = 0

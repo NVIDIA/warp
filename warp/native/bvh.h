@@ -463,8 +463,9 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index)
         {
             // found leaf, loop through its content primitives
             const int start = left_index;
+            const int end = right_index;
 
-            if (bvh.leaf_size == 1)
+            if (end - start <= 1)
             {
                 int primitive_index = bvh.primitive_indices[start];
                 index = primitive_index;
@@ -472,8 +473,7 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index)
                 return true;
             }
             else
-            {
-                const int end = right_index;
+            {   
                 int primitive_index = bvh.primitive_indices[start + (query.primitive_counter++)];
 
                 // if already visited the last primitive in the leaf node

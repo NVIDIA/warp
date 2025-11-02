@@ -44,7 +44,7 @@ the `pip install` command, e.g.
 | Platform        | Install Command                                                                                                               |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.10.0/warp_lang-1.10.0+cu13-py3-none-manylinux_2_34_aarch64.whl` |
-| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.10.0/warp_lang-1.10.0+cu13-py3-none-manylinux_2_34_x86_64.whl`  |
+| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.10.0/warp_lang-1.10.0+cu13-py3-none-manylinux_2_28_x86_64.whl`  |
 | Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.10.0/warp_lang-1.10.0+cu13-py3-none-win_amd64.whl`             |
 
 The `--force-reinstall` option may need to be used to overwrite a previous installation.

@@ -20,6 +20,8 @@ import warp as wp
 from warp._src.fem.polynomial import Polynomial, quadrature_1d
 from warp._src.fem.types import Coords
 
+_wp_module_name_ = "warp.fem.geometry.element"
+
 _vec1 = wp.vec(length=1, dtype=float)
 
 

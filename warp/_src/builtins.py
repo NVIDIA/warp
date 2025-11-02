@@ -28,6 +28,8 @@ from warp._src.types import *
 
 from .context import add_builtin
 
+_wp_module_name_ = "warp.builtins"
+
 
 def seq_check_equal(seq_1, seq_2):
     if not isinstance(seq_1, Sequence) or not isinstance(seq_2, Sequence):
@@ -7138,7 +7140,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("add"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically adds ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
-        This function is automatically invoked when using the syntax ``arr[i] += value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i] += value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -7150,7 +7153,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("add"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically adds ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
-        This function is automatically invoked when using the syntax ``arr[i,j] += value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i,j] += value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -7162,7 +7166,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("add"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically adds ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
-        This function is automatically invoked when using the syntax ``arr[i,j,k] += value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i,j,k] += value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -7174,7 +7179,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("add"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically adds ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
-        This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -7187,7 +7193,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("sub"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
-        This function is automatically invoked when using the syntax ``arr[i] -= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i] -= value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -7199,7 +7206,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("sub"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
-        This function is automatically invoked when using the syntax ``arr[i,j] -= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i,j] -= value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -7211,7 +7219,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("sub"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
-        This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -7223,7 +7232,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("sub"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
-        This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.""",
         group="Utility",
         skip_replay=True,
     )
@@ -7463,7 +7473,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("and"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically performs a bitwise AND between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-        This function is automatically invoked when using the syntax ``arr[i] &= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i] &= value``.""",
         group="Utility",
         skip_replay=True,
         is_differentiable=False,
@@ -7476,7 +7487,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("and"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically performs a bitwise AND between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-        This function is automatically invoked when using the syntax ``arr[i,j] &= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i,j] &= value``.""",
         group="Utility",
         skip_replay=True,
         is_differentiable=False,
@@ -7489,7 +7501,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("and"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
-        This function is automatically invoked when using the syntax ``arr[i,j,k] &= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i,j,k] &= value``.""",
         group="Utility",
         skip_replay=True,
         is_differentiable=False,
@@ -7502,7 +7515,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("and"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-        This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.""",
         group="Utility",
         skip_replay=True,
         is_differentiable=False,
@@ -7516,7 +7530,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("or"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically performs a bitwise OR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-        This function is automatically invoked when using the syntax ``arr[i] |= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i] |= value``.""",
         group="Utility",
         skip_replay=True,
         is_differentiable=False,
@@ -7529,7 +7544,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("or"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically performs a bitwise OR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-        This function is automatically invoked when using the syntax ``arr[i,j] |= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i,j] |= value``.""",
         group="Utility",
         skip_replay=True,
         is_differentiable=False,
@@ -7542,7 +7558,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("or"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
-        This function is automatically invoked when using the syntax ``arr[i,j,k] |= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i,j,k] |= value``.""",
         group="Utility",
         skip_replay=True,
         is_differentiable=False,
@@ -7555,7 +7572,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("or"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-        This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.""",
         group="Utility",
         skip_replay=True,
         is_differentiable=False,
@@ -7569,7 +7587,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("xor"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically performs a bitwise XOR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-        This function is automatically invoked when using the syntax ``arr[i] ^= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i] ^= value``.""",
         group="Utility",
         skip_replay=True,
         is_differentiable=False,
@@ -7582,7 +7601,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("xor"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-        This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.""",
         group="Utility",
         skip_replay=True,
         is_differentiable=False,
@@ -7595,7 +7615,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("xor"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
-        This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.""",
         group="Utility",
         skip_replay=True,
         is_differentiable=False,
@@ -7608,7 +7629,8 @@ for array_type in array_types:
         value_func=create_atomic_op_value_func("xor"),
         dispatch_func=atomic_op_dispatch_func,
         doc="""Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-        This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.""",
+
+    This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.""",
         group="Utility",
         skip_replay=True,
         is_differentiable=False,
@@ -10403,10 +10425,39 @@ add_builtin(
     input_types={"a": Any, "dtype": Any},
     value_func=cast_value_func,
     dispatch_func=cast_dispatch_func,
-    doc="Reinterpret a value as a different type while preserving its bit pattern.",
     group="Utility",
     export=False,
     is_differentiable=False,
+    doc="""Reinterpret a value as a different type while preserving its bit pattern.
+
+    :param a: The value to cast
+    :param dtype: The target type
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.struct
+        class MyStruct:
+            f: wp.float16
+            i: wp.int16
+
+
+        @wp.kernel
+        def compute():
+            x = wp.int32(0x40000000)
+            x_casted = wp.cast(x, wp.float32)
+            wp.expect_eq(x_casted, 2.0) # 0x40000000
+
+            s = MyStruct()
+            s.f = wp.float16(2.0) # 0x4000
+            s.i = wp.int16(4096) # 0x1000
+            s_casted = wp.cast(s, wp.int32)
+            wp.expect_eq(s_casted, 0x10004000)
+
+
+        wp.launch(compute, dim=1)
+    """,
 )
 
 
