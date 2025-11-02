@@ -99,7 +99,8 @@
   ([GH-957](https://github.com/NVIDIA/warp/issues/957)).
 - Fix copying and filling arrays with large strides ([GH-929](https://github.com/NVIDIA/warp/issues/929)).
 - Fix incorrect results when filling arrays in CUDA graphs ([GH-1040](https://github.com/NVIDIA/warp/issues/1040)).
-- Fix graph deletion during capture ([GH-992](https://github.com/NVIDIA/warp/issues/992)).
+- Defer CUDA graph deletion when graph captures are in progress ([GH-992](https://github.com/NVIDIA/warp/issues/992)).
+- Fix race conditions in CUDA graph destruction callbacks ([GH-1063](https://github.com/NVIDIA/warp/issues/1063)).
 - Fix arithmetic operators with scalars and arrays at the Python scope. Operations like `scalar * array`
   now work correctly (previously only `array * scalar` worked) ([GH-892](https://github.com/NVIDIA/warp/issues/892)).
 - Fix `wp.atomic_add()` failing to accumulate `wp.int64` values ([GH-977](https://github.com/NVIDIA/warp/issues/977)).
