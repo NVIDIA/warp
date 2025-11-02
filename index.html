@@ -1,0 +1,1243 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>NVIDIA Warp Documentation &#8212; Warp 1.10.0</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/nvidia-sphinx-theme.css?v=df3ac72c" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=8524295a" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=1d24b1d9"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'index';</script>
+    <link rel="icon" href="_static/favicon.png"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation" href="installation.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.10.0" />
+
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="#">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.10.0 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.10.0 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.10.0</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="#">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.10.0 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.10.0 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.10.0</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/tiles.html">Tiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Advanced Topics</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="modules/runtime.html">Python Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/functions.html">Built-Ins Reference</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Simulation Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="modules/sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/render.html">warp.render</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none"></div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="nvidia-warp-documentation">
+<h1>NVIDIA Warp Documentation<a class="headerlink" href="#nvidia-warp-documentation" title="Link to this heading">#</a></h1>
+<p>Warp is a Python framework for writing high-performance simulation and graphics code. Warp takes
+regular Python functions and JIT compiles them to efficient kernel code that can run on the CPU or GPU.</p>
+<p>Warp is designed for <a class="reference external" href="https://en.wikipedia.org/wiki/Spatial_computing">spatial computing</a>
+and comes with a rich set of primitives that make it easy to write
+programs for physics simulation, perception, robotics, and geometry processing. In addition, Warp kernels
+are differentiable and can be used as part of machine-learning pipelines with frameworks such as PyTorch, JAX and Paddle.</p>
+<p>Below are some examples of simulations implemented using Warp:</p>
+<img alt="_images/header.jpg" src="_images/header.jpg" />
+<section id="quickstart">
+<h2>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading">#</a></h2>
+<p>The easiest way to install Warp is from <a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a>:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>warp-lang
+</pre></div>
+</div>
+<p>You can also use <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">warp-lang[examples]</span></code> to install additional dependencies for running examples
+and USD-related features.</p>
+<p>The binaries hosted on PyPI are currently built with the CUDA 12 runtime and therefore
+require a minimum version of the CUDA driver of 525.60.13 (Linux x86-64) or 528.33 (Windows x86-64).</p>
+<p>If you require a version of Warp built with the CUDA 13 runtime, you can build Warp from source or
+install wheels built with the CUDA 13.0 runtime as described in <a class="reference internal" href="installation.html#github-installation"><span class="std std-ref">Nightly Builds</span></a>.</p>
+</section>
+<section id="tutorial-notebooks">
+<h2>Tutorial Notebooks<a class="headerlink" href="#tutorial-notebooks" title="Link to this heading">#</a></h2>
+<p>The <a class="reference external" href="https://github.com/NVIDIA/accelerated-computing-hub">NVIDIA Accelerated Computing Hub</a> contains the current,
+actively maintained set of Warp tutorials:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Notebook</p></th>
+<th class="head"><p>Colab Link</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference external" href="https://github.com/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb">Introduction to NVIDIA Warp</a></p></td>
+<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
+</a>
+</td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference external" href="https://github.com/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb">GPU-Accelerated Ising Model Simulation in NVIDIA Warp</a></p></td>
+<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
+</a>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Additionally, several notebooks in the <a class="reference external" href="https://github.com/NVIDIA/warp/tree/main/notebooks">notebooks</a> directory
+provide additional examples and cover key Warp features:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Notebook</p></th>
+<th class="head"><p>Colab Link</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/notebooks/core_01_basics.ipynb">Warp Core Tutorial: Basics</a></p></td>
+<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_01_basics.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
+</a>
+</td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/notebooks/core_02_generics.ipynb">Warp Core Tutorial: Generics</a></p></td>
+<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_02_generics.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
+</a>
+</td>
+</tr>
+<tr class="row-even"><td><p><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/notebooks/core_03_points.ipynb">Warp Core Tutorial: Points</a></p></td>
+<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_03_points.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
+</a>
+</td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/notebooks/core_04_meshes.ipynb">Warp Core Tutorial: Meshes</a></p></td>
+<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_04_meshes.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
+</a>
+</td>
+</tr>
+<tr class="row-even"><td><p><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/notebooks/core_05_volumes.ipynb">Warp Core Tutorial: Volumes</a></p></td>
+<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_05_volumes.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
+</a>
+</td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/notebooks/pytorch_01_basics.ipynb">Warp PyTorch Tutorial: Basics</a></p></td>
+<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/pytorch_01_basics.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
+</a>
+</td>
+</tr>
+<tr class="row-even"><td><p><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/notebooks/pytorch_02_custom_operators.ipynb">Warp PyTorch Tutorial: Custom Operators</a></p></td>
+<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/pytorch_02_custom_operators.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
+</a>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="additional-examples">
+<h2>Additional Examples<a class="headerlink" href="#additional-examples" title="Link to this heading">#</a></h2>
+<p>The <a class="reference external" href="https://github.com/NVIDIA/warp/tree/main/warp/examples">warp/examples</a> directory in
+the Github repository contains a number of scripts categorized under subdirectories
+that show how to implement various simulation methods using the Warp API. Most examples
+will generate USD files containing time-sampled animations in the current working directory.
+Before running examples, users should ensure that the <code class="docutils literal notranslate"><span class="pre">usd-core</span></code>, <code class="docutils literal notranslate"><span class="pre">matplotlib</span></code>, and <code class="docutils literal notranslate"><span class="pre">pyglet</span></code> packages are installed using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">warp</span><span class="o">-</span><span class="n">lang</span><span class="p">[</span><span class="n">extras</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>These dependencies can also be manually installed using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">usd</span><span class="o">-</span><span class="n">core</span> <span class="n">matplotlib</span> <span class="n">pyglet</span>
+</pre></div>
+</div>
+<p>Examples can be run from the command-line as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">warp</span><span class="o">.</span><span class="n">examples</span><span class="o">.&lt;</span><span class="n">example_subdir</span><span class="o">&gt;.&lt;</span><span class="n">example</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Most examples can be run on either the CPU or a CUDA-capable device, but a handful require a CUDA-capable device. These are marked at the top of the example script.</p>
+<p>USD files can be viewed or rendered inside NVIDIA
+<a class="reference external" href="https://developer.nvidia.com/omniverse">Omniverse</a>,
+Pixar’s UsdView, and Blender. Note that Preview in macOS is not
+recommended as it has limited support for time-sampled animations.</p>
+<p>Built-in unit tests can be run from the command-line as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">warp</span><span class="o">.</span><span class="n">tests</span>
+</pre></div>
+</div>
+<section id="warp-examples-core">
+<h3>warp/examples/core<a class="headerlink" href="#warp-examples-core" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="gallery table">
+<tbody>
+<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_dem.py"><img alt="_images/core_dem.png" src="_images/core_dem.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_fluid.py"><img alt="_images/core_fluid.png" src="_images/core_fluid.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_graph_capture.py"><img alt="_images/core_graph_capture.png" src="_images/core_graph_capture.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_marching_cubes.py"><img alt="_images/core_marching_cubes.png" src="_images/core_marching_cubes.png" />
+</a>
+</td>
+</tr>
+<tr class="row-even"><td><p>dem</p></td>
+<td><p>fluid</p></td>
+<td><p>graph capture</p></td>
+<td><p>marching cubes</p></td>
+</tr>
+<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_mesh.py"><img alt="_images/core_mesh.png" src="_images/core_mesh.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_nvdb.py"><img alt="_images/core_nvdb.png" src="_images/core_nvdb.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_raycast.py"><img alt="_images/core_raycast.png" src="_images/core_raycast.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_raymarch.py"><img alt="_images/core_raymarch.png" src="_images/core_raymarch.png" />
+</a>
+</td>
+</tr>
+<tr class="row-even"><td><p>mesh</p></td>
+<td><p>nvdb</p></td>
+<td><p>raycast</p></td>
+<td><p>raymarch</p></td>
+</tr>
+<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_sample_mesh.py"><img alt="_images/core_sample_mesh.png" src="_images/core_sample_mesh.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_sph.py"><img alt="_images/core_sph.png" src="_images/core_sph.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_torch.py"><img alt="_images/core_torch.png" src="_images/core_torch.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_wave.py"><img alt="_images/core_wave.png" src="_images/core_wave.png" />
+</a>
+</td>
+</tr>
+<tr class="row-even"><td><p>sample_mesh</p></td>
+<td><p>sph</p></td>
+<td><p>torch</p></td>
+<td><p>wave</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="warp-examples-fem">
+<h3>warp/examples/fem<a class="headerlink" href="#warp-examples-fem" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="gallery table">
+<tbody>
+<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_diffusion_3d.py"><img alt="_images/fem_diffusion_3d.png" src="_images/fem_diffusion_3d.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_mixed_elasticity.py"><img alt="_images/fem_mixed_elasticity.png" src="_images/fem_mixed_elasticity.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_apic_fluid.py"><img alt="_images/fem_apic_fluid.png" src="_images/fem_apic_fluid.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_streamlines.py"><img alt="_images/fem_streamlines.png" src="_images/fem_streamlines.png" />
+</a>
+</td>
+</tr>
+<tr class="row-even"><td><p>diffusion 3d</p></td>
+<td><p>mixed elasticity</p></td>
+<td><p>apic fluid</p></td>
+<td><p>streamlines</p></td>
+</tr>
+<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_distortion_energy.py"><img alt="_images/fem_distortion_energy.png" src="_images/fem_distortion_energy.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_navier_stokes.py"><img alt="_images/fem_navier_stokes.png" src="_images/fem_navier_stokes.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_burgers.py"><img alt="_images/fem_burgers.png" src="_images/fem_burgers.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_magnetostatics.py"><img alt="_images/fem_magnetostatics.png" src="_images/fem_magnetostatics.png" />
+</a>
+</td>
+</tr>
+<tr class="row-even"><td><p>distortion energy</p></td>
+<td><p>navier stokes</p></td>
+<td><p>burgers</p></td>
+<td><p>magnetostatics</p></td>
+</tr>
+<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_adaptive_grid.py"><img alt="_images/fem_adaptive_grid.png" src="_images/fem_adaptive_grid.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_nonconforming_contact.py"><img alt="_images/fem_nonconforming_contact.png" src="_images/fem_nonconforming_contact.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_darcy_ls_optimization.py"><img alt="_images/fem_darcy_ls_optimization.png" src="_images/fem_darcy_ls_optimization.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_elastic_shape_optimization.py"><img alt="_images/fem_elastic_shape_optimization.png" src="_images/fem_elastic_shape_optimization.png" />
+</a>
+</td>
+</tr>
+<tr class="row-even"><td><p>adaptive grid</p></td>
+<td><p>nonconforming contact</p></td>
+<td><p>darcy level-set optimization</p></td>
+<td><p>elastic shape optimization</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="warp-examples-optim">
+<h3>warp/examples/optim<a class="headerlink" href="#warp-examples-optim" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="gallery table">
+<tbody>
+<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_diffray.py"><img alt="_images/optim_diffray.png" src="_images/optim_diffray.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_fluid_checkpoint.py"><img alt="_images/optim_fluid_checkpoint.png" src="_images/optim_fluid_checkpoint.png" />
+</a>
+</td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p>diffray</p></td>
+<td><p>fluid checkpoint</p></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="warp-examples-tile">
+<h3>warp/examples/tile<a class="headerlink" href="#warp-examples-tile" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="gallery table">
+<tbody>
+<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_mlp.py"><img alt="_images/tile_mlp.png" src="_images/tile_mlp.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_nbody.py"><img alt="_images/tile_nbody.png" src="_images/tile_nbody.png" />
+</a>
+</td>
+<td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_mcgp.py"><img alt="_images/tile_mcgp.png" src="_images/tile_mcgp.png" />
+</a>
+</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p>mlp</p></td>
+<td><p>nbody</p></td>
+<td><p>mcgp</p></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="id1">
+<h2>Omniverse<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
+<p>Omniverse extensions for Warp are available in the extension registry inside
+Omniverse Kit or USD Composer.
+The <code class="docutils literal notranslate"><span class="pre">omni.warp.core</span></code> extension installs Warp into the Omniverse Application’s
+Python environment, which allows users to import the module in their scripts and nodes.
+The <code class="docutils literal notranslate"><span class="pre">omni.warp</span></code> extension provides a collection of OmniGraph nodes and sample
+scenes demonstrating uses of Warp in OmniGraph.
+Enabling the <code class="docutils literal notranslate"><span class="pre">omni.warp</span></code> extension automatically enables the <code class="docutils literal notranslate"><span class="pre">omni.warp.core</span></code> extension.</p>
+<p>Please see the
+<a class="reference external" href="https://docs.omniverse.nvidia.com/extensions/latest/ext_warp.html">Omniverse Warp Documentation</a>
+for more details on how to use Warp in Omniverse.</p>
+</section>
+<section id="learn-more">
+<h2>Learn More<a class="headerlink" href="#learn-more" title="Link to this heading">#</a></h2>
+<p>Please see the following resources for additional background on Warp:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://developer.nvidia.com/warp-python">Product Page</a></p></li>
+<li><p><a class="reference external" href="https://dl.acm.org/doi/10.1145/3664475.3664543">SIGGRAPH 2024 Course Slides</a></p></li>
+<li><p><a class="reference external" href="https://www.nvidia.com/en-us/on-demand/session/gtc24-s63345">GTC 2024 Presentation</a></p></li>
+<li><p><a class="reference external" href="https://www.nvidia.com/en-us/on-demand/session/gtcspring22-s41599">GTC 2022
+Presentation</a></p></li>
+<li><p><a class="reference external" href="https://www.nvidia.com/en-us/on-demand/session/gtcspring21-s31838">GTC 2021
+Presentation</a></p></li>
+<li><p><a class="reference external" href="https://dl.acm.org/doi/abs/10.1145/3476117.3483433">SIGGRAPH Asia 2021 Differentiable Simulation
+Course</a></p></li>
+</ul>
+<p>The underlying technology in Warp has been used in a number of research
+projects at NVIDIA including the following publications:</p>
+<ul class="simple">
+<li><p>Accelerated Policy Learning with Parallel Differentiable Simulation -
+Xu, J., Makoviychuk, V., Narang, Y., Ramos, F., Matusik, W., Garg,
+A., &amp; Macklin, M.
+<a class="reference external" href="https://short-horizon-actor-critic.github.io">(2022)</a></p></li>
+<li><p>DiSECt: Differentiable Simulator for Robotic Cutting - Heiden, E.,
+Macklin, M., Narang, Y., Fox, D., Garg, A., &amp; Ramos, F
+<a class="reference external" href="https://github.com/NVlabs/DiSECt">(2021)</a></p></li>
+<li><p>gradSim: Differentiable Simulation for System Identification and
+Visuomotor Control - Murthy, J. Krishna, Miles Macklin, Florian
+Golemo, Vikram Voleti, Linda Petrini, Martin Weiss, Breandan
+Considine et
+al. <a class="reference external" href="https://gradsim.github.io">(2021)</a></p></li>
+</ul>
+</section>
+<section id="support">
+<h2>Support<a class="headerlink" href="#support" title="Link to this heading">#</a></h2>
+<p>Problems, questions, and feature requests can be opened on
+<a class="reference external" href="https://github.com/NVIDIA/warp/issues">GitHub Issues</a>.</p>
+<p>For inquiries not suited for GitHub Issues, please email <a class="reference external" href="mailto:warp-python&#37;&#52;&#48;nvidia&#46;com">warp-python<span>&#64;</span>nvidia<span>&#46;</span>com</a>.</p>
+</section>
+<section id="versioning">
+<h2>Versioning<a class="headerlink" href="#versioning" title="Link to this heading">#</a></h2>
+<p>Versions take the format X.Y.Z, similar to <a class="reference external" href="https://devguide.python.org/developer-workflow/development-cycle/#devcycle">Python itself</a>:</p>
+<ul class="simple">
+<li><p>Increments in X are reserved for major reworks of the project causing disruptive incompatibility (or reaching the 1.0 milestone).</p></li>
+<li><p>Increments in Y are for regular releases with a new set of features.</p></li>
+<li><p>Increments in Z are for bug fixes. In principle, there are no new features. Can be omitted if 0 or not relevant.</p></li>
+</ul>
+<p>This is similar to <a class="reference external" href="https://semver.org/">Semantic Versioning</a> minor versions if well-documented and gradually introduced.</p>
+<p>Note that prior to 0.11.0, this schema was not strictly adhered to.</p>
+</section>
+<section id="license">
+<h2>License<a class="headerlink" href="#license" title="Link to this heading">#</a></h2>
+<p>Warp is provided under the Apache License, Version 2.0. Please see
+<a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/LICENSE.md">LICENSE.md</a> for the full license text.</p>
+<p>This project will download and install additional third-party open source software projects.
+Review the license terms of these open source projects before use.</p>
+</section>
+<section id="contributing">
+<h2>Contributing<a class="headerlink" href="#contributing" title="Link to this heading">#</a></h2>
+<p>Contributions and pull requests from the community are welcome.
+Please see the <a class="reference internal" href="modules/contribution_guide.html"><span class="doc">Contribution Guide</span></a> for more information on contributing to the development of Warp.</p>
+</section>
+<section id="publications-citation">
+<h2>Publications &amp; Citation<a class="headerlink" href="#publications-citation" title="Link to this heading">#</a></h2>
+<section id="research-using-warp">
+<h3>Research Using Warp<a class="headerlink" href="#research-using-warp" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="publications.html"><span class="doc">Publications using Warp</span></a> lists academic and research publications that leverage the capabilities of Warp.
+We encourage you to add your own published work using Warp to this list.</p>
+</section>
+<section id="citing-warp">
+<h3>Citing Warp<a class="headerlink" href="#citing-warp" title="Link to this heading">#</a></h3>
+<p>If you use Warp in your research, please use the following citation:</p>
+<div class="highlight-bibtex notranslate"><div class="highlight"><pre><span></span><span class="nc">@misc</span><span class="p">{</span><span class="nl">warp2022</span><span class="p">,</span>
+<span class="w">  </span><span class="na">title</span><span class="w">        </span><span class="p">=</span><span class="w"> </span><span class="s">{Warp: A High-performance Python Framework for GPU Simulation and Graphics}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">author</span><span class="w">       </span><span class="p">=</span><span class="w"> </span><span class="s">{Miles Macklin}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">month</span><span class="w">        </span><span class="p">=</span><span class="w"> </span><span class="s">{March}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">year</span><span class="w">         </span><span class="p">=</span><span class="w"> </span><span class="s">{2022}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">note</span><span class="w">         </span><span class="p">=</span><span class="w"> </span><span class="s">{NVIDIA GPU Technology Conference (GTC)}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">howpublished</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{\url{https://github.com/nvidia/warp}}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="full-table-of-contents">
+<h2>Full Table of Contents<a class="headerlink" href="#full-table-of-contents" title="Link to this heading">#</a></h2>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#nightly-builds">Nightly Builds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#conda-installation">Conda Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#installing-from-github-releases">Installing from GitHub Releases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#cuda-requirements">CUDA Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#building-from-source">Building from Source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#conda-environments">Conda Environments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#using-warp-in-docker">Using Warp in Docker</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#initialization">Initialization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#kernels">Kernels</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#arrays">Arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#user-functions">User Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#user-structs">User Structs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#python-scope-vs-kernel-scope-api">Python Scope vs. Kernel Scope API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#compilation-model">Compilation Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#language-details">Language Details</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#warp.context.Device"><code class="docutils literal notranslate"><span class="pre">Device</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#warp.get_devices"><code class="docutils literal notranslate"><span class="pre">get_devices()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#warp.get_cuda_devices"><code class="docutils literal notranslate"><span class="pre">get_cuda_devices()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#warp.get_cuda_device_count"><code class="docutils literal notranslate"><span class="pre">get_cuda_device_count()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#default-device">Default Device</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#scoped-devices">Scoped Devices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#current-cuda-device">Current CUDA Device</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#device-synchronization">Device Synchronization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#custom-cuda-contexts">Custom CUDA Contexts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#cuda-peer-access">CUDA Peer Access</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/differentiability.html">Differentiability</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/differentiability.html#warp.Tape"><code class="docutils literal notranslate"><span class="pre">Tape</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/differentiability.html#array-overwrites">Array Overwrites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/differentiability.html#copying-is-differentiable">Copying is Differentiable</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/differentiability.html#jacobians">Jacobians</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/differentiability.html#custom-gradient-functions">Custom Gradient Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/differentiability.html#custom-native-functions">Custom Native Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/differentiability.html#debugging-gradients">Debugging Gradients</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/differentiability.html#limitations-and-workarounds">Limitations and Workarounds</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/generics.html">Generics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/generics.html#generic-kernels">Generic Kernels</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/generics.html#generic-functions">Generic Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/generics.html#type-operator">type() Operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/generics.html#limitations-and-rough-edges">Limitations and Rough Edges</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/tiles.html">Tiles</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/tiles.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/tiles.html#execution-model">Execution Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/tiles.html#tile-properties">Tile Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/tiles.html#tile-storage">Tile Storage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/tiles.html#example-general-matrix-multiply-gemm">Example: General Matrix Multiply (GEMM)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/tiles.html#tile-operations">Tile Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/tiles.html#tiles-and-simt-code">Tiles and SIMT Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/tiles.html#automatic-differentiation">Automatic Differentiation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/tiles.html#failed-to-compile-lto-error-message"><code class="docutils literal notranslate"><span class="pre">Failed</span> <span class="pre">to</span> <span class="pre">compile</span> <span class="pre">LTO</span></code> Error Message</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/tiles.html#building-with-mathdx">Building with MathDx</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#numpy">NumPy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#pytorch">PyTorch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#cupy-numba">CuPy/Numba</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#jax">JAX</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#dlpack">DLPack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#paddle">Paddle</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#global-settings">Global Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#module-settings">Module Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#kernel-settings">Kernel Settings</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="debugging.html#printing-values">Printing Values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="debugging.html#verbose-mode-and-printing-launches">Verbose Mode and Printing Launches</a></li>
+<li class="toctree-l2"><a class="reference internal" href="debugging.html#debug-mode-compilation">Debug Mode Compilation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="debugging.html#assertions">Assertions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="debugging.html#step-through-debugging">Step-Through Debugging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="debugging.html#generated-code">Generated Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="debugging.html#cuda-error-verification">CUDA Error Verification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="debugging.html#detecting-non-finite-values">Detecting Non-Finite Values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="debugging.html#cuda-toolkit-debugging-tools">CUDA Toolkit Debugging Tools</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#unsupported-features">Unsupported Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#kernels-and-user-functions">Kernels and User Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#differentiability">Differentiability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#arrays">Arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#structs">Structs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#volumes">Volumes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#multiple-processes">Multiple Processes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#scalar-math-functions">Scalar Math Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#variable-scope">Variable Scope</a></li>
+<li class="toctree-l2"><a class="reference internal" href="limitations.html#arrays-in-structs">Arrays in Structs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/contribution_guide.html">Contribution Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/contribution_guide.html#code-contributions">Code Contributions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/contribution_guide.html#testing-warp">Testing Warp</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="publications.html#id1">2025</a></li>
+<li class="toctree-l2"><a class="reference internal" href="publications.html#id2">2024</a></li>
+<li class="toctree-l2"><a class="reference internal" href="publications.html#id3">2023</a></li>
+<li class="toctree-l2"><a class="reference internal" href="publications.html#id4">2022</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="compatibility.html">Compatibility &amp; Support</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="compatibility.html#platform-compatibility">Platform compatibility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="compatibility.html#support-policies">Support policies</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="faq.html#how-does-warp-relate-to-other-python-projects-for-gpu-programming-e-g-numba-taichi-cupy-pytorch-etc">How does Warp relate to other Python projects for GPU programming, e.g.: Numba, Taichi, cuPy, PyTorch, etc.?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="faq.html#what-are-some-examples-of-projects-that-use-warp">What are some examples of projects that use Warp?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="faq.html#does-warp-support-all-of-the-python-language">Does Warp support all of the Python language?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="faq.html#when-should-i-call-wp-synchronize">When should I call <code class="docutils literal notranslate"><span class="pre">wp.synchronize()</span></code>?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="faq.html#what-happens-when-you-differentiate-a-function-like-wp-abs-x">What happens when you differentiate a function like <code class="docutils literal notranslate"><span class="pre">wp.abs(x)</span></code>?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="faq.html#does-warp-support-multi-gpu-programming">Does Warp support multi-GPU programming?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="faq.html#should-i-switch-to-warp-over-isaacgym-physx">Should I switch to Warp over IsaacGym/PhysX?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="faq.html#why-aren-t-assignments-to-warp-arrays-supported-outside-of-kernels">Why aren’t assignments to Warp arrays supported outside of kernels?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="faq.html#how-can-i-contact-the-warp-team-directly">How can I contact the Warp team directly?</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id1">1.10.0 - 2025-11-02</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id2">1.9.1 - 2025-10-01</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id5">1.9.0 - 2025-09-04</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id11">1.8.1 - 2025-08-01</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id15">1.8.0 - 2025-07-01</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id20">1.7.2 - 2025-05-31</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id24">1.7.1 - 2025-04-30</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id28">1.7.0 - 2025-03-30</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id32">1.6.2 - 2025-03-07</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id34">1.6.1 - 2025-03-03</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id37">1.6.0 - 2025-02-03</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id41">1.5.1 - 2025-01-02</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id44">1.5.0 - 2024-12-02</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id48">1.4.2 - 2024-11-13</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id51">1.4.1 - 2024-10-15</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id53">1.4.0 - 2024-10-01</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id57">1.3.3 - 2024-09-04</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id58">1.3.2 - 2024-08-30</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id59">1.3.1 - 2024-07-27</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id60">1.3.0 - 2024-07-25</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id61">1.2.2 - 2024-07-04</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id62">1.2.2 - 2024-07-04</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id63">1.2.1 - 2024-06-14</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id64">1.2.0 - 2024-06-06</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id65">1.1.1 - 2024-05-24</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id66">1.1.0 - 2024-05-09</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id67">1.0.3 - 2024-04-17</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id68">1.0.2 - 2024-03-22</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id69">1.0.1 - 2024-03-15</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id70">1.0.0 - 2024-03-07</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id71">0.15.1 - 2024-03-05</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id72">0.15.0 - 2024-03-04</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id73">0.14.0 - 2024-02-19</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id74">0.13.1 - 2024-02-22</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id75">0.13.0 - 2024-02-16</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id76">0.12.0 - 2024-02-05</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id77">0.11.0 - 2024-01-23</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#beta-7-2024-01-23">1.0.0-beta.7 - 2024-01-23</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#beta-6-2024-01-10">1.0.0-beta.6 - 2024-01-10</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#beta-5-2023-11-22">1.0.0-beta.5 - 2023-11-22</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#beta-4-2023-11-01">1.0.0-beta.4 - 2023-11-01</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#beta-3-2023-10-19">1.0.0-beta.3 - 2023-10-19</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#beta-2-2023-09-01">1.0.0-beta.2 - 2023-09-01</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#beta-1-2023-08-29">1.0.0-beta.1 - 2023-08-29</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id78">0.10.1 - 2023-07-25</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id79">0.10.0 - 2023-07-05</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id80">0.9.0 - 2023-06-01</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id81">0.8.2 - 2023-04-21</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id82">0.8.1 - 2023-04-13</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id83">0.8.0 - 2023-04-05</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id85">0.7.2 - 2023-02-15</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id86">0.7.1 - 2023-02-14</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id87">0.7.0 - 2023-02-13</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id88">0.6.3 - 2023-01-31</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id89">0.6.2 - 2023-01-19</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id90">0.6.1 - 2022-12-05</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id91">0.6.0 - 2022-11-28</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id92">0.5.1 - 2022-11-01</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id93">0.5.0 - 2022-10-31</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id94">0.4.3 - 2022-09-20</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id95">0.4.2 - 2022-09-07</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id96">0.4.1 - 2022-08-30</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id97">0.4.0 - 2022-08-09</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id99">0.3.2 - 2022-07-19</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id100">0.3.1 - 2022-07-12</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id102">0.3.0 - 2022-07-08</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id103">0.2.3 - 2022-06-13</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id105">0.2.2 - 2022-05-30</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id107">0.2.1 - 2022-05-11</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id108">0.2.0 - 2022-05-02</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id110">0.1.25 - 2022-03-20</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id111">0.1.24 - 2022-03-03</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id113">0.1.23 - 2022-02-17</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id115">0.1.22 - 2022-02-14</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id118">0.1.21 - 2022-01-19</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id121">0.1.20 - 2021-11-02</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id122">0.1.19 - 2021-10-15</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id123">0.1.18 - 2021-10-08</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id124">0.1.17 - 2021-09-30</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id125">0.1.16 - 2021-09-06</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id126">0.1.15 - 2021-09-03</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id127">0.1.14 - 2021-08-09</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id128">0.1.13 - 2021-07-29</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id129">0.1.12 - 2021-07-29</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id130">0.1.11 - 2021-07-28</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id131">0.1.10 - 2021-07-28</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id132">0.1.9 - 2021-07-21</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id133">0.1.8 - 2021-07-14</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id134">0.1.7 - 2021-07-05</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id135">0.1.6 - 2021-06-14</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id136">0.1.5 - 2021-06-14</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id137">0.1.4 - 2021-06-10</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id138">0.1.3 - 2021-06-09</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id139">0.1.2 - 2021-06-03</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id140">0.1.1 - 2021-05-18</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id141">0.1.0 - 2021-05-17</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Advanced Topics</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="codegen.html">Code Generation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="codegen.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="codegen.html#external-references-and-constants">External References and Constants</a></li>
+<li class="toctree-l2"><a class="reference internal" href="codegen.html#static-expressions">Static Expressions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="codegen.html#dynamic-kernel-creation">Dynamic Kernel Creation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="codegen.html#late-binding-and-static-expressions">Late Binding and Static Expressions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="codegen.html#ahead-of-time-compilation-workflows">Ahead-of-Time Compilation Workflows</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/allocators.html">Allocators</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/allocators.html#stream-ordered-memory-pool-allocators">Stream-Ordered Memory Pool Allocators</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/concurrency.html">Concurrency</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/concurrency.html#asynchronous-operations">Asynchronous Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/concurrency.html#streams">Streams</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/concurrency.html#synchronization-guidance">Synchronization Guidance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="profiling.html#scopedtimer">ScopedTimer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="profiling.html#cuda-activity-profiling">CUDA Activity Profiling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="profiling.html#cuda-events-timing">CUDA Events Timing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="profiling.html#nsight-compute-profiling">Nsight Compute Profiling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="profiling.html#profiling-module-compilation">Profiling Module Compilation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="profiling.html#profiling-api-reference">Profiling API Reference</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/runtime.html">Python Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#kernels">Kernels</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#arrays">Arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#id4">Data Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#constants">Constants</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#operators">Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#streams">Streams</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#events">Events</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#graphs">Graphs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#spatial-computing-primitives">Spatial Computing Primitives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#marching-cubes">Marching Cubes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#profiling">Profiling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#interprocess-communication-ipc">Interprocess Communication (IPC)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#lto-cache">LTO Cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#module-management">Module Management</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/functions.html">Built-Ins Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#scalar-types">Scalar Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#vector-types">Vector Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#generic-types">Generic Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#scalar-math">Scalar Math</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#vector-math">Vector Math</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#quaternion-math">Quaternion Math</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#transformations">Transformations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#spatial-math">Spatial Math</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#tile-primitives">Tile Primitives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#utility">Utility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#geometry">Geometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#volumes">Volumes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#random">Random</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#other">Other</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#operators">Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/functions.html#code-generation">Code Generation</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Simulation Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/sparse.html">warp.sparse</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/sparse.html#working-with-sparse-matrices">Working with Sparse Matrices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/sparse.html#iterative-linear-solvers">Iterative Linear Solvers</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/fem.html">warp.fem</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#integrands">Integrands</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#basic-workflow">Basic Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#introductory-examples">Introductory Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#advanced-usages">Advanced Usages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#visualization">Visualization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#operators">Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#integration">Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#geometry">Geometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#function-spaces">Function Spaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#fields">Fields</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#boundary-conditions">Boundary Conditions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#id3">Adaptivity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#id4">Memory Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/fem.html#interfaces">Interfaces</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/render.html">warp.render</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/render.html#standalone-renderers">Standalone Renderers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/render.html#cuda-graphics-interface">CUDA Graphics Interface</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+</div>
+<p><a class="reference internal" href="genindex.html"><span class="std std-ref">Full Index</span></a></p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="right-next"
+       href="installation.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Installation</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quickstart">Quickstart</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tutorial-notebooks">Tutorial Notebooks</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#additional-examples">Additional Examples</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp-examples-core">warp/examples/core</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp-examples-fem">warp/examples/fem</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp-examples-optim">warp/examples/optim</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp-examples-tile">warp/examples/tile</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Omniverse</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#learn-more">Learn More</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#support">Support</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#versioning">Versioning</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#license">License</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contributing">Contributing</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#publications-citation">Publications &amp; Citation</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#research-using-warp">Research Using Warp</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#citing-warp">Citing Warp</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#full-table-of-contents">Full Table of Contents</a><ul class="nav section-nav flex-column">
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/v1.10.0/docs/index.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2025 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>
