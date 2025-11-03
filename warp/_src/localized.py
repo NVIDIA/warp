@@ -1062,6 +1062,9 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
     else:
         # 1D case
         global_shape = (tile_shape * tile_dim[0],)
+    
+    # Store the logical shape (for structured types, this is different from CuPy array shape)
+    logical_shape = global_shape
 
     print(f"\n{'=' * 60}")
     print("TILED TENSOR ALLOCATION")
@@ -1085,6 +1088,11 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
     print(f"Total footprint:  {footprint_bytes} bytes ({footprint_bytes / (1024**2):.2f} MB)")
     print(f"Number of pages:  {num_pages}")
     print()
+    
+    # For structured types, adjust the CuPy array shape to be in bytes
+    if is_structured_type:
+        # CuPy array will be 1D bytes, warp array will have the logical_shape
+        global_shape = (footprint_bytes,)
 
     # Determine page ownership using partition_desc.get_element_owner
     print("Computing page ownership...")
@@ -1204,7 +1212,11 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
         from cupy.cuda import memory
 
         memptr = memory.malloc_managed(footprint_bytes)
-        cupy_arr = cp.ndarray(global_shape, dtype=cp_dtype, memptr=memptr)
+        if is_structured_type:
+            # For structured types, create 1D byte array
+            cupy_arr = cp.ndarray((footprint_bytes,), dtype=cp.uint8, memptr=memptr)
+        else:
+            cupy_arr = cp.ndarray(global_shape, dtype=cp_dtype, memptr=memptr)
         print(f"✓ Allocated {footprint_bytes} bytes on managed memory")
         return cupy_arr
 
@@ -1222,8 +1234,14 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
         if buffer.nbytes == footprint_bytes and len(vmm_allocations) == 1:
             # Single allocation with correct size, reinterpret bytes as dtype then reshape
             # buffer is uint8, so we need to view it as the target dtype first
-            cupy_arr = buffer.view(cp_dtype).reshape(global_shape)
-            print(f"✓ Using allocated cupy array with shape {global_shape}")
+            if is_structured_type:
+                # For structured types, just return the 1D byte array as-is
+                # The caller will create the warp array with the correct logical shape
+                cupy_arr = buffer  # Already uint8, no need to view/reshape
+            else:
+                # For scalar types, view and reshape to the target shape
+                cupy_arr = buffer.view(cp_dtype).reshape(global_shape)
+            print(f"✓ Using allocated cupy array with shape {cupy_arr.shape}")
             print(f"{'=' * 60}")
             print()
             return cupy_arr
@@ -1234,9 +1252,13 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
     from cupy.cuda import memory
 
     memptr = memory.malloc_managed(footprint_bytes)
-    cupy_arr = cp.ndarray(global_shape, dtype=cp_dtype, memptr=memptr)
+    if is_structured_type:
+        # For structured types, create 1D byte array
+        cupy_arr = cp.ndarray((footprint_bytes,), dtype=cp.uint8, memptr=memptr)
+    else:
+        cupy_arr = cp.ndarray(global_shape, dtype=cp_dtype, memptr=memptr)
 
-    print(f"✓ Created cupy array with shape {global_shape}")
+    print(f"✓ Created cupy array with shape {cupy_arr.shape}")
     print(f"{'=' * 60}")
     print()
 
