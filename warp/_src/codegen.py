@@ -637,8 +637,11 @@ def is_reference(type: Any) -> builtins.bool:
 def strip_reference(arg: Any) -> Any:
     if is_reference(arg):
         return arg.value_type
-    else:
-        return arg
+
+    if isinstance(arg, Sequence):
+        return tuple(strip_reference(x) for x in arg)
+
+    return arg
 
 
 def compute_type_str(base_name, template_params):

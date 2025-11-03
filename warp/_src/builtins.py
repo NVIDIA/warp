@@ -491,11 +491,10 @@ def scalar_infer_type(arg_types: Mapping[str, type] | tuple[type, ...] | None):
 
     scalar_types = set()
     for t in arg_types:
-        t_val = strip_reference(t)
-        if hasattr(t_val, "_wp_scalar_type_"):
-            scalar_types.add(t_val._wp_scalar_type_)
-        elif t_val in scalar_and_bool_types:
-            scalar_types.add(t_val)
+        if hasattr(t, "_wp_scalar_type_"):
+            scalar_types.add(t._wp_scalar_type_)
+        elif t in scalar_and_bool_types:
+            scalar_types.add(t)
 
     if len(scalar_types) > 1:
         raise RuntimeError(
@@ -898,7 +897,7 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
         if dtype is None:
             dtype = float32
     elif variadic_arg_count == 1:
-        value_type = strip_reference(variadic_arg_types[0])
+        value_type = variadic_arg_types[0]
         if type_is_vector(value_type):
             # Copy constructor, e.g.: `wp.vecXX(other_vec)`, `wp.vector(other_vec)`.
             if length is None:
@@ -1002,7 +1001,7 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
         if dtype is None:
             dtype = float32
     elif variadic_arg_count == 1:
-        value_type = strip_reference(variadic_arg_types[0])
+        value_type = variadic_arg_types[0]
         if type_is_matrix(value_type):
             # Copy constructor, e.g.: `wp.matXX(other_mat)`, `wp.matrix(other_mat)`.
             if shape is None:
@@ -1695,7 +1694,7 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
     elif variadic_arg_count == 1:
         # Initialization by filling a value, e.g.: `wp.transform(123)`,
         # `wp.transformation(123)`.
-        value_type = strip_reference(variadic_arg_types[0])
+        value_type = variadic_arg_types[0]
         if dtype is None:
             dtype = value_type
         elif not warp._src.types.scalars_equal(value_type, dtype):

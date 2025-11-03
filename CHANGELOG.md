@@ -1,5 +1,28 @@
 # Changelog
 
+## [Unreleased] - 2025-??
+
+### Added
+
+- Add tiled query functions for thread-block parallel traversal in tiled kernels using cooperative thread-block
+  traversal for improved performance on CUDA devices ([GH-1005](https://github.com/NVIDIA/warp/issues/1005)):
+  - BVH queries: `wp.bvh_query_aabb_tiled()`, `wp.bvh_query_ray_tiled()`, and `wp.bvh_query_next_tiled()`
+  - Mesh queries: `wp.mesh_query_aabb_tiled()` and `wp.mesh_query_aabb_next_tiled()`
+  - Aliases with `tile_*` prefix are also available for all functions.
+- Add alpha and beta scalings to `wp.tile_matmul()` ([GH-1023](https://github.com/NVIDIA/warp/pull/1023)).
+
+### Removed
+
+### Deprecated
+
+### Changed
+
+### Fixed
+
+- Fix atomic floating-point min/max operations not returning the old value ([GH-1058](https://github.com/NVIDIA/warp/issues/1058)).
+- Fix type inference errors when passing reference arguments (such as array elements) to built-in functions
+  ([GH-1071](https://github.com/NVIDIA/warp/issues/1071)).
+
 ## [1.10.0] - 2025-11-02
 
 ### Added
