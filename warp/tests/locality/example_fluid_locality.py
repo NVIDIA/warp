@@ -192,23 +192,23 @@ class Example:
         self.policy = wp.blocked()
 
 
-        # Using managed memory for better multi-device accessibility
-        # self.u0 = wp.zeros_managed(shape, dtype=wp.vec2)
-        # self.u1 = wp.zeros_managed(shape, dtype=wp.vec2)
-        self.u0 = wp.zeros_tiled(shape, tile_dim=(1,1), dtype=wp.vec2, partition_desc=self.policy, streams=self.streams)
-        self.u1 = wp.zeros_tiled(shape, tile_dim=(1,1), dtype=wp.vec2, partition_desc=self.policy, streams=self.streams)
+        # Using localized memory for better multi-device accessibility
+        # self.u0 = wp.zeros_managed(shape, dtype=wp.vec2)
+        # self.u1 = wp.zeros_managed(shape, dtype=wp.vec2)
+        self.u0 = wp.zeros_localized(shape, dtype=wp.vec2, partition_desc=self.policy, streams=self.streams)
+        self.u1 = wp.zeros_localized(shape, dtype=wp.vec2, partition_desc=self.policy, streams=self.streams)
 
-        # self.rho0 = wp.zeros_managed(shape, dtype=float)
-        # self.rho1 = wp.zeros_managed(shape, dtype=float)
-        self.rho0 = wp.zeros_tiled(shape, tile_dim=(1,1), dtype=wp.float32, partition_desc=self.policy, streams=self.streams)
-        self.rho1 = wp.zeros_tiled(shape, tile_dim=(1,1), dtype=wp.float32, partition_desc=self.policy, streams=self.streams)
+        # self.rho0 = wp.zeros_managed(shape, dtype=float)
+        # self.rho1 = wp.zeros_managed(shape, dtype=float)
+        self.rho0 = wp.zeros_localized(shape, dtype=wp.float32, partition_desc=self.policy, streams=self.streams)
+        self.rho1 = wp.zeros_localized(shape, dtype=wp.float32, partition_desc=self.policy, streams=self.streams)
 
-        # self.p0 = wp.zeros_managed(shape, dtype=float)
-        # self.p1 = wp.zeros_managed(shape, dtype=float)
-        # self.div = wp.zeros_managed(shape, dtype=float)
-        self.p0 = wp.zeros_tiled(shape, tile_dim=(1,1), dtype=wp.float32, partition_desc=self.policy, streams=self.streams)
-        self.p1 = wp.zeros_tiled(shape, tile_dim=(1,1), dtype=wp.float32, partition_desc=self.policy, streams=self.streams)
-        self.div = wp.zeros_tiled(shape, tile_dim=(1,1), dtype=wp.float32, partition_desc=self.policy, streams=self.streams)
+        # self.p0 = wp.zeros_managed(shape, dtype=float)
+        # self.p1 = wp.zeros_managed(shape, dtype=float)
+        # self.div = wp.zeros_managed(shape, dtype=float)
+        self.p0 = wp.zeros_localized(shape, dtype=wp.float32, partition_desc=self.policy, streams=self.streams)
+        self.p1 = wp.zeros_localized(shape, dtype=wp.float32, partition_desc=self.policy, streams=self.streams)
+        self.div = wp.zeros_localized(shape, dtype=wp.float32, partition_desc=self.policy, streams=self.streams)
 
         # capture pressure solve as a CUDA graph
         self.use_cuda_graph = wp.get_device().is_cuda

@@ -53,9 +53,9 @@ if ndevices == 0:
 
 streams = [get_stream(f"cuda:{i % ndevices}") for i in range(len(result.offsets))]
 
-A = wp.empty_tiled((M, K), tile_dim=(TILE_M, TILE_K), partition_desc=result, streams=streams, dtype=wp.float32)
-B = wp.empty_tiled((K, N), tile_dim=(TILE_K, TILE_N), partition_desc=result, streams=streams, dtype=wp.float32)
-C = wp.empty_tiled((M, N), tile_dim=(TILE_M, TILE_N), partition_desc=result, streams=streams, dtype=wp.float32)
+A = wp.empty_localized((M, K), tile_dim=(TILE_M, TILE_K), partition_desc=result, streams=streams, dtype=wp.float32)
+B = wp.empty_localized((K, N), tile_dim=(TILE_K, TILE_N), partition_desc=result, streams=streams, dtype=wp.float32)
+C = wp.empty_localized((M, N), tile_dim=(TILE_M, TILE_N), partition_desc=result, streams=streams, dtype=wp.float32)
 
 # launch kernel with 128 threads per-block
 wp.launch_tiled_localized(

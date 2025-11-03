@@ -1265,47 +1265,51 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
     return cupy_arr
 
 
-def empty_tiled(shape, tile_dim, partition_desc, streams, dtype=float, page_size_bytes=2 * 1024 * 1024):
+def empty_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, page_size_bytes=2 * 1024 * 1024):
     """
-    Allocate an uninitialized tiled tensor with localized memory placement.
+    Allocate an uninitialized array with localized memory placement across devices.
 
-    This is a convenience wrapper around allocate_tiled_tensor that returns a warp array
-    directly, providing a more idiomatic interface similar to wp.empty().
+    This function allocates memory distributed across multiple devices using CUDA VMM,
+    with page-based locality for optimal multi-GPU performance.
 
     Args:
-        shape: Global shape of the tensor in elements (e.g., (8192, 8192))
-        tile_dim: Shape of each tile (e.g., (64, 64))
+        shape: Global shape of the array in elements (e.g., (8192, 8192))
         partition_desc: Either a PartitionDesc object or a policy function (dim, streams) -> PartitionDesc
         streams: List of CUDA streams, one per place
         dtype: Data type (default: float)
+        tile_dim: Shape of each tile (default: None, which means element-level distribution with all 1s)
         page_size_bytes: Size of each memory page (default 2MB)
 
     Returns:
         warp.array with the allocated memory (uninitialized)
 
     Examples:
-        # Direct mode with PartitionDesc
-        result = wp.blocked(dim=(128, 128), places=8)
-        streams = [wp.Stream(f"cuda:{i}") for i in range(len(result.offsets))]
-        arr = wp.empty_tiled(
-            shape=(8192, 8192),
-            tile_dim=(64, 64),
-            partition_desc=result,
-            streams=streams,
-            dtype=float
-        )
-
-        # Policy mode (new)
+        # Element-level distribution (default)
         policy = wp.blocked()
         streams = [wp.Stream(f"cuda:{i}") for i in range(8)]
-        arr = wp.empty_tiled(
+        arr = wp.empty_localized(
             shape=(8192, 8192),
-            tile_dim=(64, 64),
             partition_desc=policy,
             streams=streams,
             dtype=float
         )
+
+        # With explicit tile size for coarser-grained distribution
+        arr = wp.empty_localized(
+            shape=(8192, 8192),
+            tile_dim=(64, 64),
+            partition_desc=policy,
+            streams=streams,
+            dtype=wp.vec2
+        )
     """
+    # Default tile_dim to all 1s if not specified (element-level distribution)
+    if tile_dim is None:
+        if isinstance(shape, (list, tuple)):
+            tile_dim = tuple(1 for _ in shape)
+        else:
+            tile_dim = (1,)
+    
     # Compute tile shape from global shape and tile dimensions
     if isinstance(shape, (list, tuple)) and isinstance(tile_dim, (list, tuple)):
         tile_shape = tuple(s // td for s, td in zip(shape, tile_dim))
@@ -1361,47 +1365,51 @@ def empty_tiled(shape, tile_dim, partition_desc, streams, dtype=float, page_size
         return arr
 
 
-def zeros_tiled(shape, tile_dim, partition_desc, streams, dtype=float, page_size_bytes=2 * 1024 * 1024):
+def zeros_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, page_size_bytes=2 * 1024 * 1024):
     """
-    Allocate a zero-initialized tiled tensor with localized memory placement.
+    Allocate a zero-initialized array with localized memory placement across devices.
 
-    This is a convenience wrapper around allocate_tiled_tensor that returns a warp array
-    initialized to zero, providing a more idiomatic interface similar to wp.zeros().
+    This function allocates memory distributed across multiple devices using CUDA VMM,
+    with page-based locality for optimal multi-GPU performance.
 
     Args:
-        shape: Global shape of the tensor in elements (e.g., (8192, 8192))
-        tile_dim: Shape of each tile (e.g., (64, 64))
+        shape: Global shape of the array in elements (e.g., (8192, 8192))
         partition_desc: Either a PartitionDesc object or a policy function (dim, streams) -> PartitionDesc
         streams: List of CUDA streams, one per place
         dtype: Data type (default: float)
+        tile_dim: Shape of each tile (default: None, which means element-level distribution with all 1s)
         page_size_bytes: Size of each memory page (default 2MB)
 
     Returns:
         warp.array with the allocated memory (initialized to zero)
 
     Examples:
-        # Direct mode with PartitionDesc
-        result = wp.blocked(dim=(128, 128), places=8)
-        streams = [wp.Stream(f"cuda:{i}") for i in range(len(result.offsets))]
-        arr = wp.zeros_tiled(
-            shape=(8192, 8192),
-            tile_dim=(64, 64),
-            partition_desc=result,
-            streams=streams,
-            dtype=float
-        )
-
-        # Policy mode (new)
+        # Element-level distribution (default)
         policy = wp.blocked()
         streams = [wp.Stream(f"cuda:{i}") for i in range(8)]
-        arr = wp.zeros_tiled(
+        arr = wp.zeros_localized(
             shape=(8192, 8192),
-            tile_dim=(64, 64),
             partition_desc=policy,
             streams=streams,
             dtype=float
         )
+
+        # With explicit tile size for coarser-grained distribution
+        arr = wp.zeros_localized(
+            shape=(8192, 8192),
+            tile_dim=(64, 64),
+            partition_desc=policy,
+            streams=streams,
+            dtype=wp.vec2
+        )
     """
+    # Default tile_dim to all 1s if not specified (element-level distribution)
+    if tile_dim is None:
+        if isinstance(shape, (list, tuple)):
+            tile_dim = tuple(1 for _ in shape)
+        else:
+            tile_dim = (1,)
+    
     # Compute tile shape from global shape and tile dimensions
     if isinstance(shape, (list, tuple)) and isinstance(tile_dim, (list, tuple)):
         tile_shape = tuple(s // td for s, td in zip(shape, tile_dim))

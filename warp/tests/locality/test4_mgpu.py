@@ -2,6 +2,7 @@ import time
 
 import cupy as cp
 import numpy as np
+from cupy.cuda import memory
 
 import warp as wp
 
@@ -69,7 +70,6 @@ result = wp.blocked(dim=(nx // BLOCKSIZE, ny // BLOCKSIZE), places=nplaces)
 # Create streams for each place, distributed across devices
 streams = [get_stream(f"cuda:{i % ndevices}") for i in range(len(result.offsets))]
 
-# Using the new helper functions for managed memory - much simpler!
 managedA = wp.zeros_managed((nx, ny), dtype=float)
 managedC = wp.zeros_managed((nx, ny), dtype=float)
 
@@ -100,11 +100,11 @@ for iter in range(5):
 wp.synchronize_stream(get_stream("cuda:0"))
 time.sleep(0.05)
 
-localizedC = wp.empty_tiled(
+localizedC = wp.empty_localized(
     shape=(nx, ny), tile_dim=(BLOCKSIZE, BLOCKSIZE), partition_desc=result, streams=streams, dtype=dtype
 )
 
-localizedA = wp.empty_tiled(
+localizedA = wp.empty_localized(
     shape=(nx, ny), tile_dim=(BLOCKSIZE, BLOCKSIZE), partition_desc=result, streams=streams, dtype=dtype
 )
 

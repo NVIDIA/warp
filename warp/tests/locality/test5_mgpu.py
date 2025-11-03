@@ -114,11 +114,11 @@ for iter in range(10):
 wp.synchronize_stream(get_stream("cuda:0"))
 time.sleep(0.05)
 
-localizedC = wp.empty_tiled(
+localizedC = wp.empty_localized(
     shape=(nx, ny), tile_dim=(BLOCKSIZE, BLOCKSIZE), partition_desc=policy, streams=streams, dtype=dtype
 )
 
-localizedA = wp.empty_tiled(
+localizedA = wp.empty_localized(
     shape=(nx, ny), tile_dim=(BLOCKSIZE, BLOCKSIZE), partition_desc=policy, streams=streams, dtype=dtype
 )
 
