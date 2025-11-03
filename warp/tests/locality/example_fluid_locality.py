@@ -198,8 +198,8 @@ class Example:
         self.div = wp.zeros_managed(shape, dtype=float)
 
         # create a stream for each device
-        # self.streams = [wp.Stream(device=f"cuda:{i}") for i in range(wp.get_cuda_device_count())]
-        self.streams = [wp.Stream(device=f"cuda:{0}") for i in range(4)]
+        self.streams = [wp.Stream(device=f"cuda:{i}") for i in range(wp.get_cuda_device_count())]
+        # self.streams = [wp.Stream(device=f"cuda:{0}") for i in range(4)]
         self.policy = wp.blocked()
 
         # capture pressure solve as a CUDA graph
