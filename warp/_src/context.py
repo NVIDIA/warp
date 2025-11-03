@@ -6229,9 +6229,6 @@ class Launch:
         if self.params_addr:
             self.params_addr[0] = ctypes.c_void_p(ctypes.addressof(self.bounds))
 
-    def set_offset(self, offset: int):
-        self.offset = offset
-
     def set_param_at_index(self, index: int, value: Any, adjoint: bool = False):
         """Set a kernel parameter at an index.
 
