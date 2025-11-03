@@ -1,3 +1,5 @@
+import pytest
+
 import warp as wp
 
 TILE_M = wp.constant(32)
@@ -46,6 +48,9 @@ result = wp.blocked(dim=(M // TILE_M, N // TILE_N), places=8)
 # Localized version: multiple devices, non localized memory (using managed memory)
 
 # Create streams for each place, distributed across devices
+if ndevices == 0:
+    pytest.skip("No CUDA devices available, skipping CUDA-specific test")
+
 streams = [get_stream(f"cuda:{i % ndevices}") for i in range(len(result.offsets))]
 
 A = wp.empty_tiled((M, K), tile_dim=(TILE_M, TILE_K), partition_desc=result, streams=streams, dtype=wp.float32)
