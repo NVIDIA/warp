@@ -16,8 +16,11 @@
 from __future__ import annotations
 
 import concurrent.futures
+import functools
 import os
 import platform
+import re
+import shutil
 import subprocess
 import sys
 import time
@@ -129,12 +132,17 @@ def find_host_compiler():
 
 def get_cuda_toolkit_version(cuda_home) -> tuple[int, int]:
     try:
-        # the toolkit version can be obtained by running "nvcc --version"
-        nvcc_path = os.path.join(cuda_home, "bin", "nvcc")
-        nvcc_version_output = subprocess.check_output([nvcc_path, "--version"]).decode("utf-8")
-        # search for release substring (e.g., "release 11.5")
-        import re
+        # Get nvcc command using intelligent discovery
+        nvcc_cmd = find_nvcc_executable(cuda_home)
 
+        # Remove quotes for subprocess call (subprocess handles paths directly)
+        nvcc_executable = nvcc_cmd.strip('"')
+        if not nvcc_executable:
+            raise ValueError("nvcc command is empty")
+
+        nvcc_version_output = subprocess.check_output([nvcc_executable, "--version"]).decode("utf-8")
+
+        # search for release substring (e.g., "release 11.5")
         m = re.search(r"release (\d+)\.(\d+)", nvcc_version_output)
         if m is not None:
             major, minor = map(int, m.groups())
@@ -145,6 +153,49 @@ def get_cuda_toolkit_version(cuda_home) -> tuple[int, int]:
     except Exception as e:
         print(f"Warning: Failed to determine CUDA Toolkit version: {e}")
         return MIN_CTK_VERSION
+
+
+@functools.lru_cache(maxsize=1)  # Avoid duplicate verbose output when called multiple times per build
+def find_nvcc_executable(cuda_home) -> str:
+    """Find nvcc executable, maintaining consistency with cuda_home.
+
+    Detection order prioritizes consistency between compiler and headers/libs:
+    1. If cuda_home is set → use its nvcc (ensures consistency with headers/libs)
+    2. Otherwise check PATH → use nvcc from PATH (conda, modules, containers)
+    3. Fall back to assuming nvcc in PATH
+
+    This ensures the nvcc compiler version matches the CUDA headers/libraries,
+    preventing compilation failures from version mismatches.
+
+    Args:
+        cuda_home: Path to CUDA installation (may be None). Can come from
+            CUDA_HOME env var, --cuda_path argument, or auto-detection.
+
+    Returns:
+        String command to invoke nvcc (either "nvcc" or quoted full path)
+    """
+    # Determine correct executable name for platform
+    nvcc_name = "nvcc.exe" if os.name == "nt" else "nvcc"
+
+    # First priority: If cuda_home is provided, use its nvcc
+    # This handles CUDA_HOME env var, --cuda_path arg, and ensures consistency
+    if cuda_home:
+        nvcc_path = os.path.join(cuda_home, "bin", nvcc_name)
+        if os.path.exists(nvcc_path):
+            if verbose_cmd:
+                print(f"Using nvcc from cuda_home: {nvcc_path}")
+            return f'"{nvcc_path}"'
+
+    # Second priority: nvcc in PATH (conda, modules, containers)
+    # Note: shutil.which() automatically handles .exe extension on Windows
+    nvcc_in_path = shutil.which("nvcc")
+    if verbose_cmd:
+        if nvcc_in_path:
+            print(f"Using nvcc from PATH: {nvcc_in_path}")
+        else:
+            print("Warning: nvcc not found in PATH or cuda_home, compilation will likely fail")
+
+    return nvcc_name
 
 
 def quote(path):
@@ -407,6 +458,9 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
         if args.fast_math:
             nvcc_opts.append("--use_fast_math")
 
+        # Get nvcc executable (checks PATH first, then CUDA_HOME)
+        nvcc_cmd = find_nvcc_executable(cuda_home)
+
     # is the library being built with CUDA enabled?
     cuda_enabled = "WP_ENABLE_CUDA=1" if (cu_paths is not None) else "WP_ENABLE_CUDA=0"
 
@@ -482,9 +536,9 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                     ]
 
                     if mode == "debug":
-                        cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 --compiler-options=/MT,/Zi,/Od -g -G -O0 -DNDEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -line-info {" ".join(_nvcc_opts)} -DWP_ENABLE_CUDA=1 -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                        cuda_cmd = f'{nvcc_cmd} --std=c++17 --compiler-options=/MT,/Zi,/Od -g -G -O0 -DNDEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -line-info {" ".join(_nvcc_opts)} -DWP_ENABLE_CUDA=1 -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
                     elif mode == "release":
-                        cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 {" ".join(_nvcc_opts)} -I"{native_dir}" -DNDEBUG -DWP_ENABLE_CUDA=1 -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                        cuda_cmd = f'{nvcc_cmd} --std=c++17 -O3 {" ".join(_nvcc_opts)} -I"{native_dir}" -DNDEBUG -DWP_ENABLE_CUDA=1 -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
 
                     cuda_cmds.append(cuda_cmd)
 
@@ -580,9 +634,9 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
 
                     if cuda_compiler == "nvcc":
                         if mode == "debug":
-                            cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(_nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                            cuda_cmd = f'{nvcc_cmd} --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(_nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
                         elif mode == "release":
-                            cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(_nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                            cuda_cmd = f'{nvcc_cmd} --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(_nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
                     else:
                         # Use Clang compiler
                         if mode == "debug":
