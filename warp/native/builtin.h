@@ -1427,6 +1427,9 @@ struct launch_bounds_t
     int shape[LAUNCH_MAX_DIMS]; // size of each dimension
     int ndim;                   // number of valid dimension
     size_t size;                // total number of threads
+    int offset;                 // offset for partitioned launches
+    int partition_size;         // size of the partition
+    int partition_blocks;       // number of blocks in the partition
 };
 
 // represents coordinate in the launch grid

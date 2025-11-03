@@ -381,13 +381,13 @@ class PartitionDesc:
             except ImportError:
                 print("Warning: pycute not available, partition_cute will be None")
 
-        print(f"PartitionDesc: {self}")
-        print(f"  Partition: {self.partition}")
-        print(f"  Offsets: {self.offsets}")
-        print(f"  Block shape: {self.block_shape}")
-        print(f"  Offset layout: {self.offset_layout}")
-        print(f"  Partition cute: {self.partition_cute}")
-        print(f"  Partition inverse cute: {self.partition_inverse_cute}")
+        # print(f"PartitionDesc: {self}")
+        # print(f"  Partition: {self.partition}")
+        # print(f"  Offsets: {self.offsets}")
+        # print(f"  Block shape: {self.block_shape}")
+        # print(f"  Offset layout: {self.offset_layout}")
+        # print(f"  Partition cute: {self.partition_cute}")
+        # print(f"  Partition inverse cute: {self.partition_inverse_cute}")
 
     def __repr__(self) -> str:
         return f"PartitionDesc(partition={self.partition}, offsets={self.offsets[:5]}{'...' if len(self.offsets) > 5 else ''}, block_shape={self.block_shape}, offset_layout={self.offset_layout})"
@@ -1361,6 +1361,125 @@ def zeros_tiled(shape, tile_dim, partition_desc, streams, dtype=float, page_size
     import warp as wp
 
     return wp.from_dlpack(cupy_arr.toDlpack())
+
+
+def launch_localized(
+    kernel, dim, inputs=None, outputs=None, primary_stream=None, mapping=None, streams=None, **kwargs
+):
+    """
+    Launch a kernel across multiple devices with localized data placement.
+
+    This function launches a kernel with work (blocks) distributed according to a partition
+    policy (mapping). Each partition is launched on its corresponding stream/device.
+
+    Args:
+        kernel: The kernel function to launch
+        dim: Tuple or int specifying the launch dimensions (e.g., (1024, 1024) for 1024x1024 threads)
+        inputs: List of input arrays (optional)
+        outputs: List of output arrays (optional)
+        primary_stream: Primary stream for synchronization (default: streams[0])
+        mapping: Either a PartitionDesc object or a policy function (dim, streams) -> PartitionDesc
+        streams: List of streams, one per place in the mapping
+        **kwargs: Additional arguments passed to wp.launch (e.g., block_dim, max_blocks)
+
+    Examples:
+        # Direct mode with PartitionDesc
+        result = wp.blocked(dim=(1024, 1024), places=8)
+        streams = [wp.Stream(f"cuda:{i % ndevices}") for i in range(len(result.offsets))]
+        wp.launch_localized(
+            kernel=my_kernel,
+            dim=(1024, 1024),
+            inputs=[A],
+            outputs=[C],
+            mapping=result,
+            streams=streams
+        )
+
+        # Policy mode
+        policy = wp.blocked()
+        streams = [wp.Stream(f"cuda:{i % ndevices}") for i in range(8)]
+        wp.launch_localized(
+            kernel=my_kernel,
+            dim=(1024, 1024),
+            inputs=[A],
+            outputs=[C],
+            mapping=policy,
+            streams=streams
+        )
+    """
+    import warp as wp
+
+    if mapping is None:
+        raise ValueError("mapping (PartitionDesc or policy function) must be provided")
+    if streams is None:
+        raise ValueError("streams must be provided")
+
+    # Get block_dim from kwargs (default 256)
+    block_dim_kwarg = kwargs.get('block_dim', 256)
+    
+    # Convert thread dimensions to block dimensions for partitioning
+    # For launch_localized, we partition CUDA blocks, not threads
+    # CUDA grids are always 1D (even for multi-dimensional thread launches)
+    if isinstance(dim, int):
+        total_threads = dim
+    else:
+        # Compute total threads across all dimensions
+        total_threads = 1
+        for d in dim:
+            total_threads *= d
+    
+    # Compute the number of 1D blocks needed
+    total_blocks = (total_threads + block_dim_kwarg - 1) // block_dim_kwarg
+    
+    # If mapping is a callable (policy function), call it with 1D block count
+    # The partition distributes the 1D block grid across streams/devices
+    if callable(mapping):
+        mapping = mapping(dim=(total_blocks,), streams=streams)
+
+    # Default primary stream to first stream
+    if primary_stream is None:
+        primary_stream = streams[0]
+
+    # Ensure inputs and outputs are lists, not None
+    if inputs is None:
+        inputs = []
+    if outputs is None:
+        outputs = []
+
+    # Validate that we have the right number of streams
+    if len(streams) != len(mapping.offsets):
+        raise ValueError(f"Number of streams ({len(streams)}) must match number of places ({len(mapping.offsets)})")
+
+    # Step 1: Record event on primary stream
+    e0 = wp.Event(device=primary_stream.device)
+    primary_stream.record_event(e0)
+
+    # Step 2: All other streams wait for primary
+    for stream in streams:
+        if stream != primary_stream:
+            stream.wait_event(e0)
+
+    # Step 3: Launch kernels on all places in parallel
+    for place_idx, offset in enumerate(mapping.offsets):
+        stream = streams[place_idx]
+
+        wp.launch(
+            kernel,
+            dim=dim,
+            inputs=inputs,
+            outputs=outputs,
+            partition=mapping.partition,
+            offset=offset,
+            stream=stream,
+            **kwargs,
+        )
+
+    # Step 4-5: Other streams signal completion, primary waits
+    for stream in streams:
+        if stream != primary_stream:
+            ei = wp.Event(device=stream.device)
+            stream.record_event(ei)
+            primary_stream.wait_event(ei)
 
 
 def launch_tiled_localized(
