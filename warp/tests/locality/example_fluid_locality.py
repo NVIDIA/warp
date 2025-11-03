@@ -26,9 +26,8 @@ import math
 import warp as wp
 import warp.render
 
-grid_width = wp.constant(256)
-grid_height = wp.constant(128)
-
+grid_width = wp.constant(256 * 64)
+grid_height = wp.constant(128 * 64)
 
 @wp.func
 def lookup_float(f: wp.array2d(dtype=float), x: int, y: int):
@@ -191,28 +190,19 @@ class Example:
         # self.streams = [wp.Stream(device=f"cuda:{0}") for i in range(4)]
         self.policy = wp.blocked()
 
-
         # Using localized memory for better multi-device accessibility
-        # self.u0 = wp.zeros_managed(shape, dtype=wp.vec2)
-        # self.u1 = wp.zeros_managed(shape, dtype=wp.vec2)
         self.u0 = wp.zeros_localized(shape, dtype=wp.vec2, partition_desc=self.policy, streams=self.streams)
         self.u1 = wp.zeros_localized(shape, dtype=wp.vec2, partition_desc=self.policy, streams=self.streams)
 
-        # self.rho0 = wp.zeros_managed(shape, dtype=float)
-        # self.rho1 = wp.zeros_managed(shape, dtype=float)
-        self.rho0 = wp.zeros_localized(shape, dtype=wp.float32, partition_desc=self.policy, streams=self.streams)
-        self.rho1 = wp.zeros_localized(shape, dtype=wp.float32, partition_desc=self.policy, streams=self.streams)
+        self.rho0 = wp.zeros_localized(shape, dtype=float, partition_desc=self.policy, streams=self.streams)
+        self.rho1 = wp.zeros_localized(shape, dtype=float, partition_desc=self.policy, streams=self.streams)
 
-        # self.p0 = wp.zeros_managed(shape, dtype=float)
-        # self.p1 = wp.zeros_managed(shape, dtype=float)
-        # self.div = wp.zeros_managed(shape, dtype=float)
-        self.p0 = wp.zeros_localized(shape, dtype=wp.float32, partition_desc=self.policy, streams=self.streams)
-        self.p1 = wp.zeros_localized(shape, dtype=wp.float32, partition_desc=self.policy, streams=self.streams)
-        self.div = wp.zeros_localized(shape, dtype=wp.float32, partition_desc=self.policy, streams=self.streams)
+        self.p0 = wp.zeros_localized(shape, dtype=float, partition_desc=self.policy, streams=self.streams)
+        self.p1 = wp.zeros_localized(shape, dtype=float, partition_desc=self.policy, streams=self.streams)
+        self.div = wp.zeros_localized(shape, dtype=float, partition_desc=self.policy, streams=self.streams)
 
         # capture pressure solve as a CUDA graph
         self.use_cuda_graph = wp.get_device().is_cuda
-        self.use_cuda_graph=True
         if self.use_cuda_graph:
             with wp.ScopedCapture(stream=self.streams[0]) as capture:
                 print("Capture pressure_iterations()")
