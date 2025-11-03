@@ -391,6 +391,11 @@ def main(argv: list[str] | None = None) -> int:
             if not args.host_compiler:
                 print("Warp build error: Could not find MSVC compiler")
                 return 1
+    else:
+        args.host_compiler = build_dll.find_host_compiler()
+        if not args.host_compiler:
+            print("Warp build error: Could not find C++ compiler")
+            return 1
 
     try:
         # Handle CI nightly builds (returns updated version string if triggered, else None)
