@@ -28,6 +28,7 @@
 
 import math
 import os
+import sys
 
 import numpy as np
 
@@ -39,6 +40,14 @@ try:
     from PIL import Image
 except ImportError as err:
     raise ImportError("This example requires the Pillow package. Please install it with 'pip install Pillow'.") from err
+
+try:
+    import matplotlib
+    import matplotlib.pyplot as plt
+
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
 
 
 N_GRID = wp.constant(512)
@@ -433,6 +442,25 @@ if __name__ == "__main__":
 
     args = parser.parse_known_args()[0]
 
+    # Check visualization availability early (before training) so user can cancel if needed
+    can_visualize = False
+    if not args.headless:
+        if not MATPLOTLIB_AVAILABLE:
+            print(
+                "Warning: matplotlib not found. Skipping visualization. "
+                "Install matplotlib to enable visualization: pip install matplotlib",
+                file=sys.stderr,
+            )
+        # matplotlib is available, check if backend supports interactive display
+        elif matplotlib.get_backend().lower() == "agg":
+            print(
+                "Warning: No interactive matplotlib backend available. Skipping visualization. "
+                "Install python3-tk (Linux) or PySide6 to enable visualization.",
+                file=sys.stderr,
+            )
+        else:
+            can_visualize = True
+
     with wp.ScopedDevice(args.device):
         example = Example(sim_steps=args.num_frames)
 
@@ -463,10 +491,8 @@ if __name__ == "__main__":
 
             print(f"Iteration {train_iter:05d} loss: {example.loss.numpy()[0]:.6f}")
 
-        if not args.headless:
-            import matplotlib
-            import matplotlib.pyplot as plt
-
+        # Visualization
+        if can_visualize:
             if matplotlib.rcParams["figure.raise_window"]:
                 matplotlib.rcParams["figure.raise_window"] = False
 
