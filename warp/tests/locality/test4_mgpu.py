@@ -2,7 +2,6 @@ import time
 
 import cupy as cp
 import numpy as np
-from cupy.cuda import memory
 
 import warp as wp
 
@@ -70,13 +69,18 @@ result = wp.blocked(dim=(nx // BLOCKSIZE, ny // BLOCKSIZE), places=nplaces)
 # Create streams for each place, distributed across devices
 streams = [get_stream(f"cuda:{i % ndevices}") for i in range(len(result.offsets))]
 
-memptr = memory.malloc_managed(nbytes)
-cupy_arr = cp.ndarray((nx, ny), dtype=dtype, memptr=memptr)
-managedA = wp.from_dlpack(cupy_arr.toDlpack())
+# Using the new helper functions for managed memory - much simpler!
+managedA = wp.zeros_managed((nx, ny), dtype=float)
+managedC = wp.zeros_managed((nx, ny), dtype=float)
 
-memptrC = memory.malloc_managed(nbytes)
-cupy_arrC = cp.ndarray((nx, ny), dtype=dtype, memptr=memptrC)
-managedC = wp.from_dlpack(cupy_arrC.toDlpack())
+# Old way (kept for reference):
+# memptr = memory.malloc_managed(nbytes)
+# cupy_arr = cp.ndarray((nx, ny), dtype=dtype, memptr=memptr)
+# managedA = wp.from_dlpack(cupy_arr.toDlpack())
+#
+# memptrC = memory.malloc_managed(nbytes)
+# cupy_arrC = cp.ndarray((nx, ny), dtype=dtype, memptr=memptrC)
+# managedC = wp.from_dlpack(cupy_arrC.toDlpack())
 
 wp.launch(range_fill_kernel, dim=(nx, ny), outputs=[managedA], device="cuda:0", block_dim=32)
 

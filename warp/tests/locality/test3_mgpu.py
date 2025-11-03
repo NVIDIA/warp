@@ -1,6 +1,5 @@
 import cupy as cp
 import numpy as np
-from cupy.cuda import memory
 
 import warp as wp
 
@@ -33,10 +32,13 @@ def get_stream(device_name: str):
 dtype = cp.float32  # or cp.float64, but must match wp dtype
 nbytes = nx * ny * cp.dtype(dtype).itemsize
 
-memptr = memory.malloc_managed(nbytes)
+# Using the new helper function for managed memory
+A = wp.empty_managed((nx, ny), dtype=float)
 
-cupy_arr = cp.ndarray((nx, ny), dtype=dtype, memptr=memptr)
-A = wp.from_dlpack(cupy_arr.toDlpack())
+# Old way (kept for reference):
+# memptr = memory.malloc_managed(nbytes)
+# cupy_arr = cp.ndarray((nx, ny), dtype=dtype, memptr=memptr)
+# A = wp.from_dlpack(cupy_arr.toDlpack())
 
 
 @wp.kernel
@@ -62,9 +64,13 @@ print(
 result = wp.blocked(dim=(nx // BLOCKSIZE, ny // BLOCKSIZE), places=nplaces)
 
 for iter in range(10):
-    memptrC = memory.malloc_managed(nbytes)
-    cupy_arrC = cp.ndarray((nx, ny), dtype=dtype, memptr=memptrC)
-    C = wp.from_dlpack(cupy_arrC.toDlpack())
+    # Using the new helper function for managed memory
+    C = wp.empty_managed((nx, ny), dtype=float)
+
+    # Old way:
+    # memptrC = memory.malloc_managed(nbytes)
+    # cupy_arrC = cp.ndarray((nx, ny), dtype=dtype, memptr=memptrC)
+    # C = wp.from_dlpack(cupy_arrC.toDlpack())
 
     e0 = wp.Event(device="cuda:0")
     get_stream("cuda:0").record_event(e0)

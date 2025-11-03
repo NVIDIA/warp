@@ -1007,24 +1007,41 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
     """
     import cupy as cp
     import numpy as np
+    import warp as wp
 
-    # Convert dtype to numpy dtype
-    from warp.types import dtype_to_numpy
+    # Map warp dtype to CuPy dtype for scalar types (similar to empty_managed)
+    dtype_map = {
+        float: cp.float32,
+        wp.float32: cp.float32,
+        wp.float64: cp.float64,
+        int: cp.int32,
+        wp.int32: cp.int32,
+        wp.int64: cp.int64,
+        wp.uint32: cp.uint32,
+        wp.uint64: cp.uint64,
+    }
 
-    if isinstance(dtype, str):
+    # Convert dtype to CuPy dtype
+    is_structured_type = False
+    if dtype in dtype_map:
+        cp_dtype = dtype_map[dtype]
+        np_dtype = cp.dtype(cp_dtype)
+        elem_size_bytes = np_dtype.itemsize
+    elif isinstance(dtype, str):
+        cp_dtype = dtype  # String dtype
         np_dtype = np.dtype(dtype)
-    elif isinstance(dtype, type):
-        # Check if it's a Warp type by checking the module
-        if hasattr(dtype, "__module__") and dtype.__module__ == "warp.types":
-            # It's a Warp type, convert it
-            np_dtype = np.dtype(dtype_to_numpy(dtype))
-        else:
-            # Assume it's a numpy type
-            np_dtype = np.dtype(dtype)
+        elem_size_bytes = np_dtype.itemsize
     else:
-        np_dtype = dtype
-
-    elem_size_bytes = np_dtype.itemsize
+        # Structured type (vec2, vec3, mat22, etc.)
+        # CuPy can't handle Warp's structured types, so allocate as bytes
+        is_structured_type = True
+        try:
+            elem_size_bytes = wp.types.type_size_in_bytes(dtype)
+        except:
+            raise ValueError(f"Cannot determine size for dtype {dtype}")
+        # Allocate as uint8 (bytes) and let the wrapper create the proper warp array
+        cp_dtype = cp.uint8
+        np_dtype = cp.dtype(cp.uint8)
 
     # Validate partition_desc has the necessary fields
     if partition_desc.partition_cute is None or partition_desc.offset_layout is None:
@@ -1187,7 +1204,7 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
         from cupy.cuda import memory
 
         memptr = memory.malloc_managed(footprint_bytes)
-        cupy_arr = cp.ndarray(global_shape, dtype=np_dtype, memptr=memptr)
+        cupy_arr = cp.ndarray(global_shape, dtype=cp_dtype, memptr=memptr)
         print(f"✓ Allocated {footprint_bytes} bytes on managed memory")
         return cupy_arr
 
@@ -1205,7 +1222,7 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
         if buffer.nbytes == footprint_bytes and len(vmm_allocations) == 1:
             # Single allocation with correct size, reinterpret bytes as dtype then reshape
             # buffer is uint8, so we need to view it as the target dtype first
-            cupy_arr = buffer.view(np_dtype).reshape(global_shape)
+            cupy_arr = buffer.view(cp_dtype).reshape(global_shape)
             print(f"✓ Using allocated cupy array with shape {global_shape}")
             print(f"{'=' * 60}")
             print()
@@ -1217,7 +1234,7 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
     from cupy.cuda import memory
 
     memptr = memory.malloc_managed(footprint_bytes)
-    cupy_arr = cp.ndarray(global_shape, dtype=np_dtype, memptr=memptr)
+    cupy_arr = cp.ndarray(global_shape, dtype=cp_dtype, memptr=memptr)
 
     print(f"✓ Created cupy array with shape {global_shape}")
     print(f"{'=' * 60}")
@@ -1290,7 +1307,36 @@ def empty_tiled(shape, tile_dim, partition_desc, streams, dtype=float, page_size
     # Convert to warp array
     import warp as wp
 
-    return wp.from_dlpack(cupy_arr.toDlpack())
+    # Check if dtype is a structured type (vec2, vec3, mat22, etc.)
+    # Structured types can't be exported via DLPack
+    dtype_map = {
+        float: wp.float32,
+        wp.float32: wp.float32,
+        wp.float64: wp.float64,
+        int: wp.int32,
+        wp.int32: wp.int32,
+        wp.int64: wp.int64,
+        wp.uint32: wp.uint32,
+        wp.uint64: wp.uint64,
+    }
+    
+    is_scalar_type = dtype in dtype_map
+    
+    if is_scalar_type:
+        # Simple scalar type - use DLPack conversion
+        return wp.from_dlpack(cupy_arr.toDlpack())
+    else:
+        # Structured type (vec2, vec3, mat22, etc.) - create warp array directly from pointer
+        # Get the device from the first stream
+        device = streams[0].device if streams else "cuda:0"
+        
+        # Create warp array directly with the CuPy array's memory pointer
+        arr = wp.array(ptr=cupy_arr.data.ptr, shape=shape, dtype=dtype, device=device, copy=False)
+        
+        # Attach the CuPy array to the warp array to keep it alive
+        arr._cupy_arr = cupy_arr
+        
+        return arr
 
 
 def zeros_tiled(shape, tile_dim, partition_desc, streams, dtype=float, page_size_bytes=2 * 1024 * 1024):
@@ -1360,7 +1406,36 @@ def zeros_tiled(shape, tile_dim, partition_desc, streams, dtype=float, page_size
     # Convert to warp array
     import warp as wp
 
-    return wp.from_dlpack(cupy_arr.toDlpack())
+    # Check if dtype is a structured type (vec2, vec3, mat22, etc.)
+    # Structured types can't be exported via DLPack
+    dtype_map = {
+        float: wp.float32,
+        wp.float32: wp.float32,
+        wp.float64: wp.float64,
+        int: wp.int32,
+        wp.int32: wp.int32,
+        wp.int64: wp.int64,
+        wp.uint32: wp.uint32,
+        wp.uint64: wp.uint64,
+    }
+    
+    is_scalar_type = dtype in dtype_map
+    
+    if is_scalar_type:
+        # Simple scalar type - use DLPack conversion
+        return wp.from_dlpack(cupy_arr.toDlpack())
+    else:
+        # Structured type (vec2, vec3, mat22, etc.) - create warp array directly from pointer
+        # Get the device from the first stream
+        device = streams[0].device if streams else "cuda:0"
+        
+        # Create warp array directly with the CuPy array's memory pointer
+        arr = wp.array(ptr=cupy_arr.data.ptr, shape=shape, dtype=dtype, device=device, copy=False)
+        
+        # Attach the CuPy array to the warp array to keep it alive
+        arr._cupy_arr = cupy_arr
+        
+        return arr
 
 
 def empty_managed(

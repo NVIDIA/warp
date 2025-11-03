@@ -1,7 +1,6 @@
 import time
 
 import cupy as cp
-from cupy.cuda import memory
 
 import warp as wp
 
@@ -81,13 +80,18 @@ policy = wp.blocked()
 nplaces_actual = nplaces  # or could be dynamic
 streams = [get_stream(f"cuda:{i % ndevices}") for i in range(nplaces_actual)]
 
-memptr = memory.malloc_managed(nbytes)
-cupy_arr = cp.ndarray((nx, ny), dtype=dtype, memptr=memptr)
-managedA = wp.from_dlpack(cupy_arr.toDlpack())
+# Using the new helper functions for managed memory - much simpler!
+managedA = wp.zeros_managed((nx, ny), dtype=float)
+managedC = wp.zeros_managed((nx, ny), dtype=float)
 
-memptrC = memory.malloc_managed(nbytes)
-cupy_arrC = cp.ndarray((nx, ny), dtype=dtype, memptr=memptrC)
-managedC = wp.from_dlpack(cupy_arrC.toDlpack())
+# Old way (kept for reference):
+# memptr = memory.malloc_managed(nbytes)
+# cupy_arr = cp.ndarray((nx, ny), dtype=dtype, memptr=memptr)
+# managedA = wp.from_dlpack(cupy_arr.toDlpack())
+#
+# memptrC = memory.malloc_managed(nbytes)
+# cupy_arrC = cp.ndarray((nx, ny), dtype=dtype, memptr=memptrC)
+# managedC = wp.from_dlpack(cupy_arrC.toDlpack())
 
 wp.launch(range_fill_kernel, dim=(nx, ny), outputs=[managedA], device="cuda:0", block_dim=32)
 
@@ -140,7 +144,7 @@ time.sleep(0.05)
 # # Check that C matches refC
 # C_numpy = localizedC.numpy()
 # refC_numpy = refC.numpy()
-# if cp.allclose(C_numpy, refC_numpy):
+# if np.allclose(C_numpy, refC_numpy):
 #     print(f"Iteration {iter}: PASS - C matches refC")
 # else:
 #     print(f"Iteration {iter}: FAIL - C does not match refC")
