@@ -1,6 +1,7 @@
 import time
 
 import cupy as cp
+import numpy as np
 from cupy.cuda import memory
 
 import warp as wp
@@ -121,7 +122,7 @@ time.sleep(0.05)
 # Check that C matches refC
 C_numpy = localizedC.numpy()
 refC_numpy = refC.numpy()
-if cp.allclose(C_numpy, refC_numpy):
+if np.allclose(C_numpy, refC_numpy):
     print(f"Iteration {iter}: PASS - C matches refC")
 else:
     print(f"Iteration {iter}: FAIL - C does not match refC")
