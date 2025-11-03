@@ -56,6 +56,7 @@ import warp
 import warp._src.build
 import warp._src.codegen
 import warp._src.config
+from warp._src.localized import Layout
 from warp._src.types import Array, launch_bounds_t, type_repr
 
 _wp_module_name_ = "warp.context"
@@ -1915,7 +1916,23 @@ class ModuleBuilder:
         if device == "cpu":
             source = warp._src.codegen.cpu_module_header.format(block_dim=self.options["block_dim"]) + source
         else:
-            source = warp._src.codegen.cuda_module_header.format(block_dim=self.options["block_dim"]) + source
+            # Parse partition to extract shape and stride arrays
+            partition_rank, partition_shape, partition_strides = warp._src.localized.parse_cute_partition(
+                self.options["partition"]
+            )
+            partition_shape_str = ", ".join(map(str, partition_shape)) if partition_shape else ""
+            partition_strides_str = ", ".join(map(str, partition_strides)) if partition_strides else ""
+
+            source = (
+                warp._src.codegen.cuda_module_header.format(
+                    block_dim=self.options["block_dim"],
+                    have_partition=self.options["have_partition"],
+                    partition_rank=partition_rank,
+                    partition_shape=partition_shape_str,
+                    partition_strides=partition_strides_str,
+                )
+                + source
+            )
 
         return source
 
@@ -2074,7 +2091,7 @@ class Module:
         # set of device contexts where the build has failed
         self.failed_builds = set()
 
-        # hash data, including the module hash. Module may store multiple hashes (one per block_dim used)
+        # hash data, including the module hash. Module may store multiple hashes (one per block_dim and partition used)
         self.hashers = {}
 
         # LLVM executable modules are identified using strings.  Since it's possible for multiple
@@ -2245,22 +2262,25 @@ class Module:
                 add_ref(arg.type.module)
 
     def hash_module(self) -> bytes:
-        """Get the hash of the module for the current block_dim.
+        """Get the hash of the module for the current block_dim and partition.
 
         This function always creates a new `ModuleHasher` instance and computes the hash.
         """
         # compute latest hash
         block_dim = self.options["block_dim"]
-        self.hashers[block_dim] = ModuleHasher(self)
-        return self.hashers[block_dim].get_module_hash()
+        partition = self.options["partition"]
+        self.hashers[(block_dim, partition)] = ModuleHasher(self)
+        return self.hashers[(block_dim, partition)].get_module_hash()
 
-    def get_module_hash(self, block_dim: int | None = None) -> bytes:
-        """Get the hash of the module for the current block_dim.
+    def get_module_hash(self, block_dim: int | None = None, partition: str | None = None) -> bytes:
+        """Get the hash of the module for the current block_dim and partition.
 
-        If a hash has not been computed for the current block_dim, it will be computed and cached.
+        If a hash has not been computed for the current block_dim/partition, it will be computed and cached.
         """
         if block_dim is None:
             block_dim = self.options["block_dim"]
+        if partition is None:
+            partition = self.options["partition"]
 
         if self.has_unresolved_static_expressions:
             # The module hash currently does not account for unresolved static expressions
@@ -2277,10 +2297,12 @@ class Module:
             self.has_unresolved_static_expressions = False
 
         # compute the hash if needed
-        if block_dim not in self.hashers:
-            self.hashers[block_dim] = ModuleHasher(self)
+        # Use (block_dim, partition) as the key to ensure different partitions get different hashes
+        hasher_key = (block_dim, partition)
+        if hasher_key not in self.hashers:
+            self.hashers[hasher_key] = ModuleHasher(self)
 
-        return self.hashers[block_dim].get_module_hash()
+        return self.hashers[hasher_key].get_module_hash()
 
     def _use_ptx(self, device) -> bool:
         return device.get_cuda_output_format(self.options.get("cuda_output")) == "ptx"
@@ -2535,6 +2557,7 @@ class Module:
         self,
         device,
         block_dim: int | None = None,
+        partition: str | None = None,
         binary_path: os.PathLike | None = None,
         output_arch: int | None = None,
         meta_path: os.PathLike | None = None,
@@ -2545,10 +2568,14 @@ class Module:
         if block_dim is not None:
             self.options["block_dim"] = block_dim
 
+        self.options["have_partition"] = 1 if partition is not None else 0
+        self.options["partition"] = partition
+
         active_block_dim = self.options["block_dim"]
 
         # check if executable module is already loaded and not stale
-        exec = self.execs.get((device.context, active_block_dim))
+        # Include partition in the cache key to avoid reusing modules compiled with different partition settings
+        exec = self.execs.get((device.context, active_block_dim, partition))
         if exec is not None:
             if self.options["strip_hash"] or (exec.module_hash == self.get_module_hash(active_block_dim)):
                 return exec
@@ -2557,7 +2584,7 @@ class Module:
         if device.context in self.failed_builds:
             return None
 
-        module_hash = self.get_module_hash(active_block_dim)
+        module_hash = self.get_module_hash(active_block_dim, partition)
 
         # use a unique module path using the module short hash
         module_name_short = self.get_module_identifier()
@@ -2632,13 +2659,13 @@ class Module:
                 self.cpu_exec_id += 1
                 runtime.llvm.wp_load_obj(binary_path.encode("utf-8"), module_handle.encode("utf-8"))
                 module_exec = ModuleExec(module_handle, module_hash, device, meta)
-                self.execs[(None, active_block_dim)] = module_exec
+                self.execs[(None, active_block_dim, partition)] = module_exec
 
             elif device.is_cuda:
                 cuda_module = warp._src.build.load_cuda(binary_path, device)
                 if cuda_module is not None:
                     module_exec = ModuleExec(cuda_module, module_hash, device, meta)
-                    self.execs[(device.context, active_block_dim)] = module_exec
+                    self.execs[(device.context, active_block_dim, partition)] = module_exec
                 else:
                     module_load_timer.extra_msg = " (error)"
                     raise Exception(f"Failed to load CUDA module '{self.name}'")
@@ -6007,11 +6034,12 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
                     f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with {arg_type.ndim} dimension(s) but the passed array has {value.ndim} dimension(s)."
                 )
 
-            # check device
-            if value.device != device:
-                raise RuntimeError(
-                    f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', but input array for argument '{arg_name}' is on device={value.device}."
-                )
+            # XXX temporarily disabled because this is incompatible with the use of VMM
+            ## check device
+            # if value.device != device:
+            #    raise RuntimeError(
+            #        f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', but input array for argument '{arg_name}' is on device={value.device}."
+            #    )
 
             return value.__ctype__()
 
@@ -6201,6 +6229,9 @@ class Launch:
         if self.params_addr:
             self.params_addr[0] = ctypes.c_void_p(ctypes.addressof(self.bounds))
 
+    def set_offset(self, offset: int):
+        self.offset = offset
+
     def set_param_at_index(self, index: int, value: Any, adjoint: bool = False):
         """Set a kernel parameter at an index.
 
@@ -6345,6 +6376,8 @@ def launch(
     record_cmd: bool = False,
     max_blocks: int = 0,
     block_dim: int = 256,
+    partition: str | Layout | None = None,
+    offset: int = 0,
 ):
     """Launch a Warp kernel on the target device
 
@@ -6370,6 +6403,9 @@ def launch(
           Only has an effect for CUDA kernel launches.
           If negative or zero, the maximum hardware value will be used.
         block_dim: The number of threads per block (always 1 for "cpu" devices).
+        partition: Optional Layout object or string specifying kernel partitioning scheme.
+          Can be a wp.Layout object or a CuTe-style string like "(5,5):(2,20)".
+        offset: Starting offset for partitioned kernel launches.
     """
 
     init()
@@ -6393,6 +6429,26 @@ def launch(
 
     # construct launch bounds
     bounds = launch_bounds_t(dim)
+
+    # Compute partition blocks if partition is specified
+    partition_blocks = 0
+    if partition is not None:
+        # Handle both Layout objects and string format
+        if isinstance(partition, Layout):
+            partition_shape = partition.shape
+            partition_strides = partition.stride
+            rank = partition.rank
+        elif isinstance(partition, str):
+            rank, partition_shape, partition_strides = warp._src.localized.parse_cute_partition(partition)
+        else:
+            raise TypeError(f"partition must be a Layout object or string, got {type(partition)}")
+
+        # Compute product of partition shape to get number of blocks
+        partition_blocks = 1
+        for s in partition_shape:
+            partition_blocks *= s
+
+    bounds.set_partition_params(offset, bounds.size, partition_blocks)
 
     if bounds.size > 0:
         # first param is the number of threads
@@ -6427,7 +6483,9 @@ def launch(
 
         # delay load modules, including new overload if needed
         try:
-            module_exec = kernel.module.load(device, block_dim)
+            # Convert Layout object to string for module caching
+            partition_str = partition.to_string() if isinstance(partition, Layout) else partition
+            module_exec = kernel.module.load(device, block_dim, partition_str)
         except Exception:
             kernel.adj.skip_build = True
             raise

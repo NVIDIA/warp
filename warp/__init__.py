@@ -33,6 +33,16 @@ from warp._src.fabric import fabricarrayarray as fabricarrayarray
 from warp._src.fabric import indexedfabricarray as indexedfabricarray
 from warp._src.fabric import indexedfabricarrayarray as indexedfabricarrayarray
 from warp._src.types import tile as tile
+from warp._src.localized import Layout as Layout
+from warp._src.localized import PartitionDesc as PartitionDesc
+from warp._src.localized import blocked as blocked
+from warp._src.localized import cyclic as cyclic
+from warp._src.localized import block_cyclic as block_cyclic
+from warp._src.localized import allocate_tiled_tensor as allocate_tiled_tensor
+from warp._src.localized import empty_tiled as empty_tiled
+from warp._src.localized import zeros_tiled as zeros_tiled
+from warp._src.localized import launch_tiled_localized as launch_tiled_localized
+
 
 from warp._src.types import bool as bool
 from warp._src.types import int8 as int8

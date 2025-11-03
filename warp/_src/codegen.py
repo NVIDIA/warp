@@ -3566,8 +3566,18 @@ cpu_module_header = """
 
 cuda_module_header = """
 #define WP_TILE_BLOCK_DIM {block_dim}
+#define WP_HAVE_PARTITION {have_partition}
 #define WP_NO_CRT
 #include "builtin.h"
+
+// Partition layout definition
+#if WP_HAVE_PARTITION
+#define WP_PARTITION_RANK {partition_rank}
+constexpr int WP_PARTITION_SHAPE[] = {{{partition_shape}}};
+constexpr int WP_PARTITION_STRIDES[] = {{{partition_strides}}};
+#else
+#define WP_PARTITION_RANK 0
+#endif
 
 // Map wp.breakpoint() to a device brkpt at the call site so cuda-gdb attributes the stop to the generated .cu line
 #if defined(__CUDACC__) && !defined(_MSC_VER)
@@ -3588,6 +3598,11 @@ cuda_module_header = """
 
 #define builtin_block_dim() wp::block_dim()
 
+#if WP_HAVE_PARTITION
+#define builtin_apply_partition(x) wp::apply_partition(WP_PARTITION_RANK, WP_PARTITION_SHAPE, WP_PARTITION_STRIDES, x, dim)
+#else
+#define builtin_apply_partition(x) (x)
+#endif
 """
 
 struct_template = """
@@ -3666,13 +3681,20 @@ cuda_kernel_template_forward = """
     {forward_args})
 {{
 {line_directive}    wp::tile_shared_storage_t tile_mem;
-
-{line_directive}    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
-{line_directive}         _idx < dim.size;
-{line_directive}         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
+{line_directive}    size_t upper_bound = (WP_HAVE_PARTITION)?static_cast<size_t>(dim.partition_blocks)*static_cast<size_t>(blockDim.x):static_cast<size_t>(dim.size);
+{line_directive}    for (size_t _idx_orig = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
+{line_directive}         _idx_orig < upper_bound;
+{line_directive}         _idx_orig += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
             // reset shared memory allocator
 {line_directive}        wp::tile_shared_storage_t::init();
+{line_directive}        #if WP_HAVE_PARTITION
+{line_directive}        size_t block_id = _idx_orig/blockDim.x;
+{line_directive}        size_t virtual_block_id = builtin_apply_partition(block_id)+dim.offset;
+{line_directive}        size_t _idx = (_idx_orig%blockDim.x) + virtual_block_id * blockDim.x;
+{line_directive}        #else
+{line_directive}        size_t _idx = _idx_orig;
+{line_directive}        #endif
 
 {forward_body}{line_directive}    }}
 {line_directive}}}
