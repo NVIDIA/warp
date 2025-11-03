@@ -197,18 +197,19 @@ class Example:
         self.p1 = wp.zeros_managed(shape, dtype=float)
         self.div = wp.zeros_managed(shape, dtype=float)
 
-        # capture pressure solve as a CUDA graph
-        # self.use_cuda_graph = wp.get_device().is_cuda
-        self.use_cuda_graph = False
-        if self.use_cuda_graph:
-            with wp.ScopedCapture() as capture:
-                self.pressure_iterations()
-            self.graph = capture.graph
-
         # create a stream for each device
-        # self.streams = [wp.Stream(device=f"cuda:{i}") for i in range(wp.get_cuda_device_count())]
+        # self.streams = [wp.Stream(device=f"cuda:{i}") for i in range(wp.get_cuda_device_count())]
         self.streams = [wp.Stream(device=f"cuda:{0}") for i in range(4)]
         self.policy = wp.blocked()
+
+        # capture pressure solve as a CUDA graph
+        self.use_cuda_graph = wp.get_device().is_cuda
+        self.use_cuda_graph=True
+        if self.use_cuda_graph:
+            with wp.ScopedCapture(stream=self.streams[0]) as capture:
+                print("Capture pressure_iterations()")
+                self.pressure_iterations()
+            self.graph = capture.graph
 
     def step(self):
         with wp.ScopedTimer("step"):
@@ -238,7 +239,7 @@ class Example:
                 wp.launch_localized(zero_array, dim=shape, inputs=[self.p1], mapping=self.policy, streams=self.streams)
 
                 if self.use_cuda_graph:
-                    wp.capture_launch(self.graph)
+                    wp.capture_launch(self.graph, stream=self.streams[0])
                 else:
                     self.pressure_iterations()
 
