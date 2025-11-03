@@ -26,8 +26,8 @@ import math
 import warp as wp
 import warp.render
 
-grid_width = wp.constant(256*32)
-grid_height = wp.constant(128*32)
+grid_width = wp.constant(256 * 32)
+grid_height = wp.constant(128 * 32)
 
 
 @wp.func
@@ -180,18 +180,19 @@ class Example:
 
         shape = (grid_width, grid_height)
 
-        self.u0 = wp.zeros(shape, dtype=wp.vec2)
-        self.u1 = wp.zeros(shape, dtype=wp.vec2)
+        # Using managed memory for better multi-device accessibility
+        self.u0 = wp.zeros_managed(shape, dtype=wp.vec2)
+        self.u1 = wp.zeros_managed(shape, dtype=wp.vec2)
 
-        self.rho0 = wp.zeros(shape, dtype=float)
-        self.rho1 = wp.zeros(shape, dtype=float)
+        self.rho0 = wp.zeros_managed(shape, dtype=float)
+        self.rho1 = wp.zeros_managed(shape, dtype=float)
 
-        self.p0 = wp.zeros(shape, dtype=float)
-        self.p1 = wp.zeros(shape, dtype=float)
-        self.div = wp.zeros(shape, dtype=float)
+        self.p0 = wp.zeros_managed(shape, dtype=float)
+        self.p1 = wp.zeros_managed(shape, dtype=float)
+        self.div = wp.zeros_managed(shape, dtype=float)
 
         # capture pressure solve as a CUDA graph
-        # self.use_cuda_graph = wp.get_device().is_cuda
+        # self.use_cuda_graph = wp.get_device().is_cuda
         self.use_cuda_graph = False
         if self.use_cuda_graph:
             with wp.ScopedCapture() as capture:
@@ -214,11 +215,17 @@ class Example:
                 vel = wp.vec2(math.cos(angle) * speed, math.sin(angle) * speed)
 
                 # update emitters
-                wp.launch_localized(init, dim=shape, inputs=[self.rho0, self.u0, 5, vel], mapping=self.policy, streams=self.streams)
+                wp.launch_localized(
+                    init, dim=shape, inputs=[self.rho0, self.u0, 5, vel], mapping=self.policy, streams=self.streams
+                )
 
                 # force integrate
-                wp.launch_localized(integrate, dim=shape, inputs=[self.u0, self.rho0, dt], mapping=self.policy, streams=self.streams)
-                wp.launch_localized(divergence, dim=shape, inputs=[self.u0, self.div], mapping=self.policy, streams=self.streams)
+                wp.launch_localized(
+                    integrate, dim=shape, inputs=[self.u0, self.rho0, dt], mapping=self.policy, streams=self.streams
+                )
+                wp.launch_localized(
+                    divergence, dim=shape, inputs=[self.u0, self.div], mapping=self.policy, streams=self.streams
+                )
 
                 # pressure solve
                 self.p0.zero_()
@@ -230,10 +237,18 @@ class Example:
                     self.pressure_iterations()
 
                 # velocity update
-                wp.launch_localized(pressure_apply, dim=shape, inputs=[self.p0, self.u0], mapping=self.policy, streams=self.streams)
+                wp.launch_localized(
+                    pressure_apply, dim=shape, inputs=[self.p0, self.u0], mapping=self.policy, streams=self.streams
+                )
 
                 # semi-Lagrangian advection
-                wp.launch_localized(advect, dim=shape, inputs=[self.u0, self.u1, self.rho0, self.rho1, dt], mapping=self.policy, streams=self.streams)
+                wp.launch_localized(
+                    advect,
+                    dim=shape,
+                    inputs=[self.u0, self.u1, self.rho0, self.rho1, dt],
+                    mapping=self.policy,
+                    streams=self.streams,
+                )
 
                 # swap buffers
                 (self.u0, self.u1) = (self.u1, self.u0)
@@ -243,7 +258,13 @@ class Example:
 
     def pressure_iterations(self):
         for _ in range(self.iterations):
-            wp.launch_localized(pressure_solve, dim=self.p0.shape, inputs=[self.p0, self.p1, self.div], mapping=self.policy, streams=self.streams)
+            wp.launch_localized(
+                pressure_solve,
+                dim=self.p0.shape,
+                inputs=[self.p0, self.p1, self.div],
+                mapping=self.policy,
+                streams=self.streams,
+            )
 
             # swap pressure fields
             (self.p0, self.p1) = (self.p1, self.p0)

@@ -1363,9 +1363,165 @@ def zeros_tiled(shape, tile_dim, partition_desc, streams, dtype=float, page_size
     return wp.from_dlpack(cupy_arr.toDlpack())
 
 
-def launch_localized(
-    kernel, dim, inputs=None, outputs=None, primary_stream=None, mapping=None, streams=None, **kwargs
+def empty_managed(
+    shape: int | tuple[int, ...] | list[int],
+    dtype: type = float,
+    device: str = "cuda:0",
 ):
+    """
+    Allocate an uninitialized array using CUDA managed memory (unified memory).
+
+    Managed memory provides automatic memory migration between host and device,
+    allowing the same memory address to be accessed from both CPU and GPU.
+    This simplifies memory management in multi-GPU scenarios but may have
+    performance implications compared to explicit memory placement.
+
+    Args:
+        shape: Array dimensions (e.g., (8192, 8192) or 8192)
+        dtype: Data type (default: float). Must match the CuPy dtype exactly.
+        device: Device to associate with the array (default: "cuda:0")
+
+    Returns:
+        warp.array backed by managed memory (uninitialized)
+
+    Examples:
+        # Create a managed 2D array
+        arr = wp.empty_managed(shape=(1024, 1024), dtype=float)
+
+        # Create a managed 1D array
+        arr = wp.empty_managed(shape=1024, dtype=float)
+
+        # Use with specific dtype
+        arr = wp.empty_managed(shape=(512, 512), dtype=wp.float32)
+
+    Note:
+        This function requires CuPy to be installed and uses CuPy's managed memory
+        allocator under the hood. The array is accessible from all CUDA devices
+        and the CPU without explicit memory transfers.
+    """
+    import warp as wp
+
+    try:
+        import cupy as cp
+        from cupy.cuda import memory
+    except ImportError:
+        raise ImportError("CuPy is required to use managed memory. Install it with: pip install cupy-cuda12x")
+
+    # Normalize shape to tuple
+    if isinstance(shape, int):
+        shape = (shape,)
+    else:
+        shape = tuple(shape)
+
+    # Map warp dtype to CuPy dtype for scalar types
+    dtype_map = {
+        float: cp.float32,
+        wp.float32: cp.float32,
+        wp.float64: cp.float64,
+        int: cp.int32,
+        wp.int32: cp.int32,
+        wp.int64: cp.int64,
+        wp.uint32: cp.uint32,
+        wp.uint64: cp.uint64,
+    }
+
+    # Determine if this is a scalar or structured type
+    is_scalar_type = dtype in dtype_map
+
+    if is_scalar_type:
+        # Simple scalar type - use DLPack conversion
+        cupy_dtype = dtype_map[dtype]
+        element_size = cp.dtype(cupy_dtype).itemsize
+
+        nbytes = 1
+        for dim in shape:
+            nbytes *= dim
+        nbytes *= element_size
+
+        # Allocate managed memory
+        memptr = memory.malloc_managed(nbytes)
+
+        # Create CuPy array with managed memory
+        cupy_arr = cp.ndarray(shape, dtype=cupy_dtype, memptr=memptr)
+
+        # Convert to warp array via DLPack
+        return wp.from_dlpack(cupy_arr.toDlpack())
+    else:
+        # Structured type (vec2, vec3, mat22, etc.) - use direct ptr allocation
+        try:
+            element_size = wp.types.type_size_in_bytes(dtype)
+        except:
+            raise ValueError(f"Cannot determine size for dtype {dtype}")
+
+        nbytes = 1
+        for dim in shape:
+            nbytes *= dim
+        nbytes *= element_size
+
+        # Allocate managed memory
+        memptr = memory.malloc_managed(nbytes)
+
+        # Create warp array directly with the managed memory pointer
+        # Store a reference to memptr to prevent garbage collection
+        arr = wp.array(ptr=memptr.ptr, shape=shape, dtype=dtype, device=device, copy=False)
+
+        # Attach the CuPy memory object to the warp array to keep it alive
+        arr._cupy_memptr = memptr
+
+        return arr
+
+
+def zeros_managed(
+    shape: int | tuple[int, ...] | list[int],
+    dtype: type = float,
+    device: str = "cuda:0",
+):
+    """
+    Allocate a zero-initialized array using CUDA managed memory (unified memory).
+
+    Managed memory provides automatic memory migration between host and device,
+    allowing the same memory address to be accessed from both CPU and GPU.
+    This simplifies memory management in multi-GPU scenarios but may have
+    performance implications compared to explicit memory placement.
+
+    Args:
+        shape: Array dimensions (e.g., (8192, 8192) or 8192)
+        dtype: Data type (default: float). Must match the CuPy dtype exactly.
+        device: Device to associate with the array (default: "cuda:0")
+
+    Returns:
+        warp.array backed by managed memory (initialized to zero)
+
+    Examples:
+        # Create a zero-initialized managed 2D array
+        arr = wp.zeros_managed(shape=(1024, 1024), dtype=float)
+
+        # Create a zero-initialized managed 1D array
+        arr = wp.zeros_managed(shape=1024, dtype=float)
+
+        # Use with specific dtype
+        arr = wp.zeros_managed(shape=(512, 512), dtype=wp.float32)
+
+        # Use in multi-GPU context
+        managedA = wp.zeros_managed((nx, ny), dtype=float)
+        wp.launch(kernel, dim=(nx, ny), outputs=[managedA], device="cuda:0")
+
+    Note:
+        This function requires CuPy to be installed and uses CuPy's managed memory
+        allocator under the hood. The array is accessible from all CUDA devices
+        and the CPU without explicit memory transfers.
+    """
+    arr = empty_managed(shape=shape, dtype=dtype, device=device)
+
+    # Initialize to zero
+    # Get the underlying CuPy array from DLPack
+    # We need to zero the memory - we can do this via the device
+    arr.zero_()
+
+    return arr
+
+
+def launch_localized(kernel, dim, inputs=None, outputs=None, primary_stream=None, mapping=None, streams=None, **kwargs):
     """
     Launch a kernel across multiple devices with localized data placement.
 
@@ -1415,8 +1571,8 @@ def launch_localized(
         raise ValueError("streams must be provided")
 
     # Get block_dim from kwargs (default 256)
-    block_dim_kwarg = kwargs.get('block_dim', 256)
-    
+    block_dim_kwarg = kwargs.get("block_dim", 256)
+
     # Convert thread dimensions to block dimensions for partitioning
     # For launch_localized, we partition CUDA blocks, not threads
     # CUDA grids are always 1D (even for multi-dimensional thread launches)
@@ -1427,10 +1583,10 @@ def launch_localized(
         total_threads = 1
         for d in dim:
             total_threads *= d
-    
+
     # Compute the number of 1D blocks needed
     total_blocks = (total_threads + block_dim_kwarg - 1) // block_dim_kwarg
-    
+
     # If mapping is a callable (policy function), call it with 1D block count
     # The partition distributes the 1D block grid across streams/devices
     if callable(mapping):

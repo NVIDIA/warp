@@ -41,6 +41,8 @@ from warp._src.localized import block_cyclic as block_cyclic
 from warp._src.localized import allocate_tiled_tensor as allocate_tiled_tensor
 from warp._src.localized import empty_tiled as empty_tiled
 from warp._src.localized import zeros_tiled as zeros_tiled
+from warp._src.localized import empty_managed as empty_managed
+from warp._src.localized import zeros_managed as zeros_managed
 from warp._src.localized import launch_localized as launch_localized
 from warp._src.localized import launch_tiled_localized as launch_tiled_localized
 
