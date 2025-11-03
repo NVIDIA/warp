@@ -159,6 +159,12 @@ def integrate(u: wp.array2d(dtype=wp.vec2), rho: wp.array2d(dtype=float), dt: fl
 
 
 @wp.kernel
+def zero_array(arr: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    arr[i, j] = 0.0
+
+
+@wp.kernel
 def init(rho: wp.array2d(dtype=float), u: wp.array2d(dtype=wp.vec2), radius: int, dir: wp.vec2):
     i, j = wp.tid()
 
@@ -228,8 +234,8 @@ class Example:
                 )
 
                 # pressure solve
-                self.p0.zero_()
-                self.p1.zero_()
+                wp.launch_localized(zero_array, dim=shape, inputs=[self.p0], mapping=self.policy, streams=self.streams)
+                wp.launch_localized(zero_array, dim=shape, inputs=[self.p1], mapping=self.policy, streams=self.streams)
 
                 if self.use_cuda_graph:
                     wp.capture_launch(self.graph)
