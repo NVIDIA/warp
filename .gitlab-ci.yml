@@ -921,7 +921,6 @@ publish wheels to gitlab package registry:
     - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - when: manual # If not auto-triggered, allow any pipeline to run this job manually
       allow_failure: true
   before_script:
