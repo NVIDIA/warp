@@ -1729,8 +1729,8 @@ LAYOUT_MAX_DIMS = 5
 
 class layout_t(ctypes.Structure):
     _fields_ = (
-        ("shape", ctypes.c_int32 * LAUNCH_MAX_DIMS),
-        ("stride", ctypes.c_int32 * LAUNCH_MAX_DIMS),
+        ("shape", ctypes.c_int32 * LAYOUT_MAX_DIMS),
+        ("stride", ctypes.c_int32 * LAYOUT_MAX_DIMS),
         ("ndim", ctypes.c_int32),
     )
 
