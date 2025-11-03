@@ -188,7 +188,6 @@ publish wheels to gitlab package registry:
     - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $PARENT_COMMIT_TAG
-    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
   before_script:
