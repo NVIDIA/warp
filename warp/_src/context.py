@@ -5011,6 +5011,108 @@ def unmap_cuda_device(alias: str) -> None:
     runtime.unmap_cuda_device(alias)
 
 
+def cuda_toolkit_version_at_least(major: int, minor: int) -> bool:
+    """Check if CUDA toolkit version is at least the specified version.
+
+    Args:
+        major: Major version number (e.g., 12)
+        minor: Minor version number (e.g., 4)
+
+    Returns:
+        bool: True if the CUDA toolkit version is at least (major, minor), False otherwise.
+    """
+    if not is_cuda_available():
+        return False
+
+    init()
+
+    toolkit_version = runtime.toolkit_version
+    if toolkit_version is None:
+        return False
+    return toolkit_version >= (major, minor)
+
+
+def create_green_ctx(device_ordinal: int = 0, min_sms_per_partition: int = 8) -> list:
+    """Create green contexts for each SM partition on the device.
+
+    Green contexts (introduced in CUDA 12.4) allow partitioning a GPU's streaming
+    multiprocessors (SMs) into separate execution contexts for better resource isolation.
+
+    Args:
+        device_ordinal: CUDA device ordinal (default: 0)
+        min_sms_per_partition: Minimum number of SMs per partition (default: 8)
+
+    Returns:
+        list: List of primary contexts (CUcontext) for each partition
+
+    Raises:
+        AssertionError: If CUDA operations fail during context creation
+        ImportError: If cuda.bindings.driver is not available
+
+    Example:
+        >>> import warp as wp
+        >>> contexts = wp.create_green_ctx(device_ordinal=0, min_sms_per_partition=8)
+        >>> for i, ctx in enumerate(contexts):
+        ...     wp.map_cuda_device(f"cuda:0:{i}", int(ctx))
+
+    Note:
+        Requires CUDA Toolkit 12.4 or higher.
+    """
+    try:
+        import cuda.bindings.driver as cu
+    except ImportError as e:
+        raise ImportError("cuda.bindings.driver is required for green context creation") from e
+
+    # 0) init + pick device
+    cu.cuInit(0)
+    err, dev = cu.cuDeviceGet(device_ordinal)
+    assert err == cu.CUresult.CUDA_SUCCESS, f"cuDeviceGet failed: {err}"
+
+    # 1) query device SM resource
+    err, sm_res = cu.cuDeviceGetDevResource(dev, cu.CUdevResourceType.CU_DEV_RESOURCE_TYPE_SM)
+    assert err == cu.CUresult.CUDA_SUCCESS, f"cuDeviceGetDevResource failed: {err}"
+
+    # 2) split SMs into groups of at least 'min_sms_per_partition'
+    # first call to learn number of groups (query mode)
+    err, result, nb_groups, remaining = cu.cuDevSmResourceSplitByCount(
+        nbGroups=0,  # query mode
+        input_=sm_res,
+        useFlags=0,
+        minCount=min_sms_per_partition,
+    )
+    assert err == cu.CUresult.CUDA_SUCCESS and nb_groups > 0, "split (count) failed"
+
+    # second call to actually split with the correct number of groups
+    err, groups, nb_groups_actual, remaining = cu.cuDevSmResourceSplitByCount(
+        nbGroups=nb_groups,
+        input_=sm_res,
+        useFlags=0,
+        minCount=min_sms_per_partition,
+    )
+    assert err == cu.CUresult.CUDA_SUCCESS, "split (fill) failed"
+
+    # 3-5) Create a green context for each partition group
+    contexts = []
+    flags = cu.CUgreenCtxCreate_flags.CU_GREEN_CTX_DEFAULT_STREAM
+
+    for i, group in enumerate(groups):
+        # Build a resource descriptor for this partition
+        err, desc = cu.cuDevResourceGenerateDesc(resources=[group], nbResources=1)
+        assert err == cu.CUresult.CUDA_SUCCESS, f"cuDevResourceGenerateDesc failed for group {i}"
+
+        # Create the green context
+        err, green = cu.cuGreenCtxCreate(desc, dev, flags)
+        assert err == cu.CUresult.CUDA_SUCCESS, f"cuGreenCtxCreate failed for group {i}: {err}"
+
+        # Convert to a primary CUcontext
+        err, ctx = cu.cuCtxFromGreenCtx(green)
+        assert err == cu.CUresult.CUDA_SUCCESS, f"cuCtxFromGreenCtx failed for group {i}: {err}"
+
+        contexts.append(ctx)
+
+    return contexts
+
+
 def is_mempool_supported(device: Devicelike) -> bool:
     """Check if CUDA memory pool allocators are available on the device.
 

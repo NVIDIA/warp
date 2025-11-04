@@ -187,6 +187,8 @@ from warp._src.context import get_cuda_device_count as get_cuda_device_count
 from warp._src.context import get_cuda_device as get_cuda_device
 from warp._src.context import map_cuda_device as map_cuda_device
 from warp._src.context import unmap_cuda_device as unmap_cuda_device
+from warp._src.context import cuda_toolkit_version_at_least as cuda_toolkit_version_at_least
+from warp._src.context import create_green_ctx as create_green_ctx
 from warp._src.context import get_device as get_device
 from warp._src.context import set_device as set_device
 from warp._src.context import synchronize_device as synchronize_device
