@@ -20,6 +20,8 @@
 ### Fixed
 
 - Fix atomic floating-point min/max operations not returning the old value ([GH-1058](https://github.com/NVIDIA/warp/issues/1058)).
+- Fix type inference errors when passing reference arguments (such as array elements) to built-in functions
+  ([GH-1071](https://github.com/NVIDIA/warp/issues/1071)).
 
 ## [1.10.0] - 2025-11-02
 
