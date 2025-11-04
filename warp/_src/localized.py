@@ -1792,7 +1792,6 @@ def launch_localized(kernel, dim, inputs=None, outputs=None, primary_stream=None
     # Step 4-5: Other streams signal completion, primary waits
     for stream in streams:
         if stream != primary_stream:
-            print(f">>>>>>>>>>>>>>> wp.Event(device={stream.device})...")
             ei = wp.Event(device=stream.device)
             stream.record_event(ei)
             primary_stream.wait_event(ei)
