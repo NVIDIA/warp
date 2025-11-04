@@ -15,13 +15,12 @@
 
 import unittest
 
+import cuda.bindings.driver as cu
 import numpy as np
 
 import warp as wp
 from warp._src.utils import check_p2p
 from warp.tests.unittest_utils import *
-
-import cuda.bindings.driver as cu
 
 
 def cuda_toolkit_version_at_least(major, minor):
@@ -45,13 +44,14 @@ def arange(start: int, step: int, a: wp.array(dtype=int)):
     tid = wp.tid()
     a[tid] = start + step * tid
 
+
 def create_green_ctx(device_ordinal=0, min_sms_per_partition=8):
     """Create green contexts for each SM partition on the device.
-    
+
     Args:
         device_ordinal: CUDA device ordinal
         min_sms_per_partition: Minimum number of SMs per partition
-        
+
     Returns:
         list: List of primary contexts (CUcontext) for each partition
     """
@@ -70,23 +70,20 @@ def create_green_ctx(device_ordinal=0, min_sms_per_partition=8):
         nbGroups=0,  # query mode
         input_=sm_res,
         useFlags=0,
-        minCount=min_sms_per_partition
+        minCount=min_sms_per_partition,
     )
     assert err == cu.CUresult.CUDA_SUCCESS and nb_groups > 0, "split (count) failed"
 
     # second call to actually split with the correct number of groups
     err, groups, nb_groups_actual, remaining = cu.cuDevSmResourceSplitByCount(
-        nbGroups=nb_groups,
-        input_=sm_res,
-        useFlags=0,
-        minCount=min_sms_per_partition
+        nbGroups=nb_groups, input_=sm_res, useFlags=0, minCount=min_sms_per_partition
     )
     assert err == cu.CUresult.CUDA_SUCCESS, "split (fill) failed"
 
     # 3-5) Create a green context for each partition group
     contexts = []
     flags = cu.CUgreenCtxCreate_flags.CU_GREEN_CTX_DEFAULT_STREAM
-    
+
     for i, group in enumerate(groups):
         # Build a resource descriptor for this partition
         err, desc = cu.cuDevResourceGenerateDesc(resources=[group], nbResources=1)
@@ -99,37 +96,34 @@ def create_green_ctx(device_ordinal=0, min_sms_per_partition=8):
         # Convert to a primary CUcontext
         err, ctx = cu.cuCtxFromGreenCtx(green)
         assert err == cu.CUresult.CUDA_SUCCESS, f"cuCtxFromGreenCtx failed for group {i}: {err}"
-        
+
         contexts.append(ctx)
 
     return contexts
 
 
 class TestGreenContext(unittest.TestCase):
-    @unittest.skipUnless(
-        cuda_toolkit_version_at_least(12, 4),
-        "Green contexts require CUDA toolkit 12.4 or higher"
-    )
+    @unittest.skipUnless(cuda_toolkit_version_at_least(12, 4), "Green contexts require CUDA toolkit 12.4 or higher")
     def test_green_ctx(self):
         device_ordinal = 0
         contexts = create_green_ctx(device_ordinal=device_ordinal, min_sms_per_partition=8)
-        
+
         # Verify we got at least one context
         self.assertGreater(len(contexts), 0, "Should create at least one green context")
 
         for i, ctx in enumerate(contexts):
             wp.map_cuda_device(f"cuda:{device_ordinal}:{i}", int(ctx))
-        
+
         # Verify each context is valid
         for i, ctx in enumerate(contexts):
             self.assertIsNotNone(ctx, f"Primary context {i} should not be None")
 
-        n = 1024*1024
+        n = 1024 * 1024
 
         streams = []
         buffers = []
         for i, ctx in enumerate(contexts):
-            alias=f"cuda:{device_ordinal}:{i}"
+            alias = f"cuda:{device_ordinal}:{i}"
             s = wp.Stream(alias)
             streams.append(s)
             buf = wp.zeros(n, dtype=float, device=alias)
@@ -146,7 +140,7 @@ class TestGreenContext(unittest.TestCase):
             wp.synchronize_stream(s)
 
         print(f"Successfully created {len(contexts)} green context(s) with partitioned SM resources")
-        
+
     @unittest.skipUnless(len(wp.get_cuda_devices()) > 1, "Requires at least two CUDA devices")
     @unittest.skipUnless(check_p2p(), "Peer-to-Peer transfers not supported")
     def test_multigpu_pingpong_streams(self):
