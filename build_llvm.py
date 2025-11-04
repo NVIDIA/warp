@@ -16,6 +16,7 @@
 """Functions to build Clang/LLVM from source and to build the CPU-only Warp library."""
 
 import os
+import shutil
 import subprocess
 import sys
 
@@ -65,6 +66,33 @@ def fetch_prebuilt_libraries(arch):
         raise e
 
 
+def check_build_dependencies(verbose: bool = False) -> None:
+    """Check that required build dependencies are available in PATH.
+
+    Args:
+        verbose: If True, print location of found dependencies.
+
+    Raises:
+        RuntimeError: If any required dependencies (cmake, ninja, git) are missing.
+    """
+    missing = []
+
+    for tool in ["cmake", "ninja", "git"]:
+        tool_path = shutil.which(tool)
+        if tool_path:
+            if verbose:
+                print(f"Found {tool}: {tool_path}")
+        else:
+            missing.append(tool)
+
+    if missing:
+        raise RuntimeError(
+            "Missing required build dependencies:\n  "
+            + "\n  ".join(missing)
+            + "\n\nPlease install using your package manager."
+        )
+
+
 def build_llvm_clang_from_source_for_arch(args, arch: str, llvm_source: str) -> None:
     """Build Clang/LLVM from source for a given architecture.
 
@@ -76,29 +104,32 @@ def build_llvm_clang_from_source_for_arch(args, arch: str, llvm_source: str) -> 
 
     # Check out the LLVM project Git repository, unless it already exists
     if not os.path.exists(llvm_source):
-        # Install dependencies
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "gitpython"])
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "cmake"])
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "ninja"])
-
-        from git import Repo
+        # Check that build dependencies are available
+        check_build_dependencies(verbose=args.verbose)
 
         repo_url = "https://github.com/llvm/llvm-project.git"
-        print(f"Cloning LLVM project from {repo_url}...")
-
-        shallow_clone = True  # https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/
         version = "21.1.0"
-        if shallow_clone:
-            repo = Repo.clone_from(
+        print(f"Cloning LLVM project from {repo_url} (branch llvmorg-{version})...")
+
+        # Use shallow clone for faster download (depth=1, single branch only)
+        # See https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/
+        # For full clone: Remove --depth and --single-branch, then add:
+        #   subprocess.run(["git", "checkout", f"tags/llvmorg-{version}", "-b", f"llvm-{version}"],
+        #                  cwd=llvm_source, check=True)
+        subprocess.run(
+            [
+                "git",
+                "clone",
+                "--single-branch",
+                "--branch",
+                f"llvmorg-{version}",
+                "--depth",
+                "1",
                 repo_url,
-                to_path=llvm_source,
-                single_branch=True,
-                branch=f"llvmorg-{version}",
-                depth=1,
-            )
-        else:
-            repo = Repo.clone_from(repo_url, to_path=llvm_source)
-            repo.git.checkout(f"tags/llvmorg-{version}", "-b", f"llvm-{version}")
+                llvm_source,
+            ],
+            check=True,
+        )
 
     print(f"Using LLVM project source from {llvm_source}")
 
