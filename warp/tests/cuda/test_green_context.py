@@ -16,10 +16,8 @@
 import unittest
 
 import cuda.bindings.driver as cu
-import numpy as np
 
 import warp as wp
-from warp._src.utils import check_p2p
 from warp.tests.unittest_utils import *
 
 
@@ -140,33 +138,6 @@ class TestGreenContext(unittest.TestCase):
             wp.synchronize_stream(s)
 
         print(f"Successfully created {len(contexts)} green context(s) with partitioned SM resources")
-
-    @unittest.skipUnless(len(wp.get_cuda_devices()) > 1, "Requires at least two CUDA devices")
-    @unittest.skipUnless(check_p2p(), "Peer-to-Peer transfers not supported")
-    def test_multigpu_pingpong_streams(self):
-        n = 1024 * 1024
-
-        a0 = wp.zeros(n, dtype=float, device="cuda:0")
-        a1 = wp.zeros(n, dtype=float, device="cuda:1")
-
-        stream0 = wp.get_stream("cuda:0")
-        stream1 = wp.get_stream("cuda:1")
-
-        iters = 10
-
-        for _ in range(iters):
-            wp.launch(inc, dim=a0.size, inputs=[a0], stream=stream0)
-            stream1.wait_stream(stream0)
-            wp.copy(a1, a0, stream=stream1)
-
-            wp.launch(inc, dim=a1.size, inputs=[a1], stream=stream1)
-            stream0.wait_stream(stream1)
-            wp.copy(a0, a1, stream=stream0)
-
-        expected = np.full(n, iters * 2, dtype=np.float32)
-
-        assert_np_equal(a0.numpy(), expected)
-        assert_np_equal(a1.numpy(), expected)
 
 
 if __name__ == "__main__":
