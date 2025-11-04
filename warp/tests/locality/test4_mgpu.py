@@ -2,7 +2,6 @@ import time
 
 import cupy as cp
 import numpy as np
-from cupy.cuda import memory
 
 import warp as wp
 

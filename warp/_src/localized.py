@@ -774,7 +774,15 @@ def allocate_blocks_vmm(block_sizes, streams, use_vmm=True):
                 # Allocate using cupy on the specified device
                 arr = cp.empty(size, dtype=cp.uint8)
 
-            allocations.append({"device_id": device_alias, "buffer": arr, "size": size, "offset": 0})
+            allocations.append(
+                {
+                    "device_id": device_alias,
+                    "buffer": arr,  # Keep buffer for fallback path
+                    "ptr": arr.data.ptr,  # Also store pointer for consistency
+                    "size": size,
+                    "offset": 0,
+                }
+            )
         return allocations
 
     # VMM path using low-level CUDA driver API
@@ -893,29 +901,16 @@ def allocate_blocks_vmm(block_sizes, streams, use_vmm=True):
             if err != cuda_driver.CUresult.CUDA_SUCCESS:
                 raise RuntimeError(f"cuMemSetAccess failed for block {i} with error {err}")
 
-            # Create cupy array wrapping this block
-            mem = cp.cuda.UnownedMemory(block_vaddr_int, size, owner=None)
-            memptr = cp.cuda.MemoryPointer(mem, 0)
-            arr = cp.ndarray((size,), dtype=cp.uint8, memptr=memptr)
-
-            allocations.append({"device_id": device_alias, "buffer": arr, "size": size, "offset": current_offset})
+            # Store the allocation info (create cupy array wrapper later when needed)
+            allocations.append(
+                {"device_id": device_alias, "ptr": block_vaddr_int, "size": size, "offset": current_offset}
+            )
 
             current_offset += aligned_size
 
         if num_devices > 1:
             print(f"VMM: Enabled peer access across {num_devices} devices")
         print(f"VMM: Successfully allocated {len(allocations)} blocks")
-
-        # Initialize memory to ensure pages are resident on their devices
-        # This prevents first-touch overhead during actual computation
-        print("VMM: Initializing memory on devices...")
-        for i, alloc in enumerate(allocations):
-            device_ordinal = streams[i].device.ordinal if hasattr(streams[i].device, "ordinal") else 0
-            with cp.cuda.Device(device_ordinal):
-                # Touch the memory with a memset to make pages resident
-                arr = alloc["buffer"]
-                arr.fill(0)  # This triggers physical page allocation
-        print("VMM: Memory initialization complete")
 
     except Exception as e:
         # Cleanup on failure
@@ -1007,6 +1002,7 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
     """
     import cupy as cp
     import numpy as np
+
     import warp as wp
 
     # Map warp dtype to CuPy dtype for scalar types (similar to empty_managed)
@@ -1030,6 +1026,21 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
     elif isinstance(dtype, str):
         cp_dtype = dtype  # String dtype
         np_dtype = np.dtype(dtype)
+        elem_size_bytes = np_dtype.itemsize
+    elif hasattr(dtype, "dtype"):
+        # Handle numpy/cupy dtype objects (e.g., np.float32, cp.float32)
+        np_dtype = np.dtype(dtype)
+        cp_dtype = np_dtype
+        elem_size_bytes = np_dtype.itemsize
+    elif isinstance(dtype, np.dtype):
+        # Already a numpy dtype
+        np_dtype = dtype
+        cp_dtype = dtype
+        elem_size_bytes = np_dtype.itemsize
+    elif dtype in [np.float32, np.float64, np.int32, np.int64, np.uint32, np.uint64]:
+        # Handle numpy dtype classes directly
+        np_dtype = np.dtype(dtype)
+        cp_dtype = np_dtype
         elem_size_bytes = np_dtype.itemsize
     else:
         # Structured type (vec2, vec3, mat22, etc.)
@@ -1062,7 +1073,7 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
     else:
         # 1D case
         global_shape = (tile_shape * tile_dim[0],)
-    
+
     # Store the logical shape (for structured types, this is different from CuPy array shape)
     logical_shape = global_shape
 
@@ -1088,7 +1099,7 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
     print(f"Total footprint:  {footprint_bytes} bytes ({footprint_bytes / (1024**2):.2f} MB)")
     print(f"Number of pages:  {num_pages}")
     print()
-    
+
     # For structured types, adjust the CuPy array shape to be in bytes
     if is_structured_type:
         # CuPy array will be 1D bytes, warp array will have the logical_shape
@@ -1221,34 +1232,52 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
         return cupy_arr
 
     # Create a unified memory view
-    # When using streams without VMM, allocations are separate cupy arrays
-    # For simplicity, we'll just use the first allocation if it's already the right size
-    # or create a unified managed memory view
+    # When VMM is used, all allocations are mapped into a single contiguous virtual
+    # address space starting at the base pointer (first allocation's ptr).
+    # Even if there are multiple physical allocations (vmm_allocations list has multiple entries),
+    # they form ONE contiguous virtual buffer.
 
-    first_alloc = vmm_allocations[0]
-    buffer = first_alloc["buffer"]
+    # Check if this is a VMM allocation by looking for the "ptr" field
+    # (VMM allocations have "ptr", fallback allocations have "buffer")
+    is_vmm = len(vmm_allocations) > 0 and "ptr" in vmm_allocations[0]
 
-    # Check if the buffer is already a cupy array with the right shape
-    if hasattr(buffer, "reshape") and hasattr(buffer, "nbytes"):
-        # It's a cupy array
-        if buffer.nbytes == footprint_bytes and len(vmm_allocations) == 1:
-            # Single allocation with correct size, reinterpret bytes as dtype then reshape
-            # buffer is uint8, so we need to view it as the target dtype first
-            if is_structured_type:
-                # For structured types, just return the 1D byte array as-is
-                # The caller will create the warp array with the correct logical shape
-                cupy_arr = buffer  # Already uint8, no need to view/reshape
-            else:
-                # For scalar types, view and reshape to the target shape
-                cupy_arr = buffer.view(cp_dtype).reshape(global_shape)
-            print(f"✓ Using allocated cupy array with shape {cupy_arr.shape}")
-            print(f"{'=' * 60}")
-            print()
-            return cupy_arr
+    if is_vmm:
+        # VMM: All blocks are mapped into a single contiguous virtual address space
+        # The base pointer is the first allocation's pointer
+        base_ptr = vmm_allocations[0]["ptr"]
 
-    # Multiple allocations or need to create unified view
+        # Calculate total size across all VMM allocations
+        # (should equal footprint_bytes, but let's be explicit)
+        total_vmm_size = sum(alloc["size"] for alloc in vmm_allocations)
+
+        # Sanity check
+        if total_vmm_size != footprint_bytes:
+            print(f"⚠ Warning: VMM total size ({total_vmm_size}) != footprint ({footprint_bytes})")
+
+        # Create cupy array wrapper around the entire VMM virtual address space
+        mem = cp.cuda.UnownedMemory(base_ptr, footprint_bytes, owner=None)
+        memptr = cp.cuda.MemoryPointer(mem, 0)
+
+        if is_structured_type:
+            # For structured types, create 1D byte array
+            cupy_arr = cp.ndarray((footprint_bytes,), dtype=cp.uint8, memptr=memptr)
+        else:
+            # For scalar types, create array with target dtype and shape
+            cupy_arr = cp.ndarray(global_shape, dtype=cp_dtype, memptr=memptr)
+
+        print(
+            f"✓ Using VMM allocated memory: {len(vmm_allocations)} physical blocks mapped to single virtual address space"
+        )
+        print(f"  Base pointer: {hex(base_ptr)}")
+        print(f"  Total size: {footprint_bytes} bytes")
+        print(f"  Array shape: {cupy_arr.shape}")
+        print(f"{'=' * 60}")
+        print()
+        return cupy_arr
+
+    # Non-VMM fallback: separate allocations
     # Fall back to managed memory for simplicity
-    print("Multiple allocations detected, creating unified managed memory view...")
+    print("Non-VMM allocations detected, creating unified managed memory view...")
     from cupy.cuda import memory
 
     memptr = memory.malloc_managed(footprint_bytes)
@@ -1309,7 +1338,7 @@ def empty_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, 
             tile_dim = tuple(1 for _ in shape)
         else:
             tile_dim = (1,)
-    
+
     # Compute tile shape from global shape and tile dimensions
     if isinstance(shape, (list, tuple)) and isinstance(tile_dim, (list, tuple)):
         tile_shape = tuple(s // td for s, td in zip(shape, tile_dim))
@@ -1331,6 +1360,8 @@ def empty_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, 
     )
 
     # Convert to warp array
+    import numpy as np
+
     import warp as wp
 
     # Check if dtype is a structured type (vec2, vec3, mat22, etc.)
@@ -1345,9 +1376,16 @@ def empty_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, 
         wp.uint32: wp.uint32,
         wp.uint64: wp.uint64,
     }
-    
+
     is_scalar_type = dtype in dtype_map
-    
+
+    # Also check if it's a numpy/cupy dtype
+    if not is_scalar_type:
+        if hasattr(dtype, "dtype") or isinstance(dtype, np.dtype):
+            is_scalar_type = True
+        elif dtype in [np.float32, np.float64, np.int32, np.int64, np.uint32, np.uint64]:
+            is_scalar_type = True
+
     if is_scalar_type:
         # Simple scalar type - use DLPack conversion
         return wp.from_dlpack(cupy_arr.toDlpack())
@@ -1355,13 +1393,13 @@ def empty_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, 
         # Structured type (vec2, vec3, mat22, etc.) - create warp array directly from pointer
         # Get the device from the first stream
         device = streams[0].device if streams else "cuda:0"
-        
+
         # Create warp array directly with the CuPy array's memory pointer
         arr = wp.array(ptr=cupy_arr.data.ptr, shape=shape, dtype=dtype, device=device, copy=False)
-        
+
         # Attach the CuPy array to the warp array to keep it alive
         arr._cupy_arr = cupy_arr
-        
+
         return arr
 
 
@@ -1409,7 +1447,7 @@ def zeros_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, 
             tile_dim = tuple(1 for _ in shape)
         else:
             tile_dim = (1,)
-    
+
     # Compute tile shape from global shape and tile dimensions
     if isinstance(shape, (list, tuple)) and isinstance(tile_dim, (list, tuple)):
         tile_shape = tuple(s // td for s, td in zip(shape, tile_dim))
@@ -1448,9 +1486,9 @@ def zeros_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, 
         wp.uint32: wp.uint32,
         wp.uint64: wp.uint64,
     }
-    
+
     is_scalar_type = dtype in dtype_map
-    
+
     if is_scalar_type:
         # Simple scalar type - use DLPack conversion
         return wp.from_dlpack(cupy_arr.toDlpack())
@@ -1458,13 +1496,13 @@ def zeros_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, 
         # Structured type (vec2, vec3, mat22, etc.) - create warp array directly from pointer
         # Get the device from the first stream
         device = streams[0].device if streams else "cuda:0"
-        
+
         # Create warp array directly with the CuPy array's memory pointer
         arr = wp.array(ptr=cupy_arr.data.ptr, shape=shape, dtype=dtype, device=device, copy=False)
-        
+
         # Attach the CuPy array to the warp array to keep it alive
         arr._cupy_arr = cupy_arr
-        
+
         return arr
 
 
@@ -1504,6 +1542,8 @@ def empty_managed(
         allocator under the hood. The array is accessible from all CUDA devices
         and the CPU without explicit memory transfers.
     """
+    import numpy as np
+
     import warp as wp
 
     try:
@@ -1532,11 +1572,25 @@ def empty_managed(
 
     # Determine if this is a scalar or structured type
     is_scalar_type = dtype in dtype_map
+    cupy_dtype = None
 
     if is_scalar_type:
         # Simple scalar type - use DLPack conversion
         cupy_dtype = dtype_map[dtype]
         element_size = cp.dtype(cupy_dtype).itemsize
+    elif hasattr(dtype, "dtype") or isinstance(dtype, np.dtype):
+        # Handle numpy/cupy dtype objects (e.g., np.float32, cp.float32)
+        cupy_dtype = np.dtype(dtype)
+        element_size = cupy_dtype.itemsize
+        is_scalar_type = True
+    elif dtype in [np.float32, np.float64, np.int32, np.int64, np.uint32, np.uint64]:
+        # Handle numpy dtype classes directly
+        cupy_dtype = np.dtype(dtype)
+        element_size = cupy_dtype.itemsize
+        is_scalar_type = True
+
+    if is_scalar_type and cupy_dtype is not None:
+        # Simple scalar type - use DLPack conversion
 
         nbytes = 1
         for dim in shape:
@@ -1738,6 +1792,7 @@ def launch_localized(kernel, dim, inputs=None, outputs=None, primary_stream=None
     # Step 4-5: Other streams signal completion, primary waits
     for stream in streams:
         if stream != primary_stream:
+            print(f">>>>>>>>>>>>>>> wp.Event(device={stream.device})...")
             ei = wp.Event(device=stream.device)
             stream.record_event(ei)
             primary_stream.wait_event(ei)

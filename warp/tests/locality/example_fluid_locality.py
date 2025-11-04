@@ -26,8 +26,9 @@ import math
 import warp as wp
 import warp.render
 
-grid_width = wp.constant(256 * 64)
-grid_height = wp.constant(128 * 64)
+grid_width = wp.constant(256)
+grid_height = wp.constant(128)
+
 
 @wp.func
 def lookup_float(f: wp.array2d(dtype=float), x: int, y: int):
@@ -187,7 +188,6 @@ class Example:
 
         # create a stream for each device
         self.streams = [wp.Stream(device=f"cuda:{i}") for i in range(wp.get_cuda_device_count())]
-        # self.streams = [wp.Stream(device=f"cuda:{0}") for i in range(4)]
         self.policy = wp.blocked()
 
         # Using localized memory for better multi-device accessibility
@@ -205,7 +205,6 @@ class Example:
         self.use_cuda_graph = wp.get_device().is_cuda
         if self.use_cuda_graph:
             with wp.ScopedCapture(stream=self.streams[0]) as capture:
-                print("Capture pressure_iterations()")
                 self.pressure_iterations()
             self.graph = capture.graph
 
