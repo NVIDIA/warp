@@ -37,12 +37,6 @@ def inc(a: wp.array(dtype=float)):
     a[tid] = a[tid] + 1.0
 
 
-@wp.kernel
-def arange(start: int, step: int, a: wp.array(dtype=int)):
-    tid = wp.tid()
-    a[tid] = start + step * tid
-
-
 def create_green_ctx(device_ordinal=0, min_sms_per_partition=8):
     """Create green contexts for each SM partition on the device.
 
@@ -100,7 +94,7 @@ def create_green_ctx(device_ordinal=0, min_sms_per_partition=8):
     return contexts
 
 
-class TestGreenContext(unittest.TestCase):
+class TestGreenContextLocality(unittest.TestCase):
     @unittest.skipUnless(cuda_toolkit_version_at_least(12, 4), "Green contexts require CUDA toolkit 12.4 or higher")
     def test_green_ctx(self):
         device_ordinal = 0
@@ -119,12 +113,12 @@ class TestGreenContext(unittest.TestCase):
         n = 1024 * 1024
 
         streams = []
-        for i, ctx in enumerate(contexts):
+        for i in range(len(contexts)):
             alias = f"cuda:{device_ordinal}:{i}"
             s = wp.Stream(alias)
             streams.append(s)
 
-        policy=wp.blocked()
+        policy = wp.blocked()
 
         buffer = wp.zeros_localized((n,), dtype=float, partition_desc=policy, streams=streams)
 
@@ -134,8 +128,6 @@ class TestGreenContext(unittest.TestCase):
             wp.launch_localized(inc, dim=n, inputs=[buffer], mapping=policy, streams=streams)
 
         wp.synchronize_stream(streams[0])
-
-        print(f"Successfully created {len(contexts)} green context(s) with partitioned SM resources")
 
 
 if __name__ == "__main__":
