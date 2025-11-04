@@ -36,6 +36,7 @@ import shutil
 import subprocess
 import sys
 
+import build_llvm
 import warp._src.build_dll as build_dll
 import warp._src.config as config
 from warp._src.context import export_builtins
@@ -355,6 +356,14 @@ def main(argv: list[str] | None = None) -> int:
     # propagate verbosity to build subsystem
     build_dll.verbose_cmd = args.verbose
 
+    # check LLVM build dependencies early if --build_llvm is set
+    if args.build_llvm:
+        try:
+            build_llvm.check_build_dependencies(verbose=args.verbose)
+        except RuntimeError as e:
+            print(f"Warp build error: {e}")
+            return 1
+
     # setup CUDA Toolkit path
     if platform.system() == "Darwin":
         args.cuda_path = None
@@ -457,8 +466,6 @@ def main(argv: list[str] | None = None) -> int:
 
         # build warp-clang.dll
         if args.standalone:
-            import build_llvm
-
             if args.build_llvm:
                 build_llvm.build_llvm_clang_from_source(args)
 
