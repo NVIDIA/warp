@@ -22,6 +22,7 @@
 - Fix atomic floating-point min/max operations not returning the old value ([GH-1058](https://github.com/NVIDIA/warp/issues/1058)).
 - Fix type inference errors when passing reference arguments (such as array elements) to built-in functions
   ([GH-1071](https://github.com/NVIDIA/warp/issues/1071)).
+- Improve documentation and error messages about requiring a BVH for `fem.lookup` and related functionality ([GH-1072](https://github.com/NVIDIA/warp/issues/1072)).
 
 ## [1.10.0] - 2025-11-02
 
