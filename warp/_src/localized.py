@@ -1388,7 +1388,7 @@ def empty_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, 
 
     if is_scalar_type:
         # Simple scalar type - use DLPack conversion
-        return wp.from_dlpack(cupy_arr.toDlpack())
+        return wp.from_dlpack(cupy_arr)
     else:
         # Structured type (vec2, vec3, mat22, etc.) - create warp array directly from pointer
         # Get the device from the first stream
@@ -1491,7 +1491,7 @@ def zeros_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, 
 
     if is_scalar_type:
         # Simple scalar type - use DLPack conversion
-        return wp.from_dlpack(cupy_arr.toDlpack())
+        return wp.from_dlpack(cupy_arr)
     else:
         # Structured type (vec2, vec3, mat22, etc.) - create warp array directly from pointer
         # Get the device from the first stream
