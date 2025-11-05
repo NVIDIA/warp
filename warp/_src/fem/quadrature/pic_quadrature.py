@@ -185,7 +185,8 @@ class PicQuadrature(Quadrature):
             device = positions.device
             if not self.domain.supports_lookup(device):
                 raise RuntimeError(
-                    "Attempting to build a PicQuadrature from positions on a domain that does not support global lookups"
+                    f"The PicQuadrature's underlying domain of type '{self.domain.geometry.name}.{self.domain.element_kind.name}' does not support global element lookups on this device. "
+                    "If relevant, check that the geometry's BVH has been built for this device (see `Geometry.build_bvh()`, `Geometry.update_bvh()`)."
                 )
 
             cell_lookup = self.domain.element_partition_lookup

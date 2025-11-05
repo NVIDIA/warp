@@ -164,11 +164,18 @@ The process looks as follows::
 See ``example_deformed_geometry.py`` for a complete example.
 It is also possible to define the deformation field from an :class:`ImplicitField`, as done in ``example_magnetostatics.py``.
 
+.. _lookups:
+
 Particle-based quadrature and position lookups
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The global :func:`.lookup` operator allows generating a :class:`.Sample` from an arbitrary position; this is illustrated in 
+The global :func:`.lookup` and :func:`.partition_lookup` operators allow generating a :class:`.Sample` from an arbitrary position; this is illustrated in 
 the ``example_streamlines.py`` example for generating 3D streamlines by tracing through a velocity field.
+
+.. note::
+   Non-grid-based geometry types require building a Bounding Volume Hierarchy (BVH) acceleration structure for :func:`.lookup` and similar operators to be functional.
+   This can be done by calling :meth:`.Geometry.build_bvh` or passing ``build_bvh=True`` to the geometry constructor. 
+   In case the geometry vertex positions are later modified, the BVH can be refit using :meth:`.Geometry.update_bvh`.
 
 This operator is also leveraged by the :class:`.PicQuadrature` to provide a way to define Particle-In-Cell quadratures from a set of arbitrary particles,
 making it possible to implement MPM-type methods.
@@ -188,7 +195,7 @@ This is leveraged by the ``example_nonconforming_contact.py`` to simulate contac
 
 .. note::
    The mapping between the different geometries is position based, so a :class:`.NonconformingField` is not able to accurately capture discontinuous function spaces.
-   Moreover, the integration domain must support the :func:`.lookup` operator.
+   Moreover, the integration domain must support the :func:`.lookup` operator (see :ref:`lookups`).
 
 Partitioning
 ^^^^^^^^^^^^
@@ -317,8 +324,8 @@ Field operators
 .. autofunction:: at_node(f: Field, s: Sample, node_index_in_elt: int = None)
 .. autofunction:: node_index(f: Field, s: Sample, node_index_in_elt: int = None)
 
-Integration
------------
+Integration and interpolation
+-----------------------------
 
 .. autofunction:: integrate
 .. autofunction:: interpolate
@@ -600,7 +607,7 @@ Interface classes are not meant to be constructed directly, but can be derived f
 
 .. autoclass:: Geometry
    :no-members:
-   :members: cell_count, side_count, boundary_side_count
+   :members: cell_count, side_count, boundary_side_count, build_bvh, update_bvh
 
 .. autoclass:: GeometryPartition
    :no-members:
