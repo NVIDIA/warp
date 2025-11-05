@@ -534,7 +534,7 @@ class Subdomain(GeometryDomain):
         return element_partition_index
 
     def supports_lookup(self, device):
-        return self._domain.supports_lokup(device)
+        return self._domain.supports_lookup(device)
 
     def cell_domain(self):
         return self._domain.cell_domain()

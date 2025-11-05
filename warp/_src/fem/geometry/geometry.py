@@ -601,6 +601,9 @@ class Geometry:
         return cell_lookup
 
     def _make_compute_cell_bounds(self):
+        if not hasattr(self, "cell_bounds"):
+            return None
+
         @cache.dynamic_kernel(suffix=self.name)
         def compute_cell_bounds(
             args: self.CellArg,
@@ -619,7 +622,12 @@ class Geometry:
 
     def update_bvh(self, device=None):
         """
-        Refits the BVH, or rebuilds it from scratch if `force_rebuild` is ``True``.
+        Refits the geometry's BVH if it exists on `device`, or builds it from scratch otherwise.
+
+        Refitting the BVH is cheaper than rebuilding it from scratch, and is generally preferred
+        when the geometry positions are modified without significant changes to the topology.
+
+        See also: :meth:`.Geometry.build_bvh`.
         """
 
         if self._bvhs is None:
@@ -644,6 +652,19 @@ class Geometry:
         bvh.refit()
 
     def build_bvh(self, device=None):
+        """
+        Rebuilds the geometry's Bounding Volume Hierarchy (BVH) for `device` from scratch.
+
+        Many geometries rely on a BVH for the :func:`lookup` and :func:`partition_lookup` operators to be functional.
+
+        If building a BVH is not supported for this geometry, a :class:`TypeError` is raised.
+
+        See also: :meth:`.Geometry.update_bvh`.
+        """
+
+        if self.compute_cell_bounds is None:
+            raise TypeError("Building a BVH is not supported for this geometry")
+
         device = wp.get_device(device)
 
         lowers = wp.array(shape=self.cell_count(), dtype=wp.vec3, device=device)

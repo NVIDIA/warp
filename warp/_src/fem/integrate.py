@@ -432,6 +432,17 @@ def _find_integrand_operators(integrand: Integrand, field_args: Dict[str, FieldL
         integrand.operators = operators
 
 
+def _check_domain_operators(integrand: Integrand, domain: GeometryDomain, domain_argument_name: str, device):
+    domain_operators = integrand.operators.get(domain_argument_name, ())
+    if (
+        operator.lookup in domain_operators or operator.partition_lookup in domain_operators
+    ) and not domain.supports_lookup(device):
+        warn(
+            f"{integrand.name}: using lookup() operator on a '{domain.geometry.name}.{domain.element_kind.name}' domain that does not support it. "
+            "If relevant, check that the geometry's BVH has been built for this device (see `Geometry.build_bvh()`, `Geometry.update_bvh()`)."
+        )
+
+
 def _notify_operator_usage(
     integrand: Integrand,
     field_args: Dict[str, FieldLike],
@@ -1738,9 +1749,7 @@ def integrate(
         arguments.field_args[arguments.domain_name] = domain
 
     _find_integrand_operators(integrand, arguments.field_args)
-
-    if operator.lookup in integrand.operators.get(arguments.domain_name, []) and not domain.supports_lookup(device):
-        warn(f"{integrand.name}: using lookup() operator on a domain that does not support it")
+    _check_domain_operators(integrand, domain, arguments.domain_name, device)
 
     assembly = _pick_assembly_strategy(assembly, arguments=arguments, operators=integrand.operators)
     # print("assembly for ", integrand.name, ":", strategy)
@@ -2476,9 +2485,7 @@ def interpolate(
         arguments.field_args[arguments.domain_name] = domain
 
     _find_integrand_operators(integrand, arguments.field_args)
-
-    if operator.lookup in integrand.operators.get(arguments.domain_name, []) and not domain.supports_lookup(device):
-        warn(f"{integrand.name}: using lookup() operator on a domain that does not support it")
+    _check_domain_operators(integrand, domain, arguments.domain_name, device)
 
     kernel, field_struct, value_struct = _generate_interpolate_kernel(
         integrand=integrand,
