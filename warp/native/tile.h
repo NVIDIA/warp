@@ -3613,7 +3613,7 @@ CUDA_CALLABLE TileL& tile_cholesky(Fwd fun_forward, TileA& A, TileL& L)
 }
 
 template <typename Fwd, typename TileA>
-void tile_cholesky_inplace(Fwd fun_forward, TileA& A)
+CUDA_CALLABLE void tile_cholesky_inplace(Fwd fun_forward, TileA& A)
 {
     static_assert(TileA::Layout::Shape::N == 2, "Expected TileA::Layout::Shape::N == 2");
     static_assert(TileA::Layout::Shape::dim(0) == TileA::Layout::Shape::dim(1), "Expected TileA to be square");

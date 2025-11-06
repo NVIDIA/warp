@@ -10181,6 +10181,7 @@ add_builtin(
     lto_dispatch_func=tile_cholesky_generic_lto_dispatch_func,
     variadic=True,
     doc="""Compute the Cholesky factorization L of a matrix A.
+
     L is lower triangular and satisfies LL^T = A.
 
     Only the lower triangular portion of A is used for the decomposition;
@@ -10208,6 +10209,7 @@ add_builtin(
     lto_dispatch_func=tile_cholesky_inplace_generic_lto_dispatch_func,
     variadic=True,
     doc="""Compute the Cholesky factorization L of a matrix A.
+
     L is lower triangular and satisfies LL^T = A.
 
     Only the lower triangular portion of A is used for the decomposition;
@@ -10244,7 +10246,7 @@ def _tile_cholesky_solve_generic_value_func(inplace: bool, arg_types, arg_values
         raise TypeError(f"tile_cholesky_solve() 'L' argument must be a tile, got {l!r}")
 
     if not is_tile(y):
-        raise TypeError(f"tile_cholesky_solve() 'y' argument must be a tile, got {l!r}")
+        raise TypeError(f"tile_cholesky_solve() 'y' argument must be a tile, got {y!r}")
 
     if not types_equal(l.dtype, y.dtype):
         raise TypeError(f"tile_cholesky_solve() arguments must have the same dtype, got {l.dtype} and {y.dtype}")
@@ -10313,7 +10315,7 @@ def _tile_cholesky_solve_generic_lto_dispatch_func(
             )
 
     if any(T not in cusolver_type_map.keys() for T in [y.type.dtype, L.type.dtype]):
-        raise TypeError("tile_cholesky_solve() arguments be tiles of float64 or float32")
+        raise TypeError("tile_cholesky_solve() arguments must be tiles of float64 or float32")
 
     arch = options["output_arch"]
 
@@ -10677,7 +10679,7 @@ def _tile_upper_solve_generic_lto_dispatch_func(
         x = return_values[0]
 
         if len(x.type.shape) > 2 or len(x.type.shape) < 1:
-            raise TypeError(f"tile_upper_solve() output tile must be 1D or 2D, got {len(z.type.shape)}-D")
+            raise TypeError(f"tile_upper_solve() output tile must be 1D or 2D, got {len(x.type.shape)}-D")
 
         if x.type.shape[0] != M:
             raise ValueError(

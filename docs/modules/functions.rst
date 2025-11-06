@@ -3013,6 +3013,7 @@ Tile Primitives
        * Kernel
 
     Compute the Cholesky factorization L of a matrix A.
+
     L is lower triangular and satisfies LL^T = A.
 
     Only the lower triangular portion of A is used for the decomposition;
@@ -3036,6 +3037,7 @@ Tile Primitives
        * Kernel
 
     Compute the Cholesky factorization L of a matrix A.
+
     L is lower triangular and satisfies LL^T = A.
 
     Only the lower triangular portion of A is used for the decomposition;

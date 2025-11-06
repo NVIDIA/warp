@@ -5677,6 +5677,7 @@ def tile_ifft(inout: Tile[Vector[2, Float], Tuple[int, int]]):
 @over
 def tile_cholesky(A: Tile[Float, Tuple[int, int]]) -> Tile[Float, Tuple[int, int]]:
     """Compute the Cholesky factorization L of a matrix A.
+
     L is lower triangular and satisfies LL^T = A.
 
     Only the lower triangular portion of A is used for the decomposition;
@@ -5696,6 +5697,7 @@ def tile_cholesky(A: Tile[Float, Tuple[int, int]]) -> Tile[Float, Tuple[int, int
 @over
 def tile_cholesky_inplace(A: Tile[Float, Tuple[int, int]]):
     """Compute the Cholesky factorization L of a matrix A.
+
     L is lower triangular and satisfies LL^T = A.
 
     Only the lower triangular portion of A is used for the decomposition;
