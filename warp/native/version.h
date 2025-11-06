@@ -20,4 +20,4 @@
 
 #define WP_VERSION_STRING "1.11.0.dev0"
 
-#endif // WP_VERSION_H
+#endif  // WP_VERSION_H

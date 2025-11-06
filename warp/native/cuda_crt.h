@@ -28,14 +28,11 @@
 using size_t = unsigned long long;
 
 // stdio.h
-extern "C" __device__ int printf(const char* format, ... );
+extern "C" __device__ int printf(const char* format, ...);
 
 // assert.h
-extern __host__ __device__ void __assertfail(const char * __assertion, 
-                                             const char *__file,
-                                             unsigned int __line,
-                                             const char *__function,
-                                             size_t charsize);
+extern __host__ __device__ void
+__assertfail(const char* __assertion, const char* __file, unsigned int __line, const char* __function, size_t charsize);
 
 #if defined(NDEBUG)
 #define assert(e) (static_cast<void>(0))
@@ -50,8 +47,7 @@ extern __host__ __device__ void __assertfail(const char * __assertion,
 #define __device_forceinline__ static __device__ inline __forceinline__
 
 // Implementations of CUDA builtin variables
-struct __threadIdx_t
-{
+struct __threadIdx_t {
     __declspec(property(get = get_x)) unsigned int x;
     __declspec(property(get = get_y)) unsigned int y;
     __declspec(property(get = get_z)) unsigned int z;
@@ -61,8 +57,7 @@ struct __threadIdx_t
     __device_forceinline__ unsigned int get_z() { return __nvvm_read_ptx_sreg_tid_z(); }
 };
 
-struct __blockIdx_t
-{
+struct __blockIdx_t {
     __declspec(property(get = get_x)) unsigned int x;
     __declspec(property(get = get_y)) unsigned int y;
     __declspec(property(get = get_z)) unsigned int z;
@@ -72,8 +67,7 @@ struct __blockIdx_t
     __device_forceinline__ unsigned int get_z() { return __nvvm_read_ptx_sreg_ctaid_z(); }
 };
 
-struct __blockDim_t
-{
+struct __blockDim_t {
     __declspec(property(get = get_x)) unsigned int x;
     __declspec(property(get = get_y)) unsigned int y;
     __declspec(property(get = get_z)) unsigned int z;
@@ -83,8 +77,7 @@ struct __blockDim_t
     __device_forceinline__ unsigned int get_z() { return __nvvm_read_ptx_sreg_ntid_z(); }
 };
 
-struct __gridDim_t
-{
+struct __gridDim_t {
     __declspec(property(get = get_x)) unsigned int x;
     __declspec(property(get = get_y)) unsigned int y;
     __declspec(property(get = get_z)) unsigned int z;
@@ -217,7 +210,7 @@ __device__ float __nv_fast_log10f(float a);
 __device__ float __nv_fast_log2f(float a);
 __device__ float __nv_fast_logf(float a);
 __device__ float __nv_fast_powf(float a, float b);
-__device__ void __nv_fast_sincosf(float a, float *s, float *c);
+__device__ void __nv_fast_sincosf(float a, float* s, float* c);
 __device__ float __nv_fast_sinf(float a);
 __device__ float __nv_fast_tanf(float a);
 __device__ double __nv_fdim(double a, double b);
@@ -278,8 +271,8 @@ __device__ float __nv_frcp_rd(float a);
 __device__ float __nv_frcp_rn(float a);
 __device__ float __nv_frcp_ru(float a);
 __device__ float __nv_frcp_rz(float a);
-__device__ double __nv_frexp(double a, int *b);
-__device__ float __nv_frexpf(float a, int *b);
+__device__ double __nv_frexp(double a, int* b);
+__device__ float __nv_frexpf(float a, int* b);
 __device__ float __nv_frsqrt_rn(float a);
 __device__ float __nv_fsqrt_rd(float a);
 __device__ float __nv_fsqrt_rn(float a);
@@ -345,13 +338,13 @@ __device__ float __nv_logf(float a);
 __device__ double __nv_longlong_as_double(long long a);
 __device__ int __nv_max(int a, int b);
 __device__ int __nv_min(int a, int b);
-__device__ double __nv_modf(double a, double *b);
-__device__ float __nv_modff(float a, float *b);
+__device__ double __nv_modf(double a, double* b);
+__device__ float __nv_modff(float a, float* b);
 __device__ int __nv_mul24(int a, int b);
 __device__ long long __nv_mul64hi(long long a, long long b);
 __device__ int __nv_mulhi(int a, int b);
-__device__ double __nv_nan(const signed char *a);
-__device__ float __nv_nanf(const signed char *a);
+__device__ double __nv_nan(const signed char* a);
+__device__ float __nv_nanf(const signed char* a);
 __device__ double __nv_nearbyint(double a);
 __device__ float __nv_nearbyintf(float a);
 __device__ double __nv_nextafter(double a, double b);
@@ -364,8 +357,8 @@ __device__ double __nv_normcdf(double a);
 __device__ float __nv_normcdff(float a);
 __device__ double __nv_normcdfinv(double a);
 __device__ float __nv_normcdfinvf(float a);
-__device__ float __nv_normf(int a, const float *b);
-__device__ double __nv_norm(int a, const double *b);
+__device__ float __nv_normf(int a, const float* b);
+__device__ double __nv_norm(int a, const double* b);
 __device__ int __nv_popc(int a);
 __device__ int __nv_popcll(long long a);
 __device__ double __nv_pow(double a, double b);
@@ -377,8 +370,8 @@ __device__ float __nv_rcbrtf(float a);
 __device__ double __nv_rcp64h(double a);
 __device__ double __nv_remainder(double a, double b);
 __device__ float __nv_remainderf(float a, float b);
-__device__ double __nv_remquo(double a, double b, int *c);
-__device__ float __nv_remquof(float a, float b, int *c);
+__device__ double __nv_remquo(double a, double b, int* c);
+__device__ float __nv_remquof(float a, float b, int* c);
 __device__ int __nv_rhadd(int a, int b);
 __device__ double __nv_rhypot(double a, double b);
 __device__ float __nv_rhypotf(float a, float b);
@@ -388,8 +381,8 @@ __device__ double __nv_rnorm3d(double a, double b, double c);
 __device__ float __nv_rnorm3df(float a, float b, float c);
 __device__ double __nv_rnorm4d(double a, double b, double c, double d);
 __device__ float __nv_rnorm4df(float a, float b, float c, float d);
-__device__ float __nv_rnormf(int a, const float *b);
-__device__ double __nv_rnorm(int a, const double *b);
+__device__ float __nv_rnormf(int a, const float* b);
+__device__ double __nv_rnorm(int a, const double* b);
 __device__ double __nv_round(double a);
 __device__ float __nv_roundf(float a);
 __device__ double __nv_rsqrt(double a);
@@ -400,10 +393,10 @@ __device__ double __nv_scalbn(double a, int b);
 __device__ float __nv_scalbnf(float a, int b);
 __device__ int __nv_signbitd(double a);
 __device__ int __nv_signbitf(float a);
-__device__ void __nv_sincos(double a, double *b, double *c);
-__device__ void __nv_sincosf(float a, float *b, float *c);
-__device__ void __nv_sincospi(double a, double *b, double *c);
-__device__ void __nv_sincospif(float a, float *b, float *c);
+__device__ void __nv_sincos(double a, double* b, double* c);
+__device__ void __nv_sincosf(float a, float* b, float* c);
+__device__ void __nv_sincospi(double a, double* b, double* c);
+__device__ void __nv_sincospif(float a, float* b, float* c);
 __device__ double __nv_sin(double a);
 __device__ float __nv_sinf(float a);
 __device__ double __nv_sinh(double a);
@@ -461,13 +454,16 @@ __device_forceinline__ unsigned int __brev(unsigned int a) { return __nv_brev(a)
 __device_forceinline__ unsigned long long __brevll(unsigned long long a) { return __nv_brevll(a); }
 __device_forceinline__ void __brkpt() { __asm__ __volatile__("brkpt;"); }
 __device_forceinline__ void __brkpt(int a) { __brkpt(); }
-__device_forceinline__ unsigned int __byte_perm(unsigned int a, unsigned int b, unsigned int c) { return __nv_byte_perm(a, b, c); }
+__device_forceinline__ unsigned int __byte_perm(unsigned int a, unsigned int b, unsigned int c)
+{
+    return __nv_byte_perm(a, b, c);
+}
 __device_forceinline__ int __clz(int a) { return __nv_clz(a); }
 __device_forceinline__ int __clzll(long long a) { return __nv_clzll(a); }
 __device_forceinline__ float __cosf(float a) { return __nv_fast_cosf(a); }
-__device_forceinline__ double __dAtomicAdd(double *p, double v) { return __nvvm_atom_add_gen_d(p, v); }
-__device_forceinline__ double __dAtomicAdd_block(double *p, double v) { return __nvvm_atom_cta_add_gen_d(p, v); }
-__device_forceinline__ double __dAtomicAdd_system(double *p, double v) { return __nvvm_atom_sys_add_gen_d(p, v); }
+__device_forceinline__ double __dAtomicAdd(double* p, double v) { return __nvvm_atom_add_gen_d(p, v); }
+__device_forceinline__ double __dAtomicAdd_block(double* p, double v) { return __nvvm_atom_cta_add_gen_d(p, v); }
+__device_forceinline__ double __dAtomicAdd_system(double* p, double v) { return __nvvm_atom_sys_add_gen_d(p, v); }
 __device_forceinline__ double __dadd_rd(double a, double b) { return __nv_dadd_rd(a, b); }
 __device_forceinline__ double __dadd_rn(double a, double b) { return __nv_dadd_rn(a, b); }
 __device_forceinline__ double __dadd_ru(double a, double b) { return __nv_dadd_ru(a, b); }
@@ -517,12 +513,21 @@ __device_forceinline__ double __dsub_ru(double a, double b) { return __nv_dsub_r
 __device_forceinline__ double __dsub_rz(double a, double b) { return __nv_dsub_rz(a, b); }
 __device_forceinline__ float __exp10f(float a) { return __nv_fast_exp10f(a); }
 __device_forceinline__ float __expf(float a) { return __nv_fast_expf(a); }
-__device_forceinline__ float __fAtomicAdd(float *p, float v) { return __nvvm_atom_add_gen_f(p, v); }
-__device_forceinline__ float __fAtomicAdd_block(float *p, float v) { return __nvvm_atom_cta_add_gen_f(p, v); }
-__device_forceinline__ float __fAtomicAdd_system(float *p, float v) { return __nvvm_atom_sys_add_gen_f(p, v); }
-__device_forceinline__ float __fAtomicExch(float *p, float v) { return __nv_int_as_float(__nvvm_atom_xchg_gen_i((int *)p, __nv_float_as_int(v))); }
-__device_forceinline__ float __fAtomicExch_block(float *p, float v) { return __nv_int_as_float(__nvvm_atom_cta_xchg_gen_i((int *)p, __nv_float_as_int(v))); }
-__device_forceinline__ float __fAtomicExch_system(float *p, float v) { return __nv_int_as_float(__nvvm_atom_sys_xchg_gen_i((int *)p, __nv_float_as_int(v))); }
+__device_forceinline__ float __fAtomicAdd(float* p, float v) { return __nvvm_atom_add_gen_f(p, v); }
+__device_forceinline__ float __fAtomicAdd_block(float* p, float v) { return __nvvm_atom_cta_add_gen_f(p, v); }
+__device_forceinline__ float __fAtomicAdd_system(float* p, float v) { return __nvvm_atom_sys_add_gen_f(p, v); }
+__device_forceinline__ float __fAtomicExch(float* p, float v)
+{
+    return __nv_int_as_float(__nvvm_atom_xchg_gen_i((int*)p, __nv_float_as_int(v)));
+}
+__device_forceinline__ float __fAtomicExch_block(float* p, float v)
+{
+    return __nv_int_as_float(__nvvm_atom_cta_xchg_gen_i((int*)p, __nv_float_as_int(v)));
+}
+__device_forceinline__ float __fAtomicExch_system(float* p, float v)
+{
+    return __nv_int_as_float(__nvvm_atom_sys_xchg_gen_i((int*)p, __nv_float_as_int(v)));
+}
 __device_forceinline__ float __fadd_rd(float a, float b) { return __nv_fadd_rd(a, b); }
 __device_forceinline__ float __fadd_rn(float a, float b) { return __nv_fadd_rn(a, b); }
 __device_forceinline__ float __fadd_ru(float a, float b) { return __nv_fadd_ru(a, b); }
@@ -585,36 +590,48 @@ __device_forceinline__ float __fsub_ru(float a, float b) { return __nv_fsub_ru(a
 __device_forceinline__ float __fsub_rz(float a, float b) { return __nv_fsub_rz(a, b); }
 __device_forceinline__ int __hadd(int a, int b) { return __nv_hadd(a, b); }
 __device_forceinline__ double __hiloint2double(int a, int b) { return __nv_hiloint2double(a, b); }
-__device_forceinline__ int __iAtomicAdd(int *p, int v) { return __nvvm_atom_add_gen_i(p, v); }
-__device_forceinline__ int __iAtomicAdd_block(int *p, int v) { return __nvvm_atom_cta_add_gen_i(p, v); }
-__device_forceinline__ int __iAtomicAdd_system(int *p, int v) { return __nvvm_atom_sys_add_gen_i(p, v); }
-__device_forceinline__ int __iAtomicAnd(int *p, int v) { return __nvvm_atom_and_gen_i(p, v); }
-__device_forceinline__ int __iAtomicAnd_block(int *p, int v) { return __nvvm_atom_cta_and_gen_i(p, v); }
-__device_forceinline__ int __iAtomicAnd_system(int *p, int v) { return __nvvm_atom_sys_and_gen_i(p, v); }
-__device_forceinline__ int __iAtomicCAS(int *p, int cmp, int v) { return __nvvm_atom_cas_gen_i(p, cmp, v); }
-__device_forceinline__ int __iAtomicCAS_block(int *p, int cmp, int v) { return __nvvm_atom_cta_cas_gen_i(p, cmp, v); }
-__device_forceinline__ int __iAtomicCAS_system(int *p, int cmp, int v) { return __nvvm_atom_sys_cas_gen_i(p, cmp, v); }
-__device_forceinline__ int __iAtomicExch(int *p, int v) { return __nvvm_atom_xchg_gen_i(p, v); }
-__device_forceinline__ int __iAtomicExch_block(int *p, int v) { return __nvvm_atom_cta_xchg_gen_i(p, v); }
-__device_forceinline__ int __iAtomicExch_system(int *p, int v) { return __nvvm_atom_sys_xchg_gen_i(p, v); }
-__device_forceinline__ int __iAtomicMax(int *p, int v) { return __nvvm_atom_max_gen_i(p, v); }
-__device_forceinline__ int __iAtomicMax_block(int *p, int v) { return __nvvm_atom_cta_max_gen_i(p, v); }
-__device_forceinline__ int __iAtomicMax_system(int *p, int v) { return __nvvm_atom_sys_max_gen_i(p, v); }
-__device_forceinline__ int __iAtomicMin(int *p, int v) { return __nvvm_atom_min_gen_i(p, v); }
-__device_forceinline__ int __iAtomicMin_block(int *p, int v) { return __nvvm_atom_cta_min_gen_i(p, v); }
-__device_forceinline__ int __iAtomicMin_system(int *p, int v) { return __nvvm_atom_sys_min_gen_i(p, v); }
-__device_forceinline__ int __iAtomicOr(int *p, int v) { return __nvvm_atom_or_gen_i(p, v); }
-__device_forceinline__ int __iAtomicOr_block(int *p, int v) { return __nvvm_atom_cta_or_gen_i(p, v); }
-__device_forceinline__ int __iAtomicOr_system(int *p, int v) { return __nvvm_atom_sys_or_gen_i(p, v); }
-__device_forceinline__ int __iAtomicXor(int *p, int v) { return __nvvm_atom_xor_gen_i(p, v); }
-__device_forceinline__ int __iAtomicXor_block(int *p, int v) { return __nvvm_atom_cta_xor_gen_i(p, v); }
-__device_forceinline__ int __iAtomicXor_system(int *p, int v) { return __nvvm_atom_sys_xor_gen_i(p, v); }
-__device_forceinline__ long long __illAtomicMax(long long *p, long long v) { return __nvvm_atom_max_gen_ll(p, v); }
-__device_forceinline__ long long __illAtomicMax_block(long long *p, long long v) { return __nvvm_atom_cta_max_gen_ll(p, v); }
-__device_forceinline__ long long __illAtomicMax_system(long long *p, long long v) { return __nvvm_atom_sys_max_gen_ll(p, v); }
-__device_forceinline__ long long __illAtomicMin(long long *p, long long v) { return __nvvm_atom_min_gen_ll(p, v); }
-__device_forceinline__ long long __illAtomicMin_block(long long *p, long long v) { return __nvvm_atom_cta_min_gen_ll(p, v); }
-__device_forceinline__ long long __illAtomicMin_system(long long *p, long long v) { return __nvvm_atom_sys_min_gen_ll(p, v); }
+__device_forceinline__ int __iAtomicAdd(int* p, int v) { return __nvvm_atom_add_gen_i(p, v); }
+__device_forceinline__ int __iAtomicAdd_block(int* p, int v) { return __nvvm_atom_cta_add_gen_i(p, v); }
+__device_forceinline__ int __iAtomicAdd_system(int* p, int v) { return __nvvm_atom_sys_add_gen_i(p, v); }
+__device_forceinline__ int __iAtomicAnd(int* p, int v) { return __nvvm_atom_and_gen_i(p, v); }
+__device_forceinline__ int __iAtomicAnd_block(int* p, int v) { return __nvvm_atom_cta_and_gen_i(p, v); }
+__device_forceinline__ int __iAtomicAnd_system(int* p, int v) { return __nvvm_atom_sys_and_gen_i(p, v); }
+__device_forceinline__ int __iAtomicCAS(int* p, int cmp, int v) { return __nvvm_atom_cas_gen_i(p, cmp, v); }
+__device_forceinline__ int __iAtomicCAS_block(int* p, int cmp, int v) { return __nvvm_atom_cta_cas_gen_i(p, cmp, v); }
+__device_forceinline__ int __iAtomicCAS_system(int* p, int cmp, int v) { return __nvvm_atom_sys_cas_gen_i(p, cmp, v); }
+__device_forceinline__ int __iAtomicExch(int* p, int v) { return __nvvm_atom_xchg_gen_i(p, v); }
+__device_forceinline__ int __iAtomicExch_block(int* p, int v) { return __nvvm_atom_cta_xchg_gen_i(p, v); }
+__device_forceinline__ int __iAtomicExch_system(int* p, int v) { return __nvvm_atom_sys_xchg_gen_i(p, v); }
+__device_forceinline__ int __iAtomicMax(int* p, int v) { return __nvvm_atom_max_gen_i(p, v); }
+__device_forceinline__ int __iAtomicMax_block(int* p, int v) { return __nvvm_atom_cta_max_gen_i(p, v); }
+__device_forceinline__ int __iAtomicMax_system(int* p, int v) { return __nvvm_atom_sys_max_gen_i(p, v); }
+__device_forceinline__ int __iAtomicMin(int* p, int v) { return __nvvm_atom_min_gen_i(p, v); }
+__device_forceinline__ int __iAtomicMin_block(int* p, int v) { return __nvvm_atom_cta_min_gen_i(p, v); }
+__device_forceinline__ int __iAtomicMin_system(int* p, int v) { return __nvvm_atom_sys_min_gen_i(p, v); }
+__device_forceinline__ int __iAtomicOr(int* p, int v) { return __nvvm_atom_or_gen_i(p, v); }
+__device_forceinline__ int __iAtomicOr_block(int* p, int v) { return __nvvm_atom_cta_or_gen_i(p, v); }
+__device_forceinline__ int __iAtomicOr_system(int* p, int v) { return __nvvm_atom_sys_or_gen_i(p, v); }
+__device_forceinline__ int __iAtomicXor(int* p, int v) { return __nvvm_atom_xor_gen_i(p, v); }
+__device_forceinline__ int __iAtomicXor_block(int* p, int v) { return __nvvm_atom_cta_xor_gen_i(p, v); }
+__device_forceinline__ int __iAtomicXor_system(int* p, int v) { return __nvvm_atom_sys_xor_gen_i(p, v); }
+__device_forceinline__ long long __illAtomicMax(long long* p, long long v) { return __nvvm_atom_max_gen_ll(p, v); }
+__device_forceinline__ long long __illAtomicMax_block(long long* p, long long v)
+{
+    return __nvvm_atom_cta_max_gen_ll(p, v);
+}
+__device_forceinline__ long long __illAtomicMax_system(long long* p, long long v)
+{
+    return __nvvm_atom_sys_max_gen_ll(p, v);
+}
+__device_forceinline__ long long __illAtomicMin(long long* p, long long v) { return __nvvm_atom_min_gen_ll(p, v); }
+__device_forceinline__ long long __illAtomicMin_block(long long* p, long long v)
+{
+    return __nvvm_atom_cta_min_gen_ll(p, v);
+}
+__device_forceinline__ long long __illAtomicMin_system(long long* p, long long v)
+{
+    return __nvvm_atom_sys_min_gen_ll(p, v);
+}
 __device_forceinline__ double __int2double_rn(int a) { return __nv_int2double_rn(a); }
 __device_forceinline__ float __int2float_rd(int a) { return __nv_int2float_rd(a); }
 __device_forceinline__ float __int2float_rn(int a) { return __nv_int2float_rn(a); }
@@ -634,15 +651,33 @@ __device_forceinline__ float __ll2float_rd(long long a) { return __nv_ll2float_r
 __device_forceinline__ float __ll2float_rn(long long a) { return __nv_ll2float_rn(a); }
 __device_forceinline__ float __ll2float_ru(long long a) { return __nv_ll2float_ru(a); }
 __device_forceinline__ float __ll2float_rz(long long a) { return __nv_ll2float_rz(a); }
-__device_forceinline__ long long __llAtomicAnd(long long *p, long long v) { return __nvvm_atom_and_gen_ll(p, v); }
-__device_forceinline__ long long __llAtomicAnd_block(long long *p, long long v) { return __nvvm_atom_cta_and_gen_ll(p, v); }
-__device_forceinline__ long long __llAtomicAnd_system(long long *p, long long v) { return __nvvm_atom_sys_and_gen_ll(p, v); }
-__device_forceinline__ long long __llAtomicOr(long long *p, long long v) { return __nvvm_atom_or_gen_ll(p, v); }
-__device_forceinline__ long long __llAtomicOr_block(long long *p, long long v) { return __nvvm_atom_cta_or_gen_ll(p, v); }
-__device_forceinline__ long long __llAtomicOr_system(long long *p, long long v) { return __nvvm_atom_sys_or_gen_ll(p, v); }
-__device_forceinline__ long long __llAtomicXor(long long *p, long long v) { return __nvvm_atom_xor_gen_ll(p, v); }
-__device_forceinline__ long long __llAtomicXor_block(long long *p, long long v) { return __nvvm_atom_cta_xor_gen_ll(p, v); }
-__device_forceinline__ long long __llAtomicXor_system(long long *p, long long v) { return __nvvm_atom_sys_xor_gen_ll(p, v); }
+__device_forceinline__ long long __llAtomicAnd(long long* p, long long v) { return __nvvm_atom_and_gen_ll(p, v); }
+__device_forceinline__ long long __llAtomicAnd_block(long long* p, long long v)
+{
+    return __nvvm_atom_cta_and_gen_ll(p, v);
+}
+__device_forceinline__ long long __llAtomicAnd_system(long long* p, long long v)
+{
+    return __nvvm_atom_sys_and_gen_ll(p, v);
+}
+__device_forceinline__ long long __llAtomicOr(long long* p, long long v) { return __nvvm_atom_or_gen_ll(p, v); }
+__device_forceinline__ long long __llAtomicOr_block(long long* p, long long v)
+{
+    return __nvvm_atom_cta_or_gen_ll(p, v);
+}
+__device_forceinline__ long long __llAtomicOr_system(long long* p, long long v)
+{
+    return __nvvm_atom_sys_or_gen_ll(p, v);
+}
+__device_forceinline__ long long __llAtomicXor(long long* p, long long v) { return __nvvm_atom_xor_gen_ll(p, v); }
+__device_forceinline__ long long __llAtomicXor_block(long long* p, long long v)
+{
+    return __nvvm_atom_cta_xor_gen_ll(p, v);
+}
+__device_forceinline__ long long __llAtomicXor_system(long long* p, long long v)
+{
+    return __nvvm_atom_sys_xor_gen_ll(p, v);
+}
 __device_forceinline__ float __log10f(float a) { return __nv_fast_log10f(a); }
 __device_forceinline__ float __log2f(float a) { return __nv_fast_log2f(a); }
 __device_forceinline__ float __logf(float a) { return __nv_fast_logf(a); }
@@ -663,7 +698,7 @@ __device_forceinline__ unsigned int __sad(int a, int b, unsigned int c) { return
 __device_forceinline__ float __saturatef(float a) { return __nv_saturatef(a); }
 __device_forceinline__ int __signbitd(double a) { return __nv_signbitd(a); }
 __device_forceinline__ int __signbitf(float a) { return __nv_signbitf(a); }
-__device_forceinline__ void __sincosf(float a, float *s, float *c) { return __nv_fast_sincosf(a, s, c); }
+__device_forceinline__ void __sincosf(float a, float* s, float* c) { return __nv_fast_sincosf(a, s, c); }
 __device_forceinline__ float __sinf(float a) { return __nv_fast_sinf(a); }
 __device_forceinline__ int __syncthreads_and(int a) { return __nvvm_bar0_and(a); }
 __device_forceinline__ int __syncthreads_count(int a) { return __nvvm_bar0_popc(a); }
@@ -673,36 +708,126 @@ __device_forceinline__ void __threadfence(void) { __nvvm_membar_gl(); }
 __device_forceinline__ void __threadfence_block(void) { __nvvm_membar_cta(); };
 __device_forceinline__ void __threadfence_system(void) { __nvvm_membar_sys(); };
 __device_forceinline__ void __trap(void) { __asm__ __volatile__("trap;"); }
-__device_forceinline__ unsigned int __uAtomicAdd(unsigned int *p, unsigned int v) { return __nvvm_atom_add_gen_i((int *)p, v); }
-__device_forceinline__ unsigned int __uAtomicAdd_block(unsigned int *p, unsigned int v) { return __nvvm_atom_cta_add_gen_i((int *)p, v); }
-__device_forceinline__ unsigned int __uAtomicAdd_system(unsigned int *p, unsigned int v) { return __nvvm_atom_sys_add_gen_i((int *)p, v); }
-__device_forceinline__ unsigned int __uAtomicAnd(unsigned int *p, unsigned int v) { return __nvvm_atom_and_gen_i((int *)p, v); }
-__device_forceinline__ unsigned int __uAtomicAnd_block(unsigned int *p, unsigned int v) { return __nvvm_atom_cta_and_gen_i((int *)p, v); }
-__device_forceinline__ unsigned int __uAtomicAnd_system(unsigned int *p, unsigned int v) { return __nvvm_atom_sys_and_gen_i((int *)p, v); }
-__device_forceinline__ unsigned int __uAtomicCAS(unsigned int *p, unsigned int cmp, unsigned int v) { return __nvvm_atom_cas_gen_i((int *)p, cmp, v); }
-__device_forceinline__ unsigned int __uAtomicCAS_block(unsigned int *p, unsigned int cmp, unsigned int v) { return __nvvm_atom_cta_cas_gen_i((int *)p, cmp, v); }
-__device_forceinline__ unsigned int __uAtomicCAS_system(unsigned int *p, unsigned int cmp, unsigned int v) { return __nvvm_atom_sys_cas_gen_i((int *)p, cmp, v); }
-__device_forceinline__ unsigned int __uAtomicDec(unsigned int *p, unsigned int v) { return __nvvm_atom_dec_gen_ui(p, v); }
-__device_forceinline__ unsigned int __uAtomicDec_block(unsigned int *p, unsigned int v) { return __nvvm_atom_cta_dec_gen_ui(p, v); }
-__device_forceinline__ unsigned int __uAtomicDec_system(unsigned int *p, unsigned int v) { return __nvvm_atom_sys_dec_gen_ui(p, v); }
-__device_forceinline__ unsigned int __uAtomicExch(unsigned int *p, unsigned int v) { return __nvvm_atom_xchg_gen_i((int *)p, v); }
-__device_forceinline__ unsigned int __uAtomicExch_block(unsigned int *p, unsigned int v) { return __nvvm_atom_cta_xchg_gen_i((int *)p, v); }
-__device_forceinline__ unsigned int __uAtomicExch_system(unsigned int *p, unsigned int v) { return __nvvm_atom_sys_xchg_gen_i((int *)p, v); }
-__device_forceinline__ unsigned int __uAtomicInc(unsigned int *p, unsigned int v) { return __nvvm_atom_inc_gen_ui(p, v); }
-__device_forceinline__ unsigned int __uAtomicInc_block(unsigned int *p, unsigned int v) { return __nvvm_atom_cta_inc_gen_ui(p, v); }
-__device_forceinline__ unsigned int __uAtomicInc_system(unsigned int *p, unsigned int v) { return __nvvm_atom_sys_inc_gen_ui(p, v); }
-__device_forceinline__ unsigned int __uAtomicMax(unsigned int *p, unsigned int v) { return __nvvm_atom_max_gen_ui(p, v); }
-__device_forceinline__ unsigned int __uAtomicMax_block(unsigned int *p, unsigned int v) { return __nvvm_atom_cta_max_gen_ui(p, v); }
-__device_forceinline__ unsigned int __uAtomicMax_system(unsigned int *p, unsigned int v) { return __nvvm_atom_sys_max_gen_ui(p, v); }
-__device_forceinline__ unsigned int __uAtomicMin(unsigned int *p, unsigned int v) { return __nvvm_atom_min_gen_ui(p, v); }
-__device_forceinline__ unsigned int __uAtomicMin_block(unsigned int *p, unsigned int v) { return __nvvm_atom_cta_min_gen_ui(p, v); }
-__device_forceinline__ unsigned int __uAtomicMin_system(unsigned int *p, unsigned int v) { return __nvvm_atom_sys_min_gen_ui(p, v); }
-__device_forceinline__ unsigned int __uAtomicOr(unsigned int *p, unsigned int v) { return __nvvm_atom_or_gen_i((int *)p, v); }
-__device_forceinline__ unsigned int __uAtomicOr_block(unsigned int *p, unsigned int v) { return __nvvm_atom_cta_or_gen_i((int *)p, v); }
-__device_forceinline__ unsigned int __uAtomicOr_system(unsigned int *p, unsigned int v) { return __nvvm_atom_sys_or_gen_i((int *)p, v); }
-__device_forceinline__ unsigned int __uAtomicXor(unsigned int *p, unsigned int v) { return __nvvm_atom_xor_gen_i((int *)p, v); }
-__device_forceinline__ unsigned int __uAtomicXor_block(unsigned int *p, unsigned int v) { return __nvvm_atom_cta_xor_gen_i((int *)p, v); }
-__device_forceinline__ unsigned int __uAtomicXor_system(unsigned int *p, unsigned int v) { return __nvvm_atom_sys_xor_gen_i((int *)p, v); }
+__device_forceinline__ unsigned int __uAtomicAdd(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_add_gen_i((int*)p, v);
+}
+__device_forceinline__ unsigned int __uAtomicAdd_block(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_cta_add_gen_i((int*)p, v);
+}
+__device_forceinline__ unsigned int __uAtomicAdd_system(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_sys_add_gen_i((int*)p, v);
+}
+__device_forceinline__ unsigned int __uAtomicAnd(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_and_gen_i((int*)p, v);
+}
+__device_forceinline__ unsigned int __uAtomicAnd_block(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_cta_and_gen_i((int*)p, v);
+}
+__device_forceinline__ unsigned int __uAtomicAnd_system(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_sys_and_gen_i((int*)p, v);
+}
+__device_forceinline__ unsigned int __uAtomicCAS(unsigned int* p, unsigned int cmp, unsigned int v)
+{
+    return __nvvm_atom_cas_gen_i((int*)p, cmp, v);
+}
+__device_forceinline__ unsigned int __uAtomicCAS_block(unsigned int* p, unsigned int cmp, unsigned int v)
+{
+    return __nvvm_atom_cta_cas_gen_i((int*)p, cmp, v);
+}
+__device_forceinline__ unsigned int __uAtomicCAS_system(unsigned int* p, unsigned int cmp, unsigned int v)
+{
+    return __nvvm_atom_sys_cas_gen_i((int*)p, cmp, v);
+}
+__device_forceinline__ unsigned int __uAtomicDec(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_dec_gen_ui(p, v);
+}
+__device_forceinline__ unsigned int __uAtomicDec_block(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_cta_dec_gen_ui(p, v);
+}
+__device_forceinline__ unsigned int __uAtomicDec_system(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_sys_dec_gen_ui(p, v);
+}
+__device_forceinline__ unsigned int __uAtomicExch(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_xchg_gen_i((int*)p, v);
+}
+__device_forceinline__ unsigned int __uAtomicExch_block(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_cta_xchg_gen_i((int*)p, v);
+}
+__device_forceinline__ unsigned int __uAtomicExch_system(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_sys_xchg_gen_i((int*)p, v);
+}
+__device_forceinline__ unsigned int __uAtomicInc(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_inc_gen_ui(p, v);
+}
+__device_forceinline__ unsigned int __uAtomicInc_block(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_cta_inc_gen_ui(p, v);
+}
+__device_forceinline__ unsigned int __uAtomicInc_system(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_sys_inc_gen_ui(p, v);
+}
+__device_forceinline__ unsigned int __uAtomicMax(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_max_gen_ui(p, v);
+}
+__device_forceinline__ unsigned int __uAtomicMax_block(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_cta_max_gen_ui(p, v);
+}
+__device_forceinline__ unsigned int __uAtomicMax_system(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_sys_max_gen_ui(p, v);
+}
+__device_forceinline__ unsigned int __uAtomicMin(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_min_gen_ui(p, v);
+}
+__device_forceinline__ unsigned int __uAtomicMin_block(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_cta_min_gen_ui(p, v);
+}
+__device_forceinline__ unsigned int __uAtomicMin_system(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_sys_min_gen_ui(p, v);
+}
+__device_forceinline__ unsigned int __uAtomicOr(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_or_gen_i((int*)p, v);
+}
+__device_forceinline__ unsigned int __uAtomicOr_block(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_cta_or_gen_i((int*)p, v);
+}
+__device_forceinline__ unsigned int __uAtomicOr_system(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_sys_or_gen_i((int*)p, v);
+}
+__device_forceinline__ unsigned int __uAtomicXor(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_xor_gen_i((int*)p, v);
+}
+__device_forceinline__ unsigned int __uAtomicXor_block(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_cta_xor_gen_i((int*)p, v);
+}
+__device_forceinline__ unsigned int __uAtomicXor_system(unsigned int* p, unsigned int v)
+{
+    return __nvvm_atom_sys_xor_gen_i((int*)p, v);
+}
 __device_forceinline__ unsigned int __uhadd(unsigned int a, unsigned int b) { return __nv_uhadd(a, b); }
 __device_forceinline__ double __uint2double_rn(unsigned int a) { return __nv_uint2double_rn(a); }
 __device_forceinline__ float __uint2float_rd(unsigned int a) { return __nv_uint2float_rd(a); }
@@ -718,38 +843,119 @@ __device_forceinline__ float __ull2float_rd(unsigned long long a) { return __nv_
 __device_forceinline__ float __ull2float_rn(unsigned long long a) { return __nv_ull2float_rn(a); }
 __device_forceinline__ float __ull2float_ru(unsigned long long a) { return __nv_ull2float_ru(a); }
 __device_forceinline__ float __ull2float_rz(unsigned long long a) { return __nv_ull2float_rz(a); }
-__device_forceinline__ unsigned long long __ullAtomicAdd(unsigned long long *p, unsigned long long v) { return __nvvm_atom_add_gen_ll((long long *)p, v); }
-__device_forceinline__ unsigned long long __ullAtomicAdd_block(unsigned long long *p, unsigned long long v) { return __nvvm_atom_cta_add_gen_ll((long long *)p, v); }
-__device_forceinline__ unsigned long long __ullAtomicAdd_system(unsigned long long *p, unsigned long long v) { return __nvvm_atom_sys_add_gen_ll((long long *)p, v); }
-__device_forceinline__ unsigned long long __ullAtomicAnd(unsigned long long *p, unsigned long long v) { return __nvvm_atom_and_gen_ll((long long *)p, v); }
-__device_forceinline__ unsigned long long __ullAtomicAnd_block(unsigned long long *p, unsigned long long v) { return __nvvm_atom_cta_and_gen_ll((long long *)p, v); }
-__device_forceinline__ unsigned long long __ullAtomicAnd_system(unsigned long long *p, unsigned long long v) { return __nvvm_atom_sys_and_gen_ll((long long *)p, v); }
-__device_forceinline__ unsigned long long __ullAtomicCAS(unsigned long long *p, unsigned long long cmp, unsigned long long v) { return __nvvm_atom_cas_gen_ll((long long *)p, cmp, v); }
-__device_forceinline__ unsigned long long __ullAtomicCAS_block(unsigned long long *p, unsigned long long cmp, unsigned long long v) { return __nvvm_atom_cta_cas_gen_ll((long long *)p, cmp, v); }
-__device_forceinline__ unsigned long long __ullAtomicCAS_system(unsigned long long *p, unsigned long long cmp, unsigned long long v) { return __nvvm_atom_sys_cas_gen_ll((long long *)p, cmp, v); }
-__device_forceinline__ unsigned long long __ullAtomicExch(unsigned long long *p, unsigned long long v) { return __nvvm_atom_xchg_gen_ll((long long *)p, v); }
-__device_forceinline__ unsigned long long __ullAtomicExch_block(unsigned long long *p, unsigned long long v) { return __nvvm_atom_cta_xchg_gen_ll((long long *)p, v); }
-__device_forceinline__ unsigned long long __ullAtomicExch_system(unsigned long long *p, unsigned long long v) { return __nvvm_atom_sys_xchg_gen_ll((long long *)p, v); }
-__device_forceinline__ unsigned long long __ullAtomicMax(unsigned long long *p, unsigned long long v) { return __nvvm_atom_max_gen_ull(p, v); }
-__device_forceinline__ unsigned long long __ullAtomicMax_block(unsigned long long *p, unsigned long long v) { return __nvvm_atom_cta_max_gen_ull(p, v); }
-__device_forceinline__ unsigned long long __ullAtomicMax_system(unsigned long long *p, unsigned long long v) { return __nvvm_atom_sys_max_gen_ull(p, v); }
-__device_forceinline__ unsigned long long __ullAtomicMin(unsigned long long *p, unsigned long long v) { return __nvvm_atom_min_gen_ull(p, v); }
-__device_forceinline__ unsigned long long __ullAtomicMin_block(unsigned long long *p, unsigned long long v) { return __nvvm_atom_cta_min_gen_ull(p, v); }
-__device_forceinline__ unsigned long long __ullAtomicMin_system(unsigned long long *p, unsigned long long v) { return __nvvm_atom_sys_min_gen_ull(p, v); }
-__device_forceinline__ unsigned long long __ullAtomicOr(unsigned long long *p, unsigned long long v) { return __nvvm_atom_or_gen_ll((long long *)p, v); }
-__device_forceinline__ unsigned long long __ullAtomicOr_block(unsigned long long *p, unsigned long long v) { return __nvvm_atom_cta_or_gen_ll((long long *)p, v); }
-__device_forceinline__ unsigned long long __ullAtomicOr_system(unsigned long long *p, unsigned long long v) { return __nvvm_atom_sys_or_gen_ll((long long *)p, v); }
-__device_forceinline__ unsigned long long __ullAtomicXor(unsigned long long *p, unsigned long long v) { return __nvvm_atom_xor_gen_ll((long long *)p, v); }
-__device_forceinline__ unsigned long long __ullAtomicXor_block(unsigned long long *p, unsigned long long v) { return __nvvm_atom_cta_xor_gen_ll((long long *)p, v); }
-__device_forceinline__ unsigned long long __ullAtomicXor_system(unsigned long long *p, unsigned long long v) { return __nvvm_atom_sys_xor_gen_ll((long long *)p, v); }
+__device_forceinline__ unsigned long long __ullAtomicAdd(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_add_gen_ll((long long*)p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicAdd_block(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_cta_add_gen_ll((long long*)p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicAdd_system(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_sys_add_gen_ll((long long*)p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicAnd(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_and_gen_ll((long long*)p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicAnd_block(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_cta_and_gen_ll((long long*)p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicAnd_system(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_sys_and_gen_ll((long long*)p, v);
+}
+__device_forceinline__ unsigned long long
+__ullAtomicCAS(unsigned long long* p, unsigned long long cmp, unsigned long long v)
+{
+    return __nvvm_atom_cas_gen_ll((long long*)p, cmp, v);
+}
+__device_forceinline__ unsigned long long
+__ullAtomicCAS_block(unsigned long long* p, unsigned long long cmp, unsigned long long v)
+{
+    return __nvvm_atom_cta_cas_gen_ll((long long*)p, cmp, v);
+}
+__device_forceinline__ unsigned long long
+__ullAtomicCAS_system(unsigned long long* p, unsigned long long cmp, unsigned long long v)
+{
+    return __nvvm_atom_sys_cas_gen_ll((long long*)p, cmp, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicExch(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_xchg_gen_ll((long long*)p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicExch_block(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_cta_xchg_gen_ll((long long*)p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicExch_system(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_sys_xchg_gen_ll((long long*)p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicMax(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_max_gen_ull(p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicMax_block(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_cta_max_gen_ull(p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicMax_system(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_sys_max_gen_ull(p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicMin(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_min_gen_ull(p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicMin_block(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_cta_min_gen_ull(p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicMin_system(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_sys_min_gen_ull(p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicOr(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_or_gen_ll((long long*)p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicOr_block(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_cta_or_gen_ll((long long*)p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicOr_system(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_sys_or_gen_ll((long long*)p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicXor(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_xor_gen_ll((long long*)p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicXor_block(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_cta_xor_gen_ll((long long*)p, v);
+}
+__device_forceinline__ unsigned long long __ullAtomicXor_system(unsigned long long* p, unsigned long long v)
+{
+    return __nvvm_atom_sys_xor_gen_ll((long long*)p, v);
+}
 __device_forceinline__ unsigned int __umul24(unsigned int a, unsigned int b) { return __nv_umul24(a, b); }
-__device_forceinline__ unsigned long long __umul64hi(unsigned long long a, unsigned long long b) { return __nv_umul64hi(a, b); }
+__device_forceinline__ unsigned long long __umul64hi(unsigned long long a, unsigned long long b)
+{
+    return __nv_umul64hi(a, b);
+}
 __device_forceinline__ unsigned int __umulhi(unsigned int a, unsigned int b) { return __nv_umulhi(a, b); }
 __device_forceinline__ unsigned int __urhadd(unsigned int a, unsigned int b) { return __nv_urhadd(a, b); }
-__device_forceinline__ unsigned int __usad(unsigned int a, unsigned int b, unsigned int c) { return __nv_usad(a, b, c); }
+__device_forceinline__ unsigned int __usad(unsigned int a, unsigned int b, unsigned int c)
+{
+    return __nv_usad(a, b, c);
+}
 
-__device_forceinline__ void *memcpy(void *a, const void *b, size_t c) { return __builtin_memcpy(a, b, c); }
-__device_forceinline__ void *memset(void *a, int b, size_t c) { return __builtin_memset(a, b, c); }
+__device_forceinline__ void* memcpy(void* a, const void* b, size_t c) { return __builtin_memcpy(a, b, c); }
+__device_forceinline__ void* memset(void* a, int b, size_t c) { return __builtin_memset(a, b, c); }
 
 #if defined(__FAST_MATH__)
 #define __FAST_OR_SLOW(fast, slow) fast
@@ -822,8 +1028,8 @@ __device_forceinline__ double fmin(double a, double b) { return __nv_fmin(a, b);
 __device_forceinline__ float fminf(float a, float b) { return __nv_fminf(a, b); }
 __device_forceinline__ double fmod(double a, double b) { return __nv_fmod(a, b); }
 __device_forceinline__ float fmodf(float a, float b) { return __nv_fmodf(a, b); }
-__device_forceinline__ double frexp(double a, int *b) { return __nv_frexp(a, b); }
-__device_forceinline__ float frexpf(float a, int *b) { return __nv_frexpf(a, b); }
+__device_forceinline__ double frexp(double a, int* b) { return __nv_frexp(a, b); }
+__device_forceinline__ float frexpf(float a, int* b) { return __nv_frexpf(a, b); }
 __device_forceinline__ double hypot(double a, double b) { return __nv_hypot(a, b); }
 __device_forceinline__ float hypotf(float a, float b) { return __nv_hypotf(a, b); }
 __device_forceinline__ int ilogb(double a) { return __nv_ilogb(a); }
@@ -875,13 +1081,13 @@ __device_forceinline__ long lroundf(float a) { return roundf(a); }
 #endif
 __device_forceinline__ int max(int a, int b) { return __nv_max(a, b); }
 __device_forceinline__ int min(int a, int b) { return __nv_min(a, b); }
-__device_forceinline__ double modf(double a, double *b) { return __nv_modf(a, b); }
-__device_forceinline__ float modff(float a, float *b) { return __nv_modff(a, b); }
+__device_forceinline__ double modf(double a, double* b) { return __nv_modf(a, b); }
+__device_forceinline__ float modff(float a, float* b) { return __nv_modff(a, b); }
 __device_forceinline__ double nearbyint(double a) { return __builtin_nearbyint(a); }
 __device_forceinline__ float nearbyintf(float a) { return __builtin_nearbyintf(a); }
 __device_forceinline__ double nextafter(double a, double b) { return __nv_nextafter(a, b); }
 __device_forceinline__ float nextafterf(float a, float b) { return __nv_nextafterf(a, b); }
-__device_forceinline__ double norm(int dim, const double *t) { return __nv_norm(dim, t); }
+__device_forceinline__ double norm(int dim, const double* t) { return __nv_norm(dim, t); }
 __device_forceinline__ double norm3d(double a, double b, double c) { return __nv_norm3d(a, b, c); }
 __device_forceinline__ float norm3df(float a, float b, float c) { return __nv_norm3df(a, b, c); }
 __device_forceinline__ double norm4d(double a, double b, double c, double d) { return __nv_norm4d(a, b, c, d); }
@@ -890,7 +1096,7 @@ __device_forceinline__ double normcdf(double a) { return __nv_normcdf(a); }
 __device_forceinline__ float normcdff(float a) { return __nv_normcdff(a); }
 __device_forceinline__ double normcdfinv(double a) { return __nv_normcdfinv(a); }
 __device_forceinline__ float normcdfinvf(float a) { return __nv_normcdfinvf(a); }
-__device_forceinline__ float normf(int dim, const float *t) { return __nv_normf(dim, t); }
+__device_forceinline__ float normf(int dim, const float* t) { return __nv_normf(dim, t); }
 __device_forceinline__ double pow(double a, double b) { return __nv_pow(a, b); }
 __device_forceinline__ float powf(float a, float b) { return __nv_powf(a, b); }
 __device_forceinline__ double powi(double a, int b) { return __nv_powi(a, b); }
@@ -899,37 +1105,50 @@ __device_forceinline__ double rcbrt(double a) { return __nv_rcbrt(a); }
 __device_forceinline__ float rcbrtf(float a) { return __nv_rcbrtf(a); }
 __device_forceinline__ double remainder(double a, double b) { return __nv_remainder(a, b); }
 __device_forceinline__ float remainderf(float a, float b) { return __nv_remainderf(a, b); }
-__device_forceinline__ double remquo(double a, double b, int *c) { return __nv_remquo(a, b, c); }
-__device_forceinline__ float remquof(float a, float b, int *c) { return __nv_remquof(a, b, c); }
+__device_forceinline__ double remquo(double a, double b, int* c) { return __nv_remquo(a, b, c); }
+__device_forceinline__ float remquof(float a, float b, int* c) { return __nv_remquof(a, b, c); }
 __device_forceinline__ double rhypot(double a, double b) { return __nv_rhypot(a, b); }
 __device_forceinline__ float rhypotf(float a, float b) { return __nv_rhypotf(a, b); }
 __device_forceinline__ double rint(double a) { return __builtin_rint(a); }
 __device_forceinline__ float rintf(float a) { return __builtin_rintf(a); }
-__device_forceinline__ double rnorm(int a, const double *b) { return __nv_rnorm(a, b); }
+__device_forceinline__ double rnorm(int a, const double* b) { return __nv_rnorm(a, b); }
 __device_forceinline__ double rnorm3d(double a, double b, double c) { return __nv_rnorm3d(a, b, c); }
 __device_forceinline__ float rnorm3df(float a, float b, float c) { return __nv_rnorm3df(a, b, c); }
 __device_forceinline__ double rnorm4d(double a, double b, double c, double d) { return __nv_rnorm4d(a, b, c, d); }
 __device_forceinline__ float rnorm4df(float a, float b, float c, float d) { return __nv_rnorm4df(a, b, c, d); }
-__device_forceinline__ float rnormf(int dim, const float *t) { return __nv_rnormf(dim, t); }
+__device_forceinline__ float rnormf(int dim, const float* t) { return __nv_rnormf(dim, t); }
 __device_forceinline__ double rsqrt(double a) { return __nv_rsqrt(a); }
 __device_forceinline__ float rsqrtf(float a) { return __nv_rsqrtf(a); }
 __device_forceinline__ double scalbn(double a, int b) { return __nv_scalbn(a, b); }
 __device_forceinline__ float scalbnf(float a, int b) { return __nv_scalbnf(a, b); }
-__device_forceinline__ double scalbln(double a, long b) {
-    if (b > INT_MAX) { return a > 0 ? INFINITY : -HUGE_VAL; }
-    if (b < INT_MIN) { return a > 0 ? 0.0 : -0.0; }
+__device_forceinline__ double scalbln(double a, long b)
+{
+    if (b > INT_MAX) {
+        return a > 0 ? INFINITY : -HUGE_VAL;
+    }
+    if (b < INT_MIN) {
+        return a > 0 ? 0.0 : -0.0;
+    }
     return scalbn(a, (int)b);
 }
-__device_forceinline__ float scalblnf(float a, long b) {
-    if (b > INT_MAX) { return a > 0 ? HUGE_VALF : -HUGE_VALF; }
-    if (b < INT_MIN) { return a > 0 ? 0.f : -0.f; }
+__device_forceinline__ float scalblnf(float a, long b)
+{
+    if (b > INT_MAX) {
+        return a > 0 ? HUGE_VALF : -HUGE_VALF;
+    }
+    if (b < INT_MIN) {
+        return a > 0 ? 0.f : -0.f;
+    }
     return scalbnf(a, (int)b);
 }
 __device_forceinline__ double sin(double a) { return __nv_sin(a); }
-__device_forceinline__ void sincos(double a, double *s, double *c) { return __nv_sincos(a, s, c); }
-__device_forceinline__ void sincosf(float a, float *s, float *c) { return __FAST_OR_SLOW(__nv_fast_sincosf, __nv_sincosf)(a, s, c); }
-__device_forceinline__ void sincospi(double a, double *s, double *c) { return __nv_sincospi(a, s, c); }
-__device_forceinline__ void sincospif(float a, float *s, float *c) { return __nv_sincospif(a, s, c); }
+__device_forceinline__ void sincos(double a, double* s, double* c) { return __nv_sincos(a, s, c); }
+__device_forceinline__ void sincosf(float a, float* s, float* c)
+{
+    return __FAST_OR_SLOW(__nv_fast_sincosf, __nv_sincosf)(a, s, c);
+}
+__device_forceinline__ void sincospi(double a, double* s, double* c) { return __nv_sincospi(a, s, c); }
+__device_forceinline__ void sincospif(float a, float* s, float* c) { return __nv_sincospif(a, s, c); }
 __device_forceinline__ float sinf(float a) { return __FAST_OR_SLOW(__nv_fast_sinf, __nv_sinf)(a); }
 __device_forceinline__ double sinh(double a) { return __nv_sinh(a); }
 __device_forceinline__ float sinhf(float a) { return __nv_sinhf(a); }
@@ -945,8 +1164,14 @@ __device_forceinline__ double tgamma(double a) { return __nv_tgamma(a); }
 __device_forceinline__ float tgammaf(float a) { return __nv_tgammaf(a); }
 __device_forceinline__ double trunc(double a) { return __nv_trunc(a); }
 __device_forceinline__ float truncf(float a) { return __nv_truncf(a); }
-__device_forceinline__ unsigned long long ullmax(unsigned long long a, unsigned long long b) { return __nv_ullmax(a, b); }
-__device_forceinline__ unsigned long long ullmin(unsigned long long a, unsigned long long b) { return __nv_ullmin(a, b); }
+__device_forceinline__ unsigned long long ullmax(unsigned long long a, unsigned long long b)
+{
+    return __nv_ullmax(a, b);
+}
+__device_forceinline__ unsigned long long ullmin(unsigned long long a, unsigned long long b)
+{
+    return __nv_ullmin(a, b);
+}
 __device_forceinline__ unsigned int umax(unsigned int a, unsigned int b) { return __nv_umax(a, b); }
 __device_forceinline__ unsigned int umin(unsigned int a, unsigned int b) { return __nv_umin(a, b); }
 __device_forceinline__ double y0(double a) { return __nv_y0(a); }
@@ -959,8 +1184,7 @@ __device_forceinline__ float ynf(int a, float b) { return __nv_ynf(a, b); }
 #undef __FAST_OR_SLOW
 
 // Implementation of a subset of <cuda_fp16.h> functionality
-struct __half
-{
+struct __half {
     unsigned short u;
 };
 
@@ -989,70 +1213,47 @@ __device_forceinline__ __half __hadd(const __half a, const __half b)
 __device_forceinline__ bool isfinite(double x) { return __nv_isfinited(x); }
 __device_forceinline__ bool isfinite(float x) { return __nv_finitef(x); }
 
-__device_forceinline__ unsigned short atomicCAS(unsigned short *address, unsigned short compare, unsigned short val)
+__device_forceinline__ unsigned short atomicCAS(unsigned short* address, unsigned short compare, unsigned short val)
 {
     unsigned short r;
 
-    asm volatile ("{atom.global.cas.b16 %0,[%1],%2,%3; }\n"
-                    : "=h"(r)
-                    : "l"(address), "h"(compare), "h"(val)
-                    : "memory");
+    asm volatile("{atom.global.cas.b16 %0,[%1],%2,%3; }\n" : "=h"(r) : "l"(address), "h"(compare), "h"(val) : "memory");
 
     return r;
 }
 
-__device_forceinline__ int atomicCAS(int *address, int compare, int val)
-{
-    return __iAtomicCAS(address, compare, val);
-}
+__device_forceinline__ int atomicCAS(int* address, int compare, int val) { return __iAtomicCAS(address, compare, val); }
 
-__device_forceinline__ __half atomicAdd(__half *const address, const __half val)
+__device_forceinline__ __half atomicAdd(__half* const address, const __half val)
 {
     unsigned short* address_as_us = (unsigned short*)address;
     unsigned short old = *address_as_us;
     unsigned short assumed;
 
-    do
-    {
+    do {
         assumed = old;
         old = atomicCAS(address_as_us, assumed, __half_as_short(__hadd(val, __short_as_half(assumed))));
-    }
-    while (assumed != old);
+    } while (assumed != old);
 
     return __short_as_half(old);
 }
 
-__device_forceinline__ double atomicAdd(double *const address, const double val)
-{
-    return __dAtomicAdd(address, val);
-}
+__device_forceinline__ double atomicAdd(double* const address, const double val) { return __dAtomicAdd(address, val); }
 
-__device_forceinline__ float atomicAdd(float *const address, const float val)
-{
-    return __fAtomicAdd(address, val);
-}
+__device_forceinline__ float atomicAdd(float* const address, const float val) { return __fAtomicAdd(address, val); }
 
-__device_forceinline__ int atomicAdd(int *const address, const int val)
-{
-    return __iAtomicAdd(address, val);
-}
+__device_forceinline__ int atomicAdd(int* const address, const int val) { return __iAtomicAdd(address, val); }
 
-__device_forceinline__ unsigned int atomicAdd(unsigned int *const address, const unsigned int val)
+__device_forceinline__ unsigned int atomicAdd(unsigned int* const address, const unsigned int val)
 {
     return __uAtomicAdd(address, val);
 }
 
-__device_forceinline__ unsigned int atomicAdd(unsigned long long *const address, const unsigned long long val)
+__device_forceinline__ unsigned int atomicAdd(unsigned long long* const address, const unsigned long long val)
 {
     return __ullAtomicAdd(address, val);
 }
 
-__device_forceinline__ int atomicMin(int *const address, const int val)
-{
-    return __iAtomicMin(address, val);
-}
+__device_forceinline__ int atomicMin(int* const address, const int val) { return __iAtomicMin(address, val); }
 
-__device_forceinline__ int atomicMax(int *const address, const int val)
-{
-    return __iAtomicMax(address, val);
-}
+__device_forceinline__ int atomicMax(int* const address, const int val) { return __iAtomicMax(address, val); }

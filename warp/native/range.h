@@ -17,12 +17,11 @@
 
 #pragma once
 
-namespace wp
-{
+namespace wp {
 
 // All iterable types should implement 3 methods:
 //
-// T iter_next(iter)       - returns the current value and moves iterator to next state 
+// T iter_next(iter)       - returns the current value and moves iterator to next state
 // int iter_cmp(iter)      - returns 0 if finished
 // iter iter_reverse(iter) - return an iterator of the same type representing the reverse order
 //
@@ -30,19 +29,19 @@ namespace wp
 // can call it and generate the appropriate variable storage
 
 // represents a built-in Python range() loop
-struct range_t
-{
+struct range_t {
     CUDA_CALLABLE range_t()
-        : start(0),
-          end(0),
-          step(0),
-          i(0)
-    {}
+        : start(0)
+        , end(0)
+        , step(0)
+        , i(0)
+    {
+    }
 
     int start;
     int end;
     int step;
-    
+
     int i;
 };
 
@@ -52,7 +51,7 @@ CUDA_CALLABLE inline range_t range(int end)
     r.start = 0;
     r.end = end;
     r.step = 1;
-    
+
     r.i = r.start;
 
     return r;
@@ -64,7 +63,7 @@ CUDA_CALLABLE inline range_t range(int start, int end)
     r.start = start;
     r.end = end;
     r.step = 1;
-    
+
     r.i = r.start;
 
     return r;
@@ -76,16 +75,19 @@ CUDA_CALLABLE inline range_t range(int start, int end, int step)
     r.start = start;
     r.end = end;
     r.step = step;
-    
+
     r.i = r.start;
 
     return r;
 }
 
 
-CUDA_CALLABLE inline void adj_range(int end, int adj_end, range_t& adj_ret) {}
-CUDA_CALLABLE inline void adj_range(int start, int end, int adj_start, int adj_end, range_t& adj_ret) {}
-CUDA_CALLABLE inline void adj_range(int start, int end, int step, int adj_start, int adj_end, int adj_step, range_t& adj_ret) {}
+CUDA_CALLABLE inline void adj_range(int end, int adj_end, range_t& adj_ret) { }
+CUDA_CALLABLE inline void adj_range(int start, int end, int adj_start, int adj_end, range_t& adj_ret) { }
+CUDA_CALLABLE inline void
+adj_range(int start, int end, int step, int adj_start, int adj_end, int adj_step, range_t& adj_ret)
+{
+}
 
 
 CUDA_CALLABLE inline int iter_next(range_t& r)
@@ -115,18 +117,13 @@ CUDA_CALLABLE inline range_t iter_reverse(const range_t& r)
     // generates a reverse range, equivalent to reversed(range())
     range_t rev;
 
-    if (r.step == 0)
-    {
+    if (r.step == 0) {
         // degenerate case where step == 0, return empty range
         rev.start = r.start;
         rev.end = r.start;
-    }
-    else if (r.step > 0)
-    {
+    } else if (r.step > 0) {
         rev.start = r.start + int((r.end - r.start - 1) / r.step) * r.step;
-    }
-    else
-    {
+    } else {
         rev.start = r.start + int((r.end - r.start + 1) / r.step) * r.step;
     }
 
@@ -134,12 +131,10 @@ CUDA_CALLABLE inline range_t iter_reverse(const range_t& r)
     rev.step = -r.step;
 
     rev.i = rev.start;
-    
+
     return rev;
 }
 
-CUDA_CALLABLE inline void adj_iter_reverse(const range_t& r, range_t& adj_r, range_t& adj_ret)
-{
-}
+CUDA_CALLABLE inline void adj_iter_reverse(const range_t& r, range_t& adj_r, range_t& adj_ret) { }
 
-} // namespace wp
+}  // namespace wp

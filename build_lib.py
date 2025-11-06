@@ -117,7 +117,7 @@ def generate_version_header(base_path: str, version: str) -> None:
         f.write("#ifndef WP_VERSION_H\n")
         f.write("#define WP_VERSION_H\n\n")
         f.write(f'#define WP_VERSION_STRING "{version}"\n\n')
-        f.write("#endif // WP_VERSION_H\n")
+        f.write("#endif  // WP_VERSION_H\n")
 
     print(f"Generated {version_header_path} with version {version}")
 

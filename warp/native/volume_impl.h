@@ -21,18 +21,16 @@
 
 // Helper functions for cpp/cu files, not to be exposed to user kernels
 
-namespace wp
-{
+namespace wp {
 
-namespace volume
-{
+namespace volume {
 
 inline CUDA_CALLABLE pnanovdb_leaf_handle_t get_leaf(const pnanovdb_buf_t buf, const uint32_t leaf_id)
 {
     const pnanovdb_tree_handle_t tree = get_tree(buf);
     const uint64_t first_leaf_offset = pnanovdb_tree_get_node_offset_leaf(buf, tree);
     const uint32_t leaf_stride = PNANOVDB_GRID_TYPE_GET(get_grid_type(buf), leaf_size);
-    return {pnanovdb_address_offset64(tree.address, first_leaf_offset + uint64_t(leaf_id) * leaf_stride)};
+    return { pnanovdb_address_offset64(tree.address, first_leaf_offset + uint64_t(leaf_id) * leaf_stride) };
 }
 
 inline CUDA_CALLABLE pnanovdb_coord_t leaf_origin(const pnanovdb_buf_t buf, const pnanovdb_leaf_handle_t leaf)
@@ -46,8 +44,8 @@ inline CUDA_CALLABLE pnanovdb_coord_t leaf_origin(const pnanovdb_buf_t buf, cons
     return origin;
 }
 
-inline CUDA_CALLABLE uint64_t leaf_voxel_index(const pnanovdb_buf_t buf, const uint32_t leaf_id,
-                                               const pnanovdb_coord_t &ijk)
+inline CUDA_CALLABLE uint64_t
+leaf_voxel_index(const pnanovdb_buf_t buf, const uint32_t leaf_id, const pnanovdb_coord_t& ijk)
 {
     const uint32_t grid_type = get_grid_type(buf);
 
@@ -65,6 +63,6 @@ inline CUDA_CALLABLE pnanovdb_coord_t leaf_offset_to_local_coord(uint32_t offset
     return coord;
 }
 
-} // namespace volume
+}  // namespace volume
 
-} // namespace wp
+}  // namespace wp
