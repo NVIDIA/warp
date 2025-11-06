@@ -7,6 +7,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2025
 
+- **VoMP: Predicting Volumetric Mechanical Property Fields**. *R. Dagli, D. Xiang, V. Modi, C. Loop, C. F. Tsang, A. H. Chen, A. Hu, G. State, D. I. W. Levin, M. Shugrina*. October 2025. [arXiv:2510.22975](https://arxiv.org/abs/2510.22975)
 - **Learning to Design Soft Hands using Reward Models**. *X. Bai, N. Hansen, A. Singh, M. T. Tolley, Y. Duan, P. Abbeel, X. Wang, S. Yi*. October 2025. [arXiv:2510.17086](https://arxiv.org/abs/2510.17086)
 - **Feedback Matters: Augmenting Autonomous Dissection with Visual and Topological Feedback**. *C. Wang, C. Chen, X. Liang, S. Atar, F. Richter, M. Yip*. October 2025. [arXiv:2510.04074](https://arxiv.org/abs/2510.04074)
 - **MPMAvatar: Learning 3D Gaussian Avatars with Accurate and Robust Physics-Based Dynamics**. *C. Lee, J. Lee, T. Kim*. October 2025. [arXiv:2510.01619](https://arxiv.org/abs/2510.01619)
@@ -15,6 +16,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 - **MechStyle: Augmenting Generative AI with Mechanical Simulation to Create Stylized and Structurally Viable 3D Models**. *F. Faruqi, A. Abdel-Rahman, L. Tejedor, M. Nisser, J. Li, V. Phadnis, V. Jampani, N. Gershenfeld, M. Hofmann, S. Mueller*. September 2025. [arXiv:2509.20571](https://arxiv.org/abs/2509.20571)
 - **AERO-MPPI: Anchor-Guided Ensemble Trajectory Optimization for Agile Mapless Drone Navigation**. *X. Chen, R. Huang, L. Tang, L. Zhao*. September 2025. [arXiv:2509.17340](https://arxiv.org/abs/2509.17340)
 - **Discovering neural elastoplasticity from kinematic observations**. *G. B. Gavris, W. Sun*. September 2025. [DOI:10.1073/pnas.2508732122](https://doi.org/10.1073/pnas.2508732122)
+
 - **Learning Simulatable Models of Cloth with Spatially-varying Constitutive Properties**. *G. Chen, S. Suri, Y. Wu, E. Voulga, D. I. W. Levin, D. K. Pai*. July 2025. [arXiv:2507.21288](https://arxiv.org/abs/2507.21288)
 - **GeoWarp: An automatically differentiable and GPU-accelerated implicit MPM framework for geomechanics based on NVIDIA Warp**. *Y. Zhao, X. Li, C. Jiang, J. Choo*. July 2025. [arXiv:2507.09435](https://arxiv.org/abs/2507.09435)
 - **Transforming Unstructured Hair Strands into Procedural Hair Grooms**. *W. Chang, A. L. Russell, S. Grabli, M. J. Chiang, C. Hery, D. Roble, R. Ramamoorthi, T. Li, O. Maury*. July 2025. [DOI:10.1145/3731168](https://doi.org/10.1145/3731168)
