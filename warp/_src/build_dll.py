@@ -106,13 +106,12 @@ def find_host_compiler() -> str:
             if verbose_cmd:
                 print("Visual Studio environment already configured, skipping vcvars64.bat")
 
-            try:
-                output = run_cmd("where cl.exe").decode("utf-8").strip()
-                cl_path = output.split("\n")[0]  # Take first path if multiple exist
+            cl_path = shutil.which("cl.exe")
+            if cl_path:
                 if verbose_cmd:
                     print(f"Using cl.exe from pre-configured environment: {cl_path}")
                 return cl_path
-            except (subprocess.CalledProcessError, UnicodeDecodeError, OSError):
+            else:
                 # Fall through to auto-configuration if cl.exe not actually available
                 if verbose_cmd:
                     print("Warning: VS environment variables set but cl.exe not found, attempting auto-configuration")
@@ -135,7 +134,7 @@ def find_host_compiler() -> str:
             if len(pair) >= 2:
                 os.environ[pair[0]] = pair[1]
 
-        cl_path = run_cmd("where cl.exe").decode("utf-8").rstrip()
+        cl_path = shutil.which("cl.exe")
         cl_version = os.environ["VCToolsVersion"].split(".")
 
         # ensure at least VS2019 version, see list of MSVC versions here https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
@@ -160,12 +159,14 @@ def find_host_compiler() -> str:
                 print(f"Using C++ compiler from $CXX: {cxx}")
             return cxx
 
-        try:
-            gxx_path = run_cmd("which g++").decode().strip()
+        gxx_path = shutil.which("g++")
+        if gxx_path:
             if verbose_cmd:
                 print(f"Using g++ found in PATH: {gxx_path}")
             return gxx_path
-        except Exception:
+        else:
+            if verbose_cmd:
+                print("Warning: Could not locate g++, falling back to 'g++'")
             return "g++"
 
 
@@ -625,7 +626,9 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             version = f"--target={arch}-apple-macos11"
         else:
             compiler_name = os.path.basename(cpp_compiler)
-            if compiler_name == "g++" or compiler_name.startswith("g++-"):
+            # Check for GCC compilers (g++, g++-11, x86_64-linux-gnu-g++, etc.)
+            # Exclude clang to avoid false match on "clang++" which ends with "g++"
+            if "clang" not in compiler_name and (compiler_name.endswith("g++") or "g++-" in compiler_name):
                 version = "-fabi-version=13"  # GCC 8.2+
             else:
                 version = ""
