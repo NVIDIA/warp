@@ -1324,13 +1324,16 @@ def _launch_integrate_kernel(
         if output == accumulate_array:
             return output
         if output is None:
-            return accumulate_array.numpy()[0]
+            result = accumulate_array.numpy()[0]
+            _release_temporary(accumulate_array)
+            return result
 
         if add_to_output:
             # accumulate dtype is distinct from output dtype
             array_axpy(x=accumulate_array, y=output)
         else:
             array_cast(in_array=accumulate_array, out_array=output)
+        _release_temporary(accumulate_array)
         return output
 
     test_arg = test.space_restriction.node_arg_value(device=device)
@@ -1350,6 +1353,7 @@ def _launch_integrate_kernel(
                     f"Incompatible output type {type_repr(output_dtype)}, must be scalar or vector of length {test.node_dof_count}"
                 )
 
+            # Result is handed back to the caller; they must release it once finished.
             output = cache.borrow_temporary(
                 temporary_store=temporary_store,
                 shape=output_shape,
@@ -1496,9 +1500,9 @@ def _launch_integrate_kernel(
         dtype=output_dtype,
         device=device,
     )
-    triplet_cols = triplet_cols_temp.array
-    triplet_rows = triplet_rows_temp.array
-    triplet_values = triplet_values_temp.array
+    triplet_cols = triplet_cols_temp
+    triplet_rows = triplet_rows_temp
+    triplet_values = triplet_values_temp
 
     if nodal:
         wp.launch(
@@ -2367,9 +2371,9 @@ def _launch_interpolate_kernel(
         shape=(nnz, *dest.block_shape),
         device=device,
     )
-    triplet_cols = triplet_cols_temp.array
-    triplet_rows = triplet_rows_temp.array
-    triplet_values = triplet_values_temp.array
+    triplet_cols = triplet_cols_temp
+    triplet_rows = triplet_rows_temp
+    triplet_values = triplet_values_temp
     triplet_rows.fill_(-1)
 
     trial_partition_arg = trial.space_partition.partition_arg_value(device)
@@ -2395,6 +2399,10 @@ def _launch_interpolate_kernel(
     )
 
     bsr_set_from_triplets(dest, triplet_rows, triplet_cols, triplet_values, **(bsr_options or {}))
+
+    triplet_values_temp.release()
+    triplet_rows_temp.release()
+    triplet_cols_temp.release()
 
 
 @integrand
@@ -2512,3 +2520,6 @@ def interpolate(
         bsr_options=bsr_options,
         device=device,
     )
+def _release_temporary(array):
+    if array is not None and hasattr(array, "release"):
+        array.release()

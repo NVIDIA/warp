@@ -59,6 +59,9 @@ class NanogridBase(Geometry):
         self._cell_grid_info = cell_grid.get_grid_info()
         self._init_transform()
 
+    def __del__(self):
+        self._release_owned_temporaries()
+
     def reference_cell(self) -> Element:
         return Element.CUBE
 
@@ -125,6 +128,17 @@ class NanogridBase(Geometry):
     @wp.func
     def boundary_side_index(args: SideIndexArg, boundary_side_index: int):
         return args.boundary_face_indices[boundary_side_index]
+
+    def _replace_boundary_face_indices(self, new_value):
+        if self._boundary_face_indices is not None and self._boundary_face_indices is not new_value:
+            if hasattr(self._boundary_face_indices, "release"):
+                self._boundary_face_indices.release()
+        self._boundary_face_indices = new_value
+
+    def _release_owned_temporaries(self):
+        if self._boundary_face_indices is not None and hasattr(self._boundary_face_indices, "release"):
+            self._boundary_face_indices.release()
+            self._boundary_face_indices = None
 
     def make_filtered_cell_lookup(grid_geo, filter_func: wp.Function = None):
         suffix = f"{grid_geo.name}{filter_func.key if filter_func is not None else ''}"
@@ -539,8 +553,10 @@ class Nanogrid(NanogridBase):
             device=device,
             inputs=[self._cell_grid.id, self._face_ijk, self._face_flags, boundary_face_mask],
         )
-        boundary_face_indices, _ = utils.masked_indices(boundary_face_mask)
-        self._boundary_face_indices = boundary_face_indices.detach()
+        boundary_face_indices, boundary_face_global_to_local = utils.masked_indices(boundary_face_mask)
+        self._replace_boundary_face_indices(boundary_face_indices.detach())
+        boundary_face_global_to_local.release()
+        boundary_face_mask.release()
 
     def _build_edge_grid(self, temporary_store: Optional[cache.TemporaryStore] = None):
         self._edge_grid = _build_edge_grid(self._cell_ijk, self._cell_grid, temporary_store)
@@ -608,6 +624,7 @@ def _build_node_grid(cell_ijk, grid: wp.Volume, temporary_store: cache.Temporary
     node_grid = wp.Volume.allocate_by_voxels(
         cell_nodes.flatten(), voxel_size=grid.get_voxel_size(), device=cell_ijk.device
     )
+    cell_nodes.release()
 
     return node_grid
 
@@ -620,6 +637,7 @@ def _build_face_grid(cell_ijk, grid: wp.Volume, temporary_store: cache.Temporary
     face_grid = wp.Volume.allocate_by_voxels(
         cell_faces.flatten(), voxel_size=grid.get_voxel_size(), device=cell_ijk.device
     )
+    cell_faces.release()
 
     return face_grid
 
@@ -632,6 +650,7 @@ def _build_edge_grid(cell_ijk, grid: wp.Volume, temporary_store: cache.Temporary
     edge_grid = wp.Volume.allocate_by_voxels(
         cell_edges.flatten(), voxel_size=grid.get_voxel_size(), device=cell_ijk.device
     )
+    cell_edges.release()
 
     return edge_grid
 

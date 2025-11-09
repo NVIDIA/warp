@@ -73,6 +73,13 @@ class SpacePartition:
     def name(self) -> str:
         return f"{self.__class__.__name__}"
 
+    def __del__(self):
+        """Return any cached temporaries we own back to the TemporaryStore."""
+        self._release_owned_temporaries()
+
+    def _release_owned_temporaries(self):
+        pass
+
 
 class WholeSpacePartition(SpacePartition):
     @wp.struct
@@ -123,6 +130,11 @@ class WholeSpacePartition(SpacePartition):
     def _iota_kernel(indices: wp.array(dtype=int)):
         indices[wp.tid()] = wp.tid()
 
+    def _release_owned_temporaries(self):
+        if self._node_indices is not None and hasattr(self._node_indices, "release"):
+            self._node_indices.release()
+            self._node_indices = None
+
 
 class NodeCategory:
     OWNED_INTERIOR = wp.constant(0)
@@ -162,11 +174,11 @@ class NodePartition(SpacePartition):
         self._with_halo = with_halo
 
         self._category_offsets: wp.array = None
-        """Offsets for each node category"""
+        """Offsets for each node category (owned temporary reused between rebuilds)"""
         self._node_indices: wp.array = None
-        """Mapping from local partition node indices to global space node indices"""
+        """Mapping from local partition node indices to global space node indices (owned temporary reused between rebuilds)"""
         self._space_to_partition: wp.array = None
-        """Mapping from global space node indices to local partition node indices"""
+        """Mapping from global space node indices to local partition node indices (owned temporary reused between rebuilds)"""
 
         self.rebuild(device, temporary_store)
 
@@ -343,6 +355,8 @@ class NodePartition(SpacePartition):
 
         # Compute global to local indices
         if self._space_to_partition is None or self._space_to_partition.shape != node_indices.shape:
+            if self._space_to_partition is not None:
+                self._space_to_partition.release()
             self._space_to_partition = cache.borrow_temporary_like(node_indices, temporary_store)
 
         wp.launch(
@@ -357,12 +371,27 @@ class NodePartition(SpacePartition):
 
         # Copy to shrunk-to-fit array
         if self._node_indices is None or self._node_indices.shape[0] != self.node_count():
+            if self._node_indices is not None:
+                self._node_indices.release()
             self._node_indices = cache.borrow_temporary(
                 temporary_store, shape=(self.node_count(),), dtype=int, device=device
             )
 
         wp.copy(dest=self._node_indices, src=node_indices, count=self.node_count())
         node_indices.release()
+        category_offsets.release()
+
+    def _release_owned_temporaries(self):
+        super()._release_owned_temporaries()
+        if self._category_offsets is not None and hasattr(self._category_offsets, "release"):
+            self._category_offsets.release()
+            self._category_offsets = None
+        if self._node_indices is not None and hasattr(self._node_indices, "release"):
+            self._node_indices.release()
+            self._node_indices = None
+        if self._space_to_partition is not None and hasattr(self._space_to_partition, "release"):
+            self._space_to_partition.release()
+            self._space_to_partition = None
 
     @wp.kernel
     def _scatter_partition_indices(

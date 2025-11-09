@@ -65,6 +65,7 @@ def adaptive_nanogrid_from_hierarchy(
             device=device,
             inputs=[l, voxel_offsets[l], grid_voxels, merged_ijks],
         )
+        grid_voxels.release()
 
     # Allocate merged grid
     grid_info = grids[0].get_grid_info()
@@ -74,6 +75,7 @@ def adaptive_nanogrid_from_hierarchy(
         translation=grid_info.translation,
         device=device,
     )
+    merged_ijks.release()
 
     # Get unique voxel and corresponding level
     cell_count = cell_grid.get_voxel_count()
@@ -89,6 +91,7 @@ def adaptive_nanogrid_from_hierarchy(
         dim=cell_count,
         inputs=[level_count, cell_grid_ids, cell_ijk, cell_level],
     )
+    cell_ijk.release()
 
     cell_grid, cell_level = enforce_nanogrid_grading(
         cell_grid, cell_level, level_count=level_count, grading=grading, temporary_store=temporary_store
@@ -170,10 +173,17 @@ def adaptive_nanogrid_from_field(
                 fine_level,
             ],
         )
+        cell_refinement.release()
+
+        prev_cell_ijk = cell_ijk
+        prev_cell_level = cell_level
 
         # Fine is the new coarse
         cell_ijk = fine_ijk
         cell_level = fine_level
+        prev_cell_ijk.release()
+        prev_cell_level.release()
+    fine_count.release()
 
     wp.launch(_adjust_refined_ijk, dim=fine_shape, device=device, inputs=[cell_ijk, cell_level])
 
@@ -195,6 +205,8 @@ def adaptive_nanogrid_from_field(
         device=device,
         inputs=[fine_grid.id, cell_ijk, cell_level, fine_level],
     )
+    cell_ijk.release()
+    cell_level.release()
 
     fine_grid, fine_level = enforce_nanogrid_grading(
         fine_grid, fine_level, level_count=level_count, grading=grading, temporary_store=temporary_store
@@ -262,6 +274,8 @@ def enforce_nanogrid_grading(
         # Add new coordinates
         fine_shape = int(fine_count.numpy()[0])
         if fine_shape == cell_count:
+            cell_ijk.release()
+            refinement.release()
             break
 
         fine_ijk = cache.borrow_temporary(temporary_store, shape=fine_shape, dtype=wp.vec3i, device=device)
@@ -280,6 +294,8 @@ def enforce_nanogrid_grading(
                 fine_level,
             ],
         )
+        cell_ijk.release()
+        refinement.release()
 
         # Rebuild grid and levels
         cell_grid = wp.Volume.allocate_by_voxels(
@@ -292,7 +308,10 @@ def enforce_nanogrid_grading(
             device=device,
             inputs=[cell_grid.id, fine_ijk, fine_level, cell_level],
         )
+        fine_ijk.release()
+        fine_level.release()
 
+    fine_count.release()
     return cell_grid, cell_level
 
 

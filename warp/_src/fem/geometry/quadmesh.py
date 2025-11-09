@@ -68,8 +68,9 @@ class Quadmesh(Geometry):
 
         self._edge_vertex_indices: wp.array = None
         self._edge_quad_indices: wp.array = None
-        self._vertex_quad_offsets: wp.array = None
-        self._vertex_quad_indices: wp.array = None
+        self._vertex_quad_offsets: wp.array = None  # owned temporary reused between rebuilds
+        self._vertex_quad_indices: wp.array = None  # owned temporary reused between rebuilds
+        self._boundary_edge_indices: wp.array = None  # owned temporary reused between rebuilds
         self._build_topology(temporary_store)
 
         # Flip edges so that normals point away from inner cell
@@ -87,6 +88,9 @@ class Quadmesh(Geometry):
 
         if build_bvh:
             self.build_bvh(self.positions.device)
+
+    def __del__(self):
+        self._release_owned_temporaries()
 
     def cell_count(self):
         return self.quad_vertex_indices.shape[0]
@@ -204,8 +208,8 @@ class Quadmesh(Geometry):
         vertex_quad_offsets, vertex_quad_indices = compress_node_indices(
             self.vertex_count(), self.quad_vertex_indices, temporary_store=temporary_store
         )
-        self._vertex_quad_offsets = vertex_quad_offsets.detach()
-        self._vertex_quad_indices = vertex_quad_indices.detach()
+        self._replace_owned_array("_vertex_quad_offsets", vertex_quad_offsets.detach())
+        self._replace_owned_array("_vertex_quad_indices", vertex_quad_indices.detach())
 
         vertex_start_edge_count = borrow_temporary(temporary_store, dtype=int, device=device, shape=self.vertex_count())
         vertex_start_edge_count.zero_()
@@ -279,10 +283,27 @@ class Quadmesh(Geometry):
         vertex_edge_ends.release()
         vertex_edge_quads.release()
 
-        boundary_edge_indices, _ = masked_indices(boundary_mask, temporary_store=temporary_store)
-        self._boundary_edge_indices = boundary_edge_indices.detach()
+        boundary_edge_indices, boundary_edge_global_to_local = masked_indices(
+            boundary_mask, temporary_store=temporary_store
+        )
+        self._replace_owned_array("_boundary_edge_indices", boundary_edge_indices.detach())
+        boundary_edge_global_to_local.release()
 
         boundary_mask.release()
+
+    def _replace_owned_array(self, attr_name: str, new_value):
+        if hasattr(self, attr_name):
+            old_value = getattr(self, attr_name)
+            if old_value is not None and old_value is not new_value and hasattr(old_value, "release"):
+                old_value.release()
+        setattr(self, attr_name, new_value)
+
+    def _release_owned_temporaries(self):
+        for attr in ("_vertex_quad_offsets", "_vertex_quad_indices", "_boundary_edge_indices"):
+            value = getattr(self, attr, None)
+            if value is not None and hasattr(value, "release"):
+                value.release()
+                setattr(self, attr, None)
 
     @wp.kernel
     def _count_starting_edges_kernel(

@@ -61,12 +61,22 @@ class PicQuadrature(Quadrature):
         super().__init__(domain)
 
         self._requires_grad = requires_grad
+        self._cell_particle_offsets: wp.array = None  # owned temporary reused for per-cell particle ranges
+        self._cell_particle_indices: wp.array = None  # owned temporary reused for element-to-particle lookup
+        self._cell_count: wp.array = None  # owned temporary reused to cache active-cell count on device
+        self._cell_index_temp: wp.array = None  # owned temporary reused when binning positions
+        self._particle_coords_temp: wp.array = None  # owned temporary reused when binning positions
+        self._particle_fraction_temp: wp.array = None  # owned temporary reused when computing fractions
+
         self._bin_particles(positions, measures, max_dist=max_dist, temporary_store=temporary_store)
         self._max_particles_per_cell: int = None
 
     @property
     def name(self):
         return self.__class__.__name__
+
+    def __del__(self):
+        self._release_owned_temporaries()
 
     @Quadrature.domain.setter
     def domain(self, domain: GeometryDomain):
@@ -213,13 +223,15 @@ class PicQuadrature(Quadrature):
                 else:
                     cell_coords[p] = cell_coordinates(cell_arg_value, sample.element_index, positions[p])
 
-            self._cell_index_temp = borrow_temporary(temporary_store, shape=positions.shape, dtype=int, device=device)
-            self.cell_indices = self._cell_index_temp.array
+            cell_index_temp = borrow_temporary(temporary_store, shape=positions.shape, dtype=int, device=device)
+            self._replace_owned_array("_cell_index_temp", cell_index_temp)
+            self.cell_indices = self._cell_index_temp
 
-            self._particle_coords_temp = borrow_temporary(
+            particle_coords_temp = borrow_temporary(
                 temporary_store, shape=positions.shape, dtype=Coords, device=device, requires_grad=self._requires_grad
             )
-            self.particle_coords = self._particle_coords_temp.array
+            self._replace_owned_array("_particle_coords_temp", particle_coords_temp)
+            self.particle_coords = self._particle_coords_temp
 
             wp.launch(
                 dim=positions.shape[0],
@@ -242,25 +254,35 @@ class PicQuadrature(Quadrature):
             if self.cell_indices.shape != self.particle_coords.shape:
                 raise ValueError("Cell index and coordinates arrays must have the same shape")
 
-            self._cell_index_temp = None
-            self._particle_coords_temp = None
+            self._replace_owned_array("_cell_index_temp", None)
+            self._replace_owned_array("_particle_coords_temp", None)
 
-        self._cell_particle_offsets, self._cell_particle_indices, self._cell_count, _ = compress_node_indices(
+        (
+            cell_particle_offsets,
+            cell_particle_indices,
+            cell_count,
+            unused_unique_nodes,
+        ) = compress_node_indices(
             self.domain.geometry_element_count(),
             self.cell_indices,
             return_unique_nodes=True,
             temporary_store=temporary_store,
         )
+        self._replace_owned_array("_cell_particle_offsets", cell_particle_offsets.detach())
+        self._replace_owned_array("_cell_particle_indices", cell_particle_indices.detach())
+        self._replace_owned_array("_cell_count", cell_count.detach())
+        unused_unique_nodes.release()
 
         self._compute_fraction(self.cell_indices, measures, temporary_store)
 
     def _compute_fraction(self, cell_index, measures, temporary_store: TemporaryStore):
         device = cell_index.device
 
-        self._particle_fraction_temp = borrow_temporary(
+        particle_fraction_temp = borrow_temporary(
             temporary_store, shape=cell_index.shape, dtype=float, device=device, requires_grad=self._requires_grad
         )
-        self._particle_fraction = self._particle_fraction_temp.array
+        self._replace_owned_array("_particle_fraction_temp", particle_fraction_temp)
+        self._particle_fraction = self._particle_fraction_temp
 
         if measures is None:
             # Split fraction uniformly over all particles in cell
@@ -311,6 +333,28 @@ class PicQuadrature(Quadrature):
                 ],
                 device=device,
             )
+
+    def _replace_owned_array(self, attr_name: str, new_value):
+        if hasattr(self, attr_name):
+            old_value = getattr(self, attr_name)
+            if old_value is not None and old_value is not new_value and hasattr(old_value, "release"):
+                old_value.release()
+        setattr(self, attr_name, new_value)
+
+    def _release_owned_temporaries(self):
+        for attr in (
+            "_cell_particle_offsets",
+            "_cell_particle_indices",
+            "_cell_count",
+            "_cell_index_temp",
+            "_particle_coords_temp",
+            "_particle_fraction_temp",
+        ):
+            if hasattr(self, attr):
+                value = getattr(self, attr)
+                if value is not None and hasattr(value, "release"):
+                    value.release()
+                setattr(self, attr, None)
 
     @wp.kernel
     def _max_particles_per_cell_kernel(offsets: wp.array(dtype=int), max_count: wp.array(dtype=int)):
