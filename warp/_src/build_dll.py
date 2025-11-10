@@ -88,18 +88,44 @@ def set_msvc_env(msvc_path, sdk_path):
     return os.path.join(msvc_path, "bin", "HostX64", "x64", "cl.exe")
 
 
-def find_host_compiler():
+def find_host_compiler() -> str:
+    """Find the host C++ compiler.
+
+    On Windows, checks for pre-configured Visual Studio environment before
+    attempting auto-configuration. On Unix/Linux, respects $CXX environment
+    variable if set.
+
+    Returns:
+        Path to compiler executable, or empty string if not found (Windows only).
+        Note: Empty string return allows build_lib.py to handle error gracefully.
+    """
     if os.name == "nt":
-        # try and find an installed host compiler (msvc)
-        # runs vcvars and copies back the build environment
+        # Check if Visual Studio environment already configured (conda, Docker, vcvars64, etc.)
+        # VCINSTALLDIR and VCToolsVersion are set by vcvars64.bat
+        if os.environ.get("VCINSTALLDIR") or os.environ.get("VCToolsVersion"):
+            if verbose_cmd:
+                print("Visual Studio environment already configured, skipping vcvars64.bat")
+
+            cl_path = shutil.which("cl.exe")
+            if cl_path:
+                if verbose_cmd:
+                    print(f"Using cl.exe from pre-configured environment: {cl_path}")
+                return cl_path
+            else:
+                # Fall through to auto-configuration if cl.exe not actually available
+                if verbose_cmd:
+                    print("Warning: VS environment variables set but cl.exe not found, attempting auto-configuration")
 
         vswhere_path = r"%ProgramFiles(x86)%/Microsoft Visual Studio/Installer/vswhere.exe"
         vswhere_path = os.path.expandvars(vswhere_path)
         if not os.path.exists(vswhere_path):
-            return ""
+            return ""  # Signal to caller that VS not found
 
         vs_path = run_cmd(f'"{vswhere_path}" -latest -property installationPath').decode().rstrip()
         vsvars_path = os.path.join(vs_path, "VC\\Auxiliary\\Build\\vcvars64.bat")
+
+        if not os.path.exists(vsvars_path):
+            return ""  # Signal to caller that VS environment script not found
 
         output = run_cmd(f'"{vsvars_path}" && set').decode()
 
@@ -108,7 +134,7 @@ def find_host_compiler():
             if len(pair) >= 2:
                 os.environ[pair[0]] = pair[1]
 
-        cl_path = run_cmd("where cl.exe").decode("utf-8").rstrip()
+        cl_path = shutil.which("cl.exe")
         cl_version = os.environ["VCToolsVersion"].split(".")
 
         # ensure at least VS2019 version, see list of MSVC versions here https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
@@ -121,13 +147,27 @@ def find_host_compiler():
             print(
                 f"Warp: MSVC found but compiler version too old, found {cl_version[0]}.{cl_version[1]}, but must be {cl_required_major}.{cl_required_minor} or higher, kernel host compilation will be disabled."
             )
-            return ""
+            return ""  # Signal to caller that version too old
 
         return cl_path
 
     else:
-        # try and find g++
-        return run_cmd("which g++").decode()
+        # Respect $CXX environment variable (conda, cross-compilation, custom compilers, etc.)
+        cxx = os.environ.get("CXX", "").strip()
+        if cxx:
+            if verbose_cmd:
+                print(f"Using C++ compiler from $CXX: {cxx}")
+            return cxx
+
+        gxx_path = shutil.which("g++")
+        if gxx_path:
+            if verbose_cmd:
+                print(f"Using g++ found in PATH: {gxx_path}")
+            return gxx_path
+        else:
+            if verbose_cmd:
+                print("Warning: Could not locate g++, falling back to 'g++'")
+            return "g++"
 
 
 def get_cuda_toolkit_version(cuda_home) -> tuple[int, int]:
@@ -575,7 +615,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
     else:
         # Unix compilation
         cuda_compiler = "clang++" if getattr(args, "clang_build_toolchain", False) else "nvcc"
-        cpp_compiler = "clang++" if getattr(args, "clang_build_toolchain", False) else "g++"
+        cpp_compiler = "clang++" if getattr(args, "clang_build_toolchain", False) else args.host_compiler
 
         cpp_includes = f' -I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}-{arch}/include"'
         cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
@@ -585,7 +625,10 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
         if sys.platform == "darwin":
             version = f"--target={arch}-apple-macos11"
         else:
-            if cpp_compiler == "g++":
+            compiler_name = os.path.basename(cpp_compiler)
+            # Check for GCC compilers (g++, g++-11, x86_64-linux-gnu-g++, etc.)
+            # Exclude clang to avoid false match on "clang++" which ends with "g++"
+            if "clang" not in compiler_name and (compiler_name.endswith("g++") or "g++-" in compiler_name):
                 version = "-fabi-version=13"  # GCC 8.2+
             else:
                 version = ""
