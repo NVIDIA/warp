@@ -346,6 +346,59 @@ def test_static_for_loop(test, device):
         test.assertEqual(counts["for"], 1, "Static for loop must be unrolled")
 
 
+def test_static_for_loop_force_unroll(test, device):
+    @wp.kernel
+    def static_loop_force_unroll(results: wp.array(dtype=int)):
+        s = 0
+        for i in range(0, 8):
+            s += wp.static(i)
+        results[0] = s
+
+    original_options = dict(wp.get_module_options())
+    try:
+        wp.set_module_options({"max_unroll": 3})
+
+        results = wp.zeros(1, dtype=int, device=device)
+        wp.launch(static_loop_force_unroll, 1, [results], device=device)
+        results = results.numpy()
+
+        test.assertEqual(results[0], sum(range(8)), "Static for loop must compute the correct solution")
+
+        if hasattr(static_loop_force_unroll.adj, "blocks"):
+            counts = count_ssa_occurrences(static_loop_force_unroll, ["add", "for"])
+            test.assertEqual(counts["add"], 8, "Static for loop must be unrolled")
+            test.assertGreaterEqual(counts["for"], 1, "Static for loop must be unrolled")
+            test.assertLessEqual(counts["for"], 2, "Static for loop must be unrolled")
+    finally:
+        wp.set_module_options(original_options)
+
+
+def test_static_for_loop_no_force_unroll(test, device):
+    @wp.kernel
+    def static_loop_no_force(results: wp.array(dtype=int)):
+        s = int(0)
+        for _i in range(0, 8):
+            s = s + wp.static(global_variable)
+        results[0] = s
+
+    original_options = dict(wp.get_module_options())
+    try:
+        wp.set_module_options({"max_unroll": 3})
+
+        results = wp.zeros(1, dtype=int, device=device)
+        wp.launch(static_loop_no_force, 1, [results], device=device)
+        results = results.numpy()
+
+        test.assertEqual(results[0], global_variable * 8, "Static for loop must compute the correct solution")
+
+        if hasattr(static_loop_no_force.adj, "blocks"):
+            counts = count_ssa_occurrences(static_loop_no_force, ["add", "for"])
+            test.assertEqual(counts["add"], 1, "Static for loop should not be unrolled")
+            test.assertGreaterEqual(counts["for"], 2, "Static for loop should remain dynamic")
+    finally:
+        wp.set_module_options(original_options)
+
+
 def test_static_if_else_elif(test, device):
     @wp.kernel
     def static_condition1(results: wp.array(dtype=int)):
@@ -628,6 +681,10 @@ add_function_test(
     TestStatic, "test_static_expression_return_types", test_static_expression_return_types, devices=devices
 )
 add_function_test(TestStatic, "test_static_for_loop", test_static_for_loop, devices=devices)
+add_function_test(TestStatic, "test_static_for_loop_force_unroll", test_static_for_loop_force_unroll, devices=devices)
+add_function_test(
+    TestStatic, "test_static_for_loop_no_force_unroll", test_static_for_loop_no_force_unroll, devices=devices
+)
 add_function_test(TestStatic, "test_static_if_else_elif", test_static_if_else_elif, devices=devices)
 
 add_function_test(TestStatic, "test_static_constant_hash", test_static_constant_hash, devices=None)
