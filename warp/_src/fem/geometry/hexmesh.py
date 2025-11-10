@@ -157,8 +157,9 @@ class Hexmesh(Geometry):
         self._face_vertex_indices: wp.array = None
         self._face_hex_indices: wp.array = None
         self._face_hex_face_orientation: wp.array = None
-        self._vertex_hex_offsets: wp.array = None
-        self._vertex_hex_indices: wp.array = None
+        self._vertex_hex_offsets: wp.array = None  # owned temporary reused between rebuilds
+        self._vertex_hex_indices: wp.array = None  # owned temporary reused between rebuilds
+        self._boundary_face_indices: wp.array = None  # owned temporary reused between rebuilds
         self._hex_edge_indices: wp.array = None
         self._edge_count = 0
         self._build_topology(temporary_store)
@@ -182,6 +183,9 @@ class Hexmesh(Geometry):
 
         if build_bvh:
             self.build_bvh(self.positions.device)
+
+    def __del__(self):
+        self._release_owned_temporaries()
 
     def cell_count(self):
         return self.hex_vertex_indices.shape[0]
@@ -447,8 +451,8 @@ class Hexmesh(Geometry):
         vertex_hex_offsets, vertex_hex_indices = compress_node_indices(
             self.vertex_count(), self.hex_vertex_indices, temporary_store=temporary_store
         )
-        self._vertex_hex_offsets = vertex_hex_offsets.detach()
-        self._vertex_hex_indices = vertex_hex_indices.detach()
+        self._replace_owned_array("_vertex_hex_offsets", vertex_hex_offsets.detach())
+        self._replace_owned_array("_vertex_hex_indices", vertex_hex_indices.detach())
 
         vertex_start_face_count = borrow_temporary(temporary_store, dtype=int, device=device, shape=self.vertex_count())
         vertex_start_face_count.zero_()
@@ -546,8 +550,24 @@ class Hexmesh(Geometry):
             ],
         )
 
-        boundary_face_indices, _ = masked_indices(boundary_mask)
-        self._boundary_face_indices = boundary_face_indices.detach()
+        boundary_face_indices, boundary_face_global_to_local = masked_indices(boundary_mask)
+        self._replace_owned_array("_boundary_face_indices", boundary_face_indices.detach())
+        boundary_face_global_to_local.release()
+        boundary_mask.release()
+
+    def _replace_owned_array(self, attr_name: str, new_value):
+        if hasattr(self, attr_name):
+            old_value = getattr(self, attr_name)
+            if old_value is not None and old_value is not new_value and hasattr(old_value, "release"):
+                old_value.release()
+        setattr(self, attr_name, new_value)
+
+    def _release_owned_temporaries(self):
+        for attr in ("_vertex_hex_offsets", "_vertex_hex_indices", "_boundary_face_indices"):
+            value = getattr(self, attr, None)
+            if value is not None and hasattr(value, "release"):
+                value.release()
+                setattr(self, attr, None)
 
     def _compute_hex_edges(self, temporary_store: Optional[TemporaryStore] = None):
         from warp._src.fem.utils import host_read_at_index

@@ -455,13 +455,21 @@ class Subdomain(GeometryDomain):
         if element_indices is None:
             if element_mask is None:
                 raise ValueError("Either 'element_mask' or 'element_indices' should be provided")
-            element_indices, _ = utils.masked_indices(mask=element_mask, temporary_store=temporary_store)
+            element_indices, element_global_to_local = utils.masked_indices(
+                mask=element_mask, temporary_store=temporary_store
+            )
             element_indices = element_indices.detach()
+            element_global_to_local.release()
+            owns_element_indices = True
         elif element_mask is not None:
             raise ValueError("Only one of 'element_mask' and 'element_indices' should be provided")
+        else:
+            # If Temporary are passed, then they are not owned by the class, hence cannot be released by the class
+            owns_element_indices = False
 
         self._domain = domain
         self._element_indices = element_indices
+        self._owns_element_indices = owns_element_indices
         self.ElementIndexArg = self._make_element_index_arg()
         self.element_index = self._make_element_index()
 
@@ -478,6 +486,13 @@ class Subdomain(GeometryDomain):
         self.element_lookup = self._domain.element_lookup
         self.element_partition_lookup = self._domain.element_partition_lookup
         self.element_normal = self._domain.element_normal
+
+    def __del__(self):
+        if getattr(self, "_owns_element_indices", False):
+            element_indices = getattr(self, "_element_indices", None)
+            if element_indices is not None and hasattr(element_indices, "release"):
+                element_indices.release()
+                self._element_indices = None
 
     @property
     def name(self) -> str:

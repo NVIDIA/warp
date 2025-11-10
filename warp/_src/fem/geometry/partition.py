@@ -177,9 +177,12 @@ class CellBasedGeometryPartition(GeometryPartition):
     ):
         super().__init__(geometry)
 
-        self._partition_side_indices: wp.array = None
-        self._boundary_side_indices: wp.array = None
-        self._frontier_side_indices: wp.array = None
+        self._partition_side_indices: wp.array = None  # owned temporary reused between rebuilds
+        self._boundary_side_indices: wp.array = None  # owned temporary reused between rebuilds
+        self._frontier_side_indices: wp.array = None  # owned temporary reused between rebuilds
+
+    def __del__(self):
+        self._release_owned_temporaries()
 
     @cached_property
     def SideArg(self):
@@ -236,9 +239,8 @@ class CellBasedGeometryPartition(GeometryPartition):
         self.side_arg_value.invalidate(self)
 
         if max_side_count == 0:
-            self._partition_side_indices = cache.borrow_temporary(temporary_store, dtype=int, shape=(0,), device=device)
-            self._boundary_side_indices = self._partition_side_indices
-            self._frontier_side_indices = self._partition_side_indices
+            empty = cache.borrow_temporary(temporary_store, dtype=int, shape=(0,), device=device)
+            self._set_partition_side_arrays(empty, empty, empty)
             return
 
         cell_arg_type = next(iter(cell_inclusion_test_func.input_types.values()))
@@ -307,28 +309,53 @@ class CellBasedGeometryPartition(GeometryPartition):
         )
 
         # Convert counts to indices
-        self._partition_side_indices, _ = masked_indices(
+        new_partition_side_indices, partition_side_global_to_local = masked_indices(
             partition_side_mask,
             max_index_count=max_side_count,
             local_to_global=self._partition_side_indices,
             temporary_store=temporary_store,
         )
-        self._boundary_side_indices, _ = masked_indices(
+        self._replace_owned_array("_partition_side_indices", new_partition_side_indices)
+        partition_side_global_to_local.release()
+        new_boundary_side_indices, boundary_side_global_to_local = masked_indices(
             boundary_side_mask,
             max_index_count=max_side_count,
             local_to_global=self._boundary_side_indices,
             temporary_store=temporary_store,
         )
-        self._frontier_side_indices, _ = masked_indices(
+        self._replace_owned_array("_boundary_side_indices", new_boundary_side_indices)
+        boundary_side_global_to_local.release()
+        new_frontier_side_indices, frontier_side_global_to_local = masked_indices(
             frontier_side_mask,
             max_index_count=max_side_count,
             local_to_global=self._frontier_side_indices,
             temporary_store=temporary_store,
         )
+        self._replace_owned_array("_frontier_side_indices", new_frontier_side_indices)
+        frontier_side_global_to_local.release()
 
         partition_side_mask.release()
         boundary_side_mask.release()
         frontier_side_mask.release()
+
+    def _set_partition_side_arrays(self, partition, boundary, frontier):
+        self._replace_owned_array("_partition_side_indices", partition)
+        self._replace_owned_array("_boundary_side_indices", boundary)
+        self._replace_owned_array("_frontier_side_indices", frontier)
+
+    def _replace_owned_array(self, attr_name: str, new_value):
+        if hasattr(self, attr_name):
+            old_value = getattr(self, attr_name)
+            if old_value is not None and old_value is not new_value and hasattr(old_value, "release"):
+                old_value.release()
+        setattr(self, attr_name, new_value)
+
+    def _release_owned_temporaries(self):
+        for attr in ("_partition_side_indices", "_boundary_side_indices", "_frontier_side_indices"):
+            value = getattr(self, attr, None)
+            if value is not None and hasattr(value, "release"):
+                value.release()
+                setattr(self, attr, None)
 
     @wp.func
     def side_to_cell_arg(side_arg: Any):
@@ -426,6 +453,11 @@ class ExplicitGeometryPartition(CellBasedGeometryPartition):
 
         self.rebuild(cell_mask, temporary_store)
 
+    def __del__(self):
+        self._replace_owned_array("_cells", None)
+        self._replace_owned_array("_partition_cells", None)
+        super().__del__()
+
     def rebuild(
         self,
         cell_mask: "wp.array(dtype=int)",
@@ -442,13 +474,15 @@ class ExplicitGeometryPartition(CellBasedGeometryPartition):
         """
         self.cell_arg_value.invalidate(self)
 
-        self._cells, self._partition_cells = masked_indices(
+        new_cells, new_partition_cells = masked_indices(
             cell_mask,
             local_to_global=self._cells,
             global_to_local=self._partition_cells,
             max_index_count=self._max_cell_count,
             temporary_store=temporary_store,
         )
+        self._replace_owned_array("_cells", new_cells)
+        self._replace_owned_array("_partition_cells", new_partition_cells)
 
         super().compute_side_indices_from_cells(
             self.cell_arg_value(cell_mask.device),

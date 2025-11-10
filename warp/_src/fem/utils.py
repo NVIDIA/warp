@@ -124,10 +124,12 @@ def compress_node_indices(
 
         # Build prefix sum of number of elements per node
         node_element_counts = cache.borrow_temporary(temporary_store, shape=index_count, dtype=int)
-        if unique_node_indices is None or unique_node_indices.shape != node_element_counts.shape:
+        owns_unique_node_indices = unique_node_indices is None or unique_node_indices.shape != node_element_counts.shape
+        if owns_unique_node_indices:
             unique_node_indices = cache.borrow_temporary_like(node_element_counts, temporary_store)
 
-        if unique_node_count is None or unique_node_count.shape != (1,):
+        owns_unique_node_count = unique_node_count is None or unique_node_count.shape != (1,)
+        if owns_unique_node_count:
             unique_node_count = cache.borrow_temporary(temporary_store, shape=(1,), dtype=int)
 
         runlength_encode(
@@ -156,6 +158,10 @@ def compress_node_indices(
         node_element_counts.release()
 
         if not return_unique_nodes:
+            if owns_unique_node_indices:
+                unique_node_indices.release()
+            if owns_unique_node_count:
+                unique_node_count.release()
             return node_offsets, sorted_array_indices
 
         return node_offsets, sorted_array_indices, unique_node_count, unique_node_indices

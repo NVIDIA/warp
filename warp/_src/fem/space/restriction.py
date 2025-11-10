@@ -51,18 +51,24 @@ class SpaceRestriction:
         self.domain = domain
 
         self._node_count_dev: wp.array = None
-        """Number of unique partition node indices"""
+        """Number of unique partition node indices (owned temporary borrowed from cache; released once synchronized or on destruction)"""
         self._dof_partition_indices: wp.array = None
-        """Array of unique partition node indices"""
+        """Array of unique partition node indices (owned temporary borrowed from cache; released on resize or destruction)"""
 
         self._dof_partition_element_offsets: wp.array = None
-        """Mapping from partition node to offset in the per-node element indices array"""
+        """Mapping from partition node to offset in the per-node element indices array (owned temporary borrowed from cache; released on resize/destruction)"""
         self._dof_element_indices: wp.array = None
-        """Concatenation of neighboring elements indices for each partition node"""
+        """Concatenation of neighboring elements indices for each partition node (owned temporary borrowed from cache; reused across rebuilds)"""
         self._dof_indices_in_element: wp.array = None
-        """Concatenation of node index in element for each partition node"""
+        """Concatenation of node index in element for each partition node (owned temporary borrowed from cache; reused across rebuilds)"""
 
         self.rebuild(device=device, temporary_store=temporary_store)
+
+    def __del__(self):
+        # SpaceRestriction instances are not expected to participate in reference cycles, so explicitly
+        # releasing owned temporaries here is safe and prevents holding onto cache buffers until GC runs.
+        if hasattr(self, "_release_owned_temporaries"):
+            self._release_owned_temporaries()
 
     def rebuild(self, device: Optional = None, temporary_store: Optional[cache.TemporaryStore] = None):
         max_nodes_per_element = self.space_topology.MAX_NODES_PER_ELEMENT
@@ -115,10 +121,10 @@ class SpaceRestriction:
         # Build compressed map from node to element indices
         flattened_node_indices = element_node_indices.flatten()
         (
-            self._dof_partition_element_offsets,
+            new_partition_element_offsets,
             node_array_indices,
-            self._node_count_dev,
-            self._dof_partition_indices,
+            new_node_count_dev,
+            new_partition_indices,
         ) = compress_node_indices(
             self.space_partition.node_count(),
             flattened_node_indices,
@@ -129,10 +135,17 @@ class SpaceRestriction:
             temporary_store=temporary_store,
         )
 
+        self._replace_owned_temporary("_dof_partition_element_offsets", new_partition_element_offsets)
+        self._replace_owned_temporary("_node_count_dev", new_node_count_dev)
+        self._replace_owned_temporary("_dof_partition_indices", new_partition_indices)
+
         # Extract element index and index in element
         if self._dof_element_indices is None or self._dof_element_indices.shape != flattened_node_indices.shape:
-            self._dof_element_indices = cache.borrow_temporary_like(flattened_node_indices, temporary_store)
-            self._dof_indices_in_element = cache.borrow_temporary_like(flattened_node_indices, temporary_store)
+            new_dof_element_indices = cache.borrow_temporary_like(flattened_node_indices, temporary_store)
+            new_dof_indices_in_element = cache.borrow_temporary_like(flattened_node_indices, temporary_store)
+
+            self._replace_owned_temporary("_dof_element_indices", new_dof_element_indices)
+            self._replace_owned_temporary("_dof_indices_in_element", new_dof_indices_in_element)
 
         wp.launch(
             kernel=SpaceRestriction._split_vertex_element_index,
@@ -147,6 +160,7 @@ class SpaceRestriction:
         )
 
         node_array_indices.release()
+        element_node_indices.release()
 
         # Upper bound on node count, use `node_count_sync` to get the actual value
         self._node_count = min(self.space_partition.node_count(), self._dof_partition_indices.shape[0])
@@ -155,6 +169,8 @@ class SpaceRestriction:
         """Ensures that the node count is synchronized with the device and returns it"""
         if self._node_count_dev is not None:
             self._node_count = int(host_read_at_index(self._node_count_dev, index=0))
+            if hasattr(self._node_count_dev, "release"):
+                self._node_count_dev.release()
             self._node_count_dev = None
         return self.node_count()
 
@@ -219,3 +235,22 @@ class SpaceRestriction:
         element_index = idx // vertex_per_element
         vertex_element_index[wp.tid()] = element_index
         vertex_index_in_element[wp.tid()] = idx - vertex_per_element * element_index
+
+    def _replace_owned_temporary(self, attr_name: str, new_value):
+        """Return previously owned temporaries to the cache before overwriting them."""
+        if hasattr(self, attr_name):
+            old_value = getattr(self, attr_name)
+            if old_value is not None and old_value is not new_value and hasattr(old_value, "release"):
+                old_value.release()
+        setattr(self, attr_name, new_value)
+
+    def _release_owned_temporaries(self):
+        for attr in (
+            "_dof_partition_element_offsets",
+            "_dof_partition_indices",
+            "_dof_element_indices",
+            "_dof_indices_in_element",
+            "_node_count_dev",
+        ):
+            if hasattr(self, attr):
+                self._replace_owned_temporary(attr, None)
