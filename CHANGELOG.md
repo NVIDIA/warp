@@ -15,6 +15,8 @@
 
 ### Deprecated
 
+- `isfinite()`, `isnan()`, and `isinf()` will no longer take integer inputs, only floating-point arguments ([GH-847](https://github.com/NVIDIA/warp/issues/847)).
+
 ### Changed
 
 - Improve CUDA compilation performance by enabling the use of precompiled headers (https://docs.nvidia.com/cuda/nvrtc/index.html#automatic-pch).
