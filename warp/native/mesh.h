@@ -1386,28 +1386,26 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
     float min_v;
     float min_sign = 1.0f;
     vec3 min_normal;
+    const float eps = 1.e-3f;
+    float temp_t = 0.0f;
+    bool hit = false;
 
     while (count)
     {
-        const int nodeIndex = stack[--count];
+        const int node_index = stack[--count];
 
-        BVHPackedNodeHalf lower = bvh_load_node(mesh.bvh.node_lowers, nodeIndex);
-        BVHPackedNodeHalf upper = bvh_load_node(mesh.bvh.node_uppers, nodeIndex);
+        BVHPackedNodeHalf lower = bvh_load_node(mesh.bvh.node_lowers, node_index);
+        BVHPackedNodeHalf upper = bvh_load_node(mesh.bvh.node_uppers, node_index);
 
         // todo: switch to robust ray-aabb, or expand bounds in build stage
-        float eps = 1.e-3f;
-        float t = 0.0f;
-        bool hit = intersect_ray_aabb(start, rcp_dir, vec3(lower.x-eps, lower.y-eps, lower.z-eps), vec3(upper.x+eps, upper.y+eps, upper.z+eps), t);
+        hit = intersect_ray_aabb(start, rcp_dir, vec3(lower.x-eps, lower.y-eps, lower.z-eps), vec3(upper.x+eps, upper.y+eps, upper.z+eps), temp_t);
 
-        if (hit && t < min_t)
+        if (hit && temp_t < min_t)
         {
-            const int left_index = lower.i;
-            const int right_index = upper.i;
-
             if (lower.b)
             {	
-                const int start_index = left_index;
-                const int end_index = right_index;
+                const int start_index = lower.i;
+                const int end_index = upper.i;
                 // loops through primitives in the leaf
                 for (int primitive_counter = start_index; primitive_counter < end_index ; primitive_counter++)
                 {
@@ -1439,8 +1437,8 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
             }
             else
             {
-                stack[count++] = left_index;
-                stack[count++] = right_index;
+                stack[count++] = lower.i;
+                stack[count++] = upper.i;
             }
         }
     }
@@ -1837,8 +1835,9 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& in
         {
             // found leaf, loop through its content primitives
             const int start = left_index;
+            const int end = right_index;
 
-            if (mesh.bvh.leaf_size == 1)
+            if (end - start == 1)
             {
                 int primitive_index = mesh.bvh.primitive_indices[start];
                 index = primitive_index;
@@ -1847,7 +1846,6 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& in
             }
             else
             {
-                const int end = right_index;
                 int primitive_index = mesh.bvh.primitive_indices[start + (query.primitive_counter++)];
                 // if already visited the last primitive in the leaf node
                 // move to the next node and reset the primitive counter to 0

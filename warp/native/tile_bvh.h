@@ -346,14 +346,14 @@ CUDA_CALLABLE inline bvh_query_thread_block_t bvh_query_aabb_thread_block_impl(
     uint64_t id, const vec3& lower, const vec3& upper)
 {
     // On CPU, bvh_query_thread_block_t is just bvh_query_t
-    return bvh_query_aabb(id, lower, upper);
+    return bvh_query_aabb(id, lower, upper, -1);
 }
 
 // CPU version: single-threaded, just calls regular bvh_query_next
 CUDA_CALLABLE inline bool bvh_query_next_thread_block_impl(bvh_query_thread_block_t& query, int& index)
 {
     // On CPU, bvh_query_thread_block_t is just bvh_query_t, so call regular bvh_query_next
-    return bvh_query_next(query, index);
+    return bvh_query_next(query, index, INFINITY);
 }
 
 #endif
@@ -426,7 +426,7 @@ inline auto tile_bvh_query_next_impl(bvh_query_thread_block_t& query)
     // On CPU, bvh_query_thread_block_t is aliased to bvh_query_t
     // We just call the regular query and put the result in the first element of a tile
     int index = -1;
-    bvh_query_next(query, index);
+    bvh_query_next(query, index, INFINITY);
     
     // Create a tile with the index in the first element, -1 in all others
     // This simulates a single-threaded execution where only thread 0 has work
@@ -452,7 +452,7 @@ inline bvh_query_thread_block_t tile_bvh_query_aabb(
     uint64_t id, const vec3& lower, const vec3& upper)
 {
     // On CPU, this is just bvh_query_aabb since bvh_query_thread_block_t = bvh_query_t
-    return bvh_query_aabb(id, lower, upper);
+    return bvh_query_aabb(id, lower, upper, -1);
 }
 
 // CPU version: tile_bvh_query_ray just creates a regular ray query
@@ -460,7 +460,7 @@ inline bvh_query_thread_block_t tile_bvh_query_ray(
     uint64_t id, const vec3& start, const vec3& dir)
 {
     // On CPU, this is just bvh_query_ray since bvh_query_thread_block_t = bvh_query_t
-    return bvh_query_ray(id, start, dir);
+    return bvh_query_ray(id, start, dir, -1);
 }
 
 //Stub

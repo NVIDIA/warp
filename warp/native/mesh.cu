@@ -282,7 +282,7 @@ uint64_t wp_mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::
 
     // compute triangle bound and construct BVH
     wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_triangle_bounds, mesh.num_tris, (mesh.num_tris, mesh.points, mesh.indices, mesh.lowers, mesh.uppers));
-    wp::bvh_create_device(mesh.context, mesh.lowers, mesh.uppers, num_tris, constructor_type, mesh.bvh, bvh_leaf_size);
+    wp::bvh_create_device(mesh.context, mesh.lowers, mesh.uppers, num_tris, constructor_type, nullptr, bvh_leaf_size, mesh.bvh);
 
     // we need to overwrite mesh.bvh because it is not initialized when we construct it on device
     wp_memcpy_h2d(WP_CURRENT_CONTEXT, &(mesh_device->bvh), &mesh.bvh, sizeof(wp::BVH));
