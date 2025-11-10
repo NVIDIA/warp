@@ -121,8 +121,6 @@ class WholeGeometryPartition(GeometryPartition):
         super().__init__(geometry)
 
         self.SideArg = geometry.SideIndexArg
-        self.side_arg_value = geometry.side_index_arg_value
-        self.fill_side_arg = geometry.fill_side_index_arg
 
         self.cell_index = WholeGeometryPartition._identity_element_index
         self.partition_cell_index = WholeGeometryPartition._identity_element_index
@@ -134,6 +132,14 @@ class WholeGeometryPartition(GeometryPartition):
     def __eq__(self, other: GeometryPartition) -> bool:
         # Ensures that two whole partition instances of the same geometry are considered equal
         return isinstance(other, WholeGeometryPartition) and self.geometry == other.geometry
+
+    @property
+    def side_arg_value(self):
+        return self.geometry.side_index_arg_value
+
+    @property
+    def fill_side_arg(self):
+        return self.geometry.fill_side_index_arg
 
     def cell_count(self) -> int:
         return self.geometry.cell_count()
