@@ -2288,6 +2288,28 @@ class Adjoint:
 
             ok_to_unroll = True
 
+            contains_static = False
+            for node in ast.walk(loop):
+                if not isinstance(node, ast.Call):
+                    continue
+                try:
+                    func, _ = adj.resolve_static_expression(node.func, eval_types=False)
+                except Exception:
+                    continue
+                if adj.is_static_expression(func):
+                    contains_static = True
+                    break
+
+            # Always unroll if the loop contains static expressions
+            if contains_static:
+                # Forced unrolling for loops with static expressions regardless of max_unroll
+                if warp._src.config.verbose and max_iters > max_unroll:
+                    print(
+                        f"Notice: Forcing unroll of loop with {max_iters} iterations because it contains wp.static expressions."
+                    )
+                return range(start, end, step)
+
+            # Apply max_unroll check only for regular loops (no static expressions)
             if max_iters > max_unroll:
                 if warp._src.config.verbose:
                     print(
