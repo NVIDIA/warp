@@ -14,7 +14,6 @@ nplaces = 8
 @wp.kernel
 def copy(A: wp.array2d(dtype=float), C: wp.array2d(dtype=float)):
     x, y = wp.tid()
-
     a = wp.tile_load(A, shape=(BLOCKSIZE, BLOCKSIZE), offset=(BLOCKSIZE * x, BLOCKSIZE * y))
     wp.tile_store(C, a, offset=(BLOCKSIZE * x, BLOCKSIZE * y))
 

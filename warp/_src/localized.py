@@ -467,7 +467,7 @@ def blocked(
 
         # Policy mode (new)
         policy = blocked()
-        wp.launch_tiled_localized(kernel, dim=(10, 10), mapping=policy, streams=streams)
+        wp.localized.launch_tiled(kernel, dim=(10, 10), mapping=policy, streams=streams)
     """
     # Policy mode: return a function
     if dim is None and places is None:
@@ -555,7 +555,7 @@ def cyclic(
 
         # Policy mode (new)
         policy = cyclic()
-        wp.launch_tiled_localized(kernel, dim=(12, 8), mapping=policy, streams=streams)
+        wp.localized.launch_tiled(kernel, dim=(12, 8), mapping=policy, streams=streams)
     """
     # Policy mode: return a function
     if dim is None and places is None:
@@ -1294,7 +1294,7 @@ def allocate_tiled_tensor(tile_shape, tile_dim, partition_desc, streams, dtype, 
     return cupy_arr
 
 
-def empty_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, page_size_bytes=2 * 1024 * 1024):
+def empty(shape, partition_desc, streams, dtype=float, tile_dim=None, page_size_bytes=2 * 1024 * 1024):
     """
     Allocate an uninitialized array with localized memory placement across devices.
 
@@ -1316,7 +1316,7 @@ def empty_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, 
         # Element-level distribution (default)
         policy = wp.blocked()
         streams = [wp.Stream(f"cuda:{i}") for i in range(8)]
-        arr = wp.empty_localized(
+        arr = wp.localized.empty(
             shape=(8192, 8192),
             partition_desc=policy,
             streams=streams,
@@ -1324,7 +1324,7 @@ def empty_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, 
         )
 
         # With explicit tile size for coarser-grained distribution
-        arr = wp.empty_localized(
+        arr = wp.localized.empty(
             shape=(8192, 8192),
             tile_dim=(64, 64),
             partition_desc=policy,
@@ -1403,7 +1403,7 @@ def empty_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, 
         return arr
 
 
-def zeros_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, page_size_bytes=2 * 1024 * 1024):
+def zeros(shape, partition_desc, streams, dtype=float, tile_dim=None, page_size_bytes=2 * 1024 * 1024):
     """
     Allocate a zero-initialized array with localized memory placement across devices.
 
@@ -1425,7 +1425,7 @@ def zeros_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, 
         # Element-level distribution (default)
         policy = wp.blocked()
         streams = [wp.Stream(f"cuda:{i}") for i in range(8)]
-        arr = wp.zeros_localized(
+        arr = wp.localized.zeros(
             shape=(8192, 8192),
             partition_desc=policy,
             streams=streams,
@@ -1433,7 +1433,7 @@ def zeros_localized(shape, partition_desc, streams, dtype=float, tile_dim=None, 
         )
 
         # With explicit tile size for coarser-grained distribution
-        arr = wp.zeros_localized(
+        arr = wp.localized.zeros(
             shape=(8192, 8192),
             tile_dim=(64, 64),
             partition_desc=policy,
@@ -1680,7 +1680,7 @@ def zeros_managed(
     return arr
 
 
-def launch_localized(kernel, dim, inputs=None, outputs=None, primary_stream=None, mapping=None, streams=None, **kwargs):
+def launch(kernel, dim, inputs=None, outputs=None, primary_stream=None, mapping=None, streams=None, **kwargs):
     """
     Launch a kernel across multiple devices with localized data placement.
 
@@ -1701,7 +1701,7 @@ def launch_localized(kernel, dim, inputs=None, outputs=None, primary_stream=None
         # Direct mode with PartitionDesc
         result = wp.blocked(dim=(1024, 1024), places=8)
         streams = [wp.Stream(f"cuda:{i % ndevices}") for i in range(len(result.offsets))]
-        wp.launch_localized(
+        wp.localized.launch(
             kernel=my_kernel,
             dim=(1024, 1024),
             inputs=[A],
@@ -1713,7 +1713,7 @@ def launch_localized(kernel, dim, inputs=None, outputs=None, primary_stream=None
         # Policy mode
         policy = wp.blocked()
         streams = [wp.Stream(f"cuda:{i % ndevices}") for i in range(8)]
-        wp.launch_localized(
+        wp.localized.launch(
             kernel=my_kernel,
             dim=(1024, 1024),
             inputs=[A],
@@ -1797,7 +1797,7 @@ def launch_localized(kernel, dim, inputs=None, outputs=None, primary_stream=None
             primary_stream.wait_event(ei)
 
 
-def launch_tiled_localized(
+def launch_tiled(
     kernel, dim, inputs=None, outputs=None, primary_stream=None, block_dim=None, mapping=None, streams=None, **kwargs
 ):
     """
@@ -1821,7 +1821,7 @@ def launch_tiled_localized(
         # Direct mode with PartitionDesc
         result = wp.blocked(dim=(128, 128), places=8)
         streams = [wp.Stream(f"cuda:{i % ndevices}") for i in range(len(result.offsets))]
-        wp.launch_tiled_localized(
+        wp.localized.launch_tiled(
             kernel=my_kernel,
             dim=(128, 128),
             inputs=[A],
@@ -1834,7 +1834,7 @@ def launch_tiled_localized(
         # Policy mode (new)
         policy = wp.blocked()
         streams = [wp.Stream(f"cuda:{i % ndevices}") for i in range(8)]
-        wp.launch_tiled_localized(
+        wp.localized.launch_tiled(
             kernel=my_kernel,
             dim=(128, 128),
             inputs=[A],

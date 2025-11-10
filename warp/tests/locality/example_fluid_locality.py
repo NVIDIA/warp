@@ -191,15 +191,15 @@ class Example:
         self.policy = wp.blocked()
 
         # Using localized memory for better multi-device accessibility
-        self.u0 = wp.zeros_localized(shape, dtype=wp.vec2, partition_desc=self.policy, streams=self.streams)
-        self.u1 = wp.zeros_localized(shape, dtype=wp.vec2, partition_desc=self.policy, streams=self.streams)
+        self.u0 = wp.localized.zeros(shape, dtype=wp.vec2, partition_desc=self.policy, streams=self.streams)
+        self.u1 = wp.localized.zeros(shape, dtype=wp.vec2, partition_desc=self.policy, streams=self.streams)
 
-        self.rho0 = wp.zeros_localized(shape, dtype=float, partition_desc=self.policy, streams=self.streams)
-        self.rho1 = wp.zeros_localized(shape, dtype=float, partition_desc=self.policy, streams=self.streams)
+        self.rho0 = wp.localized.zeros(shape, dtype=float, partition_desc=self.policy, streams=self.streams)
+        self.rho1 = wp.localized.zeros(shape, dtype=float, partition_desc=self.policy, streams=self.streams)
 
-        self.p0 = wp.zeros_localized(shape, dtype=float, partition_desc=self.policy, streams=self.streams)
-        self.p1 = wp.zeros_localized(shape, dtype=float, partition_desc=self.policy, streams=self.streams)
-        self.div = wp.zeros_localized(shape, dtype=float, partition_desc=self.policy, streams=self.streams)
+        self.p0 = wp.localized.zeros(shape, dtype=float, partition_desc=self.policy, streams=self.streams)
+        self.p1 = wp.localized.zeros(shape, dtype=float, partition_desc=self.policy, streams=self.streams)
+        self.div = wp.localized.zeros(shape, dtype=float, partition_desc=self.policy, streams=self.streams)
 
         # capture pressure solve as a CUDA graph
         self.use_cuda_graph = wp.get_device().is_cuda
@@ -219,21 +219,21 @@ class Example:
                 vel = wp.vec2(math.cos(angle) * speed, math.sin(angle) * speed)
 
                 # update emitters
-                wp.launch_localized(
+                wp.localized.launch(
                     init, dim=shape, inputs=[self.rho0, self.u0, 5, vel], mapping=self.policy, streams=self.streams
                 )
 
                 # force integrate
-                wp.launch_localized(
+                wp.localized.launch(
                     integrate, dim=shape, inputs=[self.u0, self.rho0, dt], mapping=self.policy, streams=self.streams
                 )
-                wp.launch_localized(
+                wp.localized.launch(
                     divergence, dim=shape, inputs=[self.u0, self.div], mapping=self.policy, streams=self.streams
                 )
 
                 # pressure solve
-                wp.launch_localized(zero_array, dim=shape, inputs=[self.p0], mapping=self.policy, streams=self.streams)
-                wp.launch_localized(zero_array, dim=shape, inputs=[self.p1], mapping=self.policy, streams=self.streams)
+                wp.localized.launch(zero_array, dim=shape, inputs=[self.p0], mapping=self.policy, streams=self.streams)
+                wp.localized.launch(zero_array, dim=shape, inputs=[self.p1], mapping=self.policy, streams=self.streams)
 
                 if self.use_cuda_graph:
                     wp.capture_launch(self.graph, stream=self.streams[0])
@@ -241,12 +241,12 @@ class Example:
                     self.pressure_iterations()
 
                 # velocity update
-                wp.launch_localized(
+                wp.localized.launch(
                     pressure_apply, dim=shape, inputs=[self.p0, self.u0], mapping=self.policy, streams=self.streams
                 )
 
                 # semi-Lagrangian advection
-                wp.launch_localized(
+                wp.localized.launch(
                     advect,
                     dim=shape,
                     inputs=[self.u0, self.u1, self.rho0, self.rho1, dt],
@@ -262,7 +262,7 @@ class Example:
 
     def pressure_iterations(self):
         for _ in range(self.iterations):
-            wp.launch_localized(
+            wp.localized.launch(
                 pressure_solve,
                 dim=self.p0.shape,
                 inputs=[self.p0, self.p1, self.div],

@@ -33,18 +33,23 @@ from warp._src.fabric import fabricarrayarray as fabricarrayarray
 from warp._src.fabric import indexedfabricarray as indexedfabricarray
 from warp._src.fabric import indexedfabricarrayarray as indexedfabricarrayarray
 from warp._src.types import tile as tile
+from warp._src import localized
+
+# Export commonly used classes and functions at top level
 from warp._src.localized import Layout as Layout
 from warp._src.localized import PartitionDesc as PartitionDesc
 from warp._src.localized import blocked as blocked
 from warp._src.localized import cyclic as cyclic
 from warp._src.localized import block_cyclic as block_cyclic
 from warp._src.localized import allocate_tiled_tensor as allocate_tiled_tensor
-from warp._src.localized import empty_localized as empty_localized
-from warp._src.localized import zeros_localized as zeros_localized
 from warp._src.localized import empty_managed as empty_managed
 from warp._src.localized import zeros_managed as zeros_managed
-from warp._src.localized import launch_localized as launch_localized
-from warp._src.localized import launch_tiled_localized as launch_tiled_localized
+
+# Backward compatibility aliases (deprecated, use wp.localized.* instead)
+from warp._src.localized import empty as empty_localized
+from warp._src.localized import zeros as zeros_localized
+from warp._src.localized import launch as launch_localized
+from warp._src.localized import launch_tiled as launch_tiled_localized
 
 
 from warp._src.types import bool as bool
