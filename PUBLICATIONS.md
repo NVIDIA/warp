@@ -7,6 +7,8 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2025
 
+- **Real-to-Sim Robot Policy Evaluation with Gaussian Splatting Simulation of Soft-Body Interactions**. *K. Zhang, S. Sha, H. Jiang, M. Loper, H. Song, G. Cai, Z. Xu, X. Hu, C. Zheng, Y. Li*. November 2025. [arXiv:2511.04665](https://arxiv.org/abs/2511.04665)
+- **Human Mesh Modeling for Anny Body**. *R. Brégier, G. Fiche, L. Bravo-Sánchez, T. Lucas, M. Armando, P. Weinzaepfel, G. Rogez, F. Baradel*. November 2025. [arXiv:2511.03589](https://arxiv.org/abs/2511.03589)
 - **VoMP: Predicting Volumetric Mechanical Property Fields**. *R. Dagli, D. Xiang, V. Modi, C. Loop, C. F. Tsang, A. H. Chen, A. Hu, G. State, D. I. W. Levin, M. Shugrina*. October 2025. [arXiv:2510.22975](https://arxiv.org/abs/2510.22975)
 - **Learning to Design Soft Hands using Reward Models**. *X. Bai, N. Hansen, A. Singh, M. T. Tolley, Y. Duan, P. Abbeel, X. Wang, S. Yi*. October 2025. [arXiv:2510.17086](https://arxiv.org/abs/2510.17086)
 - **Feedback Matters: Augmenting Autonomous Dissection with Visual and Topological Feedback**. *C. Wang, C. Chen, X. Liang, S. Atar, F. Richter, M. Yip*. October 2025. [arXiv:2510.04074](https://arxiv.org/abs/2510.04074)
