@@ -382,36 +382,66 @@ add_builtin(
     is_differentiable=False,
 )
 
+
+def special_float_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    if input_types["a"] in int_types:
+        warp._src.utils.warn(
+            "isfinite(), isnan(), and isinf() will no longer support integer types as input. Please use float types instead.",
+            DeprecationWarning,
+        )
+
+    func_args = tuple(args.values())
+    template_args = ()
+
+    return (func_args, template_args)
+
+
 add_builtin(
     "isfinite",
     input_types={"a": Scalar},
     value_type=builtins.bool,
+    dispatch_func=special_float_dispatch_func,
     group="Scalar Math",
-    doc="""Return ``True`` if ``a`` is a finite number, otherwise return ``False``.""",
+    doc="""Return ``True`` if ``a`` is a finite number, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    """,
     is_differentiable=False,
 )
 add_builtin(
     "isfinite",
     input_types={"a": vector(length=Any, dtype=Scalar)},
     value_type=builtins.bool,
+    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="Return ``True`` if all elements of the vector ``a`` are finite, otherwise return ``False``.",
+    doc="""Return ``True`` if all elements of the vector ``a`` are finite, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    """,
     is_differentiable=False,
 )
 add_builtin(
     "isfinite",
     input_types={"a": quaternion(dtype=Scalar)},
     value_type=builtins.bool,
+    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="Return ``True`` if all elements of the quaternion ``a`` are finite, otherwise return ``False``.",
+    doc="""Return ``True`` if all elements of the quaternion ``a`` are finite, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    """,
     is_differentiable=False,
 )
 add_builtin(
     "isfinite",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
     value_type=builtins.bool,
+    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="Return ``True`` if all elements of the matrix ``a`` are finite, otherwise return ``False``.",
+    doc="""Return ``True`` if all elements of the matrix ``a`` are finite, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    """,
     is_differentiable=False,
 )
 
@@ -419,7 +449,11 @@ add_builtin(
     "isnan",
     input_types={"a": Scalar},
     value_type=builtins.bool,
-    doc="Return ``True`` if ``a`` is NaN, otherwise return ``False``.",
+    dispatch_func=special_float_dispatch_func,
+    doc="""Return ``True`` if ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    """,
     group="Scalar Math",
     is_differentiable=False,
 )
@@ -427,24 +461,36 @@ add_builtin(
     "isnan",
     input_types={"a": vector(length=Any, dtype=Scalar)},
     value_type=builtins.bool,
+    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="Return ``True`` if any element of the vector ``a`` is NaN, otherwise return ``False``.",
+    doc="""Return ``True`` if any element of the vector ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    """,
     is_differentiable=False,
 )
 add_builtin(
     "isnan",
     input_types={"a": quaternion(dtype=Scalar)},
     value_type=builtins.bool,
+    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="Return ``True`` if any element of the quaternion ``a`` is NaN, otherwise return ``False``.",
+    doc="""Return ``True`` if any element of the quaternion ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    """,
     is_differentiable=False,
 )
 add_builtin(
     "isnan",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
     value_type=builtins.bool,
+    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="Return ``True`` if any element of the matrix ``a`` is NaN, otherwise return ``False``.",
+    doc="""Return ``True`` if any element of the matrix ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    """,
     is_differentiable=False,
 )
 
@@ -452,32 +498,48 @@ add_builtin(
     "isinf",
     input_types={"a": Scalar},
     value_type=builtins.bool,
+    dispatch_func=special_float_dispatch_func,
     group="Scalar Math",
-    doc="""Return ``True`` if ``a`` is positive or negative infinity, otherwise return ``False``.""",
+    doc="""Return ``True`` if ``a`` is positive or negative infinity, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    """,
     is_differentiable=False,
 )
 add_builtin(
     "isinf",
     input_types={"a": vector(length=Any, dtype=Scalar)},
     value_type=builtins.bool,
+    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="Return ``True`` if any element of the vector ``a`` is positive or negative infinity, otherwise return ``False``.",
+    doc="""Return ``True`` if any element of the vector ``a`` is positive or negative infinity, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    """,
     is_differentiable=False,
 )
 add_builtin(
     "isinf",
     input_types={"a": quaternion(dtype=Scalar)},
     value_type=builtins.bool,
+    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="Return ``True`` if any element of the quaternion ``a`` is positive or negative infinity, otherwise return ``False``.",
+    doc="""Return ``True`` if any element of the quaternion ``a`` is positive or negative infinity, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    """,
     is_differentiable=False,
 )
 add_builtin(
     "isinf",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
     value_type=builtins.bool,
+    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="Return ``True`` if any element of the matrix ``a`` is positive or negative infinity, otherwise return ``False``.",
+    doc="""Return ``True`` if any element of the matrix ``a`` is positive or negative infinity, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    """,
     is_differentiable=False,
 )
 

@@ -284,47 +284,6 @@ def test_is_special_quat(test, device, dtype, register_kernels=False):
     test.assertFalse(outputs_bool_cpu[8], "wp.isnan(inf_quat) is not False")
 
 
-def test_is_special_int(test, device, dtype, register_kernels=False):
-    vector_type = wp._src.types.vector(5, dtype)
-    matrix_type = wp._src.types.matrix((5, 5), dtype)
-
-    def check_is_special_int(bool_outputs: wp.array(dtype=wp.bool)):
-        bool_outputs[0] = wp.isfinite(dtype(0))
-        bool_outputs[1] = wp.isnan(dtype(0))
-        bool_outputs[2] = wp.isinf(dtype(0))
-
-        bool_outputs[3] = wp.isfinite(vector_type())
-        bool_outputs[4] = wp.isnan(vector_type())
-        bool_outputs[5] = wp.isinf(vector_type())
-
-        bool_outputs[6] = wp.isfinite(matrix_type())
-        bool_outputs[7] = wp.isnan(matrix_type())
-        bool_outputs[8] = wp.isinf(matrix_type())
-
-    kernel = getkernel(check_is_special_int, suffix=dtype.__name__)
-
-    if register_kernels:
-        return
-
-    outputs_bool = wp.empty(9, dtype=wp.bool, device=device)
-
-    wp.launch(kernel, dim=1, inputs=[outputs_bool], device=device)
-
-    outputs_bool_cpu = outputs_bool.to("cpu").list()
-
-    test.assertTrue(outputs_bool_cpu[0], "wp.isfinite(0) is not True")
-    test.assertFalse(outputs_bool_cpu[1], "wp.isinf(0) is not False")
-    test.assertFalse(outputs_bool_cpu[2], "wp.isnan(0) is not False")
-
-    test.assertTrue(outputs_bool_cpu[3], "wp.isfinite(vec) is not True")
-    test.assertFalse(outputs_bool_cpu[4], "wp.isinf(vec) is not False")
-    test.assertFalse(outputs_bool_cpu[5], "wp.isnan(vec) is not False")
-
-    test.assertTrue(outputs_bool_cpu[6], "wp.isfinite(matrix) is not True")
-    test.assertFalse(outputs_bool_cpu[7], "wp.isinf(matrix) is not False")
-    test.assertFalse(outputs_bool_cpu[8], "wp.isnan(matrix) is not False")
-
-
 devices = get_test_devices()
 
 
@@ -347,12 +306,6 @@ for dtype in [wp.float16, wp.float32, wp.float64]:
     )
     add_function_test_register_kernel(
         TestSpecialValues, f"test_is_special_quat_{dtype.__name__}", test_is_special_quat, devices=devices, dtype=dtype
-    )
-
-# Ensure functions like wp.isfinite work on integer types
-for dtype in wp._src.types.int_types:
-    add_function_test_register_kernel(
-        TestSpecialValues, f"test_is_special_int_{dtype.__name__}", test_is_special_int, devices=devices, dtype=dtype
     )
 
 

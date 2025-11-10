@@ -625,6 +625,9 @@ Scalar Math
 
     Return ``True`` if ``a`` is a finite number, otherwise return ``False``.
 
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    
+
 
 .. py:function:: isfinite(a: Vector[Any,Scalar]) -> bool
     :noindex:
@@ -637,6 +640,9 @@ Scalar Math
        * Python
 
     Return ``True`` if all elements of the vector ``a`` are finite, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    
 
 
 .. py:function:: isfinite(a: Quaternion[Scalar]) -> bool
@@ -651,6 +657,9 @@ Scalar Math
 
     Return ``True`` if all elements of the quaternion ``a`` are finite, otherwise return ``False``.
 
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    
+
 
 .. py:function:: isfinite(a: Matrix[Any,Any,Scalar]) -> bool
     :noindex:
@@ -664,6 +673,9 @@ Scalar Math
 
     Return ``True`` if all elements of the matrix ``a`` are finite, otherwise return ``False``.
 
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    
+
 
 .. py:function:: isnan(a: Scalar) -> bool
 
@@ -674,6 +686,9 @@ Scalar Math
        * Python
 
     Return ``True`` if ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    
 
 
 .. py:function:: isnan(a: Vector[Any,Scalar]) -> bool
@@ -688,6 +703,9 @@ Scalar Math
 
     Return ``True`` if any element of the vector ``a`` is NaN, otherwise return ``False``.
 
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    
+
 
 .. py:function:: isnan(a: Quaternion[Scalar]) -> bool
     :noindex:
@@ -700,6 +718,9 @@ Scalar Math
        * Python
 
     Return ``True`` if any element of the quaternion ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    
 
 
 .. py:function:: isnan(a: Matrix[Any,Any,Scalar]) -> bool
@@ -714,6 +735,9 @@ Scalar Math
 
     Return ``True`` if any element of the matrix ``a`` is NaN, otherwise return ``False``.
 
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    
+
 
 .. py:function:: isinf(a: Scalar) -> bool
 
@@ -724,6 +748,9 @@ Scalar Math
        * Python
 
     Return ``True`` if ``a`` is positive or negative infinity, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    
 
 
 .. py:function:: isinf(a: Vector[Any,Scalar]) -> bool
@@ -738,6 +765,9 @@ Scalar Math
 
     Return ``True`` if any element of the vector ``a`` is positive or negative infinity, otherwise return ``False``.
 
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    
+
 
 .. py:function:: isinf(a: Quaternion[Scalar]) -> bool
     :noindex:
@@ -751,6 +781,9 @@ Scalar Math
 
     Return ``True`` if any element of the quaternion ``a`` is positive or negative infinity, otherwise return ``False``.
 
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    
+
 
 .. py:function:: isinf(a: Matrix[Any,Any,Scalar]) -> bool
     :noindex:
@@ -763,6 +796,9 @@ Scalar Math
        * Python
 
     Return ``True`` if any element of the matrix ``a`` is positive or negative infinity, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    
 
 
 

@@ -1991,62 +1991,110 @@ def frac(x: Float) -> Float:
 
 @over
 def isfinite(a: Scalar) -> bool:
-    """Return ``True`` if ``a`` is a finite number, otherwise return ``False``."""
+    """Return ``True`` if ``a`` is a finite number, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isfinite(a: Vector[Any, Scalar]) -> bool:
-    """Return ``True`` if all elements of the vector ``a`` are finite, otherwise return ``False``."""
+    """Return ``True`` if all elements of the vector ``a`` are finite, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isfinite(a: Quaternion[Scalar]) -> bool:
-    """Return ``True`` if all elements of the quaternion ``a`` are finite, otherwise return ``False``."""
+    """Return ``True`` if all elements of the quaternion ``a`` are finite, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isfinite(a: Matrix[Any, Any, Scalar]) -> bool:
-    """Return ``True`` if all elements of the matrix ``a`` are finite, otherwise return ``False``."""
+    """Return ``True`` if all elements of the matrix ``a`` are finite, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isnan(a: Scalar) -> bool:
-    """Return ``True`` if ``a`` is NaN, otherwise return ``False``."""
+    """Return ``True`` if ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isnan(a: Vector[Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the vector ``a`` is NaN, otherwise return ``False``."""
+    """Return ``True`` if any element of the vector ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isnan(a: Quaternion[Scalar]) -> bool:
-    """Return ``True`` if any element of the quaternion ``a`` is NaN, otherwise return ``False``."""
+    """Return ``True`` if any element of the quaternion ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isnan(a: Matrix[Any, Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the matrix ``a`` is NaN, otherwise return ``False``."""
+    """Return ``True`` if any element of the matrix ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isinf(a: Scalar) -> bool:
-    """Return ``True`` if ``a`` is positive or negative infinity, otherwise return ``False``."""
+    """Return ``True`` if ``a`` is positive or negative infinity, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isinf(a: Vector[Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the vector ``a`` is positive or negative infinity, otherwise return ``False``."""
+    """Return ``True`` if any element of the vector ``a`` is positive or negative infinity, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isinf(a: Quaternion[Scalar]) -> bool:
-    """Return ``True`` if any element of the quaternion ``a`` is positive or negative infinity, otherwise return ``False``."""
+    """Return ``True`` if any element of the quaternion ``a`` is positive or negative infinity, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isinf(a: Matrix[Any, Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the matrix ``a`` is positive or negative infinity, otherwise return ``False``."""
+    """Return ``True`` if any element of the matrix ``a`` is positive or negative infinity, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
