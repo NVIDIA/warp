@@ -213,13 +213,10 @@ class PicQuadrature(Quadrature):
                 else:
                     cell_coords[p] = cell_coordinates(cell_arg_value, sample.element_index, positions[p])
 
-            self._cell_index_temp = borrow_temporary(temporary_store, shape=positions.shape, dtype=int, device=device)
-            self.cell_indices = self._cell_index_temp.array
-
-            self._particle_coords_temp = borrow_temporary(
+            self.cell_indices = borrow_temporary(temporary_store, shape=positions.shape, dtype=int, device=device)
+            self.particle_coords = borrow_temporary(
                 temporary_store, shape=positions.shape, dtype=Coords, device=device, requires_grad=self._requires_grad
             )
-            self.particle_coords = self._particle_coords_temp.array
 
             wp.launch(
                 dim=positions.shape[0],
@@ -242,9 +239,6 @@ class PicQuadrature(Quadrature):
             if self.cell_indices.shape != self.particle_coords.shape:
                 raise ValueError("Cell index and coordinates arrays must have the same shape")
 
-            self._cell_index_temp = None
-            self._particle_coords_temp = None
-
         self._cell_particle_offsets, self._cell_particle_indices, self._cell_count, _ = compress_node_indices(
             self.domain.geometry_element_count(),
             self.cell_indices,
@@ -257,10 +251,9 @@ class PicQuadrature(Quadrature):
     def _compute_fraction(self, cell_index, measures, temporary_store: TemporaryStore):
         device = cell_index.device
 
-        self._particle_fraction_temp = borrow_temporary(
+        self._particle_fraction = borrow_temporary(
             temporary_store, shape=cell_index.shape, dtype=float, device=device, requires_grad=self._requires_grad
         )
-        self._particle_fraction = self._particle_fraction_temp.array
 
         if measures is None:
             # Split fraction uniformly over all particles in cell
