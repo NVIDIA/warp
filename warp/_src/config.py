@@ -176,6 +176,10 @@ platforms (Linux ARM) and disables it on other architectures. To explicitly enab
 this behavior regardless of architecture, set this flag to ``True`` or ``False``.
 """
 
+use_precompiled_headers: bool = True
+"""Enable the use of precompiled headers during kernel compilation.
+"""
+
 _git_commit_hash: Optional[str] = None
 """Git commit hash associated with the Warp installation.
 

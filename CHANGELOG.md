@@ -115,6 +115,8 @@
   ([GH-923](https://github.com/NVIDIA/warp/issues/923)).
 - Improve efficiency for `wp.bvh_query_aabb()`, `wp.mesh_query_aabb()` and `wp.bvh_query_ray()`.
   This fixes a performance regression introduced in Warp 1.6.0 ([GH-758](https://github.com/NVIDIA/warp/issues/758)).
+- Improve CUDA compilation performance by enabling the use of precompiled headers (https://docs.nvidia.com/cuda/nvrtc/index.html#automatic-pch).
+  Can be disabled using `wp.config.use_precompiled_headers=False` ([GH-595](https://github.com/NVIDIA/warp/issues/595)).
 
 ### Fixed
 
