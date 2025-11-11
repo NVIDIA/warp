@@ -5384,11 +5384,17 @@ Geometry
     Move to the next bound returned by the query.
 
     The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bounds.
-    The maximum distance along a ray query to check for intersections can be set using ``max_dist``.
+    The maximum distance along a ray query to check for intersections can be set using ``max_dist``. It is not effective
+    for aabb query.
+
+    Note that increasing ``max_dist`` may result in missing intersections. Since previously rejected subtrees will never be
+    revisited even if it intersects with the new, longer ray. In other words, it's only safe to monotonically
+    reduce ``max_dist`` during a query.
 
     :param query: The query to move to the next bound
     :param index: The index of the current bound
-    :param max_dist: The maximum distance along the ray to check for intersections for ray queries
+    :param max_dist: The maximum distance along the ray to check for intersections for ray queries. Not effective for aabb
+        query.
 
 
 .. py:function:: bvh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled

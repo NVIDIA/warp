@@ -5274,7 +5274,7 @@ add_builtin(
     :param query: The query to move to the next bound
     :param index: The index of the current bound
     :param max_dist: The maximum distance along the ray to check for intersections for ray queries. Not effective for aabb
-    query.""",
+        query.""",
     export=False,
     is_differentiable=False,
 )
