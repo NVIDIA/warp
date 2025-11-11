@@ -6477,6 +6477,7 @@ def launch(
     block_dim: int = 256,
     partition: str | Layout | None = None,
     offset: int = 0,
+    max_index: int = -1,
 ):
     """Launch a Warp kernel on the target device
 
@@ -6505,6 +6506,8 @@ def launch(
         partition: Optional Layout object or string specifying kernel partitioning scheme.
           Can be a wp.Layout object or a CuTe-style string like "(5,5):(2,20)".
         offset: Starting offset for partitioned kernel launches.
+        max_index: Maximum valid work item index (-1 means no limit). Used to handle
+          work sizes that don't evenly divide by layout granularity.
     """
 
     init()
@@ -6547,7 +6550,9 @@ def launch(
         for s in partition_shape:
             partition_blocks *= s
 
-    bounds.set_partition_params(offset, bounds.size, partition_blocks)
+    # Set partition parameters
+    # max_index allows handling work sizes that don't evenly divide by layout granularity
+    bounds.set_partition_params(offset, pblocks=partition_blocks, max_index=max_index)
 
     if bounds.size > 0:
         # first param is the number of threads

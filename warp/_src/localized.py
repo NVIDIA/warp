@@ -338,6 +338,7 @@ class PartitionDesc:
         offsets: List of offsets for iterating over partitions (optional)
         block_shape: Shape of each block/partition (optional)
         offset_layout: Layout for offset indexing (optional)
+        max_work_index: Maximum valid work index (for handling non-divisible work sizes)
         partition_cute: cute.Layout - hierarchical cute layout combining offset_layout and partition
         partition_inverse_cute: cute.Layout - right inverse of partition_cute
     """
@@ -348,10 +349,12 @@ class PartitionDesc:
         offsets: list[int] | None = None,
         block_shape: tuple[int, ...] | None = None,
         offset_layout: Layout | None = None,
+        max_work_index: int | None = None,
     ):
         self.partition = partition
         self.block_shape = block_shape
         self.offset_layout = offset_layout
+        self.max_work_index = max_work_index
 
         # Compute offsets from offset_layout if provided, otherwise use explicit offsets or default
         if offset_layout is not None:
@@ -390,7 +393,7 @@ class PartitionDesc:
         # print(f"  Partition inverse cute: {self.partition_inverse_cute}")
 
     def __repr__(self) -> str:
-        return f"PartitionDesc(partition={self.partition}, offsets={self.offsets[:5]}{'...' if len(self.offsets) > 5 else ''}, block_shape={self.block_shape}, offset_layout={self.offset_layout})"
+        return f"PartitionDesc(partition={self.partition}, offsets={self.offsets[:5]}{'...' if len(self.offsets) > 5 else ''}, block_shape={self.block_shape}, offset_layout={self.offset_layout}, max_work_index={self.max_work_index})"
 
     def get_element_owner(self, elem_idx: int) -> int | None:
         """Compute which place owns a given element index.
@@ -483,7 +486,7 @@ def blocked(
 
     dim = tuple(dim) if isinstance(dim, list) else dim
 
-    # Compute total size (flatten the problem space)
+    # Compute total size (flatten the problem space) - this is the actual work size
     total_size = 1
     for d in dim:
         total_size *= int(d)  # Ensure int
@@ -500,8 +503,9 @@ def blocked(
         for p in places_tuple:
             nplaces *= int(p)
 
-    # Compute part_size (size of each chunk) - ensure int
-    part_size = int((total_size + nplaces - 1) // nplaces)  # Ceiling division
+    # Compute part_size (size of each chunk) - ceiling division rounds up
+    # This ensures each place can handle its portion, but may create extra capacity
+    part_size = int((total_size + nplaces - 1) // nplaces)
 
     # Partition layout: each place processes part_size contiguous elements
     partition = Layout(shape=(part_size, 1), stride=(1, 1))
@@ -509,7 +513,11 @@ def blocked(
     # Offsets layout: stride by part_size to get to next place
     offsets_layout = Layout(shape=(nplaces,), stride=(part_size,))
 
-    return PartitionDesc(partition=partition, offset_layout=offsets_layout, block_shape=(part_size,))
+    # Store total_size as max_work_index to handle non-divisible work sizes
+    # Total capacity = part_size * nplaces may be > total_size
+    return PartitionDesc(
+        partition=partition, offset_layout=offsets_layout, block_shape=(part_size,), max_work_index=total_size
+    )
 
 
 def cyclic(
@@ -1751,6 +1759,10 @@ def launch(kernel, dim, inputs=None, outputs=None, primary_stream=None, mapping=
     if callable(mapping):
         mapping = mapping(dim=(total_blocks,), streams=streams)
 
+    # Get max_work_index from mapping if available, otherwise use total_blocks
+    # This handles cases where total_blocks doesn't evenly divide across places
+    max_work_index = mapping.max_work_index if mapping.max_work_index is not None else total_blocks
+
     # Default primary stream to first stream
     if primary_stream is None:
         primary_stream = streams[0]
@@ -1785,6 +1797,7 @@ def launch(kernel, dim, inputs=None, outputs=None, primary_stream=None, mapping=
             outputs=outputs,
             partition=mapping.partition,
             offset=offset,
+            max_index=max_work_index,
             stream=stream,
             **kwargs,
         )
@@ -1855,6 +1868,25 @@ def launch_tiled(
     if callable(mapping):
         mapping = mapping(dim=dim, streams=streams)
 
+    # Get max_work_index from mapping (for handling non-divisible tile counts)
+    # Compute total tiles
+    if isinstance(dim, int):
+        total_tiles = dim
+    else:
+        total_tiles = 1
+        for d in dim:
+            total_tiles *= d
+
+    # For tiled launches, the actual work size includes block_dim as an additional dimension
+    # So max_work_index must account for this: total_tiles * block_dim
+    # (launch_tiled will transform dim=(N,) + block_dim=B into actual_dim=(N, B))
+    tile_max_index = mapping.max_work_index if mapping.max_work_index is not None else total_tiles
+
+    # Multiply by block_dim to get the actual thread count after tiling transformation
+    # block_dim might be passed in kwargs, default to 256 if not specified
+    actual_block_dim = block_dim if block_dim is not None else kwargs.get("block_dim", 256)
+    max_work_index = tile_max_index * actual_block_dim
+
     # Default primary stream to first stream
     if primary_stream is None:
         primary_stream = streams[0]
@@ -1883,12 +1915,13 @@ def launch_tiled(
         stream = streams[place_idx]
 
         wp.launch_tiled(
-            kernel,
+            kernel,  # positional argument expected by launch_tiled
             dim=dim,
             inputs=inputs,
             outputs=outputs,
             partition=mapping.partition,
             offset=offset,
+            max_index=max_work_index,
             stream=stream,
             block_dim=block_dim,
             **kwargs,

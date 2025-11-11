@@ -61,8 +61,8 @@ struct launch_bounds_t
     int ndim;
     size_t size;
     int offset;
-    int partition_size;
     int partition_blocks;
+    int partition_max_index;
 };
 #define CHECK_ANY(code) \
 { \

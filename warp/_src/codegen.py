@@ -3695,6 +3695,9 @@ cuda_kernel_template_forward = """
 {line_directive}        #else
 {line_directive}        size_t _idx = _idx_orig;
 {line_directive}        #endif
+{line_directive}        // Skip work items beyond the valid range (needed when work size doesn't evenly divide by layout granularity)
+{line_directive}        if (dim.partition_max_index >= 0 && _idx >= static_cast<size_t>(dim.partition_max_index))
+{line_directive}            continue;
 
 {forward_body}{line_directive}    }}
 {line_directive}}}

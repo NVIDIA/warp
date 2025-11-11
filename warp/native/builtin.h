@@ -1428,8 +1428,8 @@ struct launch_bounds_t
     int ndim;                   // number of valid dimension
     size_t size;                // total number of threads
     int offset;                 // offset for partitioned launches
-    int partition_size;         // size of the partition
     int partition_blocks;       // number of blocks in the partition
+    int partition_max_index;    // maximum valid work item index (-1 = no limit, handles non-divisible work sizes)
 };
 
 // represents coordinate in the launch grid

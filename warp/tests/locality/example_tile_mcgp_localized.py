@@ -124,13 +124,13 @@ class Example:
         self.ndevices = wp.get_cuda_device_count()
         if self.ndevices == 0:
             raise RuntimeError("No CUDA devices available")
-        
+
         print(f"Using {self.ndevices} CUDA device(s)")
-        
-#        self.policy = wp.blocked()
+
+        #        self.policy = wp.blocked()
         self.policy = wp.cyclic()
 
-        self.use_gc=True
+        self.use_gc = True
         if self.use_gc:
             # Create blocked policy for distributing work across devices
 
@@ -138,34 +138,30 @@ class Example:
 
             for i, ctx in enumerate(contexts):
                 wp.map_cuda_device(f"cuda:0:{i}", int(ctx))
- 
+
             self.streams = [wp.Stream(device=f"cuda:0:{i}") for i in range(len(contexts))]
             print(self.streams)
-        
+
         else:
             # Create streams for all available devices
             self.streams = [wp.Stream(device=f"cuda:{i}") for i in range(self.ndevices)]
-        
+
         # Use localized memory allocation for multi-device access
-        # self.grid = wp.empty_localized(
-        #     shape=(self.height, self.width),
-        #     partition_desc=self.policy,
-        #     streams=self.streams,
-        #     dtype=wp.vec3
-        # )
+        # self.grid = wp.empty_localized(
+        #     shape=(self.height, self.width),
+        #     partition_desc=self.policy,
+        #     streams=self.streams,
+        #     dtype=wp.vec3
+        # )
         self.grid = wp.array(grid, dtype=wp.vec3)
 
-       
         self.pixels = wp.zeros_localized(
-            shape=(self.height, self.width),
-            partition_desc=self.policy,
-            streams=self.streams,
-            dtype=float
+            shape=(self.height, self.width), partition_desc=self.policy, streams=self.streams, dtype=float
         )
 
         wp.copy(grid, self.grid)
         wp.synchronize()
-        
+
         self.slices = slices
         self.z = np.linspace(-0.6, 0.8, self.slices)
 
@@ -180,7 +176,7 @@ class Example:
             outputs=[self.pixels],
             block_dim=TILE_SIZE,
             mapping=self.policy,
-            streams=self.streams
+            streams=self.streams,
         )
 
         # Synchronize and copy results back
