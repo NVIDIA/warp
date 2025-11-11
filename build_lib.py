@@ -31,7 +31,6 @@ import datetime
 import glob
 import os
 import platform
-import re
 import shutil
 import subprocess
 import sys
@@ -405,17 +404,6 @@ def main(argv: list[str] | None = None) -> int:
             build_version = nightly_version
         else:
             build_version = config.version
-
-        # Reset git hash to None for non-scheduled builds (keeps config clean for local dev)
-        if nightly_version is None:
-            config_file = os.path.join(base_path, "warp", "_src", "config.py")
-            with open(config_file) as f:
-                content = f.read()
-            # Reset _git_commit_hash to None
-            pattern = r'^(_git_commit_hash\s*:\s*Optional\[str\]\s*=\s*)(None|"[^"]*")(.*)$'
-            updated_content = re.sub(pattern, r"\g<1>None\g<3>", content, flags=re.MULTILINE)
-            with open(config_file, "w") as f:
-                f.write(updated_content)
 
         if args.verbose:
             print(f"Building Warp version {build_version}")
