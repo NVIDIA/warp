@@ -109,7 +109,7 @@ void bvh_refit_with_solid_angle_recursive_host(BVH& bvh, int index, Mesh& mesh)
 
         // combine
         SolidAngleProps* left_child_data = &mesh.solid_angle_props[left_index];
-        SolidAngleProps* right_child_data = (left_index != right_index) ? &mesh.solid_angle_props[right_index] : NULL;
+        SolidAngleProps* right_child_data = (left_index != right_index) ? &mesh.solid_angle_props[right_index] : nullptr;
         
         combine_precomputed_solid_angle_props(mesh.solid_angle_props[index], left_child_data, right_child_data);
 
@@ -163,7 +163,7 @@ uint64_t wp_mesh_create_host(array_t<wp::vec3> points, array_t<wp::vec3> velocit
     }
     m->average_edge_length = sum / (num_tris*3);
 
-    wp::bvh_create_host(m->lowers, m->uppers, num_tris, constructor_type, m->bvh, bvh_leaf_size);
+    wp::bvh_create_host(m->lowers, m->uppers, num_tris, constructor_type, nullptr, bvh_leaf_size, m->bvh);
     
     if (support_winding_number) 
     {

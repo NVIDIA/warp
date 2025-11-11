@@ -75,12 +75,12 @@ extern "C"
     WP_API void wp_memtile_host(void* dest, const void* src, size_t srcsize, size_t n);
     WP_API void wp_memtile_device(void* context, void* dest, const void* src, size_t srcsize, size_t n);
 
-	WP_API uint64_t wp_bvh_create_host(wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type, int leaf_size);
+	WP_API uint64_t wp_bvh_create_host(wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type, int* groups, int leaf_size);
 	WP_API void wp_bvh_destroy_host(uint64_t id);
     WP_API void wp_bvh_refit_host(uint64_t id);
     WP_API void wp_bvh_rebuild_host(uint64_t id, int constructor_type);
 
-    WP_API uint64_t wp_bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type, int leaf_size);
+	WP_API uint64_t wp_bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type, int* groups, int leaf_size);
 	WP_API void wp_bvh_destroy_device(uint64_t id);
     WP_API void wp_bvh_refit_device(uint64_t id);
     WP_API void wp_bvh_rebuild_device(uint64_t id);
@@ -170,6 +170,9 @@ extern "C"
 
     WP_API void wp_radix_sort_pairs_int64_host(uint64_t keys, uint64_t values, int n);
     WP_API void wp_radix_sort_pairs_int64_device(uint64_t keys, uint64_t values, int n);
+
+    WP_API void wp_radix_sort_pairs_uint64_host(uint64_t keys, uint64_t values, int n);
+    WP_API void wp_radix_sort_pairs_uint64_device(uint64_t keys, uint64_t values, int n);
 
     WP_API void wp_segmented_sort_pairs_float_host(uint64_t keys, uint64_t values, int n, uint64_t segment_start_indices, uint64_t segment_end_indices, int num_segments);
     WP_API void wp_segmented_sort_pairs_float_device(uint64_t keys, uint64_t values, int n, uint64_t segment_start_indices, uint64_t segment_end_indices, int num_segments);

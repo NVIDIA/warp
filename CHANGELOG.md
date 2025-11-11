@@ -10,6 +10,11 @@
   - Mesh queries: `wp.mesh_query_aabb_tiled()` and `wp.mesh_query_aabb_next_tiled()`
   - Aliases with `tile_*` prefix are also available for all functions.
 - Add alpha and beta scalings to `wp.tile_matmul()` ([GH-1023](https://github.com/NVIDIA/warp/pull/1023)).
+- Add group-aware BVH construction and query support for multi-environment workloads ([GH-1074](https://github.com/NVIDIA/warp/issues/1074)):
+  - New BVH constructor argument: `groups` for per-object group IDs.
+  - New query overloads: `wp.bvh_query_aabb()` and `wp.bvh_query_ray()` now accept an optional `root` argument for group-restricted traversal.
+  - Add helper function `wp.bvh_get_group_root()` to retrieve the subtree root for a given group.
+- Add a `max_dist` argument to `wp.bvh_query_next` which controls the max length of a ray ([GH-1052](https://github.com/NVIDIA/warp/issues/1052)).
 
 ### Removed
 
