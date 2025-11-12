@@ -59,6 +59,17 @@ Note: Debug mode may impact performance.
 This setting can be overridden at the module level by setting the ``"mode"`` module option.
 """
 
+opt_level: int = 3
+"""Optimization level for Warp kernels.
+
+Args:
+    opt_level: An integer representing the optimization level (0-3).
+
+Note: Higher optimization levels may impact compilation time and performance.
+
+This setting can be overridden at the module level by setting the ``"opt_level"`` module option.
+"""
+
 verbose: bool = False
 """Enable detailed logging during code generation and compilation."""
 

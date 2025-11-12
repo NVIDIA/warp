@@ -3796,7 +3796,7 @@ bool write_file(const char* data, size_t size, std::string filename, const char*
 #endif
 
 size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs,
-                               bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, bool compile_time_trace, bool precompiled_headers,
+                               bool debug, int opt_level, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, bool compile_time_trace, bool precompiled_headers,
                                const char* output_path, const char* kernel_cache_dir,
                                size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types)
 {
@@ -3850,6 +3850,14 @@ size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, i
     opts.push_back(arch_opt);
     opts.push_back(include_opt);
     opts.push_back("--std=c++17");
+
+    switch (opt_level)
+    {
+    case 0:  opts.push_back("--Ofast-compile=max"); break;
+    case 1:  opts.push_back("--Ofast-compile=mid"); break;
+    case 2:  opts.push_back("--Ofast-compile=min"); break;
+    default: opts.push_back("--Ofast-compile=0");   break;  // 3 and up
+    }
 
     // Vector to store dynamically created option strings
     std::vector<std::string> stored_options;

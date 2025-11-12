@@ -55,6 +55,9 @@ The options for a module can also be queried using ``wp.get_module_options()``.
 |``mode``                              | String  | Global      | A module-level override of the :attr:`warp.config.mode` setting.         |
 |                                      |         | setting     |                                                                          |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``opt_level``                         | Integer | Global      | A module-level override of the :attr:`warp.config.opt_level` setting.    |
+|                                      |         | setting     |                                                                          |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``max_unroll``                        | Integer | Global      | A module-level override of the :attr:`warp.config.max_unroll` setting.   |
 |                                      |         | setting     |                                                                          |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+

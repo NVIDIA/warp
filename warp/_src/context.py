@@ -2577,6 +2577,7 @@ class Module:
                         builder_options["output_arch"],
                         output_path,
                         config=mode,
+                        opt_level=warp._src.config.opt_level,
                         verify_fp=warp._src.config.verify_fp,
                         fast_math=self.options["fast_math"],
                         fuse_fp=self.options["fuse_fp"],
@@ -4394,6 +4395,7 @@ class Runtime:
                 ctypes.c_int,  # num_cuda_include_dirs
                 ctypes.POINTER(ctypes.c_char_p),  # cuda include dirs
                 ctypes.c_bool,  # debug
+                ctypes.c_int,  # optimization_level
                 ctypes.c_bool,  # verbose
                 ctypes.c_bool,  # verify_fp
                 ctypes.c_bool,  # fast_math
