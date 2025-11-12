@@ -19,6 +19,11 @@
 - Add more examples to `Tiles and SIMT code` documentation, demonstrating caveats when switching between the CPU and GPU and using `wp.tile()` ([GH-1042](https://github.com/NVIDIA/warp/issues/1042)).
 - Add support for `int64` and `uint64` key types to `wp.tile_sort()` ([GH-1089](https://github.com/NVIDIA/warp/issues/1089)).
 - Add `wp.tile_scan_max_inclusive()` and `wp.tile_scan_min_inclusive()` for cumulative maximum and minimum operations across tiles ([GH-1090](https://github.com/NVIDIA/warp/issues/1090)).
+- Improve `wp.mesh_query_ray` performance by using ordered traversal, and add `wp.mesh_query_ray_anyhit` for any-hit queries ([GH-1097](https://github.com/NVIDIA/warp/issues/1097)).
+- Add support for group-aware construction and queries for `wp.Mesh` ([GH-1097](https://github.com/NVIDIA/warp/issues/1097)):
+  - New constructor argument: `groups` for per-face group IDs.
+  - New query overloads: `wp.mesh_query_ray()` and `wp.mesh_query_ray_anyhit()` now accept an optional `root` argument for group-restricted traversal.
+  - Add helper function `wp.mesh_get_group_root()` to retrieve the subtree root for a given group.
 
 ### Removed
 
