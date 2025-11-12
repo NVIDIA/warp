@@ -16,6 +16,11 @@
   - Add helper function `wp.bvh_get_group_root()` to retrieve the subtree root for a given group.
 - Add a `max_dist` argument to `wp.bvh_query_next` which controls the max length of a ray ([GH-1052](https://github.com/NVIDIA/warp/issues/1052)).
 - Add `wp.tile_cholesky_inplace()`, `wp.tile_cholesky_solve_inplace()`, `wp.tile_lower_solve_inplace()` and `wp.tile_upper_solve_inplace()` ([GH-1025](https://github.com/NVIDIA/warp/pull/1025)).
+- Improve `wp.mesh_query_ray` performance by using ordered traversal, and add `wp.mesh_query_ray_anyhit` for any-hit queries ([GH-1097](https://github.com/NVIDIA/warp/issues/1097)).
+- Add support for group-aware construction and queries for `wp.Mesh` ([GH-1097](https://github.com/NVIDIA/warp/issues/1097)):
+  - New constructor argument: `groups` for per-face group IDs.
+  - New query overloads: `wp.mesh_query_ray()` and `wp.mesh_query_ray_anyhit()` now accept an optional `root` argument for group-restricted traversal.
+  - Add helper function `wp.mesh_get_group_root()` to retrieve the subtree root for a given group.
 
 ### Removed
 
