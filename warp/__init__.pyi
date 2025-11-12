@@ -3647,6 +3647,17 @@ def mesh_query_ray_ordered(id: uint64, start: vec3f, dir: vec3f, max_t: float32)
     ...
 
 @over
+def mesh_query_ray_ordered_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> bool:
+    """Returns ``True`` immediately upon the first ray hit on the :class:`Mesh` with identifier ``id``.
+
+    :param id: The mesh identifier
+    :param start: The start point of the ray
+    :param dir: The ray direction (should be normalized)
+    :param max_t: The maximum distance along the ray to check for intersections
+    """
+    ...
+
+@over
 def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB:
     """Construct an axis-aligned bounding box query against a :class:`Mesh`.
 

@@ -5880,6 +5880,26 @@ add_builtin(
 )
 
 add_builtin(
+    "mesh_query_ray_ordered_anyhit",
+    input_types={
+        "id": uint64,
+        "start": vec3,
+        "dir": vec3,
+        "max_t": float,
+    },
+    value_type=builtins.bool,
+    group="Geometry",
+    doc="""Returns ``True`` immediately upon the first ray hit on the :class:`Mesh` with identifier ``id``.
+
+    :param id: The mesh identifier
+    :param start: The start point of the ray
+    :param dir: The ray direction (should be normalized)
+    :param max_t: The maximum distance along the ray to check for intersections""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
     "mesh_query_aabb",
     input_types={"id": uint64, "low": vec3, "high": vec3},
     value_type=MeshQueryAABB,
