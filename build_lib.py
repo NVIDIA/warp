@@ -446,6 +446,7 @@ def main(argv: list[str] | None = None) -> int:
                 "native/volume.cu",
                 "native/volume_builder.cu",
                 "native/warp.cu",
+                "native/work_stealing.cu",
             ]
             warp_cu_paths = [os.path.join(build_path, cu) for cu in cuda_sources]
 

@@ -3915,6 +3915,26 @@ class Runtime:
             self.core.wp_hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p]
             self.core.wp_hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
+            # work-stealing queues
+            self.core.wp_ws_queues_create_device.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+            self.core.wp_ws_queues_create_device.restype = ctypes.c_uint64
+            self.core.wp_ws_queues_destroy_device.argtypes = [ctypes.c_uint64]
+            self.core.wp_ws_queues_next_epoch.argtypes = [ctypes.c_uint64]
+            self.core.wp_ws_queues_get_epoch.argtypes = [ctypes.c_uint64]
+            self.core.wp_ws_queues_get_epoch.restype = ctypes.c_int
+            self.core.wp_ws_queues_num_deques.argtypes = [ctypes.c_uint64]
+            self.core.wp_ws_queues_num_deques.restype = ctypes.c_int
+            self.core.wp_ws_queues_items_per_deque.argtypes = [ctypes.c_uint64]
+            self.core.wp_ws_queues_items_per_deque.restype = ctypes.c_int
+            self.core.wp_ws_queues_get_view.argtypes = [ctypes.c_uint64, ctypes.c_void_p]
+            self.core.wp_ws_queues_get_view.restype = ctypes.c_int
+            self.core.wp_ws_queues_validate_work_assignment.argtypes = [ctypes.c_uint64]
+            self.core.wp_ws_queues_validate_work_assignment.restype = ctypes.c_int
+            self.core.wp_ws_queues_has_instrumentation.argtypes = [ctypes.c_uint64]
+            self.core.wp_ws_queues_has_instrumentation.restype = ctypes.c_int
+            self.core.wp_ws_queues_instrumentation_buffer.argtypes = [ctypes.c_uint64]
+            self.core.wp_ws_queues_instrumentation_buffer.restype = ctypes.c_void_p
+
             self.core.wp_volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_bool, ctypes.c_bool]
             self.core.wp_volume_create_host.restype = ctypes.c_uint64
             self.core.wp_volume_get_tiles_host.argtypes = [

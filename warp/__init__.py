@@ -149,6 +149,8 @@ from warp._src.types import Bvh as Bvh
 from warp._src.types import Mesh as Mesh
 from warp._src.types import HashGrid as HashGrid
 from warp._src.types import Volume as Volume
+from warp._src.types import WorkStealingQueues as WorkStealingQueues
+from warp._src.types import WsQueuesView as WsQueuesView
 from warp._src.types import BvhQuery as BvhQuery
 from warp._src.types import BvhQueryTiled as BvhQueryTiled
 from warp._src.types import HashGridQuery as HashGridQuery
