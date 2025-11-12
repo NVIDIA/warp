@@ -1493,14 +1493,14 @@ CUDA_CALLABLE inline bool mesh_query_ray_ordered(uint64_t id, const vec3& start,
     {
         count -= 1;
 
-        const int nodeIndex = stack[count];
-        const float nodeDist = stack_dist[count];
+        const int node_index = stack[count];
+        const float node_dist = stack_dist[count];
 
-        if (nodeDist < min_t)
+        if (node_dist < min_t)
         {
-            int left_index = mesh.bvh.node_lowers[nodeIndex].i;
-            int right_index = mesh.bvh.node_uppers[nodeIndex].i;
-            bool leaf = mesh.bvh.node_lowers[nodeIndex].b;
+            int left_index = mesh.bvh.node_lowers[node_index].i;
+            int right_index = mesh.bvh.node_uppers[node_index].i;
+            bool leaf = mesh.bvh.node_lowers[node_index].b;
 
             if (leaf)
             {	
@@ -1618,6 +1618,13 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 
 }
 
+CUDA_CALLABLE inline void adj_mesh_query_ray_ordered(
+    uint64_t id, const vec3& start, const vec3& dir, float max_t, float t, float u, float v, float sign, const vec3& n, int face,
+    uint64_t adj_id, vec3& adj_start, vec3& adj_dir, float& adj_max_t, float& adj_t, float& adj_u, float& adj_v, float& adj_sign, vec3& adj_n, int& adj_face, bool& adj_ret
+)
+{   
+}
+
 
 // Stores the result of querying the closest point on a mesh.
 struct mesh_query_ray_t
@@ -1662,6 +1669,13 @@ CUDA_CALLABLE inline mesh_query_ray_t mesh_query_ray(uint64_t id, const vec3& st
     return query;
 }
 
+CUDA_CALLABLE inline mesh_query_ray_t mesh_query_ray_ordered(uint64_t id, const vec3& start, const vec3& dir, float max_t)
+{
+    mesh_query_ray_t query;
+    query.result = mesh_query_ray_ordered(id, start, dir, max_t, query.t, query.u, query.v, query.sign, query.normal, query.face);
+    return query;
+}
+
 CUDA_CALLABLE inline void
 adj_mesh_query_ray(
     uint64_t id, const vec3& start, const vec3& dir, float max_t, const mesh_query_ray_t& ret,
@@ -1669,6 +1683,18 @@ adj_mesh_query_ray(
 )
 {
     adj_mesh_query_ray(
+        id, start, dir, max_t, ret.t, ret.u, ret.v, ret.sign, ret.normal, ret.face,
+        adj_id, adj_start, adj_dir, adj_max_t, adj_ret.t, adj_ret.u, adj_ret.v, adj_ret.sign, adj_ret.normal, adj_ret.face, adj_ret.result
+    );
+}
+
+CUDA_CALLABLE inline void
+adj_mesh_query_ray_ordered(
+    uint64_t id, const vec3& start, const vec3& dir, float max_t, const mesh_query_ray_t& ret,
+    uint64_t adj_id, vec3& adj_start, vec3& adj_dir, float& adj_max_t, mesh_query_ray_t& adj_ret
+)
+{
+    adj_mesh_query_ray_ordered(
         id, start, dir, max_t, ret.t, ret.u, ret.v, ret.sign, ret.normal, ret.face,
         adj_id, adj_start, adj_dir, adj_max_t, adj_ret.t, adj_ret.u, adj_ret.v, adj_ret.sign, adj_ret.normal, adj_ret.face, adj_ret.result
     );
