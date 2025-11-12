@@ -14,11 +14,13 @@
 # limitations under the License.
 
 import itertools
+import os
 import unittest
 
 import numpy as np
 
 import warp as wp
+import warp.examples
 from warp.tests.unittest_utils import *
 
 
@@ -78,6 +80,74 @@ def mesh_query_ray_loss(
     wp.expect_eq(query.sign, sign)
     wp.expect_eq(query.normal, normal)
     wp.expect_eq(query.face, face_index)
+
+
+@wp.func
+def intersect_ray_triangle(
+    p: wp.vec3,
+    dir: wp.vec3,
+    a: wp.vec3,
+    b: wp.vec3,
+    c: wp.vec3,
+    max_t: float,
+):
+    eps = 1.0e-6
+
+    e1 = b - a
+    e2 = c - a
+
+    pvec = wp.cross(dir, e2)
+    det = wp.dot(e1, pvec)
+
+    if wp.abs(det) < eps:
+        return max_t
+
+    inv_det = 1.0 / det
+
+    tvec = p - a
+    u = wp.dot(tvec, pvec) * inv_det
+    if u < 0.0 or u > 1.0:
+        return max_t
+
+    qvec = wp.cross(tvec, e1)
+    v = wp.dot(dir, qvec) * inv_det
+    if v < 0.0 or u + v > 1.0:
+        return max_t
+
+    t = wp.dot(e2, qvec) * inv_det
+    if t < eps or t > max_t:
+        return max_t
+
+    return t
+
+
+@wp.func
+def raycast_brutal(
+    points: wp.array(dtype=wp.vec3),
+    indices: wp.array(dtype=int),
+    p: wp.vec3,
+    dir: wp.vec3,
+    max_t: float,
+):
+    t_closest = max_t
+    face_closest = int(-1)
+    num_faces = int(indices.shape[0] / 3)
+
+    for face in range(num_faces):
+        i = indices[face * 3 + 0]
+        j = indices[face * 3 + 1]
+        k = indices[face * 3 + 2]
+
+        a = points[i]
+        b = points[j]
+        c = points[k]
+
+        t = intersect_ray_triangle(p, dir, a, b, c, max_t)
+        if t < t_closest:
+            t_closest = t
+            face_closest = face
+
+    return face_closest
 
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
@@ -225,6 +295,182 @@ def test_mesh_query_ray_grad(test, device):
 
 
 @wp.kernel
+def mesh_query_ray_with_results(
+    mesh: wp.uint64,
+    ray_starts: wp.array(dtype=wp.vec3),
+    ray_directions: wp.array(dtype=wp.vec3),
+    max_t: float,
+    faces: wp.array(dtype=int),
+    counts: wp.array(dtype=int),
+):
+    tid = wp.tid()
+
+    p = ray_starts[tid]
+    dir = ray_directions[tid]
+
+    t = float(0.0)
+    u = float(0.0)
+    v = float(0.0)
+    sign = float(0.0)
+    n = wp.vec3()
+    f = int(-1)
+
+    hit = wp.mesh_query_ray(mesh, p, dir, max_t, t, u, v, sign, n, f)
+
+    faces[tid] = f
+    counts[tid] = int(hit)
+
+
+@wp.kernel
+def mesh_query_ray_brutal(
+    points: wp.array(dtype=wp.vec3),
+    indices: wp.array(dtype=int),
+    ray_starts: wp.array(dtype=wp.vec3),
+    ray_directions: wp.array(dtype=wp.vec3),
+    max_t: float,
+    faces: wp.array(dtype=int),
+    counts: wp.array(dtype=int),
+):
+    tid = wp.tid()
+
+    p = ray_starts[tid]
+    dir = ray_directions[tid]
+
+    face_closest = raycast_brutal(points, indices, p, dir, max_t)
+    hit = face_closest >= 0
+
+    faces[tid] = face_closest
+    counts[tid] = int(hit)
+
+
+@unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
+def test_mesh_query_ray_and_groups(test, device):
+    from pxr import Usd, UsdGeom  # noqa: PLC0415
+
+    usd_stage = Usd.Stage.Open(os.path.join(wp.examples.get_asset_directory(), "bunny.usd"))
+    usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/bunny"))
+
+    points_np = np.array(usd_geom.GetPointsAttr().Get())
+    indices_np = np.array(usd_geom.GetFaceVertexIndicesAttr().Get())
+
+    points = wp.array(points_np, dtype=wp.vec3, device=device)
+    indices = wp.array(indices_np, dtype=int, device=device)
+    num_faces = int(indices.shape[0] / 3)
+
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
+
+    leaf_sizes = [1, 2, 4]
+
+    world_min = np.min(points_np, axis=0)
+    world_max = np.max(points_np, axis=0)
+    world_size = world_max - world_min
+
+    num_rays = 10000
+    rng = np.random.default_rng(123)
+
+    xy = rng.uniform(0.0, 1.0, size=(num_rays, 2)) * world_size[:2] + world_min[:2]
+    z = np.full((num_rays, 1), world_max[2] + 0.1 * world_size[2], dtype=np.float32)
+
+    ray_starts_np = np.concatenate((xy, z), axis=1)
+    ray_dirs_np = np.zeros_like(ray_starts_np)
+    ray_dirs_np[:, 2] = -1.0
+
+    ray_starts = wp.array(ray_starts_np, dtype=wp.vec3, device=device)
+    ray_dirs = wp.array(ray_dirs_np, dtype=wp.vec3, device=device)
+
+    groups_np = np.zeros(num_faces, dtype=np.int32)
+    groups_np[num_faces // 2 :] = 1
+    groups = wp.array(groups_np, dtype=int, device=device)
+
+    max_t = float(1.0e6)
+
+    for leaf_size, constructor in itertools.product(leaf_sizes, constructors):
+        mesh = wp.Mesh(
+            points=points,
+            indices=indices,
+            bvh_constructor=constructor,
+            bvh_leaf_size=leaf_size,
+        )
+
+        mesh_grouped = wp.Mesh(
+            points=points,
+            indices=indices,
+            groups=groups,
+            bvh_constructor=constructor,
+            bvh_leaf_size=leaf_size,
+        )
+
+        counts_brutal = wp.empty(n=num_rays, dtype=int, device=device)
+        faces_brutal = wp.empty(n=num_rays, dtype=int, device=device)
+
+        wp.launch(
+            kernel=mesh_query_ray_brutal,
+            dim=num_rays,
+            inputs=[points, indices, ray_starts, ray_dirs, max_t],
+            outputs=[faces_brutal, counts_brutal],
+            device=device,
+        )
+
+        faces = wp.empty(n=num_rays, dtype=int, device=device)
+        counts = wp.empty(n=num_rays, dtype=int, device=device)
+
+        wp.launch(
+            kernel=mesh_query_ray_with_results,
+            dim=num_rays,
+            inputs=[mesh.id, ray_starts, ray_dirs, max_t],
+            outputs=[faces, counts],
+            device=device,
+        )
+
+        assert_array_equal(counts, counts_brutal)
+        assert_array_equal(faces, faces_brutal)
+
+        faces_grouped = wp.empty(n=num_rays, dtype=int, device=device)
+        counts_grouped = wp.empty(n=num_rays, dtype=int, device=device)
+
+        wp.launch(
+            kernel=mesh_query_ray_with_results,
+            dim=num_rays,
+            inputs=[mesh_grouped.id, ray_starts, ray_dirs, max_t],
+            outputs=[faces_grouped, counts_grouped],
+            device=device,
+        )
+
+        assert_array_equal(counts_grouped, counts_brutal)
+        assert_array_equal(faces_grouped, faces_brutal)
+
+        counts_anyhit = wp.empty(n=num_rays, dtype=int, device=device)
+
+        @wp.kernel
+        def mesh_query_ray_anyhit_kernel(
+            mesh: wp.uint64,
+            ray_starts: wp.array(dtype=wp.vec3),
+            ray_directions: wp.array(dtype=wp.vec3),
+            max_t: float,
+            counts: wp.array(dtype=int),
+        ):
+            tid = wp.tid()
+            p = ray_starts[tid]
+            dir = ray_directions[tid]
+            counts[tid] = int(wp.mesh_query_ray_anyhit(mesh, p, dir, max_t))
+
+        wp.launch(
+            kernel=mesh_query_ray_anyhit_kernel,
+            dim=num_rays,
+            inputs=[mesh.id, ray_starts, ray_dirs, max_t],
+            outputs=[counts_anyhit],
+            device=device,
+        )
+
+        assert_array_equal(counts_anyhit, counts_brutal)
+
+        wp.synchronize_device(device)
+
+
+@wp.kernel
 def raycast_kernel(
     mesh: wp.uint64,
     ray_starts: wp.array(dtype=wp.vec3),
@@ -316,6 +562,7 @@ class TestMeshQueryRay(unittest.TestCase):
 
 add_function_test(TestMeshQueryRay, "test_mesh_query_ray_edge", test_mesh_query_ray_edge, devices=devices)
 add_function_test(TestMeshQueryRay, "test_mesh_query_ray_grad", test_mesh_query_ray_grad, devices=devices)
+add_function_test(TestMeshQueryRay, "test_mesh_query_ray_and_groups", test_mesh_query_ray_and_groups, devices=devices)
 
 
 if __name__ == "__main__":

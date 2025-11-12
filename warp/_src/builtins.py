@@ -5639,6 +5639,22 @@ add_builtin(
 )
 
 add_builtin(
+    "mesh_get_group_root",
+    input_types={"id": uint64, "group": int},
+    value_type=int,
+    group="Geometry",
+    doc="""Get the root of a group in a :class:`Mesh`.
+
+    Returns the root node index for the specified group. If the group does not exist, returns ``-1``
+    (sentinel for the mesh's global root). Pass ``-1`` to mesh queries to traverse from the global root.
+
+    :param id: The mesh identifier
+    :param group: The group identifier""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
     "mesh_query_point",
     input_types={
         "id": uint64,
@@ -5924,15 +5940,23 @@ add_builtin(
         "sign": float,
         "normal": vec3,
         "face": int,
+        "root": int,
     },
+    defaults={"root": -1},
     value_type=builtins.bool,
     group="Geometry",
     doc="""Computes the closest ray hit on the :class:`Mesh` with identifier ``id``, returns ``True`` if a hit < ``max_t`` is found.
+
+    The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
+    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+    The query will only traverse down from that node, limiting traversal to that subtree.
 
     :param id: The mesh identifier
     :param start: The start point of the ray
     :param dir: The ray direction (should be normalized)
     :param max_t: The maximum distance along the ray to check for intersections
+    :param root: The root node index for grouped BVH queries, or -1 for global root
     :param t: Returns the distance of the closest hit along the ray
     :param bary_u: Returns the barycentric u coordinate of the closest hit
     :param bary_v: Returns the barycentric v coordinate of the closest hit
@@ -5950,17 +5974,51 @@ add_builtin(
         "start": vec3,
         "dir": vec3,
         "max_t": float,
+        "root": int,
     },
+    defaults={"root": -1},
     value_type=MeshQueryRay,
     group="Geometry",
     doc="""Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
 
+    The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
+    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+
     :param id: The mesh identifier
     :param start: The start point of the ray
     :param dir: The ray direction (should be normalized)
-    :param max_t: The maximum distance along the ray to check for intersections""",
+    :param max_t: The maximum distance along the ray to check for intersections
+    :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)""",
     require_original_output_arg=True,
     export=False,
+)
+
+add_builtin(
+    "mesh_query_ray_anyhit",
+    input_types={
+        "id": uint64,
+        "start": vec3,
+        "dir": vec3,
+        "max_t": float,
+        "root": int,
+    },
+    defaults={"root": -1},
+    value_type=builtins.bool,
+    group="Geometry",
+    doc="""Returns ``True`` immediately upon the first ray hit on the :class:`Mesh` with identifier ``id``.
+
+    The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
+    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+
+    :param id: The mesh identifier
+    :param start: The start point of the ray
+    :param dir: The ray direction (should be normalized)
+    :param max_t: The maximum distance along the ray to check for intersections
+    :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)""",
+    export=False,
+    is_differentiable=False,
 )
 
 add_builtin(

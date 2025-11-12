@@ -31,6 +31,11 @@
   compilation time. Lower levels may improve compile times but reduce run-time performance. It can be configured
   globally, or per-module using `wp.set_module_options({"optimization_level": #})`. Currently it only has an effect
   on GPU modules and only when using CUDA Toolkit 12.9 or newer ([GH-1084](https://github.com/NVIDIA/warp/issues/1084)).
+- Add `wp.mesh_query_ray_anyhit` for ray any-hit queries ([GH-1097](https://github.com/NVIDIA/warp/issues/1097)).
+- Add support for group-aware construction and queries for `wp.Mesh` ([GH-1097](https://github.com/NVIDIA/warp/issues/1097)):
+  - New constructor argument: `groups` for per-face group IDs.
+  - New query overloads: `wp.mesh_query_ray()` and `wp.mesh_query_ray_anyhit()` now accept an optional `root` argument for group-restricted traversal.
+  - Add helper function `wp.mesh_get_group_root()` to retrieve the subtree root for a given group.
 
 ### Removed
 

@@ -99,6 +99,7 @@ WP_API uint64_t wp_mesh_create_host(
     int num_tris,
     int support_winding_number,
     int constructor_type,
+    int* groups,
     int bvh_leaf_size
 );
 WP_API void wp_mesh_destroy_host(uint64_t id);
@@ -113,6 +114,7 @@ WP_API uint64_t wp_mesh_create_device(
     int num_tris,
     int support_winding_number,
     int constructor_type,
+    int* groups,
     int bvh_leaf_size
 );
 WP_API void wp_mesh_destroy_device(uint64_t id);

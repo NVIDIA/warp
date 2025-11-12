@@ -4398,6 +4398,7 @@ class Mesh:
         support_winding_number: builtins.bool = False,
         bvh_constructor: str | None = None,
         bvh_leaf_size: int = 4,
+        groups: array | None = None,
     ):
         """Class representing a triangle mesh.
 
@@ -4417,6 +4418,8 @@ class Mesh:
               Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, or ``None``.
             bvh_leaf_size: The number of primitives (AABBs) stored in each leaf node
               (see the docstring of :class:`Bvh` for more details).
+            groups: Optional array of triangle group indices of data type :class:`warp.int32`.
+              Should be a 1D array with shape ``(num_tris)``.
         """
         if points.device != indices.device:
             raise RuntimeError("Mesh points and indices must live on the same device")
@@ -4433,11 +4436,19 @@ class Mesh:
         if indices.ndim > 1:
             raise RuntimeError("Mesh indices should be a flattened 1d array of indices")
 
+        if groups is not None:
+            if groups.dtype != int32 or not groups.is_contiguous:
+                raise RuntimeError("groups should be a contiguous array of type wp.int32")
+            if groups.device != points.device:
+                raise RuntimeError("groups must live on the same device as points")
+            if len(groups) != len(indices) // 3:
+                raise RuntimeError("groups must have the same length as indices / 3")
+
         self.device = points.device
         self._points = points
         self._velocities = velocities
         self.indices = indices
-
+        self.groups = groups
         self.runtime = warp._src.context.runtime
 
         if bvh_constructor is None:
@@ -4464,9 +4475,10 @@ class Mesh:
                 velocities.__ctype__() if velocities else array().__ctype__(),
                 indices.__ctype__(),
                 len(points),
-                int(indices.size / 3),
+                int(indices.size // 3),
                 int(support_winding_number),
                 bvh_constructor_values[bvh_constructor],
+                ctypes.c_void_p(groups.ptr) if groups else ctypes.c_void_p(0),
                 bvh_leaf_size,
             )
         else:
@@ -4476,9 +4488,10 @@ class Mesh:
                 velocities.__ctype__() if velocities else array().__ctype__(),
                 indices.__ctype__(),
                 len(points),
-                int(indices.size / 3),
+                int(indices.size // 3),
                 int(support_winding_number),
                 bvh_constructor_values[bvh_constructor],
+                ctypes.c_void_p(groups.ptr) if groups else ctypes.c_void_p(0),
                 bvh_leaf_size,
             )
 
