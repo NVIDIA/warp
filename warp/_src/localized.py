@@ -1688,7 +1688,17 @@ def zeros_managed(
     return arr
 
 
-def launch(kernel, dim, inputs=None, outputs=None, primary_stream=None, mapping=None, streams=None, **kwargs):
+def launch(
+    kernel,
+    dim,
+    inputs=None,
+    outputs=None,
+    primary_stream=None,
+    mapping=None,
+    streams=None,
+    work_stealing=False,
+    **kwargs,
+):
     """
     Launch a kernel across multiple devices with localized data placement.
 
@@ -1703,6 +1713,7 @@ def launch(kernel, dim, inputs=None, outputs=None, primary_stream=None, mapping=
         primary_stream: Primary stream for synchronization (default: streams[0])
         mapping: Either a PartitionDesc object or a policy function (dim, streams) -> PartitionDesc
         streams: List of streams, one per place in the mapping
+        work_stealing: Whether to use work-stealing for the kernel
         **kwargs: Additional arguments passed to wp.launch (e.g., block_dim, max_blocks)
 
     Examples:
@@ -1786,6 +1797,12 @@ def launch(kernel, dim, inputs=None, outputs=None, primary_stream=None, mapping=
         if stream != primary_stream:
             stream.wait_event(e0)
 
+    qview = None
+    if work_stealing:
+        queues = wp.WorkStealingQueues(k=len(streams))
+        queues.next_epoch(m=max_work_index)
+        qview = queues.view()
+
     # Step 3: Launch kernels on all places in parallel
     for place_idx, offset in enumerate(mapping.offsets):
         stream = streams[place_idx]
@@ -1799,6 +1816,7 @@ def launch(kernel, dim, inputs=None, outputs=None, primary_stream=None, mapping=
             offset=offset,
             max_index=max_work_index,
             stream=stream,
+            ws_qview=qview,
             **kwargs,
         )
 
@@ -1811,7 +1829,16 @@ def launch(kernel, dim, inputs=None, outputs=None, primary_stream=None, mapping=
 
 
 def launch_tiled(
-    kernel, dim, inputs=None, outputs=None, primary_stream=None, block_dim=None, mapping=None, streams=None, **kwargs
+    kernel,
+    dim,
+    inputs=None,
+    outputs=None,
+    primary_stream=None,
+    block_dim=None,
+    mapping=None,
+    streams=None,
+    work_stealing=False,
+    **kwargs,
 ):
     """
     Launch a tiled kernel across multiple devices with localized data placement.
@@ -1828,6 +1855,7 @@ def launch_tiled(
         block_dim: Thread block dimension for the kernel
         mapping: Either a PartitionDesc object or a policy function (dim, streams) -> PartitionDesc
         streams: List of streams, one per place in the mapping
+        work_stealing: Whether to use work-stealing for the kernel
         **kwargs: Additional arguments passed to wp.launch_tiled
 
     Examples:
@@ -1910,6 +1938,12 @@ def launch_tiled(
         if stream != primary_stream:
             stream.wait_event(e0)
 
+    qview = None
+    if work_stealing:
+        queues = wp.WorkStealingQueues(k=len(streams))
+        queues.next_epoch(m=max_work_index)
+        qview = queues.view()
+
     # Step 3: Launch kernels on all places in parallel
     for place_idx, offset in enumerate(mapping.offsets):
         stream = streams[place_idx]
@@ -1923,6 +1957,7 @@ def launch_tiled(
             offset=offset,
             max_index=max_work_index,
             stream=stream,
+            ws_qview=qview,
             block_dim=block_dim,
             **kwargs,
         )

@@ -159,7 +159,7 @@ class Example:
             shape=(self.height, self.width), partition_desc=self.policy, streams=self.streams, dtype=float
         )
 
-        wp.copy(grid, self.grid)
+        # TODO ? wp.copy(grid, self.grid)
         wp.synchronize()
 
         self.slices = slices
@@ -176,6 +176,7 @@ class Example:
             outputs=[self.pixels],
             block_dim=TILE_SIZE,
             mapping=self.policy,
+            work_stealing=True,
             streams=self.streams,
         )
 

@@ -3915,17 +3915,15 @@ class Runtime:
             self.core.wp_hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p]
             self.core.wp_hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
-            # work-stealing queues
-            self.core.wp_ws_queues_create_device.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-            self.core.wp_ws_queues_create_device.restype = ctypes.c_uint64
-            self.core.wp_ws_queues_destroy_device.argtypes = [ctypes.c_uint64]
-            self.core.wp_ws_queues_next_epoch.argtypes = [ctypes.c_uint64]
+            # work-stealing queues (device-agnostic via unified memory)
+            self.core.wp_ws_queues_create.argtypes = [ctypes.c_int, ctypes.c_int]
+            self.core.wp_ws_queues_create.restype = ctypes.c_uint64
+            self.core.wp_ws_queues_destroy.argtypes = [ctypes.c_uint64]
+            self.core.wp_ws_queues_next_epoch.argtypes = [ctypes.c_uint64, ctypes.c_int]
             self.core.wp_ws_queues_get_epoch.argtypes = [ctypes.c_uint64]
             self.core.wp_ws_queues_get_epoch.restype = ctypes.c_int
             self.core.wp_ws_queues_num_deques.argtypes = [ctypes.c_uint64]
             self.core.wp_ws_queues_num_deques.restype = ctypes.c_int
-            self.core.wp_ws_queues_items_per_deque.argtypes = [ctypes.c_uint64]
-            self.core.wp_ws_queues_items_per_deque.restype = ctypes.c_int
             self.core.wp_ws_queues_get_view.argtypes = [ctypes.c_uint64, ctypes.c_void_p]
             self.core.wp_ws_queues_get_view.restype = ctypes.c_int
             self.core.wp_ws_queues_validate_work_assignment.argtypes = [ctypes.c_uint64]
@@ -6267,6 +6265,7 @@ class Launch:
         params: Sequence[Any] | None = None,
         params_addr: Sequence[ctypes.c_void_p] | None = None,
         bounds: launch_bounds_t | None = None,
+        ws_qview: WsQueuesView | None = None,
         max_blocks: int = 0,
         block_dim: int = 256,
         adjoint: bool = False,
@@ -6498,6 +6497,7 @@ def launch(
     partition: str | Layout | None = None,
     offset: int = 0,
     max_index: int = -1,
+    ws_qview: WsQueuesView | None = None,
 ):
     """Launch a Warp kernel on the target device
 
@@ -6573,6 +6573,10 @@ def launch(
     # Set partition parameters
     # max_index allows handling work sizes that don't evenly divide by layout granularity
     bounds.set_partition_params(offset, pblocks=partition_blocks, max_index=max_index)
+
+    if ws_qview is not None:
+        bounds.ws_view = ws_qview
+        # Note: ws_view.epoch > 0 indicates a valid view (no separate boolean needed)
 
     if bounds.size > 0:
         # first param is the number of threads

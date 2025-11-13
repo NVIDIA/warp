@@ -20,6 +20,7 @@
 #include "cuda_util.h"
 #include "error.h"
 #include "sort.h"
+#include "work_stealing.h"
 
 #include <cstdlib>
 #include <fstream>
@@ -63,6 +64,7 @@ struct launch_bounds_t
     int offset;
     int partition_blocks;
     int partition_max_index;
+    ws_queues_view ws_view;
 };
 #define CHECK_ANY(code) \
 { \

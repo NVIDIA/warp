@@ -105,8 +105,6 @@ typedef uint64_t uint64;
 // matches Python string type for constant strings
 typedef const char* str;
 
-
-
 struct half;
 
 CUDA_CALLABLE half float_to_half(float x);
@@ -1422,6 +1420,17 @@ CUDA_CALLABLE inline void adj_unot(const T& b, T& adj_b, const bool& adj_ret) { 
 
 const int LAUNCH_MAX_DIMS = 4;   // should match types.py
 
+// POD structure for work-stealing queues view (no member functions)
+// This is defined here to allow builtin.h to remain independently compilable
+struct ws_queues_view {
+    char* unified_base;           // Base pointer to unified buffer
+    int k;                        // Number of deques
+    int epoch;                    // Current epoch number
+    int* instrumentation_buffer;  // Optional instrumentation buffer
+    int m;                        // Items per deque
+    int max_work_items;           // Total valid work items
+};
+
 struct launch_bounds_t
 {
     int shape[LAUNCH_MAX_DIMS]; // size of each dimension
@@ -1430,6 +1439,7 @@ struct launch_bounds_t
     int offset;                 // offset for partitioned launches
     int partition_blocks;       // number of blocks in the partition
     int partition_max_index;    // maximum valid work item index (-1 = no limit, handles non-divisible work sizes)
+    ws_queues_view ws_view;     // work-stealing queues view (ws_view.epoch > 0 indicates valid view)
 };
 
 // represents coordinate in the launch grid

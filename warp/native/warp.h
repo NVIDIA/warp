@@ -113,17 +113,16 @@ extern "C"
     WP_API void wp_hash_grid_destroy_device(uint64_t id);
     WP_API void wp_hash_grid_update_device(uint64_t id, float cell_width, const wp::array_t<wp::vec3>* points);
 
-    // work-stealing queues
-    WP_API uint64_t wp_ws_queues_create_device(void* context, int k, int m, int enable_instrumentation);
-    WP_API void wp_ws_queues_destroy_device(uint64_t id);
-    WP_API void wp_ws_queues_next_epoch(uint64_t id);
-    WP_API int wp_ws_queues_get_epoch(uint64_t id);
-    WP_API int wp_ws_queues_num_deques(uint64_t id);
-    WP_API int wp_ws_queues_items_per_deque(uint64_t id);
-    WP_API int wp_ws_queues_get_view(uint64_t id, void* view_out);
-    WP_API int wp_ws_queues_validate_work_assignment(uint64_t id);
-    WP_API int wp_ws_queues_has_instrumentation(uint64_t id);
-    WP_API void* wp_ws_queues_instrumentation_buffer(uint64_t id);
+// work-stealing queues (device-agnostic via unified memory)
+WP_API uint64_t wp_ws_queues_create(int k, int enable_instrumentation);
+WP_API void wp_ws_queues_destroy(uint64_t id);
+WP_API void wp_ws_queues_next_epoch(uint64_t id, int m);
+WP_API int wp_ws_queues_get_epoch(uint64_t id);
+WP_API int wp_ws_queues_num_deques(uint64_t id);
+WP_API int wp_ws_queues_get_view(uint64_t id, void* view_out);
+WP_API int wp_ws_queues_validate_work_assignment(uint64_t id);
+WP_API int wp_ws_queues_has_instrumentation(uint64_t id);
+WP_API void* wp_ws_queues_instrumentation_buffer(uint64_t id);
 
     WP_API uint64_t wp_volume_create_host(void* buf, uint64_t size, bool copy, bool owner);
     WP_API void wp_volume_get_tiles_host(uint64_t id, void* buf);

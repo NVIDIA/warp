@@ -111,6 +111,8 @@ struct fetch_result {
 // Device-accessible descriptor for work-stealing deques
 // This lightweight struct can be passed to CUDA kernels
 // IMPORTANT: front/back/init_tag use strided access (PAGE_SIZE stride) to avoid false sharing
+// POD structure for work-stealing queues view (no member functions)
+// Can be safely included in any compilation unit and passed by value
 struct ws_queues_view {
     char* unified_base; // Base pointer to unified buffer (all counters computed from this)
     int k;
@@ -120,249 +122,252 @@ struct ws_queues_view {
     int* instrumentation_buffer; // If non-null, records kernel IDs: [line * m + item] = kernel_id
     int m;                       // Items per deque (buffer capacity per deque)
     int max_work_items;          // Total valid work items (may be < k*m)
+};
 
-    // Device functions to access counters with proper stride
-    // __forceinline__ ensures zero overhead from offset computation
-    // All offsets are compile-time constants - no runtime overhead!
-    // Layout within each kernel's page:
-    //   offset 0:              front counter
-    //   offset +CACHE_LINE_SEPARATION:   back counter
-    //   offset +2*CACHE_LINE_SEPARATION: init_tag counter
-    __device__ __forceinline__ int* get_front(int index) const {
-        using namespace work_stealing_layout;
-        return reinterpret_cast<int*>(unified_base + index * PAGE_SIZE + front_offset());
-    }
-    __device__ __forceinline__ int* get_back(int index) const {
-        using namespace work_stealing_layout;
-        return reinterpret_cast<int*>(unified_base + index * PAGE_SIZE + back_offset());
-    }
-    __device__ __forceinline__ int* get_init_tag(int index) const {
-        using namespace work_stealing_layout;
-        return reinterpret_cast<int*>(unified_base + index * PAGE_SIZE + init_tag_offset());
-    }
+// ============================================================================
+// DEVICE HELPER FUNCTIONS (access counters with proper stride)
+// ============================================================================
 
-    // ============================================================================
-    // WORK DEQUE OPERATIONS (Member Functions)
-    // ============================================================================
+// __forceinline__ ensures zero overhead from offset computation
+// All offsets are compile-time constants - no runtime overhead!
+// Layout within each kernel's page:
+//   offset 0:              front counter
+//   offset +CACHE_LINE_SEPARATION:   back counter
+//   offset +2*CACHE_LINE_SEPARATION: init_tag counter
+__device__ __forceinline__ int* ws_get_front(const ws_queues_view& view, int index) {
+    using namespace work_stealing_layout;
+    return reinterpret_cast<int*>(view.unified_base + index * PAGE_SIZE + front_offset());
+}
 
-    // Epoch-tag lazy initialization (reentrant; non-blocking)
-    // - init_tag[line] == epoch: initialized
-    // - init_tag[line] == -epoch: initialization in progress
-    // - other: not initialized for this run
-    //
-    // This function should be called by the owner thread before work begins.
-    // It sets front[line] = 0, back[line] = m, and atomically updates init_tag[line] to epoch.
-    __device__ inline void lazy_init_line_epoch(int line) const {
-        int* front_ptr = get_front(line);
-        int* back_ptr = get_back(line);
-        int* init_tag_ptr = get_init_tag(line);
+__device__ __forceinline__ int* ws_get_back(const ws_queues_view& view, int index) {
+    using namespace work_stealing_layout;
+    return reinterpret_cast<int*>(view.unified_base + index * PAGE_SIZE + back_offset());
+}
 
-        int current_tag = *init_tag_ptr;
+__device__ __forceinline__ int* ws_get_init_tag(const ws_queues_view& view, int index) {
+    using namespace work_stealing_layout;
+    return reinterpret_cast<int*>(view.unified_base + index * PAGE_SIZE + init_tag_offset());
+}
 
-        // Already initialized for this epoch
-        if (current_tag == epoch) {
-            return;
-        }
+// ============================================================================
+// WORK DEQUE OPERATIONS (Free Functions)
+// ============================================================================
 
-        // Try to claim initialization
-        int old = atomicCAS(init_tag_ptr, current_tag, -epoch);
-        if (old == current_tag) {
-            // We won the race - do the initialization
-            // Always initialize to full capacity - application code can skip unwanted items
-            // Note: With complex layouts (e.g., CUTE), linear capping doesn't work correctly
-            *front_ptr = 0;
-            *back_ptr = m;
-            __threadfence(); // Ensure stores are visible before marking as initialized
-            *init_tag_ptr = epoch;
-        } else if (old == -epoch) {
-            // Someone else is initializing - spin until done
-            while (*init_tag_ptr == -epoch) {
-                __threadfence(); // Force memory read - prevent infinite loop from compiler
-                                 // optimization
-            }
-        } else if (old == epoch) {
-            // Already initialized by someone else
-            return;
-        } else {
-            // Different epoch or in-progress, retry
-            lazy_init_line_epoch(line);
-        }
+// Epoch-tag lazy initialization (reentrant; non-blocking)
+// - init_tag[line] == epoch: initialized
+// - init_tag[line] == -epoch: initialization in progress
+// - other: not initialized for this run
+//
+// This function should be called by the owner thread before work begins.
+// It sets front[line] = 0, back[line] = m, and atomically updates init_tag[line] to epoch.
+__device__ inline void ws_lazy_init_line_epoch(const ws_queues_view& view, int line) {
+    int* front_ptr = ws_get_front(view, line);
+    int* back_ptr = ws_get_back(view, line);
+    int* init_tag_ptr = ws_get_init_tag(view, line);
+
+    int current_tag = *init_tag_ptr;
+
+    // Already initialized for this epoch
+    if (current_tag == view.epoch) {
+        return;
     }
 
-    // CVR (Claim-Validate-Rollback) pop from front
-    // Multi-consumer safe; last item allowed from either end
-    // Returns true and sets out_idx if successful
-    __device__ inline bool pop_front_cvr(int line, int& out_idx) const {
-        int* front_ptr = get_front(line);
-        int* back_ptr = get_back(line);
-
-        // Claim phase: atomically increment front
-        int claimed_front = atomicAdd(front_ptr, 1);
-
-        // Validate phase: check if we're still within bounds
-        __threadfence(); // Ensure we see the latest back value
-        int current_back = *back_ptr;
-
-        if (claimed_front < current_back) {
-            // Success - we have a valid item
-            out_idx = claimed_front;
-            return true;
+    // Try to claim initialization
+    int old = atomicCAS(init_tag_ptr, current_tag, -view.epoch);
+    if (old == current_tag) {
+        // We won the race - do the initialization
+        *front_ptr = 0;
+        *back_ptr = view.m;
+        __threadfence(); // Ensure stores are visible before marking as initialized
+        *init_tag_ptr = view.epoch;
+    } else if (old == -view.epoch) {
+        // Someone else is initializing - spin until done
+        while (*init_tag_ptr == -view.epoch) {
+            __threadfence(); // Force memory read - prevent infinite loop from compiler
+                             // optimization
         }
+    } else if (old == view.epoch) {
+        // Already initialized by someone else
+        return;
+    } else {
+        // Different epoch or in-progress, retry
+        ws_lazy_init_line_epoch(view, line);
+    }
+}
 
-        // Rollback phase: we went too far, give back our slot
-        atomicAdd(front_ptr, -1);
-        return false;
+// CVR (Claim-Validate-Rollback) pop from front
+// Multi-consumer safe; last item allowed from either end
+// Returns true and sets out_idx if successful
+__device__ inline bool ws_pop_front_cvr(const ws_queues_view& view, int line, int& out_idx) {
+    int* front_ptr = ws_get_front(view, line);
+    int* back_ptr = ws_get_back(view, line);
+
+    // Claim phase: atomically increment front
+    int claimed_front = atomicAdd(front_ptr, 1);
+
+    // Validate phase: check if we're still within bounds
+    __threadfence(); // Ensure we see the latest back value
+    int current_back = *back_ptr;
+
+    if (claimed_front < current_back) {
+        // Success - we have a valid item
+        out_idx = claimed_front;
+        return true;
     }
 
-    // CVR (Claim-Validate-Rollback) pop from back
-    // Multi-consumer safe; last item allowed from either end
-    // Returns true and sets out_idx if successful
-    __device__ inline bool pop_back_cvr(int line, int& out_idx) const {
-        int* front_ptr = get_front(line);
-        int* back_ptr = get_back(line);
+    // Rollback phase: we went too far, give back our slot
+    atomicAdd(front_ptr, -1);
+    return false;
+}
 
-        // Claim phase: atomically decrement back
-        int claimed_back = atomicAdd(back_ptr, -1);
+// CVR (Claim-Validate-Rollback) pop from back
+// Multi-consumer safe; last item allowed from either end
+// Returns true and sets out_idx if successful
+__device__ inline bool ws_pop_back_cvr(const ws_queues_view& view, int line, int& out_idx) {
+    int* front_ptr = ws_get_front(view, line);
+    int* back_ptr = ws_get_back(view, line);
 
-        // Validate phase: check if we're still within bounds
-        // Use >= to allow last item to be taken from either end
-        __threadfence(); // Ensure we see the latest front value
-        int current_front = *front_ptr;
+    // Claim phase: atomically decrement back
+    int claimed_back = atomicAdd(back_ptr, -1);
 
-        if (claimed_back > current_front) {
-            // Success - we have a valid item
-            out_idx = claimed_back - 1; // Adjust because we decremented first
-            return true;
-        }
+    // Validate phase: check if we're still within bounds
+    // Use >= to allow last item to be taken from either end
+    __threadfence(); // Ensure we see the latest front value
+    int current_front = *front_ptr;
 
-        // Rollback phase: we went too far, give back our slot
-        atomicAdd(back_ptr, 1);
-        return false;
+    if (claimed_back > current_front) {
+        // Success - we have a valid item
+        out_idx = claimed_back - 1; // Adjust because we decremented first
+        return true;
     }
 
-    // Try to get the next item from the ring of K deques
-    // Advances monotonically through the ring - never rechecks exhausted deques
-    // Returns can_terminate=true only when all k deques have been exhausted (or local deque if
-    // !enable_stealing)
-    //
-    // enable_stealing: if false, only processes own deque (static partitioning)
-    __device__ inline fetch_result try_get_next_item_with_sweep(int me, ws_sweep_state& rs,
-                                                                bool enable_stealing = true) const {
-        fetch_result result;
-        result.ok = false;
-        result.can_terminate = false;
-        result.line = -1;
-        result.item = -1;
+    // Rollback phase: we went too far, give back our slot
+    atomicAdd(back_ptr, 1);
+    return false;
+}
 
-        // For static partitioning (no stealing), only check once and terminate if empty
-        if (!enable_stealing) {
-            if (rs.checked_count > 0) {
-                result.can_terminate = true;
-                return result;
-            }
-        } else {
-            // If we've already checked all k deques without finding work, we're done
-            if (rs.checked_count >= k) {
-                result.can_terminate = true;
-                return result;
-            }
-        }
+// Try to get the next item from the ring of K deques
+// Advances monotonically through the ring - never rechecks exhausted deques
+// Returns can_terminate=true only when all k deques have been exhausted (or local deque if
+// !enable_stealing)
+//
+// enable_stealing: if false, only processes own deque (static partitioning)
+__device__ inline fetch_result ws_try_get_next_item_with_sweep(const ws_queues_view& view, int me, ws_sweep_state& rs,
+                                                            bool enable_stealing = true) {
+    fetch_result result;
+    result.ok = false;
+    result.can_terminate = false;
+    result.line = -1;
+    result.item = -1;
 
-        // Get the current r position to check
-        int r = enable_stealing ? rs.next_r : 0; // Static mode: always check own deque (r=0)
-        int victim_line = neighbor_ring_idx(me, r, k);
-
-        // Check initialization status
-        int* init_tag_ptr = get_init_tag(victim_line);
-        int tag = *init_tag_ptr;
-        if (tag != epoch) {
-            // Not initialized yet for this epoch - initialize it ourselves
-            // This allows work stealing to proceed even if the owner hasn't started yet
-            lazy_init_line_epoch(victim_line);
-        }
-
-        // Try to get an item from this deque
-        int item_idx;
-        bool success;
-
-        if (r == 0) {
-            // r=0 is our own deque - pop from front (LIFO for cache locality)
-            success = pop_front_cvr(victim_line, item_idx);
-        } else {
-            // Steal from other deques from back (less contention with owner)
-            success = pop_back_cvr(victim_line, item_idx);
-        }
-
-        if (success) {
-            // Found work! Reset the checked count
-            result.ok = true;
-            result.line = victim_line;
-            result.item = item_idx;
-            rs.checked_count = 0;
-
-            // Optional instrumentation: record which kernel processed this work item
-            if (instrumentation_buffer != nullptr) {
-                int global_idx = victim_line * m + item_idx;
-                instrumentation_buffer[global_idx] = me;
-            }
-
-            // Only advance if we're stealing (r != 0)
-            // Keep next_r at 0 when draining local deque for cache locality
-            if (r != 0) {
-                rs.next_r = (r + 1) % k;
-            }
+    // For static partitioning (no stealing), only check once and terminate if empty
+    if (!enable_stealing) {
+        if (rs.checked_count > 0) {
+            result.can_terminate = true;
             return result;
         }
-
-        // This deque is exhausted - advance to next position
-        rs.checked_count++;
-        rs.next_r = (r + 1) % k;
-
-        // Check if we've now exhausted all deques
-        if (rs.checked_count >= k) {
+    } else {
+        // If we've already checked all k deques without finding work, we're done
+        if (rs.checked_count >= view.k) {
             result.can_terminate = true;
+            return result;
+        }
+    }
+
+    // Get the current r position to check
+    int r = enable_stealing ? rs.next_r : 0; // Static mode: always check own deque (r=0)
+    int victim_line = neighbor_ring_idx(me, r, view.k);
+
+    // Check initialization status
+    int* init_tag_ptr = ws_get_init_tag(view, victim_line);
+    int tag = *init_tag_ptr;
+    if (tag != view.epoch) {
+        // Not initialized yet for this epoch - initialize it ourselves
+        // This allows work stealing to proceed even if the owner hasn't started yet
+        ws_lazy_init_line_epoch(view, victim_line);
+    }
+
+    // Try to get an item from this deque
+    int item_idx;
+    bool success;
+
+    if (r == 0) {
+        // r=0 is our own deque - pop from front (LIFO for cache locality)
+        success = ws_pop_front_cvr(view, victim_line, item_idx);
+    } else {
+        // Steal from other deques from back (less contention with owner)
+        success = ws_pop_back_cvr(view, victim_line, item_idx);
+    }
+
+    if (success) {
+        // Found work! Reset the checked count
+        result.ok = true;
+        result.line = victim_line;
+        result.item = item_idx;
+        rs.checked_count = 0;
+
+        // Optional instrumentation: record which kernel processed this work item
+        if (view.instrumentation_buffer != nullptr) {
+            int global_idx = victim_line * view.m + item_idx;
+            view.instrumentation_buffer[global_idx] = me;
         }
 
+        // Only advance if we're stealing (r != 0)
+        // Keep next_r at 0 when draining local deque for cache locality
+        if (r != 0) {
+            rs.next_r = (r + 1) % view.k;
+        }
         return result;
     }
 
-    // High-level wrapper that only returns when:
-    // 1. Work is available (res.ok = true), OR
-    // 2. All work is done (res.ok = false, can terminate)
-    //
-    // IMPORTANT: ALL THREADS IN THE BLOCK MUST CALL THIS TOGETHER (collective operation)
-    // Thread 0 performs the work stealing, and the result is broadcast to all threads.
-    //
-    // This hides the retry logic when no work is temporarily available.
-    // Use this for most cases. Use try_get_next_item_with_sweep directly only if
-    // you need custom behavior when there's temporarily no work.
-    //
-    // enable_stealing: if false, only processes own deque (static partitioning, no work stealing)
-    __device__ inline fetch_result get_next_item(int me, ws_sweep_state& rs,
-                                                 bool enable_stealing = true) const {
-        __shared__ fetch_result shared_result;
+    // This deque is exhausted - advance to next position
+    rs.checked_count++;
+    rs.next_r = (r + 1) % view.k;
 
-        while (true) {
-            // Only thread 0 performs work stealing
-            if (threadIdx.x == 0) {
-                shared_result = try_get_next_item_with_sweep(me, rs, enable_stealing);
-            }
-            __syncthreads();
-
-            // All threads read the result
-            fetch_result res = shared_result;
-
-            // Return if we got work OR if we can terminate
-            if (res.ok || res.can_terminate) {
-                return res;
-            }
-
-            // Otherwise: no work now, but others may still be working
-            // Loop back and try again
-            __syncthreads(); // Ensure all threads loop together
-        }
+    // Check if we've now exhausted all deques
+    if (rs.checked_count >= view.k) {
+        result.can_terminate = true;
     }
-};
+
+    return result;
+}
+
+// High-level wrapper that only returns when:
+// 1. Work is available (res.ok = true), OR
+// 2. All work is done (res.ok = false, can terminate)
+//
+// IMPORTANT: ALL THREADS IN THE BLOCK MUST CALL THIS TOGETHER (collective operation)
+// Thread 0 performs the work stealing, and the result is broadcast to all threads.
+//
+// This hides the retry logic when no work is temporarily available.
+// Use this for most cases. Use ws_try_get_next_item_with_sweep directly only if
+// you need custom behavior when there's temporarily no work.
+//
+// enable_stealing: if false, only processes own deque (static partitioning, no work stealing)
+__device__ inline fetch_result ws_get_next_item(const ws_queues_view& view, int me, ws_sweep_state& rs,
+                                             bool enable_stealing = true) {
+    __shared__ fetch_result shared_result;
+
+    while (true) {
+        // Only thread 0 performs work stealing
+        if (threadIdx.x == 0) {
+            shared_result = ws_try_get_next_item_with_sweep(view, me, rs, enable_stealing);
+        }
+        __syncthreads();
+
+        // All threads read the result
+        fetch_result res = shared_result;
+
+        // Return if we got work OR if we can terminate
+        if (res.ok || res.can_terminate) {
+            return res;
+        }
+
+        // Otherwise: no work now, but others may still be working
+        // Loop back and try again
+        __syncthreads(); // Ensure all threads loop together
+    }
+}
 
 // ============================================================================
 // WORK STEALING STATISTICS
@@ -630,24 +635,14 @@ class ws_queues {
     ws_queues_impl* impl_; // Pointer to implementation (PIMPL idiom)
 
   public:
-    // Simple constructor for Python/external interfaces (PIMPL-friendly)
-    // Takes only essential parameters: k, m, and instrumentation flag
+    // Constructor for Python/external interfaces (PIMPL-friendly)
+    // Takes only essential parameters: k and instrumentation flag
+    // Note: m (items per deque) is set per-epoch via next_epoch(m)
     //
     // Parameters:
     //   k: Number of kernels/deques
-    //   m: Items per deque (buffer size = k×m slots)
     //   enable_instrumentation: Whether to track which kernel processes each item (default: false)
-    ws_queues(int k, int m, bool enable_instrumentation = false);
-
-    // Advanced constructor with explicit max_work_items
-    // Use this when total work items don't fill the buffer completely
-    //
-    // Parameters:
-    //   k: Number of kernels/deques
-    //   m: Items per deque (buffer size = k×m slots)
-    //   max_work_items: Maximum valid work item index (must be <= k×m)
-    //   enable_instrumentation: Whether to track which kernel processes each item
-    ws_queues(int k, int m, int max_work_items, bool enable_instrumentation);
+    ws_queues(int k, bool enable_instrumentation = false);
 
     // Destructor: frees device memory
     ~ws_queues();
@@ -693,9 +688,11 @@ class ws_queues {
     // Get number of deques
     int num_deques() const;
 
-    // Advance to next epoch (for reusing the same deques with new work)
+    // Advance to next epoch with new bounds (for reusing the same deques with new work)
     // Automatically resets to epoch 1 if counter gets too large (>= 1 billion)
-    void next_epoch();
+    // Parameters:
+    //   m: Items per deque bound for this epoch
+    void next_epoch(int m);
 
     // Get a device-accessible view to pass to kernels
     ws_queues_view view() const;
@@ -769,19 +766,15 @@ class ws_queues_impl {
     int m_;                         // Items per deque (for instrumentation indexing)
     int max_work_items_;            // Maximum valid work item index (inclusive upper bound)
 
-    // Constructor implementation
-    ws_queues_impl(int k, int m, int max_work_items, bool enable_instrumentation)
-        : d_unified_buffer_(nullptr), k_(k), current_epoch_(1), d_instrumentation_buffer_(nullptr),
-          m_(m), max_work_items_(max_work_items) {
-
-        // Validate parameters
-        if (max_work_items_ > k * m) {
-            fprintf(
-                stderr,
-                "ERROR: max_work_items (%d) exceeds buffer capacity (%d kernels × %d items = %d)\n",
-                max_work_items_, k, m, k * m);
-            exit(EXIT_FAILURE);
-        }
+    bool enable_instrumentation_; // Store whether instrumentation is enabled
+    size_t instrumentation_capacity_; // Current capacity of instrumentation buffer
+    
+    // Constructor implementation  
+    // Note: m is set per-epoch via next_epoch(m), not at construction
+    ws_queues_impl(int k, bool enable_instrumentation)
+        : d_unified_buffer_(nullptr), k_(k), current_epoch_(0), d_instrumentation_buffer_(nullptr),
+          m_(0), max_work_items_(0), enable_instrumentation_(enable_instrumentation),
+          instrumentation_capacity_(0) {
 
         using namespace work_stealing_layout;
 
@@ -807,14 +800,7 @@ class ws_queues_impl {
             *back_ptr = 0;
             *init_ptr = 0;
         }
-
-        // Optionally allocate instrumentation buffer (separate, doesn't need page alignment)
-        if (enable_instrumentation && m > 0) {
-            size_t buffer_size = k * m * sizeof(int);
-            CUDA_SAFE_CALL(cudaMallocManaged(&d_instrumentation_buffer_, buffer_size));
-            CUDA_SAFE_CALL(
-                cudaMemset(d_instrumentation_buffer_, -1, buffer_size)); // -1 = unprocessed
-        }
+        // Instrumentation buffer will be allocated in next_epoch(m) if needed
     }
 
     // Destructor
@@ -830,12 +816,9 @@ class ws_queues_impl {
 // WS_QUEUES METHOD IMPLEMENTATIONS (after ws_queues_impl)
 // ============================================================================
 
-// Constructors
-inline ws_queues::ws_queues(int k, int m, bool enable_instrumentation)
-    : impl_(new ws_queues_impl(k, m, k * m, enable_instrumentation)) {}
-
-inline ws_queues::ws_queues(int k, int m, int max_work_items, bool enable_instrumentation)
-    : impl_(new ws_queues_impl(k, m, max_work_items, enable_instrumentation)) {}
+// Constructor
+inline ws_queues::ws_queues(int k, bool enable_instrumentation)
+    : impl_(new ws_queues_impl(k, enable_instrumentation)) {}
 
 // Destructor
 inline ws_queues::~ws_queues() { delete impl_; }
@@ -884,8 +867,10 @@ inline int ws_queues::epoch() const { return impl_->current_epoch_; }
 
 inline int ws_queues::num_deques() const { return impl_->k_; }
 
-inline void ws_queues::next_epoch() {
+inline void ws_queues::next_epoch(int m) {
     impl_->current_epoch_++;
+    impl_->m_ = m;
+    impl_->max_work_items_ = impl_->k_ * m;
 
     // Automatically reset epoch if it gets too large (implementation detail)
     // This prevents integer overflow and ensures init_tag logic remains correct
@@ -897,10 +882,19 @@ inline void ws_queues::next_epoch() {
         CUDA_SAFE_CALL(cudaMemset(impl_->d_init_tag_, 0, impl_->k_ * sizeof(int)));
     }
 
-    // Reset instrumentation buffer if enabled
-    if (impl_->d_instrumentation_buffer_ != nullptr) {
-        size_t buffer_size = impl_->k_ * impl_->m_ * sizeof(int);
-        CUDA_SAFE_CALL(cudaMemset(impl_->d_instrumentation_buffer_, -1, buffer_size));
+    // Allocate or resize instrumentation buffer if enabled
+    if (impl_->enable_instrumentation_) {
+        size_t required_size = impl_->k_ * m * sizeof(int);
+        if (required_size > impl_->instrumentation_capacity_) {
+            // Need to resize
+            if (impl_->d_instrumentation_buffer_ != nullptr) {
+                cudaFree(impl_->d_instrumentation_buffer_);
+            }
+            CUDA_SAFE_CALL(cudaMallocManaged(&impl_->d_instrumentation_buffer_, required_size));
+            impl_->instrumentation_capacity_ = required_size;
+        }
+        // Reset buffer
+        CUDA_SAFE_CALL(cudaMemset(impl_->d_instrumentation_buffer_, -1, required_size));
     }
 }
 

@@ -13,10 +13,11 @@ namespace {
 // C interface for Python ctypes binding
 extern "C" {
 
-// Create a new ws_queues object - CUDA version
-WP_API uint64_t wp_ws_queues_create_device(void* context, int k, int m, int enable_instrumentation) {
+// Create a new ws_queues object (device-agnostic via unified memory)
+// m is set per epoch via wp_ws_queues_next_epoch()
+WP_API uint64_t wp_ws_queues_create(int k, int enable_instrumentation) {
     try {
-        ws_queues* queues = new ws_queues(k, m, enable_instrumentation != 0);
+        ws_queues* queues = new ws_queues(k, enable_instrumentation != 0);
         uint64_t id = g_ws_queues_counter++;
         g_ws_queues_registry[id] = queues;
         return id;
@@ -25,8 +26,8 @@ WP_API uint64_t wp_ws_queues_create_device(void* context, int k, int m, int enab
     }
 }
 
-// Destroy ws_queues object - CUDA version
-WP_API void wp_ws_queues_destroy_device(uint64_t id) {
+// Destroy ws_queues object
+WP_API void wp_ws_queues_destroy(uint64_t id) {
     auto it = g_ws_queues_registry.find(id);
     if (it != g_ws_queues_registry.end()) {
         delete it->second;
@@ -34,11 +35,11 @@ WP_API void wp_ws_queues_destroy_device(uint64_t id) {
     }
 }
 
-// Advance to next epoch
-WP_API void wp_ws_queues_next_epoch(uint64_t id) {
+// Advance to next epoch with new m parameter
+WP_API void wp_ws_queues_next_epoch(uint64_t id, int m) {
     auto it = g_ws_queues_registry.find(id);
     if (it != g_ws_queues_registry.end()) {
-        it->second->next_epoch();
+        it->second->next_epoch(m);
     }
 }
 
@@ -56,15 +57,6 @@ WP_API int wp_ws_queues_num_deques(uint64_t id) {
     auto it = g_ws_queues_registry.find(id);
     if (it != g_ws_queues_registry.end()) {
         return it->second->num_deques();
-    }
-    return -1;
-}
-
-// Get items per deque (m)
-WP_API int wp_ws_queues_items_per_deque(uint64_t id) {
-    auto it = g_ws_queues_registry.find(id);
-    if (it != g_ws_queues_registry.end()) {
-        return it->second->items_per_deque();
     }
     return -1;
 }
