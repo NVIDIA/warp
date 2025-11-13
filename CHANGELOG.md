@@ -15,6 +15,7 @@
   - New query overloads: `wp.bvh_query_aabb()` and `wp.bvh_query_ray()` now accept an optional `root` argument for group-restricted traversal.
   - Add helper function `wp.bvh_get_group_root()` to retrieve the subtree root for a given group.
 - Add a `max_dist` argument to `wp.bvh_query_next` which controls the max length of a ray ([GH-1052](https://github.com/NVIDIA/warp/issues/1052)).
+- Add `wp.tile_cholesky_inplace()`, `wp.tile_cholesky_solve_inplace()`, `wp.tile_lower_solve_inplace()` and `wp.tile_upper_solve_inplace()` ([GH-1025](https://github.com/NVIDIA/warp/pull/1025)).
 
 ### Removed
 
