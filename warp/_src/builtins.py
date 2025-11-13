@@ -6799,6 +6799,19 @@ add_builtin(
     hidden=True,  # Unhide once we can document both a built-in and a Python scope function sharing the same name.
 )
 
+add_builtin(
+    "zeros",
+    input_types={"shape": int, "dtype": Any},
+    value_func=zeros_value_func,
+    export_func=lambda input_types: {},
+    dispatch_func=zeros_dispatch_func,
+    native_func="fixedarray_t",
+    group="Utility",
+    export=False,
+    is_differentiable=False,
+    hidden=True,  # Unhide once we can document both a built-in and a Python scope function sharing the same name.
+)
+
 
 # does argument checking and type propagation for address()
 def address_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
