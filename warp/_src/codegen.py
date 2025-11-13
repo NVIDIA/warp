@@ -3575,8 +3575,10 @@ cuda_module_header = """
 #define WP_PARTITION_RANK {partition_rank}
 constexpr int WP_PARTITION_SHAPE[] = {{{partition_shape}}};
 constexpr int WP_PARTITION_STRIDES[] = {{{partition_strides}}};
-#else
-#define WP_PARTITION_RANK 0
+
+#define WP_PARTITION_OFFSETS_RANK {partition_offsets_rank}
+constexpr int WP_PARTITION_OFFSETS_SHAPE[] = {{{partition_offsets_shape}}};
+constexpr int WP_PARTITION_OFFSETS_STRIDES[] = {{{partition_offsets_strides}}};
 #endif
 
 // Map wp.breakpoint() to a device brkpt at the call site so cuda-gdb attributes the stop to the generated .cu line
@@ -3599,9 +3601,8 @@ constexpr int WP_PARTITION_STRIDES[] = {{{partition_strides}}};
 #define builtin_block_dim() wp::block_dim()
 
 #if WP_HAVE_PARTITION
-#define builtin_apply_partition(x) wp::apply_partition(WP_PARTITION_RANK, WP_PARTITION_SHAPE, WP_PARTITION_STRIDES, x, dim)
-#else
-#define builtin_apply_partition(x) (x)
+#define builtin_apply_layout(x) wp::apply_layout(WP_PARTITION_RANK, WP_PARTITION_SHAPE, WP_PARTITION_STRIDES, x)
+#define builtin_apply_layout_offsets(x) wp::apply_layout(WP_PARTITION_OFFSETS_RANK, WP_PARTITION_OFFSETS_SHAPE, WP_PARTITION_OFFSETS_STRIDES, x)
 #endif
 """
 
@@ -3690,7 +3691,7 @@ cuda_kernel_template_forward = """
 {line_directive}        wp::tile_shared_storage_t::init();
 {line_directive}        #if WP_HAVE_PARTITION
 {line_directive}        size_t block_id = _idx_orig/blockDim.x;
-{line_directive}        size_t virtual_block_id = builtin_apply_partition(block_id)+dim.offset;
+{line_directive}        size_t virtual_block_id = builtin_apply_layout(block_id)+dim.offset;
 {line_directive}        size_t _idx = (_idx_orig%blockDim.x) + virtual_block_id * blockDim.x;
 {line_directive}        #else
 {line_directive}        size_t _idx = _idx_orig;
@@ -3699,6 +3700,35 @@ cuda_kernel_template_forward = """
 {line_directive}        if (dim.partition_max_index >= 0 && _idx >= static_cast<size_t>(dim.partition_max_index))
 {line_directive}            continue;
 
+{forward_body}{line_directive}    }}
+{line_directive}}}
+
+"""
+
+# If we enable work stealing, we keep fetching work indices rather than iterating over a fixed range of indices
+cuda_kernel_template_forward_work_stealing = """
+
+{line_directive}extern "C" __global__ void {name}_cuda_kernel_forward(
+    {forward_args})
+{{
+{line_directive}    wp::tile_shared_storage_t tile_mem;
+{line_directive}    wp::ws_sweep_state_t ws_sweep_state;
+{line_directive}    while (true) {{
+{line_directive}        wp::fetch_result res = ws_get_next_item(dim.ws_view, dim.offset, ws_sweep_state);
+{line_directive}        // printf("res: %d %d %d %d\\n", res.line, res.item, res.ok, res.can_terminate);    
+{line_directive}        if (!res.ok) break;
+{line_directive}        size_t m = builtin_apply_layout(res.item);
+{line_directive}        size_t k = builtin_apply_layout_offsets(res.line);
+{line_directive}        size_t block_idx = m + k;
+{line_directive}        // Skip work items beyond the valid range (needed when work size doesn't evenly divide by layout granularity)
+{line_directive}        if (block_idx >= static_cast<size_t>(dim.ws_view.max_work_items))
+{line_directive}            continue;
+{line_directive}        size_t _idx = block_idx * blockDim.x + threadIdx.x;
+{line_directive}        // if (threadIdx.x == 0)
+{line_directive}        //   printf("m: %d k: %d _idx: %d => _idx: %d max_work_items: %d\\n", static_cast<int>(m), static_cast<int>(k), static_cast<int>(_idx), static_cast<int>(_idx), static_cast<int>(dim.ws_view.max_work_items));
+{line_directive}
+{line_directive}        // reset shared memory allocator
+{line_directive}        wp::tile_shared_storage_t::init();
 {forward_body}{line_directive}    }}
 {line_directive}}}
 
@@ -4310,7 +4340,11 @@ def codegen_kernel(kernel, device, options):
         template_forward = cpu_kernel_template_forward
         template_backward = cpu_kernel_template_backward
     elif device == "cuda":
-        template_forward = cuda_kernel_template_forward
+        # Select work-stealing template if enabled (ws_view will be provided at launch)
+        if options.get("enable_work_stealing", True):
+            template_forward = cuda_kernel_template_forward_work_stealing
+        else:
+            template_forward = cuda_kernel_template_forward
         template_backward = cuda_kernel_template_backward
     else:
         raise ValueError(f"Device {device} is not supported")

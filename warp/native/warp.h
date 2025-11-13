@@ -116,7 +116,7 @@ extern "C"
 // work-stealing queues (device-agnostic via unified memory)
 WP_API uint64_t wp_ws_queues_create(int k, int enable_instrumentation);
 WP_API void wp_ws_queues_destroy(uint64_t id);
-WP_API void wp_ws_queues_next_epoch(uint64_t id, int m);
+WP_API void wp_ws_queues_next_epoch(uint64_t id, int m, int max_work_items);
 WP_API int wp_ws_queues_get_epoch(uint64_t id);
 WP_API int wp_ws_queues_num_deques(uint64_t id);
 WP_API int wp_ws_queues_get_view(uint64_t id, void* view_out);

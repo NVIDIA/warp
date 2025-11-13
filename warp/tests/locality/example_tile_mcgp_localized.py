@@ -81,6 +81,8 @@ def walk(p: wp.vec3, rand_offset: int):
 def sphere_walk(delta_z: float, samples: wp.array2d(dtype=wp.vec3), solutions: wp.array2d(dtype=float)):
     i, j = wp.tid()
 
+    # print(i + 1000*j);
+
     sample_origin = samples[i, j] + wp.vec3(0.0, 0.0, delta_z)
 
     rand_samples = wp.tile_full(TILE_SIZE, value=sample_origin, dtype=wp.vec3)
@@ -100,7 +102,10 @@ def sphere_walk(delta_z: float, samples: wp.array2d(dtype=wp.vec3), solutions: w
 
 
 class Example:
-    def __init__(self, height=256, slices=60):
+    def __init__(self, height=256, slices=60, enable_green_contexts=True, enable_work_stealing=True):
+        self.enable_green_contexts = enable_green_contexts
+        self.enable_work_stealing = enable_work_stealing
+
         usd_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
         usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/bunny"))
 
@@ -128,10 +133,9 @@ class Example:
         print(f"Using {self.ndevices} CUDA device(s)")
 
         #        self.policy = wp.blocked()
-        self.policy = wp.cyclic()
+        self.policy = wp.blocked()
 
-        self.use_gc = True
-        if self.use_gc:
+        if self.enable_green_contexts:
             # Create blocked policy for distributing work across devices
 
             contexts = wp.create_green_ctx(device_ordinal=0, min_sms_per_partition=8)
@@ -169,6 +173,7 @@ class Example:
         self.images = np.zeros((self.slices, self.height, self.width))
 
     def render(self, slice):
+        print(f"self.height {self.height} self.width {self.width} streams length {len(self.streams)}")
         wp.launch_tiled_localized(
             sphere_walk,
             dim=[self.height, self.width],
@@ -176,7 +181,7 @@ class Example:
             outputs=[self.pixels],
             block_dim=TILE_SIZE,
             mapping=self.policy,
-            work_stealing=True,
+            work_stealing=self.enable_work_stealing,
             streams=self.streams,
         )
 
@@ -212,11 +217,30 @@ if __name__ == "__main__":
         action="store_true",
         help="Run in headless mode, suppressing the opening of any graphical windows.",
     )
+    parser.add_argument(
+        "--no-green-contexts",
+        dest="enable_green_contexts",
+        action="store_false",
+        default=True,
+        help="Disable green contexts (CUDA stream per kernel launch).",
+    )
+    parser.add_argument(
+        "--no-work-stealing",
+        dest="enable_work_stealing",
+        action="store_false",
+        default=True,
+        help="Disable work stealing for dynamic load balancing.",
+    )
 
     args = parser.parse_known_args()[0]
 
     with wp.ScopedDevice(args.device):
-        example = Example(height=args.height, slices=args.slices)
+        example = Example(
+            height=args.height,
+            slices=args.slices,
+            enable_green_contexts=args.enable_green_contexts,
+            enable_work_stealing=args.enable_work_stealing,
+        )
 
         # todo: permit runtime constants to be passed to tile map functions
         MESH_ID = wp.constant(wp.uint64(example.mesh.id))

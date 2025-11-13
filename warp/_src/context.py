@@ -1916,12 +1916,39 @@ class ModuleBuilder:
         if device == "cpu":
             source = warp._src.codegen.cpu_module_header.format(block_dim=self.options["block_dim"]) + source
         else:
-            # Parse partition to extract shape and stride arrays
-            partition_rank, partition_shape, partition_strides = warp._src.localized.parse_cute_partition(
-                self.options["partition"]
-            )
+            # Extract partition attributes from Layout object
+            partition_layout = self.options["partition"]
+            if partition_layout is not None:
+                partition_rank = partition_layout.rank
+                partition_shape = partition_layout.shape
+                partition_strides = partition_layout.stride
+            else:
+                # do not
+                partition_rank = 0
+                partition_shape = (
+                    1,
+                )  # to avoid empty initializer with an array of unspecified size (same in other default cases)
+                partition_strides = (1,)
+
+            partition_offsets_layout = self.options.get("partition_offsets")
+            if partition_offsets_layout is not None:
+                partition_offsets_rank = partition_offsets_layout.rank
+                partition_offsets_shape = partition_offsets_layout.shape
+                partition_offsets_strides = partition_offsets_layout.stride
+            else:
+                partition_offsets_rank = 0
+                partition_offsets_shape = (1,)
+                partition_offsets_strides = (1,)  # Fixed: must be a tuple!
+
             partition_shape_str = ", ".join(map(str, partition_shape)) if partition_shape else ""
             partition_strides_str = ", ".join(map(str, partition_strides)) if partition_strides else ""
+
+            partition_offsets_shape_str = (
+                ", ".join(map(str, partition_offsets_shape)) if partition_offsets_shape else ""
+            )
+            partition_offsets_strides_str = (
+                ", ".join(map(str, partition_offsets_strides)) if partition_offsets_strides else ""
+            )
 
             source = (
                 warp._src.codegen.cuda_module_header.format(
@@ -1930,6 +1957,9 @@ class ModuleBuilder:
                     partition_rank=partition_rank,
                     partition_shape=partition_shape_str,
                     partition_strides=partition_strides_str,
+                    partition_offsets_rank=partition_offsets_rank,
+                    partition_offsets_shape=partition_offsets_shape_str,
+                    partition_offsets_strides=partition_offsets_strides_str,
                 )
                 + source
             )
@@ -2557,7 +2587,9 @@ class Module:
         self,
         device,
         block_dim: int | None = None,
-        partition: str | None = None,
+        partition: warp._src.localized.Layout | None = None,
+        partition_offsets: warp._src.localized.Layout | None = None,
+        enable_work_stealing: bool = False,
         binary_path: os.PathLike | None = None,
         output_arch: int | None = None,
         meta_path: os.PathLike | None = None,
@@ -2570,6 +2602,8 @@ class Module:
 
         self.options["have_partition"] = 1 if partition is not None else 0
         self.options["partition"] = partition
+        self.options["partition_offsets"] = partition_offsets
+        self.options["enable_work_stealing"] = enable_work_stealing
 
         active_block_dim = self.options["block_dim"]
 
@@ -6495,6 +6529,7 @@ def launch(
     max_blocks: int = 0,
     block_dim: int = 256,
     partition: str | Layout | None = None,
+    partition_offsets: str | Layout | None = None,
     offset: int = 0,
     max_index: int = -1,
     ws_qview: WsQueuesView | None = None,
@@ -6525,7 +6560,9 @@ def launch(
         block_dim: The number of threads per block (always 1 for "cpu" devices).
         partition: Optional Layout object or string specifying kernel partitioning scheme.
           Can be a wp.Layout object or a CuTe-style string like "(5,5):(2,20)".
-        offset: Starting offset for partitioned kernel launches.
+        partition_offsets: Optional Layout object or string specifying kernel partitioning scheme.
+          Can be a wp.Layout object or a CuTe-style string like "(5,5):(2,20)".
+        offset: Starting offset for partitioned kernel launches (index of the queue if partition_offsets is specified, otherwise real offset).
         max_index: Maximum valid work item index (-1 means no limit). Used to handle
           work sizes that don't evenly divide by layout granularity.
     """
@@ -6555,20 +6592,25 @@ def launch(
     # Compute partition blocks if partition is specified
     partition_blocks = 0
     if partition is not None:
-        # Handle both Layout objects and string format
-        if isinstance(partition, Layout):
-            partition_shape = partition.shape
-            partition_strides = partition.stride
-            rank = partition.rank
-        elif isinstance(partition, str):
-            rank, partition_shape, partition_strides = warp._src.localized.parse_cute_partition(partition)
-        else:
-            raise TypeError(f"partition must be a Layout object or string, got {type(partition)}")
+        if not isinstance(partition, Layout):
+            raise TypeError(f"partition must be a Layout object, got {type(partition)}")
 
-        # Compute product of partition shape to get number of blocks
+        partition_shape = partition.shape
+        partition_strides = partition.stride
+        rank = partition.rank
+
+        # Compute product of partition shape to get number of blocks in the subpart described by the partition layout
         partition_blocks = 1
         for s in partition_shape:
             partition_blocks *= s
+
+    if partition_offsets is not None:
+        if not isinstance(partition_offsets, Layout):
+            raise TypeError(f"partition_offsets must be a Layout object, got {type(partition_offsets)}")
+
+        partition_offsets_shape = partition_offsets.shape
+        partition_offsets_strides = partition_offsets.stride
+        rank = partition_offsets.rank
 
     # Set partition parameters
     # max_index allows handling work sizes that don't evenly divide by layout granularity
@@ -6577,6 +6619,9 @@ def launch(
     if ws_qview is not None:
         bounds.ws_view = ws_qview
         # Note: ws_view.epoch > 0 indicates a valid view (no separate boolean needed)
+
+    # Enable work-stealing template if ws_qview is provided
+    enable_work_stealing = ws_qview is not None
 
     if bounds.size > 0:
         # first param is the number of threads
@@ -6611,9 +6656,13 @@ def launch(
 
         # delay load modules, including new overload if needed
         try:
-            # Convert Layout object to string for module caching
-            partition_str = partition.to_string() if isinstance(partition, Layout) else partition
-            module_exec = kernel.module.load(device, block_dim, partition_str)
+            module_exec = kernel.module.load(
+                device,
+                block_dim,
+                partition=partition,
+                partition_offsets=partition_offsets,
+                enable_work_stealing=enable_work_stealing,
+            )
         except Exception:
             kernel.adj.skip_build = True
             raise

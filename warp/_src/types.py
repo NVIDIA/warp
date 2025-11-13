@@ -4489,7 +4489,7 @@ class WorkStealingQueues:
             # Suppress errors when callables become None during shutdown
             pass
 
-    def next_epoch(self, m: int):
+    def next_epoch(self, m: int, max_work_items: int):
         """Advance to next epoch with new bounds (resets all counters for reuse).
 
         Args:
@@ -4502,7 +4502,7 @@ class WorkStealingQueues:
         """
         if m <= 0:
             raise ValueError(f"m must be positive, got m={m}")
-        self.runtime.core.wp_ws_queues_next_epoch(self.id, m)
+        self.runtime.core.wp_ws_queues_next_epoch(self.id, m, max_work_items)
 
     @property
     def epoch(self) -> int:

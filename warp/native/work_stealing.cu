@@ -36,10 +36,10 @@ WP_API void wp_ws_queues_destroy(uint64_t id) {
 }
 
 // Advance to next epoch with new m parameter
-WP_API void wp_ws_queues_next_epoch(uint64_t id, int m) {
+WP_API void wp_ws_queues_next_epoch(uint64_t id, int m, int max_work_items) {
     auto it = g_ws_queues_registry.find(id);
     if (it != g_ws_queues_registry.end()) {
-        it->second->next_epoch(m);
+        it->second->next_epoch(m, max_work_items);
     }
 }
 

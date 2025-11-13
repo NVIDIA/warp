@@ -692,7 +692,8 @@ class ws_queues {
     // Automatically resets to epoch 1 if counter gets too large (>= 1 billion)
     // Parameters:
     //   m: Items per deque bound for this epoch
-    void next_epoch(int m);
+    //   max_work_items: Maximum valid work item index (inclusive upper bound)
+    void next_epoch(int m, int max_work_items);
 
     // Get a device-accessible view to pass to kernels
     ws_queues_view view() const;
@@ -867,10 +868,10 @@ inline int ws_queues::epoch() const { return impl_->current_epoch_; }
 
 inline int ws_queues::num_deques() const { return impl_->k_; }
 
-inline void ws_queues::next_epoch(int m) {
+inline void ws_queues::next_epoch(int m, int max_work_items) {
     impl_->current_epoch_++;
     impl_->m_ = m;
-    impl_->max_work_items_ = impl_->k_ * m;
+    impl_->max_work_items_ = max_work_items;
 
     // Automatically reset epoch if it gets too large (implementation detail)
     // This prevents integer overflow and ensures init_tag logic remains correct

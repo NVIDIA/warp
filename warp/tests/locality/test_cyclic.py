@@ -65,7 +65,7 @@ wp.launch_tiled(
     inputs=[A],
     outputs=[C],
     device="cuda:0",
-    partition="(3,3):(2,12)",
+    partition=wp.Layout(shape=(3, 3), stride=(2, 12)),
     offset=7,
     block_dim=32,
 )

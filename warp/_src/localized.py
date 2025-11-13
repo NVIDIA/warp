@@ -1,4 +1,3 @@
-import ast
 import random
 
 # ==============================================================================
@@ -320,6 +319,10 @@ class Layout:
         if not isinstance(other, Layout):
             return False
         return self.shape == other.shape and self.stride == other.stride
+
+    def __hash__(self) -> int:
+        """Make Layout hashable for use in dictionaries and sets."""
+        return hash((self.shape, self.stride))
 
 
 # ==============================================================================
@@ -698,27 +701,6 @@ def block_cyclic(
 # ==============================================================================
 # Utility Functions
 # ==============================================================================
-
-
-def parse_cute_partition(partition_str):
-    """Parse a Cute layout partition string like '(8,4,2):(3,4,1)'.
-
-    Returns:
-        tuple: (rank, shape_list, stride_list) or (0, [], []) if partition_str is None
-    """
-
-    if partition_str is None:
-        return (0, [], [])
-
-    if len(parts := partition_str.split(":")) != 2:
-        raise ValueError(f"Invalid partition format: {partition_str}")
-
-    shape_list, stride_list = map(lambda x: list(ast.literal_eval(x)), parts)
-
-    if len(shape_list) != len(stride_list):
-        raise ValueError(f"Shape and stride must have same length. Got shape={shape_list}, stride={stride_list}")
-
-    return (len(shape_list), shape_list, stride_list)
 
 
 def allocate_blocks_vmm(block_sizes, streams, use_vmm=True):
@@ -1800,19 +1782,24 @@ def launch(
     qview = None
     if work_stealing:
         queues = wp.WorkStealingQueues(k=len(streams))
-        queues.next_epoch(m=max_work_index)
+        queues.next_epoch(m=mapping.partition.get_size())
+        print("qview: ", queues.view())
         qview = queues.view()
 
     # Step 3: Launch kernels on all places in parallel
     for place_idx, offset in enumerate(mapping.offsets):
         stream = streams[place_idx]
-
+        if work_stealing:
+            offset = place_idx
+        else:
+            offset = mapping.offset_layout(place_idx)
         wp.launch(
             kernel,
             dim=dim,
             inputs=inputs,
             outputs=outputs,
             partition=mapping.partition,
+            partition_offsets=mapping.offset_layout,
             offset=offset,
             max_index=max_work_index,
             stream=stream,
@@ -1941,12 +1928,22 @@ def launch_tiled(
     qview = None
     if work_stealing:
         queues = wp.WorkStealingQueues(k=len(streams))
-        queues.next_epoch(m=max_work_index)
+        print("mapping.partition.get_size(): ", mapping.partition.get_size())
+        print(f"mapping {mapping}")
+        queues.next_epoch(m=mapping.partition.get_size(), max_work_items=total_tiles)
+
         qview = queues.view()
+        qview.max_work_items = total_tiles
+        print("qview: ", queues.view())
+        print("total_tiles: ", total_tiles)
 
     # Step 3: Launch kernels on all places in parallel
     for place_idx, offset in enumerate(mapping.offsets):
         stream = streams[place_idx]
+        if work_stealing:
+            offset = place_idx
+        else:
+            offset = mapping.offset_layout(place_idx)
 
         wp.launch_tiled(
             kernel,  # positional argument expected by launch_tiled
@@ -1955,6 +1952,7 @@ def launch_tiled(
             outputs=outputs,
             partition=mapping.partition,
             offset=offset,
+            partition_offsets=mapping.offset_layout,
             max_index=max_work_index,
             stream=stream,
             ws_qview=qview,

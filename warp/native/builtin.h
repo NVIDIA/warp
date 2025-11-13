@@ -1418,18 +1418,19 @@ CUDA_CALLABLE inline bool unot(const T& b) { return !b; }
 template <typename T>
 CUDA_CALLABLE inline void adj_unot(const T& b, T& adj_b, const bool& adj_ret) { }
 
-const int LAUNCH_MAX_DIMS = 4;   // should match types.py
-
-// POD structure for work-stealing queues view (no member functions)
-// This is defined here to allow builtin.h to remain independently compilable
+// POD structure for work-stealing queues view
 struct ws_queues_view {
-    char* unified_base;           // Base pointer to unified buffer
-    int k;                        // Number of deques
-    int epoch;                    // Current epoch number
-    int* instrumentation_buffer;  // Optional instrumentation buffer
-    int m;                        // Items per deque
-    int max_work_items;           // Total valid work items
+    char* unified_base;
+    int k;
+    int epoch;
+    int* instrumentation_buffer;
+    int m;
+    int max_work_items;
 };
+
+
+
+const int LAUNCH_MAX_DIMS = 4;   // should match types.py
 
 struct launch_bounds_t
 {
@@ -1491,10 +1492,10 @@ inline CUDA_CALLABLE int block_dim()
 #endif
 }
 
-inline CUDA_CALLABLE int apply_partition(int rank, const int* shape, const int* strides, int index, const launch_bounds_t& bounds)
+inline CUDA_CALLABLE int apply_layout(int rank, const int* shape, const int* strides, int index)
 {
     if (rank == 0) {
-        return index;  // No partition, return index as-is
+        return index;  // No layout transformation, return index as-is
     }
     
     // Convert flat index to multi-dimensional coordinates and apply strides
@@ -2056,6 +2057,206 @@ inline CUDA_CALLABLE void adj_printf(const char* fmt, ...) {}
 namespace wp
 {
 
+// ============================================================================
+// WORK-STEALING QUEUES - DEVICE-SIDE DEFINITIONS
+// ============================================================================
+
+// Per-block state for work stealing sweep through deques
+struct ws_sweep_state {
+    int next_r;
+    int checked_count;
+    CUDA_CALLABLE inline ws_sweep_state() : next_r(0), checked_count(0) {}
+};
+typedef ws_sweep_state ws_sweep_state_t;
+
+// Result structure for fetch operations
+struct fetch_result {
+    int line;
+    int item;
+    bool ok;
+    bool can_terminate;
+};
+
+// Memory layout constants for performance
+namespace work_stealing_layout {
+    static constexpr size_t CACHE_LINE_SEPARATION = 512 * 1024;
+    static constexpr size_t PAGE_SIZE = 2 * 1024 * 1024;
+    
+    CUDA_CALLABLE static constexpr size_t front_offset() { return 0; }
+    CUDA_CALLABLE static constexpr size_t back_offset() { return CACHE_LINE_SEPARATION; }
+    CUDA_CALLABLE static constexpr size_t init_tag_offset() { return 2 * CACHE_LINE_SEPARATION; }
+}
+
+#if defined(__CUDACC__)
+// Ring neighbor calculation (r=0 is self, then +1,-1,+2,-2,... mod k)
+inline CUDA_CALLABLE_DEVICE int neighbor_ring_idx(int me, int r, int k) {
+    if (r == 0) return me;
+    
+    int offset = (r % 2 == 1) ? (r + 1) / 2 : -(r / 2);
+    int neighbor = me + offset;
+    if (neighbor < 0) neighbor += k;
+    else if (neighbor >= k) neighbor -= k;
+    return neighbor;
+}
+
+// Device helper functions
+inline CUDA_CALLABLE_DEVICE int* ws_get_front(const ws_queues_view& view, int index) {
+    using namespace work_stealing_layout;
+    return reinterpret_cast<int*>(view.unified_base + index * PAGE_SIZE + front_offset());
+}
+
+inline CUDA_CALLABLE_DEVICE int* ws_get_back(const ws_queues_view& view, int index) {
+    using namespace work_stealing_layout;
+    return reinterpret_cast<int*>(view.unified_base + index * PAGE_SIZE + back_offset());
+}
+
+inline CUDA_CALLABLE_DEVICE int* ws_get_init_tag(const ws_queues_view& view, int index) {
+    using namespace work_stealing_layout;
+    return reinterpret_cast<int*>(view.unified_base + index * PAGE_SIZE + init_tag_offset());
+}
+
+inline CUDA_CALLABLE_DEVICE void ws_lazy_init_line_epoch(const ws_queues_view& view, int line) {
+    int* front_ptr = ws_get_front(view, line);
+    int* back_ptr = ws_get_back(view, line);
+    int* init_tag_ptr = ws_get_init_tag(view, line);
+    
+    int current_tag = *init_tag_ptr;
+    if (current_tag == view.epoch) return;
+    
+    int old = atomicCAS(init_tag_ptr, current_tag, -view.epoch);
+    if (old == current_tag) {
+        *front_ptr = 0;
+        *back_ptr = view.m;
+        __threadfence();
+        *init_tag_ptr = view.epoch;
+    } else if (old == -view.epoch) {
+        while (*init_tag_ptr == -view.epoch) __threadfence();
+    } else if (old == view.epoch) {
+        return;
+    } else {
+        ws_lazy_init_line_epoch(view, line);
+    }
+}
+
+inline CUDA_CALLABLE_DEVICE bool ws_pop_front_cvr(const ws_queues_view& view, int line, int& out_idx) {
+    int* front_ptr = ws_get_front(view, line);
+    int* back_ptr = ws_get_back(view, line);
+    
+    int claimed_front = atomicAdd(front_ptr, 1);
+    __threadfence();
+    int current_back = *back_ptr;
+    
+    if (claimed_front < current_back) {
+        out_idx = claimed_front;
+        return true;
+    }
+    
+    atomicAdd(front_ptr, -1);
+    return false;
+}
+
+inline CUDA_CALLABLE_DEVICE bool ws_pop_back_cvr(const ws_queues_view& view, int line, int& out_idx) {
+    int* front_ptr = ws_get_front(view, line);
+    int* back_ptr = ws_get_back(view, line);
+    
+    int claimed_back = atomicAdd(back_ptr, -1);
+    __threadfence();
+    int current_front = *front_ptr;
+    
+    if (claimed_back > current_front) {
+        out_idx = claimed_back - 1;
+        return true;
+    }
+    
+    atomicAdd(back_ptr, 1);
+    return false;
+}
+
+inline CUDA_CALLABLE_DEVICE fetch_result ws_try_get_next_item_with_sweep(const ws_queues_view& view, int me, ws_sweep_state& rs,
+                                                            bool enable_stealing = true) {
+    fetch_result result;
+    result.ok = false;
+    result.can_terminate = false;
+    result.line = -1;
+    result.item = -1;
+    
+    if (!enable_stealing) {
+        if (rs.checked_count > 0) {
+            result.can_terminate = true;
+            return result;
+        }
+    } else {
+        if (rs.checked_count >= view.k) {
+            result.can_terminate = true;
+            return result;
+        }
+    }
+    
+    int r = enable_stealing ? rs.next_r : 0;
+    int victim_line = neighbor_ring_idx(me, r, view.k);
+    
+    int* init_tag_ptr = ws_get_init_tag(view, victim_line);
+    int tag = *init_tag_ptr;
+    if (tag != view.epoch) {
+        ws_lazy_init_line_epoch(view, victim_line);
+    }
+    
+    int item_idx;
+    bool success;
+    
+    if (r == 0) {
+        success = ws_pop_front_cvr(view, victim_line, item_idx);
+    } else {
+        success = ws_pop_back_cvr(view, victim_line, item_idx);
+    }
+    
+    if (success) {
+        result.ok = true;
+        result.line = victim_line;
+        result.item = item_idx;
+        rs.checked_count = 0;
+        
+        if (view.instrumentation_buffer != nullptr) {
+            int global_idx = victim_line * view.m + item_idx;
+            view.instrumentation_buffer[global_idx] = me;
+        }
+        
+        if (r != 0) {
+            rs.next_r = (r + 1) % view.k;
+        }
+        return result;
+    }
+    
+    rs.checked_count++;
+    rs.next_r = (r + 1) % view.k;
+    
+    if (rs.checked_count >= view.k) {
+        result.can_terminate = true;
+    }
+    
+    return result;
+}
+
+inline CUDA_CALLABLE_DEVICE fetch_result ws_get_next_item(const ws_queues_view& view, int me, ws_sweep_state& rs,
+                                             bool enable_stealing = true) {
+    __shared__ fetch_result shared_result;
+    
+    while (true) {
+        if (threadIdx.x == 0) {
+            shared_result = ws_try_get_next_item_with_sweep(view, me, rs, enable_stealing);
+        }
+        __syncthreads();
+        
+        fetch_result res = shared_result;
+        
+        if (res.ok || res.can_terminate) {
+            return res;
+        }
+        
+        __syncthreads();
+    }
+}
+#endif // __CUDACC__
 
 // dot for scalar types just to make some templates compile for scalar/vector
 inline CUDA_CALLABLE float dot(float a, float b) { return mul(a, b); }
