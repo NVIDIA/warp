@@ -37,6 +37,8 @@
 - Fix `.ptr` access on kernel-local arrays ([GH-999](https://github.com/NVIDIA/warp/issues/999)).
 - Fix indexing of kernel-local arrays when requesting a subarray
   ([GH-1081](https://github.com/NVIDIA/warp/issues/1081)).
+- Fix `wp.zeros()` to accept a single integer for the shape parameter in kernels (e.g. `wp.zeros(shape=123, dtype=float)`)
+  ([GH-1081](https://github.com/NVIDIA/warp/issues/1081)).
 
 ## [1.10.0] - 2025-11-02
 
