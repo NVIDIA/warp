@@ -151,7 +151,7 @@ class Example:
             self.streams = [wp.Stream(device=f"cuda:{i}") for i in range(self.ndevices)]
 
         # Use localized memory allocation for multi-device access
-        # self.grid = wp.empty_localized(
+        # self.grid = wp.localized.empty(
         #     shape=(self.height, self.width),
         #     partition_desc=self.policy,
         #     streams=self.streams,
@@ -159,7 +159,7 @@ class Example:
         # )
         self.grid = wp.array(grid, dtype=wp.vec3)
 
-        self.pixels = wp.zeros_localized(
+        self.pixels = wp.localized.zeros(
             shape=(self.height, self.width), partition_desc=self.policy, streams=self.streams, dtype=float
         )
 
@@ -173,8 +173,7 @@ class Example:
         self.images = np.zeros((self.slices, self.height, self.width))
 
     def render(self, slice):
-        print(f"self.height {self.height} self.width {self.width} streams length {len(self.streams)}")
-        wp.launch_tiled_localized(
+        wp.localized.launch_tiled(
             sphere_walk,
             dim=[self.height, self.width],
             inputs=[self.z[slice], self.grid],

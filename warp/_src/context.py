@@ -6858,6 +6858,7 @@ def launch_tiled(*args, **kwargs):
 
     # add trailing dimension
     kwargs["dim"] = [*dim, kwargs["block_dim"]]
+    print(f"launch_tiled dim = {dim}")
 
     # forward to original launch method
     return launch(*args, **kwargs)

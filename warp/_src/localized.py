@@ -1734,7 +1734,7 @@ def launch(
     block_dim_kwarg = kwargs.get("block_dim", 256)
 
     # Convert thread dimensions to block dimensions for partitioning
-    # For launch_localized, we partition CUDA blocks, not threads
+    # For localized.launch, we partition CUDA blocks, not threads
     # CUDA grids are always 1D (even for multi-dimensional thread launches)
     if isinstance(dim, int):
         total_threads = dim

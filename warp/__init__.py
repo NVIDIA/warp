@@ -45,13 +45,6 @@ from warp._src.localized import allocate_tiled_tensor as allocate_tiled_tensor
 from warp._src.localized import empty_managed as empty_managed
 from warp._src.localized import zeros_managed as zeros_managed
 
-# Backward compatibility aliases (deprecated, use wp.localized.* instead)
-from warp._src.localized import empty as empty_localized
-from warp._src.localized import zeros as zeros_localized
-from warp._src.localized import launch as launch_localized
-from warp._src.localized import launch_tiled as launch_tiled_localized
-
-
 from warp._src.types import bool as bool
 from warp._src.types import int8 as int8
 from warp._src.types import uint8 as uint8
@@ -349,6 +342,7 @@ from . import context as context
 from . import dlpack as dlpack
 from . import fabric as fabric
 from . import jax as jax
+from . import localized as localized
 from . import marching_cubes as marching_cubes
 from . import math as math
 from . import paddle as paddle

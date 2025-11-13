@@ -51,12 +51,12 @@ class TestGreenContextLocality(unittest.TestCase):
 
         policy = wp.blocked()
 
-        buffer = wp.zeros_localized((n,), dtype=float, partition_desc=policy, streams=streams)
+        buffer = wp.localized.zeros((n,), dtype=float, partition_desc=policy, streams=streams)
 
         iters = 10
 
         for _ in range(iters):
-            wp.launch_localized(inc, dim=n, inputs=[buffer], mapping=policy, streams=streams)
+            wp.localized.launch(inc, dim=n, inputs=[buffer], mapping=policy, streams=streams)
 
         wp.synchronize_stream(streams[0])
 

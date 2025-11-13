@@ -96,7 +96,7 @@ managedC = wp.zeros_managed((nx, ny), dtype=float)
 wp.launch(range_fill_kernel, dim=(nx, ny), outputs=[managedA], device="cuda:0", block_dim=32)
 
 for iter in range(10):
-    wp.launch_tiled_localized(
+    wp.localized.launch_tiled(
         transpose,
         dim=(nx // BLOCKSIZE, ny // BLOCKSIZE),
         inputs=[managedA],
@@ -114,17 +114,17 @@ for iter in range(10):
 wp.synchronize_stream(get_stream("cuda:0"))
 time.sleep(0.05)
 
-localizedC = wp.empty_localized(
+localizedC = wp.localized.empty(
     shape=(nx, ny), tile_dim=(BLOCKSIZE, BLOCKSIZE), partition_desc=policy, streams=streams, dtype=dtype
 )
 
-localizedA = wp.empty_localized(
+localizedA = wp.localized.empty(
     shape=(nx, ny), tile_dim=(BLOCKSIZE, BLOCKSIZE), partition_desc=policy, streams=streams, dtype=dtype
 )
 
 wp.launch(range_fill_kernel, dim=(nx, ny), outputs=[localizedA])
 for iter in range(10):
-    wp.launch_tiled_localized(
+    wp.localized.launch_tiled(
         transpose,
         dim=(nx // BLOCKSIZE, ny // BLOCKSIZE),
         inputs=[localizedA],
