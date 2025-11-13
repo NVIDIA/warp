@@ -5636,7 +5636,7 @@ Geometry
     :param max_t: The maximum distance along the ray to check for intersections
 
 
-.. py:function:: mesh_query_ray_ordered_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> bool
+.. py:function:: mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> bool
 
     .. hlist::
        :columns: 8
@@ -5644,7 +5644,7 @@ Geometry
        * Kernel
 
     Returns ``True`` immediately upon the first ray hit on the :class:`Mesh` with identifier ``id``.
-    
+
     :param id: The mesh identifier
     :param start: The start point of the ray
     :param dir: The ray direction (should be normalized)

@@ -1595,37 +1595,34 @@ CUDA_CALLABLE inline bool mesh_query_ray_ordered(uint64_t id, const vec3& start,
     
 }
 
-CUDA_CALLABLE inline bool mesh_query_ray_ordered_anyhit(uint64_t id, const vec3& start, const vec3& dir, float max_t)
+CUDA_CALLABLE inline bool mesh_query_ray_anyhit(uint64_t id, const vec3& start, const vec3& dir, float max_t)
 {
     Mesh mesh = mesh_get(id);
 
     int stack[BVH_QUERY_STACK_SIZE];
-    float stack_dist[BVH_QUERY_STACK_SIZE];
 
     stack[0] = *mesh.bvh.root;
-    stack_dist[0] = -FLT_MAX;
-
     int count = 1;
 
     vec3 rcp_dir = vec3(1.0f/dir[0], 1.0f/dir[1], 1.0f/dir[2]);
+    const float eps = 1.e-3f;
+    float temp_t = 0.0f;
 
     while (count)
     {
-        count -= 1;
+        const int node_index = stack[--count];
 
-        const int node_index = stack[count];
-        const float node_dist = stack_dist[count];
+        BVHPackedNodeHalf lower = bvh_load_node(mesh.bvh.node_lowers, node_index);
+        BVHPackedNodeHalf upper = bvh_load_node(mesh.bvh.node_uppers, node_index);
 
-        if (node_dist < max_t)
+        bool hit = intersect_ray_aabb(start, rcp_dir, vec3(lower.x-eps, lower.y-eps, lower.z-eps), vec3(upper.x+eps, upper.y+eps, upper.z+eps), temp_t);
+
+        if (hit && temp_t < max_t)
         {
-            int left_index = mesh.bvh.node_lowers[node_index].i;
-            int right_index = mesh.bvh.node_uppers[node_index].i;
-            bool leaf = mesh.bvh.node_lowers[node_index].b;
-
-            if (leaf)
+            if (lower.b)
             {	
-                const int start_index = left_index;
-                const int end_index = right_index;
+                const int start_index = lower.i;
+                const int end_index = upper.i;
                 // loops through primitives in the leaf
                 for (int primitive_counter = start_index; primitive_counter < end_index ; primitive_counter++)
                 {
@@ -1652,41 +1649,8 @@ CUDA_CALLABLE inline bool mesh_query_ray_ordered_anyhit(uint64_t id, const vec3&
             }
             else
             {
-                const float eps = 1.e-3f;
-
-                BVHPackedNodeHalf left_lower = bvh_load_node(mesh.bvh.node_lowers, left_index);
-                BVHPackedNodeHalf left_upper = bvh_load_node(mesh.bvh.node_uppers, left_index);
-        
-                BVHPackedNodeHalf right_lower = bvh_load_node(mesh.bvh.node_lowers, right_index);
-                BVHPackedNodeHalf right_upper = bvh_load_node(mesh.bvh.node_uppers, right_index);
-
-                float left_dist = FLT_MAX;
-                bool left_hit = intersect_ray_aabb(start, rcp_dir, vec3(left_lower.x-eps, left_lower.y-eps, left_lower.z-eps), vec3(left_upper.x+eps, left_upper.y+eps, left_upper.z+eps), left_dist);
-                       
-                float right_dist = FLT_MAX;
-                bool right_hit = intersect_ray_aabb(start, rcp_dir, vec3(right_lower.x-eps, right_lower.y-eps, right_lower.z-eps), vec3(right_upper.x+eps, right_upper.y+eps, right_upper.z+eps), right_dist);
-                
-
-                if (left_dist < right_dist)
-                {
-                    _swap(left_index, right_index);
-                    _swap(left_dist, right_dist);
-                    _swap(left_hit, right_hit);
-                }
-
-                if (left_hit && left_dist < max_t)
-                {
-                    stack[count] = left_index;
-                    stack_dist[count] = left_dist;
-                    count += 1;
-                }
-
-                if (right_hit && right_dist < max_t)
-                {
-                    stack[count] = right_index;
-                    stack_dist[count] = right_dist;
-                    count += 1;
-                }
+                stack[count++] = lower.i;
+                stack[count++] = upper.i;
             }
         }
     }
@@ -1725,7 +1689,7 @@ CUDA_CALLABLE inline void adj_mesh_query_ray_ordered(
 }
 
 CUDA_CALLABLE inline void
-adj_mesh_query_ray_ordered_anyhit(
+adj_mesh_query_ray_anyhit(
     uint64_t id, const vec3& start, const vec3& dir, float max_t, const bool& ret,
     uint64_t adj_id, vec3& adj_start, vec3& adj_dir, float& adj_max_t, bool& adj_ret
 )

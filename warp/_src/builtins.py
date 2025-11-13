@@ -5880,7 +5880,7 @@ add_builtin(
 )
 
 add_builtin(
-    "mesh_query_ray_ordered_anyhit",
+    "mesh_query_ray_anyhit",
     input_types={
         "id": uint64,
         "start": vec3,

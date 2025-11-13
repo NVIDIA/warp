@@ -3647,7 +3647,7 @@ def mesh_query_ray_ordered(id: uint64, start: vec3f, dir: vec3f, max_t: float32)
     ...
 
 @over
-def mesh_query_ray_ordered_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> bool:
+def mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> bool:
     """Returns ``True`` immediately upon the first ray hit on the :class:`Mesh` with identifier ``id``.
 
     :param id: The mesh identifier
