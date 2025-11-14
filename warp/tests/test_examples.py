@@ -410,11 +410,59 @@ class TestTileExamples(unittest.TestCase):
 
 add_example_test(
     TestTileExamples,
+    name="tile.example_tile_block_cholesky",
+    devices=test_devices,
+    test_options={"headless": True, "N": 2},
+)
+add_example_test(
+    TestTileExamples,
+    name="tile.example_tile_cholesky",
+    devices=test_devices,
+    test_options={"headless": True},
+)
+add_example_test(
+    TestTileExamples,
+    name="tile.example_tile_convolution",
+    devices=cuda_test_devices,
+    test_options={"headless": True},
+)
+add_example_test(
+    TestTileExamples,
+    name="tile.example_tile_fft",
+    devices=cuda_test_devices,
+    test_options={"headless": True},
+)
+add_example_test(
+    TestTileExamples,
+    name="tile.example_tile_filtering",
+    devices=test_devices,
+    test_options={"headless": True},
+)
+add_example_test(
+    TestTileExamples,
+    name="tile.example_tile_matmul",
+    devices=test_devices,
+    test_options={"headless": True},
+)
+add_example_test(
+    TestTileExamples,
     name="tile.example_tile_mcgp",
     devices=test_devices,
     test_options={"height": 128, "headless": True, "usd_required": True},
     test_options_cpu={"slices": 2},
     test_options_cuda={"slices": 5},
+)
+add_example_test(
+    TestTileExamples,
+    name="tile.example_tile_mlp",
+    devices=cuda_test_devices,
+    test_options_cuda={"train_iters": 10, "headless": True},
+)
+add_example_test(
+    TestTileExamples,
+    name="tile.example_tile_nbody",
+    devices=test_devices,
+    test_options={"headless": True, "num_frames": 10, "N": 128},
 )
 
 
