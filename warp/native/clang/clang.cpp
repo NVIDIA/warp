@@ -190,7 +190,6 @@ static std::unique_ptr<llvm::Module> source_to_llvm(bool is_cuda, const std::str
 
         compiler_instance.getLangOpts().CUDA = 1;
         compiler_instance.getLangOpts().CUDAIsDevice = 1;
-        compiler_instance.getLangOpts().CUDAAllowVariadicFunctions = 1;
     }
     else
     {
