@@ -2292,25 +2292,38 @@ class Module:
                 add_ref(arg.type.module)
 
     def hash_module(self) -> bytes:
-        """Get the hash of the module for the current block_dim and partition.
+        """Get the hash of the module for the current block_dim, partition, partition_offsets, and enable_work_stealing.
 
         This function always creates a new `ModuleHasher` instance and computes the hash.
         """
         # compute latest hash
         block_dim = self.options["block_dim"]
         partition = self.options["partition"]
-        self.hashers[(block_dim, partition)] = ModuleHasher(self)
-        return self.hashers[(block_dim, partition)].get_module_hash()
+        partition_offsets = self.options.get("partition_offsets")
+        enable_work_stealing = self.options.get("enable_work_stealing", False)
+        hasher_key = (block_dim, partition, partition_offsets, enable_work_stealing)
+        self.hashers[hasher_key] = ModuleHasher(self)
+        return self.hashers[hasher_key].get_module_hash()
 
-    def get_module_hash(self, block_dim: int | None = None, partition: str | None = None) -> bytes:
-        """Get the hash of the module for the current block_dim and partition.
+    def get_module_hash(
+        self,
+        block_dim: int | None = None,
+        partition: str | None = None,
+        partition_offsets: str | None = None,
+        enable_work_stealing: bool | None = None,
+    ) -> bytes:
+        """Get the hash of the module for the current block_dim, partition, partition_offsets, and enable_work_stealing.
 
-        If a hash has not been computed for the current block_dim/partition, it will be computed and cached.
+        If a hash has not been computed for the current configuration, it will be computed and cached.
         """
         if block_dim is None:
             block_dim = self.options["block_dim"]
         if partition is None:
-            partition = self.options["partition"]
+            partition = self.options.get("partition")
+        if partition_offsets is None:
+            partition_offsets = self.options.get("partition_offsets")
+        if enable_work_stealing is None:
+            enable_work_stealing = self.options.get("enable_work_stealing", False)
 
         if self.has_unresolved_static_expressions:
             # The module hash currently does not account for unresolved static expressions
@@ -2327,8 +2340,9 @@ class Module:
             self.has_unresolved_static_expressions = False
 
         # compute the hash if needed
-        # Use (block_dim, partition) as the key to ensure different partitions get different hashes
-        hasher_key = (block_dim, partition)
+        # Use (block_dim, partition, partition_offsets, enable_work_stealing) as the key
+        # to ensure different configurations get different hashes
+        hasher_key = (block_dim, partition, partition_offsets, enable_work_stealing)
         if hasher_key not in self.hashers:
             self.hashers[hasher_key] = ModuleHasher(self)
 
@@ -2608,17 +2622,21 @@ class Module:
         active_block_dim = self.options["block_dim"]
 
         # check if executable module is already loaded and not stale
-        # Include partition in the cache key to avoid reusing modules compiled with different partition settings
-        exec = self.execs.get((device.context, active_block_dim, partition))
+        # Include partition, partition_offsets, and enable_work_stealing in the cache key
+        # to avoid reusing modules compiled with different settings
+        cache_key = (device.context, active_block_dim, partition, partition_offsets, enable_work_stealing)
+        exec = self.execs.get(cache_key)
         if exec is not None:
-            if self.options["strip_hash"] or (exec.module_hash == self.get_module_hash(active_block_dim)):
+            if self.options["strip_hash"] or (
+                exec.module_hash == self.get_module_hash(active_block_dim, partition, partition_offsets, enable_work_stealing)
+            ):
                 return exec
 
         # quietly avoid repeated build attempts to reduce error spew
         if device.context in self.failed_builds:
             return None
 
-        module_hash = self.get_module_hash(active_block_dim, partition)
+        module_hash = self.get_module_hash(active_block_dim, partition, partition_offsets, enable_work_stealing)
 
         # use a unique module path using the module short hash
         module_name_short = self.get_module_identifier()
@@ -2693,13 +2711,15 @@ class Module:
                 self.cpu_exec_id += 1
                 runtime.llvm.wp_load_obj(binary_path.encode("utf-8"), module_handle.encode("utf-8"))
                 module_exec = ModuleExec(module_handle, module_hash, device, meta)
-                self.execs[(None, active_block_dim, partition)] = module_exec
+                cache_key = (None, active_block_dim, partition, partition_offsets, enable_work_stealing)
+                self.execs[cache_key] = module_exec
 
             elif device.is_cuda:
                 cuda_module = warp._src.build.load_cuda(binary_path, device)
                 if cuda_module is not None:
                     module_exec = ModuleExec(cuda_module, module_hash, device, meta)
-                    self.execs[(device.context, active_block_dim, partition)] = module_exec
+                    cache_key = (device.context, active_block_dim, partition, partition_offsets, enable_work_stealing)
+                    self.execs[cache_key] = module_exec
                 else:
                     module_load_timer.extra_msg = " (error)"
                     raise Exception(f"Failed to load CUDA module '{self.name}'")
@@ -2722,7 +2742,15 @@ class Module:
 
     # lookup kernel entry points based on name, called after compilation / module load
     def get_kernel_hooks(self, kernel, device: Device) -> KernelHooks:
-        module_exec = self.execs.get((device.context, self.options["block_dim"]))
+        # Use the same cache key format as in load()
+        cache_key = (
+            device.context,
+            self.options["block_dim"],
+            self.options.get("partition"),
+            self.options.get("partition_offsets"),
+            self.options.get("enable_work_stealing", False),
+        )
+        module_exec = self.execs.get(cache_key)
         if module_exec is not None:
             return module_exec.get_kernel_hooks(kernel)
         else:
