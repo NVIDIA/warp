@@ -55,6 +55,17 @@ def conv_tiled(x: wp.array2d(dtype=wp.vec2d), y: wp.array2d(dtype=wp.vec2d), z: 
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the opening of any graphical windows.",
+    )
+
+    args = parser.parse_known_args()[0]
+
     rng = np.random.default_rng(42)
 
     # Create noisy input signal
@@ -90,24 +101,21 @@ if __name__ == "__main__":
     y_ref = np.fft.ifft(f_np * np.fft.fft(x_np))
     np.testing.assert_allclose(y_ref, y_test)
 
-try:
-    import matplotlib.pyplot as plt
+    if not args.headless:
+        import matplotlib.pyplot as plt
 
-    fig, ax = plt.subplots(figsize=(10, 5))
+        fig, ax = plt.subplots(figsize=(10, 5))
 
-    ax.plot(
-        x,
-        color="#DDDDDD",
-        linewidth=2,
-        label="Original",
-    )
-    ax.plot(y_test[0, :].real, color="#76B900", linewidth=3, label="Smoothed")
+        ax.plot(
+            x,
+            color="#DDDDDD",
+            linewidth=2,
+            label="Original",
+        )
+        ax.plot(y_test[0, :].real, color="#76B900", linewidth=3, label="Smoothed")
 
-    ax.legend()
-    ax.grid(True)
+        ax.legend()
+        ax.grid(True)
 
-    plt.tight_layout()
-    plt.show()
-
-except ModuleNotFoundError:
-    print("Matplotlib not available; skipping figure")
+        plt.tight_layout()
+        plt.show()

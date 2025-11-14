@@ -57,29 +57,45 @@ def tile_gemm(A: wp.array2d(dtype=wp.float32), B: wp.array2d(dtype=wp.float16), 
 
 
 if __name__ == "__main__":
-    # generate some tile aligned matrix dimensions
-    M = TILE_M * 7
-    K = TILE_K * 6
-    N = TILE_N * 5
+    import argparse
 
-    rng = np.random.default_rng(42)
-    A = rng.random((M, K), dtype=np.float32)
-    B = rng.random((K, N), dtype=np.float32).astype(np.float16)
-    C = np.zeros((M, N), dtype=np.float64)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing output.",
+    )
 
-    A_wp = wp.array(A, requires_grad=True)
-    B_wp = wp.array(B, requires_grad=True)
-    C_wp = wp.array(C, requires_grad=True)
+    args = parser.parse_known_args()[0]
 
-    with wp.Tape() as tape:
-        wp.launch_tiled(
-            tile_gemm,
-            dim=(M // TILE_M, N // TILE_N),
-            inputs=[A_wp, B_wp],
-            outputs=[C_wp],
-            block_dim=TILE_THREADS,
-        )
+    with wp.ScopedDevice(args.device):
+        # generate some tile aligned matrix dimensions
+        M = TILE_M * 7
+        K = TILE_K * 6
+        N = TILE_N * 5
 
-    np.testing.assert_allclose(C_wp.numpy(), A @ B, atol=1.0e-4)
+        rng = np.random.default_rng(42)
+        A = rng.random((M, K), dtype=np.float32)
+        B = rng.random((K, N), dtype=np.float32).astype(np.float16)
+        C = np.zeros((M, N), dtype=np.float64)
 
-    print("Example matrix multiplication passed")
+        A_wp = wp.array(A, requires_grad=True)
+        B_wp = wp.array(B, requires_grad=True)
+        C_wp = wp.array(C, requires_grad=True)
+
+        with wp.Tape() as tape:
+            wp.launch_tiled(
+                tile_gemm,
+                dim=(M // TILE_M, N // TILE_N),
+                inputs=[A_wp, B_wp],
+                outputs=[C_wp],
+                block_dim=TILE_THREADS,
+            )
+
+        np.testing.assert_allclose(C_wp.numpy(), A @ B, atol=1.0e-4)
+
+        if not args.headless:
+            print("C (Warp):\n", C_wp.numpy())
+            print("C (Numpy):\n", A @ B)
+            print("Example matrix multiplication passed")

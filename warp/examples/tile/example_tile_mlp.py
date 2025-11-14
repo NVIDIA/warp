@@ -186,6 +186,7 @@ class Example:
         self.num_batches = int((IMG_WIDTH * IMG_HEIGHT) / BATCH_SIZE)
         self.max_iters = train_iters
         self.max_epochs = max(1, int(self.max_iters / self.num_batches))
+        self.output_images = {}
 
     def train_warp(self):
         params = [
@@ -266,7 +267,7 @@ class Example:
             block_dim=NUM_THREADS,
         )
 
-        self.save_image("example_tile_mlp.jpg", output.numpy())
+        self.output_images["example_tile_mlp.jpg"] = output.numpy()
 
     def train_torch(self):
         import torch as tc
@@ -361,14 +362,15 @@ class Example:
         z = tc.relu(weights_2 @ z + bias_2)
         z = tc.relu(weights_3 @ z + bias_3)
 
-        self.save_image("example_tile_mlp_torch.jpg", z.detach().cpu().numpy())
+        self.output_images["example_tile_mlp_torch.jpg"] = z.detach().cpu().numpy()
 
-    def save_image(self, name, output):
-        predicted_image = output.T.reshape(IMG_WIDTH, IMG_HEIGHT, 3)
-        predicted_image = (predicted_image * 255).astype(np.uint8)
+    def save_images(self):
+        for name, output in self.output_images.items():
+            predicted_image = output.T.reshape(IMG_WIDTH, IMG_HEIGHT, 3)
+            predicted_image = (predicted_image * 255).astype(np.uint8)
 
-        predicted_image_pil = Image.fromarray(predicted_image)
-        predicted_image_pil.save(name)
+            predicted_image_pil = Image.fromarray(predicted_image)
+            predicted_image_pil.save(name)
 
 
 if __name__ == "__main__":
@@ -376,6 +378,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--train_iters", type=int, default=20000, help="Total number of training iterations.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing the saving of output images.",
+    )
 
     args = parser.parse_known_args()[0]
 
@@ -383,3 +390,6 @@ if __name__ == "__main__":
         example = Example(args.train_iters)
         example.train_warp()
         # example.train_torch()
+
+        if not args.headless:
+            example.save_images()
