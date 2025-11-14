@@ -35,6 +35,29 @@ def test_zeros():
     wp.expect_eq(arr[1][1], 4)
     wp.expect_eq(arr[1][2], 5)
 
+    r0 = arr[0]
+    wp.expect_eq(r0.shape[0], 3)
+    wp.expect_eq(r0.shape[1], 0)
+    wp.expect_eq(r0[0], 0)
+    wp.expect_eq(r0[1], 1)
+    wp.expect_eq(r0[2], 2)
+
+    r1 = arr[1]
+    wp.expect_eq(r1.shape[0], 3)
+    wp.expect_eq(r1.shape[1], 0)
+    wp.expect_eq(r1[0], 3)
+    wp.expect_eq(r1[1], 4)
+    wp.expect_eq(r1[2], 5)
+
+    s = arr[:2, 1:]
+    wp.expect_eq(s.shape[0], 2)
+    wp.expect_eq(s.shape[1], 2)
+    wp.expect_eq(s.shape[2], 0)
+    wp.expect_eq(s[0, 0], 1)
+    wp.expect_eq(s[0, 1], 2)
+    wp.expect_eq(s[1, 0], 4)
+    wp.expect_eq(s[1, 1], 5)
+
 
 @wp.func
 def test_func_arg_func(arr: wp.array(ndim=2, dtype=int)):
@@ -58,10 +81,9 @@ def test_func_arg():
 
 @wp.func
 def test_func_return_func():
-    arr = wp.zeros(shape=(2, 3), dtype=int)
+    arr = wp.zeros(shape=2, dtype=int)
     for i in range(arr.shape[0]):
-        for j in range(arr.shape[1]):
-            arr[i][j] = i * arr.shape[1] + j
+        arr[i] = i
 
     return arr
 
@@ -70,12 +92,8 @@ def test_func_return_func():
 def test_func_return():
     arr = test_func_return_func()
 
-    wp.expect_eq(arr[0][0], 0)
-    wp.expect_eq(arr[0][1], 1)
-    wp.expect_eq(arr[0][2], 2)
-    wp.expect_eq(arr[1][0], 3)
-    wp.expect_eq(arr[1][1], 4)
-    wp.expect_eq(arr[1][2], 5)
+    wp.expect_eq(arr[0], 0)
+    wp.expect_eq(arr[1], 1)
 
 
 @wp.func

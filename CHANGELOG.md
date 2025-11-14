@@ -36,6 +36,10 @@
 - Improve documentation and error messages about requiring a BVH for `fem.lookup` and related functionality ([GH-1072](https://github.com/NVIDIA/warp/issues/1072)).
 - Fix reference cycles introduced by `warp.fem.Temporary` and `warp.fem.ShapeBasisSpace` ([GH-1076](https://github.com/NVIDIA/warp/issues/1076)).
 - Fix `.ptr` access on kernel-local arrays ([GH-999](https://github.com/NVIDIA/warp/issues/999)).
+- Fix indexing of kernel-local arrays when requesting a subarray
+  ([GH-1081](https://github.com/NVIDIA/warp/issues/1081)).
+- Fix `wp.zeros()` to accept a single integer for the shape parameter in kernels (e.g. `wp.zeros(shape=123, dtype=float)`)
+  ([GH-1081](https://github.com/NVIDIA/warp/issues/1081)).
 
 ## [1.10.0] - 2025-11-02
 
