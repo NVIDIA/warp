@@ -66,56 +66,57 @@ if __name__ == "__main__":
 
     args = parser.parse_known_args()[0]
 
-    rng = np.random.default_rng(42)
+    with wp.ScopedDevice("cuda:0"):
+        rng = np.random.default_rng(42)
 
-    # Create noisy input signal
-    t = np.linspace(0, 2 * np.pi, TILE_N, dtype=np.float64)
-    x = np.sin(t) + 0.5 * rng.random(TILE_N, dtype=np.float64)
+        # Create noisy input signal
+        t = np.linspace(0, 2 * np.pi, TILE_N, dtype=np.float64)
+        x = np.sin(t) + 0.5 * rng.random(TILE_N, dtype=np.float64)
 
-    # Create filter. This filter keeps only ~10% of the frequencies at the center
-    # of the spectrum.
-    f = np.ones_like(x)
-    freq = np.fft.fftfreq(TILE_N)
-    f[np.abs(freq) > 0.05] = 0.0
-    f[np.abs(freq) <= 0.05] = 1.0
+        # Create filter. This filter keeps only ~10% of the frequencies at the center
+        # of the spectrum.
+        f = np.ones_like(x)
+        freq = np.fft.fftfreq(TILE_N)
+        f[np.abs(freq) > 0.05] = 0.0
+        f[np.abs(freq) <= 0.05] = 1.0
 
-    # Create Warp input data
-    # We use vec2d to hold complex numbers
-    x_h = np.zeros((TILE_M, TILE_N, 2), dtype=np.float64)
-    f_h = np.zeros_like(x_h)
-    y_h = np.zeros_like(f_h)
+        # Create Warp input data
+        # We use vec2d to hold complex numbers
+        x_h = np.zeros((TILE_M, TILE_N, 2), dtype=np.float64)
+        f_h = np.zeros_like(x_h)
+        y_h = np.zeros_like(f_h)
 
-    x_h[:, :, 0] = x
-    f_h[:, :, 0] = f
+        x_h[:, :, 0] = x
+        f_h[:, :, 0] = f
 
-    x_wp = wp.array2d(x_h, dtype=wp.vec2d)
-    f_wp = wp.array2d(f_h, dtype=wp.vec2d)
-    y_wp = wp.array2d(y_h, dtype=wp.vec2d)
+        x_wp = wp.array2d(x_h, dtype=wp.vec2d)
+        f_wp = wp.array2d(f_h, dtype=wp.vec2d)
+        y_wp = wp.array2d(y_h, dtype=wp.vec2d)
 
-    wp.launch_tiled(conv_tiled, dim=[1, 1], inputs=[x_wp, f_wp], outputs=[y_wp], block_dim=BLOCK_DIM)
+        wp.launch_tiled(conv_tiled, dim=[1, 1], inputs=[x_wp, f_wp], outputs=[y_wp], block_dim=BLOCK_DIM)
 
-    # Extract output and compare with numpy
-    x_np = cplx(x_h)
-    f_np = cplx(f_h)
-    y_test = cplx(y_wp.numpy())
-    y_ref = np.fft.ifft(f_np * np.fft.fft(x_np))
-    np.testing.assert_allclose(y_ref, y_test)
+        # Extract output and compare with numpy
+        x_np = cplx(x_h)
+        f_np = cplx(f_h)
+        y_test = cplx(y_wp.numpy())
+        y_ref = np.fft.ifft(f_np * np.fft.fft(x_np))
+        np.testing.assert_allclose(y_ref, y_test)
 
-    if not args.headless:
-        import matplotlib.pyplot as plt
+        if not args.headless:
+            import matplotlib.pyplot as plt
 
-        fig, ax = plt.subplots(figsize=(10, 5))
+            fig, ax = plt.subplots(figsize=(10, 5))
 
-        ax.plot(
-            x,
-            color="#DDDDDD",
-            linewidth=2,
-            label="Original",
-        )
-        ax.plot(y_test[0, :].real, color="#76B900", linewidth=3, label="Smoothed")
+            ax.plot(
+                x,
+                color="#DDDDDD",
+                linewidth=2,
+                label="Original",
+            )
+            ax.plot(y_test[0, :].real, color="#76B900", linewidth=3, label="Smoothed")
 
-        ax.legend()
-        ax.grid(True)
+            ax.legend()
+            ax.grid(True)
 
-        plt.tight_layout()
-        plt.show()
+            plt.tight_layout()
+            plt.show()
