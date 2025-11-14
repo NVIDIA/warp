@@ -79,10 +79,16 @@ class DeviceBuffer
     /// @param cpuData pointer to externally managed host memory
     /// @param gpuData pointer to externally managed device memory
     /// @return An instance of this class using move semantics
+#ifdef __NVCC__
+    #pragma nv_diag_suppress 177
+#endif
     static DeviceBuffer create(uint64_t size, void *cpuData, void *gpuData)
     {
         return DeviceBuffer(size, cpuData, gpuData);
     }
+#ifdef __NVCC__
+    #pragma nv_diag_default 177
+#endif
 
     /// @brief Constructor
     /// @param size byte size of buffer to be initialized
@@ -176,6 +182,9 @@ class DeviceBuffer
     }
 
     /// @brief Returns the size in bytes of the raw memory buffer managed by this allocator.
+#ifdef __NVCC__
+    #pragma nv_diag_suppress 177
+#endif
     uint64_t size() const
     {
         return mSize;
@@ -191,6 +200,9 @@ class DeviceBuffer
     {
         return mSize == 0;
     }
+#ifdef __NVCC__
+    #pragma nv_diag_default 177
+#endif
     //@}
 
     /// @brief Detach device data so it is not dealloced when this buffer is destroyed
