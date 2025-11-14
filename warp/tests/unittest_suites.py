@@ -341,6 +341,7 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_bool import TestBool
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
     from warp.tests.test_codegen import TestCodeGen
+    from warp.tests.test_coloring import TestColoring
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_conditional import TestConditional
     from warp.tests.test_copy import TestCopy
@@ -380,6 +381,7 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestBuiltinsResolution,
         TestBvh,
         TestCodeGen,
+        TestColoring,
         TestConstants,
         TestConditional,
         TestCopy,
