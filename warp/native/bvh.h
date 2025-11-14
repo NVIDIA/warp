@@ -289,8 +289,8 @@ CUDA_CALLABLE inline int bvh_get_num_bounds(uint64_t id)
 // across the block
 struct bvh_stack_t
 {
-    inline int operator[](int depth) const { return ptr[depth*WP_TILE_BLOCK_DIM]; }
-    inline int& operator[](int depth) { return ptr[depth*WP_TILE_BLOCK_DIM]; }
+    CUDA_CALLABLE inline int operator[](int depth) const { return ptr[depth*WP_TILE_BLOCK_DIM]; }
+    CUDA_CALLABLE inline int& operator[](int depth) { return ptr[depth*WP_TILE_BLOCK_DIM]; }
 
     int* ptr;
 
