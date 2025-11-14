@@ -52,11 +52,18 @@ def run_cmd(cmd):
         print(cmd)
 
     try:
-        return subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        # Print output even on success to show warnings
+        if output:
+            decoded_output = output.decode()
+            if decoded_output.strip():  # Only print if not just whitespace
+                # In parallel builds, associate output with its command for clarity
+                # Use single print to avoid interleaving with other processes
+                print(f"Output from: {cmd}\n{decoded_output}")
+        return output
     except subprocess.CalledProcessError as e:
-        print("Command failed with exit code:", e.returncode)
-        print("Command output was:")
-        print(e.output.decode())
+        # Single print to avoid interleaving in parallel builds
+        print(f"Command failed with exit code {e.returncode}: {cmd}\nCommand output was:\n{e.output.decode()}")
         raise e
 
 
