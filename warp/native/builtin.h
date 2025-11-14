@@ -77,8 +77,8 @@
 __device__ inline void __debugbreak() { __brkpt(); }
 #endif
 
-#if defined(__clang__) && defined(__CUDA__) && defined(__CUDA_ARCH__)
-// clang compiling CUDA code, device mode (NOTE: Used when building core library with Clang)
+#if defined(__clang__) && defined(__CUDA__)
+// clang compiling CUDA code, host and device (NOTE: Used when building core library with Clang)
 #include <cuda_fp16.h>
 #endif
 
