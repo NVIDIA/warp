@@ -4276,6 +4276,7 @@ class Runtime:
                 ctypes.c_bool,  # compile_time_trace
                 ctypes.c_bool,  # precompiled_headers
                 ctypes.c_char_p,  # output_path
+                ctypes.c_char_p,  # kernel_cache_dir
                 ctypes.c_size_t,  # num_ltoirs
                 ctypes.POINTER(ctypes.c_char_p),  # ltoirs
                 ctypes.POINTER(ctypes.c_size_t),  # ltoir_sizes
