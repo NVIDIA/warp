@@ -2094,8 +2094,9 @@ inline CUDA_CALLABLE_DEVICE int neighbor_ring_idx(int me, int r, int k) {
     
     int offset = (r % 2 == 1) ? (r + 1) / 2 : -(r / 2);
     int neighbor = me + offset;
+    // Use proper modulo to handle large offsets
+    neighbor = neighbor % k;
     if (neighbor < 0) neighbor += k;
-    else if (neighbor >= k) neighbor -= k;
     return neighbor;
 }
 
@@ -2218,7 +2219,10 @@ inline CUDA_CALLABLE_DEVICE fetch_result ws_try_get_next_item_with_sweep(const w
         
         if (view.instrumentation_buffer != nullptr) {
             int global_idx = victim_line * view.m + item_idx;
-            view.instrumentation_buffer[global_idx] = me;
+            // Bounds check: only write if within valid work items range
+            if (global_idx < view.max_work_items) {
+                view.instrumentation_buffer[global_idx] = me;
+            }
         }
         
         if (r != 0) {

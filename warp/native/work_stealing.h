@@ -82,11 +82,10 @@ __device__ inline int neighbor_ring_idx(int me, int r, int k) {
     }
 
     int neighbor = me + offset;
-    // Handle wrap-around
+    // Use proper modulo to handle large offsets
+    neighbor = neighbor % k;
     if (neighbor < 0) {
         neighbor += k;
-    } else if (neighbor >= k) {
-        neighbor -= k;
     }
 
     return neighbor;
@@ -309,7 +308,10 @@ __device__ inline fetch_result ws_try_get_next_item_with_sweep(const ws_queues_v
         // Optional instrumentation: record which kernel processed this work item
         if (view.instrumentation_buffer != nullptr) {
             int global_idx = victim_line * view.m + item_idx;
-            view.instrumentation_buffer[global_idx] = me;
+            // Bounds check: only write if within valid work items range
+            if (global_idx < view.max_work_items) {
+                view.instrumentation_buffer[global_idx] = me;
+            }
         }
 
         // Only advance if we're stealing (r != 0)

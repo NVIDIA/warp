@@ -3953,7 +3953,7 @@ class Runtime:
             self.core.wp_ws_queues_create.argtypes = [ctypes.c_int, ctypes.c_int]
             self.core.wp_ws_queues_create.restype = ctypes.c_uint64
             self.core.wp_ws_queues_destroy.argtypes = [ctypes.c_uint64]
-            self.core.wp_ws_queues_next_epoch.argtypes = [ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_ws_queues_next_epoch.argtypes = [ctypes.c_uint64, ctypes.c_int, ctypes.c_int]
             self.core.wp_ws_queues_get_epoch.argtypes = [ctypes.c_uint64]
             self.core.wp_ws_queues_get_epoch.restype = ctypes.c_int
             self.core.wp_ws_queues_num_deques.argtypes = [ctypes.c_uint64]

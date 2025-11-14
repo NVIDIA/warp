@@ -487,7 +487,11 @@ def blocked(
     if dim is None or places is None:
         raise ValueError("blocked() requires either both dim and places, or neither (for policy mode)")
 
-    dim = tuple(dim) if isinstance(dim, list) else dim
+    # Normalize dim to tuple
+    if isinstance(dim, int):
+        dim = (dim,)
+    elif isinstance(dim, list):
+        dim = tuple(dim)
 
     # Compute total size (flatten the problem space) - this is the actual work size
     total_size = 1
@@ -579,7 +583,15 @@ def cyclic(
     # Direct mode: compute PartitionDesc
     if dim is None or places is None:
         raise ValueError("cyclic() requires either both dim and places, or neither (for policy mode)")
-    dim = tuple(int(d) for d in dim) if isinstance(dim, list) else tuple(int(d) for d in dim)
+
+    # Normalize dim to tuple
+    if isinstance(dim, int):
+        dim = (dim,)
+    elif isinstance(dim, list):
+        dim = tuple(int(d) for d in dim)
+    else:
+        dim = tuple(int(d) for d in dim)
+
     rank = len(dim)
 
     # Parse places
@@ -1752,9 +1764,10 @@ def launch(
     if callable(mapping):
         mapping = mapping(dim=(total_blocks,), streams=streams)
 
-    # Get max_work_index from mapping if available, otherwise use total_blocks
-    # This handles cases where total_blocks doesn't evenly divide across places
-    max_work_index = mapping.max_work_index if mapping.max_work_index is not None else total_blocks
+    # For regular (non-tiled) kernels, max_work_index should always be in thread space
+    # The partition distributes blocks, but bounds checking happens at the thread level
+    # So we always use total_threads as the maximum valid thread index
+    max_work_index = total_threads
 
     # Default primary stream to first stream
     if primary_stream is None:
@@ -1783,7 +1796,6 @@ def launch(
     if work_stealing:
         queues = wp.WorkStealingQueues(k=len(streams))
         queues.next_epoch(m=mapping.partition.get_size())
-        print("qview: ", queues.view())
         qview = queues.view()
 
     # Step 3: Launch kernels on all places in parallel
@@ -1928,14 +1940,8 @@ def launch_tiled(
     qview = None
     if work_stealing:
         queues = wp.WorkStealingQueues(k=len(streams))
-        print("mapping.partition.get_size(): ", mapping.partition.get_size())
-        print(f"mapping {mapping}")
         queues.next_epoch(m=mapping.partition.get_size(), max_work_items=total_tiles)
-
         qview = queues.view()
-        qview.max_work_items = total_tiles
-        print("qview: ", queues.view())
-        print("total_tiles: ", total_tiles)
 
     # Step 3: Launch kernels on all places in parallel
     for place_idx, offset in enumerate(mapping.offsets):

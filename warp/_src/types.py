@@ -4494,6 +4494,7 @@ class WorkStealingQueues:
 
         Args:
             m: Items per deque bound for this epoch
+            max_work_items: Maximum valid work item index (total number of work items)
 
         This allows reusing the same queue structure with new work.
         All front/back pointers are reset to 0, bounds are set to m,
@@ -4502,6 +4503,8 @@ class WorkStealingQueues:
         """
         if m <= 0:
             raise ValueError(f"m must be positive, got m={m}")
+        if max_work_items <= 0:
+            raise ValueError(f"max_work_items must be positive, got max_work_items={max_work_items}")
         self.runtime.core.wp_ws_queues_next_epoch(self.id, m, max_work_items)
 
     @property
@@ -4540,6 +4543,10 @@ class WorkStealingQueues:
         import ctypes
 
         view = WsQueuesView()
+        # Explicitly ensure instrumentation_buffer is NULL before C++ call
+        # (should already be None from ctypes default initialization, but be defensive)
+        view.instrumentation_buffer = None
+
         result = self.runtime.core.wp_ws_queues_get_view(self.id, ctypes.byref(view))
 
         if not result:
