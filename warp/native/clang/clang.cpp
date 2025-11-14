@@ -161,7 +161,7 @@ static std::unique_ptr<llvm::Module> source_to_llvm(bool is_cuda, const std::str
     clang::CompilerInstance compiler_instance;
 
     auto& compiler_invocation = compiler_instance.getInvocation();
-    clang::CompilerInvocation::CreateFromArgs(compiler_invocation, args, *diagnostic_engine.release());
+    clang::CompilerInvocation::CreateFromArgs(compiler_invocation, args, *diagnostic_engine);
 
     if(debug)
     {
@@ -209,7 +209,7 @@ static std::unique_ptr<llvm::Module> source_to_llvm(bool is_cuda, const std::str
     }
 
     #if LLVM_VERSION_MAJOR >= 21
-    compiler_instance.createDiagnostics(*llvm::vfs::getRealFileSystem(), text_diagnostic_printer.get(), false);
+    compiler_instance.createDiagnostics(diagnostic_engine->getClient(), false);
     #else
     compiler_instance.createDiagnostics(text_diagnostic_printer.get(), false);
     #endif
