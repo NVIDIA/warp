@@ -56,6 +56,7 @@ import warp
 import warp._src.build
 import warp._src.codegen
 import warp._src.config
+from warp._src.localized import Layout
 from warp._src.types import Array, launch_bounds_t, type_repr
 
 _wp_module_name_ = "warp.context"
@@ -1915,7 +1916,53 @@ class ModuleBuilder:
         if device == "cpu":
             source = warp._src.codegen.cpu_module_header.format(block_dim=self.options["block_dim"]) + source
         else:
-            source = warp._src.codegen.cuda_module_header.format(block_dim=self.options["block_dim"]) + source
+            # Extract partition attributes from Layout object
+            partition_layout = self.options["partition"]
+            if partition_layout is not None:
+                partition_rank = partition_layout.rank
+                partition_shape = partition_layout.shape
+                partition_strides = partition_layout.stride
+            else:
+                # do not
+                partition_rank = 0
+                partition_shape = (
+                    1,
+                )  # to avoid empty initializer with an array of unspecified size (same in other default cases)
+                partition_strides = (1,)
+
+            partition_offsets_layout = self.options.get("partition_offsets")
+            if partition_offsets_layout is not None:
+                partition_offsets_rank = partition_offsets_layout.rank
+                partition_offsets_shape = partition_offsets_layout.shape
+                partition_offsets_strides = partition_offsets_layout.stride
+            else:
+                partition_offsets_rank = 0
+                partition_offsets_shape = (1,)
+                partition_offsets_strides = (1,)  # Fixed: must be a tuple!
+
+            partition_shape_str = ", ".join(map(str, partition_shape)) if partition_shape else ""
+            partition_strides_str = ", ".join(map(str, partition_strides)) if partition_strides else ""
+
+            partition_offsets_shape_str = (
+                ", ".join(map(str, partition_offsets_shape)) if partition_offsets_shape else ""
+            )
+            partition_offsets_strides_str = (
+                ", ".join(map(str, partition_offsets_strides)) if partition_offsets_strides else ""
+            )
+
+            source = (
+                warp._src.codegen.cuda_module_header.format(
+                    block_dim=self.options["block_dim"],
+                    have_partition=self.options["have_partition"],
+                    partition_rank=partition_rank,
+                    partition_shape=partition_shape_str,
+                    partition_strides=partition_strides_str,
+                    partition_offsets_rank=partition_offsets_rank,
+                    partition_offsets_shape=partition_offsets_shape_str,
+                    partition_offsets_strides=partition_offsets_strides_str,
+                )
+                + source
+            )
 
         return source
 
@@ -2074,7 +2121,7 @@ class Module:
         # set of device contexts where the build has failed
         self.failed_builds = set()
 
-        # hash data, including the module hash. Module may store multiple hashes (one per block_dim used)
+        # hash data, including the module hash. Module may store multiple hashes (one per block_dim and partition used)
         self.hashers = {}
 
         # LLVM executable modules are identified using strings.  Since it's possible for multiple
@@ -2245,22 +2292,38 @@ class Module:
                 add_ref(arg.type.module)
 
     def hash_module(self) -> bytes:
-        """Get the hash of the module for the current block_dim.
+        """Get the hash of the module for the current block_dim, partition, partition_offsets, and enable_work_stealing.
 
         This function always creates a new `ModuleHasher` instance and computes the hash.
         """
         # compute latest hash
         block_dim = self.options["block_dim"]
-        self.hashers[block_dim] = ModuleHasher(self)
-        return self.hashers[block_dim].get_module_hash()
+        partition = self.options["partition"]
+        partition_offsets = self.options.get("partition_offsets")
+        enable_work_stealing = self.options.get("enable_work_stealing", False)
+        hasher_key = (block_dim, partition, partition_offsets, enable_work_stealing)
+        self.hashers[hasher_key] = ModuleHasher(self)
+        return self.hashers[hasher_key].get_module_hash()
 
-    def get_module_hash(self, block_dim: int | None = None) -> bytes:
-        """Get the hash of the module for the current block_dim.
+    def get_module_hash(
+        self,
+        block_dim: int | None = None,
+        partition: str | None = None,
+        partition_offsets: str | None = None,
+        enable_work_stealing: bool | None = None,
+    ) -> bytes:
+        """Get the hash of the module for the current block_dim, partition, partition_offsets, and enable_work_stealing.
 
-        If a hash has not been computed for the current block_dim, it will be computed and cached.
+        If a hash has not been computed for the current configuration, it will be computed and cached.
         """
         if block_dim is None:
             block_dim = self.options["block_dim"]
+        if partition is None:
+            partition = self.options.get("partition")
+        if partition_offsets is None:
+            partition_offsets = self.options.get("partition_offsets")
+        if enable_work_stealing is None:
+            enable_work_stealing = self.options.get("enable_work_stealing", False)
 
         if self.has_unresolved_static_expressions:
             # The module hash currently does not account for unresolved static expressions
@@ -2277,10 +2340,13 @@ class Module:
             self.has_unresolved_static_expressions = False
 
         # compute the hash if needed
-        if block_dim not in self.hashers:
-            self.hashers[block_dim] = ModuleHasher(self)
+        # Use (block_dim, partition, partition_offsets, enable_work_stealing) as the key
+        # to ensure different configurations get different hashes
+        hasher_key = (block_dim, partition, partition_offsets, enable_work_stealing)
+        if hasher_key not in self.hashers:
+            self.hashers[hasher_key] = ModuleHasher(self)
 
-        return self.hashers[block_dim].get_module_hash()
+        return self.hashers[hasher_key].get_module_hash()
 
     def _use_ptx(self, device) -> bool:
         return device.get_cuda_output_format(self.options.get("cuda_output")) == "ptx"
@@ -2535,6 +2601,9 @@ class Module:
         self,
         device,
         block_dim: int | None = None,
+        partition: warp._src.localized.Layout | None = None,
+        partition_offsets: warp._src.localized.Layout | None = None,
+        enable_work_stealing: bool = False,
         binary_path: os.PathLike | None = None,
         output_arch: int | None = None,
         meta_path: os.PathLike | None = None,
@@ -2545,19 +2614,29 @@ class Module:
         if block_dim is not None:
             self.options["block_dim"] = block_dim
 
+        self.options["have_partition"] = 1 if partition is not None else 0
+        self.options["partition"] = partition
+        self.options["partition_offsets"] = partition_offsets
+        self.options["enable_work_stealing"] = enable_work_stealing
+
         active_block_dim = self.options["block_dim"]
 
         # check if executable module is already loaded and not stale
-        exec = self.execs.get((device.context, active_block_dim))
+        # Include partition, partition_offsets, and enable_work_stealing in the cache key
+        # to avoid reusing modules compiled with different settings
+        cache_key = (device.context, active_block_dim, partition, partition_offsets, enable_work_stealing)
+        exec = self.execs.get(cache_key)
         if exec is not None:
-            if self.options["strip_hash"] or (exec.module_hash == self.get_module_hash(active_block_dim)):
+            if self.options["strip_hash"] or (
+                exec.module_hash == self.get_module_hash(active_block_dim, partition, partition_offsets, enable_work_stealing)
+            ):
                 return exec
 
         # quietly avoid repeated build attempts to reduce error spew
         if device.context in self.failed_builds:
             return None
 
-        module_hash = self.get_module_hash(active_block_dim)
+        module_hash = self.get_module_hash(active_block_dim, partition, partition_offsets, enable_work_stealing)
 
         # use a unique module path using the module short hash
         module_name_short = self.get_module_identifier()
@@ -2632,13 +2711,15 @@ class Module:
                 self.cpu_exec_id += 1
                 runtime.llvm.wp_load_obj(binary_path.encode("utf-8"), module_handle.encode("utf-8"))
                 module_exec = ModuleExec(module_handle, module_hash, device, meta)
-                self.execs[(None, active_block_dim)] = module_exec
+                cache_key = (None, active_block_dim, partition, partition_offsets, enable_work_stealing)
+                self.execs[cache_key] = module_exec
 
             elif device.is_cuda:
                 cuda_module = warp._src.build.load_cuda(binary_path, device)
                 if cuda_module is not None:
                     module_exec = ModuleExec(cuda_module, module_hash, device, meta)
-                    self.execs[(device.context, active_block_dim)] = module_exec
+                    cache_key = (device.context, active_block_dim, partition, partition_offsets, enable_work_stealing)
+                    self.execs[cache_key] = module_exec
                 else:
                     module_load_timer.extra_msg = " (error)"
                     raise Exception(f"Failed to load CUDA module '{self.name}'")
@@ -2661,7 +2742,15 @@ class Module:
 
     # lookup kernel entry points based on name, called after compilation / module load
     def get_kernel_hooks(self, kernel, device: Device) -> KernelHooks:
-        module_exec = self.execs.get((device.context, self.options["block_dim"]))
+        # Use the same cache key format as in load()
+        cache_key = (
+            device.context,
+            self.options["block_dim"],
+            self.options.get("partition"),
+            self.options.get("partition_offsets"),
+            self.options.get("enable_work_stealing", False),
+        )
+        module_exec = self.execs.get(cache_key)
         if module_exec is not None:
             return module_exec.get_kernel_hooks(kernel)
         else:
@@ -3890,6 +3979,24 @@ class Runtime:
             self.core.wp_hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p]
             self.core.wp_hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
+            # work-stealing queues (device-agnostic via unified memory)
+            self.core.wp_ws_queues_create.argtypes = [ctypes.c_int, ctypes.c_int]
+            self.core.wp_ws_queues_create.restype = ctypes.c_uint64
+            self.core.wp_ws_queues_destroy.argtypes = [ctypes.c_uint64]
+            self.core.wp_ws_queues_next_epoch.argtypes = [ctypes.c_uint64, ctypes.c_int, ctypes.c_int]
+            self.core.wp_ws_queues_get_epoch.argtypes = [ctypes.c_uint64]
+            self.core.wp_ws_queues_get_epoch.restype = ctypes.c_int
+            self.core.wp_ws_queues_num_deques.argtypes = [ctypes.c_uint64]
+            self.core.wp_ws_queues_num_deques.restype = ctypes.c_int
+            self.core.wp_ws_queues_get_view.argtypes = [ctypes.c_uint64, ctypes.c_void_p]
+            self.core.wp_ws_queues_get_view.restype = ctypes.c_int
+            self.core.wp_ws_queues_validate_work_assignment.argtypes = [ctypes.c_uint64]
+            self.core.wp_ws_queues_validate_work_assignment.restype = ctypes.c_int
+            self.core.wp_ws_queues_has_instrumentation.argtypes = [ctypes.c_uint64]
+            self.core.wp_ws_queues_has_instrumentation.restype = ctypes.c_int
+            self.core.wp_ws_queues_instrumentation_buffer.argtypes = [ctypes.c_uint64]
+            self.core.wp_ws_queues_instrumentation_buffer.restype = ctypes.c_void_p
+
             self.core.wp_volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_bool, ctypes.c_bool]
             self.core.wp_volume_create_host.restype = ctypes.c_uint64
             self.core.wp_volume_get_tiles_host.argtypes = [
@@ -4988,6 +5095,108 @@ def unmap_cuda_device(alias: str) -> None:
     runtime.unmap_cuda_device(alias)
 
 
+def cuda_toolkit_version_at_least(major: int, minor: int) -> bool:
+    """Check if CUDA toolkit version is at least the specified version.
+
+    Args:
+        major: Major version number (e.g., 12)
+        minor: Minor version number (e.g., 4)
+
+    Returns:
+        bool: True if the CUDA toolkit version is at least (major, minor), False otherwise.
+    """
+    if not is_cuda_available():
+        return False
+
+    init()
+
+    toolkit_version = runtime.toolkit_version
+    if toolkit_version is None:
+        return False
+    return toolkit_version >= (major, minor)
+
+
+def create_green_ctx(device_ordinal: int = 0, min_sms_per_partition: int = 8) -> list:
+    """Create green contexts for each SM partition on the device.
+
+    Green contexts (introduced in CUDA 12.4) allow partitioning a GPU's streaming
+    multiprocessors (SMs) into separate execution contexts for better resource isolation.
+
+    Args:
+        device_ordinal: CUDA device ordinal (default: 0)
+        min_sms_per_partition: Minimum number of SMs per partition (default: 8)
+
+    Returns:
+        list: List of primary contexts (CUcontext) for each partition
+
+    Raises:
+        AssertionError: If CUDA operations fail during context creation
+        ImportError: If cuda.bindings.driver is not available
+
+    Example:
+        >>> import warp as wp
+        >>> contexts = wp.create_green_ctx(device_ordinal=0, min_sms_per_partition=8)
+        >>> for i, ctx in enumerate(contexts):
+        ...     wp.map_cuda_device(f"cuda:0:{i}", int(ctx))
+
+    Note:
+        Requires CUDA Toolkit 12.4 or higher.
+    """
+    try:
+        import cuda.bindings.driver as cu
+    except ImportError as e:
+        raise ImportError("cuda.bindings.driver is required for green context creation") from e
+
+    # 0) init + pick device
+    cu.cuInit(0)
+    err, dev = cu.cuDeviceGet(device_ordinal)
+    assert err == cu.CUresult.CUDA_SUCCESS, f"cuDeviceGet failed: {err}"
+
+    # 1) query device SM resource
+    err, sm_res = cu.cuDeviceGetDevResource(dev, cu.CUdevResourceType.CU_DEV_RESOURCE_TYPE_SM)
+    assert err == cu.CUresult.CUDA_SUCCESS, f"cuDeviceGetDevResource failed: {err}"
+
+    # 2) split SMs into groups of at least 'min_sms_per_partition'
+    # first call to learn number of groups (query mode)
+    err, result, nb_groups, remaining = cu.cuDevSmResourceSplitByCount(
+        nbGroups=0,  # query mode
+        input_=sm_res,
+        useFlags=0,
+        minCount=min_sms_per_partition,
+    )
+    assert err == cu.CUresult.CUDA_SUCCESS and nb_groups > 0, "split (count) failed"
+
+    # second call to actually split with the correct number of groups
+    err, groups, nb_groups_actual, remaining = cu.cuDevSmResourceSplitByCount(
+        nbGroups=nb_groups,
+        input_=sm_res,
+        useFlags=0,
+        minCount=min_sms_per_partition,
+    )
+    assert err == cu.CUresult.CUDA_SUCCESS, "split (fill) failed"
+
+    # 3-5) Create a green context for each partition group
+    contexts = []
+    flags = cu.CUgreenCtxCreate_flags.CU_GREEN_CTX_DEFAULT_STREAM
+
+    for i, group in enumerate(groups):
+        # Build a resource descriptor for this partition
+        err, desc = cu.cuDevResourceGenerateDesc(resources=[group], nbResources=1)
+        assert err == cu.CUresult.CUDA_SUCCESS, f"cuDevResourceGenerateDesc failed for group {i}"
+
+        # Create the green context
+        err, green = cu.cuGreenCtxCreate(desc, dev, flags)
+        assert err == cu.CUresult.CUDA_SUCCESS, f"cuGreenCtxCreate failed for group {i}: {err}"
+
+        # Convert to a primary CUcontext
+        err, ctx = cu.cuCtxFromGreenCtx(green)
+        assert err == cu.CUresult.CUDA_SUCCESS, f"cuCtxFromGreenCtx failed for group {i}: {err}"
+
+        contexts.append(ctx)
+
+    return contexts
+
+
 def is_mempool_supported(device: Devicelike) -> bool:
     """Check if CUDA memory pool allocators are available on the device.
 
@@ -6011,11 +6220,12 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
                     f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with {arg_type.ndim} dimension(s) but the passed array has {value.ndim} dimension(s)."
                 )
 
-            # check device
-            if value.device != device:
-                raise RuntimeError(
-                    f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', but input array for argument '{arg_name}' is on device={value.device}."
-                )
+            # XXX temporarily disabled because this is incompatible with the use of VMM
+            ## check device
+            # if value.device != device:
+            #    raise RuntimeError(
+            #        f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', but input array for argument '{arg_name}' is on device={value.device}."
+            #    )
 
             return value.__ctype__()
 
@@ -6121,6 +6331,7 @@ class Launch:
         params: Sequence[Any] | None = None,
         params_addr: Sequence[ctypes.c_void_p] | None = None,
         bounds: launch_bounds_t | None = None,
+        ws_qview: WsQueuesView | None = None,
         max_blocks: int = 0,
         block_dim: int = 256,
         adjoint: bool = False,
@@ -6349,6 +6560,11 @@ def launch(
     record_cmd: bool = False,
     max_blocks: int = 0,
     block_dim: int = 256,
+    partition: str | Layout | None = None,
+    partition_offsets: str | Layout | None = None,
+    offset: int = 0,
+    max_index: int = -1,
+    ws_qview: WsQueuesView | None = None,
 ):
     """Launch a Warp kernel on the target device
 
@@ -6374,6 +6590,13 @@ def launch(
           Only has an effect for CUDA kernel launches.
           If negative or zero, the maximum hardware value will be used.
         block_dim: The number of threads per block (always 1 for "cpu" devices).
+        partition: Optional Layout object or string specifying kernel partitioning scheme.
+          Can be a wp.Layout object or a CuTe-style string like "(5,5):(2,20)".
+        partition_offsets: Optional Layout object or string specifying kernel partitioning scheme.
+          Can be a wp.Layout object or a CuTe-style string like "(5,5):(2,20)".
+        offset: Starting offset for partitioned kernel launches (index of the queue if partition_offsets is specified, otherwise real offset).
+        max_index: Maximum valid work item index (-1 means no limit). Used to handle
+          work sizes that don't evenly divide by layout granularity.
     """
 
     init()
@@ -6397,6 +6620,40 @@ def launch(
 
     # construct launch bounds
     bounds = launch_bounds_t(dim)
+
+    # Compute partition blocks if partition is specified
+    partition_blocks = 0
+    if partition is not None:
+        if not isinstance(partition, Layout):
+            raise TypeError(f"partition must be a Layout object, got {type(partition)}")
+
+        partition_shape = partition.shape
+        partition_strides = partition.stride
+        rank = partition.rank
+
+        # Compute product of partition shape to get number of blocks in the subpart described by the partition layout
+        partition_blocks = 1
+        for s in partition_shape:
+            partition_blocks *= s
+
+    if partition_offsets is not None:
+        if not isinstance(partition_offsets, Layout):
+            raise TypeError(f"partition_offsets must be a Layout object, got {type(partition_offsets)}")
+
+        partition_offsets_shape = partition_offsets.shape
+        partition_offsets_strides = partition_offsets.stride
+        rank = partition_offsets.rank
+
+    # Set partition parameters
+    # max_index allows handling work sizes that don't evenly divide by layout granularity
+    bounds.set_partition_params(offset, pblocks=partition_blocks, max_index=max_index)
+
+    if ws_qview is not None:
+        bounds.ws_view = ws_qview
+        # Note: ws_view.epoch > 0 indicates a valid view (no separate boolean needed)
+
+    # Enable work-stealing template if ws_qview is provided
+    enable_work_stealing = ws_qview is not None
 
     if bounds.size > 0:
         # first param is the number of threads
@@ -6431,7 +6688,13 @@ def launch(
 
         # delay load modules, including new overload if needed
         try:
-            module_exec = kernel.module.load(device, block_dim)
+            module_exec = kernel.module.load(
+                device,
+                block_dim,
+                partition=partition,
+                partition_offsets=partition_offsets,
+                enable_work_stealing=enable_work_stealing,
+            )
         except Exception:
             kernel.adj.skip_build = True
             raise
@@ -6627,6 +6890,7 @@ def launch_tiled(*args, **kwargs):
 
     # add trailing dimension
     kwargs["dim"] = [*dim, kwargs["block_dim"]]
+    print(f"launch_tiled dim = {dim}")
 
     # forward to original launch method
     return launch(*args, **kwargs)

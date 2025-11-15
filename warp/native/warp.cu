@@ -20,6 +20,7 @@
 #include "cuda_util.h"
 #include "error.h"
 #include "sort.h"
+#include "work_stealing.h"
 
 #include <cstdlib>
 #include <fstream>
@@ -51,6 +52,20 @@
 #define check_cufftdx(code) (check_cufftdx_result(code, __FILE__, __LINE__))
 #define check_cublasdx(code) (check_cublasdx_result(code, __FILE__, __LINE__))
 #define check_cusolver(code) (check_cusolver_result(code, __FILE__, __LINE__))
+
+// Launch bounds structure (must match types.py and builtin.h)
+const int LAUNCH_MAX_DIMS = 4;
+
+struct launch_bounds_t
+{
+    int shape[LAUNCH_MAX_DIMS];
+    int ndim;
+    size_t size;
+    int offset;
+    int partition_blocks;
+    int partition_max_index;
+    ws_queues_view ws_view;
+};
 #define CHECK_ANY(code) \
 { \
     do { \
@@ -4487,9 +4502,20 @@ size_t wp_cuda_launch_kernel(void* context, void* kernel, size_t dim, int max_bl
         block_dim = 256;
     }
 
+    // Extract launch bounds from args (first argument)
+    launch_bounds_t* bounds = static_cast<launch_bounds_t*>(args[0]);
+
     // CUDA specs up to compute capability 9.0 says the max x-dim grid is 2**31-1, so
     // grid_dim is fine as an int for the near future
-    int grid_dim = (dim + block_dim - 1)/block_dim;
+    int grid_dim;
+    
+    // If partition_blocks is set (> 0), use it as the grid dimension
+    if (bounds->partition_blocks > 0) {
+        grid_dim = bounds->partition_blocks;
+    } else {
+        // Standard calculation: divide total threads by block size
+        grid_dim = (dim + block_dim - 1)/block_dim;
+    }
 
     if (max_blocks <= 0) {
         max_blocks = 2147483647;

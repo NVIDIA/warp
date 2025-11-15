@@ -1724,6 +1724,48 @@ ARRAY_TYPE_INDEXED = 1
 ARRAY_TYPE_FABRIC = 2
 ARRAY_TYPE_FABRIC_INDEXED = 3
 
+LAYOUT_MAX_DIMS = 5
+
+
+class layout_t(ctypes.Structure):
+    _fields_ = (
+        ("shape", ctypes.c_int32 * LAYOUT_MAX_DIMS),
+        ("stride", ctypes.c_int32 * LAYOUT_MAX_DIMS),
+        ("ndim", ctypes.c_int32),
+    )
+
+
+class WsQueuesView(ctypes.Structure):
+    """Device-accessible view of work-stealing queues.
+
+    This structure contains device pointers and configuration that kernels
+    need to access work-stealing queues. Get an instance via ``WorkStealingQueues.view()``.
+
+    Fields:
+        unified_base: Device pointer to unified queue buffer
+        k: Number of deques/kernels
+        epoch: Current epoch number
+        instrumentation_buffer: Device pointer to instrumentation buffer (or NULL)
+        m: Items per deque
+        max_work_items: Total number of work items
+
+    Note:
+        This is a ctypes.Structure that can be passed directly to Warp kernels.
+        Do not instantiate directly - use ``WorkStealingQueues.view()`` instead.
+    """
+
+    _fields_ = [
+        ("unified_base", ctypes.c_void_p),  # char* (device pointer)
+        ("k", ctypes.c_int),  # int
+        ("epoch", ctypes.c_int),  # int
+        ("instrumentation_buffer", ctypes.c_void_p),  # int* (device pointer)
+        ("m", ctypes.c_int),  # int
+        ("max_work_items", ctypes.c_int),  # int
+    ]
+
+    def __repr__(self):
+        return f"WsQueuesView(k={self.k}, m={self.m}, epoch={self.epoch}, max_work_items={self.max_work_items})"
+
 
 # represents bounds for kernel launch (number of threads across multiple dimensions)
 class launch_bounds_t(ctypes.Structure):
@@ -1731,6 +1773,10 @@ class launch_bounds_t(ctypes.Structure):
         ("shape", ctypes.c_int32 * LAUNCH_MAX_DIMS),
         ("ndim", ctypes.c_int32),
         ("size", ctypes.c_size_t),
+        ("offset", ctypes.c_int32),
+        ("partition_blocks", ctypes.c_int32),  # Number of CUDA blocks to launch when using partition
+        ("partition_max_index", ctypes.c_int32),  # Maximum valid work item index (handles non-multiple work sizes)
+        ("ws_view", WsQueuesView),  # Work-stealing queues view (ws_view.epoch > 0 indicates valid)
     )
 
     def __init__(self, shape: int | Sequence[int]):
@@ -1739,11 +1785,17 @@ class launch_bounds_t(ctypes.Structure):
             self.ndim = 1
             self.size = shape
             self.shape[0] = shape
+            self.offset = 0
+            self.partition_blocks = 0
+            self.partition_max_index = -1  # -1 = no limit
 
         else:
             # nd launch
             self.ndim = len(shape)
             self.size = 1
+            self.offset = 0
+            self.partition_blocks = 0
+            self.partition_max_index = -1  # -1 = no limit
 
             for i in range(self.ndim):
                 self.shape[i] = shape[i]
@@ -1752,6 +1804,26 @@ class launch_bounds_t(ctypes.Structure):
         # initialize the remaining dims to 1
         for i in range(self.ndim, LAUNCH_MAX_DIMS):
             self.shape[i] = 1
+
+    def set_partition_params(self, offset, pblocks=0, max_index=-1):
+        """Set partition parameters for localized launches.
+
+        Args:
+            offset: Starting offset for this partition
+            pblocks: Number of CUDA blocks to launch for this partition
+            max_index: Maximum valid work item index (-1 means no limit, process all generated indices)
+        """
+        self.offset = offset
+        self.partition_blocks = pblocks
+        self.partition_max_index = max_index
+
+    def __repr__(self):
+        shape_tuple = tuple(self.shape[i] for i in range(self.ndim))
+        return (
+            f"launch_bounds_t(shape={shape_tuple}, ndim={self.ndim}, "
+            f"size={self.size}, offset={self.offset}, "
+            f"partition_blocks={self.partition_blocks}, partition_max_index={self.partition_max_index})"
+        )
 
 
 INT_WIDTH = ctypes.sizeof(ctypes.c_int) * 8
@@ -4376,6 +4448,220 @@ class Bvh:
             self.runtime.verify_cuda_device(self.device)
 
 
+class WorkStealingQueues:
+    """Work-stealing queue system for efficient parallel work distribution.
+
+    This class manages a set of deques (double-ended queues) that allow multiple CUDA kernels
+    to efficiently share work through stealing. Each kernel owns one deque and can steal work
+    from others when its own deque is empty.
+
+    Attributes:
+        id: Unique identifier for this work-stealing queue system.
+
+    Args:
+        k (int): Number of deques (typically one per stream).
+        enable_instrumentation (bool, optional): Enable tracking of which kernel processes each item.
+            Useful for debugging and performance analysis. Default is False.
+
+    Example:
+        >>> import warp as wp
+        >>> # Create queues for 4 streams (accessible from ALL GPUs via unified memory)
+        >>> queues = wp.WorkStealingQueues(k=4)
+        >>> @wp.kernel
+        >>> def my_kernel(view: wp.WsQueuesView, data: wp.array(dtype=float)):
+        >>> # Access work-stealing view in kernel (future implementation)
+        >>>     pass
+        >>> # Set bounds and get view for this epoch
+        >>> queues.next_epoch(m=256)
+        >>> view = queues.view()
+        >>> # Can launch on any GPU - unified memory accessible from all
+        >>> wp.launch(my_kernel, dim=256, inputs=[view, data], device="cuda:0")
+        >>> wp.launch(my_kernel, dim=256, inputs=[view, data], device="cuda:1")
+        >>> # Advance to next epoch with different bounds
+        >>> queues.next_epoch(m=512)
+
+    Note:
+        Requires CUDA. Uses unified memory for multi-GPU accessibility.
+    """
+
+    def __new__(cls, *args, **kwargs):
+        instance = super().__new__(cls)
+        instance.id = None
+        return instance
+
+    def __init__(self, k: int, enable_instrumentation: bool = False):
+        """Initialize work-stealing queues.
+
+        Note:
+            Uses unified memory - accessible from ALL CUDA devices.
+            m (bounds per deque) is set per epoch via next_epoch(m).
+
+        Args:
+            k: Number of deques/streams
+            enable_instrumentation: Enable tracking for validation/debugging
+
+        Raises:
+            RuntimeError: If CUDA is not available
+        """
+        from warp._src.context import is_cuda_available, runtime
+
+        if not is_cuda_available():
+            raise RuntimeError("WorkStealingQueues require CUDA (uses unified memory)")
+
+        if k <= 0:
+            raise ValueError(f"k must be positive, got k={k}")
+
+        self.runtime = runtime
+
+        # Create queues (device-agnostic via unified memory, m will be set per epoch)
+        self.id = self.runtime.core.wp_ws_queues_create(k, int(enable_instrumentation))
+
+        if not self.id:
+            raise RuntimeError(f"Failed to create work-stealing queues with k={k}")
+
+        self._k = k
+
+    def __del__(self):
+        """Destructor - automatically clean up GPU resources."""
+        if not self.id:
+            return
+
+        try:
+            # Unified memory cleanup (no device context needed)
+            self.runtime.core.wp_ws_queues_destroy(self.id)
+        except (TypeError, AttributeError):
+            # Suppress errors when callables become None during shutdown
+            pass
+
+    def next_epoch(self, m: int, max_work_items: int):
+        """Advance to next epoch with new bounds (resets all counters for reuse).
+
+        Args:
+            m: Items per deque bound for this epoch
+            max_work_items: Maximum valid work item index (total number of work items)
+
+        This allows reusing the same queue structure with new work.
+        All front/back pointers are reset to 0, bounds are set to m,
+        and the epoch counter is incremented.
+        The epoch automatically wraps back to 1 if it reaches 1 billion.
+        """
+        if m <= 0:
+            raise ValueError(f"m must be positive, got m={m}")
+        if max_work_items <= 0:
+            raise ValueError(f"max_work_items must be positive, got max_work_items={max_work_items}")
+        self.runtime.core.wp_ws_queues_next_epoch(self.id, m, max_work_items)
+
+    @property
+    def epoch(self) -> int:
+        """Get the current epoch number.
+
+        Returns:
+            int: Current epoch (starts at 1, wraps at 1 billion)
+        """
+        return self.runtime.core.wp_ws_queues_get_epoch(self.id)
+
+    @property
+    def num_deques(self) -> int:
+        """Get the number of deques (k).
+
+        Returns:
+            int: Number of deques/kernels
+        """
+        return self.runtime.core.wp_ws_queues_num_deques(self.id)
+
+    def view(self):
+        """Get a device-accessible view to pass to CUDA kernels.
+
+        The view contains device pointers and configuration needed by kernels
+        to access the work queues.
+
+        Returns:
+            WsQueuesView: View structure for passing to kernels
+
+        Example:
+            >>> queues = wp.WorkStealingQueues(k=4)
+            >>> queues.next_epoch(m=256)
+            >>> view = queues.view()
+            >>> wp.launch(my_kernel, dim=256, inputs=[view, ...])
+        """
+        import ctypes
+
+        view = WsQueuesView()
+        # Explicitly ensure instrumentation_buffer is NULL before C++ call
+        # (should already be None from ctypes default initialization, but be defensive)
+        view.instrumentation_buffer = None
+
+        result = self.runtime.core.wp_ws_queues_get_view(self.id, ctypes.byref(view))
+
+        if not result:
+            raise RuntimeError("Failed to get work-stealing queues view")
+
+        return view
+
+    def validate_work_assignment(self) -> bool:
+        """Validate that all work items were assigned exactly once.
+
+        Requires instrumentation to be enabled. Call this after all kernels
+        have finished (e.g., after ``wp.synchronize()``).
+
+        Returns:
+            bool: True if validation passes (all work assigned exactly once), False otherwise
+
+        Raises:
+            RuntimeError: If instrumentation is not enabled
+
+        Example:
+            >>> queues = wp.WorkStealingQueues(k=4, enable_instrumentation=True)
+            >>> queues.next_epoch(m=256)
+            >>> # ... launch kernels ...
+            >>> wp.synchronize()
+            >>> if queues.validate_work_assignment():
+            >>>     print("✓ All work processed correctly!")
+        """
+        if not self.has_instrumentation():
+            raise RuntimeError("Instrumentation not enabled, cannot validate work assignment")
+
+        return bool(self.runtime.core.wp_ws_queues_validate_work_assignment(self.id))
+
+    @property
+    def has_instrumentation(self) -> bool:
+        """Check if instrumentation is enabled.
+
+        Returns:
+            bool: True if instrumentation is enabled
+        """
+        return bool(self.runtime.core.wp_ws_queues_has_instrumentation(self.id))
+
+    @property
+    def instrumentation_buffer(self) -> int:
+        """Get device pointer to the instrumentation buffer.
+
+        The instrumentation buffer tracks which kernel processed each work item.
+        Buffer layout: ``buffer[line * m + item] = kernel_id``
+
+        Returns:
+            int: Device pointer to instrumentation buffer (as integer), or 0 if disabled
+
+        Note:
+            This is a raw device pointer. Use with ``warp.array`` or CuPy to access data.
+
+        Example:
+            >>> import warp as wp
+            >>> import cupy as cp
+            >>> queues = wp.WorkStealingQueues(k=4, enable_instrumentation=True)
+            >>> queues.next_epoch(m=100)
+            >>> ptr = queues.instrumentation_buffer()
+            >>> if ptr != 0:
+            >>> # Wrap with CuPy
+            >>>     mem = cp.cuda.UnownedMemory(ptr, 4 * 100 * 4, queues)
+            >>>     memptr = cp.cuda.MemoryPointer(mem, 0)
+            >>>     d_buffer = cp.ndarray((400,), dtype=cp.int32, memptr=memptr)
+            >>>     h_buffer = cp.asnumpy(d_buffer)
+        """
+        ptr = self.runtime.core.wp_ws_queues_instrumentation_buffer(self.id)
+        return ptr if ptr else 0
+
+
 class Mesh:
     from warp._src.codegen import Var
 
@@ -5833,6 +6119,7 @@ simple_type_codes = {
     MeshQueryPoint: "mqp",
     MeshQueryRay: "mqr",
     BvhQuery: "bvhq",
+    WsQueuesView: "wsqv",
 }
 
 
