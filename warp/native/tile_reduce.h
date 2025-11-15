@@ -188,7 +188,6 @@ template <typename T, typename Op>
 inline CUDA_CALLABLE T block_combine_thread_results(T thread_sum, bool thread_has_data, Op f, 
                                                      T* partials, int& active_warps)
 {
-    constexpr int warp_count = (WP_TILE_BLOCK_DIM + WP_TILE_WARP_SIZE - 1) / WP_TILE_WARP_SIZE;
     const int warp_index = threadIdx.x / WP_TILE_WARP_SIZE;
     const int lane_index = threadIdx.x % WP_TILE_WARP_SIZE;
     
