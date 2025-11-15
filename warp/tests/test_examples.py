@@ -435,7 +435,7 @@ add_example_test(
 add_example_test(
     TestTileExamples,
     name="tile.example_tile_filtering",
-    devices=test_devices,
+    devices=cuda_test_devices,
     test_options={"headless": True},
 )
 add_example_test(
