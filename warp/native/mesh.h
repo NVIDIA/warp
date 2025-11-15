@@ -1282,7 +1282,7 @@ struct mesh_query_point_t
     // Required for adjoint computations.
     CUDA_CALLABLE inline mesh_query_point_t& operator+=(const mesh_query_point_t& other)
     {
-        result += other.result;
+        result |= other.result;  // Use OR for bool accumulation
         sign += other.sign;
         face += other.face;
         u += other.u;
@@ -1636,7 +1636,7 @@ struct mesh_query_ray_t
     // Required for adjoint computations.
     CUDA_CALLABLE inline mesh_query_ray_t& operator+=(const mesh_query_ray_t& other)
     {
-        result += other.result;
+        result |= other.result;  // Use OR for bool accumulation
         sign += other.sign;
         face += other.face;
         t += other.t;
