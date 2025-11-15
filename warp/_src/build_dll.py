@@ -563,7 +563,11 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             for cpp_path in cpp_paths:
                 cpp_out = cpp_path + ".obj"
                 linkopts.append(quote(cpp_out))
-                cpp_cmd = f'"{args.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
+                # Add warning suppressions for clang.cpp to avoid LLVM header warnings
+                extra_flags = ""
+                if "clang/clang.cpp" in cpp_path.replace("\\", "/"):
+                    extra_flags = " /wd4624"  # suppress C4624: destructor was implicitly defined as deleted
+                cpp_cmd = f'"{args.host_compiler}" {cpp_flags}{extra_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
                 cpp_cmds.append(cpp_cmd)
 
             if args.jobs <= 1:
