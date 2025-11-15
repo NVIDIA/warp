@@ -5822,6 +5822,84 @@ add_builtin(
 )
 
 add_builtin(
+    "mesh_query_ray_ordered",
+    input_types={
+        "id": uint64,
+        "start": vec3,
+        "dir": vec3,
+        "max_t": float,
+        "t": float,
+        "bary_u": float,
+        "bary_v": float,
+        "sign": float,
+        "normal": vec3,
+        "face": int,
+    },
+    value_type=builtins.bool,
+    group="Geometry",
+    doc="""Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
+
+    This method performs an ordered traversal, where the closer of the two children is traversed first.
+    This leads to better pruning of the tree and a more efficient traversal.
+
+    :param id: The mesh identifier
+    :param start: The start point of the ray
+    :param dir: The ray direction (should be normalized)
+    :param max_t: The maximum distance along the ray to check for intersections
+    :param t: Returns the distance of the closest hit along the ray
+    :param bary_u: Returns the barycentric u coordinate of the closest hit
+    :param bary_v: Returns the barycentric v coordinate of the closest hit
+    :param sign: Returns a value > 0 if the ray hit in front of the face, returns < 0 otherwise
+    :param normal: Returns the face normal
+    :param face: Returns the index of the hit face""",
+    export=False,
+    hidden=True,
+)
+
+add_builtin(
+    "mesh_query_ray_ordered",
+    input_types={
+        "id": uint64,
+        "start": vec3,
+        "dir": vec3,
+        "max_t": float,
+    },
+    value_type=MeshQueryRay,
+    group="Geometry",
+    doc="""Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
+
+    This method is ordered, during traversal it adds the closer of the two children to the stack.
+    Which allows for better pruning of the tree.
+
+    :param id: The mesh identifier
+    :param start: The start point of the ray
+    :param dir: The ray direction (should be normalized)
+    :param max_t: The maximum distance along the ray to check for intersections""",
+    require_original_output_arg=True,
+    export=False,
+)
+
+add_builtin(
+    "mesh_query_ray_anyhit",
+    input_types={
+        "id": uint64,
+        "start": vec3,
+        "dir": vec3,
+        "max_t": float,
+    },
+    value_type=builtins.bool,
+    group="Geometry",
+    doc="""Returns ``True`` immediately upon the first ray hit on the :class:`Mesh` with identifier ``id``.
+
+    :param id: The mesh identifier
+    :param start: The start point of the ray
+    :param dir: The ray direction (should be normalized)
+    :param max_t: The maximum distance along the ray to check for intersections""",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
     "mesh_query_aabb",
     input_types={"id": uint64, "low": vec3, "high": vec3},
     value_type=MeshQueryAABB,

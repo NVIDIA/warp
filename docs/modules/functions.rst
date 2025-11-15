@@ -5706,6 +5706,40 @@ Geometry
     :param max_t: The maximum distance along the ray to check for intersections
 
 
+.. py:function:: mesh_query_ray_ordered(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> MeshQueryRay
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
+
+    This method is ordered, during traversal it adds the closer of the two children to the stack.
+    Which allows for better pruning of the tree.
+
+    :param id: The mesh identifier
+    :param start: The start point of the ray
+    :param dir: The ray direction (should be normalized)
+    :param max_t: The maximum distance along the ray to check for intersections
+
+
+.. py:function:: mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> bool
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+
+    Returns ``True`` immediately upon the first ray hit on the :class:`Mesh` with identifier ``id``.
+
+    :param id: The mesh identifier
+    :param start: The start point of the ray
+    :param dir: The ray direction (should be normalized)
+    :param max_t: The maximum distance along the ray to check for intersections
+
+
 .. autoclass:: warp.MeshQueryAABB
    :exclude-members: Var, vars
 .. py:function:: mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB
