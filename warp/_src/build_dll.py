@@ -479,6 +479,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             *gencode_opts,
             "-t0",  # multithreaded compilation
             "--extended-lambda",
+            "-diag-suppress=221",  # suppress "floating-point value does not fit" warning from INFINITY macro in CUDA headers
         ]
 
         # Clang options
