@@ -1874,6 +1874,45 @@ class ModuleBuilder:
 
         return meta
 
+    @staticmethod
+    def _sort_by_custom_grad_dependencies(functions: list[Function]) -> list[Function]:
+        """Reorder functions for code generation to avoid undefined reference errors.
+
+        Custom gradient functions (decorated with @wp.func_grad) need careful ordering:
+        - They must come AFTER forward functions they call
+        - They must come BEFORE auto-generated adjoints that call them
+
+        Args:
+            functions: List of Function objects to sort
+
+        Returns:
+            Sorted list with order: forward-only functions → custom grads → functions with auto-adjoints
+
+        This ensures:
+        1. Forward functions are defined first
+        2. Custom grads (which may call forward functions) come next
+        3. Auto-generated adjoints (which may call custom grads) come last
+        """
+        forward_only_functions = []  # Functions with custom grads (skip reverse)
+        custom_grad_functions = []  # Custom grad functions themselves
+        full_functions = []  # Functions that generate both forward + auto-adjoint
+        # Build set of custom grad functions using set comprehension
+        custom_grad_set = {f.custom_grad_func for f in functions if f.custom_grad_func is not None}
+
+        # Categorize functions
+        for func in functions:
+            if func in custom_grad_set:
+                # This IS a custom grad function
+                custom_grad_functions.append(func)
+            elif func.custom_grad_func:
+                # This function HAS a custom grad (will skip reverse codegen)
+                forward_only_functions.append(func)
+            else:
+                # Regular function (generates both forward and auto-adjoint)
+                full_functions.append(func)
+
+        return forward_only_functions + custom_grad_functions + full_functions
+
     def codegen(self, device):
         source = ""
 
@@ -1892,8 +1931,17 @@ class ModuleBuilder:
                 source += warp._src.codegen.codegen_struct(struct)
                 visited_structs.add(struct.hash)
 
+        # Reorder functions to ensure custom grad functions are generated before
+        # functions whose adjoints depend on them. This is necessary because custom grad
+        # functions are deferred during the build phase but may be called by adjoints of
+        # functions built earlier.
+        # TODO: This is a workaround. A better long-term solution would be two-pass code
+        # generation: Pass 1 generates all forward functions, Pass 2 generates all adjoint/reverse
+        # functions with custom gradients ordered before auto-generated adjoints that reference them.
+        ordered_functions = self._sort_by_custom_grad_dependencies(list(self.functions.keys()))
+
         # code-gen all imported functions
-        for func in self.functions.keys():
+        for func in ordered_functions:
             if func.native_snippet is None:
                 source += warp._src.codegen.codegen_func(
                     func.adj, c_func_name=func.native_func, device=device, options=self.options

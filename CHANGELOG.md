@@ -29,6 +29,8 @@
   ([GH-1081](https://github.com/NVIDIA/warp/issues/1081)).
 - Fix `wp.zeros()` to accept a single integer for the shape parameter in kernels (e.g. `wp.zeros(shape=123, dtype=float)`)
   ([GH-1081](https://github.com/NVIDIA/warp/issues/1081)).
+- Fix code generation ordering for custom gradient functions (`@wp.func_grad`) when used with nested function calls
+  ([GH-967](https://github.com/NVIDIA/warp/issues/967)).
 
 ## [1.10.0] - 2025-11-02
 
