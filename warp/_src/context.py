@@ -2628,7 +2628,8 @@ class Module:
         exec = self.execs.get(cache_key)
         if exec is not None:
             if self.options["strip_hash"] or (
-                exec.module_hash == self.get_module_hash(active_block_dim, partition, partition_offsets, enable_work_stealing)
+                exec.module_hash
+                == self.get_module_hash(active_block_dim, partition, partition_offsets, enable_work_stealing)
             ):
                 return exec
 

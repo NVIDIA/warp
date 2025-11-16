@@ -1508,6 +1508,223 @@ def zeros(shape, partition_desc, streams, dtype=float, tile_dim=None, page_size_
         return arr
 
 
+def from_numpy(data, partition_desc, streams, dtype=None, tile_dim=None, page_size_bytes=2 * 1024 * 1024):
+    """
+    Create a localized array initialized from NumPy array or regular wp.array data.
+
+    This function allocates memory distributed across multiple devices using CUDA VMM
+    and copies the provided data into it. This is useful when you have existing data
+    that you want to distribute across multiple GPUs.
+
+    Args:
+        data: Source data (NumPy array, list, or warp array)
+        partition_desc: Either a PartitionDesc object or a policy function (dim, streams) -> PartitionDesc
+        streams: List of CUDA streams, one per place
+        dtype: Data type (default: inferred from data)
+        tile_dim: Shape of each tile (default: None, which means element-level distribution)
+        page_size_bytes: Size of each memory page (default 2MB)
+
+    Returns:
+        warp.array with the allocated memory initialized with the provided data
+
+    Examples:
+        # From NumPy array
+        import numpy as np
+        data = np.random.rand(8192, 8192)
+        policy = wp.blocked()
+        streams = [wp.Stream(f"cuda:{i}") for i in range(8)]
+        arr = wp.localized.from_numpy(
+            data=data,
+            partition_desc=policy,
+            streams=streams
+        )
+
+        # From regular warp array
+        src = wp.array(data, dtype=wp.vec3)
+        arr = wp.localized.from_numpy(
+            data=src,
+            partition_desc=policy,
+            streams=streams,
+            dtype=wp.vec3
+        )
+    """
+    import numpy as np
+
+    import warp as wp
+
+    # Convert warp array to numpy if needed
+    if isinstance(data, wp.array):
+        # If dtype not specified, use the array's dtype
+        if dtype is None:
+            dtype = data.dtype
+        # Get numpy view of the data
+        data_np = data.numpy()
+    else:
+        # Assume it's already numpy-compatible
+        data_np = np.asarray(data)
+        if dtype is None:
+            # Infer dtype from numpy array
+            dtype_map = {
+                np.float32: wp.float32,
+                np.float64: wp.float64,
+                np.int32: wp.int32,
+                np.int64: wp.int64,
+                np.uint32: wp.uint32,
+                np.uint64: wp.uint64,
+            }
+            dtype = dtype_map.get(data_np.dtype.type, float)
+
+    # For structured types like wp.vec3, ensure the data has the correct base dtype
+    # and determine the actual logical shape (excluding the vector/matrix dimensions)
+    # wp.vec3 is 3 float32s, wp.vec2 is 2 float32s, etc.
+    vector_map = {
+        wp.vec2: (2, np.float32),
+        wp.vec3: (3, np.float32),
+        wp.vec4: (4, np.float32),
+        wp.quat: (4, np.float32),
+        wp.vec2d: (2, np.float64),
+        wp.vec3d: (3, np.float64),
+        wp.vec4d: (4, np.float64),
+        wp.vec2i: (2, np.int32),
+        wp.vec3i: (3, np.int32),
+        wp.vec4i: (4, np.int32),
+    }
+
+    matrix_map = {
+        wp.mat22: ((2, 2), np.float32),
+        wp.mat33: ((3, 3), np.float32),
+        wp.mat44: ((4, 4), np.float32),
+        wp.mat22d: ((2, 2), np.float64),
+        wp.mat33d: ((3, 3), np.float64),
+        wp.mat44d: ((4, 4), np.float64),
+    }
+
+    if dtype in vector_map:
+        vec_size, base_dtype = vector_map[dtype]
+        # Convert to correct base dtype
+        if data_np.dtype != base_dtype:
+            data_np = data_np.astype(base_dtype)
+        # Shape should be (..., vec_size), so the logical shape is everything except the last dimension
+        if data_np.shape[-1] != vec_size:
+            raise ValueError(f"Expected last dimension to be {vec_size} for {dtype}, got {data_np.shape[-1]}")
+        shape = data_np.shape[:-1]  # Remove vector dimension
+    elif dtype in matrix_map:
+        mat_shape, base_dtype = matrix_map[dtype]
+        # Convert to correct base dtype
+        if data_np.dtype != base_dtype:
+            data_np = data_np.astype(base_dtype)
+        # Shape should be (..., rows, cols), so logical shape is everything except last two dimensions
+        if data_np.shape[-2:] != mat_shape:
+            raise ValueError(f"Expected last dimensions to be {mat_shape} for {dtype}, got {data_np.shape[-2:]}")
+        shape = data_np.shape[:-2]  # Remove matrix dimensions
+    else:
+        # Scalar types - shape is the full shape
+        shape = data_np.shape
+
+    # Create empty localized array
+    # Default tile_dim to all 1s if not specified (element-level distribution)
+    if tile_dim is None:
+        if isinstance(shape, (list, tuple)):
+            tile_dim = tuple(1 for _ in shape)
+        else:
+            tile_dim = (1,)
+
+    # Compute tile shape from global shape and tile dimensions
+    if isinstance(shape, (list, tuple)) and isinstance(tile_dim, (list, tuple)):
+        tile_shape = tuple(s // t for s, t in zip(shape, tile_dim))
+    else:
+        tile_shape = shape // tile_dim
+
+    # If partition_desc is a callable (policy function), call it to get PartitionDesc
+    if callable(partition_desc):
+        partition_desc = partition_desc(dim=tile_shape, streams=streams)
+
+    # Allocate the tiled tensor
+    cupy_arr = allocate_tiled_tensor(
+        tile_shape=tile_shape,
+        tile_dim=tile_dim,
+        partition_desc=partition_desc,
+        streams=streams,
+        dtype=dtype,
+        page_size_bytes=page_size_bytes,
+    )
+
+    # Copy data from numpy to the CuPy array
+    # CuPy can handle copying from numpy arrays even with VMM/managed memory
+    try:
+        import cupy as cp
+
+        # Check if dtype is a structured type
+        # For structured types, allocate_tiled_tensor returns a flat byte array
+        dtype_map_check = {
+            float: wp.float32,
+            wp.float32: wp.float32,
+            wp.float64: wp.float64,
+            int: wp.int32,
+            wp.int32: wp.int32,
+            wp.int64: wp.int64,
+            wp.uint32: wp.uint32,
+            wp.uint64: wp.uint64,
+        }
+
+        is_scalar = dtype in dtype_map_check
+
+        if is_scalar:
+            # Direct copy for scalar types - shapes should match
+            cupy_arr[:] = cp.asarray(data_np)
+        else:
+            # For structured types (vec2, vec3, etc.), cupy_arr is a flat byte array
+            # We need to copy the raw bytes
+            data_bytes = data_np.view(np.uint8).ravel()
+            cupy_arr[:] = cp.asarray(data_bytes)
+    except Exception as e:
+        print(f"Warning: Failed to copy data using CuPy: {e}")
+        print("Falling back to host-device copy...")
+        # Fallback: copy via host memory
+        is_scalar = dtype in {float, wp.float32, wp.float64, int, wp.int32, wp.int64, wp.uint32, wp.uint64}
+        if is_scalar:
+            # For scalar types, copy via host memory
+            cupy_arr_host = cupy_arr.get()
+            np.copyto(cupy_arr_host, data_np)
+            cupy_arr[:] = cp.asarray(cupy_arr_host)
+        else:
+            # Copy raw bytes for structured types via host memory
+            data_bytes = data_np.view(np.uint8).ravel()
+            cupy_arr_host = cupy_arr.get()
+            np.copyto(cupy_arr_host, data_bytes)
+            cupy_arr[:] = cp.asarray(cupy_arr_host)
+
+    # Convert to warp array
+    dtype_map = {
+        float: wp.float32,
+        wp.float32: wp.float32,
+        wp.float64: wp.float64,
+        int: wp.int32,
+        wp.int32: wp.int32,
+        wp.int64: wp.int64,
+        wp.uint32: wp.uint32,
+        wp.uint64: wp.uint64,
+    }
+
+    is_scalar_type = dtype in dtype_map
+
+    if is_scalar_type:
+        # Simple scalar type - use DLPack conversion
+        return wp.from_dlpack(cupy_arr)
+    else:
+        # Structured type (vec2, vec3, mat22, etc.) - create warp array directly from pointer
+        # Get the device from the first stream
+        device = streams[0].device if streams else "cuda:0"
+
+        # Create warp array directly with the CuPy array's memory pointer
+        arr = wp.array(ptr=cupy_arr.data.ptr, shape=shape, dtype=dtype, device=device, copy=False)
+
+        # Attach the CuPy array to the warp array to keep it alive
+        arr._cupy_arr = cupy_arr
+
+        return arr
+
+
 def empty_managed(
     shape: int | tuple[int, ...] | list[int],
     dtype: type = float,
@@ -1801,6 +2018,8 @@ def launch(
     # Step 3: Launch kernels on all places in parallel
     for place_idx, offset in enumerate(mapping.offsets):
         stream = streams[place_idx]
+        # when using work-stealing, we use the place_idx to identify which queue to use in priority. The position in the grid of work-items will be chosen by the work-stealing algorithm.
+        # Without work-stealing, we use the offset_layout to identify the offset in the grid of work-items (and avoid computing it many times on the device by precomputing offset_layout(place_idx) on the host).
         if work_stealing:
             offset = place_idx
         else:

@@ -151,19 +151,13 @@ class Example:
             self.streams = [wp.Stream(device=f"cuda:{i}") for i in range(self.ndevices)]
 
         # Use localized memory allocation for multi-device access
-        # self.grid = wp.localized.empty(
-        #     shape=(self.height, self.width),
-        #     partition_desc=self.policy,
-        #     streams=self.streams,
-        #     dtype=wp.vec3
-        # )
-        self.grid = wp.array(grid, dtype=wp.vec3)
+        # Initialize grid from numpy data using the new from_numpy function
+        self.grid = wp.localized.from_numpy(data=grid, partition_desc=self.policy, streams=self.streams, dtype=wp.vec3)
 
         self.pixels = wp.localized.zeros(
             shape=(self.height, self.width), partition_desc=self.policy, streams=self.streams, dtype=float
         )
 
-        # TODO ? wp.copy(grid, self.grid)
         wp.synchronize()
 
         self.slices = slices
