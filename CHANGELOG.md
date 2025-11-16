@@ -10,16 +10,36 @@
   - Mesh queries: `wp.mesh_query_aabb_tiled()` and `wp.mesh_query_aabb_next_tiled()`
   - Aliases with `tile_*` prefix are also available for all functions.
 - Add alpha and beta scalings to `wp.tile_matmul()` ([GH-1023](https://github.com/NVIDIA/warp/pull/1023)).
+- Add group-aware BVH construction and query support for multi-environment workloads ([GH-1074](https://github.com/NVIDIA/warp/issues/1074)):
+  - New BVH constructor argument: `groups` for per-object group IDs.
+  - New query overloads: `wp.bvh_query_aabb()` and `wp.bvh_query_ray()` now accept an optional `root` argument for group-restricted traversal.
+  - Add helper function `wp.bvh_get_group_root()` to retrieve the subtree root for a given group.
+- Add a `max_dist` argument to `wp.bvh_query_next` which controls the max length of a ray ([GH-1052](https://github.com/NVIDIA/warp/issues/1052)).
+- Add `wp.tile_cholesky_inplace()`, `wp.tile_cholesky_solve_inplace()`, `wp.tile_lower_solve_inplace()` and `wp.tile_upper_solve_inplace()` ([GH-1025](https://github.com/NVIDIA/warp/pull/1025)).
 
 ### Removed
 
 ### Deprecated
 
+- `isfinite()`, `isnan()`, and `isinf()` will no longer take integer inputs, only floating-point arguments ([GH-847](https://github.com/NVIDIA/warp/issues/847)).
+
 ### Changed
+
+- Improve CUDA compilation performance by enabling the use of precompiled headers (https://docs.nvidia.com/cuda/nvrtc/index.html#automatic-pch).
+  Can be disabled using `wp.config.use_precompiled_headers=False` ([GH-595](https://github.com/NVIDIA/warp/issues/595)).
 
 ### Fixed
 
 - Fix atomic floating-point min/max operations not returning the old value ([GH-1058](https://github.com/NVIDIA/warp/issues/1058)).
+- Fix type inference errors when passing reference arguments (such as array elements) to built-in functions
+  ([GH-1071](https://github.com/NVIDIA/warp/issues/1071)).
+- Improve documentation and error messages about requiring a BVH for `fem.lookup` and related functionality ([GH-1072](https://github.com/NVIDIA/warp/issues/1072)).
+- Fix reference cycles introduced by `warp.fem.Temporary` and `warp.fem.ShapeBasisSpace` ([GH-1076](https://github.com/NVIDIA/warp/issues/1076)).
+- Fix `.ptr` access on kernel-local arrays ([GH-999](https://github.com/NVIDIA/warp/issues/999)).
+- Fix indexing of kernel-local arrays when requesting a subarray
+  ([GH-1081](https://github.com/NVIDIA/warp/issues/1081)).
+- Fix `wp.zeros()` to accept a single integer for the shape parameter in kernels (e.g. `wp.zeros(shape=123, dtype=float)`)
+  ([GH-1081](https://github.com/NVIDIA/warp/issues/1081)).
 
 ## [1.10.0] - 2025-11-02
 

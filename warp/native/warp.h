@@ -75,12 +75,12 @@ extern "C"
     WP_API void wp_memtile_host(void* dest, const void* src, size_t srcsize, size_t n);
     WP_API void wp_memtile_device(void* context, void* dest, const void* src, size_t srcsize, size_t n);
 
-	WP_API uint64_t wp_bvh_create_host(wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type, int leaf_size);
+	WP_API uint64_t wp_bvh_create_host(wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type, int* groups, int leaf_size);
 	WP_API void wp_bvh_destroy_host(uint64_t id);
     WP_API void wp_bvh_refit_host(uint64_t id);
     WP_API void wp_bvh_rebuild_host(uint64_t id, int constructor_type);
 
-    WP_API uint64_t wp_bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type, int leaf_size);
+	WP_API uint64_t wp_bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type, int* groups, int leaf_size);
 	WP_API void wp_bvh_destroy_device(uint64_t id);
     WP_API void wp_bvh_refit_device(uint64_t id);
     WP_API void wp_bvh_rebuild_device(uint64_t id);
@@ -181,6 +181,9 @@ WP_API void* wp_ws_queues_instrumentation_buffer(uint64_t id);
 
     WP_API void wp_radix_sort_pairs_int64_host(uint64_t keys, uint64_t values, int n);
     WP_API void wp_radix_sort_pairs_int64_device(uint64_t keys, uint64_t values, int n);
+
+    WP_API void wp_radix_sort_pairs_uint64_host(uint64_t keys, uint64_t values, int n);
+    WP_API void wp_radix_sort_pairs_uint64_device(uint64_t keys, uint64_t values, int n);
 
     WP_API void wp_segmented_sort_pairs_float_host(uint64_t keys, uint64_t values, int n, uint64_t segment_start_indices, uint64_t segment_end_indices, int num_segments);
     WP_API void wp_segmented_sort_pairs_float_device(uint64_t keys, uint64_t values, int n, uint64_t segment_start_indices, uint64_t segment_end_indices, int num_segments);
@@ -336,7 +339,7 @@ WP_API void* wp_ws_queues_instrumentation_buffer(uint64_t id);
     WP_API bool wp_cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph);
     WP_API bool wp_cuda_graph_check_conditional_body(void* body_graph);
 
-    WP_API size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, bool compile_time_trace, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types);
+    WP_API size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, bool compile_time_trace, bool precompiled_headers, const char* output_path, const char* kernel_cache_dir, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types);
     WP_API bool wp_cuda_compile_fft(const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int size, int elements_per_thread, int direction, int precision, int* shared_memory_size);
     WP_API bool wp_cuda_compile_dot(const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int M, int N, int K, int precision_A, int precision_B, int precision_C, int type, int arrangement_A, int arrangement_B, int arrangement_C, int num_threads);
     WP_API bool wp_cuda_compile_solver(const char* fatbin_output_path, const char* ltoir_output_path, const char* symbol_name, int num_include_dirs, const char** include_dirs, const char* mathdx_include_dir, int arch, int M, int N, int NRHS, int function, int side, int diag, int precision, int arrangement_A, int arrangement_B, int fill_mode, int num_threads);

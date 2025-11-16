@@ -35,6 +35,29 @@ def test_zeros():
     wp.expect_eq(arr[1][1], 4)
     wp.expect_eq(arr[1][2], 5)
 
+    r0 = arr[0]
+    wp.expect_eq(r0.shape[0], 3)
+    wp.expect_eq(r0.shape[1], 0)
+    wp.expect_eq(r0[0], 0)
+    wp.expect_eq(r0[1], 1)
+    wp.expect_eq(r0[2], 2)
+
+    r1 = arr[1]
+    wp.expect_eq(r1.shape[0], 3)
+    wp.expect_eq(r1.shape[1], 0)
+    wp.expect_eq(r1[0], 3)
+    wp.expect_eq(r1[1], 4)
+    wp.expect_eq(r1[2], 5)
+
+    s = arr[:2, 1:]
+    wp.expect_eq(s.shape[0], 2)
+    wp.expect_eq(s.shape[1], 2)
+    wp.expect_eq(s.shape[2], 0)
+    wp.expect_eq(s[0, 0], 1)
+    wp.expect_eq(s[0, 1], 2)
+    wp.expect_eq(s[1, 0], 4)
+    wp.expect_eq(s[1, 1], 5)
+
 
 @wp.func
 def test_func_arg_func(arr: wp.array(ndim=2, dtype=int)):
@@ -58,10 +81,9 @@ def test_func_arg():
 
 @wp.func
 def test_func_return_func():
-    arr = wp.zeros(shape=(2, 3), dtype=int)
+    arr = wp.zeros(shape=2, dtype=int)
     for i in range(arr.shape[0]):
-        for j in range(arr.shape[1]):
-            arr[i][j] = i * arr.shape[1] + j
+        arr[i] = i
 
     return arr
 
@@ -70,12 +92,8 @@ def test_func_return_func():
 def test_func_return():
     arr = test_func_return_func()
 
-    wp.expect_eq(arr[0][0], 0)
-    wp.expect_eq(arr[0][1], 1)
-    wp.expect_eq(arr[0][2], 2)
-    wp.expect_eq(arr[1][0], 3)
-    wp.expect_eq(arr[1][1], 4)
-    wp.expect_eq(arr[1][2], 5)
+    wp.expect_eq(arr[0], 0)
+    wp.expect_eq(arr[1], 1)
 
 
 @wp.func
@@ -203,6 +221,32 @@ def test_func_struct():
     wp.expect_near(arr[1][2].dist, 1.0)
 
 
+@wp.kernel
+def test_fixedarray_ptr_reinterpret(output: wp.array(dtype=wp.vec2)):
+    # Allocate a fixedarray inside the kernel
+    m_b = wp.zeros(shape=(24,), dtype=wp.float32)
+
+    # Initialize some values
+    for i in range(24):
+        m_b[i] = float(i)
+
+    # Use .ptr to create a reinterpreted view as vec2
+    m_b_2d = wp.array(ptr=m_b.ptr, shape=(12,), dtype=wp.vec2)
+
+    # Read from the reinterpreted array
+    for i in range(12):
+        output[i] = m_b_2d[i]
+
+
+def test_fixedarray_ptr(test, device):
+    output = wp.zeros(shape=(12,), dtype=wp.vec2, device=device)
+
+    wp.launch(test_fixedarray_ptr_reinterpret, dim=1, inputs=[], outputs=[output], device=device)
+
+    expected = np.array([(i * 2, i * 2 + 1) for i in range(12)], dtype=np.float32)
+    assert_np_equal(output.numpy(), expected)
+
+
 class TestFixedArray(unittest.TestCase):
     pass
 
@@ -222,6 +266,7 @@ add_function_test(
 add_function_test(TestFixedArray, "test_error_runtime_shape", test_error_runtime_shape, devices=devices)
 add_function_test(TestFixedArray, "test_capture_if", test_capture_if, devices=devices)
 add_kernel_test(TestFixedArray, kernel=test_func_struct, name="test_func_struct", dim=1, devices=devices)
+add_function_test(TestFixedArray, "test_fixedarray_ptr", test_fixedarray_ptr, devices=devices)
 
 
 if __name__ == "__main__":

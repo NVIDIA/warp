@@ -3810,7 +3810,10 @@ bool write_file(const char* data, size_t size, std::string filename, const char*
     }
 #endif
 
-size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, bool compile_time_trace, const char* output_path, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types)
+size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs,
+                               bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, bool compile_time_trace, bool precompiled_headers,
+                               const char* output_path, const char* kernel_cache_dir,
+                               size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types)
 {
     // use file extension to determine whether to output PTX or CUBIN
     const char* output_ext = strrchr(output_path, '.');
@@ -3836,6 +3839,7 @@ size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, i
         int minor = 0;
         nvrtcVersion(&major, &minor);
         printf("NVRTC version %d.%d\n", major, minor);
+        printf("Kernel cache directory: %s\n", kernel_cache_dir);
     }
 
     char include_opt[max_path];
@@ -3861,6 +3865,26 @@ size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, i
     opts.push_back(arch_opt);
     opts.push_back(include_opt);
     opts.push_back("--std=c++17");
+
+    // Vector to store dynamically created option strings
+    std::vector<std::string> stored_options;
+
+    if (precompiled_headers)
+    {
+        // CUDA 12.8+ supports precompiled headers
+#if CUDA_VERSION >= 12080
+        opts.push_back("-pch");
+#if CUDA_VERSION < 13000
+        // CUDA 12.x series puts .pch files in the current working directory unless explicitly set
+        if (kernel_cache_dir != nullptr)
+        {
+            std::string pch_dir_opt = std::string("--pch-dir=") + kernel_cache_dir;
+            stored_options.push_back(pch_dir_opt);
+            opts.push_back(stored_options.back().c_str());
+        }
+#endif
+#endif
+    }
     
     if (debug)
     {
@@ -3897,7 +3921,6 @@ size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, i
     else
         opts.push_back("--fmad=false");
 
-    std::vector<std::string> stored_options;
     for(int i = 0; i < num_cuda_include_dirs; i++)
     {
         stored_options.push_back(std::string("--include-path=") + cuda_include_dirs[i]);

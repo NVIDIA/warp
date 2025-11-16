@@ -31,11 +31,11 @@ import datetime
 import glob
 import os
 import platform
-import re
 import shutil
 import subprocess
 import sys
 
+import build_llvm
 import warp._src.build_dll as build_dll
 import warp._src.config as config
 from warp._src.context import export_builtins
@@ -355,6 +355,14 @@ def main(argv: list[str] | None = None) -> int:
     # propagate verbosity to build subsystem
     build_dll.verbose_cmd = args.verbose
 
+    # check LLVM build dependencies early if --build_llvm is set
+    if args.build_llvm:
+        try:
+            build_llvm.check_build_dependencies(verbose=args.verbose)
+        except RuntimeError as e:
+            print(f"Warp build error: {e}")
+            return 1
+
     # setup CUDA Toolkit path
     if platform.system() == "Darwin":
         args.cuda_path = None
@@ -382,6 +390,11 @@ def main(argv: list[str] | None = None) -> int:
             if not args.host_compiler:
                 print("Warp build error: Could not find MSVC compiler")
                 return 1
+    else:
+        args.host_compiler = build_dll.find_host_compiler()
+        if not args.host_compiler:
+            print("Warp build error: Could not find C++ compiler")
+            return 1
 
     try:
         # Handle CI nightly builds (returns updated version string if triggered, else None)
@@ -391,17 +404,6 @@ def main(argv: list[str] | None = None) -> int:
             build_version = nightly_version
         else:
             build_version = config.version
-
-        # Reset git hash to None for non-scheduled builds (keeps config clean for local dev)
-        if nightly_version is None:
-            config_file = os.path.join(base_path, "warp", "_src", "config.py")
-            with open(config_file) as f:
-                content = f.read()
-            # Reset _git_commit_hash to None
-            pattern = r'^(_git_commit_hash\s*:\s*Optional\[str\]\s*=\s*)(None|"[^"]*")(.*)$'
-            updated_content = re.sub(pattern, r"\g<1>None\g<3>", content, flags=re.MULTILINE)
-            with open(config_file, "w") as f:
-                f.write(updated_content)
 
         if args.verbose:
             print(f"Building Warp version {build_version}")
@@ -458,8 +460,6 @@ def main(argv: list[str] | None = None) -> int:
 
         # build warp-clang.dll
         if args.standalone:
-            import build_llvm
-
             if args.build_llvm:
                 build_llvm.build_llvm_clang_from_source(args)
 

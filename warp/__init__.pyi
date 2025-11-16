@@ -1991,62 +1991,110 @@ def frac(x: Float) -> Float:
 
 @over
 def isfinite(a: Scalar) -> bool:
-    """Return ``True`` if ``a`` is a finite number, otherwise return ``False``."""
+    """Return ``True`` if ``a`` is a finite number, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isfinite(a: Vector[Any, Scalar]) -> bool:
-    """Return ``True`` if all elements of the vector ``a`` are finite, otherwise return ``False``."""
+    """Return ``True`` if all elements of the vector ``a`` are finite, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isfinite(a: Quaternion[Scalar]) -> bool:
-    """Return ``True`` if all elements of the quaternion ``a`` are finite, otherwise return ``False``."""
+    """Return ``True`` if all elements of the quaternion ``a`` are finite, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isfinite(a: Matrix[Any, Any, Scalar]) -> bool:
-    """Return ``True`` if all elements of the matrix ``a`` are finite, otherwise return ``False``."""
+    """Return ``True`` if all elements of the matrix ``a`` are finite, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isnan(a: Scalar) -> bool:
-    """Return ``True`` if ``a`` is NaN, otherwise return ``False``."""
+    """Return ``True`` if ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isnan(a: Vector[Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the vector ``a`` is NaN, otherwise return ``False``."""
+    """Return ``True`` if any element of the vector ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isnan(a: Quaternion[Scalar]) -> bool:
-    """Return ``True`` if any element of the quaternion ``a`` is NaN, otherwise return ``False``."""
+    """Return ``True`` if any element of the quaternion ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isnan(a: Matrix[Any, Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the matrix ``a`` is NaN, otherwise return ``False``."""
+    """Return ``True`` if any element of the matrix ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isinf(a: Scalar) -> bool:
-    """Return ``True`` if ``a`` is positive or negative infinity, otherwise return ``False``."""
+    """Return ``True`` if ``a`` is positive or negative infinity, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isinf(a: Vector[Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the vector ``a`` is positive or negative infinity, otherwise return ``False``."""
+    """Return ``True`` if any element of the vector ``a`` is positive or negative infinity, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isinf(a: Quaternion[Scalar]) -> bool:
-    """Return ``True`` if any element of the quaternion ``a`` is positive or negative infinity, otherwise return ``False``."""
+    """Return ``True`` if any element of the quaternion ``a`` is positive or negative infinity, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
 def isinf(a: Matrix[Any, Any, Scalar]) -> bool:
-    """Return ``True`` if any element of the matrix ``a`` is positive or negative infinity, otherwise return ``False``."""
+    """Return ``True`` if any element of the matrix ``a`` is positive or negative infinity, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+    """
     ...
 
 @over
@@ -3349,33 +3397,57 @@ def tile_map(
     ...
 
 @over
-def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQuery:
+def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> BvhQuery:
     """Construct an axis-aligned bounding box query against a BVH object.
 
     This query can be used to iterate over all bounds inside a BVH.
+    To start a query from a specific node, set ``root`` to the index of the node. The root
+    can be obtained using the :func:`bvh_get_group_root` function when creating a grouped BVH.
+    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+    If ``root`` is -1 (default), traversal starts at the BVH's global root.
+    The query will only traverse down from that node, limiting traversal to that subtree.
 
     :param id: The BVH identifier
     :param low: The lower bound of the bounding box in BVH space
     :param high: The upper bound of the bounding box in BVH space
+    :param root: The root to begin the query from (optional, default: -1)
     """
     ...
 
 @over
-def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> BvhQuery:
+def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32) -> BvhQuery:
     """Construct a ray query against a BVH object.
 
     This query can be used to iterate over all bounds that intersect the ray.
+    To start a query from a specific node, set ``root`` to the index of the node. The root
+    can be obtained using the :func:`bvh_get_group_root` function when creating a grouped BVH.
+    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+    If ``root`` is -1 (default), traversal starts at the BVH's global root.
+    The query will only traverse down from that node, limiting traversal to that subtree.
 
     :param id: The BVH identifier
     :param start: The start of the ray in BVH space
-    :param dir: The direction of the ray in BVH space
+    :param dir: The direction of the ray in BVH space (should be normalized)
+    :param root: The root to begin the query from (optional, default: -1)
     """
     ...
 
 @over
-def bvh_query_next(query: BvhQuery, index: int32) -> bool:
+def bvh_query_next(query: BvhQuery, index: int32, max_dist: float32) -> bool:
     """Move to the next bound returned by the query.
-    The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bound.
+
+    The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bounds.
+    The maximum distance along a ray query to check for intersections can be set using ``max_dist``. It is not effective
+    for aabb query.
+
+    Note that increasing ``max_dist`` may result in missing intersections. Since previously rejected subtrees will never be
+    revisited even if it intersects with the new, longer ray. In other words, it's only safe to monotonically
+    reduce ``max_dist`` during a query.
+
+    :param query: The query to move to the next bound
+    :param index: The index of the current bound
+    :param max_dist: The maximum distance along the ray to check for intersections for ray queries. Not effective for aabb
+        query.
     """
     ...
 
@@ -3460,6 +3532,18 @@ def tile_bvh_query_next(query: BvhQueryTiled) -> Tile[int32, Tuple[int]]:
               the result index for that thread (-1 if no result)
 
     .. note:: This is an alias for :func:`bvh_query_next_tiled`.
+    """
+    ...
+
+@over
+def bvh_get_group_root(id: uint64, group: int32) -> int:
+    """Get the root of a group in a BVH.
+
+    Returns the root node index for the specified group. If the group does not exist, returns ``-1``
+    (sentinel for the BVH global root). Pass ``-1`` to BVH queries to traverse from the global root.
+
+    :param id: The BVH identifier
+    :param group: The group identifier
     """
     ...
 
@@ -5645,7 +5729,7 @@ def tile_matmul(
     ...
 
 @over
-def tile_fft(inout: Tile[Vector[2, Float], Tuple[int, int]]) -> Tile[Vector[2, Float], Tuple[int, int]]:
+def tile_fft(inout: Tile[Vector[2, Float], Tuple[int, int]]):
     """Compute the forward FFT along the second dimension of a 2D tile of data.
 
     This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
@@ -5660,7 +5744,7 @@ def tile_fft(inout: Tile[Vector[2, Float], Tuple[int, int]]) -> Tile[Vector[2, F
     ...
 
 @over
-def tile_ifft(inout: Tile[Vector[2, Float], Tuple[int, int]]) -> Tile[Vector[2, Float], Tuple[int, int]]:
+def tile_ifft(inout: Tile[Vector[2, Float], Tuple[int, int]]):
     """Compute the inverse FFT along the second dimension of a 2D tile of data.
 
     This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
@@ -5677,6 +5761,7 @@ def tile_ifft(inout: Tile[Vector[2, Float], Tuple[int, int]]) -> Tile[Vector[2, 
 @over
 def tile_cholesky(A: Tile[Float, Tuple[int, int]]) -> Tile[Float, Tuple[int, int]]:
     """Compute the Cholesky factorization L of a matrix A.
+
     L is lower triangular and satisfies LL^T = A.
 
     Only the lower triangular portion of A is used for the decomposition;
@@ -5694,7 +5779,27 @@ def tile_cholesky(A: Tile[Float, Tuple[int, int]]) -> Tile[Float, Tuple[int, int
     ...
 
 @over
-def tile_cholesky_solve(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[int]]):
+def tile_cholesky_inplace(A: Tile[Float, Tuple[int, int]]):
+    """Compute the Cholesky factorization L of a matrix A.
+
+    L is lower triangular and satisfies LL^T = A.
+
+    Only the lower triangular portion of A is used for the decomposition;
+    the upper triangular part may be left unspecified.
+
+    Note: This inplace variant does not support automatic differentiation (adjoint computation),
+    but offers improved performance and uses half the shared memory compared to the standard version.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param A: A square, symmetric positive-definite, matrix. Only the lower triangular part of A is replaced by L, such that LL^T = A; the upper part is untouched.
+    """
+    ...
+
+@over
+def tile_cholesky_solve(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[int]]) -> Tile[Float, Tuple[int]]:
     """With L such that LL^T = A, solve for x in Ax = y
 
     Note that computing the adjoint is not yet supported.
@@ -5706,6 +5811,22 @@ def tile_cholesky_solve(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[in
     :param L: A square, lower triangular, matrix, such that LL^T = A
     :param y: A 1D or 2D tile of length M
     :returns x: A tile of the same shape as y such that LL^T x = y
+    """
+    ...
+
+@over
+def tile_cholesky_solve_inplace(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[int]]):
+    """With L such that LL^T = A, solve for x in Ax = y by overwriting y with x
+
+    Note: This inplace variant does not support automatic differentiation (adjoint computation),
+    but avoids allocating shared memory for the output x by reusing y's memory.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param L: A square, lower triangular, matrix, such that LL^T = A
+    :param y: A 1D or 2D tile of length M that gets overwritten by x where LL^T x = y
     """
     ...
 
@@ -5728,8 +5849,26 @@ def tile_lower_solve(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[int]]
     ...
 
 @over
+def tile_lower_solve_inplace(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[int]]):
+    """Solve for z in Lz = y, where L is a lower triangular matrix by overwriting y with z.
+
+    This performs general forward substitution for a lower triangular system inplace.
+
+    Note: This inplace variant does not support automatic differentiation (adjoint computation),
+    but avoids allocating shared memory for the output z by reusing y's memory.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param L: A square, non-singular, lower triangular matrix
+    :param y: A 1D or 2D tile with compatible shape that gets overwritten by z where Lz = y
+    """
+    ...
+
+@over
 def tile_upper_solve(U: Tile[Float, Tuple[int, int]], z: Tile[Float, Tuple[int]]) -> Tile[Float, Tuple[int]]:
-    """Solve for x in U x = z, where U is an upper triangular matrix.
+    """Solve for x in Ux = z, where U is an upper triangular matrix.
 
     This performs general back substitution for upper triangular systems.
 
@@ -5742,6 +5881,24 @@ def tile_upper_solve(U: Tile[Float, Tuple[int, int]], z: Tile[Float, Tuple[int]]
     :param U: A square, non-singular, upper triangular matrix
     :param z: A 1D or 2D tile with compatible shape
     :returns x: A tile of the same shape as z such that U x = z
+    """
+    ...
+
+@over
+def tile_upper_solve_inplace(U: Tile[Float, Tuple[int, int]], z: Tile[Float, Tuple[int]]):
+    """Solve for x in Ux = z, where U is an upper triangular matrix by overwriting z with x.
+
+    This performs general back substitution for upper triangular systems inplace.
+
+    Note: This inplace variant does not support automatic differentiation (adjoint computation),
+    but avoids allocating shared memory for the output x by reusing z's memory.
+
+    Supported datatypes are:
+        * float32
+        * float64
+
+    :param U: A square, non-singular, upper triangular matrix
+    :param z: A 1D or 2D tile with compatible shape that gets overwritten by x where Ux = z
     """
     ...
 

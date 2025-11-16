@@ -3860,7 +3860,10 @@ class fixedarray(array):
     @property
     def vars(self):
         # member attributes available during code-gen (e.g.: d = array.shape[0])
-        return {"shape": warp._src.codegen.Var("shape", shape_t)}
+        return {
+            "shape": warp._src.codegen.Var("shape", shape_t),
+            "ptr": warp._src.codegen.Var("data", pointer_t(self.dtype)),
+        }
 
 
 # A base class for non-contiguous arrays, providing the implementation of common methods like
@@ -4211,7 +4214,14 @@ class Bvh:
         instance.id = None
         return instance
 
-    def __init__(self, lowers: array, uppers: array, constructor: str | None = None, leaf_size: int = 1):
+    def __init__(
+        self,
+        lowers: array,
+        uppers: array,
+        constructor: str | None = None,
+        groups: array | None = None,
+        leaf_size: int = 1,
+    ):
         """Class representing a bounding volume hierarchy.
 
         Depending on which device the input bounds live, it can be either a CPU tree or a GPU tree.
@@ -4227,13 +4237,14 @@ class Bvh:
             constructor: The construction algorithm used to build the tree.
               Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, or ``None``.
               When ``None``, the default constructor will be used (see the note).
+            groups: Optional array of group indices of data type :class:`warp.int32`.
             leaf_size: The number of primitives (AABBs) stored in each leaf node. The optimal value depends on the primary
               use case. For intersection queries (e.g., AABB query), a small value like 1 (the default) is generally
               recommended for optimal performance. For closest point queries, a larger value like 4 or 8 can be more
               performant. This is an intrinsic parameter which does not impact the return value of the query method.
 
         Note:
-            Explanation of BVH constructors:
+            **Explanation of BVH constructors:**
 
             - ``"sah"``: A CPU-based top-down constructor where the AABBs are split based on Surface Area
               Heuristics (SAH). Construction takes slightly longer than others but has the best query
@@ -4266,6 +4277,24 @@ class Bvh:
             The default value is 1, which is optimal for intersection queries. For use cases that involve both intersection
             and closest point queries (such as mesh queries), a moderate value (e.g., 4) may provide a good balance.
             Users are encouraged to experiment with this parameter to find the best value for their specific workload.
+
+            **Concept of Grouped BVH:**
+
+            A Grouped BVH extends the traditional Bounding Volume Hierarchy to efficiently handle multiple independent
+            groups of objects—such as distinct environments in parallel robot simulations—within a single BVH structure.
+
+            In a standard BVH, all objects share one global tree, so queries must traverse the entire hierarchy and filter
+            results in user space. Grouped BVH introduces a group identifier for each object and makes sure that objects
+            from the same group occupy an entire subtree whose root can be quickly identified by calling :func:`bvh_get_group_root`.
+
+            By starting traversal directly from a group's root node, queries are confined to that group's objects only,
+            avoiding unnecessary intersection tests with other groups. This design significantly reduces query overhead
+            for large multi-environment workloads, improves memory coherence, and eliminates the need for spatial
+            separation between groups.
+
+            The grouped BVH thus allows Warp to perform environment-specific queries—such as collision detection,
+            sensor simulation, or rendering—within a unified BVH framework, maintaining compatibility with existing APIs
+            and near-identical performance for non-grouped use cases.
         """
         if len(lowers) != len(uppers):
             raise RuntimeError("The same number of lower and upper bounds must be provided")
@@ -4279,9 +4308,18 @@ class Bvh:
         if uppers.dtype != vec3 or not uppers.is_contiguous:
             raise RuntimeError("uppers should be a contiguous array of type wp.vec3")
 
+        if groups is not None:
+            if groups.dtype != int32 or not groups.is_contiguous:
+                raise RuntimeError("groups should be a contiguous array of type wp.int32")
+            if groups.device != lowers.device:
+                raise RuntimeError("groups must live on the same device as lowers/uppers")
+            if len(groups) != len(lowers):
+                raise RuntimeError("groups must have the same length as lowers/uppers")
+
         self.device = lowers.device
         self.lowers = lowers
         self.uppers = uppers
+        self.groups = groups
 
         def get_data(array):
             if array:
@@ -4305,13 +4343,18 @@ class Bvh:
 
         if self.device.is_cpu:
             if constructor == "lbvh":
-                warp._src.utils.warn(
+                warp.utils.warn(
                     "LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.", stacklevel=2
                 )
                 constructor = "sah"
 
             self.id = self.runtime.core.wp_bvh_create_host(
-                get_data(lowers), get_data(uppers), len(lowers), bvh_constructor_values[constructor], leaf_size
+                get_data(lowers),
+                get_data(uppers),
+                len(lowers),
+                bvh_constructor_values[constructor],
+                get_data(groups),
+                leaf_size,
             )
         else:
             self.id = self.runtime.core.wp_bvh_create_device(
@@ -4320,6 +4363,7 @@ class Bvh:
                 get_data(uppers),
                 len(lowers),
                 bvh_constructor_values[constructor],
+                get_data(groups),
                 leaf_size,
             )
 
@@ -4389,14 +4433,14 @@ class Bvh:
 
         if self.device.is_cpu:
             if constructor == "lbvh":
-                warp._src.utils.warn(
+                warp.utils.warn(
                     "LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.", stacklevel=2
                 )
                 constructor = "sah"
             self.runtime.core.wp_bvh_rebuild_host(self.id, bvh_constructor_values[constructor])
         else:
             if constructor != "lbvh":
-                warp._src.utils.warn(
+                warp.utils.warn(
                     "In-place rebuild method on the CUDA device only supports LBVH constructor. Falling back to LBVH constructor.",
                     stacklevel=2,
                 )

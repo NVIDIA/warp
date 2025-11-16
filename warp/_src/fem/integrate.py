@@ -432,6 +432,17 @@ def _find_integrand_operators(integrand: Integrand, field_args: Dict[str, FieldL
         integrand.operators = operators
 
 
+def _check_domain_operators(integrand: Integrand, domain: GeometryDomain, domain_argument_name: str, device):
+    domain_operators = integrand.operators.get(domain_argument_name, ())
+    if (
+        operator.lookup in domain_operators or operator.partition_lookup in domain_operators
+    ) and not domain.supports_lookup(device):
+        warn(
+            f"{integrand.name}: using lookup() operator on a '{domain.geometry.name}.{domain.element_kind.name}' domain that does not support it. "
+            "If relevant, check that the geometry's BVH has been built for this device (see `Geometry.build_bvh()`, `Geometry.update_bvh()`)."
+        )
+
+
 def _notify_operator_usage(
     integrand: Integrand,
     field_args: Dict[str, FieldLike],
@@ -1239,6 +1250,18 @@ def _generate_auxiliary_kernels(
     return ((dispatch_kernel, dispatch_tile_size),)
 
 
+def _as_2d_array(array, shape, dtype):
+    return wp.array(
+        data=None,
+        ptr=array.ptr,
+        capacity=array.capacity,
+        device=array.device,
+        shape=shape,
+        dtype=dtype,
+        grad=None if array.grad is None else _as_2d_array(array.grad, shape, dtype),
+    )
+
+
 def _launch_integrate_kernel(
     integrand: Integrand,
     kernel: wp.Kernel,
@@ -1365,18 +1388,15 @@ def _launch_integrate_kernel(
         if not add_to_output:
             output.zero_()
 
-        def as_2d_array(array):
-            return wp.array(
-                data=None,
-                ptr=array.ptr,
-                capacity=array.capacity,
-                device=array.device,
+        output_view = (
+            output
+            if output.ndim == 2
+            else _as_2d_array(
+                output,
                 shape=(test.space_partition.node_count(), test.node_dof_count),
                 dtype=type_scalar_type(output_dtype),
-                grad=None if array.grad is None else as_2d_array(array.grad),
             )
-
-        output_view = output if output.ndim == 2 else as_2d_array(output)
+        )
 
         if nodal:
             wp.launch(
@@ -1473,9 +1493,9 @@ def _launch_integrate_kernel(
     else:
         nnz = test.space_restriction.total_node_element_count() * trial.space.topology.MAX_NODES_PER_ELEMENT
 
-    triplet_rows_temp = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
-    triplet_cols_temp = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
-    triplet_values_temp = cache.borrow_temporary(
+    triplet_rows = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
+    triplet_cols = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
+    triplet_values = cache.borrow_temporary(
         temporary_store,
         shape=(
             nnz,
@@ -1485,9 +1505,6 @@ def _launch_integrate_kernel(
         dtype=output_dtype,
         device=device,
     )
-    triplet_cols = triplet_cols_temp.array
-    triplet_rows = triplet_rows_temp.array
-    triplet_values = triplet_values_temp.array
 
     if nodal:
         wp.launch(
@@ -1625,9 +1642,9 @@ def _launch_integrate_kernel(
     bsr_set_from_triplets(bsr_result, triplet_rows, triplet_cols, triplet_values, **(bsr_options or {}))
 
     # Do not wait for garbage collection
-    triplet_values_temp.release()
-    triplet_rows_temp.release()
-    triplet_cols_temp.release()
+    triplet_values.release()
+    triplet_rows.release()
+    triplet_cols.release()
 
     if add_to_output:
         output += bsr_result
@@ -1738,9 +1755,7 @@ def integrate(
         arguments.field_args[arguments.domain_name] = domain
 
     _find_integrand_operators(integrand, arguments.field_args)
-
-    if operator.lookup in integrand.operators.get(arguments.domain_name, []) and not domain.supports_lookup(device):
-        warn(f"{integrand.name}: using lookup() operator on a domain that does not support it")
+    _check_domain_operators(integrand, domain, arguments.domain_name, device)
 
     assembly = _pick_assembly_strategy(assembly, arguments=arguments, operators=integrand.operators)
     # print("assembly for ", integrand.name, ":", strategy)
@@ -2350,17 +2365,14 @@ def _launch_interpolate_kernel(
     if dest.block_shape[1] != trial.node_dof_count:
         raise RuntimeError(f"'dest' matrix blocks must have {trial.node_dof_count} columns")
 
-    triplet_rows_temp = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
-    triplet_cols_temp = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
-    triplet_values_temp = cache.borrow_temporary(
+    triplet_rows = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
+    triplet_cols = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
+    triplet_values = cache.borrow_temporary(
         temporary_store,
         dtype=dest.scalar_type,
         shape=(nnz, *dest.block_shape),
         device=device,
     )
-    triplet_cols = triplet_cols_temp.array
-    triplet_rows = triplet_rows_temp.array
-    triplet_values = triplet_values_temp.array
     triplet_rows.fill_(-1)
 
     trial_partition_arg = trial.space_partition.partition_arg_value(device)
@@ -2386,6 +2398,10 @@ def _launch_interpolate_kernel(
     )
 
     bsr_set_from_triplets(dest, triplet_rows, triplet_cols, triplet_values, **(bsr_options or {}))
+
+    triplet_values.release()
+    triplet_rows.release()
+    triplet_cols.release()
 
 
 @integrand
@@ -2476,9 +2492,7 @@ def interpolate(
         arguments.field_args[arguments.domain_name] = domain
 
     _find_integrand_operators(integrand, arguments.field_args)
-
-    if operator.lookup in integrand.operators.get(arguments.domain_name, []) and not domain.supports_lookup(device):
-        warn(f"{integrand.name}: using lookup() operator on a domain that does not support it")
+    _check_domain_operators(integrand, domain, arguments.domain_name, device)
 
     kernel, field_struct, value_struct = _generate_interpolate_kernel(
         integrand=integrand,

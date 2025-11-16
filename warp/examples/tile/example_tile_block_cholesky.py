@@ -21,6 +21,7 @@
 #
 ###########################################################################
 
+import sys
 from functools import lru_cache
 
 import numpy as np
@@ -110,8 +111,8 @@ def create_blocked_cholesky_kernel(block_size: int):
                         wp.tile_matmul(L_tile, L_T_tile, A_ik_tile, alpha=-1.0)
 
                 t = wp.tile_transpose(A_ik_tile)
-                tmp = wp.tile_lower_solve(L_kk_tile, t)
-                sol_tile = wp.tile_transpose(tmp)
+                wp.tile_lower_solve_inplace(L_kk_tile, t)
+                sol_tile = wp.tile_transpose(t)
 
                 wp.tile_store(L, sol_tile, offset=(i, k))
 
@@ -150,8 +151,8 @@ def create_blocked_cholesky_solve_kernel(block_size: int):
                     y_block = wp.tile_load(y, shape=(block_size, 1), offset=(j, 0))
                     wp.tile_matmul(L_block, y_block, rhs_tile, alpha=-1.0)
             L_tile = wp.tile_load(L, shape=(block_size, block_size), offset=(i, i))
-            y_tile = wp.tile_lower_solve(L_tile, rhs_tile)
-            wp.tile_store(y, y_tile, offset=(i, 0))
+            wp.tile_lower_solve_inplace(L_tile, rhs_tile)
+            wp.tile_store(y, rhs_tile, offset=(i, 0))
 
         # Backward substitution: solve L^T x = y
         for i in range(n - block_size, -1, -block_size):
@@ -165,8 +166,8 @@ def create_blocked_cholesky_solve_kernel(block_size: int):
                     x_tile = wp.tile_load(x, shape=(block_size, 1), offset=(j, 0))
                     wp.tile_matmul(L_T_tile, x_tile, rhs_tile, alpha=-1.0)
             L_tile = wp.tile_load(L, shape=(block_size, block_size), offset=(i_start, i_start))
-            x_tile = wp.tile_upper_solve(wp.tile_transpose(L_tile), rhs_tile)
-            wp.tile_store(x, x_tile, offset=(i_start, 0))
+            wp.tile_upper_solve_inplace(wp.tile_transpose(L_tile), rhs_tile)
+            wp.tile_store(x, rhs_tile, offset=(i_start, 0))
 
     return blocked_cholesky_solve_kernel
 
@@ -338,7 +339,7 @@ class CholeskySolverNumPy:
         result[:n] = np.linalg.solve(self.L[:n, :n].T, self.y[:n])
 
 
-def test_cholesky_solver(n, warp_solver: BlockCholeskySolver, device: str = "cuda"):
+def test_cholesky_solver(n, warp_solver: BlockCholeskySolver, headless: bool = False, device: str = "cuda"):
     # Create a symmetric positive definite matrix
     rng = np.random.default_rng(0)
     A_full = rng.standard_normal((n, n))
@@ -366,7 +367,6 @@ def test_cholesky_solver(n, warp_solver: BlockCholeskySolver, device: str = "cud
     b_padded = rng.standard_normal(padded_n)
     b_padded[:n] = b
 
-    print("\nSolving with NumPy:")
     # NumPy reference solution
     x = np.linalg.solve(A_full, b)
     L_full = np.linalg.cholesky(A_full)
@@ -374,10 +374,12 @@ def test_cholesky_solver(n, warp_solver: BlockCholeskySolver, device: str = "cud
     # Verify NumPy solution
     err = np.linalg.norm(A_full - L_full @ L_full.T)
     res_norm = np.linalg.norm(b - A_full @ x)
-    print(f"Cholesky factorization error: {err:.3e}")
-    print(f"Solution residual norm: {res_norm:.3e}")
 
-    print("\nSolving with Warp kernels:")
+    if not headless:
+        print("\nSolving with NumPy:")
+        print(f"Cholesky factorization error: {err:.3e}")
+        print(f"Solution residual norm: {res_norm:.3e}")
+
     # Initialize Warp arrays
     A_wp = wp.array(A_padded, dtype=wp.float32, device=device)
     b_wp = wp.array(b_padded, dtype=wp.float32, device=device).reshape((padded_n, 1))
@@ -397,9 +399,11 @@ def test_cholesky_solver(n, warp_solver: BlockCholeskySolver, device: str = "cud
     res_norm_warp = np.linalg.norm(b - A_full @ x_warp)
     diff_norm = np.linalg.norm(x - x_warp)
 
-    print(f"Warp Cholesky factorization error: {err_warp:.3e}")
-    print(f"Warp solution residual norm: {res_norm_warp:.3e}")
-    print(f"Difference between CPU and GPU solutions: {diff_norm:.3e}")
+    if not headless:
+        print("\nSolving with Warp kernels:")
+        print(f"Warp Cholesky factorization error: {err_warp:.3e}")
+        print(f"Warp solution residual norm: {res_norm_warp:.3e}")
+        print(f"Difference between CPU and GPU solutions: {diff_norm:.3e}")
 
 
 @wp.kernel
@@ -408,9 +412,7 @@ def assign_int_kernel(arr: wp.array(dtype=int, ndim=1), value: int):
     arr[0] = value
 
 
-def test_cholesky_solver_graph_capture():
-    wp.clear_kernel_cache()
-
+def test_cholesky_solver_graph_capture(device):
     max_equations = 1000
 
     # Create random SPD matrix A and random RHS b
@@ -418,8 +420,6 @@ def test_cholesky_solver_graph_capture():
     A_np = rng.standard_normal((max_equations, max_equations))
     A_np = A_np @ A_np.T + np.eye(max_equations) * max_equations  # Make SPD
     b_np = rng.standard_normal((max_equations, 1))
-
-    device = "cuda"
 
     with wp.ScopedDevice(device):
         warp_solver = BlockCholeskySolver(max_equations, block_size=32)
@@ -473,26 +473,41 @@ def test_cholesky_solver_graph_capture():
                 wp.capture_launch(graph, stream=stream)
 
             wp.synchronize()
-            print("Finished!")
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
+    import argparse
 
-    test_graph_capture = False
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument("--graph_capture", action="store_true", help="Test graph capture.")
+    parser.add_argument("-N", type=int, default=8, help="Number of matrices to test.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing output.",
+    )
 
-    if test_graph_capture:
-        test_cholesky_solver_graph_capture()
+    args = parser.parse_known_args()[0]
 
-    else:
-        device = "cpu"
+    device = wp.get_device(args.device)
 
-        # Test equation sys  sizes
+    if args.graph_capture and device.is_cuda:
+        test_cholesky_solver_graph_capture(args.device)
+        print("Graph capture complete")
+        sys.exit(0)
+
+    with wp.ScopedDevice(args.device):
+        # Test equation sys sizes
         sizes = [32, 70, 128, 192, 257, 320, 401, 1000]
+        N = min(len(sizes), args.N)
+        sizes = sizes[:N]
 
         # Initialize solver once with max size
-        warp_solver = BlockCholeskySolver(max(sizes), block_size=16, device=device)
+        warp_solver = BlockCholeskySolver(max(sizes), block_size=16, device=args.device)
 
         for n in sizes:
-            print(f"\nTesting system size n = {n}")
-            test_cholesky_solver(n, warp_solver, device)
+            if not args.headless:
+                print(f"\nTesting system size n = {n}")
+
+            test_cholesky_solver(n, warp_solver, args.headless, args.device)

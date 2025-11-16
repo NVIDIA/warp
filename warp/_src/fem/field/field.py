@@ -616,6 +616,12 @@ class NonconformingField(GeometryField):
         return self.field.dtype
 
     def fill_eval_arg(self, arg, device):
+        if not self.field.geometry.supports_cell_lookup(device):
+            raise RuntimeError(
+                f"The NonconformingField's geometry of type '{self.field.geometry.name}' does not support global cell lookups on this device. "
+                "If relevant, check that the geometry's BVH has been built for this device (see `Geometry.build_bvh()`, `Geometry.update_bvh()`)."
+            )
+
         self.field.fill_eval_arg(arg.field_cell_eval_arg.eval_arg, device)
         self.field.geometry.fill_cell_arg(arg.field_cell_eval_arg.elt_arg, device)
         self.background.fill_eval_arg(arg.background_arg, device)

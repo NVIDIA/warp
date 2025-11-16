@@ -72,6 +72,7 @@ def build_cuda(
                 fatbins
             )
             arr_link_input_types = (ctypes.c_int * num_link)(*link_input_types)
+            kernel_cache_dir_bytes = warp._src.config.kernel_cache_dir.encode("utf-8")
             err = warp._src.context.runtime.core.wp_cuda_compile_program(
                 src,
                 program_name_bytes,
@@ -86,7 +87,9 @@ def build_cuda(
                 fuse_fp,
                 lineinfo,
                 compile_time_trace,
+                warp._src.config.use_precompiled_headers,
                 output_path,
+                kernel_cache_dir_bytes,
                 num_link,
                 arr_link,
                 arr_link_sizes,
