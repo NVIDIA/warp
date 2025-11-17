@@ -315,6 +315,77 @@ def adj_dense_gemm(
         dense_gemm(p, n, m, True, False, add_to_C, A, wp.adjoint[C], wp.adjoint[B])
 
 
+# Test for nested function calls with custom gradients
+# This tests that custom gradient functions are generated in the correct order
+# to avoid undefined reference errors during compilation.
+@wp.func
+def custom_norm(v: wp.vec3):
+    """Compute vector length with custom gradient."""
+    return wp.length(v)
+
+
+@wp.func_grad(custom_norm)
+def adj_custom_norm(v: wp.vec3, adj_ret: float):
+    """Custom gradient that normalizes the adjoint."""
+    # Use normalized gradient instead of the automatic one
+    wp.adjoint[v] += wp.normalize(v) * adj_ret
+
+
+@wp.func
+def nested_norm(v: wp.vec3):
+    """Function that calls another function with custom gradient."""
+    # This call will generate an adjoint that references adj_custom_norm
+    return custom_norm(v)
+
+
+@wp.kernel
+def test_nested_custom_grad_kernel(vectors: wp.array(dtype=wp.vec3), norms: wp.array(dtype=float)):
+    i = wp.tid()
+    norms[i] = nested_norm(vectors[i])
+
+
+def test_nested_custom_grad(test, device):
+    """Test that nested functions with custom gradients generate correct code.
+
+    This test ensures that when a function with a custom gradient (custom_norm) is
+    called by another function (nested_norm), the custom gradient function is
+    generated before the auto-generated adjoint that references it. Without proper
+    code generation ordering, this would cause a compilation error.
+    """
+    # Test vectors: chosen to make normalization easy to verify
+    # [0, 2, 0] has length 2, normalizes to [0, 1, 0]
+    # [3, 0, 0] has length 3, normalizes to [1, 0, 0]
+    # [0, 0, -1] has length 1, normalizes to [0, 0, -1]
+    vecs_np = np.array(
+        [[0.0, 2.0, 0.0], [3.0, 0.0, 0.0], [0.0, 0.0, -1.0]],
+        dtype=np.float32,
+    )
+
+    # Input: 3 vectors (vec3), Output: 3 scalars (float)
+    vecs = wp.array(vecs_np, dtype=wp.vec3, requires_grad=True, device=device)
+    norms = wp.zeros(vecs.shape[0], dtype=wp.float32, device=device)
+
+    # Forward pass: compute length of each vector
+    tape = wp.Tape()
+    with tape:
+        wp.launch(test_nested_custom_grad_kernel, dim=vecs.shape[0], inputs=[vecs], outputs=[norms], device=device)
+
+    expected_norms = np.array([2.0, 3.0, 1.0], dtype=np.float32)
+    assert_np_equal(norms.numpy(), expected_norms, tol=1e-4)
+
+    # Backward pass: seed with scalar adjoints (one per output)
+    norms_grad = wp.ones(vecs.shape[0], dtype=wp.float32, device=device)  # [1.0, 1.0, 1.0]
+    tape.backward(grads={norms: norms_grad})
+
+    # Gradient of length is the normalized vector: ∂||v||/∂v = v/||v||
+    # [0, 2, 0] → [0, 1, 0], [3, 0, 0] → [1, 0, 0], [0, 0, -1] → [0, 0, -1]
+    expected_grad = np.array(
+        [[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, -1.0]],
+        dtype=np.float32,
+    )
+    assert_np_equal(vecs.grad.numpy(), expected_grad, tol=1e-4)
+
+
 devices = get_test_devices()
 
 
@@ -332,6 +403,7 @@ add_function_test(TestGradCustoms, "test_custom_replay_grad", test_custom_replay
 add_function_test(TestGradCustoms, "test_custom_overload_grad", test_custom_overload_grad, devices=devices)
 add_function_test(TestGradCustoms, "test_custom_import_grad", test_custom_import_grad, devices=devices)
 add_function_test(TestGradCustoms, "test_custom_grad_no_return", test_custom_grad_no_return, devices=devices)
+add_function_test(TestGradCustoms, "test_nested_custom_grad", test_nested_custom_grad, devices=devices)
 
 
 if __name__ == "__main__":
