@@ -3851,6 +3851,9 @@ size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, i
     opts.push_back(include_opt);
     opts.push_back("--std=c++17");
 
+    // CUDA 12.9+ supports --Ofast-compile
+#if CUDA_VERSION >= 12090
+    // --Ofast-compile works inversely to normal -O optimization levels
     switch (opt_level)
     {
     case 0:  opts.push_back("--Ofast-compile=max"); break;
@@ -3858,6 +3861,7 @@ size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, i
     case 2:  opts.push_back("--Ofast-compile=min"); break;
     default: opts.push_back("--Ofast-compile=0");   break;  // 3 and up
     }
+#endif
 
     // Vector to store dynamically created option strings
     std::vector<std::string> stored_options;
