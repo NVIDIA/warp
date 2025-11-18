@@ -65,7 +65,7 @@ opt_level: int = 3
 Args:
     opt_level: An integer representing the optimization level (0-3).
 
-Note: Higher optimization levels may impact compilation time and performance.
+Note: Higher optimization levels increase compilation time but may improve run-time performance.
 
 This setting can be overridden at the module level by setting the ``"opt_level"`` module option.
 """
