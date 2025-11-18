@@ -2212,6 +2212,7 @@ class Module:
             "lineinfo": warp._src.config.lineinfo,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": None,
+            "opt_level": warp._src.config.opt_level,
             "block_dim": 256,
             "compile_time_trace": warp._src.config.compile_time_trace,
             "strip_hash": False,
@@ -2577,7 +2578,7 @@ class Module:
                         builder_options["output_arch"],
                         output_path,
                         config=mode,
-                        opt_level=warp._src.config.opt_level,
+                        opt_level=self.options["opt_level"],
                         verify_fp=warp._src.config.verify_fp,
                         fast_math=self.options["fast_math"],
                         fuse_fp=self.options["fuse_fp"],
