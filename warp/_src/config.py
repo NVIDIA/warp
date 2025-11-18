@@ -67,6 +67,8 @@ Args:
 
 Note: Higher optimization levels increase compilation time but may improve run-time performance.
 
+Currently only affects GPU modules.
+
 This setting can be overridden at the module level by setting the ``"opt_level"`` module option.
 """
 

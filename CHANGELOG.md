@@ -21,8 +21,8 @@
 - Add `wp.tile_scan_max_inclusive()` and `wp.tile_scan_min_inclusive()` for cumulative maximum and minimum operations across tiles ([GH-1090](https://github.com/NVIDIA/warp/issues/1090)).
 - Add a `wp.config.opt_level` config which can be used to control the optimization level of modules. It defaults to level `3`, enabling all
   optimizations, at the cost of compilation time. Lower levels may improve compile times but reduce run-time performance. It can be configured
-  globally, or per-module using `wp.set_module_options({"opt_level": #})`. Currently it only has an effect when using CUDA Toolkit 12.9 or
-  newer ([GH-1084](https://github.com/NVIDIA/warp/issues/1084)).
+  globally, or per-module using `wp.set_module_options({"opt_level": #})`. Currently it only has an effect on GPU modules and only when using
+  CUDA Toolkit 12.9 or newer ([GH-1084](https://github.com/NVIDIA/warp/issues/1084)).
 
 ### Removed
 
