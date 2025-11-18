@@ -54,7 +54,7 @@ def fetch_prebuilt_libraries(arch):
                 packman,
                 "install",
                 "-l",
-                f"./_build/host-deps/llvm-project/release-{arch}",
+                os.path.join(base_path, "_build", "host-deps", "llvm-project", f"release-{arch}"),
                 "clang+llvm-warp",
                 packages[arch],
             ],
