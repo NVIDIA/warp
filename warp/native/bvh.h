@@ -370,8 +370,8 @@ CUDA_CALLABLE inline int bvh_get_group_root(uint64_t id, int group_id)
 // across the block
 struct bvh_stack_t
 {
-    inline int operator[](int depth) const { return ptr[depth*WP_TILE_BLOCK_DIM]; }
-    inline int& operator[](int depth) { return ptr[depth*WP_TILE_BLOCK_DIM]; }
+    CUDA_CALLABLE inline int operator[](int depth) const { return ptr[depth*WP_TILE_BLOCK_DIM]; }
+    CUDA_CALLABLE inline int& operator[](int depth) { return ptr[depth*WP_TILE_BLOCK_DIM]; }
 
     int* ptr;
 
@@ -508,7 +508,7 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index, const f
 
         if (query.primitive_counter == 0)
         {
-            float t = INFINITY;
+            float t = FLT_MAX;
             bool hit = bvh_query_intersection_test(query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper), t);
             if (!hit || (query.is_ray && t >= max_dist))
             {
@@ -547,7 +547,7 @@ CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index, const f
                 {
                     query.stack[query.count++] = node_index;
                 }
-                float t = INFINITY;
+                float t = FLT_MAX;
                 bool hit = bvh_query_intersection_test(query, bvh.item_lowers[primitive_index], bvh.item_uppers[primitive_index], t);
                 if (!hit || (query.is_ray && t >= max_dist))
                 {
@@ -578,7 +578,7 @@ CUDA_CALLABLE inline int iter_next(bvh_query_t& query)
 
 CUDA_CALLABLE inline bool iter_cmp(bvh_query_t& query)
 {
-    float max_dist = INFINITY;
+    float max_dist = FLT_MAX;
     bool finished = bvh_query_next(query, query.bounds_nr, max_dist);
     return finished;
 }

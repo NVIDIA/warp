@@ -52,11 +52,18 @@ def run_cmd(cmd):
         print(cmd)
 
     try:
-        return subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        # Print output even on success to show warnings
+        if output:
+            decoded_output = output.decode()
+            if decoded_output.strip():  # Only print if not just whitespace
+                # In parallel builds, associate output with its command for clarity
+                # Use single print to avoid interleaving with other processes
+                print(f"Output from: {cmd}\n{decoded_output}")
+        return output
     except subprocess.CalledProcessError as e:
-        print("Command failed with exit code:", e.returncode)
-        print("Command output was:")
-        print(e.output.decode())
+        # Single print to avoid interleaving in parallel builds
+        print(f"Command failed with exit code {e.returncode}: {cmd}\nCommand output was:\n{e.output.decode()}")
         raise e
 
 
@@ -472,6 +479,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             *gencode_opts,
             "-t0",  # multithreaded compilation
             "--extended-lambda",
+            "-diag-suppress=221",  # suppress "floating-point value does not fit" warning from INFINITY macro in CUDA headers
         ]
 
         # Clang options
@@ -532,7 +540,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             iter_dbg = "_ITERATOR_DEBUG_LEVEL=2"
             debug = "_DEBUG"
 
-        cpp_flags = f'/nologo /std:c++17 /GR- {runtime} /D "{debug}" /D "{cuda_enabled}" /D "{mathdx_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" {includes} '
+        cpp_flags = f'/nologo /std:c++17 /GR- /EHsc {runtime} /D "{debug}" /D "{cuda_enabled}" /D "{mathdx_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" {includes} '
 
         if args.mode == "debug":
             cpp_flags += "/FS /Zi /Od /D WP_ENABLE_DEBUG=1"
@@ -556,7 +564,11 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             for cpp_path in cpp_paths:
                 cpp_out = cpp_path + ".obj"
                 linkopts.append(quote(cpp_out))
-                cpp_cmd = f'"{args.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
+                # Add warning suppressions for clang.cpp to avoid LLVM header warnings
+                extra_flags = ""
+                if "clang/clang.cpp" in cpp_path.replace("\\", "/"):
+                    extra_flags = " /wd4624"  # suppress C4624: destructor was implicitly defined as deleted
+                cpp_cmd = f'"{args.host_compiler}" {cpp_flags}{extra_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
                 cpp_cmds.append(cpp_cmd)
 
             if args.jobs <= 1:

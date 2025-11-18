@@ -353,7 +353,7 @@ CUDA_CALLABLE inline bvh_query_thread_block_t bvh_query_aabb_thread_block_impl(
 CUDA_CALLABLE inline bool bvh_query_next_thread_block_impl(bvh_query_thread_block_t& query, int& index)
 {
     // On CPU, bvh_query_thread_block_t is just bvh_query_t, so call regular bvh_query_next
-    return bvh_query_next(query, index, INFINITY);
+    return bvh_query_next(query, index, FLT_MAX);
 }
 
 #endif
@@ -426,7 +426,7 @@ inline auto tile_bvh_query_next_impl(bvh_query_thread_block_t& query)
     // On CPU, bvh_query_thread_block_t is aliased to bvh_query_t
     // We just call the regular query and put the result in the first element of a tile
     int index = -1;
-    bvh_query_next(query, index, INFINITY);
+    bvh_query_next(query, index, FLT_MAX);
     
     // Create a tile with the index in the first element, -1 in all others
     // This simulates a single-threaded execution where only thread 0 has work
