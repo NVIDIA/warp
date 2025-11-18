@@ -111,6 +111,21 @@ def test_options_backward_4(test, device):
     assert_np_equal(tape.gradients[x].numpy(), np.array(0.0))
 
 
+def test_options_opt_level(test, device):
+    assert wp.get_module_options()["opt_level"] == 3, "Default opt_level should be 3"
+
+    wp.set_module_options({"opt_level": 2})
+
+    x = wp.array([4.0], dtype=float, requires_grad=True, device=device)
+    y = wp.zeros_like(x)
+
+    wp.launch(scale, dim=1, inputs=[x, y], device=device)
+    assert y.numpy()[0] == 16.0
+
+    # Reset to default for the next device
+    wp.set_module_options({"opt_level": 3})
+
+
 devices = get_test_devices()
 
 
@@ -122,7 +137,7 @@ add_function_test(TestOptions, "test_options_backward_1", test_options_backward_
 add_function_test(TestOptions, "test_options_backward_2", test_options_backward_2, devices=devices)
 add_function_test(TestOptions, "test_options_backward_3", test_options_backward_3, devices=devices)
 add_function_test(TestOptions, "test_options_backward_4", test_options_backward_4, devices=devices)
-
+add_function_test(TestOptions, "test_options_opt_level", test_options_opt_level, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
