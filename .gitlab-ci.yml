@@ -355,7 +355,7 @@ linux-aarch64 test:
   image: ubuntu:22.04
   needs: [linux-aarch64 build]
   extends:
-    - .runner-test-linux-aarch64-gpu
+    - .runner-test-linux-aarch64 # TODO: Change to .runner-test-linux-aarch64-gpu when runners are available
     - .test_common_with_coverage
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
