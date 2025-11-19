@@ -1874,44 +1874,40 @@ class ModuleBuilder:
 
         return meta
 
-    @staticmethod
-    def _sort_by_custom_grad_dependencies(functions: list[Function]) -> list[Function]:
-        """Reorder functions for code generation to avoid undefined reference errors.
-
-        Custom gradient functions (decorated with @wp.func_grad) need careful ordering:
-        - They must come AFTER forward functions they call
-        - They must come BEFORE auto-generated adjoints that call them
+    def _codegen_functions(self, functions, device, forward_only=False, reverse_only=False):
+        """Helper to generate code for a list of functions.
 
         Args:
-            functions: List of Function objects to sort
+            functions: Iterable of functions to generate code for
+            device: Target device ('cpu' or 'cuda')
+            forward_only: If True, generate only forward code
+            reverse_only: If True, generate only reverse/adjoint code
 
         Returns:
-            Sorted list with order: forward-only functions → custom grads → functions with auto-adjoints
-
-        This ensures:
-        1. Forward functions are defined first
-        2. Custom grads (which may call forward functions) come next
-        3. Auto-generated adjoints (which may call custom grads) come last
+            Generated C++ source code as a string
         """
-        forward_only_functions = []  # Functions with custom grads (skip reverse)
-        custom_grad_functions = []  # Custom grad functions themselves
-        full_functions = []  # Functions that generate both forward + auto-adjoint
-        # Build set of custom grad functions using set comprehension
-        custom_grad_set = {f.custom_grad_func for f in functions if f.custom_grad_func is not None}
-
-        # Categorize functions
+        source = ""
         for func in functions:
-            if func in custom_grad_set:
-                # This IS a custom grad function
-                custom_grad_functions.append(func)
-            elif func.custom_grad_func:
-                # This function HAS a custom grad (will skip reverse codegen)
-                forward_only_functions.append(func)
+            if func.native_snippet is None:
+                source += warp._src.codegen.codegen_func(
+                    func.adj,
+                    c_func_name=func.native_func,
+                    device=device,
+                    options=self.options,
+                    forward_only=forward_only,
+                    reverse_only=reverse_only,
+                )
             else:
-                # Regular function (generates both forward and auto-adjoint)
-                full_functions.append(func)
-
-        return forward_only_functions + custom_grad_functions + full_functions
+                source += warp._src.codegen.codegen_snippet(
+                    func.adj,
+                    name=func.native_func,
+                    snippet=func.native_snippet,
+                    adj_snippet=func.adj_native_snippet,
+                    replay_snippet=func.replay_snippet,
+                    forward_only=forward_only,
+                    reverse_only=reverse_only,
+                )
+        return source
 
     def codegen(self, device):
         source = ""
@@ -1931,29 +1927,26 @@ class ModuleBuilder:
                 source += warp._src.codegen.codegen_struct(struct)
                 visited_structs.add(struct.hash)
 
-        # Reorder functions to ensure custom grad functions are generated before
-        # functions whose adjoints depend on them. This is necessary because custom grad
-        # functions are deferred during the build phase but may be called by adjoints of
-        # functions built earlier.
-        # TODO: This is a workaround. A better long-term solution would be two-pass code
-        # generation: Pass 1 generates all forward functions, Pass 2 generates all adjoint/reverse
-        # functions with custom gradients ordered before auto-generated adjoints that reference them.
-        ordered_functions = self._sort_by_custom_grad_dependencies(list(self.functions.keys()))
+        # Two-pass code generation to handle custom gradients:
+        # Pass 1: Generate all forward functions (preserves natural call dependencies)
+        # Pass 2: Generate all reverse/adjoint functions (custom grads before auto-adjoints)
 
-        # code-gen all imported functions
-        for func in ordered_functions:
-            if func.native_snippet is None:
-                source += warp._src.codegen.codegen_func(
-                    func.adj, c_func_name=func.native_func, device=device, options=self.options
-                )
-            else:
-                source += warp._src.codegen.codegen_snippet(
-                    func.adj,
-                    name=func.native_func,
-                    snippet=func.native_snippet,
-                    adj_snippet=func.adj_native_snippet,
-                    replay_snippet=func.replay_snippet,
-                )
+        # Pass 1: Forward functions only (including native snippets)
+        source += self._codegen_functions(self.functions.keys(), device, forward_only=True)
+
+        # Pass 2: Reverse/adjoint functions with custom grads sorted before auto-adjoints
+        # Build set of functions that ARE custom gradients (decorated with @wp.func_grad)
+        # Note: f.custom_grad_func tells us if f HAS a custom gradient, but we need to know
+        # which functions ARE custom gradients themselves (i.e., appear as someone's custom_grad_func)
+        custom_grad_set = {f.custom_grad_func for f in self.functions.keys() if f.custom_grad_func is not None}
+
+        # Separate functions that ARE custom grads from all others, preserving original order
+        custom_grad_functions = [f for f in self.functions.keys() if f in custom_grad_set]
+        other_functions = [f for f in self.functions.keys() if f not in custom_grad_set]
+
+        # Generate adjoints: custom grads first, then other functions
+        # This ensures custom grads are defined before any auto-adjoints that call them
+        source += self._codegen_functions(custom_grad_functions + other_functions, device, reverse_only=True)
 
         for kernel in self.kernels:
             source += warp._src.codegen.codegen_kernel(kernel, device=device, options=self.options)

@@ -4073,7 +4073,7 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     return "".join(l.lstrip() if l.lstrip().startswith("#line") else indent_block + l for l in lines)
 
 
-def codegen_func(adj, c_func_name: str, device="cpu", options=None):
+def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only=False, reverse_only=False):
     if options is None:
         options = {}
 
@@ -4179,7 +4179,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None):
     forward_body = codegen_func_forward(adj, func_type="function", device=device)
 
     s = ""
-    if not adj.skip_forward_codegen:
+    if not adj.skip_forward_codegen and not reverse_only:
         s += forward_template.format(
             name=c_func_name,
             return_type=return_type,
@@ -4190,7 +4190,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None):
             line_directive=func_line_directive,
         )
 
-    if not adj.skip_reverse_codegen:
+    if not adj.skip_reverse_codegen and not forward_only:
         if adj.custom_reverse_mode:
             reverse_body = "\t// user-defined adjoint code\n" + forward_body
         else:
@@ -4212,7 +4212,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None):
     return s
 
 
-def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet):
+def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_only=False, reverse_only=False):
     if adj.return_var is not None and len(adj.return_var) == 1:
         return_type = adj.return_var[0].ctype()
     else:
@@ -4242,42 +4242,47 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet):
     reverse_template = cuda_reverse_function_template
 
     s = ""
-    s += forward_template.format(
-        name=name,
-        return_type=return_type,
-        forward_args=indent(forward_args),
-        forward_body=snippet,
-        filename=adj.filename,
-        lineno=adj.fun_lineno,
-        line_directive="",
-    )
 
-    if replay_snippet is not None:
-        s += replay_template.format(
-            name="replay_" + name,
+    # Pass 1: Forward and replay (both are "forward-like" functions)
+    if not reverse_only:
+        s += forward_template.format(
+            name=name,
             return_type=return_type,
             forward_args=indent(forward_args),
-            forward_body=replay_snippet,
+            forward_body=snippet,
             filename=adj.filename,
             lineno=adj.fun_lineno,
             line_directive="",
         )
 
-    if adj_snippet:
-        reverse_body = adj_snippet
-    else:
-        reverse_body = ""
+        if replay_snippet is not None:
+            s += replay_template.format(
+                name="replay_" + name,
+                return_type=return_type,
+                forward_args=indent(forward_args),
+                forward_body=replay_snippet,
+                filename=adj.filename,
+                lineno=adj.fun_lineno,
+                line_directive="",
+            )
 
-    s += reverse_template.format(
-        name=name,
-        return_type=return_type,
-        reverse_args=indent(reverse_args),
-        forward_body=snippet,
-        reverse_body=reverse_body,
-        filename=adj.filename,
-        lineno=adj.fun_lineno,
-        line_directive="",
-    )
+    # Pass 2: Reverse/adjoint only
+    if not forward_only:
+        if adj_snippet:
+            reverse_body = adj_snippet
+        else:
+            reverse_body = ""
+
+        s += reverse_template.format(
+            name=name,
+            return_type=return_type,
+            reverse_args=indent(reverse_args),
+            forward_body=snippet,
+            reverse_body=reverse_body,
+            filename=adj.filename,
+            lineno=adj.fun_lineno,
+            line_directive="",
+        )
 
     return s
 
