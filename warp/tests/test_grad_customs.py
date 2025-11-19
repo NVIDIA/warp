@@ -386,6 +386,222 @@ def test_nested_custom_grad(test, device):
     assert_np_equal(vecs.grad.numpy(), expected_grad, tol=1e-4)
 
 
+# Test for correct ordering when custom gradient functions depend on regular functions
+# This test catches a bug where function ordering doesn't preserve insertion order,
+# causing forward functions with custom grads to be placed before helper functions they call.
+@wp.func
+def helper_multiply(x: float):
+    """Regular helper function used by custom gradient function."""
+    return x * 2.0
+
+
+@wp.func
+def custom_transform(x: float):
+    """Function with custom gradient that depends on helper_multiply."""
+    # This function calls a regular helper - important for testing ordering!
+    return helper_multiply(x) + 1.0
+
+
+@wp.func_grad(custom_transform)
+def adj_custom_transform(x: float, adj_ret: float):
+    """Custom gradient for custom_transform."""
+    # Custom gradient: derivative is 2.0 (from helper_multiply)
+    wp.adjoint[x] += 2.0 * adj_ret
+
+
+@wp.func
+def outer_transform(x: float):
+    """Function that calls custom_transform."""
+    return custom_transform(x) * 3.0
+
+
+@wp.kernel
+def test_custom_grad_with_helper_kernel(inputs: wp.array(dtype=float), outputs: wp.array(dtype=float)):
+    i = wp.tid()
+    outputs[i] = outer_transform(inputs[i])
+
+
+def test_custom_grad_with_helper_dependency(test, device):
+    """Test that custom gradient functions can depend on regular helper functions.
+
+    This test ensures the code generation ordering preserves the original insertion order
+    for regular functions, even when custom gradient functions are involved. Without
+    proper ordering, the forward function with custom gradient (custom_transform) might
+    be placed before the helper function it calls (helper_multiply), causing compilation errors.
+
+    The dependency chain is:
+    1. helper_multiply (regular function)
+    2. custom_transform (calls helper_multiply, has custom gradient)
+    3. adj_custom_transform (custom gradient)
+    4. outer_transform (calls custom_transform, generates auto-adjoint)
+    """
+    n = 3
+    inputs_np = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+
+    inputs = wp.array(inputs_np, dtype=wp.float32, requires_grad=True, device=device)
+    outputs = wp.zeros(n, dtype=wp.float32, device=device)
+
+    # Forward pass: output[i] = ((input[i] * 2.0) + 1.0) * 3.0
+    tape = wp.Tape()
+    with tape:
+        wp.launch(test_custom_grad_with_helper_kernel, dim=n, inputs=[inputs], outputs=[outputs], device=device)
+
+    # Expected: [1*2+1]*3=9, [2*2+1]*3=15, [3*2+1]*3=21
+    expected_outputs = np.array([9.0, 15.0, 21.0], dtype=np.float32)
+    assert_np_equal(outputs.numpy(), expected_outputs, tol=1e-4)
+
+    # Backward pass
+    outputs_grad = wp.ones(n, dtype=wp.float32, device=device)
+    tape.backward(grads={outputs: outputs_grad})
+
+    # Gradient: d/dx[(2x+1)*3] = 2*3 = 6 (from custom gradient)
+    expected_grad = np.array([6.0, 6.0, 6.0], dtype=np.float32)
+    assert_np_equal(inputs.grad.numpy(), expected_grad, tol=1e-4)
+
+
+# Native snippet called by function with custom gradient
+# This tests that native snippets are available when generating forward code
+# for functions that have custom gradients
+
+add_two_snippet = """
+    return a + 2.0f;
+"""
+
+add_two_adj_snippet = """
+    // derivative of (a + 2) w.r.t. a is 1
+    adj_a += adj_ret;
+"""
+
+
+@wp.func_native(add_two_snippet, adj_snippet=add_two_adj_snippet)
+def add_two_native(a: float) -> float:
+    """Native snippet that adds 2 to input."""
+    ...
+
+
+@wp.func
+def func_with_native_and_custom_grad(x: float):
+    """Function that calls native snippet and has custom gradient."""
+    # Forward pass calls native snippet
+    y = add_two_native(x)
+    return y * 3.0
+
+
+@wp.func_grad(func_with_native_and_custom_grad)
+def adj_func_with_native_and_custom_grad(x: float, adj_ret: float):
+    """Custom gradient that provides derivative: d/dx[(x+2)*3] = 3."""
+    wp.adjoint[x] += 3.0 * adj_ret
+
+
+@wp.kernel
+def test_native_snippet_in_forward_kernel(inputs: wp.array(dtype=float), outputs: wp.array(dtype=float)):
+    i = wp.tid()
+    outputs[i] = func_with_native_and_custom_grad(inputs[i])
+
+
+def test_native_snippet_in_forward_with_custom_grad(test, device):
+    """Test that functions with custom gradients can call native snippets in forward pass.
+
+    This covers the case where:
+    1. A native snippet function exists (add_two_native)
+    2. A function calls it in forward pass (func_with_native_and_custom_grad)
+    3. That function has a custom gradient
+
+    Tests two-pass codegen where native snippets must be in Pass 1.
+    """
+    n = 3
+    inputs_np = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+    inputs = wp.array(inputs_np, dtype=wp.float32, requires_grad=True, device=device)
+    outputs = wp.zeros(n, dtype=wp.float32, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(test_native_snippet_in_forward_kernel, dim=n, inputs=[inputs], outputs=[outputs], device=device)
+
+    # Forward: (x+2)*3 = [9.0, 12.0, 15.0]
+    expected_outputs = np.array([9.0, 12.0, 15.0], dtype=np.float32)
+    assert_np_equal(outputs.numpy(), expected_outputs, tol=1e-4)
+
+    # Backward pass
+    outputs_grad = wp.ones(n, dtype=wp.float32, device=device)
+    tape.backward(grads={outputs: outputs_grad})
+
+    # Gradient from custom gradient: 3
+    expected_grad = np.array([3.0, 3.0, 3.0], dtype=np.float32)
+    assert_np_equal(inputs.grad.numpy(), expected_grad, tol=1e-4)
+
+
+# Native snippet called by custom gradient function
+# This tests that native snippets are available when generating custom gradient code
+
+multiply_by_two_snippet = """
+    return a * 2.0f;
+"""
+
+multiply_by_two_adj_snippet = """
+    // derivative of (a * 2) w.r.t. a is 2
+    adj_a += 2.0f * adj_ret;
+"""
+
+
+@wp.func_native(multiply_by_two_snippet, adj_snippet=multiply_by_two_adj_snippet)
+def multiply_by_two_native(a: float) -> float:
+    """Native snippet that multiplies input by 2."""
+    ...
+
+
+@wp.func
+def func_with_custom_grad_calling_native(x: float):
+    """Regular function with custom gradient that calls native snippet."""
+    return x + 1.0
+
+
+@wp.func_grad(func_with_custom_grad_calling_native)
+def adj_func_with_custom_grad_calling_native(x: float, adj_ret: float):
+    """Custom gradient that calls a native snippet."""
+    # Custom gradient computes: derivative = 2 (by calling native snippet)
+    factor = multiply_by_two_native(1.0)
+    wp.adjoint[x] += factor * adj_ret
+
+
+@wp.kernel
+def test_native_snippet_in_custom_grad_kernel(inputs: wp.array(dtype=float), outputs: wp.array(dtype=float)):
+    i = wp.tid()
+    outputs[i] = func_with_custom_grad_calling_native(inputs[i])
+
+
+def test_native_snippet_in_custom_grad(test, device):
+    """Test that custom gradient functions can call native snippets.
+
+    This covers the case where:
+    1. A native snippet function exists (multiply_by_two_native)
+    2. A custom gradient function calls it (adj_func_with_custom_grad_calling_native)
+
+    Tests two-pass codegen where native snippets in Pass 1 are available to
+    custom gradients in Pass 2.
+    """
+    n = 3
+    inputs_np = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+    inputs = wp.array(inputs_np, dtype=wp.float32, requires_grad=True, device=device)
+    outputs = wp.zeros(n, dtype=wp.float32, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(test_native_snippet_in_custom_grad_kernel, dim=n, inputs=[inputs], outputs=[outputs], device=device)
+
+    # Forward: x+1 = [2.0, 3.0, 4.0]
+    expected_outputs = np.array([2.0, 3.0, 4.0], dtype=np.float32)
+    assert_np_equal(outputs.numpy(), expected_outputs, tol=1e-4)
+
+    # Backward pass
+    outputs_grad = wp.ones(n, dtype=wp.float32, device=device)
+    tape.backward(grads={outputs: outputs_grad})
+
+    # Gradient from custom gradient: multiply_by_two_native(1.0) = 2.0
+    expected_grad = np.array([2.0, 2.0, 2.0], dtype=np.float32)
+    assert_np_equal(inputs.grad.numpy(), expected_grad, tol=1e-4)
+
+
 devices = get_test_devices()
 
 
@@ -404,6 +620,18 @@ add_function_test(TestGradCustoms, "test_custom_overload_grad", test_custom_over
 add_function_test(TestGradCustoms, "test_custom_import_grad", test_custom_import_grad, devices=devices)
 add_function_test(TestGradCustoms, "test_custom_grad_no_return", test_custom_grad_no_return, devices=devices)
 add_function_test(TestGradCustoms, "test_nested_custom_grad", test_nested_custom_grad, devices=devices)
+add_function_test(
+    TestGradCustoms, "test_custom_grad_with_helper_dependency", test_custom_grad_with_helper_dependency, devices=devices
+)
+add_function_test(
+    TestGradCustoms,
+    "test_native_snippet_in_forward_with_custom_grad",
+    test_native_snippet_in_forward_with_custom_grad,
+    devices=devices,
+)
+add_function_test(
+    TestGradCustoms, "test_native_snippet_in_custom_grad", test_native_snippet_in_custom_grad, devices=devices
+)
 
 
 if __name__ == "__main__":
