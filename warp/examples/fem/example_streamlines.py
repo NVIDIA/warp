@@ -181,7 +181,7 @@ class Example:
 
         fem.interpolate(
             classify_boundary_sides,
-            quadrature=fem.RegularQuadrature(boundary, order=0),
+            at=boundary,
             values={"outflow": outflow_mask, "freeslip": freeslip_mask, "inflow": inflow_mask},
         )
 
@@ -215,9 +215,7 @@ class Example:
         spawn_points = wp.empty(dtype=wp.vec3, shape=n_streamlines)
 
         jitter_amount = self._streamline_dx / self._degree
-        fem.interpolate(
-            spawn_streamlines, dest=spawn_points, quadrature=streamline_spawn, values={"jitter": jitter_amount}
-        )
+        fem.interpolate(spawn_streamlines, dest=spawn_points, at=streamline_spawn, values={"jitter": jitter_amount})
 
         # now forward-trace the velocity field to generate the streamlines
         # here we use a fixed number of points per streamline, otherwise we would need to
@@ -230,7 +228,7 @@ class Example:
 
         fem.interpolate(
             gen_streamlines,
-            domain=fem.Cells(self._geo),
+            at=fem.Cells(self._geo),
             dim=n_streamlines,
             fields={"u": self.velocity_field},
             values={
@@ -299,7 +297,7 @@ class Example:
         fem.normalize_dirichlet_projector(dirichlet_projector)
 
         # Initialize velocity field with BC
-        fem.interpolate(inflow_velocity, dest=fem.make_restriction(self.velocity_field, domain=self._inflow))
+        fem.interpolate(inflow_velocity, dest=self.velocity_field, at=self._inflow)
 
         # (Diagonal) mass matrix
         rho_test = fem.make_test(u_space)

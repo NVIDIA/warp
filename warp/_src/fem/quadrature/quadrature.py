@@ -20,7 +20,8 @@ import warp as wp
 from warp._src.fem import cache
 from warp._src.fem.domain import GeometryDomain
 from warp._src.fem.geometry import Element
-from warp._src.fem.space.function_space import FunctionSpace
+from warp._src.fem.space.function_space import BasisSpace, FunctionSpace
+from warp._src.fem.space.partition import SpacePartition, WholeSpacePartition
 from warp._src.fem.types import NULL_ELEMENT_INDEX, Coords, ElementIndex, QuadraturePointIndex
 
 from ..polynomial import Polynomial
@@ -143,7 +144,7 @@ class Quadrature:
     ):
         """Quadrature point index according to evaluation order.
         Quadrature points for distinct elements must have different evaluation indices.
-        Mostly for internal/parallelization purposes.
+        Only required if evaluation_point_element_index is not overloaded
         """
         raise NotImplementedError()
 
@@ -199,7 +200,7 @@ class Quadrature:
 
     @wp.func
     def evaluation_point_element_index(
-        element_index_arg: wp.array(dtype=QuadraturePointElementIndex),
+        element_index_arg: ElementIndexArg,
         qp_eval_index: QuadraturePointIndex,
     ):
         """Maps from quadrature point evaluation indices to their index in the element to which they belong
@@ -410,7 +411,7 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
         return point_index
 
 
-class NodalQuadrature(Quadrature):
+class NodalQuadrature(_QuadratureWithRegularEvaluationPoints):
     """Quadrature using space node points as quadrature points
 
     Note that in contrast to the `assembly="nodal"` flag for :func:`integrate`, using this quadrature does not imply
@@ -418,46 +419,57 @@ class NodalQuadrature(Quadrature):
     """
 
     _dynamic_attribute_constructors: ClassVar = {
-        "Arg": lambda obj: obj._make_arg(),
         "point_count": lambda obj: obj._make_point_count(),
         "point_index": lambda obj: obj._make_point_index(),
         "point_coords": lambda obj: obj._make_point_coords(),
         "point_weight": lambda obj: obj._make_point_weight(),
-        "point_evaluation_index": lambda obj: obj._make_point_evaluation_index(),
     }
 
     def __init__(
         self,
         domain: Optional[GeometryDomain],
-        space: Optional[FunctionSpace],
+        space: Optional[FunctionSpace] = None,
+        basis_space: Optional[BasisSpace] = None,
+        space_partition: Optional[SpacePartition] = None,
     ):
-        self._space = space
+        if basis_space is None:
+            if space is None:
+                raise ValueError("One of space, basis_space or space_partition must be provided")
+            basis_space = space.basis
 
-        super().__init__(domain)
+        if space_partition is None:
+            space_partition = WholeSpacePartition(basis_space.topology)
 
+        self._basis_space = basis_space
+        self._space_partition = space_partition
+
+        self.Arg = self._make_arg()
+        super().__init__(domain, self.max_points_per_element())
         cache.setup_dynamic_attributes(self)
 
     @cached_property
     def name(self):
-        return f"{self.__class__.__name__}_{self._space.name}"
+        return f"{self.__class__.__name__}_{self._basis_space.name}_{self._space_partition.name}"
 
     def total_point_count(self):
-        return self._space.node_count()
+        return self._space_partition.node_count()
 
     def max_points_per_element(self):
-        return self._space.topology.MAX_NODES_PER_ELEMENT
+        return self._basis_space.topology.MAX_NODES_PER_ELEMENT
 
     def _make_arg(self):
         @cache.dynamic_struct(suffix=self.name)
         class Arg:
-            space_arg: self._space.SpaceArg
-            topo_arg: self._space.topology.TopologyArg
+            basis_arg: self._basis_space.BasisArg
+            topo_arg: self._basis_space.topology.TopologyArg
+            partition_arg: self._space_partition.PartitionArg
 
         return Arg
 
     def fill_arg(self, arg: "NodalQuadrature.Arg", device):
-        self._space.fill_space_arg(arg.space_arg, device)
-        self._space.topology.fill_topo_arg(arg.topo_arg, device)
+        self._basis_space.fill_basis_arg(arg.basis_arg, device)
+        self._basis_space.topology.fill_topo_arg(arg.topo_arg, device)
+        self._space_partition.fill_partition_arg(arg.partition_arg, device)
 
     def _make_point_count(self):
         @cache.dynamic_func(suffix=self.name)
@@ -467,7 +479,8 @@ class NodalQuadrature(Quadrature):
             domain_element_index: ElementIndex,
             element_index: ElementIndex,
         ):
-            return self._space.topology.element_node_count(elt_arg, qp_arg.topo_arg, element_index)
+            topo_arg = qp_arg.topo_arg
+            return self._basis_space.topology.element_node_count(elt_arg, topo_arg, element_index)
 
         return point_count
 
@@ -480,7 +493,9 @@ class NodalQuadrature(Quadrature):
             element_index: ElementIndex,
             qp_index: int,
         ):
-            return self._space.node_coords_in_element(elt_arg, qp_arg.space_arg, element_index, qp_index)
+            return self._basis_space.node_coords_in_element(
+                elt_arg, qp_arg.topo_arg, qp_arg.basis_arg, element_index, qp_index
+            )
 
         return point_coords
 
@@ -493,7 +508,9 @@ class NodalQuadrature(Quadrature):
             element_index: ElementIndex,
             qp_index: int,
         ):
-            return self._space.node_quadrature_weight(elt_arg, qp_arg.space_arg, element_index, qp_index)
+            return self._basis_space.node_quadrature_weight(
+                elt_arg, qp_arg.topo_arg, qp_arg.basis_arg, element_index, qp_index
+            )
 
         return point_weight
 
@@ -506,28 +523,12 @@ class NodalQuadrature(Quadrature):
             element_index: ElementIndex,
             qp_index: int,
         ):
-            node_index = self._space.topology.element_node_index(elt_arg, qp_arg.topo_arg, element_index, qp_index)
-            return node_index
+            topo_arg = qp_arg.topo_arg
+            node_index = self._basis_space.topology.element_node_index(elt_arg, topo_arg, element_index, qp_index)
+
+            return self._space_partition.partition_node_index(qp_arg.partition_arg, node_index)
 
         return point_index
-
-    def evaluation_point_count(self):
-        return self.domain.element_count() * self._space.topology.MAX_NODES_PER_ELEMENT
-
-    def _make_point_evaluation_index(self):
-        N = self._space.topology.MAX_NODES_PER_ELEMENT
-
-        @cache.dynamic_func(suffix=self.name)
-        def evaluation_point_index(
-            elt_arg: self.domain.ElementArg,
-            qp_arg: self.Arg,
-            domain_element_index: ElementIndex,
-            element_index: ElementIndex,
-            qp_index: int,
-        ):
-            return N * domain_element_index + qp_index
-
-        return evaluation_point_index
 
 
 class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):

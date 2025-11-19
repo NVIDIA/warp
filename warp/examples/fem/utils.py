@@ -643,7 +643,6 @@ class Plot:
 
     def _plot_pyvista(self, options: Dict[str, Any]):
         import pyvista
-        import pyvista.themes
 
         grids = {}
         scales = {}

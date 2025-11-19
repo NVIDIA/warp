@@ -112,6 +112,10 @@ from warp._src.fem.operator import measure as measure
 from warp._src.fem.operator import measure_ratio as measure_ratio
 from warp._src.fem.operator import node_count as node_count
 from warp._src.fem.operator import node_index as node_index
+from warp._src.fem.operator import node_inner_weight as node_inner_weight
+from warp._src.fem.operator import node_inner_weight_gradient as node_inner_weight_gradient
+from warp._src.fem.operator import node_outer_weight as node_outer_weight
+from warp._src.fem.operator import node_outer_weight_gradient as node_outer_weight_gradient
 from warp._src.fem.operator import normal as normal
 from warp._src.fem.operator import outer as outer
 from warp._src.fem.operator import partition_lookup as partition_lookup
@@ -130,8 +134,8 @@ from warp._src.fem.quadrature.quadrature import Quadrature as Quadrature
 from warp._src.fem.quadrature.quadrature import RegularQuadrature as RegularQuadrature
 
 from warp._src.fem.space.basis_space import BasisSpace as BasisSpace
-from warp._src.fem.space.basis_space import PointBasisSpace as PointBasisSpace
 from warp._src.fem.space.basis_space import ShapeBasisSpace as ShapeBasisSpace
+from warp._src.fem.space.point_basis_space import PointBasisSpace as PointBasisSpace
 
 from warp._src.fem.space.dof_mapper import DofMapper as DofMapper
 from warp._src.fem.space.dof_mapper import SkewSymmetricTensorMapper as SkewSymmetricTensorMapper

@@ -23,7 +23,16 @@ _wp_module_name_ = "warp.fem.linalg"
 
 @wp.func
 def generalized_outer(x: wp.vec(Any, wp.Scalar), y: wp.vec(Any, wp.Scalar)):
-    """Generalized outer product allowing for vector or scalar arguments"""
+    r"""Generalized outer product allowing for vector or scalar arguments
+
+    +---------+--------+--------+
+    |  x \ y  | scalar | vector |
+    +---------+--------+--------+
+    | scalar  | x y    | x y    |
+    | vector  | x y    | x y^T  |
+    +---------+--------+--------+
+
+    """
     return wp.outer(x, y)
 
 
@@ -44,7 +53,16 @@ def generalized_outer(x: wp.quatf, y: wp.vec(Any, wp.Scalar)):
 
 @wp.func
 def generalized_inner(x: wp.vec(Any, wp.Scalar), y: wp.vec(Any, wp.Scalar)):
-    """Generalized inner product allowing for vector, tensor and scalar arguments"""
+    r"""Generalized inner product allowing for vector, tensor and scalar arguments
+
+    +---------+--------+--------+--------+
+    |  x \ y  | scalar | vector | matrix |
+    +---------+--------+--------+--------+
+    | scalar  | x y    | N/A    | N/A    |
+    | vector  | N/A    | y^T x  | x^T y  |
+    | matrix  | N/A    | y^T x  | x : y  |
+    +---------+--------+--------+--------+
+    """
     return wp.dot(x, y)
 
 
@@ -60,7 +78,12 @@ def generalized_inner(x: wp.mat((Any, Any), wp.Scalar), y: wp.vec(Any, wp.Scalar
 
 @wp.func
 def generalized_inner(x: wp.vec(Any, wp.Scalar), y: wp.mat((Any, Any), wp.Scalar)):
-    return y @ x
+    return x @ y
+
+
+@wp.func
+def generalized_inner(x: wp.mat((Any, Any), wp.Scalar), y: wp.mat((Any, Any), wp.Scalar)):
+    return wp.ddot(x, y)
 
 
 @wp.func
@@ -254,7 +277,7 @@ def tridiagonal_symmetric_eigenvalues_qr(D: Any, L: Any, Q: Any, tol: Any):
     """
 
     two = D.dtype(2.0)
-    m = wp.static(len(D) + 1)
+    m = int(D.length)
 
     start = int(0)
     y = D.dtype(0.0)  # moving buldge

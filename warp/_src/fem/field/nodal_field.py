@@ -47,6 +47,10 @@ class NodalFieldBase(DiscreteField):
         "node_count": lambda obj: obj._make_node_count(),
         "node_index": lambda obj: obj._make_node_index(),
         "at_node": lambda obj: obj._make_at_node(),
+        "node_inner_weight": lambda obj: obj._make_node_inner_weight(),
+        "node_outer_weight": lambda obj: obj._make_node_outer_weight(),
+        "node_inner_weight_gradient": lambda obj: obj._make_node_inner_weight_gradient(),
+        "node_outer_weight_gradient": lambda obj: obj._make_node_outer_weight_gradient(),
     }
 
     def __init__(self, space: FunctionSpace, space_partition: SpacePartition):
@@ -57,9 +61,9 @@ class NodalFieldBase(DiscreteField):
         @cache.dynamic_struct(suffix=self.name)
         class EvalArg:
             dof_values: wp.array(dtype=self.space.dof_dtype)
-            space_arg: self.space.SpaceArg
-            topology_arg: self.space.topology.TopologyArg
+            basis_arg: self.space.basis.BasisArg
             partition_arg: self.space_partition.PartitionArg
+            topo_arg: self.space.topology.TopologyArg
 
         return EvalArg
 
@@ -76,9 +80,8 @@ class NodalFieldBase(DiscreteField):
 
         @cache.dynamic_func(suffix=self.name)
         def read_node_value(args: self.ElementEvalArg, geo_element_index: ElementIndex, node_index_in_elt: int):
-            nidx = self.space.topology.element_node_index(
-                args.elt_arg, args.eval_arg.topology_arg, geo_element_index, node_index_in_elt
-            )
+            topo_arg = args.eval_arg.topo_arg
+            nidx = self.space.topology.element_node_index(args.elt_arg, topo_arg, geo_element_index, node_index_in_elt)
             pidx = self.space_partition.partition_node_index(args.eval_arg.partition_arg, nidx)
             if pidx == NULL_NODE_INDEX:
                 return zero_element()
@@ -90,16 +93,15 @@ class NodalFieldBase(DiscreteField):
     def _make_eval_inner(self):
         zero_element = type_zero_element(self.dtype)
 
-        @cache.dynamic_func(suffix=self.name)
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
         def eval_inner(args: self.ElementEvalArg, s: Sample):
+            topo_arg = args.eval_arg.topo_arg
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
-            node_count = self.space.topology.element_node_count(
-                args.elt_arg, args.eval_arg.topology_arg, s.element_index
-            )
+            node_count = self.space.topology.element_node_count(args.elt_arg, topo_arg, s.element_index)
             res = zero_element()
             for k in range(node_count):
-                w = self.space.element_inner_weight(
-                    args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k, s.qp_index
+                w = self.space.basis.element_inner_weight(
+                    args.elt_arg, topo_arg, args.eval_arg.basis_arg, s.element_index, s.element_coords, k, s.qp_index
                 )
                 res += self.space.space_value(
                     self._read_node_value(args, s.element_index, k),
@@ -107,6 +109,24 @@ class NodalFieldBase(DiscreteField):
                     local_value_map,
                 )
             return res
+
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
+        def eval_inner(args: self.ElementEvalArg, s: Sample, node_index_in_elt: int):
+            local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
+            w = self.space.basis.element_inner_weight(
+                args.elt_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
+                s.element_index,
+                s.element_coords,
+                node_index_in_elt,
+                s.qp_index,
+            )
+            return self.space.space_value(
+                self._read_node_value(args, s.element_index, node_index_in_elt),
+                w,
+                local_value_map,
+            )
 
         return eval_inner
 
@@ -119,34 +139,58 @@ class NodalFieldBase(DiscreteField):
 
         @cache.dynamic_func(suffix=f"{self.name}{world_space}")
         def eval_grad_inner(args: self.ElementEvalArg, s: Sample, grad_transform: Any):
+            topo_arg = args.eval_arg.topo_arg
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
-            node_count = self.space.topology.element_node_count(
-                args.elt_arg, args.eval_arg.topology_arg, s.element_index
-            )
+            node_count = self.space.topology.element_node_count(args.elt_arg, topo_arg, s.element_index)
 
             res = zero_element()
             for k in range(node_count):
                 res += self.space.space_gradient(
                     self._read_node_value(args, s.element_index, k),
-                    self.space.element_inner_weight_gradient(
-                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k, s.qp_index
-                    ),
+                    self.space.basis.element_inner_weight_gradient(
+                        args.elt_arg,
+                        topo_arg,
+                        args.eval_arg.basis_arg,
+                        s.element_index,
+                        s.element_coords,
+                        k,
+                        s.qp_index,
+                    )
+                    * grad_transform,
                     local_value_map,
-                    grad_transform,
                 )
             return res
 
         if world_space:
 
-            @cache.dynamic_func(suffix=self.name)
+            @cache.dynamic_func(suffix=self.name, allow_overloads=True)
             def eval_grad_inner_world_space(args: self.ElementEvalArg, s: Sample):
                 grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
                 return eval_grad_inner(args, s, grad_transform)
 
+            @cache.dynamic_func(suffix=self.name, allow_overloads=True)
+            def eval_grad_inner_world_space(args: self.ElementEvalArg, s: Sample, node_index_in_elt: int):
+                local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
+                grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
+                weight_gradient = self.space.basis.element_inner_weight_gradient(
+                    args.elt_arg,
+                    args.eval_arg.topo_arg,
+                    args.eval_arg.basis_arg,
+                    s.element_index,
+                    s.element_coords,
+                    node_index_in_elt,
+                    s.qp_index,
+                )
+                return self.space.space_gradient(
+                    self._read_node_value(args, s.element_index, node_index_in_elt),
+                    weight_gradient * grad_transform,
+                    local_value_map,
+                )
+
             return eval_grad_inner_world_space
         else:
 
-            @cache.dynamic_func(suffix=self.name)
+            @cache.dynamic_func(suffix=self.name, allow_overloads=True)
             def eval_grad_inner_ref_space(args: self.ElementEvalArg, s: Sample):
                 grad_transform = 1.0
                 return eval_grad_inner(args, s, grad_transform)
@@ -158,48 +202,95 @@ class NodalFieldBase(DiscreteField):
             return None
         zero_element = type_zero_element(self.divergence_dtype)
 
-        @cache.dynamic_func(suffix=self.name)
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
         def eval_div_inner(args: self.ElementEvalArg, s: Sample):
+            topo_arg = args.eval_arg.topo_arg
             grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
-            node_count = self.space.topology.element_node_count(
-                args.elt_arg, args.eval_arg.topology_arg, s.element_index
-            )
+            node_count = self.space.topology.element_node_count(args.elt_arg, topo_arg, s.element_index)
 
             res = zero_element()
             for k in range(node_count):
                 res += self.space.space_divergence(
                     self._read_node_value(args, s.element_index, k),
-                    self.space.element_inner_weight_gradient(
-                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k, s.qp_index
-                    ),
+                    self.space.basis.element_inner_weight_gradient(
+                        args.elt_arg,
+                        topo_arg,
+                        args.eval_arg.basis_arg,
+                        s.element_index,
+                        s.element_coords,
+                        k,
+                        s.qp_index,
+                    )
+                    * grad_transform,
                     local_value_map,
-                    grad_transform,
                 )
             return res
+
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
+        def eval_div_inner(args: self.ElementEvalArg, s: Sample, node_index_in_elt: int):
+            grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
+            local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
+            weight_gradient = self.space.basis.element_inner_weight_gradient(
+                args.elt_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
+                s.element_index,
+                s.element_coords,
+                node_index_in_elt,
+                s.qp_index,
+            )
+            return self.space.space_divergence(
+                self._read_node_value(args, s.element_index, node_index_in_elt),
+                weight_gradient * grad_transform,
+                local_value_map,
+            )
 
         return eval_div_inner
 
     def _make_eval_outer(self):
         zero_element = type_zero_element(self.dtype)
 
-        @cache.dynamic_func(suffix=self.name)
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
         def eval_outer(args: self.ElementEvalArg, s: Sample):
+            topo_arg = args.eval_arg.topo_arg
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
-            node_count = self.space.topology.element_node_count(
-                args.elt_arg, args.eval_arg.topology_arg, s.element_index
-            )
+            node_count = self.space.topology.element_node_count(args.elt_arg, topo_arg, s.element_index)
 
             res = zero_element()
             for k in range(node_count):
                 res += self.space.space_value(
                     self._read_node_value(args, s.element_index, k),
-                    self.space.element_outer_weight(
-                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k, s.qp_index
+                    self.space.basis.element_outer_weight(
+                        args.elt_arg,
+                        topo_arg,
+                        args.eval_arg.basis_arg,
+                        s.element_index,
+                        s.element_coords,
+                        k,
+                        s.qp_index,
                     ),
                     local_value_map,
                 )
             return res
+
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
+        def eval_outer(args: self.ElementEvalArg, s: Sample, node_index_in_elt: int):
+            local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
+            w = self.space.basis.element_outer_weight(
+                args.elt_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
+                s.element_index,
+                s.element_coords,
+                node_index_in_elt,
+                s.qp_index,
+            )
+            return self.space.space_value(
+                self._read_node_value(args, s.element_index, node_index_in_elt),
+                w,
+                local_value_map,
+            )
 
         return eval_outer
 
@@ -212,34 +303,58 @@ class NodalFieldBase(DiscreteField):
 
         @cache.dynamic_func(suffix=f"{self.name}{world_space}")
         def eval_grad_outer(args: self.ElementEvalArg, s: Sample, grad_transform: Any):
+            topo_arg = args.eval_arg.topo_arg
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
-            node_count = self.space.topology.element_node_count(
-                args.elt_arg, args.eval_arg.topology_arg, s.element_index
-            )
+            node_count = self.space.topology.element_node_count(args.elt_arg, topo_arg, s.element_index)
 
             res = zero_element()
             for k in range(node_count):
                 res += self.space.space_gradient(
                     self._read_node_value(args, s.element_index, k),
-                    self.space.element_outer_weight_gradient(
-                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k, s.qp_index
-                    ),
+                    self.space.basis.element_outer_weight_gradient(
+                        args.elt_arg,
+                        topo_arg,
+                        args.eval_arg.basis_arg,
+                        s.element_index,
+                        s.element_coords,
+                        k,
+                        s.qp_index,
+                    )
+                    * grad_transform,
                     local_value_map,
-                    grad_transform,
                 )
             return res
 
         if world_space:
 
-            @cache.dynamic_func(suffix=self.name)
+            @cache.dynamic_func(suffix=self.name, allow_overloads=True)
             def eval_grad_outer_world_space(args: self.ElementEvalArg, s: Sample):
                 grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
                 return eval_grad_outer(args, s, grad_transform)
 
+            @cache.dynamic_func(suffix=self.name, allow_overloads=True)
+            def eval_grad_outer_world_space(args: self.ElementEvalArg, s: Sample, node_index_in_elt: int):
+                local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
+                grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
+                weight_gradient = self.space.basis.element_outer_weight_gradient(
+                    args.elt_arg,
+                    args.eval_arg.topo_arg,
+                    args.eval_arg.basis_arg,
+                    s.element_index,
+                    s.element_coords,
+                    node_index_in_elt,
+                    s.qp_index,
+                )
+                return self.space.space_gradient(
+                    self._read_node_value(args, s.element_index, node_index_in_elt),
+                    weight_gradient * grad_transform,
+                    local_value_map,
+                )
+
             return eval_grad_outer_world_space
         else:
 
-            @cache.dynamic_func(suffix=self.name)
+            @cache.dynamic_func(suffix=self.name, allow_overloads=True)
             def eval_grad_outer_ref_space(args: self.ElementEvalArg, s: Sample):
                 grad_transform = 1.0
                 return eval_grad_outer(args, s, grad_transform)
@@ -252,41 +367,60 @@ class NodalFieldBase(DiscreteField):
 
         zero_element = type_zero_element(self.divergence_dtype)
 
-        @cache.dynamic_func(suffix=self.name)
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
         def eval_div_outer(args: self.ElementEvalArg, s: Sample):
+            topo_arg = args.eval_arg.topo_arg
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
-            node_count = self.space.topology.element_node_count(
-                args.elt_arg, args.eval_arg.topology_arg, s.element_index
-            )
+            node_count = self.space.topology.element_node_count(args.elt_arg, topo_arg, s.element_index)
 
             res = zero_element()
             for k in range(node_count):
                 res += self.space.space_divergence(
                     self._read_node_value(args, s.element_index, k),
-                    self.space.element_outer_weight_gradient(
-                        args.elt_arg, args.eval_arg.space_arg, s.element_index, s.element_coords, k, s.qp_index
-                    ),
+                    self.space.basis.element_outer_weight_gradient(
+                        args.elt_arg,
+                        topo_arg,
+                        args.eval_arg.basis_arg,
+                        s.element_index,
+                        s.element_coords,
+                        k,
+                        s.qp_index,
+                    )
+                    * grad_transform,
                     local_value_map,
-                    grad_transform,
                 )
             return res
+
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
+        def eval_div_outer(args: self.ElementEvalArg, s: Sample, node_index_in_elt: int):
+            grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
+            local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
+            weight_gradient = self.space.basis.element_outer_weight_gradient(
+                args.elt_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
+                s.element_index,
+                s.element_coords,
+                node_index_in_elt,
+                s.qp_index,
+            )
+            return self.space.space_divergence(
+                self._read_node_value(args, s.element_index, node_index_in_elt),
+                weight_gradient * grad_transform,
+                local_value_map,
+            )
 
         return eval_div_outer
 
     def _make_set_node_value(self):
         @cache.dynamic_func(suffix=self.name)
         def set_node_value(
-            elt_arg: self.space.ElementArg,
             eval_arg: self.EvalArg,
-            element_index: ElementIndex,
-            node_index_in_element: int,
-            partition_node_index: int,
-            value: self.space.dtype,
+            partition_node_index: ElementIndex,
+            dof_value: self.space.dof_dtype,
         ):
-            eval_arg.dof_values[partition_node_index] = self.space.node_dof_value(
-                elt_arg, eval_arg.space_arg, element_index, node_index_in_element, value
-            )
+            eval_arg.dof_values[partition_node_index] = dof_value
 
         return set_node_value
 
@@ -300,15 +434,16 @@ class NodalFieldBase(DiscreteField):
     def _make_node_count(self):
         @cache.dynamic_func(suffix=self.name)
         def node_count(args: self.ElementEvalArg, s: Sample):
-            return self.space.topology.element_node_count(args.elt_arg, args.eval_arg.topology_arg, s.element_index)
+            topo_arg = args.eval_arg.topo_arg
+            return self.space.topology.element_node_count(args.elt_arg, topo_arg, s.element_index)
 
         return node_count
 
     def _make_at_node(self):
         @cache.dynamic_func(suffix=self.name)
         def at_node(args: self.ElementEvalArg, s: Sample, node_index_in_elt: int):
-            node_coords = self.space.node_coords_in_element(
-                args.elt_arg, args.eval_arg.space_arg, s.element_index, node_index_in_elt
+            node_coords = self.space.basis.node_coords_in_element(
+                args.elt_arg, args.eval_arg.topo_arg, args.eval_arg.basis_arg, s.element_index, node_index_in_elt
             )
             return Sample(s.element_index, node_coords, s.qp_index, s.qp_weight, s.test_dof, s.trial_dof)
 
@@ -317,11 +452,74 @@ class NodalFieldBase(DiscreteField):
     def _make_node_index(self):
         @cache.dynamic_func(suffix=self.name)
         def node_index(args: self.ElementEvalArg, s: Sample, node_index_in_elt: int):
-            return self.space.topology.element_node_index(
-                args.elt_arg, args.eval_arg.topology_arg, s.element_index, node_index_in_elt
-            )
+            topo_arg = args.eval_arg.topo_arg
+            return self.space.topology.element_node_index(args.elt_arg, topo_arg, s.element_index, node_index_in_elt)
 
         return node_index
+
+    def _make_node_inner_weight(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_inner_weight(args: self.ElementEvalArg, s: Sample, node_index_in_elt: int):
+            return self.space.basis.element_inner_weight(
+                args.elt_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
+                s.element_index,
+                s.element_coords,
+                node_index_in_elt,
+                s.qp_index,
+            )
+
+        return node_inner_weight
+
+    def _make_node_outer_weight(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_outer_weight(args: self.ElementEvalArg, s: Sample, node_index_in_elt: int):
+            return self.space.basis.element_outer_weight(
+                args.elt_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
+                s.element_index,
+                s.element_coords,
+                node_index_in_elt,
+                s.qp_index,
+            )
+
+        return node_outer_weight
+
+    def _make_node_inner_weight_gradient(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_inner_weight_gradient(args: self.ElementEvalArg, s: Sample, node_index_in_elt: int):
+            node_weight_gradient = self.space.basis.element_inner_weight_gradient(
+                args.elt_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
+                s.element_index,
+                s.element_coords,
+                node_index_in_elt,
+                s.qp_index,
+            )
+            grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
+            return node_weight_gradient * grad_transform
+
+        return node_inner_weight_gradient
+
+    def _make_node_outer_weight_gradient(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_outer_weight_gradient(args: self.ElementEvalArg, s: Sample, node_index_in_elt: int):
+            node_weight_gradient = self.space.basis.element_outer_weight_gradient(
+                args.elt_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
+                s.element_index,
+                s.element_coords,
+                node_index_in_elt,
+                s.qp_index,
+            )
+            grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
+            return node_weight_gradient * grad_transform
+
+        return node_outer_weight_gradient
 
 
 class NodalField(NodalFieldBase):
@@ -344,9 +542,9 @@ class NodalField(NodalFieldBase):
 
     def fill_eval_arg(self, arg, device):
         arg.dof_values = self._dof_values.to(device)
-        self.space.fill_space_arg(arg.space_arg, device)
+        self.space.basis.fill_basis_arg(arg.basis_arg, device)
         self.space_partition.fill_partition_arg(arg.partition_arg, device)
-        self.space.topology.fill_topo_arg(arg.topology_arg, device)
+        self.space.topology.fill_topo_arg(arg.topo_arg, device)
 
     def rebind(self, space: FunctionSpace, space_partition: SpacePartition):
         """Rebind the field to a new space partition and space.
@@ -394,9 +592,9 @@ class NodalField(NodalFieldBase):
 
         def fill_eval_arg(self, arg, device):
             arg.dof_values = self._field.dof_values.to(device)
-            self.space.fill_space_arg(arg.space_arg, device)
+            self.space.basis.fill_basis_arg(arg.basis_arg, device)
+            self.space.topology.fill_topo_arg(arg.topo_arg, device)
             self.space_partition.fill_partition_arg(arg.partition_arg, device)
-            self.space.topology.fill_topo_arg(arg.topology_arg, device)
 
     def trace(self) -> Trace:
         trace_field = NodalField.Trace(self)

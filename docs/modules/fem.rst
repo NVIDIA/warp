@@ -306,12 +306,12 @@ Domain operators
 Field operators
 ^^^^^^^^^^^^^^^
 .. autofunction:: degree(f: Field)
-.. autofunction:: inner(f: Field, s: Sample)
-.. autofunction:: outer(f: Field, s: Sample)
-.. autofunction:: grad(f: Field, s: Sample)
-.. autofunction:: grad_outer(f: Field, s: Sample)
-.. autofunction:: div(f: Field, s: Sample)
-.. autofunction:: div_outer(f: Field, s: Sample)
+.. autofunction:: inner(f: Field, s: Sample, node_index_in_elt: int|None = None)
+.. autofunction:: outer(f: Field, s: Sample, node_index_in_elt: int|None = None)
+.. autofunction:: grad(f: Field, s: Sample, node_index_in_elt: int|None = None)
+.. autofunction:: grad_outer(f: Field, s: Sample, node_index_in_elt: int|None = None)
+.. autofunction:: div(f: Field, s: Sample, node_index_in_elt: int|None = None)
+.. autofunction:: div_outer(f: Field, s: Sample, node_index_in_elt: int|None = None)
 
 .. autofunction:: D(f: Field, s: Sample)
 .. autofunction:: curl(f: Field, s: Sample)
@@ -321,8 +321,13 @@ Field operators
 .. autofunction:: grad_average(f: Field, s: Sample)
 
 .. autofunction:: node_count(f: Field, s: Sample)
-.. autofunction:: at_node(f: Field, s: Sample, node_index_in_elt: int = None)
-.. autofunction:: node_index(f: Field, s: Sample, node_index_in_elt: int = None)
+.. autofunction:: at_node(f: Field, s: Sample, node_index_in_elt: int|None = None)
+.. autofunction:: node_index(f: Field, s: Sample, node_index_in_elt: int|None = None)
+
+.. autofunction:: node_inner_weight(f: Field, s: Sample, node_index_in_elt: int|None = None)
+.. autofunction:: node_outer_weight(f: Field, s: Sample, node_index_in_elt: int|None = None)
+.. autofunction:: node_inner_weight_gradient(f: Field, s: Sample, node_index_in_elt: int|None = None)
+.. autofunction:: node_outer_weight_gradient(f: Field, s: Sample, node_index_in_elt: int|None = None)
 
 Integration and interpolation
 -----------------------------
@@ -611,11 +616,11 @@ Interface classes are not meant to be constructed directly, but can be derived f
 
 .. autoclass:: GeometryPartition
    :no-members:
-   :members: cell_count, side_count, boundary_side_count, frontier_side_count
+   :members: cell_count, side_count, boundary_side_count, frontier_side_count, geometry
 
 .. autoclass:: GeometryDomain
    :no-members:
-   :members: element_kind, dimension, element_count
+   :members: element_kind, dimension, element_count, geometry, geometry_partition
 
 .. autoclass:: Quadrature
    :no-members:
@@ -623,7 +628,7 @@ Interface classes are not meant to be constructed directly, but can be derived f
 
 .. autoclass:: FunctionSpace
    :no-members:
-   :members: dtype, topology, geometry, dimension, degree, trace, make_field
+   :members: dtype, topology, basis, geometry, dimension, degree, trace, make_field
 
 .. autoclass:: SpaceTopology
    :no-members:
@@ -638,11 +643,11 @@ Interface classes are not meant to be constructed directly, but can be derived f
 
 .. autoclass:: SpacePartition
    :no-members:
-   :members: node_count, owned_node_count, interior_node_count, space_node_indices
+   :members: node_count, owned_node_count, interior_node_count, space_node_indices, space_topology, geo_partition
 
 .. autoclass:: SpaceRestriction
    :no-members:
-   :members: node_count
+   :members: node_count, space_partition, space_topology, domain
 
 .. autoclass:: DofMapper
    :no-members:

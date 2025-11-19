@@ -35,7 +35,7 @@ class BsrMMFemMatrix:
             block_type=wp.types.matrix(shape=(3 * dof_size, dof_size), dtype=wp.float32),
         )
 
-        fem.interpolate(grad_field, dest=self._mat, quadrature=quadrature, fields={"u": u})
+        fem.interpolate(grad_field, dest=self._mat, at=quadrature, fields={"u": u})
 
         if block_shape is not None:
             self._mat = wps.bsr_copy(self._mat, block_shape=block_shape)

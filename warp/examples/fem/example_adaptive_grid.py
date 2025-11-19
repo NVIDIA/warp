@@ -140,7 +140,8 @@ class Example:
         bounds_extent = 0.5 * (bounds_hi - bounds_lo)
         fem.interpolate(
             inflow_velocity,
-            dest=fem.make_restriction(self.velocity_field, domain=fem.BoundarySides(self._geo)),
+            dest=self.velocity_field,
+            at=fem.BoundarySides(self._geo),
             values={
                 "bounds_lo": bounds_center - bounds_scale * bounds_extent,
                 "bounds_hi": bounds_center + bounds_scale * bounds_extent,
