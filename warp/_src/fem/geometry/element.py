@@ -72,6 +72,11 @@ class PrototypeElement:
         return wp.min(wp.max(v, Coords(0.0)), Coords(1.0))
 
     @wp.func
+    def ref_delta(coord_delta: Coords):
+        """Transform an element coordinates delta to reference space"""
+        return coord_delta
+
+    @wp.func
     def coord_delta(ref_delta: wp.vec3):
         """Transform a delta in reference space to element coords"""
         return ref_delta
@@ -141,6 +146,10 @@ class Square(PrototypeElement):
 
         return coords, weights
 
+    @wp.func
+    def ref_delta(coord_delta: Coords):
+        return wp.vec2(coord_delta[0], coord_delta[1])
+
 
 class LinearEdge(PrototypeElement):
     dimension = 1
@@ -159,6 +168,10 @@ class LinearEdge(PrototypeElement):
 
         coords = [Coords(x, 0.0, 0.0) for x in gauss_1d]
         return coords, weights_1d
+
+    @wp.func
+    def ref_delta(coord_delta: Coords):
+        return _vec1(coord_delta[0])
 
 
 class Triangle(PrototypeElement):
@@ -514,6 +527,10 @@ class Triangle(PrototypeElement):
     @wp.func
     def coord_delta(ref_delta: wp.vec2):
         return Coords(-ref_delta[0] - ref_delta[1], ref_delta[0], ref_delta[1])
+
+    @wp.func
+    def ref_delta(coord_delta: Coords):
+        return wp.vec2(coord_delta[1], coord_delta[2])
 
 
 class Tetrahedron(PrototypeElement):

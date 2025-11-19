@@ -368,7 +368,7 @@ class Example:
                 # (A)PIC advection
                 fem.interpolate(
                     update_particles,
-                    quadrature=pic,
+                    at=pic,
                     values={
                         "pos": self.state_1.particle_q,
                         "pos_prev": self.state_0.particle_q,

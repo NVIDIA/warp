@@ -22,6 +22,7 @@ from warp._src.fem.types import NULL_ELEMENT_INDEX, NULL_NODE_INDEX, NodeElement
 from warp._src.fem.utils import compress_node_indices, host_read_at_index
 
 from .partition import SpacePartition
+from .topology import SpaceTopology
 
 _wp_module_name_ = "warp.fem.space.restriction"
 
@@ -31,12 +32,19 @@ wp.set_module_options({"enable_backward": False})
 class SpaceRestriction:
     """Restriction of a space partition to a given GeometryDomain"""
 
+    space_partition: SpacePartition
+    """Partition of the function space nodes that will be restricted"""
+    space_topology: SpaceTopology
+    """Topology of the full function space"""
+    domain: GeometryDomain
+    """Domain to which the space partition is being restricted"""
+
     def __init__(
         self,
         space_partition: SpacePartition,
         domain: GeometryDomain,
         device=None,
-        temporary_store: cache.TemporaryStore = None,
+        temporary_store: Optional[cache.TemporaryStore] = None,
     ):
         space_topology = space_partition.space_topology
 
@@ -48,6 +56,7 @@ class SpaceRestriction:
 
         self.space_partition = space_partition
         self.space_topology = space_topology
+
         self.domain = domain
 
         self._node_count_dev: wp.array = None
@@ -64,7 +73,7 @@ class SpaceRestriction:
 
         self.rebuild(device=device, temporary_store=temporary_store)
 
-    def rebuild(self, device: Optional = None, temporary_store: Optional[cache.TemporaryStore] = None):
+    def rebuild(self, device: Optional["wp.Devicelike"] = None, temporary_store: Optional[cache.TemporaryStore] = None):
         max_nodes_per_element = self.space_topology.MAX_NODES_PER_ELEMENT
 
         @cache.dynamic_kernel(

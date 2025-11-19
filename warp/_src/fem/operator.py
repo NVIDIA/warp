@@ -275,38 +275,56 @@ def element_partition_index(domain: Domain, cell_index: ElementIndex):
 
 
 @operator(resolver=lambda f: f.eval_inner)
-def inner(f: Field, s: Sample):
-    """Evaluates the field at a sample point `s`. On oriented sides, uses the inner element"""
+def inner(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+    """Evaluates the field at a sample point `s`. On oriented sides, uses the inner element
+
+    If `f` is a discrete field and `node_index_in_elt` is provided, ignore all other nodes.
+    """
     pass
 
 
 @operator(resolver=lambda f: f.eval_grad_inner)
-def grad(f: Field, s: Sample):
-    """Evaluates the field gradient at a sample point `s`. On oriented sides, uses the inner element"""
+def grad(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+    """Evaluates the field gradient at a sample point `s`. On oriented sides, uses the inner element
+
+    If `f` is a discrete field and `node_index_in_elt` is provided, ignore all other nodes.
+    """
     pass
 
 
 @operator(resolver=lambda f: f.eval_div_inner)
-def div(f: Field, s: Sample):
-    """Evaluates the field divergence at a sample point `s`. On oriented sides, uses the inner element"""
+def div(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+    """Evaluates the field divergence at a sample point `s`. On oriented sides, uses the inner element
+
+    If `f` is a discrete field and `node_index_in_elt` is provided, ignore all other nodes.
+    """
     pass
 
 
 @operator(resolver=lambda f: f.eval_outer)
-def outer(f: Field, s: Sample):
-    """Evaluates the field at a sample point `s`. On oriented sides, uses the outer element. On interior points and on domain boundaries, this is equivalent to :func:`inner`."""
+def outer(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+    """Evaluates the field at a sample point `s`. On oriented sides, uses the outer element. On interior points and on domain boundaries, this is equivalent to :func:`inner`.
+
+    If `f` is a discrete field and `node_index_in_elt` is provided, ignore all other nodes.
+    """
     pass
 
 
 @operator(resolver=lambda f: f.eval_grad_outer)
-def grad_outer(f: Field, s: Sample):
-    """Evaluates the field gradient at a sample point `s`. On oriented sides, uses the outer element. On interior points and on domain boundaries, this is equivalent to :func:`grad`."""
+def grad_outer(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+    """Evaluates the field gradient at a sample point `s`. On oriented sides, uses the outer element. On interior points and on domain boundaries, this is equivalent to :func:`grad`.
+
+    If `f` is a discrete field and `node_index_in_elt` is provided, ignore all other nodes.
+    """
     pass
 
 
 @operator(resolver=lambda f: f.eval_div_outer)
-def div_outer(f: Field, s: Sample):
-    """Evaluates the field divergence at a sample point `s`. On oriented sides, uses the outer element. On interior points and on domain boundaries, this is equivalent to :func:`div`."""
+def div_outer(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+    """Evaluates the field divergence at a sample point `s`. On oriented sides, uses the outer element. On interior points and on domain boundaries, this is equivalent to :func:`div`.
+
+    If `f` is a discrete field and `node_index_in_elt` is provided, ignore all other nodes.
+    """
     pass
 
 
@@ -338,7 +356,51 @@ def at_node(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
 
 @operator(resolver=lambda f: f.node_index)
 def node_index(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
-    """Returns the index in the function space of a local node the field `f`.
+    """Returns the index in the function space of a local node of the field `f`.
+
+    If `f` is a discrete field, `node_index_in_elt` is required and indicates the element-local index of the node to consider.
+    If `f` is a Test or Trial field, `node_index_in_elt` **must not** be provided, and will be automatically set
+    to the test (resp. trial) node currently being evaluated.
+    """
+    pass
+
+
+@operator(resolver=lambda f: f.node_inner_weight)
+def node_inner_weight(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+    """Returns the inner element weight associated to a local node of the field `f` at the sample point `s`.
+
+    If `f` is a discrete field, `node_index_in_elt` is required and indicates the element-local index of the node to consider.
+    If `f` is a Test or Trial field, `node_index_in_elt` **must not** be provided, and will be automatically set
+    to the test (resp. trial) node currently being evaluated.
+    """
+    pass
+
+
+@operator(resolver=lambda f: f.node_outer_weight)
+def node_outer_weight(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+    """Returns the outer element weight associated to a local node of the field `f` at the sample point `s`.
+
+    If `f` is a discrete field, `node_index_in_elt` is required and indicates the element-local index of the node to consider.
+    If `f` is a Test or Trial field, `node_index_in_elt` **must not** be provided, and will be automatically set
+    to the test (resp. trial) node currently being evaluated.
+    """
+    pass
+
+
+@operator(resolver=lambda f: f.node_inner_weight_gradient)
+def node_inner_weight_gradient(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+    """Returns the gradient (w.r.t world coordinates) of the inner element weight associated to a local node of the field `f` at the sample point `s`.
+
+    If `f` is a discrete field, `node_index_in_elt` is required and indicates the element-local index of the node to consider.
+    If `f` is a Test or Trial field, `node_index_in_elt` **must not** be provided, and will be automatically set
+    to the test (resp. trial) node currently being evaluated.
+    """
+    pass
+
+
+@operator(resolver=lambda f: f.node_outer_weight_gradient)
+def node_outer_weight_gradient(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+    """Returns the gradient (w.r.t world coordinates) of the outer element weight associated to a local node of the field `f` at the sample point `s`.
 
     If `f` is a discrete field, `node_index_in_elt` is required and indicates the element-local index of the node to consider.
     If `f` is a Test or Trial field, `node_index_in_elt` **must not** be provided, and will be automatically set

@@ -37,6 +37,9 @@ class GeometryPartition:
     class SideArg:
         pass
 
+    geometry: Geometry
+    """Underlying geometry"""
+
     def __init__(self, geometry: Geometry):
         self.geometry = geometry
 

@@ -110,6 +110,7 @@ class SpaceTopology:
     @staticmethod
     def side_neighbor_node_counts(
         side_arg: "ElementArg",  # noqa: F821
+        topo_arg: "TopologyArg",
         side_index: ElementIndex,
     ) -> Tuple[int, int]:
         """Returns the number of nodes for both the inner and outer cells of a given sides"""
@@ -204,6 +205,7 @@ class SpaceTopology:
         @cache.dynamic_func(suffix=self.name)
         def constant_side_neighbor_node_counts(
             side_arg: self.geometry.SideArg,
+            topo_arg: self.TopologyArg,
             element_index: ElementIndex,
         ):
             return NODES_PER_ELEMENT, NODES_PER_ELEMENT
@@ -221,6 +223,27 @@ class SpaceTopology:
             return 1.0
 
         return constant_element_node_sign
+
+    def make_generic_side_neighbor_node_counts(self):
+        """Variant of side neighbor node counts that can be used for topologies with varying node counts per element.
+        Derived classes that override `element_node_count()` can leverage this for convenience.
+        """
+
+        @cache.dynamic_func(suffix=self.name)
+        def side_neighbor_node_counts(
+            side_arg: self.geometry.SideArg,
+            topo_arg: self.TopologyArg,
+            element_index: ElementIndex,
+        ):
+            inner_cell = self.geometry.side_inner_cell_index(side_arg, element_index)
+            outer_cell = self.geometry.side_outer_cell_index(side_arg, element_index)
+            cell_arg = self.geometry.side_to_cell_arg(side_arg)
+            inner_count = self.element_node_count(cell_arg, topo_arg, inner_cell)
+            outer_count = self.element_node_count(cell_arg, topo_arg, outer_cell)
+
+            return inner_count, outer_count
+
+        return side_neighbor_node_counts
 
 
 class TraceSpaceTopology(SpaceTopology):
@@ -259,8 +282,13 @@ class TraceSpaceTopology(SpaceTopology):
 
     def _make_inner_cell_index(self):
         @cache.dynamic_func(suffix=self.name)
-        def inner_cell_index(side_arg: self.geometry.SideArg, element_index: ElementIndex, node_index_in_elt: int):
-            inner_count, outer_count = self._topo.side_neighbor_node_counts(side_arg, element_index)
+        def inner_cell_index(
+            side_arg: self.geometry.SideArg,
+            topo_arg: self.TopologyArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            inner_count, outer_count = self._topo.side_neighbor_node_counts(side_arg, topo_arg, element_index)
             if node_index_in_elt >= inner_count:
                 return NULL_ELEMENT_INDEX, NULL_NODE_INDEX
             return self.geometry.side_inner_cell_index(side_arg, element_index), node_index_in_elt
@@ -269,8 +297,13 @@ class TraceSpaceTopology(SpaceTopology):
 
     def _make_outer_cell_index(self):
         @cache.dynamic_func(suffix=self.name)
-        def outer_cell_index(side_arg: self.geometry.SideArg, element_index: ElementIndex, node_index_in_elt: int):
-            inner_count, outer_count = self._topo.side_neighbor_node_counts(side_arg, element_index)
+        def outer_cell_index(
+            side_arg: self.geometry.SideArg,
+            topo_arg: self.TopologyArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            inner_count, outer_count = self._topo.side_neighbor_node_counts(side_arg, topo_arg, element_index)
             if node_index_in_elt < inner_count:
                 return NULL_ELEMENT_INDEX, NULL_NODE_INDEX
             return self.geometry.side_outer_cell_index(side_arg, element_index), node_index_in_elt - inner_count
@@ -279,8 +312,13 @@ class TraceSpaceTopology(SpaceTopology):
 
     def _make_neighbor_cell_index(self):
         @cache.dynamic_func(suffix=self.name)
-        def neighbor_cell_index(side_arg: self.geometry.SideArg, element_index: ElementIndex, node_index_in_elt: int):
-            inner_count, outer_count = self._topo.side_neighbor_node_counts(side_arg, element_index)
+        def neighbor_cell_index(
+            side_arg: self.geometry.SideArg,
+            topo_arg: self.TopologyArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            inner_count, outer_count = self._topo.side_neighbor_node_counts(side_arg, topo_arg, element_index)
             if node_index_in_elt < inner_count:
                 return self.geometry.side_inner_cell_index(side_arg, element_index), node_index_in_elt
 
@@ -295,10 +333,10 @@ class TraceSpaceTopology(SpaceTopology):
         @cache.dynamic_func(suffix=self.name)
         def trace_element_node_count(
             geo_side_arg: self.geometry.SideArg,
-            topo_arg: self._topo.TopologyArg,
+            topo_arg: self.TopologyArg,
             element_index: ElementIndex,
         ):
-            inner_count, outer_count = self._topo.side_neighbor_node_counts(geo_side_arg, element_index)
+            inner_count, outer_count = self._topo.side_neighbor_node_counts(geo_side_arg, topo_arg, element_index)
             return inner_count + outer_count
 
         return trace_element_node_count
@@ -307,11 +345,13 @@ class TraceSpaceTopology(SpaceTopology):
         @cache.dynamic_func(suffix=self.name)
         def trace_element_node_index(
             geo_side_arg: self.geometry.SideArg,
-            topo_arg: self._topo.TopologyArg,
+            topo_arg: self.TopologyArg,
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            cell_index, index_in_cell = self.neighbor_cell_index(geo_side_arg, element_index, node_index_in_elt)
+            cell_index, index_in_cell = self.neighbor_cell_index(
+                geo_side_arg, topo_arg, element_index, node_index_in_elt
+            )
 
             geo_cell_arg = self.geometry.side_to_cell_arg(geo_side_arg)
             return self._topo.element_node_index(geo_cell_arg, topo_arg, cell_index, index_in_cell)
@@ -322,11 +362,13 @@ class TraceSpaceTopology(SpaceTopology):
         @cache.dynamic_func(suffix=self.name)
         def trace_element_node_sign(
             geo_side_arg: self.geometry.SideArg,
-            topo_arg: self._topo.TopologyArg,
+            topo_arg: self.TopologyArg,
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            cell_index, index_in_cell = self.neighbor_cell_index(geo_side_arg, element_index, node_index_in_elt)
+            cell_index, index_in_cell = self.neighbor_cell_index(
+                geo_side_arg, topo_arg, element_index, node_index_in_elt
+            )
 
             geo_cell_arg = self.geometry.side_to_cell_arg(geo_side_arg)
             return self._topo.element_node_sign(geo_cell_arg, topo_arg, cell_index, index_in_cell)
@@ -426,9 +468,10 @@ class DeformedGeometrySpaceTopology(SpaceTopology):
         @cache.dynamic_func(suffix=self.name)
         def side_neighbor_node_counts(
             side_arg: self.geometry.SideArg,
+            topo_arg: self.TopologyArg,
             element_index: ElementIndex,
         ):
-            inner_count, outer_count = self.base.side_neighbor_node_counts(side_arg.base_arg, element_index)
+            inner_count, outer_count = self.base.side_neighbor_node_counts(side_arg.base_arg, topo_arg, element_index)
             return inner_count, outer_count
 
         return side_neighbor_node_counts

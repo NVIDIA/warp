@@ -239,7 +239,7 @@ class Example:
 
         fem.interpolate(
             classify_boundary_sides,
-            quadrature=fem.RegularQuadrature(boundary, order=0),
+            at=fem.RegularQuadrature(boundary, order=0),
             values={"inflow": inflow_mask, "dirichlet": dirichlet_mask},
         )
 
@@ -411,7 +411,7 @@ class Example:
                 advected_level_set_upwind,
                 fields={"level_set": level_set_in, "velocity": velocity},
                 values={"transport_integrals": transport_integrals},
-                quadrature=fem.NodalQuadrature(self._p_test.domain, self._ls_space),
+                at=fem.NodalQuadrature(self._p_test.domain, self._ls_space),
                 dest=out_field.dof_values,
             )
         else:

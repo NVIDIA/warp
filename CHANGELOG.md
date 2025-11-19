@@ -27,6 +27,7 @@
 
 - Improve CUDA compilation performance by enabling the use of precompiled headers (https://docs.nvidia.com/cuda/nvrtc/index.html#automatic-pch).
   Can be disabled using `wp.config.use_precompiled_headers=False` ([GH-595](https://github.com/NVIDIA/warp/issues/595)).
+- Extended `warp.fem.interpolate` API to be more flexible, decoupling interpolation location from storage definition ([GH-1091](https://github.com/NVIDIA/warp/issues/1091)).
 
 ### Fixed
 

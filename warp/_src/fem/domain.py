@@ -38,6 +38,12 @@ GeometryOrPartition = Union[Geometry, GeometryPartition]
 class GeometryDomain:
     """Interface class for domains, i.e. (partial) views of elements in a Geometry"""
 
+    geometry_partition: GeometryPartition
+    """Geometry partition containing the elements of the domain"""
+
+    geometry: Geometry
+    """Underlying geometry"""
+
     def __init__(self, geometry: GeometryOrPartition):
         if isinstance(geometry, GeometryPartition):
             self.geometry_partition = geometry
@@ -279,7 +285,6 @@ class Sides(GeometryDomain):
     """A Domain containing all (interior and boundary) sides of the geometry or geometry partition"""
 
     def __init__(self, geometry: GeometryOrPartition):
-        self.geometry = geometry
         super().__init__(geometry)
 
         self.element_lookup = None

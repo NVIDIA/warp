@@ -220,7 +220,7 @@ def test_interpolate_gradient(test, device):
         )
         assert_np_equal(point_coords.grad.numpy(), np.array([[[2.0, 0.0, 0.0]]]))
 
-        # Compare against jacobian
+        # Compare against jacobian at quadrature points
         scalar_trial = fem.make_trial(scalar_space)
         jacobian = bsr_zeros(
             rows_of_blocks=point_quadrature.total_point_count(),
@@ -230,11 +230,38 @@ def test_interpolate_gradient(test, device):
         fem.interpolate(
             grad_field,
             dest=jacobian,
-            quadrature=point_quadrature,
+            at=point_quadrature,
             fields={"p": scalar_trial},
             kernel_options={"enable_backward": False},
         )
-        assert jacobian.nnz_sync() == 4  # one non-zero per edge center
+        assert jacobian.nnz_sync() == 4  # one non-zero per cell center
+        assert_np_equal((jacobian @ scalar_field.dof_values.grad).numpy(), [[0.0, 0.5]])
+
+        # Compare against jacobian at nodes
+        bsr_set_zero(jacobian)
+        fem.interpolate(
+            grad_field,
+            dest=jacobian,
+            dest_space=vector_space,
+            at=vector_field_restriction.space_restriction,
+            fields={"p": scalar_trial},
+            kernel_options={"enable_backward": False},
+        )
+        assert jacobian.nnz_sync() == 4  # one non-zero per cell center
+        assert_np_equal((jacobian @ scalar_field.dof_values.grad).numpy(), [[0.0, 0.5]])
+
+        # Compare against jacobian at nodes (reduction="first")
+        bsr_set_zero(jacobian)
+        fem.interpolate(
+            grad_field,
+            dest=jacobian,
+            dest_space=vector_space,
+            at=vector_field_restriction.space_restriction,
+            fields={"p": scalar_trial},
+            kernel_options={"enable_backward": False},
+            reduction="first",
+        )
+        assert jacobian.nnz_sync() == 4  # one non-zero per cell center
         assert_np_equal((jacobian @ scalar_field.dof_values.grad).numpy(), [[0.0, 0.5]])
 
 
@@ -571,28 +598,21 @@ def _launch_test_geometry_kernel(geo: fem.Geometry, device):
     side_quadrature = fem.RegularQuadrature(fem.Sides(geo), order=2)
 
     with wp.ScopedDevice(device):
-        fem.interpolate(
-            _test_geo_cells,
-            quadrature=cell_quadrature,
-            values={"cell_measures": cell_measures},
-        )
+        fem.interpolate(_test_geo_cells, at=cell_quadrature, values={"cell_measures": cell_measures})
 
         cell_filter = np.zeros(geo.cell_count(), dtype=int)
         cell_filter[0] = 1
         cell_filter = wp.array(cell_filter, dtype=int)
-        fem.interpolate(_test_cell_lookup, quadrature=cell_quadrature, values={"cell_filter": cell_filter})
+        fem.interpolate(_test_cell_lookup, at=cell_quadrature, values={"cell_filter": cell_filter})
 
         fem.interpolate(
             _test_geo_sides,
-            quadrature=side_quadrature,
+            at=side_quadrature,
             values={"side_measures": side_measures, "ref_measure": geo.reference_side().prototype.measure()},
         )
 
         if geo.side_normal is not None:
-            fem.interpolate(
-                _test_side_normals,
-                quadrature=side_quadrature,
-            )
+            fem.interpolate(_test_side_normals, at=side_quadrature)
 
     return side_measures, cell_measures
 
@@ -1505,6 +1525,16 @@ def test_tet_shape_functions(test, device):
     wp.synchronize()
 
 
+@wp.func
+def _rbf_kernel_func(squared_dist: float, point_index: int, radius: float):
+    return wp.exp(-squared_dist / (2.0 * radius * radius))
+
+
+@wp.func
+def _rbf_kernel_grad_func(squared_dist: float, point_index: int, radius: float):
+    return -wp.exp(-squared_dist / (2.0 * radius * radius)) * (squared_dist / (2.0 * radius * radius))
+
+
 def test_point_basis(test, device):
     geo = fem.Grid2D(res=wp.vec2i(2))
 
@@ -1517,42 +1547,89 @@ def test_point_basis(test, device):
     point_test = fem.make_test(point_space, domain=domain)
 
     # Sample at particle positions
-    ones = fem.integrate(linear_form, fields={"u": point_test}, assembly="nodal")
-    test.assertAlmostEqual(np.sum(ones.numpy()), 1.0, places=5)
+    self_int = fem.integrate(linear_form, fields={"u": point_test}, assembly="nodal")
+    test.assertAlmostEqual(np.sum(self_int.numpy()), 1.0, places=5)
 
     # Sampling outside of particle positions
-    other_quadrature = fem.RegularQuadrature(domain, order=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
-    zeros = fem.integrate(linear_form, quadrature=other_quadrature, fields={"u": point_test})
+    other_quadrature = fem.RegularQuadrature(domain, order=0, family=fem.Polynomial.GAUSS_LEGENDRE)
+    other_int = fem.integrate(linear_form, quadrature=other_quadrature, fields={"u": point_test})
 
-    test.assertAlmostEqual(np.sum(zeros.numpy()), 0.0, places=5)
+    test.assertAlmostEqual(np.sum(other_int.numpy()), 0.0, places=5)
 
-    # test point basis with variable points per cell
+    # test point basis with a finite-radius rbf kernel and varying points per element
     points = wp.array([[0.25, 0.33], [0.33, 0.25], [0.8, 0.8]], dtype=wp.vec2)
+    neighbour_points_squared_dist = 2 * (0.25 - 0.33) ** 2  # dist between points in the same cell
+    cell0_center_squared_dist = (0.25 - 0.33) ** 2  # dist with cell center
+    cell3_center_squared_dist = 2.0 * (0.75 - 0.8) ** 2  # dist with cell center
+
     pic = fem.PicQuadrature(domain, positions=points)
 
     test.assertEqual(pic.active_cell_count(), 2)
     test.assertEqual(pic.total_point_count(), 3)
     test.assertEqual(pic.max_points_per_element(), 2)
 
-    point_basis = fem.PointBasisSpace(pic)
+    rbf_radius = 0.1
+    point_basis = fem.PointBasisSpace(
+        pic,
+        kernel_func=_rbf_kernel_func,
+        kernel_grad_func=_rbf_kernel_grad_func,
+        kernel_values={"radius": rbf_radius},
+        distance_space="world",
+    )
     point_space = fem.make_collocated_function_space(point_basis)
     point_test = fem.make_test(point_space, domain=domain)
     test.assertEqual(point_test.space_restriction.node_count(), 3)
 
-    ones = fem.integrate(linear_form, fields={"u": point_test}, quadrature=pic)
-    test.assertAlmostEqual(np.sum(ones.numpy()), pic.active_cell_count() / geo.cell_count(), places=5)
+    self_int = fem.integrate(linear_form, fields={"u": point_test}, quadrature=pic)
+    np.testing.assert_allclose(
+        self_int.numpy(),
+        [
+            0.125 * (1.0 + _rbf_kernel_func(neighbour_points_squared_dist, 0, rbf_radius)),
+            0.125 * (1.0 + _rbf_kernel_func(neighbour_points_squared_dist, 0, rbf_radius)),
+            0.25,
+        ],
+    )
 
-    zeros = fem.integrate(linear_form, quadrature=other_quadrature, fields={"u": point_test})
-    test.assertAlmostEqual(np.sum(zeros.numpy()), 0.0, places=5)
+    other_int = fem.integrate(linear_form, quadrature=other_quadrature, fields={"u": point_test})
+    np.testing.assert_allclose(
+        other_int.numpy(),
+        [
+            0.25 * _rbf_kernel_func(cell0_center_squared_dist, 0, rbf_radius),
+            0.25 * _rbf_kernel_func(cell0_center_squared_dist, 0, rbf_radius),
+            0.25 * _rbf_kernel_func(cell3_center_squared_dist, 0, rbf_radius),
+        ],
+    )
 
-    linear_vec = fem.make_polynomial_space(geo, dtype=wp.vec2)
-    linear_test = fem.make_test(linear_vec)
+    # integration of bilinear form
+    linear_vec_space = fem.make_polynomial_space(geo, dtype=wp.vec2)
+    linear_test = fem.make_test(linear_vec_space)
     point_trial = fem.make_trial(point_space)
 
-    mat = fem.integrate(vector_divergence_form, fields={"u": linear_test, "q": point_trial}, quadrature=pic)
+    mat = fem.integrate(
+        vector_divergence_form, fields={"u": linear_test, "q": point_trial}, quadrature=pic, output_dtype=float
+    )
     test.assertEqual(mat.nrow, 9)
     test.assertEqual(mat.ncol, 3)
     test.assertEqual(mat.nnz_sync(), 12)
+
+    # test gradient
+    bsr_set_zero(mat, rows_of_blocks=3, cols_of_blocks=3)
+    fem.interpolate(
+        grad_field,
+        fields={"p": point_trial},
+        dest=mat,
+        dest_space=fem.make_collocated_function_space(point_basis, dtype=wp.vec2),
+    )
+    test.assertEqual(mat.nnz_sync(), 2)
+    assert_np_equal(mat.columns[: mat.nnz].numpy(), [1, 0])
+
+    delta_points = np.array([0.25 - 0.33, 0.33 - 0.25])
+    ref_grad = 2.0 * _rbf_kernel_grad_func(neighbour_points_squared_dist, 0, rbf_radius) * delta_points
+    np.testing.assert_allclose(
+        mat.values[: mat.nnz].numpy().reshape(2, 2),
+        np.array([ref_grad, -ref_grad], dtype=float),
+        rtol=1.0e-6,
+    )
 
 
 @fem.integrand
@@ -1594,7 +1671,7 @@ def test_particle_quadratures(test, device):
 
     # test indexing validity
     arr = wp.empty(explicit_quadrature.total_point_count(), dtype=float)
-    fem.interpolate(_piecewise_constant, dest=arr, quadrature=explicit_quadrature)
+    fem.interpolate(_piecewise_constant, dest=arr, at=explicit_quadrature)
     assert_np_equal(arr.numpy(), np.arange(geo.cell_count()).repeat(points_per_cell))
 
     # PIC quadrature
@@ -1633,6 +1710,56 @@ def test_particle_quadratures(test, device):
 
     assert_np_equal(points.grad.numpy(), np.full((3, 2), 2.0))  # == 1.0 / cell_size
     assert_np_equal(measures.grad.numpy(), np.full(3, 4.0))  # == 1.0 / cell_area
+
+
+def test_interpolate_reduction(test, device):
+    # Test reduction modes of fem.interpolate() on a discontinuous field
+    with wp.ScopedDevice(device):
+        N = 2  # 2x2 cells → 3x3 vertices
+        geo = fem.Grid2D(res=wp.vec2i(N))
+        space = fem.make_polynomial_space(geo, degree=1)  # Q1 nodes at vertices
+        field = space.make_field()
+
+        # Helper: compute neighbor element indices for a vertex (ix,iy)
+        def neighbor_elements(ix, iy):
+            iset = [i for i in (ix - 1, ix) if 0 <= i < N]
+            jset = [j for j in (iy - 1, iy) if 0 <= j < N]
+            return [j * N + i for j in jset for i in iset]
+
+        # Precompute expectations for each reduction mode
+        node_count = (N + 1) * (N + 1)
+
+        def expected_array(mode):
+            out = np.zeros(node_count, dtype=float)
+            for iy in range(N + 1):
+                for ix in range(N + 1):
+                    neigh = neighbor_elements(ix, iy)
+                    idx = iy * (N + 1) + ix  # row-major vertex indexing
+                    if len(neigh) == 0:
+                        out[idx] = 0.0
+                        continue
+                    if mode == "sum":
+                        out[idx] = float(sum(neigh))
+                    elif mode == "mean" or mode == "weighted_average":
+                        out[idx] = float(sum(neigh)) / float(len(neigh))
+                    elif mode == "max":
+                        out[idx] = float(max(neigh))
+                    elif mode == "min":
+                        out[idx] = float(min(neigh))
+                    elif mode == "first":
+                        # Deterministic order in restriction: expect smallest element index first
+                        out[idx] = float(min(neigh))
+                    else:
+                        raise ValueError("Unknown mode")
+            return out
+
+        # Run interpolation for each reduction and compare
+        for mode in ("weighted_average", "mean", "sum", "max", "min", "first"):
+            field.dof_values.zero_()
+            fem.interpolate(_piecewise_constant, dest=field, reduction=mode)
+            got = field.dof_values.numpy()
+            exp = expected_array(mode)
+            assert_np_equal(got, exp, tol=1.0e-6)
 
 
 @fem.integrand(kernel_options={"enable_backward": False})
@@ -1725,7 +1852,7 @@ def test_implicit_fields(test, device):
     assert_np_equal(discrete_vec_field.dof_values.numpy(), np.zeros((9, 2)))
 
     uniform.value = 2.0
-    fem.interpolate(uniform.trace(), dest=fem.make_restriction(discrete_field, domain=boundary))
+    fem.interpolate(uniform.trace(), dest=discrete_field, at=boundary)
     assert_np_equal(discrete_field.dof_values.numpy(), np.array([2.0] * 4 + [5.0] + [2.0] * 4))
 
     # Implicit
@@ -1744,7 +1871,7 @@ def test_implicit_fields(test, device):
     assert_np_equal(discrete_vec_field.dof_values.numpy()[-1], np.full(2, (2.0**9.0 * 3.0)))
 
     implicit.values.scale = wp.vec2(-2.0, -2.0)
-    fem.interpolate(implicit.trace(), dest=fem.make_restriction(discrete_field, domain=boundary))
+    fem.interpolate(implicit.trace(), dest=discrete_field, at=boundary)
     assert_np_equal(
         discrete_field.dof_values.numpy(),
         np.array([0.0, 0.0, 0.0, 0.0, 2.0**3, 2.0**3, 0.0, 2.0**3, 4.0**3]),
@@ -1774,7 +1901,8 @@ def test_implicit_fields(test, device):
     discrete_field2.dof_values.zero_()
     fem.interpolate(
         nonconforming.trace(),
-        dest=fem.make_restriction(discrete_field2, domain=boundary2),
+        dest=discrete_field2,
+        at=boundary2,
     )
     assert_np_equal(discrete_field2.dof_values.numpy(), np.array([2.0] + [5.0] * 3))
 
@@ -1829,7 +1957,7 @@ def test_vector_spaces(test, device):
 
         fem.interpolate(
             _expect_tangential_continuity,
-            quadrature=fem.RegularQuadrature(fem.Sides(geo), order=2),
+            at=fem.RegularQuadrature(fem.Sides(geo), order=2),
             fields={"field": curl_field.trace()},
         )
 
@@ -1841,7 +1969,7 @@ def test_vector_spaces(test, device):
 
         fem.interpolate(
             _expect_normal_continuity,
-            quadrature=fem.RegularQuadrature(fem.Sides(geo), order=2),
+            at=fem.RegularQuadrature(fem.Sides(geo), order=2),
             fields={"field": div_field.trace()},
         )
 
@@ -1858,7 +1986,7 @@ def test_vector_spaces(test, device):
 
         fem.interpolate(
             _expect_tangential_continuity,
-            quadrature=fem.RegularQuadrature(fem.Sides(geo), order=2),
+            at=fem.RegularQuadrature(fem.Sides(geo), order=2),
             fields={"field": curl_field.trace()},
         )
 
@@ -1870,7 +1998,7 @@ def test_vector_spaces(test, device):
 
         fem.interpolate(
             _expect_normal_continuity,
-            quadrature=fem.RegularQuadrature(fem.Sides(geo), order=2),
+            at=fem.RegularQuadrature(fem.Sides(geo), order=2),
             fields={"field": div_field.trace()},
         )
 
@@ -1887,12 +2015,12 @@ def test_vector_spaces(test, device):
         curl_field = curl_space.make_field()
         curl_field.dof_values.fill_(1.0)
         fem.interpolate(
-            _expect_pure_curl, quadrature=fem.RegularQuadrature(fem.Cells(geo), order=2), fields={"field": curl_field}
+            _expect_pure_curl, at=fem.RegularQuadrature(fem.Cells(geo), order=2), fields={"field": curl_field}
         )
 
         fem.interpolate(
             _expect_tangential_continuity,
-            quadrature=fem.RegularQuadrature(fem.Sides(geo), order=2),
+            at=fem.RegularQuadrature(fem.Sides(geo), order=2),
             fields={"field": curl_field.trace()},
         )
 
@@ -1905,13 +2033,13 @@ def test_vector_spaces(test, device):
         div_field.dof_values.fill_(1.0)
         fem.interpolate(
             _expect_pure_spherical,
-            quadrature=fem.RegularQuadrature(fem.Cells(geo), order=2),
+            at=fem.RegularQuadrature(fem.Cells(geo), order=2),
             fields={"field": div_field},
         )
 
         fem.interpolate(
             _expect_normal_continuity,
-            quadrature=fem.RegularQuadrature(fem.Sides(geo), order=2),
+            at=fem.RegularQuadrature(fem.Sides(geo), order=2),
             fields={"field": div_field.trace()},
         )
 
@@ -1928,12 +2056,12 @@ def test_vector_spaces(test, device):
         curl_field = curl_space.make_field()
         curl_field.dof_values.fill_(1.0)
         fem.interpolate(
-            _expect_pure_curl, quadrature=fem.RegularQuadrature(fem.Cells(geo), order=2), fields={"field": curl_field}
+            _expect_pure_curl, at=fem.RegularQuadrature(fem.Cells(geo), order=2), fields={"field": curl_field}
         )
 
         fem.interpolate(
             _expect_tangential_continuity,
-            quadrature=fem.RegularQuadrature(fem.Sides(geo), order=1),
+            at=fem.RegularQuadrature(fem.Sides(geo), order=1),
             fields={"field": curl_field.trace()},
         )
 
@@ -1946,13 +2074,13 @@ def test_vector_spaces(test, device):
         div_field.dof_values.fill_(1.0)
         fem.interpolate(
             _expect_pure_spherical,
-            quadrature=fem.RegularQuadrature(fem.Cells(geo), order=2),
+            at=fem.RegularQuadrature(fem.Cells(geo), order=2),
             fields={"field": div_field},
         )
 
         fem.interpolate(
             _expect_normal_continuity,
-            quadrature=fem.RegularQuadrature(fem.Sides(geo), order=0),
+            at=fem.RegularQuadrature(fem.Sides(geo), order=0),
             fields={"field": div_field.trace()},
         )
 
@@ -2176,6 +2304,7 @@ add_function_test(TestFem, "test_particle_quadratures", test_particle_quadrature
 add_function_test(TestFem, "test_nodal_quadrature", test_nodal_quadrature)
 add_function_test(TestFem, "test_implicit_fields", test_implicit_fields)
 add_function_test(TestFem, "test_integrate_high_order", test_integrate_high_order, devices=cuda_devices)
+add_function_test(TestFem, "test_interpolate_reduction", test_interpolate_reduction, devices=devices)
 
 
 class TestFemUtilities(unittest.TestCase):

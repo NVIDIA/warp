@@ -445,22 +445,33 @@ class Geometry:
 
         elt_center = Coords(ref_elt.center())
 
-        ITERATIONS = 1 if assume_linear else _COORD_LOOKUP_ITERATIONS
-        STEP = 1.0 if assume_linear else _COORD_LOOKUP_STEP
+        if assume_linear:
 
-        @cache.dynamic_func(suffix=f"{self.name}{element_kind}{assume_linear}")
-        def element_coordinates(args: arg_type, element_index: ElementIndex, pos: pos_type):
-            coords = elt_center
+            @cache.dynamic_func(suffix=(self.name, element_kind))
+            def element_coordinates_linear(args: arg_type, element_index: ElementIndex, pos: pos_type):
+                coords = elt_center
 
-            # Newton loop (single iteration in linear case)
-            for _k in range(ITERATIONS):
                 s = make_free_sample(element_index, coords)
                 x = elt_pos(args, s)
                 dc = elt_inv_grad(args, s) * (pos - x)
-                if wp.static(not assume_linear):
-                    if wp.length_sq(dc) < _COORD_LOOKUP_EPS:
-                        break
-                coords = coords + ref_elt.coord_delta(STEP * dc)
+                coords = coords + ref_elt.coord_delta(dc)
+
+                return coords
+
+            return element_coordinates_linear
+
+        @cache.dynamic_func(suffix=(self.name, element_kind))
+        def element_coordinates(args: arg_type, element_index: ElementIndex, pos: pos_type):
+            coords = elt_center
+
+            # Newton loop
+            for _k in range(_COORD_LOOKUP_ITERATIONS):
+                s = make_free_sample(element_index, coords)
+                x = elt_pos(args, s)
+                dc = elt_inv_grad(args, s) * (pos - x)
+                if wp.length_sq(dc) < _COORD_LOOKUP_EPS:
+                    break
+                coords = coords + ref_elt.coord_delta(_COORD_LOOKUP_STEP * dc)
 
             return coords
 

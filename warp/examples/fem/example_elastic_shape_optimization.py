@@ -198,7 +198,7 @@ class Example:
 
         fem.interpolate(
             classify_boundary_sides,
-            quadrature=fem.RegularQuadrature(boundary, order=0),
+            at=boundary,
             values={"left": left_mask, "right": right_mask},
         )
 

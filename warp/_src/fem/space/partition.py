@@ -33,6 +33,12 @@ class SpacePartition:
     class PartitionArg:
         pass
 
+    space_topology: SpaceTopology
+    """Topology of the function space being partitioned"""
+
+    geo_partition: GeometryPartition
+    """Partition of the geometry controlling how to partition the space"""
+
     def __init__(self, space_topology: SpaceTopology, geo_partition: GeometryPartition):
         self.space_topology = space_topology
         self.geo_partition = geo_partition
@@ -319,6 +325,10 @@ class NodePartition(SpacePartition):
         device = node_category.device
 
         if max_node_count >= 0:
+            # If max_node_count is provided, we do not bring back the actual node count to the host;
+            # instead, we use the provided value as an upper bound to dimension launches and allocations.
+            # In this case, all nodes are classified as possible "owned" nodes
+
             if self._category_offsets is None:
                 self._category_offsets = cache.borrow_temporary(
                     temporary_store,

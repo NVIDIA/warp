@@ -56,6 +56,10 @@ class AdjointField(SpaceField):
         "node_count": lambda obj: obj._make_node_count(),
         "at_node": lambda obj: obj._make_at_node(),
         "node_index": lambda obj: obj._make_node_index(),
+        "node_inner_weight": lambda obj: obj._make_node_inner_weight(),
+        "node_outer_weight": lambda obj: obj._make_node_outer_weight(),
+        "node_inner_weight_gradient": lambda obj: obj._make_node_inner_weight_gradient(),
+        "node_outer_weight_gradient": lambda obj: obj._make_node_outer_weight_gradient(),
     }
 
     def __init__(self, space: FunctionSpace, space_partition: SpacePartition, domain: GeometryDomain):
@@ -67,17 +71,25 @@ class AdjointField(SpaceField):
 
         cache.setup_dynamic_attributes(self)
 
-    @cached_property
-    def name(self) -> str:
-        return f"{self.__class__.__name__}{self.space.name}{self._space_partition.name}"
+    def _make_eval_arg(self):
+        @cache.dynamic_struct(suffix=self.name)
+        class EvalArg:
+            basis_arg: self.space.basis.BasisArg
+            topo_arg: self.space.topology.TopologyArg
+
+        return EvalArg
 
     @cache.cached_arg_value
     def eval_arg_value(self, device):
         return super().eval_arg_value(device)
 
     def fill_eval_arg(self, arg, device):
-        self.space.fill_space_arg(arg.space_arg, device)
+        self.space.basis.fill_basis_arg(arg.basis_arg, device)
         self.space.topology.fill_topo_arg(arg.topo_arg, device)
+
+    @cached_property
+    def name(self) -> str:
+        return f"{self.__class__.__name__}{self.space.name}{self._space_partition.name}"
 
     def rebind(self, space: FunctionSpace, space_partition: SpacePartition, domain: GeometryDomain):
         """Rebind the field to a new space partition, space and domain.
@@ -96,14 +108,6 @@ class AdjointField(SpaceField):
 
         self.eval_arg_value.invalidate(self)
 
-    def _make_eval_arg(self):
-        @cache.dynamic_struct(suffix=self.name)
-        class EvalArg:
-            space_arg: self.space.SpaceArg
-            topo_arg: self.space.topology.TopologyArg
-
-        return EvalArg
-
     def _make_element_eval_arg(self):
         @cache.dynamic_struct(suffix=self.name)
         class ElementEvalArg:
@@ -116,9 +120,10 @@ class AdjointField(SpaceField):
         @cache.dynamic_func(suffix=self.name)
         def eval_test_inner(args: self.ElementEvalArg, s: Sample):
             dof = self._get_dof(s)
-            node_weight = self.space.element_inner_weight(
+            node_weight = self.space.basis.element_inner_weight(
                 args.elt_arg,
-                args.eval_arg.space_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
@@ -137,9 +142,10 @@ class AdjointField(SpaceField):
         @cache.dynamic_func(suffix=self.name)
         def eval_grad_inner(args: self.ElementEvalArg, s: Sample):
             dof = self._get_dof(s)
-            nabla_weight = self.space.element_inner_weight_gradient(
+            nabla_weight = self.space.basis.element_inner_weight_gradient(
                 args.elt_arg,
-                args.eval_arg.space_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
@@ -148,7 +154,7 @@ class AdjointField(SpaceField):
             grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
             dof_value = self.space.node_basis_element(get_node_coord(dof))
-            return self.space.space_gradient(dof_value, nabla_weight, local_value_map, grad_transform)
+            return self.space.space_gradient(dof_value, nabla_weight * grad_transform, local_value_map)
 
         return eval_grad_inner
 
@@ -159,9 +165,10 @@ class AdjointField(SpaceField):
         @cache.dynamic_func(suffix=self.name)
         def eval_div_inner(args: self.ElementEvalArg, s: Sample):
             dof = self._get_dof(s)
-            nabla_weight = self.space.element_inner_weight_gradient(
+            nabla_weight = self.space.basis.element_inner_weight_gradient(
                 args.elt_arg,
-                args.eval_arg.space_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
@@ -170,7 +177,7 @@ class AdjointField(SpaceField):
             grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
             dof_value = self.space.node_basis_element(get_node_coord(dof))
-            return self.space.space_divergence(dof_value, nabla_weight, local_value_map, grad_transform)
+            return self.space.space_divergence(dof_value, nabla_weight * grad_transform, local_value_map)
 
         return eval_div_inner
 
@@ -178,9 +185,10 @@ class AdjointField(SpaceField):
         @cache.dynamic_func(suffix=self.name)
         def eval_test_outer(args: self.ElementEvalArg, s: Sample):
             dof = self._get_dof(s)
-            node_weight = self.space.element_outer_weight(
+            node_weight = self.space.basis.element_outer_weight(
                 args.elt_arg,
-                args.eval_arg.space_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
@@ -199,9 +207,10 @@ class AdjointField(SpaceField):
         @cache.dynamic_func(suffix=self.name)
         def eval_grad_outer(args: self.ElementEvalArg, s: Sample):
             dof = self._get_dof(s)
-            nabla_weight = self.space.element_outer_weight_gradient(
+            nabla_weight = self.space.basis.element_outer_weight_gradient(
                 args.elt_arg,
-                args.eval_arg.space_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
@@ -210,7 +219,7 @@ class AdjointField(SpaceField):
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
             dof_value = self.space.node_basis_element(get_node_coord(dof))
-            return self.space.space_gradient(dof_value, nabla_weight, local_value_map, grad_transform)
+            return self.space.space_gradient(dof_value, nabla_weight * grad_transform, local_value_map)
 
         return eval_grad_outer
 
@@ -221,9 +230,10 @@ class AdjointField(SpaceField):
         @cache.dynamic_func(suffix=self.name)
         def eval_div_outer(args: self.ElementEvalArg, s: Sample):
             dof = self._get_dof(s)
-            nabla_weight = self.space.element_outer_weight_gradient(
+            nabla_weight = self.space.basis.element_outer_weight_gradient(
                 args.elt_arg,
-                args.eval_arg.space_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
                 get_node_index_in_element(dof),
@@ -232,7 +242,7 @@ class AdjointField(SpaceField):
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
             dof_value = self.space.node_basis_element(get_node_coord(dof))
-            return self.space.space_divergence(dof_value, nabla_weight, local_value_map, grad_transform)
+            return self.space.space_divergence(dof_value, nabla_weight * grad_transform, local_value_map)
 
         return eval_div_outer
 
@@ -240,8 +250,12 @@ class AdjointField(SpaceField):
         @cache.dynamic_func(suffix=self.name)
         def at_node(args: self.ElementEvalArg, s: Sample):
             dof = self._get_dof(s)
-            node_coords = self.space.node_coords_in_element(
-                args.elt_arg, args.eval_arg.space_arg, s.element_index, get_node_index_in_element(dof)
+            node_coords = self.space.basis.node_coords_in_element(
+                args.elt_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
+                s.element_index,
+                get_node_index_in_element(dof),
             )
             return Sample(s.element_index, node_coords, s.qp_index, s.qp_weight, s.test_dof, s.trial_dof)
 
@@ -251,8 +265,9 @@ class AdjointField(SpaceField):
         @cache.dynamic_func(suffix=self.name)
         def node_index(args: self.ElementEvalArg, s: Sample):
             dof = self._get_dof(s)
+            topo_arg = args.eval_arg.topo_arg
             node_idx = self.space.topology.element_node_index(
-                args.elt_arg, args.eval_arg.topo_arg, s.element_index, get_node_index_in_element(dof)
+                args.elt_arg, topo_arg, s.element_index, get_node_index_in_element(dof)
             )
             return node_idx
 
@@ -261,9 +276,80 @@ class AdjointField(SpaceField):
     def _make_node_count(self):
         @cache.dynamic_func(suffix=self.name)
         def node_count(args: self.ElementEvalArg, s: Sample):
-            return self.space.topology.element_node_count(args.elt_arg, args.eval_arg.topo_arg, s.element_index)
+            topo_arg = args.eval_arg.topo_arg
+            return self.space.topology.element_node_count(args.elt_arg, topo_arg, s.element_index)
 
         return node_count
+
+    def _make_node_inner_weight(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_inner_weight(args: self.ElementEvalArg, s: Sample):
+            dof = self._get_dof(s)
+            node_weight = self.space.basis.element_inner_weight(
+                args.elt_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
+                s.element_index,
+                s.element_coords,
+                get_node_index_in_element(dof),
+                s.qp_index,
+            )
+            return node_weight
+
+        return node_inner_weight
+
+    def _make_node_outer_weight(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_outer_weight(args: self.ElementEvalArg, s: Sample):
+            dof = self._get_dof(s)
+            node_weight = self.space.basis.element_outer_weight(
+                args.elt_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
+                s.element_index,
+                s.element_coords,
+                get_node_index_in_element(dof),
+                s.qp_index,
+            )
+            return node_weight
+
+        return node_outer_weight
+
+    def _make_node_inner_weight_gradient(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_inner_weight_gradient(args: self.ElementEvalArg, s: Sample):
+            dof = self._get_dof(s)
+            node_weight_gradient = self.space.basis.element_inner_weight_gradient(
+                args.elt_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
+                s.element_index,
+                s.element_coords,
+                get_node_index_in_element(dof),
+                s.qp_index,
+            )
+            grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
+            return node_weight_gradient * grad_transform
+
+        return node_inner_weight_gradient
+
+    def _make_node_outer_weight_gradient(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_outer_weight_gradient(args: self.ElementEvalArg, s: Sample):
+            dof = self._get_dof(s)
+            node_weight_gradient = self.space.basis.element_outer_weight_gradient(
+                args.elt_arg,
+                args.eval_arg.topo_arg,
+                args.eval_arg.basis_arg,
+                s.element_index,
+                s.element_coords,
+                get_node_index_in_element(dof),
+                s.qp_index,
+            )
+            grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
+            return node_weight_gradient * grad_transform
+
+        return node_outer_weight_gradient
 
 
 class TestField(AdjointField):
@@ -391,8 +477,8 @@ class LocalAdjointField(SpaceField):
         self._dof_suffix = ""
         self.at_node = None
 
-        self._is_discontinuous = (self.space.element_inner_weight != self.space.element_outer_weight) or (
-            self.space.element_inner_weight_gradient != self.space.element_outer_weight_gradient
+        self._is_discontinuous = (self.space.basis.element_inner_weight != self.space.basis.element_outer_weight) or (
+            self.space.basis.element_inner_weight_gradient != self.space.basis.element_outer_weight_gradient
         )
 
         self._TAYLOR_DOF_OFFSETS = LocalAdjointField.DofOffsets(0)
@@ -661,7 +747,8 @@ def make_linear_dispatch_kernel(
         domain_arg: domain.ElementArg,
         domain_index_arg: domain.ElementIndexArg,
         test_arg: space_restriction.NodeArg,
-        test_space_arg: test.space.SpaceArg,
+        test_basis_arg: test.space.basis.BasisArg,
+        test_topo_arg: test.space.topology.TopologyArg,
         local_result: wp.array3d(dtype=Any),
         result: wp.array2d(dtype=Any),
     ):
@@ -711,9 +798,10 @@ def make_linear_dispatch_kernel(
                 qp_sum = qp_vec()
 
                 if wp.static(0 != TEST_INNER_COUNT):
-                    w = test.space.element_inner_weight(
+                    w = test.space.basis.element_inner_weight(
                         domain_arg,
-                        test_space_arg,
+                        test_topo_arg,
+                        test_basis_arg,
                         element_index,
                         coords,
                         test_element_index.node_index_in_element,
@@ -727,9 +815,10 @@ def make_linear_dispatch_kernel(
                             )
 
                 if wp.static(0 != TEST_OUTER_COUNT):
-                    w = test.space.element_outer_weight(
+                    w = test.space.basis.element_outer_weight(
                         domain_arg,
-                        test_space_arg,
+                        test_topo_arg,
+                        test_basis_arg,
                         element_index,
                         coords,
                         test_element_index.node_index_in_element,
@@ -743,9 +832,10 @@ def make_linear_dispatch_kernel(
                             )
 
                 if wp.static(0 != TEST_INNER_GRAD_COUNT):
-                    w_grad = test.space.element_inner_weight_gradient(
+                    w_grad = test.space.basis.element_inner_weight_gradient(
                         domain_arg,
-                        test_space_arg,
+                        test_topo_arg,
+                        test_basis_arg,
                         element_index,
                         coords,
                         test_element_index.node_index_in_element,
@@ -761,9 +851,10 @@ def make_linear_dispatch_kernel(
                                 )
 
                 if wp.static(0 != TEST_OUTER_GRAD_COUNT):
-                    w_grad = test.space.element_outer_weight_gradient(
+                    w_grad = test.space.basis.element_outer_weight_gradient(
                         domain_arg,
-                        test_space_arg,
+                        test_topo_arg,
+                        test_basis_arg,
                         element_index,
                         coords,
                         test_element_index.node_index_in_element,
@@ -849,10 +940,11 @@ def make_bilinear_dispatch_kernel(
         domain_arg: domain.ElementArg,
         domain_index_arg: domain.ElementIndexArg,
         test_arg: test.space_restriction.NodeArg,
-        test_space_arg: test.space.SpaceArg,
+        test_basis_arg: test.space.basis.BasisArg,
+        test_topo_arg: test.space.topology.TopologyArg,
         trial_partition_arg: trial.space_partition.PartitionArg,
-        trial_topology_arg: trial.space_partition.space_topology.TopologyArg,
-        trial_space_arg: trial.space.SpaceArg,
+        trial_basis_arg: trial.space.basis.BasisArg,
+        trial_topo_arg: trial.space.topology.TopologyArg,
         local_result: wp.array4d(dtype=float),
         triplet_rows: wp.array(dtype=int),
         triplet_cols: wp.array(dtype=int),
@@ -870,7 +962,7 @@ def make_bilinear_dispatch_kernel(
             element_trial_node_count = 0
         else:
             element_trial_node_count = trial.space.topology.element_node_count(
-                domain_arg, trial_topology_arg, element_index
+                domain_arg, trial_topo_arg, element_index
             )
 
         if trial_node >= element_trial_node_count:
@@ -906,20 +998,20 @@ def make_bilinear_dispatch_kernel(
             w_test = test_dof_vec()
 
             if wp.static(0 != TEST_INNER_COUNT):
-                w_test_inner = test.space.element_inner_weight(
-                    domain_arg, test_space_arg, element_index, coords, test_node, qp_index
+                w_test_inner = test.space.basis.element_inner_weight(
+                    domain_arg, test_topo_arg, test_basis_arg, element_index, coords, test_node, qp_index
                 )
                 w_test[TEST_INNER_BEGIN] = basis_coefficient(w_test_inner, test_val_dof)
 
             if wp.static(0 != TEST_OUTER_COUNT):
-                w_test_outer = test.space.element_outer_weight(
-                    domain_arg, test_space_arg, element_index, coords, test_node, qp_index
+                w_test_outer = test.space.basis.element_outer_weight(
+                    domain_arg, test_topo_arg, test_basis_arg, element_index, coords, test_node, qp_index
                 )
                 w_test[TEST_OUTER_BEGIN] = basis_coefficient(w_test_outer, test_val_dof)
 
             if wp.static(0 != TEST_INNER_GRAD_COUNT):
-                w_test_grad_inner = test.space.element_inner_weight_gradient(
-                    domain_arg, test_space_arg, element_index, coords, test_node, qp_index
+                w_test_grad_inner = test.space.basis.element_inner_weight_gradient(
+                    domain_arg, test_topo_arg, test_basis_arg, element_index, coords, test_node, qp_index
                 )
                 for grad_dof in range(TEST_INNER_GRAD_COUNT):
                     w_test[TEST_INNER_GRAD_BEGIN + grad_dof] = basis_coefficient(
@@ -927,8 +1019,8 @@ def make_bilinear_dispatch_kernel(
                     )
 
             if wp.static(0 != TEST_OUTER_GRAD_COUNT):
-                w_test_grad_outer = test.space.element_outer_weight_gradient(
-                    domain_arg, test_space_arg, element_index, coords, test_node, qp_index
+                w_test_grad_outer = test.space.basis.element_outer_weight_gradient(
+                    domain_arg, test_topo_arg, test_basis_arg, element_index, coords, test_node, qp_index
                 )
                 for grad_dof in range(TEST_OUTER_GRAD_COUNT):
                     w_test[TEST_OUTER_GRAD_BEGIN + grad_dof] = basis_coefficient(
@@ -939,20 +1031,20 @@ def make_bilinear_dispatch_kernel(
             w_trial = trial_dof_vec()
 
             if wp.static(0 != TRIAL_INNER_COUNT):
-                w_trial_inner = trial.space.element_inner_weight(
-                    domain_arg, trial_space_arg, element_index, coords, trial_node, qp_index
+                w_trial_inner = trial.space.basis.element_inner_weight(
+                    domain_arg, trial_topo_arg, trial_basis_arg, element_index, coords, trial_node, qp_index
                 )
                 w_trial[TRIAL_INNER_BEGIN] = basis_coefficient(w_trial_inner, trial_val_dof)
 
             if wp.static(0 != TRIAL_OUTER_COUNT):
-                w_trial_outer = trial.space.element_outer_weight(
-                    domain_arg, trial_space_arg, element_index, coords, trial_node, qp_index
+                w_trial_outer = trial.space.basis.element_outer_weight(
+                    domain_arg, trial_topo_arg, trial_basis_arg, element_index, coords, trial_node, qp_index
                 )
                 w_trial[TRIAL_OUTER_BEGIN] = basis_coefficient(w_trial_outer, trial_val_dof)
 
             if wp.static(0 != TRIAL_INNER_GRAD_COUNT):
-                w_trial_grad_inner = trial.space.element_inner_weight_gradient(
-                    domain_arg, trial_space_arg, element_index, coords, trial_node, qp_index
+                w_trial_grad_inner = trial.space.basis.element_inner_weight_gradient(
+                    domain_arg, trial_topo_arg, trial_basis_arg, element_index, coords, trial_node, qp_index
                 )
                 for grad_dof in range(TRIAL_INNER_GRAD_COUNT):
                     w_trial[TRIAL_INNER_GRAD_BEGIN + grad_dof] = basis_coefficient(
@@ -960,8 +1052,8 @@ def make_bilinear_dispatch_kernel(
                     )
 
             if wp.static(0 != TRIAL_OUTER_GRAD_COUNT):
-                w_trial_grad_outer = trial.space.element_outer_weight_gradient(
-                    domain_arg, trial_space_arg, element_index, coords, trial_node, qp_index
+                w_trial_grad_outer = trial.space.basis.element_outer_weight_gradient(
+                    domain_arg, trial_topo_arg, trial_basis_arg, element_index, coords, trial_node, qp_index
                 )
                 for grad_dof in range(TRIAL_OUTER_GRAD_COUNT):
                     w_trial[TRIAL_OUTER_GRAD_BEGIN + grad_dof] = basis_coefficient(
@@ -1010,7 +1102,7 @@ def make_bilinear_dispatch_kernel(
             if trial_node < element_trial_node_count:
                 trial_node_index = trial.space_partition.partition_node_index(
                     trial_partition_arg,
-                    trial.space.topology.element_node_index(domain_arg, trial_topology_arg, element_index, trial_node),
+                    trial.space.topology.element_node_index(domain_arg, trial_topo_arg, element_index, trial_node),
                 )
             else:
                 trial_node_index = NULL_NODE_INDEX  # will get ignored when converting to bsr

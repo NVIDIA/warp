@@ -20,7 +20,7 @@ import warp as wp
 from warp._src.fem import cache
 from warp._src.fem.geometry import Geometry
 from warp._src.fem.linalg import generalized_inner, generalized_outer
-from warp._src.fem.types import NULL_QP_INDEX, Coords, ElementIndex, make_free_sample
+from warp._src.fem.types import Coords, ElementIndex, make_free_sample
 from warp._src.fem.utils import type_basis_element
 
 from .basis_space import BasisSpace
@@ -37,38 +37,26 @@ class CollocatedFunctionSpace(FunctionSpace):
     _dynamic_attribute_constructors: ClassVar = {
         "node_basis_element": lambda obj: obj._make_node_basis_element(),
         "value_basis_element": lambda obj: obj._make_value_basis_element(),
-        "node_coords_in_element": lambda obj: obj._basis.make_node_coords_in_element(),
-        "node_quadrature_weight": lambda obj: obj._basis.make_node_quadrature_weight(),
-        "element_inner_weight": lambda obj: obj._basis.make_element_inner_weight(),
-        "element_inner_weight_gradient": lambda obj: obj._basis.make_element_inner_weight_gradient(),
-        "element_outer_weight": lambda obj: obj._basis.make_element_outer_weight(),
-        "element_outer_weight_gradient": lambda obj: obj._basis.make_element_outer_weight_gradient(),
         "space_value": lambda obj: obj._make_space_value(),
         "space_gradient": lambda obj: obj._make_space_gradient(),
         "space_divergence": lambda obj: obj._make_space_divergence(),
-        "node_dof_value": lambda obj: obj._make_node_dof_value(),
+        "dof_value": lambda obj: obj._make_dof_value(),
     }
 
-    @wp.struct
-    class LocalValueMap:
-        pass
+    LocalValueMap = float
 
     def __init__(self, basis: BasisSpace, dtype: type = float, dof_mapper: DofMapper = None):
         self.dof_mapper = IdentityMapper(dtype) if dof_mapper is None else dof_mapper
-        self._basis = basis
 
-        super().__init__(topology=basis.topology)
+        super().__init__(basis=basis)
 
         self.dtype = self.dof_mapper.value_dtype
         self.dof_dtype = self.dof_mapper.dof_dtype
+        self.weight_dtype = self.basis.weight_type
         self.VALUE_DOF_COUNT = self.dof_mapper.DOF_SIZE
         self.NODE_DOF_COUNT = self.dof_mapper.DOF_SIZE
 
-        self.SpaceArg = self._basis.BasisArg
-        self.space_arg_value = self._basis.basis_arg_value
-        self.fill_space_arg = self._basis.fill_basis_arg
-
-        self.ORDER = self._basis.ORDER
+        self.ORDER = self.basis.ORDER
 
         cache.setup_dynamic_attributes(self)
 
@@ -88,12 +76,8 @@ class CollocatedFunctionSpace(FunctionSpace):
     def name(self):
         return f"{self._basis.name}_{self.dof_mapper}".replace(".", "_")
 
-    @property
-    def basis(self) -> BasisSpace:
-        return self._basis
-
     def node_positions(self, out: Optional[wp.array] = None) -> wp.array:
-        return self._basis.node_positions(out=out)
+        return self.basis.node_positions(out=out)
 
     def make_field(
         self,
@@ -126,7 +110,7 @@ class CollocatedFunctionSpace(FunctionSpace):
         element_index: ElementIndex,
         element_coords: Coords,
     ):
-        return CollocatedFunctionSpace.LocalValueMap()
+        return CollocatedFunctionSpace.LocalValueMap(1.0)
 
     @wp.func
     def local_value_map_outer(
@@ -134,13 +118,13 @@ class CollocatedFunctionSpace(FunctionSpace):
         element_index: ElementIndex,
         element_coords: Coords,
     ):
-        return CollocatedFunctionSpace.LocalValueMap()
+        return CollocatedFunctionSpace.LocalValueMap(1.0)
 
     def _make_space_value(self):
         @cache.dynamic_func(suffix=self.name)
         def value_func(
             dof_value: self.dof_dtype,
-            node_weight: self._basis.weight_type,
+            node_weight: self.basis.weight_type,
             local_value_map: self.LocalValueMap,
         ):
             return node_weight * self.dof_mapper.dof_to_value(dof_value)
@@ -151,11 +135,10 @@ class CollocatedFunctionSpace(FunctionSpace):
         @cache.dynamic_func(suffix=self.name)
         def gradient_func(
             dof_value: self.dof_dtype,
-            node_weight_gradient: self._basis.weight_gradient_type,
+            node_weight_gradient: Any,
             local_value_map: self.LocalValueMap,
-            grad_transform: Any,
         ):
-            return generalized_outer(self.dof_mapper.dof_to_value(dof_value), node_weight_gradient * grad_transform)
+            return generalized_outer(self.dof_mapper.dof_to_value(dof_value), node_weight_gradient)
 
         return gradient_func
 
@@ -163,26 +146,23 @@ class CollocatedFunctionSpace(FunctionSpace):
         @cache.dynamic_func(suffix=self.name)
         def divergence_func(
             dof_value: self.dof_dtype,
-            node_weight_gradient: self._basis.weight_gradient_type,
+            node_weight_gradient: Any,
             local_value_map: self.LocalValueMap,
-            grad_transform: Any,
         ):
-            return generalized_inner(self.dof_mapper.dof_to_value(dof_value), node_weight_gradient * grad_transform)
+            return generalized_inner(self.dof_mapper.dof_to_value(dof_value), node_weight_gradient)
 
         return divergence_func
 
-    def _make_node_dof_value(self):
+    def _make_dof_value(self):
         @cache.dynamic_func(suffix=self.name)
-        def node_dof_value(
-            elt_arg: self.ElementArg,
-            space_arg: self.SpaceArg,
-            element_index: ElementIndex,
-            node_index_in_elt: int,
+        def dof_value(
             space_value: self.dtype,
+            node_weight: self.weight_dtype,
+            local_value_map: self.LocalValueMap,
         ):
-            return self.dof_mapper.value_to_dof(space_value)
+            return self.dof_mapper.value_to_dof(space_value) / node_weight
 
-        return node_dof_value
+        return dof_value
 
 
 class CollocatedFunctionSpaceTrace(CollocatedFunctionSpace):
@@ -190,7 +170,7 @@ class CollocatedFunctionSpaceTrace(CollocatedFunctionSpace):
 
     def __init__(self, space: CollocatedFunctionSpace):
         self._space = space
-        super().__init__(space._basis.trace(), space.dtype, space.dof_mapper)
+        super().__init__(space.basis.trace(), space.dtype, space.dof_mapper)
 
     @cached_property
     def name(self):
@@ -205,34 +185,22 @@ class VectorValuedFunctionSpace(FunctionSpace):
 
     _dynamic_attribute_constructors: ClassVar = {
         "value_basis_element": lambda obj: obj._make_value_basis_element(),
-        "node_coords_in_element": lambda obj: obj._basis.make_node_coords_in_element(),
-        "node_quadrature_weight": lambda obj: obj._basis.make_node_quadrature_weight(),
-        "element_inner_weight": lambda obj: obj._basis.make_element_inner_weight(),
-        "element_inner_weight_gradient": lambda obj: obj._basis.make_element_inner_weight_gradient(),
-        "element_outer_weight": lambda obj: obj._basis.make_element_outer_weight(),
-        "element_outer_weight_gradient": lambda obj: obj._basis.make_element_outer_weight_gradient(),
         "space_value": lambda obj: obj._make_space_value(),
         "space_gradient": lambda obj: obj._make_space_gradient(),
         "space_divergence": lambda obj: obj._make_space_divergence(),
-        "node_dof_value": lambda obj: obj._make_node_dof_value(),
+        "dof_value": lambda obj: obj._make_dof_value(),
     }
 
     def __init__(self, basis: BasisSpace):
-        self._basis = basis
-
-        super().__init__(topology=basis.topology)
+        super().__init__(basis=basis)
 
         self.dtype = cache.cached_vec_type(self.geometry.dimension, dtype=float)
+        self.weight_dtype = self.basis.weight_type
         self.dof_dtype = wp.float32
 
         self.VALUE_DOF_COUNT = self.geometry.dimension
         self.NODE_DOF_COUNT = 1
-
-        self.SpaceArg = self._basis.BasisArg
-        self.space_arg_value = self._basis.basis_arg_value
-        self.fill_space_arg = self._basis.fill_basis_arg
-
-        self.ORDER = self._basis.ORDER
+        self.ORDER = self.basis.ORDER
 
         self.LocalValueMap = cache.cached_mat_type(
             shape=(self.geometry.dimension, self.geometry.cell_dimension), dtype=float
@@ -242,14 +210,10 @@ class VectorValuedFunctionSpace(FunctionSpace):
 
     @property
     def name(self):
-        return self._basis.name
-
-    @property
-    def basis(self) -> BasisSpace:
-        return self._basis
+        return self.basis.name
 
     def node_positions(self, out: Optional[wp.array] = None) -> wp.array:
-        return self._basis.node_positions(out=out)
+        return self.basis.node_positions(out=out)
 
     def make_field(
         self,
@@ -279,7 +243,7 @@ class VectorValuedFunctionSpace(FunctionSpace):
         @cache.dynamic_func(suffix=self.name)
         def value_func(
             dof_value: self.dof_dtype,
-            node_weight: self._basis.weight_type,
+            node_weight: self.basis.weight_type,
             local_value_map: self.LocalValueMap,
         ):
             return local_value_map * (node_weight * dof_value)
@@ -290,11 +254,10 @@ class VectorValuedFunctionSpace(FunctionSpace):
         @cache.dynamic_func(suffix=self.name)
         def gradient_func(
             dof_value: self.dof_dtype,
-            node_weight_gradient: self._basis.weight_gradient_type,
+            node_weight_gradient: Any,
             local_value_map: self.LocalValueMap,
-            grad_transform: Any,
         ):
-            return dof_value * local_value_map * node_weight_gradient * grad_transform
+            return dof_value * local_value_map * node_weight_gradient
 
         return gradient_func
 
@@ -302,33 +265,24 @@ class VectorValuedFunctionSpace(FunctionSpace):
         @cache.dynamic_func(suffix=self.name)
         def divergence_func(
             dof_value: self.dof_dtype,
-            node_weight_gradient: self._basis.weight_gradient_type,
+            node_weight_gradient: Any,
             local_value_map: self.LocalValueMap,
-            grad_transform: Any,
         ):
-            return dof_value * wp.trace(local_value_map * node_weight_gradient * grad_transform)
+            return dof_value * wp.ddot(wp.transpose(local_value_map), node_weight_gradient)
 
         return divergence_func
 
-    def _make_node_dof_value(self):
+    def _make_dof_value(self):
         @cache.dynamic_func(suffix=self.name)
-        def node_dof_value(
-            elt_arg: self.ElementArg,
-            space_arg: self.SpaceArg,
-            element_index: ElementIndex,
-            node_index_in_elt: int,
+        def dof_value(
             space_value: self.dtype,
+            node_weight: self.weight_dtype,
+            local_value_map: self.LocalValueMap,
         ):
-            coords = self.node_coords_in_element(elt_arg, space_arg, element_index, node_index_in_elt)
-            weight = self.element_inner_weight(
-                elt_arg, space_arg, element_index, coords, node_index_in_elt, NULL_QP_INDEX
-            )
-            local_value_map = self.local_value_map_inner(elt_arg, element_index, coords)
+            dof_axis = local_value_map * node_weight
+            return wp.dot(space_value, dof_axis) / wp.length_sq(dof_axis)
 
-            unit_value = local_value_map * weight
-            return wp.dot(space_value, unit_value) / wp.length_sq(unit_value)
-
-        return node_dof_value
+        return dof_value
 
 
 class CovariantFunctionSpace(VectorValuedFunctionSpace):
@@ -374,7 +328,7 @@ class CovariantFunctionSpaceTrace(VectorValuedFunctionSpace):
 
     def __init__(self, space: VectorValuedFunctionSpace):
         self._space = space
-        super().__init__(space._basis.trace())
+        super().__init__(space.basis.trace())
 
         cache.setup_dynamic_attributes(self, cls=__class__)
 
@@ -455,7 +409,7 @@ class ContravariantFunctionSpaceTrace(VectorValuedFunctionSpace):
 
     def __init__(self, space: ContravariantFunctionSpace):
         self._space = space
-        super().__init__(space._basis.trace())
+        super().__init__(space.basis.trace())
 
         cache.setup_dynamic_attributes(self, cls=__class__)
 

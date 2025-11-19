@@ -26,6 +26,7 @@ from .function_space import FunctionSpace
 from .basis_function_space import CollocatedFunctionSpace, ContravariantFunctionSpace, CovariantFunctionSpace
 from .topology import SpaceTopology, RegularDiscontinuousSpaceTopology
 from .basis_space import BasisSpace, ShapeBasisSpace
+from .point_basis_space import PointBasisSpace, UnstructuredPointTopology
 from .shape import ElementBasis, make_element_shape_function, ShapeFunction
 
 from .grid_2d_function_space import make_grid_2d_space_topology
