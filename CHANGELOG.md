@@ -32,6 +32,8 @@
 - Fix code generation ordering for custom gradient functions (`@wp.func_grad`) when used with nested function calls
   ([GH-967](https://github.com/NVIDIA/warp/issues/967)).
 - Fix invalid reads due to early release of tape-captured temporaries introduced in ([GH-1021](https://github.com/NVIDIA/warp/issues/1021))
+- Fix `module="unique"` kernels to properly reuse existing module objects when defined multiple times,
+  avoiding unnecessary module creation overhead ([GH-995](https://github.com/NVIDIA/warp/issues/995)).
 
 ## [1.10.0] - 2025-11-02
 

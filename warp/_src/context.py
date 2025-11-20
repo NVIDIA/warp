@@ -762,6 +762,9 @@ class Kernel:
         # hash will be computed when the module is built
         self.hash = None
 
+        # flag indicating if this kernel belongs to a unique module (set by @wp.kernel decorator)
+        self.is_unique_module = False
+
         if self.module:
             self.module.register_kernel(self)
 
@@ -785,6 +788,10 @@ class Kernel:
         if ovl is not None:
             # return the existing overload matching the signature
             return ovl
+
+        # Log that we're creating a new overload (will trigger module hash change and recompilation)
+        if warp._src.config.verbose:
+            print(f"[Kernel.add_overload] Creating new overload for {self.key}: {sig}")
 
         arg_names = list(self.adj.arg_types.keys())
         template_types = list(self.adj.arg_types.values())
@@ -1121,24 +1128,80 @@ def kernel(
         if enable_backward is not None:
             options["enable_backward"] = enable_backward
 
+        # Resolve the module for this kernel
         if module is None:
+            # Default: infer module from the function's Python module
             m = get_module(f.__module__)
         elif module == "unique":
+            # Create a new temporary module that will be renamed based on hash
             m = Module(f.__name__, None)
         elif isinstance(module, str):
+            # Look up module by name
             m = get_module(module)
         else:
+            # Use the provided Module object directly
             m = module
+
+        # Create the kernel object and register it with the module
         k = Kernel(
             func=f,
             key=warp._src.codegen.make_full_qualified_name(f),
             module=m,
             options=options,
         )
+
+        # Handle unique module case: one module per kernel with hash-based naming
         if module == "unique":
-            # add the hash to the module name
+            # Mark this kernel as belonging to a unique module
+            k.is_unique_module = True
+
+            # Compute the module hash and create a unique name
+            # The hash includes the kernel and all its dependencies (functions, structs, constants)
             hasher = warp._src.context.ModuleHasher(m)
             k.module.name = f"{k.key}_{hasher.module_hash.hex()[:8]}"
+
+            # Check if we've already created a module with this name
+            # This can happen when the same kernel is compiled for multiple devices
+            existing_module = user_modules.get(k.module.name)
+            if existing_module is not None:
+                if warp._src.config.verbose:
+                    print(f"[wp.kernel] Reusing existing unique module: {k.module.name}")
+
+                # The kernel must already exist in the module (same hash means same content)
+                existing_kernel_same_key = existing_module.kernels.get(k.key)
+                if existing_kernel_same_key is None:
+                    raise RuntimeError(
+                        f"Internal error: Found existing unique module '{k.module.name}' "
+                        f"but kernel '{k.key}' does not exist in it. This indicates a "
+                        f"problem with module or kernel registration."
+                    )
+
+                # CRITICAL: Return the existing kernel object, not the new one we just created.
+                # This ensures that when ModuleHasher updates the kernel hash during compilation
+                # (e.g., resolving static expressions), the same object is used for launching.
+                # If we returned the new kernel object, it would have a stale hash.
+                if warp._src.config.verbose:
+                    # Show number of overloads if this is a generic kernel
+                    overload_info = ""
+                    if existing_kernel_same_key.is_generic:
+                        num_overloads = len(existing_kernel_same_key.overloads)
+                        overload_info = (
+                            f" (generic kernel with {num_overloads} overload{'s' if num_overloads != 1 else ''})"
+                        )
+                    print(f"[wp.kernel]   Reusing existing kernel object for {k.key}{overload_info}")
+                k = existing_kernel_same_key
+
+                # Reset skip_build flag for all kernels when reusing a module
+                # Previous compilations may have set skip_build=True, which would
+                # prevent building for the new device
+                for existing_kernel in existing_module.live_kernels:
+                    existing_kernel.adj.skip_build = False
+            else:
+                # This is the first time we've seen this kernel
+                # Register the new unique module in the global registry
+                user_modules[k.module.name] = k.module
+                if warp._src.config.verbose:
+                    print(f"[wp.kernel] Created new unique module: {k.module.name}")
 
         k = functools.update_wrapper(k, f)
         return k
@@ -1634,10 +1697,22 @@ class ModuleHasher:
             if kernel.is_generic:
                 for ovl in kernel.overloads.values():
                     if not ovl.adj.skip_build:
+                        old_hash = ovl.hash
                         ovl.hash = self.hash_kernel(ovl)
+                        # Only log hash changes when old hash was not None (unexpected changes)
+                        if warp._src.config.verbose and old_hash is not None and old_hash != ovl.hash:
+                            old_str = old_hash.hex()[:8]
+                            new_str = ovl.hash.hex()[:8] if ovl.hash else "None"
+                            print(f"[ModuleHasher] Generic kernel hash changed: {ovl.key} ({old_str} -> {new_str})")
             else:
                 if not kernel.adj.skip_build:
+                    old_hash = kernel.hash
                     kernel.hash = self.hash_kernel(kernel)
+                    # Only log hash changes when old hash was not None (unexpected changes)
+                    if warp._src.config.verbose and old_hash is not None and old_hash != kernel.hash:
+                        old_str = old_hash.hex()[:8]
+                        new_str = kernel.hash.hex()[:8] if kernel.hash else "None"
+                        print(f"[ModuleHasher] Kernel hash changed: {kernel.key} ({old_str} -> {new_str})")
 
         # include all unique kernels in the module hash
         for kernel_hash in sorted(self.unique_kernels.keys()):
@@ -1735,7 +1810,8 @@ class ModuleHasher:
         ch.update(bytes(adj.source, "utf-8"))
 
         # args
-        for arg, arg_type in adj.arg_types.items():
+        for arg in adj.arg_types.keys():
+            arg_type = adj.arg_types[arg]
             s = f"{arg}:{warp._src.types.get_type_code(arg_type)}"
             ch.update(bytes(s, "utf-8"))
 
@@ -2591,8 +2667,14 @@ class Module:
         # check if executable module is already loaded and not stale
         exec = self.execs.get((device.context, active_block_dim))
         if exec is not None:
-            if self.options["strip_hash"] or (exec.module_hash == self.get_module_hash(active_block_dim)):
+            current_hash = self.get_module_hash(active_block_dim)
+            if self.options["strip_hash"] or (exec.module_hash == current_hash):
                 return exec
+            # else: Hash mismatch means module changed, need to recompile
+            if warp._src.config.verbose:
+                old_str = exec.module_hash.hex()[:8] if exec.module_hash else "None"
+                new_str = current_hash.hex()[:8] if current_hash else "None"
+                print(f"[Module.load] Module hash changed, recompiling: {self.name} ({old_str} -> {new_str})")
 
         # quietly avoid repeated build attempts to reduce error spew
         if device.context in self.failed_builds:
@@ -2704,6 +2786,9 @@ class Module:
     def get_kernel_hooks(self, kernel, device: Device) -> KernelHooks:
         module_exec = self.execs.get((device.context, self.options["block_dim"]))
         if module_exec is not None:
+            if warp._src.config.verbose:
+                kernel_hash_str = kernel.hash.hex()[:8] if kernel.hash else "None"
+                print(f"[Module.get_kernel_hooks] Looking up kernel: {kernel.key} (hash: {kernel_hash_str})")
             return module_exec.get_kernel_hooks(kernel)
         else:
             raise RuntimeError(f"Module is not loaded on device {device}")
@@ -6465,6 +6550,13 @@ def launch(
         if kernel.is_generic:
             fwd_types = kernel.infer_argument_types(fwd_args)
             kernel = kernel.add_overload(fwd_types)
+
+        # For unique module kernels, reset skip_build to allow compilation attempts on different devices.
+        # Even though a Module compiles separately for each device (stored in Module.execs),
+        # the skip_build flag is on the Adjoint which is shared across devices.
+        # A failure on one device shouldn't prevent compilation attempts on other devices.
+        if kernel.is_unique_module:
+            kernel.adj.skip_build = False
 
         # delay load modules, including new overload if needed
         try:
