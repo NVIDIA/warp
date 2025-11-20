@@ -16,9 +16,13 @@
 # TODO: Remove after cleaning up the public API.
 
 from warp._src.fem.space import topology as _topology
+from warp._src.utils import warn_deprecated_namespace as _warn_deprecated_namespace
 
 
 def __getattr__(name):
     from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
     return get_deprecated_api(_topology, "wp.fem.space", name)
+
+
+_warn_deprecated_namespace(__name__)

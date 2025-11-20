@@ -82,7 +82,7 @@ def device_from_paddle(paddle_device: Place | CPUPlace | CUDAPinnedPlace | CUDAP
             raise
 
 
-def device_to_paddle(warp_device: warp._src.context.Devicelike) -> str:
+def device_to_paddle(warp_device: warp._src.context.DeviceLike) -> str:
     """Return the Paddle device string corresponding to a Warp device.
 
     Args:

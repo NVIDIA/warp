@@ -2434,7 +2434,7 @@ class array(Array[DType]):
             strides: Number of bytes in each dimension between successive elements of the array
             ptr: Address of an external memory address to alias (``data`` should be ``None``)
             capacity: Maximum size in bytes of the ``ptr`` allocation (``data`` should be ``None``)
-            device (Devicelike): Device the array lives on
+            device (DeviceLike): Device the array lives on
             copy: Whether the incoming ``data`` will be copied or aliased. Aliasing requires that
                 the incoming ``data`` already lives on the ``device`` specified and the data types match.
             deleter: Function to be called when the array is deleted, taking two arguments: pointer and size
@@ -3791,7 +3791,7 @@ def from_ipc_handle(
         dtype: One of the available `data types <#data-types>`_, such as :class:`warp.float32`, :class:`warp.mat33`, or a custom `struct <#structs>`_.
         shape: Dimensions of the array.
         strides: Number of bytes in each dimension between successive elements of the array.
-        device (Devicelike): Device to associate with the array.
+        device (DeviceLike): Device to associate with the array.
 
     Returns:
         An array created from the existing memory allocation described by the interprocess memory handle ``handle``.
@@ -5369,7 +5369,7 @@ class Volume:
             bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type,
               a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
             translation (array-like): Translation between the index and world spaces.
-            device (Devicelike): The CUDA device to create the volume on, e.g.: ``"cuda"`` or ``"cuda:0"``.
+            device (DeviceLike): The CUDA device to create the volume on, e.g.: ``"cuda"`` or ``"cuda:0"``.
         """
         if points_in_world_space:
             min = np.around((np.array(min, dtype=np.float32) - translation) / voxel_size)
@@ -5452,7 +5452,7 @@ class Volume:
             translation (array-like): Translation between the index and world spaces.
             transform (array-like): Linear transform between the index and world spaces.
               If ``None``, deduced from ``voxel_size``.
-            device (Devicelike): The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
+            device (DeviceLike): The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
 
         """
         device = warp.get_device(device)
@@ -5555,7 +5555,7 @@ class Volume:
             translation (array-like): Translation between the index and world spaces.
             transform (array-like): Linear transform between the index and world spaces.
               If ``None``, deduced from ``voxel_size``.
-            device (Devicelike): The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
+            device (DeviceLike): The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
 
         Raises:
             RuntimeError: If the ``device`` is not a CUDA device.

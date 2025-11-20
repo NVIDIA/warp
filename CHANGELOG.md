@@ -46,6 +46,8 @@
 
 - `isfinite()`, `isnan()`, and `isinf()` will no longer take integer inputs, only floating-point arguments
   ([GH-847](https://github.com/NVIDIA/warp/issues/847)).
+- Mark as deprecated all namespaces and symbols that are meant for internal use
+  ([GH-908](https://github.com/NVIDIA/warp/issues/908)).
 
 ### Changed
 

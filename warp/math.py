@@ -29,9 +29,13 @@ from warp._src.math import transform_to_matrix as transform_to_matrix
 # TODO: Remove after cleaning up the public API.
 
 from warp._src import math as _math
+from warp._src.utils import warn_deprecated_namespace as _warn_deprecated_namespace
 
 
 def __getattr__(name):
     from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
     return get_deprecated_api(_math, "wp", name)
+
+
+_warn_deprecated_namespace(__name__)

@@ -31,7 +31,7 @@ import numpy as np
 import warp as wp
 import warp._src.context
 import warp._src.types
-from warp._src.context import Devicelike
+from warp._src.context import DeviceLike
 from warp._src.types import Array, DType, type_repr, types_equal
 
 _wp_module_name_ = "warp.utils"
@@ -765,7 +765,7 @@ def map(
     out: Array[DType] | list[Array[DType]] | None = None,
     return_kernel: bool = False,
     block_dim: int = 256,
-    device: Devicelike = None,
+    device: DeviceLike = None,
 ) -> Array[DType] | list[Array[DType]] | wp.Kernel:
     """
     Map a function over the elements of one or more arrays.
@@ -844,7 +844,7 @@ def map(
         out (array | list[array] | None): Optional output array(s) to store the result(s). If None, the output array(s) will be created automatically.
         return_kernel (bool): If True, only return the generated kernel without performing the mapping operation.
         block_dim (int): The block dimension for the kernel launch.
-        device (Devicelike): The device on which to run the kernel.
+        device (DeviceLike): The device on which to run the kernel.
 
     Returns:
         array | list[array] | Kernel:
@@ -1246,7 +1246,7 @@ class ScopedDevice:
           the default device on exiting the context.
     """
 
-    def __init__(self, device: Devicelike):
+    def __init__(self, device: DeviceLike):
         """Initializes the context manager with a device.
 
         Args:
@@ -1466,7 +1466,7 @@ class ScopedTimer:
 
 # Allow temporarily enabling/disabling mempool allocators
 class ScopedMempool:
-    def __init__(self, device: Devicelike, enable: bool):
+    def __init__(self, device: DeviceLike, enable: bool):
         self.device = wp.get_device(device)
         self.enable = enable
 
@@ -1480,7 +1480,7 @@ class ScopedMempool:
 
 # Allow temporarily enabling/disabling mempool access
 class ScopedMempoolAccess:
-    def __init__(self, target_device: Devicelike, peer_device: Devicelike, enable: bool):
+    def __init__(self, target_device: DeviceLike, peer_device: DeviceLike, enable: bool):
         self.target_device = target_device
         self.peer_device = peer_device
         self.enable = enable
@@ -1495,7 +1495,7 @@ class ScopedMempoolAccess:
 
 # Allow temporarily enabling/disabling peer access
 class ScopedPeerAccess:
-    def __init__(self, target_device: Devicelike, peer_device: Devicelike, enable: bool):
+    def __init__(self, target_device: DeviceLike, peer_device: DeviceLike, enable: bool):
         self.target_device = target_device
         self.peer_device = peer_device
         self.enable = enable
@@ -1509,7 +1509,7 @@ class ScopedPeerAccess:
 
 
 class ScopedCapture:
-    def __init__(self, device: Devicelike = None, stream=None, force_module_load=None, external=False):
+    def __init__(self, device: DeviceLike = None, stream=None, force_module_load=None, external=False):
         self.device = device
         self.stream = stream
         self.force_module_load = force_module_load
@@ -1720,12 +1720,41 @@ def timing_print(results: list[TimingResult], indent: str = "") -> None:
         print(f"{indent}{agg.elapsed:12.6f} ms | {agg.count:7d} | {device}")
 
 
-def get_deprecated_api(module, namespace, attr_name):
-    # if not attr_name.startswith("__"):
-    #     module_name = module.__name__.split(".")[-1]
-    #     warn(
-    #         f"The symbol `{namespace}.{module_name}.{attr_name}` is internal and will be removed from the public API.",
-    #         DeprecationWarning,
-    #     )
+def warn_deprecated_namespace(module_name):
+    warn(
+        f"The namespace `warp.{'.'.join(module_name.split('.')[1:])}` will soon be removed from the public API. "
+        f"You can still access it from `warp._src.{'.'.join(module_name.split('.')[1:])}` but it might change without prior notice.",
+        DeprecationWarning,
+    )
+
+
+def get_deprecated_method(cls, cls_path, attr_name):
+    if hasattr(cls, f"_{attr_name}"):
+        warn(
+            f"The class method `{cls_path}.{attr_name}` will soon be removed from the public API. "
+            f"You can still access it from `{cls_path}._{attr_name}` but it might change without prior notice.",
+            DeprecationWarning,
+        )
+
+        return getattr(cls, f"_{attr_name}")
+
+    raise AttributeError(f"'{cls_path}' has no attribute '{attr_name}'")
+
+
+def get_deprecated_api(module, namespace, attr_name, old_attr_path=None):
+    if not attr_name.startswith("_"):
+        module_name = module.__name__.split(".")[-1]
+        attr_path = f"{namespace}.{module_name}.{attr_name}"
+        if old_attr_path is None:
+            warn(
+                f"The symbol `{attr_path}` will soon be removed from the public API. "
+                f"You can still access it from `{module.__name__}.{attr_name}` but it might change without prior notice.",
+                DeprecationWarning,
+            )
+        else:
+            warn(
+                f"The symbol `{old_attr_path}` will soon be removed from the public API. Use `{attr_path}` instead.",
+                DeprecationWarning,
+            )
 
     return getattr(module, attr_name)

@@ -538,7 +538,7 @@ class MarchingCubes:
             nz: Number of grid nodes in the z-direction.
             max_verts: (Deprecated) This argument is ignored.
             max_tris: (Deprecated) This argument is ignored.
-            device (Devicelike): (Deprecated) The value is assigned to
+            device (DeviceLike): (Deprecated) The value is assigned to
               `self.device` for backward compatibility but is not used by the
               class's methods. It may be removed in a future version.
             domain_bounds_lower_corner: See the documentation in

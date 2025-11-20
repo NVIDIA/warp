@@ -57,7 +57,7 @@ def device_from_torch(torch_device) -> warp._src.context.Device:
             raise
 
 
-def device_to_torch(warp_device: warp._src.context.Devicelike) -> str:
+def device_to_torch(warp_device: warp._src.context.DeviceLike) -> str:
     """Return the Torch device string corresponding to a Warp device.
 
     Args:

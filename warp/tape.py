@@ -16,9 +16,13 @@
 # TODO: Remove after cleaning up the public API.
 
 from warp._src import tape as _tape
+from warp._src.utils import warn_deprecated_namespace as _warn_deprecated_namespace
 
 
 def __getattr__(name):
     from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
     return get_deprecated_api(_tape, "wp", name)
+
+
+_warn_deprecated_namespace(__name__)

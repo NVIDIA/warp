@@ -20,7 +20,7 @@ import warp as wp
 import warp._src.fem.cache as cache
 import warp._src.fem.utils as utils
 from warp._src.codegen import Struct, StructInstance
-from warp._src.context import Devicelike
+from warp._src.context import DeviceLike
 from warp._src.fem.geometry import (
     Element,
     Geometry,
@@ -84,22 +84,22 @@ class GeometryDomain:
         """Type of reference element"""
         raise NotImplementedError
 
-    def element_index_arg_value(self, device: Devicelike) -> StructInstance:
+    def element_index_arg_value(self, device: DeviceLike) -> StructInstance:
         """Value of the argument to be passed to device functions"""
         args = self.ElementIndexArg()
         self.fill_element_index_arg(args, device)
         return args
 
-    def fill_element_index_arg(self, arg: "GeometryDomain.ElementIndexArg", device: Devicelike):
+    def fill_element_index_arg(self, arg: "GeometryDomain.ElementIndexArg", device: DeviceLike):
         arg.assign(self.element_index_arg_value(device))
 
-    def element_arg_value(self, device: Devicelike) -> StructInstance:
+    def element_arg_value(self, device: DeviceLike) -> StructInstance:
         """Value of the argument to be passed to device functions"""
         args = self.ElementArg()
         self.fill_element_arg(args, device)
         return args
 
-    def fill_element_arg(self, arg: "GeometryDomain.ElementArg", device: Devicelike):
+    def fill_element_arg(self, arg: "GeometryDomain.ElementArg", device: DeviceLike):
         arg.assign(self.element_arg_value(device))
 
     ElementIndexArg: Struct
@@ -185,10 +185,10 @@ class Cells(GeometryDomain):
     def ElementIndexArg(self) -> Struct:
         return self.geometry_partition.CellArg
 
-    def element_index_arg_value(self, device: Devicelike) -> StructInstance:
+    def element_index_arg_value(self, device: DeviceLike) -> StructInstance:
         return self.geometry_partition.cell_arg_value(device)
 
-    def fill_element_index_arg(self, arg: ElementIndexArg, device: Devicelike):
+    def fill_element_index_arg(self, arg: ElementIndexArg, device: DeviceLike):
         self.geometry_partition.fill_cell_arg(arg, device)
 
     @property
@@ -199,10 +199,10 @@ class Cells(GeometryDomain):
     def element_partition_index(self) -> wp.Function:
         return self.geometry_partition.partition_cell_index
 
-    def element_arg_value(self, device: Devicelike) -> StructInstance:
+    def element_arg_value(self, device: DeviceLike) -> StructInstance:
         return self.geometry.cell_arg_value(device)
 
-    def fill_element_arg(self, arg: "ElementArg", device: Devicelike):
+    def fill_element_arg(self, arg: "ElementArg", device: DeviceLike):
         self.geometry.fill_cell_arg(arg, device)
 
     @property
@@ -315,10 +315,10 @@ class Sides(GeometryDomain):
     def ElementIndexArg(self) -> Struct:
         return self.geometry_partition.SideArg
 
-    def element_index_arg_value(self, device: Devicelike) -> StructInstance:
+    def element_index_arg_value(self, device: DeviceLike) -> StructInstance:
         return self.geometry_partition.side_arg_value(device)
 
-    def fill_element_index_arg(self, arg: "ElementIndexArg", device: Devicelike):
+    def fill_element_index_arg(self, arg: "ElementIndexArg", device: DeviceLike):
         self.geometry_partition.fill_side_arg(arg, device)
 
     @property
@@ -329,10 +329,10 @@ class Sides(GeometryDomain):
     def ElementArg(self) -> Struct:
         return self.geometry.SideArg
 
-    def element_arg_value(self, device: Devicelike) -> StructInstance:
+    def element_arg_value(self, device: DeviceLike) -> StructInstance:
         return self.geometry.side_arg_value(device)
 
-    def fill_element_arg(self, arg: "ElementArg", device: Devicelike):
+    def fill_element_arg(self, arg: "ElementArg", device: DeviceLike):
         self.geometry.fill_side_arg(arg, device)
 
     @property
@@ -515,12 +515,12 @@ class Subdomain(GeometryDomain):
         return ElementIndexArg
 
     @cache.cached_arg_value
-    def element_index_arg_value(self, device: Devicelike):
+    def element_index_arg_value(self, device: DeviceLike):
         arg = self.ElementIndexArg()
         self.fill_element_index_arg(arg, device)
         return arg
 
-    def fill_element_index_arg(self, arg: "GeometryDomain.ElementIndexArg", device: Devicelike):
+    def fill_element_index_arg(self, arg: "GeometryDomain.ElementIndexArg", device: DeviceLike):
         self._domain.fill_element_index_arg(arg.domain_arg, device)
         arg.element_indices = self._element_indices.to(device)
 

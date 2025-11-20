@@ -16,8 +16,13 @@
 # isort: skip_file
 
 from warp._src.utils import array_cast as array_cast
+from warp._src.utils import array_inner as array_inner
+from warp._src.utils import array_scan as array_scan
+from warp._src.utils import array_sum as array_sum
+from warp._src.utils import create_warp_function as create_warp_function
+from warp._src.utils import radix_sort_pairs as radix_sort_pairs
+from warp._src.utils import runlength_encode as runlength_encode
 from warp._src.utils import segmented_sort_pairs as segmented_sort_pairs
-from warp._src.utils import warn as warn
 
 
 # TODO: Remove after cleaning up the public API.

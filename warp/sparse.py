@@ -15,10 +15,11 @@
 
 # isort: skip_file
 
+from warp._src.sparse import bsr_axpy_work_arrays as bsr_axpy_work_arrays
+from warp._src.sparse import bsr_mm_work_arrays as bsr_mm_work_arrays
 from warp._src.sparse import BsrMatrix as BsrMatrix
 from warp._src.sparse import bsr_assign as bsr_assign
 from warp._src.sparse import bsr_axpy as bsr_axpy
-from warp._src.sparse import bsr_axpy_work_arrays as bsr_axpy_work_arrays
 from warp._src.sparse import bsr_block_index as bsr_block_index
 from warp._src.sparse import bsr_copy as bsr_copy
 from warp._src.sparse import bsr_diag as bsr_diag
@@ -27,7 +28,6 @@ from warp._src.sparse import bsr_get_diag as bsr_get_diag
 from warp._src.sparse import bsr_identity as bsr_identity
 from warp._src.sparse import bsr_matrix_t as bsr_matrix_t
 from warp._src.sparse import bsr_mm as bsr_mm
-from warp._src.sparse import bsr_mm_work_arrays as bsr_mm_work_arrays
 from warp._src.sparse import bsr_mv as bsr_mv
 from warp._src.sparse import bsr_row_index as bsr_row_index
 from warp._src.sparse import bsr_scale as bsr_scale

@@ -1032,7 +1032,7 @@ class OpenGLRenderer:
             enable_backface_culling (bool): Whether to enable backface culling.
             enable_mouse_interaction (bool): Whether to enable mouse interaction.
             enable_keyboard_interaction (bool): Whether to enable keyboard interaction.
-            device (Devicelike): Where to store the internal data.
+            device (DeviceLike): Where to store the internal data.
             use_legacy_opengl (bool | None): Whether to use a legacy OpenGL implementation that is more compatible with macOS. If ``None``, it will be automatically detected based on the operating system.
 
         Note:

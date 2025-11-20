@@ -16,14 +16,25 @@
 # isort: skip_file
 
 from warp._src.jax_experimental.ffi import GraphMode as GraphMode
-from warp._src.jax_experimental.ffi import jax_kernel as jax_kernel
 from warp._src.jax_experimental.ffi import jax_callable as jax_callable
+from warp._src.jax_experimental.ffi import jax_kernel as jax_kernel
 from warp._src.jax_experimental.ffi import register_ffi_callback as register_ffi_callback
 
+from warp._src.jax_experimental.ffi import clear_jax_callable_graph_cache as clear_jax_callable_graph_cache
 from warp._src.jax_experimental.ffi import (
     get_jax_callable_default_graph_cache_max as get_jax_callable_default_graph_cache_max,
 )
 from warp._src.jax_experimental.ffi import (
     set_jax_callable_default_graph_cache_max as set_jax_callable_default_graph_cache_max,
 )
-from warp._src.jax_experimental.ffi import clear_jax_callable_graph_cache as clear_jax_callable_graph_cache
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src import jax_experimental as _jax_experimental
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
+
+    return get_deprecated_api(_jax_experimental, "wp", name)
