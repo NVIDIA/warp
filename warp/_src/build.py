@@ -564,7 +564,10 @@ def build_lto_solver(
         # Update builder
         builder.ltoirs[lto_symbol] = lto_code_data
         builder.ltoirs_decl[lto_symbol] = f"void {lto_symbol}{parameter_list};"
-        builder.fatbins[lto_symbol] = universal_fatbin_code_data
+
+        # only store the universal fatbin once (all solvers produce the same one)
+        if "cusolverdx" not in builder.fatbins:
+            builder.fatbins["cusolverdx"] = universal_fatbin_code_data
 
     return lto_symbol, lto_code_data
 
