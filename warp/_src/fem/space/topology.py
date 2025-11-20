@@ -119,8 +119,6 @@ class SpaceTopology:
     def element_node_indices(self, out: Optional[wp.array] = None) -> wp.array:
         """Returns a temporary array containing the global index for each node of each element"""
 
-        MAX_NODES_PER_ELEMENT = self.MAX_NODES_PER_ELEMENT
-
         @cache.dynamic_kernel(suffix=self.name)
         def fill_element_node_indices(
             geo_cell_arg: self.geometry.CellArg,
@@ -128,13 +126,19 @@ class SpaceTopology:
             element_node_indices: wp.array2d(dtype=int),
         ):
             element_index = wp.tid()
-            element_node_count = self.element_node_count(geo_cell_arg, topo_arg, element_index)
+
+            max_nodes_per_element = element_node_indices.shape[1]
+            element_node_count = wp.min(
+                max_nodes_per_element, self.element_node_count(geo_cell_arg, topo_arg, element_index)
+            )
             for n in range(element_node_count):
                 element_node_indices[element_index, n] = self.element_node_index(
                     geo_cell_arg, topo_arg, element_index, n
                 )
+            for n in range(element_node_count, max_nodes_per_element):
+                element_node_indices[element_index, n] = NULL_NODE_INDEX
 
-        shape = (self.geometry.cell_count(), MAX_NODES_PER_ELEMENT)
+        shape = (self.geometry.cell_count(), self.MAX_NODES_PER_ELEMENT)
         if out is None:
             element_node_indices = wp.empty(
                 shape=shape,

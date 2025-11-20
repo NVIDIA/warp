@@ -45,9 +45,11 @@ class UnstructuredPointTopology(SpaceTopology):
         "side_neighbor_node_counts": lambda obj: obj.make_generic_side_neighbor_node_counts(),
     }
 
-    def __init__(self, quadrature: Quadrature):
-        if quadrature.max_points_per_element() is None:
-            raise ValueError("Quadrature must define a maximum number of points per element")
+    def __init__(self, quadrature: Quadrature, max_nodes_per_element: int = -1):
+        if max_nodes_per_element < 0:
+            max_nodes_per_element = quadrature.max_points_per_element()
+            if max_nodes_per_element is None:
+                raise ValueError("Quadrature must define a maximum number of points per element")
 
         geo_partition = quadrature.domain.geometry_partition
         if (
@@ -61,7 +63,7 @@ class UnstructuredPointTopology(SpaceTopology):
         self._quadrature = quadrature
         self._geo_partition = geo_partition
 
-        super().__init__(quadrature.domain.geometry, max_nodes_per_element=quadrature.max_points_per_element())
+        super().__init__(quadrature.domain.geometry, max_nodes_per_element=max_nodes_per_element)
 
         cache.setup_dynamic_attributes(self, cls=__class__)
 
@@ -82,7 +84,7 @@ class UnstructuredPointTopology(SpaceTopology):
 
     @property
     def name(self):
-        return f"PointTopology_{self._quadrature}_{self.MAX_NODES_PER_ELEMENT}"
+        return f"PointTopology_{self._quadrature.name}"
 
     def _make_domain_element_index(self):
         @cache.dynamic_func(suffix=self.name)
@@ -135,6 +137,7 @@ class PointBasisSpace(BasisSpace):
         kernel_grad_func: Optional[wp.Function] = None,
         kernel_values: Optional[Dict[str, Any]] = None,
         distance_space: str = "reference",
+        max_nodes_per_element: int = -1,
     ):
         """
         An unstructured :class:`BasisSpace` with radial basis kernels (by default, the Dirac delta function)
@@ -146,6 +149,7 @@ class PointBasisSpace(BasisSpace):
             kernel_grad_func: Gradient of the kernel function. Must take same arguments as `kernel_func`. Defaults to zero gradient.
             kernel_values: Dictionary of additional values to be passed to the kernel function
             distance_space: Space in which to compute the distance between the sample and the kernel center point. Can be "reference" or "world". Defaults to "reference".
+            max_nodes_per_element: Maximum number of point nodes per element to consider. If not provided, get from the quadrature.
         """
 
         self._quadrature = quadrature
@@ -162,12 +166,13 @@ class PointBasisSpace(BasisSpace):
             self.kernel_func = kernel_func
             self.kernel_grad_func = kernel_grad_func
 
+        self._topology = UnstructuredPointTopology(quadrature, max_nodes_per_element=max_nodes_per_element)
+
         cache.setup_dynamic_attributes(self)
         self._kernel_arg = self.ValueStruct()
         self.kernel_values = kernel_values or {}
 
-        topology = UnstructuredPointTopology(quadrature)
-        super().__init__(topology)
+        super().__init__(self._topology)
 
     @property
     def kernel_values(self) -> Dict[str, Any]:
@@ -181,7 +186,7 @@ class PointBasisSpace(BasisSpace):
 
     @property
     def name(self):
-        return f"{self._quadrature.name}_{self.kernel_func.key}_{self._distance_space}"
+        return f"{self._topology.name}_{self.kernel_func.key}_{self._distance_space}"
 
     @property
     def value(self) -> ShapeFunction.Value:
