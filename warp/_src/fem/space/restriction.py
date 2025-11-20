@@ -90,16 +90,19 @@ class SpaceRestriction:
             domain_element_index = wp.tid()
             element_index = self.domain.element_index(domain_index_arg, domain_element_index)
 
+            max_nodes_per_element = element_node_indices.shape[1]
             if element_index == NULL_ELEMENT_INDEX:
                 element_node_count = 0
             else:
-                element_node_count = self.space_topology.element_node_count(element_arg, topo_arg, element_index)
+                element_node_count = wp.min(
+                    max_nodes_per_element, self.space_topology.element_node_count(element_arg, topo_arg, element_index)
+                )
 
             for n in range(element_node_count):
                 space_nidx = self.space_topology.element_node_index(element_arg, topo_arg, element_index, n)
                 partition_nidx = self.space_partition.partition_node_index(partition_arg, space_nidx)
                 element_node_indices[domain_element_index, n] = partition_nidx
-            for n in range(element_node_count, element_node_indices.shape[1]):
+            for n in range(element_node_count, max_nodes_per_element):
                 element_node_indices[domain_element_index, n] = NULL_NODE_INDEX
 
         element_node_indices = cache.borrow_temporary(
