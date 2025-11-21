@@ -16,6 +16,7 @@
   - Add helper function `wp.bvh_get_group_root()` to retrieve the subtree root for a given group.
 - Add a `max_dist` argument to `wp.bvh_query_next` which controls the max length of a ray ([GH-1052](https://github.com/NVIDIA/warp/issues/1052)).
 - Add `wp.tile_cholesky_inplace()`, `wp.tile_cholesky_solve_inplace()`, `wp.tile_lower_solve_inplace()` and `wp.tile_upper_solve_inplace()` ([GH-1025](https://github.com/NVIDIA/warp/pull/1025)).
+- Add more examples to `Tiles and SIMT code` documentation, demonstrating caveats when switching between the CPU and GPU and using `wp.tile()` ([GH-1042](https://github.com/NVIDIA/warp/issues/1042)).
 
 ### Removed
 
