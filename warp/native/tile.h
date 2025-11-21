@@ -2159,8 +2159,8 @@ inline CUDA_CALLABLE auto tile_load(array_t<T>& src, Offset... offset)
 }
 
 // used for indexed loads and stores
-template <typename T, int M, typename Coord>
-inline CUDA_CALLABLE bool compute_index(array_t<T>& src, tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& indices, int axis, Coord offset, Coord c, int& out)
+template <typename T, typename IndicesTile, typename Coord>
+inline CUDA_CALLABLE bool compute_index(array_t<T>& src, IndicesTile& indices, int axis, Coord offset, Coord c, int& out)
 {
     int index = 0;
 
@@ -2197,8 +2197,8 @@ inline CUDA_CALLABLE bool compute_index(array_t<T>& src, tile_shared_t<int, tile
 }
 
 
-template <unsigned... Shape, int M, typename T, typename... Offset>
-inline CUDA_CALLABLE auto tile_load_indexed(array_t<T>& src, tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& indices, int axis, Offset... offset)
+template <unsigned... Shape, typename T, typename IndicesTile, typename... Offset>
+inline CUDA_CALLABLE auto tile_load_indexed(array_t<T>& src, IndicesTile& indices, int axis, Offset... offset)
 {
     auto out = tile_register_t<T, tile_layout_register_t<tile_shape_t<Shape...>>>();
     auto offset_coord = tile_coord(offset...);
@@ -2333,9 +2333,9 @@ inline CUDA_CALLABLE void adj_tile_load(array_t<T>& src, int x, int y, int z, ar
 template <typename T, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_load(array_t<T>& src, int x, int y, int z, int w, array_t<T>& adj_src, int adj_x, int adj_y, int adj_z, int adj_w, AdjTile& adj_ret) { adj_tile_load( src, tile_coord(x, y, z, w), adj_src, tile_coord(0,0,0,0), adj_ret); }
 
-template <typename T, int M, typename AdjTile, typename Coord>
-inline CUDA_CALLABLE void adj_tile_load_indexed(array_t<T>& src, tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& indices, int axis, Coord offset,
-                                        array_t<T>& adj_src, tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& adj_indices, int adj_axis, Coord adj_offset,
+template <typename T, typename IndicesTile, typename AdjTile, typename Coord>
+inline CUDA_CALLABLE void adj_tile_load_indexed(array_t<T>& src, IndicesTile& indices, int axis, Coord offset,
+                                        array_t<T>& adj_src, IndicesTile& adj_indices, int adj_axis, Coord adj_offset,
                                         AdjTile& adj_ret)
 {
     // we allow users to override grad of src
@@ -2351,23 +2351,23 @@ inline CUDA_CALLABLE void adj_tile_load_indexed(array_t<T>& src, tile_shared_t<i
     });
 }
 
-template <typename T, int M, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_load_indexed(array_t<T>& src, tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& indices, int axis, int x, array_t<T>& adj_src, tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& adj_indices, int adj_axis, int adj_x, AdjTile& adj_ret)
+template <typename T, typename IndicesTile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_load_indexed(array_t<T>& src, IndicesTile& indices, int axis, int x, array_t<T>& adj_src, IndicesTile& adj_indices, int adj_axis, int adj_x, AdjTile& adj_ret)
 {
     adj_tile_load_indexed(src, indices, axis, tile_coord(x), adj_src, adj_indices, adj_axis, tile_coord(0), adj_ret);
 }
-template <typename T, int M, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_load_indexed(array_t<T>& src, tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& indices, int axis, int x, int y, array_t<T>& adj_src, tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& adj_indices, int adj_axis, int adj_x, int adj_y, AdjTile& adj_ret)
+template <typename T, typename IndicesTile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_load_indexed(array_t<T>& src, IndicesTile& indices, int axis, int x, int y, array_t<T>& adj_src, IndicesTile& adj_indices, int adj_axis, int adj_x, int adj_y, AdjTile& adj_ret)
 {
     adj_tile_load_indexed(src, indices, axis, tile_coord(x, y), adj_src, adj_indices, adj_axis, tile_coord(0, 0), adj_ret);
 }
-template <typename T, int M, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_load_indexed(array_t<T>& src, tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& indices, int axis, int x, int y, int z, array_t<T>& adj_src, tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& adj_indices, int adj_axis, int adj_x, int adj_y, int adj_z, AdjTile& adj_ret)
+template <typename T, typename IndicesTile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_load_indexed(array_t<T>& src, IndicesTile& indices, int axis, int x, int y, int z, array_t<T>& adj_src, IndicesTile& adj_indices, int adj_axis, int adj_x, int adj_y, int adj_z, AdjTile& adj_ret)
 {
     adj_tile_load_indexed(src, indices, axis, tile_coord(x, y, z), adj_src, adj_indices, adj_axis, tile_coord(0, 0, 0), adj_ret);
 }
-template <typename T, int M, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_load_indexed(array_t<T>& src, tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& indices, int axis, int x, int y, int z, int w, array_t<T>& adj_src, tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& adj_indices, int adj_axis, int adj_x, int adj_y, int adj_z, int adj_w, AdjTile& adj_ret)
+template <typename T, typename IndicesTile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_load_indexed(array_t<T>& src, IndicesTile& indices, int axis, int x, int y, int z, int w, array_t<T>& adj_src, IndicesTile& adj_indices, int adj_axis, int adj_x, int adj_y, int adj_z, int adj_w, AdjTile& adj_ret)
 {
     adj_tile_load_indexed(src, indices, axis, tile_coord(x, y, z, w), adj_src, adj_indices, adj_axis, tile_coord(0, 0, 0, 0), adj_ret);
 }
