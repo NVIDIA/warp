@@ -1,49 +1,35 @@
 # Changelog
 
-## [Unreleased] - 2025-??
-
-### Added
-
-- Add tiled query functions for thread-block parallel traversal in tiled kernels using cooperative thread-block
-  traversal for improved performance on CUDA devices ([GH-1005](https://github.com/NVIDIA/warp/issues/1005)):
-  - BVH queries: `wp.bvh_query_aabb_tiled()`, `wp.bvh_query_ray_tiled()`, and `wp.bvh_query_next_tiled()`
-  - Mesh queries: `wp.mesh_query_aabb_tiled()` and `wp.mesh_query_aabb_next_tiled()`
-  - Aliases with `tile_*` prefix are also available for all functions.
-- Add alpha and beta scalings to `wp.tile_matmul()` ([GH-1023](https://github.com/NVIDIA/warp/pull/1023)).
-- Add group-aware BVH construction and query support for multi-environment workloads ([GH-1074](https://github.com/NVIDIA/warp/issues/1074)):
-  - New BVH constructor argument: `groups` for per-object group IDs.
-  - New query overloads: `wp.bvh_query_aabb()` and `wp.bvh_query_ray()` now accept an optional `root` argument for group-restricted traversal.
-  - Add helper function `wp.bvh_get_group_root()` to retrieve the subtree root for a given group.
-- Add a `max_dist` argument to `wp.bvh_query_next` which controls the max length of a ray ([GH-1052](https://github.com/NVIDIA/warp/issues/1052)).
-- Add `wp.tile_cholesky_inplace()`, `wp.tile_cholesky_solve_inplace()`, `wp.tile_lower_solve_inplace()` and `wp.tile_upper_solve_inplace()` ([GH-1025](https://github.com/NVIDIA/warp/pull/1025)).
-- Add more examples to `Tiles and SIMT code` documentation, demonstrating caveats when switching between the CPU and GPU and using `wp.tile()` ([GH-1042](https://github.com/NVIDIA/warp/issues/1042)).
-
-### Removed
-
-### Deprecated
-
-### Changed
+## [1.10.1] - 2025-12-01
 
 ### Fixed
 
-- Fix atomic floating-point min/max operations not returning the old value ([GH-1058](https://github.com/NVIDIA/warp/issues/1058)).
 - Fix type inference errors when passing reference arguments (such as array elements) to built-in functions
   ([GH-1071](https://github.com/NVIDIA/warp/issues/1071)).
-- Improve documentation and error messages about requiring a BVH for `fem.lookup` and related functionality ([GH-1072](https://github.com/NVIDIA/warp/issues/1072)).
-- Fix reference cycles introduced by `warp.fem.Temporary` and `warp.fem.ShapeBasisSpace` ([GH-1076](https://github.com/NVIDIA/warp/issues/1076)).
-- Fix `.ptr` access on kernel-local arrays ([GH-999](https://github.com/NVIDIA/warp/issues/999)).
-- Fix indexing of kernel-local arrays when requesting a subarray
-  ([GH-1081](https://github.com/NVIDIA/warp/issues/1081)).
-- Fix `wp.zeros()` to accept a single integer for the shape parameter in kernels (e.g. `wp.zeros(shape=123, dtype=float)`)
-  ([GH-1081](https://github.com/NVIDIA/warp/issues/1081)).
-- Fix code generation ordering for custom gradient functions (`@wp.func_grad`) when used with nested function calls
-  ([GH-967](https://github.com/NVIDIA/warp/issues/967)).
-- Fix invalid reads due to early release of tape-captured temporaries introduced in ([GH-1021](https://github.com/NVIDIA/warp/issues/1021))
 - Fix `module="unique"` kernels to properly reuse existing module objects when defined multiple times,
   avoiding unnecessary module creation overhead ([GH-995](https://github.com/NVIDIA/warp/issues/995)).
 - Add validation in `wp.compile_aot_module()` to detect generic kernels without overloads and generic kernels with
   multiple overloads when `strip_hash=True` ([GH-919](https://github.com/NVIDIA/warp/issues/919)).
-- Fix compilation error in `wp.tile_load_indexed()` when indices tile has been reshaped or transformed ([GH-1008](https://github.com/NVIDIA/warp/issues/1008)).
+- Fix compilation error in `wp.tile_load_indexed()` when indices tile has been reshaped or transformed
+  ([GH-1008](https://github.com/NVIDIA/warp/issues/1008)).
+- Fix multiple issues with kernel-local arrays (arrays created with `wp.zeros()` in kernels):
+  - Fix `.ptr` access ([GH-999](https://github.com/NVIDIA/warp/issues/999)).
+  - Fix indexing when requesting a subarray ([GH-1081](https://github.com/NVIDIA/warp/issues/1081)).
+  - Fix shape parameter to accept a single integer (e.g., `wp.zeros(shape=123, dtype=float)`)
+    ([GH-1081](https://github.com/NVIDIA/warp/issues/1081)).
+- Fix code-generation ordering for custom gradient functions (`@wp.func_grad`) when used with nested function calls
+  ([GH-967](https://github.com/NVIDIA/warp/issues/967)).
+- Fix invalid reads when using `wp.fem.TemporaryStore` during tape capture for automatic differentiation
+  ([GH-1021](https://github.com/NVIDIA/warp/issues/1021)).
+- Fix reference cycles introduced by `wp.fem.Temporary` and `wp.fem.ShapeBasisSpace`
+  ([GH-1076](https://github.com/NVIDIA/warp/issues/1076)).
+- Improve documentation and error messages about requiring a BVH for `wp.fem.lookup()` and related functionality
+  ([GH-1072](https://github.com/NVIDIA/warp/issues/1072)).
+
+### Documentation
+
+- Add more examples to the Tiles and SIMT code documentation, demonstrating caveats when switching between
+  the CPU and GPU and using `wp.tile()` ([GH-1042](https://github.com/NVIDIA/warp/issues/1042)).
 
 ## [1.10.0] - 2025-11-02
 
@@ -1984,6 +1970,7 @@
 
 - Initial publish for alpha testing
 
+[1.10.1]: https://github.com/NVIDIA/warp/releases/tag/v1.10.1
 [1.10.0]: https://github.com/NVIDIA/warp/releases/tag/v1.10.0
 [1.9.1]: https://github.com/NVIDIA/warp/releases/tag/v1.9.1
 [1.9.0]: https://github.com/NVIDIA/warp/releases/tag/v1.9.0
