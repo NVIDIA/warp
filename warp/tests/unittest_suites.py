@@ -323,6 +323,7 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
 
     Requires manual updates with test_ext.py for now.
     """
+    from warp.tests.aot.test_module_aot import TestModuleAOT
     from warp.tests.cuda.test_mempool import TestMempool
     from warp.tests.cuda.test_peer import TestPeer
     from warp.tests.cuda.test_pinned import TestPinned
@@ -357,7 +358,6 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_lvalue import TestLValue
     from warp.tests.test_mat_lite import TestMatLite
     from warp.tests.test_math import TestMath
-    from warp.tests.test_module_aot import TestModuleAOT
     from warp.tests.test_module_hashing import TestModuleHashing
     from warp.tests.test_modules_lite import TestModuleLite
     from warp.tests.test_noise import TestNoise
