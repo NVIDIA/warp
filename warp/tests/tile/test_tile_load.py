@@ -652,7 +652,7 @@ def test_tile_load_fortran(test, device):
     B_wp.grad = wp.ones_like(B_wp, device=device)
     tape.backward()
 
-    assert_array_equal(B_wp.grad, A_wp.grad)
+    assert_np_equal(A_wp.grad.numpy(), np.ones((M, N), dtype=float))
 
 
 # ----------------------------------------------------------------------------------------

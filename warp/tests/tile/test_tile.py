@@ -65,7 +65,7 @@ def test_tile_copy_1d(test, device):
     B_wp.grad = wp.ones_like(B_wp, device=device)
     tape.backward()
 
-    assert_array_equal(B_wp.grad, A_wp.grad)
+    assert_np_equal(A_wp.grad.numpy(), np.ones(N, dtype=float))
 
 
 @wp.kernel
@@ -105,7 +105,7 @@ def test_tile_copy_2d(test, device):
     B_wp.grad = wp.ones_like(B_wp, device=device)
     tape.backward()
 
-    assert_array_equal(B_wp.grad, A_wp.grad)
+    assert_np_equal(A_wp.grad.numpy(), np.ones((M, N), dtype=float))
 
 
 @wp.func
@@ -608,7 +608,7 @@ def test_tile_untile(test, device):
         tape.backward()
 
         assert_np_equal(y.numpy(), x.numpy())
-        assert_np_equal(x.grad.numpy(), y.grad.numpy())
+        assert_np_equal(x.grad.numpy(), wp.ones_like(x, device="cpu").numpy())
 
     test_func_preserve_type(float)
     test_func_preserve_type(wp.vec3)
@@ -628,7 +628,7 @@ def test_tile_untile(test, device):
         tape.backward()
 
         assert_np_equal(y.numpy(), x.numpy())
-        assert_np_equal(x.grad.numpy(), y.grad.numpy())
+        assert_np_equal(x.grad.numpy(), wp.ones_like(x, device="cpu").numpy())
 
     test_func(float)
     test_func(wp.vec3)
