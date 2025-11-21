@@ -267,12 +267,85 @@ the equivalent tile representation. For example:
 
 In this example, we have launched a regular SIMT grid with ``N`` logical threads using ``wp.launch()``.
 The kernel performs some per-thread computations and then converts the scalar ``x`` value into a tile object using :func:`warp.tile`.
-This function takes a single value as input and returns a tile with the same dimensions as the number of threads in the block.
+This function takes a single value as input and returns a tile with the same dimensions as the number of threads in the block (as set by the ``block_dim`` argument in ``wp.launch()``),
+which implies that each thread in the block is assigned to a particular tile element.
 From here, the tile can be used in other regular cooperative operations such as reductions, GEMMs, etc.
 
 Similarly, we can `untile` tile objects back to their per-thread scalar equivalent values.
 
 .. Note:: All threads in a block must execute tile operations, but code surrounding tile operations may contain arbitrary conditional logic.
+
+Extra consideration is needed when using tiles in SIMT kernels that are meant to run on both the GPU and the CPU.
+On the CPU, ``block_dim`` is set to 1, which can change the behavior of kernels using ``wp.tile()``. Consider the following example:
+
+.. testcode::
+    :skipif: wp.get_device() == "cpu" or wp.get_cuda_device_count() == 0
+
+    import warp as wp
+
+    TILE_DIM = 4
+
+    @wp.kernel
+    def tile_reduce_blockwise_simt_kernel(output: wp.array(dtype=int)):
+        i = wp.tid()
+
+        t = wp.tile(i)
+        s = wp.tile_sum(t)
+
+        wp.tile_store(output, s, offset=i)
+
+    N = TILE_DIM * 3
+
+    output = wp.zeros(shape=N, dtype=int)
+
+    wp.launch(tile_reduce_blockwise_simt_kernel, dim=N, outputs=[output], block_dim=TILE_DIM)
+
+    print(output.numpy())
+
+.. testoutput::
+
+    [ 6  0  0  0 22  0  0  0 38  0  0  0]
+
+Here, we launch ``N=12`` logical threads. The tile size is 4, so there are three blocks in total that are created with ``wp.tile()``.
+The tile reduction operation stores the block's sum in the first thread of the block, so we see 6, 22, and 38 stored at indices 0, 4, and 8.
+If we instead launch this kernel on the CPU, we get the following output:
+
+.. code-block:: text
+
+    [ 0  1  2  3  4  5  6  7  8  9 10 11]
+
+When launching on the CPU, ``block_dim`` is set to 1, so the tile generated with ``wp.tile()`` has a size of 1, and the reduction of each tile simply returns the value of the tile.
+So if you are designing a kernel that is meant to get the same result running on the GPU or the CPU, it should be designed to be independent of the value of ``block_dim``.
+For instance, if we want a full array reduction that works consistently across devices, we can use ``wp.tile_atomic_add()`` to accumulate results from all blocks:
+
+.. testcode::
+
+    import warp as wp
+
+    TILE_DIM = 4
+
+    @wp.kernel
+    def tile_reduce_simt_kernel(output: wp.array(dtype=int)):
+        i = wp.tid()
+
+        t = wp.tile(i)
+        s = wp.tile_sum(t)
+
+        # update global sum
+        wp.tile_atomic_add(output, s)
+
+    N = TILE_DIM * 3
+
+    output = wp.zeros(shape=1, dtype=int)
+
+    wp.launch(tile_reduce_simt_kernel, dim=N, outputs=[output], block_dim=TILE_DIM)
+
+    print(output.numpy())
+
+.. testoutput::
+
+    [66]
+
 
 Type Preservation
 ^^^^^^^^^^^^^^^^^
