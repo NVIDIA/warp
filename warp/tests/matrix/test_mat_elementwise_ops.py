@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +19,8 @@ import numpy as np
 
 import warp as wp
 from warp.tests.matrix.utils import (
+    get_select_kernel,
+    getkernel,
     np_float_types,
     np_scalar_types,
     randvals,
@@ -26,24 +28,6 @@ from warp.tests.matrix.utils import (
 from warp.tests.unittest_utils import *
 
 kernel_cache = {}
-
-
-def getkernel(func, suffix=""):
-    key = func.__name__ + "_" + suffix
-    if key not in kernel_cache:
-        kernel_cache[key] = wp.Kernel(func=func, key=key)
-    return kernel_cache[key]
-
-
-def get_select_kernel(dtype):
-    def output_select_kernel_fn(
-        input: wp.array(dtype=dtype),
-        index: int,
-        out: wp.array(dtype=dtype),
-    ):
-        out[0] = input[index]
-
-    return getkernel(output_select_kernel_fn, suffix=dtype.__name__)
 
 
 def test_scalar_multiplication(test, device, dtype, register_kernels=False):
@@ -59,7 +43,7 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
     mat22 = wp._src.types.matrix(shape=(2, 2), dtype=wptype)
     mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_scalar_mul(
         s: wp.array(dtype=wptype),
@@ -88,7 +72,7 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
                 outcomponents_rightmul[idx] = wptype(2) * m4resultright[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_scalar_mul, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_scalar_mul, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -174,7 +158,7 @@ def test_addition(test, device, dtype, register_kernels=False):
     mat22 = wp._src.types.matrix(shape=(2, 2), dtype=wptype)
     mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_add(
         s2: wp.array(dtype=mat22),
@@ -198,7 +182,7 @@ def test_addition(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = wptype(2) * v4result[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_add, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_add, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -262,7 +246,7 @@ def test_scalar_division(test, device, dtype, register_kernels=False):
     mat22 = wp._src.types.matrix(shape=(2, 2), dtype=wptype)
     mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_scalar_div(
         s: wp.array(dtype=wptype),
@@ -285,7 +269,7 @@ def test_scalar_division(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = wptype(2) * m4result[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_scalar_div, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_scalar_div, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -342,7 +326,7 @@ def test_cw_multiplication(test, device, dtype, register_kernels=False):
     mat22 = wp._src.types.matrix(shape=(2, 2), dtype=wptype)
     mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_cw_mul(
         s2: wp.array(dtype=mat22),
@@ -366,7 +350,7 @@ def test_cw_multiplication(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = v4result[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_cw_mul, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_cw_mul, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -432,7 +416,7 @@ def test_cw_division(test, device, dtype, register_kernels=False):
     mat22 = wp._src.types.matrix(shape=(2, 2), dtype=wptype)
     mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_cw_div(
         s2: wp.array(dtype=mat22),
@@ -456,7 +440,7 @@ def test_cw_division(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = v4result[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_cw_div, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_cw_div, suffix=dtype.__name__)
 
     if register_kernels:
         return

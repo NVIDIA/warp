@@ -20,6 +20,8 @@ import numpy as np
 
 import warp as wp
 from warp.tests.matrix.utils import (
+    get_select_kernel,
+    getkernel,
     np_float_types,
     randvals,
 )
@@ -28,20 +30,6 @@ from warp.tests.unittest_utils import *
 np_signed_int_types = [np.int8, np.int16, np.int32, np.int64, np.byte]
 
 kernel_cache = {}
-
-
-def getkernel(func, suffix=""):
-    key = func.__name__ + "_" + suffix
-    if key not in kernel_cache:
-        kernel_cache[key] = wp.Kernel(func=func, key=key)
-    return kernel_cache[key]
-
-
-def get_select_kernel(dtype):
-    def output_select_kernel_fn(input: wp.array(dtype=dtype), index: int, out: wp.array(dtype=dtype)):
-        out[0] = input[index]
-
-    return getkernel(output_select_kernel_fn, suffix=dtype.__name__)
 
 
 def test_shape_mismatch(test, device):
@@ -116,7 +104,7 @@ def test_negation(test, device, dtype, register_kernels=False):
     mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
     mat55 = wp._src.types.matrix(shape=(5, 5), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_negation(
         m2: wp.array(dtype=mat22),
@@ -152,7 +140,7 @@ def test_negation(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = wptype(2) * mat5[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_negation, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_negation, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -206,7 +194,7 @@ def test_matmul(test, device, dtype, register_kernels=False):
     mat32 = wp._src.types.matrix(shape=(3, 2), dtype=wptype)
     mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_mul(
         i23: wp.array(dtype=mat23),
@@ -221,7 +209,7 @@ def test_matmul(test, device, dtype, register_kernels=False):
         o33[i] = i32[i] @ i23[i]
         o44[i] = i44[i] @ i44[i]
 
-    kernel = getkernel(check_mat_mul, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_mul, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -276,7 +264,7 @@ def test_subtraction(test, device, dtype, register_kernels=False):
     mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
     mat55 = wp._src.types.matrix(shape=(5, 5), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_sub(
         s2: wp.array(dtype=mat22),
@@ -316,7 +304,7 @@ def test_subtraction(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = wptype(2) * v5result[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_sub, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_sub, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -409,7 +397,7 @@ def test_determinant(test, device, dtype, register_kernels=False):
         det3[0] = wptype(2) * wp.determinant(v3[0])
         det4[0] = wptype(2) * wp.determinant(v4[0])
 
-    kernel = getkernel(check_mat_det, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_det, suffix=dtype.__name__)
     if register_kernels:
         return
 
@@ -532,7 +520,7 @@ def test_determinant(test, device, dtype, register_kernels=False):
 #     wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
 #     mat55 = wp._src.types.vector(shape=(5, 5), dtype=wptype)
 #
-#     output_select_kernel = get_select_kernel(wptype)
+#     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 #
 #     def check_mat_diag(
 #         m55: wp.array(dtype=mat55),
@@ -589,7 +577,7 @@ def test_inverse(test, device, dtype, register_kernels=False):
     mat33 = wp._src.types.matrix(shape=(3, 3), dtype=wptype)
     mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_inverse(
         m2: wp.array(dtype=mat22),
@@ -618,7 +606,7 @@ def test_inverse(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = wptype(2) * m4result[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_inverse, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_inverse, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -791,9 +779,9 @@ def test_svd(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = wptype(2) * V[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_svd, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_svd, suffix=dtype.__name__)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     if register_kernels:
         return
@@ -916,9 +904,9 @@ def test_svd_2D(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = wptype(2) * V[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_svd2, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_svd2, suffix=dtype.__name__)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     if register_kernels:
         return
@@ -1050,8 +1038,8 @@ def test_qr(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = wptype(2) * R[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_qr, suffix=dtype.__name__)
-    output_select_kernel = get_select_kernel(wptype)
+    kernel = getkernel(kernel_cache, check_mat_qr, suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     if register_kernels:
         return
@@ -1162,8 +1150,8 @@ def test_eig(test, device, dtype, register_kernels=False):
             outcomponents[idx] = wptype(2) * d[i]
             idx = idx + 1
 
-    kernel = getkernel(check_mat_eig, suffix=dtype.__name__)
-    output_select_kernel = get_select_kernel(wptype)
+    kernel = getkernel(kernel_cache, check_mat_eig, suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     if register_kernels:
         return
@@ -1248,7 +1236,7 @@ def test_skew(test, device, dtype, register_kernels=False):
     wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
     vec3 = wp._src.types.vector(length=3, dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_skew(
         v3: wp.array(dtype=vec3),
@@ -1263,7 +1251,7 @@ def test_skew(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = wptype(2) * m3result[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_skew, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_skew, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -1350,7 +1338,7 @@ def test_transform_point(test, device, dtype, register_kernels=False):
     vec3 = wp._src.types.vector(length=3, dtype=wptype)
     mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_transform_point(
         v3: wp.array(dtype=vec3),
@@ -1364,7 +1352,7 @@ def test_transform_point(test, device, dtype, register_kernels=False):
         outcomponents[1] = presult[1]
         outcomponents[2] = presult[2]
 
-    kernel = getkernel(check_mat_transform_point, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_transform_point, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -1411,7 +1399,7 @@ def test_transform_vector(test, device, dtype, register_kernels=False):
     vec3 = wp._src.types.vector(length=3, dtype=wptype)
     mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_transform_vector(
         v3: wp.array(dtype=vec3),
@@ -1425,7 +1413,7 @@ def test_transform_vector(test, device, dtype, register_kernels=False):
         outcomponents[1] = presult[1]
         outcomponents[2] = presult[2]
 
-    kernel = getkernel(check_mat_transform_vector, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_transform_vector, suffix=dtype.__name__)
 
     if register_kernels:
         return

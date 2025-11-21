@@ -19,6 +19,8 @@ import numpy as np
 
 import warp as wp
 from warp.tests.matrix.utils import (
+    get_select_kernel,
+    getkernel,
     np_float_types,
     randvals,
 )
@@ -33,20 +35,6 @@ def setUpModule():
 
 def tearDownModule():
     wp.config.quiet = False
-
-
-def getkernel(func, suffix=""):
-    key = func.__name__ + "_" + suffix
-    if key not in kernel_cache:
-        kernel_cache[key] = wp.Kernel(func=func, key=key)
-    return kernel_cache[key]
-
-
-def get_select_kernel(dtype):
-    def output_select_kernel_fn(input: wp.array(dtype=dtype), index: int, out: wp.array(dtype=dtype)):
-        out[0] = input[index]
-
-    return getkernel(output_select_kernel_fn, suffix=dtype.__name__)
 
 
 def test_constructors(test, device, dtype, register_kernels=False):
@@ -64,7 +52,7 @@ def test_constructors(test, device, dtype, register_kernels=False):
     mat22 = wp._src.types.matrix(shape=(2, 2), dtype=wptype)
     mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_scalar_mat_constructor(
         input: wp.array(dtype=wptype),
@@ -145,9 +133,9 @@ def test_constructors(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = m4result[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_scalar_mat_constructor, suffix=dtype.__name__)
-    compkernel = getkernel(check_component_mat_constructor, suffix=dtype.__name__)
-    veckernel = getkernel(check_vector_mat_constructor, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_scalar_mat_constructor, suffix=dtype.__name__)
+    compkernel = getkernel(kernel_cache, check_component_mat_constructor, suffix=dtype.__name__)
+    veckernel = getkernel(kernel_cache, check_vector_mat_constructor, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -217,7 +205,7 @@ def test_diag(test, device, dtype, register_kernels=False):
     wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
     vec5 = wp._src.types.vector(length=5, dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_diag(
         s5: wp.array(dtype=vec5),
@@ -232,7 +220,7 @@ def test_diag(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = m55result[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_diag, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_diag, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -648,7 +636,7 @@ def test_quat_constructor(test, device, dtype, register_kernels=False):
     vec3 = wp._src.types.vector(length=3, dtype=wptype)
     quat = wp._src.types.quaternion(dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_quat_constructor(
         p: wp.array(dtype=vec3),
@@ -677,7 +665,7 @@ def test_quat_constructor(test, device, dtype, register_kernels=False):
                 outcomponents_alt[idx] = m_alt[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_quat_constructor, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_quat_constructor, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -751,7 +739,7 @@ def test_identity(test, device, dtype, register_kernels=False):
                 output[idx] = wptype(2) * m5result[i, j]
                 idx = idx + 1
 
-    id_kernel = getkernel(check_identity_mat, suffix=dtype.__name__)
+    id_kernel = getkernel(kernel_cache, check_identity_mat, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -835,9 +823,9 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
                 output[idx] = wptype(2) * m32result[i, j]
                 idx = idx + 1
 
-    scalar_kernel = getkernel(check_scalar_init, suffix=dtype.__name__)
-    component_kernel = getkernel(check_component_init, suffix=dtype.__name__)
-    output_select_kernel = get_select_kernel(wptype)
+    scalar_kernel = getkernel(kernel_cache, check_scalar_init, suffix=dtype.__name__)
+    component_kernel = getkernel(kernel_cache, check_component_init, suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     if register_kernels:
         return

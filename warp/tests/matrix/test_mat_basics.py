@@ -19,6 +19,8 @@ import numpy as np
 
 import warp as wp
 from warp.tests.matrix.utils import (
+    get_select_kernel,
+    getkernel,
     np_float_types,
     np_scalar_types,
     randvals,
@@ -26,24 +28,6 @@ from warp.tests.matrix.utils import (
 from warp.tests.unittest_utils import *
 
 kernel_cache = {}
-
-
-def getkernel(func, suffix=""):
-    key = func.__name__ + "_" + suffix
-    if key not in kernel_cache:
-        kernel_cache[key] = wp.Kernel(func=func, key=key)
-    return kernel_cache[key]
-
-
-def get_select_kernel(dtype):
-    def output_select_kernel_fn(
-        input: wp.array(dtype=dtype),
-        index: int,
-        out: wp.array(dtype=dtype),
-    ):
-        out[0] = input[index]
-
-    return getkernel(output_select_kernel_fn, suffix=dtype.__name__)
 
 
 def test_arrays(test, device, dtype):
@@ -66,15 +50,6 @@ def test_arrays(test, device, dtype):
     assert_np_equal(v2.numpy(), v2_np, tol=1.0e-6)
     assert_np_equal(v4.numpy(), v4_np, tol=1.0e-6)
     assert_np_equal(v32.numpy(), v32_np, tol=1.0e-6)
-
-    mat22 = wp._src.types.matrix(shape=(2, 2), dtype=wptype)
-    mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
-
-    v2 = wp.array(v2_np, dtype=mat22, requires_grad=True, device=device)
-    v4 = wp.array(v4_np, dtype=mat44, requires_grad=True, device=device)
-
-    assert_np_equal(v2.numpy(), v2_np, tol=1.0e-6)
-    assert_np_equal(v4.numpy(), v4_np, tol=1.0e-6)
 
 
 def test_components(test, device, dtype):
@@ -142,7 +117,7 @@ def test_indexing(test, device, dtype, register_kernels=False):
     mat22 = wp._src.types.matrix(shape=(2, 2), dtype=wptype)
     mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
+    output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_indexing(
         m2: wp.array(dtype=mat22),
@@ -161,7 +136,7 @@ def test_indexing(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = wptype(2) * m4[0][i, j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_indexing, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_indexing, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -288,7 +263,7 @@ def test_equality(test, device, dtype, register_kernels=False):
             ),
         )
 
-    kernel = getkernel(check_mat_equality, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_mat_equality, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -318,7 +293,7 @@ def test_equivalent_types(test, device, dtype, register_kernels=False):
         wp.expect_eq(m2, mat22_equiv(wptype(42)))
         wp.expect_eq(m4, mat44_equiv(wptype(44)))
 
-    kernel = getkernel(check_equivalence, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_equivalence, suffix=dtype.__name__)
 
     if register_kernels:
         return
@@ -347,7 +322,7 @@ def test_conversions(test, device, dtype, register_kernels=False):
         wp.expect_eq(m5, m0)
         wp.expect_eq(m6, m0)
 
-    kernel = getkernel(check_matrices_equal, suffix=dtype.__name__)
+    kernel = getkernel(kernel_cache, check_matrices_equal, suffix=dtype.__name__)
 
     if register_kernels:
         return

@@ -114,9 +114,12 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.interop.test_jax import TestJax
     from warp.tests.interop.test_torch import TestTorch
     from warp.tests.matrix.test_mat import TestMat
+    from warp.tests.matrix.test_mat_assign_copy import TestMatAssignCopy
+    from warp.tests.matrix.test_mat_basics import TestMatBasics
     from warp.tests.matrix.test_mat_constructors import TestMatConstructors
+    from warp.tests.matrix.test_mat_elementwise_ops import TestMatElementwiseOps
+    from warp.tests.matrix.test_mat_linalg import TestMatLinalg
     from warp.tests.matrix.test_mat_lite import TestMatLite
-    from warp.tests.matrix.test_mat_scalar_ops import TestMatScalarOps
     from warp.tests.test_adam import TestAdam
     from warp.tests.test_arithmetic import TestArithmetic
     from warp.tests.test_array import TestArray
@@ -259,7 +262,10 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestMat,
         TestMatConstructors,
         TestMatLite,
-        TestMatScalarOps,
+        TestMatAssignCopy,
+        TestMatBasics,
+        TestMatElementwiseOps,
+        TestMatLinalg,
         TestMath,
         TestMempool,
         TestMesh,
