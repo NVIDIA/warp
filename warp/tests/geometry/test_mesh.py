@@ -198,6 +198,39 @@ def query_ray_kernel(
     wp.expect_near(wp.length(pos - expected_pos), 0.0, 1e-6)
 
 
+@wp.kernel(enable_backward=False)
+def query_ray_anyhit_kernel(
+    mesh_id: wp.uint64,
+):
+    start = wp.vec3(0.1, 0.2, 0.3)
+    dir = wp.normalize(wp.vec3(-1.2, 2.3, -3.4))
+
+    t = float(0.0)
+    bary_u = float(0.0)
+    bary_v = float(0.0)
+    sign = float(0.0)
+    normal = wp.vec3(0.0, 0.0, 0.0)
+    face = int(0)
+
+    hit = wp.mesh_query_ray(
+        mesh_id,
+        start,
+        dir,
+        1e6,
+        t,
+        bary_u,
+        bary_v,
+        sign,
+        normal,
+        face,
+    )
+
+    hit_anyhit = wp.mesh_query_ray_anyhit(mesh_id, start, dir, 1e6)
+
+    wp.expect_eq(hit, True)
+    wp.expect_eq(hit_anyhit, True)
+
+
 def test_mesh_query_ray(test, device):
     if device.is_cpu:
         constructors = ["sah", "median"]
@@ -234,6 +267,21 @@ def test_mesh_query_ray(test, device):
             ],
             device=device,
         )
+
+
+def test_mesh_query_ray_anyhit(test, device):
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
+
+    points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
+    indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
+
+    for constructor in constructors:
+        mesh = wp.Mesh(points=points, indices=indices, bvh_constructor=constructor)
+        wp.launch(query_ray_anyhit_kernel, dim=1, inputs=[mesh.id], device=device)
+        wp.synchronize_device(device)
 
 
 def test_mesh_refit_graph(test, device):
@@ -309,6 +357,7 @@ class TestMesh(unittest.TestCase):
 add_function_test(TestMesh, "test_mesh_read_properties", test_mesh_read_properties, devices=devices)
 add_function_test(TestMesh, "test_mesh_query_point", test_mesh_query_point, devices=devices)
 add_function_test(TestMesh, "test_mesh_query_ray", test_mesh_query_ray, devices=devices)
+add_function_test(TestMesh, "test_mesh_query_ray_anyhit", test_mesh_query_ray_anyhit, devices=devices)
 add_function_test(TestMesh, "test_mesh_refit_graph", test_mesh_refit_graph, devices=get_selected_cuda_test_devices())
 add_function_test(TestMesh, "test_mesh_exceptions", test_mesh_exceptions, devices=get_selected_cuda_test_devices())
 
