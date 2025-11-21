@@ -7030,6 +7030,56 @@ def compile_aot_module(
     if strip_hash is not None:
         module_object.options["strip_hash"] = strip_hash
 
+    # Validate generic kernels for AOT compilation
+    strip_hash_enabled = module_object.options.get("strip_hash", False)
+
+    # Find problematic generic kernels
+    no_overloads = []
+    multiple_overloads_with_strip_hash = []
+    compilable_kernel_count = 0
+
+    for key, kernel in module_object.kernels.items():
+        if not kernel.is_generic:
+            # Non-generic kernels are always compilable
+            compilable_kernel_count += 1
+            continue
+
+        num_overloads = len(kernel.overloads)
+        if num_overloads == 0:
+            no_overloads.append(key)
+        else:
+            # Generic kernel with at least one overload is compilable
+            compilable_kernel_count += 1
+            if num_overloads > 1 and strip_hash_enabled:
+                multiple_overloads_with_strip_hash.append(key)
+
+    # Check if there are no compilable kernels
+    if compilable_kernel_count == 0:
+        raise RuntimeError(
+            "Cannot compile module: No compilable kernels found in the module. "
+            "The module must contain at least one non-generic kernel or a generic kernel with overloads."
+        )
+
+    # Warn if there are generic kernels without overloads
+    if no_overloads:
+        from warp._src.utils import warn
+
+        warn(
+            f"Generic kernels without overloads will be skipped during AOT compilation. "
+            f"Add overloads using wp.overload() or the @wp.overload decorator to compile them. "
+            f"Kernels without overloads: {', '.join(no_overloads)}",
+            category=UserWarning,
+            stacklevel=2,
+        )
+
+    if multiple_overloads_with_strip_hash:
+        raise RuntimeError(
+            f"Cannot use strip_hash=True with generic kernels that have multiple overloads. "
+            f"Generic kernel overloads require unique hash suffixes to avoid name collisions. "
+            f"Use strip_hash=False or ensure each generic kernel has only one overload. "
+            f"Kernels: {', '.join(multiple_overloads_with_strip_hash)}"
+        )
+
     if device is None and arch:
         # User provided no device, but an arch, so we will not compile for the default device
         devices = []
