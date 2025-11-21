@@ -18,34 +18,12 @@ import unittest
 import numpy as np
 
 import warp as wp
+from warp.tests.matrix.utils import (
+    np_float_types,
+    np_scalar_types,
+    randvals,
+)
 from warp.tests.unittest_utils import *
-
-np_signed_int_types = [
-    np.int8,  # smallest - edge case testing
-    np.int32,  # most common
-    np.int64,  # largest - edge case testing
-]
-
-np_unsigned_int_types = [
-    np.uint8,  # smallest - edge case testing
-    np.uint32,  # most common
-    np.uint64,  # largest - edge case testing
-]
-
-np_int_types = np_signed_int_types + np_unsigned_int_types
-
-np_float_types = [np.float16, np.float32, np.float64]
-
-np_scalar_types = np_int_types + np_float_types
-
-
-def randvals(rng, shape, dtype):
-    if dtype in np_float_types:
-        return rng.standard_normal(size=shape).astype(dtype)
-    elif dtype in [np.int8, np.uint8, np.byte, np.ubyte]:
-        return rng.integers(1, high=3, size=shape, dtype=dtype)
-    return rng.integers(1, high=5, size=shape, dtype=dtype)
-
 
 kernel_cache = {}
 

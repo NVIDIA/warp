@@ -18,9 +18,11 @@ import unittest
 import numpy as np
 
 import warp as wp
+from warp.tests.matrix.utils import (
+    np_float_types,
+    randvals,
+)
 from warp.tests.unittest_utils import *
-
-np_float_types = [np.float16, np.float32, np.float64]
 
 kernel_cache = {}
 
@@ -31,14 +33,6 @@ def setUpModule():
 
 def tearDownModule():
     wp.config.quiet = False
-
-
-def randvals(rng, shape, dtype):
-    if dtype in np_float_types:
-        return rng.standard_normal(size=shape).astype(dtype)
-    elif dtype in [np.int8, np.uint8, np.byte, np.ubyte]:
-        return rng.integers(1, high=3, size=shape, dtype=dtype)
-    return rng.integers(1, high=5, size=shape, dtype=dtype)
 
 
 def getkernel(func, suffix=""):
