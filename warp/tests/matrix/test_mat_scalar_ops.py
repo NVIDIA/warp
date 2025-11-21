@@ -402,24 +402,24 @@ def test_conversions(test, device, dtype, register_kernels=False):
 devices = get_test_devices()
 
 
-class TestMatScalarOps(unittest.TestCase):
+class TestMatBasics(unittest.TestCase):
     pass
 
 
 for dtype in np_scalar_types:
-    add_function_test(TestMatScalarOps, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
-    add_function_test(TestMatScalarOps, f"test_components_{dtype.__name__}", test_components, devices=None, dtype=dtype)
+    add_function_test(TestMatBasics, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
+    add_function_test(TestMatBasics, f"test_components_{dtype.__name__}", test_components, devices=None, dtype=dtype)
     add_function_test_register_kernel(
-        TestMatScalarOps, f"test_indexing_{dtype.__name__}", test_indexing, devices=devices, dtype=dtype
+        TestMatBasics, f"test_indexing_{dtype.__name__}", test_indexing, devices=devices, dtype=dtype
     )
     add_function_test_register_kernel(
-        TestMatScalarOps, f"test_equality_{dtype.__name__}", test_equality, devices=devices, dtype=dtype
+        TestMatBasics, f"test_equality_{dtype.__name__}", test_equality, devices=devices, dtype=dtype
     )
     add_function_test_register_kernel(
-        TestMatScalarOps, f"test_equivalent_types_{dtype.__name__}", test_equivalent_types, devices=devices, dtype=dtype
+        TestMatBasics, f"test_equivalent_types_{dtype.__name__}", test_equivalent_types, devices=devices, dtype=dtype
     )
     add_function_test_register_kernel(
-        TestMatScalarOps, f"test_conversions_{dtype.__name__}", test_conversions, devices=devices, dtype=dtype
+        TestMatBasics, f"test_conversions_{dtype.__name__}", test_conversions, devices=devices, dtype=dtype
     )
 
 
