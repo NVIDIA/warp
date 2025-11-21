@@ -214,6 +214,26 @@ def test_tile_load_indexed(test, device):
     assert_np_equal(x.grad.numpy(), x_grad_np)
 
 
+@wp.kernel(enable_backward=False)
+def tile_load_indexed_non_owning(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+    indices = wp.tile_arange(HALF_M, dtype=int, storage="shared") * 2
+    indices_non_owning = wp.tile_reshape(indices, shape=(HALF_M,))
+
+    t = wp.tile_load_indexed(a, indices=indices_non_owning, shape=(HALF_M,), axis=0, storage="shared")
+    wp.tile_store(b, t)
+
+
+def test_tile_load_indexed_non_owning(test, device):
+    a_np = np.arange(TILE_M)
+
+    a = wp.array(a_np, dtype=float, device=device)
+    b = wp.empty(shape=(HALF_M,), dtype=float, device=device)
+
+    wp.launch_tiled(tile_load_indexed_non_owning, dim=1, inputs=[a], outputs=[b], block_dim=32, device=device)
+
+    assert_np_equal(b.numpy(), a_np[::2])
+
+
 @wp.func
 def add_one(x: int):
     return x + 1
@@ -692,6 +712,7 @@ add_function_test(TestTileLoad, "test_tile_load_2d", test_tile_load(tile_load_2d
 add_function_test(TestTileLoad, "test_tile_load_3d", test_tile_load(tile_load_3d_kernel, 3), devices=devices)
 add_function_test(TestTileLoad, "test_tile_load_4d", test_tile_load(tile_load_4d_kernel, 4), devices=devices)
 add_function_test(TestTileLoad, "test_tile_load_indexed", test_tile_load_indexed, devices=devices)
+add_function_test(TestTileLoad, "test_tile_load_indexed_non_owning", test_tile_load_indexed_non_owning, devices=devices)
 add_function_test(TestTileLoad, "test_tile_store_indexed", test_tile_store_indexed, devices=devices)
 add_function_test(TestTileLoad, "test_tile_atomic_add_indexed", test_tile_atomic_add_indexed, devices=devices)
 add_function_test(TestTileLoad, "test_tile_load_unaligned", test_tile_load_unaligned, devices=devices)
