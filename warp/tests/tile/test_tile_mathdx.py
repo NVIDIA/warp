@@ -72,8 +72,9 @@ def test_tile_math_matmul(test, device):
 
     tape.backward(grads={C_wp: wp.array(adj_C, device=device)})
 
-    assert_np_equal(A_wp.grad.numpy(), adj_C @ B.T, tol=1e-2)
-    assert_np_equal(B_wp.grad.numpy(), A.T @ adj_C, tol=1e-2)
+    assert_np_equal(A_wp.grad.numpy(), 0.5 * adj_C @ B.T, tol=1e-2)
+    assert_np_equal(B_wp.grad.numpy(), 0.5 * A.T @ adj_C, tol=1e-2)
+    assert_np_equal(C_wp.grad.numpy(), -1.3 * adj_C, tol=1e-2)
 
 
 @wp.kernel()
