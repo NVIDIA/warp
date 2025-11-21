@@ -48,6 +48,7 @@
   avoiding unnecessary module creation overhead ([GH-995](https://github.com/NVIDIA/warp/issues/995)).
 - Add validation in `wp.compile_aot_module()` to detect generic kernels without overloads and generic kernels with
   multiple overloads when `strip_hash=True` ([GH-919](https://github.com/NVIDIA/warp/issues/919)).
+- Fix compilation error in `wp.tile_load_indexed()` when indices tile has been reshaped or transformed ([GH-1008](https://github.com/NVIDIA/warp/issues/1008)).
 
 ## [1.10.0] - 2025-11-02
 
