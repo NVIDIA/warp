@@ -44,47 +44,64 @@ def compute_tri_aabbs(
 
 
 class BvhBuild:
-    params = (["sah", "median", "lbvh"], ["bunny", "bear", "rocks"])
+    params = (["median", "lbvh"], ["bunny", "bear", "rocks"])
     param_names = ["method", "asset"]
 
-    repeat = 20
-    number = 31
+    repeat = 100
+    number = 5
 
-    def setup(self, method, asset):
+    assets = ["bunny", "bear", "rocks"]
+
+    def setup_cache(self):
         from pxr import Usd, UsdGeom
 
-        if asset == "bear":
-            self.repeat = 40
-
         wp.init()
-        wp.build.clear_kernel_cache()
+
+        # Load and parse USD assets once, compute AABBs, cache as numpy arrays
+        asset_data = {}
+        for asset_name in self.assets:
+            asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), f"{asset_name}.usd"))
+            mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath(f"/root/{asset_name}"))
+
+            points_np = np.array(mesh_geom.GetPointsAttr().Get())
+            indices_np = np.array(mesh_geom.GetFaceVertexIndicesAttr().Get())
+
+            # Compute AABBs on GPU
+            with wp.ScopedDevice("cuda:0"):
+                points = wp.array(points_np, dtype=wp.vec3)
+                indices = wp.array(indices_np, dtype=wp.int32)
+                num_faces = int(indices.shape[0] / 3)
+
+                lowers = wp.zeros(num_faces, dtype=wp.vec3)
+                uppers = wp.zeros(num_faces, dtype=wp.vec3)
+
+                wp.launch(
+                    dim=num_faces,
+                    kernel=compute_tri_aabbs,
+                    inputs=[points, indices],
+                    outputs=[lowers, uppers],
+                )
+
+                # Convert to numpy for serialization
+                asset_data[asset_name] = {
+                    "lowers_np": lowers.numpy(),
+                    "uppers_np": uppers.numpy(),
+                }
+
+        return asset_data
+
+    def setup(self, asset_data, method, asset):
         self.device = wp.get_device("cuda:0")
 
-        asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), f"{asset}.usd"))
-        mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath(f"/root/{asset}"))
+        # Get pre-computed AABB numpy arrays and transfer to GPU
+        lowers_np = asset_data[asset]["lowers_np"]
+        uppers_np = asset_data[asset]["uppers_np"]
 
-        points_np = np.array(mesh_geom.GetPointsAttr().Get())
-        indices_np = np.array(mesh_geom.GetFaceVertexIndicesAttr().Get())
-
-        points = wp.array(points_np, dtype=wp.vec3, device=self.device)
-        indices = wp.array(indices_np, dtype=wp.int32, device=self.device)
-
-        num_faces = int(indices.shape[0] / 3)
-
-        self.lowers = wp.zeros(num_faces, dtype=wp.vec3, device=self.device)
-        self.uppers = wp.zeros(num_faces, dtype=wp.vec3, device=self.device)
-
-        wp.launch(
-            dim=num_faces,
-            kernel=compute_tri_aabbs,
-            inputs=[points, indices],
-            outputs=[self.lowers, self.uppers],
-            device=self.device,
-        )
-
+        self.lowers = wp.array(lowers_np, dtype=wp.vec3, device=self.device)
+        self.uppers = wp.array(uppers_np, dtype=wp.vec3, device=self.device)
         wp.synchronize_device(self.device)
 
     @skip_benchmark_if(USD_AVAILABLE is False)
-    def time_build(self, method, asset):
+    def time_build(self, asset_data, method, asset):
         _bvh = wp.Bvh(self.lowers, self.uppers, constructor=method)
         wp.synchronize_device(self.device)
