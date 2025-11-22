@@ -392,15 +392,20 @@ float TopDownBVHBuilder::partition_sah_indices(const vec3* lowers, const vec3* u
     assert(end - start >= 2);
 
     int n = end - start;
-    vec3 edges = range_bounds.edges();
 
-    bounds3 b = calc_bounds(lowers, uppers, indices, start, end);
-
+    bounds3 centroid_bounds;
+    for (int i = start; i < end; ++i)
+    {
+        vec3 item_center = 0.5f * (lowers[indices[i]] + uppers[indices[i]]);
+        centroid_bounds.add_point(item_center);
+    }
+    vec3 edges = centroid_bounds.edges();
+    
     split_axis = longest_axis(edges);
 
     // compute each bucket
-    float range_start = b.lower[split_axis];
-    float range_end = b.upper[split_axis];
+    float range_start = centroid_bounds.lower[split_axis];
+    float range_end = centroid_bounds.upper[split_axis];
 
     // Guard against zero extent along the split axis to avoid division-by-zero
     if (range_end <= range_start)
