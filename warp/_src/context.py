@@ -762,6 +762,9 @@ class Kernel:
         # hash will be computed when the module is built
         self.hash = None
 
+        # flag indicating if this kernel belongs to a unique module (set by @wp.kernel decorator)
+        self.is_unique_module = False
+
         if self.module:
             self.module.register_kernel(self)
 
@@ -785,6 +788,10 @@ class Kernel:
         if ovl is not None:
             # return the existing overload matching the signature
             return ovl
+
+        # Log that we're creating a new overload (will trigger module hash change and recompilation)
+        if warp._src.config.verbose:
+            print(f"[Kernel.add_overload] Creating new overload for {self.key}: {sig}")
 
         arg_names = list(self.adj.arg_types.keys())
         template_types = list(self.adj.arg_types.values())
@@ -1121,24 +1128,80 @@ def kernel(
         if enable_backward is not None:
             options["enable_backward"] = enable_backward
 
+        # Resolve the module for this kernel
         if module is None:
+            # Default: infer module from the function's Python module
             m = get_module(f.__module__)
         elif module == "unique":
+            # Create a new temporary module that will be renamed based on hash
             m = Module(f.__name__, None)
         elif isinstance(module, str):
+            # Look up module by name
             m = get_module(module)
         else:
+            # Use the provided Module object directly
             m = module
+
+        # Create the kernel object and register it with the module
         k = Kernel(
             func=f,
             key=warp._src.codegen.make_full_qualified_name(f),
             module=m,
             options=options,
         )
+
+        # Handle unique module case: one module per kernel with hash-based naming
         if module == "unique":
-            # add the hash to the module name
+            # Mark this kernel as belonging to a unique module
+            k.is_unique_module = True
+
+            # Compute the module hash and create a unique name
+            # The hash includes the kernel and all its dependencies (functions, structs, constants)
             hasher = warp._src.context.ModuleHasher(m)
             k.module.name = f"{k.key}_{hasher.module_hash.hex()[:8]}"
+
+            # Check if we've already created a module with this name
+            # This can happen when the same kernel is compiled for multiple devices
+            existing_module = user_modules.get(k.module.name)
+            if existing_module is not None:
+                if warp._src.config.verbose:
+                    print(f"[wp.kernel] Reusing existing unique module: {k.module.name}")
+
+                # The kernel must already exist in the module (same hash means same content)
+                existing_kernel_same_key = existing_module.kernels.get(k.key)
+                if existing_kernel_same_key is None:
+                    raise RuntimeError(
+                        f"Internal error: Found existing unique module '{k.module.name}' "
+                        f"but kernel '{k.key}' does not exist in it. This indicates a "
+                        f"problem with module or kernel registration."
+                    )
+
+                # CRITICAL: Return the existing kernel object, not the new one we just created.
+                # This ensures that when ModuleHasher updates the kernel hash during compilation
+                # (e.g., resolving static expressions), the same object is used for launching.
+                # If we returned the new kernel object, it would have a stale hash.
+                if warp._src.config.verbose:
+                    # Show number of overloads if this is a generic kernel
+                    overload_info = ""
+                    if existing_kernel_same_key.is_generic:
+                        num_overloads = len(existing_kernel_same_key.overloads)
+                        overload_info = (
+                            f" (generic kernel with {num_overloads} overload{'s' if num_overloads != 1 else ''})"
+                        )
+                    print(f"[wp.kernel]   Reusing existing kernel object for {k.key}{overload_info}")
+                k = existing_kernel_same_key
+
+                # Reset skip_build flag for all kernels when reusing a module
+                # Previous compilations may have set skip_build=True, which would
+                # prevent building for the new device
+                for existing_kernel in existing_module.live_kernels:
+                    existing_kernel.adj.skip_build = False
+            else:
+                # This is the first time we've seen this kernel
+                # Register the new unique module in the global registry
+                user_modules[k.module.name] = k.module
+                if warp._src.config.verbose:
+                    print(f"[wp.kernel] Created new unique module: {k.module.name}")
 
         k = functools.update_wrapper(k, f)
         return k
@@ -1634,10 +1697,22 @@ class ModuleHasher:
             if kernel.is_generic:
                 for ovl in kernel.overloads.values():
                     if not ovl.adj.skip_build:
+                        old_hash = ovl.hash
                         ovl.hash = self.hash_kernel(ovl)
+                        # Only log hash changes when old hash was not None (unexpected changes)
+                        if warp._src.config.verbose and old_hash is not None and old_hash != ovl.hash:
+                            old_str = old_hash.hex()[:8]
+                            new_str = ovl.hash.hex()[:8] if ovl.hash else "None"
+                            print(f"[ModuleHasher] Generic kernel hash changed: {ovl.key} ({old_str} -> {new_str})")
             else:
                 if not kernel.adj.skip_build:
+                    old_hash = kernel.hash
                     kernel.hash = self.hash_kernel(kernel)
+                    # Only log hash changes when old hash was not None (unexpected changes)
+                    if warp._src.config.verbose and old_hash is not None and old_hash != kernel.hash:
+                        old_str = old_hash.hex()[:8]
+                        new_str = kernel.hash.hex()[:8] if kernel.hash else "None"
+                        print(f"[ModuleHasher] Kernel hash changed: {kernel.key} ({old_str} -> {new_str})")
 
         # include all unique kernels in the module hash
         for kernel_hash in sorted(self.unique_kernels.keys()):
@@ -1735,7 +1810,8 @@ class ModuleHasher:
         ch.update(bytes(adj.source, "utf-8"))
 
         # args
-        for arg, arg_type in adj.arg_types.items():
+        for arg in adj.arg_types.keys():
+            arg_type = adj.arg_types[arg]
             s = f"{arg}:{warp._src.types.get_type_code(arg_type)}"
             ch.update(bytes(s, "utf-8"))
 
@@ -1874,6 +1950,41 @@ class ModuleBuilder:
 
         return meta
 
+    def _codegen_functions(self, functions, device, forward_only=False, reverse_only=False):
+        """Helper to generate code for a list of functions.
+
+        Args:
+            functions: Iterable of functions to generate code for
+            device: Target device ('cpu' or 'cuda')
+            forward_only: If True, generate only forward code
+            reverse_only: If True, generate only reverse/adjoint code
+
+        Returns:
+            Generated C++ source code as a string
+        """
+        source = ""
+        for func in functions:
+            if func.native_snippet is None:
+                source += warp._src.codegen.codegen_func(
+                    func.adj,
+                    c_func_name=func.native_func,
+                    device=device,
+                    options=self.options,
+                    forward_only=forward_only,
+                    reverse_only=reverse_only,
+                )
+            else:
+                source += warp._src.codegen.codegen_snippet(
+                    func.adj,
+                    name=func.native_func,
+                    snippet=func.native_snippet,
+                    adj_snippet=func.adj_native_snippet,
+                    replay_snippet=func.replay_snippet,
+                    forward_only=forward_only,
+                    reverse_only=reverse_only,
+                )
+        return source
+
     def codegen(self, device):
         source = ""
 
@@ -1892,20 +2003,26 @@ class ModuleBuilder:
                 source += warp._src.codegen.codegen_struct(struct)
                 visited_structs.add(struct.hash)
 
-        # code-gen all imported functions
-        for func in self.functions.keys():
-            if func.native_snippet is None:
-                source += warp._src.codegen.codegen_func(
-                    func.adj, c_func_name=func.native_func, device=device, options=self.options
-                )
-            else:
-                source += warp._src.codegen.codegen_snippet(
-                    func.adj,
-                    name=func.native_func,
-                    snippet=func.native_snippet,
-                    adj_snippet=func.adj_native_snippet,
-                    replay_snippet=func.replay_snippet,
-                )
+        # Two-pass code generation to handle custom gradients:
+        # Pass 1: Generate all forward functions (preserves natural call dependencies)
+        # Pass 2: Generate all reverse/adjoint functions (custom grads before auto-adjoints)
+
+        # Pass 1: Forward functions only (including native snippets)
+        source += self._codegen_functions(self.functions.keys(), device, forward_only=True)
+
+        # Pass 2: Reverse/adjoint functions with custom grads sorted before auto-adjoints
+        # Build set of functions that ARE custom gradients (decorated with @wp.func_grad)
+        # Note: f.custom_grad_func tells us if f HAS a custom gradient, but we need to know
+        # which functions ARE custom gradients themselves (i.e., appear as someone's custom_grad_func)
+        custom_grad_set = {f.custom_grad_func for f in self.functions.keys() if f.custom_grad_func is not None}
+
+        # Separate functions that ARE custom grads from all others, preserving original order
+        custom_grad_functions = [f for f in self.functions.keys() if f in custom_grad_set]
+        other_functions = [f for f in self.functions.keys() if f not in custom_grad_set]
+
+        # Generate adjoints: custom grads first, then other functions
+        # This ensures custom grads are defined before any auto-adjoints that call them
+        source += self._codegen_functions(custom_grad_functions + other_functions, device, reverse_only=True)
 
         for kernel in self.kernels:
             source += warp._src.codegen.codegen_kernel(kernel, device=device, options=self.options)
@@ -2550,8 +2667,14 @@ class Module:
         # check if executable module is already loaded and not stale
         exec = self.execs.get((device.context, active_block_dim))
         if exec is not None:
-            if self.options["strip_hash"] or (exec.module_hash == self.get_module_hash(active_block_dim)):
+            current_hash = self.get_module_hash(active_block_dim)
+            if self.options["strip_hash"] or (exec.module_hash == current_hash):
                 return exec
+            # else: Hash mismatch means module changed, need to recompile
+            if warp._src.config.verbose:
+                old_str = exec.module_hash.hex()[:8] if exec.module_hash else "None"
+                new_str = current_hash.hex()[:8] if current_hash else "None"
+                print(f"[Module.load] Module hash changed, recompiling: {self.name} ({old_str} -> {new_str})")
 
         # quietly avoid repeated build attempts to reduce error spew
         if device.context in self.failed_builds:
@@ -2663,6 +2786,9 @@ class Module:
     def get_kernel_hooks(self, kernel, device: Device) -> KernelHooks:
         module_exec = self.execs.get((device.context, self.options["block_dim"]))
         if module_exec is not None:
+            if warp._src.config.verbose:
+                kernel_hash_str = kernel.hash.hex()[:8] if kernel.hash else "None"
+                print(f"[Module.get_kernel_hooks] Looking up kernel: {kernel.key} (hash: {kernel_hash_str})")
             return module_exec.get_kernel_hooks(kernel)
         else:
             raise RuntimeError(f"Module is not loaded on device {device}")
@@ -6425,6 +6551,13 @@ def launch(
             fwd_types = kernel.infer_argument_types(fwd_args)
             kernel = kernel.add_overload(fwd_types)
 
+        # For unique module kernels, reset skip_build to allow compilation attempts on different devices.
+        # Even though a Module compiles separately for each device (stored in Module.execs),
+        # the skip_build flag is on the Adjoint which is shared across devices.
+        # A failure on one device shouldn't prevent compilation attempts on other devices.
+        if kernel.is_unique_module:
+            kernel.adj.skip_build = False
+
         # delay load modules, including new overload if needed
         try:
             module_exec = kernel.module.load(device, block_dim)
@@ -6892,6 +7025,56 @@ def compile_aot_module(
 
     if strip_hash is not None:
         module_object.options["strip_hash"] = strip_hash
+
+    # Validate generic kernels for AOT compilation
+    strip_hash_enabled = module_object.options.get("strip_hash", False)
+
+    # Find problematic generic kernels
+    no_overloads = []
+    multiple_overloads_with_strip_hash = []
+    compilable_kernel_count = 0
+
+    for key, kernel in module_object.kernels.items():
+        if not kernel.is_generic:
+            # Non-generic kernels are always compilable
+            compilable_kernel_count += 1
+            continue
+
+        num_overloads = len(kernel.overloads)
+        if num_overloads == 0:
+            no_overloads.append(key)
+        else:
+            # Generic kernel with at least one overload is compilable
+            compilable_kernel_count += 1
+            if num_overloads > 1 and strip_hash_enabled:
+                multiple_overloads_with_strip_hash.append(key)
+
+    # Check if there are no compilable kernels
+    if compilable_kernel_count == 0:
+        raise RuntimeError(
+            "Cannot compile module: No compilable kernels found in the module. "
+            "The module must contain at least one non-generic kernel or a generic kernel with overloads."
+        )
+
+    # Warn if there are generic kernels without overloads
+    if no_overloads:
+        from warp._src.utils import warn
+
+        warn(
+            f"Generic kernels without overloads will be skipped during AOT compilation. "
+            f"Add overloads using wp.overload() or the @wp.overload decorator to compile them. "
+            f"Kernels without overloads: {', '.join(no_overloads)}",
+            category=UserWarning,
+            stacklevel=2,
+        )
+
+    if multiple_overloads_with_strip_hash:
+        raise RuntimeError(
+            f"Cannot use strip_hash=True with generic kernels that have multiple overloads. "
+            f"Generic kernel overloads require unique hash suffixes to avoid name collisions. "
+            f"Use strip_hash=False or ensure each generic kernel has only one overload. "
+            f"Kernels: {', '.join(multiple_overloads_with_strip_hash)}"
+        )
 
     if device is None and arch:
         # User provided no device, but an arch, so we will not compile for the default device

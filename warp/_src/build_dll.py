@@ -16,8 +16,11 @@
 from __future__ import annotations
 
 import concurrent.futures
+import functools
 import os
 import platform
+import re
+import shutil
 import subprocess
 import sys
 import time
@@ -49,11 +52,18 @@ def run_cmd(cmd):
         print(cmd)
 
     try:
-        return subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        # Print output even on success to show warnings
+        if output:
+            decoded_output = output.decode()
+            if decoded_output.strip():  # Only print if not just whitespace
+                # In parallel builds, associate output with its command for clarity
+                # Use single print to avoid interleaving with other processes
+                print(f"Output from: {cmd}\n{decoded_output}")
+        return output
     except subprocess.CalledProcessError as e:
-        print("Command failed with exit code:", e.returncode)
-        print("Command output was:")
-        print(e.output.decode())
+        # Single print to avoid interleaving in parallel builds
+        print(f"Command failed with exit code {e.returncode}: {cmd}\nCommand output was:\n{e.output.decode()}")
         raise e
 
 
@@ -85,18 +95,44 @@ def set_msvc_env(msvc_path, sdk_path):
     return os.path.join(msvc_path, "bin", "HostX64", "x64", "cl.exe")
 
 
-def find_host_compiler():
+def find_host_compiler() -> str:
+    """Find the host C++ compiler.
+
+    On Windows, checks for pre-configured Visual Studio environment before
+    attempting auto-configuration. On Unix/Linux, respects $CXX environment
+    variable if set.
+
+    Returns:
+        Path to compiler executable, or empty string if not found (Windows only).
+        Note: Empty string return allows build_lib.py to handle error gracefully.
+    """
     if os.name == "nt":
-        # try and find an installed host compiler (msvc)
-        # runs vcvars and copies back the build environment
+        # Check if Visual Studio environment already configured (conda, Docker, vcvars64, etc.)
+        # VCINSTALLDIR and VCToolsVersion are set by vcvars64.bat
+        if os.environ.get("VCINSTALLDIR") or os.environ.get("VCToolsVersion"):
+            if verbose_cmd:
+                print("Visual Studio environment already configured, skipping vcvars64.bat")
+
+            cl_path = shutil.which("cl.exe")
+            if cl_path:
+                if verbose_cmd:
+                    print(f"Using cl.exe from pre-configured environment: {cl_path}")
+                return cl_path
+            else:
+                # Fall through to auto-configuration if cl.exe not actually available
+                if verbose_cmd:
+                    print("Warning: VS environment variables set but cl.exe not found, attempting auto-configuration")
 
         vswhere_path = r"%ProgramFiles(x86)%/Microsoft Visual Studio/Installer/vswhere.exe"
         vswhere_path = os.path.expandvars(vswhere_path)
         if not os.path.exists(vswhere_path):
-            return ""
+            return ""  # Signal to caller that VS not found
 
         vs_path = run_cmd(f'"{vswhere_path}" -latest -property installationPath').decode().rstrip()
         vsvars_path = os.path.join(vs_path, "VC\\Auxiliary\\Build\\vcvars64.bat")
+
+        if not os.path.exists(vsvars_path):
+            return ""  # Signal to caller that VS environment script not found
 
         output = run_cmd(f'"{vsvars_path}" && set').decode()
 
@@ -105,7 +141,7 @@ def find_host_compiler():
             if len(pair) >= 2:
                 os.environ[pair[0]] = pair[1]
 
-        cl_path = run_cmd("where cl.exe").decode("utf-8").rstrip()
+        cl_path = shutil.which("cl.exe")
         cl_version = os.environ["VCToolsVersion"].split(".")
 
         # ensure at least VS2019 version, see list of MSVC versions here https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
@@ -118,23 +154,42 @@ def find_host_compiler():
             print(
                 f"Warp: MSVC found but compiler version too old, found {cl_version[0]}.{cl_version[1]}, but must be {cl_required_major}.{cl_required_minor} or higher, kernel host compilation will be disabled."
             )
-            return ""
+            return ""  # Signal to caller that version too old
 
         return cl_path
 
     else:
-        # try and find g++
-        return run_cmd("which g++").decode()
+        # Respect $CXX environment variable (conda, cross-compilation, custom compilers, etc.)
+        cxx = os.environ.get("CXX", "").strip()
+        if cxx:
+            if verbose_cmd:
+                print(f"Using C++ compiler from $CXX: {cxx}")
+            return cxx
+
+        gxx_path = shutil.which("g++")
+        if gxx_path:
+            if verbose_cmd:
+                print(f"Using g++ found in PATH: {gxx_path}")
+            return gxx_path
+        else:
+            if verbose_cmd:
+                print("Warning: Could not locate g++, falling back to 'g++'")
+            return "g++"
 
 
 def get_cuda_toolkit_version(cuda_home) -> tuple[int, int]:
     try:
-        # the toolkit version can be obtained by running "nvcc --version"
-        nvcc_path = os.path.join(cuda_home, "bin", "nvcc")
-        nvcc_version_output = subprocess.check_output([nvcc_path, "--version"]).decode("utf-8")
-        # search for release substring (e.g., "release 11.5")
-        import re
+        # Get nvcc command using intelligent discovery
+        nvcc_cmd = find_nvcc_executable(cuda_home)
 
+        # Remove quotes for subprocess call (subprocess handles paths directly)
+        nvcc_executable = nvcc_cmd.strip('"')
+        if not nvcc_executable:
+            raise ValueError("nvcc command is empty")
+
+        nvcc_version_output = subprocess.check_output([nvcc_executable, "--version"]).decode("utf-8")
+
+        # search for release substring (e.g., "release 11.5")
         m = re.search(r"release (\d+)\.(\d+)", nvcc_version_output)
         if m is not None:
             major, minor = map(int, m.groups())
@@ -145,6 +200,49 @@ def get_cuda_toolkit_version(cuda_home) -> tuple[int, int]:
     except Exception as e:
         print(f"Warning: Failed to determine CUDA Toolkit version: {e}")
         return MIN_CTK_VERSION
+
+
+@functools.lru_cache(maxsize=1)  # Avoid duplicate verbose output when called multiple times per build
+def find_nvcc_executable(cuda_home) -> str:
+    """Find nvcc executable, maintaining consistency with cuda_home.
+
+    Detection order prioritizes consistency between compiler and headers/libs:
+    1. If cuda_home is set → use its nvcc (ensures consistency with headers/libs)
+    2. Otherwise check PATH → use nvcc from PATH (conda, modules, containers)
+    3. Fall back to assuming nvcc in PATH
+
+    This ensures the nvcc compiler version matches the CUDA headers/libraries,
+    preventing compilation failures from version mismatches.
+
+    Args:
+        cuda_home: Path to CUDA installation (may be None). Can come from
+            CUDA_HOME env var, --cuda_path argument, or auto-detection.
+
+    Returns:
+        String command to invoke nvcc (either "nvcc" or quoted full path)
+    """
+    # Determine correct executable name for platform
+    nvcc_name = "nvcc.exe" if os.name == "nt" else "nvcc"
+
+    # First priority: If cuda_home is provided, use its nvcc
+    # This handles CUDA_HOME env var, --cuda_path arg, and ensures consistency
+    if cuda_home:
+        nvcc_path = os.path.join(cuda_home, "bin", nvcc_name)
+        if os.path.exists(nvcc_path):
+            if verbose_cmd:
+                print(f"Using nvcc from cuda_home: {nvcc_path}")
+            return f'"{nvcc_path}"'
+
+    # Second priority: nvcc in PATH (conda, modules, containers)
+    # Note: shutil.which() automatically handles .exe extension on Windows
+    nvcc_in_path = shutil.which("nvcc")
+    if verbose_cmd:
+        if nvcc_in_path:
+            print(f"Using nvcc from PATH: {nvcc_in_path}")
+        else:
+            print("Warning: nvcc not found in PATH or cuda_home, compilation will likely fail")
+
+    return nvcc_name
 
 
 def quote(path):
@@ -381,6 +479,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             *gencode_opts,
             "-t0",  # multithreaded compilation
             "--extended-lambda",
+            "-diag-suppress=221",  # suppress "floating-point value does not fit" warning from INFINITY macro in CUDA headers
         ]
 
         # Clang options
@@ -391,6 +490,13 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             f'--cuda-path="{cuda_home}"',
         ]
 
+        # CUDA 13+ moved CUB into CCCL directory structure
+        if ctk_version >= (13, 0):
+            clang_opts.append(f'-I"{cuda_home}/include/cccl"')
+            # CCCL has #pragma unroll directives that Clang can't always satisfy
+            # Suppress optimizer warnings to avoid -Werror failures
+            clang_opts.append("-Wno-pass-failed")
+
         if args.compile_time_trace:
             if ctk_version >= (12, 8):
                 nvcc_opts.append("--fdevice-time-trace=_build/build_lib_@filename@_compile-time-trace")
@@ -399,6 +505,9 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
 
         if args.fast_math:
             nvcc_opts.append("--use_fast_math")
+
+        # Get nvcc executable (checks PATH first, then CUDA_HOME)
+        nvcc_cmd = find_nvcc_executable(cuda_home)
 
     # is the library being built with CUDA enabled?
     cuda_enabled = "WP_ENABLE_CUDA=1" if (cu_paths is not None) else "WP_ENABLE_CUDA=0"
@@ -431,7 +540,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             iter_dbg = "_ITERATOR_DEBUG_LEVEL=2"
             debug = "_DEBUG"
 
-        cpp_flags = f'/nologo /std:c++17 /GR- {runtime} /D "{debug}" /D "{cuda_enabled}" /D "{mathdx_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" {includes} '
+        cpp_flags = f'/nologo /std:c++17 /GR- /EHsc {runtime} /D "{debug}" /D "{cuda_enabled}" /D "{mathdx_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" {includes} '
 
         if args.mode == "debug":
             cpp_flags += "/FS /Zi /Od /D WP_ENABLE_DEBUG=1"
@@ -455,7 +564,11 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             for cpp_path in cpp_paths:
                 cpp_out = cpp_path + ".obj"
                 linkopts.append(quote(cpp_out))
-                cpp_cmd = f'"{args.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
+                # Add warning suppressions for clang.cpp to avoid LLVM header warnings
+                extra_flags = ""
+                if "clang/clang.cpp" in cpp_path.replace("\\", "/"):
+                    extra_flags = " /wd4624"  # suppress C4624: destructor was implicitly defined as deleted
+                cpp_cmd = f'"{args.host_compiler}" {cpp_flags}{extra_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
                 cpp_cmds.append(cpp_cmd)
 
             if args.jobs <= 1:
@@ -475,9 +588,9 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                     ]
 
                     if mode == "debug":
-                        cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 --compiler-options=/MT,/Zi,/Od -g -G -O0 -DNDEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -line-info {" ".join(_nvcc_opts)} -DWP_ENABLE_CUDA=1 -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                        cuda_cmd = f'{nvcc_cmd} --std=c++17 --compiler-options=/MT,/Zi,/Od -g -G -O0 -DNDEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -line-info {" ".join(_nvcc_opts)} -DWP_ENABLE_CUDA=1 -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
                     elif mode == "release":
-                        cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 {" ".join(_nvcc_opts)} -I"{native_dir}" -DNDEBUG -DWP_ENABLE_CUDA=1 -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                        cuda_cmd = f'{nvcc_cmd} --std=c++17 -O3 {" ".join(_nvcc_opts)} -I"{native_dir}" -DNDEBUG -DWP_ENABLE_CUDA=1 -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
 
                     cuda_cmds.append(cuda_cmd)
 
@@ -514,7 +627,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
     else:
         # Unix compilation
         cuda_compiler = "clang++" if getattr(args, "clang_build_toolchain", False) else "nvcc"
-        cpp_compiler = "clang++" if getattr(args, "clang_build_toolchain", False) else "g++"
+        cpp_compiler = "clang++" if getattr(args, "clang_build_toolchain", False) else args.host_compiler
 
         cpp_includes = f' -I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}-{arch}/include"'
         cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
@@ -524,7 +637,10 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
         if sys.platform == "darwin":
             version = f"--target={arch}-apple-macos11"
         else:
-            if cpp_compiler == "g++":
+            compiler_name = os.path.basename(cpp_compiler)
+            # Check for GCC compilers (g++, g++-11, x86_64-linux-gnu-g++, etc.)
+            # Exclude clang to avoid false match on "clang++" which ends with "g++"
+            if "clang" not in compiler_name and (compiler_name.endswith("g++") or "g++-" in compiler_name):
                 version = "-fabi-version=13"  # GCC 8.2+
             else:
                 version = ""
@@ -573,9 +689,9 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
 
                     if cuda_compiler == "nvcc":
                         if mode == "debug":
-                            cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(_nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                            cuda_cmd = f'{nvcc_cmd} --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(_nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
                         elif mode == "release":
-                            cuda_cmd = f'"{cuda_home}/bin/nvcc" --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(_nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                            cuda_cmd = f'{nvcc_cmd} --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(_nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
                     else:
                         # Use Clang compiler
                         if mode == "debug":

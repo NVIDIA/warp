@@ -825,6 +825,43 @@ def test_cast():
     wp.expect_eq(p_casted, 0x007B4000)
 
 
+@wp.kernel
+def test_reference_params_kernel(fs: wp.array(dtype=float), vs: wp.array(dtype=wp.vec3), qs: wp.array(dtype=wp.quat)):
+    tid = wp.tid()
+
+    v = wp.vec3(fs[tid], fs[tid], fs[tid])
+    wp.expect_eq(v, wp.vec3(1.0, 1.0, 1.0))
+
+    q = wp.quat(fs[tid], fs[tid], fs[tid], fs[tid])
+    wp.expect_eq(q, wp.quat(1.0, 1.0, 1.0, 1.0))
+
+    m1 = wp.mat22(fs[tid], fs[tid], fs[tid], fs[tid])
+    wp.expect_eq(m1, wp.mat22(1.0, 1.0, 1.0, 1.0))
+
+    m2 = wp.matrix_from_rows(vs[tid], vs[tid], vs[tid])
+    wp.expect_eq(m2, wp.mat33(2.0, 3.0, 4.0, 2.0, 3.0, 4.0, 2.0, 3.0, 4.0))
+
+    t = wp.transformation(p=vs[tid], q=qs[tid])
+    wp.expect_eq(t, wp.transformation(2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0))
+
+    sv = wp.spatial_vector(vs[tid], vs[tid])
+    wp.expect_eq(sv, wp.spatial_vector(2.0, 3.0, 4.0, 2.0, 3.0, 4.0))
+
+
+def test_reference_params(test, device):
+    fs = wp.array((1.0,), dtype=float, device=device)
+    vs = wp.array((wp.vec3(2.0, 3.0, 4.0),), dtype=wp.vec3, device=device)
+    qs = wp.array((wp.quat(5.0, 6.0, 7.0, 8.0),), dtype=wp.quat, device=device)
+
+    wp.launch(
+        test_reference_params_kernel,
+        dim=1,
+        inputs=(fs, vs, qs),
+        device=device,
+    )
+    wp.synchronize_device(device)
+
+
 class TestCodeGen(unittest.TestCase):
     pass
 
@@ -967,6 +1004,7 @@ add_function_test(
     devices=devices,
 )
 add_kernel_test(TestCodeGen, name="test_cast", kernel=test_cast, dim=1, devices=devices)
+add_function_test(TestCodeGen, "test_reference_params", test_reference_params, devices=devices)
 
 
 if __name__ == "__main__":

@@ -50,17 +50,31 @@ def conv_tiled(x: wp.array2d(dtype=wp.vec2d), y: wp.array2d(dtype=wp.vec2d)):
 
 
 if __name__ == "__main__":
-    wp.set_device("cuda:0")
+    import argparse
 
-    rng = np.random.default_rng(42)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing output.",
+    )
 
-    x_h = rng.standard_normal((TILE_M, TILE_N, 2), dtype=np.float64)
-    y_h = np.zeros_like(x_h)
+    args = parser.parse_known_args()[0]
 
-    x_wp = wp.array2d(x_h, dtype=wp.vec2d)
-    y_wp = wp.array2d(y_h, dtype=wp.vec2d)
+    with wp.ScopedDevice("cuda:0"):
+        rng = np.random.default_rng(42)
 
-    wp.launch_tiled(conv_tiled, dim=[1, 1], inputs=[x_wp], outputs=[y_wp], block_dim=BLOCK_DIM)
+        x_h = rng.standard_normal((TILE_M, TILE_N, 2), dtype=np.float64)
+        y_h = np.zeros_like(x_h)
 
-    # Since filter is 1/N, conv_tiled is a ~no-op
-    np.testing.assert_allclose(x_h, y_wp.numpy())
+        x_wp = wp.array2d(x_h, dtype=wp.vec2d)
+        y_wp = wp.array2d(y_h, dtype=wp.vec2d)
+
+        wp.launch_tiled(conv_tiled, dim=[1, 1], inputs=[x_wp], outputs=[y_wp], block_dim=BLOCK_DIM)
+
+        # Since filter is 1/N, conv_tiled is a ~no-op
+        np.testing.assert_allclose(x_h, y_wp.numpy())
+
+        if not args.headless:
+            print("Inputs:\n", x_wp)
+            print("Output:\n", y_wp)

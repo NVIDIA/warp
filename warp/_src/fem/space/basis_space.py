@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import weakref
 from functools import cached_property
 from typing import ClassVar, Optional
 
@@ -188,17 +189,6 @@ class ShapeBasisSpace(BasisSpace):
 
         self.ORDER = self._shape.ORDER
 
-        if hasattr(shape, "element_node_triangulation"):
-            self.node_triangulation = self._node_triangulation
-        if hasattr(shape, "element_node_tets"):
-            self.node_tets = self._node_tets
-        if hasattr(shape, "element_node_hexes"):
-            self.node_hexes = self._node_hexes
-        if hasattr(shape, "element_vtk_cells"):
-            self.vtk_cells = self._vtk_cells
-        if hasattr(topology, "node_grid"):
-            self.node_grid = topology.node_grid
-
     @property
     def shape(self) -> ShapeFunction:
         """Shape functions used for defining individual element basis"""
@@ -308,6 +298,36 @@ class ShapeBasisSpace(BasisSpace):
             return PiecewiseConstantBasisSpaceTrace(self)
 
         return TraceBasisSpace(self)
+
+    @property
+    def node_grid(self):
+        if not hasattr(self._topology, "node_grid"):
+            raise AttributeError(f"{self._topology.name} does not define a node grid")
+        return self._topology.node_grid
+
+    @property
+    def node_triangulation(self):
+        if not hasattr(self._shape, "element_node_triangulation"):
+            raise AttributeError(f"Shape function {self._shape.name} does not define a node triangulation")
+        return lambda: ShapeBasisSpace._node_triangulation(weakref.proxy(self))
+
+    @property
+    def node_tets(self):
+        if not hasattr(self._shape, "element_node_tets"):
+            raise AttributeError(f"Shape function {self._shape.name} does not define node tets")
+        return lambda: ShapeBasisSpace._node_tets(weakref.proxy(self))
+
+    @property
+    def node_hexes(self):
+        if not hasattr(self._shape, "element_node_hexes"):
+            raise AttributeError(f"Shape function {self._shape.name} does not define node hexes")
+        return lambda: ShapeBasisSpace._node_hexes(weakref.proxy(self))
+
+    @property
+    def vtk_cells(self):
+        if not hasattr(self._shape, "element_vtk_cells"):
+            raise AttributeError(f"Shape function {self._shape.name} does not define VTK cells")
+        return lambda: ShapeBasisSpace._vtk_cells(weakref.proxy(self))
 
     def _node_triangulation(self):
         element_node_indices = self._topology.element_node_indices().numpy()

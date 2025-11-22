@@ -55,34 +55,46 @@ def cholesky(
 
 
 if __name__ == "__main__":
-    wp.set_device("cuda:0")
+    import argparse
 
-    A_h = np.ones((TILE, TILE), dtype=np_type) + 5 * np.diag(np.ones(TILE), 0)
-    L_h = np.zeros_like(A_h)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing output.",
+    )
 
-    A_wp = wp.array2d(A_h, dtype=wp_type)
-    L_wp = wp.array2d(L_h, dtype=wp_type)
+    args = parser.parse_known_args()[0]
 
-    X_h = np.arange(TILE, dtype=np_type)
-    Y_h = np.zeros_like(X_h)
+    with wp.ScopedDevice(args.device):
+        A_h = np.ones((TILE, TILE), dtype=np_type) + 5 * np.diag(np.ones(TILE), 0)
+        L_h = np.zeros_like(A_h)
 
-    X_wp = wp.array1d(X_h, dtype=wp_type)
-    Y_wp = wp.array1d(Y_h, dtype=wp_type)
+        A_wp = wp.array2d(A_h, dtype=wp_type)
+        L_wp = wp.array2d(L_h, dtype=wp_type)
 
-    wp.launch_tiled(cholesky, dim=[1, 1], inputs=[A_wp, L_wp, X_wp, Y_wp], block_dim=BLOCK_DIM)
+        X_h = np.arange(TILE, dtype=np_type)
+        Y_h = np.zeros_like(X_h)
 
-    L_np = np.linalg.cholesky(A_h)
-    Y_np = np.linalg.solve(A_h, X_h)
+        X_wp = wp.array1d(X_h, dtype=wp_type)
+        Y_wp = wp.array1d(Y_h, dtype=wp_type)
 
-    print("A:\n", A_h)
-    print("L (Warp):\n", L_wp)
-    print("L (Numpy):\n", L_np)
+        wp.launch_tiled(cholesky, dim=[1, 1], inputs=[A_wp, L_wp, X_wp, Y_wp], block_dim=BLOCK_DIM)
 
-    print("x:\n", X_h)
-    print("A\\n (Warp):\n", Y_wp.numpy())
-    print("A\\x (Numpy):\n", Y_np)
+        L_np = np.linalg.cholesky(A_h)
+        Y_np = np.linalg.solve(A_h, X_h)
 
-    np.testing.assert_allclose(Y_wp.numpy(), Y_np)
-    np.testing.assert_allclose(L_wp.numpy(), L_np)
+        np.testing.assert_allclose(Y_wp.numpy(), Y_np)
+        np.testing.assert_allclose(L_wp.numpy(), L_np)
 
-    print("Example Tile Cholesky passed")
+        if not args.headless:
+            print("A:\n", A_h)
+            print("L (Warp):\n", L_wp)
+            print("L (Numpy):\n", L_np)
+
+            print("x:\n", X_h)
+            print("A\\n (Warp):\n", Y_wp.numpy())
+            print("A\\x (Numpy):\n", Y_np)
+
+            print("Example Tile Cholesky passed")

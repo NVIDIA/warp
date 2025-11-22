@@ -16,6 +16,7 @@
 """Functions to build Clang/LLVM from source and to build the CPU-only Warp library."""
 
 import os
+import shutil
 import subprocess
 import sys
 
@@ -25,18 +26,18 @@ from warp._src.build_dll import *
 base_path = os.path.dirname(os.path.realpath(__file__))
 build_path = os.path.join(base_path, "warp")
 
-llvm_project_path = os.path.join(base_path, "external/llvm-project")
-llvm_build_path = os.path.join(llvm_project_path, "out/build/")
-llvm_install_path = os.path.join(llvm_project_path, "out/install/")
+llvm_project_path = os.path.join(base_path, "external", "llvm-project")
+llvm_build_path = os.path.join(llvm_project_path, "out", "build")
+llvm_install_path = os.path.join(llvm_project_path, "out", "install")
 
 
 # Fetch prebuilt Clang/LLVM libraries
 def fetch_prebuilt_libraries(arch):
     if os.name == "nt":
-        packman = "tools\\packman\\packman.cmd"
+        packman = os.path.join(base_path, "tools", "packman", "packman.cmd")
         packages = {"x86_64": "15.0.7-windows-x86_64-ptx-vs142"}
     else:
-        packman = "./tools/packman/packman"
+        packman = os.path.join(base_path, "tools", "packman", "packman")
         if sys.platform == "darwin":
             packages = {
                 "aarch64": "15.0.7-darwin-aarch64-macos11",
@@ -53,7 +54,7 @@ def fetch_prebuilt_libraries(arch):
                 packman,
                 "install",
                 "-l",
-                f"./_build/host-deps/llvm-project/release-{arch}",
+                os.path.join(base_path, "_build", "host-deps", "llvm-project", f"release-{arch}"),
                 "clang+llvm-warp",
                 packages[arch],
             ],
@@ -63,6 +64,33 @@ def fetch_prebuilt_libraries(arch):
     except subprocess.CalledProcessError as e:
         print(e.output)
         raise e
+
+
+def check_build_dependencies(verbose: bool = False) -> None:
+    """Check that required build dependencies are available in PATH.
+
+    Args:
+        verbose: If True, print location of found dependencies.
+
+    Raises:
+        RuntimeError: If any required dependencies (cmake, ninja, git) are missing.
+    """
+    missing = []
+
+    for tool in ["cmake", "ninja", "git"]:
+        tool_path = shutil.which(tool)
+        if tool_path:
+            if verbose:
+                print(f"Found {tool}: {tool_path}")
+        else:
+            missing.append(tool)
+
+    if missing:
+        raise RuntimeError(
+            "Missing required build dependencies:\n  "
+            + "\n  ".join(missing)
+            + "\n\nPlease install using your package manager."
+        )
 
 
 def build_llvm_clang_from_source_for_arch(args, arch: str, llvm_source: str) -> None:
@@ -76,29 +104,32 @@ def build_llvm_clang_from_source_for_arch(args, arch: str, llvm_source: str) -> 
 
     # Check out the LLVM project Git repository, unless it already exists
     if not os.path.exists(llvm_source):
-        # Install dependencies
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "gitpython"])
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "cmake"])
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "ninja"])
-
-        from git import Repo
+        # Check that build dependencies are available
+        check_build_dependencies(verbose=args.verbose)
 
         repo_url = "https://github.com/llvm/llvm-project.git"
-        print(f"Cloning LLVM project from {repo_url}...")
-
-        shallow_clone = True  # https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/
         version = "21.1.0"
-        if shallow_clone:
-            repo = Repo.clone_from(
+        print(f"Cloning LLVM project from {repo_url} (branch llvmorg-{version})...")
+
+        # Use shallow clone for faster download (depth=1, single branch only)
+        # See https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/
+        # For full clone: Remove --depth and --single-branch, then add:
+        #   subprocess.run(["git", "checkout", f"tags/llvmorg-{version}", "-b", f"llvm-{version}"],
+        #                  cwd=llvm_source, check=True)
+        subprocess.run(
+            [
+                "git",
+                "clone",
+                "--single-branch",
+                "--branch",
+                f"llvmorg-{version}",
+                "--depth",
+                "1",
                 repo_url,
-                to_path=llvm_source,
-                single_branch=True,
-                branch=f"llvmorg-{version}",
-                depth=1,
-            )
-        else:
-            repo = Repo.clone_from(repo_url, to_path=llvm_source)
-            repo.git.checkout(f"tags/llvmorg-{version}", "-b", f"llvm-{version}")
+                llvm_source,
+            ],
+            check=True,
+        )
 
     print(f"Using LLVM project source from {llvm_source}")
 
@@ -119,8 +150,9 @@ def build_llvm_clang_from_source_for_arch(args, arch: str, llvm_source: str) -> 
             cmake_build_type = "RelWithDebInfo"
 
     # Location of cmake and ninja installed through pip (see build.bat / build.sh)
-    python_bin = "python/Scripts" if sys.platform == "win32" else "python/bin"
-    os.environ["PATH"] = os.path.join(base_path, "_build/target-deps/" + python_bin) + os.pathsep + os.environ["PATH"]
+    python_dir = "Scripts" if sys.platform == "win32" else "bin"
+    python_path = os.path.join(base_path, "_build", "target-deps", python_dir)
+    os.environ["PATH"] = f"{python_path}{os.pathsep}{os.environ['PATH']}"
 
     if arch == "aarch64":
         target_backend = "AArch64"
@@ -344,7 +376,7 @@ def build_warp_clang_for_arch(args, lib_name: str, arch: str) -> None:
         ]
         clang_cpp_paths = [os.path.join(build_path, cpp) for cpp in cpp_sources]
 
-        clang_dll_path = os.path.join(build_path, f"bin/{lib_name}")
+        clang_dll_path = os.path.join(build_path, "bin", lib_name)
 
         if args.build_llvm:
             # obtain Clang and LLVM libraries from the local build
@@ -353,7 +385,7 @@ def build_warp_clang_for_arch(args, lib_name: str, arch: str) -> None:
         else:
             # obtain Clang and LLVM libraries from packman
             fetch_prebuilt_libraries(arch)
-            libpath = os.path.join(base_path, f"_build/host-deps/llvm-project/release-{arch}/lib")
+            libpath = os.path.join(base_path, "_build", "host-deps", "llvm-project", f"release-{arch}", "lib")
 
         libs = []
 

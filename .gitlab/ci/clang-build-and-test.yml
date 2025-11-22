@@ -61,6 +61,14 @@ linux-x86_64 build:
     - mv warp/bin/warp.so warp/bin/linux-x86_64
     - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
 
+linux-x86_64 build cuda 13:
+  image: gitlab-master.nvidia.com:5005/omniverse/warp/cuda:13.0.1-devel-ubuntu24.04
+  extends:
+    - .build_linux_base
+    - .ipp_lnx_x86_64_cpu_medium
+  script:
+    - uv run build_lib.py --clang_build_toolchain
+
 # ==============================================================================
 # Unit Testing Jobs
 #

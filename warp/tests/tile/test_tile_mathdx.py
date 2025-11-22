@@ -74,6 +74,7 @@ def test_tile_math_matmul(test, device):
 
     assert_np_equal(A_wp.grad.numpy(), adj_C @ B.T, tol=1e-2)
     assert_np_equal(B_wp.grad.numpy(), A.T @ adj_C, tol=1e-2)
+    assert_np_equal(C_wp.grad.numpy(), np.zeros_like(adj_C), tol=1e-2)
 
 
 @wp.kernel()

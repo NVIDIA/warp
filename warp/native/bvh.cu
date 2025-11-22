@@ -398,7 +398,6 @@ __global__ void mark_packed_leaf_nodes(int n, const int* __restrict__ range_left
         int parent = parents[node_index];
         while (parent != -1)
         {
-            int old_parent = parent;
             parent = parents[parent];
             depth++;
         }

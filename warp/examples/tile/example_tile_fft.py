@@ -41,15 +41,31 @@ def fft_tiled(x: wp.array2d(dtype=wp.vec2d), y: wp.array2d(dtype=wp.vec2d)):
 
 
 if __name__ == "__main__":
-    wp.set_device("cuda:0")
+    import argparse
 
-    x_h = np.ones((TILE_M, TILE_N, 2), dtype=np.float64)
-    x_h[:, :, 1] = 0
-    y_h = 3 * np.ones((TILE_M, TILE_N, 2), dtype=np.float64)
-    x_wp = wp.array2d(x_h, dtype=wp.vec2d)
-    y_wp = wp.array2d(y_h, dtype=wp.vec2d)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode, suppressing output.",
+    )
 
-    wp.launch_tiled(fft_tiled, dim=[1, 1], inputs=[x_wp], outputs=[y_wp], block_dim=BLOCK_DIM)
+    args = parser.parse_known_args()[0]
 
-    print("Inputs:\n", x_wp)  # [1+0i, 1+0i, 1+0i, ...]
-    print("Output:\n", y_wp)  # [32+0i, 0, 0, ...]
+    with wp.ScopedDevice("cuda:0"):
+        x_h = np.ones((TILE_M, TILE_N, 2), dtype=np.float64)
+        x_h[:, :, 1] = 0
+        y_h = 3 * np.ones((TILE_M, TILE_N, 2), dtype=np.float64)
+        x_wp = wp.array2d(x_h, dtype=wp.vec2d)
+        y_wp = wp.array2d(y_h, dtype=wp.vec2d)
+
+        wp.launch_tiled(fft_tiled, dim=[1, 1], inputs=[x_wp], outputs=[y_wp], block_dim=BLOCK_DIM)
+
+        expected = np.zeros((TILE_M, TILE_N, 2), dtype=np.float64)
+        expected[0, :, 0] = 32.0
+
+        np.testing.assert_allclose(y_wp.numpy(), expected, atol=1.0e-4)
+
+        if not args.headless:
+            print("Inputs:\n", x_wp)  # [1+0i, 1+0i, 1+0i, ...]
+            print("Output:\n", y_wp)  # [32+0i, 0, 0, ...]

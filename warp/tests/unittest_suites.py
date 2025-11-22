@@ -186,6 +186,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_transient_module import TestTransientModule
     from warp.tests.test_triangle_closest_point import TestTriangleClosestPoint
     from warp.tests.test_types import TestTypes
+    from warp.tests.test_unique_module import TestUniqueModule
     from warp.tests.test_utils import TestUtils
     from warp.tests.test_vec import TestVec
     from warp.tests.test_vec_constructors import TestVecConstructors
@@ -304,6 +305,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTransientModule,
         TestTriangleClosestPoint,
         TestTypes,
+        TestUniqueModule,
         TestUtils,
         TestVec,
         TestVecConstructors,
@@ -323,6 +325,7 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
 
     Requires manual updates with test_ext.py for now.
     """
+    from warp.tests.aot.test_module_aot import TestModuleAOT
     from warp.tests.cuda.test_mempool import TestMempool
     from warp.tests.cuda.test_peer import TestPeer
     from warp.tests.cuda.test_pinned import TestPinned
@@ -341,6 +344,7 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_bool import TestBool
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
     from warp.tests.test_codegen import TestCodeGen
+    from warp.tests.test_coloring import TestColoring
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_conditional import TestConditional
     from warp.tests.test_copy import TestCopy
@@ -356,7 +360,6 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_lvalue import TestLValue
     from warp.tests.test_mat_lite import TestMatLite
     from warp.tests.test_math import TestMath
-    from warp.tests.test_module_aot import TestModuleAOT
     from warp.tests.test_module_hashing import TestModuleHashing
     from warp.tests.test_modules_lite import TestModuleLite
     from warp.tests.test_noise import TestNoise
@@ -380,6 +383,7 @@ def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestBuiltinsResolution,
         TestBvh,
         TestCodeGen,
+        TestColoring,
         TestConstants,
         TestConditional,
         TestCopy,

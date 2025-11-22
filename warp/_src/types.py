@@ -3776,7 +3776,10 @@ class fixedarray(array):
     @property
     def vars(self):
         # member attributes available during code-gen (e.g.: d = array.shape[0])
-        return {"shape": warp._src.codegen.Var("shape", shape_t)}
+        return {
+            "shape": warp._src.codegen.Var("shape", shape_t),
+            "ptr": warp._src.codegen.Var("data", pointer_t(self.dtype)),
+        }
 
 
 # A base class for non-contiguous arrays, providing the implementation of common methods like

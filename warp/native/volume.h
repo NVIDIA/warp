@@ -388,7 +388,6 @@ CUDA_CALLABLE inline typename Accessor::ValueType volume_sample(Accessor &access
         return 0;
     }
 
-    const pnanovdb_buf_t buf = accessor.buf;
     const pnanovdb_vec3_t uvw_pnano{uvw[0], uvw[1], uvw[2]};
 
     if (sampling_mode == CLOSEST)
@@ -442,7 +441,6 @@ CUDA_CALLABLE inline void adj_volume_sample(Accessor &accessor, vec3 uvw, int sa
         return;
     }
 
-    const pnanovdb_buf_t buf = accessor.buf;
     const pnanovdb_vec3_t uvw_pnano{uvw[0], uvw[1], uvw[2]};
 
     if (sampling_mode != LINEAR)
@@ -502,7 +500,6 @@ CUDA_CALLABLE inline typename Accessor::ValueType volume_sample_grad(
         return 0;
     }
 
-    const pnanovdb_buf_t buf = accessor.buf;
     const pnanovdb_vec3_t uvw_pnano{uvw[0], uvw[1], uvw[2]};
 
     if (sampling_mode == CLOSEST)
@@ -567,7 +564,6 @@ CUDA_CALLABLE inline void adj_volume_sample_grad(Accessor &accessor, vec3 uvw, i
         return;
     }
 
-    const pnanovdb_buf_t buf = accessor.buf;
     const pnanovdb_vec3_t uvw_pnano{uvw[0], uvw[1], uvw[2]};
 
     if (sampling_mode != LINEAR)
