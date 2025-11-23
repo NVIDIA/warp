@@ -80,31 +80,6 @@ def test_constructors_default_precision():
             wp.expect_eq(custom[i, j], float(i) * 2.0 + float(j))
 
 
-@wp.kernel
-def test_matrix_mutation(expected: wp._src.types.matrix(shape=(10, 3), dtype=float)):
-    m = wp.matrix(shape=(10, 3), dtype=float)
-
-    # test direct element indexing
-    m[0, 0] = 1.0
-    m[0, 1] = 2.0
-    m[0, 2] = 3.0
-
-    # The nested indexing (matrix->vector->scalar) below does not
-    # currently modify m because m[0] returns row vector by
-    # value rather than reference, this is different from NumPy
-    # which always returns by ref. Not clear how we can support
-    # this as well as auto-diff.
-
-    # m[0][1] = 2.0
-    # m[0][2] = 3.0
-
-    # test setting rows
-    for i in range(1, 10):
-        m[i] = m[i - 1] + wp.vec3(1.0, 2.0, 3.0)
-
-    wp.expect_eq(m, expected)
-
-
 devices = get_test_devices()
 
 
