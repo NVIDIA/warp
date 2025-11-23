@@ -3038,7 +3038,7 @@ def tile_sum(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[1]]:
 def tile_sort(keys: Tile[Any, Tuple[int]], values: Tile[Any, Tuple[int]]):
     """Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
 
-    :param keys: Keys to sort by. Supported key types: :class:`float32`, :class:`int32`, :class:`uint32`. Must be in shared memory.
+    :param keys: Keys to sort by. Supported key types: :class:`float32`, :class:`int32`, :class:`uint32`, :class:`int64`, :class:`uint64`. Must be in shared memory.
     :param values: Values to sort along with keys. No type restrictions. Must be in shared memory.
     :returns: No return value. Sorts both tiles in-place.
 
@@ -3323,6 +3323,68 @@ def tile_scan_exclusive(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[
     .. code-block:: text
 
         [0, 1, 3, 6] = tile(shape=(4), storage=register)
+
+    """
+    ...
+
+@over
+def tile_scan_max_inclusive(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+    """Inclusive max scan across the tile.
+
+    This function cooperatively performs an inclusive max scan (cumulative maximum) across the tile.
+
+    :param a: The input tile. Must be a tile of type float32, int32, or uint32.
+    :returns: A new tile containing the inclusive max scan result.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def scan_example(input: wp.array(dtype=int)):
+            t = wp.tile_load(input, shape=(4,))
+            s = wp.tile_scan_max_inclusive(t)
+            print(s)
+
+        input = wp.array([3, 1, 4, 2], dtype=int)
+        wp.launch_tiled(scan_example, dim=[1], inputs=[input], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        [3, 3, 4, 4] = tile(shape=(4), storage=register)
+
+    """
+    ...
+
+@over
+def tile_scan_min_inclusive(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+    """Inclusive min scan across the tile.
+
+    This function cooperatively performs an inclusive min scan (cumulative minimum) across the tile.
+
+    :param a: The input tile. Must be a tile of type float32, int32, or uint32.
+    :returns: A new tile containing the inclusive min scan result.
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def scan_example(input: wp.array(dtype=int)):
+            t = wp.tile_load(input, shape=(4,))
+            s = wp.tile_scan_min_inclusive(t)
+            print(s)
+
+        input = wp.array([3, 1, 4, 2], dtype=int)
+        wp.launch_tiled(scan_example, dim=[1], inputs=[input], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        [3, 1, 1, 1] = tile(shape=(4), storage=register)
 
     """
     ...

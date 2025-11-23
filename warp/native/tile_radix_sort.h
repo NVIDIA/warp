@@ -77,6 +77,33 @@ struct FloatKeyToUint
     }
 };
 
+struct Uint64KeyToUint
+{
+    inline CUDA_CALLABLE uint64_t convert(uint64_t value)
+    {
+        return value;
+    }
+
+    inline CUDA_CALLABLE uint64_t max_possible_key_value()
+    {
+        return 0xFFFFFFFFFFFFFFFFULL;
+    }
+};
+
+struct Int64KeyToUint
+{
+    inline CUDA_CALLABLE uint64_t convert(int64_t value)
+    {
+        // Flip the sign bit: ensures negative numbers come before positive numbers
+        return static_cast<uint64_t>(value) ^ 0x8000000000000000ULL;
+    }
+
+    inline CUDA_CALLABLE int64_t max_possible_key_value()
+    {
+        return 9223372036854775807LL;
+    }
+};
+
     
 constexpr inline CUDA_CALLABLE bool is_power_of_two(int x)
 {
@@ -400,6 +427,30 @@ inline CUDA_CALLABLE void bitonic_sort_thread_block_shared_mem(
         thread_id, keys_input, values_input, num_elements_to_sort);
 }
 
+// Specialization for int64 keys
+template <int max_num_elements, typename V>
+inline CUDA_CALLABLE void bitonic_sort_thread_block_shared_mem(
+    int thread_id,
+    int64_t* keys_input,
+    V* values_input,
+    int num_elements_to_sort)
+{
+    bitonic_sort_thread_block_shared_mem<max_num_elements, int64_t, V, Int64KeyToUint>(
+        thread_id, keys_input, values_input, num_elements_to_sort);
+}
+
+// Specialization for uint64 keys
+template <int max_num_elements, typename V>
+inline CUDA_CALLABLE void bitonic_sort_thread_block_shared_mem(
+    int thread_id,
+    uint64_t* keys_input,
+    V* values_input,
+    int num_elements_to_sort)
+{
+    bitonic_sort_thread_block_shared_mem<max_num_elements, uint64_t, V, Uint64KeyToUint>(
+        thread_id, keys_input, values_input, num_elements_to_sort);
+}
+
 
 
 // Ideally keys_input and values_input point into fast memory (shared memory)
@@ -461,6 +512,30 @@ inline CUDA_CALLABLE void bitonic_sort_thread_block_direct(
     int num_elements_to_sort)
 {
     bitonic_sort_thread_block_direct<max_num_elements, float, V, FloatKeyToUint>(
+        thread_id, keys_input, values_input, num_elements_to_sort);
+}
+
+// Specialization for int64 keys
+template <int max_num_elements, typename V>
+inline CUDA_CALLABLE void bitonic_sort_thread_block_direct(
+    int thread_id,
+    int64_t* keys_input,
+    V* values_input,
+    int num_elements_to_sort)
+{
+    bitonic_sort_thread_block_direct<max_num_elements, int64_t, V, Int64KeyToUint>(
+        thread_id, keys_input, values_input, num_elements_to_sort);
+}
+
+// Specialization for uint64 keys
+template <int max_num_elements, typename V>
+inline CUDA_CALLABLE void bitonic_sort_thread_block_direct(
+    int thread_id,
+    uint64_t* keys_input,
+    V* values_input,
+    int num_elements_to_sort)
+{
+    bitonic_sort_thread_block_direct<max_num_elements, uint64_t, V, Uint64KeyToUint>(
         thread_id, keys_input, values_input, num_elements_to_sort);
 }
 
@@ -777,7 +852,7 @@ CUDA_CALLABLE_DEVICE void tile_sort(TileK& t, TileV& t2)
     V* values = &t2.data(0);
 
     //Trim away the code that won't be used - possible because the number of elements to sort is known at compile time
-    if constexpr (num_elements_to_sort <= BITONIC_SORT_THRESHOLD)
+    if constexpr (num_elements_to_sort <= BITONIC_SORT_THRESHOLD || sizeof(T) > 4)
     {
         if constexpr(is_power_of_two(num_elements_to_sort))  
             bitonic_sort_thread_block_direct<num_elements_to_sort, V>(WP_TILE_THREAD_IDX, keys, values, num_elements_to_sort);
@@ -809,7 +884,7 @@ CUDA_CALLABLE_DEVICE void tile_sort(TileK& t, TileV& t2, int start, int length)
     T* keys = &t.data(start);
     V* values = &t2.data(start);
 
-    if (num_elements_to_sort <= BITONIC_SORT_THRESHOLD)
+    if (num_elements_to_sort <= BITONIC_SORT_THRESHOLD || sizeof(T) > 4)
     {
         if (is_power_of_two(num_elements_to_sort)) 
             bitonic_sort_thread_block_direct<max_elements_to_sort, V>(WP_TILE_THREAD_IDX, keys, values, num_elements_to_sort);
@@ -913,6 +988,18 @@ template <typename V, int max_size>
 void bitonic_sort_pairs_general_size_cpu(float* keys, V* values, int length)
 {
     bitonic_sort_pairs_general_size_cpu<float, V, max_size, FloatKeyToUint>(keys, values, length);
+}
+
+template <typename V, int max_size>
+void bitonic_sort_pairs_general_size_cpu(int64_t* keys, V* values, int length)
+{
+    bitonic_sort_pairs_general_size_cpu<int64_t, V, max_size, Int64KeyToUint>(keys, values, length);
+}
+
+template <typename V, int max_size>
+void bitonic_sort_pairs_general_size_cpu(uint64_t* keys, V* values, int length)
+{
+    bitonic_sort_pairs_general_size_cpu<uint64_t, V, max_size, Uint64KeyToUint>(keys, values, length);
 }
 
 
@@ -1039,7 +1126,7 @@ void tile_sort(TileK& t, TileV& t2)
     V* values = &t2.data(0);
 
     //Trim away the code that won't be used - possible because the number of elements to sort is known at compile time
-    if constexpr (num_elements_to_sort <= BITONIC_SORT_THRESHOLD)
+    if constexpr (num_elements_to_sort <= BITONIC_SORT_THRESHOLD || sizeof(T) > 4)
     {
         if constexpr(is_power_of_two(num_elements_to_sort))        
             bitonic_sort_pairs_pow2_length_cpu<T, V>(keys, values, num_elements_to_sort);        
@@ -1068,7 +1155,7 @@ void tile_sort(TileK& t, TileV& t2, int start, int length)
     T* keys = &t.data(start);
     V* values = &t2.data(start);
 
-    if (num_elements_to_sort <= BITONIC_SORT_THRESHOLD)
+    if (num_elements_to_sort <= BITONIC_SORT_THRESHOLD || sizeof(T) > 4)
     {
         if (is_power_of_two(num_elements_to_sort))        
             bitonic_sort_pairs_pow2_length_cpu<T, V>(keys, values, num_elements_to_sort);        

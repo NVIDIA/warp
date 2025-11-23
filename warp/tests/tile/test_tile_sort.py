@@ -46,8 +46,10 @@ def create_sort_kernel(KEY_TYPE, MAX_SORT_LENGTH):
 def test_tile_sort(test, device):
     # Forward-declare kernels for more efficient compilation
     kernels = {}
-    for dtype in [int, float]:
-        for i in range(0, 11):
+    for dtype in [wp.int32, wp.int64, wp.uint64, wp.float32]:
+        # Limit 64-bit types to 2^10 elements to avoid running out of shared memory
+        max_power = 10 if dtype in [wp.int64, wp.uint64] else 11
+        for i in range(0, max_power):
             length = 2**i + 1
             kernels[(dtype, length)] = create_sort_kernel(dtype, length)
 
@@ -57,10 +59,17 @@ def test_tile_sort(test, device):
 
             rng = np.random.default_rng(42)  # Create a random generator instance
 
-            if dtype == int:
-                np_keys = rng.choice(1000000000, size=length, replace=False)
-            else:  # dtype == float
-                np_keys = rng.uniform(0, 1000000000, size=length).astype(dtype)
+            if dtype == wp.int32:
+                # Generate integers in range [-500000000, 500000000)
+                np_keys = rng.integers(-500000000, 500000000, size=length, dtype=np.int32)
+            elif dtype == wp.int64:
+                # Generate integers in range [-500000000000, 500000000000)
+                np_keys = rng.integers(-500000000000, 500000000000, size=length, dtype=np.int64)
+            elif dtype == wp.uint64:
+                np_keys = rng.integers(0, 1000000000000, size=length, dtype=np.uint64)
+            else:  # dtype == wp.float32
+                # Generate floats in range [-500000000, 500000000)
+                np_keys = rng.uniform(-500000000, 500000000, size=length).astype(np.float32)
 
             np_values = np.arange(length)
 
@@ -85,10 +94,10 @@ def test_tile_sort(test, device):
             np_sorted_keys = np_keys[sorted_indices]
             np_sorted_values = np_values[sorted_indices]
 
-            if dtype == int:
-                keys_match = np.array_equal(output_keys.numpy(), np_sorted_keys)
-            else:  # dtype == float
+            if dtype == wp.float32:
                 keys_match = np.allclose(output_keys.numpy(), np_sorted_keys, atol=1e-6)  # Use tolerance for floats
+            else:  # Integer types
+                keys_match = np.array_equal(output_keys.numpy(), np_sorted_keys)
 
             values_match = np.array_equal(output_values.numpy(), np_sorted_values)
 
