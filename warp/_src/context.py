@@ -2523,6 +2523,9 @@ class Module:
         mode = self.options["mode"] if self.options["mode"] is not None else warp._src.config.mode
         opt = self.options["opt_level"] if self.options["opt_level"] is not None else warp._src.config.opt_level
 
+        if opt is None:
+            opt = 3  # default to full optimization (ignored for debug builds)
+
         # build CPU
         if output_arch is None:
             # build

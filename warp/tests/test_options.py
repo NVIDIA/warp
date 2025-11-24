@@ -112,8 +112,8 @@ def test_options_backward_4(test, device):
 
 
 def test_options_opt_level(test, device):
-    assert wp.config.opt_level == 3, "Default global opt_level should be 3"
-    assert wp.get_module_options()["opt_level"] is None, "Default module opt_level should be None"
+    assert wp.config.opt_level is None, "Default global `opt_level` should be None"
+    assert wp.get_module_options()["opt_level"] is None, "Default module `opt_level` should be None"
 
     wp.set_module_options({"opt_level": 2})
 
