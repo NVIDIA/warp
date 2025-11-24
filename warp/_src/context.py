@@ -2526,6 +2526,11 @@ class Module:
         if opt is None:
             opt = 3  # default to full optimization (ignored for debug builds)
 
+        if opt != 3 and output_arch and runtime.toolkit_version < (12, 9):
+            warp._src.utils.warn(
+                "Optimization level other than 3 has no effect on CUDA versions prior to 12.9.", once=True
+            )
+
         # build CPU
         if output_arch is None:
             # build
