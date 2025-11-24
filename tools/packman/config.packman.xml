@@ -1,12 +1,5 @@
-<config remotes="cloudfront urm">
+<config remotes="cloudfront">
   <remote2 name="cloudfront">
     <transport actions="download" protocol="http" packageLocation="d4i3qtqj3r0z5.cloudfront.net/${name}@${version}" />
-    <transport actions="list" protocol="https" packageLocation="omnipackages.nvidia.com/api/v1/list/cloudfront" />
-    <transport actions="upload" protocol="s3" packageLocation="packages-for-cloudfront" />
-    <transport actions="get-tag" protocol="https" packageLocation="omnipackages.nvidia.com/api/v1/tags/cloudfront" />
-  </remote2>
-  <remote2 name="urm">
-    <transport actions="download" protocol="https" packageLocation="urm.nvidia.com/artifactory/ct-omniverse-generic/pkgs/${name}/${name}@${version}" />
-    <transport actions="list" protocol="https" packageLocation="omnipackages.nvidia.com/api/v1/list/artifactory" />
   </remote2>
 </config>
