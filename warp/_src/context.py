@@ -2212,7 +2212,7 @@ class Module:
             "lineinfo": warp._src.config.lineinfo,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": None,
-            "opt_level": warp._src.config.opt_level,
+            "opt_level": None,
             "block_dim": 256,
             "compile_time_trace": warp._src.config.compile_time_trace,
             "strip_hash": False,
@@ -2521,6 +2521,7 @@ class Module:
         Path(build_dir).mkdir(parents=True, exist_ok=True)
 
         mode = self.options["mode"] if self.options["mode"] is not None else warp._src.config.mode
+        opt = self.options["opt_level"] if self.options["opt_level"] is not None else warp._src.config.opt_level
 
         # build CPU
         if output_arch is None:
@@ -2578,7 +2579,7 @@ class Module:
                         builder_options["output_arch"],
                         output_path,
                         config=mode,
-                        opt_level=self.options["opt_level"],
+                        opt_level=opt,
                         verify_fp=warp._src.config.verify_fp,
                         fast_math=self.options["fast_math"],
                         fuse_fp=self.options["fuse_fp"],
