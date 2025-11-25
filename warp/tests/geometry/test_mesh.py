@@ -198,6 +198,40 @@ def query_ray_kernel(
     wp.expect_near(wp.length(pos - expected_pos), 0.0, 1e-6)
 
 
+@wp.kernel(enable_backward=False)
+def query_ray_group_kernel(
+    mesh_id: wp.uint64,
+):
+    start = wp.vec3(0.1, 0.2, 0.3)
+    dir = wp.normalize(wp.vec3(-1.2, 2.3, -3.4))
+    expected_t = 0.557828
+
+    t = float(0.0)
+    bary_u = float(0.0)
+    bary_v = float(0.0)
+    sign = float(0.0)
+    normal = wp.vec3(0.0, 0.0, 0.0)
+    face = int(0)
+    root = -1
+
+    hit = wp.mesh_query_ray(
+        mesh_id,
+        start,
+        dir,
+        1e6,
+        t,
+        bary_u,
+        bary_v,
+        sign,
+        normal,
+        face,
+        root,
+    )
+
+    wp.expect_eq(hit, True)
+    wp.expect_near(t, expected_t)
+
+
 def test_mesh_query_ray(test, device):
     if device.is_cpu:
         constructors = ["sah", "median"]
@@ -234,6 +268,39 @@ def test_mesh_query_ray(test, device):
             ],
             device=device,
         )
+
+
+def test_grouped_mesh_query_ray(test, device):
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
+
+    leaf_sizes = [1, 2, 4]
+
+    points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
+    indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
+    same_group = wp.zeros(FACE_COUNT, dtype=int, device=device)
+    different_group = np.ones(FACE_COUNT)
+    different_group[: FACE_COUNT // 2] = 0
+    different_group = wp.array(different_group, dtype=int, device=device)
+
+    # Test that group construction maintains the same behavior as non-grouped construction
+    for leaf_size, constructor in itertools.product(leaf_sizes, constructors):
+        mesh = wp.Mesh(points=points, indices=indices, bvh_constructor=constructor, bvh_leaf_size=leaf_size)
+        wp.launch(query_ray_group_kernel, dim=1, inputs=[mesh.id], device=device)
+
+        mesh = wp.Mesh(
+            points=points, indices=indices, groups=same_group, bvh_constructor=constructor, bvh_leaf_size=leaf_size
+        )
+        wp.launch(query_ray_group_kernel, dim=1, inputs=[mesh.id], device=device)
+
+        mesh = wp.Mesh(
+            points=points, indices=indices, groups=different_group, bvh_constructor=constructor, bvh_leaf_size=leaf_size
+        )
+        wp.launch(query_ray_group_kernel, dim=1, inputs=[mesh.id], device=device)
+
+        wp.synchronize_device(device)
 
 
 def test_mesh_refit_graph(test, device):
@@ -309,6 +376,7 @@ class TestMesh(unittest.TestCase):
 add_function_test(TestMesh, "test_mesh_read_properties", test_mesh_read_properties, devices=devices)
 add_function_test(TestMesh, "test_mesh_query_point", test_mesh_query_point, devices=devices)
 add_function_test(TestMesh, "test_mesh_query_ray", test_mesh_query_ray, devices=devices)
+add_function_test(TestMesh, "test_grouped_mesh_query_ray", test_grouped_mesh_query_ray, devices=devices)
 add_function_test(TestMesh, "test_mesh_refit_graph", test_mesh_refit_graph, devices=get_selected_cuda_test_devices())
 add_function_test(TestMesh, "test_mesh_exceptions", test_mesh_exceptions, devices=get_selected_cuda_test_devices())
 
