@@ -59,17 +59,17 @@ Note: Debug mode may impact performance.
 This setting can be overridden at the module level by setting the ``"mode"`` module option.
 """
 
-opt_level: Optional[int] = None
+optimization_level: Optional[int] = None
 """Optimization level for Warp kernels.
 
 Args:
-    opt_level: An integer representing the optimization level (0-3), or ``None`` for default behavior.
+    optimization_level: An integer representing the optimization level (0-3), or ``None`` for default behavior.
 
 Note: Higher optimization levels increase compilation time but may improve run-time performance.
 
 Currently only affects GPU modules.
 
-This setting can be overridden at the module level by setting the ``"opt_level"`` module option.
+This setting can be overridden at the module level by setting the ``"optimization_level"`` module option.
 """
 
 verbose: bool = False

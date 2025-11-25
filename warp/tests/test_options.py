@@ -112,10 +112,10 @@ def test_options_backward_4(test, device):
 
 
 def test_options_opt_level(test, device):
-    assert wp.config.opt_level is None, "Default global `opt_level` should be None"
-    assert wp.get_module_options()["opt_level"] is None, "Default module `opt_level` should be None"
+    assert wp.config.optimization_level is None, "Default global `optimization_level` should be None"
+    assert wp.get_module_options()["optimization_level"] is None, "Default module `optimization_level` should be None"
 
-    wp.set_module_options({"opt_level": 2})
+    wp.set_module_options({"optimization_level": 2})
 
     x = wp.array([4.0], dtype=float, requires_grad=True, device=device)
     y = wp.zeros_like(x)
@@ -124,7 +124,7 @@ def test_options_opt_level(test, device):
     assert y.numpy()[0] == 16.0
 
     # Reset to default for the next device
-    wp.set_module_options({"opt_level": None})
+    wp.set_module_options({"optimization_level": None})
 
 
 devices = get_test_devices()
