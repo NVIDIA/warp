@@ -78,13 +78,29 @@ jobs:
   test-warp:
     runs-on: linux-amd64-gpu-h100-latest-1
     needs: build-warp
-    container: ghcr.io/astral-sh/uv:bookworm-slim
+    container: ubuntu:24.04
     timeout-minutes: 30
     steps:
+      - name: Install git and git-lfs
+        run: |
+          apt-get update
+          apt-get install -y git git-lfs
+          git lfs install
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.8.23"
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: '.python-version'
       
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
