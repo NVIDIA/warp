@@ -1,0 +1,4 @@
+include:
+  - project: "omniverse/warp-gitlab-ci"
+    ref: "main"
+    file: "/.gitlab-ci.yml"
