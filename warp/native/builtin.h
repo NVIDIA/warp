@@ -1714,11 +1714,14 @@ inline CUDA_CALLABLE float atomic_min(float* address, float val)
     int* address_as_i = reinterpret_cast<int*>(address);
     int old = *address_as_i;
     int assumed;
-    do {
-        assumed = old;
-        int min_as_i = __float_as_int(min(__int_as_float(assumed), val));
-        old = atomicCAS(address_as_i, assumed, min_as_i);
-    } while (assumed != old);
+
+    if (val < __int_as_float(old)) {
+        do {
+            assumed = old;
+            int min_as_i = __float_as_int(min(__int_as_float(assumed), val));
+            old = atomicCAS(address_as_i, assumed, min_as_i);
+        } while (assumed != old);
+    }
 
     return __int_as_float(old);
 
@@ -1738,11 +1741,14 @@ inline CUDA_CALLABLE double atomic_min(double* address, double val)
     unsigned long long* address_as_ull = reinterpret_cast<unsigned long long*>(address);
     unsigned long long old = *address_as_ull;
     unsigned long long assumed;
-    do {
-        assumed = old;
-        unsigned long long min_as_ull = __double_as_longlong(min(__longlong_as_double(assumed), val));
-        old = atomicCAS(address_as_ull, assumed, min_as_ull);
-    } while (assumed != old);
+
+    if (val < __longlong_as_double(old)) {
+        do {
+            assumed = old;
+            unsigned long long min_as_ull = __double_as_longlong(min(__longlong_as_double(assumed), val));
+            old = atomicCAS(address_as_ull, assumed, min_as_ull);
+        } while (assumed != old);
+    }
 
     return __longlong_as_double(old);
 
@@ -1774,11 +1780,14 @@ inline CUDA_CALLABLE float atomic_max(float* address, float val)
     int* address_as_i = reinterpret_cast<int*>(address);
     int old = *address_as_i;
     int assumed;
-    do {
-        assumed = old;
-        int max_as_i = __float_as_int(max(__int_as_float(assumed), val));
-        old = atomicCAS(address_as_i, assumed, max_as_i);
-    } while (assumed != old);
+
+    if (val > __int_as_float(old)) {
+        do {
+            assumed = old;
+            int max_as_i = __float_as_int(max(__int_as_float(assumed), val));
+            old = atomicCAS(address_as_i, assumed, max_as_i);
+        } while (assumed != old);
+    }
 
     return __int_as_float(old);
 
@@ -1798,11 +1807,14 @@ inline CUDA_CALLABLE double atomic_max(double* address, double val)
     unsigned long long* address_as_ull = reinterpret_cast<unsigned long long*>(address);
     unsigned long long old = *address_as_ull;
     unsigned long long assumed;
-    do {
-        assumed = old;
-        unsigned long long max_as_ull = __double_as_longlong(max(__longlong_as_double(assumed), val));
-        old = atomicCAS(address_as_ull, assumed, max_as_ull);
-    } while (assumed != old);
+
+    if (val > __longlong_as_double(old)) {
+        do {
+            assumed = old;
+            unsigned long long max_as_ull = __double_as_longlong(max(__longlong_as_double(assumed), val));
+            old = atomicCAS(address_as_ull, assumed, max_as_ull);
+        } while (assumed != old);
+    }
 
     return __longlong_as_double(old);
 
