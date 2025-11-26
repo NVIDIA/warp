@@ -81,6 +81,14 @@ jobs:
     container: ubuntu:24.04
     timeout-minutes: 30
     steps:
+      - name: Display GPU information
+        run: |
+          if command -v nvidia-smi &> /dev/null; then
+            nvidia-smi
+          else
+            echo "Warning: nvidia-smi not found in container"
+          fi
+
       - name: Install git and git-lfs
         run: |
           apt-get update
