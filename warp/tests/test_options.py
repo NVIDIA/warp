@@ -45,7 +45,7 @@ def scale_2(
     y[0] = x[0] ** 2.0
 
 
-def test_options_1(test, device):
+def test_options_backward_1(test, device):
     x = wp.array([3.0], dtype=float, requires_grad=True, device=device)
     y = wp.zeros_like(x)
 
@@ -64,7 +64,7 @@ def test_options_1(test, device):
     assert_np_equal(tape.gradients[x].numpy(), np.array(0.0))
 
 
-def test_options_2(test, device):
+def test_options_backward_2(test, device):
     x = wp.array([3.0], dtype=float, requires_grad=True, device=device)
     y = wp.zeros_like(x)
 
@@ -78,7 +78,7 @@ def test_options_2(test, device):
     assert_np_equal(tape.gradients[x].numpy(), np.array(6.0))
 
 
-def test_options_3(test, device):
+def test_options_backward_3(test, device):
     x = wp.array([3.0], dtype=float, requires_grad=True, device=device)
     y = wp.zeros_like(x)
 
@@ -92,7 +92,7 @@ def test_options_3(test, device):
     assert_np_equal(tape.gradients[x].numpy(), np.array(6.0))
 
 
-def test_options_4(test, device):
+def test_options_backward_4(test, device):
     x = wp.array([3.0], dtype=float, requires_grad=True, device=device)
     y = wp.zeros_like(x)
 
@@ -111,6 +111,22 @@ def test_options_4(test, device):
     assert_np_equal(tape.gradients[x].numpy(), np.array(0.0))
 
 
+def test_options_opt_level(test, device):
+    assert wp.config.optimization_level is None, "Default global `optimization_level` should be None"
+    assert wp.get_module_options()["optimization_level"] is None, "Default module `optimization_level` should be None"
+
+    wp.set_module_options({"optimization_level": 2})
+
+    x = wp.array([4.0], dtype=float, requires_grad=True, device=device)
+    y = wp.zeros_like(x)
+
+    wp.launch(scale, dim=1, inputs=[x, y], device=device)
+    assert y.numpy()[0] == 16.0
+
+    # Reset to default for the next device
+    wp.set_module_options({"optimization_level": None})
+
+
 devices = get_test_devices()
 
 
@@ -118,11 +134,11 @@ class TestOptions(unittest.TestCase):
     pass
 
 
-add_function_test(TestOptions, "test_options_1", test_options_1, devices=devices)
-add_function_test(TestOptions, "test_options_2", test_options_2, devices=devices)
-add_function_test(TestOptions, "test_options_3", test_options_3, devices=devices)
-add_function_test(TestOptions, "test_options_4", test_options_4, devices=devices)
-
+add_function_test(TestOptions, "test_options_backward_1", test_options_backward_1, devices=devices)
+add_function_test(TestOptions, "test_options_backward_2", test_options_backward_2, devices=devices)
+add_function_test(TestOptions, "test_options_backward_3", test_options_backward_3, devices=devices)
+add_function_test(TestOptions, "test_options_backward_4", test_options_backward_4, devices=devices)
+add_function_test(TestOptions, "test_options_opt_level", test_options_opt_level, devices=devices, check_output=False)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

@@ -1114,7 +1114,7 @@ WP_API bool wp_cuda_graph_resume_capture(void* context, void* stream, void* grap
 WP_API bool wp_cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph) { return false; }
 WP_API bool wp_cuda_graph_check_conditional_body(void* body_graph) { return false; }
 
-WP_API size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, bool compile_time_trace, bool precompiled_headers, const char* output_path, const char* kernel_cache_dir, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types) { return 0; }
+WP_API size_t wp_cuda_compile_program(const char* cuda_src, const char* program_name, int arch, const char* include_dir, int num_cuda_include_dirs, const char** cuda_include_dirs, bool debug, int optimization_level, bool verbose, bool verify_fp, bool fast_math, bool fuse_fp, bool lineinfo, bool compile_time_trace, bool precompiled_headers, const char* output_path, const char* kernel_cache_dir, size_t num_ltoirs, char** ltoirs, size_t* ltoir_sizes, int* ltoir_input_types) { return 0; }
 
 WP_API void* wp_cuda_load_module(void* context, const char* ptx) { return NULL; }
 WP_API void wp_cuda_unload_module(void* context, void* module) {}

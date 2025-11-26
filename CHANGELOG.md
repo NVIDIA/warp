@@ -20,6 +20,11 @@
 - Add support for `int64` and `uint64` key types to `wp.tile_sort()` ([GH-1089](https://github.com/NVIDIA/warp/issues/1089)).
 - Add `wp.tile_scan_max_inclusive()` and `wp.tile_scan_min_inclusive()` for cumulative maximum and minimum operations across tiles ([GH-1090](https://github.com/NVIDIA/warp/issues/1090)).
 - Changed BVH SAH constructor to use centroids instead of bounds to determine partition axis, improving build quality and traversal performance in some scenarios ([GH-1102](https://github.com/NVIDIA/warp/issues/1102)).
+- Add a `wp.config.optimization_level` config which can be used to control the optimization level of modules.
+  It defaults to level `None`, which is currently equivalent to `3` and  enables all optimizations, at the cost of
+  compilation time. Lower levels may improve compile times but reduce run-time performance. It can be configured
+  globally, or per-module using `wp.set_module_options({"optimization_level": #})`. Currently it only has an effect
+  on GPU modules and only when using CUDA Toolkit 12.9 or newer ([GH-1084](https://github.com/NVIDIA/warp/issues/1084)).
 
 ### Removed
 

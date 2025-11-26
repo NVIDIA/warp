@@ -2212,6 +2212,7 @@ class Module:
             "lineinfo": warp._src.config.lineinfo,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": None,
+            "optimization_level": None,
             "block_dim": 256,
             "compile_time_trace": warp._src.config.compile_time_trace,
             "strip_hash": False,
@@ -2520,6 +2521,19 @@ class Module:
         Path(build_dir).mkdir(parents=True, exist_ok=True)
 
         mode = self.options["mode"] if self.options["mode"] is not None else warp._src.config.mode
+        opt = (
+            self.options["optimization_level"]
+            if self.options["optimization_level"] is not None
+            else warp._src.config.optimization_level
+        )
+
+        if opt is None:
+            opt = 3  # default to full optimization (ignored for debug builds)
+
+        if opt != 3 and output_arch and runtime.toolkit_version < (12, 9):
+            warp._src.utils.warn(
+                "Optimization level other than 3 has no effect on CUDA versions prior to 12.9.", once=True
+            )
 
         # build CPU
         if output_arch is None:
@@ -2577,6 +2591,7 @@ class Module:
                         builder_options["output_arch"],
                         output_path,
                         config=mode,
+                        optimization_level=opt,
                         verify_fp=warp._src.config.verify_fp,
                         fast_math=self.options["fast_math"],
                         fuse_fp=self.options["fuse_fp"],
@@ -4394,6 +4409,7 @@ class Runtime:
                 ctypes.c_int,  # num_cuda_include_dirs
                 ctypes.POINTER(ctypes.c_char_p),  # cuda include dirs
                 ctypes.c_bool,  # debug
+                ctypes.c_int,  # optimization_level
                 ctypes.c_bool,  # verbose
                 ctypes.c_bool,  # verify_fp
                 ctypes.c_bool,  # fast_math
