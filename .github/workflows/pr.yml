@@ -87,12 +87,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Display GPU information
-        run: |
-          if ! command -v nvidia-smi &> /dev/null; then
-            echo "Error: nvidia-smi not found in container"
-            exit 1
-          fi
-          nvidia-smi
+        run: nvidia-smi
 
       - name: Install git and git-lfs
         run: |
