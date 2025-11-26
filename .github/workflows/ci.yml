@@ -157,6 +157,148 @@ jobs:
           show: "fail"
         if: always()
 
+  test-warp-gpu:
+    runs-on: linux-amd64-gpu-h100-latest-1
+    needs: build-warp
+    # Only run on PRs (pull-request branches) or scheduled runs
+    if: github.repository == 'NVIDIA/warp' && (startsWith(github.ref, 'refs/heads/pull-request/') || github.event_name == 'schedule')
+    container:
+      image: ubuntu:24.04
+      options: -u root --security-opt seccomp=unconfined --shm-size 16g
+      env:
+        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
+    timeout-minutes: 30
+    steps:
+      - name: Display GPU information
+        run: nvidia-smi
+
+      - name: Setup proxy cache
+        uses: nv-gha-runners/setup-proxy-cache@main
+
+      - name: Install git and git-lfs
+        run: |
+          apt-get update
+          apt-get install -y git git-lfs
+          git lfs install
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.8.23"
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: '.python-version'
+      
+      - name: Download Warp build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifact-ubuntu-x86_64
+          path: warp/bin/
+      
+      - name: Run Tests
+        run: uv run --extra dev --extra torch-cu12 -m warp.tests --junit-report-xml rspec.xml -s autodetect
+      
+      - name: Test Summary
+        uses: test-summary/action@v2.3
+        with:
+          paths: "rspec.xml"
+          show: "fail"
+        if: always()
+
+  build-docs:
+    runs-on: ubuntu-latest
+    needs: build-warp
+    outputs:
+      artifact-url: ${{ steps.build-docs-output.outputs.artifact-url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.8.23"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: '.python-version'
+      - name: Download Warp binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifact-ubuntu-x86_64
+          path: warp/bin/
+      - name: Build Sphinx documentation
+        run: |
+          uv run --extra docs build_docs.py --quick
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        id: build-docs-output
+        with:
+          name: build-docs-output
+          path: |
+            warp/__init__.pyi
+            docs/modules/functions.rst
+
+  check-build-docs-output:
+    runs-on: ubuntu-latest
+    needs: build-docs
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Download build_docs.py output
+        uses: actions/download-artifact@v4
+        with:
+          name: build-docs-output
+          path: .
+      - name: Check functions.rst
+        env:
+          ARTIFACT_URL: ${{ needs.build-docs.outputs.artifact-url }}
+        run: >
+          git diff --exit-code docs/modules/functions.rst ||
+          (echo "Please run build_docs.py (or download from $ARTIFACT_URL) and add docs/modules/functions.rst to your pull request." && false)
+      - name: Check stubs
+        env:
+          ARTIFACT_URL: ${{ needs.build-docs.outputs.artifact-url }}
+        run: >
+          git diff --exit-code warp/__init__.pyi ||
+          (echo "Please run build_docs.py (or download from $ARTIFACT_URL) and add warp/__init__.pyi to your pull request." && false)
+
+  check-generated-files:
+    runs-on: ubuntu-latest
+    needs: build-warp
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.8.23"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: '.python-version'
+      - name: Download native headers
+        uses: actions/download-artifact@v4
+        with:
+          name: native-headers-ubuntu-x86_64
+          path: warp/native/
+      - name: Check version consistency
+        run: uv run --no-project tools/ci/publishing/check_version_consistency.py --verbose
+      - name: Check exports.h is committed
+        run: >
+          git diff --exit-code warp/native/exports.h ||
+          (echo "Please run build_lib.py and add warp/native/exports.h to your pull request." && false)
+      - name: Check version.h is committed
+        run: >
+          git diff --exit-code warp/native/version.h ||
+          (echo "Please run build_lib.py and add warp/native/version.h to your pull request." && false)
+
   check-unnamespaced-symbols:
     runs-on: ubuntu-latest
     needs: build-warp
@@ -194,71 +336,3 @@ jobs:
           fi
 
           echo "SUCCESS: All symbols are correctly namespaced."
-
-  cppcheck:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Cache cppcheck build directory
-        uses: actions/cache@v4
-        with:
-          path: _build/.cppcheck
-          key: cppcheck-${{ github.run_id }}
-          restore-keys: |
-            cppcheck-
-      
-      - name: Set up Miniforge
-        run: |
-          wget -q -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-          bash Miniforge3.sh -b -p "${HOME}/conda"
-          echo "${HOME}/conda/bin" >> $GITHUB_PATH
-      
-      - name: Install cppcheck
-        run: |
-          source "${HOME}/conda/etc/profile.d/conda.sh"
-          conda activate
-          conda install cppcheck --channel conda-forge -y
-          mkdir -p _build/.cppcheck
-          cppcheck --version
-      
-      - name: Run cppcheck
-        run: |
-          source "${HOME}/conda/etc/profile.d/conda.sh"
-          conda activate
-          cppcheck \
-            --inline-suppr \
-            --cppcheck-build-dir=_build/.cppcheck \
-            --enable=warning \
-            --quiet \
-            --error-exitcode=1 \
-            -j $(nproc) \
-            --suppress=*:warp/native/nanovdb/* \
-            --suppress=normalCheckLevelMaxBranches \
-            warp
-      
-      - name: Generate XML report
-        if: always()
-        run: |
-          source "${HOME}/conda/etc/profile.d/conda.sh"
-          conda activate
-          cppcheck \
-            --inline-suppr \
-            --cppcheck-build-dir=_build/.cppcheck \
-            --enable=warning \
-            --quiet \
-            --xml \
-            --xml-version=2 \
-            -j $(nproc) \
-            --suppress=*:warp/native/nanovdb/* \
-            --suppress=normalCheckLevelMaxBranches \
-            warp \
-            2> cppcheck-report.xml
-      
-      - name: Upload cppcheck report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cppcheck-report
-          path: cppcheck-report.xml
