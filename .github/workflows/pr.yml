@@ -78,16 +78,20 @@ jobs:
   test-warp:
     runs-on: linux-amd64-gpu-h100-latest-1
     needs: build-warp
-    container: ubuntu:24.04
+    if: github.repository == 'NVIDIA/warp'
+    container:
+      image: ubuntu:24.04
+      env:
+        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
     timeout-minutes: 30
     steps:
       - name: Display GPU information
         run: |
-          if command -v nvidia-smi &> /dev/null; then
-            nvidia-smi
-          else
-            echo "Warning: nvidia-smi not found in container"
+          if ! command -v nvidia-smi &> /dev/null; then
+            echo "Error: nvidia-smi not found in container"
+            exit 1
           fi
+          nvidia-smi
 
       - name: Install git and git-lfs
         run: |
