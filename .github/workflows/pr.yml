@@ -81,7 +81,6 @@ jobs:
     if: github.repository == 'NVIDIA/warp'
     container:
       image: ubuntu:24.04
-      options: -u root --security-opt seccomp=unconfined --shm-size 16g
       env:
         NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
     timeout-minutes: 30
