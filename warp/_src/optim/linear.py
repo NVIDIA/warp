@@ -316,7 +316,7 @@ def _create_tiled_dot_kernels(tile_size):
         b: wp.array2d(dtype=Any),
         partial_sums: wp.array2d(dtype=Any),
     ):
-        column, block_id, tid_block = wp.tid()
+        column, block_id, _tid_block = wp.tid()
 
         start = block_id * tile_size
 
@@ -332,7 +332,7 @@ def _create_tiled_dot_kernels(tile_size):
         data: wp.array2d(dtype=Any),
         partial_sums: wp.array2d(dtype=Any),
     ):
-        column, block_id, tid_block = wp.tid()
+        column, block_id, _tid_block = wp.tid()
         start = block_id * tile_size
 
         t = wp.tile_load(data[column], shape=tile_size, offset=start)

@@ -19,6 +19,8 @@ This file is intended to define functions that return TestSuite objects, which
 can be used in parallel or serial unit tests (with optional code coverage)
 """
 
+# ruff: noqa: PLC0415
+
 import os
 import sys
 import unittest

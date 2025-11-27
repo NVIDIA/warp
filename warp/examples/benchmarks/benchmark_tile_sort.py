@@ -30,7 +30,7 @@ def create_test_kernel(KEY_TYPE, MAX_SORT_LENGTH):
         output_keys: wp.array(dtype=KEY_TYPE, ndim=2),
         output_values: wp.array(dtype=wp.int32, ndim=2),
     ):
-        batch_id, i = wp.tid()
+        batch_id, _i = wp.tid()
 
         # Load input into shared memory
         keys = wp.tile_load(input_keys[batch_id], shape=MAX_SORT_LENGTH, storage="shared")

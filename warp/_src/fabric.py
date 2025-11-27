@@ -131,7 +131,7 @@ class fabricarray(noncontiguous_array_base[T]):
         super().__init__(ARRAY_TYPE_FABRIC)
 
         if data is not None:
-            from .context import runtime
+            from .context import runtime  # noqa: PLC0415
 
             # ensure the attribute name was also specified
             if not isinstance(attrib, str):

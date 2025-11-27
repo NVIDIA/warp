@@ -297,7 +297,7 @@ def triangulate(face_counts, face_indices):
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_mesh_query_point(test, device):
-    from pxr import Usd, UsdGeom
+    from pxr import Usd, UsdGeom  # noqa: PLC0415
 
     mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "spiky.usd")))
     mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/Cube/Cube"))
@@ -528,7 +528,7 @@ def mesh_query_point_loss(
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_adj_mesh_query_point(test, device):
-    from pxr import Usd, UsdGeom
+    from pxr import Usd, UsdGeom  # noqa: PLC0415
 
     mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "torus.usda")))
     mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/World/Torus"))
@@ -665,7 +665,7 @@ def sample_furthest_points_brute(
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_mesh_query_furthest_point(test, device):
-    from pxr import Usd, UsdGeom
+    from pxr import Usd, UsdGeom  # noqa: PLC0415
 
     mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "spiky.usd")))
     mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/Cube/Cube"))
@@ -755,7 +755,7 @@ def triangle_closest_point_for_test(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp.ve
 
 
 def load_mesh(model_name="bunny"):
-    from pxr import Usd, UsdGeom
+    from pxr import Usd, UsdGeom  # noqa: PLC0415
 
     usd_stage = Usd.Stage.Open(os.path.join(wp.examples.get_asset_directory(), model_name + ".usd"))
     usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/" + model_name))
@@ -804,7 +804,7 @@ def point_query_aabb_and_closest(
         u2 = pos[t2]
         u3 = pos[t3]
 
-        closest_p1, barycentric1 = triangle_closest_point_for_test(u1, u2, u3, p)
+        closest_p1, _barycentric1 = triangle_closest_point_for_test(u1, u2, u3, p)
 
         dis = wp.length(closest_p1 - p)
 

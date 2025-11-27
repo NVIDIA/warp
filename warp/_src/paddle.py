@@ -52,7 +52,7 @@ def device_from_paddle(paddle_device: Place | CPUPlace | CUDAPinnedPlace | CUDAP
             raise RuntimeError(f"Unsupported Paddle device {paddle_device}")
     else:
         try:
-            from paddle.base.libpaddle import CPUPlace, CUDAPinnedPlace, CUDAPlace, Place
+            from paddle.base.libpaddle import CPUPlace, CUDAPinnedPlace, CUDAPlace, Place  # noqa: PLC0415
 
             if isinstance(paddle_device, Place):
                 if paddle_device.is_gpu_place():
@@ -112,7 +112,7 @@ def dtype_to_paddle(warp_dtype):
     """
     # initialize lookup table on first call to defer paddle import
     if dtype_to_paddle.type_map is None:
-        import paddle
+        import paddle  # noqa: PLC0415
 
         dtype_to_paddle.type_map = {
             warp.float16: paddle.float16,
@@ -150,7 +150,7 @@ def dtype_from_paddle(paddle_dtype):
     """
     # initialize lookup table on first call to defer paddle import
     if dtype_from_paddle.type_map is None:
-        import paddle
+        import paddle  # noqa: PLC0415
 
         dtype_from_paddle.type_map = {
             paddle.float16: warp.float16,
@@ -180,7 +180,7 @@ def dtype_is_compatible(paddle_dtype: paddle.dtype, warp_dtype) -> bool:
     """Evaluates whether the given paddle dtype is compatible with the given Warp dtype."""
     # initialize lookup table on first call to defer paddle import
     if dtype_is_compatible.compatible_sets is None:
-        import paddle
+        import paddle  # noqa: PLC0415
 
         dtype_is_compatible.compatible_sets = {
             paddle.float64: {warp.float64},
@@ -351,8 +351,8 @@ def to_paddle(a: warp.array, requires_grad: bool | None = None) -> paddle.Tensor
     Returns:
         paddle.Tensor: The converted tensor.
     """
-    import paddle
-    import paddle.utils.dlpack
+    import paddle  # noqa: PLC0415
+    import paddle.utils.dlpack  # noqa: PLC0415
 
     if requires_grad is None:
         requires_grad = a.requires_grad
@@ -390,7 +390,7 @@ def to_paddle(a: warp.array, requires_grad: bool | None = None) -> paddle.Tensor
 
 def stream_from_paddle(stream_or_device=None):
     """Convert from a Paddle CUDA stream to a Warp CUDA stream."""
-    import paddle
+    import paddle  # noqa: PLC0415
 
     if isinstance(stream_or_device, paddle.device.Stream):
         stream = stream_or_device

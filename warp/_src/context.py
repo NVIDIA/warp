@@ -954,7 +954,7 @@ def func_grad(forward_fn):
             grad_fn, skip_forward_codegen=True, skip_reverse_codegen=False, transformers=forward_fn.adj.transformers
         )
 
-        from warp._src.types import types_equal
+        from warp._src.types import types_equal  # noqa: PLC0415
 
         grad_args = adj.args
         grad_sig = warp._src.types.get_signature([arg.type for arg in grad_args], func_name=forward_fn.key)
@@ -3448,7 +3448,7 @@ class Device:
             return total_mem.value
         else:
             try:
-                import psutil
+                import psutil  # noqa: PLC0415
 
                 return psutil.virtual_memory().total
             except ModuleNotFoundError:
@@ -3473,7 +3473,7 @@ class Device:
             return free_mem.value
         else:
             try:
-                import psutil
+                import psutil  # noqa: PLC0415
 
                 return psutil.virtual_memory().free
             except ModuleNotFoundError:
@@ -5702,7 +5702,7 @@ class RegisteredGLBuffer:
 
             if self.flags == self.READ_ONLY or self.flags == self.NONE:
                 # copy from OpenGL buffer to Warp array
-                from pyglet import gl
+                from pyglet import gl  # noqa: PLC0415
 
                 gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.gl_buffer_id)
                 nbytes = self.warp_buffer.size * warp._src.types.type_size_in_bytes(dtype)
@@ -5723,7 +5723,7 @@ class RegisteredGLBuffer:
 
             if self.flags == self.WRITE_DISCARD or self.flags == self.NONE:
                 # copy from Warp array to OpenGL buffer
-                from pyglet import gl
+                from pyglet import gl  # noqa: PLC0415
 
                 gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.gl_buffer_id)
                 buffer = self.warp_buffer.numpy()
@@ -7078,7 +7078,7 @@ def compile_aot_module(
 
     # Warn if there are generic kernels without overloads
     if no_overloads:
-        from warp._src.utils import warn
+        from warp._src.utils import warn  # noqa: PLC0415
 
         warn(
             f"Generic kernels without overloads will be skipped during AOT compilation. "
@@ -7797,8 +7797,7 @@ def copy(
 
     If neither source nor destination are on a CUDA device, no stream is used for the copy.
     """
-
-    from warp._src.context import runtime
+    from warp._src.context import runtime  # noqa: PLC0415
 
     if not warp._src.types.is_array(src) or not warp._src.types.is_array(dest):
         raise RuntimeError("Copy source and destination must be arrays")

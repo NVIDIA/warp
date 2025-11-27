@@ -19,6 +19,7 @@ import hashlib
 import json
 import os
 import platform
+import shutil
 import time
 from pathlib import Path
 
@@ -176,8 +177,6 @@ def clear_kernel_cache() -> None:
 
     warp._src.context.init()
 
-    import shutil
-
     is_initialized = warp._src.context.runtime is not None
     assert is_initialized, "The kernel cache directory is not configured; wp.init() has not been called yet or failed."
 
@@ -196,8 +195,6 @@ def clear_lto_cache() -> None:
     """
 
     warp._src.context.init()
-
-    import shutil
 
     is_initialized = warp._src.context.runtime is not None
     assert is_initialized, "The kernel cache directory is not configured; wp.init() has not been called yet or failed."
@@ -361,8 +358,6 @@ def _build_lto_base(lto_symbol, compile_func, builder, extra_files=None):
 
     # Clean up the temporary build directory
     if build_dir:
-        import shutil
-
         shutil.rmtree(build_dir, ignore_errors=True)
 
     if not extra_files:

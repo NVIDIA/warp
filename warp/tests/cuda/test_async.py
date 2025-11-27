@@ -19,6 +19,7 @@ import numpy as np
 
 import warp as wp
 from warp._src.utils import check_p2p
+from warp.tests.test_fabricarray import _create_fabric_array_interface
 from warp.tests.unittest_utils import *
 
 
@@ -294,8 +295,6 @@ def as_indexed_array(data, device=None, **kwargs):
 
 
 def as_fabric_array(data, device=None, **kwargs):
-    from warp.tests.test_fabricarray import _create_fabric_array_interface
-
     a = wp.array(data=data, device=device)
     iface = _create_fabric_array_interface(a, "foo")
     fa = wp.fabricarray(data=iface, attrib="foo")
@@ -304,8 +303,6 @@ def as_fabric_array(data, device=None, **kwargs):
 
 
 def as_indexed_fabric_array(data, device=None, **kwargs):
-    from warp.tests.test_fabricarray import _create_fabric_array_interface
-
     a = wp.array(data=data, device=device)
     shape = (*a.shape[:-1], 2 * a.shape[-1])
     # allocate double the elements so we can index half of them

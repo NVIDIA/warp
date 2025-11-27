@@ -20,13 +20,12 @@ from warp._src.fem import cache
 from warp._src.fem.types import Coords
 
 from .shape_function import ShapeFunction
+from .triangle_shape_function import _triangle_node_index
 
 _wp_module_name_ = "warp.fem.space.shape.tet_shape_function"
 
 
 def _tet_node_index(tx: int, ty: int, tz: int, degree: int):
-    from .triangle_shape_function import _triangle_node_index
-
     VERTEX_NODE_COUNT = 4
     EDGE_INTERIOR_NODE_COUNT = degree - 1
     VERTEX_EDGE_NODE_COUNT = VERTEX_NODE_COUNT + 6 * EDGE_INTERIOR_NODE_COUNT
@@ -257,7 +256,7 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
 
         @cache.dynamic_func(suffix=self.name)
         def node_quadrature_weight(node_index_in_element: int):
-            node_type, type_index = self.node_type_and_type_index(node_index_in_element)
+            node_type, _type_index = self.node_type_and_type_index(node_index_in_element)
 
             if node_type == TetrahedronPolynomialShapeFunctions.VERTEX:
                 return VERTEX_WEIGHT
@@ -292,7 +291,7 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
 
         @cache.dynamic_func(suffix=self.name)
         def trace_node_quadrature_weight(node_index_in_element: int):
-            node_type, type_index = self.node_type_and_type_index(node_index_in_element)
+            node_type, _type_index = self.node_type_and_type_index(node_index_in_element)
 
             if node_type == TetrahedronPolynomialShapeFunctions.VERTEX:
                 return VERTEX_WEIGHT
@@ -573,7 +572,7 @@ class TetrahedronNonConformingPolynomialShapeFunctions(ShapeFunction):
 
         @cache.dynamic_func(suffix=self.name)
         def node_quadrature_weight(node_index_in_element: int):
-            node_type, type_index = self._tet_shape.node_type_and_type_index(node_index_in_element)
+            node_type, _type_index = self._tet_shape.node_type_and_type_index(node_index_in_element)
 
             if node_type == TetrahedronPolynomialShapeFunctions.VERTEX:
                 return VERTEX_WEIGHT

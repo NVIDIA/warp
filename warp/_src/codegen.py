@@ -1541,7 +1541,7 @@ class Adjoint:
         # a literal value or references a variable.
         extra_shared_memory = 0
         if func.lto_dispatch_func is not None:
-            func_args, template_args, ltoirs, extra_shared_memory = func.lto_dispatch_func(
+            func_args, template_args, _ltoirs, extra_shared_memory = func.lto_dispatch_func(
                 func.input_types, return_type, output_list, bound_args, options=adj.builder_options, builder=adj.builder
             )
         elif func.dispatch_func is not None:
@@ -1598,7 +1598,7 @@ class Adjoint:
         else:
             adj.add_forward(forward_call, replay=replay_call)
 
-        if func.is_differentiable and len(func_args):
+        if func.is_differentiable and func_args:
             adj_args = tuple(strip_reference(x) for x in func_args)
             reverse_has_output_args = (
                 func.require_original_output_arg or len(output_list) > 1
@@ -3810,7 +3810,7 @@ def constant_str(value):
     elif isinstance(value, ctypes.Array):
         if value_type._wp_scalar_type_ == float16:
             # special case for float16, which is stored as uint16 in the ctypes.Array
-            from warp._src.context import runtime
+            from warp._src.context import runtime  # noqa: PLC0415
 
             scalar_value = runtime.core.wp_half_bits_to_float
         else:

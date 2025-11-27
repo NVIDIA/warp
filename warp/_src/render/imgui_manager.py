@@ -25,8 +25,8 @@ class ImGuiManager:
 
     def __init__(self, renderer):
         try:
-            import imgui
-            from imgui.integrations.pyglet import PygletProgrammablePipelineRenderer
+            import imgui  # noqa: PLC0415
+            from imgui.integrations.pyglet import PygletProgrammablePipelineRenderer  # noqa: PLC0415
 
             self.imgui = imgui
             self.is_available = True
@@ -69,8 +69,8 @@ class ImGuiManager:
     ) -> str | None:
         """Opens a file dialog for saving a file and returns the selected path."""
         try:
-            import tkinter as tk
-            from tkinter import filedialog
+            import tkinter as tk  # noqa: PLC0415
+            from tkinter import filedialog  # noqa: PLC0415
         except ImportError:
             print("Warning: tkinter not found. To use the file dialog, please install it.")
             return None
@@ -95,8 +95,8 @@ class ImGuiManager:
     ) -> str | None:
         """Opens a file dialog for loading a file and returns the selected path."""
         try:
-            import tkinter as tk
-            from tkinter import filedialog
+            import tkinter as tk  # noqa: PLC0415
+            from tkinter import filedialog  # noqa: PLC0415
         except ImportError:
             print("Warning: tkinter not found. To use the file dialog, please install it.")
             return None

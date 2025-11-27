@@ -45,7 +45,6 @@ def cplx_prod(x: wp.vec2d, y: wp.vec2d):
 
 @wp.kernel
 def conv_tiled(x: wp.array2d(dtype=wp.vec2d), y: wp.array2d(dtype=wp.vec2d), z: wp.array2d(dtype=wp.vec2d)):
-    i, j, _ = wp.tid()
     a = wp.tile_load(x, shape=(TILE_M, TILE_N))
     b = wp.tile_load(y, shape=(TILE_M, TILE_N))
     wp.tile_fft(a)

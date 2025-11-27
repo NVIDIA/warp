@@ -50,7 +50,7 @@ def device_from_torch(torch_device) -> warp._src.context.Device:
             else:
                 raise RuntimeError(f"Unsupported Torch device type {torch_device.type}")
         except Exception as e:
-            import torch
+            import torch  # noqa: PLC0415
 
             if not isinstance(torch_device, torch.device):
                 raise ValueError("Argument must be a torch.device object or a string") from e
@@ -87,7 +87,7 @@ def dtype_to_torch(warp_dtype):
     """
     # initialize lookup table on first call to defer torch import
     if dtype_to_torch.type_map is None:
-        import torch
+        import torch  # noqa: PLC0415
 
         dtype_to_torch.type_map = {
             warp.float16: torch.float16,
@@ -125,7 +125,7 @@ def dtype_from_torch(torch_dtype):
     """
     # initialize lookup table on first call to defer torch import
     if dtype_from_torch.type_map is None:
-        import torch
+        import torch  # noqa: PLC0415
 
         dtype_from_torch.type_map = {
             torch.float16: warp.float16,
@@ -155,7 +155,7 @@ def dtype_is_compatible(torch_dtype, warp_dtype) -> bool:
     """Evaluates whether the given torch dtype is compatible with the given Warp dtype."""
     # initialize lookup table on first call to defer torch import
     if dtype_is_compatible.compatible_sets is None:
-        import torch
+        import torch  # noqa: PLC0415
 
         dtype_is_compatible.compatible_sets = {
             torch.float64: {warp.float64},
@@ -319,7 +319,7 @@ def to_torch(a, requires_grad=None):
     Returns:
         torch.Tensor: The converted tensor.
     """
-    import torch
+    import torch  # noqa: PLC0415
 
     if requires_grad is None:
         requires_grad = a.requires_grad
@@ -355,7 +355,7 @@ def to_torch(a, requires_grad=None):
 
 def stream_from_torch(stream_or_device=None):
     """Convert from a Torch CUDA stream to a Warp CUDA stream."""
-    import torch
+    import torch  # noqa: PLC0415
 
     if isinstance(stream_or_device, torch.cuda.Stream):
         stream = stream_or_device
@@ -375,7 +375,7 @@ def stream_from_torch(stream_or_device=None):
 
 def stream_to_torch(stream_or_device=None):
     """Convert from a Warp CUDA stream to a Torch CUDA stream."""
-    import torch
+    import torch  # noqa: PLC0415
 
     if isinstance(stream_or_device, warp.Stream):
         stream = stream_or_device

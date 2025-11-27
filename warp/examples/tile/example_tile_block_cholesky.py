@@ -45,7 +45,7 @@ def create_blocked_cholesky_kernel(block_size: int):
 
         A is assumed to support block reading.
         """
-        tid, tid_block = wp.tid()
+        _tid, tid_block = wp.tid()
         num_threads_per_block = wp.block_dim()
 
         active_matrix_size = active_matrix_size_arr[0]

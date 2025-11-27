@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import inspect
 import itertools
+import re
 from typing import Any, Callable, Sequence
 
 import numpy as np
@@ -475,8 +476,8 @@ def jacobian_plot(
         The created Matplotlib figure.
     """
 
-    import matplotlib.pyplot as plt
-    from matplotlib.ticker import MaxNLocator
+    import matplotlib.pyplot as plt  # noqa: PLC0415
+    from matplotlib.ticker import MaxNLocator  # noqa: PLC0415
 
     if isinstance(kernel, wp.Kernel):
         assert inputs is not None
@@ -1052,7 +1053,6 @@ def print_table(headers, cells):
         headers: List of header strings.
         cells: List of lists of cell strings.
     """
-    import re
 
     def sanitized_len(s):
         return len(re.sub(r"\033\[\d+m", "", str(s)))

@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ruff: noqa: PLC0415
+
 import importlib.util
 import itertools
 import os

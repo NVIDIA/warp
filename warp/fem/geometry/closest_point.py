@@ -26,6 +26,6 @@ from warp._src.fem.geometry import closest_point as _closest_point
 
 
 def __getattr__(name):
-    from warp._src.utils import get_deprecated_api
+    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
     return get_deprecated_api(_closest_point, "wp.fem.geometry", name)

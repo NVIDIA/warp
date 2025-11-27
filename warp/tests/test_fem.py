@@ -23,6 +23,7 @@ import numpy as np
 import warp as wp
 import warp.fem as fem
 from warp._src.fem.geometry.closest_point import project_on_tet_at_origin, project_on_tri_at_origin
+from warp._src.fem.geometry.element import LinearEdge, Polynomial, Triangle
 from warp._src.fem.space import shape
 from warp.fem import Coords, D, Domain, Field, Sample, curl, div, grad, integrand, make_free_sample, normal
 from warp.fem.cache import dynamic_kernel
@@ -1064,8 +1065,6 @@ def test_closest_point_queries(test, device):
 
 
 def test_regular_quadrature(test, device):
-    from warp._src.fem.geometry.element import LinearEdge, Polynomial, Triangle
-
     for family in Polynomial:
         # test integrating monomials
         for degree in range(8):

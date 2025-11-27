@@ -22,7 +22,8 @@ import numpy as np
 import warp as wp
 import warp.fem as fem
 from warp.context import assert_conditional_graph_support
-from warp.optim.linear import LinearOperator, aslinearoperator, preconditioner
+from warp.optim.linear import LinearOperator, aslinearoperator, bicgstab, cg, cr, gmres, preconditioner
+from warp.render import UsdRenderer
 from warp.sparse import BsrMatrix, bsr_get_diag, bsr_mv, bsr_transposed
 
 __all__ = [
@@ -209,8 +210,6 @@ def gen_volume(res, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp.
 
 
 def _get_linear_solver_func(method_name: str):
-    from warp.optim.linear import bicgstab, cg, cr, gmres
-
     if method_name == "bicgstab":
         return bicgstab
     if method_name == "gmres":
@@ -573,8 +572,6 @@ class Plot:
         self._usd_renderer = None
         if stage is not None:
             try:
-                from warp.render import UsdRenderer
-
                 self._usd_renderer = UsdRenderer(stage)
             except Exception as err:
                 print(f"Could not initialize UsdRenderer for stage '{stage}': {err}.")
@@ -642,7 +639,7 @@ class Plot:
                 wp.utils.warn("pyvista or matplotlib must be installed to visualize solution results")
 
     def _plot_pyvista(self, options: Dict[str, Any]):
-        import pyvista
+        import pyvista  # noqa: PLC0415
 
         grids = {}
         scales = {}
@@ -802,9 +799,9 @@ class Plot:
             plotter.update()
 
     def _plot_matplotlib(self, options: Dict[str, Any]):
-        import matplotlib.animation as animation
-        import matplotlib.pyplot as plt
-        from matplotlib import cm
+        import matplotlib.animation as animation  # noqa: PLC0415
+        import matplotlib.pyplot as plt  # noqa: PLC0415
+        from matplotlib import cm  # noqa: PLC0415
 
         def make_animation(fig, ax, cax, values, draw_func):
             def animate(i):
@@ -919,15 +916,15 @@ def _value_or_magnitude(values: np.ndarray):
 
 
 def _field_triangulation(field):
-    from matplotlib.tri import Triangulation
+    from matplotlib.tri import Triangulation  # noqa: PLC0415
 
     node_positions = field.space.node_positions().numpy()
     return Triangulation(x=node_positions[:, 0], y=node_positions[:, 1], triangles=field.space.node_triangulation())
 
 
 def _plot_surface(field, axes, **kwargs):
-    from matplotlib.cm import get_cmap
-    from matplotlib.colors import Normalize
+    from matplotlib.cm import get_cmap  # noqa: PLC0415
+    from matplotlib.colors import Normalize  # noqa: PLC0415
 
     C = _value_or_magnitude(field.dof_values.numpy())
 
@@ -1006,7 +1003,7 @@ def _plot_quivers_3d(field, axes, clim=None, cmap=None, glyph_scale=1.0, **kwarg
 
 
 def _plot_streamlines(field, axes, clim=None, **kwargs):
-    import matplotlib.tri as tr
+    import matplotlib.tri as tr  # noqa: PLC0415
 
     triangulation = _field_triangulation(field)
 

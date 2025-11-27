@@ -23,7 +23,7 @@ from warp.tests.unittest_utils import *
 
 @wp.kernel
 def conditional_sum(result: wp.array(dtype=wp.uint64)):
-    i, j, k = wp.tid()
+    i, _j, _k = wp.tid()
 
     if i == 0:
         wp.atomic_add(result, 0, wp.uint64(1))

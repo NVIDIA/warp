@@ -47,7 +47,7 @@ def format_file_with_ruff(file_path):
     """Format file with ruff using pre-commit for version consistency."""
     logger.debug(f"Formatting {file_path} with ruff via pre-commit")
     try:
-        import pre_commit.main
+        import pre_commit.main  # noqa: PLC0415
 
         result = pre_commit.main.main(["run", "ruff-format", "--files", file_path])
         if result == 0:
@@ -68,7 +68,7 @@ def build_sphinx_docs(source_dir, output_dir, builder="html"):
     """Build Sphinx documentation programmatically."""
     logger.info(f"Building {builder} documentation: {source_dir} -> {output_dir}")
     try:
-        from sphinx.cmd.build import build_main
+        from sphinx.cmd.build import build_main  # noqa: PLC0415
 
         # Clean previous output
         if os.path.exists(output_dir):

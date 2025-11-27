@@ -41,7 +41,7 @@ def create_array(rng, dim_in, dim_hid, dtype=float):
 
 
 def test_multi_layer_nn(test, device):
-    import torch as tc
+    import torch as tc  # noqa: PLC0415
 
     if device.is_cuda and not wp._src.context.runtime.core.wp_is_mathdx_enabled():
         test.skipTest("Skipping test on CUDA device without MathDx (tolerance)")
@@ -284,7 +284,7 @@ def test_multi_layer_nn(test, device):
 
 
 def test_single_layer_nn(test, device):
-    import torch as tc
+    import torch as tc  # noqa: PLC0415
 
     DIM_IN = 8
     DIM_OUT = 16

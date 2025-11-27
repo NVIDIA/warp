@@ -43,8 +43,6 @@ def cholesky(
     X: wp.array1d(dtype=wp_type),
     Y: wp.array1d(dtype=wp_type),
 ):
-    i, j, _ = wp.tid()
-
     a = wp.tile_load(A, shape=(TILE, TILE))
     l = wp.tile_cholesky(a)
     wp.tile_store(L, l)

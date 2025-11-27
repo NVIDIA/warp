@@ -55,8 +55,12 @@ def handle_ci_nightly_build(base_path: str) -> str | None:
 
     # Import CI publishing tools
     sys.path.insert(0, os.path.join(base_path, "tools", "ci", "publishing"))
-    from set_nightly_version import increment_minor, write_new_version_to_config, write_new_version_to_version_file
-    from update_git_hash import get_git_hash, update_git_hash_in_config
+    from set_nightly_version import (  # noqa: PLC0415
+        increment_minor,
+        write_new_version_to_config,
+        write_new_version_to_version_file,
+    )
+    from update_git_hash import get_git_hash, update_git_hash_in_config  # noqa: PLC0415
 
     # Paths
     version_file = os.path.join(base_path, "VERSION.md")

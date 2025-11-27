@@ -17,6 +17,7 @@ import unittest
 
 import numpy as np
 
+import warp as uncommon_name
 import warp as wp
 import warp._src.context
 import warp.tests.aux_test_name_clash1 as name_clash_module_1
@@ -465,8 +466,6 @@ def test_graph_capture(test, device):
 
 
 def test_renamed_warp_module(test, device):
-    import warp as uncommon_name
-
     @wp.func
     def my_func(a: float):
         return uncommon_name.abs(2.0 * a - 10.0)

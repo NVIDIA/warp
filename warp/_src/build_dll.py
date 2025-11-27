@@ -18,6 +18,7 @@ from __future__ import annotations
 import concurrent.futures
 import functools
 import os
+import pathlib
 import platform
 import re
 import shutil
@@ -450,8 +451,6 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
 
     if libs is None:
         libs = []
-
-    import pathlib
 
     warp_home_path = pathlib.Path(__file__).parent.parent
     warp_home = warp_home_path.resolve()

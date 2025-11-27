@@ -106,7 +106,7 @@ def loss_form(
     # to avoid degenerate and inverted elements
 
     F = fem.deformation_gradient(domain, s)
-    U, S, V = wp.svd2(F)
+    _U, S, _V = wp.svd2(F)
 
     quality = wp.min(S) / wp.max(S) / quality_threshold
     quality_pen = -wp.log(wp.max(quality, 0.0001)) * wp.min(0.0, quality - 1.0) * wp.min(0.0, quality - 1.0)

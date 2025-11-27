@@ -15,6 +15,8 @@
 
 """Entry point for the extension."""
 
+# ruff: noqa: PLC0415
+
 import asyncio
 import os
 import subprocess

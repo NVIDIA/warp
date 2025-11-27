@@ -19,6 +19,7 @@ from typing import Any
 import numpy as np
 
 import warp as wp
+from warp._src.types import vector_types
 from warp.tests.unittest_utils import *
 
 
@@ -2340,7 +2341,7 @@ def test_array_aliasing_from_numpy(test, device):
 
 
 def test_array_from_cai(test, device):
-    import torch
+    import torch  # noqa: PLC0415
 
     @wp.kernel
     def first_row_plus_one(x: wp.array2d(dtype=float)):
@@ -3620,8 +3621,6 @@ def test_graph_fill_vecmat(test, device):
                 assert_np_equal(arr.numpy(), expected)
 
     with wp.ScopedDevice(device):
-        from warp._src.types import vector_types
-
         # create arrays with different vector/matrix types
         n = 1000
         contiguous_arrays = []

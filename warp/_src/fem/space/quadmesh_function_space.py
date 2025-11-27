@@ -193,7 +193,7 @@ class QuadmeshSpaceTopology(SpaceTopology):
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self._shape.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, _type_index = self._shape.node_type_and_type_index(node_index_in_elt)
 
             if node_type == SquareShapeFunction.EDGE_X or node_type == SquareShapeFunction.EDGE_Y:
                 side_start = wp.where(

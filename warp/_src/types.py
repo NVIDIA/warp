@@ -4092,7 +4092,7 @@ class tile(Tile[DType, Shape]):
 
     # generates C-type string
     def ctype(self):
-        from warp._src.codegen import Var
+        from warp._src.codegen import Var  # noqa: PLC0415
 
         if self.storage == "register":
             return f"wp::tile_register_t<{Var.type_to_ctype(self.dtype)},wp::tile_layout_register_t<wp::tile_shape_t<{','.join(map(str, self.shape))}>>>"
@@ -4103,7 +4103,7 @@ class tile(Tile[DType, Shape]):
 
     # generates C-initializer string
     def cinit(self, requires_grad=False):
-        from warp._src.codegen import Var
+        from warp._src.codegen import Var  # noqa: PLC0415
 
         if self.storage == "register":
             return self.ctype() + "(0.0)"
@@ -4377,7 +4377,7 @@ class Bvh:
 
 
 class Mesh:
-    from warp._src.codegen import Var
+    from warp._src.codegen import Var  # noqa: PLC0415
 
     vars: ClassVar[dict[str, Var]] = {
         "points": Var("points", array(dtype=vec3)),
@@ -4941,7 +4941,7 @@ class Volume:
                 grid_data_offset += chunk_size
         elif codec == 2:  # blosc compression
             try:
-                import blosc
+                import blosc  # noqa: PLC0415
             except ImportError as err:
                 raise RuntimeError(
                     f"NanoVDB buffer is compressed using blosc, but Python module could not be imported: {err}"
@@ -5037,7 +5037,7 @@ class Volume:
 
         if codec_int == 2:
             try:
-                import blosc
+                import blosc  # noqa: PLC0415
             except ImportError as err:
                 raise RuntimeError(
                     f"blosc compression was requested, but Python module could not be imported: {err}"
@@ -5538,7 +5538,7 @@ class MeshQueryPoint:
         and :func:`mesh_query_point_sign_winding_number`.
     """
 
-    from warp._src.codegen import Var
+    from warp._src.codegen import Var  # noqa: PLC0415
 
     _wp_native_name_ = "mesh_query_point_t"
 
@@ -5569,7 +5569,7 @@ class MeshQueryRay:
         :func:`mesh_query_ray`.
     """
 
-    from warp._src.codegen import Var
+    from warp._src.codegen import Var  # noqa: PLC0415
 
     _wp_native_name_ = "mesh_query_ray_t"
 

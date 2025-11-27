@@ -17,6 +17,7 @@ import unittest
 from typing import Any
 
 import warp as wp
+import warp.tests.aux_test_instancing_gc as gc_test_module  # use a helper module with a known kernel count
 import warp.tests.aux_test_name_clash1 as name_clash_module_1
 import warp.tests.aux_test_name_clash2 as name_clash_module_2
 from warp.tests.unittest_utils import *
@@ -1297,10 +1298,6 @@ def test_module_mark_modified(test, device):
 
 def test_garbage_collection(test, device):
     """Test that dynamically generated kernels without user references are not retained in the module."""
-
-    # use a helper module with a known kernel count
-    import warp.tests.aux_test_instancing_gc as gc_test_module
-
     with wp.ScopedDevice(device):
         a = wp.zeros(1, dtype=int)
 

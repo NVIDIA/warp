@@ -125,6 +125,7 @@ ignore = [
     "PLW0603", # Allow assignments to global variables
     "UP018",   # Warp kernels often use float(val) and int(val)
     "RUF046",  # Warp kernels often use int(val)
+    "PLW1641", # TODO: Make sure classes implementing __eq__ also implement a __hash__ method
 ]
 exclude = ["warp/__init__.pyi"]
 
@@ -202,6 +203,7 @@ commun = "commun"
 dout = "dout"
 iy = "iy"
 nd = "nd"
+transformd = "transformd"
 
 [tool.typos.default.extend-identifiers]
 CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK_OPTIN = "CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK_OPTIN"

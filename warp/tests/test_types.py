@@ -14,7 +14,11 @@
 # limitations under the License.
 
 import sys
+import types
 import unittest
+from typing import get_origin
+
+import numpy as np
 
 from warp.tests.unittest_utils import *
 
@@ -151,7 +155,7 @@ def test_vector(test, device, dtype):
     test.assertSequenceEqual(v_copy, make_vec(123, 4, 6))
 
     # Check added purely for coverage reasons but is this really a desired
-    # behaviour? Not allowing to define new attributes using systems like
+    # behavior? Not allowing to define new attributes using systems like
     # `__slots__` could help improving memory usage.
     v.foo = 123
     test.assertEqual(v.foo, 123)
@@ -433,7 +437,7 @@ class TestTypes(unittest.TestCase):
             self.assertSequenceEqual(m_copy, make_mat((123, 4), (6, 8)))
 
             # Check added purely for coverage reasons but is this really a desired
-            # behaviour? Not allowing to define new attributes using systems like
+            # behavior? Not allowing to define new attributes using systems like
             # `__slots__` could help improving memory usage.
             m.foo = 123
             self.assertEqual(m.foo, 123)
@@ -500,8 +504,6 @@ class TestTypes(unittest.TestCase):
             m[0][:1] = (1, 2)
 
     def test_dtype_from_numpy(self):
-        import numpy as np
-
         def test_conversions(np_type, warp_type):
             self.assertEqual(wp.dtype_from_numpy(np_type), warp_type)
             self.assertEqual(wp.dtype_from_numpy(np.dtype(np_type)), warp_type)
@@ -522,8 +524,6 @@ class TestTypes(unittest.TestCase):
         test_conversions(np.ubyte, wp.uint8)
 
     def test_dtype_to_numpy(self):
-        import numpy as np
-
         def test_conversions(warp_type, np_type):
             self.assertEqual(wp.dtype_to_numpy(warp_type), np_type)
 
@@ -545,10 +545,6 @@ class TestTypes(unittest.TestCase):
 
         def test_tuple_type_code_generation(self):
             """Test that tuple type annotations generate correct type codes, especially on Python 3.10."""
-            import sys
-            import types
-            from typing import get_origin
-
             # Test basic tuple types
             tuple_float_float = tuple[float, float]
             result = wp._src.types.get_type_code(tuple_float_float)

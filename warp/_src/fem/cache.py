@@ -595,7 +595,7 @@ class TemporaryStore:
     def _release_temporary(temporary_ref: "weakref.ReferenceType[Temporary]"):
         """Returns the temporary array to the pool"""
 
-        from warp._src.context import runtime
+        from warp._src.context import runtime  # noqa: PLC0415
 
         if runtime.tape is not None:
             # Prevent early release if a tape is being captured

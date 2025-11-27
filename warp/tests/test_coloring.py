@@ -315,7 +315,7 @@ class TestColoring(unittest.TestCase):
     @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
     def test_coloring_trimesh(self):
         """Test graph coloring on a trimesh (bunny mesh)."""
-        from pxr import Usd, UsdGeom
+        from pxr import Usd, UsdGeom  # noqa: PLC0415
 
         # Load bunny mesh from USD
         usd_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))

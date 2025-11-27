@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import warp as wp
+from warp.tests.aux_test_grad_customs import aux_custom_fn
 from warp.tests.unittest_utils import *
 
 
@@ -42,23 +43,24 @@ def replay_reversible_increment(
     return thread_values[tid]
 
 
+@wp.kernel
+def run_atomic_add(
+    input: wp.array(dtype=float),
+    counter: wp.array(dtype=int),
+    thread_values: wp.array(dtype=int),
+    output: wp.array(dtype=float),
+):
+    tid = wp.tid()
+    idx = reversible_increment(counter, 0, 1, thread_values, tid)
+    output[idx] = input[idx] ** 2.0
+
+
 def test_custom_replay_grad(test, device):
     num_threads = 128
     counter = wp.zeros(1, dtype=wp.int32, device=device)
     thread_ids = wp.zeros(num_threads, dtype=wp.int32, device=device)
     inputs = wp.array(np.arange(num_threads, dtype=np.float32), device=device, requires_grad=True)
     outputs = wp.zeros_like(inputs)
-
-    @wp.kernel
-    def run_atomic_add(
-        input: wp.array(dtype=float),
-        counter: wp.array(dtype=int),
-        thread_values: wp.array(dtype=int),
-        output: wp.array(dtype=float),
-    ):
-        tid = wp.tid()
-        idx = reversible_increment(counter, 0, 1, thread_values, tid)
-        output[idx] = input[idx] ** 2.0
 
     tape = wp.Tape()
     with tape:
@@ -177,21 +179,17 @@ def test_custom_overload_grad(test, device):
     # fmt: on
 
 
+@wp.kernel
+def run_defined_float_fn(
+    xs: wp.array(dtype=float), ys: wp.array(dtype=float), output0: wp.array(dtype=float), output1: wp.array(dtype=float)
+):
+    i = wp.tid()
+    out0, out1 = aux_custom_fn(xs[i], ys[i])
+    output0[i] = out0
+    output1[i] = out1
+
+
 def test_custom_import_grad(test, device):
-    from warp.tests.aux_test_grad_customs import aux_custom_fn
-
-    @wp.kernel
-    def run_defined_float_fn(
-        xs: wp.array(dtype=float),
-        ys: wp.array(dtype=float),
-        output0: wp.array(dtype=float),
-        output1: wp.array(dtype=float),
-    ):
-        i = wp.tid()
-        out0, out1 = aux_custom_fn(xs[i], ys[i])
-        output0[i] = out0
-        output1[i] = out1
-
     dim = 3
     xs_float = wp.array(np.arange(1.0, dim + 1.0), dtype=wp.float32, requires_grad=True, device=device)
     ys_float = wp.array(np.arange(10.0, dim + 10.0), dtype=wp.float32, requires_grad=True, device=device)

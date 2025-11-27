@@ -277,7 +277,7 @@ def compute_num_contact_with_checksums_brutal(
 
 
 def load_mesh():
-    from pxr import Usd, UsdGeom
+    from pxr import Usd, UsdGeom  # noqa: PLC0415
 
     usd_stage = Usd.Stage.Open(os.path.join(wp.examples.get_asset_directory(), "bunny.usd"))
     usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/bunny"))
