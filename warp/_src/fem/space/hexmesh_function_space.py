@@ -228,7 +228,7 @@ class HexmeshSpaceTopology(SpaceTopology):
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self._shape.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, _type_index = self._shape.node_type_and_type_index(node_index_in_elt)
 
             if wp.static(EDGE_NODE_COUNT > 0):
                 if node_type == CubeShapeFunction.EDGE:

@@ -30,7 +30,7 @@ UP_AXIS_VEC = (
 
 
 def _usd_add_xform(prim):
-    from pxr import UsdGeom
+    from pxr import UsdGeom  # noqa: PLC0415
 
     prim = UsdGeom.Xform(prim)
     prim.ClearXformOpOrder()
@@ -47,7 +47,7 @@ def _usd_set_xform(
     scale: tuple | None = None,
     time: float = 0.0,
 ):
-    from pxr import Gf, UsdGeom
+    from pxr import Gf, UsdGeom  # noqa: PLC0415
 
     xform = UsdGeom.Xform(xform)
 
@@ -63,7 +63,7 @@ def _usd_set_xform(
 
 # transforms a cylinder such that it connects the two points pos0, pos1
 def _compute_segment_xform(pos0, pos1):
-    from pxr import Gf
+    from pxr import Gf  # noqa: PLC0415
 
     mid = (pos0 + pos1) * 0.5
     height = (pos1 - pos0).GetLength()
@@ -92,7 +92,7 @@ class UsdRenderer:
             scaling: Scaling factor to use for the entities in the scene
         """
         try:
-            from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux
+            from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux  # noqa: PLC0415
         except ImportError as e:
             raise ImportError("Failed to import pxr. Please install USD (e.g. via `pip install usd-core`).") from e
 
@@ -157,7 +157,7 @@ class UsdRenderer:
         pass
 
     def register_body(self, body_name):
-        from pxr import UsdGeom
+        from pxr import UsdGeom  # noqa: PLC0415
 
         xform = UsdGeom.Xform.Define(self.stage, self.root.GetPath().AppendChild(body_name))
 
@@ -224,7 +224,7 @@ class UsdRenderer:
             parent_body: Name of the parent body
             is_template: Whether the plane is a template
         """
-        from pxr import Sdf, UsdGeom
+        from pxr import Sdf, UsdGeom  # noqa: PLC0415
 
         if is_template:
             prim_path = self._resolve_path(name, parent_body, is_template)
@@ -264,7 +264,7 @@ class UsdRenderer:
         return prim_path
 
     def render_ground(self, size: float = 100.0, plane=None):
-        from pxr import UsdGeom
+        from pxr import UsdGeom  # noqa: PLC0415
 
         mesh = UsdGeom.Mesh.Define(self.stage, self.root.GetPath().AppendChild("ground"))
         mesh.CreateDoubleSidedAttr().Set(True)
@@ -323,7 +323,7 @@ class UsdRenderer:
             color: The color of the sphere
         """
 
-        from pxr import Gf, Sdf, UsdGeom
+        from pxr import Gf, Sdf, UsdGeom  # noqa: PLC0415
 
         if is_template:
             prim_path = self._resolve_path(name, parent_body, is_template)
@@ -377,7 +377,7 @@ class UsdRenderer:
             color: The color of the capsule
         """
 
-        from pxr import Gf, Sdf, UsdGeom
+        from pxr import Gf, Sdf, UsdGeom  # noqa: PLC0415
 
         if is_template:
             prim_path = self._resolve_path(name, parent_body, is_template)
@@ -433,7 +433,7 @@ class UsdRenderer:
             color: The color of the cylinder
         """
 
-        from pxr import Gf, Sdf, UsdGeom
+        from pxr import Gf, Sdf, UsdGeom  # noqa: PLC0415
 
         if is_template:
             prim_path = self._resolve_path(name, parent_body, is_template)
@@ -489,7 +489,7 @@ class UsdRenderer:
             color: The color of the cone
         """
 
-        from pxr import Gf, Sdf, UsdGeom
+        from pxr import Gf, Sdf, UsdGeom  # noqa: PLC0415
 
         if is_template:
             prim_path = self._resolve_path(name, parent_body, is_template)
@@ -542,7 +542,7 @@ class UsdRenderer:
             color: The color of the box
         """
 
-        from pxr import Gf, Sdf, UsdGeom
+        from pxr import Gf, Sdf, UsdGeom  # noqa: PLC0415
 
         if is_template:
             prim_path = self._resolve_path(name, parent_body, is_template)
@@ -573,7 +573,7 @@ class UsdRenderer:
         return prim_path
 
     def render_ref(self, name: str, path: str, pos: tuple, rot: tuple, scale: tuple, color: tuple | None = None):
-        from pxr import Gf, Usd, UsdGeom
+        from pxr import Gf, Usd, UsdGeom  # noqa: PLC0415
 
         ref_path = "/root/" + name
 
@@ -608,7 +608,7 @@ class UsdRenderer:
         smooth_shading: bool = True,
         visible: bool = True,
     ):
-        from pxr import Sdf, UsdGeom
+        from pxr import Sdf, UsdGeom  # noqa: PLC0415
 
         if is_template:
             prim_path = self._resolve_path(name, parent_body, is_template)
@@ -672,7 +672,7 @@ class UsdRenderer:
         color: tuple[float, float, float] | None = None,
         visible: bool = True,
     ):
-        from pxr import Gf, Sdf, UsdGeom
+        from pxr import Gf, Sdf, UsdGeom  # noqa: PLC0415
 
         if is_template:
             prim_path = self._resolve_path(name, parent_body, is_template)
@@ -741,7 +741,7 @@ class UsdRenderer:
             time: The time to update at
         """
 
-        from pxr import Gf, UsdGeom
+        from pxr import Gf, UsdGeom  # noqa: PLC0415
 
         num_lines = int(len(indices) / 2)
 
@@ -794,7 +794,7 @@ class UsdRenderer:
         radius: float = 0.01,
         visible: bool = True,
     ):
-        from pxr import Gf, UsdGeom
+        from pxr import Gf, UsdGeom  # noqa: PLC0415
 
         num_lines = int(len(vertices) - 1)
 
@@ -839,7 +839,7 @@ class UsdRenderer:
         instancer.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
 
     def render_points(self, name: str, points, radius, colors=None, as_spheres: bool = True, visible: bool = True):
-        from pxr import Sdf, UsdGeom, Vt
+        from pxr import Sdf, UsdGeom, Vt  # noqa: PLC0415
 
         instancer_path = self._resolve_path(name)
 
@@ -912,7 +912,7 @@ class UsdRenderer:
         return instancer.GetPath()
 
     def update_body_transforms(self, body_q):
-        from pxr import Sdf, UsdGeom
+        from pxr import Sdf, UsdGeom  # noqa: PLC0415
 
         if isinstance(body_q, wp.array):
             body_q = body_q.numpy()

@@ -374,7 +374,7 @@ def test_tile_binary_map_mixed_types(test, device):
     C_wp.grad = wp.ones_like(C_wp, device=device)
     tape.backward()
 
-    # The a gradiens are now stored as ints and can't capture the correct values
+    # The a gradients are now stored as ints and can't capture the correct values
     # assert_np_equal(A_wp.grad.numpy(), A_grad, tol=1.0e-6)
     assert_np_equal(B_wp.grad.numpy(), B_grad)
 
@@ -822,7 +822,7 @@ def test_tile_extract(test, device):
 
 @wp.kernel(module="unique")
 def test_tile_extract_repeated_kernel(a: wp.array2d(dtype=float), b: wp.array2d(dtype=float)):
-    i, j, x, y = wp.tid()
+    i, j, _x, _y = wp.tid()
 
     tile = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
 
@@ -869,7 +869,7 @@ def test_tile_extract_repeated(test, device):
 
 @wp.kernel
 def test_tile_assign_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
-    i, j = wp.tid()
+    _i, j = wp.tid()
 
     a = wp.tile_zeros(shape=(TILE_M,), dtype=float)
 

@@ -186,5 +186,5 @@ def _normalize_dirichlet_projector_kernel(
     if diag != -1:
         P = block_values[diag]
 
-        P_norm, v_norm = _normalize_projector_and_value(P, type(P[0])())
+        P_norm, _v_norm = _normalize_projector_and_value(P, type(P[0])())
         block_values[diag] = P_norm

@@ -83,7 +83,7 @@ class CollocatedFunctionSpace(FunctionSpace):
         self,
         space_partition: Optional[SpacePartition] = None,
     ) -> "wp.fem.field.NodalField":
-        from warp._src.fem.field import NodalField
+        from warp._src.fem.field import NodalField  # noqa: PLC0415 (circular import)
 
         if space_partition is None:
             space_partition = make_space_partition(space_topology=self.topology)
@@ -219,7 +219,7 @@ class VectorValuedFunctionSpace(FunctionSpace):
         self,
         space_partition: Optional[SpacePartition] = None,
     ) -> "wp.fem.field.NodalField":
-        from warp._src.fem.field import NodalField
+        from warp._src.fem.field import NodalField  # noqa: PLC0415 (circular import)
 
         if space_partition is None:
             space_partition = make_space_partition(space_topology=self.topology)

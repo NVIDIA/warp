@@ -169,71 +169,71 @@ def run_benchmark(mode, dim, timers, render=False):
 
     with wp.ScopedTimer("Initialization", dict=timers):
         if mode == "warp_cpu":
-            import benchmark_cloth_warp
+            import benchmark_cloth_warp  # noqa: PLC0415
 
             integrator = benchmark_cloth_warp.WpIntegrator(cloth, "cpu")
 
         elif mode == "warp_gpu":
-            import benchmark_cloth_warp
+            import benchmark_cloth_warp  # noqa: PLC0415
 
             integrator = benchmark_cloth_warp.WpIntegrator(cloth, "cuda")
 
         elif mode == "taichi_cpu":
-            import benchmark_cloth_taichi
+            import benchmark_cloth_taichi  # noqa: PLC0415
 
             integrator = benchmark_cloth_taichi.TiIntegrator(cloth, "cpu")
 
         elif mode == "taichi_gpu":
-            import benchmark_cloth_taichi
+            import benchmark_cloth_taichi  # noqa: PLC0415
 
             integrator = benchmark_cloth_taichi.TiIntegrator(cloth, "cuda")
 
         elif mode == "numpy":
-            import benchmark_cloth_numpy
+            import benchmark_cloth_numpy  # noqa: PLC0415
 
             integrator = benchmark_cloth_numpy.NpIntegrator(cloth)
 
         elif mode == "cupy":
-            import benchmark_cloth_cupy
+            import benchmark_cloth_cupy  # noqa: PLC0415
 
             integrator = benchmark_cloth_cupy.CpIntegrator(cloth)
 
         elif mode == "numba":
-            import benchmark_cloth_numba
+            import benchmark_cloth_numba  # noqa: PLC0415
 
             integrator = benchmark_cloth_numba.NbIntegrator(cloth)
 
         elif mode == "torch_cpu":
-            import benchmark_cloth_pytorch
+            import benchmark_cloth_pytorch  # noqa: PLC0415
 
             integrator = benchmark_cloth_pytorch.TrIntegrator(cloth, "cpu")
 
         elif mode == "torch_gpu":
-            import benchmark_cloth_pytorch
+            import benchmark_cloth_pytorch  # noqa: PLC0415
 
             integrator = benchmark_cloth_pytorch.TrIntegrator(cloth, "cuda")
 
         elif mode == "jax_cpu":
             os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
-            import benchmark_cloth_jax
+            import benchmark_cloth_jax  # noqa: PLC0415
 
             integrator = benchmark_cloth_jax.JxIntegrator(cloth)
 
         elif mode == "jax_gpu":
             os.environ["JAX_PLATFORM_NAME"] = "gpu"
 
-            import benchmark_cloth_jax
+            import benchmark_cloth_jax  # noqa: PLC0415
 
             integrator = benchmark_cloth_jax.JxIntegrator(cloth)
 
         elif mode == "paddle_cpu":
-            import benchmark_cloth_paddle
+            import benchmark_cloth_paddle  # noqa: PLC0415
 
             integrator = benchmark_cloth_paddle.TrIntegrator(cloth, "cpu")
 
         elif mode == "paddle_gpu":
-            import benchmark_cloth_paddle
+            import benchmark_cloth_paddle  # noqa: PLC0415
 
             integrator = benchmark_cloth_paddle.TrIntegrator(cloth, "gpu")
 

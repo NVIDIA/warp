@@ -377,7 +377,7 @@ def test_range_expression():
 
 def test_unresolved_func(test, device):
     # kernel with unresolved function must be in a separate module, otherwise the current module would fail to load
-    from warp.tests.aux_test_unresolved_func import unresolved_func_kernel
+    from warp.tests.aux_test_unresolved_func import unresolved_func_kernel  # noqa: PLC0415
 
     # ensure that an appropriate exception is raised when the bad module gets loaded
     with test.assertRaisesRegex(RuntimeError, "Could not find function wp.missing_func"):
@@ -391,7 +391,7 @@ def test_unresolved_func(test, device):
 
 def test_unresolved_symbol(test, device):
     # kernel with unresolved symbol must be in a separate module, otherwise the current module would fail to load
-    from warp.tests.aux_test_unresolved_symbol import unresolved_symbol_kernel
+    from warp.tests.aux_test_unresolved_symbol import unresolved_symbol_kernel  # noqa: PLC0415
 
     # ensure that an appropriate exception is raised when the bad module gets loaded
     with test.assertRaisesRegex(KeyError, "Referencing undefined symbol: missing_symbol"):
@@ -573,14 +573,14 @@ def test_error_return_annotation_mismatch(test, device):
         return (x, 1.23)
 
     def kernel_3_fn():
-        x, y = foo_3(123)
+        _x, _y = foo_3(123)
 
     @wp.func
     def foo_4(x: int) -> Tuple[int, int, int]:
         return (x + x, x * x)
 
     def kernel_4_fn():
-        x, y, z = foo_4(123)
+        _x, _y, _z = foo_4(123)
 
     kernel = wp.Kernel(func=kernel_1_fn)
     with test.assertRaisesRegex(

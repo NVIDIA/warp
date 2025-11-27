@@ -22,6 +22,8 @@ from warp._src.fem.cache import (
     borrow_temporary_like,
 )
 from warp._src.fem.types import OUTSIDE, Coords, ElementIndex, Sample
+from warp._src.fem.utils import compress_node_indices, host_read_at_index, masked_indices
+from warp._src.utils import array_scan
 
 from .closest_point import project_on_seg_at_origin
 from .element import Element
@@ -196,9 +198,6 @@ class Quadmesh(Geometry):
         return args.boundary_edge_indices[boundary_side_index]
 
     def _build_topology(self, temporary_store: TemporaryStore):
-        from warp._src.fem.utils import compress_node_indices, host_read_at_index, masked_indices
-        from warp._src.utils import array_scan
-
         device = self.quad_vertex_indices.device
 
         vertex_quad_offsets, vertex_quad_indices = compress_node_indices(

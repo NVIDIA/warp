@@ -67,18 +67,18 @@ class ExampleImGuiManager(ImGuiManager):
         self.imgui.separator()
 
         self.imgui.text("Editable floats:")
-        changed1, self.editable_float1 = self.imgui.slider_float("Slider", self.editable_float1, 0.0, 100.0)
-        changed2, self.editable_float2 = self.imgui.drag_float("Drag", self.editable_float2, 0.1, 0.0, 100.0)
-        changed3, self.editable_float3 = self.imgui.input_float("Input", self.editable_float3)
+        _changed, self.editable_float1 = self.imgui.slider_float("Slider", self.editable_float1, 0.0, 100.0)
+        _changed, self.editable_float2 = self.imgui.drag_float("Drag", self.editable_float2, 0.1, 0.0, 100.0)
+        _changed, self.editable_float3 = self.imgui.input_float("Input", self.editable_float3)
 
-        changed, self.editable_vec2 = self.drag_vec2("Vec2", self.editable_vec2)
-        changed, self.editable_vec3 = self.drag_vec3("Vec3", self.editable_vec3)
-        changed, self.editable_vec4 = self.drag_vec4("Vec4", self.editable_vec4)
+        _changed, self.editable_vec2 = self.drag_vec2("Vec2", self.editable_vec2)
+        _changed, self.editable_vec3 = self.drag_vec3("Vec3", self.editable_vec3)
+        _changed, self.editable_vec4 = self.drag_vec4("Vec4", self.editable_vec4)
 
-        changed, self.warp_array_float = self.drag_float_list("Float", self.warp_array_float)
-        changed, self.warp_array_vec2 = self.drag_vec2_list("Vec2", self.warp_array_vec2)
-        changed, self.warp_array_vec3 = self.drag_vec3_list("Vec3", self.warp_array_vec3)
-        changed, self.warp_array_vec4 = self.drag_vec4_list("Vec4", self.warp_array_vec4)
+        _changed, self.warp_array_float = self.drag_float_list("Float", self.warp_array_float)
+        _changed, self.warp_array_vec2 = self.drag_vec2_list("Vec2", self.warp_array_vec2)
+        _changed, self.warp_array_vec3 = self.drag_vec3_list("Vec3", self.warp_array_vec3)
+        _changed, self.warp_array_vec4 = self.drag_vec4_list("Vec4", self.warp_array_vec4)
 
         self.imgui.separator()
         self.imgui.text("File Dialog Examples:")

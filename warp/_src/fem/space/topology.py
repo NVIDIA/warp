@@ -292,7 +292,7 @@ class TraceSpaceTopology(SpaceTopology):
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            inner_count, outer_count = self._topo.side_neighbor_node_counts(side_arg, topo_arg, element_index)
+            inner_count, _outer_count = self._topo.side_neighbor_node_counts(side_arg, topo_arg, element_index)
             if node_index_in_elt >= inner_count:
                 return NULL_ELEMENT_INDEX, NULL_NODE_INDEX
             return self.geometry.side_inner_cell_index(side_arg, element_index), node_index_in_elt
@@ -307,7 +307,7 @@ class TraceSpaceTopology(SpaceTopology):
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            inner_count, outer_count = self._topo.side_neighbor_node_counts(side_arg, topo_arg, element_index)
+            inner_count, _outer_count = self._topo.side_neighbor_node_counts(side_arg, topo_arg, element_index)
             if node_index_in_elt < inner_count:
                 return NULL_ELEMENT_INDEX, NULL_NODE_INDEX
             return self.geometry.side_outer_cell_index(side_arg, element_index), node_index_in_elt - inner_count
@@ -322,7 +322,7 @@ class TraceSpaceTopology(SpaceTopology):
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            inner_count, outer_count = self._topo.side_neighbor_node_counts(side_arg, topo_arg, element_index)
+            inner_count, _outer_count = self._topo.side_neighbor_node_counts(side_arg, topo_arg, element_index)
             if node_index_in_elt < inner_count:
                 return self.geometry.side_inner_cell_index(side_arg, element_index), node_index_in_elt
 

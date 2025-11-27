@@ -33,6 +33,8 @@ from contextlib import contextmanager
 from io import StringIO
 
 import warp.tests.unittest_suites  # NVIDIA Modification
+import warp.tests.unittest_utils
+from warp._src.thirdparty import appdirs
 from warp.tests.unittest_utils import (  # NVIDIA modification
     ParallelJunitTestResult,
     write_junit_results,
@@ -177,7 +179,7 @@ def main(argv=None):
         process_count = multiprocessing.cpu_count()
     process_count = min(process_count, args.maxjobs)  # NVIDIA Modification
 
-    import warp as wp  # NVIDIA Modification
+    import warp as wp  # noqa: PLC0415 NVIDIA Modification
 
     # Clear the Warp cache (NVIDIA Modification)
     wp.clear_lto_cache()
@@ -538,8 +540,6 @@ class ParallelTestManager:
             return [0, [], [], 0, 0, 0, []]  # NVIDIA Modification
 
         # NVIDIA Modification for GitLab
-        import warp.tests.unittest_utils
-
         warp.tests.unittest_utils.coverage_enabled = self.args.coverage
         warp.tests.unittest_utils.coverage_temp_dir = self.temp_dir
         warp.tests.unittest_utils.coverage_branch = self.args.coverage_branch
@@ -648,14 +648,12 @@ def initialize_test_process(lock, shared_index, args, temp_dir):
         worker_index = shared_index.value
 
     with _coverage(args, temp_dir):
-        import warp as wp
+        import warp as wp  # noqa: PLC0415
 
         if args.warp_debug:
             wp.config.mode = "debug"
 
         if args.no_shared_cache:
-            from warp.thirdparty import appdirs
-
             if "WARP_CACHE_ROOT" in os.environ:
                 cache_root_dir = os.path.join(os.getenv("WARP_CACHE_ROOT"), f"{wp.config.version}-{worker_index:03d}")
             else:

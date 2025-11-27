@@ -27,6 +27,8 @@ from warp._src.fem.types import (
     ElementIndex,
     Sample,
 )
+from warp._src.fem.utils import compress_node_indices, host_read_at_index, masked_indices
+from warp._src.utils import array_scan
 
 from .closest_point import project_on_seg_at_origin, project_on_tri_at_origin
 from .element import Element
@@ -201,9 +203,6 @@ class Trimesh(Geometry):
         return wp.where(tri_coords[start] + tri_coords[end] > 0.999, Coords(tri_coords[end], 0.0, 0.0), Coords(OUTSIDE))
 
     def _build_topology(self, temporary_store: TemporaryStore):
-        from warp._src.fem.utils import compress_node_indices, host_read_at_index, masked_indices
-        from warp._src.utils import array_scan
-
         device = self.tri_vertex_indices.device
 
         vertex_tri_offsets, vertex_tri_indices = compress_node_indices(

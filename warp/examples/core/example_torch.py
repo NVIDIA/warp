@@ -103,7 +103,7 @@ class Example:
         self.mean_pos = np.empty((2,))
 
     def create_plot(self):
-        import matplotlib.pyplot as plt
+        import matplotlib.pyplot as plt  # noqa: PLC0415
 
         min_x, max_x = -2.0, 2.0
         min_y, max_y = -2.0, 2.0

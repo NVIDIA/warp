@@ -39,6 +39,7 @@ import os
 import platform
 import subprocess
 import sys
+import tempfile
 import unittest
 from typing import Any, Dict, Optional, Type
 
@@ -47,6 +48,7 @@ import warp.tests.unittest_utils
 from warp._src.utils import check_p2p
 from warp.tests.unittest_utils import (
     USD_AVAILABLE,
+    add_function_test,
     get_selected_cuda_test_devices,
     get_test_devices,
     sanitize_identifier,
@@ -103,7 +105,7 @@ def add_example_test(
         torch_required = options.pop("torch_required", False)
         if torch_required:
             try:
-                import torch
+                import torch  # noqa: PLC0415
 
                 if wp.get_device(device).is_cuda and not torch.cuda.is_available():
                     # Ensure torch has CUDA support
@@ -121,7 +123,7 @@ def add_example_test(
         pillow_required = options.pop("pillow_required", False)
         if pillow_required:
             try:
-                import PIL  # noqa: F401
+                import PIL  # noqa: PLC0415,F401
             except ImportError:
                 test.skipTest("Requires pillow")
 
@@ -133,8 +135,6 @@ def add_example_test(
             env_vars["WARP_CACHE_PATH"] = warp_cache_path
 
         if warp.tests.unittest_utils.coverage_enabled:
-            import tempfile
-
             # Generate a random coverage data file name - file is deleted along with containing directory
             with tempfile.NamedTemporaryFile(
                 dir=warp.tests.unittest_utils.coverage_temp_dir, delete=False
@@ -192,8 +192,6 @@ def add_example_test(
                 os.remove(stage_path)
             except OSError:
                 pass
-
-    from warp.tests.unittest_utils import add_function_test
 
     add_function_test(cls, f"test_{name}", run, devices=devices, check_output=False)
 

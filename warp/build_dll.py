@@ -19,6 +19,6 @@ from warp._src import build_dll as _build_dll
 
 
 def __getattr__(name):
-    from warp._src.utils import get_deprecated_api
+    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
     return get_deprecated_api(_build_dll, "wp", name)

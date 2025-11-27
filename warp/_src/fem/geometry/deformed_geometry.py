@@ -59,8 +59,7 @@ class DeformedGeometry(Geometry):
 
         See also: :meth:`warp.fem.GeometryField.make_deformed_geometry`
         """
-
-        from warp._src.fem.field import GeometryField
+        from warp._src.fem.field import GeometryField  # noqa: PLC0415 (circular import)
 
         if field.dtype is not None and (
             not type_is_vector(field.dtype) or type_size(field.dtype) != field.geometry.dimension

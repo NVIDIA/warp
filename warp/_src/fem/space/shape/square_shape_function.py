@@ -21,6 +21,7 @@ import warp as wp
 from warp._src.fem import cache
 from warp._src.fem.polynomial import Polynomial, is_closed, lagrange_scales, quadrature_1d
 from warp._src.fem.types import Coords
+from warp._src.fem.utils import grid_to_tris
 
 from .shape_function import ShapeFunction
 from .triangle_shape_function import TrianglePolynomialShapeFunctions
@@ -293,8 +294,6 @@ class SquareBipolynomialShapeFunctions(SquareShapeFunction):
         return cache.get_func(element_inner_weight_gradient, self.name)
 
     def element_node_triangulation(self):
-        from warp._src.fem.utils import grid_to_tris
-
         return grid_to_tris(self.ORDER, self.ORDER)
 
     def element_vtk_cells(self):
@@ -421,7 +420,7 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
         def node_quadrature_weight(
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, _type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
             if node_type == SquareSerendipityShapeFunctions.VERTEX:
                 return 0.25 / float(ORDER * ORDER)
 
@@ -436,7 +435,7 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
         def trace_node_quadrature_weight(
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, _type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
             if node_type == SquareSerendipityShapeFunctions.VERTEX:
                 return LOBATTO_WEIGHT[0]
 
@@ -660,7 +659,7 @@ class SquareNonConformingPolynomialShapeFunctions(ShapeFunction):
             def node_quadrature_weight_quadratic(
                 node_index_in_elt: int,
             ):
-                node_type, type_index = self._tri_shape.node_type_and_type_index(node_index_in_elt)
+                node_type, _type_index = self._tri_shape.node_type_and_type_index(node_index_in_elt)
                 if node_type == TrianglePolynomialShapeFunctions.VERTEX:
                     return 0.18518521
                 return 0.14814811
@@ -761,7 +760,7 @@ class SquareNedelecFirstKindShapeFunctions(SquareShapeFunction):
         def node_coords_in_element(
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
             axis = node_type - SquareShapeFunction.EDGE_X
 
             coords = Coords()
@@ -794,7 +793,7 @@ class SquareNedelecFirstKindShapeFunctions(SquareShapeFunction):
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
 
             axis = node_type - SquareShapeFunction.EDGE_X
             a = float(2 * type_instance - 1)
@@ -813,7 +812,7 @@ class SquareNedelecFirstKindShapeFunctions(SquareShapeFunction):
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
 
             axis = node_type - SquareShapeFunction.EDGE_X
             a = float(2 * type_instance - 1)
@@ -863,7 +862,7 @@ class SquareRaviartThomasShapeFunctions(SquareShapeFunction):
         def node_coords_in_element(
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
             axis = node_type - SquareShapeFunction.EDGE_X
 
             coords = Coords()
@@ -896,7 +895,7 @@ class SquareRaviartThomasShapeFunctions(SquareShapeFunction):
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
 
             axis = node_type - SquareShapeFunction.EDGE_X
             a = float(2 * type_instance - 1)
@@ -915,7 +914,7 @@ class SquareRaviartThomasShapeFunctions(SquareShapeFunction):
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
 
             axis = node_type - SquareShapeFunction.EDGE_X
             a = float(2 * type_instance - 1)

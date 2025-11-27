@@ -79,7 +79,6 @@ def test_tile_math_matmul(test, device):
 
 @wp.kernel()
 def tile_math_fft_kernel_vec2f(gx: wp.array2d(dtype=wp.vec2f), gy: wp.array2d(dtype=wp.vec2f)):
-    i, j = wp.tid()
     xy = wp.tile_load(gx, shape=(FFT_SIZE_FP32, FFT_SIZE_FP32))
     wp.tile_fft(xy)
     wp.tile_store(gy, xy)
@@ -87,7 +86,6 @@ def tile_math_fft_kernel_vec2f(gx: wp.array2d(dtype=wp.vec2f), gy: wp.array2d(dt
 
 @wp.kernel()
 def tile_math_fft_kernel_vec2d(gx: wp.array2d(dtype=wp.vec2d), gy: wp.array2d(dtype=wp.vec2d)):
-    i, j = wp.tid()
     xy = wp.tile_load(gx, shape=(FFT_SIZE_FP64, FFT_SIZE_FP64))
     wp.tile_fft(xy)
     wp.tile_store(gy, xy)

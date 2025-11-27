@@ -117,7 +117,7 @@ class Example:
             self.scatter_plot = self.create_plot()
 
     def create_plot(self):
-        import matplotlib.pyplot as plt
+        import matplotlib.pyplot as plt  # noqa: PLC0415
 
         # Create a figure and a 3D axis for the plot
         self.fig = plt.figure()

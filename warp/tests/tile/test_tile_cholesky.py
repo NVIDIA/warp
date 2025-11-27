@@ -38,7 +38,6 @@ def tile_math_cholesky(
     gy: wp.array1d(dtype=wp.float64),
     gx: wp.array1d(dtype=wp.float64),
 ):
-    i, j = wp.tid()
     # Load A, D & y
     a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
     d = wp.tile_load(gD, shape=TILE_M, storage="shared")
@@ -87,7 +86,6 @@ def tile_math_cholesky_inplace(
     gA: wp.array2d(dtype=wp.float64),
     gy: wp.array1d(dtype=wp.float64),
 ):
-    i, j = wp.tid()
     # Load A & y
     a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
     y = wp.tile_load(gy, shape=TILE_M, storage="shared")
@@ -126,7 +124,6 @@ def tile_math_cholesky_multiple_rhs(
     gx: wp.array2d(dtype=wp.float64),
     gz: wp.array2d(dtype=wp.float64),
 ):
-    i, j = wp.tid()
     # Load A, D & y
     a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
     d = wp.tile_load(gD, shape=TILE_M, storage="shared")
@@ -188,7 +185,6 @@ def tile_math_cholesky_multiple_rhs_inplace(
     gy: wp.array2d(dtype=wp.float64),
     gz: wp.array2d(dtype=wp.float64),
 ):
-    i, j = wp.tid()
     # Load A & y
     a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
     y = wp.tile_load(gy, shape=(TILE_M, TILE_M), storage="shared")
@@ -237,7 +233,6 @@ def test_tile_cholesky_cholesky_multiple_rhs_inplace(test, device):
 def tile_math_forward_substitution(
     gL: wp.array2d(dtype=wp.float64), gx: wp.array1d(dtype=wp.float64), gz: wp.array1d(dtype=wp.float64)
 ):
-    i, j = wp.tid()
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=TILE_M, storage="shared")
@@ -250,7 +245,6 @@ def tile_math_forward_substitution(
 
 @wp.kernel
 def tile_math_forward_substitution_inplace(gL: wp.array2d(dtype=wp.float64), gx: wp.array1d(dtype=wp.float64)):
-    i, j = wp.tid()
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=TILE_M, storage="shared")
@@ -299,7 +293,6 @@ def test_tile_cholesky_forward_substitution(test, device):
 def tile_math_back_substitution(
     gL: wp.array2d(dtype=wp.float64), gx: wp.array1d(dtype=wp.float64), gz: wp.array1d(dtype=wp.float64)
 ):
-    i, j = wp.tid()
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=TILE_M, storage="shared")
@@ -312,7 +305,6 @@ def tile_math_back_substitution(
 
 @wp.kernel
 def tile_math_back_substitution_inplace(gL: wp.array2d(dtype=wp.float64), gx: wp.array1d(dtype=wp.float64)):
-    i, j = wp.tid()
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=TILE_M, storage="shared")
@@ -364,7 +356,6 @@ def tile_math_forward_substitution_multiple_rhs(
     gz: wp.array2d(dtype=wp.float64),
     gc: wp.array2d(dtype=wp.float64),
 ):
-    i, j = wp.tid()
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=(TILE_M, TILE_M), storage="shared")
@@ -384,7 +375,6 @@ def tile_math_forward_substitution_multiple_rhs_inplace(
     gx: wp.array2d(dtype=wp.float64),
     gc: wp.array2d(dtype=wp.float64),
 ):
-    i, j = wp.tid()
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=(TILE_M, TILE_M), storage="shared")
@@ -452,7 +442,6 @@ def tile_math_back_substitution_multiple_rhs(
     gz: wp.array2d(dtype=wp.float64),
     gc: wp.array2d(dtype=wp.float64),
 ):
-    i, j = wp.tid()
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=(TILE_M, TILE_M), storage="shared")
@@ -472,7 +461,6 @@ def tile_math_back_substitution_multiple_rhs_inplace(
     gx: wp.array2d(dtype=wp.float64),
     gc: wp.array2d(dtype=wp.float64),
 ):
-    i, j = wp.tid()
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=(TILE_M, TILE_M), storage="shared")

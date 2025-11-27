@@ -407,7 +407,7 @@ def test_stream_priority_basics(test, device):
     # Create a high-priority stream with a priority value that is smaller than -1 (clamping expected)
     stream_hi = wp.Stream(device, priority=-100)
 
-    # Create a low-priority stream with a priority value that is greter than 0 (clamping expected)
+    # Create a low-priority stream with a priority value that is greater than 0 (clamping expected)
     stream_lo = wp.Stream(device, priority=100)
 
     if stream_lo.priority == stream_hi.priority:

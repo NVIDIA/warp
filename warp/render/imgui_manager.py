@@ -24,6 +24,6 @@ from warp._src.render import imgui_manager as _imgui_manager
 
 
 def __getattr__(name):
-    from warp._src.utils import get_deprecated_api
+    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
     return get_deprecated_api(_imgui_manager, "wp.render", name)

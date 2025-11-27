@@ -668,7 +668,7 @@ def copy_rgb_frame_tile_uint8(
 
 
 def check_gl_error():
-    from pyglet import gl
+    from pyglet import gl  # noqa: PLC0415
 
     error = gl.glGetError()
     if error != gl.GL_NO_ERROR:
@@ -687,7 +687,7 @@ class ShapeInstancer:
     @classmethod
     def initialize_gl(cls):
         if cls.gl is None:  # Only import if not already imported
-            from pyglet import gl
+            from pyglet import gl  # noqa: PLC0415
 
             cls.gl = gl
 
@@ -970,7 +970,7 @@ class OpenGLRenderer:
     @classmethod
     def initialize_gl(cls):
         if cls.gl is None:  # Only import if not already imported
-            from pyglet import gl
+            from pyglet import gl  # noqa: PLC0415
 
             cls.gl = gl
 
@@ -1053,13 +1053,13 @@ class OpenGLRenderer:
                 renderer = warp.render.OpenGLRenderer()
         """
         try:
-            import pyglet
+            import pyglet  # noqa: PLC0415
 
             # disable error checking for performance
             pyglet.options["debug_gl"] = False
 
-            from pyglet.graphics.shader import Shader, ShaderProgram
-            from pyglet.math import Vec3 as PyVec3
+            from pyglet.graphics.shader import Shader, ShaderProgram  # noqa: PLC0415
+            from pyglet.math import Vec3 as PyVec3  # noqa: PLC0415
 
             OpenGLRenderer.initialize_gl()
             gl = OpenGLRenderer.gl
@@ -1424,7 +1424,7 @@ class OpenGLRenderer:
         if not headless:
             # set up our own event handling so we can synchronously render frames
             # by calling update() in a loop
-            from pyglet.window import Window
+            from pyglet.window import Window  # noqa: PLC0415
 
             Window._enable_event_queue = False
 
@@ -1749,7 +1749,7 @@ class OpenGLRenderer:
         :return: A projection matrix.
         """
 
-        from pyglet.math import Mat4 as PyMat4
+        from pyglet.math import Mat4 as PyMat4  # noqa: PLC0415
 
         return np.array(PyMat4.perspective_projection(aspect_ratio, near_plane, far_plane, fov))
 
@@ -1786,7 +1786,7 @@ class OpenGLRenderer:
         self.update_view_matrix(cam_up=value)
 
     def compute_view_matrix(self, cam_pos, cam_front, cam_up):
-        from pyglet.math import Mat4, Vec3
+        from pyglet.math import Mat4, Vec3  # noqa: PLC0415
 
         model = np.array(self._model_matrix).reshape((4, 4))
         cp = model @ np.array([*cam_pos / self._scaling, 1.0])
@@ -1798,7 +1798,7 @@ class OpenGLRenderer:
         return np.array(Mat4.look_at(cp, cp + cf, up), dtype=np.float32)
 
     def update_view_matrix(self, cam_pos=None, cam_front=None, cam_up=None, stiffness=1.0):
-        from pyglet.math import Vec3
+        from pyglet.math import Vec3  # noqa: PLC0415
 
         if cam_pos is not None:
             self._camera_pos = self._camera_pos * (1.0 - stiffness) + Vec3(*cam_pos) * stiffness
@@ -2203,8 +2203,8 @@ Instances: {len(self._instances)}"""
         if not self.enable_mouse_interaction:
             return
 
-        import pyglet
-        from pyglet.math import Vec3 as PyVec3
+        import pyglet  # noqa: PLC0415
+        from pyglet.math import Vec3 as PyVec3  # noqa: PLC0415
 
         if buttons & pyglet.window.mouse.LEFT:
             sensitivity = 0.1
@@ -2233,8 +2233,8 @@ Instances: {len(self._instances)}"""
         self.update_projection_matrix()
 
     def _process_inputs(self):
-        import pyglet
-        from pyglet.math import Vec3 as PyVec3
+        import pyglet  # noqa: PLC0415
+        from pyglet.math import Vec3 as PyVec3  # noqa: PLC0415
 
         for cb in self._input_processors:
             if cb(self._key_handler) == pyglet.event.EVENT_HANDLED:
@@ -2259,7 +2259,7 @@ Instances: {len(self._instances)}"""
         self._input_processors.append(callback)
 
     def _key_press_callback(self, symbol, modifiers):
-        import pyglet
+        import pyglet  # noqa: PLC0415
 
         if not self.enable_keyboard_interaction:
             return
@@ -2355,7 +2355,7 @@ Instances: {len(self._instances)}"""
         if shape not in self._shape_gl_buffers:
             return
 
-        vao, vbo, ebo, _, vertex_cuda_buffer = self._shape_gl_buffers[shape]
+        vao, vbo, ebo, _, _vertex_cuda_buffer = self._shape_gl_buffers[shape]
         try:
             gl.glDeleteVertexArrays(1, vao)
             gl.glDeleteBuffers(1, vbo)
@@ -2561,7 +2561,7 @@ Instances: {len(self._instances)}"""
             )
             self._update_shape_instances = True
             if color1 is not None or color2 is not None:
-                vao, vbo, ebo, tri_count, vertex_cuda_buffer = self._shape_gl_buffers[shape]
+                vao, _vbo, _ebo, _tri_count, _vertex_cuda_buffer = self._shape_gl_buffers[shape]
                 gl.glBindVertexArray(vao)
                 self.update_instance_colors()
                 gl.glBindVertexArray(0)

@@ -75,7 +75,7 @@ def test_tile_reduce_sum(test, device):
 
 @wp.kernel
 def tile_sum_to_shared_kernel(input: wp.array2d(dtype=float), output: wp.array(dtype=float)):
-    i, lane = wp.tid()
+    i, _lane = wp.tid()
 
     a = wp.tile_load(input[i], shape=TILE_DIM)
     s = wp.tile_sum(a)
@@ -906,7 +906,7 @@ def test_tile_arange(test, device):
 
 @wp.kernel(module="unique")
 def tile_strided_loop_kernel(arr: wp.array(dtype=float), max_val: wp.array(dtype=float)):
-    tid, lane = wp.tid()
+    _tid, lane = wp.tid()
 
     num_threads = wp.block_dim()
 

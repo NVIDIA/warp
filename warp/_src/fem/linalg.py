@@ -370,8 +370,7 @@ def symmetric_eigenvalues_qr(A: Any, tol: Any):
 
 def array_axpy(x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 1.0):
     """Performs y = alpha*x + beta*y"""
-
-    from warp._src.context import runtime
+    from warp._src.context import runtime  # noqa: PLC0415
 
     dtype = type_scalar_type(y.dtype)
 

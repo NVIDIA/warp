@@ -168,7 +168,7 @@ class TrianglePolynomialShapeFunctions(TriangleShapeFunction):
 
         @cache.dynamic_func(suffix=self.name)
         def node_quadrature_weight(node_index_in_element: int):
-            node_type, type_index = self.node_type_and_type_index(node_index_in_element)
+            node_type, _type_index = self.node_type_and_type_index(node_index_in_element)
 
             if node_type == TrianglePolynomialShapeFunctions.VERTEX:
                 return VERTEX_WEIGHT
@@ -196,7 +196,7 @@ class TrianglePolynomialShapeFunctions(TriangleShapeFunction):
 
         @cache.dynamic_func(suffix=self.name)
         def trace_node_quadrature_weight(node_index_in_element: int):
-            node_type, type_index = self.node_type_and_type_index(node_index_in_element)
+            node_type, _type_index = self.node_type_and_type_index(node_index_in_element)
 
             return wp.where(node_type == TrianglePolynomialShapeFunctions.VERTEX, VERTEX_WEIGHT, EDGE_WEIGHT)
 
@@ -416,7 +416,7 @@ class TriangleNonConformingPolynomialShapeFunctions(ShapeFunction):
 
         @cache.dynamic_func(suffix=self.name)
         def node_quadrature_weight(node_index_in_element: int):
-            node_type, type_index = self._tri_shape.node_type_and_type_index(node_index_in_element)
+            node_type, _type_index = self._tri_shape.node_type_and_type_index(node_index_in_element)
 
             if node_type == TrianglePolynomialShapeFunctions.VERTEX:
                 return VERTEX_WEIGHT

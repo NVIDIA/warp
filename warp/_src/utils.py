@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import cProfile
 import ctypes
+import gc
+import linecache
 import os
 import sys
 import time
@@ -45,14 +47,11 @@ def warp_showwarning(message, category, filename, lineno, file=None, line=None):
 
         if line is None:
             try:
-                import linecache
-
                 line = linecache.getline(filename, lineno)
             except Exception:
                 # When a warning is logged during Python shutdown, linecache
                 # and the import machinery don't work anymore
                 line = None
-                linecache = None
 
         if line:
             line = line.strip()
@@ -129,7 +128,7 @@ def array_scan(in_array, out_array, inclusive=True):
     if in_array.size == 0:
         return
 
-    from warp._src.context import runtime
+    from warp._src.context import runtime  # noqa: PLC0415
 
     if in_array.device.is_cpu:
         if in_array.dtype == wp.int32:
@@ -171,7 +170,7 @@ def radix_sort_pairs(keys, values, count: int):
     if keys.size < 2 * count or values.size < 2 * count:
         raise RuntimeError("Keys and values array storage must be large enough to contain 2*count elements")
 
-    from warp._src.context import runtime
+    from warp._src.context import runtime  # noqa: PLC0415
 
     if keys.device.is_cpu:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
@@ -235,7 +234,7 @@ def segmented_sort_pairs(
     if keys.size < 2 * count or values.size < 2 * count:
         raise RuntimeError("Array storage must be large enough to contain 2*count elements")
 
-    from warp._src.context import runtime
+    from warp._src.context import runtime  # noqa: PLC0415
 
     if segment_start_indices.dtype != wp.int32:
         raise RuntimeError("segment_start_indices array must be of type int32")
@@ -354,7 +353,7 @@ def runlength_encode(values, run_values, run_lengths, run_count=None, value_coun
             return run_count
         host_return = False
 
-    from warp._src.context import runtime
+    from warp._src.context import runtime  # noqa: PLC0415
 
     if values.device.is_cpu:
         if values.dtype == wp.int32:
@@ -433,7 +432,7 @@ def array_sum(values, out=None, value_count=None, axis=None):
             return out.numpy()[0]
         return out
 
-    from warp._src.context import runtime
+    from warp._src.context import runtime  # noqa: PLC0415
 
     if values.device.is_cpu:
         if scalar_type == wp.float32:
@@ -541,7 +540,7 @@ def array_inner(a, b, out=None, count=None, axis=None):
         out.zero_()
         return out
 
-    from warp._src.context import runtime
+    from warp._src.context import runtime  # noqa: PLC0415
 
     if a.device.is_cpu:
         if scalar_type == wp.float32:
@@ -683,7 +682,7 @@ def create_warp_function(func: Callable) -> tuple[wp.Function, warp._src.context
         wp.Function: A Warp function created from the input function.
     """
 
-    from .codegen import Adjoint, get_full_arg_spec
+    from .codegen import Adjoint, get_full_arg_spec  # noqa: PLC0415
 
     def unique_name(code: str):
         return "func_" + hex(hash(code))[-8:]
@@ -849,10 +848,10 @@ def map(
             The resulting array(s) of the mapping. If ``return_kernel`` is True, only returns the kernel used for mapping.
     """
 
-    import builtins
+    import builtins  # noqa: PLC0415
 
-    from .codegen import Adjoint, Struct, StructInstance
-    from .types import (
+    from .codegen import Adjoint, Struct, StructInstance  # noqa: PLC0415
+    from .types import (  # noqa: PLC0415
         is_array,
         type_is_matrix,
         type_is_quaternion,
@@ -1178,9 +1177,7 @@ def mem_report():  # pragma: no cover
             total_mem += mem
         print(f"Type: {mem_type:<4} | Total Tensors: {total_numel:>8} | Used Memory: {total_mem:>8.2f} MB")
 
-    import gc
-
-    import torch
+    import torch  # noqa: PLC0415
 
     gc.collect()
 
@@ -1371,7 +1368,7 @@ class ScopedTimer:
                 self.cp.enable()
 
             if self.use_nvtx:
-                import nvtx
+                import nvtx  # noqa: PLC0415
 
                 self.nvtx_range_id = nvtx.start_range(self.name, color=self.color)
 
@@ -1396,7 +1393,7 @@ class ScopedTimer:
             self.elapsed = (time.perf_counter_ns() - self.start) / 1000000.0
 
             if self.use_nvtx:
-                import nvtx
+                import nvtx  # noqa: PLC0415
 
                 nvtx.end_range(self.nvtx_range_id)
 

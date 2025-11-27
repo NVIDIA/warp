@@ -22,6 +22,7 @@ from warp._src.fem import cache
 from warp._src.fem.geometry import Grid3D
 from warp._src.fem.polynomial import Polynomial, is_closed, lagrange_scales, quadrature_1d
 from warp._src.fem.types import Coords
+from warp._src.fem.utils import grid_to_hexes, grid_to_tets
 
 from .shape_function import ShapeFunction
 from .tet_shape_function import TetrahedronPolynomialShapeFunctions
@@ -397,13 +398,9 @@ class CubeTripolynomialShapeFunctions(CubeShapeFunction):
         return cache.get_func(element_inner_weight_gradient, self.name)
 
     def element_node_hexes(self):
-        from warp._src.fem.utils import grid_to_hexes
-
         return grid_to_hexes(self.ORDER, self.ORDER, self.ORDER)
 
     def element_node_tets(self):
-        from warp._src.fem.utils import grid_to_tets
-
         return grid_to_tets(self.ORDER, self.ORDER, self.ORDER)
 
     def element_vtk_cells(self):
@@ -593,7 +590,7 @@ class CubeSerendipityShapeFunctions(CubeShapeFunction):
         def node_quadrature_weight(
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, _type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
             if node_type == CubeSerendipityShapeFunctions.VERTEX:
                 return 1.0 / float(8 * ORDER * ORDER * ORDER)
 
@@ -608,7 +605,7 @@ class CubeSerendipityShapeFunctions(CubeShapeFunction):
         def trace_node_quadrature_weight(
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            node_type, _type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
             if node_type == CubeSerendipityShapeFunctions.VERTEX:
                 return 0.25 / float(ORDER * ORDER)
 
@@ -753,8 +750,6 @@ class CubeSerendipityShapeFunctions(CubeShapeFunction):
         return element_inner_weight_gradient
 
     def element_node_tets(self):
-        from warp._src.fem.utils import grid_to_tets
-
         if self.ORDER == 2:
             element_tets = np.array(
                 [
@@ -923,7 +918,7 @@ class CubeNedelecFirstKindShapeFunctions(CubeShapeFunction):
         def node_coords_in_element(
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            _node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
             axis = CubeShapeFunction._edge_axis(type_instance)
             local_indices = CubeShapeFunction._edge_coords(type_instance, type_index)
 
@@ -956,7 +951,7 @@ class CubeNedelecFirstKindShapeFunctions(CubeShapeFunction):
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            _node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
 
             axis = CubeShapeFunction._edge_axis(type_instance)
 
@@ -979,7 +974,7 @@ class CubeNedelecFirstKindShapeFunctions(CubeShapeFunction):
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            _node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
 
             axis = CubeShapeFunction._edge_axis(type_instance)
 
@@ -1038,7 +1033,7 @@ class CubeRaviartThomasShapeFunctions(CubeShapeFunction):
         def node_coords_in_element(
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            _node_type, type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
             axis = CubeShapeFunction._face_axis(type_instance)
             offset = CubeShapeFunction._face_offset(type_instance)
 
@@ -1072,7 +1067,7 @@ class CubeRaviartThomasShapeFunctions(CubeShapeFunction):
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            _node_type, type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
 
             axis = CubeShapeFunction._face_axis(type_instance)
             offset = CubeShapeFunction._face_offset(type_instance)
@@ -1093,7 +1088,7 @@ class CubeRaviartThomasShapeFunctions(CubeShapeFunction):
             coords: Coords,
             node_index_in_elt: int,
         ):
-            node_type, type_instance, type_index = self.node_type_and_type_index(node_index_in_elt)
+            _node_type, type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
 
             axis = CubeShapeFunction._face_axis(type_instance)
             offset = CubeShapeFunction._face_offset(type_instance)

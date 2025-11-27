@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ruff: noqa: RUF059
+
 import warp as wp
 
 wp.set_module_options({"enable_backward": False, "block_dim": 8})

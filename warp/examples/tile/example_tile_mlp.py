@@ -270,7 +270,7 @@ class Example:
         self.output_images["example_tile_mlp.jpg"] = output.numpy()
 
     def train_torch(self):
-        import torch as tc
+        import torch as tc  # noqa: PLC0415
 
         weights_0 = tc.nn.Parameter(wp.to_torch(self.weights_0))
         weights_1 = tc.nn.Parameter(wp.to_torch(self.weights_1))

@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ruff: noqa: PLC0415
+
 import ctypes
 import os
 import unittest
@@ -275,7 +277,6 @@ def test_dlpack_warp_to_torch(test, device):
 
 def test_dlpack_warp_to_torch_v2(test, device):
     # same as original test, but uses newer __dlpack__() method
-
     import torch.utils.dlpack
 
     a = wp.array(data=np.arange(N, dtype=np.float32), device=device)
@@ -331,7 +332,6 @@ def test_dlpack_torch_to_warp(test, device):
 
 def test_dlpack_torch_to_warp_v2(test, device):
     # same as original test, but uses newer __dlpack__() method
-
     import torch
 
     with torch.device(wp.device_to_torch(device)):
@@ -538,7 +538,6 @@ def test_dlpack_warp_to_paddle_v2(test, device):
 
 def test_dlpack_jax_to_warp(test, device):
     import jax
-    import jax.dlpack
 
     with jax.default_device(wp.device_to_jax(device)):
         j = jax.numpy.arange(N, dtype=jax.numpy.float32)

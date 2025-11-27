@@ -303,10 +303,10 @@ class ShapeBasisSpace(BasisSpace):
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            neighbour_elem, index_in_neighbour = trace_basis.topology.neighbor_cell_index(
+            _neighbor_elem, index_in_neighbor = trace_basis.topology.neighbor_cell_index(
                 geo_side_arg, topo_arg, element_index, node_index_in_elt
             )
-            return shape_trace_node_quadrature_weight(index_in_neighbour)
+            return shape_trace_node_quadrature_weight(index_in_neighbor)
 
         return trace_node_quadrature_weight
 

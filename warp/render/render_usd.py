@@ -19,6 +19,6 @@ from warp._src.render import render_usd as _render_usd
 
 
 def __getattr__(name):
-    from warp._src.utils import get_deprecated_api
+    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
     return get_deprecated_api(_render_usd, "wp.render", name)

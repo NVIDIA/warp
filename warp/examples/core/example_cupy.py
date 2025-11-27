@@ -20,6 +20,9 @@
 # and NumPy on CPU devices.
 ###########################################################################
 
+import cupy as cp
+import numpy as np
+
 import warp as wp
 
 
@@ -38,8 +41,6 @@ class Example:
 
         if device.is_cuda:
             # use CuPy arrays on CUDA devices
-            import cupy as cp
-
             print(f"Using CuPy on device {device}")
 
             # tell CuPy to use the same device
@@ -48,8 +49,6 @@ class Example:
                 self.y = cp.ones(self.n, dtype=cp.float32)
         else:
             # use NumPy arrays on CPU
-            import numpy as np
-
             print("Using NumPy on CPU")
 
             self.x = np.arange(self.n, dtype=np.float32)

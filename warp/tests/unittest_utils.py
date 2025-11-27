@@ -16,10 +16,14 @@
 import ctypes
 import ctypes.util
 import importlib.util
+import io
 import os
+import re
 import sys
+import tempfile
 import time
 import unittest
+import xml.etree.ElementTree as ET
 from typing import Optional
 
 import numpy as np
@@ -152,10 +156,6 @@ class StreamCapture:
         self.saved = getattr(sys, self.stream_name)
         self.target = os.dup(self.saved.fileno())
 
-        # create temporary capture stream
-        import io
-        import tempfile
-
         # Create temporary capture stream
         self.tempfile = io.TextIOWrapper(
             tempfile.TemporaryFile(buffering=0),
@@ -276,8 +276,6 @@ def sanitize_identifier(s):
     if s.isidentifier():
         return s
     else:
-        import re
-
         return re.sub(r"\W|^(?=\d)", "_", s)
 
 
@@ -362,9 +360,6 @@ def write_junit_results(
 
     The report file is needed for GitLab to add test reports in merge requests.
     """
-
-    import xml.etree.ElementTree as ET
-
     root = ET.Element(
         "testsuite",
         name="Warp Tests",

@@ -525,8 +525,6 @@ class LocalAdjointField(SpaceField):
         pass
 
     def _make_element_eval_arg(self):
-        from warp._src.fem import cache
-
         @cache.dynamic_struct(suffix=self.name)
         class ElementEvalArg:
             elt_arg: self.space.topology.ElementArg

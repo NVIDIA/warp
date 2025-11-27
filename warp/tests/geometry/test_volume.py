@@ -935,7 +935,7 @@ def test_volume_aniso_transform(test, device):
 def test_volume_write(test, device):
     codecs = ["none", "zip", "blosc"]
     try:
-        import blosc  # noqa: F401
+        import blosc  # noqa: F401,PLC0415
     except ImportError:
         codecs.pop()
 

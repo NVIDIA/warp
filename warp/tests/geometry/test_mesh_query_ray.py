@@ -82,7 +82,7 @@ def mesh_query_ray_loss(
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_mesh_query_ray_grad(test, device):
-    from pxr import Usd, UsdGeom
+    from pxr import Usd, UsdGeom  # noqa: PLC0415
 
     # test tri
     # print("Testing Single Triangle")

@@ -19,6 +19,8 @@ import ctypes
 import weakref
 from typing import Any, Generic, TypeVar, Union
 
+from numpy import eye
+
 import warp as wp
 import warp._src.utils
 from warp._src.types import (
@@ -311,7 +313,7 @@ def _allocate_transfer_buf(device):
 
 
 def _redeem_transfer_buf(device, buf, event):
-    all_, pool = _transfer_buffer_cache[device.ordinal]
+    _all, pool = _transfer_buffer_cache[device.ordinal]
     pool.append((buf, event))
 
 
@@ -574,7 +576,7 @@ def bsr_set_from_triplets(
 
     # compute the BSR topology
 
-    from warp._src.context import runtime
+    from warp._src.context import runtime  # noqa: PLC0415
 
     if device.is_cpu:
         native_func = runtime.core.wp_bsr_matrix_from_triplets_host
@@ -997,7 +999,7 @@ def bsr_assign(
             _bsr_ensure_fits(dest, nnz=nnz_alloc)
 
             # Compute destination offsets from triplets
-            from warp._src.context import runtime
+            from warp._src.context import runtime  # noqa: PLC0415
 
             if dest.device.is_cpu:
                 native_func = runtime.core.wp_bsr_matrix_from_triplets_host
@@ -1164,7 +1166,7 @@ def bsr_set_transpose(
         # Increase dest array sizes if needed
         _bsr_ensure_fits(dest, nnz=nnz)
 
-        from warp._src.context import runtime
+        from warp._src.context import runtime  # noqa: PLC0415
 
         if dest.values.device.is_cpu:
             native_func = runtime.core.wp_bsr_transpose_host
@@ -1412,8 +1414,6 @@ def bsr_set_identity(A: BsrMatrix, rows_of_blocks: int | None = None) -> None:
     if A.block_shape == (1, 1):
         identity = A.scalar_type(1.0)
     else:
-        from numpy import eye
-
         identity = eye(A.block_shape[0])
 
     bsr_set_diag(A, diag=identity, rows_of_blocks=rows_of_blocks, cols_of_blocks=rows_of_blocks)
@@ -1665,7 +1665,7 @@ def bsr_axpy(
         # Increase dest array sizes if needed
         _bsr_ensure_fits(y, nnz=sum_nnz)
 
-        from warp._src.context import runtime
+        from warp._src.context import runtime  # noqa: PLC0415
 
         if device.is_cpu:
             native_func = runtime.core.wp_bsr_matrix_from_triplets_host
@@ -1734,7 +1734,7 @@ def bsr_axpy(
 
 
 def make_bsr_mm_count_coeffs(tile_size):
-    from warp._src.fem.cache import dynamic_kernel
+    from warp._src.fem.cache import dynamic_kernel  # noqa: PLC0415
 
     @dynamic_kernel(suffix=tile_size)
     def bsr_mm_count_coeffs(
@@ -1919,7 +1919,7 @@ def _bsr_mm_compute_values(
 
 
 def make_bsr_mm_compute_values_tiled_outer(subblock_rows, subblock_cols, block_depth, scalar_type, tile_size):
-    from warp._src.fem.cache import dynamic_func, dynamic_kernel
+    from warp._src.fem.cache import dynamic_func, dynamic_kernel  # noqa: PLC0415
 
     mm_type = wp.mat(dtype=scalar_type, shape=(subblock_rows, subblock_cols))
 
@@ -2290,7 +2290,7 @@ def bsr_mm(
         if z.columns.shape[0] < mm_nnz:
             z.columns = wp.empty(shape=(mm_nnz,), dtype=int, device=device)
 
-        from warp._src.context import runtime
+        from warp._src.context import runtime  # noqa: PLC0415
 
         if device.is_cpu:
             native_func = runtime.core.wp_bsr_matrix_from_triplets_host
@@ -2432,7 +2432,7 @@ def bsr_mm(
 
 
 def make_bsr_mv_kernel(block_cols: int):
-    from warp._src.fem.cache import dynamic_kernel
+    from warp._src.fem.cache import dynamic_kernel  # noqa: PLC0415
 
     @dynamic_kernel(suffix=block_cols, kernel_options={"enable_backward": False})
     def bsr_mv_kernel(
@@ -2472,7 +2472,7 @@ def make_bsr_mv_kernel(block_cols: int):
 
 
 def make_bsr_mv_tiled_kernel(tile_size: int):
-    from warp._src.fem.cache import dynamic_kernel
+    from warp._src.fem.cache import dynamic_kernel  # noqa: PLC0415
 
     @dynamic_kernel(suffix=tile_size, kernel_options={"enable_backward": False})
     def bsr_mv_tiled_kernel(
@@ -2521,7 +2521,7 @@ def make_bsr_mv_tiled_kernel(tile_size: int):
 
 
 def make_bsr_mv_transpose_kernel(block_rows: int):
-    from warp._src.fem.cache import dynamic_kernel
+    from warp._src.fem.cache import dynamic_kernel  # noqa: PLC0415
 
     @dynamic_kernel(suffix=block_rows, kernel_options={"enable_backward": False})
     def bsr_mv_transpose_kernel(

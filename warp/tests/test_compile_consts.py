@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import unittest
 
 import warp as wp
@@ -187,9 +188,6 @@ class TestConstants(unittest.TestCase):
     def test_constant_math(self):
         # test doing math with python defined constants in *python* scope
         twopi = wp.pi * 2.0
-
-        import math
-
         self.assertEqual(twopi, math.pi * 2.0)
 
 

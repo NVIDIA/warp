@@ -251,9 +251,7 @@ def test_conditional_chain_mixed():
 
 def test_conditional_unequal_types(test: unittest.TestCase, device):
     # The bad kernel must be in a separate module, otherwise the current module would fail to load
-    from warp.tests.aux_test_conditional_unequal_types_kernels import (
-        unequal_types_kernel,
-    )
+    from warp.tests.aux_test_conditional_unequal_types_kernels import unequal_types_kernel  # noqa: PLC0415
 
     with test.assertRaises(TypeError):
         wp.launch(unequal_types_kernel, dim=(1,), inputs=[], device=device)

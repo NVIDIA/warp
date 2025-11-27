@@ -2,6 +2,8 @@ import warp as wp
 import warp.fem as fem
 from warp.examples.fem.utils import gen_tetmesh
 
+# ruff: noqa: RUF059
+
 
 @wp.func
 def symmetric_strain(sig: wp.vec3, V: wp.mat33):

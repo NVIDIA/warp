@@ -14,20 +14,21 @@
 # limitations under the License.
 
 import importlib
+import importlib as imp
 import os
 import unittest
 
 import numpy as np
 
 import warp as wp
+import warp.tests.aux_test_class_kernel
 
 # dummy modules used for testing reload with dependencies
 import warp.tests.aux_test_dependent as test_dependent
 import warp.tests.aux_test_reference as test_reference
 import warp.tests.aux_test_reference_reference as test_reference_reference
-
-# dummy module used for testing reload
 import warp.tests.aux_test_square as test_square
+from warp.tests.aux_test_class_kernel import ClassKernelTest
 from warp.tests.unittest_utils import *
 
 
@@ -158,11 +159,6 @@ def test_reload(test, device):
 
 def test_reload_class(test, device):
     def test_func():
-        import importlib as imp
-
-        import warp.tests.aux_test_class_kernel
-        from warp.tests.aux_test_class_kernel import ClassKernelTest
-
         imp.reload(warp.tests.aux_test_class_kernel)
 
         ctest = ClassKernelTest(device)

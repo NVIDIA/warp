@@ -27,7 +27,7 @@ def device_to_jax(warp_device: warp._src.context.Devicelike):
     Raises:
         RuntimeError: Failed to find the corresponding Jax device.
     """
-    import jax
+    import jax  # noqa: PLC0415
 
     d = warp.get_device(warp_device)
 
@@ -62,7 +62,7 @@ def device_from_jax(jax_device) -> warp._src.context.Device:
 
 def get_jax_device():
     """Get the current Jax device."""
-    import jax
+    import jax  # noqa: PLC0415
 
     # TODO: is there a simpler way of getting the Jax "current" device?
     # check if jax.default_device() context manager is active
@@ -84,7 +84,7 @@ def dtype_to_jax(warp_dtype):
     """
     # initialize lookup table on first call to defer jax import
     if dtype_to_jax.type_map is None:
-        import jax.numpy as jp
+        import jax.numpy as jp  # noqa: PLC0415
 
         dtype_to_jax.type_map = {
             warp.float16: jp.float16,
@@ -116,7 +116,7 @@ def dtype_from_jax(jax_dtype):
     """
     # initialize lookup table on first call to defer jax import
     if dtype_from_jax.type_map is None:
-        import jax.numpy as jp
+        import jax.numpy as jp  # noqa: PLC0415
 
         dtype_from_jax.type_map = {
             # Jax scalar types
@@ -169,7 +169,7 @@ def to_jax(warp_array):
     Returns:
         jax.Array: The converted Jax array.
     """
-    import jax.dlpack
+    import jax.dlpack  # noqa: PLC0415
 
     return jax.dlpack.from_dlpack(warp_array)
 
