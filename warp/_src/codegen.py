@@ -859,7 +859,7 @@ def func_match_args(func, arg_types, kwarg_types):
 
         # if arg type registered as Any, treat as
         # template allowing any type to match
-        if func_arg_type == Any:
+        if func_arg_type is Any:
             continue
 
         # handle function refs as a special case

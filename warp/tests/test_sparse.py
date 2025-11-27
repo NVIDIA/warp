@@ -261,9 +261,9 @@ def test_bsr_get_set_diag(test, device):
 
     with test.assertRaisesRegex(ValueError, "BsrMatrix block type must be either warp matrix or scalar"):
         # 1d block type -- invalid
-        diag_bsr = bsr_diag(diag=vals_np[0, 0], rows_of_blocks=nrow, cols_of_blocks=nrow + 1)
+        diag_bsr = bsr_diag(diag=wp.vec3(vals_np[0, 0]), rows_of_blocks=nrow, cols_of_blocks=nrow + 1)
 
-    diag_bsr = bsr_diag(diag=vals_np[0], rows_of_blocks=nrow, cols_of_blocks=nrow + 1)
+    diag_bsr = bsr_diag(diag=wp.mat33(vals_np[0]), rows_of_blocks=nrow, cols_of_blocks=nrow + 1)
     assert diag_bsr.values.shape[0] == nrow
     assert_np_equal(diag_bsr.values.numpy(), np.broadcast_to(vals_np[0], shape=(nrow, *block_shape)), tol=0.000001)
 
@@ -777,7 +777,7 @@ class TestSparse(unittest.TestCase):
         nrow = 6
         bsize = 2
 
-        diag_bsr = bsr_diag(diag=np.eye(bsize, dtype=float) * 2.0, rows_of_blocks=nrow)
+        diag_bsr = bsr_diag(diag=wp.mat22(np.eye(bsize, dtype=float) * 2.0), rows_of_blocks=nrow)
         diag_copy = bsr_copy(diag_bsr, scalar_type=wp.float64)
 
         self.assertTrue(
