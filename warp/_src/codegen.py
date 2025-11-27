@@ -867,7 +867,7 @@ def func_match_args(func, arg_types, kwarg_types):
             continue
 
         # check arg type matches input variable type
-        if not types_equal(func_arg_type, strip_reference(bound_arg_type), match_generic=True):
+        if not types_equal_generic(func_arg_type, strip_reference(bound_arg_type)):
             return False
 
     return True
@@ -4088,7 +4088,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
                     f"annotated as a tuple of {len(get_args(adj.arg_types['return']))} elements "
                     f"but the code returns {len(adj.return_var)} values."
                 )
-            elif not types_equal(adj.arg_types["return"], tuple(x.type for x in adj.return_var), match_generic=True):
+            elif not types_equal_generic(adj.arg_types["return"], tuple(x.type for x in adj.return_var)):
                 raise WarpCodegenError(
                     f"The function `{adj.fun_name}` has its return type "
                     f"annotated as `{warp._src.context.type_str(adj.arg_types['return'])}` "

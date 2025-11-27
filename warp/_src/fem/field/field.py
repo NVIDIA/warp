@@ -35,6 +35,7 @@ from warp._src.types import (
     type_size,
     type_to_warp,
     types_equal,
+    types_equal_generic,
 )
 
 _wp_module_name_ = "warp.fem.field.field"
@@ -330,9 +331,7 @@ class ImplicitField(GeometryField):
 
         try:
             first_arg_type = arg_types.pop(argspec.args[0])
-            if types_equal(
-                first_arg_type, wp.types.vector(length=domain.geometry.dimension, dtype=float), match_generic=True
-            ):
+            if types_equal_generic(first_arg_type, wp.types.vector(length=domain.geometry.dimension, dtype=float)):
                 self._qp_based = False
             elif type_to_warp(first_arg_type) == wp.int32:
                 self._qp_based = True

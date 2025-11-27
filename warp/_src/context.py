@@ -1511,7 +1511,7 @@ def add_builtin(
                     l = tuple(
                         x
                         for x in consistenttypes[param._wp_generic_type_hint_]
-                        if warp._src.types.types_equal(param, x, match_generic=True)
+                        if warp._src.types.types_equal_generic(param, x)
                     )
                 else:
                     l = (param,)

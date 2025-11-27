@@ -2151,7 +2151,7 @@ def is_slice(t) -> builtins.bool:
     return isinstance(t, slice_t)
 
 
-def scalars_equal(a, b, match_generic=False):
+def scalars_equal_generic(a, b, match_generic=True):
     # convert to canonical types
     if a == float:
         a = float32
@@ -2192,18 +2192,18 @@ def scalars_equal(a, b, match_generic=False):
     return a == b
 
 
-def seq_match_ellipsis(a, b, match_generic=False) -> bool:
+def seq_match_ellipsis(a, b) -> bool:
     assert a and a[-1] is Ellipsis and len(a) == 2
 
     # Compare the args against the type being repeated through the ellipsis.
     repeated_arg = a[0]
-    if not all(types_equal(x, repeated_arg, match_generic=match_generic) for x in b):
+    if not all(types_equal_generic(x, repeated_arg) for x in b):
         return False
 
     return True
 
 
-def types_equal(a, b, match_generic=False):
+def types_equal_generic(a, b, match_generic=True):
     if match_generic:
         a_is_seq = True
         a_is_tuple = True
@@ -2236,11 +2236,13 @@ def types_equal(a, b, match_generic=False):
                 # Delegate to comparing all the elements using the standard approach.
                 pass
             elif a_has_ellipsis:
-                return seq_match_ellipsis(a, b, match_generic=match_generic)
+                return seq_match_ellipsis(a, b)
             elif b_has_ellipsis:
-                return seq_match_ellipsis(b, a, match_generic=match_generic)
+                return seq_match_ellipsis(b, a)
 
-            return len(a) == len(b) and all(types_equal(x, y, match_generic=match_generic) for x, y in zip(a, b))
+            return len(a) == len(b) and all(
+                types_equal_generic(x, y, match_generic=match_generic) for x, y in zip(a, b)
+            )
         elif a_is_seq or b_is_seq:
             # A sequence can only match to another sequence.
             return False
@@ -2262,7 +2264,7 @@ def types_equal(a, b, match_generic=False):
 
     if getattr(a, "_wp_generic_type_hint_", "a") is getattr(b, "_wp_generic_type_hint_", "b"):
         for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_):
-            if not scalars_equal(p1, p2, match_generic):
+            if not scalars_equal_generic(p1, p2, match_generic=match_generic):
                 return False
 
         return True
@@ -2270,7 +2272,7 @@ def types_equal(a, b, match_generic=False):
     if (
         is_array(a)
         and (issubclass(type(a), type(b)) or issubclass(type(b), type(a)))
-        and types_equal(a.dtype, b.dtype, match_generic=match_generic)
+        and types_equal_generic(a.dtype, b.dtype, match_generic=match_generic)
     ):
         return True
 
@@ -2284,7 +2286,15 @@ def types_equal(a, b, match_generic=False):
     if is_slice(a) and is_slice(b):
         return True
 
-    return scalars_equal(a, b, match_generic)
+    return scalars_equal_generic(a, b, match_generic=match_generic)
+
+
+def scalars_equal(a, b):
+    return scalars_equal_generic(a, b, match_generic=False)
+
+
+def types_equal(a, b):
+    return types_equal_generic(a, b, match_generic=False)
 
 
 def strides_from_shape(shape: tuple, dtype):
@@ -5789,7 +5799,7 @@ def type_generic_equal(a, b):
         return False
 
     for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_):
-        if not scalars_equal(p1, p2, match_generic=False):
+        if not scalars_equal(p1, p2):
             return False
 
     return True

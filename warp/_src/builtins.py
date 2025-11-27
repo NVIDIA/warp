@@ -7644,26 +7644,26 @@ def create_atomic_op_value_func(op: str):
         scalar_type = getattr(arr_type.dtype, "_wp_scalar_type_", arr_type.dtype)
         if op in ("add", "sub"):
             supported_atomic_types = (*SUPPORTED_ATOMIC_TYPES, warp.float16)
-            if not any(types_equal(scalar_type, x, match_generic=True) for x in supported_atomic_types):
+            if not any(types_equal_generic(scalar_type, x) for x in supported_atomic_types):
                 raise RuntimeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float16, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
         elif op in ("min", "max"):
-            if not any(types_equal(scalar_type, x, match_generic=True) for x in SUPPORTED_ATOMIC_TYPES):
+            if not any(types_equal_generic(scalar_type, x) for x in SUPPORTED_ATOMIC_TYPES):
                 raise RuntimeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
         elif op in ("cas", "exch"):
-            if not any(types_equal(scalar_type, x, match_generic=True) for x in SUPPORTED_ATOMIC_TYPES):
+            if not any(types_equal_generic(scalar_type, x) for x in SUPPORTED_ATOMIC_TYPES):
                 raise RuntimeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
         elif op in ("and", "or", "xor"):
             supported_atomic_types = (warp.int32, warp.int64, warp.uint32, warp.uint64)
-            if not any(types_equal(scalar_type, x, match_generic=True) for x in supported_atomic_types):
+            if not any(types_equal_generic(scalar_type, x) for x in supported_atomic_types):
                 raise RuntimeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32 or [u]int64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
