@@ -966,7 +966,7 @@ def matrix(shape, dtype):
 
 
 def matrix_from_cols(*args: Sequence[Vector]):
-    if not all(type_is_vector(x) for x in args):
+    if not all(is_vector(x) for x in args):
         raise RuntimeError("all arguments are expected to be vectors")
 
     length = args[0]._length_
@@ -993,7 +993,7 @@ def matrix_from_cols(*args: Sequence[Vector]):
 
 
 def matrix_from_rows(*args: Sequence[Vector]):
-    if not all(type_is_vector(x) for x in args):
+    if not all(is_vector(x) for x in args):
         raise RuntimeError("all arguments are expected to be vectors")
 
     length = args[0]._length_
@@ -2095,30 +2095,50 @@ def type_is_scalar(t):
 
 # returns True if the passed *type* is a vector
 def type_is_vector(t):
-    return getattr(t, "_wp_generic_type_hint_", None) is Vector
+    return isinstance(t, type) and getattr(t, "_wp_generic_type_hint_", None) is Vector
 
 
 # returns True if the passed *type* is a quaternion
 def type_is_quaternion(t):
-    return getattr(t, "_wp_generic_type_hint_", None) is Quaternion
+    return isinstance(t, type) and getattr(t, "_wp_generic_type_hint_", None) is Quaternion
 
 
 # returns True if the passed *type* is a matrix
 def type_is_matrix(t):
-    return getattr(t, "_wp_generic_type_hint_", None) is Matrix
+    return isinstance(t, type) and getattr(t, "_wp_generic_type_hint_", None) is Matrix
 
 
 # returns True if the passed *type* is a transformation
 def type_is_transformation(t):
-    return getattr(t, "_wp_generic_type_hint_", None) is Transformation
+    return isinstance(t, type) and getattr(t, "_wp_generic_type_hint_", None) is Transformation
+
+
+def type_is_compound(t):
+    return isinstance(t, type) and hasattr(t, "_wp_generic_type_hint_")
 
 
 value_types = (int, float, builtins.bool, *scalar_and_bool_types)
 
 
 # returns true for all value types (int, float, bool, scalars, vectors, matrices)
-def type_is_value(x: Any) -> builtins.bool:
-    return x in value_types or hasattr(x, "_wp_scalar_type_")
+def type_is_value(t: Any) -> builtins.bool:
+    return t in value_types or type_is_compound(t)
+
+
+def type_is_struct(t: Any) -> builtins.bool:
+    return isinstance(t, warp._src.codegen.Struct)
+
+
+def type_is_array(t: Any) -> builtins.bool:
+    return t in array_types
+
+
+def type_is_tuple(t: Any) -> builtins.bool:
+    return t is tuple_t
+
+
+def type_is_slice(t: Any) -> builtins.bool:
+    return t is slice_t
 
 
 # equivalent of the above but for values
@@ -2134,21 +2154,45 @@ def is_scalar(x: Any) -> builtins.bool:
     return type_is_scalar(type(x))
 
 
+def is_vector(x):
+    return not isinstance(x, type) and getattr(x, "_wp_generic_type_hint_", None) is Vector
+
+
+def is_quaternion(x):
+    return not isinstance(x, type) and getattr(x, "_wp_generic_type_hint_", None) is Quaternion
+
+
+def is_matrix(x):
+    return not isinstance(x, type) and getattr(x, "_wp_generic_type_hint_", None) is Matrix
+
+
+def is_transformation(x):
+    return not isinstance(x, type) and getattr(x, "_wp_generic_type_hint_", None) is Transformation
+
+
+def is_compound(x):
+    return not isinstance(x, type) and hasattr(x, "_wp_generic_type_hint_")
+
+
 def is_value(x: Any) -> builtins.bool:
-    return type_is_value(type(x))
+    return isinstance(x, value_types) or is_compound(x)
 
 
-def is_array(a) -> builtins.bool:
+def is_struct(x) -> builtins.bool:
+    return isinstance(x, warp._src.codegen.StructInstance)
+
+
+def is_array(x) -> builtins.bool:
     """Return true if the passed *instance* is one of the array types."""
-    return isinstance(a, array_types)
+    return isinstance(x, array_types)
 
 
-def is_tuple(t) -> builtins.bool:
-    return isinstance(t, tuple_t)
+def is_tuple(x) -> builtins.bool:
+    return isinstance(x, tuple_t)
 
 
-def is_slice(t) -> builtins.bool:
-    return isinstance(t, slice_t)
+def is_slice(x) -> builtins.bool:
+    return isinstance(x, slice_t)
 
 
 def scalars_equal_generic(a, b, match_generic=True):
@@ -4213,6 +4257,10 @@ class tile(Tile[DType, Shape]):
     # align tile size to natural boundary, default 16-bytes
     def align(self, bytes):
         return tile.round_up(bytes)
+
+
+def type_is_tile(t):
+    return t is tile
 
 
 def is_tile(t):

@@ -16,6 +16,7 @@
 import sys
 import types
 import unittest
+from enum import IntEnum
 from typing import get_origin
 
 import numpy as np
@@ -159,6 +160,131 @@ def test_vector(test, device, dtype):
     # `__slots__` could help improving memory usage.
     v.foo = 123
     test.assertEqual(v.foo, 123)
+
+
+@wp.struct
+class Foo:
+    x: int
+
+
+class Kind(IntEnum):
+    INT = 1
+    FLOAT = 2
+    VECTOR = 3
+    MATRIX = 4
+    QUATERNION = 5
+    TRANSFORMATION = 6
+    STRUCT = 7
+    ARRAY = 8
+    TILE = 9
+
+
+vec8us = wp.types.vector(8, wp.uint8)
+mat55d = wp.types.matrix((5, 5), wp.float64)
+
+
+def test_introspection(test, device):
+    def check(a, kind, is_inst):
+        test.assertEqual(wp.types.type_is_int(a), kind is Kind.INT and not is_inst)
+        test.assertEqual(wp.types.type_is_float(a), kind is Kind.FLOAT and not is_inst)
+        test.assertEqual(wp.types.type_is_scalar(a), kind in (Kind.INT, Kind.FLOAT) and not is_inst)
+        test.assertEqual(wp.types.type_is_vector(a), kind is Kind.VECTOR and not is_inst)
+        test.assertEqual(wp.types.type_is_matrix(a), kind is Kind.MATRIX and not is_inst)
+        test.assertEqual(wp.types.type_is_quaternion(a), kind is Kind.QUATERNION and not is_inst)
+        test.assertEqual(wp.types.type_is_transformation(a), kind is Kind.TRANSFORMATION and not is_inst)
+        test.assertEqual(
+            wp.types.type_is_compound(a), kind >= Kind.VECTOR and kind <= Kind.TRANSFORMATION and not is_inst
+        )
+        test.assertEqual(wp.types.type_is_value(a), kind <= Kind.TRANSFORMATION and not is_inst)
+        test.assertEqual(wp.types.type_is_struct(a), kind is Kind.STRUCT and not is_inst)
+        test.assertEqual(wp.types.type_is_array(a), kind is Kind.ARRAY and not is_inst)
+        test.assertEqual(wp.types.type_is_tile(a), kind is Kind.TILE and not is_inst)
+
+        test.assertEqual(wp.types.is_int(a), kind is Kind.INT and is_inst)
+        test.assertEqual(wp.types.is_float(a), kind is Kind.FLOAT and is_inst)
+        test.assertEqual(wp.types.is_scalar(a), kind in (Kind.INT, Kind.FLOAT) and is_inst)
+        test.assertEqual(wp.types.is_vector(a), kind is Kind.VECTOR and is_inst)
+        test.assertEqual(wp.types.is_matrix(a), kind is Kind.MATRIX and is_inst)
+        test.assertEqual(wp.types.is_quaternion(a), kind is Kind.QUATERNION and is_inst)
+        test.assertEqual(wp.types.is_compound(a), kind >= Kind.VECTOR and kind <= Kind.TRANSFORMATION and is_inst)
+        test.assertEqual(wp.types.is_value(a), kind <= Kind.TRANSFORMATION and is_inst)
+        test.assertEqual(wp.types.is_struct(a), kind is Kind.STRUCT and is_inst)
+        test.assertEqual(wp.types.is_array(a), kind is Kind.ARRAY and is_inst)
+        test.assertEqual(wp.types.is_tile(a), kind is Kind.TILE and is_inst)
+
+    # Types.
+
+    check(int, Kind.INT, is_inst=False)
+    check(wp.int32, Kind.INT, is_inst=False)
+    check(wp.int16, Kind.INT, is_inst=False)
+    check(wp.uint64, Kind.INT, is_inst=False)
+
+    check(float, Kind.FLOAT, is_inst=False)
+    check(wp.float32, Kind.FLOAT, is_inst=False)
+    check(wp.float16, Kind.FLOAT, is_inst=False)
+
+    check(wp.vec3, Kind.VECTOR, is_inst=False)
+    check(wp.vec2i, Kind.VECTOR, is_inst=False)
+    check(vec8us, Kind.VECTOR, is_inst=False)
+
+    check(wp.mat22, Kind.MATRIX, is_inst=False)
+    check(wp.mat33h, Kind.MATRIX, is_inst=False)
+    check(mat55d, Kind.MATRIX, is_inst=False)
+
+    check(wp.quat, Kind.QUATERNION, is_inst=False)
+    check(wp.quath, Kind.QUATERNION, is_inst=False)
+
+    check(wp.transform, Kind.TRANSFORMATION, is_inst=False)
+    check(wp.transformd, Kind.TRANSFORMATION, is_inst=False)
+
+    check(Foo, Kind.STRUCT, is_inst=False)
+
+    check(wp.array, Kind.ARRAY, is_inst=False)
+    check(wp.fixedarray, Kind.ARRAY, is_inst=False)
+    check(wp.fabricarray, Kind.ARRAY, is_inst=False)
+    check(wp.indexedarray, Kind.ARRAY, is_inst=False)
+
+    check(wp.tile, Kind.TILE, is_inst=False)
+
+    # Instances.
+
+    check(123, Kind.INT, is_inst=True)
+    check(wp.int32(123), Kind.INT, is_inst=True)
+    check(wp.int16(123), Kind.INT, is_inst=True)
+    check(wp.uint64(123), Kind.INT, is_inst=True)
+
+    check(1.23, Kind.FLOAT, is_inst=True)
+    check(wp.float32(1.23), Kind.FLOAT, is_inst=True)
+    check(wp.float16(1.23), Kind.FLOAT, is_inst=True)
+
+    check(wp.vec3(*range(3)), Kind.VECTOR, is_inst=True)
+    check(wp.vec2i(*range(2)), Kind.VECTOR, is_inst=True)
+    check(vec8us(*range(8)), Kind.VECTOR, is_inst=True)
+
+    check(wp.mat22(*range(4)), Kind.MATRIX, is_inst=True)
+    check(wp.mat33h(*range(9)), Kind.MATRIX, is_inst=True)
+    check(mat55d(*range(25)), Kind.MATRIX, is_inst=True)
+
+    check(wp.quat(*range(4)), Kind.QUATERNION, is_inst=True)
+    check(wp.quath(*range(4)), Kind.QUATERNION, is_inst=True)
+
+    check(wp.transform(*range(7)), Kind.TRANSFORMATION, is_inst=True)
+    check(wp.transformd(*range(7)), Kind.TRANSFORMATION, is_inst=True)
+
+    check(Foo(), Kind.STRUCT, is_inst=True)
+
+    check(wp.array(dtype=int), Kind.ARRAY, is_inst=True)
+    check(wp.array(ndim=3, dtype=float), Kind.ARRAY, is_inst=True)
+    check(wp.array3d(((1, 2, 3),) * 2, dtype=wp.float16), Kind.ARRAY, is_inst=True)
+    check(wp.fixedarray(dtype=int), Kind.ARRAY, is_inst=True)
+    check(wp.fabricarray(dtype=float), Kind.ARRAY, is_inst=True)
+    check(wp.indexedarray(dtype=wp.float16), Kind.ARRAY, is_inst=True)
+
+    check(wp.array((1, 2, 3), dtype=wp.uint16, device=device), Kind.ARRAY, is_inst=True)
+    check(wp.zeros(1, dtype=wp.float64, device=device), Kind.ARRAY, is_inst=True)
+
+    check(wp.tile(dtype=float, shape=(2, 2)), Kind.TILE, is_inst=True)
+    check(wp.tile(dtype=wp.float16, shape=(2, 2)), Kind.TILE, is_inst=True)
 
 
 devices = [x for x in get_test_devices() if x.is_cpu]
@@ -605,6 +731,8 @@ for dtype in wp._src.types.float_types:
 
 for dtype in (*wp._src.types.scalar_types, int, float):
     add_function_test(TestTypes, f"test_vector_{dtype.__name__}", test_vector, devices=devices, dtype=dtype)
+
+add_function_test(TestTypes, "test_introspection", test_introspection)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

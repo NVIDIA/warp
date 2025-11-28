@@ -1969,7 +1969,7 @@ class Adjoint:
 
     @staticmethod
     def resolve_type_attribute(var_type: type, attr: str):
-        if isinstance(var_type, type) and type_is_value(var_type):
+        if type_is_value(var_type):
             if attr == "dtype":
                 return type_scalar_type(var_type)
             elif attr == "length":
@@ -2021,10 +2021,11 @@ class Adjoint:
             if isinstance(aggregate, types.ModuleType) or isinstance(aggregate, type):
                 out = getattr(aggregate, node.attr)
 
-                if warp._src.types.is_value(out):
-                    return adj.add_constant(out)
                 if isinstance(out, (enum.IntEnum, enum.IntFlag)):
                     return adj.add_constant(int(out))
+
+                if warp._src.types.is_value(out):
+                    return adj.add_constant(out)
 
                 return out
 
@@ -3548,7 +3549,7 @@ class Adjoint:
                 elif isinstance(func, Struct):
                     # calling struct constructor
                     types[func] = None
-                elif isinstance(func, type) and warp._src.types.type_is_value(func):
+                elif warp._src.types.type_is_value(func):
                     # calling value type constructor
                     types[func] = None
 
