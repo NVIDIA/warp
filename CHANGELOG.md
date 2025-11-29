@@ -8,6 +8,10 @@
   ([GH-1071](https://github.com/NVIDIA/warp/issues/1071)).
 - Fix `module="unique"` kernels to properly reuse existing module objects when defined multiple times,
   avoiding unnecessary module creation overhead ([GH-995](https://github.com/NVIDIA/warp/issues/995)).
+- Fix for loops containing `wp.static()` expressions that use the loop variable.
+  These loops are now always unrolled regardless of `max_unroll` settings to
+  ensure loop variables are available as compile-time constants within static
+  expressions ([GH-560](https://github.com/NVIDIA/warp/pull/560)).
 - Add validation in `wp.compile_aot_module()` to detect generic kernels without overloads and generic kernels with
   multiple overloads when `strip_hash=True` ([GH-919](https://github.com/NVIDIA/warp/issues/919)).
 - Fix compilation error in `wp.tile_load_indexed()` when indices tile has been reshaped or transformed
