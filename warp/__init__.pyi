@@ -3000,7 +3000,7 @@ def tile_broadcast(a: Tile[Any, Tuple[int, ...]], shape: Tuple[int, ...]) -> Til
     ...
 
 @over
-def tile_sum(a: Tile[Scalar, Tuple[int, ...]], axis: int32) -> Tile[Scalar, Tuple[int, ...]]:
+def tile_sum(a: Tile[Any, Tuple[int, ...]], axis: int32) -> Tile[Any, Tuple[int, ...]]:
     """Cooperatively compute the sum of the tile elements across an axis of the tile using all threads in the block.
 
     :param a: The input tile. Must reside in shared memory.
@@ -3031,7 +3031,7 @@ def tile_sum(a: Tile[Scalar, Tuple[int, ...]], axis: int32) -> Tile[Scalar, Tupl
     ...
 
 @over
-def tile_sum(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[1]]:
+def tile_sum(a: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[1]]:
     """Cooperatively compute the sum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the sum of
@@ -3215,7 +3215,7 @@ def tile_argmax(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Int, Tuple[1]]:
     ...
 
 @over
-def tile_reduce(op: Callable, a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[1]]:
+def tile_reduce(op: Callable, a: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[1]]:
     """Apply a custom reduction operator across the tile.
 
     This function cooperatively performs a reduction using the provided operator across the tile.
@@ -3416,7 +3416,7 @@ def tile_scan_min_inclusive(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tu
     ...
 
 @over
-def tile_map(op: Callable, a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+def tile_map(op: Callable, a: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
     """Apply a unary function onto the tile.
 
     This function cooperatively applies a unary function to each element of the tile using all threads in the block.
@@ -3448,9 +3448,7 @@ def tile_map(op: Callable, a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tup
     ...
 
 @over
-def tile_map(
-    op: Callable, a: Tile[Scalar, Tuple[int, ...]], b: Tile[Scalar, Tuple[int, ...]]
-) -> Tile[Scalar, Tuple[int, ...]]:
+def tile_map(op: Callable, a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
     """Apply a binary function onto the tile.
 
     This function cooperatively applies a binary function to each element of the tiles using all threads in the block.
@@ -5429,7 +5427,7 @@ def add(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[
     ...
 
 @over
-def add(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+def add(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
     """Add each element of two tiles together"""
     ...
 
@@ -5459,7 +5457,7 @@ def sub(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[
     ...
 
 @over
-def sub(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+def sub(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
     """Subtract each element b from a"""
     ...
 
@@ -5479,7 +5477,7 @@ def bit_and(a: Matrix[Any, Any, Int], b: Matrix[Any, Any, Int]) -> Matrix[Any, A
     ...
 
 @over
-def bit_and(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+def bit_and(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
     """Bitwise AND each element of two tiles together"""
     ...
 
@@ -5499,7 +5497,7 @@ def bit_or(a: Matrix[Any, Any, Int], b: Matrix[Any, Any, Int]) -> Matrix[Any, An
     ...
 
 @over
-def bit_or(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+def bit_or(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
     """Bitwise OR each element of two tiles together"""
     ...
 
@@ -5519,7 +5517,7 @@ def bit_xor(a: Matrix[Any, Any, Int], b: Matrix[Any, Any, Int]) -> Matrix[Any, A
     ...
 
 @over
-def bit_xor(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+def bit_xor(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
     """Bitwise XOR each element of two tiles together"""
     ...
 

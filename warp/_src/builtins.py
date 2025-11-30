@@ -4273,7 +4273,7 @@ add_builtin(
 def tile_sum_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Scalar, shape=(1,))
+        return tile(dtype=Any, shape=(1,))
 
     if len(arg_types) != 1:
         raise TypeError(f"tile_sum() takes exactly 1 positional argument but {len(arg_types)} were given")
@@ -4288,7 +4288,7 @@ def tile_sum_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_sum",
-    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...])},
     value_func=tile_sum_value_func,
     variadic=True,
     doc="""Cooperatively compute the sum of the tile elements using all threads in the block.
@@ -4324,7 +4324,7 @@ add_builtin(
 
 def tile_sum_axis_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=Tuple[int, ...])
 
     a = arg_types["a"]
 
@@ -4361,7 +4361,7 @@ def tile_sum_axis_dispatch_func(arg_types: Mapping[str, type], return_type: Any,
 
 add_builtin(
     "tile_sum",
-    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...]), "axis": int},
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "axis": int},
     value_func=tile_sum_axis_value_func,
     dispatch_func=tile_sum_axis_dispatch_func,
     doc="""Cooperatively compute the sum of the tile elements across an axis of the tile using all threads in the block.
@@ -4700,7 +4700,7 @@ add_builtin(
 
 def tile_reduce_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Scalar, shape=(1,))
+        return tile(dtype=Any, shape=(1,))
 
     a = arg_types["a"]
 
@@ -4718,7 +4718,7 @@ def tile_reduce_dispatch_func(input_types: Mapping[str, type], return_type: Any,
 
 add_builtin(
     "tile_reduce",
-    input_types={"op": Callable, "a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"op": Callable, "a": tile(dtype=Any, shape=Tuple[int, ...])},
     value_func=tile_reduce_value_func,
     native_func="tile_reduce",
     doc="""Apply a custom reduction operator across the tile.
@@ -5104,7 +5104,7 @@ add_builtin(
 # does type propagation for load()
 def tile_unary_map_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=Tuple[int, ...])
 
     a = arg_types["a"]
 
@@ -5147,7 +5147,7 @@ def tile_unary_map_dispatch_func(arg_types: Mapping[str, type], return_type: Any
 
 add_builtin(
     "tile_map",
-    input_types={"op": Callable, "a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"op": Callable, "a": tile(dtype=Any, shape=Tuple[int, ...])},
     value_func=tile_unary_map_value_func,
     dispatch_func=tile_unary_map_dispatch_func,
     # variadic=True,
@@ -5187,7 +5187,7 @@ add_builtin(
 
 def tile_binary_map_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=Tuple[int, ...])
 
     a = arg_types["a"]
     b = arg_types["b"]
@@ -5255,8 +5255,8 @@ add_builtin(
     "tile_map",
     input_types={
         "op": Callable,
-        "a": tile(dtype=Scalar, shape=Tuple[int, ...]),
-        "b": tile(dtype=Scalar, shape=Tuple[int, ...]),
+        "a": tile(dtype=Any, shape=Tuple[int, ...]),
+        "b": tile(dtype=Any, shape=Tuple[int, ...]),
     },
     value_func=tile_binary_map_value_func,
     dispatch_func=tile_binary_map_dispatch_func,

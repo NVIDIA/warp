@@ -2345,7 +2345,7 @@ Tile Primitives
     :returns: Tile with broadcast shape
 
 
-.. py:function:: tile_sum(a: Tile[Scalar,Tuple[int, ...]], axis: int32) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: tile_sum(a: Tile[Any,Tuple[int, ...]], axis: int32) -> Tile[Any,Tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2382,7 +2382,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_sum(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]
+.. py:function:: tile_sum(a: Tile[Any,Tuple[int, ...]]) -> Tile[Any,Tuple[1]]
     :noindex:
     :nocontentsentry:
 
@@ -2602,7 +2602,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_reduce(op: Callable, a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]
+.. py:function:: tile_reduce(op: Callable, a: Tile[Any,Tuple[int, ...]]) -> Tile[Any,Tuple[1]]
 
     .. hlist::
        :columns: 8
@@ -2831,7 +2831,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_map(op: Callable, a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: tile_map(op: Callable, a: Tile[Any,Tuple[int, ...]]) -> Tile[Any,Tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2869,7 +2869,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_map(op: Callable, a: Tile[Scalar,Tuple[int, ...]], b: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: tile_map(op: Callable, a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Any,Tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -6784,7 +6784,7 @@ Operators
        * Differentiable
 
 
-.. py:function:: add(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: add(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Any,Tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -6856,7 +6856,7 @@ Operators
        * Differentiable
 
 
-.. py:function:: sub(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: sub(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Any,Tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -6901,7 +6901,7 @@ Operators
        * Python
 
 
-.. py:function:: bit_and(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: bit_and(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Any,Tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -6945,7 +6945,7 @@ Operators
        * Python
 
 
-.. py:function:: bit_or(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: bit_or(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Any,Tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -6989,7 +6989,7 @@ Operators
        * Python
 
 
-.. py:function:: bit_xor(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: bit_xor(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Any,Tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
