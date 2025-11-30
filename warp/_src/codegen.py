@@ -635,6 +635,9 @@ def is_reference(type: Any) -> builtins.bool:
 
 
 def strip_reference(arg: Any) -> Any:
+    if isinstance(arg, str):
+        return arg
+
     if is_reference(arg):
         return arg.value_type
 
@@ -863,50 +866,66 @@ def func_match_args(func, arg_types, kwarg_types):
             continue
 
         # handle function refs as a special case
-        if func_arg_type == Callable and isinstance(bound_arg_type, warp._src.context.Function):
+        if func_arg_type is Callable and isinstance(bound_arg_type, warp._src.context.Function):
+            continue
+
+        bound_arg_type_stripped = strip_reference(bound_arg_type)
+
+        # Handle array polymorphism (e.g., passing a fixed array to a function taking an array).
+        if (
+            is_array(func_arg_type)
+            and (
+                issubclass(type(func_arg_type), type(bound_arg_type_stripped))
+                or issubclass(type(bound_arg_type_stripped), type(func_arg_type))
+            )
+            and types_equal_generic(func_arg_type.dtype, bound_arg_type_stripped.dtype, match_generic=True)
+        ):
             continue
 
         # check arg type matches input variable type
-        if not types_equal_generic(func_arg_type, strip_reference(bound_arg_type)):
+        if not types_equal_generic(func_arg_type, bound_arg_type_stripped):
             return False
 
     return True
 
 
 def get_arg_type(arg: Var | Any) -> type:
+    arg = strip_reference(arg)
+
     if isinstance(arg, str):
         return str
 
-    if isinstance(arg, Sequence):
-        return tuple(get_arg_type(x) for x in arg)
+    if is_struct(arg):
+        return arg._cls
 
-    if is_array(arg):
-        return arg
-
-    if get_origin(arg) is tuple:
-        return tuple(get_arg_type(x) for x in get_args(arg))
-
-    if is_tuple(arg):
-        return arg
-
-    if isinstance(arg, (type, warp._src.context.Function)):
+    if isinstance(
+        arg, (type, *array_types, warp._src.codegen.Struct, warp._src.context.Function, tuple_t, slice_t, tile)
+    ):
         return arg
 
     if isinstance(arg, Var):
         if get_origin(arg.type) is tuple:
             return get_args(arg.type)
 
-        return arg.type
+        return get_arg_type(arg.type)
+
+    if isinstance(arg, Sequence):
+        return tuple(get_arg_type(x) for x in arg)
+
+    if get_origin(arg) is tuple:
+        return tuple(get_arg_type(x) for x in get_args(arg))
 
     return type(arg)
 
 
 def get_arg_value(arg: Any) -> Any:
+    arg = strip_reference(arg)
+
+    if isinstance(arg, (type, str, warp._src.context.Function)):
+        return arg
+
     if isinstance(arg, Sequence):
         return tuple(get_arg_value(x) for x in arg)
-
-    if isinstance(arg, (type, warp._src.context.Function)):
-        return arg
 
     if isinstance(arg, Var):
         if is_tuple(arg.type):
@@ -1329,7 +1348,7 @@ class Adjoint:
             adj.blocks[-1].body_reverse.append(line_directive)
 
     def add_constant(adj, n):
-        output = adj.add_var(type=type(n), constant=n)
+        output = adj.add_var(type=get_arg_type(n), constant=n)
         return output
 
     def load(adj, var):
@@ -1428,8 +1447,8 @@ class Adjoint:
 
     def add_call(adj, func, args, kwargs, type_args, min_outputs=None):
         # Extract the types and values passed as arguments to the function call.
-        arg_types = tuple(strip_reference(get_arg_type(x)) for x in args)
-        kwarg_types = {k: strip_reference(get_arg_type(v)) for k, v in kwargs.items()}
+        arg_types = tuple(get_arg_type(x) for x in args)
+        kwarg_types = {k: get_arg_type(v) for k, v in kwargs.items()}
 
         # Resolve the exact function signature among any existing overload.
         func = adj.resolve_func(func, arg_types, kwarg_types, min_outputs)
@@ -2512,8 +2531,8 @@ class Adjoint:
 
         if warp._src.config.verify_autograd_array_access:
             # Extract the types and values passed as arguments to the function call.
-            arg_types = tuple(strip_reference(get_arg_type(x)) for x in args)
-            kwarg_types = {k: strip_reference(get_arg_type(v)) for k, v in kwargs.items()}
+            arg_types = tuple(get_arg_type(x) for x in args)
+            kwarg_types = {k: get_arg_type(v) for k, v in kwargs.items()}
 
             # Resolve the exact function signature among any existing overload.
             resolved_func = adj.resolve_func(func, arg_types, kwarg_types, min_outputs)
@@ -4101,12 +4120,6 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
                 f"annotated as `{warp._src.context.type_str(adj.arg_types['return'])}` "
                 f"but the code returns {len(adj.return_var)} values."
             )
-        elif not types_equal(adj.arg_types["return"], adj.return_var[0].type):
-            raise WarpCodegenError(
-                f"The function `{adj.fun_name}` has its return type "
-                f"annotated as `{warp._src.context.type_str(adj.arg_types['return'])}` "
-                f"but the code returns a value of type `{warp._src.context.type_str(adj.return_var[0].type)}`."
-            )
         elif (
             isinstance(adj.return_var[0].type, warp._src.types.fixedarray)
             and type(adj.arg_types["return"]) is warp._src.types.array
@@ -4119,6 +4132,12 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
                 f"The function `{adj.fun_name}` returns a fixed-size array "
                 f"whereas it has its return type annotated as "
                 f"`{warp._src.context.type_str(adj.arg_types['return'])}`."
+            )
+        elif not types_equal(adj.arg_types["return"], adj.return_var[0].type):
+            raise WarpCodegenError(
+                f"The function `{adj.fun_name}` has its return type "
+                f"annotated as `{warp._src.context.type_str(adj.arg_types['return'])}` "
+                f"but the code returns a value of type `{warp._src.context.type_str(adj.return_var[0].type)}`."
             )
 
     # Build line directive for function definition (subtract 1 to account for 1-indexing of AST line numbers)

@@ -2307,28 +2307,20 @@ def types_equal_generic(a, b, match_generic=True):
         b = bool
 
     if getattr(a, "_wp_generic_type_hint_", "a") is getattr(b, "_wp_generic_type_hint_", "b"):
+        if not isinstance(a, type) or not isinstance(b, type):
+            return False
+
         for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_):
             if not scalars_equal_generic(p1, p2, match_generic=match_generic):
                 return False
 
         return True
 
-    if (
-        is_array(a)
-        and (issubclass(type(a), type(b)) or issubclass(type(b), type(a)))
-        and types_equal_generic(a.dtype, b.dtype, match_generic=match_generic)
-    ):
-        return True
+    if is_array(a) or is_tile(a):
+        return type(a) is type(b) and types_equal_generic(a.dtype, b.dtype, match_generic=match_generic)
 
-    # match NewStructInstance and Struct dtype
-    if getattr(a, "cls", "a") is getattr(b, "cls", "b"):
-        return True
-
-    if is_tile(a) and is_tile(b):
-        return True
-
-    if is_slice(a) and is_slice(b):
-        return True
+    if is_slice(a):
+        return type(a) is type(b)
 
     return scalars_equal_generic(a, b, match_generic=match_generic)
 
