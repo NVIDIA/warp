@@ -17,8 +17,7 @@
 
 #pragma once
 
-namespace wp
-{
+namespace wp {
 // functions related to error reporting
 
 // get error string from Python

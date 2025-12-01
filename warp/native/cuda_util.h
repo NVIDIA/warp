@@ -21,21 +21,20 @@
 
 #if WP_ENABLE_CUDA
 
+#include <vector>
+
 #include <cudaTypedefs.h>
 #include <cuda_runtime_api.h>
-
 #include <stdio.h>
-
-#include <vector>
 
 #define check_cuda(code) (check_cuda_result(code, __FUNCTION__, __FILE__, __LINE__))
 #define check_cu(code) (check_cu_result(code, __FUNCTION__, __FILE__, __LINE__))
 
 
 #if defined(__CUDACC__)
-#if _DEBUG   
-    // helper for launching kernels (synchronize + error checking after each kernel)
-    #define wp_launch_device(context, kernel, dim, args) { \
+#if _DEBUG
+// helper for launching kernels (synchronize + error checking after each kernel)
+#define wp_launch_device(context, kernel, dim, args) { \
         if (dim) { \
         ContextGuard guard(context); \
         cudaStream_t stream = (cudaStream_t)wp_cuda_stream_get_current(); \
@@ -46,8 +45,8 @@
         check_cuda(wp_cuda_context_check(WP_CURRENT_CONTEXT)); \
         end_cuda_range(WP_TIMING_KERNEL_BUILTIN, stream); }}
 #else
-    // helper for launching kernels (no error checking)
-    #define wp_launch_device(context, kernel, dim, args) { \
+// helper for launching kernels (no error checking)
+#define wp_launch_device(context, kernel, dim, args) { \
         if (dim) { \
         ContextGuard guard(context); \
         cudaStream_t stream = (cudaStream_t)wp_cuda_stream_get_current(); \
@@ -56,15 +55,15 @@
         begin_cuda_range(WP_TIMING_KERNEL_BUILTIN, stream, context, #kernel); \
         kernel<<<num_blocks, 256, 0, stream>>>args; \
         end_cuda_range(WP_TIMING_KERNEL_BUILTIN, stream); }}
-#endif // _DEBUG
-#endif // defined(__CUDACC__)
+#endif  // _DEBUG
+#endif  // defined(__CUDACC__)
 
 
 CUresult cuDriverGetVersion_f(int* version);
 CUresult cuGetErrorName_f(CUresult result, const char** pstr);
 CUresult cuGetErrorString_f(CUresult result, const char** pstr);
 CUresult cuInit_f(unsigned int flags);
-CUresult cuDeviceGet_f(CUdevice *dev, int ordinal);
+CUresult cuDeviceGet_f(CUdevice* dev, int ordinal);
 CUresult cuDeviceGetCount_f(int* count);
 CUresult cuDeviceGetName_f(char* name, int len, CUdevice dev);
 CUresult cuDeviceGetAttribute_f(int* value, CUdevice_attribute attrib, CUdevice dev);
@@ -89,8 +88,17 @@ CUresult cuStreamQuery_f(CUstream stream);
 CUresult cuStreamSynchronize_f(CUstream stream);
 CUresult cuStreamWaitEvent_f(CUstream stream, CUevent event, unsigned int flags);
 CUresult cuStreamGetCtx_f(CUstream stream, CUcontext* pctx);
-CUresult cuStreamGetCaptureInfo_f(CUstream stream, CUstreamCaptureStatus *captureStatus_out, cuuint64_t *id_out, CUgraph *graph_out, const CUgraphNode **dependencies_out, size_t *numDependencies_out);
-CUresult cuStreamUpdateCaptureDependencies_f(CUstream stream, CUgraphNode *dependencies, size_t numDependencies, unsigned int flags);
+CUresult cuStreamGetCaptureInfo_f(
+    CUstream stream,
+    CUstreamCaptureStatus* captureStatus_out,
+    cuuint64_t* id_out,
+    CUgraph* graph_out,
+    const CUgraphNode** dependencies_out,
+    size_t* numDependencies_out
+);
+CUresult cuStreamUpdateCaptureDependencies_f(
+    CUstream stream, CUgraphNode* dependencies, size_t numDependencies, unsigned int flags
+);
 CUresult cuStreamCreateWithPriority_f(CUstream* phStream, unsigned int flags, int priority);
 CUresult cuStreamGetPriority_f(CUstream hStream, int* priority);
 CUresult cuEventCreate_f(CUevent* event, unsigned int flags);
@@ -101,27 +109,50 @@ CUresult cuEventRecordWithFlags_f(CUevent event, CUstream stream, unsigned int f
 CUresult cuEventSynchronize_f(CUevent event);
 #if CUDA_VERSION >= 12030
 // function used to add conditional graph nodes, not available in older CUDA versions
-CUresult cuGraphAddNode_f(CUgraphNode *phGraphNode, CUgraph hGraph, const CUgraphNode *dependencies, const CUgraphEdgeData *dependencyData, size_t numDependencies, CUgraphNodeParams *nodeParams);
+CUresult cuGraphAddNode_f(
+    CUgraphNode* phGraphNode,
+    CUgraph hGraph,
+    const CUgraphNode* dependencies,
+    const CUgraphEdgeData* dependencyData,
+    size_t numDependencies,
+    CUgraphNodeParams* nodeParams
+);
 #endif
-CUresult cuGraphNodeGetDependentNodes_f(CUgraphNode hNode, CUgraphNode *dependentNodes, size_t *numDependentNodes);
+CUresult cuGraphNodeGetDependentNodes_f(CUgraphNode hNode, CUgraphNode* dependentNodes, size_t* numDependentNodes);
 CUresult cuGraphNodeGetType_f(CUgraphNode hNode, CUgraphNodeType* type);
 CUresult cuModuleUnload_f(CUmodule hmod);
-CUresult cuModuleLoadDataEx_f(CUmodule *module, const void *image, unsigned int numOptions, CUjit_option *options, void **optionValues);
-CUresult cuModuleGetFunction_f(CUfunction *hfunc, CUmodule hmod, const char *name);
-CUresult cuLaunchKernel_f(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void **kernelParams, void **extra);
-CUresult cuMemcpyPeerAsync_f(CUdeviceptr dst_ptr, CUcontext dst_ctx, CUdeviceptr src_ptr, CUcontext src_ctx, size_t n, CUstream stream);
+CUresult cuModuleLoadDataEx_f(
+    CUmodule* module, const void* image, unsigned int numOptions, CUjit_option* options, void** optionValues
+);
+CUresult cuModuleGetFunction_f(CUfunction* hfunc, CUmodule hmod, const char* name);
+CUresult cuLaunchKernel_f(
+    CUfunction f,
+    unsigned int gridDimX,
+    unsigned int gridDimY,
+    unsigned int gridDimZ,
+    unsigned int blockDimX,
+    unsigned int blockDimY,
+    unsigned int blockDimZ,
+    unsigned int sharedMemBytes,
+    CUstream hStream,
+    void** kernelParams,
+    void** extra
+);
+CUresult cuMemcpyPeerAsync_f(
+    CUdeviceptr dst_ptr, CUcontext dst_ctx, CUdeviceptr src_ptr, CUcontext src_ctx, size_t n, CUstream stream
+);
 CUresult cuPointerGetAttribute_f(void* data, CUpointer_attribute attribute, CUdeviceptr ptr);
 CUresult cuGraphicsMapResources_f(unsigned int count, CUgraphicsResource* resources, CUstream stream);
 CUresult cuGraphicsUnmapResources_f(unsigned int count, CUgraphicsResource* resources, CUstream hStream);
 CUresult cuGraphicsResourceGetMappedPointer_f(CUdeviceptr* pDevPtr, size_t* pSize, CUgraphicsResource resource);
-CUresult cuGraphicsGLRegisterBuffer_f(CUgraphicsResource *pCudaResource, unsigned int buffer, unsigned int flags);
+CUresult cuGraphicsGLRegisterBuffer_f(CUgraphicsResource* pCudaResource, unsigned int buffer, unsigned int flags);
 CUresult cuGraphicsUnregisterResource_f(CUgraphicsResource resource);
-CUresult cuModuleGetGlobal_f(CUdeviceptr* dptr, size_t* bytes, CUmodule hmod, const char* name );
+CUresult cuModuleGetGlobal_f(CUdeviceptr* dptr, size_t* bytes, CUmodule hmod, const char* name);
 CUresult cuFuncSetAttribute_f(CUfunction hfunc, CUfunction_attribute attrib, int value);
-CUresult cuIpcGetEventHandle_f(CUipcEventHandle *pHandle, CUevent event);
-CUresult cuIpcOpenEventHandle_f(CUevent *phEvent, CUipcEventHandle handle);
-CUresult cuIpcGetMemHandle_f(CUipcMemHandle *pHandle, CUdeviceptr dptr);
-CUresult cuIpcOpenMemHandle_f(CUdeviceptr *pdptr, CUipcMemHandle handle, unsigned int flags);
+CUresult cuIpcGetEventHandle_f(CUipcEventHandle* pHandle, CUevent event);
+CUresult cuIpcOpenEventHandle_f(CUevent* phEvent, CUipcEventHandle handle);
+CUresult cuIpcGetMemHandle_f(CUipcMemHandle* pHandle, CUdeviceptr dptr);
+CUresult cuIpcOpenMemHandle_f(CUdeviceptr* pdptr, CUipcMemHandle handle, unsigned int flags);
 CUresult cuIpcCloseMemHandle_f(CUdeviceptr dptr);
 
 bool init_cuda_driver();
@@ -165,10 +196,7 @@ inline CUcontext get_stream_context(CUstream stream)
         return NULL;
 }
 
-inline CUcontext get_stream_context(void* stream)
-{
-    return get_stream_context(static_cast<CUstream>(stream));
-}
+inline CUcontext get_stream_context(void* stream) { return get_stream_context(static_cast<CUstream>(stream)); }
 
 
 //
@@ -187,23 +215,21 @@ inline CUcontext get_stream_context(void* stream)
 // - If the `restore` flag is omitted on entry, fall back on the global `always_restore` flag.
 // - This allows us to easily change the default behaviour of the guards.
 //
-class ContextGuard
-{
+class ContextGuard {
 public:
     // default policy for restoring contexts
     static bool always_restore;
 
-    explicit ContextGuard(CUcontext context, bool restore=always_restore)
+    explicit ContextGuard(CUcontext context, bool restore = always_restore)
         : need_restore(false)
     {
-        if (context)
-        {
+        if (context) {
             if (check_cu(cuCtxGetCurrent_f(&prev_context)) && context != prev_context)
                 need_restore = check_cu(cuCtxSetCurrent_f(context)) && restore;
         }
     }
 
-    explicit ContextGuard(void* context, bool restore=always_restore)
+    explicit ContextGuard(void* context, bool restore = always_restore)
         : ContextGuard(static_cast<CUcontext>(context), restore)
     {
     }
@@ -221,8 +247,7 @@ private:
 
 
 // CUDA timing range used during event-based timing
-struct CudaTimingRange
-{
+struct CudaTimingRange {
     void* context;
     const char* name;
     int flag;
@@ -231,22 +256,21 @@ struct CudaTimingRange
 };
 
 // Timing result used to pass timings to Python
-struct timing_result_t
-{
+struct timing_result_t {
     void* context;
     const char* name;
     int flag;
     float elapsed;
 };
 
-struct CudaTimingState
-{
+struct CudaTimingState {
     int flags;
     std::vector<CudaTimingRange> ranges;
     CudaTimingState* parent;
 
     CudaTimingState(int flags, CudaTimingState* parent)
-        : flags(flags), parent(parent)
+        : flags(flags)
+        , parent(parent)
     {
     }
 };
@@ -289,23 +313,22 @@ typedef int CUdevice;
 typedef struct CUctx_st* CUcontext;
 typedef struct CUstream_st* CUstream;
 
-class ContextGuard
-{
+class ContextGuard {
 public:
-    explicit ContextGuard(CUcontext context, bool restore=false)
+    explicit ContextGuard(CUcontext context, bool restore = false)
     {
         (void)context;
         (void)restore;
     }
 
-    explicit ContextGuard(void* context, bool restore=false)
+    explicit ContextGuard(void* context, bool restore = false)
     {
         (void)context;
         (void)restore;
     }
 };
 
-#endif // WP_ENABLE_CUDA
+#endif  // WP_ENABLE_CUDA
 
 // Pass this value to device functions as the `context` parameter to bypass unnecessary context management.
 // This works in conjunction with ContextGuards, which do nothing if the given context is NULL.

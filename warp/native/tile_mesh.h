@@ -17,26 +17,25 @@
 
 #pragma once
 
-#include "tile.h"
 #include "mesh.h"
+#include "tile.h"
 #include "tile_bvh.h"
 
-namespace wp
-{
+namespace wp {
 
 #if defined(__CUDA_ARCH__)
 
-struct mesh_query_aabb_thread_block_t
-{
+struct mesh_query_aabb_thread_block_t {
     CUDA_CALLABLE mesh_query_aabb_thread_block_t()
-        : mesh(),
-          stack_shared_mem(nullptr),
-          count_shared_mem(nullptr),
-          result_counter_shared_mem(nullptr),
-          result_buffer_shared_mem(nullptr),
-          input_lower(),
-          input_upper()
-    {}
+        : mesh()
+        , stack_shared_mem(nullptr)
+        , count_shared_mem(nullptr)
+        , result_counter_shared_mem(nullptr)
+        , result_buffer_shared_mem(nullptr)
+        , input_lower()
+        , input_upper()
+    {
+    }
 
     // Required for adjoint computations.
     CUDA_CALLABLE inline mesh_query_aabb_thread_block_t& operator+=(const mesh_query_aabb_thread_block_t& other)
@@ -47,14 +46,14 @@ struct mesh_query_aabb_thread_block_t
     Mesh mesh;
 
     // BVH traversal stack (shared memory pointers):
-    int* stack_shared_mem;           // [block_size] - buffer to store node indices
-    int* count_shared_mem;           // [1] - counter for number of nodes on the stack
+    int* stack_shared_mem;  // [block_size] - buffer to store node indices
+    int* count_shared_mem;  // [1] - counter for number of nodes on the stack
     int* result_counter_shared_mem;  // [1] - counter for number of results found
-    int* result_buffer_shared_mem;   // [block_size] - buffer to store result indices
-    static const int result_buffer_capacity = WP_TILE_BLOCK_DIM*5;
-    static const int stack_capacity = 64*BVH_QUERY_STACK_SIZE;
-    
-    // inputs    
+    int* result_buffer_shared_mem;  // [block_size] - buffer to store result indices
+    static const int result_buffer_capacity = WP_TILE_BLOCK_DIM * 5;
+    static const int stack_capacity = 64 * BVH_QUERY_STACK_SIZE;
+
+    // inputs
     wp::vec3 input_lower;
     wp::vec3 input_upper;
 };
@@ -67,15 +66,13 @@ using mesh_query_aabb_thread_block_t = mesh_query_aabb_t;
 #endif
 
 
-
-
 #if defined(__CUDA_ARCH__)
 
-CUDA_CALLABLE inline mesh_query_aabb_thread_block_t mesh_query_aabb_thread_block(
-    uint64_t id, const vec3& lower, const vec3& upper)
+CUDA_CALLABLE inline mesh_query_aabb_thread_block_t
+mesh_query_aabb_thread_block(uint64_t id, const vec3& lower, const vec3& upper)
 {
     // This routine traverses the BVH tree until it finds
-    // the first overlapping bound. 
+    // the first overlapping bound.
 
     // initialize empty
     mesh_query_aabb_thread_block_t query;
@@ -84,20 +81,22 @@ CUDA_CALLABLE inline mesh_query_aabb_thread_block_t mesh_query_aabb_thread_block
 
     query.mesh = mesh;
 
-    // Shared memory should remain available even if this method terminates - it stays available until the end of the kernel
+    // Shared memory should remain available even if this method terminates - it stays available until the end of the
+    // kernel
     __shared__ int stack_shared_mem[mesh_query_aabb_thread_block_t::stack_capacity];
     __shared__ int count_shared_mem[1];
     __shared__ int result_counter[1];
-    __shared__ int result_buffer[mesh_query_aabb_thread_block_t::result_buffer_capacity]; // Conservative bounds for up to WP_TILE_BLOCK_DIM threads: Max capacity should be (BVH_LEAF_SIZE+1)*512
+    __shared__ int result_buffer[mesh_query_aabb_thread_block_t::
+                                     result_buffer_capacity];  // Conservative bounds for up to WP_TILE_BLOCK_DIM
+                                                               // threads: Max capacity should be (BVH_LEAF_SIZE+1)*512
 
-    query.stack_shared_mem = stack_shared_mem;    
-    query.count_shared_mem = count_shared_mem;    
+    query.stack_shared_mem = stack_shared_mem;
+    query.count_shared_mem = count_shared_mem;
     query.result_counter_shared_mem = result_counter;
     query.result_buffer_shared_mem = result_buffer;
 
-    // optimization: make the latest    
-    if(threadIdx.x == 0)
-    {	
+    // optimization: make the latest
+    if (threadIdx.x == 0) {
         query.stack_shared_mem[0] = *mesh.bvh.root;
         query.count_shared_mem[0] = 1;
         query.result_counter_shared_mem[0] = 0;
@@ -110,16 +109,17 @@ CUDA_CALLABLE inline mesh_query_aabb_thread_block_t mesh_query_aabb_thread_block
     return query;
 }
 
-CUDA_CALLABLE inline mesh_query_aabb_thread_block_t mesh_query_aabb_thread_block_impl(
-    uint64_t id, const vec3& lower, const vec3& upper)
+CUDA_CALLABLE inline mesh_query_aabb_thread_block_t
+mesh_query_aabb_thread_block_impl(uint64_t id, const vec3& lower, const vec3& upper)
 {
     return mesh_query_aabb_thread_block(id, lower, upper);
 }
 
-CUDA_CALLABLE inline int mesh_get_node_index_at_depth(mesh_query_aabb_thread_block_t& query, int node_index, int lane_id, int num_expansion_steps)
-{   
-    if(num_expansion_steps  == 0)
-    {
+CUDA_CALLABLE inline int mesh_get_node_index_at_depth(
+    mesh_query_aabb_thread_block_t& query, int node_index, int lane_id, int num_expansion_steps
+)
+{
+    if (num_expansion_steps == 0) {
         return node_index;
     }
 
@@ -130,41 +130,34 @@ CUDA_CALLABLE inline int mesh_get_node_index_at_depth(mesh_query_aabb_thread_blo
     node_lowers_uppers[1] = bvh.node_uppers;
 
     int max_lanes = 1 << num_expansion_steps;
-    if (lane_id >= max_lanes)
-    {
+    if (lane_id >= max_lanes) {
         return -1;
     }
 
     bool is_leaf = bvh_load_node(bvh.node_lowers, node_index).b;
-    if (is_leaf)
-    {
+    if (is_leaf) {
         if (lane_id == 0)
             return node_index;
         else
             return -1;
     }
 
-    for (int i = 0; i < num_expansion_steps; ++i)
-    {
+    for (int i = 0; i < num_expansion_steps; ++i) {
         int bit_position = num_expansion_steps - 1 - i;
         int lower_upper_select = (lane_id >> bit_position) & 1;
 
         node_index = bvh_load_node(node_lowers_uppers[lower_upper_select], node_index).i;
 
         is_leaf = bvh_load_node(bvh.node_lowers, node_index).b;
-        if (is_leaf)
-        {
+        if (is_leaf) {
             // Check if this thread is the canonical one for this leaf.
             // Multiple threads with the same prefix but different suffixes
             // reached this leaf via the same path. Only the thread with
             // all remaining lower bits zero should return this leaf.
             int mask = (1 << bit_position) - 1;
-            if ((lane_id & mask) == 0)
-            {
+            if ((lane_id & mask) == 0) {
                 return node_index;
-            }
-            else
-            {
+            } else {
                 return -1;
             }
         }
@@ -178,11 +171,10 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next_thread_block_impl(mesh_query_aabb
     int block_size = blockDim.x;
     int lane_id = threadIdx.x;
 
-    __syncthreads(); // Required when this method is called inside a loop because of the shared memory read below 
+    __syncthreads();  // Required when this method is called inside a loop because of the shared memory read below
 
     // Because of BVH_LEAF_SIZE>1, it is possible that already enough results are cached to immediately return
-    if (query.result_counter_shared_mem[0] >= block_size)
-    {
+    if (query.result_counter_shared_mem[0] >= block_size) {
         index = query.result_buffer_shared_mem[query.result_counter_shared_mem[0] - block_size + lane_id];
         __syncthreads();
         if (lane_id == 0)
@@ -192,8 +184,7 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next_thread_block_impl(mesh_query_aabb
 
     int num_expansion_steps = 0;
     int pow_2 = 1;
-    while(pow_2 < block_size)
-    {
+    while (pow_2 < block_size) {
         pow_2 *= 2;
         num_expansion_steps += 1;
     }
@@ -203,22 +194,17 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next_thread_block_impl(mesh_query_aabb
     int* stack = query.stack_shared_mem;
     int* count = query.count_shared_mem;
     __shared__ bool direct_mode_shared[1];
-    
+
     index = -1;
 
     // Navigate through the bvh, find the first overlapping leaf node.
-    while (count[0] > 0 && query.result_counter_shared_mem[0] < block_size)
-    {
+    while (count[0] > 0 && query.result_counter_shared_mem[0] < block_size) {
         __syncthreads();
-        if(lane_id == 0)
-        {
-            if(count[0] < block_size)
-            {
+        if (lane_id == 0) {
+            if (count[0] < block_size) {
                 count[0] -= 1;
                 direct_mode_shared[0] = false;
-            }
-            else
-            {
+            } else {
                 count[0] -= block_size;
                 direct_mode_shared[0] = true;
             }
@@ -228,22 +214,17 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next_thread_block_impl(mesh_query_aabb
         int stack_count = count[0];
 
         int node_index;
-        if(direct_mode_shared[0])
+        if (direct_mode_shared[0])
             node_index = stack[stack_count + lane_id];
-        else
-        {
+        else {
             __syncthreads();
             node_index = mesh_get_node_index_at_depth(query, stack[stack_count], lane_id, num_expansion_steps);
-            if (node_index < 0)
-            {
+            if (node_index < 0) {
                 // Check if there is something on the stack that could be taken instead
                 int id = atomicAdd(&count[0], -1) - 1;
-                if(id>=0)
-                {
+                if (id >= 0) {
                     node_index = stack[id];
-                }
-                else
-                {
+                } else {
                     // Restore the stack underflow
                     atomicAdd(&count[0], 1);
                 }
@@ -251,70 +232,65 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next_thread_block_impl(mesh_query_aabb
         }
 
         __syncthreads();
-        if (node_index >= 0) 
-        {   
+        if (node_index >= 0) {
             BVHPackedNodeHalf node_lower = bvh_load_node(bvh.node_lowers, node_index);
             BVHPackedNodeHalf node_upper = bvh_load_node(bvh.node_uppers, node_index);
 
-            if (intersect_aabb_aabb(query.input_lower, query.input_upper, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)))
-            {
+            if (intersect_aabb_aabb(
+                    query.input_lower, query.input_upper, reinterpret_cast<vec3&>(node_lower),
+                    reinterpret_cast<vec3&>(node_upper)
+                )) {
                 const int left_index = node_lower.i;
                 const int right_index = node_upper.i;
 
-                if (node_lower.b)
-                {
+                if (node_lower.b) {
                     // found leaf, process its primitives one at a time
                     const int start = left_index;
                     const int end = right_index;
 
-                    if (bvh.leaf_size == 1)
-                    {
+                    if (bvh.leaf_size == 1) {
                         // Optimization: when leaf_size == 1, the primitive bounds match the node bounds
                         // so we can skip the per-primitive intersection test
                         int primitive_index = bvh.primitive_indices[start];
                         int pos = atomicAdd(&query.result_counter_shared_mem[0], 1);
                         if (pos < mesh_query_aabb_thread_block_t::result_buffer_capacity)
                             query.result_buffer_shared_mem[pos] = primitive_index;
-                    }
-                    else
-                    {
-                        for (int prim_offset = 0; prim_offset < (end - start); ++prim_offset)
-                        {
+                    } else {
+                        for (int prim_offset = 0; prim_offset < (end - start); ++prim_offset) {
                             int primitive_index = bvh.primitive_indices[start + prim_offset];
-                            
-                            if (intersect_aabb_aabb(query.input_lower, query.input_upper, mesh.lowers[primitive_index], mesh.uppers[primitive_index]))
-                            {
+
+                            if (intersect_aabb_aabb(
+                                    query.input_lower, query.input_upper, mesh.lowers[primitive_index],
+                                    mesh.uppers[primitive_index]
+                                )) {
                                 int pos = atomicAdd(&query.result_counter_shared_mem[0], 1);
                                 if (pos < mesh_query_aabb_thread_block_t::result_buffer_capacity)
                                     query.result_buffer_shared_mem[pos] = primitive_index;
                             }
                         }
                     }
-                }
-                else
-                {
+                } else {
                     // Internal node: push children onto stack
                     int pos = atomicAdd(&count[0], 2);
-                    if (pos + 1 < mesh_query_aabb_thread_block_t::stack_capacity)
-                    {
+                    if (pos + 1 < mesh_query_aabb_thread_block_t::stack_capacity) {
                         stack[pos] = left_index;
                         stack[pos + 1] = right_index;
                     }
                 }
             }
         }
-        __syncthreads();  
+        __syncthreads();
     }
 
     __syncthreads();
-    if (query.result_counter_shared_mem[0] >= block_size)    
+    if (query.result_counter_shared_mem[0] >= block_size)
         index = query.result_buffer_shared_mem[query.result_counter_shared_mem[0] - block_size + lane_id];
     else
         index = lane_id < query.result_counter_shared_mem[0] ? query.result_buffer_shared_mem[lane_id] : -1;
     bool result = query.result_counter_shared_mem[0] > 0;
     __syncthreads();
 
-    if(lane_id == 0)
+    if (lane_id == 0)
         query.result_counter_shared_mem[0] = max(0, query.result_counter_shared_mem[0] - block_size);
 
     __syncthreads();
@@ -325,8 +301,8 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next_thread_block_impl(mesh_query_aabb
 #else
 
 // CPU version: mesh_query_aabb_thread_block_t is aliased to mesh_query_aabb_t, so just use regular mesh query
-CUDA_CALLABLE inline mesh_query_aabb_thread_block_t mesh_query_aabb_thread_block_impl(
-    uint64_t id, const vec3& lower, const vec3& upper)
+CUDA_CALLABLE inline mesh_query_aabb_thread_block_t
+mesh_query_aabb_thread_block_impl(uint64_t id, const vec3& lower, const vec3& upper)
 {
     // On CPU, mesh_query_aabb_thread_block_t is just mesh_query_aabb_t
     return mesh_query_aabb(id, lower, upper);
@@ -346,8 +322,7 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next_thread_block_impl(mesh_query_aabb
 #if defined(__CUDA_ARCH__)
 
 // CUDA implementation: uses thread-block parallel traversal
-template<int Length>
-CUDA_CALLABLE inline auto tile_mesh_query_aabb_next_impl(mesh_query_aabb_thread_block_t& query)
+template <int Length> CUDA_CALLABLE inline auto tile_mesh_query_aabb_next_impl(mesh_query_aabb_thread_block_t& query)
 {
     int index = -1;
     mesh_query_aabb_next_thread_block_impl(query, index);
@@ -362,42 +337,44 @@ CUDA_CALLABLE inline auto tile_mesh_query_aabb_next(mesh_query_aabb_thread_block
 }
 
 // New tile-based alias for the query function
-CUDA_CALLABLE inline mesh_query_aabb_thread_block_t tile_mesh_query_aabb(
-    uint64_t id, const vec3& lower, const vec3& upper)
+CUDA_CALLABLE inline mesh_query_aabb_thread_block_t
+tile_mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper)
 {
     return mesh_query_aabb_thread_block_impl(id, lower, upper);
 }
 
-//Stub
-CUDA_CALLABLE inline void adj_tile_mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper,
-    uint64_t, vec3&, vec3&, mesh_query_aabb_thread_block_t&)
+// Stub
+CUDA_CALLABLE inline void adj_tile_mesh_query_aabb(
+    uint64_t id, const vec3& lower, const vec3& upper, uint64_t, vec3&, vec3&, mesh_query_aabb_thread_block_t&
+)
 {
 }
 
 // stub
-template<int Length>
-CUDA_CALLABLE inline void adj_tile_mesh_query_aabb_next_impl(mesh_query_aabb_thread_block_t& query, mesh_query_aabb_thread_block_t&, decltype(tile<int>(0))&)
+template <int Length>
+CUDA_CALLABLE inline void adj_tile_mesh_query_aabb_next_impl(
+    mesh_query_aabb_thread_block_t& query, mesh_query_aabb_thread_block_t&, decltype(tile<int>(0))&
+)
 {
-
 }
 
 // stub for the wrapper
-CUDA_CALLABLE inline void adj_tile_mesh_query_aabb_next(mesh_query_aabb_thread_block_t& query, mesh_query_aabb_thread_block_t&, decltype(tile<int>(0))&)
+CUDA_CALLABLE inline void adj_tile_mesh_query_aabb_next(
+    mesh_query_aabb_thread_block_t& query, mesh_query_aabb_thread_block_t&, decltype(tile<int>(0))&
+)
 {
-
 }
 
 #else
 
 // CPU implementation: falls back to single-threaded query, returns index only in first element
-template<int Length>
-inline auto tile_mesh_query_aabb_next_impl(mesh_query_aabb_thread_block_t& query)
+template <int Length> inline auto tile_mesh_query_aabb_next_impl(mesh_query_aabb_thread_block_t& query)
 {
     // On CPU, mesh_query_aabb_thread_block_t is aliased to mesh_query_aabb_t
     // We just call the regular query and put the result in the first element of a tile
     int index = -1;
     mesh_query_aabb_next(query, index);
-    
+
     // Create a tile with the index in the first element, -1 in all others
     // This simulates a single-threaded execution where only thread 0 has work
     auto result = tile_register<int, Length>();
@@ -418,32 +395,34 @@ inline auto tile_mesh_query_aabb_next(mesh_query_aabb_thread_block_t& query)
 }
 
 // CPU version: tile_mesh_query_aabb just creates a regular query
-inline mesh_query_aabb_thread_block_t tile_mesh_query_aabb(
-    uint64_t id, const vec3& lower, const vec3& upper)
+inline mesh_query_aabb_thread_block_t tile_mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper)
 {
     // On CPU, this is just mesh_query_aabb since mesh_query_aabb_thread_block_t = mesh_query_aabb_t
     return mesh_query_aabb(id, lower, upper);
 }
 
-//Stub
-inline void adj_tile_mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper,
-    uint64_t, vec3&, vec3&, mesh_query_aabb_thread_block_t&)
+// Stub
+inline void adj_tile_mesh_query_aabb(
+    uint64_t id, const vec3& lower, const vec3& upper, uint64_t, vec3&, vec3&, mesh_query_aabb_thread_block_t&
+)
 {
 }
 
 // stub
-template<int Length>
-inline void adj_tile_mesh_query_aabb_next_impl(mesh_query_aabb_thread_block_t& query, mesh_query_aabb_thread_block_t&, decltype(tile_register<int, Length>())&)
+template <int Length>
+inline void adj_tile_mesh_query_aabb_next_impl(
+    mesh_query_aabb_thread_block_t& query, mesh_query_aabb_thread_block_t&, decltype(tile_register<int, Length>())&
+)
 {
-
 }
 
-// stub for the wrapper  
-inline void adj_tile_mesh_query_aabb_next(mesh_query_aabb_thread_block_t& query, mesh_query_aabb_thread_block_t&, decltype(tile_register<int, 1>())&)
+// stub for the wrapper
+inline void adj_tile_mesh_query_aabb_next(
+    mesh_query_aabb_thread_block_t& query, mesh_query_aabb_thread_block_t&, decltype(tile_register<int, 1>())&
+)
 {
-
 }
 
-#endif // __CUDA_ARCH__
+#endif  // __CUDA_ARCH__
 
-} // namespace wp
+}  // namespace wp

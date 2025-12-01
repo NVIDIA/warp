@@ -16,23 +16,22 @@
  */
 
 #include "warp.h"
-#include "scan.h"
 
 #include "cuda_util.h"
+#include "scan.h"
 
 #define THRUST_IGNORE_CUB_VERSION_CHECK
 
 #include <cub/device/device_scan.cuh>
 
-template<typename T>
-void scan_device(const T* values_in, T* values_out, int n, bool inclusive)
+template <typename T> void scan_device(const T* values_in, T* values_out, int n, bool inclusive)
 {
     ContextGuard guard(wp_cuda_context_get_current());
 
     cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
 
     // compute temporary memory required
-	size_t scan_temp_size;
+    size_t scan_temp_size;
     if (inclusive) {
         check_cuda(cub::DeviceScan::InclusiveSum(NULL, scan_temp_size, values_in, values_out, n));
     } else {
