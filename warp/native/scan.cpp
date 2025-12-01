@@ -19,16 +19,14 @@
 
 #include <numeric>
 
-template<typename T>
-void scan_host(const T* values_in, T* values_out, int n, bool inclusive)
+template <typename T> void scan_host(const T* values_in, T* values_out, int n, bool inclusive)
 {
     static void* scan_temp_memory = NULL;
     static size_t scan_temp_max_size = 0;
 
     // compute temporary memory required
-    if (!inclusive && n > scan_temp_max_size)
-    {
-	    wp_free_host(scan_temp_memory);
+    if (!inclusive && n > scan_temp_max_size) {
+        wp_free_host(scan_temp_memory);
         scan_temp_memory = wp_alloc_host(sizeof(T) * n);
         scan_temp_max_size = n;
     }

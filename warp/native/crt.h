@@ -30,13 +30,13 @@
 //   standard C library headers, and it avoids mismatched redefinitions.
 
 #if !defined(__CUDA_ARCH__)
-    #if defined(_WIN32)
-        #define WP_API __declspec(dllexport)
-    #else
-        #define WP_API __attribute__ ((visibility ("default")))
-    #endif
+#if defined(_WIN32)
+#define WP_API __declspec(dllexport)
 #else
-    #define WP_API
+#define WP_API __attribute__ ((visibility ("default")))
+#endif
+#else
+#define WP_API
 #endif
 
 #if !defined(__CUDA_ARCH__)
@@ -57,12 +57,12 @@ extern "C" WP_API int _wp_isinf(double);
 
 #if !defined(WP_NO_CRT)
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
 #include <assert.h>
 #include <float.h>
+#include <math.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #else
@@ -97,13 +97,13 @@ extern "C" WP_API int _wp_isinf(double);
 
 /// limits.h
 #if defined _WIN32 || defined _WIN64
- #define __WORDSIZE 32
+#define __WORDSIZE 32
 #else
- #if defined __x86_64__ && !defined __ILP32__
-  #define __WORDSIZE 64
- #else
-  #define __WORDSIZE 32
- #endif
+#if defined __x86_64__ && !defined __ILP32__
+#define __WORDSIZE 64
+#else
+#define __WORDSIZE 32
+#endif
 #endif
 #define MB_LEN_MAX  16
 #define CHAR_BIT    8
@@ -120,15 +120,15 @@ extern "C" WP_API int _wp_isinf(double);
 #define INT_MAX     2147483647
 #define UINT_MAX    4294967295U
 #if __WORDSIZE == 64
- # define LONG_MAX  9223372036854775807L
+#define LONG_MAX  9223372036854775807L
 #else
- # define LONG_MAX  2147483647L
+#define LONG_MAX  2147483647L
 #endif
 #define LONG_MIN    (-LONG_MAX - 1L)
 #if __WORDSIZE == 64
- #define ULONG_MAX  18446744073709551615UL
+#define ULONG_MAX  18446744073709551615UL
 #else
- #define ULONG_MAX  4294967295UL
+#define ULONG_MAX  4294967295UL
 #endif
 #define LLONG_MAX  9223372036854775807LL
 #define LLONG_MIN  (-LLONG_MAX - 1LL)
@@ -140,33 +140,33 @@ extern "C" WP_API int _wp_isinf(double);
 #define NAN        ((float)(0.0 / 0.0))
 
 /// stdint.h
-typedef signed char      int8_t;
-typedef signed short     int16_t;
-typedef signed int       int32_t;
+typedef signed char int8_t;
+typedef signed short int16_t;
+typedef signed int int32_t;
 typedef signed long long int64_t;
-//typedef signed char      int_fast8_t;
-//typedef signed short     int_fast16_t;
-//typedef signed int       int_fast32_t;
-//typedef signed long long int_fast64_t;
-//typedef signed char      int_least8_t;
-//typedef signed short     int_least16_t;
-//typedef signed int       int_least32_t;
-//typedef signed long long int_least64_t;
-//typedef signed long long intmax_t;
-//typedef signed long      intptr_t; 
-typedef unsigned char      uint8_t;
-typedef unsigned short     uint16_t;
-typedef unsigned int       uint32_t;
+// typedef signed char      int_fast8_t;
+// typedef signed short     int_fast16_t;
+// typedef signed int       int_fast32_t;
+// typedef signed long long int_fast64_t;
+// typedef signed char      int_least8_t;
+// typedef signed short     int_least16_t;
+// typedef signed int       int_least32_t;
+// typedef signed long long int_least64_t;
+// typedef signed long long intmax_t;
+// typedef signed long      intptr_t;
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
-//typedef unsigned char      uint_fast8_t;
-//typedef unsigned short     uint_fast16_t;
-//typedef unsigned int       uint_fast32_t;
-//typedef unsigned long long uint_fast64_t;
-//typedef unsigned char      uint_least8_t;
-//typedef unsigned short     uint_least16_t;
-//typedef unsigned int       uint_least32_t;
-//typedef unsigned long long uint_least64_t;
-//typedef unsigned long long uintmax_t;
+// typedef unsigned char      uint_fast8_t;
+// typedef unsigned short     uint_fast16_t;
+// typedef unsigned int       uint_fast32_t;
+// typedef unsigned long long uint_fast64_t;
+// typedef unsigned char      uint_least8_t;
+// typedef unsigned short     uint_least16_t;
+// typedef unsigned int       uint_least32_t;
+// typedef unsigned long long uint_least64_t;
+// typedef unsigned long long uintmax_t;
 
 
 /// math.h
@@ -254,7 +254,7 @@ typedef unsigned long long uint64_t;
 extern "C" {
 
 // stdio.h
-int printf(const char * format, ... );
+int printf(const char* format, ...);
 
 // stdlib.h
 int abs(int);
@@ -338,26 +338,17 @@ void free(void*);
 }  // extern "C"
 
 // cmath
-inline bool isfinite(double x)
-{
-    return _wp_isfinite(x);
-}
+inline bool isfinite(double x) { return _wp_isfinite(x); }
 
-inline bool isnan(double x)
-{
-    return _wp_isnan(x);
-}
+inline bool isnan(double x) { return _wp_isnan(x); }
 
-inline bool isinf(double x)
-{
-    return _wp_isinf(x);
-}
+inline bool isinf(double x) { return _wp_isinf(x); }
 
 // assert.h
 #ifdef NDEBUG
-    #define assert(expression) ((void)0)
+#define assert(expression) ((void)0)
 #else
-    #define assert(expression) (void)(                                    \
+#define assert(expression) (void)(                                    \
             (!!(expression)) ||                                           \
             (_wp_assert((#expression), (__FILE__), (unsigned)(__LINE__)), 0) \
         )
@@ -365,7 +356,7 @@ inline bool isinf(double x)
 
 #endif  // !__CUDACC__
 
-#endif // WP_NO_CRT
+#endif  // WP_NO_CRT
 
 #if !defined(__CUDACC__)
 
@@ -374,13 +365,12 @@ inline bool isinf(double x)
  * Original source: https://www.netlib.org/cephes/
  * Copyright (c) 1984 by Stephen L. Moshier.
  * All rights reserved.
-*/
+ */
 // evaluate polynomial using Horner's method
 static inline double polevl(double x, const double* coefs, int N)
 {
     double ans = coefs[0];
-    for (int i = 1; i <= N; i++)
-    {
+    for (int i = 1; i <= N; i++) {
         ans = ans * x + coefs[i];
     }
     return ans;
@@ -391,13 +381,12 @@ static inline double polevl(double x, const double* coefs, int N)
  * Original source: https://www.netlib.org/cephes/
  * Copyright (c) 1984 by Stephen L. Moshier.
  * All rights reserved.
-*/
+ */
 // evaluate polynomial assuming leading coef = 1, using Horner's method
 static inline double p1evl(double x, const double* coefs, int N)
 {
     double ans = x + coefs[0];
-    for (int i = 1; i < N; i++)
-    {
+    for (int i = 1; i < N; i++) {
         ans = ans * x + coefs[i];
     }
     return ans;
@@ -408,127 +397,78 @@ static inline double p1evl(double x, const double* coefs, int N)
  * Original source: https://www.netlib.org/cephes/
  * Copyright (c) 1984 by Stephen L. Moshier.
  * All rights reserved.
-*/
+ */
 // inverse normal distribution function (ndtri)
 static inline double ndtri(double y)
 {
     // domain check
-    if (y <= 0.0 || y >= 1.0)
-    {
+    if (y <= 0.0 || y >= 1.0) {
         return (y <= 0.0) ? -HUGE_VAL : HUGE_VAL;
     }
-    
+
     // constants from Cephes
     const double s2pi = 2.50662827463100050242E0;  // sqrt(2*pi)
     const double exp_neg2 = 0.13533528323661269189;  // exp(-2)
-    
+
     // approximation for 0 <= abs(z - 0.5) <= 3/8
-    static const double P0[5] = {
-        -5.99633501014107895267e1,
-        9.80010754185999661536e1,
-        -5.66762857469070293439e1,
-        1.39312609387279679503e1,
-        -1.23916583867381258016e0
-    };
-    
-    static const double Q0[8] = {
-        1.95448858338141759834e0,
-        4.67627912898881538453e0,
-        8.63602421390890590575e1,
-        -2.25462687854119370527e2,
-        2.00260212380060660359e2,
-        -8.20372256168333339912e1,
-        1.59056225126211695515e1,
-        -1.18331621121330003142e0
-    };
-    
+    static const double P0[5] = { -5.99633501014107895267e1, 9.80010754185999661536e1, -5.66762857469070293439e1,
+                                  1.39312609387279679503e1, -1.23916583867381258016e0 };
+
+    static const double Q0[8]
+        = { 1.95448858338141759834e0, 4.67627912898881538453e0,  8.63602421390890590575e1, -2.25462687854119370527e2,
+            2.00260212380060660359e2, -8.20372256168333339912e1, 1.59056225126211695515e1, -1.18331621121330003142e0 };
+
     // approximation for interval z = sqrt(-2 log y) between 2 and 8
-    static const double P1[9] = {
-        4.05544892305962419923e0,
-        3.15251094599893866154e1,
-        5.71628192246421288162e1,
-        4.40805073893200834700e1,
-        1.46849561928858024014e1,
-        2.18663306850790267539e0,
-        -1.40256079171354495875e-1,
-        -3.50424626827848203418e-2,
-        -8.57456785154685413611e-4
-    };
-    
-    static const double Q1[8] = {
-        1.57799883256466749731e1,
-        4.53907635128879210584e1,
-        4.13172038254672030440e1,
-        1.50425385692907503408e1,
-        2.50464946208309415979e0,
-        -1.42182922854787788574e-1,
-        -3.80806407691578277194e-2,
-        -9.33259480895457427372e-4
-    };
-    
+    static const double P1[9] = { 4.05544892305962419923e0,   3.15251094599893866154e1,   5.71628192246421288162e1,
+                                  4.40805073893200834700e1,   1.46849561928858024014e1,   2.18663306850790267539e0,
+                                  -1.40256079171354495875e-1, -3.50424626827848203418e-2, -8.57456785154685413611e-4 };
+
+    static const double Q1[8] = { 1.57799883256466749731e1,   4.53907635128879210584e1,  4.13172038254672030440e1,
+                                  1.50425385692907503408e1,   2.50464946208309415979e0,  -1.42182922854787788574e-1,
+                                  -3.80806407691578277194e-2, -9.33259480895457427372e-4 };
+
     // approximation for interval z = sqrt(-2 log y) between 8 and 64
-    static const double P2[9] = {
-        3.23774891776946035970e0,
-        6.91522889068984211695e0,
-        3.93881025292474443415e0,
-        1.33303460815807542389e0,
-        2.01485389549179081538e-1,
-        1.23716634817820021358e-2,
-        3.01581553508235416007e-4,
-        2.65806974686737550832e-6,
-        6.23974539184983293730e-9
-    };
-    
-    static const double Q2[8] = {
-        6.02427039364742014255e0,
-        3.67983563856160859403e0,
-        1.37702099489081330271e0,
-        2.16236993594496635890e-1,
-        1.34204006088543189037e-2,
-        3.28014464682127739104e-4,
-        2.89247864745380683936e-6,
-        6.79019408009981274425e-9
-    };
-    
+    static const double P2[9] = { 3.23774891776946035970e0,  6.91522889068984211695e0,  3.93881025292474443415e0,
+                                  1.33303460815807542389e0,  2.01485389549179081538e-1, 1.23716634817820021358e-2,
+                                  3.01581553508235416007e-4, 2.65806974686737550832e-6, 6.23974539184983293730e-9 };
+
+    static const double Q2[8] = { 6.02427039364742014255e0,  3.67983563856160859403e0,  1.37702099489081330271e0,
+                                  2.16236993594496635890e-1, 1.34204006088543189037e-2, 3.28014464682127739104e-4,
+                                  2.89247864745380683936e-6, 6.79019408009981274425e-9 };
+
     int code = 1;
     double y_work = y;
-    
-    if (y_work > (1.0 - exp_neg2))
-    {
+
+    if (y_work > (1.0 - exp_neg2)) {
         y_work = 1.0 - y_work;
         code = 0;
     }
-    
+
     // middle region: 0 <= |y - 0.5| <= 3/8
-    if (y_work > exp_neg2)
-    {
+    if (y_work > exp_neg2) {
         y_work -= 0.5;
         double y2 = y_work * y_work;
         double x = y_work + y_work * (y2 * polevl(y2, P0, 4) / p1evl(y2, Q0, 8));
         x = x * s2pi;
         return x;
     }
-    
+
     double x = ::sqrt(-2.0 * ::log(y_work));
     double x0 = x - ::log(x) / x;
-    
+
     double z = 1.0 / x;
     double x1;
-    if (x < 8.0)
-    {
+    if (x < 8.0) {
         x1 = z * polevl(z, P1, 8) / p1evl(z, Q1, 8);
-    }
-    else
-    {
+    } else {
         x1 = z * polevl(z, P2, 8) / p1evl(z, Q2, 8);
     }
-    
+
     x = x0 - x1;
-    if (code != 0)
-    {
+    if (code != 0) {
         x = -x;
     }
-    
+
     return x;
 }
 
@@ -545,24 +485,15 @@ inline double erfinv(double z)
         return -HUGE_VAL;  // -infinity
     if (z < -1.0 || z > 1.0)
         return NAN;  // outside valid range
-    
+
     // erfinv(z) = ndtri((z + 1) / 2) / sqrt(2)
     return ndtri((z + 1.0) / 2.0) / ::sqrt(2.0);
 }
 
-inline float erfinvf(float x)
-{
-    return (float)erfinv((double)x);
-}
+inline float erfinvf(float x) { return (float)erfinv((double)x); }
 
-inline double erfcinv(double x)
-{
-    return erfinv(1.0 - x);
-}
+inline double erfcinv(double x) { return erfinv(1.0 - x); }
 
-inline float erfcinvf(float x)
-{
-    return (float)erfcinv((double)x);
-}
+inline float erfcinvf(float x) { return (float)erfcinv((double)x); }
 
 #endif  // !defined(__CUDACC__)

@@ -91,14 +91,12 @@ Overview
 
 .. _coding-guidelines:
 
-General Coding Guidelines
-^^^^^^^^^^^^^^^^^^^^^^^^^
+Coding Guidelines
+^^^^^^^^^^^^^^^^^
 
-* Follow `PEP 8 <https://peps.python.org/pep-0008/>`__ as the baseline for coding style, but prioritize matching the
-  existing style and conventions of the file being modified to maintain consistency.
-* Use `snake case <https://en.wikipedia.org/wiki/Snake_case>`__ for all function names.
-* Use `Google-style docstrings <https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings>`__
-  for Python code.
+General Guidelines
+""""""""""""""""""
+
 * Include the NVIDIA copyright header on all newly created files, updating the year to current year at the time of
   the initial file creation.
 * Aim for consistency in variable and function names.
@@ -108,9 +106,34 @@ General Coding Guidelines
   * Also be mindful of consistency and clarity when naming local function variables.
 
 * Avoid generic function names like ``get_data()``.
-* Follow the existing style conventions in any CUDA C++ files being modified.
+* Prioritize matching the existing style and conventions of the file being modified to maintain consistency.
+
+Python Guidelines
+"""""""""""""""""
+
+* Follow `PEP 8 <https://peps.python.org/pep-0008/>`__ as the baseline for coding style.
+* Use `snake case <https://en.wikipedia.org/wiki/Snake_case>`__ for all function names.
+* Use `Google-style docstrings <https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings>`__.
 * Use both ``inputs`` and ``outputs`` parameters in ``wp.launch()`` in functions that are expected to be used in
   differentiable programming applications to aid in visualization and debugging tools.
+
+C++ Guidelines
+""""""""""""""
+
+* Follow the clang-format style configuration in ``.clang-format`` (WebKit-based style with 120-character line limit).
+
+  * WebKit brace style: Function braces on new line, control statement braces on same line
+  * Left-aligned pointers and references: ``Type* var`` not ``Type *var``
+  * No indentation inside namespaces
+  * Automatic include sorting with ``warp.h`` always first
+
+* **Symbol Naming**: All exported C/C++ symbols (functions, global variables) must be prefixed with ``wp_``
+  to prevent namespace pollution. This is enforced by a GitLab CI job that inspects the compiled libraries.
+
+  * Good: ``wp_init()``, ``wp_cuda_launch_kernel()``, ``wp_graph_coloring()``
+  * Bad: ``init()``, ``cuda_launch_kernel()``, ``graph_coloring()``
+  * Note: Symbols inside the ``wp`` namespace in header files don't need this prefix, but C symbols and ``extern "C"``
+    functions exported from implementation files must use the ``wp_`` prefix
 
 .. _linting-and-formatting:
 
@@ -137,6 +160,70 @@ To run Ruff checks at the same time as ``git commit``, pre-commit hooks can be i
 .. code-block:: bash
 
     pre-commit install
+
+C++ Code Formatting
+^^^^^^^^^^^^^^^^^^^
+
+C++ code in the Warp repository must adhere to the clang-format style defined in ``.clang-format``.
+The CI/CD pipeline will automatically check C++ formatting compliance for all pull requests.
+
+**Using clang-format**
+
+The same pre-commit setup handles both Python (Ruff) and C++ (clang-format) code:
+
+.. code-block:: bash
+
+    # Run all formatters and linters (Python and C++)
+    pre-commit run --all-files
+
+    # Run only clang-format on C++ files
+    pre-commit run clang-format --all-files
+
+**Optional: Installing clang-format locally**
+
+Pre-commit automatically downloads and uses the correct clang-format version, so manual
+installation is not required. However, if you want to install clang-format locally for IDE
+integration (e.g., VS Code format-on-save), install the version specified in ``.pre-commit-config.yaml``:
+
+.. code-block:: bash
+
+    # Ubuntu/Debian - Install from apt.llvm.org
+    # See https://apt.llvm.org/ for repository setup instructions
+    # Check .pre-commit-config.yaml for the current version
+    sudo apt-get install clang-format-21
+
+For other platforms, consult the LLVM documentation for installation instructions. We recommend using pre-commit
+for formatting, which handles version management automatically across all platforms.
+
+**Running clang-format directly:**
+
+If you have clang-format installed locally, you can run it directly from the command line:
+
+.. code-block:: bash
+
+    # Format all C++ files in warp/ (from repository root)
+    # Note: nanovdb files are automatically skipped due to DisableFormat in nanovdb/.clang-format
+    clang-format -i warp/**/*.{h,cpp,cu}
+
+    # Format a specific file
+    clang-format -i warp/native/mesh.h
+
+**Disabling clang-format for specific code blocks:**
+
+In rare cases where automatic formatting would break critical formatting (e.g., dependency-sensitive include order,
+carefully aligned matrices), you can disable clang-format for a specific section:
+
+.. code-block:: cpp
+
+    // clang-format off
+    #include "vec.h"
+    #include "mat.h"
+    #include "quat.h"
+    // clang-format on
+
+Use this sparingly. Add a comment explaining why if the reason isn't obvious. See ``warp/native/builtin.h`` for examples.
+
+**Note:** The NanoVDB directory (``warp/native/nanovdb/``) is third-party code and automatically excluded via its own ``.clang-format`` configuration.
 
 .. _building-docs:
 
