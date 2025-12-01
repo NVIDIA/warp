@@ -1,0 +1,1886 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>warp.sparse &#8212; Warp 1.10.1</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=df3ac72c" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=8524295a" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=b95c35c0"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'modules/sparse';</script>
+    <link rel="icon" href="../_static/favicon.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="warp.fem" href="fem.html" />
+    <link rel="prev" title="Built-Ins Reference" href="functions.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.10.1" />
+
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.10.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.10.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.10.1</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.10.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.10.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.10.1</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tiles.html">Tiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Advanced Topics</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Core Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="runtime.html">Python Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="functions.html">Built-Ins Reference</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Simulation Reference</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="render.html">warp.render</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.sparse</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="warp-sparse">
+<h1>warp.sparse<a class="headerlink" href="#warp-sparse" title="Link to this heading">#</a></h1>
+<p>Warp includes a sparse linear algebra module <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> that implements common sparse matrix operations for simulation. The module provides efficient implementations of Block Sparse Row (BSR) matrices, with Compressed Sparse Row (CSR) matrices supported as a special case with 1x1 block size.</p>
+<section id="working-with-sparse-matrices">
+<h2>Working with Sparse Matrices<a class="headerlink" href="#working-with-sparse-matrices" title="Link to this heading">#</a></h2>
+<section id="creating-sparse-matrices">
+<h3>Creating Sparse Matrices<a class="headerlink" href="#creating-sparse-matrices" title="Link to this heading">#</a></h3>
+<p>The most common way to create a sparse matrix is using coordinate (COO) format triplets:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">bsr_from_triplets</span>
+
+<span class="c1"># Create a 4x4 sparse matrix with 2x2 blocks</span>
+<span class="n">rows</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>  <span class="c1"># Row indices</span>
+<span class="n">cols</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>  <span class="c1"># Column indices</span>
+<span class="n">vals</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">...</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>    <span class="c1"># Block values</span>
+
+<span class="c1"># Create BSR matrix</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">bsr_from_triplets</span><span class="p">(</span>
+    <span class="n">rows_of_blocks</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>      <span class="c1"># Number of rows of blocks</span>
+    <span class="n">cols_of_blocks</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>      <span class="c1"># Number of columns of blocks</span>
+    <span class="n">rows</span><span class="o">=</span><span class="n">rows</span><span class="p">,</span>            <span class="c1"># Row indices</span>
+    <span class="n">columns</span><span class="o">=</span><span class="n">cols</span><span class="p">,</span>         <span class="c1"># Column indices</span>
+    <span class="n">values</span><span class="o">=</span><span class="n">vals</span>           <span class="c1"># Block values</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>You can also create special matrices:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">bsr_zeros</span><span class="p">,</span> <span class="n">bsr_identity</span><span class="p">,</span> <span class="n">bsr_diag</span>
+
+<span class="c1"># Create empty matrix</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">bsr_zeros</span><span class="p">(</span><span class="n">rows_of_blocks</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">cols_of_blocks</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">block_type</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+<span class="c1"># Create identity matrix</span>
+<span class="n">I</span> <span class="o">=</span> <span class="n">bsr_identity</span><span class="p">(</span><span class="n">rows_of_blocks</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">block_type</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+<span class="c1"># Create diagonal matrix</span>
+<span class="n">D</span> <span class="o">=</span> <span class="n">bsr_diag</span><span class="p">(</span><span class="n">diag</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">]))</span>
+</pre></div>
+</div>
+</section>
+<section id="block-sizes">
+<h3>Block Sizes<a class="headerlink" href="#block-sizes" title="Link to this heading">#</a></h3>
+<p>BSR matrices support different block sizes. For example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 1x1 blocks (CSR format)</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">bsr_zeros</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">block_type</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+<span class="c1"># 3x3 blocks</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">bsr_zeros</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">block_type</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">mat33</span><span class="p">)</span>
+
+<span class="c1"># Rectangular block sizes</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">bsr_zeros</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">block_type</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">mat23</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The module also provides functions to convert between different block sizes and scalar types:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">bsr_copy</span><span class="p">,</span> <span class="n">bsr_assign</span>
+
+<span class="c1"># Convert block size from 2x2 to 1x1 (BSR to CSR)</span>
+<span class="n">A_csr</span> <span class="o">=</span> <span class="n">bsr_copy</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">block_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+
+<span class="c1"># Convert block size from 1x1 to 2x2 (CSR to BSR)</span>
+<span class="n">A_bsr</span> <span class="o">=</span> <span class="n">bsr_copy</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">block_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+
+<span class="c1"># Convert scalar type from float32 to float64</span>
+<span class="n">A_double</span> <span class="o">=</span> <span class="n">bsr_copy</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">scalar_type</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+<span class="c1"># Convert both block size and scalar type</span>
+<span class="n">A_new</span> <span class="o">=</span> <span class="n">bsr_copy</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">block_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">scalar_type</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+<span class="c1"># In-place conversion using bsr_assign</span>
+<span class="n">B</span> <span class="o">=</span> <span class="n">bsr_zeros</span><span class="p">(</span><span class="n">rows_of_blocks</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">cols_of_blocks</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">block_type</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">mat22</span><span class="p">)</span>
+<span class="n">bsr_assign</span><span class="p">(</span><span class="n">src</span><span class="o">=</span><span class="n">A</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">B</span><span class="p">)</span>  <span class="c1"># Converts A to 2x2 blocks and stores in B</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When converting block sizes, the source and destination block dimensions must be compatible:</p>
+<ul class="simple">
+<li><p>The new block dimensions must either be multiples or exact dividers of the original dimensions</p></li>
+<li><p>The total matrix dimensions must be evenly divisible by the new block size</p></li>
+</ul>
+</div>
+<p>For example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Valid conversions:</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">bsr_zeros</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">block_type</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">mat22</span><span class="p">)</span>  <span class="c1"># 8x8 matrix with 2x2 blocks</span>
+<span class="n">B</span> <span class="o">=</span> <span class="n">bsr_copy</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">block_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>       <span class="c1"># 8x8 matrix with 1x1 blocks</span>
+<span class="n">C</span> <span class="o">=</span> <span class="n">bsr_copy</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">block_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>       <span class="c1"># 8x8 matrix with 4x4 blocks</span>
+
+<span class="c1"># Invalid conversion (will raise ValueError):</span>
+<span class="n">D</span> <span class="o">=</span> <span class="n">bsr_copy</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">block_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>       <span class="c1"># 3x3 blocks don&#39;t divide 8x8 evenly</span>
+</pre></div>
+</div>
+</section>
+<section id="non-zero-block-count">
+<h3>Non-Zero Block Count<a class="headerlink" href="#non-zero-block-count" title="Link to this heading">#</a></h3>
+<p>The number of non-zero blocks in a BSR matrix is computed on the device and not automatically synchronized to the host to avoid performance overhead and allow graph capture.
+The <cite>nnz</cite> attribute of a BSR matrix is always an upper bound for the number of non-zero blocks, but the actual count is stored on the device at <cite>offsets[nrow]</cite>.</p>
+<p>To get the exact count on host, you can explicitly synchronize using the <cite>nnz_sync()</cite> method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># The nnz attribute is an upper bound</span>
+<span class="n">upper_bound</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">nnz</span>
+
+<span class="c1"># Get the exact number of non-zero blocks</span>
+<span class="n">exact_nnz</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">nnz_sync</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <cite>nnz_sync()</cite> method ensures that any ongoing transfer of the exact nnz number from the device offsets array to the host has completed and updates the nnz upper bound. This synchronization is only necessary when you need the exact count - for most operations, the upper bound is sufficient.</p>
+</div>
+<p>If the number of non-zeros has been changed from outside of the <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> builtin functions, for instance by direct modifications to the offsets array, use the <cite>notify_nnz_changed()</cite> method to ensure consistency.</p>
+</section>
+<section id="converting-back-to-coo-format">
+<h3>Converting back to COO Format<a class="headerlink" href="#converting-back-to-coo-format" title="Link to this heading">#</a></h3>
+<p>You can convert a BSR matrix back to coordinate (COO) format using the matrix’s properties:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get row indices from compressed format</span>
+<span class="n">nnz</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">nnz_sync</span><span class="p">()</span>
+<span class="n">rows</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">uncompress_rows</span><span class="p">()[:</span><span class="n">nnz</span><span class="p">]</span>  <span class="c1"># Returns array of row indices for each block</span>
+
+<span class="c1"># Get column indices and values</span>
+<span class="n">cols</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">columns</span><span class="p">[:</span><span class="n">nnz</span><span class="p">]</span>            <span class="c1"># Column indices for each block</span>
+<span class="n">vals</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">values</span><span class="p">[:</span><span class="n">nnz</span><span class="p">]</span>             <span class="c1"># Block values</span>
+
+<span class="c1"># Now you have the COO format:</span>
+<span class="c1"># - rows[i] is the row index of block i</span>
+<span class="c1"># - cols[i] is the column index of block i</span>
+<span class="c1"># - vals[i] is the value of block i</span>
+</pre></div>
+</div>
+</section>
+<section id="matrix-operations">
+<h3>Matrix Operations<a class="headerlink" href="#matrix-operations" title="Link to this heading">#</a></h3>
+<p>The module supports common matrix operations with overloaded operators:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Matrix addition</span>
+<span class="n">C</span> <span class="o">=</span> <span class="n">A</span> <span class="o">+</span> <span class="n">B</span>
+
+<span class="c1"># Matrix subtraction</span>
+<span class="n">C</span> <span class="o">=</span> <span class="n">A</span> <span class="o">-</span> <span class="n">B</span>
+
+<span class="c1"># Scalar multiplication</span>
+<span class="n">C</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">A</span>
+
+<span class="c1"># Matrix multiplication</span>
+<span class="n">C</span> <span class="o">=</span> <span class="n">A</span> <span class="o">@</span> <span class="n">B</span>
+
+<span class="c1"># Matrix-vector multiplication</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">A</span> <span class="o">@</span> <span class="n">x</span>
+
+<span class="c1"># Transpose</span>
+<span class="n">AT</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span>
+
+<span class="c1"># In-place operations</span>
+<span class="n">A</span> <span class="o">+=</span> <span class="n">B</span>
+<span class="n">A</span> <span class="o">-=</span> <span class="n">B</span>
+<span class="n">A</span> <span class="o">*=</span> <span class="mf">2.0</span>
+<span class="n">A</span> <span class="o">@=</span> <span class="n">B</span>
+</pre></div>
+</div>
+<p>For more control about memory allocations, you may use the underlying lower-level functions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">bsr_mm</span><span class="p">,</span> <span class="n">bsr_mv</span><span class="p">,</span> <span class="n">bsr_axpy</span><span class="p">,</span> <span class="n">bsr_scale</span>
+
+<span class="c1"># Matrix-matrix multiplication</span>
+<span class="c1"># C = alpha * A @ B + beta * C</span>
+<span class="n">bsr_mm</span><span class="p">(</span>
+    <span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span>           <span class="c1"># Input and output matrices</span>
+    <span class="n">alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>         <span class="c1"># Scale factor for A @ B</span>
+    <span class="n">beta</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>          <span class="c1"># Scale factor for C</span>
+<span class="p">)</span>
+
+<span class="c1"># Matrix-vector multiplication</span>
+<span class="c1"># y = alpha * A @ x + beta * y</span>
+<span class="n">bsr_mv</span><span class="p">(</span>
+    <span class="n">A</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span>           <span class="c1"># Input matrix, vector, and output vector</span>
+    <span class="n">alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>         <span class="c1"># Scale factor for A @ x</span>
+    <span class="n">beta</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>          <span class="c1"># Scale factor for y</span>
+<span class="p">)</span>
+
+<span class="c1"># Matrix addition</span>
+<span class="c1"># C = alpha * A + beta * B</span>
+<span class="n">bsr_axpy</span><span class="p">(</span>
+    <span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span>           <span class="c1"># Input and output matrices</span>
+    <span class="n">alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>         <span class="c1"># Scale factor for A</span>
+    <span class="n">beta</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>          <span class="c1"># Scale factor for B</span>
+<span class="p">)</span>
+
+<span class="c1"># Matrix scaling</span>
+<span class="c1"># A = alpha * A</span>
+<span class="n">bsr_scale</span><span class="p">(</span>
+    <span class="n">A</span><span class="p">,</span>                 <span class="c1"># Input/output matrix</span>
+    <span class="n">alpha</span><span class="p">,</span>             <span class="c1"># Scale factor</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="kernel-level-utilities">
+<h3>Kernel-level utilities<a class="headerlink" href="#kernel-level-utilities" title="Link to this heading">#</a></h3>
+<p>The following Warp functions are available for use in kernels:</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_row_index">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_row_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offsets</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sparse.bsr_row_index" title="Link to this definition">#</a></dt>
+<dd><p>Returns the index of the row containing a given block, or -1 if no such row exists.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>offsets</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=1</em><em>, </em><em>dtype=int32</em><em>)</em>) – Array of size at least <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">+</span> <span class="pre">row_count</span></code> containing the offsets of the blocks in each row.</p></li>
+<li><p><strong>row_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of rows of blocks.</p></li>
+<li><p><strong>block_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Index of the block.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_block_index">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_block_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bsr_offsets</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bsr_columns</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sparse.bsr_block_index" title="Link to this definition">#</a></dt>
+<dd><p>Returns the index of the block at block-coordinates (row, col), or -1 if no such block exists.
+Assumes that the segments of <code class="docutils literal notranslate"><span class="pre">bsr_columns</span></code> corresponding to each row are sorted.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>row</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Row of the block.</p></li>
+<li><p><strong>col</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Column of the block.</p></li>
+<li><p><strong>bsr_offsets</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=1</em><em>, </em><em>dtype=int32</em><em>)</em>) – Array of size at least <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">+</span> <span class="pre">row</span></code> containing the offsets of the blocks in each row.</p></li>
+<li><p><strong>bsr_columns</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=1</em><em>, </em><em>dtype=int32</em><em>)</em>) – Array of size at least equal to <code class="docutils literal notranslate"><span class="pre">bsr_offsets[row</span> <span class="pre">+</span> <span class="pre">1]</span></code> containing the column indices of the blocks.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-warp.sparse">
+<span id="reference"></span><h3>Reference<a class="headerlink" href="#module-warp.sparse" title="Link to this heading">#</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">BsrMatrix</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L88-L291"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.BsrMatrix" title="Link to this definition">#</a></dt>
+<dd><p>Untyped base class for BSR and CSR matrices.</p>
+<p>Should not be constructed directly but through functions such as <a class="reference internal" href="#warp.sparse.bsr_zeros" title="warp.sparse.bsr_zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_zeros()</span></code></a>.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.nrow">
+<span class="sig-name descname"><span class="pre">nrow</span></span><a class="headerlink" href="#warp.sparse.BsrMatrix.nrow" title="Link to this definition">#</a></dt>
+<dd><p>Number of rows of blocks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.ncol">
+<span class="sig-name descname"><span class="pre">ncol</span></span><a class="headerlink" href="#warp.sparse.BsrMatrix.ncol" title="Link to this definition">#</a></dt>
+<dd><p>Number of columns of blocks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.nnz">
+<span class="sig-name descname"><span class="pre">nnz</span></span><a class="headerlink" href="#warp.sparse.BsrMatrix.nnz" title="Link to this definition">#</a></dt>
+<dd><p>Upper bound for the number of non-zero blocks, used for
+dimensioning launches. The exact number is at <code class="docutils literal notranslate"><span class="pre">offsets[nrow-1]</span></code>.
+See also <a class="reference internal" href="#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">nnz_sync()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.offsets">
+<span class="sig-name descname"><span class="pre">offsets</span></span><a class="headerlink" href="#warp.sparse.BsrMatrix.offsets" title="Link to this definition">#</a></dt>
+<dd><p>Array of size at least <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">+</span> <span class="pre">nrow</span></code> such that the
+start and end indices of the blocks of row <code class="docutils literal notranslate"><span class="pre">r</span></code> are <code class="docutils literal notranslate"><span class="pre">offsets[r]</span></code>
+and <code class="docutils literal notranslate"><span class="pre">offsets[r+1]</span></code>, respectively.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="functions.html#warp.Array" title="warp.Array">Array</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.columns">
+<span class="sig-name descname"><span class="pre">columns</span></span><a class="headerlink" href="#warp.sparse.BsrMatrix.columns" title="Link to this definition">#</a></dt>
+<dd><p>Array of size at least equal to <code class="docutils literal notranslate"><span class="pre">nnz</span></code> containing
+block column indices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="functions.html#warp.Array" title="warp.Array">Array</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.values">
+<span class="sig-name descname"><span class="pre">values</span></span><a class="headerlink" href="#warp.sparse.BsrMatrix.values" title="Link to this definition">#</a></dt>
+<dd><p>Array of size at least equal to <code class="docutils literal notranslate"><span class="pre">nnz</span></code>
+containing block values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="functions.html#warp.Array" title="warp.Array">Array</a>[BlockType]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.block_shape">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">block_shape</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L113-L117"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.BsrMatrix.block_shape" title="Link to this definition">#</a></dt>
+<dd><p>Shape of the individual blocks.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.block_size">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">block_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L118-L122"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.BsrMatrix.block_size" title="Link to this definition">#</a></dt>
+<dd><p>Size of the individual blocks, i.e. number of rows per block times number of columns per block.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.copy_nnz_async">
+<span class="sig-name descname"><span class="pre">copy_nnz_async</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L202-L213"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.BsrMatrix.copy_nnz_async" title="Link to this definition">#</a></dt>
+<dd><p>Starts the asynchronous transfer of the exact nnz from the device offsets array to host and records an event for completion.</p>
+<p>Deprecated; prefer <a class="reference internal" href="#warp.sparse.BsrMatrix.notify_nnz_changed" title="warp.sparse.BsrMatrix.notify_nnz_changed"><code class="xref py py-meth docutils literal notranslate"><span class="pre">notify_nnz_changed()</span></code></a> instead, which will make sure to resize arrays if necessary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.device">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">device</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="devices.html#warp.context.Device" title="warp._src.context.Device"><span class="pre">Device</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L134-L138"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.BsrMatrix.device" title="Link to this definition">#</a></dt>
+<dd><p>Device on which <code class="docutils literal notranslate"><span class="pre">offsets</span></code>, <code class="docutils literal notranslate"><span class="pre">columns</span></code>, and <code class="docutils literal notranslate"><span class="pre">values</span></code> are allocated – assumed to be the same for all three arrays.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.dtype">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L129-L133"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.BsrMatrix.dtype" title="Link to this definition">#</a></dt>
+<dd><p>Data type for individual block values.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.nnz_sync">
+<span class="sig-name descname"><span class="pre">nnz_sync</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L164-L184"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.BsrMatrix.nnz_sync" title="Link to this definition">#</a></dt>
+<dd><p>Synchronize the number of non-zeros from the device offsets array to the host.</p>
+<p>Ensures that any ongoing transfer of the exact nnz number from the device offsets array to the host has completed,
+or, if none has been scheduled yet, starts a new transfer and waits for it to complete.</p>
+<p>Then updates the host-side nnz upper bound to match the exact one, and returns it.</p>
+<p>See also <code class="xref py py-meth docutils literal notranslate"><span class="pre">notify_nnz_async()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.notify_nnz_changed">
+<span class="sig-name descname"><span class="pre">notify_nnz_changed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nnz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L185-L201"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.BsrMatrix.notify_nnz_changed" title="Link to this definition">#</a></dt>
+<dd><p>Notify the matrix that the number of non-zeros has been changed from outside of the <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> builtin functions.</p>
+<p>Should be called in particular when the offsets array has been modified, or when the nnz upper bound has changed.
+Makes sure that the matrix is properly resized and starts the asynchronous transfer of the actual non-zero count.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>nnz</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – The new upper-bound for the number of non-zeros. If not provided, it will be read from the device offsets array (requires a synchronization).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.requires_grad">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">requires_grad</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L139-L143"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.BsrMatrix.requires_grad" title="Link to this definition">#</a></dt>
+<dd><p>Read-only property indicating whether the matrix participates in adjoint computations.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.scalar_type">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scalar_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Scalar</span></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L108-L112"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.BsrMatrix.scalar_type" title="Link to this definition">#</a></dt>
+<dd><p>Scalar type for individual block coefficients. For CSR matrices, this is the same as the block type.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.scalar_values">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scalar_values</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><span class="pre">array</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L144-L150"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.BsrMatrix.scalar_values" title="Link to this definition">#</a></dt>
+<dd><p>Accesses the <code class="docutils literal notranslate"><span class="pre">values</span></code> array as a 3d scalar array.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.shape">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">shape</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L123-L128"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.BsrMatrix.shape" title="Link to this definition">#</a></dt>
+<dd><p>Shape of the matrix, i.e. number of rows/columns of blocks times number of rows/columns per block.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.transpose">
+<span class="sig-name descname"><span class="pre">transpose</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L288-L291"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.BsrMatrix.transpose" title="Link to this definition">#</a></dt>
+<dd><p>Return a transposed copy of this matrix.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.sparse.BsrMatrix.uncompress_rows">
+<span class="sig-name descname"><span class="pre">uncompress_rows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L151-L163"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.BsrMatrix.uncompress_rows" title="Link to this definition">#</a></dt>
+<dd><p>Compute the row index for each non-zero block from the compressed row offsets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>out</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_assign">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_assign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dest</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">structure_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">masked</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L898-L1051"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_assign" title="Link to this definition">#</a></dt>
+<dd><p>Copy the content of the <code class="docutils literal notranslate"><span class="pre">src</span></code> BSR matrix to <code class="docutils literal notranslate"><span class="pre">dest</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>_MatrixBlockType</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>]</em><em>] </em><em>| </em><em>_BsrExpression</em><em>[</em><em>_MatrixBlockType</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>]</em><em>]</em>) – Matrix to be copied.</p></li>
+<li><p><strong>dest</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>]</em>) – Destination matrix. May have a different block shape or scalar type
+than <code class="docutils literal notranslate"><span class="pre">src</span></code>, in which case the required casting will be performed.</p></li>
+<li><p><strong>structure_only</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, only the non-zero indices are copied, and uninitialized value storage is allocated
+to accommodate at least <code class="docutils literal notranslate"><span class="pre">src.nnz</span></code> blocks. If <code class="docutils literal notranslate"><span class="pre">structure_only</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, values are also copied with implicit
+casting if the two matrices use distinct scalar types.</p></li>
+<li><p><strong>masked</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, keep the non-zero topology of <code class="docutils literal notranslate"><span class="pre">dest</span></code> unchanged.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_axpy">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_axpy</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">masked</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">work_arrays</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L1559-L1734"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_axpy" title="Link to this definition">#</a></dt>
+<dd><p>Perform the sparse matrix addition <code class="docutils literal notranslate"><span class="pre">y</span> <span class="pre">:=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">X</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">*</span> <span class="pre">y</span></code> on BSR matrices <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code> and return <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code> matrices are allowed to alias.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>BlockType</em><em>] </em><em>| </em><em>_BsrExpression</em><em>[</em><em>BlockType</em><em>]</em>) – Read-only first operand.</p></li>
+<li><p><strong>y</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>] </em><em>| </em><em>None</em>) – Mutable second operand and output matrix. If <code class="docutils literal notranslate"><span class="pre">y</span></code> is not provided, it will be allocated and treated as zero.</p></li>
+<li><p><strong>alpha</strong> (<em>Scalar</em>) – Uniform scaling factor for <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></li>
+<li><p><strong>beta</strong> (<em>Scalar</em>) – Uniform scaling factor for <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p></li>
+<li><p><strong>masked</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, keep the non-zero topology of <code class="docutils literal notranslate"><span class="pre">y</span></code> unchanged.</p></li>
+<li><p><strong>work_arrays</strong> (<em>bsr_axpy_work_arrays</em><em> | </em><em>None</em>) – In most cases, this function will require the use of temporary storage.
+This storage can be reused across calls by passing an instance of
+<code class="xref py py-class docutils literal notranslate"><span class="pre">bsr_axpy_work_arrays</span></code> in <code class="docutils literal notranslate"><span class="pre">work_arrays</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a>[<em>_MatrixBlockType</em>[<em>Rows</em>, <em>Cols</em>, <em>Scalar</em>] | <em>_ScalarBlockType</em>[<em>Scalar</em>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_copy">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_copy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">structure_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L1053-L1089"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_copy" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>, possibly changing its scalar type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>BlockType</em><em>] </em><em>| </em><em>_BsrExpression</em><em>[</em><em>BlockType</em><em>]</em>) – Matrix to be copied.</p></li>
+<li><p><strong>scalar_type</strong> (<em>Scalar</em><em> | </em><em>None</em>) – If provided, the returned matrix will use this scalar type instead of the one from <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></li>
+<li><p><strong>block_shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – If provided, the returned matrix will use blocks of this shape instead of the one from <code class="docutils literal notranslate"><span class="pre">A</span></code>.
+Both dimensions of <code class="docutils literal notranslate"><span class="pre">block_shape</span></code> must be either a multiple or an exact divider of the ones from <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></li>
+<li><p><strong>structure_only</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, only the non-zeros indices are copied, and uninitialized value storage is allocated
+to accommodate at least <code class="docutils literal notranslate"><span class="pre">src.nnz</span></code> blocks. If <code class="docutils literal notranslate"><span class="pre">structure_only</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, values are also copied with implicit
+casting if the two matrices use distinct scalar types.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_diag">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_diag</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">diag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">rows_of_blocks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">cols_of_blocks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">block_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L1344-L1401"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_diag" title="Link to this definition">#</a></dt>
+<dd><p>Create and return a block-diagonal BSR matrix from an given block value or array of block values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>diag</strong> (<em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>] </em><em>| </em><em>Array</em><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>] </em><em>| </em><em>None</em>) – <p>Specifies the values for diagonal blocks. Can be one of:</p>
+<ul>
+<li><p>A Warp array of type <code class="docutils literal notranslate"><span class="pre">A.values.dtype</span></code>: Each element defines one block of the diagonal</p></li>
+<li><p>A constant value of type <code class="docutils literal notranslate"><span class="pre">A.values.dtype</span></code>: This value is assigned to all diagonal blocks</p></li>
+</ul>
+</p></li>
+<li><p><strong>rows_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – If not <code class="docutils literal notranslate"><span class="pre">None</span></code>, the new number of rows of blocks</p></li>
+<li><p><strong>cols_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – If not <code class="docutils literal notranslate"><span class="pre">None</span></code>, the new number of columns of blocks</p></li>
+<li><p><strong>block_type</strong> (<em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>] </em><em>| </em><em>None</em>) – If <code class="docutils literal notranslate"><span class="pre">diag</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code>, block type of the matrix. Otherwise deduced from <code class="docutils literal notranslate"><span class="pre">diag</span></code></p></li>
+<li><p><strong>device</strong> – If <code class="docutils literal notranslate"><span class="pre">diag</span></code> is not a Warp array, device on which to allocate the matrix. Otherwise deduced from <code class="docutils literal notranslate"><span class="pre">diag</span></code></p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a>[<em>_MatrixBlockType</em>[<em>Rows</em>, <em>Cols</em>, <em>Scalar</em>] | <em>_ScalarBlockType</em>[<em>Scalar</em>]]</p>
+</dd>
+</dl>
+<p>The shape of the matrix will be defined one of the following, in this order:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">rows_of_blocks</span></code> and <code class="docutils literal notranslate"><span class="pre">cols_of_blocks</span></code>, if provided.
+If only one is given, the second is assumed equal.</p></li>
+<li><p>The first dimension of <code class="docutils literal notranslate"><span class="pre">diag</span></code> if <code class="docutils literal notranslate"><span class="pre">diag</span></code> is an array.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_from_triplets">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_from_triplets</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">rows_of_blocks</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">cols_of_blocks</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">rows</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">columns</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">values</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">prune_numerical_zeros</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L624-L657"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_from_triplets" title="Link to this definition">#</a></dt>
+<dd><p>Constructs a BSR matrix with values defined by coordinate-oriented (COO) triplets.</p>
+<p>The first dimension of the three input arrays must match and indicates the number of COO triplets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rows_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of rows of blocks.</p></li>
+<li><p><strong>cols_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of columns of blocks.</p></li>
+<li><p><strong>rows</strong> (<em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>) – Row index for each non-zero.</p></li>
+<li><p><strong>columns</strong> (<em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>) – Columns index for each non-zero.</p></li>
+<li><p><strong>values</strong> (<em>Array</em><em>[</em><em>Scalar</em><em> | </em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>]</em>) – Block values for each non-zero. Must be either a one-dimensional array with data type identical
+to the <code class="docutils literal notranslate"><span class="pre">dest</span></code> matrix’s block type, or a 3d array with data type equal to the <code class="docutils literal notranslate"><span class="pre">dest</span></code> matrix’s scalar type.</p></li>
+<li><p><strong>prune_numerical_zeros</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, will ignore the zero-valued blocks.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_get_diag">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_get_diag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L1242-L1272"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_get_diag" title="Link to this definition">#</a></dt>
+<dd><p>Return the array of blocks that constitute the diagonal of a sparse matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>] </em><em>| </em><em>_BsrExpression</em><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>]</em>) – The sparse matrix from which to extract the diagonal.</p></li>
+<li><p><strong>out</strong> (<em>Array</em><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>] </em><em>| </em><em>None</em>) – If provided, the array into which to store the diagonal blocks.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Array</em>[<em>_MatrixBlockType</em>[<em>Rows</em>, <em>Cols</em>, <em>Scalar</em>] | <em>_ScalarBlockType</em>[<em>Scalar</em>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_identity">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_identity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rows_of_blocks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L1422-L1442"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_identity" title="Link to this definition">#</a></dt>
+<dd><p>Create and return a square identity matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rows_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of rows and columns of blocks in the created matrix.</p></li>
+<li><p><strong>block_type</strong> (<em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Rows</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em>) – Block type for the newly created matrix. Must be square</p></li>
+<li><p><strong>device</strong> (<a class="reference internal" href="devices.html#warp.context.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Device onto which to allocate the data arrays</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a>[<em>_MatrixBlockType</em>[<em>Rows</em>, <em>Rows</em>, <em>Scalar</em>] | <em>_ScalarBlockType</em>[<em>Scalar</em>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_matrix_t">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_matrix_t</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L318-L354"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_matrix_t" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dtype</strong> (<em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_mm">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_mm</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">y</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">masked</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">work_arrays</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">reuse_topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">tile_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_new_nnz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L2078-L2432"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_mm" title="Link to this definition">#</a></dt>
+<dd><p>Perform the sparse matrix-matrix multiplication <code class="docutils literal notranslate"><span class="pre">z</span> <span class="pre">:=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">x</span> <span class="pre">&#64;</span> <span class="pre">y</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">*</span> <span class="pre">z</span></code> on BSR matrices <code class="docutils literal notranslate"><span class="pre">x</span></code>, <code class="docutils literal notranslate"><span class="pre">y</span></code> and <code class="docutils literal notranslate"><span class="pre">z</span></code>, and return <code class="docutils literal notranslate"><span class="pre">z</span></code>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">x</span></code>, <code class="docutils literal notranslate"><span class="pre">y</span></code> and <code class="docutils literal notranslate"><span class="pre">z</span></code> matrices are allowed to alias.
+If the matrix <code class="docutils literal notranslate"><span class="pre">z</span></code> is not provided as input, it will be allocated and treated as zero.</p>
+<dl class="simple">
+<dt>This method can be graph-captured if either:</dt><dd><ul class="simple">
+<li><p><cite>masked=True</cite></p></li>
+<li><p><cite>reuse_topology=True</cite></p></li>
+<li><p><cite>max_new_nnz</cite> is provided</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>] </em><em>| </em><em>_BsrExpression</em><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>]</em>) – Read-only left operand of the matrix-matrix product.</p></li>
+<li><p><strong>y</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>_MatrixBlockType</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>] </em><em>| </em><em>_BsrExpression</em><em>[</em><em>_MatrixBlockType</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>]</em>) – Read-only right operand of the matrix-matrix product.</p></li>
+<li><p><strong>z</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>] </em><em>| </em><em>None</em>) – Mutable affine operand and result matrix. If <code class="docutils literal notranslate"><span class="pre">z</span></code> is not provided, it will be allocated and treated as zero.</p></li>
+<li><p><strong>alpha</strong> (<em>Scalar</em>) – Uniform scaling factor for the <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">&#64;</span> <span class="pre">y</span></code> product</p></li>
+<li><p><strong>beta</strong> (<em>Scalar</em>) – Uniform scaling factor for <code class="docutils literal notranslate"><span class="pre">z</span></code></p></li>
+<li><p><strong>masked</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, keep the non-zero topology of <code class="docutils literal notranslate"><span class="pre">z</span></code> unchanged.</p></li>
+<li><p><strong>work_arrays</strong> (<a class="reference internal" href="#warp.sparse.bsr_mm_work_arrays" title="warp._src.sparse.bsr_mm_work_arrays"><em>bsr_mm_work_arrays</em></a><em> | </em><em>None</em>) – In most cases, this function will require the use of temporary storage.
+This storage can be reused across calls by passing an instance of
+<a class="reference internal" href="#warp.sparse.bsr_mm_work_arrays" title="warp.sparse.bsr_mm_work_arrays"><code class="xref py py-class docutils literal notranslate"><span class="pre">bsr_mm_work_arrays</span></code></a> in <code class="docutils literal notranslate"><span class="pre">work_arrays</span></code>.</p></li>
+<li><p><strong>reuse_topology</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, reuse the product topology information
+stored in <code class="docutils literal notranslate"><span class="pre">work_arrays</span></code> rather than recompute it from scratch.
+The matrices <code class="docutils literal notranslate"><span class="pre">x</span></code>, <code class="docutils literal notranslate"><span class="pre">y</span></code> and <code class="docutils literal notranslate"><span class="pre">z</span></code> must be structurally similar to
+the previous call in which <code class="docutils literal notranslate"><span class="pre">work_arrays</span></code> were populated.</p></li>
+<li><p><strong>max_new_nnz</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – If provided, the maximum number of non-zeros for the matrix-matrix product result
+(not counting the existing non-zeros in <code class="docutils literal notranslate"><span class="pre">z</span></code>).</p></li>
+<li><p><strong>tile_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – If a positive integer, use tiles of this size to compute the matrix-matrix product.
+If negative, disable tile-based computation. Defaults to <code class="docutils literal notranslate"><span class="pre">0</span></code>, which determines whether to
+use tiles using using an heuristic based on the matrix shape and number of non-zeros..</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a>[<em>_MatrixBlockType</em>[<em>Rows</em>, <em>Cols</em>, <em>Scalar</em>] | <em>_ScalarBlockType</em>[<em>Scalar</em>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.sparse.bsr_mm_work_arrays">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_mm_work_arrays</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L2027-L2076"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_mm_work_arrays" title="Link to this definition">#</a></dt>
+<dd><p>Opaque structure for persisting <a class="reference internal" href="#warp.sparse.bsr_mm" title="warp.sparse.bsr_mm"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_mm()</span></code></a> temporary work buffers across calls.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.sparse.bsr_mm_work_arrays.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L2030-L2032"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_mm_work_arrays.__init__" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_mv">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_mv</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">transpose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">work_buffer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">tile_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L2597-L2719"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_mv" title="Link to this definition">#</a></dt>
+<dd><p>Perform the sparse matrix-vector product <code class="docutils literal notranslate"><span class="pre">y</span> <span class="pre">:=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">A</span> <span class="pre">*</span> <span class="pre">x</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">*</span> <span class="pre">y</span></code> and return <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code> vectors are allowed to alias.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>] </em><em>| </em><em>_BsrExpression</em><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>]</em>) – Read-only, left matrix operand of the matrix-vector product.</p></li>
+<li><p><strong>x</strong> (<em>Array</em><em>[</em><em>Vector</em><em>[</em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>Scalar</em><em>]</em>) – Read-only, right vector operand of the matrix-vector product.</p></li>
+<li><p><strong>y</strong> (<em>Array</em><em>[</em><em>Vector</em><em>[</em><em>Rows</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>Scalar</em><em>] </em><em>| </em><em>None</em>) – Mutable affine operand and result vector. If <code class="docutils literal notranslate"><span class="pre">y</span></code> is not provided, it will be allocated and treated as zero.</p></li>
+<li><p><strong>alpha</strong> (<em>Scalar</em>) – Uniform scaling factor for <code class="docutils literal notranslate"><span class="pre">x</span></code>. If zero, <code class="docutils literal notranslate"><span class="pre">x</span></code> will not be read and may be left uninitialized.</p></li>
+<li><p><strong>beta</strong> (<em>Scalar</em>) – Uniform scaling factor for <code class="docutils literal notranslate"><span class="pre">y</span></code>. If zero, <code class="docutils literal notranslate"><span class="pre">y</span></code> will not be read and may be left uninitialized.</p></li>
+<li><p><strong>transpose</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, use the transpose of the matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>. In this case the result is <strong>non-deterministic</strong>.</p></li>
+<li><p><strong>work_buffer</strong> (<em>Array</em><em>[</em><em>Vector</em><em>[</em><em>Rows</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>Scalar</em><em>] </em><em>| </em><em>None</em>) – Temporary storage is required if and only if <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code> are the same vector.
+If provided, the <code class="docutils literal notranslate"><span class="pre">work_buffer</span></code> array will be used for this purpose,
+otherwise a temporary allocation will be performed.</p></li>
+<li><p><strong>tile_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – If a positive integer, use tiles of this size to compute the matrix-matrix product.
+If negative, disable tile-based computation. Defaults to <code class="docutils literal notranslate"><span class="pre">0</span></code>, which determines whether to
+use tiles using using an heuristic based on the matrix shape and number of non-zeros..</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Array</em>[<em>Vector</em>[<em>Rows</em>, <em>Scalar</em>] | <em>Scalar</em>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_scale">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_scale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L1462-L1482"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_scale" title="Link to this definition">#</a></dt>
+<dd><p>Perform the operation <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">:=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">x</span></code> on BSR matrix <code class="docutils literal notranslate"><span class="pre">x</span></code> and return <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>BlockType</em><em>] </em><em>| </em><em>_BsrExpression</em><em>[</em><em>BlockType</em><em>]</em>)</p></li>
+<li><p><strong>alpha</strong> (<em>Scalar</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_set_diag">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_set_diag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rows_of_blocks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cols_of_blocks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L1286-L1342"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_set_diag" title="Link to this definition">#</a></dt>
+<dd><p>Set <code class="docutils literal notranslate"><span class="pre">A</span></code> as a block-diagonal matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>]</em>) – The sparse matrix to modify.</p></li>
+<li><p><strong>diag</strong> (<em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>] </em><em>| </em><em>Array</em><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>]</em>) – <p>Specifies the values for diagonal blocks. Can be one of:</p>
+<ul>
+<li><p>A Warp array of type <code class="docutils literal notranslate"><span class="pre">A.values.dtype</span></code>: Each element defines one block of the diagonal</p></li>
+<li><p>A constant value of type <code class="docutils literal notranslate"><span class="pre">A.values.dtype</span></code>: This value is assigned to all diagonal blocks</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">None</span></code>: Diagonal block values are left uninitialized</p></li>
+</ul>
+</p></li>
+<li><p><strong>rows_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – If not <code class="docutils literal notranslate"><span class="pre">None</span></code>, the new number of rows of blocks.</p></li>
+<li><p><strong>cols_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – If not <code class="docutils literal notranslate"><span class="pre">None</span></code>, the new number of columns of blocks.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<p>The shape of the matrix will be defined one of the following, in this order:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">rows_of_blocks</span></code> and <code class="docutils literal notranslate"><span class="pre">cols_of_blocks</span></code>, if provided.
+If only one is given, the second is assumed equal.</p></li>
+<li><p>The first dimension of <code class="docutils literal notranslate"><span class="pre">diag</span></code>, if <code class="docutils literal notranslate"><span class="pre">diag</span></code> is an array</p></li>
+<li><p>The current dimensions of <code class="docutils literal notranslate"><span class="pre">A</span></code> otherwise</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_set_from_triplets">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_set_from_triplets</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">dest</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">rows</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">columns</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">prune_numerical_zeros</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">masked</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L482-L622"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_set_from_triplets" title="Link to this definition">#</a></dt>
+<dd><p>Fill a BSR matrix with values defined by coordinate-oriented (COO) triplets, discarding existing blocks.</p>
+<p>The first dimension of the three input arrays must match and indicates the number of COO triplets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dest</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>]</em>) – Sparse matrix to populate.</p></li>
+<li><p><strong>rows</strong> (<em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>) – Row index for each non-zero.</p></li>
+<li><p><strong>columns</strong> (<em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>) – Columns index for each non-zero.</p></li>
+<li><p><strong>values</strong> (<em>Array</em><em>[</em><em>Scalar</em><em> | </em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>] </em><em>| </em><em>None</em>) – Block values for each non-zero. Must be either a one-dimensional array with data type identical
+to the <code class="docutils literal notranslate"><span class="pre">dest</span></code> matrix’s block type, or a 3d array with data type equal to the <code class="docutils literal notranslate"><span class="pre">dest</span></code> matrix’s scalar type.
+If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the values array of the resulting matrix will be allocated but uninitialized.</p></li>
+<li><p><strong>count</strong> (<em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – Single-element array indicating the number of triplets. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the number of triplets is determined from the shape of
+<code class="docutils literal notranslate"><span class="pre">rows</span></code> and <code class="docutils literal notranslate"><span class="pre">columns</span></code> arrays.</p></li>
+<li><p><strong>prune_numerical_zeros</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, will ignore the zero-valued blocks.</p></li>
+<li><p><strong>masked</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, ignore blocks that are not existing non-zeros of <code class="docutils literal notranslate"><span class="pre">dest</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_set_identity">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_set_identity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rows_of_blocks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L1403-L1420"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_set_identity" title="Link to this definition">#</a></dt>
+<dd><p>Set <code class="docutils literal notranslate"><span class="pre">A</span></code> as the identity matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – The sparse matrix to modify.</p></li>
+<li><p><strong>rows_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – If provided, the matrix will be resized as a square
+matrix with <code class="docutils literal notranslate"><span class="pre">rows_of_blocks</span></code> rows and columns.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_set_transpose">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_set_transpose</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dest</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">masked</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L1120-L1206"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_set_transpose" title="Link to this definition">#</a></dt>
+<dd><p>Assign the transposed matrix <code class="docutils literal notranslate"><span class="pre">src</span></code> to matrix <code class="docutils literal notranslate"><span class="pre">dest</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dest</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Cols</em><em>, </em><em>Rows</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>]</em>) – Sparse matrix to populate.</p></li>
+<li><p><strong>src</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>] </em><em>| </em><em>_BsrExpression</em><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>]</em>) – Sparse matrix to transpose.</p></li>
+<li><p><strong>masked</strong> (<a class="reference internal" href="functions.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, keep the non-zero topology of <code class="docutils literal notranslate"><span class="pre">dest</span></code> unchanged.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_set_zero">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_set_zero</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bsr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rows_of_blocks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cols_of_blocks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L411-L423"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_set_zero" title="Link to this definition">#</a></dt>
+<dd><p>Set a BSR matrix to zero, possibly changing its size.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bsr</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – The BSR or CSR matrix to set to zero.</p></li>
+<li><p><strong>rows_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – If not <code class="docutils literal notranslate"><span class="pre">None</span></code>, the new number of rows of blocks.</p></li>
+<li><p><strong>cols_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – If not <code class="docutils literal notranslate"><span class="pre">None</span></code>, the new number of columns of blocks.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_transposed">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_transposed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L1208-L1225"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_transposed" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the transposed matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>A</strong> (<a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>BlockType</em><em>] </em><em>| </em><em>_BsrExpression</em><em>[</em><em>BlockType</em><em>]</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.sparse.bsr_zeros">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_zeros</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rows_of_blocks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cols_of_blocks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/sparse.py#L356-L384"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_zeros" title="Link to this definition">#</a></dt>
+<dd><p>Construct and return an empty BSR or CSR matrix with the given shape.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bsr</strong> – The BSR or CSR matrix to set to zero.</p></li>
+<li><p><strong>rows_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of rows of blocks.</p></li>
+<li><p><strong>cols_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of columns of blocks.</p></li>
+<li><p><strong>block_type</strong> (<em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em>) – Type of individual blocks.
+For CSR matrices, this should be a scalar type.
+For BSR matrices, this should be a matrix type (e.g. from <code class="xref py py-func docutils literal notranslate"><span class="pre">warp.mat()</span></code>).</p></li>
+<li><p><strong>device</strong> (<a class="reference internal" href="devices.html#warp.context.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Device on which to allocate the matrix arrays.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+<section id="iterative-linear-solvers">
+<span id="id1"></span><h2>Iterative Linear Solvers<a class="headerlink" href="#iterative-linear-solvers" title="Link to this heading">#</a></h2>
+<p>Warp provides several iterative linear solvers with optional preconditioning:</p>
+<ul class="simple">
+<li><p>Conjugate Gradient (CG)</p></li>
+<li><p>Conjugate Residual (CR)</p></li>
+<li><p>Bi-Conjugate Gradient Stabilized (BiCGSTAB)</p></li>
+<li><p>Generalized Minimal Residual (GMRES)</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.optim.linear</span><span class="w"> </span><span class="kn">import</span> <span class="n">cg</span>
+
+<span class="c1"># Solve Ax = b</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">cg</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>While primarily intended for sparse matrices, these solvers also work with dense linear operators provided as 2D Warp arrays. Custom operators can be implemented using the <a class="reference internal" href="#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a> interface.</p>
+</div>
+<dl class="py class" id="module-warp.optim.linear">
+<dt class="sig sig-object py" id="warp.optim.linear.LinearOperator">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.optim.linear.</span></span><span class="sig-name descname"><span class="pre">LinearOperator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">matvec</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/optim/linear.py#L32-L85"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator" title="Link to this definition">#</a></dt>
+<dd><p>Linear operator to be used as left-hand-side of linear iterative solvers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><em>Tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>) – Tuple containing the number of rows and columns of the operator</p></li>
+<li><p><strong>dtype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a>) – Type of the operator elements</p></li>
+<li><p><strong>device</strong> (<a class="reference internal" href="devices.html#warp.context.Device" title="warp._src.context.Device"><em>Device</em></a>) – Device on which computations involving the operator should be performed</p></li>
+<li><p><strong>matvec</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><em>Callable</em></a>) – Matrix-vector multiplication routine</p></li>
+</ul>
+</dd>
+</dl>
+<p>The matrix-vector multiplication routine should have the following signature:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">matvec</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="n">Scalar</span><span class="p">,</span> <span class="n">beta</span><span class="p">:</span> <span class="n">Scalar</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;Perform a generalized matrix-vector product.</span>
+
+<span class="sd">    This function computes the operation z = alpha * (A @ x) + beta * y, where &#39;A&#39;</span>
+<span class="sd">    is the linear operator represented by this class.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>For performance reasons, by default the iterative linear solvers in this module will try to capture the calls
+for one or more iterations in CUDA graphs. If the <cite>matvec</cite> routine of a custom <a class="reference internal" href="#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a>
+cannot be graph-captured, the <code class="docutils literal notranslate"><span class="pre">use_cuda_graph=False</span></code> parameter should be passed to the solver function.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.optim.linear.LinearOperator.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">matvec</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/optim/linear.py#L60-L65"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.__init__" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><em>Tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>)</p></li>
+<li><p><strong>dtype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a>)</p></li>
+<li><p><strong>device</strong> (<a class="reference internal" href="devices.html#warp.context.Device" title="warp._src.context.Device"><em>Device</em></a>)</p></li>
+<li><p><strong>matvec</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><em>Callable</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.optim.linear.LinearOperator.device">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">device</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="devices.html#warp.context.Device" title="warp._src.context.Device"><span class="pre">Device</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/optim/linear.py#L74-L77"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.device" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.optim.linear.LinearOperator.dtype">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/optim/linear.py#L70-L73"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.dtype" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.optim.linear.LinearOperator.matvec">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">matvec</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/optim/linear.py#L78-L81"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.matvec" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.optim.linear.LinearOperator.scalar_type">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scalar_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/optim/linear.py#L82-L85"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.scalar_type" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.optim.linear.LinearOperator.shape">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">shape</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/optim/linear.py#L66-L69"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.shape" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.optim.linear.aslinearoperator">
+<span class="sig-prename descclassname"><span class="pre">warp.optim.linear.</span></span><span class="sig-name descname"><span class="pre">aslinearoperator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/optim/linear.py#L90-L150"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.aslinearoperator" title="Link to this definition">#</a></dt>
+<dd><p>Casts the dense or sparse matrix <cite>A</cite> as a <a class="reference internal" href="#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a></p>
+<p><cite>A</cite> must be of one of the following types:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.sparse.BsrMatrix</span></code></a></p></li>
+<li><p>two-dimensional <cite>warp.array</cite>; then <cite>A</cite> is assumed to be a dense matrix</p></li>
+<li><p>one-dimensional <cite>warp.array</cite>; then <cite>A</cite> is assumed to be a diagonal matrix</p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.sparse.LinearOperator</span></code>; no casting necessary</p></li>
+</ul>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>A</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><a class="reference internal" href="#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.optim.linear.bicgstab">
+<span class="sig-prename descclassname"><span class="pre">warp.optim.linear.</span></span><span class="sig-name descname"><span class="pre">bicgstab</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">b</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">atol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">maxiter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">M</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">check_every</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">use_cuda_graph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">is_left_preconditioner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/optim/linear.py#L621-L789"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.bicgstab" title="Link to this definition">#</a></dt>
+<dd><p>Computes an approximate solution to a linear system using the Biconjugate Gradient Stabilized method (BiCGSTAB).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><a class="reference internal" href="#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a>) – the linear system’s left-hand-side</p></li>
+<li><p><strong>b</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – the linear system’s right-hand-side</p></li>
+<li><p><strong>x</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – initial guess and solution vector</p></li>
+<li><p><strong>tol</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – relative tolerance for the residual, as a ratio of the right-hand-side norm</p></li>
+<li><p><strong>atol</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – absolute tolerance for the residual</p></li>
+<li><p><strong>maxiter</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – maximum number of iterations to perform before aborting. Defaults to the system size.</p></li>
+<li><p><strong>M</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><a class="reference internal" href="#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a><em> | </em><em>None</em>) – optional left- or right-preconditioner, ideally chosen such that <code class="docutils literal notranslate"><span class="pre">M</span> <span class="pre">A</span></code> (resp <code class="docutils literal notranslate"><span class="pre">A</span> <span class="pre">M</span></code>) is close to identity.</p></li>
+<li><p><strong>callback</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><em>Callable</em></a><em> | </em><em>None</em>) – function to be called every <cite>check_every</cite> iteration with the current iteration number, residual and tolerance.
+If <cite>check_every</cite> is 0, the callback should be a Warp kernel.</p></li>
+<li><p><strong>check_every</strong> – number of iterations every which to call <cite>callback</cite>, check the residual against the tolerance and possibility terminate the algorithm.
+Setting <cite>check_every</cite> to 0 disables host-side residual checks, making the solver fully CUDA-graph capturable.
+If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
+to the maximum number of iterations.</p></li>
+<li><p><strong>use_cuda_graph</strong> – If true and when run on a CUDA device, capture the solver iteration as a CUDA graph for reduced launch overhead.
+The linear operator and preconditioner must only perform graph-friendly operations.</p></li>
+<li><p><strong>is_left_preconditioner</strong> – whether <cite>M</cite> should be used as a left- or right- preconditioner.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Tuple (final_iteration, residual_norm, absolute_tolerance)</dt><dd><ul class="simple">
+<li><p>final_iteration: The number of iterations performed before convergence or reaching maxiter</p></li>
+<li><p>residual_norm: The final residual norm ||b - Ax||</p></li>
+<li><p>absolute_tolerance: The absolute tolerance used for convergence checking</p></li>
+</ul>
+</dd>
+<dt>If <cite>check_every</cite> is 0: Tuple (final_iteration_array, residual_norm_squared_array, absolute_tolerance_squared_array)</dt><dd><ul class="simple">
+<li><p>final_iteration_array: Device array containing the number of iterations performed</p></li>
+<li><p>residual_norm_squared_array: Device array containing the squared residual norm ||b - Ax||²</p></li>
+<li><p>absolute_tolerance_squared_array: Device array containing the squared absolute tolerance</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>If <cite>check_every</cite> &gt; 0</p>
+</dd>
+</dl>
+<p>If both <cite>tol</cite> and <cite>atol</cite> are provided, the absolute tolerance used as the termination criterion for the residual norm is <code class="docutils literal notranslate"><span class="pre">max(atol,</span> <span class="pre">tol</span> <span class="pre">*</span> <span class="pre">norm(b))</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.optim.linear.cg">
+<span class="sig-prename descclassname"><span class="pre">warp.optim.linear.</span></span><span class="sig-name descname"><span class="pre">cg</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">b</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">atol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">maxiter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">M</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">check_every</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">use_cuda_graph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/optim/linear.py#L346-L469"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.cg" title="Link to this definition">#</a></dt>
+<dd><p>Computes an approximate solution to a symmetric, positive-definite linear system
+using the Conjugate Gradient algorithm.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><a class="reference internal" href="#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a>) – the linear system’s left-hand-side</p></li>
+<li><p><strong>b</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – the linear system’s right-hand-side</p></li>
+<li><p><strong>x</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – initial guess and solution vector</p></li>
+<li><p><strong>tol</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – relative tolerance for the residual, as a ratio of the right-hand-side norm</p></li>
+<li><p><strong>atol</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – absolute tolerance for the residual</p></li>
+<li><p><strong>maxiter</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – maximum number of iterations to perform before aborting. Defaults to the system size.</p></li>
+<li><p><strong>M</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><a class="reference internal" href="#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a><em> | </em><em>None</em>) – optional left-preconditioner, ideally chosen such that <code class="docutils literal notranslate"><span class="pre">M</span> <span class="pre">A</span></code> is close to identity.</p></li>
+<li><p><strong>callback</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><em>Callable</em></a><em> | </em><em>None</em>) – function to be called every <cite>check_every</cite> iteration with the current iteration number, residual and tolerance.
+If <cite>check_every</cite> is 0, the callback should be a Warp kernel.</p></li>
+<li><p><strong>check_every</strong> – number of iterations every which to call <cite>callback</cite>, check the residual against the tolerance and possibility terminate the algorithm.
+Setting <cite>check_every</cite> to 0 disables host-side residual checks, making the solver fully CUDA-graph capturable.
+If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
+to the maximum number of iterations.</p></li>
+<li><p><strong>use_cuda_graph</strong> – If true and when run on a CUDA device, capture the solver iteration as a CUDA graph for reduced launch overhead.
+The linear operator and preconditioner must only perform graph-friendly operations.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Tuple (final_iteration, residual_norm, absolute_tolerance)</dt><dd><ul class="simple">
+<li><p>final_iteration: The number of iterations performed before convergence or reaching maxiter</p></li>
+<li><p>residual_norm: The final residual norm ||b - Ax||</p></li>
+<li><p>absolute_tolerance: The absolute tolerance used for convergence checking</p></li>
+</ul>
+</dd>
+<dt>If <cite>check_every</cite> is 0: Tuple (final_iteration_array, residual_norm_squared_array, absolute_tolerance_squared_array)</dt><dd><ul class="simple">
+<li><p>final_iteration_array: Device array containing the number of iterations performed</p></li>
+<li><p>residual_norm_squared_array: Device array containing the squared residual norm ||b - Ax||²</p></li>
+<li><p>absolute_tolerance_squared_array: Device array containing the squared absolute tolerance</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>If <cite>check_every</cite> &gt; 0</p>
+</dd>
+</dl>
+<p>If both <cite>tol</cite> and <cite>atol</cite> are provided, the absolute tolerance used as the termination criterion for the residual norm is <code class="docutils literal notranslate"><span class="pre">max(atol,</span> <span class="pre">tol</span> <span class="pre">*</span> <span class="pre">norm(b))</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.optim.linear.cr">
+<span class="sig-prename descclassname"><span class="pre">warp.optim.linear.</span></span><span class="sig-name descname"><span class="pre">cr</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">b</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">atol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">maxiter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">M</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">check_every</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">use_cuda_graph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/optim/linear.py#L471-L619"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.cr" title="Link to this definition">#</a></dt>
+<dd><p>Computes an approximate solution to a symmetric, positive-definite linear system
+using the Conjugate Residual algorithm.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><a class="reference internal" href="#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a>) – the linear system’s left-hand-side</p></li>
+<li><p><strong>b</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – the linear system’s right-hand-side</p></li>
+<li><p><strong>x</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – initial guess and solution vector</p></li>
+<li><p><strong>tol</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – relative tolerance for the residual, as a ratio of the right-hand-side norm</p></li>
+<li><p><strong>atol</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – absolute tolerance for the residual</p></li>
+<li><p><strong>maxiter</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – maximum number of iterations to perform before aborting. Defaults to the system size.
+Note that the current implementation always performs iterations in pairs, and as a result may exceed the specified maximum number of iterations by one.</p></li>
+<li><p><strong>M</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><a class="reference internal" href="#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a><em> | </em><em>None</em>) – optional left-preconditioner, ideally chosen such that <code class="docutils literal notranslate"><span class="pre">M</span> <span class="pre">A</span></code> is close to identity.</p></li>
+<li><p><strong>callback</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><em>Callable</em></a><em> | </em><em>None</em>) – function to be called every <cite>check_every</cite> iteration with the current iteration number, residual and tolerance.
+If <cite>check_every</cite> is 0, the callback should be a Warp kernel.</p></li>
+<li><p><strong>check_every</strong> – number of iterations every which to call <cite>callback</cite>, check the residual against the tolerance and possibility terminate the algorithm.
+Setting <cite>check_every</cite> to 0 disables host-side residual checks, making the solver fully CUDA-graph capturable.
+If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
+to the maximum number of iterations.</p></li>
+<li><p><strong>use_cuda_graph</strong> – If true and when run on a CUDA device, capture the solver iteration as a CUDA graph for reduced launch overhead.
+The linear operator and preconditioner must only perform graph-friendly operations.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Tuple (final_iteration, residual_norm, absolute_tolerance)</dt><dd><ul class="simple">
+<li><p>final_iteration: The number of iterations performed before convergence or reaching maxiter</p></li>
+<li><p>residual_norm: The final residual norm ||b - Ax||</p></li>
+<li><p>absolute_tolerance: The absolute tolerance used for convergence checking</p></li>
+</ul>
+</dd>
+<dt>If <cite>check_every</cite> is 0: Tuple (final_iteration_array, residual_norm_squared_array, absolute_tolerance_squared_array)</dt><dd><ul class="simple">
+<li><p>final_iteration_array: Device array containing the number of iterations performed</p></li>
+<li><p>residual_norm_squared_array: Device array containing the squared residual norm ||b - Ax||²</p></li>
+<li><p>absolute_tolerance_squared_array: Device array containing the squared absolute tolerance</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>If <cite>check_every</cite> &gt; 0</p>
+</dd>
+</dl>
+<p>If both <cite>tol</cite> and <cite>atol</cite> are provided, the absolute tolerance used as the termination criterion for the residual norm is <code class="docutils literal notranslate"><span class="pre">max(atol,</span> <span class="pre">tol</span> <span class="pre">*</span> <span class="pre">norm(b))</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.optim.linear.gmres">
+<span class="sig-prename descclassname"><span class="pre">warp.optim.linear.</span></span><span class="sig-name descname"><span class="pre">gmres</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">b</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">atol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">restart</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">31</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">maxiter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">M</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">check_every</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">31</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">use_cuda_graph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">is_left_preconditioner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/optim/linear.py#L791-L997"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.gmres" title="Link to this definition">#</a></dt>
+<dd><p>Computes an approximate solution to a linear system using the restarted Generalized Minimum Residual method (GMRES[k]).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><a class="reference internal" href="#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a>) – the linear system’s left-hand-side</p></li>
+<li><p><strong>b</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – the linear system’s right-hand-side</p></li>
+<li><p><strong>x</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – initial guess and solution vector</p></li>
+<li><p><strong>tol</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – relative tolerance for the residual, as a ratio of the right-hand-side norm</p></li>
+<li><p><strong>atol</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – absolute tolerance for the residual</p></li>
+<li><p><strong>restart</strong> – The restart parameter, i.e, the <cite>k</cite> in <cite>GMRES[k]</cite>. In general, increasing this parameter reduces the number of iterations but increases memory consumption.</p></li>
+<li><p><strong>maxiter</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – maximum number of iterations to perform before aborting. Defaults to the system size.
+Note that the current implementation always perform <cite>restart</cite> iterations at a time, and as a result may exceed the specified maximum number of iterations by <code class="docutils literal notranslate"><span class="pre">restart-1</span></code>.</p></li>
+<li><p><strong>M</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><a class="reference internal" href="#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a><em> | </em><em>None</em>) – optional left- or right-preconditioner, ideally chosen such that <code class="docutils literal notranslate"><span class="pre">M</span> <span class="pre">A</span></code> (resp <code class="docutils literal notranslate"><span class="pre">A</span> <span class="pre">M</span></code>) is close to identity.</p></li>
+<li><p><strong>callback</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><em>Callable</em></a><em> | </em><em>None</em>) – function to be called every <cite>check_every</cite> iteration with the current iteration number, residual and tolerance.
+If <cite>check_every</cite> is 0, the callback should be a Warp kernel.</p></li>
+<li><p><strong>check_every</strong> – number of iterations every which to call <cite>callback</cite>, check the residual against the tolerance and possibility terminate the algorithm.
+Setting <cite>check_every</cite> to 0 disables host-side residual checks, making the solver fully CUDA-graph capturable.
+If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
+to the maximum number of iterations.</p></li>
+<li><p><strong>use_cuda_graph</strong> – If true and when run on a CUDA device, capture the solver iteration as a CUDA graph for reduced launch overhead.
+The linear operator and preconditioner must only perform graph-friendly operations.</p></li>
+<li><p><strong>is_left_preconditioner</strong> – whether <cite>M</cite> should be used as a left- or right- preconditioner.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Tuple (final_iteration, residual_norm, absolute_tolerance)</dt><dd><ul class="simple">
+<li><p>final_iteration: The number of iterations performed before convergence or reaching maxiter</p></li>
+<li><p>residual_norm: The final residual norm ||b - Ax||</p></li>
+<li><p>absolute_tolerance: The absolute tolerance used for convergence checking</p></li>
+</ul>
+</dd>
+<dt>If <cite>check_every</cite> is 0: Tuple (final_iteration_array, residual_norm_squared_array, absolute_tolerance_squared_array)</dt><dd><ul class="simple">
+<li><p>final_iteration_array: Device array containing the number of iterations performed</p></li>
+<li><p>residual_norm_squared_array: Device array containing the squared residual norm ||b - Ax||²</p></li>
+<li><p>absolute_tolerance_squared_array: Device array containing the squared absolute tolerance</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>If <cite>check_every</cite> &gt; 0</p>
+</dd>
+</dl>
+<p>If both <cite>tol</cite> and <cite>atol</cite> are provided, the absolute tolerance used as the termination criterion for the residual norm is <code class="docutils literal notranslate"><span class="pre">max(atol,</span> <span class="pre">tol</span> <span class="pre">*</span> <span class="pre">norm(b))</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.optim.linear.preconditioner">
+<span class="sig-prename descclassname"><span class="pre">warp.optim.linear.</span></span><span class="sig-name descname"><span class="pre">preconditioner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ptype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'diag'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.10/warp/_src/optim/linear.py#L152-L203"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.preconditioner" title="Link to this definition">#</a></dt>
+<dd><p>Constructs and returns a preconditioner for an input matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference internal" href="#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><a class="reference internal" href="#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a>) – The matrix for which to build the preconditioner</p></li>
+<li><p><strong>ptype</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – <p>The type of preconditioner. Currently the following values are supported:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;diag&quot;</span></code>: Diagonal (a.k.a. Jacobi) preconditioner</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;diag_abs&quot;</span></code>: Similar to Jacobi, but using the absolute value of diagonal coefficients</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;id&quot;</span></code>: Identity (null) preconditioner</p></li>
+</ul>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="functions.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Built-Ins Reference</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="fem.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">warp.fem</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#working-with-sparse-matrices">Working with Sparse Matrices</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#creating-sparse-matrices">Creating Sparse Matrices</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#block-sizes">Block Sizes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#non-zero-block-count">Non-Zero Block Count</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#converting-back-to-coo-format">Converting back to COO Format</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#matrix-operations">Matrix Operations</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#kernel-level-utilities">Kernel-level utilities</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_row_index"><code class="docutils literal notranslate"><span class="pre">bsr_row_index()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_block_index"><code class="docutils literal notranslate"><span class="pre">bsr_block_index()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#module-warp.sparse">Reference</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix"><code class="docutils literal notranslate"><span class="pre">BsrMatrix</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.nrow"><code class="docutils literal notranslate"><span class="pre">nrow</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.ncol"><code class="docutils literal notranslate"><span class="pre">ncol</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.nnz"><code class="docutils literal notranslate"><span class="pre">nnz</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.offsets"><code class="docutils literal notranslate"><span class="pre">offsets</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.columns"><code class="docutils literal notranslate"><span class="pre">columns</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.values"><code class="docutils literal notranslate"><span class="pre">values</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.block_shape"><code class="docutils literal notranslate"><span class="pre">block_shape</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.block_size"><code class="docutils literal notranslate"><span class="pre">block_size</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.copy_nnz_async"><code class="docutils literal notranslate"><span class="pre">copy_nnz_async()</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.device"><code class="docutils literal notranslate"><span class="pre">device</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.dtype"><code class="docutils literal notranslate"><span class="pre">dtype</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.nnz_sync"><code class="docutils literal notranslate"><span class="pre">nnz_sync()</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.notify_nnz_changed"><code class="docutils literal notranslate"><span class="pre">notify_nnz_changed()</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.requires_grad"><code class="docutils literal notranslate"><span class="pre">requires_grad</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.scalar_type"><code class="docutils literal notranslate"><span class="pre">scalar_type</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.scalar_values"><code class="docutils literal notranslate"><span class="pre">scalar_values</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.shape"><code class="docutils literal notranslate"><span class="pre">shape</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.transpose"><code class="docutils literal notranslate"><span class="pre">transpose()</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BsrMatrix.uncompress_rows"><code class="docutils literal notranslate"><span class="pre">uncompress_rows()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_assign"><code class="docutils literal notranslate"><span class="pre">bsr_assign()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_axpy"><code class="docutils literal notranslate"><span class="pre">bsr_axpy()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_copy"><code class="docutils literal notranslate"><span class="pre">bsr_copy()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_diag"><code class="docutils literal notranslate"><span class="pre">bsr_diag()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_from_triplets"><code class="docutils literal notranslate"><span class="pre">bsr_from_triplets()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_get_diag"><code class="docutils literal notranslate"><span class="pre">bsr_get_diag()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_identity"><code class="docutils literal notranslate"><span class="pre">bsr_identity()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_matrix_t"><code class="docutils literal notranslate"><span class="pre">bsr_matrix_t()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_mm"><code class="docutils literal notranslate"><span class="pre">bsr_mm()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_mm_work_arrays"><code class="docutils literal notranslate"><span class="pre">bsr_mm_work_arrays</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_mm_work_arrays.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_mv"><code class="docutils literal notranslate"><span class="pre">bsr_mv()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_scale"><code class="docutils literal notranslate"><span class="pre">bsr_scale()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_set_diag"><code class="docutils literal notranslate"><span class="pre">bsr_set_diag()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_set_from_triplets"><code class="docutils literal notranslate"><span class="pre">bsr_set_from_triplets()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_set_identity"><code class="docutils literal notranslate"><span class="pre">bsr_set_identity()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_set_transpose"><code class="docutils literal notranslate"><span class="pre">bsr_set_transpose()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_set_zero"><code class="docutils literal notranslate"><span class="pre">bsr_set_zero()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_transposed"><code class="docutils literal notranslate"><span class="pre">bsr_transposed()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_zeros"><code class="docutils literal notranslate"><span class="pre">bsr_zeros()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#iterative-linear-solvers">Iterative Linear Solvers</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.LinearOperator"><code class="docutils literal notranslate"><span class="pre">LinearOperator</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.LinearOperator.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.LinearOperator.device"><code class="docutils literal notranslate"><span class="pre">device</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.LinearOperator.dtype"><code class="docutils literal notranslate"><span class="pre">dtype</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.LinearOperator.matvec"><code class="docutils literal notranslate"><span class="pre">matvec</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.LinearOperator.scalar_type"><code class="docutils literal notranslate"><span class="pre">scalar_type</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.LinearOperator.shape"><code class="docutils literal notranslate"><span class="pre">shape</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.aslinearoperator"><code class="docutils literal notranslate"><span class="pre">aslinearoperator()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.bicgstab"><code class="docutils literal notranslate"><span class="pre">bicgstab()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.cg"><code class="docutils literal notranslate"><span class="pre">cg()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.cr"><code class="docutils literal notranslate"><span class="pre">cr()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.gmres"><code class="docutils literal notranslate"><span class="pre">gmres()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.preconditioner"><code class="docutils literal notranslate"><span class="pre">preconditioner()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.10/docs/modules/sparse.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2025 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>
