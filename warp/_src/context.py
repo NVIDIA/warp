@@ -523,7 +523,7 @@ class Function:
 def get_builtin_type(return_type: type) -> type:
     # The return_type might just be vector_t(length=3,dtype=wp.float32), so we've got to match that
     # in the list of hard coded types so it knows it's returning one of them:
-    if hasattr(return_type, "_wp_generic_type_hint_"):
+    if warp._src.types.type_is_compound(return_type):
         return_type_match = tuple(
             x
             for x in generic_vtypes
@@ -1467,7 +1467,7 @@ def add_builtin(
         # collect the parent type names of all the generic arguments:
         genericset = set()
         for t in func_arg_types.values():
-            if hasattr(t, "_wp_generic_type_hint_"):
+            if warp._src.types.type_is_compound(t):
                 genericset.add(t._wp_generic_type_hint_)
             elif warp._src.types.type_is_generic_scalar(t):
                 genericset.add(t)
@@ -1507,7 +1507,7 @@ def add_builtin(
             for param in input_types.values():
                 if warp._src.types.type_is_generic_scalar(param):
                     l = (stype,)
-                elif hasattr(param, "_wp_generic_type_hint_"):
+                elif warp._src.types.type_is_compound(param):
                     l = tuple(
                         x
                         for x in consistenttypes[param._wp_generic_type_hint_]
@@ -1874,7 +1874,7 @@ class ModuleHasher:
             return bytes(value._type_(value.value))
         elif hasattr(value, "_wp_scalar_type_"):
             return bytes(value)
-        elif isinstance(value, warp._src.codegen.StructInstance):
+        elif warp._src.types.is_struct(value):
             return bytes(value._ctype)
         else:
             raise TypeError(f"Invalid constant type: {type(value)}")
@@ -5875,7 +5875,7 @@ def full(
             dtype = warp.bool
         elif value_type in warp._src.types.scalar_types or hasattr(value_type, "_wp_scalar_type_"):
             dtype = value_type
-        elif isinstance(value, warp._src.codegen.StructInstance):
+        elif warp._src.types.is_struct(value):
             dtype = value._cls
         elif hasattr(value, "__len__"):
             # a sequence, assume it's a vector or matrix value

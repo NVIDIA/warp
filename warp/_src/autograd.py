@@ -353,11 +353,11 @@ def get_struct_vars(x: wp._src.codegen.StructInstance):
 def infer_device(xs: list):
     # retrieve best matching Warp device for a list of variables
     for x in xs:
-        if isinstance(x, wp.array):
+        if wp._src.types.is_array(x):
             return x.device
-        elif isinstance(x, wp._src.codegen.StructInstance):
+        elif wp._src.types.is_struct(x):
             for var in get_struct_vars(x).values():
-                if isinstance(var, wp.array):
+                if wp._src.types.is_array(var):
                     return var.device
     return wp.get_preferred_device()
 

@@ -230,7 +230,7 @@ class Tape:
 
     # returns the adjoint of a kernel parameter
     def get_adjoint(self, a):
-        if not wp._src.types.is_array(a) and not isinstance(a, wp._src.codegen.StructInstance):
+        if not wp._src.types.is_array(a) and not wp._src.types.is_struct(a):
             # if input is a simple type (e.g.: float, vec3, etc) or a non-Warp array,
             # then no gradient needed (we only return gradients through Warp arrays and structs)
             return None
@@ -241,7 +241,7 @@ class Tape:
             self.gradients[a] = a.grad
             return a.grad
 
-        elif isinstance(a, wp._src.codegen.StructInstance):
+        elif wp._src.types.is_struct(a):
             adj = a._cls()
             for name, _ in a._cls.ctype._fields_:
                 if name.startswith("_"):
@@ -278,7 +278,7 @@ class Tape:
         Zero out all gradients recorded on the tape.
         """
         for a, g in self.gradients.items():
-            if isinstance(a, wp._src.codegen.StructInstance):
+            if wp._src.types.is_struct(a):
                 for name in g._cls.vars:
                     if isinstance(g._cls.vars[name].type, wp.array) and g._cls.vars[name].requires_grad:
                         getattr(g, name).zero_()
@@ -1107,7 +1107,7 @@ def visit_tape(
                         add_array_node(x, name, active_scope_stack)
                     # input_arrays.append(x.ptr)
                     visitor.emit_edge_array_kernel(xptr, k_id, id, indent_level)
-            elif isinstance(x, wp._src.codegen.StructInstance):
+            elif wp._src.types.is_struct(x):
                 for varname, var in get_struct_vars(x).items():
                     if isinstance(var, wp.array):
                         if not hide_readonly_arrays or var.ptr in computed_nodes or var.ptr in input_output_ptr:
@@ -1125,7 +1125,7 @@ def visit_tape(
                 output_arrays.append(x.ptr)
                 computed_nodes.add(x.ptr)
                 visitor.emit_edge_kernel_array(k_id, id, x.ptr, indent_level)
-            elif isinstance(x, wp._src.codegen.StructInstance):
+            elif wp._src.types.is_struct(x):
                 for varname, var in get_struct_vars(x).items():
                     if isinstance(var, wp.array):
                         add_array_node(var, f"{name}.{varname}", active_scope_stack)

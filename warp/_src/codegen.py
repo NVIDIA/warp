@@ -251,7 +251,7 @@ def struct_instance_repr_recursive(inst: StructInstance, depth: int, use_repr: b
     for field_name, _ in inst._cls.ctype._fields_:
         field_value = getattr(inst, field_name, None)
 
-        if isinstance(field_value, StructInstance):
+        if is_struct(field_value):
             field_value = struct_instance_repr_recursive(field_value, depth + 1, use_repr)
 
         if use_repr:
@@ -289,7 +289,7 @@ class StructInstance:
 
     def assign(self, value):
         """Assigns the values of another struct instance to this one."""
-        if not isinstance(value, StructInstance):
+        if not is_struct(value):
             raise RuntimeError(
                 f"Trying to assign a non-structure value to a struct attribute with type: {self._cls.key}"
             )
@@ -2562,7 +2562,7 @@ class Adjoint:
 
     def eval_indices(adj, target_type, indices):
         nodes = indices
-        if hasattr(target_type, "_wp_generic_type_hint_"):
+        if type_is_compound(target_type):
             indices = []
             for dim, node in enumerate(nodes):
                 if isinstance(node, ast.Slice):
