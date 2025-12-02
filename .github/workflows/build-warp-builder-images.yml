@@ -89,7 +89,9 @@ jobs:
           ARCH="${{ matrix.arch }}"
           LLVM_VERSION_MAJOR="21"
           
-          IMAGE_BASE="ghcr.io/${{ github.repository_owner }}/warp-builder"
+          # Lowercase repository owner for GHCR compatibility
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_BASE="ghcr.io/${OWNER_LOWER}/warp-builder"
           
           # Generate tags with full CUDA version
           TAGS="${IMAGE_BASE}:cuda${CUDA_VERSION}-llvm${LLVM_VERSION_MAJOR}-${ARCH}-${DATE_TAG}"
@@ -181,7 +183,10 @@ jobs:
         run: |
           CUDA_VERSION="${{ matrix.cuda_version }}"
           LLVM_VERSION_MAJOR="21"
-          IMAGE_BASE="ghcr.io/${{ github.repository_owner }}/warp-builder"
+          
+          # Lowercase repository owner for GHCR compatibility
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_BASE="ghcr.io/${OWNER_LOWER}/warp-builder"
           IMAGE_TAG="${IMAGE_BASE}:cuda${CUDA_VERSION}-llvm${LLVM_VERSION_MAJOR}-${{ matrix.arch }}-latest"
           
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
@@ -246,7 +251,10 @@ jobs:
         run: |
           DATE_TAG=$(date +%Y%m%d)
           LLVM_VERSION_MAJOR="21"
-          IMAGE_BASE="ghcr.io/${{ github.repository_owner }}/warp-builder"
+          
+          # Lowercase repository owner for GHCR compatibility
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_BASE="ghcr.io/${OWNER_LOWER}/warp-builder"
           
           # Create manifests for both CUDA versions
           for CUDA_VERSION in "12.9.1" "13.0.2"; do
@@ -284,7 +292,10 @@ jobs:
       - name: Verify multi-arch manifests
         run: |
           LLVM_VERSION_MAJOR="21"
-          IMAGE_BASE="ghcr.io/${{ github.repository_owner }}/warp-builder"
+          
+          # Lowercase repository owner for GHCR compatibility
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_BASE="ghcr.io/${OWNER_LOWER}/warp-builder"
           
           # Just verify they exist, don't clutter summary with inspect output
           for CUDA_VERSION in "12.9.1" "13.0.2"; do
@@ -295,7 +306,9 @@ jobs:
 
       - name: Final summary
         run: |
-          IMAGE_BASE="ghcr.io/${{ github.repository_owner }}/warp-builder"
+          # Lowercase repository owner for GHCR compatibility
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_BASE="ghcr.io/${OWNER_LOWER}/warp-builder"
           DATE_TAG=$(date +%Y%m%d)
           
           echo "## 🚀 Images Published" >> $GITHUB_STEP_SUMMARY
