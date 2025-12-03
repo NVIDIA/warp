@@ -13,7 +13,7 @@
     <package name="repo_codesign" version="7.2.3"/>
   </dependency>
   <dependency name="repo_kit_tools" linkPath="../_repo/deps/repo_kit_tools">
-    <package name="repo_kit_tools" version="1.5.0"/>
+    <package name="repo_kit_tools" version="1.16.1"/>
   </dependency>
   <dependency name="repo_nv" linkPath="../_repo/deps/repo_nv">
     <package name="repo_nv" version="0.1.1"/>
