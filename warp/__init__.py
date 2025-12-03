@@ -249,8 +249,10 @@ from warp._src.context import set_peer_access_enabled as set_peer_access_enabled
 
 from warp._src.codegen import WarpCodegenAttributeError as WarpCodegenAttributeError
 from warp._src.codegen import WarpCodegenError as WarpCodegenError
+from warp._src.codegen import WarpCodegenIndexError as WarpCodegenIndexError
 from warp._src.codegen import WarpCodegenKeyError as WarpCodegenKeyError
 from warp._src.codegen import WarpCodegenTypeError as WarpCodegenTypeError
+from warp._src.codegen import WarpCodegenValueError as WarpCodegenValueError
 
 from warp._src.tape import Tape as Tape
 

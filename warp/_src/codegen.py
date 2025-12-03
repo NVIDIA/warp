@@ -41,21 +41,6 @@ _wp_module_name_ = "warp.codegen"
 options = {}
 
 
-class WarpCodegenError(RuntimeError):
-    def __init__(self, message):
-        super().__init__(message)
-
-
-class WarpCodegenTypeError(TypeError):
-    def __init__(self, message):
-        super().__init__(message)
-
-
-class WarpCodegenAttributeError(AttributeError):
-    def __init__(self, message):
-        super().__init__(message)
-
-
 def get_node_name_safe(node):
     """Safely get a string representation of an AST node for error messages.
 
@@ -72,7 +57,32 @@ def get_node_name_safe(node):
         return f"<{type(node).__name__}>"
 
 
+class WarpCodegenError(RuntimeError):
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class WarpCodegenTypeError(TypeError):
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class WarpCodegenAttributeError(AttributeError):
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class WarpCodegenIndexError(IndexError):
+    def __init__(self, message):
+        super().__init__(message)
+
+
 class WarpCodegenKeyError(KeyError):
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class WarpCodegenValueError(ValueError):
     def __init__(self, message):
         super().__init__(message)
 
@@ -2454,6 +2464,113 @@ class Adjoint:
 
         return adj.add_constant(expr)
 
+    def eval_const_slice_component(adj, node) -> int:
+        """Evaluate a slice component, returning its constant value."""
+        var = adj.eval(node)
+
+        if not isinstance(var, Var) or var.constant is None:
+            raise WarpCodegenValueError("Slice component must be a compile-time constant.")
+
+        if not isinstance(var.constant, int):
+            raise WarpCodegenTypeError("Slice component must be an integer.")
+
+        return var.constant
+
+    def eval_const_slice(adj, node, length) -> tuple[int, int, int]:
+        """Evaluate a slice, returning its constant components."""
+        step = 1 if node.step is None else adj.eval_const_slice_component(node.step)
+        if step == 0:
+            raise WarpCodegenValueError("Slice step cannot be zero.")
+
+        if node.lower is None:
+            start = length - 1 if step < 0 else 0
+        else:
+            start = adj.eval_const_slice_component(node.lower)
+            if length is not None:
+                start = min(max(start, -length), length)
+                start = start + length if start < 0 else start
+
+        if node.upper is None:
+            stop = -1 if step < 0 else length
+        else:
+            stop = adj.eval_const_slice_component(node.upper)
+            if length is not None:
+                stop = min(max(stop, -length), length)
+                stop = stop + length if stop < 0 else stop
+
+        return (start, stop, step)
+
+    def unpack_starred(adj, node):
+        """Unpack a starred expression into individual elements."""
+        value = node.value
+
+        if isinstance(value, ast.Subscript) and isinstance(value.slice, ast.Slice):
+            target = adj.eval(value.value)
+            target_type = strip_reference(target.type)
+
+            if hasattr(target_type, "_wp_generic_type_hint_"):
+                # Compound slicing.
+                length = target_type._shape_[0]
+                bounds = adj.eval_const_slice(value.slice, length)
+            elif is_array(target_type):
+                # Array slicing.
+                if target_type.ndim != 1:
+                    raise WarpCodegenValueError(
+                        f"Starred expressions with slices are only supported for 1D arrays, got {target_type.ndim}D array."
+                    )
+
+                length = None
+                bounds = adj.eval_const_slice(value.slice, length)
+
+                # Arrays don't have a length known at compile-time so the slice bounds need to be fully defined:
+                # - The upper bound needs to be provided.
+                # - Only non-negative indices can be passed.
+
+                if value.slice.upper is None:
+                    raise WarpCodegenValueError(
+                        "Starred expression on arrays requires explicit upper bound (e.g., *array[0:3], not *array[0:])."
+                    )
+
+                if bounds[0] < 0 or bounds[1] < 0:
+                    raise WarpCodegenValueError("Starred expression slice bounds cannot be negative for arrays.")
+
+                if bounds[2] < 0:
+                    raise WarpCodegenValueError("Starred expression slice step cannot be negative for arrays.")
+            else:
+                raise WarpCodegenTypeError(
+                    f"Starred expressions with slices are only supported for arrays, vectors, quaternions, and matrices. "
+                    f"Got {type_repr(target_type)}."
+                )
+        else:
+            target = adj.eval(value)
+            target_type = strip_reference(target.type)
+
+            if hasattr(target_type, "_wp_generic_type_hint_"):
+                # Whole compound type.
+                bounds = (0, target_type._shape_[0], 1)
+            elif is_array(target_type):
+                raise WarpCodegenTypeError(
+                    "Starred expressions apply to arrays only if they are sliced with bounds known at compile-time."
+                )
+            else:
+                raise WarpCodegenTypeError(
+                    f"Starred expressions are only supported for arrays (with slice), vectors, quaternions, and matrices. "
+                    f"Got {type_repr(target_type)}."
+                )
+
+        if is_array(target_type):
+            builtin_name = "address"
+            if warp._src.config.verify_autograd_array_access:
+                target.mark_read()
+        else:
+            builtin_name = "extract"
+
+        elements = tuple(adj.add_builtin_call(builtin_name, (target, adj.add_constant(i))) for i in range(*bounds))
+        if not elements:
+            raise WarpCodegenError("Starred expression results in empty sequence.")
+
+        return elements
+
     def emit_Call(adj, node):
         adj.check_tid_in_func_error(node)
 
@@ -2524,8 +2641,17 @@ class Adjoint:
         if hasattr(node, "expects"):
             min_outputs = node.expects
 
-        # Evaluate all positional and keywords arguments.
-        args = tuple(adj.resolve_arg(x) for x in node.args)
+        # Evaluate positional arguments.
+        args = []
+        for x in node.args:
+            if isinstance(x, ast.Starred):
+                # Handle starred expressions by unpacking them into multiple arguments.
+                unpacked = adj.unpack_starred(x)
+                args.extend(unpacked)
+            else:
+                args.append(adj.resolve_arg(x))
+
+        # Evaluate keyword arguments.
         kwargs = {x.arg: adj.resolve_arg(x.value) for x in node.keywords}
 
         out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
@@ -2561,23 +2687,8 @@ class Adjoint:
                     # to be compile-time constants, hence we can infer the actual slice
                     # bounds also at compile-time.
                     length = target_type._shape_[dim]
-                    step = 1 if node.step is None else adj.eval(node.step).constant
-
-                    if node.lower is None:
-                        start = length - 1 if step < 0 else 0
-                    else:
-                        start = adj.eval(node.lower).constant
-                        start = min(max(start, -length), length)
-                        start = start + length if start < 0 else start
-
-                    if node.upper is None:
-                        stop = -1 if step < 0 else length
-                    else:
-                        stop = adj.eval(node.upper).constant
-                        stop = min(max(stop, -length), length)
-                        stop = stop + length if stop < 0 else stop
-
-                    slice = adj.add_builtin_call("slice", (start, stop, step))
+                    bounds = adj.eval_const_slice(node, length)
+                    slice = adj.add_builtin_call("slice", bounds)
                     indices.append(slice)
                 else:
                     indices.append(adj.eval(node))
