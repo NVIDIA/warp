@@ -38,6 +38,9 @@ _wp_module_name_ = "warp.utils"
 
 warnings_seen = set()
 
+# Cache for wp.map(): (func_name, input_descriptors, output_type_descriptor) -> (out_dtypes, kernel)
+map_cache: dict[tuple, tuple] = {}
+
 
 def warp_showwarning(message, category, filename, lineno, file=None, line=None):
     """Version of warnings.showwarning that always prints to sys.stdout."""
@@ -761,7 +764,7 @@ def map(
     *inputs: Array[DType] | Any,
     out: Array[DType] | list[Array[DType]] | None = None,
     return_kernel: bool = False,
-    block_dim=256,
+    block_dim: int = 256,
     device: Devicelike = None,
 ) -> Array[DType] | list[Array[DType]] | wp.Kernel:
     """
@@ -876,15 +879,13 @@ def map(
                 referenced_modules[wp_type.__module__] = module
             return key
         if type_is_transformation(wp_type):
-            return f"warp._src.types.transformation(dtype={type_to_code(wp_type._wp_scalar_type_)})"
+            return f"warp.types.transformation(dtype={type_to_code(wp_type._wp_scalar_type_)})"
         if type_is_quaternion(wp_type):
-            return f"warp._src.types.quaternion(dtype={type_to_code(wp_type._wp_scalar_type_)})"
+            return f"warp.types.quaternion(dtype={type_to_code(wp_type._wp_scalar_type_)})"
         if type_is_vector(wp_type):
-            return (
-                f"warp._src.types.vector(length={wp_type._shape_[0]}, dtype={type_to_code(wp_type._wp_scalar_type_)})"
-            )
+            return f"warp.types.vector(length={wp_type._shape_[0]}, dtype={type_to_code(wp_type._wp_scalar_type_)})"
         if type_is_matrix(wp_type):
-            return f"warp._src.types.matrix(shape=({wp_type._shape_[0]}, {wp_type._shape_[1]}), dtype={type_to_code(wp_type._wp_scalar_type_)})"
+            return f"warp.types.matrix(shape=({wp_type._shape_[0]}, {wp_type._shape_[1]}), dtype={type_to_code(wp_type._wp_scalar_type_)})"
         if wp_type == builtins.bool:
             return "bool"
         if wp_type == builtins.float:
@@ -908,13 +909,6 @@ def map(
             return value._cls
         return type_to_warp(dtype)
 
-    # gather the arrays in the inputs
-    array_shapes = [a.shape for a in inputs if is_array(a)]
-    if len(array_shapes) == 0:
-        raise ValueError("map requires at least one warp.array input")
-    # broadcast the shapes of the arrays
-    out_shape = broadcast_shapes(array_shapes)
-
     module = None
     out_dtypes = None
     if isinstance(func, wp.Function):
@@ -936,40 +930,82 @@ def map(
             f"Number of input arguments ({len(inputs)}) does not match expected number of function arguments ({len(arg_names)})"
         )
 
-    # determine output dtype
+    # Build input descriptors and arg_types for cache lookup
     arg_types = {}
     arg_values = {}
+    input_descriptors = []
     for i, arg_name in enumerate(arg_names):
         if is_array(inputs[i]):
             # we will pass an element of the array to the function
             arg_types[arg_name] = inputs[i].dtype
             if device is None:
                 device = inputs[i].device
+            # For cache key: capture array type, dtype, ndim, and broadcast mask
+            broadcast_mask = tuple(d == 1 for d in inputs[i].shape)
+            input_descriptors.append((True, type(inputs[i]).__name__, inputs[i].dtype, inputs[i].ndim, broadcast_mask))
         else:
             # we pass the input value directly to the function
-            arg_types[arg_name] = get_warp_type(inputs[i])
-    func_or_none = wp_func.get_overload(list(arg_types.values()), {})
-    if func_or_none is None:
-        raise TypeError(
-            f"Function {func_name} does not support the provided argument types {', '.join(type_repr(t) for t in arg_types.values())}"
-        )
-    func = func_or_none
+            warp_type = get_warp_type(inputs[i])
+            arg_types[arg_name] = warp_type
+            input_descriptors.append((False, warp_type))
 
-    if func.value_type is not None:
-        out_dtype = func.value_type
-    elif func.value_func is not None:
-        out_dtype = func.value_func(arg_types, arg_values)
+    # Build output type descriptors for cache key
+    # Only differentiate when output is not a regular array (e.g., indexedarray)
+    # since out=None creates regular arrays and should share cache with explicit array outputs
+    def get_output_type_descriptor(o):
+        type_name = type(o).__name__
+        return type_name if type_name != "array" else None
+
+    if out is None:
+        output_type_descriptor = None  # Will use default 'array' type
+    elif is_array(out):
+        output_type_descriptor = get_output_type_descriptor(out)
+    elif isinstance(out, (tuple, list)):
+        descriptors = tuple(get_output_type_descriptor(o) for o in out)
+        # Only include if any output is non-array type
+        output_type_descriptor = descriptors if any(d is not None for d in descriptors) else None
     else:
-        func.build(None)
-        out_dtype = func.value_func(arg_types, arg_values)
+        output_type_descriptor = None
 
-    if out_dtype is None:
-        raise TypeError("The provided function must return a value")
+    # Check unified cache for output types and kernel
+    cache_key = (func_name, tuple(input_descriptors), output_type_descriptor)
+    cached = map_cache.get(cache_key)
 
-    if isinstance(out_dtype, tuple) or isinstance(out_dtype, list):
-        out_dtypes = out_dtype
+    if cached is not None:
+        out_dtypes, kernel = cached
     else:
-        out_dtypes = (out_dtype,)
+        # Compute output types (expensive)
+        func_or_none = wp_func.get_overload(list(arg_types.values()), {})
+        if func_or_none is None:
+            raise TypeError(
+                f"Function {func_name} does not support the provided argument types {', '.join(type_repr(t) for t in arg_types.values())}"
+            )
+        func = func_or_none
+
+        if func.value_type is not None:
+            out_dtype = func.value_type
+        elif func.value_func is not None:
+            out_dtype = func.value_func(arg_types, arg_values)
+        else:
+            func.build(None)
+            out_dtype = func.value_func(arg_types, arg_values)
+
+        if out_dtype is None:
+            raise TypeError("The provided function must return a value")
+
+        if isinstance(out_dtype, (tuple, list)):
+            out_dtypes = tuple(out_dtype)
+        else:
+            out_dtypes = (out_dtype,)
+
+        kernel = None  # Will be generated below
+
+    # gather the arrays in the inputs to determine the output shape
+    array_shapes = [a.shape for a in inputs if is_array(a)]
+    if len(array_shapes) == 0:
+        raise ValueError("map requires at least one warp.array input")
+    # broadcast the shapes of the arrays
+    out_shape = broadcast_shapes(array_shapes)
 
     if out is None:
         requires_grad = any(getattr(a, "requires_grad", False) for a in inputs if is_array(a))
@@ -1004,57 +1040,60 @@ def map(
                 f"Invalid output provided, expected {len(out_dtypes)} Warp arrays with shape {out_shape} and dtypes ({', '.join(type_repr(t) for t in out_dtypes)})"
             )
 
-    # create code for a kernel
-    code = """def map_kernel({kernel_args}):
+    # Generate kernel if not cached
+    if kernel is None:
+        # create code for a kernel
+        code = """def map_kernel({kernel_args}):
     {tids} = wp.tid()
     {load_args}
     """
-    if len(outputs) == 1:
-        code += "__out_0[{tids}] = {func_name}({arg_names})"
-    else:
-        code += ", ".join(f"__o_{i}" for i in range(len(outputs)))
-        code += " = {func_name}({arg_names})\n"
-        for i in range(len(outputs)):
-            code += f"    __out_{i}" + "[{tids}]" + f" = __o_{i}\n"
-
-    tids = [f"__tid_{i}" for i in range(len(out_shape))]
-
-    load_args = []
-    kernel_args = []
-    for arg_name, input in zip(arg_names, inputs):
-        if is_array(input):
-            arr_name = f"{arg_name}_array"
-            array_type_name = type(input).__name__
-            kernel_args.append(
-                f"{arr_name}: wp.{array_type_name}(dtype={type_to_code(input.dtype)}, ndim={input.ndim})"
-            )
-            shape = input.shape
-            indices = []
-            for i in range(1, len(shape) + 1):
-                if shape[-i] == 1:
-                    indices.append("0")
-                else:
-                    indices.append(tids[-i])
-
-            load_args.append(f"{arg_name} = {arr_name}[{', '.join(reversed(indices))}]")
+        if len(out_dtypes) == 1:
+            code += "__out_0[{tids}] = {func_name}({arg_names})"
         else:
-            kernel_args.append(f"{arg_name}: {type_to_code(type(input))}")
-    for i, o in enumerate(outputs):
-        array_type_name = type(o).__name__
-        kernel_args.append(f"__out_{i}: wp.{array_type_name}(dtype={type_to_code(o.dtype)}, ndim={o.ndim})")
-    code = code.format(
-        func_name=func_name,
-        kernel_args=", ".join(kernel_args),
-        arg_names=", ".join(arg_names),
-        tids=", ".join(tids),
-        load_args="\n    ".join(load_args),
-    )
-    namespace = {}
-    namespace.update({"wp": wp, "warp": wp, func_name: wp_func, "Any": Any})
-    namespace.update(referenced_modules)
-    exec(code, namespace)
+            code += ", ".join(f"__o_{i}" for i in range(len(out_dtypes)))
+            code += " = {func_name}({arg_names})\n"
+            for i in range(len(out_dtypes)):
+                code += f"    __out_{i}" + "[{tids}]" + f" = __o_{i}\n"
 
-    kernel = wp.Kernel(namespace["map_kernel"], key="map_kernel", source=code, module=module)
+        tids = [f"__tid_{i}" for i in range(len(out_shape))]
+
+        load_args = []
+        kernel_args = []
+        for arg_name, inp in zip(arg_names, inputs):
+            if is_array(inp):
+                arr_name = f"{arg_name}_array"
+                array_type_name = type(inp).__name__
+                kernel_args.append(
+                    f"{arr_name}: wp.{array_type_name}(dtype={type_to_code(inp.dtype)}, ndim={inp.ndim})"
+                )
+                shape = inp.shape
+                indices = []
+                for i in range(1, len(shape) + 1):
+                    if shape[-i] == 1:
+                        indices.append("0")
+                    else:
+                        indices.append(tids[-i])
+
+                load_args.append(f"{arg_name} = {arr_name}[{', '.join(reversed(indices))}]")
+            else:
+                kernel_args.append(f"{arg_name}: {type_to_code(type(inp))}")
+        for i, o in enumerate(outputs):
+            kernel_args.append(f"__out_{i}: wp.{type(o).__name__}(dtype={type_to_code(o.dtype)}, ndim={o.ndim})")
+        code = code.format(
+            func_name=func_name,
+            kernel_args=", ".join(kernel_args),
+            arg_names=", ".join(arg_names),
+            tids=", ".join(tids),
+            load_args="\n    ".join(load_args),
+        )
+        namespace = {}
+        namespace.update({"wp": wp, "warp": wp, func_name: wp_func, "Any": Any})
+        namespace.update(referenced_modules)
+        exec(code, namespace)
+
+        kernel = wp.Kernel(namespace["map_kernel"], key="map_kernel", source=code, module=module)
+        map_cache[cache_key] = (out_dtypes, kernel)
+
     if return_kernel:
         return kernel
 
