@@ -135,8 +135,7 @@ def get_kernel(
         kernel_key = _native_key(func, key)
         module_name = f"{func.__module__}.dyn.{kernel_key}"
         module = wp.get_module(module_name)
-        module.options = dict(wp.get_module(func.__module__).options)
-        module.options.update(kernel_options)
+        module.options = wp.get_module(func.__module__).options | kernel_options
         _kernel_cache[cache_key] = wp.Kernel(func=func, key=kernel_key, module=module, options=kernel_options)
 
     return _kernel_cache[cache_key]
@@ -289,7 +288,7 @@ def get_integrand_kernel(
     FieldStruct=None,
     ValueStruct=None,
 ) -> tuple[wp.Kernel, StructInstance, StructInstance]:
-    options = {**integrand.module.options, **integrand.kernel_options}
+    options = integrand.module.options | integrand.kernel_options
     if kernel_options is not None:
         options.update(kernel_options)
 

@@ -327,7 +327,7 @@ class ImplicitField(GeometryField):
         self._div_func = div_func
 
         argspec = integrand(func.func).argspec
-        arg_types = {**argspec.annotations}  # make a mutable copy
+        arg_types = argspec.annotations.copy()
 
         try:
             first_arg_type = arg_types.pop(argspec.args[0])

@@ -321,8 +321,7 @@ class IntegrandTransformer(IntegrandVisitor):
 
         # Specialize field argument types
         argspec = self._integrand.argspec
-        annotations = argspec.annotations.copy()
-        annotations.update({name: f.concrete_type for name, f in field_info.items()})
+        annotations = argspec.annotations | {name: f.concrete_type for name, f in field_info.items()}
 
         suffix = "_".join([f.field.name for f in field_info.values()])
         func = cache.get_integrand_function(

@@ -267,10 +267,10 @@ class Function:
         signature_default_param_kind = inspect.Parameter.POSITIONAL_OR_KEYWORD
         for raw_param_name in self.input_types.keys():
             if raw_param_name.startswith("**"):
-                param_name = raw_param_name[2:]
+                param_name = raw_param_name.removeprefix("**")
                 param_kind = inspect.Parameter.VAR_KEYWORD
             elif raw_param_name.startswith("*"):
-                param_name = raw_param_name[1:]
+                param_name = raw_param_name.removeprefix("*")
                 param_kind = inspect.Parameter.VAR_POSITIONAL
 
                 # Once a variadic argument like `*args` is found, any following
@@ -1775,7 +1775,7 @@ class ModuleHasher:
         ch.update(bytes(func.key, "utf-8"))
 
         # include all concrete and generic overloads
-        overloads: dict[str, Function] = {**func.user_overloads, **func.user_templates}
+        overloads: dict[str, Function] = func.user_overloads | func.user_templates
         for sig in sorted(overloads.keys()):
             ovl = overloads[sig]
 
@@ -2090,8 +2090,7 @@ class ModuleExec:
 
         name = kernel.get_mangled_name()
 
-        options = dict(kernel.module.options)
-        options.update(kernel.options)
+        options = kernel.module.options | kernel.options
 
         if self.device.is_cuda:
             forward_name = name + "_cuda_kernel_forward"
@@ -2396,10 +2395,7 @@ class Module:
             # (only static expressions evaluated at declaration time so far).
             # We need to generate the code for the functions and kernels that have
             # unresolved static expressions and then compute the module hash again.
-            builder_options = {
-                **self.options,
-                "output_arch": None,
-            }
+            builder_options = self.options | {"output_arch": None}
             # build functions, kernels to resolve static expressions
             _ = ModuleBuilder(self, builder_options)
 
@@ -2505,11 +2501,8 @@ class Module:
         if output_name is None:
             output_name = self._get_compile_output_name(device, output_arch, use_ptx)
 
-        builder_options = {
-            **self.options,
-            # Some of the tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
-            "output_arch": output_arch,
-        }
+        # Some of the tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
+        builder_options = self.options | {"output_arch": output_arch}
         builder = ModuleBuilder(
             self,
             builder_options,

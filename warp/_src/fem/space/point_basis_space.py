@@ -194,7 +194,7 @@ class PointBasisSpace(BasisSpace):
 
     def _make_value_struct(self):
         argspec = integrand(self.kernel_func.func).argspec
-        arg_types = {**argspec.annotations}  # make a mutable copy
+        arg_types = argspec.annotations.copy()
 
         try:
             first_arg_type = type_to_warp(arg_types.pop(argspec.args[0]))

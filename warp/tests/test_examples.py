@@ -69,15 +69,6 @@ def _build_command_line_options(test_options: dict[str, Any]) -> list:
     return additional_options
 
 
-def _merge_options(base_options: dict[str, Any], device_options: dict[str, Any]) -> dict[str, Any]:
-    """Helper function to merge base test options with device-specific test options."""
-    merged_options = base_options.copy()
-
-    #  Update options with device-specific dictionary, overwriting existing keys with the more-specific values
-    merged_options.update(device_options)
-    return merged_options
-
-
 def add_example_test(
     cls: type,
     name: str,
@@ -97,9 +88,9 @@ def add_example_test(
 
     def run(test, device):
         if wp.get_device(device).is_cuda:
-            options = _merge_options(test_options, test_options_cuda)
+            options = test_options | test_options_cuda
         else:
-            options = _merge_options(test_options, test_options_cpu)
+            options = test_options | test_options_cpu
 
         # Mark the test as skipped if Torch is not installed but required
         torch_required = options.pop("torch_required", False)
