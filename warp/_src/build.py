@@ -180,6 +180,9 @@ def clear_kernel_cache() -> None:
     is_initialized = warp._src.context.runtime is not None
     assert is_initialized, "The kernel cache directory is not configured; wp.init() has not been called yet or failed."
 
+    for m in warp._src.context.user_modules.values():
+        m.unload()
+
     for item in os.listdir(warp._src.config.kernel_cache_dir):
         item_path = os.path.join(warp._src.config.kernel_cache_dir, item)
         if os.path.isdir(item_path) and item.startswith("wp_"):
