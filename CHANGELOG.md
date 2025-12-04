@@ -46,6 +46,7 @@
   `wp.config.use_precompiled_headers=False` ([GH-595](https://github.com/NVIDIA/warp/issues/595)).
 - Extend `warp.fem.interpolate` API to be more flexible, decoupling interpolation location from storage definition
   ([GH-1091](https://github.com/NVIDIA/warp/issues/1091)).
+- Implement kernel caching for `wp.map()` to speed up repeated calls with the same function and similar input arguments ([GH-1108](https://github.com/NVIDIA/warp/issues/1108)).
 
 ### Fixed
 
