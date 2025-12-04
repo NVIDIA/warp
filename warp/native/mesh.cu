@@ -258,6 +258,7 @@ uint64_t wp_mesh_create_device(
     int num_tris,
     int support_winding_number,
     int constructor_type,
+    int* groups,
     int bvh_leaf_size
 )
 {
@@ -303,7 +304,7 @@ uint64_t wp_mesh_create_device(
         (mesh.num_tris, mesh.points, mesh.indices, mesh.lowers, mesh.uppers)
     );
     wp::bvh_create_device(
-        mesh.context, mesh.lowers, mesh.uppers, num_tris, constructor_type, nullptr, bvh_leaf_size, mesh.bvh
+        mesh.context, mesh.lowers, mesh.uppers, num_tris, constructor_type, groups, bvh_leaf_size, mesh.bvh
     );
 
     // we need to overwrite mesh.bvh because it is not initialized when we construct it on device

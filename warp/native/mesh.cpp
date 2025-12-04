@@ -134,6 +134,7 @@ uint64_t wp_mesh_create_host(
     int num_tris,
     int support_winding_number,
     int constructor_type,
+    int* groups,
     int bvh_leaf_size
 )
 {
@@ -162,7 +163,7 @@ uint64_t wp_mesh_create_host(
     }
     m->average_edge_length = sum / (num_tris * 3);
 
-    wp::bvh_create_host(m->lowers, m->uppers, num_tris, constructor_type, nullptr, bvh_leaf_size, m->bvh);
+    wp::bvh_create_host(m->lowers, m->uppers, num_tris, constructor_type, groups, bvh_leaf_size, m->bvh);
 
     if (support_winding_number) {
         // Let's first compute the sold
@@ -264,6 +265,7 @@ WP_API uint64_t wp_mesh_create_device(
     int num_tris,
     int support_winding_number,
     int constructor_type,
+    int* groups,
     int bvh_leaf_size
 )
 {

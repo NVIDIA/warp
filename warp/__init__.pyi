@@ -3610,6 +3610,18 @@ def bvh_get_group_root(id: uint64, group: int32) -> int:
     ...
 
 @over
+def mesh_get_group_root(id: uint64, group: int32) -> int:
+    """Get the root of a group in a :class:`Mesh`.
+
+    Returns the root node index for the specified group. If the group does not exist, returns ``-1``
+    (sentinel for the mesh's global root). Pass ``-1`` to mesh queries to traverse from the global root.
+
+    :param id: The mesh identifier
+    :param group: The group identifier
+    """
+    ...
+
+@over
 def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint:
     """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
 
@@ -3684,13 +3696,34 @@ def mesh_query_point_sign_winding_number(
     ...
 
 @over
-def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32) -> MeshQueryRay:
+def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32) -> MeshQueryRay:
     """Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
+
+    The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
+    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+    If ``root`` is -1 (default), traversal starts at the mesh's global root.
 
     :param id: The mesh identifier
     :param start: The start point of the ray
     :param dir: The ray direction (should be normalized)
     :param max_t: The maximum distance along the ray to check for intersections
+    :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+    """
+    ...
+
+@over
+def mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32) -> bool:
+    """Returns ``True`` immediately upon the first ray hit on the :class:`Mesh` with identifier ``id``.
+
+    The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
+    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+
+    :param id: The mesh identifier
+    :param start: The start point of the ray
+    :param dir: The ray direction (should be normalized)
+    :param max_t: The maximum distance along the ray to check for intersections
+    :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
     """
     ...
 
