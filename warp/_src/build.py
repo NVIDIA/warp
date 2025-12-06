@@ -20,6 +20,7 @@ import json
 import os
 import platform
 import shutil
+import threading
 import time
 from pathlib import Path
 
@@ -325,7 +326,7 @@ def _build_lto_base(lto_symbol, compile_func, builder, extra_files=None):
                 return (True, lto_code_data, *[extra_files[ext] for ext in extra_files.keys()])
 
     # Create process-dependent temporary build directory
-    build_dir = f"{lto_dir}_p{os.getpid()}"
+    build_dir = f"{lto_dir}_p{os.getpid()}_t{threading.get_ident()}"
     Path(build_dir).mkdir(parents=True, exist_ok=True)
 
     # Set up temporary paths for the build outputs

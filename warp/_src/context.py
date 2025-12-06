@@ -29,6 +29,7 @@ import os
 import platform
 import shutil
 import sys
+import threading
 import types
 import weakref
 from collections.abc import Iterable, Mapping, Sequence
@@ -2529,7 +2530,7 @@ class Module:
 
         meta_path = os.path.join(output_dir, self._get_meta_name())
 
-        build_dir = os.path.normpath(output_dir) + f"_p{os.getpid()}"
+        build_dir = os.path.normpath(output_dir) + f"_p{os.getpid()}_t{threading.get_ident()}"
 
         # dir may exist from previous attempts / runs / archs
         Path(build_dir).mkdir(parents=True, exist_ok=True)
@@ -6963,8 +6964,8 @@ def force_load(
     if modules is None:
         modules = user_modules.values()
 
-    for d in devices:
-        with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor() as executor:
+        for d in devices:
             for m in modules:
                 executor.submit(m.load, d, block_dim=block_dim)
 
