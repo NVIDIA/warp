@@ -32,6 +32,7 @@ import sys
 import types
 import weakref
 from collections.abc import Iterable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from copy import copy as shallowcopy
 from pathlib import Path
 from typing import (
@@ -6963,8 +6964,9 @@ def force_load(
         modules = user_modules.values()
 
     for d in devices:
-        for m in modules:
-            m.load(d, block_dim=block_dim)
+        with ThreadPoolExecutor() as executor:
+            for m in modules:
+                executor.submit(m.load, d, block_dim=block_dim)
 
     if is_cuda_available():
         # restore original context to avoid side effects
