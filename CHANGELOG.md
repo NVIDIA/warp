@@ -47,6 +47,10 @@
   and 1D array slices into individual arguments, which enables syntax like `wp.vec4(*v3, 1.0)`, `wp.max(*v)`,
   or `wp.vec3i(*arr[:3])` ([GH-1083](https://github.com/NVIDIA/warp/issues/1083)).
 - Add staged graph capture modes with JAX FFI to reduce re-capturing ([GH-1039](https://github.com/NVIDIA/warp/issues/1039)).
+- Add support for compiling and loading modules in parallel through `wp.load_module()` and `wp.force_load()`, by providing a
+  `max_workers` argument. Use e.g. `wp.force_load(max_workers=4)` to use 4 threads to load all imported modules on all devices.
+  The `wp.config.load_module_max_workers` setting determines the default value (currently `0` for serial loading). Set it to
+  `None` to let Warp determine a reasonable number (currently `min(os.cpu_count(), 4)`).
 
 ### Removed
 
