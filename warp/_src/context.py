@@ -6930,6 +6930,7 @@ def force_load(
     device: Device | str | list[Device] | list[str] | None = None,
     modules: list[Module] | None = None,
     block_dim: int | None = None,
+    max_workers: int | None = None,
 ):
     """Force user-defined kernels to be compiled and loaded (low-level API).
 
@@ -6949,6 +6950,8 @@ def force_load(
         modules: List of Warp :class:`Module` objects to load. If ``None``,
             load all imported modules that contain Warp code.
         block_dim: The number of threads per block (always 1 for ``"cpu"`` devices).
+        max_workers: The maximum number of parallel threads to use for loading modules.
+            If ``None``, Warp determines the default behavior.
     """
     if is_cuda_driver_initialized():
         # save original context to avoid side effects
@@ -6964,7 +6967,11 @@ def force_load(
     if modules is None:
         modules = user_modules.values()
 
-    with ThreadPoolExecutor() as executor:
+    if max_workers is None:
+        # default to serial loading for now
+        max_workers = 1
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         for d in devices:
             for m in modules:
                 executor.submit(m.load, d, block_dim=block_dim)
