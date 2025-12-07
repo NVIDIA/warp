@@ -600,8 +600,21 @@ void reorder_top_down_bvh(BVH& bvh_host)
 
     const int root_index = *bvh_host.root;
     // Pass 1: place leaf nodes at the front
+    // During grouped build, it is possible that some leaf nodes do
+    // not satisfy the ascending group id assumption. This would happen if
+    // a specific group has <= leaf size primitives, and so the leaf node is
+    // built in-place rather than on the node frontier like the other leaves.
+    // During this pass we can detect if this has occurred and call a sort to fix it.
+    bool needs_sort = false;
+    int prev_group = INT_MIN;
     for (int i = 0; i < bvh_host.num_nodes; ++i) {
         if (bvh_host.node_lowers[i].b) {
+            if (bvh_host.item_groups) {
+                int group = bvh_host.item_groups[bvh_host.primitive_indices[bvh_host.node_lowers[i].i]];
+                if (group < prev_group)
+                    needs_sort = true;
+                prev_group = group;
+            }
             node_lowers_reordered[next_pos] = bvh_host.node_lowers[i];
             node_uppers_reordered[next_pos] = bvh_host.node_uppers[i];
             old_to_new[i] = next_pos;
@@ -609,6 +622,34 @@ void reorder_top_down_bvh(BVH& bvh_host)
         }
     }
 
+    if (needs_sort) {
+        const int* groups = bvh_host.item_groups;
+
+        std::vector<int> leaf_indices;
+        leaf_indices.reserve(next_pos);
+        for (int i = 0; i < bvh_host.num_nodes; ++i) {
+            if (bvh_host.node_lowers[i].b) {
+                leaf_indices.push_back(i);
+            }
+        }
+
+        std::stable_sort(leaf_indices.begin(), leaf_indices.end(), [&](int a, int b) {
+            int ga = groups[bvh_host.primitive_indices[bvh_host.node_lowers[a].i]];
+            int gb = groups[bvh_host.primitive_indices[bvh_host.node_lowers[b].i]];
+            if (ga == gb)
+                return a < b;
+            return ga < gb;
+        });
+
+        next_pos = 0;
+        for (size_t i = 0; i < leaf_indices.size(); ++i) {
+            int old_index = leaf_indices[i];
+            node_lowers_reordered[next_pos] = bvh_host.node_lowers[old_index];
+            node_uppers_reordered[next_pos] = bvh_host.node_uppers[old_index];
+            old_to_new[old_index] = next_pos;
+            next_pos++;
+        }
+    }
     bvh_host.num_leaf_nodes = next_pos;
 
     // Pass 2: place non-leaf, non-root nodes
