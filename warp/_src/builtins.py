@@ -6052,6 +6052,36 @@ add_builtin(
 )
 
 add_builtin(
+    "mesh_query_ray_count_intersections",
+    input_types={
+        "id": uint64,
+        "start": vec3,
+        "dir": vec3,
+        "root": int,
+    },
+    defaults={"root": -1},
+    value_type=int,
+    group="Geometry",
+    doc="""Count the number of intersections between a ray and a :class:`Mesh`. It returns a integer value representing the number of intersections.
+
+    This function casts a ray through the mesh and counts all triangle intersections with ``t >= 0``.
+    Unlike :func:`mesh_query_ray`, this function does not stop at the first hit and continues
+    traversing to count all intersections along the entire ray.
+
+    The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
+    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+
+    :param id: The mesh identifier
+    :param start: The start point of the ray
+    :param dir: The ray direction (should be normalized)
+    :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)""",
+    export=False,
+    is_differentiable=False,
+)
+
+
+add_builtin(
     "mesh_query_aabb",
     input_types={"id": uint64, "low": vec3, "high": vec3},
     value_type=MeshQueryAABB,
