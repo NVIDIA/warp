@@ -150,6 +150,53 @@ def raycast_brutal(
     return face_closest
 
 
+@wp.kernel
+def mesh_query_ray_count_intersections_brutal(
+    points: wp.array(dtype=wp.vec3),
+    indices: wp.array(dtype=int),
+    ray_starts: wp.array(dtype=wp.vec3),
+    ray_directions: wp.array(dtype=wp.vec3),
+    counts: wp.array(dtype=int),
+):
+    tid = wp.tid()
+    p = ray_starts[tid]
+    dir = ray_directions[tid]
+
+    # Count all intersections (similar pattern to mesh_query_ray_brutal)
+    intersection_count = int(0)
+    num_faces = int(indices.shape[0] / 3)
+    max_t = 1.0e10
+
+    for face in range(num_faces):
+        i = indices[face * 3 + 0]
+        j = indices[face * 3 + 1]
+        k = indices[face * 3 + 2]
+
+        a = points[i]
+        b = points[j]
+        c = points[k]
+
+        t = intersect_ray_triangle(p, dir, a, b, c, max_t)
+        if t < max_t:
+            intersection_count += 1
+
+    counts[tid] = intersection_count
+
+
+@wp.kernel
+def mesh_query_ray_count_intersections_kernel(
+    mesh: wp.uint64,
+    ray_starts: wp.array(dtype=wp.vec3),
+    ray_directions: wp.array(dtype=wp.vec3),
+    counts: wp.array(dtype=int),
+):
+    tid = wp.tid()
+    p = ray_starts[tid]
+    dir = ray_directions[tid]
+
+    counts[tid] = wp.mesh_query_ray_count_intersections(mesh, p, dir)
+
+
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_mesh_query_ray_grad(test, device):
     from pxr import Usd, UsdGeom  # noqa: PLC0415
@@ -341,6 +388,161 @@ def mesh_query_ray_brutal(
 
     faces[tid] = face_closest
     counts[tid] = int(hit)
+
+
+@wp.kernel
+def mesh_query_ray_count_intersections_kernel(
+    mesh: wp.uint64,
+    ray_starts: wp.array(dtype=wp.vec3),
+    ray_directions: wp.array(dtype=wp.vec3),
+    counts: wp.array(dtype=int),
+):
+    tid = wp.tid()
+
+    p = ray_starts[tid]
+    dir = ray_directions[tid]
+
+    intersection_count = wp.mesh_query_ray_count_intersections(mesh, p, dir)
+    counts[tid] = intersection_count
+
+
+@unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
+def test_mesh_query_ray_count_intersections(test, device):
+    """Stress test for mesh_query_ray_count_intersections with various ray configurations"""
+    from pxr import Usd, UsdGeom  # noqa: PLC0415
+
+    # Load a complex mesh (torus is good for multiple intersections)
+    usd_stage = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "torus.usda")))
+    usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/World/Torus"))
+
+    mesh_counts = usd_geom.GetFaceVertexCountsAttr().Get()
+    mesh_indices = usd_geom.GetFaceVertexIndicesAttr().Get()
+    tri_indices = triangulate(mesh_counts, mesh_indices)
+
+    points_np = np.array(usd_geom.GetPointsAttr().Get())
+    indices_np = np.array(tri_indices)
+
+    points = wp.array(points_np, dtype=wp.vec3, device=device)
+    indices = wp.array(indices_np, dtype=int, device=device)
+
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
+
+    leaf_sizes = [1, 2, 4]
+
+    # Compute bounding box for ray generation
+    world_min = np.min(points_np, axis=0)
+    world_max = np.max(points_np, axis=0)
+    world_center = (world_min + world_max) / 2.0
+    world_size = world_max - world_min
+    max_extent = np.max(world_size)
+
+    # Generate stress test rays
+    num_rays = 5000  # Stress test with many rays
+    rng = np.random.default_rng(42)
+
+    ray_starts_list = []
+    ray_dirs_list = []
+
+    # 1. Rays from above (perpendicular to XY plane) - should get multiple hits through torus
+    num_rays_vertical = num_rays // 5
+    xy = rng.uniform(0.0, 1.0, size=(num_rays_vertical, 2)) * world_size[:2] + world_min[:2]
+    z = np.full((num_rays_vertical, 1), world_max[2] + max_extent * 0.5, dtype=np.float32)
+    ray_starts_list.append(np.concatenate((xy, z), axis=1))
+    ray_dirs_vertical = np.zeros((num_rays_vertical, 3))
+    ray_dirs_vertical[:, 2] = -1.0
+    ray_dirs_list.append(ray_dirs_vertical)
+
+    # 2. Rays from multiple sides (should pierce torus from different angles)
+    num_rays_sides = num_rays // 5
+    for axis in range(3):
+        starts = rng.uniform(0.0, 1.0, size=(num_rays_sides, 3)) * world_size + world_min
+        # Move rays outside the bounding box along the chosen axis
+        starts[:, axis] = world_min[axis] - max_extent * 0.5
+
+        dirs = np.zeros((num_rays_sides, 3))
+        dirs[:, axis] = 1.0
+
+        ray_starts_list.append(starts)
+        ray_dirs_list.append(dirs)
+
+    # 3. Rays through center with random angles (likely to get multiple hits)
+    num_rays_center = num_rays // 5
+    angles_theta = rng.uniform(0, 2 * np.pi, size=num_rays_center)
+    angles_phi = rng.uniform(0, np.pi, size=num_rays_center)
+
+    # Start rays from outside, pointing toward center
+    offset_distance = max_extent * 1.5
+    ray_starts_center = np.zeros((num_rays_center, 3), dtype=np.float32)
+    ray_starts_center[:, 0] = world_center[0] + offset_distance * np.sin(angles_phi) * np.cos(angles_theta)
+    ray_starts_center[:, 1] = world_center[1] + offset_distance * np.sin(angles_phi) * np.sin(angles_theta)
+    ray_starts_center[:, 2] = world_center[2] + offset_distance * np.cos(angles_phi)
+
+    ray_dirs_center = world_center - ray_starts_center
+    ray_dirs_center = ray_dirs_center / np.linalg.norm(ray_dirs_center, axis=1, keepdims=True)
+
+    ray_starts_list.append(ray_starts_center)
+    ray_dirs_list.append(ray_dirs_center)
+
+    # Combine all rays
+    ray_starts_np = np.concatenate(ray_starts_list, axis=0).astype(np.float32)
+    ray_dirs_np = np.concatenate(ray_dirs_list, axis=0).astype(np.float32)
+    total_rays = len(ray_starts_np)
+
+    ray_starts = wp.array(ray_starts_np, dtype=wp.vec3, device=device)
+    ray_dirs = wp.array(ray_dirs_np, dtype=wp.vec3, device=device)
+
+    for leaf_size, constructor in itertools.product(leaf_sizes, constructors):
+        mesh = wp.Mesh(
+            points=points,
+            indices=indices,
+            bvh_constructor=constructor,
+            bvh_leaf_size=leaf_size,
+        )
+
+        # Brute force count
+        counts_brutal = wp.empty(n=total_rays, dtype=int, device=device)
+        wp.launch(
+            kernel=mesh_query_ray_count_intersections_brutal,
+            dim=total_rays,
+            inputs=[points, indices, ray_starts, ray_dirs],
+            outputs=[counts_brutal],
+            device=device,
+        )
+
+        # BVH-accelerated count
+        counts_bvh = wp.empty(n=total_rays, dtype=int, device=device)
+        wp.launch(
+            kernel=mesh_query_ray_count_intersections_kernel,
+            dim=total_rays,
+            inputs=[mesh.id, ray_starts, ray_dirs],
+            outputs=[counts_bvh],
+            device=device,
+        )
+
+        wp.synchronize_device(device)
+
+        # Compare results
+        counts_brutal_np = counts_brutal.numpy()
+        counts_bvh_np = counts_bvh.numpy()
+
+        # Verify they match
+        assert_array_equal(counts_bvh, counts_brutal)
+
+        # Additional validation: check that we have interesting cases
+        # (rays with 0, 1, 2+ intersections)
+        unique_counts = np.unique(counts_brutal_np)
+        test.assertGreater(
+            len(unique_counts),
+            2,
+            f"Test should have rays with different intersection counts (found: {unique_counts})",
+        )
+        test.assertTrue(np.any(counts_brutal_np == 0), "Test should have rays with 0 intersections")
+        test.assertTrue(
+            np.any(counts_brutal_np >= 2), "Test should have rays with 2+ intersections (stress test for torus)"
+        )
 
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
@@ -562,6 +764,12 @@ class TestMeshQueryRay(unittest.TestCase):
 
 add_function_test(TestMeshQueryRay, "test_mesh_query_ray_edge", test_mesh_query_ray_edge, devices=devices)
 add_function_test(TestMeshQueryRay, "test_mesh_query_ray_grad", test_mesh_query_ray_grad, devices=devices)
+add_function_test(
+    TestMeshQueryRay,
+    "test_mesh_query_ray_count_intersections",
+    test_mesh_query_ray_count_intersections,
+    devices=devices,
+)
 add_function_test(TestMeshQueryRay, "test_mesh_query_ray_and_groups", test_mesh_query_ray_and_groups, devices=devices)
 
 
