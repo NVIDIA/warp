@@ -3525,17 +3525,85 @@ class array(Array[DType]):
 
     def view(self, dtype):
         """Returns a zero-copy view of this array's memory with a different data type.
-        ``dtype`` must have the same byte size of the array's native ``dtype``.
-        """
-        if type_size_in_bytes(dtype) != type_size_in_bytes(self.dtype):
-            raise RuntimeError("Cannot cast dtypes of unequal byte size")
+        The array's contents are not modified in any way.
 
-        # return an alias of the array memory with different type information
+        Args:
+            dtype: The desired data type.
+
+        If ``dtype`` has the same byte size as the array's ``dtype``, the result is an array with
+        the same shape and strides and the new ``dtype``.
+
+        This method can also be used to convert between vector, matrix, and scalar types,
+        in which case the resulting shape and strides are adjusted as needed.
+
+        Example:
+            Simple views (same dtype size)::
+
+                # view an array of signed integers as unsigned integers
+                ai = wp.ones(10, dtype=wp.int32)
+                au = ai.view(wp.uint32)
+
+                # view an array of vec4 as quat or mat22
+                av = wp.ones(10, dtype=wp.vec4)
+                aq = av.view(wp.quat)
+                am = av.view(wp.mat22)
+
+                # view 4-byte vectors as a single unsigned integer
+                rgba = wp.ones(10, dtype=wp.vec4ub)
+                color = rgba.view(wp.uint32)
+
+            Vector/matrix to scalar views::
+
+                av = wp.ones(10, dtype=wp.vec4)
+                am = wp.ones(10, dtype=wp.mat33)
+                avf = av.view(float)  # shape (10, 4)
+                amf = am.view(float)  # shape (10, 3, 3)
+
+            Scalar to vector/matrix views::
+
+                avf = wp.ones((10, 4), dtype=float)
+                amf = wp.ones((10, 3, 3), dtype=float)
+                av = avf.view(wp.vec4)  # shape (10,)
+                am = amf.view(wp.mat33)  # shape (10,)
+        """
+        if type_size_in_bytes(dtype) == type_size_in_bytes(self.dtype):
+            # a simple "reinterpret cast"
+            result_shape = self.shape
+            result_strides = self.strides
+        elif type_is_scalar(dtype) and hasattr(self.dtype, "_wp_scalar_type_"):
+            # cast from vec/mat type to scalar type
+            if type_size_in_bytes(dtype) == type_size_in_bytes(self.dtype._wp_scalar_type_):
+                result_shape = (*self.shape, *self.dtype._shape_)
+                result_strides = (*self.strides, *strides_from_shape(self.dtype._shape_, self.dtype._wp_scalar_type_))
+            else:
+                raise TypeError("Incompatible scalar type sizes")
+        elif type_is_scalar(self.dtype) and hasattr(dtype, "_wp_scalar_type_"):
+            # cast from scalar type to vec/mat type
+            if type_size_in_bytes(self.dtype) == type_size_in_bytes(dtype._wp_scalar_type_):
+                # ensure that the shape and strides are compatible with the requested vec/mat type
+                dtype_ndim = len(dtype._shape_)
+                if self.ndim < dtype_ndim or self.shape[-dtype_ndim:] != dtype._shape_:
+                    raise RuntimeError(
+                        f"The shape of the source array {self.shape} is not compatible with the requested data type {warp._src.context.type_str(dtype)}"
+                    )
+                if self.strides[-dtype_ndim:] != strides_from_shape(dtype._shape_, dtype._wp_scalar_type_):
+                    raise RuntimeError(
+                        f"The inner strides of the source array {self.strides} are not compatible with the requested data type {warp._src.context.type_str(dtype)}"
+                    )
+                # Corner case: if the array contains a single vector or matrix, the result would be a 0-dimensional array,
+                # which is not supported in Warp currently. In this case, we return a 1D array with one element.
+                result_shape = self.shape[:-dtype_ndim] or (1,)
+                result_strides = self.strides[:-dtype_ndim] or (type_size_in_bytes(dtype),)
+            else:
+                raise TypeError("Incompatible scalar type sizes")
+        else:
+            raise TypeError("Incompatible data type sizes")
+
         a = array(
             ptr=self.ptr,
             dtype=dtype,
-            shape=self.shape,
-            strides=self.strides,
+            shape=result_shape,
+            strides=result_strides,
             device=self.device,
             pinned=self.pinned,
             copy=False,
