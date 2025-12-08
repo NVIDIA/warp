@@ -419,24 +419,84 @@ def test_slicing(test, device):
 
 
 def test_view(test, device):
-    np_arr_a = np.arange(1, 10, 1, dtype=np.uint32)
-    np_arr_b = np.arange(1, 10, 1, dtype=np.float32)
-    np_arr_c = np.arange(1, 10, 1, dtype=np.uint16)
-    np_arr_d = np.arange(1, 10, 1, dtype=np.float16)
-    np_arr_e = np.ones((4, 4), dtype=np.float32)
+    with test.subTest(msg="scalars"):
+        np_arr_a = np.arange(1, 10, 1, dtype=np.uint32)
+        np_arr_b = np.arange(1, 10, 1, dtype=np.float32)
+        np_arr_c = np.arange(1, 10, 1, dtype=np.uint16)
+        np_arr_d = np.arange(1, 10, 1, dtype=np.float16)
 
-    wp_arr_a = wp.array(np_arr_a, dtype=wp.uint32, device=device)
-    wp_arr_b = wp.array(np_arr_b, dtype=wp.float32, device=device)
-    wp_arr_c = wp.array(np_arr_a, dtype=wp.uint16, device=device)
-    wp_arr_d = wp.array(np_arr_b, dtype=wp.float16, device=device)
-    wp_arr_e = wp.array(np_arr_e, dtype=wp.vec4, device=device)
-    wp_arr_f = wp.array(np_arr_e, dtype=wp.quat, device=device)
+        wp_arr_a = wp.array(np_arr_a, dtype=wp.uint32, device=device)
+        wp_arr_b = wp.array(np_arr_b, dtype=wp.float32, device=device)
+        wp_arr_c = wp.array(np_arr_a, dtype=wp.uint16, device=device)
+        wp_arr_d = wp.array(np_arr_b, dtype=wp.float16, device=device)
 
-    assert_np_equal(wp_arr_a.view(dtype=wp.float32).numpy(), np_arr_a.view(dtype=np.float32))
-    assert_np_equal(wp_arr_b.view(dtype=wp.uint32).numpy(), np_arr_b.view(dtype=np.uint32))
-    assert_np_equal(wp_arr_c.view(dtype=wp.float16).numpy(), np_arr_c.view(dtype=np.float16))
-    assert_np_equal(wp_arr_d.view(dtype=wp.uint16).numpy(), np_arr_d.view(dtype=np.uint16))
-    assert_array_equal(wp_arr_e.view(dtype=wp.quat), wp_arr_f)
+        assert_np_equal(wp_arr_a.view(dtype=wp.float32).numpy(), np_arr_a.view(dtype=np.float32))
+        assert_np_equal(wp_arr_b.view(dtype=wp.uint32).numpy(), np_arr_b.view(dtype=np.uint32))
+        assert_np_equal(wp_arr_c.view(dtype=wp.float16).numpy(), np_arr_c.view(dtype=np.float16))
+        assert_np_equal(wp_arr_d.view(dtype=wp.uint16).numpy(), np_arr_d.view(dtype=np.uint16))
+
+    with test.subTest(msg="vectors"):
+        np_arr = np.arange(16, dtype=np.float32).reshape((4, 4))
+
+        wp_arr_v = wp.array(np_arr, dtype=wp.vec4, device=device)
+        wp_arr_q = wp.array(np_arr, dtype=wp.quat, device=device)
+        wp_arr_m = wp.array(np_arr, dtype=wp.mat22, device=device)
+
+        assert_array_equal(wp_arr_v.view(dtype=wp.quat), wp_arr_q)
+        assert_array_equal(wp_arr_v.view(dtype=wp.mat22), wp_arr_m)
+        assert_array_equal(wp_arr_q.view(dtype=wp.vec4), wp_arr_v)
+        assert_array_equal(wp_arr_q.view(dtype=wp.mat22), wp_arr_m)
+        assert_array_equal(wp_arr_m.view(dtype=wp.vec4), wp_arr_v)
+        assert_array_equal(wp_arr_m.view(dtype=wp.quat), wp_arr_q)
+
+    with test.subTest(msg="vectors to scalars"):
+        np_arr_v = np.arange(16, dtype=np.float32).reshape((4, 4))
+        np_arr_m = np.arange(16, dtype=np.float32).reshape((4, 2, 2))
+
+        wp_arr_v = wp.array(np_arr_v, dtype=wp.vec4, device=device)
+        wp_arr_m = wp.array(np_arr_m, dtype=wp.mat22, device=device)
+        test.assertEqual(wp_arr_v.shape, (4,))
+        test.assertEqual(wp_arr_m.shape, (4,))
+
+        wp_arr_vs = wp_arr_v.view(dtype=float)
+        wp_arr_ms = wp_arr_m.view(dtype=float)
+        test.assertEqual(wp_arr_vs.shape, (4, 4))
+        test.assertEqual(wp_arr_ms.shape, (4, 2, 2))
+
+        assert_np_equal(wp_arr_v.numpy(), wp_arr_vs.numpy())
+        assert_np_equal(wp_arr_m.numpy(), wp_arr_ms.numpy())
+
+    with test.subTest(msg="scalars to vectors"):
+        np_arr_v = np.arange(16, dtype=np.float32).reshape((4, 4))
+        np_arr_m = np.arange(16, dtype=np.float32).reshape((4, 2, 2))
+
+        wp_arr_fv = wp.array(np_arr_v, dtype=float, device=device)
+        wp_arr_fm = wp.array(np_arr_m, dtype=float, device=device)
+        test.assertEqual(wp_arr_fv.shape, (4, 4))
+        test.assertEqual(wp_arr_fm.shape, (4, 2, 2))
+
+        wp_arr_v = wp_arr_fv.view(dtype=wp.vec4)
+        wp_arr_m = wp_arr_fm.view(dtype=wp.mat22)
+        test.assertEqual(wp_arr_v.shape, (4,))
+        test.assertEqual(wp_arr_m.shape, (4,))
+
+        assert_np_equal(wp_arr_v.numpy(), wp_arr_fv.numpy())
+        assert_np_equal(wp_arr_m.numpy(), wp_arr_fm.numpy())
+
+        # corner case - single vector or matrix
+        wp_arr_fv1 = wp.array([1, 2, 3, 4], dtype=float, device=device)
+        wp_arr_fm1 = wp.array([[1, 2], [3, 4]], dtype=float, device=device)
+        test.assertEqual(wp_arr_fv1.shape, (4,))
+        test.assertEqual(wp_arr_fm1.shape, (2, 2))
+
+        # Warp doesn't support 0-dimensional arrays, so results are 1D arrays with one element
+        wp_arr_v1 = wp_arr_fv1.view(dtype=wp.vec4)
+        wp_arr_m1 = wp_arr_fm1.view(dtype=wp.mat22)
+        test.assertEqual(wp_arr_v1.shape, (1,))
+        test.assertEqual(wp_arr_m1.shape, (1,))
+
+        assert_np_equal(wp_arr_v1.numpy().squeeze(), wp_arr_fv1.numpy())
+        assert_np_equal(wp_arr_m1.numpy().squeeze(), wp_arr_fm1.numpy())
 
 
 def test_clone_adjoint(test, device):
