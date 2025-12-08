@@ -42,6 +42,8 @@
 - Add the following type introspection functions: `wp.types.is_compound`, `wp.types.is_matrix`, `wp.types.is_quaternion`,
   `wp.types.is_struct`, `wp.types.is_tile`, `wp.types.is_transformation`, `wp.types.is_vector`, `wp.types.type_is_array`,
   `wp.types.type_is_compound`, `wp.types.type_is_struct`, and `wp.types.type_is_tile`.
+  - Add helper function `wp.mesh_get_group_root()` to retrieve the subtree root for a given group. 
+- Add a `wp.mesh_query_ray_count_intersections` function that counts all intersections with triangles along the ray ([GH-938](https://github.com/NVIDIA/warp/issues/938)).
 
 ### Removed
 
@@ -61,6 +63,7 @@
   ([GH-1091](https://github.com/NVIDIA/warp/issues/1091)).
 - Implement kernel caching for `wp.map()` to speed up repeated calls with the same function and similar input arguments ([GH-1108](https://github.com/NVIDIA/warp/issues/1108)).
 - Support converting between vector, matrix, and scalar types in `array.view()` ([GH-1112](https://github.com/NVIDIA/warp/issues/1112)).
+- Changed `wp.mesh_query_point` to using parity-based ray–triangle intersection counting for more robust sign determination. ([GH-938](https://github.com/NVIDIA/warp/issues/938)).
 
 ### Fixed
 
