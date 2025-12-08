@@ -6971,7 +6971,7 @@ def force_load(
         # default to serial loading for now
         max_workers = 0
 
-    if max_workers == 0:
+    if max_workers <= 1 or (len(devices) * len(modules)) == 1:
         # serial loading; avoid the overhead of using a thread pool
         for d in devices:
             for m in modules:
