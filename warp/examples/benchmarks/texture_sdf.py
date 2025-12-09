@@ -55,6 +55,7 @@ class SparseSDF:
 
     sdf_box_lower: wp.vec3
     sdf_box_upper: wp.vec3
+    sdf_dx: float  # Voxel size (for gradient finite differences)
     inv_sdf_dx: float
     coarse_size_x: int
     coarse_size_y: int
@@ -660,6 +661,125 @@ def sample_sparse_sdf(
     results[tid] = sdf_val + diff_mag
 
 
+@wp.func
+def sample_sparse_sdf_at(
+    sdf: SparseSDF,
+    coarse_texture: wp.texture3d_t,
+    subgrid_texture: wp.texture3d_t,
+    subgrid_start_slots: wp.array(dtype=wp.uint32),
+    local_pos: wp.vec3,
+) -> float:
+    """
+    Sample SDF at a specific position (functional version for gradient computation).
+
+    Matches the logic of sample_sparse_sdf but returns the value directly.
+    """
+    # Clamp to SDF box (matches PxSdfDistance)
+    clamped = wp.vec3(
+        wp.clamp(local_pos[0], sdf.sdf_box_lower[0], sdf.sdf_box_upper[0]),
+        wp.clamp(local_pos[1], sdf.sdf_box_lower[1], sdf.sdf_box_upper[1]),
+        wp.clamp(local_pos[2], sdf.sdf_box_lower[2], sdf.sdf_box_upper[2]),
+    )
+    diff_mag = wp.length(local_pos - clamped)
+
+    # Convert to grid coordinates
+    f = (clamped - sdf.sdf_box_lower) * sdf.inv_sdf_dx
+
+    # Compute coarse cell indices
+    x_base = wp.clamp(int(f[0] * sdf.fine_to_coarse), 0, sdf.coarse_size_x - 1)
+    y_base = wp.clamp(int(f[1] * sdf.fine_to_coarse), 0, sdf.coarse_size_y - 1)
+    z_base = wp.clamp(int(f[2] * sdf.fine_to_coarse), 0, sdf.coarse_size_z - 1)
+
+    # Look up indirection slot
+    slot_idx = z_base * sdf.coarse_size_x * sdf.coarse_size_y + y_base * sdf.coarse_size_x + x_base
+    start_slot = subgrid_start_slots[slot_idx]
+
+    sdf_val = float(0.0)
+
+    if start_slot == wp.uint32(0xFFFFFFFF):
+        # No subgrid - sample from coarse texture
+        coarse_f = f * sdf.fine_to_coarse
+        u = (coarse_f[0] + 0.5) / float(sdf.coarse_size_x + 1)
+        v = (coarse_f[1] + 0.5) / float(sdf.coarse_size_y + 1)
+        w = (coarse_f[2] + 0.5) / float(sdf.coarse_size_z + 1)
+        sdf_val = wp.tex3d_float(coarse_texture, u, v, w)
+    else:
+        # Sample from subgrid texture
+        local_x = wp.clamp(f[0] - float(x_base * sdf.subgrid_size), 0.0, float(sdf.subgrid_size) + 1.0)
+        local_y = wp.clamp(f[1] - float(y_base * sdf.subgrid_size), 0.0, float(sdf.subgrid_size) + 1.0)
+        local_z = wp.clamp(f[2] - float(z_base * sdf.subgrid_size), 0.0, float(sdf.subgrid_size) + 1.0)
+
+        local_f = wp.vec3(local_x, local_y, local_z)
+        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_size)
+
+        u = (tex_coords[0] + 0.5) / sdf.subgrid_tex_size
+        v = (tex_coords[1] + 0.5) / sdf.subgrid_tex_size
+        w = (tex_coords[2] + 0.5) / sdf.subgrid_tex_size
+
+        raw_val = wp.tex3d_float(subgrid_texture, u, v, w)
+        sdf_val = apply_subgrid_sdf_scale(raw_val, sdf.subgrids_min_sdf_value, sdf.subgrids_sdf_value_range)
+
+    return sdf_val + diff_mag
+
+
+@wp.kernel
+def sample_sparse_sdf_grad(
+    sdf: SparseSDF,
+    coarse_texture: wp.texture3d_t,
+    subgrid_texture: wp.texture3d_t,
+    subgrid_start_slots: wp.array(dtype=wp.uint32),
+    query_points: wp.array(dtype=wp.vec3),
+    results: wp.array(dtype=float),
+    gradients: wp.array(dtype=wp.vec3),
+):
+    """
+    Sample SDF and gradient using sparse texture representation.
+
+    Gradient is computed using finite differences, matching the pattern from
+    PhysX's PxVolumeGrad in sdfCollision.cuh.
+    """
+    tid = wp.tid()
+    local_pos = query_points[tid]
+
+    # Sample at center point
+    dist = sample_sparse_sdf_at(sdf, coarse_texture, subgrid_texture, subgrid_start_slots, local_pos)
+
+    # Compute gradient using finite differences (matches PxVolumeGrad)
+    # Use sdf_dx as the finite difference step
+    dx = sdf.sdf_dx
+
+    # Sample at +/- dx in each direction
+    dist_px = sample_sparse_sdf_at(
+        sdf, coarse_texture, subgrid_texture, subgrid_start_slots, local_pos + wp.vec3(dx, 0.0, 0.0)
+    )
+    dist_mx = sample_sparse_sdf_at(
+        sdf, coarse_texture, subgrid_texture, subgrid_start_slots, local_pos - wp.vec3(dx, 0.0, 0.0)
+    )
+    dist_py = sample_sparse_sdf_at(
+        sdf, coarse_texture, subgrid_texture, subgrid_start_slots, local_pos + wp.vec3(0.0, dx, 0.0)
+    )
+    dist_my = sample_sparse_sdf_at(
+        sdf, coarse_texture, subgrid_texture, subgrid_start_slots, local_pos - wp.vec3(0.0, dx, 0.0)
+    )
+    dist_pz = sample_sparse_sdf_at(
+        sdf, coarse_texture, subgrid_texture, subgrid_start_slots, local_pos + wp.vec3(0.0, 0.0, dx)
+    )
+    dist_mz = sample_sparse_sdf_at(
+        sdf, coarse_texture, subgrid_texture, subgrid_start_slots, local_pos - wp.vec3(0.0, 0.0, dx)
+    )
+
+    # Central differences: gradient = (f(x+h) - f(x-h)) / (2h)
+    inv_2dx = 0.5 / dx
+    grad = wp.vec3(
+        (dist_px - dist_mx) * inv_2dx,
+        (dist_py - dist_my) * inv_2dx,
+        (dist_pz - dist_mz) * inv_2dx,
+    )
+
+    results[tid] = dist
+    gradients[tid] = grad
+
+
 # ============================================================================
 # Host-side Construction Functions
 # ============================================================================
@@ -1050,6 +1170,7 @@ def create_sparse_sdf_textures(
         sparse_data["max_extents"][1],
         sparse_data["max_extents"][2],
     )
+    sdf_params.sdf_dx = avg_spacing
     sdf_params.inv_sdf_dx = 1.0 / avg_spacing
     sdf_params.coarse_size_x = sparse_data["coarse_dims"][0]
     sdf_params.coarse_size_y = sparse_data["coarse_dims"][1]

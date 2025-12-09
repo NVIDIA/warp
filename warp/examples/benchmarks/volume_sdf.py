@@ -227,6 +227,86 @@ def sample_volume_simple(
     results[tid] = wp.volume_sample_f(volume, idx, wp.Volume.LINEAR)
 
 
+@wp.kernel
+def sample_volume_with_fallback_grad(
+    sparse_volume: wp.uint64,
+    coarse_volume: wp.uint64,
+    sparse_max_value: float,
+    sdf_lower: wp.vec3,
+    sdf_upper: wp.vec3,
+    query_points: wp.array(dtype=wp.vec3),
+    results: wp.array(dtype=float),
+    gradients: wp.array(dtype=wp.vec3),
+):
+    """
+    Sample SDF with gradient, coarse fallback and boundary extrapolation.
+
+    Matches the pattern from sdf_contact.py's sample_sdf_grad_extrapolated:
+    1. Point in narrow band: Returns sparse grid value and gradient directly
+    2. Point inside extent but outside narrow band: Returns coarse grid value and gradient
+    3. Point outside extent: Returns extrapolated distance and direction toward boundary
+
+    Uses wp.volume_sample_grad_f for efficient gradient computation.
+    """
+    tid = wp.tid()
+    pos = query_points[tid]
+
+    # Check if point is inside extent
+    inside_extent = (
+        pos[0] >= sdf_lower[0]
+        and pos[0] <= sdf_upper[0]
+        and pos[1] >= sdf_lower[1]
+        and pos[1] <= sdf_upper[1]
+        and pos[2] >= sdf_lower[2]
+        and pos[2] <= sdf_upper[2]
+    )
+
+    gradient = wp.vec3(0.0, 0.0, 0.0)
+
+    if inside_extent:
+        # Sample sparse grid with gradient
+        sparse_idx = wp.volume_world_to_index(sparse_volume, pos)
+        sparse_dist = wp.volume_sample_grad_f(sparse_volume, sparse_idx, wp.Volume.LINEAR, gradient)
+
+        # If sparse returns a value > max stored value + margin, it's contaminated
+        threshold = sparse_max_value * 1.5
+
+        if sparse_dist <= threshold:
+            results[tid] = sparse_dist
+            gradients[tid] = gradient
+        else:
+            # Fallback to coarse grid
+            coarse_idx = wp.volume_world_to_index(coarse_volume, pos)
+            coarse_dist = wp.volume_sample_grad_f(coarse_volume, coarse_idx, wp.Volume.LINEAR, gradient)
+            results[tid] = coarse_dist
+            gradients[tid] = gradient
+    else:
+        # Point is outside extent - project to boundary
+        clamped_pos = wp.vec3(
+            wp.clamp(pos[0], sdf_lower[0], sdf_upper[0]),
+            wp.clamp(pos[1], sdf_lower[1], sdf_upper[1]),
+            wp.clamp(pos[2], sdf_lower[2], sdf_upper[2]),
+        )
+        diff = pos - clamped_pos
+        dist_to_boundary = wp.length(diff)
+
+        # Sample at the boundary point using coarse grid
+        coarse_idx = wp.volume_world_to_index(coarse_volume, clamped_pos)
+        boundary_dist = wp.volume_sample_f(coarse_volume, coarse_idx, wp.Volume.LINEAR)
+
+        # Extrapolate distance: value at boundary + distance to boundary
+        results[tid] = boundary_dist + dist_to_boundary
+
+        # Gradient points from boundary toward the query point (direction of increasing distance)
+        if dist_to_boundary > 0.0:
+            gradient = diff / dist_to_boundary
+        else:
+            # Fallback: get gradient from coarse grid
+            wp.volume_sample_grad_f(coarse_volume, coarse_idx, wp.Volume.LINEAR, gradient)
+
+        gradients[tid] = gradient
+
+
 # ============================================================================
 # Host-side Volume Construction
 # ============================================================================

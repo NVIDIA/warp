@@ -37,11 +37,13 @@ from texture_sdf import (
     build_sparse_sdf_from_dense,
     create_sparse_sdf_textures,
     sample_sparse_sdf,
+    sample_sparse_sdf_grad,
 )
 from volume_sdf import (
     create_box_mesh,
     create_volume_from_mesh,
     sample_volume_with_fallback,
+    sample_volume_with_fallback_grad,
 )
 
 import warp as wp
@@ -275,6 +277,111 @@ def run_benchmark():
     else:
         print("  [WARN] Results differ - this may be expected due to interpolation differences")
 
+    # ========== Benchmark Gradient Evaluation ==========
+    print("\n" + "-" * 40)
+    print("GRADIENT EVALUATION BENCHMARKS")
+    print("-" * 40)
+
+    # Allocate gradient arrays
+    gradients_volume = wp.zeros(NUM_QUERY_POINTS, dtype=wp.vec3, device=device)
+    gradients_sparse = wp.zeros(NUM_QUERY_POINTS, dtype=wp.vec3, device=device)
+
+    # ========== Benchmark Volume SDF Gradient ==========
+    print("\nWarming up Volume SDF gradient...")
+    for _ in range(WARM_UP):
+        wp.launch(
+            sample_volume_with_fallback_grad,
+            dim=NUM_QUERY_POINTS,
+            inputs=[
+                sparse_volume.id,
+                coarse_volume.id,
+                sparse_max_value,
+                sdf_lower,
+                sdf_upper,
+                query_points,
+                results_volume,
+                gradients_volume,
+            ],
+            device=device,
+        )
+    wp.synchronize()
+
+    print("Benchmarking Volume SDF gradient (NanoVDB)...")
+    with wp.ScopedTimer("volume_sdf_grad", print=False, synchronize=True, cuda_filter=wp.TIMING_KERNEL) as timer:
+        for _ in range(ITERATIONS):
+            wp.launch(
+                sample_volume_with_fallback_grad,
+                dim=NUM_QUERY_POINTS,
+                inputs=[
+                    sparse_volume.id,
+                    coarse_volume.id,
+                    sparse_max_value,
+                    sdf_lower,
+                    sdf_upper,
+                    query_points,
+                    results_volume,
+                    gradients_volume,
+                ],
+                device=device,
+            )
+
+    volume_grad_times = [result.elapsed for result in timer.timing_results]
+    volume_grad_mean = mean(volume_grad_times)
+    volume_grad_std = stdev(volume_grad_times) if len(volume_grad_times) > 1 else 0.0
+
+    # ========== Benchmark Texture SDF Gradient ==========
+    print("\nWarming up Sparse SDF gradient (Textures)...")
+    for _ in range(WARM_UP):
+        wp.launch(
+            sample_sparse_sdf_grad,
+            dim=NUM_QUERY_POINTS,
+            inputs=[sdf_params, coarse_tex, subgrid_tex, subgrid_slots, query_points, results_sparse, gradients_sparse],
+            device=device,
+        )
+    wp.synchronize()
+
+    print("Benchmarking Sparse SDF gradient (3D Textures with finite differences)...")
+    with wp.ScopedTimer("sparse_sdf_grad", print=False, synchronize=True, cuda_filter=wp.TIMING_KERNEL) as timer:
+        for _ in range(ITERATIONS):
+            wp.launch(
+                sample_sparse_sdf_grad,
+                dim=NUM_QUERY_POINTS,
+                inputs=[
+                    sdf_params,
+                    coarse_tex,
+                    subgrid_tex,
+                    subgrid_slots,
+                    query_points,
+                    results_sparse,
+                    gradients_sparse,
+                ],
+                device=device,
+            )
+
+    sparse_grad_times = [result.elapsed for result in timer.timing_results]
+    sparse_grad_mean = mean(sparse_grad_times)
+    sparse_grad_std = stdev(sparse_grad_times) if len(sparse_grad_times) > 1 else 0.0
+
+    # Validate gradient results
+    print("\nValidating gradient results...")
+    vol_grad_np = gradients_volume.numpy()
+    sparse_grad_np = gradients_sparse.numpy()
+
+    # Compute gradient magnitudes
+    vol_grad_mag = np.linalg.norm(vol_grad_np, axis=1)
+    sparse_grad_mag = np.linalg.norm(sparse_grad_np, axis=1)
+
+    print(f"  Volume gradient magnitude: min={vol_grad_mag.min():.4f}, max={vol_grad_mag.max():.4f}")
+    print(f"  Texture gradient magnitude: min={sparse_grad_mag.min():.4f}, max={sparse_grad_mag.max():.4f}")
+
+    # Check angular difference between gradients (using normalized dot product)
+    vol_grad_normalized = vol_grad_np / (np.linalg.norm(vol_grad_np, axis=1, keepdims=True) + 1e-10)
+    sparse_grad_normalized = sparse_grad_np / (np.linalg.norm(sparse_grad_np, axis=1, keepdims=True) + 1e-10)
+    dot_products = np.sum(vol_grad_normalized * sparse_grad_normalized, axis=1)
+    angular_diff_deg = np.arccos(np.clip(dot_products, -1, 1)) * 180 / np.pi
+
+    print(f"  Angular difference: mean={angular_diff_deg.mean():.2f} deg, max={angular_diff_deg.max():.2f} deg")
+
     # ========== Print Results ==========
     print("\n" + "=" * 80)
     print("BENCHMARK RESULTS")
@@ -293,6 +400,26 @@ def run_benchmark():
     if volume_mean > 0 and sparse_mean > 0:
         speedup = volume_mean / sparse_mean
         print(f"\nSpeedup (Texture vs Volume): {speedup:.2f}x")
+
+    print("\n" + "-" * 40)
+    print("GRADIENT EVALUATION RESULTS")
+    print("-" * 40)
+
+    print("\nVolume SDF Gradient (NanoVDB volume_sample_grad_f):")
+    print(f"  Time per iteration: {volume_grad_mean * 1000:.3f} +/- {volume_grad_std * 1000:.3f} ms")
+    print(f"  Throughput: {NUM_QUERY_POINTS / volume_grad_mean / 1e6:.2f} M samples/sec")
+    grad_overhead_volume = (volume_grad_mean - volume_mean) / volume_mean * 100
+    print(f"  Overhead vs value-only: {grad_overhead_volume:.1f}%")
+
+    print("\nSparse SDF Gradient (3D Textures + finite differences):")
+    print(f"  Time per iteration: {sparse_grad_mean * 1000:.3f} +/- {sparse_grad_std * 1000:.3f} ms")
+    print(f"  Throughput: {NUM_QUERY_POINTS / sparse_grad_mean / 1e6:.2f} M samples/sec")
+    grad_overhead_sparse = (sparse_grad_mean - sparse_mean) / sparse_mean * 100
+    print(f"  Overhead vs value-only: {grad_overhead_sparse:.1f}%")
+
+    if volume_grad_mean > 0 and sparse_grad_mean > 0:
+        grad_speedup = volume_grad_mean / sparse_grad_mean
+        print(f"\nGradient Speedup (Texture vs Volume): {grad_speedup:.2f}x")
 
     # Memory usage (accounting for quantization mode)
     # Note: textures are always float32 on GPU, but source data size varies
