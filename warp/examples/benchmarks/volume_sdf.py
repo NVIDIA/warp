@@ -148,7 +148,7 @@ def compute_tile_max_kernel(
 def sample_volume_with_fallback(
     sparse_volume: wp.uint64,
     coarse_volume: wp.uint64,
-    sparse_max_value: float,
+    sparse_threshold: float,  # Precomputed: sparse_max_value * 1.5
     sdf_lower: wp.vec3,
     sdf_upper: wp.vec3,
     query_points: wp.array(dtype=wp.vec3),
@@ -162,55 +162,42 @@ def sample_volume_with_fallback(
     2. Point inside extent, outside narrow band: Returns coarse grid value
     3. Point outside extent: Returns SDF(clamped_boundary) + distance_to_boundary
 
-    The sparse_max_value is the maximum SDF value stored in any sparse tile.
-    If we sample a value greater than this (plus margin), it must be contaminated
-    with background due to tile boundary interpolation, so we fall back to coarse.
+    The sparse_threshold should be precomputed as sparse_max_value * 1.5.
+    If we sample a value greater than this, it must be contaminated with background
+    due to tile boundary interpolation, so we fall back to coarse.
 
     This ensures the SDF can be evaluated at ANY point in space with reasonable values.
     """
     tid = wp.tid()
     pos = query_points[tid]
 
-    # Check if point is inside extent
-    inside_extent = (
-        pos[0] >= sdf_lower[0]
-        and pos[0] <= sdf_upper[0]
-        and pos[1] >= sdf_lower[1]
-        and pos[1] <= sdf_upper[1]
-        and pos[2] >= sdf_lower[2]
-        and pos[2] <= sdf_upper[2]
-    )
+    # Clamp position to extent (single pass)
+    clamped_x = wp.clamp(pos[0], sdf_lower[0], sdf_upper[0])
+    clamped_y = wp.clamp(pos[1], sdf_lower[1], sdf_upper[1])
+    clamped_z = wp.clamp(pos[2], sdf_lower[2], sdf_upper[2])
 
-    if inside_extent:
-        # Sample sparse grid
+    # Compute distance to boundary (0 if inside)
+    diff_x = pos[0] - clamped_x
+    diff_y = pos[1] - clamped_y
+    diff_z = pos[2] - clamped_z
+    dist_to_boundary = wp.sqrt(diff_x * diff_x + diff_y * diff_y + diff_z * diff_z)
+
+    # If inside extent, try sparse grid first
+    if dist_to_boundary == 0.0:
         sparse_idx = wp.volume_world_to_index(sparse_volume, pos)
         sparse_dist = wp.volume_sample_f(sparse_volume, sparse_idx, wp.Volume.LINEAR)
 
-        # If sparse returns a value > max stored value + margin, it's contaminated
-        # with background (1000) due to tile boundary interpolation. Use coarse.
-        # Add 50% margin to account for interpolation between valid values
-        threshold = sparse_max_value * 1.5
-
-        if sparse_dist <= threshold:
+        if sparse_dist <= sparse_threshold:
             results[tid] = sparse_dist
         else:
             # Fallback to coarse grid
             coarse_idx = wp.volume_world_to_index(coarse_volume, pos)
             results[tid] = wp.volume_sample_f(coarse_volume, coarse_idx, wp.Volume.LINEAR)
     else:
-        # Point is outside extent - project to boundary
-        clamped_pos = wp.vec3(
-            wp.clamp(pos[0], sdf_lower[0], sdf_upper[0]),
-            wp.clamp(pos[1], sdf_lower[1], sdf_upper[1]),
-            wp.clamp(pos[2], sdf_lower[2], sdf_upper[2]),
-        )
-        dist_to_boundary = wp.length(pos - clamped_pos)
-
-        # Sample at the boundary point using coarse grid (more reliable for extrapolation)
+        # Point is outside extent - sample at boundary and extrapolate
+        clamped_pos = wp.vec3(clamped_x, clamped_y, clamped_z)
         coarse_idx = wp.volume_world_to_index(coarse_volume, clamped_pos)
         boundary_dist = wp.volume_sample_f(coarse_volume, coarse_idx, wp.Volume.LINEAR)
-
-        # Extrapolate: value at boundary + distance to boundary
         results[tid] = boundary_dist + dist_to_boundary
 
 
@@ -231,7 +218,7 @@ def sample_volume_simple(
 def sample_volume_with_fallback_grad(
     sparse_volume: wp.uint64,
     coarse_volume: wp.uint64,
-    sparse_max_value: float,
+    sparse_threshold: float,  # Precomputed: sparse_max_value * 1.5
     sdf_lower: wp.vec3,
     sdf_upper: wp.vec3,
     query_points: wp.array(dtype=wp.vec3),
@@ -251,27 +238,25 @@ def sample_volume_with_fallback_grad(
     tid = wp.tid()
     pos = query_points[tid]
 
-    # Check if point is inside extent
-    inside_extent = (
-        pos[0] >= sdf_lower[0]
-        and pos[0] <= sdf_upper[0]
-        and pos[1] >= sdf_lower[1]
-        and pos[1] <= sdf_upper[1]
-        and pos[2] >= sdf_lower[2]
-        and pos[2] <= sdf_upper[2]
-    )
+    # Clamp position to extent (single pass)
+    clamped_x = wp.clamp(pos[0], sdf_lower[0], sdf_upper[0])
+    clamped_y = wp.clamp(pos[1], sdf_lower[1], sdf_upper[1])
+    clamped_z = wp.clamp(pos[2], sdf_lower[2], sdf_upper[2])
+
+    # Compute distance to boundary (0 if inside)
+    diff_x = pos[0] - clamped_x
+    diff_y = pos[1] - clamped_y
+    diff_z = pos[2] - clamped_z
+    dist_sq = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z
 
     gradient = wp.vec3(0.0, 0.0, 0.0)
 
-    if inside_extent:
-        # Sample sparse grid with gradient
+    # If inside extent, try sparse grid first
+    if dist_sq == 0.0:
         sparse_idx = wp.volume_world_to_index(sparse_volume, pos)
         sparse_dist = wp.volume_sample_grad_f(sparse_volume, sparse_idx, wp.Volume.LINEAR, gradient)
 
-        # If sparse returns a value > max stored value + margin, it's contaminated
-        threshold = sparse_max_value * 1.5
-
-        if sparse_dist <= threshold:
+        if sparse_dist <= sparse_threshold:
             results[tid] = sparse_dist
             gradients[tid] = gradient
         else:
@@ -281,30 +266,21 @@ def sample_volume_with_fallback_grad(
             results[tid] = coarse_dist
             gradients[tid] = gradient
     else:
-        # Point is outside extent - project to boundary
-        clamped_pos = wp.vec3(
-            wp.clamp(pos[0], sdf_lower[0], sdf_upper[0]),
-            wp.clamp(pos[1], sdf_lower[1], sdf_upper[1]),
-            wp.clamp(pos[2], sdf_lower[2], sdf_upper[2]),
-        )
-        diff = pos - clamped_pos
-        dist_to_boundary = wp.length(diff)
+        # Point is outside extent - sample at boundary and extrapolate
+        clamped_pos = wp.vec3(clamped_x, clamped_y, clamped_z)
+        dist_to_boundary = wp.sqrt(dist_sq)
 
-        # Sample at the boundary point using coarse grid
+        # Sample at the boundary point - always need gradient for fallback case
         coarse_idx = wp.volume_world_to_index(coarse_volume, clamped_pos)
-        boundary_dist = wp.volume_sample_f(coarse_volume, coarse_idx, wp.Volume.LINEAR)
+        boundary_dist = wp.volume_sample_grad_f(coarse_volume, coarse_idx, wp.Volume.LINEAR, gradient)
 
         # Extrapolate distance: value at boundary + distance to boundary
         results[tid] = boundary_dist + dist_to_boundary
 
         # Gradient points from boundary toward the query point (direction of increasing distance)
-        if dist_to_boundary > 0.0:
-            gradient = diff / dist_to_boundary
-        else:
-            # Fallback: get gradient from coarse grid
-            wp.volume_sample_grad_f(coarse_volume, coarse_idx, wp.Volume.LINEAR, gradient)
-
-        gradients[tid] = gradient
+        # Uses the precomputed diff values and dist_to_boundary
+        inv_dist = 1.0 / dist_to_boundary
+        gradients[tid] = wp.vec3(diff_x * inv_dist, diff_y * inv_dist, diff_z * inv_dist)
 
 
 # ============================================================================

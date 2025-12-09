@@ -148,7 +148,7 @@ def setup_test_environment(device: str = "cuda:0"):
         "full_max_ext": max_ext,
         "sdf_lower": sdf_lower,  # For volume sampling
         "sdf_upper": sdf_upper,
-        "sparse_max_value": sparse_max_value,  # Threshold for fallback
+        "sparse_threshold": sparse_max_value * 1.5,  # Precomputed threshold for fallback
         "device": device,
         # Volume SDF
         "sparse_volume": sparse_volume,
@@ -186,7 +186,7 @@ def sample_all_sdfs(env: dict, query_points: np.ndarray):
         inputs=[
             env["sparse_volume"].id,
             env["coarse_volume"].id,
-            env["sparse_max_value"],
+            env["sparse_threshold"],
             env["sdf_lower"],
             env["sdf_upper"],
             query_points_wp,

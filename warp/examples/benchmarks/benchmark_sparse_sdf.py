@@ -28,6 +28,7 @@ PhysX's SDFConstruction.cu:
 5. Populate subgrid textures from dense SDF
 """
 
+import time
 from statistics import mean, stdev
 
 import numpy as np
@@ -114,7 +115,7 @@ def run_benchmark():
 
     # ========== Create Volume SDF ==========
     print("\nCreating NanoVDB volume from mesh...")
-    sparse_volume, coarse_volume, sparse_max_value, vol_min_ext, vol_max_ext, vol_spacing = create_volume_from_mesh(
+    sparse_volume, coarse_volume, sparse_max_value, vol_min_ext, vol_max_ext, _ = create_volume_from_mesh(
         mesh, narrow_band, margin=margin, max_dims=SDF_RESOLUTION, verbose=True
     )
     print(f"  Volume bounds: [{vol_min_ext}, {vol_max_ext}]")
@@ -133,10 +134,11 @@ def run_benchmark():
     test_results = wp.zeros(len(test_pts), dtype=float, device=device)
     sdf_lower = wp.vec3(vol_min_ext[0], vol_min_ext[1], vol_min_ext[2])
     sdf_upper = wp.vec3(vol_max_ext[0], vol_max_ext[1], vol_max_ext[2])
+    sparse_threshold = sparse_max_value * 1.5  # Precompute threshold
     wp.launch(
         sample_volume_with_fallback,
         dim=len(test_pts),
-        inputs=[sparse_volume.id, coarse_volume.id, sparse_max_value, sdf_lower, sdf_upper, test_pts_arr, test_results],
+        inputs=[sparse_volume.id, coarse_volume.id, sparse_threshold, sdf_lower, sdf_upper, test_pts_arr, test_results],
         device=device,
     )
     wp.synchronize()
@@ -148,8 +150,6 @@ def run_benchmark():
 
     # Step 1: Build dense SDF from mesh
     print("  Step 1: Building dense SDF from mesh...")
-    import time
-
     t0 = time.perf_counter()
 
     dense_sdf, dense_x, dense_y, dense_z, cell_size = build_dense_sdf(mesh, min_ext, max_ext, SDF_RESOLUTION, device)
@@ -205,7 +205,7 @@ def run_benchmark():
             inputs=[
                 sparse_volume.id,
                 coarse_volume.id,
-                sparse_max_value,
+                sparse_threshold,
                 sdf_lower,
                 sdf_upper,
                 query_points,
@@ -224,7 +224,7 @@ def run_benchmark():
                 inputs=[
                     sparse_volume.id,
                     coarse_volume.id,
-                    sparse_max_value,
+                    sparse_threshold,
                     sdf_lower,
                     sdf_upper,
                     query_points,
@@ -295,7 +295,7 @@ def run_benchmark():
             inputs=[
                 sparse_volume.id,
                 coarse_volume.id,
-                sparse_max_value,
+                sparse_threshold,
                 sdf_lower,
                 sdf_upper,
                 query_points,
@@ -315,7 +315,7 @@ def run_benchmark():
                 inputs=[
                     sparse_volume.id,
                     coarse_volume.id,
-                    sparse_max_value,
+                    sparse_threshold,
                     sdf_lower,
                     sdf_upper,
                     query_points,
