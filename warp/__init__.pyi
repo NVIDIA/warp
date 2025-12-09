@@ -37,7 +37,6 @@ FabricArray = Generic[DType]
 IndexedFabricArray = Generic[DType]
 Tile = Generic[DType, Shape]
 
-
 from warp._src.types import array as array
 from warp._src.types import array1d as array1d
 from warp._src.types import array2d as array2d
@@ -336,8 +335,6 @@ from warp._src import config as config
 
 __version__ = config.version
 
-
-
 from . import build as build
 from . import codegen as codegen
 from . import constants as constants
@@ -354,37 +351,31 @@ from . import torch as torch
 from . import types as types
 from . import utils as utils
 
-
 class vec2h:
     @over
     def __init__(self) -> None:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec2h) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: float16, y: float16) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float16]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float16) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec2f:
     @over
@@ -392,30 +383,25 @@ class vec2f:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec2f) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: float32, y: float32) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float32]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float32) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec2d:
     @over
@@ -423,30 +409,25 @@ class vec2d:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec2d) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: float64, y: float64) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float64]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float64) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec2b:
     @over
@@ -454,30 +435,25 @@ class vec2b:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec2b) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: int8, y: int8) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[int8]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: int8) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec2ub:
     @over
@@ -485,30 +461,25 @@ class vec2ub:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec2ub) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: uint8, y: uint8) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[uint8]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: uint8) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec2s:
     @over
@@ -516,30 +487,25 @@ class vec2s:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec2s) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: int16, y: int16) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[int16]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: int16) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec2us:
     @over
@@ -547,30 +513,25 @@ class vec2us:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec2us) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: uint16, y: uint16) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[uint16]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: uint16) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec2i:
     @over
@@ -578,30 +539,25 @@ class vec2i:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec2i) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: int32, y: int32) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[int32]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: int32) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec2ui:
     @over
@@ -609,30 +565,25 @@ class vec2ui:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec2ui) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: uint32, y: uint32) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[uint32]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: uint32) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec2l:
     @over
@@ -640,30 +591,25 @@ class vec2l:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec2l) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: int64, y: int64) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[int64]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: int64) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec2ul:
     @over
@@ -671,62 +617,53 @@ class vec2ul:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec2ul) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: uint64, y: uint64) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[uint64]) -> None:
         """Construct a vector from a sequence of values."""
         ...
-
 
     @over
     def __init__(self, value: uint64) -> None:
         """Construct a vector filled with a value."""
         ...
 
-
 vec2 = vec2f
+
 class vec3h:
     @over
     def __init__(self) -> None:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec3h) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: float16, y: float16, z: float16) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float16]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float16) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec3f:
     @over
@@ -734,30 +671,25 @@ class vec3f:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec3f) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: float32, y: float32, z: float32) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float32]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float32) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec3d:
     @over
@@ -765,30 +697,25 @@ class vec3d:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec3d) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: float64, y: float64, z: float64) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float64]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float64) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec3b:
     @over
@@ -796,30 +723,25 @@ class vec3b:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec3b) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: int8, y: int8, z: int8) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[int8]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: int8) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec3ub:
     @over
@@ -827,30 +749,25 @@ class vec3ub:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec3ub) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: uint8, y: uint8, z: uint8) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[uint8]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: uint8) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec3s:
     @over
@@ -858,30 +775,25 @@ class vec3s:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec3s) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: int16, y: int16, z: int16) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[int16]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: int16) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec3us:
     @over
@@ -889,30 +801,25 @@ class vec3us:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec3us) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: uint16, y: uint16, z: uint16) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[uint16]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: uint16) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec3i:
     @over
@@ -920,30 +827,25 @@ class vec3i:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec3i) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: int32, y: int32, z: int32) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[int32]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: int32) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec3ui:
     @over
@@ -951,30 +853,25 @@ class vec3ui:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec3ui) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: uint32, y: uint32, z: uint32) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[uint32]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: uint32) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec3l:
     @over
@@ -982,30 +879,25 @@ class vec3l:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec3l) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: int64, y: int64, z: int64) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[int64]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: int64) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec3ul:
     @over
@@ -1013,62 +905,53 @@ class vec3ul:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec3ul) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: uint64, y: uint64, z: uint64) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[uint64]) -> None:
         """Construct a vector from a sequence of values."""
         ...
-
 
     @over
     def __init__(self, value: uint64) -> None:
         """Construct a vector filled with a value."""
         ...
 
-
 vec3 = vec3f
+
 class vec4h:
     @over
     def __init__(self) -> None:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec4h) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: float16, y: float16, z: float16, w: float16) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float16]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float16) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec4f:
     @over
@@ -1076,30 +959,25 @@ class vec4f:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec4f) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: float32, y: float32, z: float32, w: float32) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float32]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float32) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec4d:
     @over
@@ -1107,30 +985,25 @@ class vec4d:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec4d) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: float64, y: float64, z: float64, w: float64) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float64]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float64) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec4b:
     @over
@@ -1138,30 +1011,25 @@ class vec4b:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec4b) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: int8, y: int8, z: int8, w: int8) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[int8]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: int8) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec4ub:
     @over
@@ -1169,30 +1037,25 @@ class vec4ub:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec4ub) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: uint8, y: uint8, z: uint8, w: uint8) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[uint8]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: uint8) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec4s:
     @over
@@ -1200,30 +1063,25 @@ class vec4s:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec4s) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: int16, y: int16, z: int16, w: int16) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[int16]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: int16) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec4us:
     @over
@@ -1231,30 +1089,25 @@ class vec4us:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec4us) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: uint16, y: uint16, z: uint16, w: uint16) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[uint16]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: uint16) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec4i:
     @over
@@ -1262,30 +1115,25 @@ class vec4i:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec4i) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: int32, y: int32, z: int32, w: int32) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[int32]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: int32) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec4ui:
     @over
@@ -1293,30 +1141,25 @@ class vec4ui:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec4ui) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: uint32, y: uint32, z: uint32, w: uint32) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[uint32]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: uint32) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec4l:
     @over
@@ -1324,30 +1167,25 @@ class vec4l:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec4l) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: int64, y: int64, z: int64, w: int64) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[int64]) -> None:
         """Construct a vector from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: int64) -> None:
         """Construct a vector filled with a value."""
         ...
-
 
 class vec4ul:
     @over
@@ -1355,68 +1193,58 @@ class vec4ul:
         """Construct a zero-initialized vector."""
         ...
 
-
     @over
     def __init__(self, other: vec4ul) -> None:
         """Construct a vector by copy."""
         ...
-
 
     @over
     def __init__(self, x: uint64, y: uint64, z: uint64, w: uint64) -> None:
         """Construct a vector from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[uint64]) -> None:
         """Construct a vector from a sequence of values."""
         ...
-
 
     @over
     def __init__(self, value: uint64) -> None:
         """Construct a vector filled with a value."""
         ...
 
-
 vec4 = vec4f
+
 class mat22h:
     @over
     def __init__(self) -> None:
         """Construct a zero-initialized matrix."""
         ...
 
-
     @over
     def __init__(self, other: mat22h) -> None:
         """Construct a matrix by copy."""
         ...
-
 
     @over
     def __init__(self, m00: float16, m01: float16, m10: float16, m11: float16) -> None:
         """Construct a matrix from its component values."""
         ...
 
-
     @over
     def __init__(self, v0: vec2h, v1: vec2h) -> None:
         """Construct a matrix from its row vectors."""
         ...
-
 
     @over
     def __init__(self, args: Sequence[float16]) -> None:
         """Construct a matrix from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float16) -> None:
         """Construct a matrix filled with a value."""
         ...
-
 
 class mat22f:
     @over
@@ -1424,36 +1252,30 @@ class mat22f:
         """Construct a zero-initialized matrix."""
         ...
 
-
     @over
     def __init__(self, other: mat22f) -> None:
         """Construct a matrix by copy."""
         ...
-
 
     @over
     def __init__(self, m00: float32, m01: float32, m10: float32, m11: float32) -> None:
         """Construct a matrix from its component values."""
         ...
 
-
     @over
     def __init__(self, v0: vec2f, v1: vec2f) -> None:
         """Construct a matrix from its row vectors."""
         ...
-
 
     @over
     def __init__(self, args: Sequence[float32]) -> None:
         """Construct a matrix from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float32) -> None:
         """Construct a matrix filled with a value."""
         ...
-
 
 class mat22d:
     @over
@@ -1461,74 +1283,74 @@ class mat22d:
         """Construct a zero-initialized matrix."""
         ...
 
-
     @over
     def __init__(self, other: mat22d) -> None:
         """Construct a matrix by copy."""
         ...
-
 
     @over
     def __init__(self, m00: float64, m01: float64, m10: float64, m11: float64) -> None:
         """Construct a matrix from its component values."""
         ...
 
-
     @over
     def __init__(self, v0: vec2d, v1: vec2d) -> None:
         """Construct a matrix from its row vectors."""
         ...
-
 
     @over
     def __init__(self, args: Sequence[float64]) -> None:
         """Construct a matrix from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float64) -> None:
         """Construct a matrix filled with a value."""
         ...
 
-
 mat22 = mat22f
+
 class mat33h:
     @over
     def __init__(self) -> None:
         """Construct a zero-initialized matrix."""
         ...
 
-
     @over
     def __init__(self, other: mat33h) -> None:
         """Construct a matrix by copy."""
         ...
 
-
     @over
-    def __init__(self, m00: float16, m01: float16, m02: float16, m10: float16, m11: float16, m12: float16, m20: float16, m21: float16, m22: float16) -> None:
+    def __init__(
+        self,
+        m00: float16,
+        m01: float16,
+        m02: float16,
+        m10: float16,
+        m11: float16,
+        m12: float16,
+        m20: float16,
+        m21: float16,
+        m22: float16,
+    ) -> None:
         """Construct a matrix from its component values."""
         ...
-
 
     @over
     def __init__(self, v0: vec3h, v1: vec3h, v2: vec3h) -> None:
         """Construct a matrix from its row vectors."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float16]) -> None:
         """Construct a matrix from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float16) -> None:
         """Construct a matrix filled with a value."""
         ...
-
 
 class mat33f:
     @over
@@ -1536,36 +1358,41 @@ class mat33f:
         """Construct a zero-initialized matrix."""
         ...
 
-
     @over
     def __init__(self, other: mat33f) -> None:
         """Construct a matrix by copy."""
         ...
 
-
     @over
-    def __init__(self, m00: float32, m01: float32, m02: float32, m10: float32, m11: float32, m12: float32, m20: float32, m21: float32, m22: float32) -> None:
+    def __init__(
+        self,
+        m00: float32,
+        m01: float32,
+        m02: float32,
+        m10: float32,
+        m11: float32,
+        m12: float32,
+        m20: float32,
+        m21: float32,
+        m22: float32,
+    ) -> None:
         """Construct a matrix from its component values."""
         ...
-
 
     @over
     def __init__(self, v0: vec3f, v1: vec3f, v2: vec3f) -> None:
         """Construct a matrix from its row vectors."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float32]) -> None:
         """Construct a matrix from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float32) -> None:
         """Construct a matrix filled with a value."""
         ...
-
 
 class mat33d:
     @over
@@ -1573,74 +1400,92 @@ class mat33d:
         """Construct a zero-initialized matrix."""
         ...
 
-
     @over
     def __init__(self, other: mat33d) -> None:
         """Construct a matrix by copy."""
         ...
 
-
     @over
-    def __init__(self, m00: float64, m01: float64, m02: float64, m10: float64, m11: float64, m12: float64, m20: float64, m21: float64, m22: float64) -> None:
+    def __init__(
+        self,
+        m00: float64,
+        m01: float64,
+        m02: float64,
+        m10: float64,
+        m11: float64,
+        m12: float64,
+        m20: float64,
+        m21: float64,
+        m22: float64,
+    ) -> None:
         """Construct a matrix from its component values."""
         ...
-
 
     @over
     def __init__(self, v0: vec3d, v1: vec3d, v2: vec3d) -> None:
         """Construct a matrix from its row vectors."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float64]) -> None:
         """Construct a matrix from a sequence of values."""
         ...
-
 
     @over
     def __init__(self, value: float64) -> None:
         """Construct a matrix filled with a value."""
         ...
 
-
 mat33 = mat33f
+
 class mat44h:
     @over
     def __init__(self) -> None:
         """Construct a zero-initialized matrix."""
         ...
 
-
     @over
     def __init__(self, other: mat44h) -> None:
         """Construct a matrix by copy."""
         ...
 
-
     @over
-    def __init__(self, m00: float16, m01: float16, m02: float16, m03: float16, m10: float16, m11: float16, m12: float16, m13: float16, m20: float16, m21: float16, m22: float16, m23: float16, m30: float16, m31: float16, m32: float16, m33: float16) -> None:
+    def __init__(
+        self,
+        m00: float16,
+        m01: float16,
+        m02: float16,
+        m03: float16,
+        m10: float16,
+        m11: float16,
+        m12: float16,
+        m13: float16,
+        m20: float16,
+        m21: float16,
+        m22: float16,
+        m23: float16,
+        m30: float16,
+        m31: float16,
+        m32: float16,
+        m33: float16,
+    ) -> None:
         """Construct a matrix from its component values."""
         ...
-
 
     @over
     def __init__(self, v0: vec4h, v1: vec4h, v2: vec4h, v3: vec4h) -> None:
         """Construct a matrix from its row vectors."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float16]) -> None:
         """Construct a matrix from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float16) -> None:
         """Construct a matrix filled with a value."""
         ...
-
 
 class mat44f:
     @over
@@ -1648,36 +1493,48 @@ class mat44f:
         """Construct a zero-initialized matrix."""
         ...
 
-
     @over
     def __init__(self, other: mat44f) -> None:
         """Construct a matrix by copy."""
         ...
 
-
     @over
-    def __init__(self, m00: float32, m01: float32, m02: float32, m03: float32, m10: float32, m11: float32, m12: float32, m13: float32, m20: float32, m21: float32, m22: float32, m23: float32, m30: float32, m31: float32, m32: float32, m33: float32) -> None:
+    def __init__(
+        self,
+        m00: float32,
+        m01: float32,
+        m02: float32,
+        m03: float32,
+        m10: float32,
+        m11: float32,
+        m12: float32,
+        m13: float32,
+        m20: float32,
+        m21: float32,
+        m22: float32,
+        m23: float32,
+        m30: float32,
+        m31: float32,
+        m32: float32,
+        m33: float32,
+    ) -> None:
         """Construct a matrix from its component values."""
         ...
-
 
     @over
     def __init__(self, v0: vec4f, v1: vec4f, v2: vec4f, v3: vec4f) -> None:
         """Construct a matrix from its row vectors."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float32]) -> None:
         """Construct a matrix from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float32) -> None:
         """Construct a matrix filled with a value."""
         ...
-
 
 class mat44d:
     @over
@@ -1685,68 +1542,76 @@ class mat44d:
         """Construct a zero-initialized matrix."""
         ...
 
-
     @over
     def __init__(self, other: mat44d) -> None:
         """Construct a matrix by copy."""
         ...
 
-
     @over
-    def __init__(self, m00: float64, m01: float64, m02: float64, m03: float64, m10: float64, m11: float64, m12: float64, m13: float64, m20: float64, m21: float64, m22: float64, m23: float64, m30: float64, m31: float64, m32: float64, m33: float64) -> None:
+    def __init__(
+        self,
+        m00: float64,
+        m01: float64,
+        m02: float64,
+        m03: float64,
+        m10: float64,
+        m11: float64,
+        m12: float64,
+        m13: float64,
+        m20: float64,
+        m21: float64,
+        m22: float64,
+        m23: float64,
+        m30: float64,
+        m31: float64,
+        m32: float64,
+        m33: float64,
+    ) -> None:
         """Construct a matrix from its component values."""
         ...
-
 
     @over
     def __init__(self, v0: vec4d, v1: vec4d, v2: vec4d, v3: vec4d) -> None:
         """Construct a matrix from its row vectors."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float64]) -> None:
         """Construct a matrix from a sequence of values."""
         ...
-
 
     @over
     def __init__(self, value: float64) -> None:
         """Construct a matrix filled with a value."""
         ...
 
-
 mat44 = mat44f
+
 class quath:
     @over
     def __init__(self) -> None:
         """Construct a zero-initialized quaternion."""
         ...
 
-
     @over
     def __init__(self, other: quath) -> None:
         """Construct a quaternion by copy."""
         ...
-
 
     @over
     def __init__(self, x: float16, y: float16, z: float16, w: float16) -> None:
         """Construct a quaternion from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float16]) -> None:
         """Construct a quaternion from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float16) -> None:
         """Construct a quaternion filled with a value."""
         ...
-
 
 class quatf:
     @over
@@ -1754,30 +1619,25 @@ class quatf:
         """Construct a zero-initialized quaternion."""
         ...
 
-
     @over
     def __init__(self, other: quatf) -> None:
         """Construct a quaternion by copy."""
         ...
-
 
     @over
     def __init__(self, x: float32, y: float32, z: float32, w: float32) -> None:
         """Construct a quaternion from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float32]) -> None:
         """Construct a quaternion from a sequence of values."""
         ...
 
-
     @over
     def __init__(self, value: float32) -> None:
         """Construct a quaternion filled with a value."""
         ...
-
 
 class quatd:
     @over
@@ -1785,68 +1645,60 @@ class quatd:
         """Construct a zero-initialized quaternion."""
         ...
 
-
     @over
     def __init__(self, other: quatd) -> None:
         """Construct a quaternion by copy."""
         ...
-
 
     @over
     def __init__(self, x: float64, y: float64, z: float64, w: float64) -> None:
         """Construct a quaternion from its component values."""
         ...
 
-
     @over
     def __init__(self, args: Sequence[float64]) -> None:
         """Construct a quaternion from a sequence of values."""
         ...
-
 
     @over
     def __init__(self, value: float64) -> None:
         """Construct a quaternion filled with a value."""
         ...
 
-
 quat = quatf
+
 class transformh:
     @over
     def __init__(self) -> None:
         """Construct a zero-initialized transformation."""
         ...
 
-
     @over
     def __init__(self, other: transformh) -> None:
         """Construct a transformation by copy."""
         ...
-
 
     @over
     def __init__(self, p: vec3h, q: quath) -> None:
         """Construct a transformation from its p and q components."""
         ...
 
-
     @over
-    def __init__(self, px: float16, py: float16, pz: float16, qx: float16, qy: float16, qz: float16, qw: float16) -> None:
+    def __init__(
+        self, px: float16, py: float16, pz: float16, qx: float16, qy: float16, qz: float16, qw: float16
+    ) -> None:
         """Construct a transformation from its component values."""
         ...
-
 
     @over
     def __init__(self, p: Sequence[float16], q: Sequence[float16]) -> None:
         """Construct a transformation from two sequences of values."""
         ...
 
-
     @over
     def __init__(self, value: float16) -> None:
         """Construct a transformation filled with a value."""
         ...
-
 
 class transformf:
     @over
@@ -1854,36 +1706,32 @@ class transformf:
         """Construct a zero-initialized transformation."""
         ...
 
-
     @over
     def __init__(self, other: transformf) -> None:
         """Construct a transformation by copy."""
         ...
-
 
     @over
     def __init__(self, p: vec3f, q: quatf) -> None:
         """Construct a transformation from its p and q components."""
         ...
 
-
     @over
-    def __init__(self, px: float32, py: float32, pz: float32, qx: float32, qy: float32, qz: float32, qw: float32) -> None:
+    def __init__(
+        self, px: float32, py: float32, pz: float32, qx: float32, qy: float32, qz: float32, qw: float32
+    ) -> None:
         """Construct a transformation from its component values."""
         ...
-
 
     @over
     def __init__(self, p: Sequence[float32], q: Sequence[float32]) -> None:
         """Construct a transformation from two sequences of values."""
         ...
 
-
     @over
     def __init__(self, value: float32) -> None:
         """Construct a transformation filled with a value."""
         ...
-
 
 class transformd:
     @over
@@ -1891,289 +1739,214 @@ class transformd:
         """Construct a zero-initialized transformation."""
         ...
 
-
     @over
     def __init__(self, other: transformd) -> None:
         """Construct a transformation by copy."""
         ...
-
 
     @over
     def __init__(self, p: vec3d, q: quatd) -> None:
         """Construct a transformation from its p and q components."""
         ...
 
-
     @over
-    def __init__(self, px: float64, py: float64, pz: float64, qx: float64, qy: float64, qz: float64, qw: float64) -> None:
+    def __init__(
+        self, px: float64, py: float64, pz: float64, qx: float64, qy: float64, qz: float64, qw: float64
+    ) -> None:
         """Construct a transformation from its component values."""
         ...
-
 
     @over
     def __init__(self, p: Sequence[float64], q: Sequence[float64]) -> None:
         """Construct a transformation from two sequences of values."""
         ...
 
-
     @over
     def __init__(self, value: float64) -> None:
         """Construct a transformation filled with a value."""
         ...
 
-
 transform = transformf
+
 @over
 def min(a: Scalar, b: Scalar) -> Scalar:
-    """Return the minimum of two scalars.
-    """
+    """Return the minimum of two scalars."""
     ...
-
 
 @over
-def min(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """Return the element-wise minimum of two vectors.
-    """
+def min(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """Return the element-wise minimum of two vectors."""
     ...
-
 
 @over
-def min(a: Vector[Any,Scalar]) -> Scalar:
-    """Return the minimum element of a vector ``a``.
-    """
+def min(a: Vector[Any, Scalar]) -> Scalar:
+    """Return the minimum element of a vector ``a``."""
     ...
-
 
 @over
 def max(a: Scalar, b: Scalar) -> Scalar:
-    """Return the maximum of two scalars.
-    """
+    """Return the maximum of two scalars."""
     ...
-
 
 @over
-def max(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """Return the element-wise maximum of two vectors.
-    """
+def max(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """Return the element-wise maximum of two vectors."""
     ...
-
 
 @over
-def max(a: Vector[Any,Scalar]) -> Scalar:
-    """Return the maximum element of a vector ``a``.
-    """
+def max(a: Vector[Any, Scalar]) -> Scalar:
+    """Return the maximum element of a vector ``a``."""
     ...
-
 
 @over
 def clamp(x: Scalar, low: Scalar, high: Scalar) -> Scalar:
-    """Clamp the value of ``x`` to the range [low, high].
-    """
+    """Clamp the value of ``x`` to the range [low, high]."""
     ...
-
 
 @over
 def abs(x: Scalar) -> Scalar:
-    """Return the absolute value of ``x``.
-    """
+    """Return the absolute value of ``x``."""
     ...
-
 
 @over
-def abs(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """Return the absolute values of the elements of ``x``.
-    """
+def abs(x: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """Return the absolute values of the elements of ``x``."""
     ...
-
 
 @over
 def sign(x: Scalar) -> Scalar:
-    """Return -1 if ``x`` < 0, return 1 otherwise.
-    """
+    """Return -1 if ``x`` < 0, return 1 otherwise."""
     ...
-
 
 @over
-def sign(x: Vector[Any,Scalar]) -> Scalar:
-    """Return -1 for the negative elements of ``x``, and 1 otherwise.
-    """
+def sign(x: Vector[Any, Scalar]) -> Scalar:
+    """Return -1 for the negative elements of ``x``, and 1 otherwise."""
     ...
-
 
 @over
 def step(x: Scalar) -> Scalar:
-    """Return 1.0 if ``x`` < 0.0, return 0.0 otherwise.
-    """
+    """Return 1.0 if ``x`` < 0.0, return 0.0 otherwise."""
     ...
-
 
 @over
 def nonzero(x: Scalar) -> Scalar:
-    """Return 1.0 if ``x`` is not equal to zero, return 0.0 otherwise.
-    """
+    """Return 1.0 if ``x`` is not equal to zero, return 0.0 otherwise."""
     ...
-
 
 @over
 def sin(x: Float) -> Float:
-    """Return the sine of ``x`` in radians.
-    """
+    """Return the sine of ``x`` in radians."""
     ...
-
 
 @over
 def cos(x: Float) -> Float:
-    """Return the cosine of ``x`` in radians.
-    """
+    """Return the cosine of ``x`` in radians."""
     ...
-
 
 @over
 def acos(x: Float) -> Float:
-    """Return arccos of ``x`` in radians. Inputs are automatically clamped to [-1.0, 1.0].
-    """
+    """Return arccos of ``x`` in radians. Inputs are automatically clamped to [-1.0, 1.0]."""
     ...
-
 
 @over
 def asin(x: Float) -> Float:
-    """Return arcsin of ``x`` in radians. Inputs are automatically clamped to [-1.0, 1.0].
-    """
+    """Return arcsin of ``x`` in radians. Inputs are automatically clamped to [-1.0, 1.0]."""
     ...
-
 
 @over
 def sqrt(x: Float) -> Float:
-    """Return the square root of ``x``, where ``x`` is positive.
-    """
+    """Return the square root of ``x``, where ``x`` is positive."""
     ...
-
 
 @over
 def cbrt(x: Float) -> Float:
-    """Return the cube root of ``x``.
-    """
+    """Return the cube root of ``x``."""
     ...
-
 
 @over
 def tan(x: Float) -> Float:
-    """Return the tangent of ``x`` in radians.
-    """
+    """Return the tangent of ``x`` in radians."""
     ...
-
 
 @over
 def atan(x: Float) -> Float:
-    """Return the arctangent of ``x`` in radians.
-    """
+    """Return the arctangent of ``x`` in radians."""
     ...
-
 
 @over
 def atan2(y: Float, x: Float) -> Float:
-    """Return the 2-argument arctangent, atan2, of the point ``(x, y)`` in radians.
-    """
+    """Return the 2-argument arctangent, atan2, of the point ``(x, y)`` in radians."""
     ...
-
 
 @over
 def sinh(x: Float) -> Float:
-    """Return the sinh of ``x``.
-    """
+    """Return the sinh of ``x``."""
     ...
-
 
 @over
 def cosh(x: Float) -> Float:
-    """Return the cosh of ``x``.
-    """
+    """Return the cosh of ``x``."""
     ...
-
 
 @over
 def tanh(x: Float) -> Float:
-    """Return the tanh of ``x``.
-    """
+    """Return the tanh of ``x``."""
     ...
-
 
 @over
 def degrees(x: Float) -> Float:
-    """Convert ``x`` from radians into degrees.
-    """
+    """Convert ``x`` from radians into degrees."""
     ...
-
 
 @over
 def radians(x: Float) -> Float:
-    """Convert ``x`` from degrees into radians.
-    """
+    """Convert ``x`` from degrees into radians."""
     ...
-
 
 @over
 def log(x: Float) -> Float:
-    """Return the natural logarithm (base-e) of ``x``, where ``x`` is positive.
-    """
+    """Return the natural logarithm (base-e) of ``x``, where ``x`` is positive."""
     ...
-
 
 @over
 def log2(x: Float) -> Float:
-    """Return the binary logarithm (base-2) of ``x``, where ``x`` is positive.
-    """
+    """Return the binary logarithm (base-2) of ``x``, where ``x`` is positive."""
     ...
-
 
 @over
 def log10(x: Float) -> Float:
-    """Return the common logarithm (base-10) of ``x``, where ``x`` is positive.
-    """
+    """Return the common logarithm (base-10) of ``x``, where ``x`` is positive."""
     ...
-
 
 @over
 def exp(x: Float) -> Float:
-    """Return the value of the exponential function :math:`e^x`.
-    """
+    """Return the value of the exponential function :math:`e^x`."""
     ...
-
 
 @over
 def pow(x: Float, y: Float) -> Float:
-    """Return the result of ``x`` raised to power of ``y``.
-    """
+    """Return the result of ``x`` raised to power of ``y``."""
     ...
-
 
 @over
 def erf(x: Float) -> Float:
-    """Return the error function of ``x``.
-    """
+    """Return the error function of ``x``."""
     ...
-
 
 @over
 def erfc(x: Float) -> Float:
-    """Return the complementary error function of ``x``.
-    """
+    """Return the complementary error function of ``x``."""
     ...
-
 
 @over
 def erfinv(x: Float) -> Float:
-    """Return the inverse error function of ``x``.
-    """
+    """Return the inverse error function of ``x``."""
     ...
-
 
 @over
 def erfcinv(x: Float) -> Float:
-    """Return the inverse complementary error function of ``x``.
-    """
+    """Return the inverse complementary error function of ``x``."""
     ...
-
 
 @over
 def round(x: Float) -> Float:
@@ -2184,7 +1957,6 @@ def round(x: Float) -> Float:
     """
     ...
 
-
 @over
 def rint(x: Float) -> Float:
     """Return the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
@@ -2192,7 +1964,6 @@ def rint(x: Float) -> Float:
     It is generally faster than :func:`warp.round()`. Equivalent to :func:`numpy.rint()`.
     """
     ...
-
 
 @over
 def trunc(x: Float) -> Float:
@@ -2204,20 +1975,15 @@ def trunc(x: Float) -> Float:
     """
     ...
 
-
 @over
 def floor(x: Float) -> Float:
-    """Return the largest integer that is less than or equal to ``x``.
-    """
+    """Return the largest integer that is less than or equal to ``x``."""
     ...
-
 
 @over
 def ceil(x: Float) -> Float:
-    """Return the smallest integer that is greater than or equal to ``x``.
-    """
+    """Return the smallest integer that is greater than or equal to ``x``."""
     ...
-
 
 @over
 def frac(x: Float) -> Float:
@@ -2227,332 +1993,261 @@ def frac(x: Float) -> Float:
     """
     ...
 
-
 @over
 def isfinite(a: Scalar) -> bool:
     """Return ``True`` if ``a`` is a finite number, otherwise return ``False``.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    
+
     """
     ...
 
-
 @over
-def isfinite(a: Vector[Any,Scalar]) -> bool:
+def isfinite(a: Vector[Any, Scalar]) -> bool:
     """Return ``True`` if all elements of the vector ``a`` are finite, otherwise return ``False``.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    
+
     """
     ...
-
 
 @over
 def isfinite(a: Quaternion[Scalar]) -> bool:
     """Return ``True`` if all elements of the quaternion ``a`` are finite, otherwise return ``False``.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    
+
     """
     ...
 
-
 @over
-def isfinite(a: Matrix[Any,Any,Scalar]) -> bool:
+def isfinite(a: Matrix[Any, Any, Scalar]) -> bool:
     """Return ``True`` if all elements of the matrix ``a`` are finite, otherwise return ``False``.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    
+
     """
     ...
-
 
 @over
 def isnan(a: Scalar) -> bool:
     """Return ``True`` if ``a`` is NaN, otherwise return ``False``.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    
+
     """
     ...
 
-
 @over
-def isnan(a: Vector[Any,Scalar]) -> bool:
+def isnan(a: Vector[Any, Scalar]) -> bool:
     """Return ``True`` if any element of the vector ``a`` is NaN, otherwise return ``False``.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    
+
     """
     ...
-
 
 @over
 def isnan(a: Quaternion[Scalar]) -> bool:
     """Return ``True`` if any element of the quaternion ``a`` is NaN, otherwise return ``False``.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    
+
     """
     ...
 
-
 @over
-def isnan(a: Matrix[Any,Any,Scalar]) -> bool:
+def isnan(a: Matrix[Any, Any, Scalar]) -> bool:
     """Return ``True`` if any element of the matrix ``a`` is NaN, otherwise return ``False``.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    
+
     """
     ...
-
 
 @over
 def isinf(a: Scalar) -> bool:
     """Return ``True`` if ``a`` is positive or negative infinity, otherwise return ``False``.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    
+
     """
     ...
 
-
 @over
-def isinf(a: Vector[Any,Scalar]) -> bool:
+def isinf(a: Vector[Any, Scalar]) -> bool:
     """Return ``True`` if any element of the vector ``a`` is positive or negative infinity, otherwise return ``False``.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    
+
     """
     ...
-
 
 @over
 def isinf(a: Quaternion[Scalar]) -> bool:
     """Return ``True`` if any element of the quaternion ``a`` is positive or negative infinity, otherwise return ``False``.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    
+
     """
     ...
 
-
 @over
-def isinf(a: Matrix[Any,Any,Scalar]) -> bool:
+def isinf(a: Matrix[Any, Any, Scalar]) -> bool:
     """Return ``True`` if any element of the matrix ``a`` is positive or negative infinity, otherwise return ``False``.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    
+
     """
     ...
-
 
 @over
-def dot(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Scalar:
-    """Compute the dot product between two vectors.
-    """
+def dot(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Scalar:
+    """Compute the dot product between two vectors."""
     ...
-
 
 @over
 def dot(a: Quaternion[Float], b: Quaternion[Float]) -> Float:
-    """Compute the dot product between two quaternions.
-    """
+    """Compute the dot product between two quaternions."""
     ...
-
 
 @over
-def ddot(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Scalar:
-    """Compute the double dot product between two matrices.
-    """
+def ddot(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Scalar:
+    """Compute the double dot product between two matrices."""
     ...
-
 
 @over
-def argmin(a: Vector[Any,Scalar]) -> uint32:
-    """Return the index of the minimum element of a vector ``a``.
-    """
+def argmin(a: Vector[Any, Scalar]) -> uint32:
+    """Return the index of the minimum element of a vector ``a``."""
     ...
-
 
 @over
-def argmax(a: Vector[Any,Scalar]) -> uint32:
-    """Return the index of the maximum element of a vector ``a``.
-    """
+def argmax(a: Vector[Any, Scalar]) -> uint32:
+    """Return the index of the maximum element of a vector ``a``."""
     ...
-
 
 @over
-def outer(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """Compute the outer product ``a*b^T`` for two vectors.
-    """
+def outer(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Compute the outer product ``a*b^T`` for two vectors."""
     ...
-
 
 @over
-def cross(a: Vector[3,Scalar], b: Vector[3,Scalar]) -> Vector[3,Scalar]:
-    """Compute the cross product of two 3D vectors.
-    """
+def cross(a: Vector[3, Scalar], b: Vector[3, Scalar]) -> Vector[3, Scalar]:
+    """Compute the cross product of two 3D vectors."""
     ...
-
 
 @over
-def skew(vec: Vector[3,Scalar]) -> Matrix[3,3,Scalar]:
-    """Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``.
-    """
+def skew(vec: Vector[3, Scalar]) -> Matrix[3, 3, Scalar]:
+    """Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``."""
     ...
-
 
 @over
-def length(a: Vector[Any,Float]) -> Float:
-    """Compute the length of a floating-point vector ``a``.
-    """
+def length(a: Vector[Any, Float]) -> Float:
+    """Compute the length of a floating-point vector ``a``."""
     ...
-
 
 @over
 def length(a: Quaternion[Float]) -> Float:
-    """Compute the length of a quaternion ``a``.
-    """
+    """Compute the length of a quaternion ``a``."""
     ...
-
 
 @over
-def length_sq(a: Vector[Any,Scalar]) -> Scalar:
-    """Compute the squared length of a vector ``a``.
-    """
+def length_sq(a: Vector[Any, Scalar]) -> Scalar:
+    """Compute the squared length of a vector ``a``."""
     ...
-
 
 @over
 def length_sq(a: Quaternion[Scalar]) -> Scalar:
-    """Compute the squared length of a quaternion ``a``.
-    """
+    """Compute the squared length of a quaternion ``a``."""
     ...
-
 
 @over
-def normalize(a: Vector[Any,Float]) -> Vector[Any,Float]:
-    """Compute the normalized value of ``a``. If ``length(a)`` is 0 then the zero vector is returned.
-    """
+def normalize(a: Vector[Any, Float]) -> Vector[Any, Float]:
+    """Compute the normalized value of ``a``. If ``length(a)`` is 0 then the zero vector is returned."""
     ...
-
 
 @over
 def normalize(a: Quaternion[Float]) -> Quaternion[Float]:
-    """Compute the normalized value of ``a``. If ``length(a)`` is 0, then the zero quaternion is returned.
-    """
+    """Compute the normalized value of ``a``. If ``length(a)`` is 0, then the zero quaternion is returned."""
     ...
 
-
 @over
-def transpose(a: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """Return the transpose of the matrix ``a``.
-    """
+def transpose(a: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Return the transpose of the matrix ``a``."""
     ...
 
-
 @over
-def inverse(a: Matrix[2,2,Float]) -> Matrix[Any,Any,Float]:
-    """Return the inverse of a 2x2 matrix ``a``.
-    """
+def inverse(a: Matrix[2, 2, Float]) -> Matrix[Any, Any, Float]:
+    """Return the inverse of a 2x2 matrix ``a``."""
     ...
 
-
 @over
-def inverse(a: Matrix[3,3,Float]) -> Matrix[Any,Any,Float]:
-    """Return the inverse of a 3x3 matrix ``a``.
-    """
+def inverse(a: Matrix[3, 3, Float]) -> Matrix[Any, Any, Float]:
+    """Return the inverse of a 3x3 matrix ``a``."""
     ...
 
-
 @over
-def inverse(a: Matrix[4,4,Float]) -> Matrix[Any,Any,Float]:
-    """Return the inverse of a 4x4 matrix ``a``.
-    """
+def inverse(a: Matrix[4, 4, Float]) -> Matrix[Any, Any, Float]:
+    """Return the inverse of a 4x4 matrix ``a``."""
     ...
 
-
 @over
-def determinant(a: Matrix[2,2,Float]) -> Float:
-    """Return the determinant of a 2x2 matrix ``a``.
-    """
+def determinant(a: Matrix[2, 2, Float]) -> Float:
+    """Return the determinant of a 2x2 matrix ``a``."""
     ...
 
-
 @over
-def determinant(a: Matrix[3,3,Float]) -> Float:
-    """Return the determinant of a 3x3 matrix ``a``.
-    """
+def determinant(a: Matrix[3, 3, Float]) -> Float:
+    """Return the determinant of a 3x3 matrix ``a``."""
     ...
 
-
 @over
-def determinant(a: Matrix[4,4,Float]) -> Float:
-    """Return the determinant of a 4x4 matrix ``a``.
-    """
+def determinant(a: Matrix[4, 4, Float]) -> Float:
+    """Return the determinant of a 4x4 matrix ``a``."""
     ...
 
-
 @over
-def trace(a: Matrix[Any,Any,Scalar]) -> Scalar:
-    """Return the trace of the matrix ``a``.
-    """
+def trace(a: Matrix[Any, Any, Scalar]) -> Scalar:
+    """Return the trace of the matrix ``a``."""
     ...
 
-
 @over
-def diag(vec: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """Returns a matrix with the components of the vector ``vec`` on the diagonal.
-    """
+def diag(vec: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Returns a matrix with the components of the vector ``vec`` on the diagonal."""
     ...
 
-
 @over
-def get_diag(mat: Matrix[Any,Any,Scalar]) -> Vector[Any,Scalar]:
-    """Returns a vector containing the diagonal elements of the square matrix ``mat``.
-    """
+def get_diag(mat: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
+    """Returns a vector containing the diagonal elements of the square matrix ``mat``."""
     ...
 
-
 @over
-def cw_mul(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """Component-wise multiplication of two vectors.
-    """
+def cw_mul(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """Component-wise multiplication of two vectors."""
     ...
 
-
 @over
-def cw_mul(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """Component-wise multiplication of two matrices.
-    """
+def cw_mul(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Component-wise multiplication of two matrices."""
     ...
 
-
 @over
-def cw_div(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """Component-wise division of two vectors.
-    """
+def cw_div(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """Component-wise division of two vectors."""
     ...
 
-
 @over
-def cw_div(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """Component-wise division of two matrices.
-    """
+def cw_div(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Component-wise division of two matrices."""
     ...
 
-
 @over
-def vector(*args: Scalar, length: int32, dtype: Scalar) -> Vector[Any,Scalar]:
-    """Construct a vector of given length and dtype.
-    """
+def vector(*args: Scalar, length: int32, dtype: Scalar) -> Vector[Any, Scalar]:
+    """Construct a vector of given length and dtype."""
     ...
 
-
 @over
-def matrix(pos: Vector[3,Float], rot: Quaternion[Float], scale: Vector[3,Float], dtype: Float) -> Matrix[4,4,Float]:
+def matrix(pos: Vector[3, Float], rot: Quaternion[Float], scale: Vector[3, Float], dtype: Float) -> Matrix[4, 4, Float]:
     """Construct a 4x4 transformation matrix that applies the transformations as
     Translation(pos)*Rotation(rot)*Scaling(scale) when applied to column vectors, i.e.: y = (TRS)*x
 
@@ -2563,98 +2258,81 @@ def matrix(pos: Vector[3,Float], rot: Quaternion[Float], scale: Vector[3,Float],
     """
     ...
 
-
 @over
-def matrix(*args: Scalar, shape: Tuple[int, int], dtype: Scalar) -> Matrix[Any,Any,Scalar]:
-    """Construct a matrix. If the positional ``arg_types`` are not given, then matrix will be zero-initialized.
-    """
+def matrix(*args: Scalar, shape: Tuple[int, int], dtype: Scalar) -> Matrix[Any, Any, Scalar]:
+    """Construct a matrix. If the positional ``arg_types`` are not given, then matrix will be zero-initialized."""
     ...
 
-
 @over
-def matrix_from_cols(*args: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """Construct a matrix from column vectors.
-    """
+def matrix_from_cols(*args: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Construct a matrix from column vectors."""
     ...
 
-
 @over
-def matrix_from_rows(*args: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """Construct a matrix from row vectors.
-    """
+def matrix_from_rows(*args: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """Construct a matrix from row vectors."""
     ...
 
-
 @over
-def identity(n: int32, dtype: Scalar) -> Matrix[Any,Any,Scalar]:
-    """Create an identity matrix with shape=(n,n) with the type given by ``dtype``.
-    """
+def identity(n: int32, dtype: Scalar) -> Matrix[Any, Any, Scalar]:
+    """Create an identity matrix with shape=(n,n) with the type given by ``dtype``."""
     ...
 
-
 @over
-def svd3(A: Matrix[3,3,Float]) -> Tuple[Matrix[3,3,Float], Vector[3,Float], Matrix[3,3,Float]]:
+def svd3(A: Matrix[3, 3, Float]) -> Tuple[Matrix[3, 3, Float], Vector[3, Float], Matrix[3, 3, Float]]:
     """Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
     while the left and right basis vectors are returned in ``U`` and ``V``.
     """
     ...
 
-
 @over
-def svd3(A: Matrix[3,3,Float], U: Matrix[3,3,Float], sigma: Vector[3,Float], V: Matrix[3,3,Float]):
+def svd3(A: Matrix[3, 3, Float], U: Matrix[3, 3, Float], sigma: Vector[3, Float], V: Matrix[3, 3, Float]):
     """Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
     while the left and right basis vectors are returned in ``U`` and ``V``.
     """
     ...
 
-
 @over
-def svd2(A: Matrix[2,2,Float]) -> Tuple[Matrix[2,2,Float], Vector[2,Float], Matrix[2,2,Float]]:
+def svd2(A: Matrix[2, 2, Float]) -> Tuple[Matrix[2, 2, Float], Vector[2, Float], Matrix[2, 2, Float]]:
     """Compute the SVD of a 2x2 matrix ``A``. The singular values are returned in ``sigma``,
     while the left and right basis vectors are returned in ``U`` and ``V``.
     """
     ...
 
-
 @over
-def svd2(A: Matrix[2,2,Float], U: Matrix[2,2,Float], sigma: Vector[2,Float], V: Matrix[2,2,Float]):
+def svd2(A: Matrix[2, 2, Float], U: Matrix[2, 2, Float], sigma: Vector[2, Float], V: Matrix[2, 2, Float]):
     """Compute the SVD of a 2x2 matrix ``A``. The singular values are returned in ``sigma``,
     while the left and right basis vectors are returned in ``U`` and ``V``.
     """
     ...
 
-
 @over
-def qr3(A: Matrix[3,3,Float]) -> Tuple[Matrix[3,3,Float], Matrix[3,3,Float]]:
+def qr3(A: Matrix[3, 3, Float]) -> Tuple[Matrix[3, 3, Float], Matrix[3, 3, Float]]:
     """Compute the QR decomposition of a 3x3 matrix ``A``. The orthogonal matrix is returned in ``Q``,
     while the upper triangular matrix is returned in ``R``.
     """
     ...
 
-
 @over
-def qr3(A: Matrix[3,3,Float], Q: Matrix[3,3,Float], R: Matrix[3,3,Float]):
+def qr3(A: Matrix[3, 3, Float], Q: Matrix[3, 3, Float], R: Matrix[3, 3, Float]):
     """Compute the QR decomposition of a 3x3 matrix ``A``. The orthogonal matrix is returned in ``Q``,
     while the upper triangular matrix is returned in ``R``.
     """
     ...
 
-
 @over
-def eig3(A: Matrix[3,3,Float]) -> Tuple[Matrix[3,3,Float], Vector[3,Float]]:
+def eig3(A: Matrix[3, 3, Float]) -> Tuple[Matrix[3, 3, Float], Vector[3, Float]]:
     """Compute the eigendecomposition of a 3x3 matrix ``A``. The eigenvectors are returned as the columns of ``Q``,
     while the corresponding eigenvalues are returned in ``d``.
     """
     ...
 
-
 @over
-def eig3(A: Matrix[3,3,Float], Q: Matrix[3,3,Float], d: Vector[3,Float]):
+def eig3(A: Matrix[3, 3, Float], Q: Matrix[3, 3, Float], d: Vector[3, Float]):
     """Compute the eigendecomposition of a 3x3 matrix ``A``. The eigenvectors are returned as the columns of ``Q``,
     while the corresponding eigenvalues are returned in ``d``.
     """
     ...
-
 
 @over
 def quaternion(dtype: Float) -> Quaternion[Float]:
@@ -2663,181 +2341,134 @@ def quaternion(dtype: Float) -> Quaternion[Float]:
     """
     ...
 
-
 @over
 def quaternion(x: Float, y: Float, z: Float, w: Float, dtype: Scalar) -> Quaternion[Float]:
-    """Create a quaternion using the supplied components (type inferred from component type).
-    """
+    """Create a quaternion using the supplied components (type inferred from component type)."""
     ...
-
 
 @over
-def quaternion(ijk: Vector[3,Float], real: Float, dtype: Float) -> Quaternion[Float]:
-    """Create a quaternion using the supplied vector/scalar (type inferred from scalar type).
-    """
+def quaternion(ijk: Vector[3, Float], real: Float, dtype: Float) -> Quaternion[Float]:
+    """Create a quaternion using the supplied vector/scalar (type inferred from scalar type)."""
     ...
-
 
 @over
 def quaternion(quat: Quaternion[Float], dtype: Float) -> Quaternion[Float]:
-    """Construct a quaternion of type dtype from another quaternion of a different dtype.
-    """
+    """Construct a quaternion of type dtype from another quaternion of a different dtype."""
     ...
-
 
 @over
 def quat_identity(dtype: Float) -> quatf:
-    """Construct an identity quaternion with zero imaginary part and real part of 1.0
-    """
+    """Construct an identity quaternion with zero imaginary part and real part of 1.0"""
     ...
 
-
 @over
-def quat_from_axis_angle(axis: Vector[3,Float], angle: Float) -> Quaternion[Float]:
-    """Construct a quaternion representing a rotation of angle radians around the given axis.
-    """
+def quat_from_axis_angle(axis: Vector[3, Float], angle: Float) -> Quaternion[Float]:
+    """Construct a quaternion representing a rotation of angle radians around the given axis."""
     ...
 
-
 @over
-def quat_to_axis_angle(quat: Quaternion[Float]) -> Tuple[Vector[3,Float], Float]:
-    """Extract the rotation axis and angle radians a quaternion represents.
-    """
+def quat_to_axis_angle(quat: Quaternion[Float]) -> Tuple[Vector[3, Float], Float]:
+    """Extract the rotation axis and angle radians a quaternion represents."""
     ...
 
-
 @over
-def quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[3,Float], angle: Float):
-    """Extract the rotation axis and angle radians a quaternion represents.
-    """
+def quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[3, Float], angle: Float):
+    """Extract the rotation axis and angle radians a quaternion represents."""
     ...
 
-
 @over
-def quat_from_matrix(mat: Matrix[3,3,Float]) -> Quaternion[Float]:
+def quat_from_matrix(mat: Matrix[3, 3, Float]) -> Quaternion[Float]:
     """Construct a quaternion from a 3x3 matrix.
 
     If the matrix is not a pure rotation, but for example includes scaling or skewing, the result is undefined.
     """
     ...
 
-
 @over
-def quat_from_matrix(mat: Matrix[4,4,Float]) -> Quaternion[Float]:
+def quat_from_matrix(mat: Matrix[4, 4, Float]) -> Quaternion[Float]:
     """Construct a quaternion from a 4x4 matrix.
 
     If the top-left 3x3 block of the matrix is not a pure rotation, but for example includes scaling or skewing, the result is undefined.
     """
     ...
 
-
 @over
 def quat_rpy(roll: Float, pitch: Float, yaw: Float) -> Quaternion[Float]:
-    """Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
-    """
+    """Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians."""
     ...
-
 
 @over
 def quat_inverse(quat: Quaternion[Float]) -> Quaternion[Float]:
-    """Compute quaternion conjugate.
-    """
+    """Compute quaternion conjugate."""
     ...
-
 
 @over
-def quat_rotate(quat: Quaternion[Float], vec: Vector[3,Float]) -> Vector[3,Float]:
-    """Rotate a vector by a quaternion.
-    """
+def quat_rotate(quat: Quaternion[Float], vec: Vector[3, Float]) -> Vector[3, Float]:
+    """Rotate a vector by a quaternion."""
     ...
-
 
 @over
-def quat_rotate_inv(quat: Quaternion[Float], vec: Vector[3,Float]) -> Vector[3,Float]:
-    """Rotate a vector by the inverse of a quaternion.
-    """
+def quat_rotate_inv(quat: Quaternion[Float], vec: Vector[3, Float]) -> Vector[3, Float]:
+    """Rotate a vector by the inverse of a quaternion."""
     ...
-
 
 @over
 def quat_slerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]:
-    """Linearly interpolate between two quaternions.
-    """
+    """Linearly interpolate between two quaternions."""
     ...
-
 
 @over
-def quat_to_matrix(quat: Quaternion[Float]) -> Matrix[3,3,Float]:
-    """Convert a quaternion to a 3x3 rotation matrix.
-    """
+def quat_to_matrix(quat: Quaternion[Float]) -> Matrix[3, 3, Float]:
+    """Convert a quaternion to a 3x3 rotation matrix."""
     ...
-
 
 @over
-def transformation(p: Vector[3,Float], q: Quaternion[Float], dtype: Float) -> Transformation[Float]:
-    """Construct a rigid-body transformation with translation part ``p`` and rotation ``q``.
-    """
+def transformation(p: Vector[3, Float], q: Quaternion[Float], dtype: Float) -> Transformation[Float]:
+    """Construct a rigid-body transformation with translation part ``p`` and rotation ``q``."""
     ...
-
 
 @over
 def transformation(*args: Float, dtype: Float) -> Transformation[Float]:
-    """Construct a spatial transform vector of given dtype.
-    """
+    """Construct a spatial transform vector of given dtype."""
     ...
-
 
 @over
 def transform_identity(dtype: Float) -> transformf:
-    """Construct an identity transform with zero translation and identity rotation.
-    """
+    """Construct an identity transform with zero translation and identity rotation."""
     ...
-
 
 @over
-def transform_get_translation(xform: Transformation[Float]) -> Vector[3,Float]:
-    """Return the translational part of a transform ``xform``.
-    """
+def transform_get_translation(xform: Transformation[Float]) -> Vector[3, Float]:
+    """Return the translational part of a transform ``xform``."""
     ...
-
 
 @over
 def transform_get_rotation(xform: Transformation[Float]) -> Quaternion[Float]:
-    """Return the rotational part of a transform ``xform``.
-    """
+    """Return the rotational part of a transform ``xform``."""
     ...
-
 
 @over
-def transform_set_translation(xform: Transformation[Float], p: Vector[3,Float]):
-    """Set the translational part of a transform ``xform``.
-    """
+def transform_set_translation(xform: Transformation[Float], p: Vector[3, Float]):
+    """Set the translational part of a transform ``xform``."""
     ...
-
 
 @over
 def transform_set_rotation(xform: Transformation[Float], q: Quaternion[Float]):
-    """Set the rotational part of a transform ``xform``.
-    """
+    """Set the rotational part of a transform ``xform``."""
     ...
-
 
 @over
 def transform_multiply(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]:
-    """Multiply two rigid body transformations together.
-    """
+    """Multiply two rigid body transformations together."""
     ...
 
-
 @over
-def transform_point(xform: Transformation[Float], point: Vector[3,Float]) -> Vector[3,Float]:
-    """Apply the transform to a point ``point`` treating the homogeneous coordinate as w=1 (translation and rotation).
-    """
+def transform_point(xform: Transformation[Float], point: Vector[3, Float]) -> Vector[3, Float]:
+    """Apply the transform to a point ``point`` treating the homogeneous coordinate as w=1 (translation and rotation)."""
     ...
 
-
 @over
-def transform_point(mat: Matrix[4,4,Float], point: Vector[3,Float]) -> Vector[3,Float]:
+def transform_point(mat: Matrix[4, 4, Float], point: Vector[3, Float]) -> Vector[3, Float]:
     """Apply the transform to a point ``point`` treating the homogeneous coordinate as w=1.
 
     The transformation is applied treating ``point`` as a column vector, e.g.: ``y = mat*point``.
@@ -2848,16 +2479,13 @@ def transform_point(mat: Matrix[4,4,Float], point: Vector[3,Float]) -> Vector[3,
     """
     ...
 
-
 @over
-def transform_vector(xform: Transformation[Float], vec: Vector[3,Float]) -> Vector[3,Float]:
-    """Apply the transform to a vector ``vec`` treating the homogeneous coordinate as w=0 (rotation only).
-    """
+def transform_vector(xform: Transformation[Float], vec: Vector[3, Float]) -> Vector[3, Float]:
+    """Apply the transform to a vector ``vec`` treating the homogeneous coordinate as w=0 (rotation only)."""
     ...
 
-
 @over
-def transform_vector(mat: Matrix[4,4,Float], vec: Vector[3,Float]) -> Vector[3,Float]:
+def transform_vector(mat: Matrix[4, 4, Float], vec: Vector[3, Float]) -> Vector[3, Float]:
     """Apply the transform to a vector ``vec`` treating the homogeneous coordinate as w=0.
 
     The transformation is applied treating ``vec`` as a column vector, e.g.: ``y = mat*vec``.
@@ -2868,93 +2496,78 @@ def transform_vector(mat: Matrix[4,4,Float], vec: Vector[3,Float]) -> Vector[3,F
     """
     ...
 
-
 @over
 def transform_inverse(xform: Transformation[Float]) -> Transformation[Float]:
-    """Compute the inverse of the transformation ``xform``.
-    """
+    """Compute the inverse of the transformation ``xform``."""
     ...
 
-
 @over
-def spatial_vector(dtype: Float) -> Vector[6,Float]:
-    """Zero-initialize a 6D screw vector.
-    """
+def spatial_vector(dtype: Float) -> Vector[6, Float]:
+    """Zero-initialize a 6D screw vector."""
     ...
 
-
 @over
-def spatial_vector(w: Vector[3,Float], v: Vector[3,Float], dtype: Float) -> Vector[6,Float]:
-    """Construct a 6D screw vector from two 3D vectors.
-    """
+def spatial_vector(w: Vector[3, Float], v: Vector[3, Float], dtype: Float) -> Vector[6, Float]:
+    """Construct a 6D screw vector from two 3D vectors."""
     ...
 
-
 @over
-def spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float, dtype: Float) -> Vector[6,Float]:
-    """Construct a 6D screw vector from six values.
-    """
+def spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float, dtype: Float) -> Vector[6, Float]:
+    """Construct a 6D screw vector from six values."""
     ...
 
-
 @over
-def spatial_adjoint(r: Matrix[3,3,Float], s: Matrix[3,3,Float]) -> Matrix[6,6,Float]:
-    """Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.
-    """
+def spatial_adjoint(r: Matrix[3, 3, Float], s: Matrix[3, 3, Float]) -> Matrix[6, 6, Float]:
+    """Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks."""
     ...
 
-
 @over
-def spatial_dot(a: Vector[6,Float], b: Vector[6,Float]) -> Float:
-    """Compute the dot product of two 6D screw vectors.
-    """
+def spatial_dot(a: Vector[6, Float], b: Vector[6, Float]) -> Float:
+    """Compute the dot product of two 6D screw vectors."""
     ...
 
-
 @over
-def spatial_cross(a: Vector[6,Float], b: Vector[6,Float]) -> Vector[6,Float]:
-    """Compute the cross product of two 6D screw vectors.
-    """
+def spatial_cross(a: Vector[6, Float], b: Vector[6, Float]) -> Vector[6, Float]:
+    """Compute the cross product of two 6D screw vectors."""
     ...
 
-
 @over
-def spatial_cross_dual(a: Vector[6,Float], b: Vector[6,Float]) -> Vector[6,Float]:
-    """Compute the dual cross product of two 6D screw vectors.
-    """
+def spatial_cross_dual(a: Vector[6, Float], b: Vector[6, Float]) -> Vector[6, Float]:
+    """Compute the dual cross product of two 6D screw vectors."""
     ...
 
-
 @over
-def spatial_top(svec: Vector[6,Float]) -> Vector[3,Float]:
-    """Return the top (first) part of a 6D screw vector.
-    """
+def spatial_top(svec: Vector[6, Float]) -> Vector[3, Float]:
+    """Return the top (first) part of a 6D screw vector."""
     ...
 
-
 @over
-def spatial_bottom(svec: Vector[6,Float]) -> Vector[3,Float]:
-    """Return the bottom (second) part of a 6D screw vector.
-    """
+def spatial_bottom(svec: Vector[6, Float]) -> Vector[3, Float]:
+    """Return the bottom (second) part of a 6D screw vector."""
     ...
 
-
 @over
-def spatial_jacobian(S: Array[Vector[6,Float]], joint_parents: Array[int32], joint_qd_start: Array[int32], joint_start: int32, joint_count: int32, J_start: int32, J_out: Array[Float]):
-    """
-    """
+def spatial_jacobian(
+    S: Array[Vector[6, Float]],
+    joint_parents: Array[int32],
+    joint_qd_start: Array[int32],
+    joint_start: int32,
+    joint_count: int32,
+    J_start: int32,
+    J_out: Array[Float],
+):
+    """ """
     ...
 
-
 @over
-def spatial_mass(I_s: Array[Matrix[6,6,Float]], joint_start: int32, joint_count: int32, M_start: int32, M: Array[Float]):
-    """
-    """
+def spatial_mass(
+    I_s: Array[Matrix[6, 6, Float]], joint_start: int32, joint_count: int32, M_start: int32, M: Array[Float]
+):
+    """ """
     ...
 
-
 @over
-def tile_zeros(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile[Any,Tuple[int, ...]]:
+def tile_zeros(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, Tuple[int, ...]]:
     """Allocate a tile of zero-initialized items.
 
     :param shape: Shape of the output tile
@@ -2965,9 +2578,8 @@ def tile_zeros(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile[Any,Tup
     """
     ...
 
-
 @over
-def tile_ones(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile[Any,Tuple[int, ...]]:
+def tile_ones(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, Tuple[int, ...]]:
     """Allocate a tile of one-initialized items.
 
     :param shape: Shape of the output tile
@@ -2978,9 +2590,8 @@ def tile_ones(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile[Any,Tupl
     """
     ...
 
-
 @over
-def tile_full(shape: Tuple[int, ...], value: Any, dtype: Any, storage: str) -> Tile[Any,Tuple[int, ...]]:
+def tile_full(shape: Tuple[int, ...], value: Any, dtype: Any, storage: str) -> Tile[Any, Tuple[int, ...]]:
     """Allocate a tile filled with the specified value.
 
     :param shape: Shape of the output tile
@@ -2992,9 +2603,8 @@ def tile_full(shape: Tuple[int, ...], value: Any, dtype: Any, storage: str) -> T
     """
     ...
 
-
 @over
-def tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar,Tuple[int]]:
+def tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar, Tuple[int]]:
     """Generate a tile of linearly spaced elements.
 
     :param args: Variable-length positional arguments, interpreted as:
@@ -3010,9 +2620,10 @@ def tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar,Tuple
     """
     ...
 
-
 @over
-def tile_load(a: Array[Any], shape: Tuple[int, ...], offset: Tuple[int, ...], storage: str, bounds_check: bool) -> Tile[Any,Tuple[int, ...]]:
+def tile_load(
+    a: Array[Any], shape: Tuple[int, ...], offset: Tuple[int, ...], storage: str, bounds_check: bool
+) -> Tile[Any, Tuple[int, ...]]:
     """Loads a tile from a global memory array.
 
     This method will cooperatively load a tile from global memory using all threads in the block.
@@ -3027,9 +2638,15 @@ def tile_load(a: Array[Any], shape: Tuple[int, ...], offset: Tuple[int, ...], st
     """
     ...
 
-
 @over
-def tile_load_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], shape: Tuple[int, ...], offset: Tuple[int, ...], axis: int32, storage: str) -> Tile[Any,Tuple[int, ...]]:
+def tile_load_indexed(
+    a: Array[Any],
+    indices: Tile[int32, Tuple[int]],
+    shape: Tuple[int, ...],
+    offset: Tuple[int, ...],
+    axis: int32,
+    storage: str,
+) -> Tile[Any, Tuple[int, ...]]:
     """Loads a tile from a global memory array, with loads along a specified axis mapped according to a 1D tile of indices.
 
     :param a: The source array in global memory
@@ -3055,8 +2672,10 @@ def tile_load_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], shape: Tup
 
             evens = wp.tile_arange(HALF_M, dtype=int, storage="shared") * 2
 
-            t0 = wp.tile_load_indexed(x, indices=evens, shape=(HALF_M, TILE_N), offset=(i*TILE_M, j*TILE_N), axis=0, storage="register")
-            wp.tile_store(y, t0, offset=(i*HALF_M, j*TILE_N))
+            t0 = wp.tile_load_indexed(
+                x, indices=evens, shape=(HALF_M, TILE_N), offset=(i * TILE_M, j * TILE_N), axis=0, storage="register"
+            )
+            wp.tile_store(y, t0, offset=(i * HALF_M, j * TILE_N))
 
         M = TILE_M * 2
         N = TILE_N * 2
@@ -3066,7 +2685,7 @@ def tile_load_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], shape: Tup
         x = wp.array(arr, dtype=float)
         y = wp.zeros((M // 2, N), dtype=float)
 
-        wp.launch_tiled(compute, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
+        wp.launch_tiled(compute, dim=[2, 2], inputs=[x], outputs=[y], block_dim=32, device=device)
 
         print(x.numpy())
         print(y.numpy())
@@ -3082,13 +2701,12 @@ def tile_load_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], shape: Tup
 
         [[ 0.  1.  2.  3.]
          [ 8.  9. 10. 11.]]
-    
+
     """
     ...
 
-
 @over
-def tile_store(a: Array[Any], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], bounds_check: bool):
+def tile_store(a: Array[Any], t: Tile[Any, Tuple[int, ...]], offset: Tuple[int, ...], bounds_check: bool):
     """Store a tile to a global memory array.
 
     This method will cooperatively store a tile to global memory using all threads in the block.
@@ -3097,13 +2715,14 @@ def tile_store(a: Array[Any], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, .
     :param t: The source tile to store data from, must have the same data type and number of dimensions as the destination array
     :param offset: Offset in the destination array (optional)
     :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times
-    
+
     """
     ...
 
-
 @over
-def tile_store_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], axis: int32):
+def tile_store_indexed(
+    a: Array[Any], indices: Tile[int32, Tuple[int]], t: Tile[Any, Tuple[int, ...]], offset: Tuple[int, ...], axis: int32
+):
     """Store a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
 
     :param a: The destination array in global memory
@@ -3125,11 +2744,11 @@ def tile_store_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], t: Tile[A
         def compute(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
             i, j = wp.tid()
 
-            t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
+            t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N), storage="register")
 
             evens_M = wp.tile_arange(TILE_M, dtype=int, storage="shared") * 2
 
-            wp.tile_store_indexed(y, indices=evens_M, t=t, offset=(i*TWO_M, j*TILE_N), axis=0)
+            wp.tile_store_indexed(y, indices=evens_M, t=t, offset=(i * TWO_M, j * TILE_N), axis=0)
 
         M = TILE_M * 2
         N = TILE_N * 2
@@ -3139,7 +2758,7 @@ def tile_store_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], t: Tile[A
         x = wp.array(arr, dtype=float, requires_grad=True, device=device)
         y = wp.zeros((M * 2, N), dtype=float, requires_grad=True, device=device)
 
-        wp.launch_tiled(compute, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
+        wp.launch_tiled(compute, dim=[2, 2], inputs=[x], outputs=[y], block_dim=32, device=device)
 
         print(x.numpy())
         print(y.numpy())
@@ -3161,13 +2780,14 @@ def tile_store_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], t: Tile[A
          [ 0.  0.  0.  0.]
          [12. 13. 14. 15.]
          [ 0.  0.  0.  0.]]
-    
+
     """
     ...
 
-
 @over
-def tile_atomic_add(a: Array[Any], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], bounds_check: bool) -> Tile[Any,Tuple[int, ...]]:
+def tile_atomic_add(
+    a: Array[Any], t: Tile[Any, Tuple[int, ...]], offset: Tuple[int, ...], bounds_check: bool
+) -> Tile[Any, Tuple[int, ...]]:
     """Atomically add a tile onto the array `a`, each element will be updated atomically.
 
     :param a: Array in global memory, should have the same ``dtype`` as the input tile
@@ -3178,9 +2798,10 @@ def tile_atomic_add(a: Array[Any], t: Tile[Any,Tuple[int, ...]], offset: Tuple[i
     """
     ...
 
-
 @over
-def tile_atomic_add_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], axis: int32) -> Tile[Any,Tuple[int, ...]]:
+def tile_atomic_add_indexed(
+    a: Array[Any], indices: Tile[int32, Tuple[int]], t: Tile[Any, Tuple[int, ...]], offset: Tuple[int, ...], axis: int32
+) -> Tile[Any, Tuple[int, ...]]:
     """Atomically add a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
 
     :param a: The destination array in global memory
@@ -3200,11 +2821,11 @@ def tile_atomic_add_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], t: T
         def tile_atomic_add_indexed(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
             i, j = wp.tid()
 
-            t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
+            t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N), storage="register")
 
             zeros = wp.tile_zeros(TILE_M, dtype=int, storage="shared")
 
-            wp.tile_atomic_add_indexed(y, indices=zeros, t=t, offset=(i, j*TILE_N), axis=0)
+            wp.tile_atomic_add_indexed(y, indices=zeros, t=t, offset=(i, j * TILE_N), axis=0)
 
         M = TILE_M * 2
         N = TILE_N * 2
@@ -3214,7 +2835,7 @@ def tile_atomic_add_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], t: T
         x = wp.array(arr, dtype=float, requires_grad=True, device=device)
         y = wp.zeros((2, N), dtype=float, requires_grad=True, device=device)
 
-        wp.launch_tiled(tile_atomic_add_indexed, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
+        wp.launch_tiled(tile_atomic_add_indexed, dim=[2, 2], inputs=[x], outputs=[y], block_dim=32, device=device)
 
         print(x.numpy())
         print(y.numpy())
@@ -3230,13 +2851,14 @@ def tile_atomic_add_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], t: T
 
         [[ 4.  6.  8. 10.]
          [20. 22. 24. 26.]]
-    
+
     """
     ...
 
-
 @over
-def tile_view(t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], shape: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]:
+def tile_view(
+    t: Tile[Any, Tuple[int, ...]], offset: Tuple[int, ...], shape: Tuple[int, ...]
+) -> Tile[Any, Tuple[int, ...]]:
     """Return a slice of a given tile [offset, offset+shape], if shape is not specified it will be inferred from the unspecified offset dimensions.
 
     :param t: Input tile to extract a subrange from
@@ -3246,9 +2868,8 @@ def tile_view(t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], shape: Tupl
     """
     ...
 
-
 @over
-def tile_squeeze(t: Tile[Any,Tuple[int, ...]], axis: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]:
+def tile_squeeze(t: Tile[Any, Tuple[int, ...]], axis: Tuple[int, ...]) -> Tile[Any, Tuple[int, ...]]:
     """Return a squeezed view of a tile with the same data.
 
     :param t: Input tile to squeeze
@@ -3257,9 +2878,8 @@ def tile_squeeze(t: Tile[Any,Tuple[int, ...]], axis: Tuple[int, ...]) -> Tile[An
     """
     ...
 
-
 @over
-def tile_reshape(t: Tile[Any,Tuple[int, ...]], shape: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]:
+def tile_reshape(t: Tile[Any, Tuple[int, ...]], shape: Tuple[int, ...]) -> Tile[Any, Tuple[int, ...]]:
     """Return a reshaped view of a tile with the same data.
 
     :param t: Input tile to reshape
@@ -3268,9 +2888,8 @@ def tile_reshape(t: Tile[Any,Tuple[int, ...]], shape: Tuple[int, ...]) -> Tile[A
     """
     ...
 
-
 @over
-def tile_astype(t: Tile[Scalar,Tuple[int, ...]], dtype: Scalar) -> Tile[Any,Tuple[int, ...]]:
+def tile_astype(t: Tile[Scalar, Tuple[int, ...]], dtype: Scalar) -> Tile[Any, Tuple[int, ...]]:
     """Return a new tile with the same data as the input tile, but with a different data type.
 
     :param t: Input tile
@@ -3279,9 +2898,8 @@ def tile_astype(t: Tile[Scalar,Tuple[int, ...]], dtype: Scalar) -> Tile[Any,Tupl
     """
     ...
 
-
 @over
-def tile_assign(dst: Tile[Any,Tuple[int, ...]], src: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...]):
+def tile_assign(dst: Tile[Any, Tuple[int, ...]], src: Tile[Any, Tuple[int, ...]], offset: Tuple[int, ...]):
     """Assign a tile to a subrange of a destination tile.
 
     :param dst: The destination tile to assign to
@@ -3290,9 +2908,8 @@ def tile_assign(dst: Tile[Any,Tuple[int, ...]], src: Tile[Any,Tuple[int, ...]], 
     """
     ...
 
-
 @over
-def untile(a: Tile[Any,Tuple[int, ...]]) -> Any:
+def untile(a: Tile[Any, Tuple[int, ...]]) -> Any:
     """Convert a tile back to per-thread values.
 
     This function converts a block-wide tile back to per-thread values.
@@ -3312,7 +2929,7 @@ def untile(a: Tile[Any,Tuple[int, ...]]) -> Any:
             i = wp.tid()
 
             # create block-wide tile
-            t = wp.tile(i)*2
+            t = wp.tile(i) * 2
 
             # convert back to per-thread values
             s = wp.untile(t)
@@ -3331,13 +2948,12 @@ def untile(a: Tile[Any,Tuple[int, ...]]) -> Any:
         6
         8
         ...
-    
+
     """
     ...
 
-
 @over
-def tile_transpose(a: Tile[Any,Tuple[int, int]]) -> Tile[Any,Tuple[int, int]]:
+def tile_transpose(a: Tile[Any, Tuple[int, int]]) -> Tile[Any, Tuple[int, int]]:
     """Transpose a tile.
 
     For shared memory tiles, this operation will alias the input tile.
@@ -3348,9 +2964,8 @@ def tile_transpose(a: Tile[Any,Tuple[int, int]]) -> Tile[Any,Tuple[int, int]]:
     """
     ...
 
-
 @over
-def tile_broadcast(a: Tile[Any,Tuple[int, ...]], shape: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]:
+def tile_broadcast(a: Tile[Any, Tuple[int, ...]], shape: Tuple[int, ...]) -> Tile[Any, Tuple[int, ...]]:
     """Broadcast a tile.
 
     Broadcasts the input tile ``a`` to the destination shape.
@@ -3362,9 +2977,8 @@ def tile_broadcast(a: Tile[Any,Tuple[int, ...]], shape: Tuple[int, ...]) -> Tile
     """
     ...
 
-
 @over
-def tile_sum(a: Tile[Scalar,Tuple[int, ...]], axis: int32) -> Tile[Scalar,Tuple[int, ...]]:
+def tile_sum(a: Tile[Scalar, Tuple[int, ...]], axis: int32) -> Tile[Scalar, Tuple[int, ...]]:
     """Cooperatively compute the sum of the tile elements across an axis of the tile using all threads in the block.
 
     :param a: The input tile. Must reside in shared memory.
@@ -3377,7 +2991,6 @@ def tile_sum(a: Tile[Scalar,Tuple[int, ...]], axis: int32) -> Tile[Scalar,Tuple[
 
         @wp.kernel
         def compute():
-
             t = wp.tile_ones(dtype=float, shape=(8, 8))
             s = wp.tile_sum(t, axis=0)
 
@@ -3391,13 +3004,12 @@ def tile_sum(a: Tile[Scalar,Tuple[int, ...]], axis: int32) -> Tile[Scalar,Tuple[
 
         [8 8 8 8 8 8 8 8] = tile(shape=(8), storage=register)
 
-    
+
     """
     ...
 
-
 @over
-def tile_sum(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]:
+def tile_sum(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[1]]:
     """Cooperatively compute the sum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the sum of
@@ -3409,7 +3021,6 @@ def tile_sum(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]:
 
         @wp.kernel
         def compute():
-
             t = wp.tile_ones(dtype=float, shape=(16, 16))
             s = wp.tile_sum(t)
 
@@ -3423,13 +3034,12 @@ def tile_sum(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]:
 
         [256] = tile(shape=(1), storage=register)
 
-    
+
     """
     ...
 
-
 @over
-def tile_sort(keys: Tile[Any,Tuple[int]], values: Tile[Any,Tuple[int]]):
+def tile_sort(keys: Tile[Any, Tuple[int]], values: Tile[Any, Tuple[int]]):
     """Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
 
     :param keys: Keys to sort by. Supported key types: :class:`float32`, :class:`int32`, :class:`uint32`, :class:`int64`, :class:`uint64`. Must be in shared memory.
@@ -3442,14 +3052,12 @@ def tile_sort(keys: Tile[Any,Tuple[int]], values: Tile[Any,Tuple[int]]):
 
         @wp.kernel
         def compute():
-
             keys = wp.tile_arange(32, 0, -1, dtype=int, storage="shared")
             values = wp.tile_arange(0, 32, 1, dtype=int, storage="shared")
             wp.tile_sort(keys, values)
 
             print(keys)
             print(values)
-
 
         wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
 
@@ -3460,13 +3068,12 @@ def tile_sort(keys: Tile[Any,Tuple[int]], values: Tile[Any,Tuple[int]]):
         [1, 2, ..., 32] = tile(shape=(32), storage=shared)
         [31, 30, 29, ..., 0] = tile(shape=(32), storage=shared)
 
-    
+
     """
     ...
 
-
 @over
-def tile_min(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]:
+def tile_min(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[1]]:
     """Cooperatively compute the minimum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the minimum of
@@ -3478,12 +3085,10 @@ def tile_min(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]:
 
         @wp.kernel
         def compute():
-
             t = wp.tile_arange(64, 128)
             s = wp.tile_min(t)
 
             print(s)
-
 
         wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
 
@@ -3493,13 +3098,12 @@ def tile_min(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]:
 
         [64] = tile(shape=(1), storage=register)
 
-    
+
     """
     ...
 
-
 @over
-def tile_argmin(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Int,Tuple[1]]:
+def tile_argmin(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Int, Tuple[1]]:
     """Cooperatively compute the index of the minimum element in the tile using all threads in the block.
 
     :param a: The tile to compute the argmin from
@@ -3511,12 +3115,10 @@ def tile_argmin(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Int,Tuple[1]]:
 
         @wp.kernel
         def compute():
-
             t = wp.tile_arange(64, 128)
             s = wp.tile_argmin(t)
 
             print(s)
-
 
         wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
 
@@ -3526,13 +3128,12 @@ def tile_argmin(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Int,Tuple[1]]:
 
         [0] = tile(shape=(1), storage=register)
 
-    
+
     """
     ...
 
-
 @over
-def tile_max(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]:
+def tile_max(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[1]]:
     """Cooperatively compute the maximum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the maximum from
@@ -3544,7 +3145,6 @@ def tile_max(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]:
 
         @wp.kernel
         def compute():
-
             t = wp.tile_arange(64, 128)
             s = wp.tile_max(t)
 
@@ -3558,13 +3158,12 @@ def tile_max(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]:
 
         [127] = tile(shape=(1), storage=register)
 
-    
+
     """
     ...
 
-
 @over
-def tile_argmax(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Int,Tuple[1]]:
+def tile_argmax(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Int, Tuple[1]]:
     """Cooperatively compute the index of the maximum element in the tile using all threads in the block.
 
     :param a: The tile to compute the argmax from
@@ -3576,7 +3175,6 @@ def tile_argmax(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Int,Tuple[1]]:
 
         @wp.kernel
         def compute():
-
             t = wp.tile_arange(64, 128)
             s = wp.tile_argmax(t)
 
@@ -3590,13 +3188,12 @@ def tile_argmax(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Int,Tuple[1]]:
 
         [63] = tile(shape=(1), storage=register)
 
-    
+
     """
     ...
 
-
 @over
-def tile_reduce(op: Callable, a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]:
+def tile_reduce(op: Callable, a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[1]]:
     """Apply a custom reduction operator across the tile.
 
     This function cooperatively performs a reduction using the provided operator across the tile.
@@ -3611,7 +3208,6 @@ def tile_reduce(op: Callable, a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tu
 
         @wp.kernel
         def factorial():
-
             t = wp.tile_arange(1, 10, dtype=int)
             s = wp.tile_reduce(wp.mul, t)
 
@@ -3624,13 +3220,12 @@ def tile_reduce(op: Callable, a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tu
     .. code-block:: text
 
         [362880] = tile(shape=(1), storage=register)
-    
+
     """
     ...
 
-
 @over
-def tile_reduce(op: Callable, a: Tile[Scalar,Tuple[int, ...]], axis: int32) -> Tile[Scalar,Tuple[int, ...]]:
+def tile_reduce(op: Callable, a: Tile[Scalar, Tuple[int, ...]], axis: int32) -> Tile[Scalar, Tuple[int, ...]]:
     """Apply a custom reduction operator across a tile axis.
 
     This function cooperatively performs a reduction using the provided operator across an axis of the tile.
@@ -3649,7 +3244,6 @@ def tile_reduce(op: Callable, a: Tile[Scalar,Tuple[int, ...]], axis: int32) -> T
 
         @wp.kernel
         def compute(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
-
             a = wp.tile_load(x, shape=(TILE_M, TILE_N))
             b = wp.tile_reduce(wp.add, a, axis=1)
             wp.tile_store(y, b)
@@ -3673,13 +3267,12 @@ def tile_reduce(op: Callable, a: Tile[Scalar,Tuple[int, ...]], axis: int32) -> T
          [4. 5.]
          [6. 7.]]
         [ 1.  5.  9. 13.]
-    
+
     """
     ...
 
-
 @over
-def tile_scan_inclusive(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]:
+def tile_scan_inclusive(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
     """Inclusive scan (prefix sum) across the tile.
 
     This function cooperatively performs an inclusive scan (cumulative sum) across the tile.
@@ -3704,13 +3297,12 @@ def tile_scan_inclusive(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[in
     .. code-block:: text
 
         [1, 3, 6, 10] = tile(shape=(4), storage=register)
-    
+
     """
     ...
 
-
 @over
-def tile_scan_exclusive(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]:
+def tile_scan_exclusive(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
     """Exclusive scan (prefix sum) across the tile.
 
     This function cooperatively performs an exclusive scan (cumulative sum) across the tile.
@@ -3735,13 +3327,12 @@ def tile_scan_exclusive(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[in
     .. code-block:: text
 
         [0, 1, 3, 6] = tile(shape=(4), storage=register)
-    
+
     """
     ...
 
-
 @over
-def tile_scan_max_inclusive(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]:
+def tile_scan_max_inclusive(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
     """Inclusive max scan across the tile.
 
     This function cooperatively performs an inclusive max scan (cumulative maximum) across the tile.
@@ -3767,13 +3358,12 @@ def tile_scan_max_inclusive(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tupl
     .. code-block:: text
 
         [3, 3, 4, 4] = tile(shape=(4), storage=register)
-    
+
     """
     ...
 
-
 @over
-def tile_scan_min_inclusive(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]:
+def tile_scan_min_inclusive(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
     """Inclusive min scan across the tile.
 
     This function cooperatively performs an inclusive min scan (cumulative minimum) across the tile.
@@ -3799,13 +3389,12 @@ def tile_scan_min_inclusive(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tupl
     .. code-block:: text
 
         [3, 1, 1, 1] = tile(shape=(4), storage=register)
-    
+
     """
     ...
 
-
 @over
-def tile_map(op: Callable, a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]:
+def tile_map(op: Callable, a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
     """Apply a unary function onto the tile.
 
     This function cooperatively applies a unary function to each element of the tile using all threads in the block.
@@ -3820,7 +3409,6 @@ def tile_map(op: Callable, a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple
 
         @wp.kernel
         def compute():
-
             t = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
             s = wp.tile_map(wp.sin, t)
 
@@ -3833,13 +3421,14 @@ def tile_map(op: Callable, a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple
     .. code-block:: text
 
         [0 0.0998334 0.198669 0.29552 0.389418 0.479426 0.564642 0.644218 0.717356 0.783327] = tile(shape=(10), storage=register)
-    
+
     """
     ...
 
-
 @over
-def tile_map(op: Callable, a: Tile[Scalar,Tuple[int, ...]], b: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]:
+def tile_map(
+    op: Callable, a: Tile[Scalar, Tuple[int, ...]], b: Tile[Scalar, Tuple[int, ...]]
+) -> Tile[Scalar, Tuple[int, ...]]:
     """Apply a binary function onto the tile.
 
     This function cooperatively applies a binary function to each element of the tiles using all threads in the block.
@@ -3856,7 +3445,6 @@ def tile_map(op: Callable, a: Tile[Scalar,Tuple[int, ...]], b: Tile[Scalar,Tuple
 
         @wp.kernel
         def compute():
-
             a = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
             b = wp.tile_ones(shape=10, dtype=float)
 
@@ -3873,7 +3461,6 @@ def tile_map(op: Callable, a: Tile[Scalar,Tuple[int, ...]], b: Tile[Scalar,Tuple
         [1 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9] = tile(shape=(10), storage=register)
     """
     ...
-
 
 @over
 def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> BvhQuery:
@@ -3893,7 +3480,6 @@ def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> BvhQuery
     """
     ...
 
-
 @over
 def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32) -> BvhQuery:
     """Construct a ray query against a BVH object.
@@ -3911,7 +3497,6 @@ def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32) -> BvhQuery
     :param root: The root to begin the query from (optional, default: -1)
     """
     ...
-
 
 @over
 def bvh_query_next(query: BvhQuery, index: int32, max_dist: float32) -> bool:
@@ -3932,7 +3517,6 @@ def bvh_query_next(query: BvhQuery, index: int32, max_dist: float32) -> bool:
     """
     ...
 
-
 @over
 def bvh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled:
     """Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.
@@ -3944,7 +3528,6 @@ def bvh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled:
     :param high: The upper bound of the bounding box in BVH space (must be the same for all threads in the block)
     """
     ...
-
 
 @over
 def bvh_query_ray_tiled(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled:
@@ -3958,9 +3541,8 @@ def bvh_query_ray_tiled(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled:
     """
     ...
 
-
 @over
-def bvh_query_next_tiled(query: BvhQueryTiled) -> Tile[int32,Tuple[int]]:
+def bvh_query_next_tiled(query: BvhQueryTiled) -> Tile[int32, Tuple[int]]:
     """Move to the next bound in a thread-block parallel BVH query and return results as a tile.
 
     Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
@@ -3973,7 +3555,6 @@ def bvh_query_next_tiled(query: BvhQueryTiled) -> Tile[int32,Tuple[int]]:
               the result index for that thread (-1 if no result)
     """
     ...
-
 
 @over
 def tile_bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled:
@@ -3989,7 +3570,6 @@ def tile_bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled:
     """
     ...
 
-
 @over
 def tile_bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled:
     """Construct a ray query against a BVH object for thread-block parallel traversal.
@@ -4004,9 +3584,8 @@ def tile_bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled:
     """
     ...
 
-
 @over
-def tile_bvh_query_next(query: BvhQueryTiled) -> Tile[int32,Tuple[int]]:
+def tile_bvh_query_next(query: BvhQueryTiled) -> Tile[int32, Tuple[int]]:
     """Move to the next bound in a thread-block parallel BVH query and return results as a tile.
 
     Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
@@ -4022,7 +3601,6 @@ def tile_bvh_query_next(query: BvhQueryTiled) -> Tile[int32,Tuple[int]]:
     """
     ...
 
-
 @over
 def bvh_get_group_root(id: uint64, group: int32) -> int:
     """Get the root of a group in a BVH.
@@ -4035,7 +3613,6 @@ def bvh_get_group_root(id: uint64, group: int32) -> int:
     """
     ...
 
-
 @over
 def mesh_get_group_root(id: uint64, group: int32) -> int:
     """Get the root of a group in a :class:`Mesh`.
@@ -4047,7 +3624,6 @@ def mesh_get_group_root(id: uint64, group: int32) -> int:
     :param group: The group identifier
     """
     ...
-
 
 @over
 def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint:
@@ -4063,7 +3639,6 @@ def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPo
     """
     ...
 
-
 @over
 def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint:
     """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
@@ -4076,7 +3651,6 @@ def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> Mes
     """
     ...
 
-
 @over
 def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float32) -> MeshQueryPoint:
     """Computes the furthest point on the mesh with identifier `id` to the given point in space.
@@ -4088,7 +3662,6 @@ def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float3
     :param min_dist: Mesh faces below this distance will not be considered by the query
     """
     ...
-
 
 @over
 def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32) -> MeshQueryPoint:
@@ -4106,9 +3679,10 @@ def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, ep
     """
     ...
 
-
 @over
-def mesh_query_point_sign_winding_number(id: uint64, point: vec3f, max_dist: float32, accuracy: float32, threshold: float32) -> MeshQueryPoint:
+def mesh_query_point_sign_winding_number(
+    id: uint64, point: vec3f, max_dist: float32, accuracy: float32, threshold: float32
+) -> MeshQueryPoint:
     """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given point in space.
 
     Identifies the sign using the winding number of the mesh relative to the query point. This method of sign determination is robust for poorly conditioned meshes
@@ -4124,7 +3698,6 @@ def mesh_query_point_sign_winding_number(id: uint64, point: vec3f, max_dist: flo
     :param threshold: The threshold of the winding number to be considered inside, default 0.5
     """
     ...
-
 
 @over
 def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32) -> MeshQueryRay:
@@ -4142,7 +3715,6 @@ def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: i
     """
     ...
 
-
 @over
 def mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32) -> bool:
     """Returns ``True`` immediately upon the first ray hit on the :class:`Mesh` with identifier ``id``.
@@ -4159,7 +3731,6 @@ def mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32, 
     """
     ...
 
-
 @over
 def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB:
     """Construct an axis-aligned bounding box query against a :class:`Mesh`.
@@ -4172,7 +3743,6 @@ def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB:
     """
     ...
 
-
 @over
 def mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool:
     """Move to the next triangle whose bounding box overlaps the query bounding box.
@@ -4180,7 +3750,6 @@ def mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool:
     The index of the current face is stored in ``index``, returns ``False`` if there are no more overlapping triangles.
     """
     ...
-
 
 @over
 def mesh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTiled:
@@ -4194,9 +3763,8 @@ def mesh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBT
     """
     ...
 
-
 @over
-def mesh_query_aabb_next_tiled(query: MeshQueryAABBTiled) -> Tile[int32,Tuple[int]]:
+def mesh_query_aabb_next_tiled(query: MeshQueryAABBTiled) -> Tile[int32, Tuple[int]]:
     """Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.
 
     Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
@@ -4209,7 +3777,6 @@ def mesh_query_aabb_next_tiled(query: MeshQueryAABBTiled) -> Tile[int32,Tuple[in
               the result index for that thread (-1 if no result)
     """
     ...
-
 
 @over
 def tile_mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTiled:
@@ -4225,9 +3792,8 @@ def tile_mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTi
     """
     ...
 
-
 @over
-def tile_mesh_query_aabb_next(query: MeshQueryAABBTiled) -> Tile[int32,Tuple[int]]:
+def tile_mesh_query_aabb_next(query: MeshQueryAABBTiled) -> Tile[int32, Tuple[int]]:
     """Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.
 
     Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
@@ -4243,20 +3809,15 @@ def tile_mesh_query_aabb_next(query: MeshQueryAABBTiled) -> Tile[int32,Tuple[int
     """
     ...
 
-
 @over
 def mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
-    """Evaluates the position on the :class:`Mesh` given a face index and barycentric coordinates.
-    """
+    """Evaluates the position on the :class:`Mesh` given a face index and barycentric coordinates."""
     ...
-
 
 @over
 def mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
-    """Evaluates the velocity on the :class:`Mesh` given a face index and barycentric coordinates.
-    """
+    """Evaluates the velocity on the :class:`Mesh` given a face index and barycentric coordinates."""
     ...
-
 
 @over
 def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> HashGridQuery:
@@ -4266,7 +3827,6 @@ def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> HashGridQuer
     """
     ...
 
-
 @over
 def hash_grid_query_next(query: HashGridQuery, index: int32) -> bool:
     """Move to the next point in the hash grid query.
@@ -4274,7 +3834,6 @@ def hash_grid_query_next(query: HashGridQuery, index: int32) -> bool:
     The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.
     """
     ...
-
 
 @over
 def hash_grid_point_id(id: uint64, index: int32) -> int:
@@ -4286,7 +3845,6 @@ def hash_grid_point_id(id: uint64, index: int32) -> int:
     """
     ...
 
-
 @over
 def intersect_tri_tri(v0: vec3f, v1: vec3f, v2: vec3f, u0: vec3f, u1: vec3f, u2: vec3f) -> int:
     """Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method.
@@ -4296,7 +3854,6 @@ def intersect_tri_tri(v0: vec3f, v1: vec3f, v2: vec3f, u0: vec3f, u1: vec3f, u2:
     Returns > 0 if triangles intersect.
     """
     ...
-
 
 @over
 def intersect_tri_tri(v0: vec3d, v1: vec3d, v2: vec3d, u0: vec3d, u1: vec3d, u2: vec3d) -> int:
@@ -4308,41 +3865,30 @@ def intersect_tri_tri(v0: vec3d, v1: vec3d, v2: vec3d, u0: vec3d, u1: vec3d, u2:
     """
     ...
 
-
 @over
 def mesh_get(id: uint64) -> Mesh:
-    """Retrieves the mesh given its index.
-    """
+    """Retrieves the mesh given its index."""
     ...
-
 
 @over
 def mesh_eval_face_normal(id: uint64, face: int32) -> vec3f:
-    """Evaluates the face normal the mesh given a face index.
-    """
+    """Evaluates the face normal the mesh given a face index."""
     ...
-
 
 @over
 def mesh_get_point(id: uint64, index: int32) -> vec3f:
-    """Returns the point of the mesh given a index.
-    """
+    """Returns the point of the mesh given a index."""
     ...
-
 
 @over
 def mesh_get_velocity(id: uint64, index: int32) -> vec3f:
-    """Returns the velocity of the mesh given a index.
-    """
+    """Returns the velocity of the mesh given a index."""
     ...
-
 
 @over
 def mesh_get_index(id: uint64, index: int32) -> int:
-    """Returns the point-index of the mesh given a face-vertex index.
-    """
+    """Returns the point-index of the mesh given a face-vertex index."""
     ...
-
 
 @over
 def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon: float32) -> vec3f:
@@ -4359,13 +3905,10 @@ def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon:
     """
     ...
 
-
 @over
 def reversed(range: range_t) -> range_t:
-    """Returns the range in reversed order.
-    """
+    """Returns the range in reversed order."""
     ...
-
 
 @over
 def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any) -> Any:
@@ -4375,7 +3918,6 @@ def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any) -> A
     """
     ...
 
-
 @over
 def volume_sample_grad(id: uint64, uvw: vec3f, sampling_mode: int32, grad: Any, dtype: Any) -> Any:
     """Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
@@ -4383,7 +3925,6 @@ def volume_sample_grad(id: uint64, uvw: vec3f, sampling_mode: int32, grad: Any, 
     Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
     """
     ...
-
 
 @over
 def volume_lookup(id: uint64, i: int32, j: int32, k: int32, dtype: Any) -> Any:
@@ -4393,13 +3934,10 @@ def volume_lookup(id: uint64, i: int32, j: int32, k: int32, dtype: Any) -> Any:
     """
     ...
 
-
 @over
 def volume_store(id: uint64, i: int32, j: int32, k: int32, value: Any):
-    """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
-    """
+    """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
     ...
-
 
 @over
 def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
@@ -4409,7 +3947,6 @@ def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
     """
     ...
 
-
 @over
 def volume_sample_grad_f(id: uint64, uvw: vec3f, sampling_mode: int32, grad: vec3f) -> float:
     """Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``.
@@ -4417,7 +3954,6 @@ def volume_sample_grad_f(id: uint64, uvw: vec3f, sampling_mode: int32, grad: vec
     Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
     """
     ...
-
 
 @over
 def volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float:
@@ -4427,13 +3963,10 @@ def volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float:
     """
     ...
 
-
 @over
 def volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32):
-    """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
-    """
+    """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
     ...
-
 
 @over
 def volume_sample_v(id: uint64, uvw: vec3f, sampling_mode: int32) -> vec3f:
@@ -4443,7 +3976,6 @@ def volume_sample_v(id: uint64, uvw: vec3f, sampling_mode: int32) -> vec3f:
     """
     ...
 
-
 @over
 def volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3f:
     """Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``.
@@ -4452,20 +3984,15 @@ def volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3f:
     """
     ...
 
-
 @over
 def volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3f):
-    """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
-    """
+    """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
     ...
-
 
 @over
 def volume_sample_i(id: uint64, uvw: vec3f) -> int:
-    """Sample the :class:`int32` volume given by ``id`` at the volume local-space point ``uvw``. 
-    """
+    """Sample the :class:`int32` volume given by ``id`` at the volume local-space point ``uvw``."""
     ...
-
 
 @over
 def volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int:
@@ -4475,13 +4002,10 @@ def volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int:
     """
     ...
 
-
 @over
 def volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32):
-    """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
-    """
+    """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
     ...
-
 
 @over
 def volume_sample_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any) -> Any:
@@ -4490,22 +4014,22 @@ def volume_sample_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data
     Values for allocated voxels are read from the ``voxel_data`` array, and `background` is used as the value of non-existing voxels.
     Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR`.
     This function is available for both index grids and classical volumes.
-    
+
     """
     ...
 
-
 @over
-def volume_sample_grad_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any, grad: Any) -> Any:
+def volume_sample_grad_index(
+    id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any, grad: Any
+) -> Any:
     """Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
 
     Values for allocated voxels are read from the ``voxel_data`` array, and `background` is used as the value of non-existing voxels.
     Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR`.
     This function is available for both index grids and classical volumes.
-   
+
     """
     ...
-
 
 @over
 def volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32:
@@ -4513,73 +4037,54 @@ def volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32:
 
     If the voxel at this index does not exist, this function returns -1.
     This function is available for both index grids and classical volumes.
-    
+
     """
     ...
-
 
 @over
 def volume_index_to_world(id: uint64, uvw: vec3f) -> vec3f:
-    """Transform a point ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation.
-    """
+    """Transform a point ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation."""
     ...
-
 
 @over
 def volume_world_to_index(id: uint64, xyz: vec3f) -> vec3f:
-    """Transform a point ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.
-    """
+    """Transform a point ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation."""
     ...
-
 
 @over
 def volume_index_to_world_dir(id: uint64, uvw: vec3f) -> vec3f:
-    """Transform a direction ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation.
-    """
+    """Transform a direction ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation."""
     ...
-
 
 @over
 def volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f:
-    """Transform a direction ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.
-    """
+    """Transform a direction ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation."""
     ...
-
 
 @over
 def texture_width(tex: texture2d_t) -> int32:
-    """Return the width of a 2D texture in pixels.
-    """
+    """Return the width of a 2D texture in pixels."""
     ...
-
 
 @over
 def texture_width(tex: texture3d_t) -> int32:
-    """Return the width of a 3D texture in pixels.
-    """
+    """Return the width of a 3D texture in pixels."""
     ...
-
 
 @over
 def texture_height(tex: texture2d_t) -> int32:
-    """Return the height of a 2D texture in pixels.
-    """
+    """Return the height of a 2D texture in pixels."""
     ...
-
 
 @over
 def texture_height(tex: texture3d_t) -> int32:
-    """Return the height of a 3D texture in pixels.
-    """
+    """Return the height of a 3D texture in pixels."""
     ...
-
 
 @over
 def texture_depth(tex: texture3d_t) -> int32:
-    """Return the depth of a 3D texture in pixels.
-    """
+    """Return the depth of a 3D texture in pixels."""
     ...
-
 
 @over
 def tex2d_float(tex: texture2d_t, u: float32, v: float32) -> float:
@@ -4590,7 +4095,6 @@ def tex2d_float(tex: texture2d_t, u: float32, v: float32) -> float:
     """
     ...
 
-
 @over
 def tex2d_vec2(tex: texture2d_t, u: float32, v: float32) -> vec2f:
     """Sample a 2D texture at the given normalized UV coordinates.
@@ -4599,7 +4103,6 @@ def tex2d_vec2(tex: texture2d_t, u: float32, v: float32) -> vec2f:
     The texture must have 2 channels.
     """
     ...
-
 
 @over
 def tex2d_vec3(tex: texture2d_t, u: float32, v: float32) -> vec3f:
@@ -4610,7 +4113,6 @@ def tex2d_vec3(tex: texture2d_t, u: float32, v: float32) -> vec3f:
     """
     ...
 
-
 @over
 def tex2d_vec4(tex: texture2d_t, u: float32, v: float32) -> vec4f:
     """Sample a 2D texture at the given normalized UV coordinates.
@@ -4619,7 +4121,6 @@ def tex2d_vec4(tex: texture2d_t, u: float32, v: float32) -> vec4f:
     The texture must have 4 channels.
     """
     ...
-
 
 @over
 def tex3d_float(tex: texture3d_t, u: float32, v: float32, w: float32) -> float:
@@ -4630,7 +4131,6 @@ def tex3d_float(tex: texture3d_t, u: float32, v: float32, w: float32) -> float:
     """
     ...
 
-
 @over
 def tex3d_vec2(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec2f:
     """Sample a 3D texture at the given normalized UVW coordinates.
@@ -4639,7 +4139,6 @@ def tex3d_vec2(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec2f:
     The texture must have 2 channels.
     """
     ...
-
 
 @over
 def tex3d_vec3(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec3f:
@@ -4650,7 +4149,6 @@ def tex3d_vec3(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec3f:
     """
     ...
 
-
 @over
 def tex3d_vec4(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec4f:
     """Sample a 3D texture at the given normalized UVW coordinates.
@@ -4660,13 +4158,10 @@ def tex3d_vec4(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec4f:
     """
     ...
 
-
 @over
 def rand_init(seed: int32) -> uint32:
-    """Initialize a new random number generator given a user-defined seed. Returns a 32-bit integer representing the RNG state.
-    """
+    """Initialize a new random number generator given a user-defined seed. Returns a 32-bit integer representing the RNG state."""
     ...
-
 
 @over
 def rand_init(seed: int32, offset: int32) -> uint32:
@@ -4677,125 +4172,90 @@ def rand_init(seed: int32, offset: int32) -> uint32:
     """
     ...
 
-
 @over
 def randi(state: uint32) -> int:
-    """Return a random integer in the range [-2^31, 2^31).
-    """
+    """Return a random integer in the range [-2^31, 2^31)."""
     ...
-
 
 @over
 def randi(state: uint32, low: int32, high: int32) -> int:
-    """Return a random integer between [low, high).
-    """
+    """Return a random integer between [low, high)."""
     ...
-
 
 @over
 def randu(state: uint32) -> uint32:
-    """Return a random unsigned integer in the range [0, 2^32).
-    """
+    """Return a random unsigned integer in the range [0, 2^32)."""
     ...
-
 
 @over
 def randu(state: uint32, low: uint32, high: uint32) -> uint32:
-    """Return a random unsigned integer between [low, high).
-    """
+    """Return a random unsigned integer between [low, high)."""
     ...
-
 
 @over
 def randf(state: uint32) -> float:
-    """Return a random float between [0.0, 1.0).
-    """
+    """Return a random float between [0.0, 1.0)."""
     ...
-
 
 @over
 def randf(state: uint32, low: float32, high: float32) -> float:
-    """Return a random float between [low, high).
-    """
+    """Return a random float between [low, high)."""
     ...
-
 
 @over
 def randn(state: uint32) -> float:
-    """Sample a normal (Gaussian) distribution of mean 0 and variance 1. 
-    """
+    """Sample a normal (Gaussian) distribution of mean 0 and variance 1."""
     ...
-
 
 @over
 def sample_cdf(state: uint32, cdf: Array[float32]) -> int:
-    """Inverse-transform sample a cumulative distribution function.
-    """
+    """Inverse-transform sample a cumulative distribution function."""
     ...
-
 
 @over
 def sample_triangle(state: uint32) -> vec2f:
-    """Uniformly sample a triangle. Returns sample barycentric coordinates.
-    """
+    """Uniformly sample a triangle. Returns sample barycentric coordinates."""
     ...
-
 
 @over
 def sample_unit_ring(state: uint32) -> vec2f:
-    """Uniformly sample a ring in the xy plane.
-    """
+    """Uniformly sample a ring in the xy plane."""
     ...
-
 
 @over
 def sample_unit_disk(state: uint32) -> vec2f:
-    """Uniformly sample a disk in the xy plane.
-    """
+    """Uniformly sample a disk in the xy plane."""
     ...
-
 
 @over
 def sample_unit_sphere_surface(state: uint32) -> vec3f:
-    """Uniformly sample a unit sphere surface.
-    """
+    """Uniformly sample a unit sphere surface."""
     ...
-
 
 @over
 def sample_unit_sphere(state: uint32) -> vec3f:
-    """Uniformly sample a unit sphere.
-    """
+    """Uniformly sample a unit sphere."""
     ...
-
 
 @over
 def sample_unit_hemisphere_surface(state: uint32) -> vec3f:
-    """Uniformly sample a unit hemisphere surface.
-    """
+    """Uniformly sample a unit hemisphere surface."""
     ...
-
 
 @over
 def sample_unit_hemisphere(state: uint32) -> vec3f:
-    """Uniformly sample a unit hemisphere.
-    """
+    """Uniformly sample a unit hemisphere."""
     ...
-
 
 @over
 def sample_unit_square(state: uint32) -> vec2f:
-    """Uniformly sample a unit square.
-    """
+    """Uniformly sample a unit square."""
     ...
-
 
 @over
 def sample_unit_cube(state: uint32) -> vec3f:
-    """Uniformly sample a unit cube.
-    """
+    """Uniformly sample a unit cube."""
     ...
-
 
 @over
 def poisson(state: uint32, lam: float32) -> uint32:
@@ -4806,104 +4266,75 @@ def poisson(state: uint32, lam: float32) -> uint32:
     """
     ...
 
-
 @over
 def noise(state: uint32, x: float32) -> float:
-    """Non-periodic Perlin-style noise in 1D.
-    """
+    """Non-periodic Perlin-style noise in 1D."""
     ...
-
 
 @over
 def noise(state: uint32, xy: vec2f) -> float:
-    """Non-periodic Perlin-style noise in 2D.
-    """
+    """Non-periodic Perlin-style noise in 2D."""
     ...
-
 
 @over
 def noise(state: uint32, xyz: vec3f) -> float:
-    """Non-periodic Perlin-style noise in 3D.
-    """
+    """Non-periodic Perlin-style noise in 3D."""
     ...
-
 
 @over
 def noise(state: uint32, xyzt: vec4f) -> float:
-    """Non-periodic Perlin-style noise in 4D.
-    """
+    """Non-periodic Perlin-style noise in 4D."""
     ...
-
 
 @over
 def pnoise(state: uint32, x: float32, px: int32) -> float:
-    """Periodic Perlin-style noise in 1D.
-    """
+    """Periodic Perlin-style noise in 1D."""
     ...
-
 
 @over
 def pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float:
-    """Periodic Perlin-style noise in 2D.
-    """
+    """Periodic Perlin-style noise in 2D."""
     ...
-
 
 @over
 def pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float:
-    """Periodic Perlin-style noise in 3D.
-    """
+    """Periodic Perlin-style noise in 3D."""
     ...
-
 
 @over
 def pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int32) -> float:
-    """Periodic Perlin-style noise in 4D.
-    """
+    """Periodic Perlin-style noise in 4D."""
     ...
-
 
 @over
 def curlnoise(state: uint32, xy: vec2f, octaves: uint32, lacunarity: float32, gain: float32) -> vec2f:
-    """Divergence-free vector field based on the gradient of a Perlin noise function.
-    """
+    """Divergence-free vector field based on the gradient of a Perlin noise function."""
     ...
-
 
 @over
 def curlnoise(state: uint32, xyz: vec3f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f:
-    """Divergence-free vector field based on the curl of three Perlin noise functions.
-    """
+    """Divergence-free vector field based on the curl of three Perlin noise functions."""
     ...
-
 
 @over
 def curlnoise(state: uint32, xyzt: vec4f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f:
-    """Divergence-free vector field based on the curl of three Perlin noise functions.
-    """
+    """Divergence-free vector field based on the curl of three Perlin noise functions."""
     ...
-
 
 @over
 def printf(fmt: str, *args: Any):
-    """Allows printing formatted strings using C-style format specifiers.
-    """
+    """Allows printing formatted strings using C-style format specifiers."""
     ...
-
 
 @over
 def print(value: Any):
-    """Print variable to stdout
-    """
+    """Print variable to stdout"""
     ...
-
 
 @over
 def breakpoint():
-    """Debugger breakpoint
-    """
+    """Debugger breakpoint"""
     ...
-
 
 @over
 def tid() -> int:
@@ -4916,7 +4347,6 @@ def tid() -> int:
     """
     ...
 
-
 @over
 def tid() -> Tuple[int, int]:
     """Return the current thread indices for a 2D kernel launch.
@@ -4926,7 +4356,6 @@ def tid() -> Tuple[int, int]:
     This function may not be called from user-defined Warp functions.
     """
     ...
-
 
 @over
 def tid() -> Tuple[int, int, int]:
@@ -4938,7 +4367,6 @@ def tid() -> Tuple[int, int, int]:
     """
     ...
 
-
 @over
 def tid() -> Tuple[int, int, int, int]:
     """Return the current thread indices for a 4D kernel launch.
@@ -4949,13 +4377,10 @@ def tid() -> Tuple[int, int, int, int]:
     """
     ...
 
-
 @over
 def block_dim() -> int:
-    """Returns the number of threads in the current block.
-    """
+    """Returns the number of threads in the current block."""
     ...
-
 
 @over
 def select(cond: bool, value_if_false: Any, value_if_true: Any) -> Any:
@@ -4969,7 +4394,6 @@ def select(cond: bool, value_if_false: Any, value_if_true: Any) -> Any:
     """
     ...
 
-
 @over
 def select(cond: int8, value_if_false: Any, value_if_true: Any) -> Any:
     """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
@@ -4981,7 +4405,6 @@ def select(cond: int8, value_if_false: Any, value_if_true: Any) -> Any:
     .. deprecated:: 1.7
     """
     ...
-
 
 @over
 def select(cond: uint8, value_if_false: Any, value_if_true: Any) -> Any:
@@ -4995,7 +4418,6 @@ def select(cond: uint8, value_if_false: Any, value_if_true: Any) -> Any:
     """
     ...
 
-
 @over
 def select(cond: int16, value_if_false: Any, value_if_true: Any) -> Any:
     """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
@@ -5007,7 +4429,6 @@ def select(cond: int16, value_if_false: Any, value_if_true: Any) -> Any:
     .. deprecated:: 1.7
     """
     ...
-
 
 @over
 def select(cond: uint16, value_if_false: Any, value_if_true: Any) -> Any:
@@ -5021,7 +4442,6 @@ def select(cond: uint16, value_if_false: Any, value_if_true: Any) -> Any:
     """
     ...
 
-
 @over
 def select(cond: int32, value_if_false: Any, value_if_true: Any) -> Any:
     """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
@@ -5033,7 +4453,6 @@ def select(cond: int32, value_if_false: Any, value_if_true: Any) -> Any:
     .. deprecated:: 1.7
     """
     ...
-
 
 @over
 def select(cond: uint32, value_if_false: Any, value_if_true: Any) -> Any:
@@ -5047,7 +4466,6 @@ def select(cond: uint32, value_if_false: Any, value_if_true: Any) -> Any:
     """
     ...
 
-
 @over
 def select(cond: int64, value_if_false: Any, value_if_true: Any) -> Any:
     """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
@@ -5059,7 +4477,6 @@ def select(cond: int64, value_if_false: Any, value_if_true: Any) -> Any:
     .. deprecated:: 1.7
     """
     ...
-
 
 @over
 def select(cond: uint64, value_if_false: Any, value_if_true: Any) -> Any:
@@ -5073,7 +4490,6 @@ def select(cond: uint64, value_if_false: Any, value_if_true: Any) -> Any:
     """
     ...
 
-
 @over
 def select(arr: Array[Any], value_if_false: Any, value_if_true: Any) -> Any:
     """Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``.
@@ -5086,76 +4502,55 @@ def select(arr: Array[Any], value_if_false: Any, value_if_true: Any) -> Any:
     """
     ...
 
-
 @over
 def where(cond: bool, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
-    """
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
     ...
-
 
 @over
 def where(cond: int8, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
-    """
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
     ...
-
 
 @over
 def where(cond: uint8, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
-    """
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
     ...
-
 
 @over
 def where(cond: int16, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
-    """
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
     ...
-
 
 @over
 def where(cond: uint16, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
-    """
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
     ...
-
 
 @over
 def where(cond: int32, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
-    """
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
     ...
-
 
 @over
 def where(cond: uint32, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
-    """
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
     ...
-
 
 @over
 def where(cond: int64, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
-    """
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
     ...
-
 
 @over
 def where(cond: uint64, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
-    """
+    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
     ...
-
 
 @over
 def where(arr: Array[Any], value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``arr`` is not null then return ``value_if_true``, otherwise return ``value_if_false``.
-    """
+    """Select between two arguments, if ``arr`` is not null then return ``value_if_true``, otherwise return ``value_if_false``."""
     ...
-
 
 @over
 def atomic_add(arr: Array[Any], i: Int, value: Any) -> Any:
@@ -5165,7 +4560,6 @@ def atomic_add(arr: Array[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_add(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
@@ -5173,7 +4567,6 @@ def atomic_add(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     This function is automatically invoked when using the syntax ``arr[i,j] += value``.
     """
     ...
-
 
 @over
 def atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5183,7 +4576,6 @@ def atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
@@ -5191,7 +4583,6 @@ def atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> A
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.
     """
     ...
-
 
 @over
 def atomic_add(arr: FabricArray[Any], i: Int, value: Any) -> Any:
@@ -5201,7 +4592,6 @@ def atomic_add(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_add(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
@@ -5209,7 +4599,6 @@ def atomic_add(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     This function is automatically invoked when using the syntax ``arr[i,j] += value``.
     """
     ...
-
 
 @over
 def atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5219,7 +4608,6 @@ def atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
     """
     ...
 
-
 @over
 def atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
@@ -5227,7 +4615,6 @@ def atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.
     """
     ...
-
 
 @over
 def atomic_add(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
@@ -5237,7 +4624,6 @@ def atomic_add(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
@@ -5245,7 +4631,6 @@ def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     This function is automatically invoked when using the syntax ``arr[i,j] += value``.
     """
     ...
-
 
 @over
 def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5255,7 +4640,6 @@ def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any)
     """
     ...
 
-
 @over
 def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
@@ -5263,7 +4647,6 @@ def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, val
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.
     """
     ...
-
 
 @over
 def atomic_sub(arr: Array[Any], i: Int, value: Any) -> Any:
@@ -5273,7 +4656,6 @@ def atomic_sub(arr: Array[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_sub(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
@@ -5281,7 +4663,6 @@ def atomic_sub(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     This function is automatically invoked when using the syntax ``arr[i,j] -= value``.
     """
     ...
-
 
 @over
 def atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5291,7 +4672,6 @@ def atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
@@ -5299,7 +4679,6 @@ def atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> A
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.
     """
     ...
-
 
 @over
 def atomic_sub(arr: FabricArray[Any], i: Int, value: Any) -> Any:
@@ -5309,7 +4688,6 @@ def atomic_sub(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
@@ -5317,7 +4695,6 @@ def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     This function is automatically invoked when using the syntax ``arr[i,j] -= value``.
     """
     ...
-
 
 @over
 def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5327,7 +4704,6 @@ def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
     """
     ...
 
-
 @over
 def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
@@ -5335,7 +4711,6 @@ def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.
     """
     ...
-
 
 @over
 def atomic_sub(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
@@ -5345,7 +4720,6 @@ def atomic_sub(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
@@ -5353,7 +4727,6 @@ def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     This function is automatically invoked when using the syntax ``arr[i,j] -= value``.
     """
     ...
-
 
 @over
 def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5363,7 +4736,6 @@ def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any)
     """
     ...
 
-
 @over
 def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
@@ -5371,7 +4743,6 @@ def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, val
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.
     """
     ...
-
 
 @over
 def atomic_min(arr: Array[Any], i: Int, value: Any) -> Any:
@@ -5381,7 +4752,6 @@ def atomic_min(arr: Array[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_min(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
@@ -5389,7 +4759,6 @@ def atomic_min(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_min(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5399,7 +4768,6 @@ def atomic_min(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_min(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
@@ -5407,7 +4775,6 @@ def atomic_min(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> A
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_min(arr: FabricArray[Any], i: Int, value: Any) -> Any:
@@ -5417,7 +4784,6 @@ def atomic_min(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_min(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
@@ -5425,7 +4791,6 @@ def atomic_min(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_min(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5435,7 +4800,6 @@ def atomic_min(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
     """
     ...
 
-
 @over
 def atomic_min(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
@@ -5443,7 +4807,6 @@ def atomic_min(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_min(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
@@ -5453,7 +4816,6 @@ def atomic_min(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_min(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
@@ -5461,7 +4823,6 @@ def atomic_min(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_min(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5471,7 +4832,6 @@ def atomic_min(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any)
     """
     ...
 
-
 @over
 def atomic_min(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
@@ -5479,7 +4839,6 @@ def atomic_min(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, val
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_max(arr: Array[Any], i: Int, value: Any) -> Any:
@@ -5489,7 +4848,6 @@ def atomic_max(arr: Array[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_max(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
@@ -5497,7 +4855,6 @@ def atomic_max(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_max(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5507,7 +4864,6 @@ def atomic_max(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_max(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
@@ -5515,7 +4871,6 @@ def atomic_max(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> A
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_max(arr: FabricArray[Any], i: Int, value: Any) -> Any:
@@ -5525,7 +4880,6 @@ def atomic_max(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_max(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
@@ -5533,7 +4887,6 @@ def atomic_max(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_max(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5543,7 +4896,6 @@ def atomic_max(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
     """
     ...
 
-
 @over
 def atomic_max(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
@@ -5551,7 +4903,6 @@ def atomic_max(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_max(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
@@ -5561,7 +4912,6 @@ def atomic_max(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
@@ -5569,7 +4919,6 @@ def atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5579,7 +4928,6 @@ def atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any)
     """
     ...
 
-
 @over
 def atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
@@ -5587,7 +4935,6 @@ def atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, val
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_cas(arr: Array[Any], i: Int, compare: Any, value: Any) -> Any:
@@ -5597,7 +4944,6 @@ def atomic_cas(arr: Array[Any], i: Int, compare: Any, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_cas(arr: Array[Any], i: Int, j: Int, compare: Any, value: Any) -> Any:
     """Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
@@ -5605,7 +4951,6 @@ def atomic_cas(arr: Array[Any], i: Int, j: Int, compare: Any, value: Any) -> Any
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_cas(arr: Array[Any], i: Int, j: Int, k: Int, compare: Any, value: Any) -> Any:
@@ -5615,7 +4960,6 @@ def atomic_cas(arr: Array[Any], i: Int, j: Int, k: Int, compare: Any, value: Any
     """
     ...
 
-
 @over
 def atomic_cas(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, value: Any) -> Any:
     """Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
@@ -5623,7 +4967,6 @@ def atomic_cas(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, va
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_cas(arr: FabricArray[Any], i: Int, compare: Any, value: Any) -> Any:
@@ -5633,7 +4976,6 @@ def atomic_cas(arr: FabricArray[Any], i: Int, compare: Any, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_cas(arr: FabricArray[Any], i: Int, j: Int, compare: Any, value: Any) -> Any:
     """Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
@@ -5641,7 +4983,6 @@ def atomic_cas(arr: FabricArray[Any], i: Int, j: Int, compare: Any, value: Any) 
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_cas(arr: FabricArray[Any], i: Int, j: Int, k: Int, compare: Any, value: Any) -> Any:
@@ -5651,7 +4992,6 @@ def atomic_cas(arr: FabricArray[Any], i: Int, j: Int, k: Int, compare: Any, valu
     """
     ...
 
-
 @over
 def atomic_cas(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, value: Any) -> Any:
     """Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
@@ -5659,7 +4999,6 @@ def atomic_cas(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, compare: A
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_cas(arr: IndexedFabricArray[Any], i: Int, compare: Any, value: Any) -> Any:
@@ -5669,7 +5008,6 @@ def atomic_cas(arr: IndexedFabricArray[Any], i: Int, compare: Any, value: Any) -
     """
     ...
 
-
 @over
 def atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, compare: Any, value: Any) -> Any:
     """Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
@@ -5677,7 +5015,6 @@ def atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, compare: Any, value
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, compare: Any, value: Any) -> Any:
@@ -5687,7 +5024,6 @@ def atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, compare: An
     """
     ...
 
-
 @over
 def atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, value: Any) -> Any:
     """Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
@@ -5695,7 +5031,6 @@ def atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, com
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_exch(arr: Array[Any], i: Int, value: Any) -> Any:
@@ -5705,7 +5040,6 @@ def atomic_exch(arr: Array[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_exch(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
@@ -5713,7 +5047,6 @@ def atomic_exch(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5723,7 +5056,6 @@ def atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
@@ -5731,7 +5063,6 @@ def atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> 
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_exch(arr: FabricArray[Any], i: Int, value: Any) -> Any:
@@ -5741,7 +5072,6 @@ def atomic_exch(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_exch(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
@@ -5749,7 +5079,6 @@ def atomic_exch(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_exch(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5759,7 +5088,6 @@ def atomic_exch(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> An
     """
     ...
 
-
 @over
 def atomic_exch(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
@@ -5767,7 +5095,6 @@ def atomic_exch(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: An
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_exch(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
@@ -5777,7 +5104,6 @@ def atomic_exch(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
@@ -5785,7 +5111,6 @@ def atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5795,7 +5120,6 @@ def atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any
     """
     ...
 
-
 @over
 def atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
@@ -5803,7 +5127,6 @@ def atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, va
     The operation is only atomic on a per-component basis for vectors and matrices.
     """
     ...
-
 
 @over
 def atomic_and(arr: Array[Any], i: Int, value: Any) -> Any:
@@ -5813,7 +5136,6 @@ def atomic_and(arr: Array[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_and(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
@@ -5821,7 +5143,6 @@ def atomic_and(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     This function is automatically invoked when using the syntax ``arr[i,j] &= value``.
     """
     ...
-
 
 @over
 def atomic_and(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5831,7 +5152,6 @@ def atomic_and(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_and(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
@@ -5839,7 +5159,6 @@ def atomic_and(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> A
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.
     """
     ...
-
 
 @over
 def atomic_and(arr: FabricArray[Any], i: Int, value: Any) -> Any:
@@ -5849,7 +5168,6 @@ def atomic_and(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_and(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
@@ -5857,7 +5175,6 @@ def atomic_and(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     This function is automatically invoked when using the syntax ``arr[i,j] &= value``.
     """
     ...
-
 
 @over
 def atomic_and(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5867,7 +5184,6 @@ def atomic_and(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
     """
     ...
 
-
 @over
 def atomic_and(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
@@ -5875,7 +5191,6 @@ def atomic_and(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.
     """
     ...
-
 
 @over
 def atomic_and(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
@@ -5885,7 +5200,6 @@ def atomic_and(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
@@ -5893,7 +5207,6 @@ def atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     This function is automatically invoked when using the syntax ``arr[i,j] &= value``.
     """
     ...
-
 
 @over
 def atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5903,7 +5216,6 @@ def atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any)
     """
     ...
 
-
 @over
 def atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
@@ -5911,7 +5223,6 @@ def atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, val
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.
     """
     ...
-
 
 @over
 def atomic_or(arr: Array[Any], i: Int, value: Any) -> Any:
@@ -5921,7 +5232,6 @@ def atomic_or(arr: Array[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_or(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
@@ -5929,7 +5239,6 @@ def atomic_or(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     This function is automatically invoked when using the syntax ``arr[i,j] |= value``.
     """
     ...
-
 
 @over
 def atomic_or(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5939,7 +5248,6 @@ def atomic_or(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_or(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
@@ -5947,7 +5255,6 @@ def atomic_or(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> An
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.
     """
     ...
-
 
 @over
 def atomic_or(arr: FabricArray[Any], i: Int, value: Any) -> Any:
@@ -5957,7 +5264,6 @@ def atomic_or(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_or(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
@@ -5965,7 +5271,6 @@ def atomic_or(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     This function is automatically invoked when using the syntax ``arr[i,j] |= value``.
     """
     ...
-
 
 @over
 def atomic_or(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -5975,7 +5280,6 @@ def atomic_or(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_or(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
@@ -5983,7 +5287,6 @@ def atomic_or(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any)
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.
     """
     ...
-
 
 @over
 def atomic_or(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
@@ -5993,7 +5296,6 @@ def atomic_or(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
@@ -6001,7 +5303,6 @@ def atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     This function is automatically invoked when using the syntax ``arr[i,j] |= value``.
     """
     ...
-
 
 @over
 def atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -6011,7 +5312,6 @@ def atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) 
     """
     ...
 
-
 @over
 def atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
@@ -6019,7 +5319,6 @@ def atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, valu
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.
     """
     ...
-
 
 @over
 def atomic_xor(arr: Array[Any], i: Int, value: Any) -> Any:
@@ -6029,7 +5328,6 @@ def atomic_xor(arr: Array[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_xor(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
@@ -6037,7 +5335,6 @@ def atomic_xor(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.
     """
     ...
-
 
 @over
 def atomic_xor(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -6047,7 +5344,6 @@ def atomic_xor(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_xor(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
@@ -6055,7 +5351,6 @@ def atomic_xor(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> A
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.
     """
     ...
-
 
 @over
 def atomic_xor(arr: FabricArray[Any], i: Int, value: Any) -> Any:
@@ -6065,7 +5360,6 @@ def atomic_xor(arr: FabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_xor(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
@@ -6073,7 +5367,6 @@ def atomic_xor(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.
     """
     ...
-
 
 @over
 def atomic_xor(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -6083,7 +5376,6 @@ def atomic_xor(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
     """
     ...
 
-
 @over
 def atomic_xor(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
@@ -6091,7 +5383,6 @@ def atomic_xor(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.
     """
     ...
-
 
 @over
 def atomic_xor(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
@@ -6101,7 +5392,6 @@ def atomic_xor(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """
     ...
 
-
 @over
 def atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
@@ -6109,7 +5399,6 @@ def atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.
     """
     ...
-
 
 @over
 def atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
@@ -6119,7 +5408,6 @@ def atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any)
     """
     ...
 
-
 @over
 def atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
@@ -6128,41 +5416,30 @@ def atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, val
     """
     ...
 
-
 @over
 def lerp(a: Float, b: Float, t: Float) -> Float:
-    """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``
-    """
+    """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``"""
     ...
-
 
 @over
-def lerp(a: Vector[Any,Float], b: Vector[Any,Float], t: Float) -> Vector[Any,Float]:
-    """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``
-    """
+def lerp(a: Vector[Any, Float], b: Vector[Any, Float], t: Float) -> Vector[Any, Float]:
+    """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``"""
     ...
-
 
 @over
-def lerp(a: Matrix[Any,Any,Float], b: Matrix[Any,Any,Float], t: Float) -> Matrix[Any,Any,Float]:
-    """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``
-    """
+def lerp(a: Matrix[Any, Any, Float], b: Matrix[Any, Any, Float], t: Float) -> Matrix[Any, Any, Float]:
+    """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``"""
     ...
-
 
 @over
 def lerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]:
-    """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``
-    """
+    """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``"""
     ...
-
 
 @over
 def lerp(a: Transformation[Float], b: Transformation[Float], t: Float) -> Transformation[Float]:
-    """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``
-    """
+    """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``"""
     ...
-
 
 @over
 def smoothstep(a: Float, b: Float, x: Float) -> Float:
@@ -6171,604 +5448,439 @@ def smoothstep(a: Float, b: Float, x: Float) -> Float:
     """
     ...
 
-
 @over
 def expect_near(a: Float, b: Float, tolerance: Float):
-    """Prints an error to stdout if ``a`` and ``b`` are not closer than tolerance in magnitude
-    """
+    """Prints an error to stdout if ``a`` and ``b`` are not closer than tolerance in magnitude"""
     ...
-
 
 @over
-def expect_near(a: Vector[Any,Float], b: Vector[Any,Float], tolerance: Float):
-    """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
-    """
+def expect_near(a: Vector[Any, Float], b: Vector[Any, Float], tolerance: Float):
+    """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude"""
     ...
-
 
 @over
 def expect_near(a: Quaternion[Float], b: Quaternion[Float], tolerance: Float):
-    """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
-    """
+    """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude"""
     ...
-
 
 @over
-def expect_near(a: Matrix[Any,Any,Float], b: Matrix[Any,Any,Float], tolerance: Float):
-    """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
-    """
+def expect_near(a: Matrix[Any, Any, Float], b: Matrix[Any, Any, Float], tolerance: Float):
+    """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude"""
     ...
-
 
 @over
 def lower_bound(arr: Array[Scalar], value: Scalar) -> int:
-    """Search a sorted array ``arr`` for the closest element greater than or equal to ``value``.
-    """
+    """Search a sorted array ``arr`` for the closest element greater than or equal to ``value``."""
     ...
-
 
 @over
 def lower_bound(arr: Array[Scalar], arr_begin: int32, arr_end: int32, value: Scalar) -> int:
-    """Search a sorted array ``arr`` in the range [arr_begin, arr_end) for the closest element greater than or equal to ``value``.
-    """
+    """Search a sorted array ``arr`` in the range [arr_begin, arr_end) for the closest element greater than or equal to ``value``."""
     ...
-
 
 @over
 def add(a: Scalar, b: Scalar) -> Scalar:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def add(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """
-    """
+def add(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """ """
     ...
-
 
 @over
 def add(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def add(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """
-    """
+def add(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
-
 
 @over
 def add(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def add(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]:
-    """Add each element of two tiles together
-    """
+def add(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+    """Add each element of two tiles together"""
     ...
-
 
 @over
 def sub(a: Scalar, b: Scalar) -> Scalar:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def sub(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """
-    """
+def sub(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """ """
     ...
-
 
 @over
-def sub(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """
-    """
+def sub(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
-
 
 @over
 def sub(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def sub(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def sub(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]:
-    """Subtract each element b from a
-    """
+def sub(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+    """Subtract each element b from a"""
     ...
-
 
 @over
 def bit_and(a: Int, b: Int) -> Int:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def bit_and(a: Vector[Any,Int], b: Vector[Any,Int]) -> Vector[Any,Int]:
-    """
-    """
+def bit_and(a: Vector[Any, Int], b: Vector[Any, Int]) -> Vector[Any, Int]:
+    """ """
     ...
-
 
 @over
-def bit_and(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]:
-    """
-    """
+def bit_and(a: Matrix[Any, Any, Int], b: Matrix[Any, Any, Int]) -> Matrix[Any, Any, Int]:
+    """ """
     ...
-
 
 @over
-def bit_and(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]:
-    """Bitwise AND each element of two tiles together
-    """
+def bit_and(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+    """Bitwise AND each element of two tiles together"""
     ...
-
 
 @over
 def bit_or(a: Int, b: Int) -> Int:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def bit_or(a: Vector[Any,Int], b: Vector[Any,Int]) -> Vector[Any,Int]:
-    """
-    """
+def bit_or(a: Vector[Any, Int], b: Vector[Any, Int]) -> Vector[Any, Int]:
+    """ """
     ...
-
 
 @over
-def bit_or(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]:
-    """
-    """
+def bit_or(a: Matrix[Any, Any, Int], b: Matrix[Any, Any, Int]) -> Matrix[Any, Any, Int]:
+    """ """
     ...
-
 
 @over
-def bit_or(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]:
-    """Bitwise OR each element of two tiles together
-    """
+def bit_or(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+    """Bitwise OR each element of two tiles together"""
     ...
-
 
 @over
 def bit_xor(a: Int, b: Int) -> Int:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def bit_xor(a: Vector[Any,Int], b: Vector[Any,Int]) -> Vector[Any,Int]:
-    """
-    """
+def bit_xor(a: Vector[Any, Int], b: Vector[Any, Int]) -> Vector[Any, Int]:
+    """ """
     ...
-
 
 @over
-def bit_xor(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]:
-    """
-    """
+def bit_xor(a: Matrix[Any, Any, Int], b: Matrix[Any, Any, Int]) -> Matrix[Any, Any, Int]:
+    """ """
     ...
-
 
 @over
-def bit_xor(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]:
-    """Bitwise XOR each element of two tiles together
-    """
+def bit_xor(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+    """Bitwise XOR each element of two tiles together"""
     ...
-
 
 @over
 def lshift(a: Int, b: Int) -> Int:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def lshift(a: Vector[Any,Int], b: Vector[Any,Int]) -> Vector[Any,Int]:
-    """
-    """
+def lshift(a: Vector[Any, Int], b: Vector[Any, Int]) -> Vector[Any, Int]:
+    """ """
     ...
-
 
 @over
-def lshift(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]:
-    """
-    """
+def lshift(a: Matrix[Any, Any, Int], b: Matrix[Any, Any, Int]) -> Matrix[Any, Any, Int]:
+    """ """
     ...
-
 
 @over
 def rshift(a: Int, b: Int) -> Int:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def rshift(a: Vector[Any,Int], b: Vector[Any,Int]) -> Vector[Any,Int]:
-    """
-    """
+def rshift(a: Vector[Any, Int], b: Vector[Any, Int]) -> Vector[Any, Int]:
+    """ """
     ...
-
 
 @over
-def rshift(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]:
-    """
-    """
+def rshift(a: Matrix[Any, Any, Int], b: Matrix[Any, Any, Int]) -> Matrix[Any, Any, Int]:
+    """ """
     ...
-
 
 @over
 def invert(a: Int) -> Int:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def invert(a: Vector[Any,Int]) -> Vector[Any,Int]:
-    """
-    """
+def invert(a: Vector[Any, Int]) -> Vector[Any, Int]:
+    """ """
     ...
-
 
 @over
-def invert(a: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]:
-    """
-    """
+def invert(a: Matrix[Any, Any, Int]) -> Matrix[Any, Any, Int]:
+    """ """
     ...
-
 
 @over
 def mul(a: Scalar, b: Scalar) -> Scalar:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def mul(a: Vector[Any,Scalar], b: Scalar) -> Vector[Any,Scalar]:
-    """
-    """
+def mul(a: Vector[Any, Scalar], b: Scalar) -> Vector[Any, Scalar]:
+    """ """
     ...
-
 
 @over
-def mul(a: Scalar, b: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """
-    """
+def mul(a: Scalar, b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """ """
     ...
-
 
 @over
 def mul(a: Quaternion[Scalar], b: Scalar) -> Quaternion[Scalar]:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def mul(a: Scalar, b: Quaternion[Scalar]) -> Quaternion[Scalar]:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def mul(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def mul(a: Scalar, b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """
-    """
+def mul(a: Scalar, b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
-
 
 @over
-def mul(a: Matrix[Any,Any,Scalar], b: Scalar) -> Matrix[Any,Any,Scalar]:
-    """
-    """
+def mul(a: Matrix[Any, Any, Scalar], b: Scalar) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
-
 
 @over
-def mul(a: Matrix[Any,Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """
-    """
+def mul(a: Matrix[Any, Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """ """
     ...
-
 
 @over
-def mul(a: Vector[Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Vector[Any,Scalar]:
-    """
-    """
+def mul(a: Vector[Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
+    """ """
     ...
-
 
 @over
-def mul(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """
-    """
+def mul(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
-
 
 @over
 def mul(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def mul(a: Scalar, b: Transformation[Scalar]) -> Transformation[Scalar]:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def mul(a: Transformation[Scalar], b: Scalar) -> Transformation[Scalar]:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def mul(x: Tile[Any,Tuple[int, ...]], y: Scalar) -> Tile[Any,Tuple[int, ...]]:
-    """Multiply each element of a tile by a scalar
-    """
+def mul(x: Tile[Any, Tuple[int, ...]], y: Scalar) -> Tile[Any, Tuple[int, ...]]:
+    """Multiply each element of a tile by a scalar"""
     ...
-
 
 @over
-def mul(x: Scalar, y: Tile[Any,Tuple[int, ...]]) -> Tile[Any,Tuple[int, ...]]:
-    """Multiply each element of a tile by a scalar
-    """
+def mul(x: Scalar, y: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
+    """Multiply each element of a tile by a scalar"""
     ...
-
 
 @over
 def mod(a: Scalar, b: Scalar) -> Scalar:
-    """Modulo operation using truncated division.
-    """
+    """Modulo operation using truncated division."""
     ...
-
 
 @over
-def mod(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """Modulo operation using truncated division.
-    """
+def mod(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """Modulo operation using truncated division."""
     ...
-
 
 @over
 def div(a: Scalar, b: Scalar) -> Scalar:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def div(a: Vector[Any,Scalar], b: Scalar) -> Vector[Any,Scalar]:
-    """
-    """
+def div(a: Vector[Any, Scalar], b: Scalar) -> Vector[Any, Scalar]:
+    """ """
     ...
-
 
 @over
-def div(a: Scalar, b: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """
-    """
+def div(a: Scalar, b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """ """
     ...
-
 
 @over
-def div(a: Matrix[Any,Any,Scalar], b: Scalar) -> Matrix[Any,Any,Scalar]:
-    """
-    """
+def div(a: Matrix[Any, Any, Scalar], b: Scalar) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
-
 
 @over
-def div(a: Scalar, b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """
-    """
+def div(a: Scalar, b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
-
 
 @over
 def div(a: Quaternion[Scalar], b: Scalar) -> Quaternion[Scalar]:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def div(a: Scalar, b: Quaternion[Scalar]) -> Quaternion[Scalar]:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def floordiv(a: Scalar, b: Scalar) -> Scalar:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def pos(x: Scalar) -> Scalar:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def pos(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """
-    """
+def pos(x: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """ """
     ...
-
 
 @over
 def pos(x: Quaternion[Scalar]) -> Quaternion[Scalar]:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def pos(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """
-    """
+def pos(x: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
-
 
 @over
 def neg(x: Scalar) -> Scalar:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def neg(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
-    """
-    """
+def neg(x: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
+    """ """
     ...
-
 
 @over
 def neg(x: Quaternion[Scalar]) -> Quaternion[Scalar]:
-    """
-    """
+    """ """
     ...
-
 
 @over
-def neg(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
-    """
-    """
+def neg(x: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
+    """ """
     ...
-
 
 @over
-def neg(x: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]:
-    """Negate each element of a tile
-    """
+def neg(x: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+    """Negate each element of a tile"""
     ...
-
 
 @over
 def unot(a: bool) -> bool:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def unot(a: int8) -> bool:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def unot(a: uint8) -> bool:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def unot(a: int16) -> bool:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def unot(a: uint16) -> bool:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def unot(a: int32) -> bool:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def unot(a: uint32) -> bool:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def unot(a: int64) -> bool:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def unot(a: uint64) -> bool:
-    """
-    """
+    """ """
     ...
-
 
 @over
 def unot(a: Array[Any]) -> bool:
-    """
-    """
+    """ """
     ...
 
-
 @over
-def tile_diag_add(a: Tile[Any,Tuple[int, int]], d: Tile[Any,Tuple[int]]) -> Tile[Any,Tuple[int, int]]:
-    """Add a square matrix and a diagonal matrix 'd' represented as a 1D tile
-    """
+def tile_diag_add(a: Tile[Any, Tuple[int, int]], d: Tile[Any, Tuple[int]]) -> Tile[Any, Tuple[int, int]]:
+    """Add a square matrix and a diagonal matrix 'd' represented as a 1D tile"""
     ...
 
-
 @over
-def tile_matmul(a: Tile[Float,Tuple[int, int]], b: Tile[Float,Tuple[int, int]], out: Tile[Float,Tuple[int, int]], alpha: Float, beta: Float):
+def tile_matmul(
+    a: Tile[Float, Tuple[int, int]],
+    b: Tile[Float, Tuple[int, int]],
+    out: Tile[Float, Tuple[int, int]],
+    alpha: Float,
+    beta: Float,
+):
     """Computes the matrix product and accumulates ``out = alpha * a*b + beta * out``.
 
     Supported datatypes are:
@@ -6785,13 +5897,14 @@ def tile_matmul(a: Tile[Float,Tuple[int, int]], b: Tile[Float,Tuple[int, int]], 
     :param out: A tile with ``shape=(M, N)``
     :param alpha: Scaling factor (default 1.0)
     :param beta: Accumulator factor (default 1.0)
-    
+
     """
     ...
 
-
 @over
-def tile_matmul(a: Tile[Float,Tuple[int, int]], b: Tile[Float,Tuple[int, int]], alpha: Float) -> Tile[Float,Tuple[int, int]]:
+def tile_matmul(
+    a: Tile[Float, Tuple[int, int]], b: Tile[Float, Tuple[int, int]], alpha: Float
+) -> Tile[Float, Tuple[int, int]]:
     """Computes the matrix product ``out = alpha * a*b``.
 
     Supported datatypes are:
@@ -6807,13 +5920,12 @@ def tile_matmul(a: Tile[Float,Tuple[int, int]], b: Tile[Float,Tuple[int, int]], 
     :param b: A tile with ``shape=(K, N)``
     :param alpha: Scaling factor (default 1.0)
     :returns: A tile with ``shape=(M, N)``
-    
+
     """
     ...
 
-
 @over
-def tile_fft(inout: Tile[Vector[2,Float],Tuple[int, int]]):
+def tile_fft(inout: Tile[Vector[2, Float], Tuple[int, int]]):
     """Compute the forward FFT along the second dimension of a 2D tile of data.
 
     This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
@@ -6827,9 +5939,8 @@ def tile_fft(inout: Tile[Vector[2,Float],Tuple[int, int]]):
     """
     ...
 
-
 @over
-def tile_ifft(inout: Tile[Vector[2,Float],Tuple[int, int]]):
+def tile_ifft(inout: Tile[Vector[2, Float], Tuple[int, int]]):
     """Compute the inverse FFT along the second dimension of a 2D tile of data.
 
     This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
@@ -6843,9 +5954,8 @@ def tile_ifft(inout: Tile[Vector[2,Float],Tuple[int, int]]):
     """
     ...
 
-
 @over
-def tile_cholesky(A: Tile[Float,Tuple[int, int]]) -> Tile[Float,Tuple[int, int]]:
+def tile_cholesky(A: Tile[Float, Tuple[int, int]]) -> Tile[Float, Tuple[int, int]]:
     """Compute the Cholesky factorization L of a matrix A.
 
     L is lower triangular and satisfies LL^T = A.
@@ -6864,9 +5974,8 @@ def tile_cholesky(A: Tile[Float,Tuple[int, int]]) -> Tile[Float,Tuple[int, int]]
     """
     ...
 
-
 @over
-def tile_cholesky_inplace(A: Tile[Float,Tuple[int, int]]):
+def tile_cholesky_inplace(A: Tile[Float, Tuple[int, int]]):
     """Compute the Cholesky factorization L of a matrix A.
 
     L is lower triangular and satisfies LL^T = A.
@@ -6885,9 +5994,8 @@ def tile_cholesky_inplace(A: Tile[Float,Tuple[int, int]]):
     """
     ...
 
-
 @over
-def tile_cholesky_solve(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]) -> Tile[Float,Tuple[int]]:
+def tile_cholesky_solve(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[int]]) -> Tile[Float, Tuple[int]]:
     """With L such that LL^T = A, solve for x in Ax = y
 
     Note that computing the adjoint is not yet supported.
@@ -6902,9 +6010,8 @@ def tile_cholesky_solve(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]
     """
     ...
 
-
 @over
-def tile_cholesky_solve_inplace(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]):
+def tile_cholesky_solve_inplace(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[int]]):
     """With L such that LL^T = A, solve for x in Ax = y by overwriting y with x
 
     Note: This inplace variant does not support automatic differentiation (adjoint computation),
@@ -6919,9 +6026,8 @@ def tile_cholesky_solve_inplace(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tu
     """
     ...
 
-
 @over
-def tile_lower_solve(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]) -> Tile[Float,Tuple[int]]:
+def tile_lower_solve(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[int]]) -> Tile[Float, Tuple[int]]:
     """Solve for z in Lz = y, where L is a lower triangular matrix.
 
     This performs general forward substitution for a lower triangular system.
@@ -6938,9 +6044,8 @@ def tile_lower_solve(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]) 
     """
     ...
 
-
 @over
-def tile_lower_solve_inplace(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]):
+def tile_lower_solve_inplace(L: Tile[Float, Tuple[int, int]], y: Tile[Float, Tuple[int]]):
     """Solve for z in Lz = y, where L is a lower triangular matrix by overwriting y with z.
 
     This performs general forward substitution for a lower triangular system inplace.
@@ -6957,9 +6062,8 @@ def tile_lower_solve_inplace(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple
     """
     ...
 
-
 @over
-def tile_upper_solve(U: Tile[Float,Tuple[int, int]], z: Tile[Float,Tuple[int]]) -> Tile[Float,Tuple[int]]:
+def tile_upper_solve(U: Tile[Float, Tuple[int, int]], z: Tile[Float, Tuple[int]]) -> Tile[Float, Tuple[int]]:
     """Solve for x in Ux = z, where U is an upper triangular matrix.
 
     This performs general back substitution for upper triangular systems.
@@ -6976,9 +6080,8 @@ def tile_upper_solve(U: Tile[Float,Tuple[int, int]], z: Tile[Float,Tuple[int]]) 
     """
     ...
 
-
 @over
-def tile_upper_solve_inplace(U: Tile[Float,Tuple[int, int]], z: Tile[Float,Tuple[int]]):
+def tile_upper_solve_inplace(U: Tile[Float, Tuple[int, int]], z: Tile[Float, Tuple[int]]):
     """Solve for x in Ux = z, where U is an upper triangular matrix by overwriting z with x.
 
     This performs general back substitution for upper triangular systems inplace.
@@ -6995,7 +6098,6 @@ def tile_upper_solve_inplace(U: Tile[Float,Tuple[int, int]], z: Tile[Float,Tuple
     """
     ...
 
-
 @over
 def static(expr: Any) -> Any:
     """Evaluate a static Python expression and replaces it with its result.
@@ -7009,55 +6111,40 @@ def static(expr: Any) -> Any:
     """
     ...
 
-
 @over
-def len(a: Vector[Any,Scalar]) -> int:
-    """Return the number of elements in a vector.
-    """
+def len(a: Vector[Any, Scalar]) -> int:
+    """Return the number of elements in a vector."""
     ...
-
 
 @over
 def len(a: Quaternion[Scalar]) -> int:
-    """Return the number of elements in a quaternion.
-    """
+    """Return the number of elements in a quaternion."""
     ...
-
 
 @over
-def len(a: Matrix[Any,Any,Scalar]) -> int:
-    """Return the number of rows in a matrix.
-    """
+def len(a: Matrix[Any, Any, Scalar]) -> int:
+    """Return the number of rows in a matrix."""
     ...
-
 
 @over
 def len(a: Transformation[Float]) -> int:
-    """Return the number of elements in a transformation.
-    """
+    """Return the number of elements in a transformation."""
     ...
-
 
 @over
 def len(a: Array[Any]) -> int:
-    """Return the size of the first dimension in an array.
-    """
+    """Return the size of the first dimension in an array."""
     ...
-
 
 @over
-def len(a: Tile[Any,Tuple[int, ...]]) -> int:
-    """Return the number of rows in a tile.
-    """
+def len(a: Tile[Any, Tuple[int, ...]]) -> int:
+    """Return the number of rows in a tile."""
     ...
-
 
 @over
 def len(a: Tuple) -> int:
-    """Return the number of elements in a tuple.
-    """
+    """Return the number of elements in a tuple."""
     ...
-
 
 @over
 def cast(a: Any, dtype: Any) -> Any:
@@ -7075,25 +6162,22 @@ def cast(a: Any, dtype: Any) -> Any:
             f: wp.float16
             i: wp.int16
 
-
         @wp.kernel
         def compute():
             x = wp.int32(0x40000000)
             x_casted = wp.cast(x, wp.float32)
-            wp.expect_eq(x_casted, 2.0) # 0x40000000
+            wp.expect_eq(x_casted, 2.0)  # 0x40000000
 
             s = MyStruct()
-            s.f = wp.float16(2.0) # 0x4000
-            s.i = wp.int16(4096) # 0x1000
+            s.f = wp.float16(2.0)  # 0x4000
+            s.i = wp.int16(4096)  # 0x1000
             s_casted = wp.cast(s, wp.int32)
             wp.expect_eq(s_casted, 0x10004000)
 
-
         wp.launch(compute, dim=1)
-    
+
     """
     ...
-
 
 @over
 def norm_l1(v: Any):
@@ -7109,7 +6193,6 @@ def norm_l1(v: Any):
     """
     ...
 
-
 @over
 def norm_l2(v: Any):
     """Computes the L2 norm of a vector v.
@@ -7123,7 +6206,6 @@ def norm_l2(v: Any):
         float: The L2 norm of the vector.
     """
     ...
-
 
 @over
 def norm_huber(v: Any, delta: float):
@@ -7144,7 +6226,6 @@ def norm_huber(v: Any, delta: float):
     """
     ...
 
-
 @over
 def norm_pseudo_huber(v: Any, delta: float):
     """Computes the "pseudo" Huber norm of a vector v with a given delta.
@@ -7164,7 +6245,6 @@ def norm_pseudo_huber(v: Any, delta: float):
     """
     ...
 
-
 @over
 def smooth_normalize(v: Any, delta: float):
     """Normalizes a vector using the pseudo-Huber norm.
@@ -7183,9 +6263,8 @@ def smooth_normalize(v: Any, delta: float):
     """
     ...
 
-
 @over
-def transform_from_matrix(mat: Matrix[4,4,float32]) -> Transformation[float32]:
+def transform_from_matrix(mat: Matrix[4, 4, float32]) -> Transformation[float32]:
     """Construct a transformation from a 4x4 matrix.
 
         .. math::
@@ -7209,9 +6288,8 @@ def transform_from_matrix(mat: Matrix[4,4,float32]) -> Transformation[float32]:
     """
     ...
 
-
 @over
-def transform_to_matrix(xform: Transformation[float32]) -> Matrix[4,4,float32]:
+def transform_to_matrix(xform: Transformation[float32]) -> Matrix[4, 4, float32]:
     """Convert a transformation to a 4x4 matrix.
 
         .. math::
@@ -7235,9 +6313,8 @@ def transform_to_matrix(xform: Transformation[float32]) -> Matrix[4,4,float32]:
     """
     ...
 
-
 @over
-def transform_compose(position: Vector[3,float32], rotation: Quaternion[float32], scale: Vector[3,float32]):
+def transform_compose(position: Vector[3, float32], rotation: Quaternion[float32], scale: Vector[3, float32]):
     """Compose a 4x4 transformation matrix from a 3D position, quaternion orientation, and 3D scale.
 
         .. math::
@@ -7264,9 +6341,8 @@ def transform_compose(position: Vector[3,float32], rotation: Quaternion[float32]
     """
     ...
 
-
 @over
-def transform_decompose(m: Matrix[4,4,float32]):
+def transform_decompose(m: Matrix[4, 4, float32]):
     """Decompose a 4x4 transformation matrix into 3D position, quaternion orientation, and 3D scale.
 
         .. math::
@@ -7290,5 +6366,3 @@ def transform_decompose(m: Matrix[4,4,float32]):
             Tuple[Vector[3, Float], Quaternion[Float], Vector[3, Float]]: A tuple containing the position vector, quaternion orientation, and scale vector.
     """
     ...
-
-

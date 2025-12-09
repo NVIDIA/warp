@@ -6316,6 +6316,181 @@ Volumes
 
 
 
+Textures
+---------------
+.. py:function:: texture_width(tex: texture2d_t) -> int32
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+    Return the width of a 2D texture in pixels.
+
+
+.. py:function:: texture_width(tex: texture3d_t) -> int32
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+    Return the width of a 3D texture in pixels.
+
+
+.. py:function:: texture_height(tex: texture2d_t) -> int32
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+    Return the height of a 2D texture in pixels.
+
+
+.. py:function:: texture_height(tex: texture3d_t) -> int32
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+    Return the height of a 3D texture in pixels.
+
+
+.. py:function:: texture_depth(tex: texture3d_t) -> int32
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+    Return the depth of a 3D texture in pixels.
+
+
+.. py:function:: tex2d_float(tex: texture2d_t, u: float32, v: float32) -> float
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+    Sample a 2D texture at the given normalized UV coordinates.
+
+    Returns a single float value. Coordinates are in the range [0, 1].
+    The texture must have 1 channel.
+
+
+.. py:function:: tex2d_vec2(tex: texture2d_t, u: float32, v: float32) -> vec2f
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+    Sample a 2D texture at the given normalized UV coordinates.
+
+    Returns a vec2f value. Coordinates are in the range [0, 1].
+    The texture must have 2 channels.
+
+
+.. py:function:: tex2d_vec3(tex: texture2d_t, u: float32, v: float32) -> vec3f
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+    Sample a 2D texture at the given normalized UV coordinates.
+
+    Returns a vec3f value (from the first 3 channels). Coordinates are in the range [0, 1].
+    The texture must have 4 channels.
+
+
+.. py:function:: tex2d_vec4(tex: texture2d_t, u: float32, v: float32) -> vec4f
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+    Sample a 2D texture at the given normalized UV coordinates.
+
+    Returns a vec4f value. Coordinates are in the range [0, 1].
+    The texture must have 4 channels.
+
+
+.. py:function:: tex3d_float(tex: texture3d_t, u: float32, v: float32, w: float32) -> float
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+    Sample a 3D texture at the given normalized UVW coordinates.
+
+    Returns a single float value. Coordinates are in the range [0, 1].
+    The texture must have 1 channel.
+
+
+.. py:function:: tex3d_vec2(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec2f
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+    Sample a 3D texture at the given normalized UVW coordinates.
+
+    Returns a vec2f value. Coordinates are in the range [0, 1].
+    The texture must have 2 channels.
+
+
+.. py:function:: tex3d_vec3(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec3f
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+    Sample a 3D texture at the given normalized UVW coordinates.
+
+    Returns a vec3f value (from the first 3 channels). Coordinates are in the range [0, 1].
+    The texture must have 4 channels.
+
+
+.. py:function:: tex3d_vec4(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec4f
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Python
+
+    Sample a 3D texture at the given normalized UVW coordinates.
+
+    Returns a vec4f value. Coordinates are in the range [0, 1].
+    The texture must have 4 channels.
+
+
+
+
 Random
 ---------------
 .. py:function:: rand_init(seed: int32) -> uint32
