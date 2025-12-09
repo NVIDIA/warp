@@ -148,14 +148,10 @@ bool wp_texture2d_create(
     // Filter mode: 0=nearest, 1=linear
     tex_desc.filterMode = (filter_mode == 0) ? CU_TR_FILTER_MODE_POINT : CU_TR_FILTER_MODE_LINEAR;
 
-    // Use normalized coordinates [0,1] and normalized read mode for integer types
+    // Use normalized coordinates [0,1]
+    // For integer textures (uint8/uint16), CUDA returns normalized floats [0,1] by default
+    // (CU_TRSF_READ_AS_INTEGER is NOT set, so reads are normalized automatically)
     tex_desc.flags = CU_TRSF_NORMALIZED_COORDINATES;
-    if (dtype == WP_TEXTURE_DTYPE_UINT8 || dtype == WP_TEXTURE_DTYPE_UINT16)
-    {
-        // Read integer textures as normalized floats [0, 1]
-        tex_desc.flags |= CU_TRSF_READ_AS_INTEGER;
-        tex_desc.flags &= ~CU_TRSF_READ_AS_INTEGER;  // Actually we want normalized reads
-    }
 
     tex_desc.maxAnisotropy = 0;
     tex_desc.mipmapFilterMode = CU_TR_FILTER_MODE_POINT;
