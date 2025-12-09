@@ -173,16 +173,12 @@ def generate_sin_pattern_2d(width: int, height: int, num_channels: int) -> np.nd
         for c in range(num_channels):
             # Each channel has a slightly different phase
             phase = c * 0.25
-            channel_pattern = np.sin(2 * np.pi * (xx / width + phase)) * np.sin(
-                2 * np.pi * (yy / height + phase)
-            )
+            channel_pattern = np.sin(2 * np.pi * (xx / width + phase)) * np.sin(2 * np.pi * (yy / height + phase))
             result[:, :, c] = (channel_pattern + 1.0) * 0.5
         return result
 
 
-def generate_sin_pattern_3d(
-    width: int, height: int, depth: int, num_channels: int
-) -> np.ndarray:
+def generate_sin_pattern_3d(width: int, height: int, depth: int, num_channels: int) -> np.ndarray:
     """Generate a 3D sin pattern for testing.
 
     Creates a pattern based on: sin(2*pi*x/width) * sin(2*pi*y/height) * sin(2*pi*z/depth)
@@ -198,11 +194,7 @@ def generate_sin_pattern_3d(
     zz = zz.transpose(2, 1, 0)
 
     # Create base sin pattern
-    pattern = (
-        np.sin(2 * np.pi * xx / width)
-        * np.sin(2 * np.pi * yy / height)
-        * np.sin(2 * np.pi * zz / depth)
-    )
+    pattern = np.sin(2 * np.pi * xx / width) * np.sin(2 * np.pi * yy / height) * np.sin(2 * np.pi * zz / depth)
     # Scale to [0, 1]
     pattern = (pattern + 1.0) * 0.5
 
@@ -553,13 +545,16 @@ def test_texture2d_nearest_interpolation(test, device):
 
     # Sample at texel centers - should return exact values
     # Texel centers for 2x2 texture: (0.25, 0.25), (0.75, 0.25), (0.25, 0.75), (0.75, 0.75)
-    uvs_np = np.array([
-        [0.25, 0.25],  # texel (0,0) -> 0.0
-        [0.75, 0.25],  # texel (1,0) -> 1.0
-        [0.25, 0.75],  # texel (0,1) -> 2.0
-        [0.75, 0.75],  # texel (1,1) -> 3.0
-    ], dtype=np.float32)
-    
+    uvs_np = np.array(
+        [
+            [0.25, 0.25],  # texel (0,0) -> 0.0
+            [0.75, 0.25],  # texel (1,0) -> 1.0
+            [0.25, 0.75],  # texel (0,1) -> 2.0
+            [0.75, 0.75],  # texel (1,1) -> 3.0
+        ],
+        dtype=np.float32,
+    )
+
     uvs = wp.array(uvs_np, dtype=wp.vec2f, device=device)
     output = wp.zeros(4, dtype=float, device=device)
 
@@ -589,8 +584,11 @@ def test_texture2d_nearest_interpolation(test, device):
 
     result_between = output_between.numpy()[0]
     # NEAREST should return one of the texel values, not an interpolated value
-    test.assertIn(result_between, [0.0, 1.0, 2.0, 3.0], 
-                  f"NEAREST filtering returned {result_between}, expected one of [0, 1, 2, 3]")
+    test.assertIn(
+        result_between,
+        [0.0, 1.0, 2.0, 3.0],
+        f"NEAREST filtering returned {result_between}, expected one of [0, 1, 2, 3]",
+    )
 
 
 def test_texture2d_linear_interpolation(test, device):
@@ -626,8 +624,13 @@ def test_texture2d_linear_interpolation(test, device):
 
     result = output.numpy()[0]
     expected = 1.5  # average of 0, 1, 2, 3
-    np.testing.assert_allclose(result, expected, rtol=1e-4, atol=1e-4,
-                               err_msg=f"LINEAR interpolation at center: expected {expected}, got {result}")
+    np.testing.assert_allclose(
+        result,
+        expected,
+        rtol=1e-4,
+        atol=1e-4,
+        err_msg=f"LINEAR interpolation at center: expected {expected}, got {result}",
+    )
 
     # Test interpolation along X axis (halfway between texels 0 and 1)
     # At UV (0.5, 0.25): interpolate between texel (0,0)=0 and texel (1,0)=1
@@ -645,8 +648,13 @@ def test_texture2d_linear_interpolation(test, device):
 
     result_x = output_x.numpy()[0]
     expected_x = 0.5
-    np.testing.assert_allclose(result_x, expected_x, rtol=1e-4, atol=1e-4,
-                               err_msg=f"LINEAR interpolation along X: expected {expected_x}, got {result_x}")
+    np.testing.assert_allclose(
+        result_x,
+        expected_x,
+        rtol=1e-4,
+        atol=1e-4,
+        err_msg=f"LINEAR interpolation along X: expected {expected_x}, got {result_x}",
+    )
 
     # Test interpolation along Y axis (halfway between texels 0 and 2)
     # At UV (0.25, 0.5): interpolate between texel (0,0)=0 and texel (0,1)=2
@@ -664,8 +672,13 @@ def test_texture2d_linear_interpolation(test, device):
 
     result_y = output_y.numpy()[0]
     expected_y = 1.0
-    np.testing.assert_allclose(result_y, expected_y, rtol=1e-4, atol=1e-4,
-                               err_msg=f"LINEAR interpolation along Y: expected {expected_y}, got {result_y}")
+    np.testing.assert_allclose(
+        result_y,
+        expected_y,
+        rtol=1e-4,
+        atol=1e-4,
+        err_msg=f"LINEAR interpolation along Y: expected {expected_y}, got {result_y}",
+    )
 
 
 def test_texture3d_nearest_interpolation(test, device):
@@ -688,17 +701,20 @@ def test_texture3d_nearest_interpolation(test, device):
         test.skipTest(f"Texture creation failed: {e}")
 
     # Sample at voxel centers
-    uvws_np = np.array([
-        [0.25, 0.25, 0.25],  # voxel (0,0,0) -> 0
-        [0.75, 0.25, 0.25],  # voxel (1,0,0) -> 1
-        [0.25, 0.75, 0.25],  # voxel (0,1,0) -> 2
-        [0.75, 0.75, 0.25],  # voxel (1,1,0) -> 3
-        [0.25, 0.25, 0.75],  # voxel (0,0,1) -> 4
-        [0.75, 0.25, 0.75],  # voxel (1,0,1) -> 5
-        [0.25, 0.75, 0.75],  # voxel (0,1,1) -> 6
-        [0.75, 0.75, 0.75],  # voxel (1,1,1) -> 7
-    ], dtype=np.float32)
-    
+    uvws_np = np.array(
+        [
+            [0.25, 0.25, 0.25],  # voxel (0,0,0) -> 0
+            [0.75, 0.25, 0.25],  # voxel (1,0,0) -> 1
+            [0.25, 0.75, 0.25],  # voxel (0,1,0) -> 2
+            [0.75, 0.75, 0.25],  # voxel (1,1,0) -> 3
+            [0.25, 0.25, 0.75],  # voxel (0,0,1) -> 4
+            [0.75, 0.25, 0.75],  # voxel (1,0,1) -> 5
+            [0.25, 0.75, 0.75],  # voxel (0,1,1) -> 6
+            [0.75, 0.75, 0.75],  # voxel (1,1,1) -> 7
+        ],
+        dtype=np.float32,
+    )
+
     uvws = wp.array(uvws_np, dtype=wp.vec3f, device=device)
     output = wp.zeros(8, dtype=float, device=device)
 
@@ -745,8 +761,13 @@ def test_texture3d_linear_interpolation(test, device):
 
     result = output.numpy()[0]
     expected = 3.5  # average of 0-7
-    np.testing.assert_allclose(result, expected, rtol=1e-4, atol=1e-4,
-                               err_msg=f"3D LINEAR interpolation at center: expected {expected}, got {result}")
+    np.testing.assert_allclose(
+        result,
+        expected,
+        rtol=1e-4,
+        atol=1e-4,
+        err_msg=f"3D LINEAR interpolation at center: expected {expected}, got {result}",
+    )
 
     # Test interpolation along Z axis only (at x=0.25, y=0.25)
     # Interpolate between voxel (0,0,0)=0 and voxel (0,0,1)=4
@@ -764,8 +785,13 @@ def test_texture3d_linear_interpolation(test, device):
 
     result_z = output_z.numpy()[0]
     expected_z = 2.0
-    np.testing.assert_allclose(result_z, expected_z, rtol=1e-4, atol=1e-4,
-                               err_msg=f"3D LINEAR interpolation along Z: expected {expected_z}, got {result_z}")
+    np.testing.assert_allclose(
+        result_z,
+        expected_z,
+        rtol=1e-4,
+        atol=1e-4,
+        err_msg=f"3D LINEAR interpolation along Z: expected {expected_z}, got {result_z}",
+    )
 
 
 # ============================================================================
@@ -778,12 +804,15 @@ def test_texture2d_uint8(test, device):
     width, height = 4, 4
 
     # Create uint8 data with values 0, 128, 255
-    data = np.array([
-        [0, 64, 128, 192],
-        [32, 96, 160, 224],
-        [16, 80, 144, 208],
-        [48, 112, 176, 240],
-    ], dtype=np.uint8)
+    data = np.array(
+        [
+            [0, 64, 128, 192],
+            [32, 96, 160, 224],
+            [16, 80, 144, 208],
+            [48, 112, 176, 240],
+        ],
+        dtype=np.uint8,
+    )
 
     try:
         tex = wp.Texture2D(
@@ -798,12 +827,15 @@ def test_texture2d_uint8(test, device):
     test.assertEqual(tex.dtype, np.uint8)
 
     # Sample at texel centers
-    uvs_np = np.array([
-        [0.125, 0.125],  # texel (0,0) -> 0/255 = 0.0
-        [0.375, 0.125],  # texel (1,0) -> 64/255 ≈ 0.251
-        [0.625, 0.125],  # texel (2,0) -> 128/255 ≈ 0.502
-        [0.875, 0.125],  # texel (3,0) -> 192/255 ≈ 0.753
-    ], dtype=np.float32)
+    uvs_np = np.array(
+        [
+            [0.125, 0.125],  # texel (0,0) -> 0/255 = 0.0
+            [0.375, 0.125],  # texel (1,0) -> 64/255 ≈ 0.251
+            [0.625, 0.125],  # texel (2,0) -> 128/255 ≈ 0.502
+            [0.875, 0.125],  # texel (3,0) -> 192/255 ≈ 0.753
+        ],
+        dtype=np.float32,
+    )
 
     uvs = wp.array(uvs_np, dtype=wp.vec2f, device=device)
     output = wp.zeros(4, dtype=float, device=device)
@@ -816,7 +848,7 @@ def test_texture2d_uint8(test, device):
     )
 
     result = output.numpy()
-    expected = np.array([0.0, 64.0/255.0, 128.0/255.0, 192.0/255.0])
+    expected = np.array([0.0, 64.0 / 255.0, 128.0 / 255.0, 192.0 / 255.0])
     np.testing.assert_allclose(result, expected, rtol=1e-2, atol=1e-2)
 
 
@@ -825,10 +857,13 @@ def test_texture2d_uint16(test, device):
     width, height = 2, 2
 
     # Create uint16 data
-    data = np.array([
-        [0, 32768],
-        [16384, 65535],
-    ], dtype=np.uint16)
+    data = np.array(
+        [
+            [0, 32768],
+            [16384, 65535],
+        ],
+        dtype=np.uint16,
+    )
 
     try:
         tex = wp.Texture2D(
@@ -843,12 +878,15 @@ def test_texture2d_uint16(test, device):
     test.assertEqual(tex.dtype, np.uint16)
 
     # Sample at texel centers
-    uvs_np = np.array([
-        [0.25, 0.25],  # texel (0,0) -> 0/65535 = 0.0
-        [0.75, 0.25],  # texel (1,0) -> 32768/65535 ≈ 0.5
-        [0.25, 0.75],  # texel (0,1) -> 16384/65535 ≈ 0.25
-        [0.75, 0.75],  # texel (1,1) -> 65535/65535 = 1.0
-    ], dtype=np.float32)
+    uvs_np = np.array(
+        [
+            [0.25, 0.25],  # texel (0,0) -> 0/65535 = 0.0
+            [0.75, 0.25],  # texel (1,0) -> 32768/65535 ≈ 0.5
+            [0.25, 0.75],  # texel (0,1) -> 16384/65535 ≈ 0.25
+            [0.75, 0.75],  # texel (1,1) -> 65535/65535 = 1.0
+        ],
+        dtype=np.float32,
+    )
 
     uvs = wp.array(uvs_np, dtype=wp.vec2f, device=device)
     output = wp.zeros(4, dtype=float, device=device)
@@ -861,7 +899,7 @@ def test_texture2d_uint16(test, device):
     )
 
     result = output.numpy()
-    expected = np.array([0.0, 32768.0/65535.0, 16384.0/65535.0, 1.0])
+    expected = np.array([0.0, 32768.0 / 65535.0, 16384.0 / 65535.0, 1.0])
     np.testing.assert_allclose(result, expected, rtol=1e-2, atol=1e-2)
 
 
@@ -870,10 +908,13 @@ def test_texture3d_uint8(test, device):
     width, height, depth = 2, 2, 2
 
     # Create uint8 data with values scaling from 0 to 255
-    data = np.array([
-        [[0, 36], [73, 109]],
-        [[146, 182], [219, 255]],
-    ], dtype=np.uint8)
+    data = np.array(
+        [
+            [[0, 36], [73, 109]],
+            [[146, 182], [219, 255]],
+        ],
+        dtype=np.uint8,
+    )
 
     try:
         tex = wp.Texture3D(
@@ -888,10 +929,13 @@ def test_texture3d_uint8(test, device):
     test.assertEqual(tex.dtype, np.uint8)
 
     # Sample at voxel centers
-    uvws_np = np.array([
-        [0.25, 0.25, 0.25],  # voxel (0,0,0) -> 0/255 = 0.0
-        [0.75, 0.75, 0.75],  # voxel (1,1,1) -> 255/255 = 1.0
-    ], dtype=np.float32)
+    uvws_np = np.array(
+        [
+            [0.25, 0.25, 0.25],  # voxel (0,0,0) -> 0/255 = 0.0
+            [0.75, 0.75, 0.75],  # voxel (1,1,1) -> 255/255 = 1.0
+        ],
+        dtype=np.float32,
+    )
 
     uvws = wp.array(uvws_np, dtype=wp.vec3f, device=device)
     output = wp.zeros(2, dtype=float, device=device)
@@ -914,10 +958,13 @@ def test_texture2d_uint8_linear_interpolation(test, device):
 
     # Create uint8 data: values 0, 128, 128, 255
     # At center with linear interpolation: (0 + 128 + 128 + 255) / 4 / 255 ≈ 0.5
-    data = np.array([
-        [0, 128],
-        [128, 255],
-    ], dtype=np.uint8)
+    data = np.array(
+        [
+            [0, 128],
+            [128, 255],
+        ],
+        dtype=np.uint8,
+    )
 
     try:
         tex = wp.Texture2D(
@@ -942,7 +989,7 @@ def test_texture2d_uint8_linear_interpolation(test, device):
     )
 
     result = output.numpy()[0]
-    expected = (0.0 + 128.0/255.0 + 128.0/255.0 + 1.0) / 4.0
+    expected = (0.0 + 128.0 / 255.0 + 128.0 / 255.0 + 1.0) / 4.0
     np.testing.assert_allclose(result, expected, rtol=0.05, atol=0.05)
 
 
@@ -968,16 +1015,29 @@ add_function_test(TestTexture, "test_texture3d_linear_filter", test_texture3d_li
 add_function_test(TestTexture, "test_texture3d_resolution_query", test_texture3d_resolution_query, devices=cuda_devices)
 
 # Interpolation tests
-add_function_test(TestTexture, "test_texture2d_nearest_interpolation", test_texture2d_nearest_interpolation, devices=cuda_devices)
-add_function_test(TestTexture, "test_texture2d_linear_interpolation", test_texture2d_linear_interpolation, devices=cuda_devices)
-add_function_test(TestTexture, "test_texture3d_nearest_interpolation", test_texture3d_nearest_interpolation, devices=cuda_devices)
-add_function_test(TestTexture, "test_texture3d_linear_interpolation", test_texture3d_linear_interpolation, devices=cuda_devices)
+add_function_test(
+    TestTexture, "test_texture2d_nearest_interpolation", test_texture2d_nearest_interpolation, devices=cuda_devices
+)
+add_function_test(
+    TestTexture, "test_texture2d_linear_interpolation", test_texture2d_linear_interpolation, devices=cuda_devices
+)
+add_function_test(
+    TestTexture, "test_texture3d_nearest_interpolation", test_texture3d_nearest_interpolation, devices=cuda_devices
+)
+add_function_test(
+    TestTexture, "test_texture3d_linear_interpolation", test_texture3d_linear_interpolation, devices=cuda_devices
+)
 
 # Compressed texture tests (uint8, uint16)
 add_function_test(TestTexture, "test_texture2d_uint8", test_texture2d_uint8, devices=cuda_devices)
 add_function_test(TestTexture, "test_texture2d_uint16", test_texture2d_uint16, devices=cuda_devices)
 add_function_test(TestTexture, "test_texture3d_uint8", test_texture3d_uint8, devices=cuda_devices)
-add_function_test(TestTexture, "test_texture2d_uint8_linear_interpolation", test_texture2d_uint8_linear_interpolation, devices=cuda_devices)
+add_function_test(
+    TestTexture,
+    "test_texture2d_uint8_linear_interpolation",
+    test_texture2d_uint8_linear_interpolation,
+    devices=cuda_devices,
+)
 
 # These tests don't need a device
 add_function_test(TestTexture, "test_texture2d_new_del", test_texture2d_new_del, devices=[None])
@@ -987,4 +1047,3 @@ add_function_test(TestTexture, "test_texture3d_new_del", test_texture3d_new_del,
 if __name__ == "__main__":
     wp.clear_kernel_cache()
     unittest.main(verbosity=2)
-

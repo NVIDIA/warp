@@ -5833,9 +5833,7 @@ class Texture2D:
 
         try:
             with self.device.context_guard:
-                self.runtime.core.wp_texture2d_destroy(
-                    self.device.context, self._tex_handle, self._array_handle
-                )
+                self.runtime.core.wp_texture2d_destroy(self.device.context, self._tex_handle, self._array_handle)
         except (TypeError, AttributeError):
             # Suppress errors during shutdown
             pass
@@ -6063,9 +6061,7 @@ class Texture3D:
 
         try:
             with self.device.context_guard:
-                self.runtime.core.wp_texture3d_destroy(
-                    self.device.context, self._tex_handle, self._array_handle
-                )
+                self.runtime.core.wp_texture3d_destroy(self.device.context, self._tex_handle, self._array_handle)
         except (TypeError, AttributeError):
             # Suppress errors during shutdown
             pass
@@ -6097,9 +6093,7 @@ class Texture3D:
 
     def __ctype__(self) -> texture3d_t:
         """Return the ctypes structure for passing to kernels."""
-        return texture3d_t(
-            self._tex_handle, self._width, self._height, self._depth, self._num_channels
-        )
+        return texture3d_t(self._tex_handle, self._width, self._height, self._depth, self._num_channels)
 
 
 # definition just for kernel type (cannot be a parameter), see mesh.h
