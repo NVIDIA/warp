@@ -27,6 +27,7 @@ import math
 import re
 import sys
 import textwrap
+import threading
 import types
 from collections.abc import Mapping, Sequence
 from typing import Any, Callable, ClassVar, get_args, get_origin
@@ -948,6 +949,18 @@ def get_arg_value(arg: Any) -> Any:
     return arg
 
 
+# decorator for synchronizing function calls (reentrant critical section)
+def synchronized(func):
+    lock = threading.RLock()
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with lock:
+            return func(*args, **kwargs)
+
+    return wrapper
+
+
 class Adjoint:
     # Source code transformer, this class takes a Python function and
     # generates forward and backward SSA forms of the function instructions
@@ -1098,6 +1111,7 @@ class Adjoint:
         return source, fun_lineno
 
     # generate function ssa form and adjoint
+    @synchronized
     def build(adj, builder, default_builder_options=None):
         # arg Var read/write flags are held during module rebuilds, so we reset here even when skipping a build
         for arg in adj.args:
