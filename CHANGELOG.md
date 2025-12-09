@@ -58,6 +58,8 @@
 
 - Fix atomic floating-point min/max operations not returning the old value
   ([GH-1058](https://github.com/NVIDIA/warp/issues/1058)).
+- Fix direct initialization and slice assignment of vector, quaternion, and transform types from PyTorch tensors
+  ([GH-1121](https://github.com/NVIDIA/warp/issues/1121)).
 
 ## [1.10.1] - 2025-12-01
 

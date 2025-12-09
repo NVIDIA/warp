@@ -911,6 +911,41 @@ def test_direct(test, device):
     assert torch.equal(m.reshape(n), expected)
 
 
+def test_torch_to_warp_types(test, device):
+    """Test constructing warp vectors, quaternions, matrices, and transforms from torch tensors."""
+
+    import torch
+
+    v = wp.vec3(torch.tensor([1.0, 2.0, 3.0]))
+    test.assertEqual(list(v), [1.0, 2.0, 3.0])
+
+    v2 = wp.vec4()
+    v2[1:] = torch.tensor([1.0, 2.0, 3.0])
+    test.assertEqual(list(v2), [0.0, 1.0, 2.0, 3.0])
+
+    q = wp.quat(torch.tensor([1.0, 2.0, 3.0, 4.0]))
+    test.assertEqual(list(q), [1.0, 2.0, 3.0, 4.0])
+
+    m1 = wp.mat22(torch.tensor([1.0, 2.0, 3.0, 4.0]))
+    test.assertEqual(m1[0, 0], 1.0)
+    test.assertEqual(m1[0, 1], 2.0)
+    test.assertEqual(m1[1, 0], 3.0)
+    test.assertEqual(m1[1, 1], 4.0)
+
+    m2 = wp.mat22()
+    m2[0, 0:2] = torch.tensor([5.0, 6.0])
+    m2[1, 0:2] = torch.tensor([7.0, 8.0])
+    test.assertEqual(m2[0, 0], 5.0)
+    test.assertEqual(m2[0, 1], 6.0)
+    test.assertEqual(m2[1, 0], 7.0)
+    test.assertEqual(m2[1, 1], 8.0)
+
+    p = torch.tensor([1.0, 2.0, 3.0])
+    q = torch.tensor([4.0, 5.0, 6.0, 7.0])
+    t = wp.transform(p, q)
+    test.assertEqual(list(t), [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0])
+
+
 class TestTorch(unittest.TestCase):
     pass
 
@@ -993,6 +1028,8 @@ try:
         add_function_test(TestTorch, "test_torch_mgpu_from_torch", test_torch_mgpu_from_torch)
         add_function_test(TestTorch, "test_torch_mgpu_to_torch", test_torch_mgpu_to_torch)
         add_function_test(TestTorch, "test_torch_mgpu_interop", test_torch_mgpu_interop)
+
+    add_function_test(TestTorch, "test_torch_to_warp_types", test_torch_to_warp_types)
 
 except Exception as e:
     print(f"Skipping Torch tests due to exception: {e}")
