@@ -779,47 +779,56 @@ def sample_texture_at_grid_coords(
 
 
 @wp.func
-def sample_subgrid_with_offset(
+def sample_with_precomputed_cell(
     sdf: SparseSDF,
+    coarse_texture: wp.texture3d_t,
     subgrid_texture: wp.texture3d_t,
     start_slot: wp.uint32,
+    subgrid_start_slots: wp.array(dtype=wp.uint32),
     x_base: int,
     y_base: int,
     z_base: int,
     f: wp.vec3,
 ) -> float:
     """
-    Sample subgrid texture with pre-computed cell indices (optimized for gradient).
+    Sample SDF with pre-computed cell indices (optimized for gradient).
 
+    Handles both coarse (start_slot == 0xFFFFFFFF) and subgrid cases.
     This avoids recomputing the cell lookup for each of the 7 gradient samples.
     """
-    local_x = f[0] - float(x_base * sdf.subgrid_size)
-    local_y = f[1] - float(y_base * sdf.subgrid_size)
-    local_z = f[2] - float(z_base * sdf.subgrid_size)
 
-    local_f = wp.vec3(local_x, local_y, local_z)
-    tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_size)
+    if start_slot == wp.uint32(0xFFFFFFFE):
+        # Compute coarse cell indices
+        x_base = int(f[0] * sdf.fine_to_coarse)
+        y_base = int(f[1] * sdf.fine_to_coarse)
+        z_base = int(f[2] * sdf.fine_to_coarse)
 
-    u = (tex_coords[0] + 0.5) * sdf.inv_subgrid_tex_size
-    v = (tex_coords[1] + 0.5) * sdf.inv_subgrid_tex_size
-    w = (tex_coords[2] + 0.5) * sdf.inv_subgrid_tex_size
+        # Look up indirection slot
+        slot_idx = z_base * sdf.coarse_size_x * sdf.coarse_size_y + y_base * sdf.coarse_size_x + x_base
+        start_slot = subgrid_start_slots[slot_idx]
 
-    raw_val = wp.tex3d_float(subgrid_texture, u, v, w)
-    return apply_subgrid_sdf_scale(raw_val, sdf.subgrids_min_sdf_value, sdf.subgrids_sdf_value_range)
+    if start_slot == wp.uint32(0xFFFFFFFF):
+        # No subgrid - sample from coarse texture
+        coarse_f = f * sdf.fine_to_coarse
+        u = (coarse_f[0] + 0.5) * sdf.inv_coarse_tex_size_x
+        v = (coarse_f[1] + 0.5) * sdf.inv_coarse_tex_size_y
+        w = (coarse_f[2] + 0.5) * sdf.inv_coarse_tex_size_z
+        return wp.tex3d_float(coarse_texture, u, v, w)
+    else:
+        # Sample from subgrid texture
+        local_x = f[0] - float(x_base * sdf.subgrid_size)
+        local_y = f[1] - float(y_base * sdf.subgrid_size)
+        local_z = f[2] - float(z_base * sdf.subgrid_size)
 
+        local_f = wp.vec3(local_x, local_y, local_z)
+        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_size)
 
-@wp.func
-def sample_coarse_at_grid_coords(
-    sdf: SparseSDF,
-    coarse_texture: wp.texture3d_t,
-    f: wp.vec3,
-) -> float:
-    """Sample coarse texture at grid coordinates."""
-    coarse_f = f * sdf.fine_to_coarse
-    u = (coarse_f[0] + 0.5) * sdf.inv_coarse_tex_size_x
-    v = (coarse_f[1] + 0.5) * sdf.inv_coarse_tex_size_y
-    w = (coarse_f[2] + 0.5) * sdf.inv_coarse_tex_size_z
-    return wp.tex3d_float(coarse_texture, u, v, w)
+        u = (tex_coords[0] + 0.5) * sdf.inv_subgrid_tex_size
+        v = (tex_coords[1] + 0.5) * sdf.inv_subgrid_tex_size
+        w = (tex_coords[2] + 0.5) * sdf.inv_subgrid_tex_size
+
+        raw_val = wp.tex3d_float(subgrid_texture, u, v, w)
+        return apply_subgrid_sdf_scale(raw_val, sdf.subgrids_min_sdf_value, sdf.subgrids_sdf_value_range)
 
 
 @wp.kernel
@@ -867,6 +876,8 @@ def sample_sparse_sdf_grad(
     dist = float(0.0)
     grad = wp.vec3(0.0, 0.0, 0.0)
 
+    factor = 0.5
+
     if inside:
         # FAST PATH: Point is well inside grid
 
@@ -879,7 +890,7 @@ def sample_sparse_sdf_grad(
         slot_idx = z_base * sdf.coarse_size_x * sdf.coarse_size_y + y_base * sdf.coarse_size_x + x_base
         start_slot = subgrid_start_slots[slot_idx]
 
-        # Compute cell bounds to check if all samples fit in same cell
+        # Compute cell bounds for per-sample checks
         cell_lower_x = float(x_base * sdf.subgrid_size)
         cell_lower_y = float(y_base * sdf.subgrid_size)
         cell_lower_z = float(z_base * sdf.subgrid_size)
@@ -887,90 +898,99 @@ def sample_sparse_sdf_grad(
         cell_upper_y = cell_lower_y + float(sdf.subgrid_size)
         cell_upper_z = cell_lower_z + float(sdf.subgrid_size)
 
-        # Check if all 7 sample points (+/- 1 in each direction) fall within the same cell
-        same_cell = (
-            f[0] - 1.0 >= cell_lower_x
-            and f[0] + 1.0 <= cell_upper_x
-            and f[1] - 1.0 >= cell_lower_y
-            and f[1] + 1.0 <= cell_upper_y
-            and f[2] - 1.0 >= cell_lower_z
-            and f[2] + 1.0 <= cell_upper_z
+        # Check each sample point individually - use marker only when needed
+        marker = wp.uint32(0xFFFFFFFE)
+
+        # Center point always uses precomputed slot
+        dist = sample_with_precomputed_cell(
+            sdf, coarse_texture, subgrid_texture, start_slot, subgrid_start_slots, x_base, y_base, z_base, f
         )
 
-        if same_cell and start_slot != wp.uint32(0xFFFFFFFF):
-            # ULTRA-FAST PATH: All samples in same subgrid cell
-            # Reuse the start_slot lookup for all 7 samples
+        # +x: check if f[0]+1 is still in same cell
+        slot_px = start_slot if f[0] + 1.0 <= cell_upper_x else marker
+        dist_px = sample_with_precomputed_cell(
+            sdf,
+            coarse_texture,
+            subgrid_texture,
+            slot_px,
+            subgrid_start_slots,
+            x_base,
+            y_base,
+            z_base,
+            wp.vec3(f[0] + 1.0, f[1], f[2]),
+        )
 
-            dist = sample_subgrid_with_offset(sdf, subgrid_texture, start_slot, x_base, y_base, z_base, f)
+        # -x: check if f[0]-1 is still in same cell
+        slot_mx = start_slot if f[0] - 1.0 >= cell_lower_x else marker
+        dist_mx = sample_with_precomputed_cell(
+            sdf,
+            coarse_texture,
+            subgrid_texture,
+            slot_mx,
+            subgrid_start_slots,
+            x_base,
+            y_base,
+            z_base,
+            wp.vec3(f[0] - 1.0, f[1], f[2]),
+        )
 
-            dist_px = sample_subgrid_with_offset(
-                sdf, subgrid_texture, start_slot, x_base, y_base, z_base, wp.vec3(f[0] + 1.0, f[1], f[2])
-            )
-            dist_mx = sample_subgrid_with_offset(
-                sdf, subgrid_texture, start_slot, x_base, y_base, z_base, wp.vec3(f[0] - 1.0, f[1], f[2])
-            )
-            dist_py = sample_subgrid_with_offset(
-                sdf, subgrid_texture, start_slot, x_base, y_base, z_base, wp.vec3(f[0], f[1] + 1.0, f[2])
-            )
-            dist_my = sample_subgrid_with_offset(
-                sdf, subgrid_texture, start_slot, x_base, y_base, z_base, wp.vec3(f[0], f[1] - 1.0, f[2])
-            )
-            dist_pz = sample_subgrid_with_offset(
-                sdf, subgrid_texture, start_slot, x_base, y_base, z_base, wp.vec3(f[0], f[1], f[2] + 1.0)
-            )
-            dist_mz = sample_subgrid_with_offset(
-                sdf, subgrid_texture, start_slot, x_base, y_base, z_base, wp.vec3(f[0], f[1], f[2] - 1.0)
-            )
+        # +y: check if f[1]+1 is still in same cell
+        slot_py = start_slot if f[1] + 1.0 <= cell_upper_y else marker
+        dist_py = sample_with_precomputed_cell(
+            sdf,
+            coarse_texture,
+            subgrid_texture,
+            slot_py,
+            subgrid_start_slots,
+            x_base,
+            y_base,
+            z_base,
+            wp.vec3(f[0], f[1] + 1.0, f[2]),
+        )
 
-            grad = wp.vec3(
-                (dist_px - dist_mx) * 0.5,
-                (dist_py - dist_my) * 0.5,
-                (dist_pz - dist_mz) * 0.5,
-            )
-        elif same_cell and start_slot == wp.uint32(0xFFFFFFFF):
-            # All samples in same coarse cell (no subgrid)
-            dist = sample_coarse_at_grid_coords(sdf, coarse_texture, f)
+        # -y: check if f[1]-1 is still in same cell
+        slot_my = start_slot if f[1] - 1.0 >= cell_lower_y else marker
+        dist_my = sample_with_precomputed_cell(
+            sdf,
+            coarse_texture,
+            subgrid_texture,
+            slot_my,
+            subgrid_start_slots,
+            x_base,
+            y_base,
+            z_base,
+            wp.vec3(f[0], f[1] - 1.0, f[2]),
+        )
 
-            dist_px = sample_coarse_at_grid_coords(sdf, coarse_texture, wp.vec3(f[0] + 1.0, f[1], f[2]))
-            dist_mx = sample_coarse_at_grid_coords(sdf, coarse_texture, wp.vec3(f[0] - 1.0, f[1], f[2]))
-            dist_py = sample_coarse_at_grid_coords(sdf, coarse_texture, wp.vec3(f[0], f[1] + 1.0, f[2]))
-            dist_my = sample_coarse_at_grid_coords(sdf, coarse_texture, wp.vec3(f[0], f[1] - 1.0, f[2]))
-            dist_pz = sample_coarse_at_grid_coords(sdf, coarse_texture, wp.vec3(f[0], f[1], f[2] + 1.0))
-            dist_mz = sample_coarse_at_grid_coords(sdf, coarse_texture, wp.vec3(f[0], f[1], f[2] - 1.0))
+        # +z: check if f[2]+1 is still in same cell
+        slot_pz = start_slot if f[2] + 1.0 <= cell_upper_z else marker
+        dist_pz = sample_with_precomputed_cell(
+            sdf,
+            coarse_texture,
+            subgrid_texture,
+            slot_pz,
+            subgrid_start_slots,
+            x_base,
+            y_base,
+            z_base,
+            wp.vec3(f[0], f[1], f[2] + 1.0),
+        )
 
-            grad = wp.vec3(
-                (dist_px - dist_mx) * 0.5,
-                (dist_py - dist_my) * 0.5,
-                (dist_pz - dist_mz) * 0.5,
-            )
-        else:
-            # Samples span multiple cells - need individual lookups
-            dist = sample_texture_at_grid_coords(sdf, coarse_texture, subgrid_texture, subgrid_start_slots, f)
+        # -z: check if f[2]-1 is still in same cell
+        slot_mz = start_slot if f[2] - 1.0 >= cell_lower_z else marker
+        dist_mz = sample_with_precomputed_cell(
+            sdf,
+            coarse_texture,
+            subgrid_texture,
+            slot_mz,
+            subgrid_start_slots,
+            x_base,
+            y_base,
+            z_base,
+            wp.vec3(f[0], f[1], f[2] - 1.0),
+        )
 
-            dist_px = sample_texture_at_grid_coords(
-                sdf, coarse_texture, subgrid_texture, subgrid_start_slots, wp.vec3(f[0] + 1.0, f[1], f[2])
-            )
-            dist_mx = sample_texture_at_grid_coords(
-                sdf, coarse_texture, subgrid_texture, subgrid_start_slots, wp.vec3(f[0] - 1.0, f[1], f[2])
-            )
-            dist_py = sample_texture_at_grid_coords(
-                sdf, coarse_texture, subgrid_texture, subgrid_start_slots, wp.vec3(f[0], f[1] + 1.0, f[2])
-            )
-            dist_my = sample_texture_at_grid_coords(
-                sdf, coarse_texture, subgrid_texture, subgrid_start_slots, wp.vec3(f[0], f[1] - 1.0, f[2])
-            )
-            dist_pz = sample_texture_at_grid_coords(
-                sdf, coarse_texture, subgrid_texture, subgrid_start_slots, wp.vec3(f[0], f[1], f[2] + 1.0)
-            )
-            dist_mz = sample_texture_at_grid_coords(
-                sdf, coarse_texture, subgrid_texture, subgrid_start_slots, wp.vec3(f[0], f[1], f[2] - 1.0)
-            )
-
-            grad = wp.vec3(
-                (dist_px - dist_mx) * 0.5,
-                (dist_py - dist_my) * 0.5,
-                (dist_pz - dist_mz) * 0.5,
-            )
+        factor = 0.5
     else:
         # SLOW PATH: Near boundary, use full sampling with clamping/extrapolation
         dist = sample_sparse_sdf_at(sdf, coarse_texture, subgrid_texture, subgrid_start_slots, local_pos)
@@ -996,11 +1016,13 @@ def sample_sparse_sdf_grad(
             sdf, coarse_texture, subgrid_texture, subgrid_start_slots, local_pos - wp.vec3(0.0, 0.0, dx)
         )
 
-        grad = wp.vec3(
-            (dist_px - dist_mx) * sdf.inv_2dx,
-            (dist_py - dist_my) * sdf.inv_2dx,
-            (dist_pz - dist_mz) * sdf.inv_2dx,
-        )
+        factor = sdf.inv_2dx
+
+    grad = wp.vec3(
+        (dist_px - dist_mx) * factor,
+        (dist_py - dist_my) * factor,
+        (dist_pz - dist_mz) * factor,
+    )
 
     results[tid] = dist
     gradients[tid] = grad
