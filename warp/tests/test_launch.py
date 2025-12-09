@@ -383,6 +383,71 @@ def test_launch_tuple_args(test, device):
     assert_np_equal(out.numpy(), np.array((0, 3, 6, 9)))
 
 
+# ==================================================================================
+# Launch bounds tests
+# ==================================================================================
+
+
+@wp.kernel
+def kernel_no_bounds(x: wp.array(dtype=float)):
+    tid = wp.tid()
+    x[tid] = x[tid] * 2.0
+
+
+@wp.kernel(launch_bounds=256)
+def kernel_single_bound(x: wp.array(dtype=float)):
+    tid = wp.tid()
+    x[tid] = x[tid] * 2.0
+
+
+@wp.kernel(launch_bounds=(256, 1))
+def kernel_tuple_bounds(x: wp.array(dtype=float)):
+    tid = wp.tid()
+    x[tid] = x[tid] * 2.0
+
+
+@wp.kernel(launch_bounds=(512,))
+def kernel_single_tuple_bound(x: wp.array(dtype=float)):
+    tid = wp.tid()
+    x[tid] = x[tid] * 2.0
+
+
+def test_launch_bounds_none(test, device):
+    """Test kernel without launch_bounds"""
+    n = 1024
+    x = wp.array(np.ones(n, dtype=np.float32), dtype=float, device=device)
+    wp.launch(kernel_no_bounds, dim=n, inputs=[x], device=device)
+    wp.synchronize_device(device)
+    assert_np_equal(x.numpy(), np.full(n, 2.0, dtype=np.float32))
+
+
+def test_launch_bounds_single(test, device):
+    """Test kernel with single int launch_bounds"""
+    n = 1024
+    x = wp.array(np.ones(n, dtype=np.float32), dtype=float, device=device)
+    wp.launch(kernel_single_bound, dim=n, inputs=[x], device=device)
+    wp.synchronize_device(device)
+    assert_np_equal(x.numpy(), np.full(n, 2.0, dtype=np.float32))
+
+
+def test_launch_bounds_tuple(test, device):
+    """Test kernel with tuple launch_bounds (maxThreadsPerBlock, minBlocksPerMultiprocessor)"""
+    n = 1024
+    x = wp.array(np.ones(n, dtype=np.float32), dtype=float, device=device)
+    wp.launch(kernel_tuple_bounds, dim=n, inputs=[x], device=device)
+    wp.synchronize_device(device)
+    assert_np_equal(x.numpy(), np.full(n, 2.0, dtype=np.float32))
+
+
+def test_launch_bounds_single_tuple(test, device):
+    """Test kernel with single-element tuple launch_bounds"""
+    n = 1024
+    x = wp.array(np.ones(n, dtype=np.float32), dtype=float, device=device)
+    wp.launch(kernel_single_tuple_bound, dim=n, inputs=[x], device=device)
+    wp.synchronize_device(device)
+    assert_np_equal(x.numpy(), np.full(n, 2.0, dtype=np.float32))
+
+
 devices = get_test_devices()
 
 
@@ -404,6 +469,11 @@ add_function_test(TestLaunch, "test_launch_cmd_adjoint", test_launch_cmd_adjoint
 add_function_test(TestLaunch, "test_launch_cmd_adjoint_empty", test_launch_cmd_adjoint_empty, devices=devices)
 
 add_function_test(TestLaunch, "test_launch_tuple_args", test_launch_tuple_args, devices=devices)
+
+add_function_test(TestLaunch, "test_launch_bounds_none", test_launch_bounds_none, devices=devices)
+add_function_test(TestLaunch, "test_launch_bounds_single", test_launch_bounds_single, devices=devices)
+add_function_test(TestLaunch, "test_launch_bounds_tuple", test_launch_bounds_tuple, devices=devices)
+add_function_test(TestLaunch, "test_launch_bounds_single_tuple", test_launch_bounds_single_tuple, devices=devices)
 
 
 if __name__ == "__main__":

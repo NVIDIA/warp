@@ -3687,7 +3687,7 @@ cuda_reverse_function_template = """
 
 cuda_kernel_template_forward = """
 
-{line_directive}extern "C" __global__ void {name}_cuda_kernel_forward(
+{line_directive}extern "C" {launch_bounds_str}__global__ void {name}_cuda_kernel_forward(
     {forward_args})
 {{
 {line_directive}    wp::tile_shared_storage_t tile_mem;
@@ -3706,7 +3706,7 @@ cuda_kernel_template_forward = """
 
 cuda_kernel_template_backward = """
 
-{line_directive}extern "C" __global__ void {name}_cuda_kernel_backward(
+{line_directive}extern "C" {launch_bounds_str}__global__ void {name}_cuda_kernel_backward(
     {reverse_args})
 {{
 {line_directive}    wp::tile_shared_storage_t tile_mem;
@@ -4325,6 +4325,22 @@ def codegen_kernel(kernel, device, options):
         "name": kernel.get_mangled_name(),
     }
 
+    # Generate launch_bounds string for CUDA kernels
+    launch_bounds_str = ""
+    if device == "cuda" and "launch_bounds" in options:
+        launch_bounds = options["launch_bounds"]
+        if isinstance(launch_bounds, int):
+            launch_bounds_str = f"__launch_bounds__({launch_bounds}) "
+        elif isinstance(launch_bounds, (tuple, list)):
+            if len(launch_bounds) == 1:
+                launch_bounds_str = f"__launch_bounds__({launch_bounds[0]}) "
+            elif len(launch_bounds) == 2:
+                launch_bounds_str = f"__launch_bounds__({launch_bounds[0]}, {launch_bounds[1]}) "
+            else:
+                raise ValueError(f"launch_bounds must be an int or a tuple/list of 1-2 ints, got {launch_bounds}")
+        else:
+            raise ValueError(f"launch_bounds must be an int or a tuple/list of 1-2 ints, got {type(launch_bounds)}")
+
     # build forward signature
     forward_args = ["wp::launch_bounds_t dim"]
     if device == "cpu":
@@ -4339,6 +4355,7 @@ def codegen_kernel(kernel, device, options):
             "forward_args": indent(forward_args),
             "forward_body": forward_body,
             "line_directive": func_line_directive,
+            "launch_bounds_str": launch_bounds_str,
         }
     )
     template += template_forward
